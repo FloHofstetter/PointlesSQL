@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from pointlessql.exceptions import AuthorizationError
+
 if TYPE_CHECKING:
     from pointlessql.services.unitycatalog import UnityCatalogClient
 
@@ -19,31 +21,8 @@ SELECT = "SELECT"
 MODIFY = "MODIFY"
 MANAGE_GRANTS = "MANAGE_GRANTS"
 
-
-class AccessDenied(Exception):
-    """Raised when a user lacks the required privilege on a securable.
-
-    Attributes:
-        principal: Email of the user that was denied.
-        privilege: The privilege that was required.
-        securable_type: The type of securable (catalog, schema, table).
-        full_name: The dotted name of the securable.
-    """
-
-    def __init__(  # noqa: D107
-        self,
-        principal: str,
-        privilege: str,
-        securable_type: str,
-        full_name: str,
-    ) -> None:
-        self.principal = principal
-        self.privilege = privilege
-        self.securable_type = securable_type
-        self.full_name = full_name
-        super().__init__(
-            f"{principal} lacks {privilege} on {securable_type} '{full_name}'"
-        )
+# Backward-compatible alias — existing code imports AccessDenied from here.
+AccessDenied = AuthorizationError
 
 
 def _user_has_privilege(

@@ -81,11 +81,13 @@ def init_db(url: str) -> Engine:
     if is_sqlite:
 
         @event.listens_for(_engine, "connect")
-        def _set_sqlite_pragmas(dbapi_conn: object, _rec: object) -> None:
+        def _set_sqlite_pragmas(  # pyright: ignore[reportUnusedFunction]
+            dbapi_conn: object, _rec: object
+        ) -> None:
             cursor = dbapi_conn.cursor()  # type: ignore[union-attr]
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
+            cursor.execute("PRAGMA journal_mode=WAL")  # type: ignore[union-attr]
+            cursor.execute("PRAGMA foreign_keys=ON")  # type: ignore[union-attr]
+            cursor.close()  # type: ignore[union-attr]
 
     _run_migrations(url)
 

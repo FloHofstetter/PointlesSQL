@@ -194,7 +194,7 @@ async def sso_redirect(request: Request):
 
     response = RedirectResponse(url=authorize_url, status_code=302)
     response.set_cookie(
-        oidc_service._STATE_COOKIE_NAME,
+        oidc_service.STATE_COOKIE_NAME,
         cookie_value,
         httponly=True,
         samesite="lax",
@@ -223,7 +223,7 @@ async def oidc_callback(request: Request):
         )
 
     # Verify state cookie.
-    cookie_raw = request.cookies.get(oidc_service._STATE_COOKIE_NAME)
+    cookie_raw = request.cookies.get(oidc_service.STATE_COOKIE_NAME)
     if cookie_raw is None:
         return RedirectResponse(
             url="/auth/login?error=SSO+session+expired", status_code=303,
@@ -293,5 +293,5 @@ async def oidc_callback(request: Request):
         samesite="lax",
         max_age=settings.jwt_expiry_hours * 3600,
     )
-    response.delete_cookie(oidc_service._STATE_COOKIE_NAME)
+    response.delete_cookie(oidc_service.STATE_COOKIE_NAME)
     return response

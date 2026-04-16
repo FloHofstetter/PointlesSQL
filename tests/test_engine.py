@@ -128,7 +128,9 @@ class TestMakeEngine:
         assert isinstance(engine, PandasEngine)
 
     def test_unknown_raises(self) -> None:
-        with pytest.raises(ValueError, match="Unknown engine"):
+        from pointlessql.exceptions import ValidationError
+
+        with pytest.raises(ValidationError, match="Unknown engine"):
             make_engine("spark")
 
 

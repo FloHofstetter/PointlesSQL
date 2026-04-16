@@ -30,6 +30,7 @@ import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import User
 from pointlessql.services.auth import is_first_user
 
@@ -40,8 +41,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class OIDCError(Exception):
-    """Human-readable OIDC failure suitable for display on the login page."""
+class OIDCError(PointlessSQLError):
+    """Human-readable OIDC failure suitable for display on the login page.
+
+    Attributes:
+        status_code: Always 401.
+        error_code: Always ``"oidc_error"``.
+    """
+
+    status_code: int = 401
+    error_code: str = "oidc_error"
 
 
 # ---------------------------------------------------------------------------
@@ -67,7 +76,7 @@ def generate_pkce() -> tuple[str, str]:
 # Signed state cookie
 # ---------------------------------------------------------------------------
 
-_STATE_COOKIE_NAME = "pql_oidc_state"
+STATE_COOKIE_NAME = "pql_oidc_state"
 
 
 def sign_state_cookie(payload: dict[str, Any], secret_key: str) -> str:
@@ -105,7 +114,7 @@ def verify_state_cookie(cookie: str, secret_key: str) -> dict[str, Any] | None:
         return None
     try:
         return json.loads(base64.urlsafe_b64decode(raw + "=="))
-    except (json.JSONDecodeError, Exception):
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
         return None
 
 

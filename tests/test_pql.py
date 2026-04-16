@@ -16,6 +16,11 @@ from soyuz_catalog_client.models.list_tables_response import ListTablesResponse
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.models.table_info import TableInfo
 
+from pointlessql.exceptions import (
+    CatalogNotFoundError,
+    CatalogUnavailableError,
+    ValidationError,
+)
 from pointlessql.pql._columns import columns_from_dataframe
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import DuckDBEngine, Engine, PandasEngine, PolarsEngine
@@ -35,19 +40,19 @@ class TestParseFullName:
         assert parse_full_name(" cat . sch . tbl ") == ("cat", "sch", "tbl")
 
     def test_two_parts_raises(self) -> None:
-        with pytest.raises(ValueError, match="2 part"):
+        with pytest.raises(ValidationError, match="2 part"):
             parse_full_name("cat.sch")
 
     def test_four_parts_raises(self) -> None:
-        with pytest.raises(ValueError, match="4 part"):
+        with pytest.raises(ValidationError, match="4 part"):
             parse_full_name("a.b.c.d")
 
     def test_one_part_raises(self) -> None:
-        with pytest.raises(ValueError, match="1 part"):
+        with pytest.raises(ValidationError, match="1 part"):
             parse_full_name("table")
 
     def test_empty_part_raises(self) -> None:
-        with pytest.raises(ValueError, match="must not be empty"):
+        with pytest.raises(ValidationError, match="must not be empty"):
             parse_full_name("cat..tbl")
 
 
@@ -178,19 +183,19 @@ class TestPQLTable:
     def test_not_found_raises(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = None
         pql = PQL(client=MagicMock())
-        with pytest.raises(LookupError, match="not found"):
+        with pytest.raises(CatalogNotFoundError, match="not found"):
             pql.table("cat.sch.tbl")
 
     @patch(f"{_MOD}._get_table")
     def test_no_storage_location_raises(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = TableInfo(name="tbl")
         pql = PQL(client=MagicMock())
-        with pytest.raises(LookupError, match="no storage_location"):
+        with pytest.raises(CatalogNotFoundError, match="no storage_location"):
             pql.table("cat.sch.tbl")
 
     def test_invalid_name_raises(self) -> None:
         pql = PQL(client=MagicMock())
-        with pytest.raises(ValueError, match="three-part"):
+        with pytest.raises(ValidationError, match="three-part"):
             pql.table("only_two.parts")
 
 
@@ -266,7 +271,7 @@ class TestPQLWriteTable:
 
         df = pd.DataFrame({"x": [1]})
         pql = PQL(client=MagicMock(), engine=MagicMock(spec=Engine))
-        with pytest.raises(LookupError, match="storage_root"):
+        with pytest.raises(CatalogNotFoundError, match="storage_root"):
             pql.write_table(df, "cat.sch.tbl")
 
     @patch(f"{_MOD}._get_table")
@@ -328,18 +333,18 @@ class TestPQLListMethods:
 
 class TestPQLConnectionError:
     @patch(f"{_MOD}._get_table")
-    def test_table_raises_connection_error(self, mock_get: MagicMock) -> None:
+    def test_table_raises_catalog_unavailable(self, mock_get: MagicMock) -> None:
         import httpx
 
         mock_get.sync.side_effect = httpx.ConnectError("Connection refused")
         client = MagicMock()
         client._base_url = "http://127.0.0.1:8080"
         pql = PQL(client=client, engine=MagicMock(spec=Engine))
-        with pytest.raises(ConnectionError, match="Cannot reach soyuz-catalog"):
+        with pytest.raises(CatalogUnavailableError, match="Cannot reach soyuz-catalog"):
             pql.table("cat.sch.tbl")
 
     @patch(f"{_MOD}._get_table")
-    def test_write_table_raises_connection_error(self, mock_get: MagicMock) -> None:
+    def test_write_table_raises_catalog_unavailable(self, mock_get: MagicMock) -> None:
         import httpx
 
         mock_get.sync.side_effect = httpx.ConnectError("Connection refused")
@@ -347,5 +352,5 @@ class TestPQLConnectionError:
         client._base_url = "http://127.0.0.1:8080"
         pql = PQL(client=client, engine=MagicMock(spec=Engine))
         df = pd.DataFrame({"x": [1]})
-        with pytest.raises(ConnectionError, match="Cannot reach soyuz-catalog"):
+        with pytest.raises(CatalogUnavailableError, match="Cannot reach soyuz-catalog"):
             pql.write_table(df, "cat.sch.tbl")

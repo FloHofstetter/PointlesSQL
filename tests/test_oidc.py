@@ -388,7 +388,7 @@ class TestSSORedirect:
             location = resp.headers["location"]
             assert location.startswith("https://fake-idp.example/authorize?")
             assert "code_challenge_method=S256" in location
-            assert oidc_service._STATE_COOKIE_NAME in resp.cookies
+            assert oidc_service.STATE_COOKIE_NAME in resp.cookies
 
     @pytest.mark.asyncio
     async def test_sso_disabled(self):
@@ -441,7 +441,7 @@ class TestOIDCCallback:
                 transport=httpx.ASGITransport(app=app),
                 base_url="http://test",
                 follow_redirects=False,
-                cookies={oidc_service._STATE_COOKIE_NAME: cookie},
+                cookies={oidc_service.STATE_COOKIE_NAME: cookie},
             ) as client:
                 resp = await client.get(
                     f"/auth/callback?code=authcode&state={state}"
@@ -461,7 +461,7 @@ class TestOIDCCallback:
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
             follow_redirects=False,
-            cookies={oidc_service._STATE_COOKIE_NAME: cookie},
+            cookies={oidc_service.STATE_COOKIE_NAME: cookie},
         ) as client:
             resp = await client.get("/auth/callback?code=c&state=wrong")
 

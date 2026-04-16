@@ -12,13 +12,14 @@ from typing import Any
 
 import httpx
 from fastapi import Body, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from soyuz_catalog_client.errors import UnexpectedStatus
 
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.db import get_session_factory, init_db
+from pointlessql.exceptions import AuthorizationError
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services.authorization import (
@@ -36,12 +37,12 @@ from pointlessql.services.jupyter import managed_jupyter
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
+from pointlessql.types import UserInfo
 
 # In a dev checkout the frontend dir is at the repo root; in an
 # installed wheel hatchling force-includes it as pointlessql/_frontend.
-_FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
-if not _FRONTEND_DIR.is_dir():
-    _FRONTEND_DIR = Path(__file__).resolve().parents[1] / "_frontend"
+_dev_dir = Path(__file__).resolve().parents[2] / "frontend"
+_FRONTEND_DIR = _dev_dir if _dev_dir.is_dir() else Path(__file__).resolve().parents[1] / "_frontend"
 _TEMPLATES = Jinja2Templates(directory=str(_FRONTEND_DIR / "templates"))
 
 
@@ -63,7 +64,7 @@ _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
 _original_template_response = _TEMPLATES.TemplateResponse
 
 
-def _template_response_with_user(request, *args, **kwargs):
+def _template_response_with_user(request: Request, *args: Any, **kwargs: Any) -> Response:
     """Wrap TemplateResponse to inject ``current_user`` into every context."""
     # TemplateResponse(request, name, context) or (name, context, request=request)
     # Starlette 0.37+ signature: TemplateResponse(request, name, context={}, ...)
@@ -72,9 +73,9 @@ def _template_response_with_user(request, *args, **kwargs):
             "current_user", getattr(request.state, "user", None)
         )
     elif len(args) >= 2 and isinstance(args[1], dict):
-        args = list(args)
-        args[1].setdefault("current_user", getattr(request.state, "user", None))
-        args = tuple(args)
+        mutable = list(args)
+        mutable[1].setdefault("current_user", getattr(request.state, "user", None))
+        args = tuple(mutable)
     return _original_template_response(request, *args, **kwargs)
 
 
@@ -114,7 +115,7 @@ _PUBLIC_PREFIXES = ("/auth/", "/static/", "/healthz")
 
 
 @app.middleware("http")
-async def auth_middleware(request: Request, call_next):
+async def auth_middleware(request: Request, call_next: Any) -> Response:
     """Extract user from JWT cookie; redirect to login if unauthenticated."""
     path = request.url.path
 
@@ -153,13 +154,16 @@ def _get_uc_client(request: Request) -> UnityCatalogClient:
     return request.app.state.uc_client
 
 
-def _get_user(request: Request) -> dict[str, Any]:
+def _get_user(request: Request) -> UserInfo:
     """Return the current user dict from request state."""
-    return getattr(request.state, "user", {})
+    user: UserInfo | None = getattr(request.state, "user", None)
+    if user is None:
+        return UserInfo(id=0, email="", display_name="", is_admin=False)
+    return user
 
 
-def _deny_json(exc: AccessDenied) -> JSONResponse:
-    """Return a 403 JSON response for an AccessDenied exception."""
+def _deny_json(exc: AuthorizationError) -> JSONResponse:
+    """Return a 403 JSON response for an AuthorizationError exception."""
     return JSONResponse(
         status_code=403,
         content={
@@ -169,8 +173,8 @@ def _deny_json(exc: AccessDenied) -> JSONResponse:
     )
 
 
-def _deny_html(request: Request, exc: AccessDenied) -> HTMLResponse:
-    """Return a 403 HTML response for an AccessDenied exception."""
+def _deny_html(request: Request, exc: AuthorizationError) -> HTMLResponse:
+    """Return a 403 HTML response for an AuthorizationError exception."""
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/403.html",
@@ -215,7 +219,7 @@ def _audit(request: Request, action: str, target: str, detail: str | None = None
     """Write an audit log entry for the current user."""
     user = _get_user(request)
     factory = getattr(request.app.state, "session_factory", None)
-    if factory is not None and user:
+    if factory is not None and user["id"]:
         audit_service.log_action(
             factory, user["id"], user["email"], action, target, detail
         )

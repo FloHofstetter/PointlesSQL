@@ -268,7 +268,7 @@ PointlesSQL
 │       └── Tests: `TEST_DATABASE_URL` env var for Postgres
 │           matrix, `drop_all` teardown for clean isolation
 │
-├── Phase 5 — Pluggable compute engines                   ⏳ planned
+├── Phase 5 — Pluggable compute engines                   ✅ done
 │   │
 │   │   Vision: user picks a "kernel profile" (container image
 │   │   or local venv) with a specific engine. The pql helper
@@ -305,6 +305,50 @@ PointlesSQL
 │       └── PySpark kernel with UC connector configured
 │           by PointlesSQL at startup (needs JVM — low
 │           priority, DuckDB/Polars cover most use cases)
+│
+├── Phase 5.5 — Quality and observability                  🔜 next
+│   │
+│   │   Goal: harden the codebase without adding features —
+│   │   strict types, domain exception hierarchy, centralized
+│   │   error handling, complete docstrings, structured logging.
+│   │
+│   ├── Sprint 13 — Exception hierarchy + strict pyright   ✅ done
+│   │   ├── `pointlessql/exceptions.py` — `PointlessSQLError`
+│   │   │   base with `status_code`, `error_code`, `detail`;
+│   │   │   `CatalogUnavailableError` (502),
+│   │   │   `CatalogNotFoundError` (404),
+│   │   │   `AuthenticationError` (401),
+│   │   │   `AuthorizationError` (403, reparents AccessDenied),
+│   │   │   `EngineError` (500), `ValidationError` (422,
+│   │   │   inherits ValueError for compat)
+│   │   ├── `pointlessql/types.py` — `UserInfo` TypedDict
+│   │   │   replacing `dict[str, Any]` user objects
+│   │   ├── Pyright strict mode (source only), zero errors
+│   │   ├── PQL + engine raise domain exceptions instead of
+│   │   │   builtins (ConnectionError → CatalogUnavailableError,
+│   │   │   LookupError → CatalogNotFoundError,
+│   │   │   ValueError → ValidationError)
+│   │   ├── OIDCError reparented under PointlessSQLError
+│   │   ├── Broad exception catches narrowed in auth.py
+│   │   │   and oidc.py
+│   │   └── Tests: 17 new exception tests (230 total pass)
+│   │
+│   ├── Sprint 14 — Centralized API error handling         🔜 next
+│   │   ├── Centralized FastAPI exception handlers
+│   │   ├── Consistent JSON error envelope
+│   │   ├── Remove ~37 duplicated try/except blocks
+│   │   └── Request-ID generation
+│   │
+│   ├── Sprint 15 — Docstrings                             ⏳ planned
+│   │   ├── Every public function: Google-style with why
+│   │   ├── Accurate Args/Returns/Raises sections
+│   │   └── Tighten pydoclint config
+│   │
+│   └── Sprint 16 — Logging and observability              ⏳ planned
+│       ├── Root logger configuration
+│       ├── Request-scoped correlation IDs
+│       ├── Structured JSON log format option
+│       └── Logger instances throughout the app
 │
 ├── Phase 6 — Infrastructure & orchestration              🧊 on ice
 │   │

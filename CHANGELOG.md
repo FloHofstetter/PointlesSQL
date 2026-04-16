@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 13)
+
+- `pointlessql/exceptions.py` — domain exception hierarchy with
+  `PointlessSQLError` base carrying `.status_code`, `.error_code`,
+  `.detail`; six concrete types: `CatalogUnavailableError` (502),
+  `CatalogNotFoundError` (404), `AuthenticationError` (401),
+  `AuthorizationError` (403), `EngineError` (500),
+  `ValidationError` (422, also inherits `ValueError`)
+- `pointlessql/types.py` — `UserInfo` TypedDict replacing
+  `dict[str, Any]` for authenticated user objects
+- `tests/test_exceptions.py` — 17 new tests covering hierarchy,
+  attributes, catchability, and backward compatibility
+  (230 total pass)
+
+### Changed (Sprint 13)
+
+- Pyright: `typeCheckingMode` upgraded from `"standard"` to
+  `"strict"` on source code; zero errors, 32 warnings (from
+  incomplete third-party stubs)
+- `AccessDenied` reparented as an alias for `AuthorizationError`
+  in `services/authorization.py` (backward compatible)
+- `OIDCError` reparented under `PointlessSQLError`
+- PQL raises `CatalogUnavailableError` instead of `ConnectionError`,
+  `CatalogNotFoundError` instead of `LookupError`,
+  `ValidationError` instead of `ValueError`
+- `make_engine()` raises `ValidationError` instead of `ValueError`
+- `parse_full_name()` raises `ValidationError` instead of
+  `ValueError`
+- Broad exception catches narrowed: `except Exception` in
+  `auth.py` → `except (ValueError, TypeError, PwdlibError)`,
+  `except (JSONDecodeError, Exception)` in `oidc.py` →
+  `except (JSONDecodeError, ValueError, UnicodeDecodeError)`
+- `_STATE_COOKIE_NAME` in `oidc.py` renamed to `STATE_COOKIE_NAME`
+  (was flagged by strict pyright as cross-module private access)
+- `_get_user()` in `api/main.py` returns `UserInfo` instead of
+  `dict[str, Any]`; `auth_middleware` and
+  `_template_response_with_user` have explicit return type
+  annotations
+
 ### Added (Sprint 12)
 
 - `PolarsEngine` in `pointlessql/pql/engine.py` — reads Delta tables

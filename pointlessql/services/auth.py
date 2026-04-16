@@ -13,11 +13,13 @@ from typing import Any
 
 import jwt
 from pwdlib import PasswordHash
+from pwdlib.exceptions import PwdlibError
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models import User
+from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +52,7 @@ def verify_password(password: str, hashed: str) -> bool:
     """
     try:
         return _hasher.verify(password, hashed)
-    except Exception:
+    except (ValueError, TypeError, PwdlibError):
         logger.warning("Password verification error (corrupt hash?)", exc_info=True)
         return False
 
@@ -210,7 +212,7 @@ def get_current_user(
     factory: sessionmaker[Session],
     token: str,
     secret_key: str,
-) -> dict[str, Any] | None:
+) -> UserInfo | None:
     """Decode a JWT and look up the corresponding user.
 
     Args:
@@ -219,7 +221,7 @@ def get_current_user(
         secret_key: Secret key for verification.
 
     Returns:
-        dict[str, Any] | None: User info dict or ``None`` if invalid.
+        UserInfo | None: User info dict or ``None`` if invalid.
     """
     payload = verify_jwt(token, secret_key)
     if payload is None:
@@ -238,9 +240,9 @@ def get_current_user(
         user = session.query(User).filter(User.id == user_id).first()
         if user is None:
             return None
-        return {
-            "id": user.id,
-            "email": user.email,
-            "display_name": user.display_name,
-            "is_admin": user.is_admin,
-        }
+        return UserInfo(
+            id=user.id,
+            email=user.email,
+            display_name=user.display_name,
+            is_admin=user.is_admin,
+        )

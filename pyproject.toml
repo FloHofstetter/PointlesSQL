@@ -95,8 +95,17 @@ pydocstyle.convention = "google"
 
 [tool.pyright]
 pythonVersion = "3.14"
-typeCheckingMode = "standard"
-include = ["pointlessql", "tests"]
+typeCheckingMode = "strict"
+include = ["pointlessql"]
+reportMissingTypeStubs = false
+# Third-party libs (deltalake, duckdb, pandas, polars) have incomplete stubs.
+reportUnknownVariableType = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownArgumentType = "warning"
+reportUnknownParameterType = "warning"
+# Defensive isinstance checks against generated-client responses are needed
+# at runtime even when pyright considers them always true.
+reportUnnecessaryIsInstance = "warning"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

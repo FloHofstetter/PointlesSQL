@@ -108,7 +108,7 @@ class PandasEngine:
         Returns:
             Column metadata tuples for UC registration.
         """
-        from pointlessql.pql._columns import _resolve_dtype
+        from pointlessql.pql._columns import _resolve_dtype  # pyright: ignore[reportPrivateUsage]
 
         return [
             (str(col_name), *_resolve_dtype(dtype), True)
@@ -269,7 +269,9 @@ class PolarsEngine:
         import polars as pl
 
         dt = deltalake.DeltaTable(storage_location)
-        return pl.from_arrow(dt.to_pyarrow_table())
+        result = pl.from_arrow(dt.to_pyarrow_table())
+        assert isinstance(result, pl.DataFrame)  # noqa: S101 — pyarrow Table always yields DataFrame
+        return result
 
     def write(self, frame: pl.DataFrame, storage_location: str, mode: WriteMode) -> None:
         """Write a Polars DataFrame to a Delta table.
@@ -322,11 +324,13 @@ def make_engine(name: str) -> Engine:
         A configured engine instance.
 
     Raises:
-        ValueError: If the engine name is not recognized.
+        ValidationError: If the engine name is not recognized.
     """
+    from pointlessql.exceptions import ValidationError
+
     cls = _ENGINE_REGISTRY.get(name.lower())
     if cls is None:
         valid = ", ".join(sorted(_ENGINE_REGISTRY))
         msg = f"Unknown engine {name!r}. Valid engines: {valid}"
-        raise ValueError(msg)
+        raise ValidationError(msg)
     return cls()

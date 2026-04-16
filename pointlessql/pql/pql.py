@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 import httpx
 from soyuz_catalog_client import Client
+from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.api.catalogs import (
     list_catalogs_api_2_1_unity_catalog_catalogs_get as _list_catalogs,
 )
@@ -24,7 +25,6 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.api.tables import (
     list_tables_api_2_1_unity_catalog_tables_get as _list_tables,
 )
-from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.list_catalogs_response import ListCatalogsResponse
 from soyuz_catalog_client.models.list_schemas_response import ListSchemasResponse
@@ -33,6 +33,7 @@ from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.exceptions import CatalogNotFoundError, CatalogUnavailableError
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine, make_engine
@@ -90,23 +91,24 @@ class PQL:
             (e.g. pandas DataFrame, DuckDB relation).
 
         Raises:
-            ValueError: If *full_name* does not have exactly three parts.
-            LookupError: If the table is not found or has no
+            ValidationError: If *full_name* does not have exactly three parts.
+            CatalogNotFoundError: If the table is not found or has no
                 ``storage_location``.
+            CatalogUnavailableError: If soyuz-catalog is unreachable.
         """
         parse_full_name(full_name)  # validates format
         try:
             response = _get_table.sync(client=self._client, full_name=full_name)
         except httpx.ConnectError as exc:
-            raise ConnectionError(self._unreachable_msg()) from exc
+            raise CatalogUnavailableError(self._unreachable_msg()) from exc
         if not isinstance(response, TableInfo):
             msg = f"Table not found: {full_name!r}"
-            raise LookupError(msg)
+            raise CatalogNotFoundError(msg)
 
         location = response.storage_location
         if isinstance(location, Unset) or not location:
             msg = f"Table {full_name!r} has no storage_location"
-            raise LookupError(msg)
+            raise CatalogNotFoundError(msg)
 
         return self._engine.read(location)
 
@@ -134,9 +136,10 @@ class PQL:
                 ``"overwrite"``.
 
         Raises:
-            ValueError: If *full_name* does not have exactly three parts.
-            LookupError: If the parent schema has no storage root and the
-                table does not already exist.
+            ValidationError: If *full_name* does not have exactly three parts.
+            CatalogNotFoundError: If the parent schema has no storage root
+                and the table does not already exist.
+            CatalogUnavailableError: If soyuz-catalog is unreachable.
         """
         catalog, schema, table = parse_full_name(full_name)
 
@@ -152,7 +155,7 @@ class PQL:
                     location = loc
                     table_exists = True
         except httpx.ConnectError as exc:
-            raise ConnectionError(self._unreachable_msg()) from exc
+            raise CatalogUnavailableError(self._unreachable_msg()) from exc
         except UnexpectedStatus as exc:
             if exc.status_code != 404:
                 raise
@@ -178,7 +181,7 @@ class PQL:
                 )
                 _create_table.sync(client=self._client, body=body)
         except httpx.ConnectError as exc:
-            raise ConnectionError(self._unreachable_msg()) from exc
+            raise CatalogUnavailableError(self._unreachable_msg()) from exc
 
     # ------------------------------------------------------------------
     # Convenience list methods
@@ -243,7 +246,7 @@ class PQL:
 
     def _unreachable_msg(self) -> str:
         """Build a user-friendly message when soyuz-catalog is unreachable."""
-        url = self._client._base_url
+        url = self._client._base_url  # pyright: ignore[reportPrivateUsage]
         return f"Cannot reach soyuz-catalog at {url}. Is the server running?"
 
     def _derive_storage_location(
@@ -260,14 +263,14 @@ class PQL:
             The derived storage location path.
 
         Raises:
-            LookupError: If the parent schema has no ``storage_location``
-                or ``storage_root``.
+            CatalogNotFoundError: If the parent schema has no
+                ``storage_location`` or ``storage_root``.
         """
         schema_full = f"{catalog}.{schema}"
         response = _get_schema.sync(client=self._client, full_name=schema_full)
         if not isinstance(response, SchemaInfo):
             msg = f"Schema not found: {schema_full!r}"
-            raise LookupError(msg)
+            raise CatalogNotFoundError(msg)
 
         # Prefer storage_location, fall back to storage_root.
         for field in (response.storage_location, response.storage_root):
@@ -278,4 +281,4 @@ class PQL:
             f"Schema {schema_full!r} has no storage_location or storage_root. "
             f"Set a storage_root on the schema before writing new tables."
         )
-        raise LookupError(msg)
+        raise CatalogNotFoundError(msg)
