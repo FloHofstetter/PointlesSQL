@@ -4,6 +4,62 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 20)
+
+- Alembic migration 006: `jobs.max_parallel_runs`; `job_tasks`
+  gains `kind`, `depends_on` (JSON list of task ids),
+  `max_retries`, `retry_backoff_seconds`; new `task_runs`
+  (id, job_run_id FK, task_id FK, status, started_at,
+  finished_at, attempts, error); `job_logs.task_id` nullable
+  FK (batch-alter safe on SQLite)
+- Topological DAG walk in `scheduler.py`: iterative three-color
+  DFS validates the graph at create-time and raises
+  `ValidationError("cycle detected in task graph: [...]")`
+  with the offending path; unknown `depends_on` ids caught
+  in the pre-pass; upstream-fail → downstream tasks marked
+  `skipped` (not `failed`)
+- Retry policy per task: linear backoff (delay between
+  attempts `i` and `i+1` is `i * retry_backoff_seconds`);
+  `_sleep` is a module-level hook so tests patch it;
+  attempts counted on `TaskRun`
+- Concurrency caps: layered `asyncio.Semaphore`. Global
+  semaphore sized from
+  `POINTLESSQL_SCHEDULER_MAX_CONCURRENT_RUNS` (default 4)
+  allocated on `Scheduler.start()`; per-job semaphores are
+  lazy, keyed by `job_id`, sized from
+  `Job.max_parallel_runs` (default 1). Global acquired
+  before per-job (consistent lock order). DB `running`-count
+  query stays as the authoritative `skipped` writer so
+  process restarts don't lose state
+- `logging_config.py`: new `job_run_id_var` and `task_id_var`
+  alongside Sprint 16's `request_id_var`. `JSONFormatter`,
+  `RequestIdFilter`, and the `LogRecord` factory carry all
+  three. Scheduler sets them per-task and resets in
+  `finally`. Sprint 19's `request_id_var = f"job-{job_run_id}"`
+  is kept for continuity
+- `log_job(job_run_id, task_id, level, message)` writes every
+  status transition and retry to `job_logs`, synchronously
+  relative to the task call
+- `POST /api/jobs` accepts a DAG create form: `tasks` array
+  with `{name, kind, config, depends_on, max_retries}`;
+  validates cycles/unknown deps before insert
+- New routes: `GET /api/jobs/{id}/tasks`,
+  `GET /api/jobs/{id}/runs/{run_id}/tasks`,
+  `GET /api/jobs/{id}/runs/{run_id}/logs?task_id=...`
+- UI: "New DAG job" modal on `jobs.html` (JSON textarea — no
+  builder yet). Per-task table on `job_detail.html` with
+  status, retry count, last error; expandable Alpine log
+  panel fetches lines on demand
+- Settings: `POINTLESSQL_SCHEDULER_MAX_CONCURRENT_RUNS`
+  (default `4`)
+- `tests/test_scheduler_dag.py` — 13 new tests (topology,
+  fail-skip, retry success, retry exhaustion, cycle
+  detection, self-loop, unknown dep, per-job cap, global
+  semaphore serialization, contextvars set/reset via
+  caplog, `log_job` writer, route-level cycle 422). Sprint
+  19's 23 scheduler tests and Sprint 16's 8 logging tests
+  still green. Full suite not run in this sprint
+
 ### Added (Sprint 19)
 
 - Alembic migration 005: `jobs` (name unique, cron_expr,

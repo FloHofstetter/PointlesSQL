@@ -475,7 +475,7 @@ PointlesSQL
 │   │       job-run state transitions, run-as-user X-Principal
 │   │       forwarding, `pg_sync` kind end-to-end
 │   │
-│   ├── Sprint 20 — DAG engine: multi-task DAGs            ⏳ planned
+│   ├── Sprint 20 — DAG engine: multi-task DAGs            ✅ done (34bfcc8)
 │   │   ├── `job_tasks` gains `depends_on` (JSON list of task
 │   │   │   ids within the same job); scheduler walks the DAG
 │   │   │   in topological order, skips downstream tasks when
