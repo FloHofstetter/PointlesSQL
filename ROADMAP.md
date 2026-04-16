@@ -104,7 +104,7 @@ PointlesSQL
 │   │   └── Starter notebook: `notebooks/getting_started.ipynb`
 │   │       demonstrating `pql.table("...")` → DataFrame
 │   │
-│   └── Sprint 4 — Polish, E2E tests, docs               ✅ done (SPRINT4SHA)
+│   └── Sprint 4 — Polish, E2E tests, docs               ✅ done (c419f92)
 │       ├── E2E smoke tests: soyuz + PointlesSQL up, create
 │       │   catalog/schema via PQL, verify it appears in
 │       │   browser with correct columns and PQL snippet
