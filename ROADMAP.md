@@ -292,7 +292,7 @@ PointlesSQL
 │   │       tests, parameterized across both engines,
 │   │       201 total pass)
 │   │
-│   ├── Sprint 12 — Polars engine                         ✅ done
+│   ├── Sprint 12 — Polars engine                         ✅ done (8588ad0)
 │   │   ├── `PolarsEngine`: `DeltaTable.to_pyarrow_table()`
 │   │   │   → `pl.from_arrow()`, returns `pl.DataFrame`
 │   │   ├── New dep: `polars>=1.0`
