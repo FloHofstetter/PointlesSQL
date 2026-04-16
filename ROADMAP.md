@@ -409,7 +409,7 @@ PointlesSQL
 │   │   soyuz Sprint 28 / ADR-0013), so the work here is UI + sync
 │   │   + scheduler, not a new backend concept.
 │   │
-│   ├── Sprint 17 — Foreign catalog UI                     ⏳ planned
+│   ├── Sprint 17 — Foreign catalog UI                     ✅ done (83a024c)
 │   │   ├── "Create foreign catalog" modal on the catalogs page:
 │   │   │   pick an existing Connection, set free-form options
 │   │   │   (passthrough dict for connector config), submit to

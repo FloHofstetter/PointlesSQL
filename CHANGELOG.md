@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 17)
+
+- `unitycatalog.py` facade: `create_catalog(data)` and
+  `delete_catalog(name, force)` wrapping the generated client's
+  `_create_catalog` / `_delete_catalog`; both go through
+  `_wrap_catalog_errors` so transport failures surface as
+  `CatalogUnavailableError`
+- `POST /api/catalogs` route (admin-only, audited) accepting the
+  full `CreateCatalogRequest` shape — `name`, optional `comment`,
+  `properties`, `type=FOREIGN`, `connection_name`, and free-form
+  `options` passthrough — for wiring up foreign catalogs
+- "Create foreign catalog" button + modal on the catalogs page
+  (`pages/catalogs.html`): admin-only, pre-populated connection
+  dropdown, key/value options row editor, posts through a new
+  `createForeignCatalogForm(...)` Alpine factory in `federation.js`
+- `components/foreign_catalog_card.html`: bound-connection link +
+  inline options editor on the catalog detail page, rendered when
+  `catalog.connection_name` is set
+- FOREIGN badge on the catalog detail heading
+  (`pages/schemas.html`) and in the sidebar tree
+  (`components/sidebar.html`, `bi-plug` icon) so foreign catalogs
+  are visually distinct from managed ones
+- `optionsEditor(...)` in `properties_editor.js` — PATCHes
+  `{ options: {...} }` to the catalog; shares a new
+  `_makeDictEditor(field, ...)` helper with the existing
+  `propertiesEditor`
+- `tests/test_foreign_catalog.py` — 8 tests covering POST happy
+  path + non-admin 403, PATCH options forwards dict verbatim,
+  foreign-card/FOREIGN-badge/connection-link rendering, modal
+  visibility for admin vs non-admin users
+- `tests/test_federation.py`: new `TestCatalogsCreate` (4 tests)
+  exercising the facade's managed + foreign-catalog create and
+  delete paths (263 total pass)
+
+### Changed (Sprint 17)
+
+- `properties_editor.js`: `propertiesEditor` refactored to a
+  shared `_makeDictEditor` helper; behavior preserved (the
+  "cannot clear all properties at once" quirk stays scoped to
+  `field === 'properties'`)
+- `/` home handler fetches connections for the create modal only
+  when the current user is admin (empty list otherwise, no
+  `list_connections` call)
+
 ### Added (Sprint 16)
 
 - `pointlessql/logging_config.py` — centralized logging: a
