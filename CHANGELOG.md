@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 19)
+
+- Alembic migration 005: `jobs` (name unique, cron_expr,
+  run_as_user_id FK, kind, config JSON, is_paused, timestamps),
+  `job_runs` with `(job_id, started_at DESC)` index, plus
+  `job_tasks` and `job_logs` pre-created for Sprint 20
+- `pointlessql/services/scheduler.py` — in-process asyncio
+  scheduler started from `_lifespan`; `croniter`-driven due
+  detection; per-tick running-run query prevents overlap;
+  paused jobs skipped; failed `run_as_user_id` resolution
+  surfaces as a `failed` run with a clear error
+- Kind registry: `pg_sync` wraps Sprint 18 `run_sync` with
+  `config["catalog_name"]`; `python` resolves an entry point
+  from the `pointlessql.jobs` group (tests register a fake)
+- Run-as-user builds `UnityCatalogClient.for_principal(user.email)`
+  so soyuz's X-Principal applies automatically — reuses Sprint 7
+- Scheduler sets `request_id_var` to `f"job-{job_run_id}"`
+  inside each per-run span so structured logs correlate
+  without a new contextvar (Sprint 20 adds
+  `job_run_id_var` + `task_id_var`)
+- Settings: `POINTLESSQL_SCHEDULER_ENABLED` (default `True`)
+  and `POINTLESSQL_SCHEDULER_TICK_SECONDS` (default `30`)
+- Routes: `GET /jobs` (list, ownership-filtered for non-admin),
+  `GET /jobs/{id}`, `POST /api/jobs` (admin-only),
+  `POST /api/jobs/{id}/run`, `POST /api/jobs/{id}/pause`,
+  `POST /api/jobs/{id}/unpause` — all audited
+- `frontend/templates/pages/jobs.html`,
+  `frontend/templates/pages/job_detail.html` with "Run now" /
+  "Pause/Resume" buttons visible to admin or the owner
+- Navbar "Jobs" entry between "Notebook" and existing
+  dropdowns
+- `tests/test_scheduler.py` covering tick logic with a
+  patched clock, state transitions, overlap prevention,
+  paused skip, run-as-user principal forwarding, `pg_sync`
+  end-to-end, route admin-gating and ownership filter
+
+New dep: `croniter`.
+
+### Changed (Sprint 19)
+
+- `tests/conftest.py` sets
+  `POINTLESSQL_SCHEDULER_ENABLED=false` before app import
+  so the loop never ticks in ordinary test runs; the
+  scheduler suite re-enables it per-test via monkeypatch
+- `.gitignore`: `*.db-shm`, `*.db-wal` (SQLite WAL
+  artifacts now produced by the scheduler's DB writes)
+
 ### Added (Sprint 18)
 
 - `pointlessql/services/pg_sync.py`: pure-function Postgres → UC sync

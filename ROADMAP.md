@@ -448,7 +448,7 @@ PointlesSQL
 │   │       using a short-lived Postgres container (documented
 │   │       but not required in CI)
 │   │
-│   ├── Sprint 19 — DAG engine: data model + single-task   ⏳ planned
+│   ├── Sprint 19 — DAG engine: data model + single-task   ✅ done (eab27a8)
 │   │   ├── Alembic migration 005: `jobs`, `job_runs`,
 │   │   │   `job_tasks`, `job_logs`. `jobs` has
 │   │   │   (id, name, cron_expr, run_as_user_id, kind,
