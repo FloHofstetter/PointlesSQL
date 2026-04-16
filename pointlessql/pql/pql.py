@@ -47,6 +47,16 @@ class PQL:
     Designed for interactive use in notebooks and scripts.  All methods
     are synchronous — the web UI's async wrapper
     (``pointlessql.services.unitycatalog``) is a separate concern.
+
+    Args:
+        client: An existing ``soyuz_catalog_client.Client`` instance.
+            When ``None``, one is built via ``make_soyuz_client()``.
+        settings: Optional ``Settings`` override.  Used for both
+            client creation and engine selection when not provided
+            explicitly.
+        engine: Engine instance, engine name string, or ``None``.
+            When ``None``, auto-selects from ``settings.engine``
+            (default ``"pandas"``).
     """
 
     def __init__(
@@ -55,18 +65,6 @@ class PQL:
         settings: Settings | None = None,
         engine: Engine | str | None = None,
     ) -> None:
-        """Initialize PQL.
-
-        Args:
-            client: An existing ``soyuz_catalog_client.Client`` instance.
-                When ``None``, one is built via ``make_soyuz_client()``.
-            settings: Optional ``Settings`` override.  Used for both
-                client creation and engine selection when not provided
-                explicitly.
-            engine: Engine instance, engine name string, or ``None``.
-                When ``None``, auto-selects from ``settings.engine``
-                (default ``"pandas"``).
-        """
         resolved = settings or Settings()
         self._client = client or make_soyuz_client(resolved)
         if engine is None:
@@ -95,7 +93,7 @@ class PQL:
             CatalogNotFoundError: If the table is not found or has no
                 ``storage_location``.
             CatalogUnavailableError: If soyuz-catalog is unreachable.
-        """
+        """  # noqa: DOC503
         parse_full_name(full_name)  # validates format
         try:
             response = _get_table.sync(client=self._client, full_name=full_name)
@@ -140,7 +138,7 @@ class PQL:
             CatalogNotFoundError: If the parent schema has no storage root
                 and the table does not already exist.
             CatalogUnavailableError: If soyuz-catalog is unreachable.
-        """
+        """  # noqa: DOC503
         catalog, schema, table = parse_full_name(full_name)
 
         # Determine storage_location and whether the table already exists.

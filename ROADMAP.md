@@ -353,10 +353,25 @@ PointlesSQL
 │   │   │   response header
 │   │   └── Tests: 13 new tests (243 total pass)
 │   │
-│   ├── Sprint 15 — Docstrings                             ⏳ planned
-│   │   ├── Every public function: Google-style with why
-│   │   ├── Accurate Args/Returns/Raises sections
-│   │   └── Tighten pydoclint config
+│   ├── Sprint 15 — Docstrings + pydoclint                  ✅ done
+│   │   ├── `[tool.pydoclint]` config in `pyproject.toml`:
+│   │   │   Google style, types in signatures only (not
+│   │   │   duplicated in docstrings), `__init__` docs merged
+│   │   │   into class docstrings
+│   │   ├── Ruff `D107` ignored (pydoclint owns `__init__`
+│   │   │   docstring policy via `allow-init-docstring`)
+│   │   ├── Fixed DOC301 (3): merged `__init__` docstrings
+│   │   │   into class docstrings for `PQL`, `DuckDBEngine`,
+│   │   │   `UnityCatalogClient`
+│   │   ├── Fixed DOC602/603/101/103: restructured exception
+│   │   │   hierarchy docstrings (`PointlessSQLError`,
+│   │   │   `AuthorizationError`) — constructor params in
+│   │   │   Args, class-level annotations in Attributes
+│   │   ├── Fixed DOC501/503: accurate Raises sections in
+│   │   │   `PQL.table`, `PQL.write_table`,
+│   │   │   `find_or_create_oidc_user`
+│   │   └── pydoclint: 0 violations, pyright: 0 errors,
+│   │       243 tests pass
 │   │
 │   └── Sprint 16 — Logging and observability              ⏳ planned
 │       ├── Root logger configuration

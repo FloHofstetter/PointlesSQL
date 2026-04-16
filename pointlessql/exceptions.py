@@ -16,6 +16,8 @@ class PointlessSQLError(Exception):
         status_code: Suggested HTTP status code for API responses.
         error_code: Machine-readable error identifier (e.g.
             ``"catalog_unavailable"``).
+
+    Args:
         detail: Human-readable explanation of the error.
     """
 
@@ -69,6 +71,8 @@ class AuthorizationError(PointlessSQLError):
     Attributes:
         status_code: Always 403.
         error_code: Always ``"authorization_error"``.
+
+    Args:
         principal: Email of the user that was denied.
         privilege: The privilege that was required.
         securable_type: The type of securable (catalog, schema, table).

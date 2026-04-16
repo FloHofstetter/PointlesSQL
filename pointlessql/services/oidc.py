@@ -324,6 +324,9 @@ def find_or_create_oidc_user(
 
     Returns:
         User: The matched or newly created user.
+
+    Raises:
+        OIDCError: If a concurrent conflict prevents user creation.
     """
     email = email.strip().lower()
     display_name = display_name.strip() or email

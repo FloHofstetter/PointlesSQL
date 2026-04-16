@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed (Sprint 15)
+
+- `[tool.pydoclint]` configuration in `pyproject.toml`: Google
+  style, types in signatures only, `__init__` docs merged into
+  class docstrings
+- Ruff `D107` ignored — pydoclint owns `__init__` docstring
+  policy via `allow-init-docstring = false`
+- Merged `__init__` docstrings into class docstrings for `PQL`,
+  `DuckDBEngine`, `UnityCatalogClient` (DOC301)
+- Restructured exception docstrings: constructor params in Args,
+  class-level annotations in Attributes (DOC602/603/101/103)
+- Accurate Raises sections in `PQL.table`, `PQL.write_table`,
+  `find_or_create_oidc_user` (DOC501/503)
+- pydoclint: 0 violations across all 27 source files
+
 ### Added (Sprint 14)
 
 - `pointlessql/api/error_handlers.py` — centralized FastAPI

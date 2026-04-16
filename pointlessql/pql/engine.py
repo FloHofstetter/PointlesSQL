@@ -153,11 +153,11 @@ class DuckDBEngine:
     """Engine that reads Delta tables as DuckDB relations.
 
     Uses PyArrow as the bridge: Delta → PyArrow Dataset → DuckDB.
-    Requires the ``duckdb`` package.
+    Requires the ``duckdb`` package.  Creates an in-process DuckDB
+    connection on instantiation.
     """
 
     def __init__(self) -> None:
-        """Initialize with an in-process DuckDB connection."""
         import duckdb
 
         self._conn = duckdb.connect()

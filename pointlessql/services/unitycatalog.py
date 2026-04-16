@@ -175,15 +175,14 @@ def _wrap_catalog_errors[T](
 
 
 class UnityCatalogClient:
-    """Async facade over the generated soyuz-catalog client."""
+    """Async facade over the generated soyuz-catalog client.
+
+    Args:
+        client: A configured ``soyuz_catalog_client.Client`` instance,
+            typically built by :func:`pointlessql.services.soyuz_client.make_soyuz_client`.
+    """
 
     def __init__(self, client: Client) -> None:
-        """Initialize the wrapper.
-
-        Args:
-            client: A configured ``soyuz_catalog_client.Client`` instance,
-                typically built by :func:`pointlessql.services.soyuz_client.make_soyuz_client`.
-        """
         self._client = client
 
     @classmethod

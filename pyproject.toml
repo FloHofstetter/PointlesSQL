@@ -88,6 +88,7 @@ target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "D"]
+ignore = ["D107"]  # __init__ docstrings — handled by class docstring per pydoclint
 pydocstyle.convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
@@ -106,6 +107,13 @@ reportUnknownParameterType = "warning"
 # Defensive isinstance checks against generated-client responses are needed
 # at runtime even when pyright considers them always true.
 reportUnnecessaryIsInstance = "warning"
+
+[tool.pydoclint]
+style = "google"
+arg-type-hints-in-docstring = false
+check-return-types = false
+check-yield-types = false
+allow-init-docstring = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
