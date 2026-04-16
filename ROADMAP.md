@@ -67,7 +67,7 @@ PointlesSQL
 │   │   └── First smoke test: `tests/test_soyuz_client.py` with
 │   │       `integration` marker against a live soyuz-catalog
 │   │
-│   ├── Sprint 2 — pql helper library                     🔜 next
+│   ├── Sprint 2 — pql helper library                     ✅ done
 │   │   ├── New package `pointlessql/pql/` — the central
 │   │   │   component that bridges UC metadata and DataFrame
 │   │   │   engines. This is what makes PointlesSQL more than

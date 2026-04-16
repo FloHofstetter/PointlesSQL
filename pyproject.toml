@@ -36,6 +36,8 @@ dependencies = [
     "pydantic-settings>=2.0",
     "PyJWT[crypto]>=2.9",
     "soyuz-catalog-client",
+    "deltalake>=0.24",
+    "pandas>=2.2",
 ]
 
 [dependency-groups]

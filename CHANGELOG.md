@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `pointlessql/pql/` package — sync bridge between UC metadata and
+  Delta Lake DataFrames, designed for notebooks and scripts
+- `PQL` class with `table()` (read Delta as DataFrame),
+  `write_table()` (write DataFrame + register metadata), and
+  `list_catalogs()` / `list_schemas()` / `list_tables()` convenience
+  methods
+- New dependencies: `deltalake>=0.24`, `pandas>=2.2`
+- `tests/test_pql.py` — unit tests with mocked soyuz client
+- `tests/test_pql_integration.py` — integration round-trip test
+  (create → write → read → verify)
+- `PQL` re-exported from `pointlessql` package root
+
+### Previously added (Sprint 1)
+
 - `pointlessql/settings.py` — pydantic-settings module with
   `soyuz_catalog_url` setting (env override: `POINTLESSQL_SOYUZ_CATALOG_URL`)
 - `pointlessql/services/soyuz_client.py` — factory for a configured
