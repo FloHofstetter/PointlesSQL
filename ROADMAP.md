@@ -276,7 +276,7 @@ PointlesSQL
 │   │   `pql.table(...)` and gets back the engine's native
 │   │   frame type.
 │   │
-│   ├── Sprint 11 — Engine abstraction + DuckDB           ✅ done
+│   ├── Sprint 11 — Engine abstraction + DuckDB           ✅ done (814e992)
 │   │   ├── `pointlessql/pql/engine.py` — `Engine` protocol
 │   │   │   with `read(storage_location) -> FrameType`,
 │   │   │   `write(frame, storage_location, mode)`, and
