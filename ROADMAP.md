@@ -398,10 +398,115 @@ PointlesSQL
 │           end-to-end request-ID propagation via caplog
 │           (251 total pass)
 │
-├── Phase 6 — Infrastructure & orchestration              🧊 on ice
+├── Phase 6 — Infrastructure & orchestration              🔜 next
 │   │
-│   ├── Postgres sync tool (foreign catalog mirror)       🧊 on ice
-│   └── Minimal DAG job engine                            🧊 on ice
+│   │   Goal: turn PointlesSQL from a metadata browser + notebook
+│   │   into a system that *operates* on data — mirror foreign
+│   │   Postgres databases as managed UC catalogs, and run those
+│   │   mirror jobs (plus arbitrary user-authored jobs) on a
+│   │   schedule. soyuz-catalog already has foreign-catalog
+│   │   primitives (Connection + CreateCatalog(connection_name=…),
+│   │   soyuz Sprint 28 / ADR-0013), so the work here is UI + sync
+│   │   + scheduler, not a new backend concept.
+│   │
+│   ├── Sprint 17 — Foreign catalog UI                     ⏳ planned
+│   │   ├── "Create foreign catalog" modal on the catalogs page:
+│   │   │   pick an existing Connection, set free-form options
+│   │   │   (passthrough dict for connector config), submit to
+│   │   │   soyuz's `CreateCatalog(connection_name=…)` endpoint
+│   │   ├── Catalog detail page: show `connection_name` +
+│   │   │   `options` card when present; badge in tree/sidebar
+│   │   │   distinguishes foreign from managed catalogs
+│   │   ├── Inline edit for `options` (PATCH via generated
+│   │   │   client — soyuz already accepts it)
+│   │   ├── No backend sync yet — this sprint just wires up the
+│   │   │   metadata surface so Sprint 18 has a target
+│   │   └── Tests: facade method(s), route tests, HTML snapshot
+│   │       of the new card
+│   │
+│   ├── Sprint 18 — Postgres sync worker                   ⏳ planned
+│   │   ├── New service `pointlessql/services/pg_sync.py`:
+│   │   │   introspects a live Postgres (via `psycopg`, already
+│   │   │   in deps) and emits a diff against the current UC
+│   │   │   state under a foreign catalog — adds, drops, column
+│   │   │   changes
+│   │   ├── Apply diff: create schemas + external tables on
+│   │   │   soyuz-catalog with column types mapped from
+│   │   │   `information_schema.columns` → UC types
+│   │   ├── Manual "Sync now" button on foreign-catalog detail
+│   │   │   page; POST to `/api/catalogs/{name}/sync`
+│   │   ├── Alembic migration 004: `sync_run` table
+│   │   │   (catalog_name, started_at, finished_at, status,
+│   │   │   added/changed/dropped counts, error)
+│   │   ├── Sync history card on the catalog detail page
+│   │   ├── Secrets: connection options with keys matching
+│   │   │   `(?i)pass|secret|key|token` are read from the
+│   │   │   Credential bound to the Connection, not from
+│   │   │   `options` (reusing existing Credential CRUD)
+│   │   └── Tests: unit tests with a stub Postgres introspector,
+│   │       plus an integration test under `@pytest.mark.integration`
+│   │       using a short-lived Postgres container (documented
+│   │       but not required in CI)
+│   │
+│   ├── Sprint 19 — DAG engine: data model + single-task   ⏳ planned
+│   │   ├── Alembic migration 005: `jobs`, `job_runs`,
+│   │   │   `job_tasks`, `job_logs`. `jobs` has
+│   │   │   (id, name, cron_expr, run_as_user_id, kind,
+│   │   │   config JSON, is_paused); `job_runs` has
+│   │   │   (id, job_id FK, started_at, finished_at, status,
+│   │   │   trigger: scheduled|manual)
+│   │   ├── Scheduler: in-process asyncio loop started from
+│   │   │   `_lifespan`, ticks every 30 s, reads due jobs
+│   │   │   (`croniter` — new dep, ~10 KB). No APScheduler —
+│   │   │   it's overkill for a single-worker install
+│   │   ├── Single-task execution: one Python callable per
+│   │   │   job `kind`. Kind `"pg_sync"` calls Sprint 18's
+│   │   │   service; kind `"python"` runs a registered
+│   │   │   callable from a plugin entry point
+│   │   ├── Run-as-user: scheduler resolves `run_as_user_id`,
+│   │   │   builds a `UnityCatalogClient.for_principal(...)`
+│   │   │   so X-Principal forwards to soyuz and authorization
+│   │   │   applies — no new concept, just wiring
+│   │   ├── UI: `/jobs` list page, job detail with run history,
+│   │   │   "Run now" button, pause toggle
+│   │   ├── Settings: `POINTLESSQL_SCHEDULER_ENABLED=true|false`
+│   │   │   so tests and single-shot CLI invocations can opt out
+│   │   └── Tests: scheduler tick logic with frozen clock,
+│   │       job-run state transitions, run-as-user X-Principal
+│   │       forwarding, `pg_sync` kind end-to-end
+│   │
+│   ├── Sprint 20 — DAG engine: multi-task DAGs            ⏳ planned
+│   │   ├── `job_tasks` gains `depends_on` (JSON list of task
+│   │   │   ids within the same job); scheduler walks the DAG
+│   │   │   in topological order, skips downstream tasks when
+│   │   │   an upstream fails
+│   │   ├── Retry policy per task: `max_retries`,
+│   │   │   `retry_backoff_seconds`
+│   │   ├── `job_logs` populated per task run; log viewer uses
+│   │   │   Sprint 16 structured logging (request-ID-style
+│   │   │   `job_run_id` + `task_id` contextvars)
+│   │   ├── Concurrency limit: `max_parallel_runs` per job and
+│   │   │   a global ceiling from settings
+│   │   ├── UI: DAG preview (simple list, not a graph — that's
+│   │   │   gold-plating for v1), task-level retry/status
+│   │   │   indicators, expandable log panel
+│   │   └── Tests: topological order, fail-skip propagation,
+│   │       retry with backoff, concurrency limits
+│   │
+│   └── Sprint 21 — DAG engine: observability + docs       ⏳ planned
+│       ├── Prometheus metrics (`prometheus_client` is already a
+│       │   dep but unused): `pointlessql_job_runs_total{status}`,
+│       │   `pointlessql_job_run_duration_seconds` histogram,
+│       │   `pointlessql_scheduler_tick_lag_seconds` gauge
+│       ├── `/metrics` endpoint guarded by admin-only check
+│       ├── Optional failure webhook: per-job `on_failure_url`
+│       │   POSTs a minimal JSON payload (job_id, run_id, status,
+│       │   error) — opt-in, no retries on the webhook itself
+│       ├── Docs: `docs/jobs.md` — how to author a custom job
+│       │   kind, plugin entry-point shape, worked example
+│       │   using `pql` inside a task
+│       └── Tests: metric emission, webhook invocation with
+│           stubbed httpx, admin-only enforcement on `/metrics`
 │
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
