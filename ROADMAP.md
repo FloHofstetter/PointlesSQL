@@ -221,7 +221,44 @@ PointlesSQL
 │       └── Tests: OIDC flow with mocked provider (33 new,
 │           177 total pass)
 │
-├── Phase 4 — Pluggable compute engines                   🧊 on ice
+├── Phase 4 — Packaging & deployment                      🔜 next
+│   │
+│   │   Goal: make PointlesSQL + soyuz-catalog runnable
+│   │   with a single `docker compose up` — no manual
+│   │   cloning, no editable path deps, no process juggling.
+│   │   Swap the soyuz-catalog-client path dependency for
+│   │   a pinned wheel so the image builds stand-alone.
+│   │
+│   ├── Sprint 9 — Dockerfiles + docker-compose           🔜 next
+│   │   ├── `Dockerfile` for PointlesSQL (multi-stage:
+│   │   │   builder with uv + hatchling, slim runtime with
+│   │   │   uvicorn). Include Alembic auto-migrate on start
+│   │   ├── `Dockerfile.soyuz` (or reference a soyuz-catalog
+│   │   │   image if we build one in that repo first)
+│   │   ├── `docker-compose.yml`: services `soyuz-catalog`,
+│   │   │   `pointlessql`, `jupyter` (or embedded), shared
+│   │   │   volume for Delta storage (`./warehouse`)
+│   │   ├── Swap editable `soyuz-catalog-client` path dep
+│   │   │   for a built wheel (copy from soyuz-catalog at
+│   │   │   build time, or publish to local registry)
+│   │   ├── Settings: respect `DATABASE_URL` for Postgres,
+│   │   │   verify existing SQLite default still works
+│   │   ├── Health checks for both services in compose
+│   │   ├── `.dockerignore` for clean builds
+│   │   └── README: `docker compose up` quick-start section
+│   │
+│   └── Sprint 10 — Postgres option + env polish          ⏳ planned
+│       ├── `docker-compose.postgres.yml` override adding a
+│       │   Postgres service as the metadata DB
+│       ├── Verify Alembic migrations work on Postgres
+│       │   (batch_alter_table SQLite workaround compat)
+│       ├── `.env.example` with all POINTLESSQL_* vars
+│       │   documented
+│       ├── `POINTLESSQL_BASE_URL` setting for OIDC
+│       │   redirect_uri in non-localhost deployments
+│       └── Tests: CI matrix with SQLite + Postgres
+│
+├── Phase 5 — Pluggable compute engines                   ⏳ planned
 │   │
 │   │   Vision: user picks a "kernel profile" (container image
 │   │   or local venv) with a specific engine. The pql helper
@@ -229,19 +266,34 @@ PointlesSQL
 │   │   `pql.table(...)` and gets back the engine's native
 │   │   frame type.
 │   │
-│   ├── Polars engine                                     🧊 on ice
-│   │   └── `DeltaTable.to_pyarrow()` → `pl.from_arrow()`
+│   ├── Sprint 11 — Engine abstraction + DuckDB           ⏳ planned
+│   │   ├── `pointlessql/pql/engine.py` — `Engine` protocol
+│   │   │   with `read(storage_location) -> FrameType` and
+│   │   │   `write(df, storage_location, mode)` methods
+│   │   ├── Extract current Pandas logic into `PandasEngine`
+│   │   ├── `DuckDBEngine`: `DeltaTable.to_pyarrow_dataset()`
+│   │   │   → `duckdb.arrow()`, returns `duckdb.DuckDBPyRelation`
+│   │   ├── Settings: `POINTLESSQL_ENGINE=pandas|duckdb|polars`
+│   │   ├── `PQL` auto-selects engine from setting, or
+│   │   │   accepts `engine=` kwarg
+│   │   ├── New dep: `duckdb>=1.0`
+│   │   └── Tests: engine protocol compliance suite run
+│   │       against both Pandas and DuckDB engines
 │   │
-│   ├── Spark engine                                      🧊 on ice
-│   │   └── PySpark kernel with UC connector configured
-│   │       by PointlesSQL at startup
+│   ├── Sprint 12 — Polars engine                         ⏳ planned
+│   │   ├── `PolarsEngine`: `DeltaTable.to_pyarrow_table()`
+│   │   │   → `pl.from_arrow()`, returns `pl.DataFrame`
+│   │   ├── New dep: `polars>=1.0`
+│   │   ├── Docker compose profile: `--profile polars`
+│   │   └── Tests: engine compliance suite for Polars
 │   │
-│   └── DuckDB engine                                     🧊 on ice
-│       └── `DeltaTable` → DuckDB via PyArrow
+│   └── Spark engine                                      🧊 on ice
+│       └── PySpark kernel with UC connector configured
+│           by PointlesSQL at startup (needs JVM — low
+│           priority, DuckDB/Polars cover most use cases)
 │
-├── Phase 5 — Infrastructure & orchestration              🧊 on ice
+├── Phase 6 — Infrastructure & orchestration              🧊 on ice
 │   │
-│   ├── docker-compose for the full stack                 🧊 on ice
 │   ├── Postgres sync tool (foreign catalog mirror)       🧊 on ice
 │   └── Minimal DAG job engine                            🧊 on ice
 │
