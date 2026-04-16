@@ -424,7 +424,7 @@ PointlesSQL
 │   │   └── Tests: facade method(s), route tests, HTML snapshot
 │   │       of the new card
 │   │
-│   ├── Sprint 18 — Postgres sync worker                   ⏳ planned
+│   ├── Sprint 18 — Postgres sync worker                   ✅ done (b9a36ae)
 │   │   ├── New service `pointlessql/services/pg_sync.py`:
 │   │   │   introspects a live Postgres (via `psycopg`, already
 │   │   │   in deps) and emits a diff against the current UC

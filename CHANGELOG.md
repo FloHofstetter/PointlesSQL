@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 18)
+
+- `pointlessql/services/pg_sync.py`: pure-function Postgres → UC sync
+  worker. `PG_TO_UC_TYPE` map, `map_pg_type_to_uc` with DECIMAL
+  precision passthrough and STRING fallback on unknown types,
+  `diff_snapshots(pg, uc_tables) -> SyncDiff` (schemas/tables/
+  columns added/changed/dropped), `apply_diff` driving the facade,
+  `PostgresIntrospector` protocol + `PsycopgIntrospector` default
+  backed by `information_schema.columns` via `psycopg.sql.SQL`,
+  `run_sync` glue that persists a `SyncRun` row per execution
+- `unitycatalog.py` facade: `create_schema`, `create_table`,
+  `delete_table` for driving the sync — all wrapped in
+  `_wrap_catalog_errors`
+- `POST /api/catalogs/{name}/sync` (admin-only, audited) resolves
+  the catalog's bound Connection + optional Credential, builds a
+  libpq DSN, runs the sync, and returns the `SyncRun` snapshot
+- Alembic migration 004: `sync_run` table (`catalog_name`,
+  `started_at`, `finished_at`, `status`, `added_count`,
+  `changed_count`, `dropped_count`, `error`) with
+  `(catalog_name, started_at DESC)` index
+- `SyncRun` ORM model
+- `components/sync_history_card.html`: last-20 sync runs + admin
+  "Sync now" button on the foreign-catalog detail page
+- Secret handling: connection options with keys matching
+  `(?i)pass|secret|key|token` are overridden from a bound
+  Credential's `additional_properties` (see `_effective_options`);
+  missing Credential falls back to `options`
+- 46 new tests (309 total) covering type mapping (16 parametrized),
+  diff logic, secret merging, DSN builder, `apply_diff` with mock
+  UC, `run_sync` end-to-end with stub introspector, the
+  admin-only sync route, audit log emission, the history card
+  render, and an `@pytest.mark.integration` test against a
+  real Postgres container (documented, skipped by default)
+
 ### Added (Sprint 17)
 
 - `unitycatalog.py` facade: `create_catalog(data)` and
