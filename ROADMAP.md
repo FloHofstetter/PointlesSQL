@@ -373,7 +373,7 @@ PointlesSQL
 │   │   └── pydoclint: 0 violations, pyright: 0 errors,
 │   │       243 tests pass
 │   │
-│   └── Sprint 16 — Logging and observability              ✅ done
+│   └── Sprint 16 — Logging and observability              ✅ done (e520c51)
 │       ├── `pointlessql/logging_config.py` — `request_id_var`
 │       │   contextvar, `RequestIdFilter`, opt-in `JSONFormatter`,
 │       │   idempotent `configure_logging(level, fmt)`; installs
