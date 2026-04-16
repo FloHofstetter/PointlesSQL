@@ -4,6 +4,74 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 23)
+
+- `docker-compose.e2e.yml` gains a `mock-oidc` service
+  (`ghcr.io/navikt/mock-oauth2-server:latest`, host port 9090)
+  and `${…:-default}` env passthroughs on the `pointlessql`
+  service for `POINTLESSQL_SCHEDULER_TICK_SECONDS`
+  (default `2` so DAG state transitions land in seconds during
+  live walks), `POINTLESSQL_JUPYTER_ENABLED`,
+  `POINTLESSQL_LOG_FORMAT`, and the four `POINTLESSQL_OIDC_*`
+  / `POINTLESSQL_BASE_URL` knobs. All default to empty so the
+  Sprint 22 data-surface playbooks keep working unchanged
+- Five orchestration + operational playbooks under
+  `docs/e2e-walkthroughs/`:
+  - `jobs-dag.md` — single-task + DAG job creation, Run-now,
+    retry + fail-skip propagation, Pause/Resume click, per-task
+    log panel expand, and a `pg_sync`-kind cross-feature smoke
+    driving Sprint 18's `run_sync()` against the Sprint 22
+    `pg_mirror` foreign catalog
+  - `notebook.md` — `/notebook` + `/api/jupyter/status` in
+    `jupyter_enabled=true` (iframe src `http://localhost:8888/lab`,
+    Alpine `jupyterLoader().ready` flips to true) and `=false`
+    (template short-circuits to "Notebook Disabled" card) passes
+  - `oidc.md` — SSO button absent with no OIDC env, then with
+    the mock issuer a full authorize-code + PKCE round-trip that
+    auto-creates a user with `oidc_provider` / `oidc_subject`
+    bound; repeated sign-in reuses the existing row
+  - `operational.md` — anonymous `/healthz`, admin `/metrics`
+    `text/plain` with all three metric families, non-admin
+    `/metrics` renders 403, JSON API errors carry a UUID
+    `request_id`, `X-Request-ID` round-trips client-supplied
+    values
+  - `config-matrix.md` — primary walk (`engine=pandas,
+    log=text, db=sqlite`) plus five delta walks for every
+    non-default value of `POINTLESSQL_ENGINE`,
+    `POINTLESSQL_LOG_FORMAT`, `POINTLESSQL_DATABASE_URL`, and
+    their cartesian-product smoke
+- `docs/e2e-walkthroughs/README.md` updated: cross-links to the
+  ten playbooks, the host-env overlay table with the
+  recreate-pointlessql workflow, and a Sprint-23 section on the
+  `mock-oidc` + bridge-IP workaround for Docker DNS asymmetry
+- `CLAUDE.md` "Replaying the e2e walkthroughs" section pinning
+  the ten-playbook tree, the `--browser firefox` /
+  `chrome-for-testing` MCP config requirement (Sprint 22 commit
+  `3f1da76` backstory), and the "replay before landing HTML/JS"
+  contract for future sprints
+- Phase 7 close-out summary appended to `ROADMAP.md`: all five
+  surfaced bugs fixed same-commit, none deferred
+
+### Fixed (Sprint 23)
+
+- **BUG-23-01**: `oidc_enabled` computed property in
+  `pointlessql/settings.py` used `is not None`, treating the
+  empty strings produced by the compose overlay's
+  `${POINTLESSQL_OIDC_DISCOVERY_URL:-}` fallback as
+  *configured*. The SSO button on `/auth/login` rendered and
+  clicking it hit a `401 Failed to fetch OIDC discovery
+  document`. Truthy check replaces the `is not None` so both
+  `None` and `""` count as "not configured"
+- **BUG-23-02**: `POST /api/jobs` in `pointlessql/api/main.py`
+  committed the `Job` row before running
+  `scheduler_service.validate_dag` over the task list, so a
+  cycle / unknown-dep payload returned 422 but left the job row
+  visible on `/jobs` forever. Refactored to `session.flush()`
+  during the two-pass task insert and a single final
+  `session.commit()` only after `validate_dag` succeeds —
+  rejected payloads roll back cleanly when the session context
+  exits
+
 ### Added (Sprint 22)
 
 - `docker-compose.e2e.yml` overlay — `postgres-e2e` sidecar

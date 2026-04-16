@@ -134,6 +134,27 @@ of truth for what is done, what is in progress, and what is next.
 Every sprint update lands there with its commit hash. Do not
 invent new milestone or sprint names — extend the existing tree.
 
+## Replaying the e2e walkthroughs
+
+`docs/e2e-walkthroughs/` holds ten deterministic Markdown
+playbooks (five data-surface from Sprint 22, five orchestration
++ operational from Sprint 23). Each one can be replayed by a
+human with a browser or by Claude Code through the
+`mcp__playwright__browser_*` tool family. The Sprint 23
+orchestration + operational playbooks use host env overlays
+(`POINTLESSQL_JUPYTER_ENABLED`, `POINTLESSQL_LOG_FORMAT`,
+`POINTLESSQL_OIDC_*`, etc.) exposed by
+`docker-compose.e2e.yml` via `${…:-default}` — see
+[`docs/e2e-walkthroughs/README.md`](docs/e2e-walkthroughs/README.md)
+for the full table. When connecting a Playwright MCP server,
+pass `--browser firefox` (or the playwright-bundled
+`chrome-for-testing`, not the system `chrome` channel) —
+Sprint 22 commit `3f1da76` has the backstory. Any future sprint
+that touches HTML or JS should replay the relevant playbook
+before landing; fixes for bugs surfaced in a replay land in the
+same commit if trivial, otherwise as a `BUG-NN-NN` TODO with a
+named fix location at the bottom of the playbook.
+
 ## Conventions
 
 - Apache-2.0 license

@@ -2,13 +2,19 @@
 #
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-#   uv run python scripts/seed-e2e.py
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+#       exec pointlessql python /app/scripts/seed-e2e.py
 #
-# Adds a Postgres sidecar (``postgres-e2e``) that is the **foreign-catalog
-# target** for the walkthrough playbooks under ``docs/e2e-walkthroughs/``.
-# Distinct from ``docker-compose.postgres.yml``'s ``postgres`` service,
-# which is the PointlesSQL *metadata* DB — the two overlays compose
-# together if you want a fully-Postgres stack.
+# Sprint 22 delivered the base overlay (``postgres-e2e`` sidecar as
+# the foreign-catalog target + the seed script mount). Sprint 23 adds
+# a mock OAuth2 server (``mock-oidc``) for the ``oidc.md`` playbook
+# and a cluster of environment-variable passthroughs so individual
+# playbooks can flip one knob (engine, log format, scheduler tick,
+# Jupyter on/off, OIDC on/off) without editing this file.
+#
+# All OIDC / tick / format passthroughs use ``${…:-default}`` so the
+# overlay is a no-op unless the host exports the override. That way
+# the data-surface playbooks (Sprint 22) keep working unchanged.
 
 services:
   pointlessql:
@@ -20,6 +26,27 @@ services:
     # the seeded Delta tables.
     volumes:
       - ./scripts:/app/scripts:ro
+    environment:
+      # Short scheduler tick for the ``jobs-dag.md`` playbook —
+      # ``pointlessql/settings.py`` defaults to 30 s which is too slow
+      # to exercise state transitions in a live walk.
+      POINTLESSQL_SCHEDULER_TICK_SECONDS: "${POINTLESSQL_SCHEDULER_TICK_SECONDS:-2}"
+      # Jupyter on/off toggle for ``notebook.md`` passes. Default is
+      # ``true`` to preserve existing behaviour; ``notebook.md`` Pass 2
+      # sets ``POINTLESSQL_JUPYTER_ENABLED=false`` on the host env.
+      POINTLESSQL_JUPYTER_ENABLED: "${POINTLESSQL_JUPYTER_ENABLED:-true}"
+      # Log format passthrough for ``config-matrix.md``. Default
+      # ``text`` preserves existing behaviour; override via host env
+      # when exercising the JSON delta walk.
+      POINTLESSQL_LOG_FORMAT: "${POINTLESSQL_LOG_FORMAT:-text}"
+      # OIDC bindings for ``oidc.md`` Pass 2. Empty by default so the
+      # ``oidc_enabled`` computed property stays false — the
+      # ``Sign in with SSO`` button only renders when both
+      # discovery_url and client_id are non-empty.
+      POINTLESSQL_OIDC_DISCOVERY_URL: "${POINTLESSQL_OIDC_DISCOVERY_URL:-}"
+      POINTLESSQL_OIDC_CLIENT_ID: "${POINTLESSQL_OIDC_CLIENT_ID:-}"
+      POINTLESSQL_OIDC_CLIENT_SECRET: "${POINTLESSQL_OIDC_CLIENT_SECRET:-}"
+      POINTLESSQL_BASE_URL: "${POINTLESSQL_BASE_URL:-}"
 
   postgres-e2e:
     image: postgres:17-alpine
@@ -39,6 +66,21 @@ services:
       timeout: 3s
       retries: 10
       start_period: 5s
+
+  mock-oidc:
+    # OAuth2 authorization-code + PKCE mock. Accepts any client_id,
+    # issues signed tokens, provides a built-in login form at
+    # /default/authorize — see https://github.com/navikt/mock-oauth2-server
+    # for the on-the-fly issuer creation and login-form behaviour.
+    #
+    # The service is part of this overlay but the OIDC playbook only
+    # flips it on by setting ``POINTLESSQL_OIDC_*`` on the host env;
+    # keeping the container running regardless is fine (< 80 MB image,
+    # idle memory footprint negligible) and avoids a second overlay.
+    image: ghcr.io/navikt/mock-oauth2-server:latest
+    container_name: pql_mock_oidc
+    ports:
+      - "${MOCK_OIDC_HOST_PORT:-9090}:8080"
 
 volumes:
   postgres_e2e_data:

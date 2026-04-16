@@ -16,15 +16,15 @@ the rendered templates — commit `e09a661` (the job-pause form
 landing on a raw JSON page) is the kind of bug only a live
 browser surfaces.
 
-Sprint 22 delivers the harness plus the **data-surface**
-playbooks. Sprint 23 will add **orchestration + operational**
-playbooks (jobs, notebook, OIDC, `/metrics`, config matrix) on
-top of the same harness.
+Sprint 22 delivered the harness plus the five **data-surface**
+playbooks. Sprint 23 adds five **orchestration + operational**
+playbooks on top of the same harness (jobs, notebook, OIDC,
+`/metrics`, config matrix) — closing Phase 7.
 
 ## Playbooks
 
-Run them in this order — the later ones reuse users and
-catalogs created by the earlier ones:
+**Data-surface** (Sprint 22). Run these first, in order — later
+ones reuse users and catalogs created by earlier ones:
 
 1. [`auth.md`](auth.md) — register the first-user admin, then a
    non-admin user, log in and out, cover redirect-to-login and
@@ -42,6 +42,27 @@ catalogs created by the earlier ones:
 5. [`foreign-catalog-sync.md`](foreign-catalog-sync.md) — create
    a foreign catalog via the modal on `/`, run "Sync now",
    confirm the sync-history card and mirrored schemas/tables.
+
+**Orchestration + operational** (Sprint 23). Each one assumes the
+data-surface playbooks have run at least once:
+
+6. [`jobs-dag.md`](jobs-dag.md) — single-task + DAG job creation,
+   Run-now, retry + fail-skip propagation, Pause/Resume, per-task
+   log panel, and a `pg_sync`-kind cross-feature smoke against
+   `pg_mirror`.
+7. [`notebook.md`](notebook.md) — `/notebook` + `/api/jupyter/status`
+   in both `jupyter_enabled=true` (default) and `=false` passes.
+   Cell-level iframe interaction is explicitly out of scope.
+8. [`oidc.md`](oidc.md) — OIDC-off (SSO button absent) then
+   OIDC-on via the `mock-oidc` sidecar; full authorize-code + PKCE
+   round-trip with auto-user-creation and claim mapping.
+9. [`operational.md`](operational.md) — public `/healthz`, admin
+   `/metrics`, non-admin `/403`, JSON-error envelope, and the
+   `X-Request-ID` generate-and-forward middleware contract.
+10. [`config-matrix.md`](config-matrix.md) — one primary golden
+    path (`engine=pandas, log=text, db=sqlite`) plus five delta
+    walks for every non-default value of `POINTLESSQL_ENGINE`,
+    `POINTLESSQL_LOG_FORMAT`, and `POINTLESSQL_DATABASE_URL`.
 
 ## Stack start
 
@@ -76,6 +97,39 @@ docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
 docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
     up -d --force-recreate pointlessql
 ```
+
+## Host env overlays (Sprint 23)
+
+The `docker-compose.e2e.yml` overlay exposes a handful of
+`${…:-default}` env passthroughs so a playbook can flip a single
+knob without editing the file. All are off/default unless the host
+exports the override:
+
+| Host env var                        | Default | Used by              |
+| ----------------------------------- | ------- | -------------------- |
+| `POINTLESSQL_SCHEDULER_TICK_SECONDS`| `2`     | `jobs-dag.md`        |
+| `POINTLESSQL_JUPYTER_ENABLED`       | `true`  | `notebook.md` Pass 2 |
+| `POINTLESSQL_LOG_FORMAT`            | `text`  | `config-matrix.md`   |
+| `POINTLESSQL_ENGINE`                | `pandas`| `config-matrix.md`   |
+| `POINTLESSQL_OIDC_DISCOVERY_URL`    | (empty) | `oidc.md` Pass 2     |
+| `POINTLESSQL_OIDC_CLIENT_ID`        | (empty) | `oidc.md` Pass 2     |
+| `POINTLESSQL_OIDC_CLIENT_SECRET`    | (empty) | `oidc.md` Pass 2     |
+| `POINTLESSQL_BASE_URL`              | (empty) | `oidc.md` Pass 2     |
+
+Flipping an override requires recreating the `pointlessql`
+container so the new env reaches the uvicorn process:
+
+```bash
+POINTLESSQL_JUPYTER_ENABLED=false docker compose \
+    -f docker-compose.yml -f docker-compose.e2e.yml \
+    up -d --force-recreate pointlessql
+```
+
+The `mock-oidc` container is always running (idle < 80 MB). The
+`oidc_enabled` computed property in `pointlessql/settings.py` only
+returns `true` when both `POINTLESSQL_OIDC_DISCOVERY_URL` and
+`POINTLESSQL_OIDC_CLIENT_ID` are set, so the other playbooks stay
+unaffected.
 
 ## Test users
 

@@ -57,5 +57,12 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def oidc_enabled(self) -> bool:
-        """Whether OIDC login is available."""
-        return self.oidc_discovery_url is not None and self.oidc_client_id is not None
+        """Whether OIDC login is available.
+
+        Empty-string env overrides (e.g. ``POINTLESSQL_OIDC_DISCOVERY_URL=``
+        passed through a docker-compose ``${VAR:-}`` fallback) should count
+        as "not configured" — truthy check catches both ``None`` and ``""``
+        so the SSO button stays hidden and ``/auth/sso`` does not attempt a
+        discovery call with an empty URL (Sprint 23 BUG-23-01).
+        """
+        return bool(self.oidc_discovery_url) and bool(self.oidc_client_id)

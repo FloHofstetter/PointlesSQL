@@ -1263,8 +1263,10 @@ async def api_create_job(
             updated_at=now,
         )
         session.add(job)
-        session.commit()
-        session.refresh(job)
+        # Flush-only, not commit: if DAG validation below fails, the
+        # ``with factory() as session:`` context closes without commit
+        # and the job row never lands in the DB (Sprint 23 BUG-23-02).
+        session.flush()
 
         if tasks_payload:
             # First pass: insert rows without depends_on so we learn ids.
@@ -1305,13 +1307,12 @@ async def api_create_job(
                     resolved.append(by_name[str(dn)].id)
                 by_name[t_name].depends_on = json.dumps(resolved)
 
-            session.commit()
-
-            # Validate the resulting graph is acyclic. ValidationError
-            # here rolls back the session via the context manager's
-            # exit since we propagate.
+            # Validate the resulting graph is acyclic BEFORE committing
+            # so a failed validation leaves no job or task rows behind.
             scheduler_service.validate_dag(list(by_name.values()))
 
+        # All validation passed — commit job + tasks atomically.
+        session.commit()
         session.refresh(job)
         session.expunge(job)
     _audit(request, "create_job", f"job:{name}", json.dumps(body))
