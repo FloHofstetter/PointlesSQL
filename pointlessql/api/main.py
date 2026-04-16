@@ -23,6 +23,7 @@ from pointlessql.exceptions import AuthorizationError, CatalogUnavailableError
 from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
+from pointlessql.services import metrics as metrics_service
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.authorization import (
@@ -242,6 +243,21 @@ def _audit(request: Request, action: str, target: str, detail: str | None = None
 async def healthz() -> dict[str, str]:
     """Return service health."""
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+async def metrics(request: Request) -> Response:
+    """Expose Prometheus metrics for the scheduler (admin-only).
+
+    Returns the default text exposition format so any Prometheus
+    scraper works without extra negotiation. Gated by
+    :func:`_require_admin` because the metrics surface includes the
+    names of every job in the install, which is sensitive information
+    on multi-tenant deployments.
+    """
+    _require_admin(request)
+    body, content_type = metrics_service.render_metrics()
+    return Response(content=body, media_type=content_type)
 
 
 # -- JSON API routes --
@@ -1030,6 +1046,7 @@ def _serialize_job(job: Any) -> dict[str, Any]:
         "config": json.loads(job.config or "{}"),
         "is_paused": job.is_paused,
         "max_parallel_runs": job.max_parallel_runs,
+        "on_failure_url": job.on_failure_url,
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "updated_at": job.updated_at.isoformat() if job.updated_at else None,
     }
@@ -1223,6 +1240,12 @@ async def api_create_job(
     max_parallel_runs = int(body.get("max_parallel_runs") or 1)
     if max_parallel_runs < 1:
         raise _VE("max_parallel_runs must be >= 1")
+    on_failure_url_raw = body.get("on_failure_url")
+    on_failure_url: str | None = None
+    if on_failure_url_raw is not None:
+        if not isinstance(on_failure_url_raw, str) or not on_failure_url_raw.strip():
+            raise _VE("on_failure_url must be a non-empty string when provided")
+        on_failure_url = on_failure_url_raw.strip()
 
     now = datetime.now(UTC)
     factory = request.app.state.session_factory
@@ -1235,6 +1258,7 @@ async def api_create_job(
             config=json.dumps(config),
             is_paused=is_paused,
             max_parallel_runs=max_parallel_runs,
+            on_failure_url=on_failure_url,
             created_at=now,
             updated_at=now,
         )

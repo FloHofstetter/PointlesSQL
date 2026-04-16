@@ -47,6 +47,7 @@ import logging
 from collections.abc import Awaitable, Callable, Iterable
 from typing import Any
 
+import httpx
 from croniter import croniter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -65,11 +66,27 @@ from pointlessql.models import (
     TaskRun,
     User,
 )
+from pointlessql.services import metrics as metrics_service
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
+
+# Failure-webhook tuning.
+#
+# 5-second timeout: long enough to ride over a GC-pause or TLS
+# handshake on a well-behaved receiver, short enough that a broken
+# endpoint never wedges the scheduler. No retries — this is a
+# best-effort notification, not a durable queue; the caller owns the
+# canonical run state via the DB row.
+_WEBHOOK_TIMEOUT_SECONDS: float = 5.0
+
+# httpx client factory kept as a module-level callable so tests can
+# monkeypatch it in place of a real network client. Any callable
+# returning an object with ``post(url, json=..., timeout=...)`` works.
+_WebhookClientFactory = Callable[[], httpx.AsyncClient]
+_webhook_client_factory: _WebhookClientFactory = httpx.AsyncClient
 
 
 # Executor callable signature. ``uc_client`` is a ``UnityCatalogClient``
@@ -854,10 +871,42 @@ async def execute_run(
     job_id: int,
     trigger: str,
 ) -> JobRun:
+    """Execute one run of *job_id* end-to-end and emit observability hooks.
+
+    Thin wrapper around :func:`_execute_run_core` that also records
+    Prometheus metrics and POSTs the optional failure webhook. Keeping
+    this wrapper separate means tests can exercise the raw run logic
+    without setting up a metrics registry or webhook stub, and also
+    means the ``/api/jobs/{id}/run`` route goes through the same
+    telemetry path as the scheduler loop.
+
+    Args:
+        factory: SQLAlchemy session factory for the PointlesSQL metadata DB.
+        settings: Application settings (for ``for_principal``).
+        registry: Kind → executor registry.
+        job_id: Target job id.
+        trigger: ``"scheduled"`` or ``"manual"``.
+
+    Returns:
+        The final :class:`JobRun` row (post-commit, detached from the
+        session so the caller can read attributes safely).
+    """  # noqa: DOC502 — re-raised from _execute_run_core
+    run = await _execute_run_core(factory, settings, registry, job_id, trigger)
+    await _emit_run_telemetry(factory, job_id, run)
+    return run
+
+
+async def _execute_run_core(
+    factory: sessionmaker[Session],
+    settings: Settings,
+    registry: KindRegistry,
+    job_id: int,
+    trigger: str,
+) -> JobRun:
     """Execute one run of *job_id* end-to-end.
 
     This is the core unit of work that both the scheduler loop and the
-    manual "Run now" route invoke. It:
+    manual "Run now" route invoke via :func:`execute_run`. It:
 
     1. Loads the job + run-as user.
     2. Inserts a ``running`` :class:`JobRun`, setting
@@ -1017,6 +1066,118 @@ def _detached_run(
         return run
 
 
+def _duration_seconds(run: JobRun) -> float | None:
+    """Return ``finished_at - started_at`` as seconds, or ``None``.
+
+    Synthetic ``skipped`` rows share a single timestamp so the
+    difference is exactly ``0.0``; we still return that as a valid
+    observation so dashboards see the skip in the duration histogram's
+    smallest bucket. ``None`` is only returned when ``finished_at`` is
+    still missing (running or uninitialised row) — the schema makes
+    ``started_at`` non-nullable so it can be taken at face value.
+    """
+    if run.finished_at is None:
+        return None
+    started = run.started_at
+    finished = run.finished_at
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=datetime.UTC)
+    if finished.tzinfo is None:
+        finished = finished.replace(tzinfo=datetime.UTC)
+    return (finished - started).total_seconds()
+
+
+def _load_job_name_and_webhook(
+    factory: sessionmaker[Session], job_id: int
+) -> tuple[str, str | None]:
+    """Snapshot ``(name, on_failure_url)`` for *job_id*.
+
+    Kept separate from the main :func:`execute_run` body so the webhook
+    dispatcher does not re-hit the DB for every failure path. Returns
+    ``("", None)`` when the job row has disappeared (race with a
+    concurrent delete), which means the caller emits metrics with an
+    empty ``job_name`` label and skips the webhook.
+    """
+    with factory() as session:
+        job = session.get(Job, job_id)
+        if job is None:
+            return "", None
+        return job.name, job.on_failure_url
+
+
+async def _post_failure_webhook(
+    url: str,
+    payload: dict[str, Any],
+) -> None:
+    """POST *payload* to *url*, logging and swallowing any failure.
+
+    The webhook is advisory — a receiver being down, slow, or
+    misconfigured must never affect the scheduler's own bookkeeping.
+    :data:`_WEBHOOK_TIMEOUT_SECONDS` caps the wait so a stalled
+    receiver cannot wedge the scheduler loop. Uses the module-level
+    :data:`_webhook_client_factory` so tests can swap in a stub.
+
+    Args:
+        url: Opt-in endpoint taken from :attr:`pointlessql.models.Job.on_failure_url`.
+        payload: JSON body — timestamps are pre-serialised ISO-8601
+            strings by the caller so this function is oblivious to
+            the run's internal datetime representation.
+    """
+    try:
+        async with _webhook_client_factory() as client:
+            await client.post(
+                url, json=payload, timeout=_WEBHOOK_TIMEOUT_SECONDS
+            )
+    except httpx.HTTPError as exc:
+        logger.warning(
+            "scheduler: on_failure_url webhook to %s failed: %s", url, exc
+        )
+    except Exception as exc:  # noqa: BLE001 — webhook boundary
+        logger.warning(
+            "scheduler: on_failure_url webhook to %s raised %s: %s",
+            url,
+            type(exc).__name__,
+            exc,
+        )
+
+
+async def _emit_run_telemetry(
+    factory: sessionmaker[Session],
+    job_id: int,
+    run: JobRun,
+) -> None:
+    """Emit Prometheus metrics + the optional failure webhook for *run*.
+
+    Single bookkeeping path so every call site through
+    :func:`execute_run` and :func:`tick_once` shares the same rules —
+    there is no code path where a terminal state is written but the
+    metrics/webhook are missed.
+
+    Args:
+        factory: Session factory for the job-name + URL snapshot.
+        job_id: Parent job id (passed in so we don't rely on the
+            detached run still knowing its owning row).
+        run: Detached terminal :class:`JobRun`.
+    """
+    job_name, on_failure_url = _load_job_name_and_webhook(factory, job_id)
+    duration = _duration_seconds(run)
+    metrics_service.record_run(job_name, run.status, duration)
+
+    if run.status != "failed" or not on_failure_url:
+        return
+
+    payload: dict[str, Any] = {
+        "job_id": job_id,
+        "job_name": job_name,
+        "run_id": run.id,
+        "status": run.status,
+        "error": run.error,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+    }
+    await _post_failure_webhook(on_failure_url, payload)
+
+
 async def tick_once(
     factory: sessionmaker[Session],
     settings: Settings,
@@ -1070,6 +1231,11 @@ async def tick_once(
                 )
                 session.expunge(skipped)
                 launched.append(skipped)
+                # Emit metrics for the synthetic skipped row too — it
+                # never goes through ``execute_run`` so without this
+                # the counter would miss every concurrency-saturated
+                # tick.
+                await _emit_run_telemetry(factory, job.id, skipped)
                 continue
         run = await _execute_with_semaphores(
             factory,
@@ -1197,8 +1363,18 @@ class Scheduler:
         Each iteration swallows and logs any exception so a single bad
         job never crashes the loop. The ``asyncio.wait_for`` on the
         stop event gives us a clean shutdown without a polling sleep.
+
+        On every iteration we also publish the observed tick lag — the
+        difference between when this tick was *supposed* to fire
+        (``previous_tick + tick_seconds``) and when it actually ran.
+        A steadily growing gauge is the earliest signal that the loop
+        is falling behind its cadence under load.
         """
+        expected_next: float = asyncio.get_event_loop().time()
+        tick_seconds = float(self._settings.scheduler_tick_seconds)
         while not self._stop_event.is_set():
+            actual = asyncio.get_event_loop().time()
+            metrics_service.observe_tick_lag(actual - expected_next)
             try:
                 await tick_once(
                     self._factory,
@@ -1209,10 +1385,11 @@ class Scheduler:
                 )
             except Exception:  # noqa: BLE001 — loop must survive any tick
                 logger.exception("scheduler: tick failed")
+            expected_next = actual + tick_seconds
             try:
                 await asyncio.wait_for(
                     self._stop_event.wait(),
-                    timeout=float(self._settings.scheduler_tick_seconds),
+                    timeout=tick_seconds,
                 )
             except TimeoutError:
                 continue

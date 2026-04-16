@@ -167,6 +167,18 @@ PointlesSQL is configured via environment variables:
 | `POINTLESSQL_JUPYTER_ENABLED` | `true` | Enable embedded JupyterLab |
 | `POINTLESSQL_JUPYTER_PORT` | `8888` | JupyterLab port |
 
+## Jobs
+
+PointlesSQL includes an in-process scheduler that can run multi-task
+DAGs on a cron schedule. Two job kinds ship out of the box:
+`pg_sync` (the Postgres-to-UC mirror) and `python` (an entry-point
+loader for user-authored executors). See
+[`docs/jobs.md`](docs/jobs.md) for how to author a custom job kind,
+the executor signature, the optional failure webhook, and a worked
+example that uses `pql` inside a task.
+
+Prometheus metrics are exposed at `GET /metrics` (admin-only).
+
 ## Relationship to other repos
 
 - [`soyuz-catalog`](https://github.com/FloHofstetter/soyuz-catalog)

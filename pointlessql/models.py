@@ -150,6 +150,13 @@ class Job(Base):
             preserves Sprint 19's "one at a time" behaviour; the global
             ceiling in :class:`~pointlessql.settings.Settings`
             (``scheduler_max_concurrent_runs``) clamps this further.
+        on_failure_url: Optional HTTPS URL that the scheduler POSTs a
+            minimal JSON payload to whenever a :class:`JobRun` finishes
+            with status ``failed``. Opt-in per job; see
+            :func:`pointlessql.services.scheduler._post_failure_webhook`
+            for the payload shape. No retries — a one-shot 5-second
+            POST, with any transport failure logged and swallowed so
+            the run itself never depends on an external receiver.
         created_at: Timestamp when the job was created.
         updated_at: Timestamp of the most recent mutation.
     """
@@ -169,6 +176,9 @@ class Job(Base):
     )
     max_parallel_runs: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1
+    )
+    on_failure_url: Mapped[str | None] = mapped_column(
+        String(1000), nullable=True
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
