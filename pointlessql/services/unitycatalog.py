@@ -33,12 +33,8 @@ from soyuz_catalog_client.api.schemas import (
 from soyuz_catalog_client.api.tables import (
     get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
 )
-from soyuz_catalog_client.api.tables import (
-    list_tables_api_2_1_unity_catalog_tables_get as _list_tables,
-)
 from soyuz_catalog_client.models.list_catalogs_response import ListCatalogsResponse
 from soyuz_catalog_client.models.list_schemas_response import ListSchemasResponse
-from soyuz_catalog_client.models.list_tables_response import ListTablesResponse
 from soyuz_catalog_client.models.update_catalog import UpdateCatalog
 from soyuz_catalog_client.models.update_schema import UpdateSchema
 
@@ -158,6 +154,12 @@ class UnityCatalogClient:
     ) -> list[dict[str, Any]]:
         """Return all tables inside a schema.
 
+        Bypasses the generated client's response parser because
+        soyuz-catalog returns full ``TableInfo`` objects under a
+        ``"tables"`` key whereas the generated model expects lightweight
+        identifiers under ``"identifiers"`` — a spec mismatch to be
+        fixed upstream.
+
         Args:
             catalog_name: Name of the parent catalog.
             schema_name: Name of the parent schema.
@@ -165,17 +167,14 @@ class UnityCatalogClient:
         Returns:
             A list of table dicts.
         """
-        response = await _list_tables.asyncio(
-            client=self._client,
-            catalog_name=catalog_name,
-            schema_name=schema_name,
-        )
-        if not isinstance(response, ListTablesResponse):
+        url = "/api/2.1/unity-catalog/tables"
+        params = {"catalog_name": catalog_name, "schema_name": schema_name}
+        http = self._client.get_async_httpx_client()
+        resp = await http.get(url, params=params)
+        if resp.status_code != 200:
             return []
-        identifiers = response.identifiers
-        if not isinstance(identifiers, list):
-            return []
-        return [t.to_dict() for t in identifiers]
+        data = resp.json()
+        return data.get("tables", data.get("identifiers", []))
 
     async def get_tree(self) -> list[dict[str, Any]]:
         """Return the full catalog tree in one shot.
