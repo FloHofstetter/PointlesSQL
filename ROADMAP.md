@@ -121,24 +121,29 @@ PointlesSQL
 │           `conftest.py` shared fixtures, PQL ConnectionError
 │           tests
 │
-├── Phase 2 — Catalog UI enhancements                     🧊 on ice
+├── Phase 2 — Catalog UI enhancements                     ✅ done
 │   │
-│   │   Deferred from Phase 1 to keep the MVP focused.
-│   │   Picking order TBD after MVP ships.
-│   │
-│   ├── Tags and lineage views                            🧊 on ice
-│   │   ├── Tags panel on catalog/schema/table/column pages
-│   │   ├── Lineage graph on table detail page
-│   │   └── Edit flow for tags (PATCH batch add/remove)
-│   │
-│   ├── Permissions and effective permissions              🧊 on ice
-│   │   ├── Direct-grant + inherited-grant views
-│   │   └── Edit flow for direct grants
-│   │
-│   └── Lakehouse Federation UI                           🧊 on ice
-│       ├── Connections list + detail pages
-│       ├── Create-connection wizard
-│       └── Create-foreign-catalog flow
+│   └── Sprint 5 — Tags, permissions, lineage, federation ✅ done (8354fec)
+│       ├── Tags editor card on catalog/schema/table detail
+│       │   pages — add/remove tags via PATCH, Alpine.js
+│       │   interactive component
+│       ├── Permissions card with Assigned + Effective tabs
+│       │   on all detail pages — grant/revoke privileges,
+│       │   view inherited permissions
+│       ├── Lineage card on table detail page — upstream and
+│       │   downstream node lists with depth indicators and
+│       │   clickable links to related tables
+│       ├── Lakehouse Federation: full CRUD pages for
+│       │   connections, external locations, and credentials
+│       │   with create modals, inline comment editing,
+│       │   delete-with-confirmation, navbar dropdown
+│       ├── Parallel fetches via asyncio.gather on detail
+│       │   pages (tags + permissions + effective + lineage)
+│       ├── 21 new facade methods in unitycatalog.py
+│       ├── 25 new API routes + 6 HTML page routes
+│       └── Tests: test_tags_permissions.py,
+│           test_federation.py, extended test_api_errors.py
+│           (38 new tests, 75 total pass)
 │
 ├── Phase 3 — Auth & multi-user                           🧊 on ice
 │   │

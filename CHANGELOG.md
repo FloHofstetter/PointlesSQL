@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 5)
+
+- Tags editor card on catalog, schema, and table detail pages — add
+  and remove tags via PATCH to soyuz-catalog's tags endpoint, with
+  Alpine.js interactive component (`tags_editor.html`, `tags_editor.js`)
+- Permissions card with two Bootstrap nav-tabs (Assigned / Effective)
+  on all detail pages — grant privileges via principal + privilege
+  selector, revoke by clicking badge; effective permissions loaded
+  on-demand (`permissions_card.html`, `permissions_editor.js`)
+- Lineage card on table detail page showing upstream and downstream
+  dependencies as depth-indented node lists with clickable links to
+  related tables (`lineage_card.html`)
+- Lakehouse Federation: full CRUD pages for connections, external
+  locations, and credentials — list pages with create modals, detail
+  pages with inline comment editing and delete-with-confirmation
+  (`connections.html`, `connection.html`, `external_locations.html`,
+  `external_location.html`, `credentials.html`, `credential.html`,
+  `federation.js`)
+- Federation dropdown in navbar (Connections, External Locations,
+  Credentials)
+- 21 new async facade methods in `unitycatalog.py` (tags, permissions,
+  effective permissions, lineage, connections CRUD, external locations
+  CRUD, credentials CRUD)
+- 25 new JSON API routes + 6 HTML page routes in `main.py`
+- `tests/test_tags_permissions.py` — unit tests for tags, permissions,
+  effective permissions, and lineage facade methods
+- `tests/test_federation.py` — unit tests for connections, external
+  locations, and credentials facade CRUD
+- Extended `tests/test_api_errors.py` with 11 new error-handling tests
+  for all new JSON API endpoints
+
+### Changed (Sprint 5)
+
+- Detail page route handlers (`catalog_detail`, `schema_detail`,
+  `table_detail`) now fetch tags, permissions, and effective permissions
+  in parallel via `asyncio.gather`; `table_detail` additionally fetches
+  lineage. Failure in any single fetch does not break the page
+- `base.html` loads three new JS files: `tags_editor.js`,
+  `permissions_editor.js`, `federation.js`
+
 ### Added (Sprint 4)
 
 - E2E smoke test (`tests/test_e2e.py`): full roundtrip — create
