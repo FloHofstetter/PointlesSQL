@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -115,3 +115,155 @@ class SyncRun(Base):
     changed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     dropped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class Job(Base):
+    """A scheduled unit of work executed by the in-process scheduler.
+
+    Sprint 19 introduces single-task jobs — ``kind`` picks the Python
+    callable that executes the work and ``config`` is the free-form JSON
+    payload passed through to it. Sprint 20 will fan this out to
+    multi-task DAGs via the adjacent :class:`JobTask` table, so the
+    current fields are the subset that survive the multi-task migration.
+
+    ``config`` is stored as a JSON-encoded string in the ``Text`` column
+    (SQLite's ``JSON`` affinity is identical to ``TEXT``, and using
+    ``Text`` keeps the migration identical across SQLite and Postgres).
+    Callers serialize with :func:`json.dumps` on write and
+    :func:`json.loads` on read — kept explicit so the column stays a
+    plain string regardless of SQLAlchemy dialect.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        name: Unique human-readable name shown in the UI.
+        cron_expr: 5-field cron expression evaluated by ``croniter``.
+        run_as_user_id: FK to ``users.id`` — the scheduler builds an
+            ``X-Principal`` client for this user before invoking the
+            task callable so soyuz authorization applies.
+        kind: Registry key for the task executor (e.g. ``"pg_sync"``,
+            ``"python"``).
+        config: JSON-encoded parameters passed to the executor.
+        is_paused: When ``True`` the scheduler skips this job.
+        created_at: Timestamp when the job was created.
+        updated_at: Timestamp of the most recent mutation.
+    """
+
+    __tablename__ = "jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    cron_expr: Mapped[str] = mapped_column(String(120), nullable=False)
+    run_as_user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(50), nullable=False)
+    config: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    is_paused: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class JobRun(Base):
+    """One execution of a :class:`Job`.
+
+    Rows start as ``running`` when the scheduler (or the manual-trigger
+    route) claims the job, flip to ``succeeded`` or ``failed`` when the
+    executor returns, or to ``skipped`` when the scheduler finds a
+    previous run still in flight and refuses to double-launch.
+
+    ``trigger`` distinguishes ``scheduled`` (cron tick) from ``manual``
+    ("Run now" button) so the UI can badge them differently.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        job_id: FK to ``jobs.id``.
+        started_at: Timestamp when the executor was invoked.
+        finished_at: Timestamp when the executor returned, or ``None``
+            while still running.
+        status: ``running``, ``succeeded``, ``failed`` or ``skipped``.
+        trigger: ``scheduled`` or ``manual``.
+        error: Exception message when ``status == "failed"`` or
+            ``"skipped"``; ``None`` otherwise.
+    """
+
+    __tablename__ = "job_runs"
+    __table_args__ = (
+        Index("ix_job_runs_job_started", "job_id", "started_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("jobs.id"), nullable=False
+    )
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    trigger: Mapped[str] = mapped_column(String(20), nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class JobTask(Base):
+    """One ordered task within a :class:`Job` — pre-created for Sprint 20.
+
+    Sprint 19 jobs are single-task; the executor reads directly from
+    the parent ``jobs.config``. Rows in this table are not consulted by
+    the Sprint 19 scheduler. The table exists now so Sprint 20 can add
+    ``depends_on`` / ``retries`` columns with a simple additive
+    migration instead of re-shaping the schema.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        job_id: FK to ``jobs.id``.
+        name: Human-readable task name, unique within the parent job.
+        order: Ordinal within the job (Sprint 20 replaces with
+            ``depends_on``; kept here as a placeholder).
+        config: JSON-encoded per-task parameters.
+    """
+
+    __tablename__ = "job_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("jobs.id"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    config: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+
+
+class JobLog(Base):
+    """One structured log line written during a :class:`JobRun`.
+
+    Pre-created for Sprint 20's structured log viewer; the Sprint 19
+    scheduler emits via the stdlib ``logging`` module instead so tests
+    can capture output with ``caplog`` without standing up this table.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        job_run_id: FK to ``job_runs.id``.
+        ts: Timestamp when the log line was emitted.
+        level: Python log level name (``"INFO"``, ``"WARNING"`` …).
+        message: Free-form log text.
+    """
+
+    __tablename__ = "job_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    job_run_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("job_runs.id"), nullable=False
+    )
+    ts: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    level: Mapped[str] = mapped_column(String(20), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)

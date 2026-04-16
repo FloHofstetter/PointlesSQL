@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: Literal["text", "json"] = "text"
 
+    # Scheduler. Defaults to enabled; tests flip the toggle off in
+    # conftest so the background loop never ticks during normal runs.
+    scheduler_enabled: bool = True
+    scheduler_tick_seconds: int = 30
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def oidc_enabled(self) -> bool:

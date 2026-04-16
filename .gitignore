@@ -13,5 +13,7 @@ htmlcov/
 .pyright/
 node_modules/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 .ipynb_checkpoints/

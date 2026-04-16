@@ -36,6 +36,12 @@
                     <i class="bi bi-journal-code"></i> Notebook
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'jobs' %} active{% endif %}"
+                   href="/jobs">
+                    <i class="bi bi-clock-history"></i> Jobs
+                </a>
+            </li>
             {% if current_user is defined and current_user %}
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"

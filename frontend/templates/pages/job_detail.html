@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ job.name }} · Jobs · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/jobs" class="text-decoration-none">Jobs</a></li>
+    <li class="breadcrumb-item active">{{ job.name }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history fs-3"></i>
+        <h1 class="h3 mb-0 font-monospace">{{ job.name }}</h1>
+        {% if job.is_paused %}
+        <span class="badge bg-warning text-dark">paused</span>
+        {% else %}
+        <span class="badge bg-success">active</span>
+        {% endif %}
+    </div>
+    {% if can_manage %}
+    <div class="d-flex gap-2">
+        <form method="post" action="/api/jobs/{{ job.id }}/run" hx-boost="false" class="m-0">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-play-fill me-1"></i>Run now
+            </button>
+        </form>
+        {% if job.is_paused %}
+        <form method="post" action="/api/jobs/{{ job.id }}/unpause" hx-boost="false" class="m-0">
+            <button type="submit" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-play me-1"></i>Resume
+            </button>
+        </form>
+        {% else %}
+        <form method="post" action="/api/jobs/{{ job.id }}/pause" hx-boost="false" class="m-0">
+            <button type="submit" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-pause me-1"></i>Pause
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-1"></i>Configuration
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Kind</dt>
+            <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ job.kind }}</span></dd>
+            <dt class="col-sm-3">Cron</dt>
+            <dd class="col-sm-9 font-monospace">{{ job.cron_expr }}</dd>
+            <dt class="col-sm-3">Run as user</dt>
+            <dd class="col-sm-9">#{{ job.run_as_user_id }}</dd>
+            <dt class="col-sm-3">Config</dt>
+            <dd class="col-sm-9"><pre class="mb-0 small">{{ job.config|tojson(indent=2) }}</pre></dd>
+        </dl>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-list-ul"></i>Recent runs
+    </div>
+    <div class="card-body p-0">
+        {% if runs %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Started</th>
+                        <th>Status</th>
+                        <th>Trigger</th>
+                        <th>Duration</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in runs %}
+                    <tr>
+                        <td class="ps-3 small">{{ run.started_at }}</td>
+                        <td>
+                            {% if run.status == "succeeded" %}
+                            <span class="badge bg-success">{{ run.status }}</span>
+                            {% elif run.status == "failed" %}
+                            <span class="badge bg-danger">{{ run.status }}</span>
+                            {% elif run.status == "skipped" %}
+                            <span class="badge bg-secondary">{{ run.status }}</span>
+                            {% else %}
+                            <span class="badge bg-info text-dark">{{ run.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ run.trigger }}</td>
+                        <td class="small">
+                            {% if run.duration_seconds is not none %}{{ "%.1f"|format(run.duration_seconds) }}s{% else %}—{% endif %}
+                        </td>
+                        <td class="small text-danger">{{ run.error or "" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-3 text-muted small fst-italic">No runs yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

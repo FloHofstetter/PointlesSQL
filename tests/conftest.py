@@ -62,11 +62,17 @@ def _auth_db():
     app.state.templates = _TEMPLATES
 
     # Ensure settings has auth fields.  Some test modules create their
-    # own Settings; we patch only if missing.
+    # own Settings; we patch only if missing. The scheduler is opted out
+    # so the background loop never ticks during normal test runs —
+    # dedicated scheduler tests flip it back on via ``monkeypatch``.
     if not hasattr(app.state, "settings") or app.state.settings is None:
         from pointlessql.settings import Settings
 
-        app.state.settings = Settings(jupyter_enabled=False)
+        app.state.settings = Settings(
+            jupyter_enabled=False, scheduler_enabled=False
+        )
+    else:
+        app.state.settings.scheduler_enabled = False  # type: ignore[attr-defined]
 
     # Ensure secret_key is always set.
     app.state.settings.secret_key = _TEST_SECRET  # type: ignore[attr-defined]

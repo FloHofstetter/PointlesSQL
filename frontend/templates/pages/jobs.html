@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Jobs · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item active">Jobs</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history fs-3"></i>
+        <h1 class="h3 mb-0">Jobs</h1>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if jobs %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Name</th>
+                        <th>Kind</th>
+                        <th>Cron</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td class="ps-3">
+                            <a href="/jobs/{{ job.id }}" class="font-monospace text-decoration-none">{{ job.name }}</a>
+                        </td>
+                        <td><span class="badge bg-info text-dark">{{ job.kind }}</span></td>
+                        <td class="font-monospace small">{{ job.cron_expr }}</td>
+                        <td>
+                            {% if job.is_paused %}
+                            <span class="badge bg-warning text-dark">paused</span>
+                            {% else %}
+                            <span class="badge bg-success">active</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-3 text-muted small fst-italic">No jobs configured.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -24,6 +24,7 @@ from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services import pg_sync as pg_sync_service
+from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.authorization import (
     MANAGE_GRANTS,
     MODIFY,
@@ -111,11 +112,21 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     init_db(settings.database_url)
     app.state.session_factory = get_session_factory()
 
+    scheduler: scheduler_service.Scheduler | None = None
+    if settings.scheduler_enabled:
+        scheduler = scheduler_service.Scheduler(
+            app.state.session_factory, settings
+        )
+        scheduler.start()
+    app.state.scheduler = scheduler
+
     async with managed_jupyter(settings) as jupyter_proc:
         app.state.jupyter_process = jupyter_proc
         try:
             yield
         finally:
+            if scheduler is not None:
+                await scheduler.stop()
             await app.state.uc_client.aclose()
 
 
@@ -993,6 +1004,294 @@ async def credential_detail(request: Request, name: str) -> HTMLResponse:
         request,
         "pages/credential.html",
         {"credential": credential, "name": name, "error": error, "active_page": "credentials"},
+    )
+
+
+# -- Jobs / scheduler --
+
+
+_JOB_REGISTRY = scheduler_service.build_default_registry()
+
+
+def _serialize_job(job: Any) -> dict[str, Any]:
+    """Render a :class:`Job` ORM row for JSON responses.
+
+    Pulled out into a helper so both the list and the detail route
+    emit the same shape; the helper assumes the ORM row has been
+    detached from its session or the caller still holds the session
+    open (we never serialize half-loaded jobs).
+    """
+    return {
+        "id": job.id,
+        "name": job.name,
+        "cron_expr": job.cron_expr,
+        "run_as_user_id": job.run_as_user_id,
+        "kind": job.kind,
+        "config": json.loads(job.config or "{}"),
+        "is_paused": job.is_paused,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+    }
+
+
+def _serialize_run(run: Any) -> dict[str, Any]:
+    """Render a :class:`JobRun` ORM row for JSON responses."""
+    duration: float | None = None
+    if run.started_at and run.finished_at:
+        duration = (run.finished_at - run.started_at).total_seconds()
+    return {
+        "id": run.id,
+        "job_id": run.job_id,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "status": run.status,
+        "trigger": run.trigger,
+        "error": run.error,
+        "duration_seconds": duration,
+    }
+
+
+def _load_job_or_404(request: Request, job_id: int) -> Any:
+    """Fetch a :class:`Job` with ownership-aware visibility rules.
+
+    Admins see every job; non-admins see only jobs whose
+    ``run_as_user_id`` matches their user id. A missing or hidden job
+    surfaces as :class:`CatalogNotFoundError` so the centralized
+    error handler renders 404 consistently.
+    """
+    from pointlessql.exceptions import CatalogNotFoundError
+    from pointlessql.models import Job as JobModel
+
+    user = _get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        job = session.get(JobModel, job_id)
+        if job is None:
+            raise CatalogNotFoundError(f"Job {job_id} not found")
+        if not user.get("is_admin") and job.run_as_user_id != user["id"]:
+            raise CatalogNotFoundError(f"Job {job_id} not found")
+        session.expunge(job)
+        return job
+
+
+def _require_job_owner_or_admin(request: Request, job: Any) -> None:
+    """Raise :class:`AuthorizationError` if the user can't mutate *job*."""
+    user = _get_user(request)
+    if user.get("is_admin"):
+        return
+    if job.run_as_user_id == user["id"]:
+        return
+    raise AuthorizationError(
+        principal=user.get("email", ""),
+        privilege="manage",
+        securable_type="job",
+        full_name=str(job.name),
+    )
+
+
+@app.get("/api/jobs")
+async def api_list_jobs(request: Request) -> list[dict[str, Any]]:
+    """Return jobs visible to the current user.
+
+    Admin sees everything; a regular user only sees jobs whose
+    ``run_as_user_id`` matches their user id, matching the detail-page
+    visibility so the two surfaces cannot drift.
+    """
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import Job as JobModel
+
+    user = _get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = _select(JobModel).order_by(JobModel.id)
+        if not user.get("is_admin"):
+            stmt = stmt.where(JobModel.run_as_user_id == user["id"])
+        rows = list(session.scalars(stmt).all())
+        for row in rows:
+            session.expunge(row)
+    return [_serialize_job(r) for r in rows]
+
+
+@app.post("/api/jobs")
+async def api_create_job(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Create a new job (admin-only in Sprint 19).
+
+    Non-admin creation is out of scope for this sprint — once we have
+    personal-quota enforcement Sprint 20+ will relax this. Body shape:
+    ``{name, cron_expr, kind, config, run_as_user_id?, is_paused?}``.
+    ``run_as_user_id`` defaults to the caller so an admin scheduling a
+    job for themselves does not have to look up their own id.
+    """
+    from croniter import croniter as _croniter
+
+    from pointlessql.exceptions import ValidationError as _VE
+    from pointlessql.models import Job as JobModel
+
+    _require_admin(request)
+    user = _get_user(request)
+
+    name = body.get("name")
+    cron_expr = body.get("cron_expr")
+    kind = body.get("kind")
+    if not name or not cron_expr or not kind:
+        raise _VE("name, cron_expr and kind are required")
+    if not _croniter.is_valid(str(cron_expr)):
+        raise _VE(f"Invalid cron expression: {cron_expr!r}")
+    # Validate the kind against the registry up-front so bad payloads
+    # fail at create-time instead of at first-tick.
+    _JOB_REGISTRY.get(str(kind))
+
+    run_as_user_id = int(body.get("run_as_user_id") or user["id"])
+    config = body.get("config") or {}
+    if not isinstance(config, dict):
+        raise _VE("config must be a JSON object")
+    is_paused = bool(body.get("is_paused", False))
+
+    now = datetime.now(UTC)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        job = JobModel(
+            name=str(name),
+            cron_expr=str(cron_expr),
+            run_as_user_id=run_as_user_id,
+            kind=str(kind),
+            config=json.dumps(config),
+            is_paused=is_paused,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+        session.refresh(job)
+        session.expunge(job)
+    _audit(request, "create_job", f"job:{name}", json.dumps(body))
+    return _serialize_job(job)
+
+
+@app.post("/api/jobs/{job_id}/run")
+async def api_run_job(request: Request, job_id: int) -> dict[str, Any]:
+    """Manually trigger a run of *job_id* (admin or owner only)."""
+    job = _load_job_or_404(request, job_id)
+    _require_job_owner_or_admin(request, job)
+    settings: Settings = request.app.state.settings
+    factory = request.app.state.session_factory
+    run = await scheduler_service.execute_run(
+        factory, settings, _JOB_REGISTRY, job_id, "manual"
+    )
+    _audit(request, "run_job", f"job:{job.name}")
+    return _serialize_run(run)
+
+
+@app.post("/api/jobs/{job_id}/pause")
+async def api_pause_job(request: Request, job_id: int) -> dict[str, Any]:
+    """Pause *job_id* (admin or owner only)."""
+    from pointlessql.models import Job as JobModel
+
+    job = _load_job_or_404(request, job_id)
+    _require_job_owner_or_admin(request, job)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = session.get(JobModel, job_id)
+        assert row is not None
+        row.is_paused = True
+        row.updated_at = datetime.now(UTC)
+        session.commit()
+        session.refresh(row)
+        session.expunge(row)
+    _audit(request, "pause_job", f"job:{row.name}")
+    return _serialize_job(row)
+
+
+@app.post("/api/jobs/{job_id}/unpause")
+async def api_unpause_job(request: Request, job_id: int) -> dict[str, Any]:
+    """Resume *job_id* (admin or owner only)."""
+    from pointlessql.models import Job as JobModel
+
+    job = _load_job_or_404(request, job_id)
+    _require_job_owner_or_admin(request, job)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = session.get(JobModel, job_id)
+        assert row is not None
+        row.is_paused = False
+        row.updated_at = datetime.now(UTC)
+        session.commit()
+        session.refresh(row)
+        session.expunge(row)
+    _audit(request, "unpause_job", f"job:{row.name}")
+    return _serialize_job(row)
+
+
+@app.get("/jobs", response_class=HTMLResponse)
+async def jobs_index(request: Request) -> HTMLResponse:
+    """List every job visible to the current user."""
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import Job as JobModel
+
+    user = _get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = _select(JobModel).order_by(JobModel.id)
+        if not user.get("is_admin"):
+            stmt = stmt.where(JobModel.run_as_user_id == user["id"])
+        rows = list(session.scalars(stmt).all())
+        for row in rows:
+            session.expunge(row)
+    jobs_data = [_serialize_job(r) for r in rows]
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/jobs.html",
+        {
+            "jobs": jobs_data,
+            "is_admin": user.get("is_admin", False),
+            "active_page": "jobs",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+@app.get("/jobs/{job_id}", response_class=HTMLResponse)
+async def job_detail(request: Request, job_id: int) -> HTMLResponse:
+    """Render job detail with the last 20 runs."""
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import JobRun as JobRunModel
+
+    job = _load_job_or_404(request, job_id)
+    user = _get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = (
+            _select(JobRunModel)
+            .where(JobRunModel.job_id == job_id)
+            .order_by(JobRunModel.started_at.desc())
+            .limit(20)
+        )
+        runs = list(session.scalars(stmt).all())
+        for r in runs:
+            session.expunge(r)
+    can_manage = (
+        user.get("is_admin", False)
+        or job.run_as_user_id == user.get("id")
+    )
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/job_detail.html",
+        {
+            "job": _serialize_job(job),
+            "runs": [_serialize_run(r) for r in runs],
+            "can_manage": can_manage,
+            "active_page": "jobs",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
     )
 
 
