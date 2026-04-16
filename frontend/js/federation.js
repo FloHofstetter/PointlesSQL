@@ -49,6 +49,11 @@ window.createExternalLocationForm = function () {
             const n = (this.name || '').trim();
             if (!n) { this.error = 'Name is required.'; return; }
             if (!(this.url || '').trim()) { this.error = 'URL is required.'; return; }
+            const credName = (this.credentialName || '').trim();
+            if (!credName) {
+                this.error = 'Credential is required — create one under Federation ▸ Credentials first.';
+                return;
+            }
             this.saving = true;
             this.error = null;
             try {
@@ -58,7 +63,7 @@ window.createExternalLocationForm = function () {
                     body: JSON.stringify({
                         name: n,
                         url: this.url.trim(),
-                        credential_name: this.credentialName || undefined,
+                        credential_name: credName,
                         comment: this.comment || undefined,
                     }),
                 });

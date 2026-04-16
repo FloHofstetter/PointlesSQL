@@ -155,18 +155,16 @@ browser_evaluate(async () => {
 
 ## Found bugs
 
-- **BUG-22-01**: `PATCH /api/permissions/{type}/{name}` returns
-  `502 Bad Gateway` wrapping a soyuz `400 INVALID_ARGUMENT` when
-  the privilege is not valid for the securable type (e.g.
-  `SELECT` at catalog level). A soyuz `400` is the user supplying
-  an invalid request, not the catalog server being unavailable —
-  PointlesSQL should surface it as `422 Unprocessable Entity`
-  (or `400`) so the UI can show an actionable error, not
-  "catalog_unavailable".
-  - TODO: in `pointlessql/services/unitycatalog.py:_wrap_catalog_errors`
-    (line 182), inspect `UnexpectedStatus.status_code` — if it
-    is in `{400, 404, 409, 422}`, raise `ValidationError` (or
-    `CatalogNotFoundError` for 404) instead of always collapsing
-    to `CatalogUnavailableError`.
-  - Work-around in this playbook: always pass the privilege that
-    matches the securable level (see the cheat sheet above).
+- **BUG-22-01** — fixed in the same sprint commit that added
+  this playbook. `_wrap_catalog_errors` in
+  `pointlessql/services/unitycatalog.py` now branches on
+  `UnexpectedStatus.status_code`: `404` becomes
+  `CatalogNotFoundError` (404), other `4xx` become
+  `ValidationError` (422), and only `5xx` / transport errors
+  stay `CatalogUnavailableError` (502). Sending `SELECT` at
+  catalog level now returns a `422 validation_error` with the
+  soyuz message passed through, instead of a misleading
+  `502 catalog_unavailable`.
+  - The privilege cheat sheet above is still the right thing
+    to follow — the fix just stops the server from lying about
+    the failure mode.

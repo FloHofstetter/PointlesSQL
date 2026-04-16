@@ -147,35 +147,19 @@ browser_evaluate(async () => {
 
 ## Found bugs
 
-- **BUG-22-02**: `POST /api/external-locations` with a body that
-  omits `credential_name` returns `500 Internal Server Error`
-  leaking a `KeyError: 'credential_name'` from the generated
-  `CreateExternalLocation.from_dict()` (attrs rejects missing
-  required fields). The field is required by the UC spec, so
-  the correct response is `422 Unprocessable Entity` with a
-  structured error body.
-  - TODO: in `pointlessql/services/unitycatalog.py` line 701,
-    wrap `CreateExternalLocation.from_dict(data)` (and the
-    handful of other `Create*.from_dict(data)` calls in the
-    facade) in `try/except KeyError as e: raise
-    ValidationError(f"missing required field: {e}")`. The broader
-    fix is to add a validation-error branch in
-    `_wrap_catalog_errors` that catches `KeyError`/`TypeError`
-    originating from `*.from_dict()` and re-raises
-    `ValidationError`.
-  - Work-around in this playbook: always set
-    `createExternalLocationForm.credentialName` to a real
-    credential name before calling `submit()`, and create the
-    credential first (see ordering note at the top).
+- **BUG-22-02** — fixed in the same sprint commit that added
+  this playbook. `_wrap_catalog_errors` in
+  `pointlessql/services/unitycatalog.py` now catches the
+  `KeyError` / `TypeError` raised by a generated
+  `Create*.from_dict()` (missing required field) and re-raises
+  `ValidationError`. `POST /api/external-locations` with no
+  `credential_name` now returns
+  `422 validation_error: "Invalid request body:
+  'credential_name'"` instead of a 500 leaking the KeyError.
 
-- **BUG-22-03**: the frontend form in
-  `frontend/templates/pages/external_locations.html` /
-  `frontend/js/federation.js:createExternalLocationForm()` only
-  checks `name` and `url`; it submits an empty `credentialName`
-  as `undefined`, which JSON.stringify drops. The form should
-  validate that `credentialName` is non-empty (required per UC
-  spec) and either pull its value from a `<select>` populated
-  by `/api/credentials` or error out inline. Dependent on
-  BUG-22-02 — the server-side fix alone surfaces a clearer
-  error; the client-side fix prevents the bad request from
-  leaving the browser in the first place.
+- **BUG-22-03** — fixed in the same sprint commit.
+  `createExternalLocationForm.submit()` in
+  `frontend/js/federation.js` now rejects an empty
+  `credentialName` with a clear inline error message before
+  issuing the request, matching the spec requirement surfaced
+  by BUG-22-02.

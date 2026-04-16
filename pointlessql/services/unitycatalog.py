@@ -174,7 +174,11 @@ from soyuz_catalog_client.models.update_tags_tags_securable_type_full_name_patch
     UpdateTagsTagsSecurableTypeFullNamePatchSecurableType,
 )
 
-from pointlessql.exceptions import CatalogUnavailableError
+from pointlessql.exceptions import (
+    CatalogNotFoundError,
+    CatalogUnavailableError,
+    ValidationError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -182,23 +186,55 @@ logger = logging.getLogger(__name__)
 def _wrap_catalog_errors[T](
     fn: Callable[..., Coroutine[Any, Any, T]],
 ) -> Callable[..., Coroutine[Any, Any, T]]:
-    """Wrap an async method so transport errors become domain exceptions."""
+    """Wrap an async method so transport + client errors become domain exceptions.
+
+    Mapping (Sprint 22, BUG-22-01 + BUG-22-02):
+
+    - soyuz 4xx responses surface as ``ValidationError`` (422) or
+      ``CatalogNotFoundError`` (404) depending on the exact status,
+      because they describe *user input* that soyuz rejected, not an
+      unreachable catalog server.
+    - soyuz 5xx responses and transport errors (httpx timeouts,
+      connection refused, etc.) stay ``CatalogUnavailableError`` (502).
+    - ``KeyError`` / ``TypeError`` raised by a generated
+      ``Create*.from_dict()`` call (missing required request field)
+      surface as ``ValidationError`` — the old behaviour leaked a
+      bare ``KeyError`` as HTTP 500.
+    """
 
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> T:
         try:
             return await fn(*args, **kwargs)
-        except (httpx.HTTPError, UnexpectedStatus) as exc:
-            # Log the original transport-level exception before it gets
-            # re-raised as the domain exception — otherwise the exact
-            # failure mode (timeout vs. 500 vs. connection refused) is
-            # lost once CatalogUnavailableError replaces it upstream.
+        except UnexpectedStatus as exc:
             logger.warning(
                 "soyuz-catalog request failed in %s", fn.__name__, exc_info=True
+            )
+            code = exc.status_code
+            if code == 404:
+                raise CatalogNotFoundError(str(exc)) from exc
+            if 400 <= code < 500:
+                raise ValidationError(str(exc)) from exc
+            raise CatalogUnavailableError(
+                f"Catalog server unavailable: {exc}"
+            ) from exc
+        except httpx.HTTPError as exc:
+            logger.warning(
+                "soyuz-catalog transport failed in %s", fn.__name__, exc_info=True
             )
             raise CatalogUnavailableError(
                 f"Catalog server unavailable: {exc}"
             ) from exc
+        except (KeyError, TypeError) as exc:
+            # Generated ``Create*.from_dict()`` raises these when a
+            # required request-body field is missing or the wrong type.
+            # That is user input, not a server failure — surface it as
+            # a validation error rather than a 500.
+            logger.warning(
+                "soyuz-catalog body validation failed in %s", fn.__name__,
+                exc_info=True,
+            )
+            raise ValidationError(f"Invalid request body: {exc}") from exc
 
     return wrapper
 

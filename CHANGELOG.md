@@ -47,26 +47,29 @@ All notable changes to this project will be documented in this file.
   Firefox against a freshly-composed stack. Playbooks record
   what each step's `browser_evaluate` returned so the next
   replay has a concrete expectation. Three bugs surfaced
-  (recorded in the playbooks' **Found bugs** sections; no fix
-  in this sprint — pre-existing behaviour, fix locations
-  noted):
-  - **BUG-22-01** (inline-editors.md): PointlesSQL wraps a
-    soyuz `400 INVALID_ARGUMENT` (e.g. invalid privilege on
-    securable type) as `502 catalog_unavailable`. Should be
-    `422` (or `400`). Fix location:
-    `pointlessql/services/unitycatalog.py:_wrap_catalog_errors` —
-    branch on `UnexpectedStatus.status_code`
-  - **BUG-22-02** (federation.md): `POST /api/external-locations`
-    without `credential_name` leaks `KeyError` as `500`.
-    Should be `422 ValidationError`. Fix location:
-    `pointlessql/services/unitycatalog.py:create_external_location`
-    (wrap `CreateExternalLocation.from_dict(data)` or add a
-    `KeyError/TypeError` branch in `_wrap_catalog_errors`)
-  - **BUG-22-03** (federation.md): the
-    `createExternalLocationForm()` Alpine factory in
-    `federation.js` lets an empty `credentialName` reach the
-    server; the form should either require the field or
-    populate a `<select>` from `/api/credentials`
+  during the live run and were fixed in the same sprint:
+  - **BUG-22-01 fixed**: `_wrap_catalog_errors` in
+    `pointlessql/services/unitycatalog.py` now branches on
+    `UnexpectedStatus.status_code` — 404 → `CatalogNotFoundError`,
+    other 4xx → `ValidationError`, only 5xx / transport →
+    `CatalogUnavailableError`. PATCH permissions with an
+    invalid privilege (e.g. `SELECT` at catalog level) now
+    returns `422 validation_error` passing the soyuz message
+    through; PATCH on a non-existent catalog now returns
+    `404 catalog_not_found`
+  - **BUG-22-02 fixed**: the same decorator now catches
+    `KeyError` / `TypeError` raised by a generated
+    `Create*.from_dict()` (missing required request-body field)
+    and re-raises `ValidationError`. `POST
+    /api/external-locations` without `credential_name` now
+    returns `422 validation_error: "Invalid request body:
+    'credential_name'"` instead of a 500 leaking the KeyError
+  - **BUG-22-03 fixed**:
+    `createExternalLocationForm.submit()` in
+    `frontend/js/federation.js` now rejects an empty
+    `credentialName` with an inline error before issuing the
+    request, matching the UC spec requirement surfaced by
+    BUG-22-02
 
 ### Added (Sprint 21)
 
