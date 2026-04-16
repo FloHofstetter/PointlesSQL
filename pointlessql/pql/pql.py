@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 import httpx
 from soyuz_catalog_client import Client
-from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.api.catalogs import (
     list_catalogs_api_2_1_unity_catalog_catalogs_get as _list_catalogs,
 )
@@ -25,6 +24,7 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.api.tables import (
     list_tables_api_2_1_unity_catalog_tables_get as _list_tables,
 )
+from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.list_catalogs_response import ListCatalogsResponse
 from soyuz_catalog_client.models.list_schemas_response import ListSchemasResponse

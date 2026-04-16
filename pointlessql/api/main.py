@@ -278,6 +278,26 @@ async def api_tables(
     return await client.list_tables(catalog_name, schema_name)
 
 
+@app.post("/api/catalogs")
+async def api_create_catalog(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, object]:
+    """Create a new catalog.
+
+    Admin-only so foreign-catalog creation (which binds a Connection)
+    stays aligned with the federation admin-only rule. Once soyuz-catalog
+    exposes a finer-grained CREATE_CATALOG privilege we can switch to
+    ``check_privilege`` on the metastore like the other writes.
+    """
+    _require_admin(request)
+    client = _get_uc_client(request)
+    result = await client.create_catalog(body)
+    _audit(
+        request, "create_catalog", f"catalog:{body.get('name', '?')}", json.dumps(body)
+    )
+    return result
+
+
 @app.patch("/api/catalogs/{catalog_name}")
 async def api_update_catalog(
     request: Request,
@@ -410,12 +430,21 @@ async def api_lineage(
 
 @app.get("/", response_class=HTMLResponse)
 async def catalogs_index(request: Request) -> HTMLResponse:
-    """Render the welcome screen with the catalog count."""
+    """Render the welcome screen with the catalog count.
+
+    Also fetches the connection list for admins so the "Create foreign
+    catalog" modal has a pre-populated dropdown. Non-admins see the
+    welcome screen without the create button.
+    """
     client = _get_uc_client(request)
+    user = _get_user(request)
     catalog_count = 0
+    connections: list[dict[str, Any]] = []
     error: str | None = None
     try:
         catalog_count = len(await client.list_catalogs())
+        if user.get("is_admin", False):
+            connections = await client.list_connections()
     except CatalogUnavailableError as exc:
         error = exc.detail
     return _TEMPLATES.TemplateResponse(
@@ -423,6 +452,8 @@ async def catalogs_index(request: Request) -> HTMLResponse:
         "pages/catalogs.html",
         {
             "catalog_count": catalog_count,
+            "connections": connections,
+            "is_admin": user.get("is_admin", False),
             "error": error,
             "active_catalog": None,
             "active_schema": None,

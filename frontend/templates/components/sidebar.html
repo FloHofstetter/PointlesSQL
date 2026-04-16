@@ -30,8 +30,13 @@
                             <i class="bi" :class="isOpen('c:' + c.name) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
                         </button>
                         <a :href="'/catalogs/' + c.name" class="pql-tree-label">
-                            <i class="bi bi-folder2"></i>
+                            <i class="bi" :class="c.connection_name ? 'bi-plug' : 'bi-folder2'"
+                               :title="c.connection_name ? 'Foreign catalog (' + c.connection_name + ')' : 'Managed catalog'"></i>
                             <span class="text-truncate" x-text="c.name"></span>
+                            <template x-if="c.connection_name">
+                                <span class="badge bg-info text-dark ms-auto"
+                                      style="font-size: 0.65rem;">FOREIGN</span>
+                            </template>
                         </a>
                     </div>
 

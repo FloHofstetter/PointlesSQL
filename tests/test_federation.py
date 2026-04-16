@@ -96,6 +96,78 @@ class TestConnections:
             await uc_client.delete_connection("pg")
 
 
+class TestCatalogsCreate:
+    async def test_create_managed_catalog(
+        self, uc_client: UnityCatalogClient
+    ) -> None:
+        from soyuz_catalog_client.models.catalog_info import CatalogInfo
+
+        resp = MagicMock(spec=CatalogInfo)
+        resp.to_dict.return_value = {"name": "managed_cat", "type": "MANAGED"}
+
+        with patch(
+            "pointlessql.services.unitycatalog._create_catalog.asyncio",
+            new_callable=AsyncMock,
+            return_value=resp,
+        ):
+            result = await uc_client.create_catalog({"name": "managed_cat"})
+
+        assert result == {"name": "managed_cat", "type": "MANAGED"}
+
+    async def test_create_foreign_catalog(
+        self, uc_client: UnityCatalogClient
+    ) -> None:
+        from soyuz_catalog_client.models.catalog_info import CatalogInfo
+
+        resp = MagicMock(spec=CatalogInfo)
+        resp.to_dict.return_value = {
+            "name": "pg_cat",
+            "type": "FOREIGN",
+            "connection_name": "my_pg",
+            "options": {"database": "analytics"},
+        }
+
+        with patch(
+            "pointlessql.services.unitycatalog._create_catalog.asyncio",
+            new_callable=AsyncMock,
+            return_value=resp,
+        ) as mock:
+            result = await uc_client.create_catalog(
+                {
+                    "name": "pg_cat",
+                    "type": "FOREIGN",
+                    "connection_name": "my_pg",
+                    "options": {"database": "analytics"},
+                }
+            )
+
+        assert result["connection_name"] == "my_pg"
+        assert result["options"] == {"database": "analytics"}
+        # Ensure the typed model round-tripped the foreign fields.
+        body = mock.call_args.kwargs["body"]
+        assert body.name == "pg_cat"
+        assert body.connection_name == "my_pg"
+
+    async def test_create_catalog_empty_response(
+        self, uc_client: UnityCatalogClient
+    ) -> None:
+        with patch(
+            "pointlessql.services.unitycatalog._create_catalog.asyncio",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            result = await uc_client.create_catalog({"name": "x"})
+        assert result == {}
+
+    async def test_delete_catalog(self, uc_client: UnityCatalogClient) -> None:
+        with patch(
+            "pointlessql.services.unitycatalog._delete_catalog.asyncio",
+            new_callable=AsyncMock,
+        ) as mock:
+            await uc_client.delete_catalog("cat", force=True)
+        assert mock.call_args.kwargs["force"] is True
+
+
 class TestExternalLocations:
     async def test_list_external_locations(
         self, uc_client: UnityCatalogClient

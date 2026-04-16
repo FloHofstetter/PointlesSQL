@@ -119,6 +119,68 @@ window.createCredentialForm = function () {
     };
 };
 
+window.createForeignCatalogForm = function ({ connections }) {
+    return {
+        connections: connections || [],
+        name: '',
+        connectionName: '',
+        comment: '',
+        options: [],
+        saving: false,
+        error: null,
+
+        addOption() {
+            this.options.push({ key: '', value: '' });
+        },
+
+        removeOption(index) {
+            this.options.splice(index, 1);
+        },
+
+        async submit() {
+            const n = (this.name || '').trim();
+            if (!n) { this.error = 'Name is required.'; return; }
+            if (!this.connectionName) {
+                this.error = 'Pick a connection.';
+                return;
+            }
+            const opts = {};
+            for (const { key, value } of this.options) {
+                const k = (key || '').trim();
+                if (!k) continue;
+                opts[k] = value ?? '';
+            }
+            const body = {
+                name: n,
+                type: 'FOREIGN',
+                connection_name: this.connectionName,
+            };
+            if (this.comment.trim()) body.comment = this.comment.trim();
+            if (Object.keys(opts).length > 0) body.options = opts;
+
+            this.saving = true;
+            this.error = null;
+            try {
+                const res = await fetch('/api/catalogs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || ('HTTP ' + res.status));
+                }
+                const data = await res.json();
+                window.location.href = '/catalogs/' + encodeURIComponent(data.name || n);
+            } catch (e) {
+                this.error = 'Create failed: ' + e.message;
+            } finally {
+                this.saving = false;
+            }
+        },
+    };
+};
+
 window.deleteConfirm = function ({ deleteUrl, redirectUrl }) {
     return {
         confirming: false,

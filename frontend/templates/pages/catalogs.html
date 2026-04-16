@@ -24,6 +24,95 @@
         <p class="text-muted small mt-4 mb-0">
             <i class="bi bi-arrow-left me-1"></i>Select a catalog from the sidebar to get started.
         </p>
+
+        {% if is_admin %}
+        <div class="mt-4">
+            <button class="btn btn-outline-primary btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#createForeignCatalogModal">
+                <i class="bi bi-plus-lg me-1"></i>Create foreign catalog
+            </button>
+        </div>
+        {% endif %}
     </div>
 </div>
+
+{% if is_admin %}
+<div class="modal fade" id="createForeignCatalogModal" tabindex="-1"
+     x-data='createForeignCatalogForm({
+         connections: {{ (connections or [])|tojson }}
+     })'>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Foreign Catalog</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div x-show="error" x-cloak class="alert alert-danger small" x-text="error"></div>
+
+                <template x-if="connections.length === 0">
+                    <div class="alert alert-warning small">
+                        No connections available. Create one under
+                        <a href="/connections">Federation &rsaquo; Connections</a> first.
+                    </div>
+                </template>
+
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control font-monospace"
+                           x-model="name" placeholder="my_pg_catalog">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Connection</label>
+                    <select class="form-select" x-model="connectionName">
+                        <option value="">(select a connection)</option>
+                        <template x-for="c in connections" :key="c.name">
+                            <option :value="c.name"
+                                    x-text="c.name + ' (' + (c.connection_type || '?') + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Comment</label>
+                    <textarea class="form-control" x-model="comment" rows="2"
+                              placeholder="Optional description"></textarea>
+                </div>
+
+                <label class="form-label d-flex align-items-center justify-content-between">
+                    <span>Options</span>
+                    <button type="button" class="btn btn-sm btn-link p-0"
+                            @click="addOption()">
+                        <i class="bi bi-plus-lg"></i> Add
+                    </button>
+                </label>
+                <template x-if="options.length === 0">
+                    <p class="text-muted small fst-italic mb-2">No options set.</p>
+                </template>
+                <template x-for="(opt, i) in options" :key="i">
+                    <div class="d-flex gap-2 mb-2">
+                        <input type="text" class="form-control form-control-sm font-monospace"
+                               x-model="opt.key" placeholder="key" style="flex: 1;">
+                        <input type="text" class="form-control form-control-sm font-monospace"
+                               x-model="opt.value" placeholder="value" style="flex: 2;">
+                        <button class="btn btn-sm btn-link text-danger p-0"
+                                @click="removeOption(i)" title="Remove">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </template>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary"
+                        @click="submit()"
+                        :disabled="saving || connections.length === 0">
+                    <span x-show="saving"><i class="bi bi-hourglass-split me-1"></i></span>Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

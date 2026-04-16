@@ -1,4 +1,6 @@
-window.propertiesEditor = function ({ patchUrl, initial }) {
+// Generic key/value dict editor that PATCHes {[field]: {...}}. Used by
+// propertiesEditor (properties) and optionsEditor (foreign-catalog options).
+function _makeDictEditor(field, patchUrl, initial) {
     const toRows = (dict) =>
         Object.entries(dict || {}).map(([key, value]) => ({ key, value: String(value) }));
 
@@ -37,25 +39,27 @@ window.propertiesEditor = function ({ patchUrl, initial }) {
                 if (!k) continue;
                 dict[k] = value ?? '';
             }
-            const hadProps = this.snapshot.length > 0;
-            if (hadProps && Object.keys(dict).length === 0) {
+            const hadRows = this.snapshot.length > 0;
+            if (field === 'properties' && hadRows && Object.keys(dict).length === 0) {
                 this.error = 'Unity Catalog cannot clear all properties at once. Leave at least one row.';
                 return;
             }
             this.saving = true;
             this.error = null;
             try {
+                const body = {};
+                body[field] = dict;
                 const res = await fetch(patchUrl, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ properties: dict }),
+                    body: JSON.stringify(body),
                 });
                 if (!res.ok) {
                     const text = await res.text();
                     throw new Error(text || ('HTTP ' + res.status));
                 }
                 const data = await res.json();
-                this.rows = toRows(data.properties || {});
+                this.rows = toRows(data[field] || {});
                 this.snapshot = [];
                 this.editing = false;
             } catch (e) {
@@ -65,4 +69,12 @@ window.propertiesEditor = function ({ patchUrl, initial }) {
             }
         },
     };
+}
+
+window.optionsEditor = function ({ patchUrl, initial }) {
+    return _makeDictEditor('options', patchUrl, initial);
+};
+
+window.propertiesEditor = function ({ patchUrl, initial }) {
+    return _makeDictEditor('properties', patchUrl, initial);
 };

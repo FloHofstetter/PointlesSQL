@@ -1,0 +1,99 @@
+{#
+  Foreign catalog info card.
+
+  Shows connection_name + editable options for a foreign catalog.
+  Renders nothing when the catalog is managed (connection_name is falsy).
+
+  Params:
+    patch_url       — PATCH endpoint (usually /api/catalogs/{name})
+    connection_name — the bound connection's name (required field)
+    options         — current options dict (may be empty/None)
+#}
+{% if connection_name %}
+<div class="card mb-4"
+     x-data='optionsEditor({
+         patchUrl: {{ patch_url|tojson }},
+         initial: {{ (options or {})|tojson }}
+     })'>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>
+            <i class="bi bi-plug me-1"></i>Foreign catalog
+            <span class="badge bg-info text-dark ms-1">FOREIGN</span>
+        </span>
+        <span x-show="!editing">
+            <button class="btn btn-sm btn-outline-secondary" @click="start()">
+                <i class="bi bi-pencil me-1"></i>Edit options
+            </button>
+        </span>
+        <span x-show="editing" x-cloak style="display: flex; align-items: center; gap: 0.4rem;">
+            <button class="btn btn-sm btn-outline-secondary" @click="cancel()" :disabled="saving">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <button class="btn btn-sm btn-success" @click="save()" :disabled="saving">
+                <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-check-lg'"></i>
+                Save
+            </button>
+        </span>
+    </div>
+
+    <div x-show="error" x-cloak class="alert alert-danger mb-0 rounded-0 small" x-text="error"></div>
+
+    <div class="card-body">
+        <dl class="row mb-3">
+            <dt class="col-sm-3 text-muted">Connection</dt>
+            <dd class="col-sm-9 font-monospace">
+                <a href="/connections/{{ connection_name }}" class="text-decoration-none">
+                    {{ connection_name }}
+                </a>
+            </dd>
+        </dl>
+
+        <h6 class="text-muted text-uppercase small mb-2">Options</h6>
+        <template x-if="!editing && rows.length === 0">
+            <p class="text-muted small fst-italic mb-0">No options set.</p>
+        </template>
+
+        <table x-show="editing || rows.length > 0" class="table table-sm mb-0 align-middle">
+            <thead x-show="editing" x-cloak>
+                <tr>
+                    <th style="width: 35%;">Key</th>
+                    <th>Value</th>
+                    <th style="width: 3rem;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="(row, i) in rows" :key="i">
+                    <tr>
+                        <td class="font-monospace small" :class="{ 'text-muted': !editing }">
+                            <span x-show="!editing" x-text="row.key"></span>
+                            <input x-show="editing" x-cloak type="text"
+                                   class="form-control form-control-sm font-monospace"
+                                   x-model="row.key" placeholder="key">
+                        </td>
+                        <td class="font-monospace small">
+                            <span x-show="!editing" x-text="row.value"></span>
+                            <input x-show="editing" x-cloak type="text"
+                                   class="form-control form-control-sm font-monospace"
+                                   x-model="row.value" placeholder="value">
+                        </td>
+                        <td class="text-end">
+                            <button x-show="editing" x-cloak
+                                    class="btn btn-sm btn-link text-danger p-0"
+                                    @click="removeRow(i)" title="Remove">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="editing" x-cloak>
+                    <td colspan="3" class="text-center py-2">
+                        <button class="btn btn-sm btn-outline-secondary" @click="addRow()">
+                            <i class="bi bi-plus-lg me-1"></i>Add option
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}

@@ -17,6 +17,12 @@ from typing import Any
 import httpx
 from soyuz_catalog_client import Client
 from soyuz_catalog_client.api.catalogs import (
+    create_catalog_api_2_1_unity_catalog_catalogs_post as _create_catalog,
+)
+from soyuz_catalog_client.api.catalogs import (
+    delete_catalog_api_2_1_unity_catalog_catalogs_name_delete as _delete_catalog,
+)
+from soyuz_catalog_client.api.catalogs import (
     get_catalog_api_2_1_unity_catalog_catalogs_name_get as _get_catalog,
 )
 from soyuz_catalog_client.api.catalogs import (
@@ -104,7 +110,9 @@ from soyuz_catalog_client.api.tags import (
     update_tags_tags_securable_type_full_name_patch as _update_tags,
 )
 from soyuz_catalog_client.errors import UnexpectedStatus
+from soyuz_catalog_client.models.catalog_info import CatalogInfo
 from soyuz_catalog_client.models.connection_info import ConnectionInfo
+from soyuz_catalog_client.models.create_catalog import CreateCatalog
 from soyuz_catalog_client.models.create_connection import CreateConnection
 from soyuz_catalog_client.models.create_credential_request import (
     CreateCredentialRequest,
@@ -262,6 +270,44 @@ class UnityCatalogClient:
         if response is None:
             return {}
         return response.to_dict()
+
+    @_wrap_catalog_errors
+    async def create_catalog(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Create a new catalog (managed or foreign).
+
+        Foreign catalogs are the Sprint 28 variant in soyuz-catalog: pass
+        ``type="FOREIGN"`` together with ``connection_name`` and optional
+        per-connector ``options``. Managed catalogs default to
+        ``type="MANAGED"``; passing a ``storage_root`` is optional.
+
+        Args:
+            data: Request body matching ``CreateCatalog`` — at minimum
+                ``name``; for foreign variants ``connection_name`` and
+                ``type`` must be set.
+
+        Returns:
+            The created catalog as returned by soyuz-catalog, or an empty
+            dict when the server returned no parsed body.
+        """
+        body = CreateCatalog.from_dict(data)
+        response = await _create_catalog.asyncio(client=self._client, body=body)
+        if not isinstance(response, CatalogInfo):
+            return {}
+        return response.to_dict()
+
+    @_wrap_catalog_errors
+    async def delete_catalog(self, catalog_name: str, force: bool = False) -> None:
+        """Delete a catalog.
+
+        Args:
+            catalog_name: Target catalog.
+            force: When ``True``, soyuz-catalog cascades the delete to
+                contained schemas and tables instead of rejecting with
+                409 if the catalog is non-empty.
+        """
+        await _delete_catalog.asyncio(
+            name=catalog_name, client=self._client, force=force
+        )
 
     @_wrap_catalog_errors
     async def update_catalog(
