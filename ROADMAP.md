@@ -254,7 +254,7 @@ PointlesSQL
 │   │   │   (`pointlessql/_frontend` vs dev `frontend/`)
 │   │   └── README: Docker quick-start section
 │   │
-│   └── Sprint 10 — Postgres option + env polish          ✅ done
+│   └── Sprint 10 — Postgres option + env polish          ✅ done (8c660d3)
 │       ├── `docker-compose.postgres.yml` override adding a
 │       │   Postgres service as the metadata DB
 │       ├── Alembic migrations verified Postgres-compatible
