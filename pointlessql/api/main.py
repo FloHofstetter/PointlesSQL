@@ -23,6 +23,7 @@ from pointlessql.exceptions import AuthorizationError, CatalogUnavailableError
 from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
+from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services.authorization import (
     MANAGE_GRANTS,
     MODIFY,
@@ -298,6 +299,57 @@ async def api_create_catalog(
     return result
 
 
+@app.post("/api/catalogs/{catalog_name}/sync")
+async def api_sync_catalog(
+    request: Request, catalog_name: str
+) -> dict[str, object]:
+    """Trigger a Postgres → UC sync for a foreign catalog (admin-only).
+
+    Reads the catalog's bound Connection, resolves a Credential by the
+    optional ``credential_name`` key in its options, and runs the
+    Sprint 18 sync worker. Returns the :class:`SyncRun` snapshot so
+    the UI can render the new history card entry immediately.
+    """
+    _require_admin(request)
+    client = _get_uc_client(request)
+    catalog = await client.get_catalog(catalog_name)
+    connection_name = catalog.get("connection_name")
+    if not connection_name:
+        raise AuthorizationError(
+            principal=_get_user(request).get("email", ""),
+            privilege="sync",
+            securable_type="catalog",
+            full_name=catalog_name,
+        )
+    connection = await client.get_connection(str(connection_name))
+    credential: dict[str, Any] | None = None
+    options = connection.get("options") or {}
+    credential_name = options.get("credential_name") if isinstance(options, dict) else None
+    if credential_name:
+        credential = await client.get_credential(str(credential_name))
+    factory = request.app.state.session_factory
+    run = await pg_sync_service.run_sync(
+        uc=client,
+        factory=factory,
+        catalog_name=catalog_name,
+        introspector=pg_sync_service.PsycopgIntrospector(),
+        connection=connection,
+        credential=credential,
+    )
+    _audit(request, "sync_catalog", f"catalog:{catalog_name}")
+    return {
+        "id": run.id,
+        "catalog_name": run.catalog_name,
+        "status": run.status,
+        "added_count": run.added_count,
+        "changed_count": run.changed_count,
+        "dropped_count": run.dropped_count,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+        "error": run.error,
+    }
+
+
 @app.patch("/api/catalogs/{catalog_name}")
 async def api_update_catalog(
     request: Request,
@@ -493,6 +545,21 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
     can_manage = has_privilege(
         effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
     )
+
+    # Load sync history for foreign catalogs so the history card has
+    # something to render. Managed catalogs never sync, so we skip the
+    # DB hit entirely.
+    sync_runs: list[Any] = []
+    if (
+        error is None
+        and catalog is not None
+        and catalog.get("connection_name")
+        and user.get("is_admin", False)
+    ):
+        factory = getattr(request.app.state, "session_factory", None)
+        if factory is not None:
+            sync_runs = pg_sync_service.list_recent_runs(factory, catalog_name)
+
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/schemas.html",
@@ -503,6 +570,8 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
             "permissions": permissions,
             "effective": effective,
             "can_manage": can_manage,
+            "sync_runs": sync_runs,
+            "is_admin": user.get("is_admin", False),
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": None,

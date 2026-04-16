@@ -63,6 +63,12 @@
     {% include "components/foreign_catalog_card.html" %}
 {% endwith %}
 
+{% if catalog.connection_name %}
+{% with catalog_name=catalog.name, sync_runs=sync_runs, is_admin=is_admin %}
+    {% include "components/sync_history_card.html" %}
+{% endwith %}
+{% endif %}
+
 {% with tags_url="/api/tags/catalog/" ~ catalog.name, tags=tags %}
     {% include "components/tags_editor.html" %}
 {% endwith %}

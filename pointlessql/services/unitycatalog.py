@@ -92,6 +92,9 @@ from soyuz_catalog_client.api.permissions import (
     update_permissions_api_2_1_unity_catalog_permissions_securable_type_full_name_patch as _update_permissions,  # noqa: E501
 )
 from soyuz_catalog_client.api.schemas import (
+    create_schema_api_2_1_unity_catalog_schemas_post as _create_schema,
+)
+from soyuz_catalog_client.api.schemas import (
     get_schema_api_2_1_unity_catalog_schemas_full_name_get as _get_schema,
 )
 from soyuz_catalog_client.api.schemas import (
@@ -99,6 +102,12 @@ from soyuz_catalog_client.api.schemas import (
 )
 from soyuz_catalog_client.api.schemas import (
     update_schema_api_2_1_unity_catalog_schemas_full_name_patch as _update_schema,
+)
+from soyuz_catalog_client.api.tables import (
+    create_table_api_2_1_unity_catalog_tables_post as _create_table,
+)
+from soyuz_catalog_client.api.tables import (
+    delete_table_api_2_1_unity_catalog_tables_full_name_delete as _delete_table,
 )
 from soyuz_catalog_client.api.tables import (
     get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
@@ -120,6 +129,8 @@ from soyuz_catalog_client.models.create_credential_request import (
 from soyuz_catalog_client.models.create_external_location import (
     CreateExternalLocation,
 )
+from soyuz_catalog_client.models.create_schema import CreateSchema
+from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.credential_info import CredentialInfo
 from soyuz_catalog_client.models.external_location_info import ExternalLocationInfo
 from soyuz_catalog_client.models.get_effective_permissions_api_21_unity_catalog_effective_permissions_securable_type_full_name_get_securable_type import (  # noqa: E501
@@ -329,6 +340,70 @@ class UnityCatalogClient:
         if response is None:
             return {}
         return response.to_dict()
+
+    @_wrap_catalog_errors
+    async def create_schema(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Create a new schema under an existing catalog.
+
+        Args:
+            data: Request body matching ``CreateSchema`` — requires
+                ``catalog_name`` and ``name``; ``storage_root`` is
+                optional on managed parents and ignored on foreign
+                parents (soyuz rejects it there at the service layer).
+
+        Returns:
+            The created schema as returned by soyuz-catalog, or an
+            empty dict when the server returned no parsed body.
+        """
+        from soyuz_catalog_client.models.schema_info import SchemaInfo
+
+        body = CreateSchema.from_dict(data)
+        response = await _create_schema.asyncio(client=self._client, body=body)
+        if not isinstance(response, SchemaInfo):
+            return {}
+        return response.to_dict()
+
+    @_wrap_catalog_errors
+    async def create_table(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Create a new table under an existing schema.
+
+        Used by the Postgres sync worker to mirror foreign-catalog
+        tables. Every field listed as required in the UC spec
+        (``name``, ``catalog_name``, ``schema_name``, ``table_type``,
+        ``data_source_format``, ``columns``, ``storage_location``) must
+        be present — soyuz rejects partial payloads with 422.
+
+        Args:
+            data: Request body matching ``CreateTable``.
+
+        Returns:
+            The created table as returned by soyuz-catalog, or an empty
+            dict when the server returned no parsed body.
+        """
+        from soyuz_catalog_client.models.table_info import TableInfo
+
+        body = CreateTable.from_dict(data)
+        response = await _create_table.asyncio(client=self._client, body=body)
+        if not isinstance(response, TableInfo):
+            return {}
+        return response.to_dict()
+
+    @_wrap_catalog_errors
+    async def delete_table(
+        self, catalog_name: str, schema_name: str, table_name: str
+    ) -> None:
+        """Delete a table by its three-part name.
+
+        Used by the Postgres sync worker to drop tables that have
+        disappeared from the source database.
+
+        Args:
+            catalog_name: Parent catalog.
+            schema_name: Parent schema.
+            table_name: Target table.
+        """
+        full_name = f"{catalog_name}.{schema_name}.{table_name}"
+        await _delete_table.asyncio(full_name=full_name, client=self._client)
 
     @_wrap_catalog_errors
     async def update_schema(
