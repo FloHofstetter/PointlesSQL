@@ -39,6 +39,7 @@ dependencies = [
     "deltalake>=0.24",
     "pandas>=2.2",
     "jupyterlab>=4.0",
+    "python-multipart>=0.0.26",
 ]
 
 [dependency-groups]

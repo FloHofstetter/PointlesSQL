@@ -48,7 +48,9 @@ class TestE2ESmoke:
 
         # Verify via web endpoints.
         async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://test"
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies=app.state._test_auth_cookie,
         ) as client:
             # Index page loads without error.
             resp = await client.get("/")

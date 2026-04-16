@@ -11,11 +11,14 @@ from typing import Any
 
 import httpx
 from fastapi import Body, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from soyuz_catalog_client.errors import UnexpectedStatus
 
+from pointlessql.api.auth_routes import router as auth_router
+from pointlessql.db import get_session_factory, init_db
+from pointlessql.services import auth as auth_service
 from pointlessql.services.jupyter import managed_jupyter
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
@@ -40,6 +43,27 @@ def _format_epoch_ms(value: Any) -> str:
 _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
 
 
+_original_template_response = _TEMPLATES.TemplateResponse
+
+
+def _template_response_with_user(request, *args, **kwargs):
+    """Wrap TemplateResponse to inject ``current_user`` into every context."""
+    # TemplateResponse(request, name, context) or (name, context, request=request)
+    # Starlette 0.37+ signature: TemplateResponse(request, name, context={}, ...)
+    if "context" in kwargs:
+        kwargs["context"].setdefault(
+            "current_user", getattr(request.state, "user", None)
+        )
+    elif len(args) >= 2 and isinstance(args[1], dict):
+        args = list(args)
+        args[1].setdefault("current_user", getattr(request.state, "user", None))
+        args = tuple(args)
+    return _original_template_response(request, *args, **kwargs)
+
+
+_TEMPLATES.TemplateResponse = _template_response_with_user  # type: ignore[assignment]
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Create shared services and manage the Jupyter subprocess."""
@@ -47,6 +71,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     soyuz = make_soyuz_client(settings)
     app.state.uc_client = UnityCatalogClient(soyuz)
     app.state.settings = settings
+    app.state.templates = _TEMPLATES
+
+    init_db(settings.database_url)
+    app.state.session_factory = get_session_factory()
 
     async with managed_jupyter(settings) as jupyter_proc:
         app.state.jupyter_process = jupyter_proc
@@ -57,11 +85,45 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="PointlesSQL", version="0.1.0", lifespan=_lifespan)
+app.include_router(auth_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),
     name="static",
 )
+
+# Paths that do not require authentication.
+_PUBLIC_PREFIXES = ("/auth/", "/static/", "/healthz")
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Extract user from JWT cookie; redirect to login if unauthenticated."""
+    path = request.url.path
+
+    # Always try to resolve user from cookie (even on public paths,
+    # so templates can show the navbar user menu).
+    token = request.cookies.get(auth_service.COOKIE_NAME)
+    if token is not None:
+        factory = getattr(request.app.state, "session_factory", None)
+        settings = getattr(request.app.state, "settings", None)
+        if factory is not None and settings is not None:
+            user = auth_service.get_current_user(factory, token, settings.secret_key)
+            if user is not None:
+                request.state.user = user
+
+    # Public paths pass through regardless of auth.
+    if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
+        return await call_next(request)
+
+    # Protected paths require authentication.
+    if getattr(request.state, "user", None) is not None:
+        return await call_next(request)
+
+    # Unauthenticated — redirect HTML requests, 401 for API.
+    if path.startswith("/api/"):
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    return RedirectResponse(url="/auth/login", status_code=303)
 
 
 @app.get("/healthz")

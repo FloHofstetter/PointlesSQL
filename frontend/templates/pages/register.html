@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Register — PointlesSQL{% endblock %}
+
+{% block content_class %}d-flex align-items-center justify-content-center{% endblock %}
+
+{% block content %}
+<div class="card border-secondary" style="max-width: 420px; width: 100%;">
+    <div class="card-body p-4">
+        <h4 class="card-title text-center mb-3">
+            <i class="bi bi-database"></i> Create Account
+        </h4>
+
+        {% if first_user %}
+        <div class="alert alert-info small">
+            <i class="bi bi-info-circle"></i>
+            This is the first account — it will be granted admin privileges.
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
+        <form method="post" action="/auth/register" hx-boost="false">
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email"
+                       required autofocus placeholder="you@example.com">
+            </div>
+            <div class="mb-3">
+                <label for="display_name" class="form-label">Display name</label>
+                <input type="text" class="form-control" id="display_name" name="display_name"
+                       required placeholder="Jane Doe">
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password"
+                       required minlength="8">
+            </div>
+            <div class="mb-3">
+                <label for="password_confirm" class="form-label">Confirm password</label>
+                <input type="password" class="form-control" id="password_confirm"
+                       name="password_confirm" required minlength="8">
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Create account</button>
+        </form>
+
+        <p class="text-center text-muted mt-3 mb-0">
+            Already have an account? <a href="/auth/login">Sign in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

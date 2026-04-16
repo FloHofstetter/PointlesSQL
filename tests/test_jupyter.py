@@ -160,7 +160,8 @@ class TestNotebookRoute:
         """Prepare app.state so the route handlers work without the real lifespan."""
         from pointlessql.api.main import app
 
-        app.state.settings = Settings(jupyter_enabled=True, jupyter_port=9999)
+        app.state.settings.jupyter_enabled = True
+        app.state.settings.jupyter_port = 9999
         app.state.uc_client = MagicMock()
         app.state.jupyter_process = None
 
@@ -171,6 +172,7 @@ class TestNotebookRoute:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
+            cookies=app.state._test_auth_cookie,
         ) as client:
             resp = await client.get("/notebook")
 
@@ -184,11 +186,12 @@ class TestNotebookRoute:
     async def test_notebook_disabled_shows_message(self) -> None:
         from pointlessql.api.main import app
 
-        app.state.settings = Settings(jupyter_enabled=False)
+        app.state.settings.jupyter_enabled = False
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
+            cookies=app.state._test_auth_cookie,
         ) as client:
             resp = await client.get("/notebook")
 
@@ -207,7 +210,8 @@ class TestJupyterStatusAPI:
     def _app(self) -> None:
         from pointlessql.api.main import app
 
-        app.state.settings = Settings(jupyter_enabled=True, jupyter_port=8888)
+        app.state.settings.jupyter_enabled = True
+        app.state.settings.jupyter_port = 8888
         app.state.uc_client = MagicMock()
         app.state.jupyter_process = None
 
@@ -218,6 +222,7 @@ class TestJupyterStatusAPI:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
+            cookies=app.state._test_auth_cookie,
         ) as client:
             resp = await client.get("/api/jupyter/status")
 
@@ -236,6 +241,7 @@ class TestJupyterStatusAPI:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
+            cookies=app.state._test_auth_cookie,
         ) as client:
             resp = await client.get("/api/jupyter/status")
 

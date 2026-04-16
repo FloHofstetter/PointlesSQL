@@ -26,9 +26,61 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.models.create_catalog import CreateCatalog
 from soyuz_catalog_client.models.create_schema import CreateSchema
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
+from pointlessql.api.main import app
+from pointlessql.models import Base
 from pointlessql.pql.pql import PQL
+from pointlessql.services import auth
 from pointlessql.services.soyuz_client import make_soyuz_client
+
+_TEST_SECRET = "test-secret-key-for-unit-tests!!"
+
+
+@pytest.fixture(autouse=True)
+def _auth_db():
+    """Set up an in-memory auth DB and authenticated cookie for all tests.
+
+    Existing tests that set ``app.state`` manually will override the
+    UC client but the auth layer remains functional so the middleware
+    doesn't block requests.
+    """
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine)
+
+    app.state.session_factory = factory
+
+    # Ensure templates are always available (set in lifespan normally).
+    from pointlessql.api.main import _TEMPLATES
+
+    app.state.templates = _TEMPLATES
+
+    # Ensure settings has auth fields.  Some test modules create their
+    # own Settings; we patch only if missing.
+    if not hasattr(app.state, "settings") or app.state.settings is None:
+        from pointlessql.settings import Settings
+
+        app.state.settings = Settings(jupyter_enabled=False)
+
+    # Ensure secret_key is always set.
+    app.state.settings.secret_key = _TEST_SECRET  # type: ignore[attr-defined]
+
+    # Create a test user and attach cookie helper.
+    auth.register(factory, "test@test.com", "Test User", "password123")
+    token = auth.login(factory, "test@test.com", "password123", _TEST_SECRET)
+    app.state._test_auth_cookie = {auth.COOKIE_NAME: token}
+
+    yield
+
+    engine.dispose()
+
+
+@pytest.fixture
+def auth_cookies() -> dict[str, str]:
+    """Return a dict with the auth cookie for the test user."""
+    return app.state._test_auth_cookie
 
 _E2E_CATALOG = "e2e_smoke_catalog"
 _E2E_SCHEMA = "e2e_smoke_schema"
