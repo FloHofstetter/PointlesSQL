@@ -1,0 +1,35 @@
+# Compose override — Postgres as the PointlesSQL metadata DB.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up
+#
+# The base docker-compose.yml uses SQLite by default. This override adds
+# a Postgres service and points PointlesSQL at it instead.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pointlessql
+      POSTGRES_PASSWORD: pointlessql
+      POSTGRES_DB: pointlessql
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pointlessql"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  pointlessql:
+    environment:
+      POINTLESSQL_DATABASE_URL: "postgresql+psycopg://pointlessql:pointlessql@postgres:5432/pointlessql"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -40,13 +41,16 @@ _TEST_SECRET = "test-secret-key-for-unit-tests!!"
 
 @pytest.fixture(autouse=True)
 def _auth_db():
-    """Set up an in-memory auth DB and authenticated cookie for all tests.
+    """Set up an auth DB and authenticated cookie for all tests.
 
-    Existing tests that set ``app.state`` manually will override the
-    UC client but the auth layer remains functional so the middleware
-    doesn't block requests.
+    Respects ``TEST_DATABASE_URL`` to run against Postgres or another
+    backend. Defaults to in-memory SQLite when unset.
     """
-    engine = create_engine("sqlite:///:memory:")
+    db_url = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
+    connect_args: dict[str, object] = {}
+    if db_url.startswith("sqlite"):
+        connect_args["check_same_thread"] = False
+    engine = create_engine(db_url, connect_args=connect_args)
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
 
@@ -81,6 +85,9 @@ def _auth_db():
 
     yield
 
+    # Drop all tables so each test starts clean (required for Postgres;
+    # in-memory SQLite engines are discarded on dispose anyway).
+    Base.metadata.drop_all(engine)
     engine.dispose()
 
 

@@ -40,6 +40,7 @@ dependencies = [
     "pandas>=2.2",
     "jupyterlab>=4.0",
     "python-multipart>=0.0.26",
+    "psycopg[binary]>=3.1",
 ]
 
 [dependency-groups]
@@ -53,7 +54,6 @@ dev = [
     "pyright>=1.1",
     "hatchling>=1.29.0",
     "pydoclint>=0.8",
-    "psycopg[binary]>=3.1",
     "pip-audit>=2.10.0",
     "pre-commit>=4.0",
     "detect-secrets>=1.5",
@@ -101,6 +101,7 @@ testpaths = ["tests"]
 addopts = "-m 'not integration'"
 markers = [
     "integration: requires a live Unity Catalog server",
+    "postgres: requires a live PostgreSQL server (set TEST_DATABASE_URL)",
 ]
 
 [tool.coverage.run]

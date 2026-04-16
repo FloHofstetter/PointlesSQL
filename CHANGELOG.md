@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 10)
+
+- `docker-compose.postgres.yml` — compose override that adds a
+  Postgres service as PointlesSQL's metadata DB; usage:
+  `docker compose -f docker-compose.yml -f docker-compose.postgres.yml up`
+- `.env.example` — documents all `POINTLESSQL_*` env vars with
+  defaults and descriptions
+- Settings: `POINTLESSQL_BASE_URL` for OIDC callback URIs behind
+  reverse proxies or inside Docker (falls back to request-derived
+  URI when unset)
+- `psycopg[binary]>=3.1` promoted from dev to main dependencies
+  so Postgres URLs work at runtime
+- Test fixture: `TEST_DATABASE_URL` env var to run the test suite
+  against Postgres (or any SQLAlchemy-supported backend)
+
+### Changed (Sprint 10)
+
+- OIDC redirect_uri construction uses `POINTLESSQL_BASE_URL` when
+  set, fixing SSO flows behind reverse proxies and in Docker
+- Test `_auth_db` fixture drops all tables on teardown for clean
+  isolation on persistent backends (Postgres)
+
 ### Added (Sprint 9)
 
 - `Dockerfile` — 3-stage multi-stage build (soyuz-client-builder →

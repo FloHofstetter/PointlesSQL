@@ -221,7 +221,7 @@ PointlesSQL
 │       └── Tests: OIDC flow with mocked provider (33 new,
 │           177 total pass)
 │
-├── Phase 4 — Packaging & deployment                      ⏳ in progress
+├── Phase 4 — Packaging & deployment                      ✅ done
 │   │
 │   │   Goal: make PointlesSQL + soyuz-catalog runnable
 │   │   with a single `docker compose up` — no manual
@@ -254,16 +254,19 @@ PointlesSQL
 │   │   │   (`pointlessql/_frontend` vs dev `frontend/`)
 │   │   └── README: Docker quick-start section
 │   │
-│   └── Sprint 10 — Postgres option + env polish          ⏳ planned
+│   └── Sprint 10 — Postgres option + env polish          ✅ done
 │       ├── `docker-compose.postgres.yml` override adding a
 │       │   Postgres service as the metadata DB
-│       ├── Verify Alembic migrations work on Postgres
-│       │   (batch_alter_table SQLite workaround compat)
+│       ├── Alembic migrations verified Postgres-compatible
+│       │   (`render_as_batch=True` already set, no changes
+│       │   needed)
 │       ├── `.env.example` with all POINTLESSQL_* vars
 │       │   documented
 │       ├── `POINTLESSQL_BASE_URL` setting for OIDC
 │       │   redirect_uri in non-localhost deployments
-│       └── Tests: CI matrix with SQLite + Postgres
+│       ├── `psycopg[binary]>=3.1` promoted to main deps
+│       └── Tests: `TEST_DATABASE_URL` env var for Postgres
+│           matrix, `drop_all` teardown for clean isolation
 │
 ├── Phase 5 — Pluggable compute engines                   ⏳ planned
 │   │

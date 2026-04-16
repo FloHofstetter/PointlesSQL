@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from pointlessql.services import auth
 from pointlessql.services import oidc as oidc_service
+from pointlessql.settings import Settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -26,9 +27,21 @@ def _factory(request: Request):
     return request.app.state.session_factory
 
 
-def _settings(request: Request):
+def _settings(request: Request) -> Settings:
     """Return the Settings instance from app state."""
     return request.app.state.settings
+
+
+def _oidc_redirect_uri(request: Request, settings: Settings) -> str:
+    """Build the OIDC callback redirect URI.
+
+    Uses ``POINTLESSQL_BASE_URL`` when set so the URI is correct behind
+    reverse proxies or inside Docker. Falls back to deriving the URI
+    from the incoming request.
+    """
+    if settings.base_url:
+        return settings.base_url.rstrip("/") + "/auth/callback"
+    return str(request.url_for("oidc_callback"))
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -154,7 +167,7 @@ async def sso_redirect(request: Request):
     if not settings.oidc_enabled:
         return RedirectResponse(url="/auth/login?error=SSO+is+not+configured", status_code=303)
 
-    redirect_uri = str(request.url_for("oidc_callback"))
+    redirect_uri = _oidc_redirect_uri(request, settings)
 
     async with httpx.AsyncClient() as client:
         discovery = await oidc_service.fetch_discovery(
@@ -222,7 +235,7 @@ async def oidc_callback(request: Request):
             url="/auth/login?error=Invalid+SSO+state", status_code=303,
         )
 
-    redirect_uri = str(request.url_for("oidc_callback"))
+    redirect_uri = _oidc_redirect_uri(request, settings)
 
     try:
         async with httpx.AsyncClient() as client:

@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     jwt_expiry_hours: int = 168  # 7 days
 
+    # Public base URL for callback URIs (e.g. "https://pql.example.com").
+    # When unset, redirect URIs are derived from the incoming request.
+    base_url: str | None = None
+
     # OIDC / OAuth2 — opt-in. Set both discovery_url and client_id to enable.
     oidc_discovery_url: str | None = None
     oidc_client_id: str | None = None
