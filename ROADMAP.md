@@ -229,7 +229,7 @@ PointlesSQL
 │   │   Swap the soyuz-catalog-client path dependency for
 │   │   a pinned wheel so the image builds stand-alone.
 │   │
-│   ├── Sprint 9 — Dockerfiles + docker-compose           ✅ done
+│   ├── Sprint 9 — Dockerfiles + docker-compose           ✅ done (1bf34e8)
 │   │   ├── `Dockerfile` for PointlesSQL (3-stage:
 │   │   │   soyuz-client-builder → builder → runtime,
 │   │   │   python:3.14-slim, uv pip install)
