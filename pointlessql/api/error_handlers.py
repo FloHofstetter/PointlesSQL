@@ -8,11 +8,15 @@ rendered error pages.
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.exceptions import AuthorizationError, PointlessSQLError
+
+logger = logging.getLogger(__name__)
 
 
 def register_error_handlers(app: FastAPI) -> None:
@@ -23,6 +27,17 @@ def register_error_handlers(app: FastAPI) -> None:
         request: Request, exc: PointlessSQLError
     ) -> JSONResponse | HTMLResponse:
         request_id: str | None = getattr(request.state, "request_id", None)
+
+        # Authorization denials are expected traffic, not anomalies —
+        # don't warn on them. Every other domain error gets a single
+        # warning line so ops can grep for domain failures in one place.
+        if not isinstance(exc, AuthorizationError):
+            logger.warning(
+                "handled domain error: %s (%s)",
+                exc.error_code,
+                exc.detail,
+                exc_info=exc,
+            )
 
         # JSON API routes get a structured envelope.
         if request.url.path.startswith("/api/"):

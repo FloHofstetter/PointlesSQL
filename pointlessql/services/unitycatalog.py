@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
 
@@ -156,6 +157,8 @@ from soyuz_catalog_client.models.update_tags_tags_securable_type_full_name_patch
 
 from pointlessql.exceptions import CatalogUnavailableError
 
+logger = logging.getLogger(__name__)
+
 
 def _wrap_catalog_errors[T](
     fn: Callable[..., Coroutine[Any, Any, T]],
@@ -167,6 +170,13 @@ def _wrap_catalog_errors[T](
         try:
             return await fn(*args, **kwargs)
         except (httpx.HTTPError, UnexpectedStatus) as exc:
+            # Log the original transport-level exception before it gets
+            # re-raised as the domain exception — otherwise the exact
+            # failure mode (timeout vs. 500 vs. connection refused) is
+            # lost once CatalogUnavailableError replaces it upstream.
+            logger.warning(
+                "soyuz-catalog request failed in %s", fn.__name__, exc_info=True
+            )
             raise CatalogUnavailableError(
                 f"Catalog server unavailable: {exc}"
             ) from exc

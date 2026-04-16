@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 16)
+
+- `pointlessql/logging_config.py` — centralized logging: a
+  `request_id_var` contextvar, `RequestIdFilter`, opt-in
+  `JSONFormatter`, idempotent `configure_logging(level, fmt)`.
+  Also installs a `logging.setLogRecordFactory` so every record
+  is stamped with the current `request_id` (works with pytest's
+  `caplog` without per-handler hookup)
+- Settings: `log_level` (default `"INFO"`) and `log_format`
+  (`"text"` | `"json"`, default `"text"`); env overrides
+  `POINTLESSQL_LOG_LEVEL`, `POINTLESSQL_LOG_FORMAT`
+- Module-level loggers in `api/main.py`, `api/error_handlers.py`,
+  and `services/unitycatalog.py`
+- Startup log line from `_lifespan` (host, port, engine,
+  log_format)
+- `error_handlers.py` warns on every handled `PointlessSQLError`
+  except `AuthorizationError` (authz denials are expected
+  traffic, not anomalies)
+- `services/unitycatalog.py` `_wrap_catalog_errors` logs the
+  original transport exception before re-raising as
+  `CatalogUnavailableError` — fixes prior silent-swallow
+- `tests/test_logging_config.py` — 8 new tests covering
+  formatter, filter, idempotency, and end-to-end request-ID
+  propagation through a captured warning log (251 total pass)
+
+### Changed (Sprint 16)
+
+- `request_id_middleware` sets the `request_id_var` contextvar
+  (in addition to `request.state.request_id`) and resets it in
+  `finally`, so every log record emitted during the request
+  carries the ID — service-layer code no longer has to receive
+  the `Request` object to log it
+- `api/main.py` calls `configure_logging(...)` at module import
+  time so uvicorn `--reload` workers and direct `uvicorn` invocations
+  both pick up the configured format; idempotent, coexists with
+  pytest's `caplog`
+
 ### Changed (Sprint 15)
 
 - `[tool.pydoclint]` configuration in `pyproject.toml`: Google

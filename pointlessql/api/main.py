@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -19,6 +20,7 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.exceptions import AuthorizationError, CatalogUnavailableError
+from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services.authorization import (
@@ -36,6 +38,15 @@ from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
+
+# Configure logging at module import time so it takes effect in every
+# process that serves traffic — the uvicorn --reload worker imports
+# this module but does not go through cli(). Idempotent; subsequent
+# calls replace our own handlers without disturbing pytest's caplog.
+_startup_settings = Settings()
+configure_logging(_startup_settings.log_level, _startup_settings.log_format)
+
+logger = logging.getLogger(__name__)
 
 # In a dev checkout the frontend dir is at the repo root; in an
 # installed wheel hatchling force-includes it as pointlessql/_frontend.
@@ -84,6 +95,13 @@ _TEMPLATES.TemplateResponse = _template_response_with_user  # type: ignore[assig
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Create shared services and manage the Jupyter subprocess."""
     settings = Settings()
+    logger.info(
+        "PointlesSQL starting on %s:%d (engine=%s, log_format=%s)",
+        settings.host,
+        settings.port,
+        settings.engine,
+        settings.log_format,
+    )
     soyuz = make_soyuz_client(settings)
     app.state.uc_client = UnityCatalogClient(soyuz)
     app.state.settings = settings
@@ -149,10 +167,21 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next: Any) -> Response:
-    """Attach a unique request ID to every request and echo it in the response."""
+    """Attach a unique request ID to every request and echo it in the response.
+
+    The ID is stored both on ``request.state`` (for the error handler)
+    and in the ``request_id_var`` contextvar (so service-layer log
+    records emitted during this request pick it up via the
+    ``RequestIdFilter``). The contextvar is reset in ``finally`` so
+    concurrent requests never leak IDs into each other's scope.
+    """
     request_id = request.headers.get("X-Request-ID") or str(uuid4())
     request.state.request_id = request_id
-    response = await call_next(request)
+    token = request_id_var.set(request_id)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_var.reset(token)
     response.headers["X-Request-ID"] = request_id
     return response
 

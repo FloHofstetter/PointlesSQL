@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,6 +39,11 @@ class Settings(BaseSettings):
     oidc_discovery_url: str | None = None
     oidc_client_id: str | None = None
     oidc_client_secret: str | None = None
+
+    # Logging. POINTLESSQL_LOG_FORMAT is case-sensitive — pydantic-settings
+    # rejects "JSON"/"Text". Use lowercase tokens.
+    log_level: str = "INFO"
+    log_format: Literal["text", "json"] = "text"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

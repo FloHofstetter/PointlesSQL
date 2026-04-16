@@ -306,7 +306,7 @@ PointlesSQL
 │           by PointlesSQL at startup (needs JVM — low
 │           priority, DuckDB/Polars cover most use cases)
 │
-├── Phase 5.5 — Quality and observability                  🔜 next
+├── Phase 5.5 — Quality and observability                  ✅ done
 │   │
 │   │   Goal: harden the codebase without adding features —
 │   │   strict types, domain exception hierarchy, centralized
@@ -373,11 +373,30 @@ PointlesSQL
 │   │   └── pydoclint: 0 violations, pyright: 0 errors,
 │   │       243 tests pass
 │   │
-│   └── Sprint 16 — Logging and observability              ⏳ planned
-│       ├── Root logger configuration
-│       ├── Request-scoped correlation IDs
-│       ├── Structured JSON log format option
-│       └── Logger instances throughout the app
+│   └── Sprint 16 — Logging and observability              ✅ done
+│       ├── `pointlessql/logging_config.py` — `request_id_var`
+│       │   contextvar, `RequestIdFilter`, opt-in `JSONFormatter`,
+│       │   idempotent `configure_logging(level, fmt)`; installs
+│       │   a `setLogRecordFactory` so every record carries
+│       │   `request_id` (caplog-compatible without per-handler
+│       │   hookup)
+│       ├── Settings: `POINTLESSQL_LOG_LEVEL`,
+│       │   `POINTLESSQL_LOG_FORMAT=text|json`
+│       ├── `request_id_middleware` sets the contextvar (in
+│       │   addition to `request.state.request_id`) and resets
+│       │   it in `finally` — service-layer logs now carry the
+│       │   request ID without receiving the Request object
+│       ├── `configure_logging` called at module import time so
+│       │   uvicorn `--reload` workers and direct `uvicorn`
+│       │   invocations both pick up the format
+│       ├── Module-level loggers added to `api/main.py`,
+│       │   `api/error_handlers.py`, `services/unitycatalog.py`;
+│       │   `_wrap_catalog_errors` now logs the original transport
+│       │   exception before re-raising (was silent before)
+│       └── 8 new tests — JSONFormatter validity + exc_info,
+│           RequestIdFilter, idempotency, text/json switching,
+│           end-to-end request-ID propagation via caplog
+│           (251 total pass)
 │
 ├── Phase 6 — Infrastructure & orchestration              🧊 on ice
 │   │
