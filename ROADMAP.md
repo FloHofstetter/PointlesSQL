@@ -184,7 +184,7 @@ PointlesSQL
 │   │   └── Tests: auth service unit tests, login/register
 │   │       API tests, middleware tests
 │   │
-│   ├── Sprint 7 — Principal forwarding + enforcement     ✅ done
+│   ├── Sprint 7 — Principal forwarding + enforcement     ✅ done (9046793)
 │   │   ├── Per-request `X-Principal` header forwarding on
 │   │   │   all soyuz-catalog client calls (via
 │   │   │   `UnityCatalogClient.for_principal()` classmethod
