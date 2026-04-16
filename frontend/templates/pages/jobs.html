@@ -66,7 +66,7 @@
          name: '',
          cron: '* * * * *',
          maxParallel: 1,
-         tasks: '[\n  {\n    \"name\": \"hello\",\n    \"kind\": \"python\",\n    \"config\": {\"entry_point\": \"my_entry\"},\n    \"depends_on\": [],\n    \"max_retries\": 0,\n    \"retry_backoff_seconds\": 0\n  }\n]',
+         tasks: JSON.stringify([{name: 'hello', kind: 'python', config: {entry_point: 'my_entry'}, depends_on: [], max_retries: 0, retry_backoff_seconds: 0}], null, 2),
          error: null,
          submitting: false,
          submit() {
