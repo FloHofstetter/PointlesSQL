@@ -1,0 +1,63 @@
+{#
+  Tag editor card.
+
+  Params:
+    tags_url — GET/PATCH endpoint for tags
+    tags     — current list of tag dicts (may be empty)
+#}
+<div class="card mb-4"
+     x-data='tagsEditor({
+         tagsUrl: {{ tags_url|tojson }},
+         initial: {{ (tags or [])|tojson }}
+     })'>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Tags</span>
+        <span class="text-muted small" x-text="tags.length + ' tag' + (tags.length !== 1 ? 's' : '')"></span>
+    </div>
+
+    <div x-show="error" x-cloak class="alert alert-danger mb-0 rounded-0 small" x-text="error"></div>
+
+    <div class="card-body p-0">
+        <template x-if="tags.length === 0">
+            <div class="p-3 text-muted small fst-italic">No tags set.</div>
+        </template>
+
+        <table x-show="tags.length > 0" class="table table-sm mb-0 align-middle">
+            <tbody>
+                <template x-for="tag in tags" :key="tag.key">
+                    <tr>
+                        <td class="font-monospace small text-muted ps-3" style="width: 30%;" x-text="tag.key"></td>
+                        <td class="font-monospace small" x-text="tag.value || ''"></td>
+                        <td class="text-end pe-3" style="width: 3rem;">
+                            <button class="btn btn-sm btn-link text-danger p-0"
+                                    @click="removeTag(tag.key)"
+                                    :disabled="saving"
+                                    title="Remove tag">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+
+        <div class="p-3 border-top">
+            <div class="d-flex gap-2 align-items-end">
+                <div class="flex-fill">
+                    <input type="text" class="form-control form-control-sm font-monospace"
+                           x-model="newKey" placeholder="key"
+                           @keydown.enter.prevent="addTag()">
+                </div>
+                <div class="flex-fill">
+                    <input type="text" class="form-control form-control-sm font-monospace"
+                           x-model="newValue" placeholder="value (optional)"
+                           @keydown.enter.prevent="addTag()">
+                </div>
+                <button class="btn btn-sm btn-outline-primary" @click="addTag()" :disabled="saving">
+                    <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-plus-lg'"></i>
+                    <span class="ms-1">Add</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

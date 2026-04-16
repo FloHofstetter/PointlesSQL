@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -160,6 +161,106 @@ async def api_update_schema(
         )
 
 
+@app.get("/api/tags/{securable_type}/{full_name:path}", response_model=None)
+async def api_get_tags(
+    request: Request, securable_type: str, full_name: str
+) -> list[dict[str, object]] | JSONResponse:
+    """Return tags for a securable."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.get_tags(securable_type, full_name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.patch("/api/tags/{securable_type}/{full_name:path}", response_model=None)
+async def api_update_tags(
+    request: Request,
+    securable_type: str,
+    full_name: str,
+    body: dict[str, Any] = Body(...),
+) -> list[dict[str, object]] | JSONResponse:
+    """Update tags for a securable. Body: {"changes": [...]}."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.update_tags(
+            securable_type, full_name, body.get("changes", [])
+        )
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.get("/api/permissions/{securable_type}/{full_name:path}", response_model=None)
+async def api_get_permissions(
+    request: Request, securable_type: str, full_name: str
+) -> list[dict[str, object]] | JSONResponse:
+    """Return privilege assignments for a securable."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.get_permissions(securable_type, full_name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.patch("/api/permissions/{securable_type}/{full_name:path}", response_model=None)
+async def api_update_permissions(
+    request: Request,
+    securable_type: str,
+    full_name: str,
+    body: dict[str, Any] = Body(...),
+) -> list[dict[str, object]] | JSONResponse:
+    """Update permissions for a securable. Body: {"changes": [...]}."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.update_permissions(
+            securable_type, full_name, body.get("changes", [])
+        )
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.get("/api/effective-permissions/{securable_type}/{full_name:path}", response_model=None)
+async def api_get_effective_permissions(
+    request: Request, securable_type: str, full_name: str
+) -> list[dict[str, object]] | JSONResponse:
+    """Return effective (inherited) permissions for a securable."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.get_effective_permissions(securable_type, full_name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.get("/api/lineage/{full_name:path}", response_model=None)
+async def api_lineage(
+    request: Request, full_name: str, depth: int = 3
+) -> dict[str, object] | JSONResponse:
+    """Return combined upstream/downstream lineage for a table."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.get_lineage(full_name, depth)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def catalogs_index(request: Request) -> HTMLResponse:
     """Render the welcome screen with the catalog count."""
@@ -188,9 +289,17 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
     """Render metadata for a single catalog."""
     client: UnityCatalogClient = request.app.state.uc_client
     catalog: dict[str, Any] | None = None
+    tags: list[dict[str, Any]] = []
+    permissions: list[dict[str, Any]] = []
+    effective: list[dict[str, Any]] = []
     error: str | None = None
     try:
-        catalog = await client.get_catalog(catalog_name)
+        catalog, tags, permissions, effective = await asyncio.gather(
+            client.get_catalog(catalog_name),
+            client.get_tags("catalog", catalog_name),
+            client.get_permissions("catalog", catalog_name),
+            client.get_effective_permissions("catalog", catalog_name),
+        )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         error = str(exc)
     return _TEMPLATES.TemplateResponse(
@@ -199,6 +308,9 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
         {
             "catalog_name": catalog_name,
             "catalog": catalog,
+            "tags": tags,
+            "permissions": permissions,
+            "effective": effective,
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": None,
@@ -217,9 +329,18 @@ async def schema_detail(
     """Render metadata for a single schema."""
     client: UnityCatalogClient = request.app.state.uc_client
     schema: dict[str, Any] | None = None
+    tags: list[dict[str, Any]] = []
+    permissions: list[dict[str, Any]] = []
+    effective: list[dict[str, Any]] = []
     error: str | None = None
+    full_name = f"{catalog_name}.{schema_name}"
     try:
-        schema = await client.get_schema(catalog_name, schema_name)
+        schema, tags, permissions, effective = await asyncio.gather(
+            client.get_schema(catalog_name, schema_name),
+            client.get_tags("schema", full_name),
+            client.get_permissions("schema", full_name),
+            client.get_effective_permissions("schema", full_name),
+        )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         error = str(exc)
     return _TEMPLATES.TemplateResponse(
@@ -229,6 +350,9 @@ async def schema_detail(
             "catalog_name": catalog_name,
             "schema_name": schema_name,
             "schema": schema,
+            "tags": tags,
+            "permissions": permissions,
+            "effective": effective,
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": schema_name,
@@ -250,9 +374,20 @@ async def table_detail(
     """Render metadata and column schema for a single table."""
     client: UnityCatalogClient = request.app.state.uc_client
     table: dict[str, Any] | None = None
+    tags: list[dict[str, Any]] = []
+    permissions: list[dict[str, Any]] = []
+    effective: list[dict[str, Any]] = []
+    lineage: dict[str, Any] = {}
     error: str | None = None
+    full_name = f"{catalog_name}.{schema_name}.{table_name}"
     try:
-        table = await client.get_table(catalog_name, schema_name, table_name)
+        table, tags, permissions, effective, lineage = await asyncio.gather(
+            client.get_table(catalog_name, schema_name, table_name),
+            client.get_tags("table", full_name),
+            client.get_permissions("table", full_name),
+            client.get_effective_permissions("table", full_name),
+            client.get_lineage(full_name),
+        )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         error = str(exc)
     return _TEMPLATES.TemplateResponse(
@@ -263,6 +398,10 @@ async def table_detail(
             "schema_name": schema_name,
             "table_name": table_name,
             "table": table,
+            "tags": tags,
+            "permissions": permissions,
+            "effective": effective,
+            "lineage": lineage,
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": schema_name,
@@ -300,6 +439,348 @@ async def jupyter_status(request: Request) -> dict[str, object]:
         "running": running,
         "port": settings.jupyter_port,
     }
+
+
+# -- Federation: Connections --
+
+
+@app.get("/api/connections", response_model=None)
+async def api_list_connections(
+    request: Request,
+) -> list[dict[str, object]] | JSONResponse:
+    """Return all connections."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.list_connections()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.post("/api/connections", response_model=None)
+async def api_create_connection(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, object] | JSONResponse:
+    """Create a new connection."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.create_connection(body)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.get("/api/connections/{name}", response_model=None)
+async def api_get_connection(
+    request: Request, name: str
+) -> dict[str, object] | JSONResponse:
+    """Return a single connection."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.get_connection(name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.patch("/api/connections/{name}", response_model=None)
+async def api_update_connection(
+    request: Request, name: str, body: dict[str, Any] = Body(...)
+) -> dict[str, object] | JSONResponse:
+    """Update a connection."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.update_connection(name, body)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.delete("/api/connections/{name}", response_model=None)
+async def api_delete_connection(
+    request: Request, name: str
+) -> dict[str, str] | JSONResponse:
+    """Delete a connection."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        await client.delete_connection(name)
+        return {"status": "deleted"}
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+# -- Federation: External Locations --
+
+
+@app.get("/api/external-locations", response_model=None)
+async def api_list_external_locations(
+    request: Request,
+) -> list[dict[str, object]] | JSONResponse:
+    """Return all external locations."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.list_external_locations()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.post("/api/external-locations", response_model=None)
+async def api_create_external_location(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, object] | JSONResponse:
+    """Create a new external location."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.create_external_location(body)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.get("/api/external-locations/{name}", response_model=None)
+async def api_get_external_location(
+    request: Request, name: str
+) -> dict[str, object] | JSONResponse:
+    """Return a single external location."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.get_external_location(name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.patch("/api/external-locations/{name}", response_model=None)
+async def api_update_external_location(
+    request: Request, name: str, body: dict[str, Any] = Body(...)
+) -> dict[str, object] | JSONResponse:
+    """Update an external location."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.update_external_location(name, body)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.delete("/api/external-locations/{name}", response_model=None)
+async def api_delete_external_location(
+    request: Request, name: str
+) -> dict[str, str] | JSONResponse:
+    """Delete an external location."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        await client.delete_external_location(name)
+        return {"status": "deleted"}
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+# -- Federation: Credentials --
+
+
+@app.get("/api/credentials", response_model=None)
+async def api_list_credentials(
+    request: Request,
+) -> list[dict[str, object]] | JSONResponse:
+    """Return all credentials."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.list_credentials()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.post("/api/credentials", response_model=None)
+async def api_create_credential(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, object] | JSONResponse:
+    """Create a new credential."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.create_credential(body)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.get("/api/credentials/{name}", response_model=None)
+async def api_get_credential(
+    request: Request, name: str
+) -> dict[str, object] | JSONResponse:
+    """Return a single credential."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.get_credential(name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.patch("/api/credentials/{name}", response_model=None)
+async def api_update_credential(
+    request: Request, name: str, body: dict[str, Any] = Body(...)
+) -> dict[str, object] | JSONResponse:
+    """Update a credential."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        return await client.update_credential(name, body)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+@app.delete("/api/credentials/{name}", response_model=None)
+async def api_delete_credential(
+    request: Request, name: str
+) -> dict[str, str] | JSONResponse:
+    """Delete a credential."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    try:
+        await client.delete_credential(name)
+        return {"status": "deleted"}
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
+
+
+# -- Federation: HTML pages --
+
+
+@app.get("/connections", response_class=HTMLResponse)
+async def connections_index(request: Request) -> HTMLResponse:
+    """List all connections."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    connections: list[dict[str, Any]] = []
+    error: str | None = None
+    try:
+        connections = await client.list_connections()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        error = str(exc)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/connections.html",
+        {"connections": connections, "error": error, "active_page": "connections"},
+    )
+
+
+@app.get("/connections/{name}", response_class=HTMLResponse)
+async def connection_detail(request: Request, name: str) -> HTMLResponse:
+    """Show a single connection."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    connection: dict[str, Any] | None = None
+    error: str | None = None
+    try:
+        connection = await client.get_connection(name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        error = str(exc)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/connection.html",
+        {"connection": connection, "name": name, "error": error, "active_page": "connections"},
+    )
+
+
+@app.get("/external-locations", response_class=HTMLResponse)
+async def external_locations_index(request: Request) -> HTMLResponse:
+    """List all external locations."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    locations: list[dict[str, Any]] = []
+    error: str | None = None
+    try:
+        locations = await client.list_external_locations()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        error = str(exc)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/external_locations.html",
+        {"locations": locations, "error": error, "active_page": "external_locations"},
+    )
+
+
+@app.get("/external-locations/{name}", response_class=HTMLResponse)
+async def external_location_detail(request: Request, name: str) -> HTMLResponse:
+    """Show a single external location."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    location: dict[str, Any] | None = None
+    error: str | None = None
+    try:
+        location = await client.get_external_location(name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        error = str(exc)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/external_location.html",
+        {"location": location, "name": name, "error": error, "active_page": "external_locations"},
+    )
+
+
+@app.get("/credentials", response_class=HTMLResponse)
+async def credentials_index(request: Request) -> HTMLResponse:
+    """List all credentials."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    credentials: list[dict[str, Any]] = []
+    error: str | None = None
+    try:
+        credentials = await client.list_credentials()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        error = str(exc)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/credentials.html",
+        {"credentials": credentials, "error": error, "active_page": "credentials"},
+    )
+
+
+@app.get("/credentials/{name}", response_class=HTMLResponse)
+async def credential_detail(request: Request, name: str) -> HTMLResponse:
+    """Show a single credential."""
+    client: UnityCatalogClient = request.app.state.uc_client
+    credential: dict[str, Any] | None = None
+    error: str | None = None
+    try:
+        credential = await client.get_credential(name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        error = str(exc)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/credential.html",
+        {"credential": credential, "name": name, "error": error, "active_page": "credentials"},
+    )
 
 
 def cli() -> None:

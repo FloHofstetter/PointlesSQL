@@ -19,6 +19,17 @@
             <span class="fw-semibold">PointlesSQL</span>
         </a>
         <ul class="navbar-nav ms-auto">
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('connections', 'external_locations', 'credentials') %} active{% endif %}"
+                   href="#" data-bs-toggle="dropdown">
+                    <i class="bi bi-plug"></i> Federation
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                    <li><a class="dropdown-item{% if active_page is defined and active_page == 'connections' %} active{% endif %}" href="/connections">Connections</a></li>
+                    <li><a class="dropdown-item{% if active_page is defined and active_page == 'external_locations' %} active{% endif %}" href="/external-locations">External Locations</a></li>
+                    <li><a class="dropdown-item{% if active_page is defined and active_page == 'credentials' %} active{% endif %}" href="/credentials">Credentials</a></li>
+                </ul>
+            </li>
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'notebook' %} active{% endif %}"
                    href="/notebook">
@@ -39,6 +50,9 @@
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"></script>
     <script src="/static/js/editable.js"></script>
     <script src="/static/js/properties_editor.js"></script>
+    <script src="/static/js/tags_editor.js"></script>
+    <script src="/static/js/permissions_editor.js"></script>
+    <script src="/static/js/federation.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
         document.body.addEventListener('htmx:afterSwap', (e) => {

@@ -74,6 +74,17 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
     </div>
 </div>
 
+{% with tags_url="/api/tags/table/" ~ catalog_name ~ "." ~ schema_name ~ "." ~ table_name, tags=tags %}
+    {% include "components/tags_editor.html" %}
+{% endwith %}
+
+{% set _table_full = catalog_name ~ "." ~ schema_name ~ "." ~ table_name %}
+{% with permissions_url="/api/permissions/table/" ~ _table_full,
+        effective_url="/api/effective-permissions/table/" ~ _table_full,
+        permissions=permissions, effective=effective %}
+    {% include "components/permissions_card.html" %}
+{% endwith %}
+
 {% if table.properties %}
 <div class="card mb-4">
     <div class="card-header">Properties</div>
@@ -137,5 +148,9 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
         </div>
     </div>
 </div>
+
+{% with lineage=lineage %}
+    {% include "components/lineage_card.html" %}
+{% endwith %}
 {% endif %}
 {% endblock %}

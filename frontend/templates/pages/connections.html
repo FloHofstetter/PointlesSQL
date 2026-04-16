@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Connections · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item active">Connections</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-plug fs-3"></i>
+        <h1 class="h3 mb-0">Connections</h1>
+    </div>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createConnectionModal">
+        <i class="bi bi-plus-lg me-1"></i>New Connection
+    </button>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if connections %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Name</th>
+                        <th>Type</th>
+                        <th>Owner</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for conn in connections %}
+                    <tr>
+                        <td class="ps-3">
+                            <a href="/connections/{{ conn.name }}" class="font-monospace text-decoration-none">{{ conn.name }}</a>
+                        </td>
+                        <td><span class="badge bg-info text-dark">{{ conn.connection_type or "—" }}</span></td>
+                        <td class="text-muted small">{{ conn.owner or "—" }}</td>
+                        <td class="text-muted small">{{ conn.created_at|epoch_ms }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-3 text-muted small fst-italic">No connections configured.</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="createConnectionModal" tabindex="-1" x-data="createConnectionForm()">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Connection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div x-show="error" x-cloak class="alert alert-danger small" x-text="error"></div>
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" x-model="name" placeholder="my_postgres">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Connection Type</label>
+                    <select class="form-select" x-model="connectionType">
+                        <option value="POSTGRESQL">PostgreSQL</option>
+                        <option value="MYSQL">MySQL</option>
+                        <option value="REDSHIFT">Redshift</option>
+                        <option value="SNOWFLAKE">Snowflake</option>
+                        <option value="BIGQUERY">BigQuery</option>
+                        <option value="DATABRICKS">Databricks</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Comment</label>
+                    <textarea class="form-control" x-model="comment" rows="2" placeholder="Optional description"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" @click="submit()" :disabled="saving">
+                    <span x-show="saving"><i class="bi bi-hourglass-split me-1"></i></span>Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

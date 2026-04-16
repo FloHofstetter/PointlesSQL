@@ -54,6 +54,16 @@
     </div>
 </div>
 
+{% with tags_url="/api/tags/catalog/" ~ catalog.name, tags=tags %}
+    {% include "components/tags_editor.html" %}
+{% endwith %}
+
+{% with permissions_url="/api/permissions/catalog/" ~ catalog.name,
+        effective_url="/api/effective-permissions/catalog/" ~ catalog.name,
+        permissions=permissions, effective=effective %}
+    {% include "components/permissions_card.html" %}
+{% endwith %}
+
 {% with patch_url="/api/catalogs/" ~ catalog.name, properties=catalog.properties %}
     {% include "components/properties_editor.html" %}
 {% endwith %}

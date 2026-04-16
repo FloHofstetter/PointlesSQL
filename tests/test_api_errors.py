@@ -23,6 +23,27 @@ def _app_with_failing_client() -> None:
     client.list_tables = AsyncMock(side_effect=err)
     client.update_catalog = AsyncMock(side_effect=err)
     client.update_schema = AsyncMock(side_effect=err)
+    client.get_tags = AsyncMock(side_effect=err)
+    client.update_tags = AsyncMock(side_effect=err)
+    client.get_permissions = AsyncMock(side_effect=err)
+    client.update_permissions = AsyncMock(side_effect=err)
+    client.get_effective_permissions = AsyncMock(side_effect=err)
+    client.get_lineage = AsyncMock(side_effect=err)
+    client.list_connections = AsyncMock(side_effect=err)
+    client.get_connection = AsyncMock(side_effect=err)
+    client.create_connection = AsyncMock(side_effect=err)
+    client.update_connection = AsyncMock(side_effect=err)
+    client.delete_connection = AsyncMock(side_effect=err)
+    client.list_external_locations = AsyncMock(side_effect=err)
+    client.get_external_location = AsyncMock(side_effect=err)
+    client.create_external_location = AsyncMock(side_effect=err)
+    client.update_external_location = AsyncMock(side_effect=err)
+    client.delete_external_location = AsyncMock(side_effect=err)
+    client.list_credentials = AsyncMock(side_effect=err)
+    client.get_credential = AsyncMock(side_effect=err)
+    client.create_credential = AsyncMock(side_effect=err)
+    client.update_credential = AsyncMock(side_effect=err)
+    client.delete_credential = AsyncMock(side_effect=err)
 
     app.state.uc_client = client
     app.state.settings = Settings(jupyter_enabled=False)
@@ -82,6 +103,99 @@ class TestJsonEndpointsReturn502:
             )
         assert resp.status_code == 502
         assert "Catalog server unavailable" in resp.json()["error"]
+
+
+    async def test_get_tags(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/tags/catalog/test_cat")
+        assert resp.status_code == 502
+        assert "Catalog server unavailable" in resp.json()["error"]
+
+    async def test_patch_tags(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.patch(
+                "/api/tags/catalog/test_cat",
+                json={"changes": [{"key": "k", "op": "set", "value": "v"}]},
+            )
+        assert resp.status_code == 502
+        assert "Catalog server unavailable" in resp.json()["error"]
+
+    async def test_get_permissions(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/permissions/catalog/test_cat")
+        assert resp.status_code == 502
+        assert "Catalog server unavailable" in resp.json()["error"]
+
+    async def test_patch_permissions(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.patch(
+                "/api/permissions/catalog/test_cat",
+                json={"changes": []},
+            )
+        assert resp.status_code == 502
+        assert "Catalog server unavailable" in resp.json()["error"]
+
+    async def test_get_effective_permissions(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/effective-permissions/catalog/test_cat")
+        assert resp.status_code == 502
+        assert "Catalog server unavailable" in resp.json()["error"]
+
+    async def test_get_lineage(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/lineage/cat.sch.tbl")
+        assert resp.status_code == 502
+        assert "Catalog server unavailable" in resp.json()["error"]
+
+    async def test_list_connections(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/connections")
+        assert resp.status_code == 502
+
+    async def test_create_connection(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.post(
+                "/api/connections",
+                json={"name": "test", "connection_type": "POSTGRESQL"},
+            )
+        assert resp.status_code == 502
+
+    async def test_delete_connection(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.delete("/api/connections/test")
+        assert resp.status_code == 502
+
+    async def test_list_external_locations(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/external-locations")
+        assert resp.status_code == 502
+
+    async def test_list_credentials(self) -> None:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            resp = await client.get("/api/credentials")
+        assert resp.status_code == 502
 
 
 class TestHtmlPagesShowError:

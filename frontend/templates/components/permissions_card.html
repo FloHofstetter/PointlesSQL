@@ -1,0 +1,116 @@
+{#
+  Permissions card with Assigned and Effective tabs.
+
+  Params:
+    permissions_url   — GET/PATCH endpoint for permissions
+    effective_url     — GET endpoint for effective permissions
+    permissions       — current list of privilege assignment dicts
+    effective         — current list of effective permission dicts
+#}
+<div class="card mb-4"
+     x-data='permissionsEditor({
+         permissionsUrl: {{ permissions_url|tojson }},
+         effectiveUrl: {{ effective_url|tojson }},
+         initial: {{ (permissions or [])|tojson }},
+         effectiveInitial: {{ (effective or [])|tojson }}
+     })'>
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <button class="nav-link" :class="{ active: tab === 'assigned' }"
+                        @click="tab = 'assigned'">Assigned</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" :class="{ active: tab === 'effective' }"
+                        @click="tab = 'effective'; loadEffective()">Effective</button>
+            </li>
+        </ul>
+    </div>
+
+    <div x-show="error" x-cloak class="alert alert-danger mb-0 rounded-0 small" x-text="error"></div>
+
+    <div class="card-body p-0">
+        {# --- Assigned tab --- #}
+        <div x-show="tab === 'assigned'">
+            <template x-if="assignments.length === 0">
+                <div class="p-3 text-muted small fst-italic">No permissions assigned.</div>
+            </template>
+
+            <table x-show="assignments.length > 0" class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3" style="width: 30%;">Principal</th>
+                        <th>Privileges</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="a in assignments" :key="a.principal">
+                        <tr>
+                            <td class="font-monospace small ps-3" x-text="a.principal"></td>
+                            <td>
+                                <template x-for="p in a.privileges" :key="p">
+                                    <span class="badge bg-info text-dark me-1 mb-1"
+                                          style="cursor: pointer;"
+                                          @click="revoke(a.principal, p)"
+                                          :title="'Click to revoke ' + p">
+                                        <span x-text="p"></span>
+                                        <i class="bi bi-x-lg ms-1 small"></i>
+                                    </span>
+                                </template>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+
+            <div class="p-3 border-top">
+                <div class="d-flex gap-2 align-items-end">
+                    <div class="flex-fill">
+                        <input type="text" class="form-control form-control-sm"
+                               x-model="grantPrincipal" placeholder="principal"
+                               @keydown.enter.prevent="grant()">
+                    </div>
+                    <div>
+                        <select class="form-select form-select-sm" x-model="grantPrivilege">
+                            <template x-for="p in privileges" :key="p">
+                                <option :value="p" x-text="p"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary" @click="grant()" :disabled="saving">
+                        <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-shield-plus'"></i>
+                        <span class="ms-1">Grant</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {# --- Effective tab --- #}
+        <div x-show="tab === 'effective'" x-cloak>
+            <template x-if="effective.length === 0">
+                <div class="p-3 text-muted small fst-italic">No effective permissions.</div>
+            </template>
+
+            <table x-show="effective.length > 0" class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3" style="width: 30%;">Principal</th>
+                        <th>Privileges</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="a in effective" :key="a.principal">
+                        <tr>
+                            <td class="font-monospace small ps-3" x-text="a.principal"></td>
+                            <td>
+                                <template x-for="p in a.privileges" :key="p">
+                                    <span class="badge bg-secondary me-1 mb-1" x-text="p"></span>
+                                </template>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

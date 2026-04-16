@@ -55,6 +55,17 @@
     </div>
 </div>
 
+{% with tags_url="/api/tags/schema/" ~ catalog_name ~ "." ~ schema_name, tags=tags %}
+    {% include "components/tags_editor.html" %}
+{% endwith %}
+
+{% set _schema_full = catalog_name ~ "." ~ schema_name %}
+{% with permissions_url="/api/permissions/schema/" ~ _schema_full,
+        effective_url="/api/effective-permissions/schema/" ~ _schema_full,
+        permissions=permissions, effective=effective %}
+    {% include "components/permissions_card.html" %}
+{% endwith %}
+
 {% with patch_url="/api/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema.name, properties=schema.properties %}
     {% include "components/properties_editor.html" %}
 {% endwith %}

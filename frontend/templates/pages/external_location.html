@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} · External Locations · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/external-locations" class="text-decoration-none">External Locations</a></li>
+    <li class="breadcrumb-item active">{{ name }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-hdd-network fs-3"></i>
+        <h1 class="h3 mb-0">{{ name }}</h1>
+    </div>
+    <div x-data='deleteConfirm({ deleteUrl: {{ ("/api/external-locations/" ~ name)|tojson }}, redirectUrl: "/external-locations" })'>
+        <button x-show="!confirming" class="btn btn-outline-danger btn-sm" @click="confirming = true">
+            <i class="bi bi-trash me-1"></i>Delete
+        </button>
+        <span x-show="confirming" x-cloak class="d-flex gap-2">
+            <button class="btn btn-danger btn-sm" @click="doDelete()" :disabled="deleting">Confirm Delete</button>
+            <button class="btn btn-outline-secondary btn-sm" @click="confirming = false">Cancel</button>
+        </span>
+        <div x-show="error" x-cloak class="text-danger small mt-1" x-text="error"></div>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+</div>
+{% elif location %}
+<div class="card mb-4">
+    <div class="card-header">Metadata</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3 text-muted">Name</dt>
+            <dd class="col-sm-9 font-monospace">{{ location.name }}</dd>
+
+            <dt class="col-sm-3 text-muted">URL</dt>
+            <dd class="col-sm-9 font-monospace">{{ location.url or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Credential</dt>
+            <dd class="col-sm-9">{{ location.credential_name or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Comment</dt>
+            <dd class="col-sm-9">
+                {% with patch_url="/api/external-locations/" ~ name, field="comment", value=location.comment, placeholder="Click to add comment" %}
+                    {% include "components/editable.html" %}
+                {% endwith %}
+            </dd>
+
+            <dt class="col-sm-3 text-muted">Owner</dt>
+            <dd class="col-sm-9">{{ location.owner or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">ID</dt>
+            <dd class="col-sm-9 font-monospace small">{{ location.id or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Created</dt>
+            <dd class="col-sm-9">{{ location.created_at|epoch_ms }}{% if location.created_by %} by {{ location.created_by }}{% endif %}</dd>
+
+            <dt class="col-sm-3 text-muted">Updated</dt>
+            <dd class="col-sm-9">{{ location.updated_at|epoch_ms }}{% if location.updated_by %} by {{ location.updated_by }}{% endif %}</dd>
+        </dl>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
