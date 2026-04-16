@@ -353,7 +353,7 @@ PointlesSQL
 │   │   │   response header
 │   │   └── Tests: 13 new tests (243 total pass)
 │   │
-│   ├── Sprint 15 — Docstrings + pydoclint                  ✅ done
+│   ├── Sprint 15 — Docstrings + pydoclint                  ✅ done (33b97ef)
 │   │   ├── `[tool.pydoclint]` config in `pyproject.toml`:
 │   │   │   Google style, types in signatures only (not
 │   │   │   duplicated in docstrings), `__init__` docs merged
