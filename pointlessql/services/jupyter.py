@@ -49,6 +49,7 @@ async def managed_jupyter(
         "--ServerApp.password=''",
         "--ServerApp.disable_check_xsrf=True",
         "--ServerApp.allow_origin='*'",
+        "--ServerApp.tornado_settings={'headers': {'Content-Security-Policy': \"frame-ancestors 'self' http://localhost:8000 http://127.0.0.1:8000\", 'X-Frame-Options': ''}}",
         f"--notebook-dir={notebook_dir}",
     ]
 
