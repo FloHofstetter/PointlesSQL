@@ -56,11 +56,95 @@
             <dd class="col-sm-9 font-monospace">{{ job.cron_expr }}</dd>
             <dt class="col-sm-3">Run as user</dt>
             <dd class="col-sm-9">#{{ job.run_as_user_id }}</dd>
+            <dt class="col-sm-3">Max parallel runs</dt>
+            <dd class="col-sm-9">{{ job.max_parallel_runs }}</dd>
             <dt class="col-sm-3">Config</dt>
             <dd class="col-sm-9"><pre class="mb-0 small">{{ job.config|tojson(indent=2) }}</pre></dd>
         </dl>
     </div>
 </div>
+
+{% if tasks %}
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3"></i>DAG tasks
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive" x-data="{ openTaskId: null, logs: [], loading: false }">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Name</th>
+                        <th>Kind</th>
+                        <th>Depends on</th>
+                        <th>Retries</th>
+                        <th>Latest status</th>
+                        <th>Attempts</th>
+                        <th>Last error</th>
+                        <th class="pe-3"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tasks %}
+                    <tr>
+                        <td class="ps-3 font-monospace">{{ t.name }}</td>
+                        <td><span class="badge bg-info text-dark">{{ t.kind }}</span></td>
+                        <td class="small">{{ t.depends_on|join(", ") if t.depends_on else "—" }}</td>
+                        <td class="small">{{ t.max_retries }} × {{ t.retry_backoff_seconds }}s</td>
+                        <td>
+                            {% if t.latest_status == "succeeded" %}
+                            <span class="badge bg-success">{{ t.latest_status }}</span>
+                            {% elif t.latest_status == "failed" %}
+                            <span class="badge bg-danger">{{ t.latest_status }}</span>
+                            {% elif t.latest_status == "skipped" %}
+                            <span class="badge bg-secondary">{{ t.latest_status }}</span>
+                            {% elif t.latest_status %}
+                            <span class="badge bg-info text-dark">{{ t.latest_status }}</span>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ t.latest_attempts }}</td>
+                        <td class="small text-danger">{{ t.latest_error or "" }}</td>
+                        <td class="pe-3 text-end">
+                            {% if t.latest_run_id %}
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    x-on:click="
+                                        if (openTaskId === {{ t.id }}) { openTaskId = null; return; }
+                                        openTaskId = {{ t.id }};
+                                        loading = true;
+                                        fetch('/api/jobs/{{ job.id }}/runs/{{ t.latest_run_id }}/logs?task_id={{ t.id }}')
+                                            .then(r => r.json())
+                                            .then(data => { logs = data; loading = false; })
+                                            .catch(() => { loading = false; });
+                                    ">
+                                <i class="bi bi-journal-text"></i> Logs
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr x-show="openTaskId === {{ t.id }}" x-cloak>
+                        <td colspan="8" class="bg-body-tertiary small">
+                            <div x-show="loading" class="text-muted">Loading logs…</div>
+                            <template x-for="line in logs" :key="line.id">
+                                <div class="font-monospace small">
+                                    <span class="text-muted" x-text="line.ts"></span>
+                                    <span class="badge bg-secondary" x-text="line.level"></span>
+                                    <span x-text="line.message"></span>
+                                </div>
+                            </template>
+                            <div x-show="!loading && logs.length === 0" class="text-muted fst-italic">
+                                No log entries for this task.
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="card">
     <div class="card-header d-flex align-items-center gap-2">

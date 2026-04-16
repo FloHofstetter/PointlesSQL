@@ -1,35 +1,40 @@
-"""In-process cron-style scheduler for PointlesSQL jobs.
+"""In-process cron-style scheduler with multi-task DAG execution.
 
-Sprint 19 introduces the minimum viable scheduler: an ``asyncio`` task
-spawned by the FastAPI lifespan that wakes every
-``scheduler_tick_seconds`` seconds, looks at every :class:`~pointlessql.models.Job`
-row, and launches the ones whose ``cron_expr`` indicates they are due.
-No APScheduler — it is overkill for a single-worker install and drags
-in a SQLAlchemy-backed jobstore we do not need.
+Sprint 19 shipped the minimum viable scheduler — one task per job,
+launched when the cron expression fired. Sprint 20 extends that with:
 
-Key contracts:
+* **Multi-task DAGs.** Each job can have many :class:`~pointlessql.models.JobTask`
+  rows wired into a directed acyclic graph via ``depends_on``. The
+  scheduler walks the graph in topological order, launches ready
+  tasks (ones whose upstreams have all succeeded), and marks downstream
+  tasks ``skipped`` when any upstream fails.
+* **Per-task retries.** Each task carries ``max_retries`` and
+  ``retry_backoff_seconds``. Retries are linear (``attempt_index *
+  backoff``) because every attempt already competes for the per-job
+  and global scheduler semaphores — exponential on top just makes
+  tuning harder.
+* **Structured logging.** Every state transition (start, retry,
+  success, failure, skip) writes a :class:`~pointlessql.models.JobLog`
+  row via :func:`log_job`, and the scheduler per-task span sets
+  :data:`~pointlessql.logging_config.job_run_id_var`,
+  :data:`~pointlessql.logging_config.task_id_var`, and (for backwards
+  compatibility with Sprint 19 log lines) :data:`~pointlessql.logging_config.request_id_var`
+  so stdlib logger output carries the same correlation ids.
+* **Concurrency caps.** A global
+  :class:`asyncio.Semaphore` built from
+  :attr:`~pointlessql.settings.Settings.scheduler_max_concurrent_runs`
+  limits the total number of in-flight runs; a per-job semaphore
+  (``max_parallel_runs``) limits fan-out for a single job. Both
+  semaphores are acquired *before* the :class:`JobRun` flips to
+  ``running`` so queued runs do not hold DB state.
+* **Cycle detection.** Cycles in a DAG raise
+  :class:`~pointlessql.exceptions.ValidationError` at creation time via
+  :func:`validate_dag`. Implemented as a DFS three-color walk (WHITE →
+  GRAY → BLACK): a back-edge onto a GRAY node is a cycle.
 
-* **Overlap prevention.** Before launching a job, the scheduler queries
-  the DB for an outstanding ``running`` :class:`~pointlessql.models.JobRun`
-  with the same ``job_id``. If one is found the tick inserts a
-  ``skipped`` row instead of launching again. The DB is the single
-  source of truth: an in-memory set would drift across process
-  restarts and multiple workers (although we only deploy one).
-* **Run-as-user.** Every job carries a ``run_as_user_id``. The scheduler
-  loads the user and builds a :class:`~pointlessql.services.unitycatalog.UnityCatalogClient`
-  via :meth:`~pointlessql.services.unitycatalog.UnityCatalogClient.for_principal`
-  so ``X-Principal`` forwards to soyuz and soyuz's authorization
-  rules apply exactly the way they do for HTTP-driven requests.
-* **Executor registry.** A :class:`KindRegistry` maps ``kind`` → coroutine.
-  Ships with ``"pg_sync"`` (wrapping :func:`pointlessql.services.pg_sync.run_sync`)
-  and ``"python"`` (dispatches to a ``pointlessql.jobs`` entry point).
-  Tests register fake kinds directly.
-* **Correlation id.** The scheduler sets
-  :data:`pointlessql.logging_config.request_id_var` to ``"job-<id>"``
-  for the duration of each run so service-layer log lines emitted
-  during the run carry a traceable id. Sprint 20 replaces this with
-  a dedicated ``job_run_id_var`` once the DAG engine needs
-  per-task correlation.
+Jobs with *no* :class:`JobTask` rows fall back to the Sprint 19
+single-task shortcut and invoke the executor registered under
+``job.kind`` with ``job.config`` as its payload.
 """
 
 from __future__ import annotations
@@ -39,7 +44,7 @@ import datetime
 import importlib.metadata as _md
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from typing import Any
 
 from croniter import croniter
@@ -47,8 +52,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.exceptions import PointlessSQLError, ValidationError
-from pointlessql.logging_config import request_id_var
-from pointlessql.models import Job, JobRun, User
+from pointlessql.logging_config import (
+    job_run_id_var,
+    request_id_var,
+    task_id_var,
+)
+from pointlessql.models import (
+    Job,
+    JobLog,
+    JobRun,
+    JobTask,
+    TaskRun,
+    User,
+)
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
@@ -58,14 +74,20 @@ logger = logging.getLogger(__name__)
 
 # Executor callable signature. ``uc_client`` is a ``UnityCatalogClient``
 # built with ``for_principal(user.email)`` so soyuz's ``X-Principal``
-# applies. ``config`` is the deserialized ``jobs.config`` dict. The
-# executor returns ``None`` on success and raises on failure — the
-# scheduler catches the exception, records it on the
-# :class:`~pointlessql.models.JobRun`, and keeps ticking.
+# applies. ``config`` is the deserialized ``jobs.config`` (single-task
+# shortcut) or ``job_tasks.config`` (DAG task) dict. The executor
+# returns ``None`` on success and raises on failure — the scheduler
+# catches the exception, records it on the
+# :class:`~pointlessql.models.JobRun` / :class:`~pointlessql.models.TaskRun`,
+# and keeps ticking.
 JobExecutor = Callable[
     [int, UserInfo, dict[str, Any], UnityCatalogClient],
     Awaitable[None],
 ]
+
+
+# Injected for tests so retry backoff does not actually sleep.
+_sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
 
 
 class KindRegistry:
@@ -236,21 +258,14 @@ def _load_job_by_id(session: Session, job_id: int) -> Job | None:
     return session.get(Job, job_id)
 
 
-def _has_running_run(session: Session, job_id: int) -> bool:
-    """Return whether a ``running`` run already exists for *job_id*.
-
-    The scheduler treats this as the authoritative overlap guard. We
-    query on every tick rather than caching in memory because the
-    source of truth is the DB and a worker restart must not lose the
-    overlap fact.
-    """
+def _count_running_runs(session: Session, job_id: int) -> int:
+    """Return the number of runs currently in ``running`` for *job_id*."""
     stmt = (
         select(JobRun.id)
         .where(JobRun.job_id == job_id)
         .where(JobRun.status == "running")
-        .limit(1)
     )
-    return session.scalar(stmt) is not None
+    return len(list(session.scalars(stmt).all()))
 
 
 def _last_run_started(session: Session, job_id: int) -> datetime.datetime | None:
@@ -380,6 +395,458 @@ def _finish_run(
     session.commit()
 
 
+def log_job(
+    factory: sessionmaker[Session],
+    job_run_id: int,
+    task_id: int | None,
+    level: str,
+    message: str,
+) -> None:
+    """Append one :class:`~pointlessql.models.JobLog` row.
+
+    Synchronous on purpose — the scheduler calls this at every task
+    state transition and we want the log rows to be visible in the
+    next HTTP request for the log panel without waiting on any
+    background flush. SQLite's ``Text`` write is cheap enough that this
+    does not gate throughput.
+
+    Args:
+        factory: SQLAlchemy session factory for the PointlesSQL metadata DB.
+        job_run_id: Owning :class:`~pointlessql.models.JobRun` id.
+        task_id: Owning :class:`~pointlessql.models.JobTask` id, or
+            ``None`` for run-scoped lifecycle events.
+        level: Python log level name (``"INFO"``, ``"WARNING"``,
+            ``"ERROR"``).
+        message: Free-form log text.
+    """
+    with factory() as session:
+        session.add(
+            JobLog(
+                job_run_id=job_run_id,
+                task_id=task_id,
+                ts=_utcnow(),
+                level=level,
+                message=message,
+            )
+        )
+        session.commit()
+
+
+# -- DAG primitives ---------------------------------------------------
+
+
+def _parse_depends_on(raw: str) -> list[int]:
+    """Deserialize a ``job_tasks.depends_on`` string into a list of ids."""
+    try:
+        value = json.loads(raw or "[]")
+    except json.JSONDecodeError as exc:
+        raise ValidationError(
+            f"task depends_on is not valid JSON: {raw!r}"
+        ) from exc
+    if not isinstance(value, list):
+        raise ValidationError("task depends_on must be a JSON array")
+    typed: list[int] = []
+    for item in value:  # pyright: ignore[reportUnknownVariableType]
+        if not isinstance(item, int):
+            raise ValidationError(
+                "task depends_on entries must be integers"
+            )
+        typed.append(item)
+    return typed
+
+
+def validate_dag(tasks: Iterable[JobTask]) -> None:
+    """Ensure the task graph is a DAG.
+
+    Iterative three-color DFS: nodes start WHITE. When we descend into
+    a node we mark it GRAY; when we come back up we mark it BLACK. A
+    back-edge onto a GRAY node means we've looped back into the
+    current recursion stack — that is a cycle. BLACK nodes are fully
+    explored and safe to cross repeatedly. Also checks every
+    ``depends_on`` target actually exists within the same job.
+
+    Args:
+        tasks: All :class:`JobTask` rows that form the candidate DAG.
+
+    Raises:
+        ValidationError: When any cycle is detected or a dependency
+            points to an id outside the supplied set.
+    """
+    task_list = list(tasks)
+    by_id: dict[int, JobTask] = {t.id: t for t in task_list}
+
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: dict[int, int] = {t.id: WHITE for t in task_list}
+
+    # Pre-resolve every task's dependency list once so the walk below
+    # is a pure graph traversal with no further JSON parsing.
+    deps_of: dict[int, list[int]] = {}
+    for t in task_list:
+        parsed = _parse_depends_on(t.depends_on)
+        for dep_id in parsed:
+            if dep_id not in by_id:
+                raise ValidationError(
+                    f"task {t.id} depends on unknown task id {dep_id}"
+                )
+        deps_of[t.id] = parsed
+
+    for root in task_list:
+        if color[root.id] != WHITE:
+            continue
+        # Stack frames: (task_id, remaining-deps-to-visit). Fresh
+        # frames push a copy of ``deps_of[node]`` so we can pop from
+        # it without mutating the shared map.
+        path: list[int] = [root.id]
+        stack: list[tuple[int, list[int]]] = [
+            (root.id, list(deps_of[root.id]))
+        ]
+        color[root.id] = GRAY
+        while stack:
+            node_id, remaining = stack[-1]
+            if not remaining:
+                color[node_id] = BLACK
+                path.pop()
+                stack.pop()
+                continue
+            next_dep = remaining.pop(0)
+            state = color[next_dep]
+            if state == GRAY:
+                cycle = path[path.index(next_dep):] + [next_dep]
+                raise ValidationError(
+                    f"cycle detected in task graph: {cycle}"
+                )
+            if state == BLACK:
+                continue
+            color[next_dep] = GRAY
+            path.append(next_dep)
+            stack.append((next_dep, list(deps_of[next_dep])))
+
+
+def _topological_order(tasks: list[JobTask]) -> list[JobTask]:
+    """Return *tasks* in a deterministic topological order.
+
+    Kahn's algorithm walks the graph breadth-first: start with every
+    node that has no unsatisfied dependencies, emit it, decrement the
+    remaining-count of its dependents, and repeat. Within each "round"
+    we sort by ``id`` so the order is stable across runs — tests rely
+    on this for round-by-round assertions.
+
+    Args:
+        tasks: All :class:`JobTask` rows for one job.
+
+    Returns:
+        The same rows, re-ordered so every task appears after its
+        dependencies.
+
+    Raises:
+        ValidationError: When the graph contains a cycle (should have
+            been caught at DAG-validation time, but we guard here too).
+    """
+    by_id: dict[int, JobTask] = {t.id: t for t in tasks}
+    deps: dict[int, list[int]] = {t.id: _parse_depends_on(t.depends_on) for t in tasks}
+    remaining: dict[int, int] = {tid: len(d) for tid, d in deps.items()}
+    # Reverse map: dep_id → list of tasks that depend on it.
+    dependents: dict[int, list[int]] = {tid: [] for tid in by_id}
+    for tid, d in deps.items():
+        for dep_id in d:
+            dependents[dep_id].append(tid)
+
+    ready = sorted(tid for tid, n in remaining.items() if n == 0)
+    output: list[JobTask] = []
+    while ready:
+        tid = ready.pop(0)
+        output.append(by_id[tid])
+        for child in sorted(dependents[tid]):
+            remaining[child] -= 1
+            if remaining[child] == 0:
+                # Insert in sorted position so the stable order holds.
+                ready.append(child)
+                ready.sort()
+    if len(output) != len(tasks):
+        raise ValidationError("cycle detected in task graph during toposort")
+    return output
+
+
+# -- Task execution ---------------------------------------------------
+
+
+def _create_task_run(
+    session: Session,
+    job_run_id: int,
+    task_id: int,
+    status: str,
+) -> TaskRun:
+    """Insert a :class:`TaskRun` row for one node in the DAG."""
+    tr = TaskRun(
+        job_run_id=job_run_id,
+        task_id=task_id,
+        status=status,
+        attempts=0,
+    )
+    session.add(tr)
+    session.commit()
+    session.refresh(tr)
+    return tr
+
+
+def _update_task_run(
+    session: Session,
+    task_run_id: int,
+    *,
+    status: str | None = None,
+    attempts: int | None = None,
+    error: str | None = None,
+    started_at: datetime.datetime | None = None,
+    finished_at: datetime.datetime | None = None,
+) -> None:
+    """Mutate a :class:`TaskRun` — set only the provided fields."""
+    row = session.get(TaskRun, task_run_id)
+    if row is None:  # pragma: no cover — row was just inserted
+        return
+    if status is not None:
+        row.status = status
+    if attempts is not None:
+        row.attempts = attempts
+    if error is not None:
+        row.error = error
+    if started_at is not None:
+        row.started_at = started_at
+    if finished_at is not None:
+        row.finished_at = finished_at
+    session.commit()
+
+
+async def _run_one_task(
+    factory: sessionmaker[Session],
+    registry: KindRegistry,
+    task: JobTask,
+    task_run_id: int,
+    job_run_id: int,
+    user_info: UserInfo,
+    uc_client: UnityCatalogClient,
+) -> tuple[bool, str | None]:
+    """Execute one task with retry support.
+
+    Sets :data:`~pointlessql.logging_config.task_id_var` for the
+    duration so log records emitted by the executor (including the
+    :func:`log_job` rows this function writes) carry the task id.
+
+    Args:
+        factory: Session factory for writing state transitions.
+        registry: Kind → executor registry.
+        task: The :class:`JobTask` to run.
+        task_run_id: Id of the pre-created :class:`TaskRun` row.
+        job_run_id: Owning :class:`JobRun` id.
+        user_info: Run-as user info, forwarded to the executor.
+        uc_client: Principal-forwarded facade, forwarded to the executor.
+
+    Returns:
+        A ``(succeeded, error)`` tuple. ``succeeded`` is ``True`` iff
+        *some* attempt succeeded; ``error`` is the final exception
+        message when ``succeeded`` is ``False``.
+    """
+    task_token = task_id_var.set(str(task.id))
+    try:
+        try:
+            config: dict[str, Any] = json.loads(task.config or "{}")
+        except json.JSONDecodeError as exc:
+            detail = f"invalid task config JSON: {exc}"
+            log_job(factory, job_run_id, task.id, "ERROR", detail)
+            with factory() as session:
+                _update_task_run(
+                    session,
+                    task_run_id,
+                    status="failed",
+                    attempts=0,
+                    error=detail,
+                    finished_at=_utcnow(),
+                )
+            return False, detail
+
+        try:
+            executor = registry.get(task.kind)
+        except ValidationError as exc:
+            detail = exc.detail
+            log_job(factory, job_run_id, task.id, "ERROR", detail)
+            with factory() as session:
+                _update_task_run(
+                    session,
+                    task_run_id,
+                    status="failed",
+                    attempts=0,
+                    error=detail,
+                    finished_at=_utcnow(),
+                )
+            return False, detail
+
+        max_attempts = max(1, task.max_retries + 1)
+        last_error: str | None = None
+        started = _utcnow()
+        log_job(
+            factory,
+            job_run_id,
+            task.id,
+            "INFO",
+            f"task {task.name!r} starting (max_attempts={max_attempts})",
+        )
+        with factory() as session:
+            _update_task_run(
+                session,
+                task_run_id,
+                status="running",
+                started_at=started,
+            )
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                await executor(job_run_id, user_info, config, uc_client)
+            except PointlessSQLError as exc:
+                last_error = exc.detail
+            except Exception as exc:  # noqa: BLE001 — executor boundary
+                last_error = str(exc)
+            else:
+                log_job(
+                    factory,
+                    job_run_id,
+                    task.id,
+                    "INFO",
+                    f"task {task.name!r} succeeded on attempt {attempt}",
+                )
+                with factory() as session:
+                    _update_task_run(
+                        session,
+                        task_run_id,
+                        status="succeeded",
+                        attempts=attempt,
+                        finished_at=_utcnow(),
+                    )
+                return True, None
+
+            # Failure path.
+            log_job(
+                factory,
+                job_run_id,
+                task.id,
+                "WARNING",
+                f"task {task.name!r} attempt {attempt}/{max_attempts} "
+                f"failed: {last_error}",
+            )
+            with factory() as session:
+                _update_task_run(
+                    session,
+                    task_run_id,
+                    attempts=attempt,
+                    error=last_error,
+                )
+            if attempt < max_attempts:
+                delay = float(attempt * task.retry_backoff_seconds)
+                if delay > 0:
+                    await _sleep(delay)
+
+        log_job(
+            factory,
+            job_run_id,
+            task.id,
+            "ERROR",
+            f"task {task.name!r} exhausted retries: {last_error}",
+        )
+        with factory() as session:
+            _update_task_run(
+                session,
+                task_run_id,
+                status="failed",
+                finished_at=_utcnow(),
+                error=last_error,
+            )
+        return False, last_error
+    finally:
+        task_id_var.reset(task_token)
+
+
+async def _run_dag(
+    factory: sessionmaker[Session],
+    registry: KindRegistry,
+    tasks: list[JobTask],
+    job_run_id: int,
+    user_info: UserInfo,
+    uc_client: UnityCatalogClient,
+) -> tuple[bool, str | None]:
+    """Walk *tasks* topologically, executing ready ones and skipping on upstream failure.
+
+    Args:
+        factory: Session factory for state transitions.
+        registry: Kind → executor registry.
+        tasks: Every :class:`JobTask` row in the job, pre-ordered (the
+            function re-orders anyway; the caller pass is just the
+            full set).
+        job_run_id: Owning :class:`JobRun` id.
+        user_info: Run-as user info.
+        uc_client: Principal-forwarded facade.
+
+    Returns:
+        A ``(succeeded, error)`` tuple where ``succeeded`` is ``True``
+        iff every task succeeded (any ``failed`` / ``skipped`` is a
+        run-level failure).
+    """
+    validate_dag(tasks)
+    ordered = _topological_order(tasks)
+    task_run_ids: dict[int, int] = {}
+    with factory() as session:
+        for t in ordered:
+            tr = _create_task_run(session, job_run_id, t.id, "pending")
+            task_run_ids[t.id] = tr.id
+
+    results: dict[int, str] = {}  # task.id -> "succeeded" | "failed" | "skipped"
+    run_error: str | None = None
+    run_ok = True
+
+    for t in ordered:
+        deps = _parse_depends_on(t.depends_on)
+        upstream_failed = [
+            d for d in deps if results.get(d) in {"failed", "skipped"}
+        ]
+        if upstream_failed:
+            detail = (
+                f"task {t.name!r} skipped: upstream "
+                f"{upstream_failed} did not succeed"
+            )
+            log_job(factory, job_run_id, t.id, "INFO", detail)
+            with factory() as session:
+                _update_task_run(
+                    session,
+                    task_run_ids[t.id],
+                    status="skipped",
+                    finished_at=_utcnow(),
+                    error=f"upstream {upstream_failed} failed",
+                )
+            results[t.id] = "skipped"
+            run_ok = False
+            run_error = run_error or detail
+            continue
+
+        ok, err = await _run_one_task(
+            factory,
+            registry,
+            t,
+            task_run_ids[t.id],
+            job_run_id,
+            user_info,
+            uc_client,
+        )
+        if ok:
+            results[t.id] = "succeeded"
+        else:
+            results[t.id] = "failed"
+            run_ok = False
+            if run_error is None:
+                run_error = (
+                    f"task {t.name!r} failed: {err}" if err else
+                    f"task {t.name!r} failed"
+                )
+
+    return run_ok, run_error
+
+
 async def execute_run(
     factory: sessionmaker[Session],
     settings: Settings,
@@ -393,14 +860,13 @@ async def execute_run(
     manual "Run now" route invoke. It:
 
     1. Loads the job + run-as user.
-    2. Inserts a ``running`` :class:`JobRun`, setting ``request_id_var``
-       to ``job-<run_id>`` for the duration so downstream log lines
-       carry a correlation id.
-    3. Dispatches to the kind's executor with a principal-forwarded
-       :class:`UnityCatalogClient`.
-    4. Updates the run with a terminal status, re-raising
-       :class:`PointlessSQLError` unchanged so the caller (the API
-       route) can return a non-200 response.
+    2. Inserts a ``running`` :class:`JobRun`, setting
+       :data:`~pointlessql.logging_config.job_run_id_var` and (for
+       Sprint 19 compatibility) :data:`~pointlessql.logging_config.request_id_var`
+       for the duration so downstream log lines carry correlation ids.
+    3. If :class:`JobTask` rows exist, walks the DAG via :func:`_run_dag`.
+       Otherwise falls back to the Sprint 19 single-task shortcut.
+    4. Updates the run with a terminal status.
 
     Args:
         factory: SQLAlchemy session factory for the PointlesSQL metadata DB.
@@ -414,9 +880,8 @@ async def execute_run(
         session so the caller can read attributes safely).
 
     Raises:
-        ValidationError: When the job or its run-as user cannot be
-            resolved — the run is still recorded as ``failed`` before
-            the exception propagates.
+        ValidationError: When the job cannot be resolved — the run is
+            not inserted in that case so the caller observes the raise.
     """
     with factory() as session:
         job = _load_job_by_id(session, job_id)
@@ -425,51 +890,101 @@ async def execute_run(
         user_info = _load_user_info(session, job.run_as_user_id)
         kind = job.kind
         config_json = job.config
+        missing_user_run_as = job.run_as_user_id
+        tasks = list(
+            session.scalars(
+                select(JobTask).where(JobTask.job_id == job_id)
+            ).all()
+        )
+        for t in tasks:
+            session.expunge(t)
 
-    try:
-        config: dict[str, Any] = json.loads(config_json or "{}")
-    except json.JSONDecodeError as exc:
-        # Malformed config is a permanent failure — record a failed run
-        # so the UI surfaces it and move on.
-        with factory() as session:
-            run = _start_run(session, job_id, trigger)
-            _finish_run(
-                session,
-                run.id,
-                "failed",
-                f"invalid job config JSON: {exc}",
-            )
-            final = session.get(JobRun, run.id)
-            assert final is not None
-            session.expunge(final)
-            return final
+    is_dag = len(tasks) > 0
+    config: dict[str, Any] = {}
+
+    if not is_dag:
+        try:
+            config = json.loads(config_json or "{}")
+        except json.JSONDecodeError as exc:
+            with factory() as session:
+                run = _start_run(session, job_id, trigger)
+                _finish_run(
+                    session,
+                    run.id,
+                    "failed",
+                    f"invalid job config JSON: {exc}",
+                )
+                final = session.get(JobRun, run.id)
+                assert final is not None
+                session.expunge(final)
+                return final
 
     with factory() as session:
         run = _start_run(session, job_id, trigger)
         run_id = run.id
 
-    token = request_id_var.set(f"job-{run_id}")
+    req_token = request_id_var.set(f"job-{run_id}")
+    job_token = job_run_id_var.set(str(run_id))
     try:
         if user_info is None:
             message = (
-                f"run-as user {job.run_as_user_id} is missing or inactive — "
+                f"run-as user {missing_user_run_as} is missing or inactive — "
                 "cannot build principal client"
             )
             logger.error("scheduler: %s", message)
+            log_job(factory, run_id, None, "ERROR", message)
             with factory() as session:
                 _finish_run(session, run_id, "failed", message)
             return _detached_run(factory, run_id)
 
         try:
-            executor = registry.get(kind)
             uc_client = UnityCatalogClient.for_principal(
                 settings, user_info["email"]
+            )
+        except PointlessSQLError as exc:
+            logger.warning(
+                "scheduler: job %d principal client failed: %s", job_id, exc.detail
+            )
+            log_job(factory, run_id, None, "ERROR", exc.detail)
+            with factory() as session:
+                _finish_run(session, run_id, "failed", exc.detail)
+            return _detached_run(factory, run_id)
+
+        if is_dag:
+            try:
+                ok, err = await _run_dag(
+                    factory, registry, tasks, run_id, user_info, uc_client
+                )
+            except ValidationError as exc:
+                logger.warning(
+                    "scheduler: job %d DAG invalid: %s", job_id, exc.detail
+                )
+                log_job(factory, run_id, None, "ERROR", exc.detail)
+                with factory() as session:
+                    _finish_run(session, run_id, "failed", exc.detail)
+                return _detached_run(factory, run_id)
+            with factory() as session:
+                _finish_run(
+                    session,
+                    run_id,
+                    "succeeded" if ok else "failed",
+                    None if ok else err,
+                )
+            return _detached_run(factory, run_id)
+
+        # Single-task shortcut.
+        try:
+            executor = registry.get(kind)
+            log_job(
+                factory, run_id, None, "INFO",
+                f"single-task job kind={kind} starting",
             )
             await executor(run_id, user_info, config, uc_client)
         except PointlessSQLError as exc:
             logger.warning(
                 "scheduler: job %d (%s) failed: %s", job_id, kind, exc.detail
             )
+            log_job(factory, run_id, None, "ERROR", exc.detail)
             with factory() as session:
                 _finish_run(session, run_id, "failed", exc.detail)
             return _detached_run(factory, run_id)
@@ -477,15 +992,18 @@ async def execute_run(
             logger.exception(
                 "scheduler: job %d (%s) raised unexpectedly", job_id, kind
             )
+            log_job(factory, run_id, None, "ERROR", str(exc))
             with factory() as session:
                 _finish_run(session, run_id, "failed", str(exc))
             return _detached_run(factory, run_id)
 
+        log_job(factory, run_id, None, "INFO", "job succeeded")
         with factory() as session:
             _finish_run(session, run_id, "succeeded", None)
         return _detached_run(factory, run_id)
     finally:
-        request_id_var.reset(token)
+        job_run_id_var.reset(job_token)
+        request_id_var.reset(req_token)
 
 
 def _detached_run(
@@ -504,17 +1022,26 @@ async def tick_once(
     settings: Settings,
     registry: KindRegistry,
     now: datetime.datetime | None = None,
+    *,
+    global_semaphore: asyncio.Semaphore | None = None,
+    per_job_semaphores: dict[int, asyncio.Semaphore] | None = None,
 ) -> list[JobRun]:
     """Evaluate every job once and launch the due ones.
 
     Exposed as a top-level function so tests can call it directly with
-    a frozen clock without standing up the long-running loop.
+    a frozen clock without standing up the long-running loop. The two
+    semaphores are optional — when ``None`` the caller is telling us
+    this tick does not need concurrency caps (tests typically go this
+    route). When provided, the tick acquires the global semaphore
+    before the per-job one to keep lock-ordering consistent.
 
     Args:
         factory: SQLAlchemy session factory.
         settings: Application settings.
         registry: Kind → executor registry.
         now: Override for the "current time" — defaults to real UTC now.
+        global_semaphore: Cross-job concurrency cap.
+        per_job_semaphores: Per-job concurrency caps, keyed by job id.
 
     Returns:
         Every :class:`JobRun` row written during this tick, in insert
@@ -534,9 +1061,8 @@ async def tick_once(
             last_started = _last_run_started(session, job.id)
             if not _is_due(job.cron_expr, current_time, last_started):
                 continue
-            if _has_running_run(session, job.id):
-                # Double-launch guard — write a skipped row so the UI
-                # makes it clear the scheduler did notice the tick.
+            running = _count_running_runs(session, job.id)
+            if running >= max(1, job.max_parallel_runs):
                 skipped = _insert_skipped(
                     session,
                     job.id,
@@ -545,12 +1071,61 @@ async def tick_once(
                 session.expunge(skipped)
                 launched.append(skipped)
                 continue
-        # Launch outside the session context; execute_run manages its
-        # own transactions.
-        run = await execute_run(factory, settings, registry, job.id, "scheduled")
+        run = await _execute_with_semaphores(
+            factory,
+            settings,
+            registry,
+            job.id,
+            "scheduled",
+            global_semaphore,
+            per_job_semaphores,
+        )
         launched.append(run)
 
     return launched
+
+
+async def _execute_with_semaphores(
+    factory: sessionmaker[Session],
+    settings: Settings,
+    registry: KindRegistry,
+    job_id: int,
+    trigger: str,
+    global_sem: asyncio.Semaphore | None,
+    per_job_sems: dict[int, asyncio.Semaphore] | None,
+) -> JobRun:
+    """Run :func:`execute_run` inside optional semaphore guards.
+
+    Layered so that :func:`execute_run` itself stays free of
+    concurrency concerns — tests call it directly and assert on
+    outcomes without building any semaphores.
+    """
+    if global_sem is None and per_job_sems is None:
+        return await execute_run(factory, settings, registry, job_id, trigger)
+
+    per_job_sem: asyncio.Semaphore | None = None
+    if per_job_sems is not None:
+        per_job_sem = per_job_sems.get(job_id)
+        if per_job_sem is None:
+            # Resolve the per-job cap lazily from the row.
+            with factory() as session:
+                job = session.get(Job, job_id)
+                limit = max(1, job.max_parallel_runs) if job else 1
+            per_job_sem = asyncio.Semaphore(limit)
+            per_job_sems[job_id] = per_job_sem
+
+    async def _run() -> JobRun:
+        return await execute_run(factory, settings, registry, job_id, trigger)
+
+    if global_sem is not None and per_job_sem is not None:
+        async with global_sem, per_job_sem:
+            return await _run()
+    if global_sem is not None:
+        async with global_sem:
+            return await _run()
+    assert per_job_sem is not None
+    async with per_job_sem:
+        return await _run()
 
 
 class Scheduler:
@@ -580,6 +1155,8 @@ class Scheduler:
         self._registry = registry or build_default_registry()
         self._task: asyncio.Task[None] | None = None
         self._stop_event: asyncio.Event = asyncio.Event()
+        self._global_sem: asyncio.Semaphore | None = None
+        self._per_job_sems: dict[int, asyncio.Semaphore] = {}
 
     def start(self) -> None:
         """Spawn the background tick task.
@@ -591,10 +1168,15 @@ class Scheduler:
         if self._task is not None and not self._task.done():
             return
         self._stop_event = asyncio.Event()
+        self._global_sem = asyncio.Semaphore(
+            max(1, self._settings.scheduler_max_concurrent_runs)
+        )
+        self._per_job_sems = {}
         self._task = asyncio.create_task(self._run(), name="pointlessql-scheduler")
         logger.info(
-            "scheduler: started (tick=%ds)",
+            "scheduler: started (tick=%ds, max_concurrent=%d)",
             self._settings.scheduler_tick_seconds,
+            self._settings.scheduler_max_concurrent_runs,
         )
 
     async def stop(self) -> None:
@@ -618,7 +1200,13 @@ class Scheduler:
         """
         while not self._stop_event.is_set():
             try:
-                await tick_once(self._factory, self._settings, self._registry)
+                await tick_once(
+                    self._factory,
+                    self._settings,
+                    self._registry,
+                    global_semaphore=self._global_sem,
+                    per_job_semaphores=self._per_job_sems,
+                )
             except Exception:  # noqa: BLE001 — loop must survive any tick
                 logger.exception("scheduler: tick failed")
             try:
@@ -636,5 +1224,7 @@ __all__ = [
     "Scheduler",
     "build_default_registry",
     "execute_run",
+    "log_job",
     "tick_once",
+    "validate_dag",
 ]

@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # conftest so the background loop never ticks during normal runs.
     scheduler_enabled: bool = True
     scheduler_tick_seconds: int = 30
+    # Global ceiling on concurrently-running job runs across every job
+    # in the install. A per-job semaphore layered on top of this one
+    # (``Job.max_parallel_runs``) enforces the per-job budget.
+    scheduler_max_concurrent_runs: int = 4
 
     @computed_field  # type: ignore[prop-decorator]
     @property

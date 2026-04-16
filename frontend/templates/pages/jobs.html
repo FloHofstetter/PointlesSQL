@@ -14,6 +14,11 @@
         <i class="bi bi-clock-history fs-3"></i>
         <h1 class="h3 mb-0">Jobs</h1>
     </div>
+    {% if is_admin %}
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createJobModal">
+        <i class="bi bi-plus-lg me-1"></i>New DAG job
+    </button>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -54,4 +59,71 @@
         {% endif %}
     </div>
 </div>
+
+{% if is_admin %}
+<div class="modal fade" id="createJobModal" tabindex="-1" aria-hidden="true"
+     x-data="{
+         name: '',
+         cron: '* * * * *',
+         maxParallel: 1,
+         tasks: '[\n  {\n    \"name\": \"hello\",\n    \"kind\": \"python\",\n    \"config\": {\"entry_point\": \"my_entry\"},\n    \"depends_on\": [],\n    \"max_retries\": 0,\n    \"retry_backoff_seconds\": 0\n  }\n]',
+         error: null,
+         submitting: false,
+         submit() {
+             this.error = null;
+             this.submitting = true;
+             let parsedTasks;
+             try { parsedTasks = JSON.parse(this.tasks); }
+             catch (e) { this.error = 'tasks JSON is invalid: ' + e.message; this.submitting = false; return; }
+             fetch('/api/jobs', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({
+                     name: this.name,
+                     cron_expr: this.cron,
+                     tasks: parsedTasks,
+                     max_parallel_runs: Number(this.maxParallel),
+                 }),
+             }).then(async r => {
+                 if (!r.ok) { this.error = (await r.json()).error?.message || r.statusText; this.submitting = false; return; }
+                 window.location.reload();
+             }).catch(e => { this.error = String(e); this.submitting = false; });
+         }
+     }">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create DAG job</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" x-model="name" placeholder="my-dag">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Cron expression</label>
+                    <input type="text" class="form-control font-monospace" x-model="cron">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Max parallel runs</label>
+                    <input type="number" class="form-control" min="1" x-model.number="maxParallel">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tasks (JSON array)</label>
+                    <textarea class="form-control font-monospace small" rows="12" x-model="tasks"></textarea>
+                    <div class="form-text">
+                        Each task: <code>{name, kind, config, depends_on (list of task names), max_retries, retry_backoff_seconds}</code>.
+                    </div>
+                </div>
+                <div class="alert alert-danger" x-show="error" x-text="error"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" x-bind:disabled="submitting" x-on:click="submit">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

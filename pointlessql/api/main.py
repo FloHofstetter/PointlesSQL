@@ -1029,8 +1029,37 @@ def _serialize_job(job: Any) -> dict[str, Any]:
         "kind": job.kind,
         "config": json.loads(job.config or "{}"),
         "is_paused": job.is_paused,
+        "max_parallel_runs": job.max_parallel_runs,
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+    }
+
+
+def _serialize_task(task: Any) -> dict[str, Any]:
+    """Render a :class:`JobTask` ORM row for JSON responses."""
+    return {
+        "id": task.id,
+        "job_id": task.job_id,
+        "name": task.name,
+        "kind": task.kind,
+        "config": json.loads(task.config or "{}"),
+        "depends_on": json.loads(task.depends_on or "[]"),
+        "max_retries": task.max_retries,
+        "retry_backoff_seconds": task.retry_backoff_seconds,
+    }
+
+
+def _serialize_task_run(tr: Any) -> dict[str, Any]:
+    """Render a :class:`TaskRun` ORM row for JSON responses."""
+    return {
+        "id": tr.id,
+        "job_run_id": tr.job_run_id,
+        "task_id": tr.task_id,
+        "status": tr.status,
+        "started_at": tr.started_at.isoformat() if tr.started_at else None,
+        "finished_at": tr.finished_at.isoformat() if tr.finished_at else None,
+        "attempts": tr.attempts,
+        "error": tr.error,
     }
 
 
@@ -1117,11 +1146,22 @@ async def api_list_jobs(request: Request) -> list[dict[str, Any]]:
 async def api_create_job(
     request: Request, body: dict[str, Any] = Body(...)
 ) -> dict[str, Any]:
-    """Create a new job (admin-only in Sprint 19).
+    """Create a new job (admin-only).
 
-    Non-admin creation is out of scope for this sprint — once we have
-    personal-quota enforcement Sprint 20+ will relax this. Body shape:
-    ``{name, cron_expr, kind, config, run_as_user_id?, is_paused?}``.
+    Two shapes are accepted:
+
+    * Single-task (Sprint 19 compatibility):
+      ``{name, cron_expr, kind, config, ...}`` — the scheduler walks
+      ``job.kind`` / ``job.config`` directly.
+    * DAG (Sprint 20):
+      ``{name, cron_expr, tasks: [{name, kind, config, depends_on?,
+      max_retries?, retry_backoff_seconds?}, ...], max_parallel_runs?}``.
+      ``depends_on`` inside the payload references *task names* because
+      the ids do not exist yet; the route resolves them to integer ids
+      during insert and also validates the resulting graph is acyclic
+      via :func:`pointlessql.services.scheduler.validate_dag` before
+      committing so a bad payload never lands in the DB.
+
     ``run_as_user_id`` defaults to the caller so an admin scheduling a
     job for themselves does not have to look up their own id.
     """
@@ -1129,26 +1169,60 @@ async def api_create_job(
 
     from pointlessql.exceptions import ValidationError as _VE
     from pointlessql.models import Job as JobModel
+    from pointlessql.models import JobTask as JobTaskModel
 
     _require_admin(request)
     user = _get_user(request)
 
     name = body.get("name")
     cron_expr = body.get("cron_expr")
-    kind = body.get("kind")
-    if not name or not cron_expr or not kind:
-        raise _VE("name, cron_expr and kind are required")
+    if not name or not cron_expr:
+        raise _VE("name and cron_expr are required")
     if not _croniter.is_valid(str(cron_expr)):
         raise _VE(f"Invalid cron expression: {cron_expr!r}")
-    # Validate the kind against the registry up-front so bad payloads
-    # fail at create-time instead of at first-tick.
-    _JOB_REGISTRY.get(str(kind))
+
+    tasks_payload = body.get("tasks")
+    if tasks_payload is not None and not isinstance(tasks_payload, list):
+        raise _VE("tasks must be a JSON array when provided")
+
+    # Single-task shortcut: validate kind + config just like Sprint 19.
+    if not tasks_payload:
+        kind = body.get("kind")
+        if not kind:
+            raise _VE("kind is required when 'tasks' is not provided")
+        _JOB_REGISTRY.get(str(kind))
+        config = body.get("config") or {}
+        if not isinstance(config, dict):
+            raise _VE("config must be a JSON object")
+    else:
+        kind = body.get("kind") or "python"  # placeholder on the Job row
+        config = {}
+        # Pre-flight each task entry so we fail fast before any INSERT.
+        task_names: set[str] = set()
+        for entry in tasks_payload:  # pyright: ignore[reportUnknownVariableType]
+            if not isinstance(entry, dict):
+                raise _VE("each task must be a JSON object")
+            t_entry: dict[str, Any] = entry
+            t_name = t_entry.get("name")
+            t_kind = t_entry.get("kind")
+            if not t_name or not t_kind:
+                raise _VE("each task requires name and kind")
+            if t_name in task_names:
+                raise _VE(f"duplicate task name: {t_name!r}")
+            task_names.add(str(t_name))
+            _JOB_REGISTRY.get(str(t_kind))
+            t_config = t_entry.get("config") or {}
+            if not isinstance(t_config, dict):
+                raise _VE(f"task {t_name!r}: config must be a JSON object")
+            t_deps = t_entry.get("depends_on") or []
+            if not isinstance(t_deps, list):
+                raise _VE(f"task {t_name!r}: depends_on must be a JSON array")
 
     run_as_user_id = int(body.get("run_as_user_id") or user["id"])
-    config = body.get("config") or {}
-    if not isinstance(config, dict):
-        raise _VE("config must be a JSON object")
     is_paused = bool(body.get("is_paused", False))
+    max_parallel_runs = int(body.get("max_parallel_runs") or 1)
+    if max_parallel_runs < 1:
+        raise _VE("max_parallel_runs must be >= 1")
 
     now = datetime.now(UTC)
     factory = request.app.state.session_factory
@@ -1160,11 +1234,60 @@ async def api_create_job(
             kind=str(kind),
             config=json.dumps(config),
             is_paused=is_paused,
+            max_parallel_runs=max_parallel_runs,
             created_at=now,
             updated_at=now,
         )
         session.add(job)
         session.commit()
+        session.refresh(job)
+
+        if tasks_payload:
+            # First pass: insert rows without depends_on so we learn ids.
+            by_name: dict[str, JobTaskModel] = {}
+            for order, entry in enumerate(tasks_payload):  # pyright: ignore[reportUnknownVariableType]
+                if not isinstance(entry, dict):
+                    continue
+                t_entry: dict[str, Any] = entry
+                jt = JobTaskModel(
+                    job_id=job.id,
+                    name=str(t_entry["name"]),
+                    order=order,
+                    kind=str(t_entry["kind"]),
+                    config=json.dumps(t_entry.get("config") or {}),
+                    depends_on="[]",
+                    max_retries=int(t_entry.get("max_retries") or 0),
+                    retry_backoff_seconds=int(
+                        t_entry.get("retry_backoff_seconds") or 0
+                    ),
+                )
+                session.add(jt)
+                session.flush()
+                by_name[str(t_entry["name"])] = jt
+
+            # Second pass: resolve depends_on names to ids.
+            for entry in tasks_payload:  # pyright: ignore[reportUnknownVariableType]
+                if not isinstance(entry, dict):
+                    continue
+                t_entry = entry
+                t_name = str(t_entry["name"])
+                deps_names = t_entry.get("depends_on") or []
+                resolved: list[int] = []
+                for dn in deps_names:  # pyright: ignore[reportUnknownVariableType]
+                    if dn not in by_name:
+                        raise _VE(
+                            f"task {t_name!r} depends on unknown task {dn!r}"
+                        )
+                    resolved.append(by_name[str(dn)].id)
+                by_name[t_name].depends_on = json.dumps(resolved)
+
+            session.commit()
+
+            # Validate the resulting graph is acyclic. ValidationError
+            # here rolls back the session via the context manager's
+            # exit since we propagate.
+            scheduler_service.validate_dag(list(by_name.values()))
+
         session.refresh(job)
         session.expunge(job)
     _audit(request, "create_job", f"job:{name}", json.dumps(body))
@@ -1183,6 +1306,92 @@ async def api_run_job(request: Request, job_id: int) -> dict[str, Any]:
     )
     _audit(request, "run_job", f"job:{job.name}")
     return _serialize_run(run)
+
+
+@app.get("/api/jobs/{job_id}/tasks")
+async def api_list_job_tasks(
+    request: Request, job_id: int
+) -> list[dict[str, Any]]:
+    """Return the :class:`JobTask` DAG nodes for *job_id*."""
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import JobTask as JobTaskModel
+
+    _load_job_or_404(request, job_id)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = (
+            _select(JobTaskModel)
+            .where(JobTaskModel.job_id == job_id)
+            .order_by(JobTaskModel.id)
+        )
+        rows = list(session.scalars(stmt).all())
+        for r in rows:
+            session.expunge(r)
+    return [_serialize_task(r) for r in rows]
+
+
+@app.get("/api/jobs/{job_id}/runs/{run_id}/tasks")
+async def api_list_task_runs(
+    request: Request, job_id: int, run_id: int
+) -> list[dict[str, Any]]:
+    """Return per-task state rows for one :class:`JobRun`."""
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import TaskRun as TaskRunModel
+
+    _load_job_or_404(request, job_id)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = (
+            _select(TaskRunModel)
+            .where(TaskRunModel.job_run_id == run_id)
+            .order_by(TaskRunModel.id)
+        )
+        rows = list(session.scalars(stmt).all())
+        for r in rows:
+            session.expunge(r)
+    return [_serialize_task_run(r) for r in rows]
+
+
+@app.get("/api/jobs/{job_id}/runs/{run_id}/logs")
+async def api_list_job_logs(
+    request: Request,
+    job_id: int,
+    run_id: int,
+    task_id: int | None = None,
+) -> list[dict[str, Any]]:
+    """Return log lines for one :class:`JobRun`, optionally filtered by task.
+
+    The log panel on the job detail page fetches this endpoint via
+    Alpine.js when the user expands a row; ``task_id`` lets the panel
+    scope the view to one DAG node.
+    """
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import JobLog as JobLogModel
+
+    _load_job_or_404(request, job_id)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = _select(JobLogModel).where(JobLogModel.job_run_id == run_id)
+        if task_id is not None:
+            stmt = stmt.where(JobLogModel.task_id == task_id)
+        stmt = stmt.order_by(JobLogModel.id)
+        rows = list(session.scalars(stmt).all())
+        for r in rows:
+            session.expunge(r)
+    return [
+        {
+            "id": r.id,
+            "job_run_id": r.job_run_id,
+            "task_id": r.task_id,
+            "ts": r.ts.isoformat() if r.ts else None,
+            "level": r.level,
+            "message": r.message,
+        }
+        for r in rows
+    ]
 
 
 @app.post("/api/jobs/{job_id}/pause")
@@ -1258,34 +1467,71 @@ async def jobs_index(request: Request) -> HTMLResponse:
 
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 async def job_detail(request: Request, job_id: int) -> HTMLResponse:
-    """Render job detail with the last 20 runs."""
+    """Render job detail with task list, latest task statuses, and run history."""
     from sqlalchemy import select as _select
 
     from pointlessql.models import JobRun as JobRunModel
+    from pointlessql.models import JobTask as JobTaskModel
+    from pointlessql.models import TaskRun as TaskRunModel
 
     job = _load_job_or_404(request, job_id)
     user = _get_user(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        stmt = (
+        runs_stmt = (
             _select(JobRunModel)
             .where(JobRunModel.job_id == job_id)
             .order_by(JobRunModel.started_at.desc())
             .limit(20)
         )
-        runs = list(session.scalars(stmt).all())
+        runs = list(session.scalars(runs_stmt).all())
         for r in runs:
             session.expunge(r)
+
+        tasks_stmt = (
+            _select(JobTaskModel)
+            .where(JobTaskModel.job_id == job_id)
+            .order_by(JobTaskModel.id)
+        )
+        tasks = list(session.scalars(tasks_stmt).all())
+        for t in tasks:
+            session.expunge(t)
+
+        # Fetch the latest :class:`TaskRun` per task so the table can
+        # show current status + retry count without a second round-trip.
+        latest_task_runs: dict[int, Any] = {}
+        if runs and tasks:
+            latest_run_id = runs[0].id
+            tr_stmt = _select(TaskRunModel).where(
+                TaskRunModel.job_run_id == latest_run_id
+            )
+            for tr in session.scalars(tr_stmt).all():
+                session.expunge(tr)
+                latest_task_runs[tr.task_id] = tr
+
     can_manage = (
         user.get("is_admin", False)
         or job.run_as_user_id == user.get("id")
     )
+
+    task_rows: list[dict[str, Any]] = []
+    for t in tasks:
+        tr = latest_task_runs.get(t.id)
+        task_rows.append({
+            **_serialize_task(t),
+            "latest_status": tr.status if tr is not None else None,
+            "latest_attempts": tr.attempts if tr is not None else 0,
+            "latest_error": tr.error if tr is not None else None,
+            "latest_run_id": tr.job_run_id if tr is not None else None,
+        })
+
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/job_detail.html",
         {
             "job": _serialize_job(job),
             "runs": [_serialize_run(r) for r in runs],
+            "tasks": task_rows,
             "can_manage": can_manage,
             "active_page": "jobs",
             "active_catalog": None,

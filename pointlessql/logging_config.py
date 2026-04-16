@@ -1,7 +1,8 @@
 """Centralized logging configuration for PointlesSQL.
 
-Provides a request-scoped correlation ID via :data:`request_id_var`, a
-:class:`RequestIdFilter` that stamps each record with the current ID,
+Provides request/job-scoped correlation IDs via :data:`request_id_var`,
+:data:`job_run_id_var`, and :data:`task_id_var`, a
+:class:`RequestIdFilter` that stamps each record with the current IDs,
 an opt-in :class:`JSONFormatter`, and an idempotent
 :func:`configure_logging` function that wires the root logger and
 uvicorn's three loggers with a shared handler.
@@ -17,23 +18,30 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
+job_run_id_var: ContextVar[str | None] = ContextVar("job_run_id", default=None)
+task_id_var: ContextVar[str | None] = ContextVar("task_id", default=None)
 
 _HANDLER_MARKER = "_pointlessql_handler"
 _UVICORN_LOGGERS = ("uvicorn", "uvicorn.access", "uvicorn.error")
-_TEXT_FORMAT = "%(asctime)s %(levelname)s %(name)s [req=%(request_id)s] %(message)s"
+_TEXT_FORMAT = (
+    "%(asctime)s %(levelname)s %(name)s "
+    "[req=%(request_id)s job=%(job_run_id)s task=%(task_id)s] %(message)s"
+)
 
 
 class RequestIdFilter(logging.Filter):
-    """Stamp each log record with the current ``request_id`` contextvar value.
+    """Stamp each log record with the request/job/task contextvar values.
 
-    When no request is in scope the value is rendered as ``"-"`` so the
+    When no scope is active the value is rendered as ``"-"`` so the
     text formatter never shows a blank column and the JSON formatter
     never emits ``null``.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        """Attach ``request_id`` to *record* and allow it to propagate."""
+        """Attach correlation ids to *record* and allow it to propagate."""
         record.request_id = request_id_var.get() or "-"
+        record.job_run_id = job_run_id_var.get() or "-"
+        record.task_id = task_id_var.get() or "-"
         return True
 
 
@@ -41,10 +49,10 @@ class JSONFormatter(logging.Formatter):
     """Emit each record as a single-line JSON document.
 
     Fields: ``timestamp`` (ISO 8601 UTC), ``level``, ``logger``,
-    ``message``, ``request_id`` and ``exception`` (only when the record
-    carries ``exc_info``). Extra attributes attached via
-    ``logger.info(..., extra={...})`` are not serialized — keep them in
-    the message for now.
+    ``message``, ``request_id``, ``job_run_id``, ``task_id`` and
+    ``exception`` (only when the record carries ``exc_info``). Extra
+    attributes attached via ``logger.info(..., extra={...})`` are not
+    serialized — keep them in the message for now.
     """
 
     def format(self, record: logging.LogRecord) -> str:
@@ -55,6 +63,8 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
             "request_id": getattr(record, "request_id", "-"),
+            "job_run_id": getattr(record, "job_run_id", "-"),
+            "task_id": getattr(record, "task_id", "-"),
         }
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
@@ -84,14 +94,16 @@ _default_factory = logging.getLogRecordFactory()
 
 
 def _request_id_record_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
-    """Extend the default LogRecord with a ``request_id`` attribute.
+    """Extend the default LogRecord with correlation-id attributes.
 
     Installed globally by :func:`configure_logging` so handlers that
     bypass our stderr sink (notably pytest's ``caplog``) still see the
-    request ID on every record.
+    request/job/task IDs on every record.
     """
     record = _default_factory(*args, **kwargs)
     record.request_id = request_id_var.get() or "-"
+    record.job_run_id = job_run_id_var.get() or "-"
+    record.task_id = task_id_var.get() or "-"
     return record
 
 
@@ -104,8 +116,9 @@ def configure_logging(
     Idempotent — a second call with different arguments replaces the
     handlers installed by the first call without disturbing handlers
     installed by anyone else (e.g. pytest's ``caplog``). Also installs
-    a LogRecord factory that stamps ``request_id`` on every record, so
-    third-party handlers see the ID without any per-handler hookup.
+    a LogRecord factory that stamps the correlation ids on every
+    record, so third-party handlers see them without any per-handler
+    hookup.
 
     Args:
         level: Minimum level for the root logger, e.g. ``"INFO"`` or
