@@ -47,7 +47,7 @@ PointlesSQL
 │   │   a `pql` helper that resolves table names through
 │   │   soyuz-catalog.
 │   │
-│   ├── Sprint 1 — Generated client + settings            ✅ done
+│   ├── Sprint 1 — Generated client + settings            ✅ done (3a596e1)
 │   │   ├── `uv add --editable ../soyuz-catalog/soyuz-catalog-client`
 │   │   │   to pull in the typed generated client as a path
 │   │   │   dependency (ADR-0007 in soyuz-catalog)
