@@ -60,7 +60,9 @@
 
 {% with permissions_url="/api/permissions/catalog/" ~ catalog.name,
         effective_url="/api/effective-permissions/catalog/" ~ catalog.name,
-        permissions=permissions, effective=effective %}
+        permissions=permissions, effective=effective,
+        can_manage=can_manage,
+        current_user_email=current_user.email if current_user else "" %}
     {% include "components/permissions_card.html" %}
 {% endwith %}
 

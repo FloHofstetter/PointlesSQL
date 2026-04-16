@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 7)
+
+- Authorization enforcement layer: PointlesSQL now checks effective
+  permissions from soyuz-catalog before each operation. Non-admin
+  users need `USE CATALOG`, `USE SCHEMA`, `SELECT`, `MODIFY`, or
+  `MANAGE_GRANTS` depending on the operation
+- Per-request `X-Principal` header forwarding: every soyuz-catalog
+  HTTP call includes the authenticated user's email as the
+  `X-Principal` header (via per-request client factory)
+- Admin bypass: users with `is_admin=True` skip all permission checks
+- Federation routes (connections, external locations, credentials)
+  restricted to admin users only
+- 403 Forbidden error page with privilege details and "contact an
+  administrator" hint (`pages/403.html`)
+- Audit log: `audit_log` table (Alembic migration 002) records
+  who-did-what for all write operations — updates, tag changes,
+  permission grants/revokes, federation CRUD
+- `pointlessql/services/authorization.py` — `check_privilege`,
+  `check_privilege_from_effective`, `has_privilege`, `AccessDenied`
+- `pointlessql/services/audit.py` — `log_action` for append-only
+  audit entries
+- Permissions UI enhancements: current user's row highlighted with
+  "you" badge in both Assigned and Effective tabs; grant/revoke
+  controls hidden when user lacks `MANAGE_GRANTS`
+- Non-admin test user fixture (`non_admin_cookies`) in conftest
+- `tests/test_authorization.py` — 15 unit tests for authorization
+  service (admin bypass, privilege matching, dict privilege format)
+- `tests/test_enforcement.py` — 21 route-level enforcement tests
+  (allowed/denied/admin bypass for catalogs, schemas, tables,
+  updates, permissions, federation admin-only)
+- `tests/test_audit.py` — 3 audit log service tests
+
+### Changed (Sprint 7)
+
+- All API routes use per-request `UnityCatalogClient` via
+  `_get_uc_client(request)` instead of the shared singleton
+- Detail pages enforce access using already-fetched effective
+  permissions (no duplicate HTTP call)
+- `permissions_card.html` and `permissions_editor.js` accept
+  `canManage` and `currentUserEmail` parameters
+- `test_api_errors.py` updated for per-request client pattern
+  (monkeypatches `UnityCatalogClient.for_principal`)
+
+### Added (Sprint 6)
+
+- Alembic + SQLAlchemy 2.0 for PointlesSQL's own metadata DB
+- Local user registration and login with bcrypt password hashing
+- JWT cookie-based auth (`pql_session`, HttpOnly, HS256)
+- Login and register pages
+- Auth middleware protecting all routes
+- First-user admin bootstrap
+- Navbar shows current user and logout button
+
 ### Added (Sprint 5)
 
 - Tags editor card on catalog, schema, and table detail pages — add

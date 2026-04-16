@@ -34,3 +34,30 @@ class User(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class AuditLog(Base):
+    """Append-only log of user actions for accountability.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        user_id: ID of the user who performed the action (no FK so
+            entries survive user deletion).
+        user_email: Email snapshot at time of action.
+        action: Short verb describing the action (e.g. ``update_catalog``).
+        target: Identifier of the affected resource (e.g. ``catalog:my_cat``).
+        detail: Optional JSON context (e.g. patch body).
+        created_at: Timestamp when the action occurred.
+    """
+
+    __tablename__ = "audit_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_email: Mapped[str] = mapped_column(String(254), nullable=False)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+    target: Mapped[str] = mapped_column(String(500), nullable=False)
+    detail: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

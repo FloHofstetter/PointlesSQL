@@ -184,24 +184,31 @@ PointlesSQL
 │   │   └── Tests: auth service unit tests, login/register
 │   │       API tests, middleware tests
 │   │
-│   ├── Sprint 7 — Principal forwarding + enforcement     🔜 next
-│   │   ├── Forward authenticated principal to soyuz via
-│   │   │   `X-Principal` header on all client calls
-│   │   ├── Enforcement middleware: before each soyuz
-│   │   │   proxy call, check `GET /permissions/...` for
-│   │   │   the current user's principal — 403 if missing
+│   ├── Sprint 7 — Principal forwarding + enforcement     ✅ done
+│   │   ├── Per-request `X-Principal` header forwarding on
+│   │   │   all soyuz-catalog client calls (via
+│   │   │   `UnityCatalogClient.for_principal()` classmethod
+│   │   │   + `make_principal_client()` factory)
+│   │   ├── Authorization enforcement: `check_privilege()` and
+│   │   │   `check_privilege_from_effective()` in
+│   │   │   `services/authorization.py` — checks effective
+│   │   │   permissions before each operation
+│   │   ├── Privilege mapping: `USE CATALOG`, `USE SCHEMA`,
+│   │   │   `SELECT`, `MODIFY`, `MANAGE_GRANTS` per route
 │   │   ├── Admin bypass: `is_admin` users skip enforcement
-│   │   ├── `403 Forbidden` error page with "request access"
-│   │   │   hint
-│   │   ├── Permissions UI: show current user's own grants
-│   │   │   prominently, grey out actions they can't perform
-│   │   ├── Audit log: store who-did-what in a local
-│   │   │   `audit_log` table (user_id, action, target,
-│   │   │   timestamp)
-│   │   └── Tests: enforcement tests (allowed/denied),
-│   │       admin bypass, principal header forwarding
+│   │   ├── Federation routes restricted to admin-only
+│   │   ├── `403 Forbidden` error page (`pages/403.html`)
+│   │   │   with privilege details and "contact admin" hint
+│   │   ├── Permissions UI: current user row highlighted with
+│   │   │   "you" badge, grant/revoke hidden without
+│   │   │   `MANAGE_GRANTS` (`can_manage` flag)
+│   │   ├── Audit log: `audit_log` table (Alembic 002),
+│   │   │   `services/audit.py` logs write operations
+│   │   └── Tests: 39 new tests — `test_authorization.py`
+│   │       (15), `test_enforcement.py` (21),
+│   │       `test_audit.py` (3), non-admin user fixture
 │   │
-│   └── Sprint 8 — OIDC / OAuth2 provider                ⏳ planned
+│   └── Sprint 8 — OIDC / OAuth2 provider                🔜 next
 │       ├── OAuth2 authorization code flow with PKCE
 │       ├── Settings: `oidc_discovery_url`, `oidc_client_id`,
 │       │   `oidc_client_secret` (optional, for confidential

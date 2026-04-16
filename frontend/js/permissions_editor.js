@@ -1,4 +1,4 @@
-window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, effectiveInitial }) {
+window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, effectiveInitial, canManage, currentUserEmail }) {
     const PRIVILEGES = [
         'SELECT', 'MODIFY', 'CREATE TABLE', 'CREATE SCHEMA', 'CREATE CATALOG',
         'CREATE FUNCTION', 'CREATE MODEL', 'CREATE VOLUME',
@@ -17,8 +17,11 @@ window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, ef
         grantPrivilege: PRIVILEGES[0],
         saving: false,
         error: null,
+        canManage: canManage !== false,
+        currentUserEmail: currentUserEmail || '',
 
         async grant() {
+            if (!this.canManage) return;
             const principal = (this.grantPrincipal || '').trim();
             if (!principal) {
                 this.error = 'Principal is required.';
@@ -52,6 +55,7 @@ window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, ef
         },
 
         async revoke(principal, privilege) {
+            if (!this.canManage) return;
             this.saving = true;
             this.error = null;
             try {

@@ -81,7 +81,9 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
 {% set _table_full = catalog_name ~ "." ~ schema_name ~ "." ~ table_name %}
 {% with permissions_url="/api/permissions/table/" ~ _table_full,
         effective_url="/api/effective-permissions/table/" ~ _table_full,
-        permissions=permissions, effective=effective %}
+        permissions=permissions, effective=effective,
+        can_manage=can_manage,
+        current_user_email=current_user.email if current_user else "" %}
     {% include "components/permissions_card.html" %}
 {% endwith %}
 

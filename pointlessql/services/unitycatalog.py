@@ -163,6 +163,24 @@ class UnityCatalogClient:
         """
         self._client = client
 
+    @classmethod
+    def for_principal(
+        cls, settings: object, principal: str
+    ) -> UnityCatalogClient:
+        """Create a per-request facade with an ``X-Principal`` header.
+
+        Args:
+            settings: Application settings (needs ``soyuz_catalog_url``).
+            principal: The user email to forward as the acting principal.
+
+        Returns:
+            A new ``UnityCatalogClient`` whose underlying HTTP client
+            sends the ``X-Principal`` header on every request.
+        """
+        from pointlessql.services.soyuz_client import make_principal_client
+
+        return cls(make_principal_client(settings, principal))  # type: ignore[arg-type]
+
     async def aclose(self) -> None:
         """Release the underlying HTTP resources."""
         await self._client.__aexit__()

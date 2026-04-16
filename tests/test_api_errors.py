@@ -8,12 +8,12 @@ import httpx
 import pytest
 
 from pointlessql.api.main import app
+from pointlessql.services.unitycatalog import UnityCatalogClient
 
 
-@pytest.fixture(autouse=True)
-def _app_with_failing_client() -> None:
-    """Wire app.state with a UnityCatalogClient whose methods raise ConnectError."""
-    client = MagicMock()
+def _make_failing_mock() -> MagicMock:
+    """Build a UnityCatalogClient mock whose methods raise ConnectError."""
+    client = MagicMock(spec=UnityCatalogClient)
     err = httpx.ConnectError("Connection refused")
 
     client.get_tree = AsyncMock(side_effect=err)
@@ -43,9 +43,25 @@ def _app_with_failing_client() -> None:
     client.create_credential = AsyncMock(side_effect=err)
     client.update_credential = AsyncMock(side_effect=err)
     client.delete_credential = AsyncMock(side_effect=err)
+    return client
 
+
+@pytest.fixture(autouse=True)
+def _app_with_failing_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Wire app.state with a UnityCatalogClient whose methods raise ConnectError.
+
+    Patches ``UnityCatalogClient.for_principal`` so the per-request
+    client factory returns our mock instead of creating a real client.
+    """
+    client = _make_failing_mock()
     app.state.uc_client = client
     app.state.jupyter_process = None
+
+    monkeypatch.setattr(
+        UnityCatalogClient,
+        "for_principal",
+        classmethod(lambda cls, s, p: client),  # type: ignore[arg-type]
+    )
 
 
 def _authed_client() -> httpx.AsyncClient:
@@ -98,7 +114,6 @@ class TestJsonEndpointsReturn502:
             )
         assert resp.status_code == 502
         assert "Catalog server unavailable" in resp.json()["error"]
-
 
     async def test_get_tags(self) -> None:
         async with _authed_client() as client:
@@ -179,9 +194,6 @@ class TestHtmlPagesShowError:
         assert "Connection refused" in resp.text
 
     async def test_catalog_detail(self) -> None:
-        app.state.uc_client.get_catalog = AsyncMock(
-            side_effect=httpx.ConnectError("Connection refused")
-        )
         async with _authed_client() as client:
             resp = await client.get("/catalogs/test_cat")
         assert resp.status_code == 200

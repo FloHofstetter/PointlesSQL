@@ -23,3 +23,20 @@ def make_soyuz_client(settings: Settings | None = None) -> Client:
         base_url=settings.soyuz_catalog_url,
         raise_on_unexpected_status=True,
     )
+
+
+def make_principal_client(settings: Settings, principal: str) -> Client:
+    """Build a per-request client with an ``X-Principal`` header.
+
+    Args:
+        settings: Application settings (for the soyuz-catalog URL).
+        principal: The user email to forward as the acting principal.
+
+    Returns:
+        A ``Client`` instance with the ``X-Principal`` header set.
+    """
+    return Client(
+        base_url=settings.soyuz_catalog_url,
+        raise_on_unexpected_status=True,
+        headers={"X-Principal": principal},
+    )

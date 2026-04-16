@@ -2,17 +2,21 @@
   Permissions card with Assigned and Effective tabs.
 
   Params:
-    permissions_url   — GET/PATCH endpoint for permissions
-    effective_url     — GET endpoint for effective permissions
-    permissions       — current list of privilege assignment dicts
-    effective         — current list of effective permission dicts
+    permissions_url    — GET/PATCH endpoint for permissions
+    effective_url      — GET endpoint for effective permissions
+    permissions        — current list of privilege assignment dicts
+    effective          — current list of effective permission dicts
+    can_manage         — boolean: whether the current user can grant/revoke
+    current_user_email — email of the logged-in user (for highlighting)
 #}
 <div class="card mb-4"
      x-data='permissionsEditor({
          permissionsUrl: {{ permissions_url|tojson }},
          effectiveUrl: {{ effective_url|tojson }},
          initial: {{ (permissions or [])|tojson }},
-         effectiveInitial: {{ (effective or [])|tojson }}
+         effectiveInitial: {{ (effective or [])|tojson }},
+         canManage: {{ (can_manage or false)|tojson }},
+         currentUserEmail: {{ (current_user_email or "")|tojson }}
      })'>
     <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
@@ -45,17 +49,28 @@
                 </thead>
                 <tbody>
                     <template x-for="a in assignments" :key="a.principal">
-                        <tr>
-                            <td class="font-monospace small ps-3" x-text="a.principal"></td>
+                        <tr :class="a.principal === currentUserEmail ? 'table-active' : ''">
+                            <td class="font-monospace small ps-3">
+                                <span x-text="a.principal"></span>
+                                <template x-if="a.principal === currentUserEmail">
+                                    <span class="badge bg-primary ms-1">you</span>
+                                </template>
+                            </td>
                             <td>
                                 <template x-for="p in a.privileges" :key="p">
-                                    <span class="badge bg-info text-dark me-1 mb-1"
-                                          style="cursor: pointer;"
-                                          @click="revoke(a.principal, p)"
-                                          :title="'Click to revoke ' + p">
-                                        <span x-text="p"></span>
-                                        <i class="bi bi-x-lg ms-1 small"></i>
-                                    </span>
+                                    <template x-if="canManage">
+                                        <span class="badge bg-info text-dark me-1 mb-1"
+                                              style="cursor: pointer;"
+                                              @click="revoke(a.principal, p)"
+                                              :title="'Click to revoke ' + p">
+                                            <span x-text="p"></span>
+                                            <i class="bi bi-x-lg ms-1 small"></i>
+                                        </span>
+                                    </template>
+                                    <template x-if="!canManage">
+                                        <span class="badge bg-info text-dark me-1 mb-1"
+                                              x-text="p"></span>
+                                    </template>
                                 </template>
                             </td>
                         </tr>
@@ -63,26 +78,28 @@
                 </tbody>
             </table>
 
-            <div class="p-3 border-top">
-                <div class="d-flex gap-2 align-items-end">
-                    <div class="flex-fill">
-                        <input type="text" class="form-control form-control-sm"
-                               x-model="grantPrincipal" placeholder="principal"
-                               @keydown.enter.prevent="grant()">
+            <template x-if="canManage">
+                <div class="p-3 border-top">
+                    <div class="d-flex gap-2 align-items-end">
+                        <div class="flex-fill">
+                            <input type="text" class="form-control form-control-sm"
+                                   x-model="grantPrincipal" placeholder="principal"
+                                   @keydown.enter.prevent="grant()">
+                        </div>
+                        <div>
+                            <select class="form-select form-select-sm" x-model="grantPrivilege">
+                                <template x-for="p in privileges" :key="p">
+                                    <option :value="p" x-text="p"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary" @click="grant()" :disabled="saving">
+                            <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-shield-plus'"></i>
+                            <span class="ms-1">Grant</span>
+                        </button>
                     </div>
-                    <div>
-                        <select class="form-select form-select-sm" x-model="grantPrivilege">
-                            <template x-for="p in privileges" :key="p">
-                                <option :value="p" x-text="p"></option>
-                            </template>
-                        </select>
-                    </div>
-                    <button class="btn btn-sm btn-outline-primary" @click="grant()" :disabled="saving">
-                        <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-shield-plus'"></i>
-                        <span class="ms-1">Grant</span>
-                    </button>
                 </div>
-            </div>
+            </template>
         </div>
 
         {# --- Effective tab --- #}
@@ -100,8 +117,13 @@
                 </thead>
                 <tbody>
                     <template x-for="a in effective" :key="a.principal">
-                        <tr>
-                            <td class="font-monospace small ps-3" x-text="a.principal"></td>
+                        <tr :class="a.principal === currentUserEmail ? 'table-active' : ''">
+                            <td class="font-monospace small ps-3">
+                                <span x-text="a.principal"></span>
+                                <template x-if="a.principal === currentUserEmail">
+                                    <span class="badge bg-primary ms-1">you</span>
+                                </template>
+                            </td>
                             <td>
                                 <template x-for="p in a.privileges" :key="p">
                                     <span class="badge bg-secondary me-1 mb-1" x-text="p"></span>

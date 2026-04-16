@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -18,7 +19,19 @@ from soyuz_catalog_client.errors import UnexpectedStatus
 
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.db import get_session_factory, init_db
+from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
+from pointlessql.services.authorization import (
+    MANAGE_GRANTS,
+    MODIFY,
+    SELECT,
+    USE_CATALOG,
+    USE_SCHEMA,
+    AccessDenied,
+    check_privilege,
+    check_privilege_from_effective,
+    has_privilege,
+)
 from pointlessql.services.jupyter import managed_jupyter
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
@@ -126,6 +139,84 @@ async def auth_middleware(request: Request, call_next):
     return RedirectResponse(url="/auth/login", status_code=303)
 
 
+def _get_uc_client(request: Request) -> UnityCatalogClient:
+    """Return a per-request UC facade with the current user's principal."""
+    user = getattr(request.state, "user", None)
+    if user is not None:
+        return UnityCatalogClient.for_principal(
+            request.app.state.settings, user["email"]
+        )
+    return request.app.state.uc_client
+
+
+def _get_user(request: Request) -> dict[str, Any]:
+    """Return the current user dict from request state."""
+    return getattr(request.state, "user", {})
+
+
+def _deny_json(exc: AccessDenied) -> JSONResponse:
+    """Return a 403 JSON response for an AccessDenied exception."""
+    return JSONResponse(
+        status_code=403,
+        content={
+            "error": "Forbidden",
+            "detail": f"Missing {exc.privilege} on {exc.securable_type} '{exc.full_name}'",
+        },
+    )
+
+
+def _deny_html(request: Request, exc: AccessDenied) -> HTMLResponse:
+    """Return a 403 HTML response for an AccessDenied exception."""
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/403.html",
+        {
+            "required_privilege": exc.privilege,
+            "securable_type": exc.securable_type,
+            "full_name": exc.full_name,
+        },
+        status_code=403,
+    )
+
+
+def _require_admin(request: Request) -> JSONResponse | None:
+    """Return a 403 JSON response if the user is not an admin, else None."""
+    user = _get_user(request)
+    if user.get("is_admin"):
+        return None
+    return JSONResponse(
+        status_code=403,
+        content={"error": "Forbidden", "detail": "Admin access required"},
+    )
+
+
+def _require_admin_html(request: Request) -> HTMLResponse | None:
+    """Return a 403 HTML response if the user is not an admin, else None."""
+    user = _get_user(request)
+    if user.get("is_admin"):
+        return None
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/403.html",
+        {
+            "required_privilege": "admin",
+            "securable_type": "system",
+            "full_name": "federation",
+        },
+        status_code=403,
+    )
+
+
+def _audit(request: Request, action: str, target: str, detail: str | None = None) -> None:
+    """Write an audit log entry for the current user."""
+    user = _get_user(request)
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is not None and user:
+        audit_service.log_action(
+            factory, user["id"], user["email"], action, target, detail
+        )
+
+
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     """Return service health."""
@@ -135,7 +226,7 @@ async def healthz() -> dict[str, str]:
 @app.get("/api/tree", response_model=None)
 async def api_tree(request: Request) -> list[dict[str, object]] | JSONResponse:
     """Return the full catalog/schema/table tree for the sidebar."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
     try:
         return await client.get_tree()
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -148,7 +239,7 @@ async def api_tree(request: Request) -> list[dict[str, object]] | JSONResponse:
 @app.get("/api/catalogs", response_model=None)
 async def api_catalogs(request: Request) -> list[dict[str, object]] | JSONResponse:
     """Return all catalogs as JSON."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
     try:
         return await client.list_catalogs()
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -163,7 +254,15 @@ async def api_schemas(
     request: Request, catalog_name: str
 ) -> list[dict[str, object]] | JSONResponse:
     """Return schemas inside a catalog as JSON."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
+    try:
+        await check_privilege(
+            client, user.get("email", ""), user.get("is_admin", False),
+            "catalog", catalog_name, USE_CATALOG,
+        )
+    except AccessDenied as exc:
+        return _deny_json(exc)
     try:
         return await client.list_schemas(catalog_name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -178,7 +277,15 @@ async def api_tables(
     request: Request, catalog_name: str, schema_name: str
 ) -> list[dict[str, object]] | JSONResponse:
     """Return tables inside a schema as JSON."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
+    try:
+        await check_privilege(
+            client, user.get("email", ""), user.get("is_admin", False),
+            "schema", f"{catalog_name}.{schema_name}", USE_SCHEMA,
+        )
+    except AccessDenied as exc:
+        return _deny_json(exc)
     try:
         return await client.list_tables(catalog_name, schema_name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -195,14 +302,24 @@ async def api_update_catalog(
     patch: dict[str, Any] = Body(...),
 ) -> dict[str, object] | JSONResponse:
     """Apply a partial update to a catalog."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
     try:
-        return await client.update_catalog(catalog_name, patch)
+        await check_privilege(
+            client, user.get("email", ""), user.get("is_admin", False),
+            "catalog", catalog_name, MODIFY,
+        )
+    except AccessDenied as exc:
+        return _deny_json(exc)
+    try:
+        result = await client.update_catalog(catalog_name, patch)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "update_catalog", f"catalog:{catalog_name}", json.dumps(patch))
+    return result
 
 
 @app.patch("/api/catalogs/{catalog_name}/schemas/{schema_name}", response_model=None)
@@ -213,14 +330,25 @@ async def api_update_schema(
     patch: dict[str, Any] = Body(...),
 ) -> dict[str, object] | JSONResponse:
     """Apply a partial update to a schema."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
+    full_name = f"{catalog_name}.{schema_name}"
     try:
-        return await client.update_schema(catalog_name, schema_name, patch)
+        await check_privilege(
+            client, user.get("email", ""), user.get("is_admin", False),
+            "schema", full_name, MODIFY,
+        )
+    except AccessDenied as exc:
+        return _deny_json(exc)
+    try:
+        result = await client.update_schema(catalog_name, schema_name, patch)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "update_schema", f"schema:{full_name}", json.dumps(patch))
+    return result
 
 
 @app.get("/api/tags/{securable_type}/{full_name:path}", response_model=None)
@@ -228,7 +356,7 @@ async def api_get_tags(
     request: Request, securable_type: str, full_name: str
 ) -> list[dict[str, object]] | JSONResponse:
     """Return tags for a securable."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
     try:
         return await client.get_tags(securable_type, full_name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -246,9 +374,17 @@ async def api_update_tags(
     body: dict[str, Any] = Body(...),
 ) -> list[dict[str, object]] | JSONResponse:
     """Update tags for a securable. Body: {"changes": [...]}."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
     try:
-        return await client.update_tags(
+        await check_privilege(
+            client, user.get("email", ""), user.get("is_admin", False),
+            securable_type, full_name, MODIFY,
+        )
+    except AccessDenied as exc:
+        return _deny_json(exc)
+    try:
+        result = await client.update_tags(
             securable_type, full_name, body.get("changes", [])
         )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -256,6 +392,11 @@ async def api_update_tags(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(
+        request, "update_tags", f"{securable_type}:{full_name}",
+        json.dumps(body.get("changes", [])),
+    )
+    return result
 
 
 @app.get("/api/permissions/{securable_type}/{full_name:path}", response_model=None)
@@ -263,7 +404,7 @@ async def api_get_permissions(
     request: Request, securable_type: str, full_name: str
 ) -> list[dict[str, object]] | JSONResponse:
     """Return privilege assignments for a securable."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
     try:
         return await client.get_permissions(securable_type, full_name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -281,9 +422,17 @@ async def api_update_permissions(
     body: dict[str, Any] = Body(...),
 ) -> list[dict[str, object]] | JSONResponse:
     """Update permissions for a securable. Body: {"changes": [...]}."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
     try:
-        return await client.update_permissions(
+        await check_privilege(
+            client, user.get("email", ""), user.get("is_admin", False),
+            securable_type, full_name, MANAGE_GRANTS,
+        )
+    except AccessDenied as exc:
+        return _deny_json(exc)
+    try:
+        result = await client.update_permissions(
             securable_type, full_name, body.get("changes", [])
         )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -291,6 +440,11 @@ async def api_update_permissions(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(
+        request, "update_permissions", f"{securable_type}:{full_name}",
+        json.dumps(body.get("changes", [])),
+    )
+    return result
 
 
 @app.get("/api/effective-permissions/{securable_type}/{full_name:path}", response_model=None)
@@ -298,7 +452,7 @@ async def api_get_effective_permissions(
     request: Request, securable_type: str, full_name: str
 ) -> list[dict[str, object]] | JSONResponse:
     """Return effective (inherited) permissions for a securable."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
     try:
         return await client.get_effective_permissions(securable_type, full_name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -313,7 +467,15 @@ async def api_lineage(
     request: Request, full_name: str, depth: int = 3
 ) -> dict[str, object] | JSONResponse:
     """Return combined upstream/downstream lineage for a table."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
+    try:
+        await check_privilege(
+            client, user.get("email", ""), user.get("is_admin", False),
+            "table", full_name, SELECT,
+        )
+    except AccessDenied as exc:
+        return _deny_json(exc)
     try:
         return await client.get_lineage(full_name, depth)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -326,7 +488,7 @@ async def api_lineage(
 @app.get("/", response_class=HTMLResponse)
 async def catalogs_index(request: Request) -> HTMLResponse:
     """Render the welcome screen with the catalog count."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
     catalog_count = 0
     error: str | None = None
     try:
@@ -349,7 +511,8 @@ async def catalogs_index(request: Request) -> HTMLResponse:
 @app.get("/catalogs/{catalog_name}", response_class=HTMLResponse)
 async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
     """Render metadata for a single catalog."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
     catalog: dict[str, Any] | None = None
     tags: list[dict[str, Any]] = []
     permissions: list[dict[str, Any]] = []
@@ -364,6 +527,20 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
         )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         error = str(exc)
+
+    # Enforce after gather so we reuse the effective permissions data.
+    if error is None:
+        try:
+            check_privilege_from_effective(
+                effective, user.get("email", ""), user.get("is_admin", False),
+                "catalog", catalog_name, USE_CATALOG,
+            )
+        except AccessDenied as exc:
+            return _deny_html(request, exc)
+
+    can_manage = has_privilege(
+        effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
+    )
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/schemas.html",
@@ -373,6 +550,7 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
             "tags": tags,
             "permissions": permissions,
             "effective": effective,
+            "can_manage": can_manage,
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": None,
@@ -389,7 +567,8 @@ async def schema_detail(
     request: Request, catalog_name: str, schema_name: str
 ) -> HTMLResponse:
     """Render metadata for a single schema."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
     schema: dict[str, Any] | None = None
     tags: list[dict[str, Any]] = []
     permissions: list[dict[str, Any]] = []
@@ -405,6 +584,19 @@ async def schema_detail(
         )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         error = str(exc)
+
+    if error is None:
+        try:
+            check_privilege_from_effective(
+                effective, user.get("email", ""), user.get("is_admin", False),
+                "schema", full_name, USE_SCHEMA,
+            )
+        except AccessDenied as exc:
+            return _deny_html(request, exc)
+
+    can_manage = has_privilege(
+        effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
+    )
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/tables.html",
@@ -415,6 +607,7 @@ async def schema_detail(
             "tags": tags,
             "permissions": permissions,
             "effective": effective,
+            "can_manage": can_manage,
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": schema_name,
@@ -434,7 +627,8 @@ async def table_detail(
     table_name: str,
 ) -> HTMLResponse:
     """Render metadata and column schema for a single table."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    client = _get_uc_client(request)
+    user = _get_user(request)
     table: dict[str, Any] | None = None
     tags: list[dict[str, Any]] = []
     permissions: list[dict[str, Any]] = []
@@ -452,6 +646,19 @@ async def table_detail(
         )
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         error = str(exc)
+
+    if error is None:
+        try:
+            check_privilege_from_effective(
+                effective, user.get("email", ""), user.get("is_admin", False),
+                "table", full_name, SELECT,
+            )
+        except AccessDenied as exc:
+            return _deny_html(request, exc)
+
+    can_manage = has_privilege(
+        effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
+    )
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/table.html",
@@ -464,6 +671,7 @@ async def table_detail(
             "permissions": permissions,
             "effective": effective,
             "lineage": lineage,
+            "can_manage": can_manage,
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": schema_name,
@@ -510,8 +718,11 @@ async def jupyter_status(request: Request) -> dict[str, object]:
 async def api_list_connections(
     request: Request,
 ) -> list[dict[str, object]] | JSONResponse:
-    """Return all connections."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Return all connections (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         return await client.list_connections()
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -525,23 +736,31 @@ async def api_list_connections(
 async def api_create_connection(
     request: Request, body: dict[str, Any] = Body(...)
 ) -> dict[str, object] | JSONResponse:
-    """Create a new connection."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Create a new connection (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
-        return await client.create_connection(body)
+        result = await client.create_connection(body)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "create_connection", f"connection:{body.get('name', '?')}")
+    return result
 
 
 @app.get("/api/connections/{name}", response_model=None)
 async def api_get_connection(
     request: Request, name: str
 ) -> dict[str, object] | JSONResponse:
-    """Return a single connection."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Return a single connection (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         return await client.get_connection(name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -555,31 +774,40 @@ async def api_get_connection(
 async def api_update_connection(
     request: Request, name: str, body: dict[str, Any] = Body(...)
 ) -> dict[str, object] | JSONResponse:
-    """Update a connection."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Update a connection (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
-        return await client.update_connection(name, body)
+        result = await client.update_connection(name, body)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "update_connection", f"connection:{name}", json.dumps(body))
+    return result
 
 
 @app.delete("/api/connections/{name}", response_model=None)
 async def api_delete_connection(
     request: Request, name: str
 ) -> dict[str, str] | JSONResponse:
-    """Delete a connection."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Delete a connection (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         await client.delete_connection(name)
-        return {"status": "deleted"}
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "delete_connection", f"connection:{name}")
+    return {"status": "deleted"}
 
 
 # -- Federation: External Locations --
@@ -589,8 +817,11 @@ async def api_delete_connection(
 async def api_list_external_locations(
     request: Request,
 ) -> list[dict[str, object]] | JSONResponse:
-    """Return all external locations."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Return all external locations (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         return await client.list_external_locations()
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -604,23 +835,31 @@ async def api_list_external_locations(
 async def api_create_external_location(
     request: Request, body: dict[str, Any] = Body(...)
 ) -> dict[str, object] | JSONResponse:
-    """Create a new external location."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Create a new external location (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
-        return await client.create_external_location(body)
+        result = await client.create_external_location(body)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "create_ext_location", f"ext_location:{body.get('name', '?')}")
+    return result
 
 
 @app.get("/api/external-locations/{name}", response_model=None)
 async def api_get_external_location(
     request: Request, name: str
 ) -> dict[str, object] | JSONResponse:
-    """Return a single external location."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Return a single external location (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         return await client.get_external_location(name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -634,31 +873,40 @@ async def api_get_external_location(
 async def api_update_external_location(
     request: Request, name: str, body: dict[str, Any] = Body(...)
 ) -> dict[str, object] | JSONResponse:
-    """Update an external location."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Update an external location (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
-        return await client.update_external_location(name, body)
+        result = await client.update_external_location(name, body)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "update_ext_location", f"ext_location:{name}", json.dumps(body))
+    return result
 
 
 @app.delete("/api/external-locations/{name}", response_model=None)
 async def api_delete_external_location(
     request: Request, name: str
 ) -> dict[str, str] | JSONResponse:
-    """Delete an external location."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Delete an external location (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         await client.delete_external_location(name)
-        return {"status": "deleted"}
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "delete_ext_location", f"ext_location:{name}")
+    return {"status": "deleted"}
 
 
 # -- Federation: Credentials --
@@ -668,8 +916,11 @@ async def api_delete_external_location(
 async def api_list_credentials(
     request: Request,
 ) -> list[dict[str, object]] | JSONResponse:
-    """Return all credentials."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Return all credentials (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         return await client.list_credentials()
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -683,23 +934,31 @@ async def api_list_credentials(
 async def api_create_credential(
     request: Request, body: dict[str, Any] = Body(...)
 ) -> dict[str, object] | JSONResponse:
-    """Create a new credential."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Create a new credential (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
-        return await client.create_credential(body)
+        result = await client.create_credential(body)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "create_credential", f"credential:{body.get('name', '?')}")
+    return result
 
 
 @app.get("/api/credentials/{name}", response_model=None)
 async def api_get_credential(
     request: Request, name: str
 ) -> dict[str, object] | JSONResponse:
-    """Return a single credential."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Return a single credential (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         return await client.get_credential(name)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
@@ -713,31 +972,40 @@ async def api_get_credential(
 async def api_update_credential(
     request: Request, name: str, body: dict[str, Any] = Body(...)
 ) -> dict[str, object] | JSONResponse:
-    """Update a credential."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Update a credential (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
-        return await client.update_credential(name, body)
+        result = await client.update_credential(name, body)
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "update_credential", f"credential:{name}", json.dumps(body))
+    return result
 
 
 @app.delete("/api/credentials/{name}", response_model=None)
 async def api_delete_credential(
     request: Request, name: str
 ) -> dict[str, str] | JSONResponse:
-    """Delete a credential."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Delete a credential (admin-only)."""
+    denied = _require_admin(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     try:
         await client.delete_credential(name)
-        return {"status": "deleted"}
     except (httpx.HTTPError, UnexpectedStatus) as exc:
         return JSONResponse(
             status_code=502,
             content={"error": f"Catalog server unavailable: {exc}"},
         )
+    _audit(request, "delete_credential", f"credential:{name}")
+    return {"status": "deleted"}
 
 
 # -- Federation: HTML pages --
@@ -745,8 +1013,11 @@ async def api_delete_credential(
 
 @app.get("/connections", response_class=HTMLResponse)
 async def connections_index(request: Request) -> HTMLResponse:
-    """List all connections."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """List all connections (admin-only)."""
+    denied = _require_admin_html(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     connections: list[dict[str, Any]] = []
     error: str | None = None
     try:
@@ -762,8 +1033,11 @@ async def connections_index(request: Request) -> HTMLResponse:
 
 @app.get("/connections/{name}", response_class=HTMLResponse)
 async def connection_detail(request: Request, name: str) -> HTMLResponse:
-    """Show a single connection."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Show a single connection (admin-only)."""
+    denied = _require_admin_html(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     connection: dict[str, Any] | None = None
     error: str | None = None
     try:
@@ -779,8 +1053,11 @@ async def connection_detail(request: Request, name: str) -> HTMLResponse:
 
 @app.get("/external-locations", response_class=HTMLResponse)
 async def external_locations_index(request: Request) -> HTMLResponse:
-    """List all external locations."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """List all external locations (admin-only)."""
+    denied = _require_admin_html(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     locations: list[dict[str, Any]] = []
     error: str | None = None
     try:
@@ -796,8 +1073,11 @@ async def external_locations_index(request: Request) -> HTMLResponse:
 
 @app.get("/external-locations/{name}", response_class=HTMLResponse)
 async def external_location_detail(request: Request, name: str) -> HTMLResponse:
-    """Show a single external location."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Show a single external location (admin-only)."""
+    denied = _require_admin_html(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     location: dict[str, Any] | None = None
     error: str | None = None
     try:
@@ -813,8 +1093,11 @@ async def external_location_detail(request: Request, name: str) -> HTMLResponse:
 
 @app.get("/credentials", response_class=HTMLResponse)
 async def credentials_index(request: Request) -> HTMLResponse:
-    """List all credentials."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """List all credentials (admin-only)."""
+    denied = _require_admin_html(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     credentials: list[dict[str, Any]] = []
     error: str | None = None
     try:
@@ -830,8 +1113,11 @@ async def credentials_index(request: Request) -> HTMLResponse:
 
 @app.get("/credentials/{name}", response_class=HTMLResponse)
 async def credential_detail(request: Request, name: str) -> HTMLResponse:
-    """Show a single credential."""
-    client: UnityCatalogClient = request.app.state.uc_client
+    """Show a single credential (admin-only)."""
+    denied = _require_admin_html(request)
+    if denied:
+        return denied
+    client = _get_uc_client(request)
     credential: dict[str, Any] | None = None
     error: str | None = None
     try:
