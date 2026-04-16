@@ -21,12 +21,19 @@ web UI and a thin orchestration layer on top of existing components:
 - **Apache Spark** (`~/git/spark`) — optional query runtime; only
   used if/when PointlesSQL grows beyond metadata browsing.
 
-## First milestone
+## Phase 1 MVP (complete)
 
-A web UI for **soyuz-catalog**: browse catalogs → schemas → tables
-→ columns, view and edit tags, inspect permissions and lineage,
-manage Lakehouse Federation connections and foreign catalogs. The
-UI is a FastAPI + Jinja2 application that talks to soyuz-catalog
+A "mini-Databricks" where the user can:
+
+1. **Browse UC metadata** in a web UI (catalogs → schemas → tables
+   → columns), edit comments and properties inline
+2. **Read and write Delta tables** as pandas DataFrames via the
+   `PQL` helper library, which resolves table names through
+   soyuz-catalog
+3. **Work in a notebook** via an embedded JupyterLab tab with
+   sidebar navigation
+
+The UI is a FastAPI + Jinja2 application that talks to soyuz-catalog
 over HTTP using the generated typed client that ships with
 soyuz-catalog (Sprint 20 / ADR-0007 in that repo).
 
@@ -35,6 +42,9 @@ soyuz-catalog (Sprint 20 / ADR-0007 in that repo).
 - Python 3.14, managed with `uv` + hatchling
 - FastAPI + Uvicorn, Jinja2 templates, static assets served from
   `frontend/`
+- Bootstrap 5.3 + HTMX + Alpine.js for the frontend
+- `deltalake>=0.24` + `pandas>=2.2` — the PQL DataFrame bridge
+- `jupyterlab>=4.0` — embedded notebook server
 - SQLAlchemy 2.0 + Alembic — for *our own* metadata only (user
   sessions, UI preferences, saved queries). soyuz-catalog owns the
   lakehouse metadata; PointlesSQL never writes to it directly
@@ -51,11 +61,20 @@ soyuz-catalog (Sprint 20 / ADR-0007 in that repo).
 ## Layout
 
 - `pointlessql/api/main.py` — FastAPI entrypoint, `cli()` runs uvicorn
-- `pointlessql/services/` — business logic, including the thin
-  `soyuz_client.py` wrapper that builds a configured
-  `soyuz_catalog_client.Client` from settings
+- `pointlessql/services/` — business logic:
+  - `soyuz_client.py` — factory for a configured
+    `soyuz_catalog_client.Client`
+  - `unitycatalog.py` — async facade over the generated client
+  - `jupyter.py` — JupyterLab subprocess lifecycle manager
+- `pointlessql/pql/` — sync bridge between UC metadata and Delta
+  Lake DataFrames (`PQL` class, column mapping, name parsing)
+- `pointlessql/settings.py` — pydantic-settings (soyuz URL, Jupyter
+  config)
 - `pointlessql/alembic/` — migrations for our own metadata DB
 - `frontend/templates|css|js` — force-included into the wheel on build
+- `notebooks/` — starter notebooks shipped with the project
+- `tests/` — pytest suite (`@pytest.mark.integration` for live-server
+  tests)
 
 ## Wiring soyuz-catalog
 

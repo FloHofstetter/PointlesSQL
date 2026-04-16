@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 from fastapi import Body, FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from soyuz_catalog_client.errors import UnexpectedStatus
@@ -69,59 +69,95 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/tree")
-async def api_tree(request: Request) -> list[dict[str, object]]:
+@app.get("/api/tree", response_model=None)
+async def api_tree(request: Request) -> list[dict[str, object]] | JSONResponse:
     """Return the full catalog/schema/table tree for the sidebar."""
     client: UnityCatalogClient = request.app.state.uc_client
-    return await client.get_tree()
+    try:
+        return await client.get_tree()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
 
 
-@app.get("/api/catalogs")
-async def api_catalogs(request: Request) -> list[dict[str, object]]:
+@app.get("/api/catalogs", response_model=None)
+async def api_catalogs(request: Request) -> list[dict[str, object]] | JSONResponse:
     """Return all catalogs as JSON."""
     client: UnityCatalogClient = request.app.state.uc_client
-    return await client.list_catalogs()
+    try:
+        return await client.list_catalogs()
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
 
 
-@app.get("/api/catalogs/{catalog_name}/schemas")
+@app.get("/api/catalogs/{catalog_name}/schemas", response_model=None)
 async def api_schemas(
     request: Request, catalog_name: str
-) -> list[dict[str, object]]:
+) -> list[dict[str, object]] | JSONResponse:
     """Return schemas inside a catalog as JSON."""
     client: UnityCatalogClient = request.app.state.uc_client
-    return await client.list_schemas(catalog_name)
+    try:
+        return await client.list_schemas(catalog_name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
 
 
-@app.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables")
+@app.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables", response_model=None)
 async def api_tables(
     request: Request, catalog_name: str, schema_name: str
-) -> list[dict[str, object]]:
+) -> list[dict[str, object]] | JSONResponse:
     """Return tables inside a schema as JSON."""
     client: UnityCatalogClient = request.app.state.uc_client
-    return await client.list_tables(catalog_name, schema_name)
+    try:
+        return await client.list_tables(catalog_name, schema_name)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
 
 
-@app.patch("/api/catalogs/{catalog_name}")
+@app.patch("/api/catalogs/{catalog_name}", response_model=None)
 async def api_update_catalog(
     request: Request,
     catalog_name: str,
     patch: dict[str, Any] = Body(...),
-) -> dict[str, object]:
+) -> dict[str, object] | JSONResponse:
     """Apply a partial update to a catalog."""
     client: UnityCatalogClient = request.app.state.uc_client
-    return await client.update_catalog(catalog_name, patch)
+    try:
+        return await client.update_catalog(catalog_name, patch)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
 
 
-@app.patch("/api/catalogs/{catalog_name}/schemas/{schema_name}")
+@app.patch("/api/catalogs/{catalog_name}/schemas/{schema_name}", response_model=None)
 async def api_update_schema(
     request: Request,
     catalog_name: str,
     schema_name: str,
     patch: dict[str, Any] = Body(...),
-) -> dict[str, object]:
+) -> dict[str, object] | JSONResponse:
     """Apply a partial update to a schema."""
     client: UnityCatalogClient = request.app.state.uc_client
-    return await client.update_schema(catalog_name, schema_name, patch)
+    try:
+        return await client.update_schema(catalog_name, schema_name, patch)
+    except (httpx.HTTPError, UnexpectedStatus) as exc:
+        return JSONResponse(
+            status_code=502,
+            content={"error": f"Catalog server unavailable: {exc}"},
+        )
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 import deltalake
+import httpx
 import pandas as pd
 from soyuz_catalog_client import Client
 from soyuz_catalog_client.api.catalogs import (
@@ -82,7 +83,10 @@ class PQL:
                 ``storage_location``.
         """
         parse_full_name(full_name)  # validates format
-        response = _get_table.sync(client=self._client, full_name=full_name)
+        try:
+            response = _get_table.sync(client=self._client, full_name=full_name)
+        except httpx.ConnectError as exc:
+            raise ConnectionError(self._unreachable_msg()) from exc
         if not isinstance(response, TableInfo):
             msg = f"Table not found: {full_name!r}"
             raise LookupError(msg)
@@ -136,29 +140,34 @@ class PQL:
                 if not isinstance(loc, Unset) and loc:
                     location = loc
                     table_exists = True
+        except httpx.ConnectError as exc:
+            raise ConnectionError(self._unreachable_msg()) from exc
         except UnexpectedStatus as exc:
             if exc.status_code != 404:
                 raise
 
-        if not table_exists:
-            location = self._derive_storage_location(catalog, schema, table)
+        try:
+            if not table_exists:
+                location = self._derive_storage_location(catalog, schema, table)
 
-        assert location is not None  # noqa: S101 — guarded above
+            assert location is not None  # noqa: S101 — guarded above
 
-        deltalake.write_deltalake(location, df, mode=mode)
+            deltalake.write_deltalake(location, df, mode=mode)
 
-        if not table_exists:
-            columns = columns_from_dataframe(df)
-            body = CreateTable(
-                catalog_name=catalog,
-                schema_name=schema,
-                name=table,
-                table_type="MANAGED",
-                data_source_format="DELTA",
-                columns=columns,
-                storage_location=location,
-            )
-            _create_table.sync(client=self._client, body=body)
+            if not table_exists:
+                columns = columns_from_dataframe(df)
+                body = CreateTable(
+                    catalog_name=catalog,
+                    schema_name=schema,
+                    name=table,
+                    table_type="MANAGED",
+                    data_source_format="DELTA",
+                    columns=columns,
+                    storage_location=location,
+                )
+                _create_table.sync(client=self._client, body=body)
+        except httpx.ConnectError as exc:
+            raise ConnectionError(self._unreachable_msg()) from exc
 
     # ------------------------------------------------------------------
     # Convenience list methods
@@ -220,6 +229,11 @@ class PQL:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _unreachable_msg(self) -> str:
+        """Build a user-friendly message when soyuz-catalog is unreachable."""
+        url = self._client._base_url
+        return f"Cannot reach soyuz-catalog at {url}. Is the server running?"
 
     def _derive_storage_location(
         self, catalog: str, schema: str, table: str

@@ -97,6 +97,7 @@ include = ["pointlessql", "tests"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "-m 'not integration'"
 markers = [
     "integration: requires a live Unity Catalog server",
 ]

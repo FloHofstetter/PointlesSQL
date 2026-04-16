@@ -39,7 +39,7 @@ PointlesSQL
 │       ├── Bootstrap 5.3 + HTMX + Alpine.js frontend
 │       └── Dark-mode CSS baseline
 │
-├── Phase 1 — MVP: Catalog UI + Notebook + pql            (in progress)
+├── Phase 1 — MVP: Catalog UI + Notebook + pql            ✅ done
 │   │
 │   │   Goal: a working "mini-Databricks" where the user can
 │   │   browse UC metadata in a web UI, open a notebook tab,
@@ -104,17 +104,22 @@ PointlesSQL
 │   │   └── Starter notebook: `notebooks/getting_started.ipynb`
 │   │       demonstrating `pql.table("...")` → DataFrame
 │   │
-│   └── Sprint 4 — Polish, E2E tests, docs               ⏳ planned
+│   └── Sprint 4 — Polish, E2E tests, docs               ✅ done (SPRINT4SHA)
 │       ├── E2E smoke tests: soyuz + PointlesSQL up, create
-│       │   catalog/schema via UI, write table via pql, verify
-│       │   it appears in browser with correct columns
-│       ├── Error handling: graceful degradation when soyuz
-│       │   is down (UI, pql, notebook page)
-│       ├── UX: copy-paste `pql.table(...)` snippet on table
-│       │   detail page, loading spinner for Jupyter startup,
-│       │   "Jupyter not available" when disabled
-│       ├── README.md: MVP setup docs
-│       └── CLAUDE.md updates for new architecture
+│       │   catalog/schema via PQL, verify it appears in
+│       │   browser with correct columns and PQL snippet
+│       ├── Error handling: API JSON endpoints return 502
+│       │   when soyuz is down; PQL raises ConnectionError
+│       │   with user-friendly message
+│       ├── UX: copy-paste `pql.table(...)` snippet card on
+│       │   table detail page, Alpine.js loading spinner for
+│       │   Jupyter startup with retry on failure, improved
+│       │   "Jupyter not available" error state
+│       ├── README.md: MVP setup docs, quick start, PQL usage
+│       ├── CLAUDE.md updates for Phase 1 completion
+│       └── Tests: `test_api_errors.py`, `test_e2e.py`,
+│           `conftest.py` shared fixtures, PQL ConnectionError
+│           tests
 │
 ├── Phase 2 — Catalog UI enhancements                     🧊 on ice
 │   │

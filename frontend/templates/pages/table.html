@@ -56,6 +56,24 @@
     </div>
 </div>
 
+<div class="card mb-4" x-data="{ copied: false }">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>PQL Snippet</span>
+        <button class="btn btn-sm btn-outline-secondary"
+                @click="navigator.clipboard.writeText($refs.snippet.textContent); copied = true; setTimeout(() => copied = false, 1500)"
+                :title="copied ? 'Copied!' : 'Copy to clipboard'">
+            <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
+            <span x-text="copied ? 'Copied' : 'Copy'" class="ms-1"></span>
+        </button>
+    </div>
+    <div class="card-body">
+        <pre class="mb-0"><code x-ref="snippet">from pointlessql import PQL
+
+pql = PQL()
+df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></pre>
+    </div>
+</div>
+
 {% if table.properties %}
 <div class="card mb-4">
     <div class="card-header">Properties</div>

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -166,7 +165,7 @@ class TestNotebookRoute:
         app.state.jupyter_process = None
 
     @pytest.mark.usefixtures("_app")
-    async def test_notebook_enabled_returns_iframe(self) -> None:
+    async def test_notebook_enabled_returns_loader(self) -> None:
         from pointlessql.api.main import app
 
         async with httpx.AsyncClient(
@@ -176,8 +175,10 @@ class TestNotebookRoute:
             resp = await client.get("/notebook")
 
         assert resp.status_code == 200
+        assert "jupyterLoader" in resp.text
         assert "pql-notebook-iframe" in resp.text
         assert "localhost:9999" in resp.text
+        assert "Starting JupyterLab" in resp.text
 
     @pytest.mark.usefixtures("_app")
     async def test_notebook_disabled_shows_message(self) -> None:

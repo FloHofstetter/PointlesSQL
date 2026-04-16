@@ -4,7 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
+### Added (Sprint 4)
+
+- E2E smoke test (`tests/test_e2e.py`): full roundtrip — create
+  catalog/schema, write table via PQL, verify in web UI with correct
+  columns and PQL snippet card
+- `tests/conftest.py` with shared integration fixtures (`soyuz_client`,
+  `e2e_env`)
+- `tests/test_api_errors.py` — unit tests for API error handling
+  (all JSON endpoints return 502 when soyuz-catalog is unreachable)
+- PQL snippet card with copy-to-clipboard button on table detail page
+- Jupyter loading spinner on notebook page: polls `/api/jupyter/status`
+  until ready, shows error state with retry button after 30 s timeout
+
+### Changed (Sprint 4)
+
+- API JSON endpoints (`/api/tree`, `/api/catalogs`, `/api/schemas`,
+  `/api/tables`, PATCH endpoints) return HTTP 502 with JSON error body
+  when soyuz-catalog is unreachable (previously returned 500)
+- `PQL.table()` and `PQL.write_table()` raise `ConnectionError` with
+  a user-friendly message when soyuz-catalog is unreachable (previously
+  raised raw `httpx.ConnectError`)
+- Notebook page uses Alpine.js polling to wait for Jupyter readiness
+  before loading the iframe; shows "Jupyter Not Available" error state
+  if startup fails
+- README.md rewritten with MVP setup docs, quick start, PQL usage
+  examples, configuration table
+- CLAUDE.md updated with Phase 1 completion, PQL/Jupyter/Alpine.js
+  in stack, expanded layout section
+
+### Previously added (Sprint 3)
 
 - `pointlessql/services/jupyter.py` — async context manager that
   starts JupyterLab as a managed subprocess (SIGTERM/SIGKILL

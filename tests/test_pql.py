@@ -286,3 +286,33 @@ class TestPQLListMethods:
             client=pql._client, catalog_name="cat", schema_name="sch"
         )
         assert result == [{"name": "t1"}]
+
+
+# ------------------------------------------------------------------
+# PQL — ConnectionError when soyuz is unreachable
+# ------------------------------------------------------------------
+
+
+class TestPQLConnectionError:
+    @patch(f"{_MOD}._get_table")
+    def test_table_raises_connection_error(self, mock_get: MagicMock) -> None:
+        import httpx
+
+        mock_get.sync.side_effect = httpx.ConnectError("Connection refused")
+        client = MagicMock()
+        client._base_url = "http://127.0.0.1:8080"
+        pql = PQL(client=client)
+        with pytest.raises(ConnectionError, match="Cannot reach soyuz-catalog"):
+            pql.table("cat.sch.tbl")
+
+    @patch(f"{_MOD}._get_table")
+    def test_write_table_raises_connection_error(self, mock_get: MagicMock) -> None:
+        import httpx
+
+        mock_get.sync.side_effect = httpx.ConnectError("Connection refused")
+        client = MagicMock()
+        client._base_url = "http://127.0.0.1:8080"
+        pql = PQL(client=client)
+        df = pd.DataFrame({"x": [1]})
+        with pytest.raises(ConnectionError, match="Cannot reach soyuz-catalog"):
+            pql.write_table(df, "cat.sch.tbl")

@@ -4,9 +4,53 @@
 
 {% block content %}
 {% if jupyter_enabled %}
-<iframe class="pql-notebook-iframe"
-        src="http://localhost:{{ jupyter_port }}/lab"
-        title="JupyterLab"></iframe>
+<div x-data="jupyterLoader()" x-init="poll()">
+    <div x-show="!ready && !failed" class="text-center py-5">
+        <div class="spinner-border text-muted mb-3" role="status"></div>
+        <h2 class="h4 mb-2">Starting JupyterLab&hellip;</h2>
+        <p class="text-muted">Waiting for the notebook server to become ready.</p>
+    </div>
+
+    <div x-show="failed" x-cloak class="text-center py-5">
+        <i class="bi bi-exclamation-triangle display-1 text-warning mb-3 d-block"></i>
+        <h2 class="h4 mb-2">Jupyter Not Available</h2>
+        <p class="text-muted">
+            JupyterLab is enabled but failed to start. Check the server logs.
+        </p>
+        <button class="btn btn-outline-secondary" @click="failed = false; poll()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Retry
+        </button>
+    </div>
+
+    <iframe x-show="ready"
+            x-cloak
+            x-bind:src="ready ? 'http://localhost:{{ jupyter_port }}/lab' : ''"
+            class="pql-notebook-iframe"
+            title="JupyterLab"></iframe>
+</div>
+
+<script>
+function jupyterLoader() {
+    return {
+        ready: false,
+        failed: false,
+        async poll() {
+            const maxAttempts = 30;
+            for (let i = 0; i < maxAttempts; i++) {
+                try {
+                    const res = await fetch('/api/jupyter/status');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.running) { this.ready = true; return; }
+                    }
+                } catch (e) {}
+                await new Promise(r => setTimeout(r, 1000));
+            }
+            this.failed = true;
+        }
+    };
+}
+</script>
 {% else %}
 <div class="text-center py-5">
     <i class="bi bi-journal-code display-1 text-muted mb-3 d-block"></i>
