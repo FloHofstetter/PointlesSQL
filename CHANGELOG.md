@@ -4,6 +4,70 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 22)
+
+- `docker-compose.e2e.yml` overlay — `postgres-e2e` sidecar
+  (postgres:17-alpine, port 5433) seeded from
+  `scripts/pg-seed.sql` as the foreign-catalog target for the
+  sync playbook; mounts `./scripts:/app/scripts:ro` on the
+  `pointlessql` service so the seed script can run server-side
+  with consistent `file:///app/warehouse/...` storage URIs
+- `scripts/pg-seed.sql` — defensively idempotent Postgres
+  `shop` schema (customers, products, orders) with a few seeded
+  rows so the first foreign-catalog sync returns `added_count`
+  equal to `schema + 3 tables`
+- `scripts/seed-e2e.py` — idempotent driver that runs inside
+  the PointlesSQL container: creates managed catalog `demo`,
+  schemas `demo.sales` / `demo.hr` with `file://` storage
+  roots, writes four Delta tables via `PQL.write_table` (50
+  orders, 20 customers, 10 employees, 10 salaries), and
+  registers a soyuz `Connection pg_e2e` pre-bound to the
+  seeded Postgres so the foreign-catalog create modal picks it
+  up without further setup
+- `docs/e2e-walkthroughs/README.md` — operator doc: stack
+  start/teardown, test-user credentials shared across playbooks,
+  how Claude replays a playbook via the Playwright MCP tool set,
+  selector conventions for a codebase without `data-test`
+  attributes, rebuild note for stale cached container images
+- Five Markdown playbooks under `docs/e2e-walkthroughs/`:
+  `auth.md` (first-user admin bootstrap + non-admin + `/auth/me`
+  + `/metrics` 403), `catalog-browsing.md` (welcome screen +
+  sidebar-tree sessionStorage persistence + PQL-snippet copy
+  button), `inline-editors.md` (`editable` +
+  `properties_editor` + `tags_editor` + `permissions_card`
+  grant/revoke across catalog/schema/table, driven via
+  `Alpine.$data(card)` rather than DOM mutation so Alpine's
+  reactive bindings don't swallow typed values), `federation.md`
+  (admin CRUD of connections / credentials / external locations
+  with `deleteConfirm`, non-admin 403 negative), and
+  `foreign-catalog-sync.md` (create-foreign-catalog modal → Sync
+  now → sync-history card → mirrored `pg_mirror.shop.*`
+  tables in the sidebar)
+- All five playbooks exercised live via Playwright MCP in
+  Firefox against a freshly-composed stack. Playbooks record
+  what each step's `browser_evaluate` returned so the next
+  replay has a concrete expectation. Three bugs surfaced
+  (recorded in the playbooks' **Found bugs** sections; no fix
+  in this sprint — pre-existing behaviour, fix locations
+  noted):
+  - **BUG-22-01** (inline-editors.md): PointlesSQL wraps a
+    soyuz `400 INVALID_ARGUMENT` (e.g. invalid privilege on
+    securable type) as `502 catalog_unavailable`. Should be
+    `422` (or `400`). Fix location:
+    `pointlessql/services/unitycatalog.py:_wrap_catalog_errors` —
+    branch on `UnexpectedStatus.status_code`
+  - **BUG-22-02** (federation.md): `POST /api/external-locations`
+    without `credential_name` leaks `KeyError` as `500`.
+    Should be `422 ValidationError`. Fix location:
+    `pointlessql/services/unitycatalog.py:create_external_location`
+    (wrap `CreateExternalLocation.from_dict(data)` or add a
+    `KeyError/TypeError` branch in `_wrap_catalog_errors`)
+  - **BUG-22-03** (federation.md): the
+    `createExternalLocationForm()` Alpine factory in
+    `federation.js` lets an empty `credentialName` reach the
+    server; the form should either require the field or
+    populate a `<select>` from `/api/credentials`
+
 ### Added (Sprint 21)
 
 - `pointlessql/services/metrics.py` — Prometheus surface on its

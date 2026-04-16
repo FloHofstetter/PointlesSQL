@@ -508,6 +508,101 @@ PointlesSQL
 │       └── Tests: metric emission, webhook invocation with
 │           stubbed httpx, admin-only enforcement on `/metrics`
 │
+├── Phase 7 — Live UI walkthrough via Playwright MCP        🔜 next
+│   │
+│   │   Goal: exercise every HTML route, every interactive Alpine
+│   │   component, and every UI-relevant setting once, live, on
+│   │   the developer's machine, to surface bugs that unit and
+│   │   integration tests cannot reach because no browser has
+│   │   ever touched the rendered templates. The fix for the
+│   │   job-pause button (commit e09a661 — plain form POST landed
+│   │   on a raw JSON page) is the prototype of what this phase
+│   │   is meant to catch.
+│   │
+│   │   Treiber: the Playwright MCP tools Claude has in-session
+│   │   (`browser_navigate`, `browser_click`, `browser_snapshot`,
+│   │   `browser_fill_form`, `browser_evaluate`,
+│   │   `browser_wait_for`, `browser_network_requests`). Deliver-
+│   │   able per sprint is a set of Markdown playbooks under
+│   │   `docs/e2e-walkthroughs/`: deterministic, step-for-step
+│   │   walkthroughs that either Claude (via MCP) or a human can
+│   │   replay against a freshly-composed stack. Each playbook
+│   │   ends with a Found-Bugs section; fixes land in the same
+│   │   sprint where feasible.
+│   │
+│   │   Explicitly not in scope: pytest-playwright suite,
+│   │   GitHub Actions CI (the manual sprint gate of ruff +
+│   │   pyright + pydoclint + alembic stands; pytest stays
+│   │   skipped per the standing preference), screenshot
+│   │   regression diffs, performance/load tests, mobile layout.
+│   │
+│   ├── Sprint 22 — Harness + data-surface walkthrough      ✅ done (<short-sha>)
+│   │   ├── `docker-compose.e2e.yml` overlay: Postgres sidecar
+│   │   │   (postgres:17-alpine) seeded by `scripts/pg-seed.sql`
+│   │   │   as foreign-catalog target. No new services in the
+│   │   │   base compose file
+│   │   ├── `scripts/seed-e2e.py`: idempotent seed via existing
+│   │   │   `PQL` helper (1-2 catalogs, a handful of schemas,
+│   │   │   real Delta tables under `./warehouse/`). Same
+│   │   │   interface as the `e2e_env` fixture in
+│   │   │   `tests/conftest.py`
+│   │   ├── `docs/e2e-walkthroughs/README.md` — stack start,
+│   │   │   test-user credentials, how a future session
+│   │   │   (human or Claude-via-MCP) replays a playbook
+│   │   ├── 5 playbooks landed: `auth.md` (register first-user
+│   │   │   bootstrap + second user + login + logout +
+│   │   │   `/auth/me` + redirect-to-login + 403 for non-admin
+│   │   │   on `/metrics`), `catalog-browsing.md` (index,
+│   │   │   catalog/schema/table detail, sidebar tree with
+│   │   │   sessionStorage, PQL snippet card),
+│   │   │   `inline-editors.md` (`editable`, `properties_editor`,
+│   │   │   `tags_editor`, `permissions_card` grant/revoke +
+│   │   │   assigned/effective tabs, `lineage_card` click-
+│   │   │   through — all three securable levels),
+│   │   │   `federation.md` (connections + external-locations +
+│   │   │   credentials: list + detail + create-modal +
+│   │   │   deleteConfirm, plus non-admin-negative),
+│   │   │   `foreign-catalog-sync.md` (create-modal on `/`,
+│   │   │   "Sync now" button, sync-history card, mirrored
+│   │   │   schemas/tables visible post-sync)
+│   │   └── Bugs surfaced in the run either land as fixes in
+│   │       the same sprint commit or are TODO-noted at the
+│   │       end of the relevant playbook with a clear next
+│   │       action. No "something was weird" entries
+│   │
+│   └── Sprint 23 — Orchestration, config matrix, operational  ⏳ planned
+│       ├── Extend `docker-compose.e2e.yml` with mock OIDC
+│       │   provider (`ghcr.io/navikt/mock-oauth2-server`) +
+│       │   env-var overlays for engine swaps and
+│       │   scheduler/jupyter toggles
+│       ├── 5 playbooks landed: `jobs-dag.md` (create modal,
+│       │   run-now, pause/resume, task log viewer, retry
+│       │   + fail-skip propagation, plus a `pg_sync`-kind
+│       │   job against Sprint 22's Postgres sidecar as
+│       │   cross-feature smoke),
+│       │   `notebook.md` (`jupyter_enabled=true` iframe +
+│       │   `/api/jupyter/status` polling; separate pass with
+│       │   `=false` verifies navbar tab absence + disabled
+│       │   state), `oidc.md` (SSO button visibility,
+│       │   `/auth/sso` → mock consent → `/auth/callback` →
+│       │   auto-user-creation, claim mapping), `operational.md`
+│       │   (`/healthz` anon, `/metrics` admin positive +
+│       │   negative, `/403` privilege detail, request-id
+│       │   header via `browser_network_requests`),
+│       │   `config-matrix.md` (one golden path per
+│       │   `POINTLESSQL_ENGINE` in {pandas,duckdb,polars},
+│       │   per `POINTLESSQL_LOG_FORMAT` in {text,json}, per
+│       │   `DATABASE_URL` in {sqlite,postgres via existing
+│       │   `docker-compose.postgres.yml`})
+│       ├── Scheduler runs with `POINTLESSQL_SCHEDULER_TICK_SECONDS=2`
+│       │   during orchestration playbooks so DAG state
+│       │   transitions land in a reasonable time
+│       ├── `CLAUDE.md`: short section on replaying the
+│       │   playbooks (browser + manual OR Claude +
+│       │   Playwright MCP)
+│       └── Phase-close summary in `ROADMAP.md`: bugs found,
+│           bugs fixed, bugs deferred with TODO pointers
+│
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
     │   soyuz-catalog's job; PointlesSQL is a consumer

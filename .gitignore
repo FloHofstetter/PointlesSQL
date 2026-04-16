@@ -17,3 +17,8 @@ node_modules/
 *.db-wal
 *.sqlite
 .ipynb_checkpoints/
+
+# Runtime state from docker-compose stacks — never commit seeded
+# Delta files or the Playwright MCP artefact directory.
+warehouse/
+.playwright-mcp/

@@ -1,0 +1,44 @@
+# Compose override — Playwright MCP walkthrough harness.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
+#   uv run python scripts/seed-e2e.py
+#
+# Adds a Postgres sidecar (``postgres-e2e``) that is the **foreign-catalog
+# target** for the walkthrough playbooks under ``docs/e2e-walkthroughs/``.
+# Distinct from ``docker-compose.postgres.yml``'s ``postgres`` service,
+# which is the PointlesSQL *metadata* DB — the two overlays compose
+# together if you want a fully-Postgres stack.
+
+services:
+  pointlessql:
+    # Expose the seed script inside the container so we can run it
+    # server-side with ``docker compose exec pointlessql python
+    # /app/scripts/seed-e2e.py``.  Server-side execution keeps all the
+    # file:// URIs under ``/app/warehouse`` — consistent with how the
+    # in-process scheduler and any subsequent notebook usage will see
+    # the seeded Delta tables.
+    volumes:
+      - ./scripts:/app/scripts:ro
+
+  postgres-e2e:
+    image: postgres:17-alpine
+    container_name: pql_postgres_e2e
+    environment:
+      POSTGRES_USER: e2e
+      POSTGRES_PASSWORD: e2e
+      POSTGRES_DB: ecommerce
+    ports:
+      - "${E2E_POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - postgres_e2e_data:/var/lib/postgresql/data
+      - ./scripts/pg-seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U e2e -d ecommerce"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres_e2e_data:
