@@ -156,7 +156,7 @@ PointlesSQL
 │   │   DB: SQLAlchemy 2.0 async, SQLite default
 │   │   (`aiosqlite`), PostgreSQL via `DATABASE_URL` override.
 │   │
-│   ├── Sprint 6 — Alembic + local users + JWT auth       🔜 next
+│   ├── Sprint 6 — Alembic + local users + JWT auth       ✅ done (5c346cd)
 │   │   ├── Initialize Alembic: `env.py`, `alembic.ini`,
 │   │   │   first migration
 │   │   ├── Settings: `database_url` (default
@@ -184,7 +184,7 @@ PointlesSQL
 │   │   └── Tests: auth service unit tests, login/register
 │   │       API tests, middleware tests
 │   │
-│   ├── Sprint 7 — Principal forwarding + enforcement     ⏳ planned
+│   ├── Sprint 7 — Principal forwarding + enforcement     🔜 next
 │   │   ├── Forward authenticated principal to soyuz via
 │   │   │   `X-Principal` header on all client calls
 │   │   ├── Enforcement middleware: before each soyuz
