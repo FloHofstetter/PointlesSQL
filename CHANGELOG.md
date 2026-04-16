@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 8)
+
+- OIDC / OAuth2 authorization-code flow with PKCE — opt-in via
+  `POINTLESSQL_OIDC_DISCOVERY_URL` and `POINTLESSQL_OIDC_CLIENT_ID`
+  env vars; supports both public and confidential clients
+- `pointlessql/services/oidc.py` — PKCE generation, HMAC-signed
+  state cookie, discovery document caching, token exchange, userinfo
+  fetch, find-or-create user provisioning with same-email linking
+- `GET /auth/sso` route initiates the OIDC flow; `GET /auth/callback`
+  handles the provider redirect and auto-provisions local users
+- Login page shows conditional "Sign in with SSO" button alongside
+  the existing email/password form
+- Alembic migration 003: `password_hash` nullable for OIDC-only
+  users, `oidc_provider` + `oidc_subject` columns with partial
+  unique index
+- `tests/test_oidc.py` — 33 new tests (177 total pass)
+
+### Changed (Sprint 8)
+
+- `User.password_hash` is now nullable to support OIDC-only accounts
+- `auth.login()` handles `password_hash=None` gracefully (OIDC-only
+  users cannot log in via email/password, preserving constant-time
+  comparison)
+
 ### Added (Sprint 7)
 
 - Authorization enforcement layer: PointlesSQL now checks effective

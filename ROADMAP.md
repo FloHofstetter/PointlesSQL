@@ -145,7 +145,7 @@ PointlesSQL
 │           test_federation.py, extended test_api_errors.py
 │           (38 new tests, 75 total pass)
 │
-├── Phase 3 — Auth & multi-user                           🔜 next
+├── Phase 3 — Auth & multi-user                           ✅ done
 │   │
 │   │   Goal: turn PointlesSQL from a single-user localhost
 │   │   app into a multi-user system with login, JWT sessions,
@@ -208,7 +208,7 @@ PointlesSQL
 │   │       (15), `test_enforcement.py` (21),
 │   │       `test_audit.py` (3), non-admin user fixture
 │   │
-│   └── Sprint 8 — OIDC / OAuth2 provider                🔜 next
+│   └── Sprint 8 — OIDC / OAuth2 provider                ✅ done (f6551eb)
 │       ├── OAuth2 authorization code flow with PKCE
 │       ├── Settings: `oidc_discovery_url`, `oidc_client_id`,
 │       │   `oidc_client_secret` (optional, for confidential
@@ -218,7 +218,8 @@ PointlesSQL
 │       ├── Login page: "Sign in with SSO" button alongside
 │       │   local login form (both remain available)
 │       ├── `/auth/callback` route for OAuth2 redirect
-│       └── Tests: OIDC flow with mocked provider
+│       └── Tests: OIDC flow with mocked provider (33 new,
+│           177 total pass)
 │
 ├── Phase 4 — Pluggable compute engines                   🧊 on ice
 │   │
