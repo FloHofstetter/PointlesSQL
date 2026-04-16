@@ -192,7 +192,11 @@ def login(
 
     with factory() as session:
         user = session.query(User).filter(User.email == email).first()
-        pw_hash = user.password_hash if user is not None else _DUMMY_HASH
+        pw_hash = (
+            user.password_hash
+            if user is not None and user.password_hash is not None
+            else _DUMMY_HASH
+        )
         password_ok = verify_password(password, pw_hash)
 
         if user is None or not password_ok:

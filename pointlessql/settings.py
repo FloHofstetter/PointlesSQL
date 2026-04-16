@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,3 +23,14 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./pointlessql.db"
     secret_key: str = "change-me-in-production"
     jwt_expiry_hours: int = 168  # 7 days
+
+    # OIDC / OAuth2 — opt-in. Set both discovery_url and client_id to enable.
+    oidc_discovery_url: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: str | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def oidc_enabled(self) -> bool:
+        """Whether OIDC login is available."""
+        return self.oidc_discovery_url is not None and self.oidc_client_id is not None

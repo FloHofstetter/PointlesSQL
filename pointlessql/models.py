@@ -13,15 +13,22 @@ class Base(DeclarativeBase):
 
 
 class User(Base):
-    """A local user account with email/password authentication.
+    """A user account — either local (email/password) or OIDC-provisioned.
+
+    Local users have a ``password_hash``; OIDC users have ``oidc_provider``
+    and ``oidc_subject`` instead (password_hash is ``None``).  A user can
+    have both if a local account is later linked to an OIDC identity.
 
     Attributes:
         id: Auto-incremented primary key.
         email: Unique email address (max 254 chars).
         display_name: Human-readable name shown in the navbar.
-        password_hash: Bcrypt-hashed password string.
+        password_hash: Bcrypt-hashed password string, or ``None`` for
+            OIDC-only users.
         is_admin: Whether the user has administrator privileges.
         created_at: Timestamp when the user was created.
+        oidc_provider: OIDC discovery URL that authenticated this user.
+        oidc_subject: The ``sub`` claim from the OIDC provider.
     """
 
     __tablename__ = "users"
@@ -29,11 +36,13 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    oidc_provider: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    oidc_subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class AuditLog(Base):

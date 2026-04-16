@@ -31,6 +31,15 @@
             <button type="submit" class="btn btn-primary w-100">Sign in</button>
         </form>
 
+        {% if oidc_enabled %}
+        <div class="d-flex align-items-center my-3">
+            <hr class="flex-grow-1"><span class="mx-2 text-muted">or</span><hr class="flex-grow-1">
+        </div>
+        <a href="/auth/sso" class="btn btn-outline-secondary w-100" hx-boost="false">
+            Sign in with SSO
+        </a>
+        {% endif %}
+
         <p class="text-center text-muted mt-3 mb-0">
             Don't have an account? <a href="/auth/register">Register</a>
         </p>

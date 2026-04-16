@@ -1,12 +1,17 @@
-"""Authentication routes — login, register, logout, current user."""
+"""Authentication routes — login, register, logout, current user, OIDC SSO."""
 
 from __future__ import annotations
 
+import secrets
+from urllib.parse import quote
+
+import httpx
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.services import auth
+from pointlessql.services import oidc as oidc_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,10 +34,15 @@ def _settings(request: Request):
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = ""):
     """Render the login page."""
+    settings = _settings(request)
     return _templates(request).TemplateResponse(
         request,
         "pages/login.html",
-        {"error": error, "hide_sidebar": True},
+        {
+            "error": error,
+            "hide_sidebar": True,
+            "oidc_enabled": settings.oidc_enabled,
+        },
     )
 
 
@@ -130,3 +140,145 @@ async def current_user(request: Request):
     if user is None:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
     return JSONResponse(user)
+
+
+# ---------------------------------------------------------------------------
+# OIDC / SSO
+# ---------------------------------------------------------------------------
+
+
+@router.get("/sso")
+async def sso_redirect(request: Request):
+    """Initiate OIDC authorization-code flow with PKCE."""
+    settings = _settings(request)
+    if not settings.oidc_enabled:
+        return RedirectResponse(url="/auth/login?error=SSO+is+not+configured", status_code=303)
+
+    redirect_uri = str(request.url_for("oidc_callback"))
+
+    async with httpx.AsyncClient() as client:
+        discovery = await oidc_service.fetch_discovery(
+            settings.oidc_discovery_url, client  # type: ignore[arg-type]
+        )
+
+    code_verifier, code_challenge = oidc_service.generate_pkce()
+    state = secrets.token_urlsafe(32)
+    nonce = secrets.token_urlsafe(32)
+
+    authorize_url = oidc_service.build_authorize_url(
+        discovery,
+        settings.oidc_client_id,  # type: ignore[arg-type]
+        redirect_uri,
+        state,
+        nonce,
+        code_challenge,
+    )
+
+    cookie_value = oidc_service.sign_state_cookie(
+        {"state": state, "code_verifier": code_verifier, "nonce": nonce},
+        settings.secret_key,
+    )
+
+    response = RedirectResponse(url=authorize_url, status_code=302)
+    response.set_cookie(
+        oidc_service._STATE_COOKIE_NAME,
+        cookie_value,
+        httponly=True,
+        samesite="lax",
+        max_age=300,
+    )
+    return response
+
+
+@router.get("/callback")
+async def oidc_callback(request: Request):
+    """Handle the OIDC provider redirect after authentication."""
+    settings = _settings(request)
+
+    # Provider may return an error directly.
+    if error := request.query_params.get("error"):
+        desc = request.query_params.get("error_description", error)
+        return RedirectResponse(
+            url=f"/auth/login?error={quote(desc)}", status_code=303,
+        )
+
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    if not code or not state:
+        return RedirectResponse(
+            url="/auth/login?error=Missing+code+or+state", status_code=303,
+        )
+
+    # Verify state cookie.
+    cookie_raw = request.cookies.get(oidc_service._STATE_COOKIE_NAME)
+    if cookie_raw is None:
+        return RedirectResponse(
+            url="/auth/login?error=SSO+session+expired", status_code=303,
+        )
+
+    cookie_payload = oidc_service.verify_state_cookie(cookie_raw, settings.secret_key)
+    if cookie_payload is None or cookie_payload.get("state") != state:
+        return RedirectResponse(
+            url="/auth/login?error=Invalid+SSO+state", status_code=303,
+        )
+
+    redirect_uri = str(request.url_for("oidc_callback"))
+
+    try:
+        async with httpx.AsyncClient() as client:
+            discovery = await oidc_service.fetch_discovery(
+                settings.oidc_discovery_url, client  # type: ignore[arg-type]
+            )
+            tokens = await oidc_service.exchange_code(
+                discovery,
+                code,
+                cookie_payload["code_verifier"],
+                settings.oidc_client_id,  # type: ignore[arg-type]
+                settings.oidc_client_secret,
+                redirect_uri,
+                client,
+            )
+            userinfo = await oidc_service.fetch_userinfo(
+                discovery, tokens["access_token"], client,
+            )
+    except oidc_service.OIDCError as exc:
+        return RedirectResponse(
+            url=f"/auth/login?error={quote(str(exc))}", status_code=303,
+        )
+
+    # Map claims to local user.
+    email = userinfo.get("email") or userinfo.get("preferred_username", "")
+    display_name = (
+        userinfo.get("name")
+        or userinfo.get("preferred_username")
+        or email
+    )
+
+    try:
+        user = oidc_service.find_or_create_oidc_user(
+            _factory(request),
+            settings.oidc_discovery_url,  # type: ignore[arg-type]
+            userinfo["sub"],
+            email,
+            display_name,
+        )
+    except oidc_service.OIDCError as exc:
+        return RedirectResponse(
+            url=f"/auth/login?error={quote(str(exc))}", status_code=303,
+        )
+
+    token = auth.create_jwt(
+        user.id, user.email, user.is_admin,
+        settings.secret_key, settings.jwt_expiry_hours,
+    )
+
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        auth.COOKIE_NAME,
+        token,
+        httponly=True,
+        samesite="lax",
+        max_age=settings.jwt_expiry_hours * 3600,
+    )
+    response.delete_cookie(oidc_service._STATE_COOKIE_NAME)
+    return response
