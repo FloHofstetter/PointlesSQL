@@ -145,10 +145,73 @@ PointlesSQL
 │           test_federation.py, extended test_api_errors.py
 │           (38 new tests, 75 total pass)
 │
-├── Phase 3 — Auth & multi-user                           🧊 on ice
+├── Phase 3 — Auth & multi-user                           🔜 next
 │   │
-│   ├── Alembic + session store (users, sessions tables)  🧊 on ice
-│   └── Auth-proxy to soyuz-catalog (ADR-0005)            🧊 on ice
+│   │   Goal: turn PointlesSQL from a single-user localhost
+│   │   app into a multi-user system with login, JWT sessions,
+│   │   and grant enforcement. soyuz-catalog stores grants
+│   │   but never enforces (ADR-0005); PointlesSQL is the
+│   │   enforcement layer.
+│   │
+│   │   DB: SQLAlchemy 2.0 async, SQLite default
+│   │   (`aiosqlite`), PostgreSQL via `DATABASE_URL` override.
+│   │
+│   ├── Sprint 6 — Alembic + local users + JWT auth       🔜 next
+│   │   ├── Initialize Alembic: `env.py`, `alembic.ini`,
+│   │   │   first migration
+│   │   ├── Settings: `database_url` (default
+│   │   │   `sqlite+aiosqlite:///./pointlessql.db`),
+│   │   │   `secret_key` for JWT signing
+│   │   ├── SQLAlchemy 2.0 async models:
+│   │   │   - `User` (id, email, display_name,
+│   │   │     password_hash, is_admin, created_at)
+│   │   │   - `Session` (id, user_id FK, token_hash,
+│   │   │     created_at, expires_at)
+│   │   ├── `pointlessql/services/auth.py` — register,
+│   │   │   login (bcrypt via pwdlib), verify JWT, logout
+│   │   ├── API routes: `POST /auth/register`,
+│   │   │   `POST /auth/login`, `POST /auth/logout`,
+│   │   │   `GET /auth/me`
+│   │   ├── Auth middleware: extract user from JWT cookie
+│   │   │   (`pql_session`), attach to `request.state.user`
+│   │   ├── Login page (`pages/login.html`), register page
+│   │   │   (`pages/register.html`)
+│   │   ├── Protect all existing routes: unauthenticated →
+│   │   │   redirect to `/login`
+│   │   ├── Navbar: show current user email + logout button
+│   │   ├── First-run bootstrap: if no users exist, first
+│   │   │   registered user becomes admin
+│   │   └── Tests: auth service unit tests, login/register
+│   │       API tests, middleware tests
+│   │
+│   ├── Sprint 7 — Principal forwarding + enforcement     ⏳ planned
+│   │   ├── Forward authenticated principal to soyuz via
+│   │   │   `X-Principal` header on all client calls
+│   │   ├── Enforcement middleware: before each soyuz
+│   │   │   proxy call, check `GET /permissions/...` for
+│   │   │   the current user's principal — 403 if missing
+│   │   ├── Admin bypass: `is_admin` users skip enforcement
+│   │   ├── `403 Forbidden` error page with "request access"
+│   │   │   hint
+│   │   ├── Permissions UI: show current user's own grants
+│   │   │   prominently, grey out actions they can't perform
+│   │   ├── Audit log: store who-did-what in a local
+│   │   │   `audit_log` table (user_id, action, target,
+│   │   │   timestamp)
+│   │   └── Tests: enforcement tests (allowed/denied),
+│   │       admin bypass, principal header forwarding
+│   │
+│   └── Sprint 8 — OIDC / OAuth2 provider                ⏳ planned
+│       ├── OAuth2 authorization code flow with PKCE
+│       ├── Settings: `oidc_discovery_url`, `oidc_client_id`,
+│       │   `oidc_client_secret` (optional, for confidential
+│       │   clients)
+│       ├── Map OIDC claims (sub, email, name) to local User
+│       ├── Auto-create user on first OIDC login
+│       ├── Login page: "Sign in with SSO" button alongside
+│       │   local login form (both remain available)
+│       ├── `/auth/callback` route for OAuth2 redirect
+│       └── Tests: OIDC flow with mocked provider
 │
 ├── Phase 4 — Pluggable compute engines                   🧊 on ice
 │   │
