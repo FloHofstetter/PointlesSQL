@@ -37,10 +37,12 @@ dependencies = [
     "PyJWT[crypto]>=2.9",
     "soyuz-catalog-client",
     "deltalake>=0.24",
+    "duckdb>=1.0",
     "pandas>=2.2",
     "jupyterlab>=4.0",
     "python-multipart>=0.0.26",
     "psycopg[binary]>=3.1",
+    "pyarrow>=17.0",
 ]
 
 [dependency-groups]

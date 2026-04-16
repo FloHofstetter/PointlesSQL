@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-import deltalake
 import httpx
-import pandas as pd
 from soyuz_catalog_client import Client
 from soyuz_catalog_client.api.catalogs import (
     list_catalogs_api_2_1_unity_catalog_catalogs_get as _list_catalogs,
@@ -35,8 +33,9 @@ from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.pql._columns import columns_from_dataframe
+from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._parsing import parse_full_name
+from pointlessql.pql.engine import Engine, make_engine
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.settings import Settings
 
@@ -53,29 +52,42 @@ class PQL:
         self,
         client: Client | None = None,
         settings: Settings | None = None,
+        engine: Engine | str | None = None,
     ) -> None:
         """Initialize PQL.
 
         Args:
             client: An existing ``soyuz_catalog_client.Client`` instance.
                 When ``None``, one is built via ``make_soyuz_client()``.
-            settings: Optional ``Settings`` override.  Ignored when
-                *client* is provided directly.
+            settings: Optional ``Settings`` override.  Used for both
+                client creation and engine selection when not provided
+                explicitly.
+            engine: Engine instance, engine name string, or ``None``.
+                When ``None``, auto-selects from ``settings.engine``
+                (default ``"pandas"``).
         """
-        self._client = client or make_soyuz_client(settings)
+        resolved = settings or Settings()
+        self._client = client or make_soyuz_client(resolved)
+        if engine is None:
+            self._engine = make_engine(resolved.engine)
+        elif isinstance(engine, str):
+            self._engine = make_engine(engine)
+        else:
+            self._engine = engine
 
     # ------------------------------------------------------------------
     # Read
     # ------------------------------------------------------------------
 
-    def table(self, full_name: str) -> pd.DataFrame:
-        """Read a Delta table registered in Unity Catalog as a DataFrame.
+    def table(self, full_name: str) -> Any:
+        """Read a Delta table registered in Unity Catalog.
 
         Args:
             full_name: Three-part name ``"catalog.schema.table"``.
 
         Returns:
-            The table contents as a pandas ``DataFrame``.
+            The table contents in the engine's native frame type
+            (e.g. pandas DataFrame, DuckDB relation).
 
         Raises:
             ValueError: If *full_name* does not have exactly three parts.
@@ -96,8 +108,7 @@ class PQL:
             msg = f"Table {full_name!r} has no storage_location"
             raise LookupError(msg)
 
-        dt = deltalake.DeltaTable(location)
-        return dt.to_pandas()
+        return self._engine.read(location)
 
     # ------------------------------------------------------------------
     # Write
@@ -105,22 +116,22 @@ class PQL:
 
     def write_table(
         self,
-        df: pd.DataFrame,
+        df: Any,
         full_name: str,
         *,
         mode: Literal["error", "append", "overwrite", "ignore"] = "overwrite",
     ) -> None:
-        """Write a DataFrame to a Delta table and register it in the catalog.
+        """Write a frame to a Delta table and register it in the catalog.
 
         If the table already exists in the catalog its data is replaced
         (or appended to, depending on *mode*).  If the table does not
         exist yet it is created with column metadata derived from *df*.
 
         Args:
-            df: The DataFrame to write.
+            df: The data to write, in the engine's native frame type.
             full_name: Three-part name ``"catalog.schema.table"``.
-            mode: Write mode passed to ``deltalake.write_deltalake``.
-                Defaults to ``"overwrite"``.
+            mode: Write mode passed to the engine.  Defaults to
+                ``"overwrite"``.
 
         Raises:
             ValueError: If *full_name* does not have exactly three parts.
@@ -152,10 +163,10 @@ class PQL:
 
             assert location is not None  # noqa: S101 — guarded above
 
-            deltalake.write_deltalake(location, df, mode=mode)
+            self._engine.write(df, location, mode)
 
             if not table_exists:
-                columns = columns_from_dataframe(df)
+                columns = columns_from_tuples(self._engine.columns_info(df))
                 body = CreateTable(
                     catalog_name=catalog,
                     schema_name=schema,

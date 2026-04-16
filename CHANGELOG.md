@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 11)
+
+- `pointlessql/pql/engine.py` — `Engine` protocol with `read()`,
+  `write()`, and `columns_info()` methods; `PandasEngine` (default,
+  preserving backward compatibility) and `DuckDBEngine` (reads Delta
+  via PyArrow → DuckDB, returns `DuckDBPyRelation`)
+- `make_engine()` factory to instantiate engines by name
+- `columns_from_tuples()` in `_columns.py` — engine-agnostic column
+  metadata builder for UC table registration
+- Settings: `POINTLESSQL_ENGINE` (default `"pandas"`, also accepts
+  `"duckdb"`) for engine selection via environment variable
+- `PQL.__init__()` accepts `engine=` kwarg (string name or `Engine`
+  instance); auto-selects from settings when omitted
+- New dependencies: `duckdb>=1.0`, `pyarrow>=17.0`
+- `tests/test_engine.py` — 20 new tests: parameterized engine
+  protocol compliance suite (read, write, round-trip, column
+  metadata) plus engine-specific tests for Pandas and DuckDB
+
+### Changed (Sprint 11)
+
+- `PQL.table()` and `PQL.write_table()` delegate all data I/O to
+  the active engine instead of calling `deltalake` directly
+- `PQL.__init__()` resolves `Settings` once and reuses it for both
+  client creation and engine selection
+- `columns_from_dataframe()` refactored to delegate to
+  `columns_from_tuples()` internally (no behavior change)
+- `pql/__init__.py` exports `Engine`, `PandasEngine`, `DuckDBEngine`,
+  and `make_engine`
+
 ### Added (Sprint 10)
 
 - `docker-compose.postgres.yml` — compose override that adds a

@@ -18,7 +18,9 @@ from soyuz_catalog_client.models.table_info import TableInfo
 
 from pointlessql.pql._columns import columns_from_dataframe
 from pointlessql.pql._parsing import parse_full_name
+from pointlessql.pql.engine import DuckDBEngine, Engine, PandasEngine
 from pointlessql.pql.pql import PQL
+from pointlessql.settings import Settings
 
 # ------------------------------------------------------------------
 # parse_full_name
@@ -111,13 +113,33 @@ class TestPQLConstructor:
     def test_default_creates_client(self, mock_factory: MagicMock) -> None:
         mock_factory.return_value = MagicMock()
         pql = PQL()
-        mock_factory.assert_called_once_with(None)
+        mock_factory.assert_called_once()
         assert pql._client is mock_factory.return_value
 
     def test_with_explicit_client(self) -> None:
         client = MagicMock()
         pql = PQL(client=client)
         assert pql._client is client
+
+    def test_default_engine_is_pandas(self) -> None:
+        pql = PQL(client=MagicMock())
+        assert isinstance(pql._engine, PandasEngine)
+
+    def test_engine_from_string(self) -> None:
+        pql = PQL(client=MagicMock(), engine="duckdb")
+        assert isinstance(pql._engine, DuckDBEngine)
+
+    def test_engine_from_instance(self) -> None:
+        engine = PandasEngine()
+        pql = PQL(client=MagicMock(), engine=engine)
+        assert pql._engine is engine
+
+    @patch(f"{_MOD}.make_soyuz_client")
+    def test_engine_from_settings(self, mock_factory: MagicMock) -> None:
+        mock_factory.return_value = MagicMock()
+        settings = Settings(engine="duckdb")
+        pql = PQL(settings=settings)
+        assert isinstance(pql._engine, DuckDBEngine)
 
 
 # ------------------------------------------------------------------
@@ -127,18 +149,18 @@ class TestPQLConstructor:
 
 class TestPQLTable:
     @patch(f"{_MOD}._get_table")
-    def test_reads_delta(self, mock_get: MagicMock) -> None:
+    def test_reads_via_engine(self, mock_get: MagicMock) -> None:
         expected_df = pd.DataFrame({"a": [1, 2]})
+        mock_engine = MagicMock(spec=Engine)
+        mock_engine.read.return_value = expected_df
         mock_get.sync.return_value = TableInfo(
             storage_location="/tmp/delta/tbl",
             name="tbl",
         )
-        with patch("deltalake.DeltaTable") as mock_dt_cls:
-            mock_dt_cls.return_value.to_pandas.return_value = expected_df
-            pql = PQL(client=MagicMock())
-            result = pql.table("cat.sch.tbl")
+        pql = PQL(client=MagicMock(), engine=mock_engine)
+        result = pql.table("cat.sch.tbl")
 
-        mock_dt_cls.assert_called_once_with("/tmp/delta/tbl")
+        mock_engine.read.assert_called_once_with("/tmp/delta/tbl")
         pd.testing.assert_frame_equal(result, expected_df)
 
     @patch(f"{_MOD}._get_table")
@@ -167,26 +189,23 @@ class TestPQLTable:
 
 
 class TestPQLWriteTable:
-    @patch(f"{_MOD}.deltalake")
     @patch(f"{_MOD}._get_table")
-    def test_existing_table_writes_only(
-        self, mock_get: MagicMock, mock_dl: MagicMock
-    ) -> None:
+    def test_existing_table_writes_only(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = TableInfo(
             storage_location="/data/cat/sch/tbl",
             name="tbl",
         )
+        mock_engine = MagicMock(spec=Engine)
         df = pd.DataFrame({"x": [1]})
 
         with patch(f"{_MOD}._create_table") as mock_create:
-            pql = PQL(client=MagicMock())
+            pql = PQL(client=MagicMock(), engine=mock_engine)
             pql.write_table(df, "cat.sch.tbl")
-            mock_dl.write_deltalake.assert_called_once_with(
-                "/data/cat/sch/tbl", df, mode="overwrite"
+            mock_engine.write.assert_called_once_with(
+                df, "/data/cat/sch/tbl", "overwrite"
             )
             mock_create.sync.assert_not_called()
 
-    @patch(f"{_MOD}.deltalake")
     @patch(f"{_MOD}._create_table")
     @patch(f"{_MOD}._get_schema")
     @patch(f"{_MOD}._get_table")
@@ -195,7 +214,6 @@ class TestPQLWriteTable:
         mock_get_table: MagicMock,
         mock_get_schema: MagicMock,
         mock_create: MagicMock,
-        mock_dl: MagicMock,
     ) -> None:
         mock_get_table.sync.side_effect = UnexpectedStatus(404, b"Not Found")
         mock_get_schema.sync.return_value = SchemaInfo(
@@ -203,13 +221,19 @@ class TestPQLWriteTable:
         )
         mock_create.sync.return_value = TableInfo(name="tbl")
 
+        mock_engine = MagicMock(spec=Engine)
+        mock_engine.columns_info.return_value = [
+            ("id", "LONG", "long", True),
+            ("name", "STRING", "string", True),
+        ]
+
         df = pd.DataFrame({"id": pd.array([1], dtype="int64"), "name": ["a"]})
-        pql = PQL(client=MagicMock())
+        pql = PQL(client=MagicMock(), engine=mock_engine)
         pql.write_table(df, "cat.sch.tbl")
 
-        mock_dl.write_deltalake.assert_called_once()
-        call_args = mock_dl.write_deltalake.call_args
-        assert call_args[0][0] == "/data/warehouse/cat/sch/tbl"
+        mock_engine.write.assert_called_once()
+        call_args = mock_engine.write.call_args
+        assert call_args[0][1] == "/data/warehouse/cat/sch/tbl"
 
         mock_create.sync.assert_called_once()
         body = mock_create.sync.call_args.kwargs["body"]
@@ -230,23 +254,21 @@ class TestPQLWriteTable:
         mock_get_schema.sync.return_value = SchemaInfo(name="sch")
 
         df = pd.DataFrame({"x": [1]})
-        pql = PQL(client=MagicMock())
+        pql = PQL(client=MagicMock(), engine=MagicMock(spec=Engine))
         with pytest.raises(LookupError, match="storage_root"):
             pql.write_table(df, "cat.sch.tbl")
 
-    @patch(f"{_MOD}.deltalake")
     @patch(f"{_MOD}._get_table")
-    def test_mode_forwarded(
-        self, mock_get: MagicMock, mock_dl: MagicMock
-    ) -> None:
+    def test_mode_forwarded(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = TableInfo(
             storage_location="/data/tbl", name="tbl"
         )
+        mock_engine = MagicMock(spec=Engine)
         df = pd.DataFrame({"x": [1]})
-        pql = PQL(client=MagicMock())
+        pql = PQL(client=MagicMock(), engine=mock_engine)
         pql.write_table(df, "cat.sch.tbl", mode="append")
-        mock_dl.write_deltalake.assert_called_once_with(
-            "/data/tbl", df, mode="append"
+        mock_engine.write.assert_called_once_with(
+            df, "/data/tbl", "append"
         )
 
 
@@ -301,7 +323,7 @@ class TestPQLConnectionError:
         mock_get.sync.side_effect = httpx.ConnectError("Connection refused")
         client = MagicMock()
         client._base_url = "http://127.0.0.1:8080"
-        pql = PQL(client=client)
+        pql = PQL(client=client, engine=MagicMock(spec=Engine))
         with pytest.raises(ConnectionError, match="Cannot reach soyuz-catalog"):
             pql.table("cat.sch.tbl")
 
@@ -312,7 +334,7 @@ class TestPQLConnectionError:
         mock_get.sync.side_effect = httpx.ConnectError("Connection refused")
         client = MagicMock()
         client._base_url = "http://127.0.0.1:8080"
-        pql = PQL(client=client)
+        pql = PQL(client=client, engine=MagicMock(spec=Engine))
         df = pd.DataFrame({"x": [1]})
         with pytest.raises(ConnectionError, match="Cannot reach soyuz-catalog"):
             pql.write_table(df, "cat.sch.tbl")

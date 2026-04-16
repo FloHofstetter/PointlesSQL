@@ -276,19 +276,21 @@ PointlesSQL
 │   │   `pql.table(...)` and gets back the engine's native
 │   │   frame type.
 │   │
-│   ├── Sprint 11 — Engine abstraction + DuckDB           ⏳ planned
+│   ├── Sprint 11 — Engine abstraction + DuckDB           ✅ done
 │   │   ├── `pointlessql/pql/engine.py` — `Engine` protocol
-│   │   │   with `read(storage_location) -> FrameType` and
-│   │   │   `write(df, storage_location, mode)` methods
+│   │   │   with `read(storage_location) -> FrameType`,
+│   │   │   `write(frame, storage_location, mode)`, and
+│   │   │   `columns_info(frame)` methods
 │   │   ├── Extract current Pandas logic into `PandasEngine`
 │   │   ├── `DuckDBEngine`: `DeltaTable.to_pyarrow_dataset()`
-│   │   │   → `duckdb.arrow()`, returns `duckdb.DuckDBPyRelation`
-│   │   ├── Settings: `POINTLESSQL_ENGINE=pandas|duckdb|polars`
+│   │   │   → `conn.from_arrow()`, returns `DuckDBPyRelation`
+│   │   ├── Settings: `POINTLESSQL_ENGINE=pandas|duckdb`
 │   │   ├── `PQL` auto-selects engine from setting, or
 │   │   │   accepts `engine=` kwarg
-│   │   ├── New dep: `duckdb>=1.0`
-│   │   └── Tests: engine protocol compliance suite run
-│   │       against both Pandas and DuckDB engines
+│   │   ├── New deps: `duckdb>=1.0`, `pyarrow>=17.0`
+│   │   └── Tests: engine protocol compliance suite (20 new
+│   │       tests, parameterized across both engines,
+│   │       201 total pass)
 │   │
 │   ├── Sprint 12 — Polars engine                         ⏳ planned
 │   │   ├── `PolarsEngine`: `DeltaTable.to_pyarrow_table()`

@@ -59,6 +59,36 @@ def _resolve_dtype(dtype: object) -> tuple[str, str]:
     return _DTYPE_MAP.get(kind, ("STRING", "string"))
 
 
+def columns_from_tuples(
+    columns: list[tuple[str, str, str, bool]],
+) -> list[ColumnInfo]:
+    """Build ``ColumnInfo`` objects from engine-provided column metadata.
+
+    Args:
+        columns: List of ``(name, type_name, type_text, nullable)`` tuples
+            as returned by ``Engine.columns_info()``.
+
+    Returns:
+        A list of ``ColumnInfo`` objects ready for a ``CreateTable`` request.
+    """
+    result: list[ColumnInfo] = []
+    for position, (col_name, type_name, type_text, nullable) in enumerate(columns):
+        type_json = json.dumps(
+            {"name": col_name, "type": type_text, "nullable": nullable, "metadata": {}}
+        )
+        result.append(
+            ColumnInfo(
+                name=col_name,
+                type_name=type_name,
+                type_text=type_text,
+                type_json=type_json,
+                nullable=nullable,
+                position=position,
+            )
+        )
+    return result
+
+
 def columns_from_dataframe(df: pd.DataFrame) -> list[ColumnInfo]:
     """Derive Unity Catalog ``ColumnInfo`` list from a DataFrame's schema.
 
@@ -68,20 +98,8 @@ def columns_from_dataframe(df: pd.DataFrame) -> list[ColumnInfo]:
     Returns:
         A list of ``ColumnInfo`` objects ready for a ``CreateTable`` request.
     """
-    result: list[ColumnInfo] = []
-    for position, (col_name, dtype) in enumerate(df.dtypes.items()):
-        type_name, type_text = _resolve_dtype(dtype)
-        type_json = json.dumps(
-            {"name": str(col_name), "type": type_text, "nullable": True, "metadata": {}}
-        )
-        result.append(
-            ColumnInfo(
-                name=str(col_name),
-                type_name=type_name,
-                type_text=type_text,
-                type_json=type_json,
-                nullable=True,
-                position=position,
-            )
-        )
-    return result
+    tuples = [
+        (str(col_name), *_resolve_dtype(dtype), True)
+        for col_name, dtype in df.dtypes.items()
+    ]
+    return columns_from_tuples(tuples)

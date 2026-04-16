@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     jupyter_enabled: bool = True
     jupyter_port: int = 8888
 
+    engine: str = "pandas"
+
     database_url: str = "sqlite:///./pointlessql.db"
     secret_key: str = "change-me-in-production"
     jwt_expiry_hours: int = 168  # 7 days
