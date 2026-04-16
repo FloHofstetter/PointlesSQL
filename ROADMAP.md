@@ -333,7 +333,7 @@ PointlesSQL
 │   │   │   and oidc.py
 │   │   └── Tests: 17 new exception tests (230 total pass)
 │   │
-│   ├── Sprint 14 — Centralized API error handling         ✅ done
+│   ├── Sprint 14 — Centralized API error handling         ✅ done (d766136)
 │   │   ├── `pointlessql/api/error_handlers.py` — centralized
 │   │   │   `PointlessSQLError` handler dispatching JSON envelope
 │   │   │   for `/api/...` routes and 403.html for HTML routes
