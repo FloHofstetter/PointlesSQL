@@ -536,7 +536,7 @@ PointlesSQL
 │   │   skipped per the standing preference), screenshot
 │   │   regression diffs, performance/load tests, mobile layout.
 │   │
-│   ├── Sprint 22 — Harness + data-surface walkthrough      ✅ done (<short-sha>)
+│   ├── Sprint 22 — Harness + data-surface walkthrough      ✅ done (7b837db)
 │   │   ├── `docker-compose.e2e.yml` overlay: Postgres sidecar
 │   │   │   (postgres:17-alpine) seeded by `scripts/pg-seed.sql`
 │   │   │   as foreign-catalog target. No new services in the
