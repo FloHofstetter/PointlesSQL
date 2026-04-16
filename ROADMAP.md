@@ -292,12 +292,14 @@ PointlesSQL
 │   │       tests, parameterized across both engines,
 │   │       201 total pass)
 │   │
-│   ├── Sprint 12 — Polars engine                         ⏳ planned
+│   ├── Sprint 12 — Polars engine                         ✅ done
 │   │   ├── `PolarsEngine`: `DeltaTable.to_pyarrow_table()`
 │   │   │   → `pl.from_arrow()`, returns `pl.DataFrame`
 │   │   ├── New dep: `polars>=1.0`
-│   │   ├── Docker compose profile: `--profile polars`
-│   │   └── Tests: engine compliance suite for Polars
+│   │   ├── `POINTLESSQL_ENGINE=polars` env var in
+│   │   │   `docker-compose.yml`
+│   │   └── Tests: engine compliance suite parameterized
+│   │       across all three engines (9 new tests)
 │   │
 │   └── Spark engine                                      🧊 on ice
 │       └── PySpark kernel with UC connector configured

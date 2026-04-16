@@ -10,12 +10,14 @@ from __future__ import annotations
 import deltalake
 import duckdb
 import pandas as pd
+import polars as pl
 import pytest
 
 from pointlessql.pql.engine import (
     DuckDBEngine,
     Engine,
     PandasEngine,
+    PolarsEngine,
     make_engine,
 )
 
@@ -23,8 +25,8 @@ from pointlessql.pql.engine import (
 # Fixtures
 # ------------------------------------------------------------------
 
-_ENGINES = [PandasEngine(), DuckDBEngine()]
-_ENGINE_IDS = ["pandas", "duckdb"]
+_ENGINES = [PandasEngine(), DuckDBEngine(), PolarsEngine()]
+_ENGINE_IDS = ["pandas", "duckdb", "polars"]
 
 
 @pytest.fixture(params=_ENGINES, ids=_ENGINE_IDS)
@@ -117,6 +119,10 @@ class TestMakeEngine:
         engine = make_engine("duckdb")
         assert isinstance(engine, DuckDBEngine)
 
+    def test_polars(self) -> None:
+        engine = make_engine("polars")
+        assert isinstance(engine, PolarsEngine)
+
     def test_case_insensitive(self) -> None:
         engine = make_engine("Pandas")
         assert isinstance(engine, PandasEngine)
@@ -165,6 +171,35 @@ class TestDuckDBEngineSpecific:
 
         out = str(tmp_path / "duckdb_out")
         engine.write(rel, out, "overwrite")
+
+        dt = deltalake.DeltaTable(out)
+        result_df = dt.to_pandas()
+        assert len(result_df) == 3
+        assert set(result_df.columns) == {"id", "name", "score"}
+
+
+class TestPolarsEngineSpecific:
+    def test_read_returns_polars_dataframe(self, sample_delta) -> None:
+        engine = PolarsEngine()
+        location, _ = sample_delta
+        result = engine.read(location)
+        assert isinstance(result, pl.DataFrame)
+
+    def test_dataframe_content(self, sample_delta) -> None:
+        engine = PolarsEngine()
+        location, expected_df = sample_delta
+        result = engine.read(location)
+        assert result.shape == (3, 3)
+        assert set(result.columns) == {"id", "name", "score"}
+        assert sorted(result["id"].to_list()) == [1, 2, 3]
+
+    def test_write_from_polars(self, sample_delta, tmp_path) -> None:
+        engine = PolarsEngine()
+        location, _ = sample_delta
+        frame = engine.read(location)
+
+        out = str(tmp_path / "polars_out")
+        engine.write(frame, out, "overwrite")
 
         dt = deltalake.DeltaTable(out)
         result_df = dt.to_pandas()

@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 if TYPE_CHECKING:
     import duckdb
     import pandas as pd
+    import polars as pl
 
 WriteMode = Literal["error", "append", "overwrite", "ignore"]
 
@@ -212,12 +213,102 @@ class DuckDBEngine:
 
 
 # ------------------------------------------------------------------
+# Polars engine
+# ------------------------------------------------------------------
+
+_POLARS_TYPE_MAP: dict[str, tuple[str, str]] = {
+    "Int8": ("BYTE", "byte"),
+    "Int16": ("SHORT", "short"),
+    "Int32": ("INT", "int"),
+    "Int64": ("LONG", "long"),
+    "UInt8": ("SHORT", "short"),
+    "UInt16": ("INT", "int"),
+    "UInt32": ("LONG", "long"),
+    "UInt64": ("LONG", "long"),
+    "Float32": ("FLOAT", "float"),
+    "Float64": ("DOUBLE", "double"),
+    "Boolean": ("BOOLEAN", "boolean"),
+    "String": ("STRING", "string"),
+    "Utf8": ("STRING", "string"),
+    "Date": ("DATE", "date"),
+    "Datetime": ("TIMESTAMP", "timestamp"),
+    "Binary": ("BINARY", "binary"),
+    "LargeString": ("STRING", "string"),
+}
+
+
+def _polars_type_to_uc(polars_type: str) -> tuple[str, str]:
+    """Map a Polars dtype string to UC ``(type_name, type_text)``.
+
+    Args:
+        polars_type: The Polars dtype base name (e.g. ``"Int64"``).
+
+    Returns:
+        A tuple of UC type_name and type_text.
+    """
+    return _POLARS_TYPE_MAP.get(polars_type, ("STRING", "string"))
+
+
+class PolarsEngine:
+    """Engine that reads Delta tables as Polars DataFrames.
+
+    Uses PyArrow as the bridge: Delta → PyArrow Table → Polars.
+    Requires the ``polars`` package.
+    """
+
+    def read(self, storage_location: str) -> pl.DataFrame:
+        """Read a Delta table as a Polars DataFrame.
+
+        Args:
+            storage_location: Filesystem path or URI of the Delta table.
+
+        Returns:
+            The table contents as a Polars DataFrame.
+        """
+        import deltalake
+        import polars as pl
+
+        dt = deltalake.DeltaTable(storage_location)
+        return pl.from_arrow(dt.to_pyarrow_table())
+
+    def write(self, frame: pl.DataFrame, storage_location: str, mode: WriteMode) -> None:
+        """Write a Polars DataFrame to a Delta table.
+
+        Converts the frame to a PyArrow table first, then writes
+        via ``deltalake.write_deltalake``.
+
+        Args:
+            frame: The Polars DataFrame to write.
+            storage_location: Filesystem path or URI of the Delta table.
+            mode: Write mode passed to ``deltalake.write_deltalake``.
+        """
+        import deltalake
+
+        deltalake.write_deltalake(storage_location, frame.to_arrow(), mode=mode)
+
+    def columns_info(self, frame: pl.DataFrame) -> list[tuple[str, str, str, bool]]:
+        """Extract column metadata from a Polars DataFrame.
+
+        Args:
+            frame: The source Polars DataFrame.
+
+        Returns:
+            Column metadata tuples for UC registration.
+        """
+        return [
+            (name, *_polars_type_to_uc(str(dtype.base_type())), True)
+            for name, dtype in zip(frame.columns, frame.dtypes)
+        ]
+
+
+# ------------------------------------------------------------------
 # Engine factory
 # ------------------------------------------------------------------
 
 _ENGINE_REGISTRY: dict[str, type] = {
     "pandas": PandasEngine,
     "duckdb": DuckDBEngine,
+    "polars": PolarsEngine,
 }
 
 
@@ -225,7 +316,7 @@ def make_engine(name: str) -> Engine:
     """Create an engine instance by name.
 
     Args:
-        name: Engine name (``"pandas"``, ``"duckdb"``).
+        name: Engine name (``"pandas"``, ``"duckdb"``, ``"polars"``).
 
     Returns:
         A configured engine instance.

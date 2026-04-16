@@ -18,7 +18,7 @@ from soyuz_catalog_client.models.table_info import TableInfo
 
 from pointlessql.pql._columns import columns_from_dataframe
 from pointlessql.pql._parsing import parse_full_name
-from pointlessql.pql.engine import DuckDBEngine, Engine, PandasEngine
+from pointlessql.pql.engine import DuckDBEngine, Engine, PandasEngine, PolarsEngine
 from pointlessql.pql.pql import PQL
 from pointlessql.settings import Settings
 
@@ -133,6 +133,17 @@ class TestPQLConstructor:
         engine = PandasEngine()
         pql = PQL(client=MagicMock(), engine=engine)
         assert pql._engine is engine
+
+    def test_engine_polars_from_string(self) -> None:
+        pql = PQL(client=MagicMock(), engine="polars")
+        assert isinstance(pql._engine, PolarsEngine)
+
+    @patch(f"{_MOD}.make_soyuz_client")
+    def test_engine_polars_from_settings(self, mock_factory: MagicMock) -> None:
+        mock_factory.return_value = MagicMock()
+        settings = Settings(engine="polars")
+        pql = PQL(settings=settings)
+        assert isinstance(pql._engine, PolarsEngine)
 
     @patch(f"{_MOD}.make_soyuz_client")
     def test_engine_from_settings(self, mock_factory: MagicMock) -> None:

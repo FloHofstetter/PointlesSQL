@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 12)
+
+- `PolarsEngine` in `pointlessql/pql/engine.py` — reads Delta tables
+  via PyArrow → `pl.from_arrow()`, returns `pl.DataFrame`; writes via
+  `frame.to_arrow()` → `deltalake.write_deltalake()`
+- `_POLARS_TYPE_MAP` + `_polars_type_to_uc()` for Polars dtype → UC
+  type mapping
+- `PolarsEngine` registered in engine factory and exported from
+  `pql/__init__.py`
+- Settings: `POINTLESSQL_ENGINE` now also accepts `"polars"`
+- `POINTLESSQL_ENGINE` env var forwarded in `docker-compose.yml`
+  (defaults to `"pandas"`)
+- New dependency: `polars>=1.0`
+- Engine compliance suite parameterized across all three engines;
+  `TestPolarsEngineSpecific` with 3 Polars-specific tests; 2 new
+  PQL constructor tests (9 new tests, 213 total pass)
+
 ### Added (Sprint 11)
 
 - `pointlessql/pql/engine.py` — `Engine` protocol with `read()`,

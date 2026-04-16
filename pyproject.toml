@@ -39,6 +39,7 @@ dependencies = [
     "deltalake>=0.24",
     "duckdb>=1.0",
     "pandas>=2.2",
+    "polars>=1.0",
     "jupyterlab>=4.0",
     "python-multipart>=0.0.26",
     "psycopg[binary]>=3.1",
