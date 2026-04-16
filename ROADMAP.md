@@ -508,7 +508,7 @@ PointlesSQL
 │       └── Tests: metric emission, webhook invocation with
 │           stubbed httpx, admin-only enforcement on `/metrics`
 │
-├── Phase 7 — Live UI walkthrough via Playwright MCP        🔜 next
+├── Phase 7 — Live UI walkthrough via Playwright MCP        ✅ done
 │   │
 │   │   Goal: exercise every HTML route, every interactive Alpine
 │   │   component, and every UI-relevant setting once, live, on
@@ -570,7 +570,7 @@ PointlesSQL
 │   │       end of the relevant playbook with a clear next
 │   │       action. No "something was weird" entries
 │   │
-│   └── Sprint 23 — Orchestration, config matrix, operational  ⏳ planned
+│   └── Sprint 23 — Orchestration, config matrix, operational  ✅ done (72a50bc)
 │       ├── Extend `docker-compose.e2e.yml` with mock OIDC
 │       │   provider (`ghcr.io/navikt/mock-oauth2-server`) +
 │       │   env-var overlays for engine swaps and
@@ -602,6 +602,36 @@ PointlesSQL
 │       │   Playwright MCP)
 │       └── Phase-close summary in `ROADMAP.md`: bugs found,
 │           bugs fixed, bugs deferred with TODO pointers
+│
+│   Phase 7 close-out — five data-surface bugs surfaced by live
+│   browser replays, all fixed same-commit:
+│   - BUG-22-01 (commit 3f1da76): PointlesSQL wrapped soyuz
+│     `400 INVALID_ARGUMENT` as `502 catalog_unavailable`. Fixed
+│     by status-code-branching in `_wrap_catalog_errors`
+│     (404 → `CatalogNotFoundError`, other 4xx → `ValidationError`)
+│   - BUG-22-02 (commit 3f1da76): `POST /api/external-locations`
+│     without `credential_name` leaked a bare `KeyError` as 500.
+│     Same decorator now catches `KeyError` / `TypeError` from
+│     generated `Create*.from_dict()` calls
+│   - BUG-22-03 (commit 3f1da76): client-side form allowed an
+│     empty `credentialName` to reach the server. Inline validation
+│     added in `createExternalLocationForm()`
+│   - BUG-23-01 (Sprint 23 commit): `oidc_enabled` computed prop
+│     treated empty-string env vars as configured. Truthy check
+│     added — compose overlay's `${OIDC_*:-}` fallbacks no longer
+│     turn the SSO button on
+│   - BUG-23-02 (Sprint 23 commit): `POST /api/jobs` committed the
+│     job row *before* DAG validation; rejected cycle/unknown-dep
+│     payloads left orphan rows in the DB. Refactored to flush
+│     only, validate, then commit atomically
+│
+│   No bugs deferred. What Phase 7 bought: the templates have
+│   now been rendered in a real browser at least once, and every
+│   interactive path has a Markdown playbook that replays in
+│   seconds. The ongoing contract: any future sprint touching
+│   HTML/JS should replay the relevant playbook before landing,
+│   and the Sprint 22 + 23 commits are the reference for
+│   "what clean Found-bugs sections look like".
 │
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
