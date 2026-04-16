@@ -17,6 +17,9 @@ class Settings(BaseSettings):
 
     soyuz_catalog_url: str = "http://127.0.0.1:8080"
 
+    host: str = "127.0.0.1"
+    port: int = 8000
+
     jupyter_enabled: bool = True
     jupyter_port: int = 8888
 

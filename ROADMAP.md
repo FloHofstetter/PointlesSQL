@@ -221,7 +221,7 @@ PointlesSQL
 │       └── Tests: OIDC flow with mocked provider (33 new,
 │           177 total pass)
 │
-├── Phase 4 — Packaging & deployment                      🔜 next
+├── Phase 4 — Packaging & deployment                      ⏳ in progress
 │   │
 │   │   Goal: make PointlesSQL + soyuz-catalog runnable
 │   │   with a single `docker compose up` — no manual
@@ -229,23 +229,30 @@ PointlesSQL
 │   │   Swap the soyuz-catalog-client path dependency for
 │   │   a pinned wheel so the image builds stand-alone.
 │   │
-│   ├── Sprint 9 — Dockerfiles + docker-compose           🔜 next
-│   │   ├── `Dockerfile` for PointlesSQL (multi-stage:
-│   │   │   builder with uv + hatchling, slim runtime with
-│   │   │   uvicorn). Include Alembic auto-migrate on start
-│   │   ├── `Dockerfile.soyuz` (or reference a soyuz-catalog
-│   │   │   image if we build one in that repo first)
-│   │   ├── `docker-compose.yml`: services `soyuz-catalog`,
-│   │   │   `pointlessql`, `jupyter` (or embedded), shared
-│   │   │   volume for Delta storage (`./warehouse`)
+│   ├── Sprint 9 — Dockerfiles + docker-compose           ✅ done
+│   │   ├── `Dockerfile` for PointlesSQL (3-stage:
+│   │   │   soyuz-client-builder → builder → runtime,
+│   │   │   python:3.14-slim, uv pip install)
+│   │   ├── `Dockerfile.soyuz` for soyuz-catalog (2-stage:
+│   │   │   builder → runtime, same base image)
+│   │   ├── `docker-compose.yml`: services `soyuz-catalog`
+│   │   │   + `pointlessql` (Jupyter embedded as subprocess),
+│   │   │   shared `./warehouse` volume for Delta storage,
+│   │   │   `additional_contexts` for soyuz-catalog source
 │   │   ├── Swap editable `soyuz-catalog-client` path dep
-│   │   │   for a built wheel (copy from soyuz-catalog at
-│   │   │   build time, or publish to local registry)
-│   │   ├── Settings: respect `DATABASE_URL` for Postgres,
-│   │   │   verify existing SQLite default still works
-│   │   ├── Health checks for both services in compose
+│   │   │   for a built wheel via multi-stage Docker build
+│   │   │   (`sed` strips `[tool.uv.sources]` at build time)
+│   │   ├── Settings: configurable `host`/`port` via
+│   │   │   `POINTLESSQL_HOST`/`POINTLESSQL_PORT`,
+│   │   │   SQLite default verified, Postgres via override
+│   │   ├── Health checks: python httpx one-liners (no
+│   │   │   curl in slim image), `depends_on: service_healthy`
 │   │   ├── `.dockerignore` for clean builds
-│   │   └── README: `docker compose up` quick-start section
+│   │   ├── Jupyter `--allow-root` + `--ip` from settings
+│   │   │   for Docker compatibility
+│   │   ├── Frontend path fallback for installed wheel
+│   │   │   (`pointlessql/_frontend` vs dev `frontend/`)
+│   │   └── README: Docker quick-start section
 │   │
 │   └── Sprint 10 — Postgres option + env polish          ⏳ planned
 │       ├── `docker-compose.postgres.yml` override adding a

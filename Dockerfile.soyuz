@@ -1,0 +1,40 @@
+# soyuz-catalog — multi-stage Docker build
+#
+# Builds from the soyuz-catalog source tree passed as an additional
+# Docker build context named "soyuz-catalog".
+#
+# Usage:
+#   docker compose up --build   (called automatically by compose)
+
+# ---------------------------------------------------------------------------
+# Stage 1: Build and install into a venv
+# ---------------------------------------------------------------------------
+FROM python:3.14-slim AS builder
+
+RUN pip install --no-cache-dir uv
+
+COPY --from=soyuz-catalog . /src/
+
+# Strip [tool.uv.sources] and [tool.uv.workspace] so uv does not
+# try workspace resolution inside the container.
+RUN sed -i '/^\[tool\.uv\./,/^$/d' /src/pyproject.toml
+
+RUN uv venv /opt/venv
+
+# Install the client sub-package first, then the main package.
+RUN uv pip install /src/soyuz-catalog-client --python /opt/venv/bin/python \
+ && uv pip install /src/ --python /opt/venv/bin/python
+
+# ---------------------------------------------------------------------------
+# Stage 2: Slim runtime image
+# ---------------------------------------------------------------------------
+FROM python:3.14-slim AS runtime
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+EXPOSE 8080
+
+CMD ["uvicorn", "soyuz_catalog.api.main:app", "--host", "0.0.0.0", "--port", "8080"]

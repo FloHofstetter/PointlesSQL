@@ -1,0 +1,64 @@
+services:
+  soyuz-catalog:
+    build:
+      context: .
+      dockerfile: Dockerfile.soyuz
+      additional_contexts:
+        soyuz-catalog: ../soyuz-catalog
+    ports:
+      - "${SOYUZ_HOST_PORT:-8080}:8080"
+    environment:
+      SOYUZ_DATABASE_URL: "sqlite:////app/data/soyuz.db"
+    volumes:
+      - ./warehouse:/app/warehouse
+      - soyuz_data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import httpx; httpx.get('http://localhost:8080/healthz').raise_for_status()",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  pointlessql:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        soyuz-catalog: ../soyuz-catalog
+    ports:
+      - "${PQL_HOST_PORT:-8000}:8000"
+      - "${JUPYTER_HOST_PORT:-8888}:8888"
+    environment:
+      POINTLESSQL_SOYUZ_CATALOG_URL: "http://soyuz-catalog:8080"
+      POINTLESSQL_HOST: "0.0.0.0"
+      POINTLESSQL_DATABASE_URL: "sqlite:////app/data/pointlessql.db"
+      POINTLESSQL_SECRET_KEY: "docker-dev-secret-change-in-prod"
+    volumes:
+      - ./warehouse:/app/warehouse
+      - pointlessql_data:/app/data
+      - ./notebooks:/app/notebooks
+    depends_on:
+      soyuz-catalog:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import httpx; httpx.get('http://localhost:8000/healthz').raise_for_status()",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+volumes:
+  soyuz_data:
+  pointlessql_data:

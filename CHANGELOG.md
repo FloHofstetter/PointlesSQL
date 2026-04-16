@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 9)
+
+- `Dockerfile` — 3-stage multi-stage build (soyuz-client-builder →
+  builder → runtime) using `python:3.14-slim` and `uv pip install`
+- `Dockerfile.soyuz` — 2-stage build for soyuz-catalog
+- `docker-compose.yml` — full-stack orchestration with health checks,
+  shared `./warehouse` volume for Delta storage, `depends_on` with
+  `service_healthy` condition, configurable host ports via env vars
+- `.dockerignore` for clean Docker builds
+- Settings: `POINTLESSQL_HOST` (default `127.0.0.1`) and
+  `POINTLESSQL_PORT` (default `8000`) for configurable bind address
+- Frontend path fallback: installed wheel resolves
+  `pointlessql/_frontend` when dev `frontend/` directory is absent
+- README: Docker quick-start section with `docker compose up --build`
+
+### Changed (Sprint 9)
+
+- `cli()` reads host and port from `Settings` instead of hardcoding
+- Jupyter subprocess uses `--allow-root` and binds to `settings.host`
+  for Docker compatibility
+
 ### Added (Sprint 8)
 
 - OIDC / OAuth2 authorization-code flow with PKCE — opt-in via

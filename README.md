@@ -58,7 +58,31 @@ PointlesSQL imports the typed client library and talks to
 soyuz-catalog over HTTP -- no shared Python state, no shared
 database.
 
-## Quick start
+## Quick start (Docker)
+
+Run the full stack with a single command:
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+- **soyuz-catalog** on <http://localhost:8080>
+- **PointlesSQL** on <http://localhost:8000>
+- **JupyterLab** on <http://localhost:8888>
+
+Delta tables are stored in `./warehouse/` (bind-mounted into both
+containers). Notebooks are stored in `./notebooks/`.
+
+**Prerequisites:** Docker Engine 24+ with Compose v2.17+ (for
+`additional_contexts`). The `soyuz-catalog` repo must be checked
+out at `../soyuz-catalog/` (sibling directory).
+
+> The first build takes a few minutes to install Python 3.14
+> dependencies. Subsequent builds use Docker layer caching.
+
+## Quick start (local development)
 
 This assumes you have `~/git/soyuz-catalog` checked out as a
 sibling of this repository, since the generated client is
@@ -136,6 +160,10 @@ PointlesSQL is configured via environment variables:
 | Variable | Default | Description |
 |---|---|---|
 | `POINTLESSQL_SOYUZ_CATALOG_URL` | `http://127.0.0.1:8080` | soyuz-catalog server URL |
+| `POINTLESSQL_HOST` | `127.0.0.1` | Bind address (`0.0.0.0` in Docker) |
+| `POINTLESSQL_PORT` | `8000` | HTTP port |
+| `POINTLESSQL_DATABASE_URL` | `sqlite:///./pointlessql.db` | SQLAlchemy database URL |
+| `POINTLESSQL_SECRET_KEY` | `change-me-in-production` | JWT signing key |
 | `POINTLESSQL_JUPYTER_ENABLED` | `true` | Enable embedded JupyterLab |
 | `POINTLESSQL_JUPYTER_PORT` | `8888` | JupyterLab port |
 

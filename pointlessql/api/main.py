@@ -37,7 +37,11 @@ from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
 
+# In a dev checkout the frontend dir is at the repo root; in an
+# installed wheel hatchling force-includes it as pointlessql/_frontend.
 _FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+if not _FRONTEND_DIR.is_dir():
+    _FRONTEND_DIR = Path(__file__).resolve().parents[1] / "_frontend"
 _TEMPLATES = Jinja2Templates(directory=str(_FRONTEND_DIR / "templates"))
 
 
@@ -1135,4 +1139,5 @@ def cli() -> None:
     """Run the development server."""
     import uvicorn
 
-    uvicorn.run("pointlessql.api.main:app", host="127.0.0.1", port=8000, reload=True)
+    settings = Settings()
+    uvicorn.run("pointlessql.api.main:app", host=settings.host, port=settings.port, reload=True)
