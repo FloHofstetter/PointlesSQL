@@ -9,17 +9,16 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
-import httpx
 from fastapi import Body, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from soyuz_catalog_client.errors import UnexpectedStatus
 
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.db import get_session_factory, init_db
-from pointlessql.exceptions import AuthorizationError
+from pointlessql.exceptions import AuthorizationError, CatalogUnavailableError
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services.authorization import (
@@ -28,7 +27,6 @@ from pointlessql.services.authorization import (
     SELECT,
     USE_CATALOG,
     USE_SCHEMA,
-    AccessDenied,
     check_privilege,
     check_privilege_from_effective,
     has_privilege,
@@ -103,6 +101,11 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="PointlesSQL", version="0.1.0", lifespan=_lifespan)
+
+from pointlessql.api.error_handlers import register_error_handlers  # noqa: E402
+
+register_error_handlers(app)
+
 app.include_router(auth_router)
 app.mount(
     "/static",
@@ -144,6 +147,16 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     return RedirectResponse(url="/auth/login", status_code=303)
 
 
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next: Any) -> Response:
+    """Attach a unique request ID to every request and echo it in the response."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid4())
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
 def _get_uc_client(request: Request) -> UnityCatalogClient:
     """Return a per-request UC facade with the current user's principal."""
     user = getattr(request.state, "user", None)
@@ -162,57 +175,16 @@ def _get_user(request: Request) -> UserInfo:
     return user
 
 
-def _deny_json(exc: AuthorizationError) -> JSONResponse:
-    """Return a 403 JSON response for an AuthorizationError exception."""
-    return JSONResponse(
-        status_code=403,
-        content={
-            "error": "Forbidden",
-            "detail": f"Missing {exc.privilege} on {exc.securable_type} '{exc.full_name}'",
-        },
-    )
-
-
-def _deny_html(request: Request, exc: AuthorizationError) -> HTMLResponse:
-    """Return a 403 HTML response for an AuthorizationError exception."""
-    return _TEMPLATES.TemplateResponse(
-        request,
-        "pages/403.html",
-        {
-            "required_privilege": exc.privilege,
-            "securable_type": exc.securable_type,
-            "full_name": exc.full_name,
-        },
-        status_code=403,
-    )
-
-
-def _require_admin(request: Request) -> JSONResponse | None:
-    """Return a 403 JSON response if the user is not an admin, else None."""
+def _require_admin(request: Request) -> None:
+    """Raise :class:`AuthorizationError` if the current user is not an admin."""
     user = _get_user(request)
-    if user.get("is_admin"):
-        return None
-    return JSONResponse(
-        status_code=403,
-        content={"error": "Forbidden", "detail": "Admin access required"},
-    )
-
-
-def _require_admin_html(request: Request) -> HTMLResponse | None:
-    """Return a 403 HTML response if the user is not an admin, else None."""
-    user = _get_user(request)
-    if user.get("is_admin"):
-        return None
-    return _TEMPLATES.TemplateResponse(
-        request,
-        "pages/403.html",
-        {
-            "required_privilege": "admin",
-            "securable_type": "system",
-            "full_name": "federation",
-        },
-        status_code=403,
-    )
+    if not user.get("is_admin"):
+        raise AuthorizationError(
+            principal=user.get("email", ""),
+            privilege="admin",
+            securable_type="system",
+            full_name="admin",
+        )
 
 
 def _audit(request: Request, action: str, target: str, detail: str | None = None) -> None:
@@ -231,175 +203,116 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/tree", response_model=None)
-async def api_tree(request: Request) -> list[dict[str, object]] | JSONResponse:
+# -- JSON API routes --
+# Exceptions propagate to the centralized handler in error_handlers.py.
+
+
+@app.get("/api/tree")
+async def api_tree(request: Request) -> list[dict[str, object]]:
     """Return the full catalog/schema/table tree for the sidebar."""
     client = _get_uc_client(request)
-    try:
-        return await client.get_tree()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.get_tree()
 
 
-@app.get("/api/catalogs", response_model=None)
-async def api_catalogs(request: Request) -> list[dict[str, object]] | JSONResponse:
+@app.get("/api/catalogs")
+async def api_catalogs(request: Request) -> list[dict[str, object]]:
     """Return all catalogs as JSON."""
     client = _get_uc_client(request)
-    try:
-        return await client.list_catalogs()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.list_catalogs()
 
 
-@app.get("/api/catalogs/{catalog_name}/schemas", response_model=None)
+@app.get("/api/catalogs/{catalog_name}/schemas")
 async def api_schemas(
     request: Request, catalog_name: str
-) -> list[dict[str, object]] | JSONResponse:
+) -> list[dict[str, object]]:
     """Return schemas inside a catalog as JSON."""
     client = _get_uc_client(request)
     user = _get_user(request)
-    try:
-        await check_privilege(
-            client, user.get("email", ""), user.get("is_admin", False),
-            "catalog", catalog_name, USE_CATALOG,
-        )
-    except AccessDenied as exc:
-        return _deny_json(exc)
-    try:
-        return await client.list_schemas(catalog_name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await check_privilege(
+        client, user.get("email", ""), user.get("is_admin", False),
+        "catalog", catalog_name, USE_CATALOG,
+    )
+    return await client.list_schemas(catalog_name)
 
 
-@app.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables", response_model=None)
+@app.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables")
 async def api_tables(
     request: Request, catalog_name: str, schema_name: str
-) -> list[dict[str, object]] | JSONResponse:
+) -> list[dict[str, object]]:
     """Return tables inside a schema as JSON."""
     client = _get_uc_client(request)
     user = _get_user(request)
-    try:
-        await check_privilege(
-            client, user.get("email", ""), user.get("is_admin", False),
-            "schema", f"{catalog_name}.{schema_name}", USE_SCHEMA,
-        )
-    except AccessDenied as exc:
-        return _deny_json(exc)
-    try:
-        return await client.list_tables(catalog_name, schema_name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await check_privilege(
+        client, user.get("email", ""), user.get("is_admin", False),
+        "schema", f"{catalog_name}.{schema_name}", USE_SCHEMA,
+    )
+    return await client.list_tables(catalog_name, schema_name)
 
 
-@app.patch("/api/catalogs/{catalog_name}", response_model=None)
+@app.patch("/api/catalogs/{catalog_name}")
 async def api_update_catalog(
     request: Request,
     catalog_name: str,
     patch: dict[str, Any] = Body(...),
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Apply a partial update to a catalog."""
     client = _get_uc_client(request)
     user = _get_user(request)
-    try:
-        await check_privilege(
-            client, user.get("email", ""), user.get("is_admin", False),
-            "catalog", catalog_name, MODIFY,
-        )
-    except AccessDenied as exc:
-        return _deny_json(exc)
-    try:
-        result = await client.update_catalog(catalog_name, patch)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await check_privilege(
+        client, user.get("email", ""), user.get("is_admin", False),
+        "catalog", catalog_name, MODIFY,
+    )
+    result = await client.update_catalog(catalog_name, patch)
     _audit(request, "update_catalog", f"catalog:{catalog_name}", json.dumps(patch))
     return result
 
 
-@app.patch("/api/catalogs/{catalog_name}/schemas/{schema_name}", response_model=None)
+@app.patch("/api/catalogs/{catalog_name}/schemas/{schema_name}")
 async def api_update_schema(
     request: Request,
     catalog_name: str,
     schema_name: str,
     patch: dict[str, Any] = Body(...),
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Apply a partial update to a schema."""
     client = _get_uc_client(request)
     user = _get_user(request)
     full_name = f"{catalog_name}.{schema_name}"
-    try:
-        await check_privilege(
-            client, user.get("email", ""), user.get("is_admin", False),
-            "schema", full_name, MODIFY,
-        )
-    except AccessDenied as exc:
-        return _deny_json(exc)
-    try:
-        result = await client.update_schema(catalog_name, schema_name, patch)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await check_privilege(
+        client, user.get("email", ""), user.get("is_admin", False),
+        "schema", full_name, MODIFY,
+    )
+    result = await client.update_schema(catalog_name, schema_name, patch)
     _audit(request, "update_schema", f"schema:{full_name}", json.dumps(patch))
     return result
 
 
-@app.get("/api/tags/{securable_type}/{full_name:path}", response_model=None)
+@app.get("/api/tags/{securable_type}/{full_name:path}")
 async def api_get_tags(
     request: Request, securable_type: str, full_name: str
-) -> list[dict[str, object]] | JSONResponse:
+) -> list[dict[str, object]]:
     """Return tags for a securable."""
     client = _get_uc_client(request)
-    try:
-        return await client.get_tags(securable_type, full_name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.get_tags(securable_type, full_name)
 
 
-@app.patch("/api/tags/{securable_type}/{full_name:path}", response_model=None)
+@app.patch("/api/tags/{securable_type}/{full_name:path}")
 async def api_update_tags(
     request: Request,
     securable_type: str,
     full_name: str,
     body: dict[str, Any] = Body(...),
-) -> list[dict[str, object]] | JSONResponse:
+) -> list[dict[str, object]]:
     """Update tags for a securable. Body: {"changes": [...]}."""
     client = _get_uc_client(request)
     user = _get_user(request)
-    try:
-        await check_privilege(
-            client, user.get("email", ""), user.get("is_admin", False),
-            securable_type, full_name, MODIFY,
-        )
-    except AccessDenied as exc:
-        return _deny_json(exc)
-    try:
-        result = await client.update_tags(
-            securable_type, full_name, body.get("changes", [])
-        )
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await check_privilege(
+        client, user.get("email", ""), user.get("is_admin", False),
+        securable_type, full_name, MODIFY,
+    )
+    result = await client.update_tags(
+        securable_type, full_name, body.get("changes", [])
+    )
     _audit(
         request, "update_tags", f"{securable_type}:{full_name}",
         json.dumps(body.get("changes", [])),
@@ -407,47 +320,32 @@ async def api_update_tags(
     return result
 
 
-@app.get("/api/permissions/{securable_type}/{full_name:path}", response_model=None)
+@app.get("/api/permissions/{securable_type}/{full_name:path}")
 async def api_get_permissions(
     request: Request, securable_type: str, full_name: str
-) -> list[dict[str, object]] | JSONResponse:
+) -> list[dict[str, object]]:
     """Return privilege assignments for a securable."""
     client = _get_uc_client(request)
-    try:
-        return await client.get_permissions(securable_type, full_name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.get_permissions(securable_type, full_name)
 
 
-@app.patch("/api/permissions/{securable_type}/{full_name:path}", response_model=None)
+@app.patch("/api/permissions/{securable_type}/{full_name:path}")
 async def api_update_permissions(
     request: Request,
     securable_type: str,
     full_name: str,
     body: dict[str, Any] = Body(...),
-) -> list[dict[str, object]] | JSONResponse:
+) -> list[dict[str, object]]:
     """Update permissions for a securable. Body: {"changes": [...]}."""
     client = _get_uc_client(request)
     user = _get_user(request)
-    try:
-        await check_privilege(
-            client, user.get("email", ""), user.get("is_admin", False),
-            securable_type, full_name, MANAGE_GRANTS,
-        )
-    except AccessDenied as exc:
-        return _deny_json(exc)
-    try:
-        result = await client.update_permissions(
-            securable_type, full_name, body.get("changes", [])
-        )
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await check_privilege(
+        client, user.get("email", ""), user.get("is_admin", False),
+        securable_type, full_name, MANAGE_GRANTS,
+    )
+    result = await client.update_permissions(
+        securable_type, full_name, body.get("changes", [])
+    )
     _audit(
         request, "update_permissions", f"{securable_type}:{full_name}",
         json.dumps(body.get("changes", [])),
@@ -455,42 +353,30 @@ async def api_update_permissions(
     return result
 
 
-@app.get("/api/effective-permissions/{securable_type}/{full_name:path}", response_model=None)
+@app.get("/api/effective-permissions/{securable_type}/{full_name:path}")
 async def api_get_effective_permissions(
     request: Request, securable_type: str, full_name: str
-) -> list[dict[str, object]] | JSONResponse:
+) -> list[dict[str, object]]:
     """Return effective (inherited) permissions for a securable."""
     client = _get_uc_client(request)
-    try:
-        return await client.get_effective_permissions(securable_type, full_name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.get_effective_permissions(securable_type, full_name)
 
 
-@app.get("/api/lineage/{full_name:path}", response_model=None)
+@app.get("/api/lineage/{full_name:path}")
 async def api_lineage(
     request: Request, full_name: str, depth: int = 3
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Return combined upstream/downstream lineage for a table."""
     client = _get_uc_client(request)
     user = _get_user(request)
-    try:
-        await check_privilege(
-            client, user.get("email", ""), user.get("is_admin", False),
-            "table", full_name, SELECT,
-        )
-    except AccessDenied as exc:
-        return _deny_json(exc)
-    try:
-        return await client.get_lineage(full_name, depth)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await check_privilege(
+        client, user.get("email", ""), user.get("is_admin", False),
+        "table", full_name, SELECT,
+    )
+    return await client.get_lineage(full_name, depth)
+
+
+# -- HTML pages --
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -501,8 +387,8 @@ async def catalogs_index(request: Request) -> HTMLResponse:
     error: str | None = None
     try:
         catalog_count = len(await client.list_catalogs())
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/catalogs.html",
@@ -533,18 +419,16 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
             client.get_permissions("catalog", catalog_name),
             client.get_effective_permissions("catalog", catalog_name),
         )
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
 
     # Enforce after gather so we reuse the effective permissions data.
+    # AuthorizationError propagates to the centralized handler → 403.html.
     if error is None:
-        try:
-            check_privilege_from_effective(
-                effective, user.get("email", ""), user.get("is_admin", False),
-                "catalog", catalog_name, USE_CATALOG,
-            )
-        except AccessDenied as exc:
-            return _deny_html(request, exc)
+        check_privilege_from_effective(
+            effective, user.get("email", ""), user.get("is_admin", False),
+            "catalog", catalog_name, USE_CATALOG,
+        )
 
     can_manage = has_privilege(
         effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
@@ -590,17 +474,14 @@ async def schema_detail(
             client.get_permissions("schema", full_name),
             client.get_effective_permissions("schema", full_name),
         )
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
 
     if error is None:
-        try:
-            check_privilege_from_effective(
-                effective, user.get("email", ""), user.get("is_admin", False),
-                "schema", full_name, USE_SCHEMA,
-            )
-        except AccessDenied as exc:
-            return _deny_html(request, exc)
+        check_privilege_from_effective(
+            effective, user.get("email", ""), user.get("is_admin", False),
+            "schema", full_name, USE_SCHEMA,
+        )
 
     can_manage = has_privilege(
         effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
@@ -652,17 +533,14 @@ async def table_detail(
             client.get_effective_permissions("table", full_name),
             client.get_lineage(full_name),
         )
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
 
     if error is None:
-        try:
-            check_privilege_from_effective(
-                effective, user.get("email", ""), user.get("is_admin", False),
-                "table", full_name, SELECT,
-            )
-        except AccessDenied as exc:
-            return _deny_html(request, exc)
+        check_privilege_from_effective(
+            effective, user.get("email", ""), user.get("is_admin", False),
+            "table", full_name, SELECT,
+        )
 
     can_manage = has_privilege(
         effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
@@ -722,98 +600,52 @@ async def jupyter_status(request: Request) -> dict[str, object]:
 # -- Federation: Connections --
 
 
-@app.get("/api/connections", response_model=None)
-async def api_list_connections(
-    request: Request,
-) -> list[dict[str, object]] | JSONResponse:
+@app.get("/api/connections")
+async def api_list_connections(request: Request) -> list[dict[str, object]]:
     """Return all connections (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        return await client.list_connections()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.list_connections()
 
 
-@app.post("/api/connections", response_model=None)
+@app.post("/api/connections")
 async def api_create_connection(
     request: Request, body: dict[str, Any] = Body(...)
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Create a new connection (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        result = await client.create_connection(body)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    result = await client.create_connection(body)
     _audit(request, "create_connection", f"connection:{body.get('name', '?')}")
     return result
 
 
-@app.get("/api/connections/{name}", response_model=None)
-async def api_get_connection(
-    request: Request, name: str
-) -> dict[str, object] | JSONResponse:
+@app.get("/api/connections/{name}")
+async def api_get_connection(request: Request, name: str) -> dict[str, object]:
     """Return a single connection (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        return await client.get_connection(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.get_connection(name)
 
 
-@app.patch("/api/connections/{name}", response_model=None)
+@app.patch("/api/connections/{name}")
 async def api_update_connection(
     request: Request, name: str, body: dict[str, Any] = Body(...)
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Update a connection (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        result = await client.update_connection(name, body)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    result = await client.update_connection(name, body)
     _audit(request, "update_connection", f"connection:{name}", json.dumps(body))
     return result
 
 
-@app.delete("/api/connections/{name}", response_model=None)
-async def api_delete_connection(
-    request: Request, name: str
-) -> dict[str, str] | JSONResponse:
+@app.delete("/api/connections/{name}")
+async def api_delete_connection(request: Request, name: str) -> dict[str, str]:
     """Delete a connection (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        await client.delete_connection(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await client.delete_connection(name)
     _audit(request, "delete_connection", f"connection:{name}")
     return {"status": "deleted"}
 
@@ -821,98 +653,52 @@ async def api_delete_connection(
 # -- Federation: External Locations --
 
 
-@app.get("/api/external-locations", response_model=None)
-async def api_list_external_locations(
-    request: Request,
-) -> list[dict[str, object]] | JSONResponse:
+@app.get("/api/external-locations")
+async def api_list_external_locations(request: Request) -> list[dict[str, object]]:
     """Return all external locations (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        return await client.list_external_locations()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.list_external_locations()
 
 
-@app.post("/api/external-locations", response_model=None)
+@app.post("/api/external-locations")
 async def api_create_external_location(
     request: Request, body: dict[str, Any] = Body(...)
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Create a new external location (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        result = await client.create_external_location(body)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    result = await client.create_external_location(body)
     _audit(request, "create_ext_location", f"ext_location:{body.get('name', '?')}")
     return result
 
 
-@app.get("/api/external-locations/{name}", response_model=None)
-async def api_get_external_location(
-    request: Request, name: str
-) -> dict[str, object] | JSONResponse:
+@app.get("/api/external-locations/{name}")
+async def api_get_external_location(request: Request, name: str) -> dict[str, object]:
     """Return a single external location (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        return await client.get_external_location(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.get_external_location(name)
 
 
-@app.patch("/api/external-locations/{name}", response_model=None)
+@app.patch("/api/external-locations/{name}")
 async def api_update_external_location(
     request: Request, name: str, body: dict[str, Any] = Body(...)
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Update an external location (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        result = await client.update_external_location(name, body)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    result = await client.update_external_location(name, body)
     _audit(request, "update_ext_location", f"ext_location:{name}", json.dumps(body))
     return result
 
 
-@app.delete("/api/external-locations/{name}", response_model=None)
-async def api_delete_external_location(
-    request: Request, name: str
-) -> dict[str, str] | JSONResponse:
+@app.delete("/api/external-locations/{name}")
+async def api_delete_external_location(request: Request, name: str) -> dict[str, str]:
     """Delete an external location (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        await client.delete_external_location(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await client.delete_external_location(name)
     _audit(request, "delete_ext_location", f"ext_location:{name}")
     return {"status": "deleted"}
 
@@ -920,98 +706,52 @@ async def api_delete_external_location(
 # -- Federation: Credentials --
 
 
-@app.get("/api/credentials", response_model=None)
-async def api_list_credentials(
-    request: Request,
-) -> list[dict[str, object]] | JSONResponse:
+@app.get("/api/credentials")
+async def api_list_credentials(request: Request) -> list[dict[str, object]]:
     """Return all credentials (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        return await client.list_credentials()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.list_credentials()
 
 
-@app.post("/api/credentials", response_model=None)
+@app.post("/api/credentials")
 async def api_create_credential(
     request: Request, body: dict[str, Any] = Body(...)
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Create a new credential (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        result = await client.create_credential(body)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    result = await client.create_credential(body)
     _audit(request, "create_credential", f"credential:{body.get('name', '?')}")
     return result
 
 
-@app.get("/api/credentials/{name}", response_model=None)
-async def api_get_credential(
-    request: Request, name: str
-) -> dict[str, object] | JSONResponse:
+@app.get("/api/credentials/{name}")
+async def api_get_credential(request: Request, name: str) -> dict[str, object]:
     """Return a single credential (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        return await client.get_credential(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    return await client.get_credential(name)
 
 
-@app.patch("/api/credentials/{name}", response_model=None)
+@app.patch("/api/credentials/{name}")
 async def api_update_credential(
     request: Request, name: str, body: dict[str, Any] = Body(...)
-) -> dict[str, object] | JSONResponse:
+) -> dict[str, object]:
     """Update a credential (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        result = await client.update_credential(name, body)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    result = await client.update_credential(name, body)
     _audit(request, "update_credential", f"credential:{name}", json.dumps(body))
     return result
 
 
-@app.delete("/api/credentials/{name}", response_model=None)
-async def api_delete_credential(
-    request: Request, name: str
-) -> dict[str, str] | JSONResponse:
+@app.delete("/api/credentials/{name}")
+async def api_delete_credential(request: Request, name: str) -> dict[str, str]:
     """Delete a credential (admin-only)."""
-    denied = _require_admin(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
-    try:
-        await client.delete_credential(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Catalog server unavailable: {exc}"},
-        )
+    await client.delete_credential(name)
     _audit(request, "delete_credential", f"credential:{name}")
     return {"status": "deleted"}
 
@@ -1022,16 +762,14 @@ async def api_delete_credential(
 @app.get("/connections", response_class=HTMLResponse)
 async def connections_index(request: Request) -> HTMLResponse:
     """List all connections (admin-only)."""
-    denied = _require_admin_html(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
     connections: list[dict[str, Any]] = []
     error: str | None = None
     try:
         connections = await client.list_connections()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/connections.html",
@@ -1042,16 +780,14 @@ async def connections_index(request: Request) -> HTMLResponse:
 @app.get("/connections/{name}", response_class=HTMLResponse)
 async def connection_detail(request: Request, name: str) -> HTMLResponse:
     """Show a single connection (admin-only)."""
-    denied = _require_admin_html(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
     connection: dict[str, Any] | None = None
     error: str | None = None
     try:
         connection = await client.get_connection(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/connection.html",
@@ -1062,16 +798,14 @@ async def connection_detail(request: Request, name: str) -> HTMLResponse:
 @app.get("/external-locations", response_class=HTMLResponse)
 async def external_locations_index(request: Request) -> HTMLResponse:
     """List all external locations (admin-only)."""
-    denied = _require_admin_html(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
     locations: list[dict[str, Any]] = []
     error: str | None = None
     try:
         locations = await client.list_external_locations()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/external_locations.html",
@@ -1082,16 +816,14 @@ async def external_locations_index(request: Request) -> HTMLResponse:
 @app.get("/external-locations/{name}", response_class=HTMLResponse)
 async def external_location_detail(request: Request, name: str) -> HTMLResponse:
     """Show a single external location (admin-only)."""
-    denied = _require_admin_html(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
     location: dict[str, Any] | None = None
     error: str | None = None
     try:
         location = await client.get_external_location(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/external_location.html",
@@ -1102,16 +834,14 @@ async def external_location_detail(request: Request, name: str) -> HTMLResponse:
 @app.get("/credentials", response_class=HTMLResponse)
 async def credentials_index(request: Request) -> HTMLResponse:
     """List all credentials (admin-only)."""
-    denied = _require_admin_html(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
     credentials: list[dict[str, Any]] = []
     error: str | None = None
     try:
         credentials = await client.list_credentials()
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/credentials.html",
@@ -1122,16 +852,14 @@ async def credentials_index(request: Request) -> HTMLResponse:
 @app.get("/credentials/{name}", response_class=HTMLResponse)
 async def credential_detail(request: Request, name: str) -> HTMLResponse:
     """Show a single credential (admin-only)."""
-    denied = _require_admin_html(request)
-    if denied:
-        return denied
+    _require_admin(request)
     client = _get_uc_client(request)
     credential: dict[str, Any] | None = None
     error: str | None = None
     try:
         credential = await client.get_credential(name)
-    except (httpx.HTTPError, UnexpectedStatus) as exc:
-        error = str(exc)
+    except CatalogUnavailableError as exc:
+        error = exc.detail
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/credential.html",

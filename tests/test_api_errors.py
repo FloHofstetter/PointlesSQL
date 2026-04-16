@@ -8,13 +8,14 @@ import httpx
 import pytest
 
 from pointlessql.api.main import app
+from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 
 def _make_failing_mock() -> MagicMock:
-    """Build a UnityCatalogClient mock whose methods raise ConnectError."""
+    """Build a UnityCatalogClient mock whose methods raise CatalogUnavailableError."""
     client = MagicMock(spec=UnityCatalogClient)
-    err = httpx.ConnectError("Connection refused")
+    err = CatalogUnavailableError("Catalog server unavailable: Connection refused")
 
     client.get_tree = AsyncMock(side_effect=err)
     client.list_catalogs = AsyncMock(side_effect=err)
@@ -48,7 +49,7 @@ def _make_failing_mock() -> MagicMock:
 
 @pytest.fixture(autouse=True)
 def _app_with_failing_client(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Wire app.state with a UnityCatalogClient whose methods raise ConnectError.
+    """Wire app.state with a UnityCatalogClient whose methods raise CatalogUnavailableError.
 
     Patches ``UnityCatalogClient.for_principal`` so the per-request
     client factory returns our mock instead of creating a real client.
@@ -73,38 +74,42 @@ def _authed_client() -> httpx.AsyncClient:
     )
 
 
+def _assert_502_json(resp: httpx.Response) -> None:
+    """Assert a response matches the centralized 502 JSON error envelope."""
+    assert resp.status_code == 502
+    body = resp.json()
+    assert body["error"]["code"] == "catalog_unavailable"
+    assert "Connection refused" in body["error"]["message"]
+    assert "request_id" in body["error"]
+
+
 class TestJsonEndpointsReturn502:
     async def test_api_tree(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_api_catalogs(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/catalogs")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_api_schemas(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/catalogs/test_cat/schemas")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_api_tables(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/catalogs/test_cat/schemas/test_sch/tables")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_patch_catalog(self) -> None:
         async with _authed_client() as client:
             resp = await client.patch(
                 "/api/catalogs/test_cat", json={"comment": "hi"}
             )
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_patch_schema(self) -> None:
         async with _authed_client() as client:
@@ -112,14 +117,12 @@ class TestJsonEndpointsReturn502:
                 "/api/catalogs/test_cat/schemas/test_sch",
                 json={"comment": "hi"},
             )
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_get_tags(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/tags/catalog/test_cat")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_patch_tags(self) -> None:
         async with _authed_client() as client:
@@ -127,14 +130,12 @@ class TestJsonEndpointsReturn502:
                 "/api/tags/catalog/test_cat",
                 json={"changes": [{"key": "k", "op": "set", "value": "v"}]},
             )
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_get_permissions(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/permissions/catalog/test_cat")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_patch_permissions(self) -> None:
         async with _authed_client() as client:
@@ -142,25 +143,22 @@ class TestJsonEndpointsReturn502:
                 "/api/permissions/catalog/test_cat",
                 json={"changes": []},
             )
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_get_effective_permissions(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/effective-permissions/catalog/test_cat")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_get_lineage(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/lineage/cat.sch.tbl")
-        assert resp.status_code == 502
-        assert "Catalog server unavailable" in resp.json()["error"]
+        _assert_502_json(resp)
 
     async def test_list_connections(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/connections")
-        assert resp.status_code == 502
+        _assert_502_json(resp)
 
     async def test_create_connection(self) -> None:
         async with _authed_client() as client:
@@ -168,22 +166,35 @@ class TestJsonEndpointsReturn502:
                 "/api/connections",
                 json={"name": "test", "connection_type": "POSTGRESQL"},
             )
-        assert resp.status_code == 502
+        _assert_502_json(resp)
 
     async def test_delete_connection(self) -> None:
         async with _authed_client() as client:
             resp = await client.delete("/api/connections/test")
-        assert resp.status_code == 502
+        _assert_502_json(resp)
 
     async def test_list_external_locations(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/external-locations")
-        assert resp.status_code == 502
+        _assert_502_json(resp)
 
     async def test_list_credentials(self) -> None:
         async with _authed_client() as client:
             resp = await client.get("/api/credentials")
-        assert resp.status_code == 502
+        _assert_502_json(resp)
+
+    async def test_request_id_in_header(self) -> None:
+        async with _authed_client() as client:
+            resp = await client.get("/api/tree")
+        assert "X-Request-ID" in resp.headers
+
+    async def test_request_id_forwarded(self) -> None:
+        async with _authed_client() as client:
+            resp = await client.get(
+                "/api/tree", headers={"X-Request-ID": "test-req-123"}
+            )
+        assert resp.headers["X-Request-ID"] == "test-req-123"
+        assert resp.json()["error"]["request_id"] == "test-req-123"
 
 
 class TestHtmlPagesShowError:

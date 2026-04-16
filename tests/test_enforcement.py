@@ -136,7 +136,7 @@ class TestCatalogEnforcement:
             resp = await client.get("/api/catalogs/test_cat/schemas")
         assert resp.status_code == 403
         data = resp.json()
-        assert data["error"] == "Forbidden"
+        assert data["error"]["code"] == "authorization_error"
 
 
 # -- Schema enforcement --
@@ -196,7 +196,7 @@ class TestUpdateEnforcement:
                 "/api/catalogs/test_cat", json={"comment": "hi"}
             )
         assert resp.status_code == 403
-        assert resp.json()["error"] == "Forbidden"
+        assert resp.json()["error"]["code"] == "authorization_error"
 
     async def test_update_catalog_allowed_with_modify(self) -> None:
         app.state.uc_client = _make_uc_mock(
@@ -269,7 +269,7 @@ class TestFederationAdminOnly:
         async with _non_admin_client() as client:
             resp = await client.get("/api/connections")
         assert resp.status_code == 403
-        assert "Admin access required" in resp.json()["detail"]
+        assert resp.json()["error"]["code"] == "authorization_error"
 
     async def test_connections_allowed_for_admin(self) -> None:
         app.state.uc_client = _make_uc_mock()

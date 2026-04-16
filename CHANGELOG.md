@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 14)
+
+- `pointlessql/api/error_handlers.py` — centralized FastAPI
+  exception handler for `PointlessSQLError` family; dispatches
+  JSON error envelope for `/api/...` routes and 403.html for
+  HTML authorization errors
+- Consistent JSON error envelope on all API error responses:
+  `{"error": {"code": "...", "message": "...", "request_id": "..."}}`
+- Request-ID middleware: generates UUID4 per request (or
+  forwards client `X-Request-ID`), attaches to error envelope
+  and `X-Request-ID` response header
+- `tests/test_error_handlers.py` — 13 new tests covering JSON
+  envelope for each exception type, HTML 403 rendering,
+  request-ID generation and forwarding, admin enforcement via
+  centralized handler (243 total pass)
+
+### Changed (Sprint 14)
+
+- UC facade (`unitycatalog.py`): all public async methods
+  wrapped with `_wrap_catalog_errors` decorator converting
+  `httpx.HTTPError` / `UnexpectedStatus` →
+  `CatalogUnavailableError` at the source — routes never see
+  raw transport exceptions
+- `_require_admin` raises `AuthorizationError` instead of
+  returning a `JSONResponse`; `_deny_json`, `_deny_html`, and
+  `_require_admin_html` removed
+- ~40 duplicated try/except blocks removed from `main.py`
+  (1164 → 815 lines); JSON API routes are now simple
+  pass-through calls with exceptions propagating to the
+  centralized handler
+- HTML graceful-degradation routes (catalog/schema/table
+  detail, federation pages) catch `CatalogUnavailableError`
+  (domain exception) instead of raw `httpx.HTTPError`
+- `httpx` and `UnexpectedStatus` no longer imported in
+  `main.py`
+
 ### Added (Sprint 13)
 
 - `pointlessql/exceptions.py` — domain exception hierarchy with

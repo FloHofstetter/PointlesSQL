@@ -9,8 +9,11 @@ them without changes.
 from __future__ import annotations
 
 import asyncio
+import functools
+from collections.abc import Callable, Coroutine
 from typing import Any
 
+import httpx
 from soyuz_catalog_client import Client
 from soyuz_catalog_client.api.catalogs import (
     get_catalog_api_2_1_unity_catalog_catalogs_name_get as _get_catalog,
@@ -99,6 +102,7 @@ from soyuz_catalog_client.api.tags import (
 from soyuz_catalog_client.api.tags import (
     update_tags_tags_securable_type_full_name_patch as _update_tags,
 )
+from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.models.connection_info import ConnectionInfo
 from soyuz_catalog_client.models.create_connection import CreateConnection
 from soyuz_catalog_client.models.create_credential_request import (
@@ -150,6 +154,25 @@ from soyuz_catalog_client.models.update_tags_tags_securable_type_full_name_patch
     UpdateTagsTagsSecurableTypeFullNamePatchSecurableType,
 )
 
+from pointlessql.exceptions import CatalogUnavailableError
+
+
+def _wrap_catalog_errors[T](
+    fn: Callable[..., Coroutine[Any, Any, T]],
+) -> Callable[..., Coroutine[Any, Any, T]]:
+    """Wrap an async method so transport errors become domain exceptions."""
+
+    @functools.wraps(fn)
+    async def wrapper(*args: Any, **kwargs: Any) -> T:
+        try:
+            return await fn(*args, **kwargs)
+        except (httpx.HTTPError, UnexpectedStatus) as exc:
+            raise CatalogUnavailableError(
+                f"Catalog server unavailable: {exc}"
+            ) from exc
+
+    return wrapper
+
 
 class UnityCatalogClient:
     """Async facade over the generated soyuz-catalog client."""
@@ -185,6 +208,7 @@ class UnityCatalogClient:
         """Release the underlying HTTP resources."""
         await self._client.__aexit__()
 
+    @_wrap_catalog_errors
     async def list_catalogs(self) -> list[dict[str, Any]]:
         """Return all catalogs visible to the caller.
 
@@ -200,6 +224,7 @@ class UnityCatalogClient:
             return []
         return [c.to_dict() for c in catalogs]
 
+    @_wrap_catalog_errors
     async def get_catalog(self, catalog_name: str) -> dict[str, Any]:
         """Return metadata for a single catalog."""
         response = await _get_catalog.asyncio(name=catalog_name, client=self._client)
@@ -207,6 +232,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def get_schema(
         self, catalog_name: str, schema_name: str
     ) -> dict[str, Any]:
@@ -217,6 +243,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def get_table(
         self, catalog_name: str, schema_name: str, table_name: str
     ) -> dict[str, Any]:
@@ -227,6 +254,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def update_catalog(
         self, catalog_name: str, patch: dict[str, Any]
     ) -> dict[str, Any]:
@@ -247,6 +275,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def update_schema(
         self, catalog_name: str, schema_name: str, patch: dict[str, Any]
     ) -> dict[str, Any]:
@@ -260,6 +289,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def get_tags(
         self, securable_type: str, full_name: str
     ) -> list[dict[str, Any]]:
@@ -283,6 +313,7 @@ class UnityCatalogClient:
             return []
         return [t.to_dict() for t in tags]
 
+    @_wrap_catalog_errors
     async def update_tags(
         self,
         securable_type: str,
@@ -315,6 +346,7 @@ class UnityCatalogClient:
             return []
         return [t.to_dict() for t in tags]
 
+    @_wrap_catalog_errors
     async def get_permissions(
         self, securable_type: str, full_name: str
     ) -> list[dict[str, Any]]:
@@ -338,6 +370,7 @@ class UnityCatalogClient:
             return []
         return [a.to_dict() for a in response.privilege_assignments]
 
+    @_wrap_catalog_errors
     async def get_effective_permissions(
         self, securable_type: str, full_name: str
     ) -> list[dict[str, Any]]:
@@ -359,6 +392,7 @@ class UnityCatalogClient:
             return []
         return [a.to_dict() for a in response.privilege_assignments]
 
+    @_wrap_catalog_errors
     async def update_permissions(
         self,
         securable_type: str,
@@ -390,6 +424,7 @@ class UnityCatalogClient:
             return []
         return [a.to_dict() for a in response.privilege_assignments]
 
+    @_wrap_catalog_errors
     async def get_lineage(
         self, full_name: str, depth: int = 3
     ) -> dict[str, Any]:
@@ -419,6 +454,7 @@ class UnityCatalogClient:
             result["downstream"] = downstream_resp.to_dict()
         return result
 
+    @_wrap_catalog_errors
     async def list_schemas(self, catalog_name: str) -> list[dict[str, Any]]:
         """Return all schemas inside a catalog.
 
@@ -438,6 +474,7 @@ class UnityCatalogClient:
             return []
         return [s.to_dict() for s in schemas]
 
+    @_wrap_catalog_errors
     async def list_tables(
         self, catalog_name: str, schema_name: str
     ) -> list[dict[str, Any]]:
@@ -467,6 +504,7 @@ class UnityCatalogClient:
 
     # -- Connections --
 
+    @_wrap_catalog_errors
     async def list_connections(self) -> list[dict[str, Any]]:
         """Return all federation connections."""
         response = await _list_connections.asyncio(client=self._client)
@@ -474,6 +512,7 @@ class UnityCatalogClient:
             return []
         return [c.to_dict() for c in response.connections]
 
+    @_wrap_catalog_errors
     async def get_connection(self, name: str) -> dict[str, Any]:
         """Return a single connection by name."""
         response = await _get_connection.asyncio(name=name, client=self._client)
@@ -481,6 +520,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def create_connection(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new connection."""
         body = CreateConnection.from_dict(data)
@@ -491,6 +531,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def update_connection(
         self, name: str, patch: dict[str, Any]
     ) -> dict[str, Any]:
@@ -503,12 +544,14 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def delete_connection(self, name: str) -> None:
         """Delete a connection."""
         await _delete_connection.asyncio(name=name, client=self._client)
 
     # -- External Locations --
 
+    @_wrap_catalog_errors
     async def list_external_locations(self) -> list[dict[str, Any]]:
         """Return all external locations."""
         response = await _list_ext_locs.asyncio(client=self._client)
@@ -516,6 +559,7 @@ class UnityCatalogClient:
             return []
         return [e.to_dict() for e in response.external_locations]
 
+    @_wrap_catalog_errors
     async def get_external_location(self, name: str) -> dict[str, Any]:
         """Return a single external location by name."""
         response = await _get_ext_loc.asyncio(name=name, client=self._client)
@@ -523,6 +567,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def create_external_location(
         self, data: dict[str, Any]
     ) -> dict[str, Any]:
@@ -535,6 +580,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def update_external_location(
         self, name: str, patch: dict[str, Any]
     ) -> dict[str, Any]:
@@ -547,12 +593,14 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def delete_external_location(self, name: str) -> None:
         """Delete an external location."""
         await _delete_ext_loc.asyncio(name=name, client=self._client)
 
     # -- Credentials --
 
+    @_wrap_catalog_errors
     async def list_credentials(self) -> list[dict[str, Any]]:
         """Return all credentials."""
         response = await _list_credentials.asyncio(client=self._client)
@@ -560,6 +608,7 @@ class UnityCatalogClient:
             return []
         return [c.to_dict() for c in response.credentials]
 
+    @_wrap_catalog_errors
     async def get_credential(self, name: str) -> dict[str, Any]:
         """Return a single credential by name."""
         response = await _get_credential.asyncio(name=name, client=self._client)
@@ -567,6 +616,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def create_credential(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new credential."""
         body = CreateCredentialRequest.from_dict(data)
@@ -577,6 +627,7 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def update_credential(
         self, name: str, patch: dict[str, Any]
     ) -> dict[str, Any]:
@@ -589,10 +640,12 @@ class UnityCatalogClient:
             return {}
         return response.to_dict()
 
+    @_wrap_catalog_errors
     async def delete_credential(self, name: str) -> None:
         """Delete a credential."""
         await _delete_credential.asyncio(name=name, client=self._client)
 
+    @_wrap_catalog_errors
     async def get_tree(self) -> list[dict[str, Any]]:
         """Return the full catalog tree in one shot.
 

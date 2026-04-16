@@ -333,11 +333,25 @@ PointlesSQL
 │   │   │   and oidc.py
 │   │   └── Tests: 17 new exception tests (230 total pass)
 │   │
-│   ├── Sprint 14 — Centralized API error handling         🔜 next
-│   │   ├── Centralized FastAPI exception handlers
-│   │   ├── Consistent JSON error envelope
-│   │   ├── Remove ~37 duplicated try/except blocks
-│   │   └── Request-ID generation
+│   ├── Sprint 14 — Centralized API error handling         ✅ done
+│   │   ├── `pointlessql/api/error_handlers.py` — centralized
+│   │   │   `PointlessSQLError` handler dispatching JSON envelope
+│   │   │   for `/api/...` routes and 403.html for HTML routes
+│   │   ├── Consistent JSON error envelope: `{"error": {"code",
+│   │   │   "message", "request_id"}}` on all API error responses
+│   │   ├── UC facade (`unitycatalog.py`) wraps all methods with
+│   │   │   `_wrap_catalog_errors` decorator converting
+│   │   │   `httpx.HTTPError`/`UnexpectedStatus` →
+│   │   │   `CatalogUnavailableError` at the source
+│   │   ├── `_require_admin` converted from return-response to
+│   │   │   raise-`AuthorizationError`; `_deny_json`,
+│   │   │   `_deny_html`, `_require_admin_html` removed
+│   │   ├── ~40 duplicated try/except blocks removed from
+│   │   │   `main.py` (1164 → 815 lines)
+│   │   ├── Request-ID middleware: UUID4 per request (or
+│   │   │   forwarded `X-Request-ID`), in error envelope +
+│   │   │   response header
+│   │   └── Tests: 13 new tests (243 total pass)
 │   │
 │   ├── Sprint 15 — Docstrings                             ⏳ planned
 │   │   ├── Every public function: Google-style with why
