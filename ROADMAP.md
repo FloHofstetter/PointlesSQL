@@ -312,7 +312,7 @@ PointlesSQL
 │   │   strict types, domain exception hierarchy, centralized
 │   │   error handling, complete docstrings, structured logging.
 │   │
-│   ├── Sprint 13 — Exception hierarchy + strict pyright   ✅ done
+│   ├── Sprint 13 — Exception hierarchy + strict pyright   ✅ done (5511871)
 │   │   ├── `pointlessql/exceptions.py` — `PointlessSQLError`
 │   │   │   base with `status_code`, `error_code`, `detail`;
 │   │   │   `CatalogUnavailableError` (502),
