@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 21)
+
+- `pointlessql/services/metrics.py` — Prometheus surface on its
+  own `CollectorRegistry` so tests don't contaminate the global
+  default. `Counter pointlessql_job_runs_total{status,job_name}`,
+  `Histogram pointlessql_job_run_duration_seconds{job_name}`
+  (buckets 0.05 s .. 3600 s, log-spaced, includes the Prom
+  default 10 s), `Gauge pointlessql_scheduler_tick_lag_seconds`;
+  `render_metrics()` / `record_run()` / `observe_tick_lag()`
+  helpers
+- `GET /metrics` admin-only (raises `AuthorizationError` via
+  `_require_admin`); returns `generate_latest()` bytes with
+  `text/plain; version=0.0.4`
+- Optional per-job failure webhook: `jobs.on_failure_url`
+  (Alembic migration 007, nullable `String(1000)`). Scheduler
+  POSTs `{job_id, job_name, run_id, status, error, started_at,
+  finished_at}` (ISO-8601) on a failed run via
+  `_post_failure_webhook`. 5 s timeout, no retries, one-shot
+  `httpx.AsyncClient.post`; `httpx.HTTPError` logged at WARN
+  and swallowed so a broken receiver never affects run state.
+  `_webhook_client_factory` exposed for test stubbing
+- `docs/jobs.md` — authoring guide: executor signature
+  (`job_run_id, user_info, config, uc_client`), publishing a
+  custom kind via the `pointlessql.jobs` entry-point group, the
+  scheduling JSON + `on_failure_url` payload shape, a worked
+  `pql`-in-a-task summary-table example, notes on logging /
+  retries / concurrency, observability, and when to add a
+  built-in kind instead
+- README.md gains a "Jobs" section linking to `docs/jobs.md`
+- `tests/test_metrics.py` — 9 new tests (emission on success +
+  failure, `/metrics` admin-only enforcement, webhook URL +
+  payload keys + timeout, no-webhook path, broken-receiver
+  does not abort the run). Sprint 19+20 scheduler tests still
+  green (36 passed). Full suite not run in this sprint
+
+### Changed (Sprint 21)
+
+- `scheduler.py`: `execute_run` wraps a new `_execute_run_core`
+  and emits telemetry around every run; `tick_once` emits
+  telemetry for synthetic `skipped` rows too; `Scheduler._run`
+  samples tick lag each iteration
+
 ### Added (Sprint 20)
 
 - Alembic migration 006: `jobs.max_parallel_runs`; `job_tasks`

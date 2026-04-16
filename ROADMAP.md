@@ -398,7 +398,7 @@ PointlesSQL
 │           end-to-end request-ID propagation via caplog
 │           (251 total pass)
 │
-├── Phase 6 — Infrastructure & orchestration              🔜 next
+├── Phase 6 — Infrastructure & orchestration              ✅ done
 │   │
 │   │   Goal: turn PointlesSQL from a metadata browser + notebook
 │   │   into a system that *operates* on data — mirror foreign
@@ -493,7 +493,7 @@ PointlesSQL
 │   │   └── Tests: topological order, fail-skip propagation,
 │   │       retry with backoff, concurrency limits
 │   │
-│   └── Sprint 21 — DAG engine: observability + docs       ⏳ planned
+│   └── Sprint 21 — DAG engine: observability + docs       ✅ done (e97c105)
 │       ├── Prometheus metrics (`prometheus_client` is already a
 │       │   dep but unused): `pointlessql_job_runs_total{status}`,
 │       │   `pointlessql_job_run_duration_seconds` histogram,
