@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Notebook · PointlesSQL{% endblock %}
+{% block content_class %}pql-content--notebook{% endblock %}
+
+{% block content %}
+{% if jupyter_enabled %}
+<iframe class="pql-notebook-iframe"
+        src="http://localhost:{{ jupyter_port }}/lab"
+        title="JupyterLab"></iframe>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-journal-code display-1 text-muted mb-3 d-block"></i>
+    <h2 class="h4 mb-2">Notebook Disabled</h2>
+    <p class="text-muted">
+        Set <code>POINTLESSQL_JUPYTER_ENABLED=true</code> to enable the embedded notebook.
+    </p>
+</div>
+{% endif %}
+{% endblock %}

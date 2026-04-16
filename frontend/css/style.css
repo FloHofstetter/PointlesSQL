@@ -105,3 +105,15 @@
 .table > :not(caption) > * > * {
     padding: 0.6rem 0.75rem;
 }
+
+.pql-content--notebook {
+    padding: 0;
+    overflow: hidden;
+}
+
+.pql-notebook-iframe {
+    width: 100%;
+    height: calc(100vh - var(--pql-topbar-height));
+    border: none;
+    display: block;
+}

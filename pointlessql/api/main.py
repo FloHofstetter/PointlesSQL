@@ -15,8 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from soyuz_catalog_client.errors import UnexpectedStatus
 
+from pointlessql.services.jupyter import managed_jupyter
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
+from pointlessql.settings import Settings
 
 _FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 _TEMPLATES = Jinja2Templates(directory=str(_FRONTEND_DIR / "templates"))
@@ -39,13 +41,18 @@ _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Create and dispose the shared Unity Catalog client."""
-    soyuz = make_soyuz_client()
+    """Create shared services and manage the Jupyter subprocess."""
+    settings = Settings()
+    soyuz = make_soyuz_client(settings)
     app.state.uc_client = UnityCatalogClient(soyuz)
-    try:
-        yield
-    finally:
-        await app.state.uc_client.aclose()
+    app.state.settings = settings
+
+    async with managed_jupyter(settings) as jupyter_proc:
+        app.state.jupyter_process = jupyter_proc
+        try:
+            yield
+        finally:
+            await app.state.uc_client.aclose()
 
 
 app = FastAPI(title="PointlesSQL", version="0.1.0", lifespan=_lifespan)
@@ -226,6 +233,37 @@ async def table_detail(
             "active_table": table_name,
         },
     )
+
+
+@app.get("/notebook", response_class=HTMLResponse)
+async def notebook_page(request: Request) -> HTMLResponse:
+    """Render the embedded JupyterLab notebook page."""
+    settings: Settings = request.app.state.settings
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/notebook.html",
+        {
+            "jupyter_enabled": settings.jupyter_enabled,
+            "jupyter_port": settings.jupyter_port,
+            "active_page": "notebook",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+@app.get("/api/jupyter/status")
+async def jupyter_status(request: Request) -> dict[str, object]:
+    """Return Jupyter subprocess status."""
+    settings: Settings = request.app.state.settings
+    proc = getattr(request.app.state, "jupyter_process", None)
+    running = proc is not None and proc.returncode is None
+    return {
+        "enabled": settings.jupyter_enabled,
+        "running": running,
+        "port": settings.jupyter_port,
+    }
 
 
 def cli() -> None:

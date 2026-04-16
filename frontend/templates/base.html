@@ -18,11 +18,19 @@
             <i class="bi bi-database"></i>
             <span class="fw-semibold">PointlesSQL</span>
         </a>
+        <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'notebook' %} active{% endif %}"
+                   href="/notebook">
+                    <i class="bi bi-journal-code"></i> Notebook
+                </a>
+            </li>
+        </ul>
     </nav>
 
     <div class="pql-shell">
         {% include "components/sidebar.html" %}
-        <main class="pql-content" id="main-content">
+        <main class="pql-content {% block content_class %}{% endblock %}" id="main-content">
             {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
         </main>

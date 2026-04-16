@@ -15,3 +15,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_")
 
     soyuz_catalog_url: str = "http://127.0.0.1:8080"
+
+    jupyter_enabled: bool = True
+    jupyter_port: int = 8888

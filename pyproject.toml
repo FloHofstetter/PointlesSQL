@@ -38,6 +38,7 @@ dependencies = [
     "soyuz-catalog-client",
     "deltalake>=0.24",
     "pandas>=2.2",
+    "jupyterlab>=4.0",
 ]
 
 [dependency-groups]
@@ -75,7 +76,7 @@ pointlessql = "pointlessql.api.main:cli"
 "frontend" = "pointlessql/_frontend"
 
 [tool.hatch.build.targets.sdist]
-include = ["pointlessql", "frontend", "LICENSE", "README.md"]
+include = ["pointlessql", "frontend", "notebooks", "LICENSE", "README.md"]
 
 [tool.ruff]
 line-length = 100

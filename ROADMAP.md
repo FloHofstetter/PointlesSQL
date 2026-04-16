@@ -89,7 +89,7 @@ PointlesSQL
 │   │   └── Tests: unit tests with mocked soyuz + one
 │   │       integration test (create → write → read → verify)
 │   │
-│   ├── Sprint 3 — Jupyter notebook tab                   ⏳ planned
+│   ├── Sprint 3 — Jupyter notebook tab                   ✅ done
 │   │   ├── New dep: `jupyterlab>=4.0`
 │   │   ├── `GET /notebook` route → template with iframe to
 │   │   │   `http://localhost:{jupyter_port}/lab`
