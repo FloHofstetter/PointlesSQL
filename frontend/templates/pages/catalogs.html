@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}PointlesSQL{% endblock %}
+
+{% block content %}
+<div class="pql-welcome">
+    {% if error %}
+    <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Failed to reach Unity Catalog: {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="text-center py-5">
+        <i class="bi bi-database display-1 text-muted mb-3"></i>
+        <h1 class="h3 mb-2">Welcome to PointlesSQL</h1>
+        <p class="text-muted mb-4">
+            A fast UI for Unity Catalog.
+        </p>
+        <div class="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill bg-body-tertiary">
+            <i class="bi bi-folder2"></i>
+            <span class="fw-semibold">{{ catalog_count }}</span>
+            <span class="text-muted">catalog{{ "s" if catalog_count != 1 else "" }} available</span>
+        </div>
+        <p class="text-muted small mt-4 mb-0">
+            <i class="bi bi-arrow-left me-1"></i>Select a catalog from the sidebar to get started.
+        </p>
+    </div>
+</div>
+{% endblock %}

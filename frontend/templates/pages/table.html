@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ catalog_name }}.{{ schema_name }}.{{ table_name }} · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/catalogs/{{ catalog_name }}" class="text-decoration-none">{{ catalog_name }}</a></li>
+    <li class="breadcrumb-item"><a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}" class="text-decoration-none">{{ schema_name }}</a></li>
+    <li class="breadcrumb-item active">{{ table_name }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-table fs-3"></i>
+    <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}.{{ table_name }}</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+</div>
+{% elif table %}
+
+<div class="card mb-4">
+    <div class="card-header">Metadata</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3 text-muted">Full name</dt>
+            <dd class="col-sm-9 font-monospace">{{ catalog_name }}.{{ schema_name }}.{{ table.name }}</dd>
+
+            <dt class="col-sm-3 text-muted">Type</dt>
+            <dd class="col-sm-9"><span class="badge bg-primary">{{ table.table_type }}</span></dd>
+
+            <dt class="col-sm-3 text-muted">Format</dt>
+            <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ table.data_source_format }}</span></dd>
+
+            <dt class="col-sm-3 text-muted">Comment</dt>
+            <dd class="col-sm-9">{{ table.comment or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Owner</dt>
+            <dd class="col-sm-9">{{ table.owner or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Table ID</dt>
+            <dd class="col-sm-9 font-monospace small">{{ table.table_id or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Created</dt>
+            <dd class="col-sm-9">{{ table.created_at|epoch_ms }}{% if table.created_by %} by {{ table.created_by }}{% endif %}</dd>
+
+            <dt class="col-sm-3 text-muted">Updated</dt>
+            <dd class="col-sm-9">{{ table.updated_at|epoch_ms }}{% if table.updated_by %} by {{ table.updated_by }}{% endif %}</dd>
+
+            <dt class="col-sm-3 text-muted">Storage location</dt>
+            <dd class="col-sm-9 font-monospace small">{{ table.storage_location or "—" }}</dd>
+        </dl>
+    </div>
+</div>
+
+{% if table.properties %}
+<div class="card mb-4">
+    <div class="card-header">Properties</div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <tbody>
+                {% for key, value in table.properties.items() %}
+                <tr>
+                    <td class="font-monospace small text-muted ps-3" style="width: 30%;">{{ key }}</td>
+                    <td class="font-monospace small">{{ value }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Columns</span>
+        <span class="text-muted small">{{ table.columns|length }} total</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 3rem;">#</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Nullable</th>
+                        <th>Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for col in table.columns|sort(attribute="position") %}
+                    <tr>
+                        <td class="text-muted small">{{ col.position }}</td>
+                        <td class="font-monospace fw-medium">
+                            {{ col.name }}
+                            {% if col.partition_index is not none %}
+                            <span class="badge bg-warning text-dark ms-1" title="Partition column #{{ col.partition_index }}">
+                                <i class="bi bi-diagram-3"></i> Part
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="font-monospace small text-info">{{ col.type_text }}</td>
+                        <td>
+                            {% if col.nullable %}
+                            <span class="text-muted small">nullable</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">NOT NULL</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">{{ col.comment or "—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

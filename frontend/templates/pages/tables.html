@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ catalog_name }}.{{ schema_name }} · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/catalogs/{{ catalog_name }}" class="text-decoration-none">{{ catalog_name }}</a></li>
+    <li class="breadcrumb-item active">{{ schema_name }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-collection fs-3"></i>
+    <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+</div>
+{% elif schema %}
+<div class="card">
+    <div class="card-header">Metadata</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3 text-muted">Full name</dt>
+            <dd class="col-sm-9 font-monospace">{{ schema.full_name }}</dd>
+
+            <dt class="col-sm-3 text-muted">Comment</dt>
+            <dd class="col-sm-9">
+                {% with patch_url="/api/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema.name, field="comment", value=schema.comment, placeholder="Click to add comment" %}
+                    {% include "components/editable.html" %}
+                {% endwith %}
+            </dd>
+
+            <dt class="col-sm-3 text-muted">Owner</dt>
+            <dd class="col-sm-9">{{ schema.owner or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Schema ID</dt>
+            <dd class="col-sm-9 font-monospace small">{{ schema.schema_id or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Created</dt>
+            <dd class="col-sm-9">{{ schema.created_at|epoch_ms }}{% if schema.created_by %} by {{ schema.created_by }}{% endif %}</dd>
+
+            <dt class="col-sm-3 text-muted">Updated</dt>
+            <dd class="col-sm-9">{{ schema.updated_at|epoch_ms }}{% if schema.updated_by %} by {{ schema.updated_by }}{% endif %}</dd>
+
+            <dt class="col-sm-3 text-muted">Storage root</dt>
+            <dd class="col-sm-9 font-monospace small">{{ schema.storage_root or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Storage location</dt>
+            <dd class="col-sm-9 font-monospace small">{{ schema.storage_location or "—" }}</dd>
+        </dl>
+    </div>
+</div>
+
+{% with patch_url="/api/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema.name, properties=schema.properties %}
+    {% include "components/properties_editor.html" %}
+{% endwith %}
+{% endif %}
+{% endblock %}

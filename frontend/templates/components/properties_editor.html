@@ -1,0 +1,80 @@
+{#
+  Editable key/value properties card.
+
+  Params:
+    patch_url  — PATCH endpoint that accepts {"properties": {...}}
+    properties — current dict (may be empty/None)
+#}
+<div class="card mb-4"
+     x-data='propertiesEditor({
+         patchUrl: {{ patch_url|tojson }},
+         initial: {{ (properties or {})|tojson }}
+     })'>
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Properties</span>
+        <span x-show="!editing">
+            <button class="btn btn-sm btn-outline-secondary" @click="start()">
+                <i class="bi bi-pencil me-1"></i>Edit
+            </button>
+        </span>
+        <span x-show="editing" x-cloak style="display: flex; align-items: center; gap: 0.4rem;">
+            <button class="btn btn-sm btn-outline-secondary" @click="cancel()" :disabled="saving">
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <button class="btn btn-sm btn-success" @click="save()" :disabled="saving">
+                <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-check-lg'"></i>
+                Save
+            </button>
+        </span>
+    </div>
+
+    <div x-show="error" x-cloak class="alert alert-danger mb-0 rounded-0 small" x-text="error"></div>
+
+    <div class="card-body p-0">
+        <template x-if="!editing && rows.length === 0">
+            <div class="p-3 text-muted small fst-italic">No properties set.</div>
+        </template>
+
+        <table x-show="editing || rows.length > 0" class="table table-sm mb-0 align-middle">
+            <thead x-show="editing" x-cloak>
+                <tr>
+                    <th style="width: 35%;">Key</th>
+                    <th>Value</th>
+                    <th style="width: 3rem;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="(row, i) in rows" :key="i">
+                    <tr>
+                        <td class="font-monospace small ps-3" :class="{ 'text-muted': !editing }">
+                            <span x-show="!editing" x-text="row.key"></span>
+                            <input x-show="editing" x-cloak type="text"
+                                   class="form-control form-control-sm font-monospace"
+                                   x-model="row.key" placeholder="key">
+                        </td>
+                        <td class="font-monospace small">
+                            <span x-show="!editing" x-text="row.value"></span>
+                            <input x-show="editing" x-cloak type="text"
+                                   class="form-control form-control-sm font-monospace"
+                                   x-model="row.value" placeholder="value">
+                        </td>
+                        <td class="text-end pe-3">
+                            <button x-show="editing" x-cloak
+                                    class="btn btn-sm btn-link text-danger p-0"
+                                    @click="removeRow(i)" title="Remove">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="editing" x-cloak>
+                    <td colspan="3" class="text-center py-2">
+                        <button class="btn btn-sm btn-outline-secondary" @click="addRow()">
+                            <i class="bi bi-plus-lg me-1"></i>Add property
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

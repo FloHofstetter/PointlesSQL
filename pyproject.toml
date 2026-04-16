@@ -1,0 +1,108 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pointlessql"
+version = "0.1.0"
+description = "A web UI for Unity Catalog and other open-source Databricks components"
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["databricks", "unity-catalog", "delta-lake", "spark", "lakehouse"]
+authors = [
+    { name = "Florian Hofstetter", email = "flo.max.hofstetter@gmail.com" },
+]
+requires-python = ">=3.14"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "fastapi>=0.135",
+    "uvicorn>=0.42",
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+    "websockets>=16.0",
+    "typer>=0.15",
+    "sqlalchemy>=2.0",
+    "alembic>=1.15",
+    "pwdlib[bcrypt]>=0.2",
+    "prometheus_client>=0.21",
+    "httpx>=0.28",
+    "aiosqlite>=0.22.1",
+    "pydantic-settings>=2.0",
+    "PyJWT[crypto]>=2.9",
+    "soyuz-catalog-client",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "pytest-xdist>=3.8",
+    "httpx>=0.28",
+    "ruff>=0.15",
+    "pyright>=1.1",
+    "hatchling>=1.29.0",
+    "pydoclint>=0.8",
+    "psycopg[binary]>=3.1",
+    "pip-audit>=2.10.0",
+    "pre-commit>=4.0",
+    "detect-secrets>=1.5",
+    "bandit>=1.9.4",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.6",
+    "mkdocstrings[python]>=0.29",
+]
+
+[project.urls]
+Homepage = "https://github.com/FloHofstetter/PointlesSQL"
+Repository = "https://github.com/FloHofstetter/PointlesSQL"
+Issues = "https://github.com/FloHofstetter/PointlesSQL/issues"
+
+[project.scripts]
+pointlessql = "pointlessql.api.main:cli"
+
+[tool.hatch.build.targets.wheel.force-include]
+"frontend" = "pointlessql/_frontend"
+
+[tool.hatch.build.targets.sdist]
+include = ["pointlessql", "frontend", "LICENSE", "README.md"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "D"]
+pydocstyle.convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
+include = ["pointlessql", "tests"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: requires a live Unity Catalog server",
+]
+
+[tool.coverage.run]
+source = ["pointlessql"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.uv.sources]
+soyuz-catalog-client = { path = "../soyuz-catalog/soyuz-catalog-client", editable = true }

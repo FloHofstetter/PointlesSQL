@@ -1,0 +1,38 @@
+{#
+  Inline-editable text field.
+
+  Params:
+    patch_url   — PATCH endpoint that accepts {field: new_value}
+    field       — JSON key to send (e.g. "comment", "owner")
+    value       — current value (may be None/empty)
+    placeholder — shown when empty, also used as the "click to add" hint
+#}
+{% set _placeholder = placeholder or ("Click to add " ~ field) %}
+<div class="pql-editable" x-data='editable({
+        patchUrl: {{ patch_url|tojson }},
+        field: {{ field|tojson }},
+        initial: {{ (value or "")|tojson }},
+        placeholder: {{ _placeholder|tojson }}
+    })'>
+    <span x-show="!editing" @click="start()" class="pql-editable-view" :class="{ 'text-muted fst-italic': !current }">
+        <span x-text="current || placeholder"></span>
+        <i class="bi bi-pencil ms-2 small opacity-0 pql-editable-pencil"></i>
+    </span>
+
+    <span x-show="editing" x-cloak style="display: flex; align-items: center; gap: 0.5rem;">
+        <input type="text"
+               class="form-control form-control-sm"
+               x-model="draft"
+               @keydown.enter.prevent="save()"
+               @keydown.escape.prevent="cancel()"
+               x-ref="input">
+        <button class="btn btn-sm btn-success" @click="save()" :disabled="saving">
+            <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-check-lg'"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" @click="cancel()" :disabled="saving">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </span>
+
+    <div x-show="error" x-cloak class="text-danger small mt-1" x-text="error"></div>
+</div>

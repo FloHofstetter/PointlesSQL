@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ catalog_name }} · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item active">{{ catalog_name }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-folder2 fs-3"></i>
+    <h1 class="h3 mb-0">{{ catalog_name }}</h1>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
+</div>
+{% elif catalog %}
+<div class="card">
+    <div class="card-header">Metadata</div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3 text-muted">Name</dt>
+            <dd class="col-sm-9 font-monospace">{{ catalog.name }}</dd>
+
+            <dt class="col-sm-3 text-muted">Comment</dt>
+            <dd class="col-sm-9">
+                {% with patch_url="/api/catalogs/" ~ catalog.name, field="comment", value=catalog.comment, placeholder="Click to add comment" %}
+                    {% include "components/editable.html" %}
+                {% endwith %}
+            </dd>
+
+            <dt class="col-sm-3 text-muted">Owner</dt>
+            <dd class="col-sm-9">{{ catalog.owner or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">ID</dt>
+            <dd class="col-sm-9 font-monospace small">{{ catalog.id or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Created</dt>
+            <dd class="col-sm-9">{{ catalog.created_at|epoch_ms }}{% if catalog.created_by %} by {{ catalog.created_by }}{% endif %}</dd>
+
+            <dt class="col-sm-3 text-muted">Updated</dt>
+            <dd class="col-sm-9">{{ catalog.updated_at|epoch_ms }}{% if catalog.updated_by %} by {{ catalog.updated_by }}{% endif %}</dd>
+
+            <dt class="col-sm-3 text-muted">Storage root</dt>
+            <dd class="col-sm-9 font-monospace small">{{ catalog.storage_root or "—" }}</dd>
+
+            <dt class="col-sm-3 text-muted">Storage location</dt>
+            <dd class="col-sm-9 font-monospace small">{{ catalog.storage_location or "—" }}</dd>
+        </dl>
+    </div>
+</div>
+
+{% with patch_url="/api/catalogs/" ~ catalog.name, properties=catalog.properties %}
+    {% include "components/properties_editor.html" %}
+{% endwith %}
+{% endif %}
+{% endblock %}
