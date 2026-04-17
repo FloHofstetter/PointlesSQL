@@ -792,16 +792,187 @@ PointlesSQL
 │           the foreign-run 404 negative
 │
 │   Phase 8 close-out — Sprint 28 landed the final piece
-│   (dashboards + run-compare). No bugs surfaced in the live
-│   Playwright replay of the `dashboards.md` playbook. What
-│   Phase 8 bought: Papermill-executed notebooks now have a
-│   full lifecycle inside PointlesSQL — scheduled execution
+│   (dashboards + run-compare). Live Playwright replay of the
+│   `dashboards.md` playbook surfaced two bugs, both fixed
+│   same-sprint:
+│   - BUG-28-01 (commit 23022f5): dashboard detail iframe
+│     sourced the Sprint-26 job-run render route, which enforces
+│     admin-or-job-owner visibility — non-admin consumers saw a
+│     404 inside the iframe instead of the published output.
+│     Fixed by adding a sibling `GET /dashboards/{slug}/output`
+│     whose visibility boundary is the dashboard itself.
+│   - BUG-28-02 (commit 733919d): pre-existing Sprint-24
+│     concurrency bug surfaced by the Sprint-28 Refresh button.
+│     Papermill's `execute_notebook(cwd=…)` does a process-wide
+│     `os.chdir`; concurrent runs race against
+│     `Path("notebooks").resolve()` callers and resolve to a
+│     non-existent `/app/notebooks/notebooks`. Fixed by
+│     capturing `_STARTUP_CWD = Path.cwd()` at settings module
+│     import and anchoring relative `notebooks_dir` defaults
+│     against it in a field_validator.
+│
+│   What Phase 8 bought: Papermill-executed notebooks now have
+│   a full lifecycle inside PointlesSQL — scheduled execution
 │   (Sprint 24) with typed parameters (Sprint 25), inline
 │   rendered output (Sprint 26), a workspace file browser for
 │   upload + schedule (Sprint 27), and now a publishable
 │   dashboard surface that hides code cells + a run-compare
 │   view (Sprint 28). The embedded JupyterLab and the
 │   scheduler are no longer two islands.
+│
+├── Phase 9 — UX overhaul & discoverability              🔜 next
+│   │
+│   │   Goal: turn the *functionally complete* Databricks-style
+│   │   UI of Phase 8 into one that actually *feels* like a
+│   │   modern alternative. The Phase-7/8 replays proved every
+│   │   route works; the Phase-9 survey (Playwright screenshots
+│   │   of every major HTML endpoint) exposed a tier of UX gaps
+│   │   that a functional audit missed: a raw-JSON 404 with no
+│   │   navbar, a left-stuck login card, a near-empty home,
+│   │   list pages without search/filter/sort, a table detail
+│   │   with no data preview, no global search, no toasts, no
+│   │   mobile layout, and ad-hoc `fetch` error handling copy-
+│   │   pasted across 5 JS files. The user's explicit must-
+│   │   haves are a command palette (Cmd+K), a real home
+│   │   dashboard, mobile/tablet responsiveness, and a data
+│   │   preview on table detail.
+│   │
+│   │   Constraint: *"einfach und schnell"* — the stack stays
+│   │   (FastAPI + Jinja2 + Bootstrap 5.3 + HTMX + Alpine.js).
+│   │   No React/Vue migration. All work is design tokens, new
+│   │   components, two new API routes. Every sprint fits in
+│   │   one commit and closes with the usual
+│   │   ruff+pyright+pydoclint+alembic gate plus a Playwright
+│   │   replay of the touched surface.
+│   │
+│   ├── Sprint 29 — Design-system foundation              ⏳ planned
+│   │   ├── CSS variable system: spacing (`--pql-space-1..8`),
+│   │   │   typography (`--pql-text-xs..3xl`), radius, elevation,
+│   │   │   motion — one token scale per concern, no magic values
+│   │   ├── Semantic color tokens (success/warning/danger/info/
+│   │   │   neutral) with background + foreground pairs; brand
+│   │   │   accent `#76b900` stays; light-mode variant prepared
+│   │   │   (opt-in via `data-bs-theme="light"`)
+│   │   ├── Inter font self-hosted (~50 kB woff2)
+│   │   ├── CSS-only primitives `.pql-stack`, `.pql-cluster`,
+│   │   │   `.pql-card`, `.pql-badge` replacing scattered
+│   │   │   `d-flex gap-2` + `card mb-4` repetition
+│   │   ├── Migrate base.html + login.html + catalogs.html to
+│   │   │   the new tokens as proof-of-concept (rest follow in
+│   │   │   later sprints)
+│   │   └── `docs/design-tokens.md` reference
+│   │
+│   ├── Sprint 30 — Shell + empty states + error pages    ⏳ planned
+│   │   ├── New app shell in `base.html` — header + collapsible
+│   │   │   sidebar + main, mobile-aware grid (`minmax(0, 1fr)`
+│   │   │   on narrow viewports, `auto 1fr` on wide)
+│   │   ├── `components/breadcrumbs.html` + `components/empty.html`
+│   │   │   replacing one-off `<div class="p-3 text-muted small
+│   │   │   fst-italic">No X.</div>` snippets across every list
+│   │   │   page
+│   │   ├── `pages/404.html` + `pages/500.html` rendered on the
+│   │   │   new shell; `error_handlers.py` dispatches on
+│   │   │   `Accept: text/html` vs JSON so browser users never
+│   │   │   hit the current `<h1>{status}</h1>` raw fallback
+│   │   ├── `pages/403.html` refitted on the new shell
+│   │   └── Toast system `frontend/js/toast.js` —
+│   │       `window.pqlToast.{success,error,info}(msg)` as a
+│   │       Bootstrap-toast wrapper mounted once in `base.html`
+│   │
+│   ├── Sprint 31 — Command palette (Cmd+K)               ⏳ planned
+│   │   ├── `GET /api/search?q=…&limit=50` aggregates catalogs,
+│   │   │   schemas, tables, connections, jobs, dashboards,
+│   │   │   notebooks; prefix-match beats substring-match, ties
+│   │   │   broken by `updated_at` recency. No index —
+│   │   │   PointlesSQL's scale doesn't need one
+│   │   ├── `components/command_palette.html` +
+│   │   │   `frontend/js/command_palette.js`; Cmd+K / Ctrl+K
+│   │   │   opens, ↑↓ navigates, Enter opens, Esc closes
+│   │   ├── Recent searches in `localStorage` (last 10), shown
+│   │   │   when query is empty
+│   │   ├── `?` opens keyboard-shortcuts help modal
+│   │   └── Ghost-button "Search…" with `⌘K`/`Ctrl K` keycap hint
+│   │       in the navbar
+│   │
+│   ├── Sprint 32 — Home dashboard                         ⏳ planned
+│   │   ├── Rewrite `pages/catalogs.html` (the `/` route) into a
+│   │   │   real dashboard: welcome header, Recent catalogs
+│   │   │   (last 5 via `localStorage`), Latest job runs (10
+│   │   │   cross-job with status dot), Your dashboards card,
+│   │   │   Quick actions
+│   │   ├── Inline-SVG sparklines for 7-day job success-rate
+│   │   │   (no Chart.js — each is ~40 lines of Alpine)
+│   │   ├── `GET /api/home/summary` — one round-trip for all
+│   │   │   server-side aggregates
+│   │   └── 3-step onboarding checklist empty-state when no
+│   │       catalogs/jobs/dashboards exist
+│   │
+│   ├── Sprint 33 — List-page polish                       ⏳ planned
+│   │   ├── Shared `frontend/js/list_table.js` — debounced
+│   │   │   client-side search (150 ms), sortable headers,
+│   │   │   optional filter chips
+│   │   ├── Applied to `/jobs`, `/dashboards`, `/connections`,
+│   │   │   `/credentials`, `/external-locations`,
+│   │   │   `/notebooks/workspace`
+│   │   ├── `frontend/js/humanize_cron.js` — tiny parser turns
+│   │   │   `0 0 1 1 *` into "Every Jan 1st at 00:00"; falls
+│   │   │   back to the raw expression for non-matching patterns
+│   │   ├── `GET /api/jobs` gains `last_run_status` +
+│   │   │   `last_run_at` + `last_run_duration`; `/jobs` row
+│   │   │   shows status dot + relative time
+│   │   └── Hover quick-actions on job rows (Run now / Pause)
+│   │       via the Sprint-30 toast system
+│   │
+│   ├── Sprint 34 — Catalog / schema / table experience    ⏳ planned
+│   │   ├── Catalog detail shows schemas **inline** (table card
+│   │   │   with per-schema table-count + last-updated)
+│   │   ├── Schema detail shows tables inline
+│   │   ├── Table detail — new Preview card: `GET /api/tables/…
+│   │   │   /preview?limit=10` via `PQL().table(…)`, capped at
+│   │   │   10 rows server-side regardless of client hint
+│   │   ├── Columns table gains client-side search (shown only
+│   │   │   when ≥ 20 columns)
+│   │   ├── Lineage card becomes clickable upstream/downstream
+│   │   │   links, grouped by depth
+│   │   └── "Open in notebook" quick-action on table detail —
+│   │       creates scratch notebook pre-filled with
+│   │       `pql.table("c.s.t")`, redirects into JupyterLab
+│   │       (admin-only to keep the workspace clean)
+│   │
+│   ├── Sprint 35 — Mobile + responsive                    ⏳ planned
+│   │   ├── Breakpoint tokens (`--pql-breakpoint-sm/md/lg/xl`)
+│   │   │   = 640 / 768 / 1024 / 1280 px
+│   │   ├── Sidebar becomes a mobile drawer (<768 px) —
+│   │   │   hamburger in navbar, off-canvas slide-in, focus
+│   │   │   trap, Esc-to-close
+│   │   ├── Navbar collapses to hamburger (<640 px); Cmd+K
+│   │   │   trigger becomes a search-icon button
+│   │   ├── List tables render as 2-column label/value cards
+│   │   │   on <640 px; sortable headers swap for a dropdown
+│   │   ├── Touch targets ≥ 44 px everywhere interactive
+│   │   ├── Jupyter iframe shows a "desktop recommended" hint
+│   │   │   overlay on <768 px
+│   │   └── Manual Playwright replay at 375 / 768 / 1280 px
+│   │
+│   └── Sprint 36 — Shared utilities + shortcuts + close   ⏳ planned
+│       ├── `frontend/js/api.js` — `apiFetch(url, init)` that
+│       │   returns `{ok, status, data, error}` and emits
+│       │   toasts on error; migrates 5 existing components
+│       │   (editable, properties_editor, tags_editor,
+│       │   permissions_editor, federation) off their ad-hoc
+│       │   fetch patterns
+│       ├── All `window.location.reload()` after mutations
+│       │   become toast-then-reload (400 ms delay)
+│       ├── Keyboard shortcuts registry: Cmd+K (palette), `?`
+│       │   (help), `g h`/`g j`/`g d` (Vim-style chords), `r`
+│       │   (refresh current list); all listed in the help modal
+│       ├── `:focus-visible` outlines + `@media (prefers-
+│       │   reduced-motion)` disables shell animations
+│       ├── Playbook `docs/e2e-walkthroughs/ux-overhaul.md`
+│       │   covering mobile + palette + home flows
+│       └── Phase-9 close-out block in `ROADMAP.md` mirroring
+│           Phase-7 & 8 summaries (bugs surfaced / fixed /
+│           deferred)
 │
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
