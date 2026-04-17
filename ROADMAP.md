@@ -633,6 +633,105 @@ PointlesSQL
 │   and the Sprint 22 + 23 commits are the reference for
 │   "what clean Found-bugs sections look like".
 │
+├── Phase 8 — Notebook-as-job (Databricks-style)          🔜 next
+│   │
+│   │   Goal: close the gap Phase 7 surfaced — the embedded
+│   │   JupyterLab and the scheduler are currently two islands.
+│   │   Phase 8 lets the user save a `.ipynb` in the workspace,
+│   │   schedule it on a cron, run it with typed parameters,
+│   │   open the executed output inline in the browser, and pin
+│   │   cell outputs as dashboards. Subprocess-per-run (Papermill
+│   │   spawns a fresh kernel per `execute_notebook`) is the
+│   │   native execution model; no custom kernel pool.
+│   │
+│   ├── Sprint 24 — Papermill executor + JupyterLab viewer    ⏳ planned
+│   │   ├── `papermill>=2.6` dep; `_papermill_executor` added to
+│   │   │   `services/scheduler.py` `build_default_registry()` as
+│   │   │   a third built-in kind next to `pg_sync` and `python`
+│   │   ├── Config shape `{notebook_path, parameters,
+│   │   │   timeout_seconds}`; output written to
+│   │   │   `/app/notebooks/runs/{job_run_id}.ipynb`
+│   │   ├── Principal forwarded via `POINTLESSQL_PRINCIPAL` env
+│   │   │   var into the Papermill kernel subprocess; `PQL()`
+│   │   │   constructor honours it
+│   │   ├── New setting `notebook_execute_timeout_seconds`;
+│   │   │   `asyncio.wait_for` cancellation around
+│   │   │   `execute_notebook`
+│   │   ├── Create-job modal gains a `kind` select +
+│   │   │   papermill-specific fields (`notebook_path`,
+│   │   │   `parameters` JSON)
+│   │   ├── Recent-runs table on `job_detail.html` gains an
+│   │   │   "Open in JupyterLab" link →
+│   │   │   `/lab/tree/runs/{run_id}.ipynb`
+│   │   └── `docs/e2e-walkthroughs/notebook-jobs.md` playbook
+│   │
+│   ├── Sprint 25 — Typed parameters UI                       ⏳ planned
+│   │   ├── `GET /api/notebooks/inspect` using
+│   │   │   `papermill.inspect_notebook` to return
+│   │   │   `[{name, default, inferred_type, help}]`
+│   │   ├── Create-job modal renders typed inputs per parameter
+│   │   │   (text / number / checkbox / textarea) via Alpine
+│   │   │   `x-for="p in parameters"`
+│   │   ├── DAG support: a task of `kind=papermill` in the
+│   │   │   tasks-JSON textarea reuses the same `config.parameters`
+│   │   │   shape — no scheduler changes
+│   │   ├── Job-detail Configuration card surfaces the resolved
+│   │   │   parameters alongside the other config rows
+│   │   └── Playbook extension with a parameter-tagged notebook
+│   │
+│   ├── Sprint 26 — Inline run render + Output artifacts       ⏳ planned
+│   │   ├── `nbconvert>=7.0` dep
+│   │   ├── `GET /jobs/{id}/runs/{rid}/notebook` renders the
+│   │   │   output ipynb via
+│   │   │   `HTMLExporter(template_name='lab')`; caches
+│   │   │   `runs/{rid}.html` sidecar on first hit
+│   │   ├── New "Output artifacts" card on `job_detail.html`,
+│   │   │   slotted between the tasks table and the runs
+│   │   │   history; click-a-run-row → embed iframe into the card
+│   │   ├── View-mode toggle inside the card: **Rendered**
+│   │   │   (static HTML, fast) vs **JupyterLab** (interactive
+│   │   │   iframe), both pointing at the same ipynb
+│   │   ├── `/notebooks/runs/` mounted via `StaticFiles` so the
+│   │   │   raw ipynb + cached HTML are downloadable
+│   │   └── Playbook extension: click past run → see cells inline
+│   │
+│   ├── Sprint 27 — Workspace file browser                    ⏳ planned
+│   │   ├── `GET /api/notebooks/tree` → dir listing with
+│   │   │   `parameters_tagged: bool` flag per notebook
+│   │   ├── `GET /notebooks/workspace` page with a sidebar-tree
+│   │   │   clone of `components/sidebar.html` `catalogTree()` —
+│   │   │   same sessionStorage `pql.notebooks.open` pattern
+│   │   ├── Tree-leaf "Schedule…" button pre-fills the
+│   │   │   `#createJobModal` with `kind=papermill` +
+│   │   │   `notebook_path=<clicked-path>`
+│   │   ├── `POST /api/notebooks/upload` multipart endpoint
+│   │   │   (admin-only) so the playbook can upload a notebook
+│   │   │   from the browser, not via `docker cp`
+│   │   ├── Navbar gains a "Workspace" link between Notebook
+│   │   │   and Jobs
+│   │   └── Playbook extension: upload → click-Schedule →
+│   │       Run-now → Output artifacts card expands
+│   │
+│   └── Sprint 28 — Dashboards + run-compare; close Phase 8   ⏳ planned
+│       ├── Alembic migration 008: `dashboards` table (slug
+│       │   unique, notebook_path, job_id FK nullable, owner_id FK,
+│       │   description, timestamps)
+│       ├── `/dashboards` list + `/dashboards/{slug}` detail;
+│       │   detail renders the latest run's nbconvert HTML with
+│       │   `exclude_input=True` (code cells hidden — that's
+│       │   what differentiates a dashboard from a notebook view)
+│       ├── Admin CRUD routes + a "Refresh" shortcut that
+│       │   triggers the bound job's Run-now
+│       ├── Dashboards sidebar tree (another `catalogTree()`
+│       │   clone) for navigating the list
+│       ├── `GET /jobs/{id}/runs/{rid}/compare?to={other_rid}` —
+│       │   two Sprint-26 iframes side-by-side with run metadata
+│       │   headers; no cell-level diff highlighting (stub)
+│       ├── New playbook `dashboards.md`
+│       └── Phase-8 close-out summary in `ROADMAP.md` (bugs
+│           surfaced / fixed / deferred), same shape as the
+│           Phase-7 summary Sprint 23 added
+│
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
     │   soyuz-catalog's job; PointlesSQL is a consumer
