@@ -217,17 +217,15 @@
         </div>
     </div>
     <div class="card-body p-0">
-        <template x-if="selectedRunId === null">
-            <div class="p-3 text-muted small fst-italic">
-                No completed runs yet. Run this job to populate the output.
-            </div>
-        </template>
-        <template x-if="selectedRunId !== null">
-            <iframe :src="iframeSrc()"
-                    class="w-100"
-                    style="height: 600px; border: 0;"
-                    title="Notebook output"></iframe>
-        </template>
+        <div class="p-3 text-muted small fst-italic" x-show="selectedRunId === null" x-cloak>
+            No completed runs yet. Run this job to populate the output.
+        </div>
+        <iframe :src="selectedRunId !== null ? iframeSrc() : 'about:blank'"
+                x-show="selectedRunId !== null"
+                x-cloak
+                class="w-100"
+                style="height: 600px; border: 0;"
+                title="Notebook output"></iframe>
     </div>
     <div class="card-footer small" x-show="selectedRunId !== null" x-cloak>
         <a :href="`/jobs/${jobId}/runs/${selectedRunId}/notebook/download?format=ipynb`"
@@ -263,7 +261,7 @@
                     {% for run in runs %}
                     {% set is_selectable = job.kind == "papermill" and run.status in ["succeeded", "failed"] %}
                     <tr {% if is_selectable %}style="cursor: pointer;"
-                        x-on:click="$dispatch('run-selected', { runId: {{ run.id }} })"{% endif %}>
+                        onclick="window.dispatchEvent(new CustomEvent('run-selected', { detail: { runId: {{ run.id }} } }))"{% endif %}>
                         <td class="ps-3 small">{{ run.started_at }}</td>
                         <td>
                             {% if run.status == "succeeded" %}
@@ -285,7 +283,7 @@
                             {% if job.kind == "papermill" and run.status in ("succeeded", "failed") %}
                             <a href="http://{{ request.url.hostname }}:{{ jupyter_port }}/lab/tree/runs/{{ run.id }}.ipynb"
                                target="_blank" rel="noopener"
-                               x-on:click.stop
+                               onclick="event.stopPropagation()"
                                class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-journal-code me-1"></i>Open in JupyterLab
                             </a>

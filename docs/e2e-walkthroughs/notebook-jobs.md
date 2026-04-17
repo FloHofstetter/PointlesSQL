@@ -488,3 +488,53 @@ Nothing pre-identified. Playbook replay notes land below; if
 something is weird, file it as `BUG-26-NN` with a concrete fix
 location (template line, route file + line, service function) —
 no "felt off" entries.
+
+### Sprint 26 — Part F live run
+
+Two bugs surfaced in the first live replay against a Playwright
+MCP session; both fixed in the same sprint commit.
+
+- **BUG-26-01** (same-commit fix): the iframe inside
+  `<template x-if="selectedRunId !== null">` was cloned into the
+  DOM by Alpine, but the clone's `:src="iframeSrc()"` directive
+  was never processed — the iframe stayed in the DOM with a
+  literal `:src` attribute and an empty `src`, so no render ever
+  loaded even though `iframeSrc()` returned the correct URL.
+  Alpine 3.14's `x-if` clone path does walk directives on the
+  clone, but this particular combination (iframe + `:src` bound
+  to a method call + conditional via `x-if`) leaves the attribute
+  unbound on first paint. Switched to `x-show` + an always-
+  present `<iframe>` with `:src="selectedRunId !== null ?
+  iframeSrc() : 'about:blank'"`. `x-show` keeps the node in the
+  DOM so Alpine's initial walk binds the `:src` directive
+  normally, which eliminates the timing issue entirely. The
+  placeholder `<div>` that was previously in the `null`-branch
+  template now uses `x-show` + `x-cloak` as well so it doesn't
+  flash during Alpine init.
+- **BUG-26-02** (same-commit fix): the Recent runs `<tr>` carried
+  `x-on:click="$dispatch('run-selected', { runId: ... })"` but
+  the row lives inside the plain-HTML Recent runs card, which is
+  not wrapped in an `x-data` scope. Alpine only processes
+  directives on descendants of an `x-data` root, so the
+  `x-on:click` was ignored and the event was never dispatched —
+  the Output artifacts card's `window` listener sat idle and the
+  selection never swapped. The DAG tasks table upstream wraps
+  its `.table-responsive` in `x-data="{...}"` for the same
+  reason ([job_detail.html:106](../../frontend/templates/pages/job_detail.html#L106));
+  we have no state to carry here so the simpler fix was to swap
+  the `x-on:click` for a plain `onclick=
+  "window.dispatchEvent(new CustomEvent('run-selected', ...))"`.
+  The "Open in JupyterLab" anchor inside the row changed from
+  `x-on:click.stop` to `onclick="event.stopPropagation()"` for
+  the same "outside Alpine scope" reason, so popping out to
+  JupyterLab no longer fires the row-click path by accident.
+- Everything else worked on the first try: view toggle
+  (Rendered ↔ JupyterLab iframe src swap), auto-select of the
+  most recent succeeded run on page load, the `.ipynb`
+  download (200, `Content-Type: application/x-ipynb+json`,
+  `Content-Disposition: attachment; filename="job13_run12.ipynb"`),
+  the `.html` download (200 + sidecar auto-generated on demand),
+  and all three negative paths (cross-job `run_id` → 404,
+  non-papermill job kind → 404, nonexistent `run_id` → 404)
+  with the exact domain-exception messages emitted by
+  `_load_papermill_run_output_path`.
