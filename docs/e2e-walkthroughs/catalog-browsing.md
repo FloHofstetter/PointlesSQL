@@ -223,12 +223,43 @@ browser_click(element='Open in notebook button inside PQL Snippet card header')
 # Browser navigates to http://<host>:8888/lab/tree/scratch/...
 ```
 
-## Found bugs
+## Found bugs (Sprint 34)
 
-_Sprint 34 live-run placeholder — fill in once the playbook is
-replayed against a composed stack. Bugs surfaced here either land
-as fixes in the same commit or are recorded as `BUG-34-NN` TODOs
-at the bottom of this section, per Phase-7/8 discipline._
+_No PointlesSQL bugs surfaced on this playbook replay
+(commit f970fce, replayed 2026-04-17 via Playwright MCP against
+the `docker-compose.e2e.yml` stack). Verified end-to-end:_
+
+- _Catalog detail `/catalogs/demo` inline Schemas card listed
+  `sales` and `hr` with live `updated_at` timestamps and working
+  links into schema detail._
+- _Schema detail `/catalogs/demo/schemas/sales` inline Tables
+  card listed `customers` (3 cols) and `orders` (4 cols) with
+  `MANAGED` + `DELTA` badges._
+- _Table detail `/.../orders` Preview card fetched 10 rows;
+  response headers carried `Cache-Control: no-store`;
+  `?limit=1000` passthrough returned 10 rows (server-side cap
+  holds); `truncated: true` flag set correctly._
+- _Columns search threshold gate works both ways: `orders`
+  (4 cols) renders the columns table without a search input;
+  a seeded `demo.sales.wide25` (25 cols) renders the search
+  input plus `data-sort-key` on position/name/type/nullable,
+  and typing `c1` via the Alpine `listTable()` component
+  filtered to `c10`..`c19` exactly._
+- _Lineage card renders `UPSTREAM` / `DOWNSTREAM` headings and
+  per-depth subheadings (`Depth 0` visible on the seeded
+  single-node lineage graph); node links remain clickable._
+- _Open-in-notebook admin happy path: `POST /api/…/open-in-notebook`
+  returned `{"path": "scratch/demo_sales_orders_<hex>.ipynb",
+  "lab_url": "http://127.0.0.1:8888/lab/tree/scratch/…"}`; the
+  file landed under `/app/notebooks/scratch/` with a markdown
+  header cell + a `pql.table("demo.sales.orders")` code cell._
+- _Non-admin negative: logging in as `user@pql.test` redirects
+  `/catalogs/demo/schemas/sales/tables/orders` to a 403 page
+  (no `SELECT`); the direct POST to
+  `/api/…/open-in-notebook` returns HTTP 403 with the standard
+  `{"error": {"code": "authorization_error", "request_id": …}}`
+  envelope; the preview endpoint also returns 403. No route-
+  existence leaks to non-admins._
 
 ## Found bugs (Sprint 22)
 
