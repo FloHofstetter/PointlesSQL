@@ -1229,7 +1229,7 @@ PointlesSQL
 │   │       subdirectory = "soyuz-catalog-client" }` in
 │   │       `[tool.uv.sources]`
 │   │
-│   ├── Sprint 38 — Swap path-dep to git-tag pin (dual-mode)  🔜 in progress
+│   ├── Sprint 38 — Swap path-dep to git-tag pin (dual-mode)  ✅ done (41868bc)
 │   │   ├── `pyproject.toml [tool.uv.sources]` — replace the
 │   │   │   editable path with a `{ git = "…", tag = "v0.2.0rc2",
 │   │   │   subdirectory = "soyuz-catalog-client" }` pin.
