@@ -1,0 +1,113 @@
+name: release
+
+# Sprint 39 release workflow. On-tag trigger: runs the lint+type+alembic
+# gate, builds the wheel + sdist (frontend assets and alembic migrations
+# force-included via hatch build targets in pyproject.toml), and
+# attaches both artifacts to the GitHub Release with git-cliff
+# release-notes.
+#
+# Private-repo friendly: consumers pull via
+#   pip install git+https://github.com/FloHofstetter/PointlesSQL@vX.Y.Z
+# authenticated with a PAT or SSH key. Sprint 40 adds the GHCR image
+# build on top of this workflow.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write  # for `gh release create`
+
+jobs:
+  release:
+    name: build + publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # git-cliff needs full history
+
+      # soyuz-catalog-client is pinned to a private-repo git tag under
+      # [tool.uv.sources], so `uv sync` needs a credential. Reuses the
+      # same SOYUZ_READ_TOKEN pattern as test.yml.
+      - name: Configure git for private soyuz-catalog pull
+        env:
+          GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/FloHofstetter/".insteadOf "https://github.com/FloHofstetter/"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Gate — ruff
+        run: uv run ruff check .
+
+      - name: Gate — pyright
+        run: uv run pyright
+
+      - name: Gate — pydoclint
+        run: uv run pydoclint --style=google pointlessql/
+
+      - name: Gate — alembic drift
+        run: uv run alembic check
+
+      - name: Build wheel + sdist
+        run: uv build
+
+      - name: Verify wheel force-includes frontend + alembic
+        run: |
+          WHL=$(ls dist/pointlessql-*.whl | head -1)
+          echo "inspecting $WHL"
+          python3 -c "
+          import sys, zipfile
+          wheel = sys.argv[1]
+          with zipfile.ZipFile(wheel) as z:
+              names = z.namelist()
+          missing = []
+          # Force-include remaps frontend/ → pointlessql/_frontend/ (see
+          # [tool.hatch.build.targets.wheel.force-include]). Alembic
+          # migrations live inside the package at pointlessql/alembic/.
+          if not any('pointlessql/_frontend/' in n for n in names):
+              missing.append('pointlessql/_frontend/')
+          if not any('pointlessql/alembic/versions/' in n for n in names):
+              missing.append('pointlessql/alembic/versions/')
+          if missing:
+              print('ERROR: wheel is missing:', missing)
+              sys.exit(1)
+          print('OK: frontend and alembic migrations present')
+          " "$WHL"
+
+      - name: Generate release notes
+        run: |
+          uvx --from git-cliff git-cliff \
+            --latest \
+            --strip all \
+            --output RELEASE_NOTES.md
+          echo "--- RELEASE_NOTES.md ---"
+          cat RELEASE_NOTES.md
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # PEP 440 prerelease shapes: …rcN, …aN, …bN, …devN, …postN.
+          # GitHub does not auto-detect these, so flag manually.
+          PRERELEASE_FLAG=""
+          case "${GITHUB_REF_NAME}" in
+              *rc*|*a[0-9]*|*b[0-9]*|*dev[0-9]*) PRERELEASE_FLAG="--prerelease" ;;
+          esac
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file RELEASE_NOTES.md \
+            ${PRERELEASE_FLAG} \
+            dist/*.whl \
+            dist/*.tar.gz

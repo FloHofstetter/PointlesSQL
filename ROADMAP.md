@@ -1263,18 +1263,51 @@ PointlesSQL
 │   │       `uv run pointlessql` — succeeded without
 │   │       `../soyuz-catalog`
 │   │
-│   ├── Sprint 39 — PointlesSQL release engineering         ⏳ planned
-│   │   ├── `cliff.toml`, `scripts/bump-version.sh`,
-│   │   │   `.github/workflows/release.yml` — mirror of Sprint
-│   │   │   37's soyuz shape
-│   │   ├── First CI for this repo: `.github/workflows/test.yml`
-│   │   │   running ruff + pyright + pydoclint + alembic-check
-│   │   │   on every push (pytest stays skipped per the
-│   │   │   standing sprint-gate discipline)
-│   │   ├── Wheel must force-include the frontend and the
-│   │   │   alembic migrations (validate by unzipping the
-│   │   │   built wheel)
-│   │   └── Cut tag `v0.1.0-rc1`
+│   ├── Sprint 39 — PointlesSQL release engineering         🔜 in progress
+│   │   │
+│   │   │   Mirrors Sprint 37's soyuz shape. Adds the first CI
+│   │   │   this repo has ever had plus a tag-cutting script that
+│   │   │   preserves hand-written `[Unreleased]` prose in
+│   │   │   CHANGELOG.md. Pre-work: model-side alembic-drift fix
+│   │   │   (fix(alembic) commit) so the new alembic-check CI
+│   │   │   step starts green.
+│   │   │
+│   │   ├── `cliff.toml` — git-cliff template keyed to the
+│   │   │   Conventional Commit scopes already in use on main
+│   │   │   (`feat(ui)`, `fix(ui)`, `build(packaging)`,
+│   │   │   `docs(roadmap)`, …). Drives the release-notes body
+│   │   │   in the on-tag release workflow
+│   │   ├── `scripts/bump-version.sh` — single-`pyproject.toml`
+│   │   │   variant of the soyuz bump-script. PEP 440 sanity-
+│   │   │   check, clean-tree + on-main + tag-not-exists guards,
+│   │   │   in-place `version = "…"` edit, `uv lock`,
+│   │   │   `[Unreleased]` → `[X.Y.Z] - <date>` flip in
+│   │   │   CHANGELOG.md with hand-written prose preserved
+│   │   │   verbatim, `chore(release): vX.Y.Z` commit, annotated
+│   │   │   tag. Does not push — the user pushes manually so the
+│   │   │   whole action stays reversible
+│   │   ├── `.github/workflows/test.yml` — first CI for this
+│   │   │   repo. Jobs: ruff, pyright, pydoclint (Google),
+│   │   │   `alembic check`. No pytest (standing sprint-gate
+│   │   │   discipline). Private soyuz-catalog dep pulled via
+│   │   │   `SOYUZ_READ_TOKEN` org-secret rewrite of
+│   │   │   github.com URLs to `x-access-token:…` form
+│   │   ├── `.github/workflows/release.yml` — on-tag `v*`. Runs
+│   │   │   the gate (ruff/pyright/pydoclint/alembic), builds
+│   │   │   wheel + sdist via `uv build`, asserts the wheel
+│   │   │   contains `pointlessql/_frontend/` and
+│   │   │   `pointlessql/alembic/versions/` (force-includes from
+│   │   │   `[tool.hatch.build.targets.wheel.force-include]`),
+│   │   │   generates release-notes via
+│   │   │   `uvx git-cliff --latest --strip all`, and
+│   │   │   `gh release create`s. Prerelease flag auto-toggled
+│   │   │   for PEP 440 `rc*` / `a*` / `b*` / `dev*` shapes
+│   │   ├── Wheel force-includes verified locally:
+│   │   │   `pointlessql-0.1.0-py3-none-any.whl` carries 52
+│   │   │   frontend entries at `pointlessql/_frontend/*` and
+│   │   │   10 alembic entries at `pointlessql/alembic/**`
+│   │   └── First tag: `v0.1.0rc1` (PEP 440 canonical — not
+│   │       `v0.1.0-rc1`; same typo-correction as soyuz Sprint 19.1)
 │   │
 │   └── Sprint 40 — Docker registry + clean-machine install + close  ⏳ planned
 │       ├── `.github/workflows/docker.yml` — on-tag, build

@@ -1,0 +1,57 @@
+# git-cliff configuration — https://git-cliff.org/docs/configuration
+#
+# Sprint 39: drives `scripts/bump-version.sh` (version bump +
+# changelog flip) and the `release.yml` GitHub workflow (release-notes
+# body). Mirrors the soyuz-catalog Sprint 19 shape so both repos share
+# a single release-engineering contract. Keyed to the Conventional
+# Commit scopes already in use on main (`feat(ui)`, `feat(client)`,
+# `fix(ui)`, `docs(roadmap)`, `build(packaging)`, …). Output shape
+# preserves the Keep-a-Changelog heading that opens CHANGELOG.md.
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+"""
+body = """
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{%- else -%}
+## [Unreleased]
+{%- endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- `{{ commit.message | split(pat="\\n") | first | upper_first | trim }}`{% if commit.id %} ({{ commit.id | truncate(length=7, end="") }}){% endif %}
+{%- endfor %}
+{% endfor %}
+"""
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
+    { message = "^feat", group = "Features" },
+    { message = "^fix", group = "Bug Fixes" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Refactor" },
+    { message = "^test", group = "Tests" },
+    { message = "^build", group = "Build" },
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore", group = "Chores" },
+    { message = "^ci", group = "CI" },
+    { body = ".*\\[skip changelog\\]", skip = true },
+    { message = "^Merge", skip = true },
+]
+filter_commits = false
+tag_pattern = "v[0-9]*"
+skip_tags = ""
+ignore_tags = ""
+topo_order = false
+sort_commits = "oldest"

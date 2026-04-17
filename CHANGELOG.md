@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 39)
+
+- **`cliff.toml`.** git-cliff template keyed to PointlesSQL's
+  Conventional Commit scopes (`feat(ui)`, `fix(ui)`,
+  `build(packaging)`, `docs(roadmap)`, `fix(alembic)`, …). Drives
+  the release-notes body in `release.yml`.
+- **`scripts/bump-version.sh`.** Single-`pyproject.toml` variant
+  of soyuz-catalog's Sprint 19 bump-script. Guards: PEP 440
+  syntax, clean tracked-file tree, on-main, tag-not-exists. In-
+  place version bump, `uv lock`, anchored `[Unreleased]` →
+  `[X.Y.Z] - <date>` flip in CHANGELOG.md (hand-written prose
+  preserved verbatim), `chore(release): vX.Y.Z` commit, annotated
+  tag. Does not push.
+- **`.github/workflows/test.yml`.** First CI this repo has had.
+  Jobs: ruff, pyright, pydoclint (Google), `alembic check`.
+  Pytest stays out per the standing sprint-gate discipline.
+  Private soyuz-catalog git-dep pulled via a `SOYUZ_READ_TOKEN`
+  org-secret URL rewrite.
+- **`.github/workflows/release.yml`.** On-tag `v*`. Runs the
+  gate, `uv build`s the wheel + sdist, asserts the wheel carries
+  `pointlessql/_frontend/` (force-included) and
+  `pointlessql/alembic/versions/`, generates release-notes via
+  `uvx git-cliff --latest --strip all`, and `gh release create`s
+  with `--prerelease` auto-toggled on PEP 440 `rc*` / `a*` / `b*`
+  / `dev*` shapes.
+
+### Fixed (pre-Sprint-39 cleanup)
+
+- **Alembic autogen drift.** `uv run alembic check` had been
+  flagging six `remove_index` operations + one `add_constraint`
+  on every run — the indexes were declared in migrations
+  001/002/003/004/006 but never mirrored into the ORM models, so
+  autogen wanted to drop them on every comparison. Declared each
+  index in the owning model's `__table_args__`, including the
+  partial unique `ix_users_oidc_identity`
+  (`WHERE oidc_provider IS NOT NULL`) via dialect-specific
+  `sqlite_where=` / `postgresql_where=` kwargs. No migration
+  written — this is a model-side fix for latent drift; nothing
+  in the database changes. Gate now green, so the new alembic-
+  check CI step lands on solid ground.
+
 ### Changed (Sprint 38)
 
 - **`pyproject.toml`.** `[tool.uv.sources]` swapped from an

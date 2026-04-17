@@ -1,0 +1,47 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: lint + type + docstring + alembic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # soyuz-catalog-client is pinned to a private-repo git tag
+          # under [tool.uv.sources]. `uv sync` needs a credential with
+          # read access. The `SOYUZ_READ_TOKEN` org secret is a fine-
+          # grained PAT scoped to the soyuz-catalog repo, used only
+          # here. Rewrite https://github.com/FloHofstetter/ URLs so uv
+          # picks up the token without a ~/.netrc file.
+          submodules: false
+      - name: Configure git for private soyuz-catalog pull
+        env:
+          GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+        run: |
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/FloHofstetter/".insteadOf "https://github.com/FloHofstetter/"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Ruff
+        run: uv run ruff check .
+      - name: Pyright
+        run: uv run pyright
+      - name: Pydoclint (Google style)
+        run: uv run pydoclint --style=google pointlessql/
+      - name: Alembic — no autogen drift
+        run: uv run alembic check
