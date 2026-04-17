@@ -14,9 +14,12 @@ and *uploading* notebooks:
   relaxes the "file must exist" check — uploads write a fresh path
   that does *not* yet exist on disk.
 
-The ``runs/`` subdirectory (executor output) is excluded from the
-tree because its contents are synthetic sidecars keyed by
-``job_run_id`` rather than user-authored sources.
+The top-level ``runs/`` subdirectory (executor output) is excluded
+from the tree because its contents are synthetic sidecars keyed by
+``job_run_id`` rather than user-authored sources. Dot-prefixed
+directories at any depth (most visibly ``.ipynb_checkpoints/``
+that Jupyter writes alongside every edited notebook) are filtered
+out as well — they're storage artefacts, not user content.
 """
 
 from __future__ import annotations
@@ -85,6 +88,8 @@ def _walk(directory: Path, notebooks_root: Path) -> list[dict[str, Any]]:
         if entry.is_dir():
             if entry == notebooks_root / _RUNS_DIR_NAME:
                 continue
+            if entry.name.startswith("."):
+                continue
             dirs.append(
                 {
                     "name": entry.name,
@@ -93,7 +98,9 @@ def _walk(directory: Path, notebooks_root: Path) -> list[dict[str, Any]]:
                     "children": _walk(entry, notebooks_root),
                 }
             )
-        elif entry.is_file() and entry.suffix == _NOTEBOOK_SUFFIX:
+        elif (
+            entry.is_file() and entry.suffix == _NOTEBOOK_SUFFIX and not entry.name.startswith(".")
+        ):
             notebooks.append(
                 {
                     "name": entry.name,

@@ -638,3 +638,62 @@ without it (that is verified in the negative pass at the bottom).
 Nothing pre-identified. Playbook replay notes land below; if
 something is weird, file it as `BUG-27-NN` with a concrete fix
 location (template line, route file + line, service function).
+
+### Sprint 27 — Part G live run
+
+One bug surfaced in the first live replay against a Playwright
+MCP session; fixed in the Sprint 27 same-sprint fix commit.
+
+- **BUG-27-01** (same-sprint fix): `.ipynb_checkpoints/` — the
+  directory JupyterLab auto-writes next to every edited notebook
+  — leaked into the workspace tree as a top-level directory.
+  `list_workspace_tree` only filtered the executor's `runs/`
+  subdir by name; Jupyter's checkpoint dirs (which appear at
+  *any* depth, once per edited notebook) were noise users had to
+  wade through. Fix: in `services/notebook_workspace.py` the
+  `_walk` helper now also skips any directory whose name starts
+  with a `.` (and, symmetrically, any dot-prefixed notebook
+  file). The rule is "dotdirs and dotfiles are storage
+  artefacts, not user content" — the same principle most file
+  browsers apply. Test added:
+  `test_tree_excludes_dot_prefixed_dirs_at_any_depth`.
+- Everything else worked on the first try:
+  - Step 2 upload 200, `playbook_upload.ipynb` lands on disk,
+    tree reload via `reload()` picks up the new leaf with the
+    `PARAMS` badge (the uploaded notebook has a
+    `parameters`-tagged cell).
+  - Step 4 Schedule…: URL went to
+    `/jobs?prefill_kind=papermill&prefill_notebook_path=playbook_upload.ipynb`;
+    after `applyPrefill` ran the query string was gone
+    (`history.replaceState({}, '', '/jobs')`), the modal was open,
+    `kind=papermill`, `notebookPath=playbook_upload.ipynb`, and
+    one typed-params row rendered.
+  - Step 5 create + Step 6 Run-now: job `#15` landed,
+    scheduler's 2 s tick picked it up (plus one manual Run-now),
+    both runs went `succeeded` in ~2 s each, and the
+    Output-artifacts iframe at `/jobs/15/runs/15/notebook` renders
+    the `uploaded-notebook says: hello` stdout from the cell
+    body.
+  - All four negative assertions land the exact domain-exception
+    strings: `uploaded file must have an .ipynb extension:
+    'script.py'`, `notebook upload target_path '../escape.ipynb'
+    escapes the notebooks directory`, `file already exists at
+    'playbook_upload.ipynb'; pass overwrite=true to replace`, and
+    the `overwrite=true` replay returns 200 +
+    `{"status": "overwritten"}`.
+  - Non-admin pass: `/notebooks/workspace` → 403 HTML,
+    `GET /api/notebooks/tree` → 403 JSON envelope with message
+    `user@pql.test lacks admin on system 'admin'`, navbar
+    Workspace link absent (the `{% if current_user.is_admin %}`
+    gate in `base.html` held).
+- Pre-existing quirk (not a Sprint 27 bug, documented here so
+  the next replay does not retag it): when a Papermill notebook
+  declares an *untyped* default — e.g. `message = "hello"`
+  without the `message: str = "hello"` annotation —
+  `papermill.inspect_notebook` returns `inferred_type_name="None"`
+  and the Sprint 25 `coerceDefault` helper falls through to
+  `String(d)`, which leaves the literal `"hello"` (with surrounding
+  quotes) in the input. The seeded `smoke_papermill.ipynb`
+  already exhibits this and it has not been a problem in any
+  previous replay — noting it here so it does not look like a
+  Sprint 27 regression on the next pass.

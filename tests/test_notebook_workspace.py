@@ -134,6 +134,29 @@ def test_tree_ignores_non_ipynb_files(tmp_path: Path) -> None:
     assert [n["name"] for n in tree] == ["real.ipynb"]
 
 
+def test_tree_excludes_dot_prefixed_dirs_at_any_depth(tmp_path: Path) -> None:
+    """BUG-27-01: ``.ipynb_checkpoints`` (and any dot-dir) is filtered.
+
+    Jupyter writes ``.ipynb_checkpoints/<name>-checkpoint.ipynb`` next to
+    every edited notebook. These are storage artefacts, not user content,
+    so they must not appear in the workspace browser — top-level *and*
+    nested (e.g. under ``pipelines/.ipynb_checkpoints/``).
+    """
+    _write(tmp_path / ".ipynb_checkpoints" / "foo-checkpoint.ipynb", _PARAM_IPYNB)
+    _write(tmp_path / "pipelines" / ".ipynb_checkpoints" / "etl-checkpoint.ipynb", _PARAM_IPYNB)
+    _write(tmp_path / "pipelines" / "etl.ipynb", _PARAM_IPYNB)
+    _write(tmp_path / ".hidden.ipynb", _PARAM_IPYNB)
+
+    tree = list_workspace_tree(tmp_path)
+
+    top_names = [n["name"] for n in tree]
+    assert ".ipynb_checkpoints" not in top_names
+    assert ".hidden.ipynb" not in top_names
+
+    pipelines = next(n for n in tree if n["name"] == "pipelines")
+    assert [c["name"] for c in pipelines["children"]] == ["etl.ipynb"]
+
+
 # -- resolve_upload_target --
 
 
