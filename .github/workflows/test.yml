@@ -14,27 +14,25 @@ jobs:
   gate:
     name: lint + type + docstring + alembic
     runs-on: ubuntu-latest
+    # soyuz-catalog-client is pinned to a private-repo git tag
+    # under [tool.uv.sources]. `uv sync` needs a credential with
+    # read access. The `SOYUZ_READ_TOKEN` repo secret is a fine-
+    # grained PAT scoped read-only to the soyuz-catalog repo.
+    # GH_TOKEN lives at job-level so *every* step (gh auth
+    # setup-git below, but also `uv sync` which calls git via a
+    # subprocess that inherits env) sees it.
+    env:
+      GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          # soyuz-catalog-client is pinned to a private-repo git tag
-          # under [tool.uv.sources]. `uv sync` needs a credential with
-          # read access. The `SOYUZ_READ_TOKEN` org secret is a fine-
-          # grained PAT scoped to the soyuz-catalog repo, used only
-          # here. Rewrite https://github.com/FloHofstetter/ URLs so uv
-          # picks up the token without a ~/.netrc file.
-          submodules: false
       - name: Configure git for private soyuz-catalog pull
-        env:
-          GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
-          # Hand off to `gh auth setup-git` — it installs a
-          # credential helper that calls `gh auth git-credential`,
-          # which in turn uses GH_TOKEN. Avoids the landmine of
-          # picking the "right" basic-auth URL shape: neither
-          # `<token>@` (empty password, rejected) nor
-          # `x-access-token:<token>@` (installation-token-only
-          # form, rejected for PATs) actually works.
+          # `gh auth setup-git` installs a credential helper that
+          # reads GH_TOKEN and returns it for any github.com URL.
+          # Works uniformly for PATs and installation tokens;
+          # avoids the basic-auth URL-shape landmines (neither
+          # `<token>@` nor `x-access-token:<token>@` are accepted
+          # for PATs).
           gh auth setup-git
       - name: Install uv
         uses: astral-sh/setup-uv@v5

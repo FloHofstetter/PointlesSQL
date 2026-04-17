@@ -23,22 +23,18 @@ jobs:
   release:
     name: build + publish release
     runs-on: ubuntu-latest
+    # Job-level env so both the `gh auth setup-git` step and the
+    # `uv sync` step (which calls git in a subprocess) see GH_TOKEN.
+    # See test.yml for the full rationale.
+    env:
+      GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # git-cliff needs full history
 
-      # soyuz-catalog-client is pinned to a private-repo git tag under
-      # [tool.uv.sources], so `uv sync` needs a credential. Reuses the
-      # same SOYUZ_READ_TOKEN pattern as test.yml.
       - name: Configure git for private soyuz-catalog pull
-        env:
-          GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
-        run: |
-          # See test.yml for why `gh auth setup-git` is the right
-          # abstraction (neither bare-token-as-username nor
-          # `x-access-token:` works for PATs).
-          gh auth setup-git
+        run: gh auth setup-git
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
