@@ -907,7 +907,7 @@ PointlesSQL
 │   │   │   collapses to a search-icon button
 │   │   └── New playbook `docs/e2e-walkthroughs/command-palette.md`
 │   │
-│   ├── Sprint 32 — Home dashboard                         ✅ done (pending-hash)
+│   ├── Sprint 32 — Home dashboard                         ✅ done (7a313fc)
 │   │   ├── Rewrite `pages/catalogs.html` (the `/` route) into a
 │   │   │   real dashboard (`pages/home.html`): welcome header,
 │   │   │   Recent catalogs (last 5 via
