@@ -1041,7 +1041,7 @@ PointlesSQL
 │   │       so generated scratch notebooks never pollute the
 │   │       user-authored workspace view
 │   │
-│   ├── Sprint 35 — Mobile + responsive                    ✅ done
+│   ├── Sprint 35 — Mobile + responsive                    ✅ done (59cf50c)
 │   │   ├── Breakpoint tokens `--pql-breakpoint-sm/md/lg/xl`
 │   │   │   = 640 / 768 / 1024 / 1280 px. Reference values only
 │   │   │   — `@media` rules cannot consume `var()`, so every
