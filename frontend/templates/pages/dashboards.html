@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Dashboards · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item active">Dashboards</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-speedometer2 fs-3"></i>
+        <h1 class="h3 mb-0">Dashboards</h1>
+    </div>
+    {% if is_admin %}
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createDashboardModal">
+        <i class="bi bi-plus-lg me-1"></i>New dashboard
+    </button>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if dashboards %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Title</th>
+                        <th>Slug</th>
+                        <th>Notebook</th>
+                        <th>Bound job</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in dashboards %}
+                    <tr>
+                        <td class="ps-3">
+                            <a href="/dashboards/{{ d.slug }}" class="text-decoration-none">{{ d.title }}</a>
+                        </td>
+                        <td class="font-monospace small">{{ d.slug }}</td>
+                        <td class="font-monospace small">{{ d.notebook_path }}</td>
+                        <td class="small">
+                            {% if d.job_id is not none %}
+                            <a href="/jobs/{{ d.job_id }}" class="text-decoration-none">#{{ d.job_id }}</a>
+                            {% else %}
+                            <span class="text-muted fst-italic">unbound</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="p-3 text-muted small fst-italic">No dashboards yet.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if is_admin %}
+<div class="modal fade" id="createDashboardModal" tabindex="-1"
+     x-data='{
+         slug: "",
+         title: "",
+         description: "",
+         notebookPath: "",
+         jobId: "",
+         error: null,
+         submitting: false,
+         submit() {
+             this.error = null;
+             if (!this.slug || !this.title || !this.notebookPath) {
+                 this.error = "slug, title and notebook path are required"; return;
+             }
+             this.submitting = true;
+             const payload = {
+                 slug: this.slug.trim(),
+                 title: this.title.trim(),
+                 description: this.description.trim() || null,
+                 notebook_path: this.notebookPath.trim(),
+                 job_id: this.jobId === "" ? null : Number(this.jobId),
+             };
+             fetch("/api/dashboards", {
+                 method: "POST",
+                 headers: {"Content-Type": "application/json"},
+                 body: JSON.stringify(payload),
+             }).then(async r => {
+                 if (!r.ok) {
+                     const body = await r.json().catch(() => ({}));
+                     this.error = body.error?.message || r.statusText;
+                     this.submitting = false;
+                     return;
+                 }
+                 window.location.href = "/dashboards/" + payload.slug;
+             }).catch(e => { this.error = String(e); this.submitting = false; });
+         }
+     }'>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New dashboard</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Slug</label>
+                    <input type="text" class="form-control font-monospace" x-model="slug"
+                           placeholder="sales-overview" pattern="[a-z0-9][a-z0-9-]*">
+                    <div class="form-text">URL-visible identifier. Lowercase letters, digits and hyphens.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" x-model="title" placeholder="Sales overview">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description (optional)</label>
+                    <textarea class="form-control" rows="2" x-model="description"
+                              placeholder="What this dashboard shows and who it's for."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notebook path</label>
+                    <input type="text" class="form-control font-monospace" x-model="notebookPath"
+                           placeholder="pipelines/sales.ipynb">
+                    <div class="form-text">Path relative to the notebooks directory.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Bound job (optional)</label>
+                    <select class="form-select" x-model="jobId">
+                        <option value="">— none —</option>
+                        {% for job in job_options %}
+                        <option value="{{ job.id }}">#{{ job.id }} — {{ job.name }} ({{ job.kind }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">
+                        Pick a papermill job whose latest succeeded run should render on this dashboard.
+                        Leave unset and bind later via the detail page.
+                    </div>
+                </div>
+                <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" x-bind:disabled="submitting" x-on:click="submit()">
+                    <span x-show="submitting" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

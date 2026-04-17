@@ -1,0 +1,99 @@
+<aside class="pql-sidebar border-end"
+       x-data="dashboardTree()"
+       x-init="load()"
+       @htmx:after-swap.window="activeSlug = slugFromUrl()">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">Dashboards</span>
+        <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
+            <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
+        </button>
+    </div>
+
+    <div class="pql-sidebar-body">
+        <template x-if="error">
+            <div class="alert alert-danger m-2 small" x-text="error"></div>
+        </template>
+
+        <template x-if="!items && !error">
+            <div class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+            </div>
+        </template>
+
+        <template x-if="items && items.length === 0">
+            <div class="text-muted small p-3 fst-italic">No dashboards yet.</div>
+        </template>
+
+        <ul class="list-unstyled mb-0" x-show="items && items.length > 0" x-cloak>
+            <template x-for="d in (items || [])" :key="d.slug">
+                <li>
+                    <div class="pql-tree-item"
+                         :class="{ active: activeSlug === d.slug }">
+                        <span class="pql-tree-chevron"></span>
+                        <a :href="'/dashboards/' + d.slug" class="pql-tree-label">
+                            <i class="bi" :class="d.job_id !== null ? 'bi-speedometer2' : 'bi-speedometer'"
+                               :title="d.job_id !== null ? 'Bound to job #' + d.job_id : 'No job bound'"></i>
+                            <span class="text-truncate" x-text="d.title"></span>
+                            <template x-if="d.job_id === null">
+                                <span class="badge bg-secondary ms-auto"
+                                      style="font-size: 0.65rem;">UNBOUND</span>
+                            </template>
+                        </a>
+                    </div>
+                </li>
+            </template>
+        </ul>
+    </div>
+</aside>
+
+<script>
+(function () {
+    const STORAGE_KEY = 'pql.dashboards';
+
+    function slugFromUrl() {
+        const m = window.location.pathname.match(/^\/dashboards\/([^\/]+)/);
+        return m ? m[1] : '';
+    }
+
+    window.dashboardTree = function () {
+        return {
+            items: null,
+            loading: false,
+            error: null,
+            activeSlug: slugFromUrl(),
+
+            async load() {
+                try {
+                    const cached = sessionStorage.getItem(STORAGE_KEY);
+                    if (cached) this.items = JSON.parse(cached);
+                } catch (e) {}
+
+                if (!this.items) await this.fetchItems();
+                else this.fetchItems();
+            },
+
+            async reload() {
+                try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                this.items = null;
+                await this.fetchItems();
+            },
+
+            async fetchItems() {
+                this.loading = true;
+                this.error = null;
+                try {
+                    const res = await fetch('/api/dashboards/tree');
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    this.items = data;
+                    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+                } catch (e) {
+                    if (!this.items) this.error = 'Failed to load dashboards: ' + e.message;
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    };
+})();
+</script>

@@ -4,6 +4,56 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 28)
+
+- Alembic migration `008_dashboards.py` creating the
+  `dashboards` table (slug unique, title, description,
+  notebook_path, job_id FK nullable with `ON DELETE SET NULL`,
+  owner_id FK, timestamps)
+- New `Dashboard` ORM model in `pointlessql/models.py`
+- `render_run_notebook` in `pointlessql/services/notebook_render.py`
+  gains an `exclude_input: bool = False` keyword; when true,
+  renders with `HTMLExporter(..., exclude_input=True)` and caches
+  to a sibling `{run_id}.dashboard.html` sidecar so the
+  code-visible and code-hidden variants coexist without clobbering
+  each other
+- `GET /jobs/{id}/runs/{rid}/notebook` gains an optional
+  `?exclude_input=true` query param threaded through to the
+  render helper
+- Dashboard CRUD routes: `GET /api/dashboards` (list, any
+  logged-in user), `GET /api/dashboards/tree` (sidebar shape),
+  `POST /api/dashboards` (admin-only, validates slug against
+  `^[a-z0-9][a-z0-9-]{0,199}$`), `PATCH /api/dashboards/{slug}`
+  (admin-only; editable fields: title, description,
+  notebook_path, job_id), `DELETE /api/dashboards/{slug}`
+  (admin-only), `POST /api/dashboards/{slug}/refresh`
+  (admin-only; triggers the bound job's `execute_run(...,
+  trigger="manual")` via the same helper that powers the
+  job-detail Run-now button)
+- `GET /dashboards` list page + `GET /dashboards/{slug}` detail
+  page rendering the latest succeeded run through an iframe
+  pointed at `/jobs/.../notebook?exclude_input=true`; empty
+  state when no job is bound or no successful run exists
+- `GET /jobs/{id}/runs/{rid}/compare?to={other_rid}` — two
+  Sprint-26 iframes side-by-side with run metadata headers; both
+  run ids are validated to belong to the same job before render
+  (no foreign-run leak). No cell-level diff highlighting (stub)
+- "Compare runs" card on `pages/job_detail.html` (visible only
+  when ≥ 2 completed runs exist) with two `<select>`s and a
+  Compare button that navigates to the compare URL
+- New templates: `pages/dashboards.html`,
+  `pages/dashboard_detail.html`, `pages/run_compare.html`, and
+  `components/dashboards_sidebar.html` (mirrors the Sprint 27
+  workspace-tree component; `sessionStorage` key
+  `pql.dashboards`)
+- Navbar gains a **Dashboards** link (visible to every logged-in
+  user — consumer surface, not admin-only); `base.html` swaps in
+  the dashboards sidebar when `active_page == 'dashboards'`
+- New playbook `docs/e2e-walkthroughs/dashboards.md` covering
+  create-modal → detail with code-hidden iframe → Refresh →
+  sidebar tree → non-admin visibility → run-compare from the
+  job-detail card, plus the foreign-run 404 negative
+
 ### Added (Sprint 27)
 
 - New `pointlessql/services/notebook_workspace.py` with

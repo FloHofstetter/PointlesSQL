@@ -326,6 +326,57 @@ class TaskRun(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
+class Dashboard(Base):
+    """A named, publishable view of a notebook job's latest output.
+
+    Dashboards differ from the Sprint 26 run viewer in two ways: they
+    live at a stable slug-based URL (so they can be shared or bookmarked
+    across run id churn), and they render via nbconvert with
+    ``exclude_input=True`` so consumers see only outputs — code cells
+    are hidden. A dashboard points at a notebook_path for discoverability
+    and optionally at a :class:`Job`; when a job is bound, the detail
+    page surfaces the latest ``succeeded`` :class:`JobRun`'s HTML and an
+    admin-only "Refresh" button triggers a manual run. The FK uses
+    ``ON DELETE SET NULL`` so the dashboard survives job deletion as an
+    orphan pointing at its notebook_path.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        slug: URL-visible identifier, unique across all dashboards.
+        title: Human-readable name shown in the list and detail pages.
+        description: Optional free-form description.
+        notebook_path: Path relative to ``settings.notebooks_dir``. Kept
+            alongside the bound job even though the job config already
+            carries a notebook_path — surfaces in the list view before
+            the user clicks through.
+        job_id: FK to ``jobs.id`` or ``None`` when no job is bound yet.
+        owner_id: FK to ``users.id`` — the user who created the
+            dashboard.
+        created_at: Timestamp when the dashboard was created.
+        updated_at: Timestamp of the most recent mutation.
+    """
+
+    __tablename__ = "dashboards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    notebook_path: Mapped[str] = mapped_column(String(1000), nullable=False)
+    job_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True
+    )
+    owner_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
 class JobLog(Base):
     """One structured log line written during a :class:`JobRun`.
 

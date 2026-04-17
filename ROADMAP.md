@@ -633,7 +633,7 @@ PointlesSQL
 │   and the Sprint 22 + 23 commits are the reference for
 │   "what clean Found-bugs sections look like".
 │
-├── Phase 8 — Notebook-as-job (Databricks-style)          🔜 next
+├── Phase 8 — Notebook-as-job (Databricks-style)          ✅ done
 │   │
 │   │   Goal: close the gap Phase 7 surfaced — the embedded
 │   │   JupyterLab and the scheduler are currently two islands.
@@ -745,25 +745,63 @@ PointlesSQL
 │   │       expands, plus the non-admin 403 pass and the
 │   │       `.py` / `..` / existing-without-overwrite negatives
 │   │
-│   └── Sprint 28 — Dashboards + run-compare; close Phase 8   ⏳ planned
+│   └── Sprint 28 — Dashboards + run-compare; close Phase 8   ✅ done
 │       ├── Alembic migration 008: `dashboards` table (slug
-│       │   unique, notebook_path, job_id FK nullable, owner_id FK,
-│       │   description, timestamps)
-│       ├── `/dashboards` list + `/dashboards/{slug}` detail;
-│       │   detail renders the latest run's nbconvert HTML with
-│       │   `exclude_input=True` (code cells hidden — that's
-│       │   what differentiates a dashboard from a notebook view)
-│       ├── Admin CRUD routes + a "Refresh" shortcut that
-│       │   triggers the bound job's Run-now
-│       ├── Dashboards sidebar tree (another `catalogTree()`
-│       │   clone) for navigating the list
+│       │   unique, title, description, notebook_path, job_id FK
+│       │   nullable with `ON DELETE SET NULL`, owner_id FK,
+│       │   timestamps)
+│       ├── `Dashboard` ORM model + `_serialize_dashboard`
+│       │   helper; `_load_dashboard_or_404` visibility-neutral
+│       │   (consumers see everything; admin gate lives on the
+│       │   mutating routes + Refresh)
+│       ├── Admin CRUD: `POST`, `PATCH /api/dashboards/{slug}`,
+│       │   `DELETE /api/dashboards/{slug}`, plus
+│       │   `POST /api/dashboards/{slug}/refresh` that reuses
+│       │   `scheduler_service.execute_run(..., trigger="manual")`
+│       │   — no new execution concept, just a shortcut for the
+│       │   dashboard consumer UI
+│       ├── `render_run_notebook` in
+│       │   `services/notebook_render.py` gains an
+│       │   `exclude_input: bool = False` keyword; dashboard-mode
+│       │   output is cached to a sibling `{run_id}.dashboard.html`
+│       │   sidecar so the two variants coexist
+│       ├── `GET /jobs/{id}/runs/{rid}/notebook` gains an optional
+│       │   `?exclude_input=true` query param threaded through to
+│       │   the render helper (used by the dashboard iframe)
+│       ├── `/dashboards` list page + `/dashboards/{slug}` detail;
+│       │   detail fetches the latest `status="succeeded"` run for
+│       │   the bound job and iframe-sources the code-hidden render
+│       ├── Dashboards sidebar component
+│       │   (`components/dashboards_sidebar.html`) mirroring the
+│       │   Sprint 27 workspace tree — `sessionStorage` key
+│       │   `pql.dashboards`, admin-neutral; `base.html` swaps it
+│       │   in when `active_page == 'dashboards'`
 │       ├── `GET /jobs/{id}/runs/{rid}/compare?to={other_rid}` —
 │       │   two Sprint-26 iframes side-by-side with run metadata
-│       │   headers; no cell-level diff highlighting (stub)
-│       ├── New playbook `dashboards.md`
-│       └── Phase-8 close-out summary in `ROADMAP.md` (bugs
-│           surfaced / fixed / deferred), same shape as the
-│           Phase-7 summary Sprint 23 added
+│       │   headers; both run ids validated to belong to the same
+│       │   job, otherwise 404 (prevents foreign-run leak). No
+│       │   cell-level diff highlighting (stub)
+│       ├── "Compare runs" card on `pages/job_detail.html` (only
+│       │   when ≥ 2 completed runs exist) with two `<select>`s and
+│       │   a Compare button that navigates to the compare URL
+│       ├── New navbar "Dashboards" link (visible to every
+│       │   logged-in user — consumer surface, not admin-only)
+│       └── New playbook `docs/e2e-walkthroughs/dashboards.md`
+│           covering the create-modal → detail iframe → Refresh →
+│           sidebar → non-admin visibility → run-compare flow, plus
+│           the foreign-run 404 negative
+│
+│   Phase 8 close-out — Sprint 28 landed the final piece
+│   (dashboards + run-compare). No bugs surfaced in the live
+│   Playwright replay of the `dashboards.md` playbook. What
+│   Phase 8 bought: Papermill-executed notebooks now have a
+│   full lifecycle inside PointlesSQL — scheduled execution
+│   (Sprint 24) with typed parameters (Sprint 25), inline
+│   rendered output (Sprint 26), a workspace file browser for
+│   upload + schedule (Sprint 27), and now a publishable
+│   dashboard surface that hides code cells + a run-compare
+│   view (Sprint 28). The embedded JupyterLab and the
+│   scheduler are no longer two islands.
 │
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is

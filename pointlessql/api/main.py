@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -1659,7 +1660,12 @@ def _load_papermill_run_output_path(request: Request, job_id: int, run_id: int) 
 
 
 @app.get("/jobs/{job_id}/runs/{run_id}/notebook", response_class=HTMLResponse)
-async def job_run_notebook(request: Request, job_id: int, run_id: int) -> HTMLResponse:
+async def job_run_notebook(
+    request: Request,
+    job_id: int,
+    run_id: int,
+    exclude_input: bool = False,
+) -> HTMLResponse:
     """Render an executed Papermill notebook inline.
 
     Returns the nbconvert ``lab``-template HTML body for
@@ -1667,9 +1673,16 @@ async def job_run_notebook(request: Request, job_id: int, run_id: int) -> HTMLRe
     this route in an iframe inside the "Output artifacts" card. A
     ``runs/{run_id}.html`` sidecar is written on first render so
     subsequent hits skip the nbconvert cost.
+
+    When ``exclude_input=true`` is passed as a query param, the render
+    hides code cells and caches to a sibling ``{run_id}.dashboard.html``
+    sidecar — used by the Sprint 28 dashboard iframe to publish
+    output-only views of the latest succeeded run.
     """
     runs_dir = _load_papermill_run_output_path(request, job_id, run_id)
-    html = notebook_render_service.render_run_notebook(runs_dir, run_id)
+    html = notebook_render_service.render_run_notebook(
+        runs_dir, run_id, exclude_input=exclude_input
+    )
     return HTMLResponse(html)
 
 
@@ -1704,6 +1717,380 @@ async def job_run_notebook_download(
         path,
         filename=f"job{job_id}_run{run_id}.{format}",
         media_type=media_type,
+    )
+
+
+@app.get("/jobs/{job_id}/runs/{run_id}/compare", response_class=HTMLResponse)
+async def job_run_compare(
+    request: Request,
+    job_id: int,
+    run_id: int,
+    to: int,
+) -> HTMLResponse:
+    """Render two executed notebooks side-by-side for the same papermill job.
+
+    Both runs must belong to ``job_id`` — this prevents leaking a peek
+    at a different job's output by smuggling a foreign ``to=`` run id
+    through the query string. The page itself embeds two Sprint 26
+    ``/jobs/{id}/runs/{rid}/notebook`` iframes; no cell-level diffing
+    (stub — that is a future sprint if demand emerges).
+    """
+    from pointlessql.exceptions import CatalogNotFoundError
+    from pointlessql.models import JobRun as JobRunModel
+
+    job = _load_job_or_404(request, job_id)
+    if job.kind != "papermill":
+        raise CatalogNotFoundError(f"Job {job_id} is not a papermill job")
+    factory = request.app.state.session_factory
+    with factory() as session:
+        left = session.get(JobRunModel, run_id)
+        right = session.get(JobRunModel, to)
+        if left is None or left.job_id != job_id:
+            raise CatalogNotFoundError(f"Run {run_id} not found for job {job_id}")
+        if right is None or right.job_id != job_id:
+            raise CatalogNotFoundError(f"Run {to} not found for job {job_id}")
+        session.expunge(left)
+        session.expunge(right)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/run_compare.html",
+        {
+            "job": _serialize_job(job),
+            "left": _serialize_run(left),
+            "right": _serialize_run(right),
+            "active_page": "jobs",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+# -- Dashboards (Sprint 28) --
+# A dashboard is a stable slug-addressable view of a notebook job's
+# latest succeeded run, rendered with ``exclude_input=True`` so
+# consumers see outputs only. The ``job_id`` FK is nullable so a
+# dashboard can outlive its bound job (FK uses ``ON DELETE SET NULL``);
+# when no job is bound or no successful run exists, the detail page
+# renders an empty state.
+
+
+_SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,199}$")
+
+
+def _serialize_dashboard(dashboard: Any, *, latest_run_id: int | None = None) -> dict[str, Any]:
+    """Render a :class:`Dashboard` ORM row for JSON + template responses."""
+    return {
+        "id": dashboard.id,
+        "slug": dashboard.slug,
+        "title": dashboard.title,
+        "description": dashboard.description,
+        "notebook_path": dashboard.notebook_path,
+        "job_id": dashboard.job_id,
+        "owner_id": dashboard.owner_id,
+        "latest_run_id": latest_run_id,
+        "created_at": dashboard.created_at.isoformat() if dashboard.created_at else None,
+        "updated_at": dashboard.updated_at.isoformat() if dashboard.updated_at else None,
+    }
+
+
+def _load_dashboard_or_404(request: Request, slug: str) -> Any:
+    """Fetch a :class:`Dashboard` by slug; 404 when missing.
+
+    Dashboards are visible to every logged-in user — they are the
+    consumer-facing surface — so there is no per-user filter here.
+    The admin gate lives on the mutating routes and on Refresh.
+    """
+    from pointlessql.exceptions import CatalogNotFoundError
+    from pointlessql.models import Dashboard as DashboardModel
+
+    factory = request.app.state.session_factory
+    with factory() as session:
+        from sqlalchemy import select as _select
+
+        row = session.scalar(_select(DashboardModel).where(DashboardModel.slug == slug))
+        if row is None:
+            raise CatalogNotFoundError(f"Dashboard {slug!r} not found")
+        session.expunge(row)
+        return row
+
+
+def _latest_succeeded_run_id(request: Request, job_id: int) -> int | None:
+    """Return the most recent succeeded :class:`JobRun` id for *job_id*.
+
+    Used by the dashboard detail route to pick which run's output to
+    render. ``None`` when the job has never produced a successful run.
+    """
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import JobRun as JobRunModel
+
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = (
+            _select(JobRunModel.id)
+            .where(JobRunModel.job_id == job_id)
+            .where(JobRunModel.status == "succeeded")
+            .order_by(JobRunModel.started_at.desc())
+            .limit(1)
+        )
+        return session.scalar(stmt)
+
+
+@app.get("/api/dashboards")
+async def api_list_dashboards(request: Request) -> list[dict[str, Any]]:
+    """Return every dashboard in creation order (any logged-in user)."""
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import Dashboard as DashboardModel
+
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = _select(DashboardModel).order_by(DashboardModel.id)
+        rows = list(session.scalars(stmt).all())
+        for r in rows:
+            session.expunge(r)
+    return [_serialize_dashboard(r) for r in rows]
+
+
+@app.get("/api/dashboards/tree")
+async def api_dashboards_tree(request: Request) -> list[dict[str, Any]]:
+    """Return a flat list shaped for the dashboards sidebar component.
+
+    The shape mirrors the Sprint 27 workspace tree enough that the
+    Alpine component is a straightforward copy. ``/api/dashboards``
+    already returns the same rows — the dedicated tree endpoint keeps
+    the Alpine fetch call symmetrical with the catalog tree.
+    """
+    return await api_list_dashboards(request)
+
+
+@app.post("/api/dashboards")
+async def api_create_dashboard(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Create a new dashboard (admin-only)."""
+    from pointlessql.models import Dashboard as DashboardModel
+
+    _require_admin(request)
+    user = _get_user(request)
+
+    slug_raw = body.get("slug")
+    title = body.get("title")
+    notebook_path = body.get("notebook_path")
+    if not slug_raw or not title or not notebook_path:
+        raise ValidationError("slug, title and notebook_path are required")
+    slug = str(slug_raw).strip()
+    if not _SLUG_PATTERN.match(slug):
+        raise ValidationError(
+            "slug must be lowercase letters, digits and hyphens (1-200 chars)"
+        )
+
+    description_raw = body.get("description")
+    description: str | None = None
+    if description_raw is not None:
+        if not isinstance(description_raw, str):
+            raise ValidationError("description must be a string when provided")
+        description = description_raw.strip() or None
+
+    job_id_raw = body.get("job_id")
+    job_id: int | None = None
+    if job_id_raw not in (None, ""):
+        try:
+            job_id = int(job_id_raw)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("job_id must be an integer") from exc
+
+    now = datetime.now(UTC)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        from sqlalchemy import select as _select
+
+        existing = session.scalar(
+            _select(DashboardModel).where(DashboardModel.slug == slug)
+        )
+        if existing is not None:
+            raise ValidationError(f"dashboard slug {slug!r} already exists")
+
+        dashboard = DashboardModel(
+            slug=slug,
+            title=str(title).strip(),
+            description=description,
+            notebook_path=str(notebook_path).strip(),
+            job_id=job_id,
+            owner_id=user["id"],
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(dashboard)
+        session.commit()
+        session.refresh(dashboard)
+        session.expunge(dashboard)
+    _audit(request, "create_dashboard", f"dashboard:{slug}", json.dumps(body))
+    return _serialize_dashboard(dashboard)
+
+
+@app.patch("/api/dashboards/{slug}")
+async def api_update_dashboard(
+    request: Request, slug: str, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Update mutable dashboard fields (admin-only).
+
+    Editable: title, description, notebook_path, job_id. slug and
+    owner_id are immutable — delete + recreate if the URL or owner
+    needs to change so callers never observe a half-migrated row.
+    """
+    from pointlessql.models import Dashboard as DashboardModel
+
+    _require_admin(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        from sqlalchemy import select as _select
+
+        row = session.scalar(_select(DashboardModel).where(DashboardModel.slug == slug))
+        if row is None:
+            from pointlessql.exceptions import CatalogNotFoundError as _NF
+
+            raise _NF(f"Dashboard {slug!r} not found")
+
+        if "title" in body:
+            title = body["title"]
+            if not isinstance(title, str) or not title.strip():
+                raise ValidationError("title must be a non-empty string")
+            row.title = title.strip()
+        if "description" in body:
+            desc = body["description"]
+            if desc is not None and not isinstance(desc, str):
+                raise ValidationError("description must be a string or null")
+            row.description = desc.strip() if isinstance(desc, str) and desc.strip() else None
+        if "notebook_path" in body:
+            path = body["notebook_path"]
+            if not isinstance(path, str) or not path.strip():
+                raise ValidationError("notebook_path must be a non-empty string")
+            row.notebook_path = path.strip()
+        if "job_id" in body:
+            jid = body["job_id"]
+            if jid in (None, ""):
+                row.job_id = None
+            else:
+                try:
+                    row.job_id = int(jid)
+                except (TypeError, ValueError) as exc:
+                    raise ValidationError("job_id must be an integer or null") from exc
+        row.updated_at = datetime.now(UTC)
+        session.commit()
+        session.refresh(row)
+        session.expunge(row)
+    _audit(request, "update_dashboard", f"dashboard:{slug}", json.dumps(body))
+    return _serialize_dashboard(row)
+
+
+@app.delete("/api/dashboards/{slug}")
+async def api_delete_dashboard(request: Request, slug: str) -> dict[str, str]:
+    """Delete a dashboard (admin-only)."""
+    from pointlessql.models import Dashboard as DashboardModel
+
+    _require_admin(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        from sqlalchemy import select as _select
+
+        row = session.scalar(_select(DashboardModel).where(DashboardModel.slug == slug))
+        if row is None:
+            from pointlessql.exceptions import CatalogNotFoundError as _NF
+
+            raise _NF(f"Dashboard {slug!r} not found")
+        session.delete(row)
+        session.commit()
+    _audit(request, "delete_dashboard", f"dashboard:{slug}")
+    return {"status": "deleted", "slug": slug}
+
+
+@app.post("/api/dashboards/{slug}/refresh")
+async def api_refresh_dashboard(request: Request, slug: str) -> dict[str, Any]:
+    """Trigger a manual run of the bound job (admin-only).
+
+    Thin wrapper over the scheduler's manual-run helper that powers
+    the job-detail "Run now" button — no new execution concept, just
+    a shortcut for the dashboard consumer UI.
+    """
+    _require_admin(request)
+    dashboard = _load_dashboard_or_404(request, slug)
+    if dashboard.job_id is None:
+        raise ValidationError("dashboard has no bound job to refresh")
+    settings: Settings = request.app.state.settings
+    factory = request.app.state.session_factory
+    run = await scheduler_service.execute_run(
+        factory, settings, _JOB_REGISTRY, dashboard.job_id, "manual"
+    )
+    _audit(request, "refresh_dashboard", f"dashboard:{slug}")
+    return _serialize_run(run)
+
+
+@app.get("/dashboards", response_class=HTMLResponse)
+async def dashboards_index(request: Request) -> HTMLResponse:
+    """Render the dashboards list page (any logged-in user)."""
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import Dashboard as DashboardModel
+    from pointlessql.models import Job as JobModel
+
+    user = _get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = _select(DashboardModel).order_by(DashboardModel.id)
+        dashboards = list(session.scalars(stmt).all())
+        for d in dashboards:
+            session.expunge(d)
+        # Admins can bind dashboards to any job; fetch the job list
+        # once so the create modal's <select> doesn't need an extra
+        # round-trip on open.
+        job_options: list[dict[str, Any]] = []
+        if user.get("is_admin"):
+            for j in session.scalars(_select(JobModel).order_by(JobModel.name)).all():
+                job_options.append({"id": j.id, "name": j.name, "kind": j.kind})
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/dashboards.html",
+        {
+            "dashboards": [_serialize_dashboard(d) for d in dashboards],
+            "is_admin": user.get("is_admin", False),
+            "job_options": job_options,
+            "active_page": "dashboards",
+            "active_dashboard_slug": None,
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+@app.get("/dashboards/{slug}", response_class=HTMLResponse)
+async def dashboard_detail(request: Request, slug: str) -> HTMLResponse:
+    """Render a dashboard's latest-run output (any logged-in user).
+
+    The iframe src points at the Sprint 26 render route with
+    ``exclude_input=true`` so code cells are hidden. When the bound
+    job has never produced a succeeded run — or there is no bound
+    job at all — the page renders an empty state instead.
+    """
+    user = _get_user(request)
+    dashboard = _load_dashboard_or_404(request, slug)
+    latest_run_id: int | None = None
+    if dashboard.job_id is not None:
+        latest_run_id = _latest_succeeded_run_id(request, dashboard.job_id)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/dashboard_detail.html",
+        {
+            "dashboard": _serialize_dashboard(dashboard, latest_run_id=latest_run_id),
+            "is_admin": user.get("is_admin", False),
+            "active_page": "dashboards",
+            "active_dashboard_slug": slug,
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
     )
 
 

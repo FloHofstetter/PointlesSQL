@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}{{ dashboard.title }} · Dashboards · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/dashboards" class="text-decoration-none">Dashboards</a></li>
+    <li class="breadcrumb-item active">{{ dashboard.slug }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-speedometer2 fs-3"></i>
+        <h1 class="h3 mb-0">{{ dashboard.title }}</h1>
+    </div>
+    {% if is_admin and dashboard.job_id is not none %}
+    <div class="d-flex gap-2"
+         x-data='{
+             busy: false,
+             refresh() {
+                 this.busy = true;
+                 fetch("/api/dashboards/{{ dashboard.slug }}/refresh", {method: "POST"})
+                     .then(async r => {
+                         if (!r.ok) {
+                             const body = await r.json().catch(() => ({}));
+                             alert(body.error?.message || r.statusText);
+                             this.busy = false;
+                             return;
+                         }
+                         window.location.reload();
+                     })
+                     .catch(e => { alert(String(e)); this.busy = false; });
+             }
+         }'>
+        <button type="button" class="btn btn-primary btn-sm"
+                x-bind:disabled="busy"
+                x-on:click="refresh()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+        <a href="/jobs/{{ dashboard.job_id }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-clock-history me-1"></i>Open job
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle me-1"></i>About
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-2">Slug</dt>
+            <dd class="col-sm-10 font-monospace">{{ dashboard.slug }}</dd>
+            {% if dashboard.description %}
+            <dt class="col-sm-2">Description</dt>
+            <dd class="col-sm-10">{{ dashboard.description }}</dd>
+            {% endif %}
+            <dt class="col-sm-2">Notebook</dt>
+            <dd class="col-sm-10 font-monospace">{{ dashboard.notebook_path }}</dd>
+            <dt class="col-sm-2">Bound job</dt>
+            <dd class="col-sm-10">
+                {% if dashboard.job_id is not none %}
+                <a href="/jobs/{{ dashboard.job_id }}" class="text-decoration-none">#{{ dashboard.job_id }}</a>
+                {% else %}
+                <span class="text-muted fst-italic">unbound — bind a job to enable Refresh + render</span>
+                {% endif %}
+            </dd>
+            {% if dashboard.latest_run_id is not none %}
+            <dt class="col-sm-2">Latest run</dt>
+            <dd class="col-sm-10">
+                <a href="/jobs/{{ dashboard.job_id }}" class="text-decoration-none">#{{ dashboard.latest_run_id }}</a>
+            </dd>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+
+{% if dashboard.latest_run_id is not none %}
+<div class="card">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-file-earmark-richtext"></i>Output
+        <span class="text-muted small">· run #{{ dashboard.latest_run_id }} (code hidden)</span>
+    </div>
+    <div class="card-body p-0">
+        <iframe src="/jobs/{{ dashboard.job_id }}/runs/{{ dashboard.latest_run_id }}/notebook?exclude_input=true"
+                class="w-100"
+                style="height: 720px; border: 0;"
+                title="Dashboard output"></iframe>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-hourglass-split fs-2 d-block mb-2"></i>
+        {% if dashboard.job_id is none %}
+        <p class="mb-1">No job bound yet.</p>
+        <p class="small mb-0">An admin can bind a papermill job to this dashboard to populate the output.</p>
+        {% else %}
+        <p class="mb-1">No successful run yet.</p>
+        {% if is_admin %}
+        <p class="small mb-0">Click <em>Refresh</em> above to trigger a manual run.</p>
+        {% else %}
+        <p class="small mb-0">An admin can trigger a manual run to populate the output.</p>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

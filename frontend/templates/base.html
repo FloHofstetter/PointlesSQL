@@ -50,6 +50,12 @@
                     <i class="bi bi-clock-history"></i> Jobs
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'dashboards' %} active{% endif %}"
+                   href="/dashboards">
+                    <i class="bi bi-speedometer2"></i> Dashboards
+                </a>
+            </li>
             {% if current_user is defined and current_user %}
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"
@@ -73,7 +79,13 @@
     </nav>
 
     <div class="pql-shell">
-        {% if not hide_sidebar %}{% include "components/sidebar.html" %}{% endif %}
+        {% if not hide_sidebar %}
+            {% if active_page is defined and active_page == 'dashboards' %}
+                {% include "components/dashboards_sidebar.html" %}
+            {% else %}
+                {% include "components/sidebar.html" %}
+            {% endif %}
+        {% endif %}
         <main class="pql-content {% block content_class %}{% endblock %}" id="main-content">
             {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
