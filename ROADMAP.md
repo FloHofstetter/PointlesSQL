@@ -879,7 +879,7 @@ PointlesSQL
 │   │       `window.pqlToast.{success,error,info}(msg)` as a
 │   │       Bootstrap-toast wrapper mounted once in `base.html`
 │   │
-│   ├── Sprint 31 — Command palette (Cmd+K)               ✅ done
+│   ├── Sprint 31 — Command palette (Cmd+K)               ✅ done (c9f0198)
 │   │   ├── `GET /api/search?q=…&limit=50` aggregates catalogs,
 │   │   │   schemas, tables, connections, credentials, external
 │   │   │   locations, jobs, dashboards, and (admin-only)
