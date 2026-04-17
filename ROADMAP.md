@@ -994,7 +994,7 @@ PointlesSQL
 │   │       `frontend/js/job_row_actions.js` is the Alpine
 │   │       factory behind them
 │   │
-│   ├── Sprint 34 — Catalog / schema / table experience    ✅ done
+│   ├── Sprint 34 — Catalog / schema / table experience    ✅ done (f970fce)
 │   │   ├── Catalog detail gains an inline Schemas card (name ·
 │   │   │   updated · comment) sourced from the existing
 │   │   │   `client.list_schemas` via the detail-page
