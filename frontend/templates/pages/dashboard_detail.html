@@ -85,7 +85,7 @@
         <span class="text-muted small">· run #{{ dashboard.latest_run_id }} (code hidden)</span>
     </div>
     <div class="card-body p-0">
-        <iframe src="/jobs/{{ dashboard.job_id }}/runs/{{ dashboard.latest_run_id }}/notebook?exclude_input=true"
+        <iframe src="/dashboards/{{ dashboard.slug }}/output"
                 class="w-100"
                 style="height: 720px; border: 0;"
                 title="Dashboard output"></iframe>

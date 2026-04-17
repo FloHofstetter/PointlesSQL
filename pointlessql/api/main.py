@@ -2069,10 +2069,11 @@ async def dashboards_index(request: Request) -> HTMLResponse:
 async def dashboard_detail(request: Request, slug: str) -> HTMLResponse:
     """Render a dashboard's latest-run output (any logged-in user).
 
-    The iframe src points at the Sprint 26 render route with
-    ``exclude_input=true`` so code cells are hidden. When the bound
-    job has never produced a succeeded run — or there is no bound
-    job at all — the page renders an empty state instead.
+    The iframe src points at :func:`dashboard_output` so the visibility
+    boundary is the dashboard itself, not the underlying job — dashboards
+    are a consumer/publishing surface. When the bound job has never
+    produced a succeeded run — or there is no bound job at all — the
+    page renders an empty state instead.
     """
     user = _get_user(request)
     dashboard = _load_dashboard_or_404(request, slug)
@@ -2092,6 +2093,60 @@ async def dashboard_detail(request: Request, slug: str) -> HTMLResponse:
             "active_table": None,
         },
     )
+
+
+@app.get("/dashboards/{slug}/output", response_class=HTMLResponse)
+async def dashboard_output(request: Request, slug: str) -> HTMLResponse:
+    """Render the code-hidden HTML of the dashboard's latest succeeded run.
+
+    This is the iframe source for the dashboard detail page. Unlike
+    :func:`job_run_notebook` it does **not** go through
+    :func:`_load_papermill_run_output_path` — which enforces
+    admin-or-job-owner visibility — because dashboards are a
+    consumer-facing publishing surface: any logged-in user who can see
+    the dashboard metadata must be able to see the output it publishes.
+    The visibility guard here is the dashboard's existence + a single
+    internal check that the run belongs to the bound job.
+
+    Args:
+        request: Incoming FastAPI request; any logged-in user.
+        slug: Dashboard slug from the URL path.
+
+    Returns:
+        HTMLResponse with the nbconvert code-hidden render.
+
+    Raises:
+        CatalogNotFoundError: When the dashboard doesn't exist, when it
+            has no bound job, or when the bound job has no succeeded run.
+    """
+    from pointlessql.exceptions import CatalogNotFoundError
+    from pointlessql.models import Job as JobModel
+    from pointlessql.models import JobRun as JobRunModel
+
+    dashboard = _load_dashboard_or_404(request, slug)
+    if dashboard.job_id is None:
+        raise CatalogNotFoundError(f"Dashboard {slug!r} has no bound job")
+    latest_run_id = _latest_succeeded_run_id(request, dashboard.job_id)
+    if latest_run_id is None:
+        raise CatalogNotFoundError(f"Dashboard {slug!r} has no succeeded run yet")
+
+    factory = request.app.state.session_factory
+    with factory() as session:
+        job = session.get(JobModel, dashboard.job_id)
+        run = session.get(JobRunModel, latest_run_id)
+        if job is None or run is None or run.job_id != dashboard.job_id:
+            raise CatalogNotFoundError(f"Dashboard {slug!r} output not available")
+        if job.kind != "papermill":
+            raise CatalogNotFoundError(
+                f"Dashboard {slug!r} bound job is not a papermill job"
+            )
+
+    settings: Settings = request.app.state.settings
+    runs_dir = settings.notebooks_dir.resolve() / "runs"
+    html = notebook_render_service.render_run_notebook(
+        runs_dir, latest_run_id, exclude_input=True
+    )
+    return HTMLResponse(html)
 
 
 @app.post("/api/jobs/{job_id}/pause")

@@ -177,18 +177,25 @@ browser_click('button:has-text("Compare")')
 
 ## Found bugs
 
-No product bugs surfaced. The live replay was executed via
-HTTP-level assertions (52 checks, all green) against the e2e
-compose stack on 2026-04-17 because Playwright MCP's Firefox
-launcher failed to start in this workspace; the assertions cover
-the same surface area as a browser replay — admin gate on
-create/patch/delete/refresh (403), slug validation (422), missing
-dashboard (404), sidebar tree shape (2 nodes, correct slugs,
-`job_id` null for unbound), Refresh advancing the iframe's run id,
-non-admin read access with mutating controls absent, run-compare
-with foreign-run 404, and the Compare-runs card on job detail.
+- **BUG-28-01** — fixed same-sprint. The dashboard detail page's
+  iframe originally sourced at
+  `/jobs/{job_id}/runs/{run_id}/notebook?exclude_input=true`, which
+  goes through `_load_papermill_run_output_path` →
+  `_load_job_or_404` — both enforce admin-or-job-owner visibility.
+  Non-admin consumers therefore saw the dashboard About card but a
+  `404 Job {n} not found` page inside the iframe, which defeats the
+  whole point of dashboards being a consumer-facing publishing
+  surface. Fixed by adding a sibling route
+  [`GET /dashboards/{slug}/output`](../../pointlessql/api/main.py)
+  whose visibility guard is the dashboard itself (any logged-in
+  user) — the handler still verifies the bound job is papermill and
+  that the latest succeeded run belongs to that job before rendering.
+  The iframe in `pages/dashboard_detail.html` now points at that
+  route. The older `?exclude_input=true` query param on
+  `/jobs/.../notebook` stays in place for admin/owner contexts but
+  is no longer what the dashboard uses.
 
-One playbook-level refinement landed alongside the replay: Part C
+Playbook-level refinement landed alongside the replay: Part C
 originally asserted `.jp-InputArea` count inside the iframe, but
 nbconvert's `lab` template embeds a stylesheet that contains
 `.jp-InputArea` CSS *selectors* even when `exclude_input=True`
@@ -196,3 +203,8 @@ strips the input DOM elements. The precise assertion is
 `.jp-Cell-inputWrapper` (the wrapper div that `exclude_input`
 actually removes). The updated text is above in Part C; this is
 noted here so future replays don't trip on the same false-positive.
+
+The initial HTTP-level replay was green (52 checks) because all
+assertions ran as the admin user, which never exercises the
+visibility boundary that BUG-28-01 lives on. The live browser
+replay as `user@pql.test` caught it immediately.
