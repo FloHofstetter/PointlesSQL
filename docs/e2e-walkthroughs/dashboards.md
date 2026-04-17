@@ -177,6 +177,26 @@ browser_click('button:has-text("Compare")')
 
 ## Found bugs
 
+- **BUG-28-02** — fixed same-sprint. Pre-existing Sprint 24 race
+  condition surfaced by Sprint 28's Refresh button. Papermill's
+  ``execute_notebook(cwd=...)`` goes through
+  ``papermill.utils.chdir`` which calls ``os.chdir`` (process-wide,
+  not thread-local). Concurrent papermill runs race against any
+  caller that computes ``Path(settings.notebooks_dir).resolve()``
+  later — the loser resolves ``Path("notebooks")`` with
+  ``os.getcwd() == "/app/notebooks"``, getting
+  ``/app/notebooks/notebooks`` which doesn't exist, and
+  ``resolve_notebook_path`` raises ``"papermill notebook not
+  found"``. A 10-way parallel hammer of the Refresh endpoint saw
+  9/10 runs fail before the fix and 0/10 after. Root cause + fix
+  in [`pointlessql/settings.py`](../../pointlessql/settings.py):
+  capture ``_STARTUP_CWD = Path.cwd()`` at module import (before
+  any papermill tick) and anchor relative ``notebooks_dir``
+  defaults against it in a ``field_validator``. ``.resolve()``
+  on an already-absolute path does not consult CWD, so every
+  downstream ``.resolve()`` call becomes deterministic even if
+  papermill has chdir'd the process mid-execution.
+
 - **BUG-28-01** — fixed same-sprint. The dashboard detail page's
   iframe originally sourced at
   `/jobs/{job_id}/runs/{run_id}/notebook?exclude_input=true`, which
