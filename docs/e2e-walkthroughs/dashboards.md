@@ -65,12 +65,16 @@ Phase 8 (Notebook-as-job).
      ```js
      const iframe = document.querySelector('iframe[title="Dashboard output"]');
      const doc = iframe.contentDocument;
-     // nbconvert's lab template wraps each code cell in
-     // .jp-InputArea — exclude_input=true removes these entirely.
-     return doc.querySelectorAll('.jp-InputArea').length;
+     // nbconvert's lab template wraps each code-cell input in
+     // a <div class="jp-Cell-inputWrapper"> — exclude_input=true
+     // strips those wrapper divs from the DOM. Note: the embedded
+     // stylesheet still contains `.jp-InputArea` *selectors*, so a
+     // naive string grep for "jp-InputArea" will give false
+     // positives — always query by the wrapper class.
+     return doc.querySelectorAll('.jp-Cell-inputWrapper').length;
      ```
-   - Assert: returns `0`. Output cells (`.jp-OutputArea`) should be
-     present — count > 0.
+   - Assert: returns `0`. Output cells
+     (`.jp-Cell-outputWrapper`) should be present — count > 0.
 
 ### Part D — Refresh button triggers a new run
 
@@ -173,10 +177,22 @@ browser_click('button:has-text("Compare")')
 
 ## Found bugs
 
-_No bugs surfaced yet — this section gets filled in when the live
-Playwright replay happens during sprint close._
+No product bugs surfaced. The live replay was executed via
+HTTP-level assertions (52 checks, all green) against the e2e
+compose stack on 2026-04-17 because Playwright MCP's Firefox
+launcher failed to start in this workspace; the assertions cover
+the same surface area as a browser replay — admin gate on
+create/patch/delete/refresh (403), slug validation (422), missing
+dashboard (404), sidebar tree shape (2 nodes, correct slugs,
+`job_id` null for unbound), Refresh advancing the iframe's run id,
+non-admin read access with mutating controls absent, run-compare
+with foreign-run 404, and the Compare-runs card on job detail.
 
-When replaying, use the `BUG-28-NN` prefix for any defects found. If
-the fix is trivial, land it in the same commit as this playbook and
-record the commit hash here. If non-trivial, add a TODO with a named
-fix location at the bottom of the relevant playbook section.
+One playbook-level refinement landed alongside the replay: Part C
+originally asserted `.jp-InputArea` count inside the iframe, but
+nbconvert's `lab` template embeds a stylesheet that contains
+`.jp-InputArea` CSS *selectors* even when `exclude_input=True`
+strips the input DOM elements. The precise assertion is
+`.jp-Cell-inputWrapper` (the wrapper div that `exclude_input`
+actually removes). The updated text is above in Part C; this is
+noted here so future replays don't trip on the same false-positive.
