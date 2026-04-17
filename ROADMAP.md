@@ -710,7 +710,7 @@ PointlesSQL
 │   │   │   visibility-checked route closes that leak
 │   │   └── Playbook extension: click past run → see cells inline
 │   │
-│   ├── Sprint 27 — Workspace file browser                    ✅ done
+│   ├── Sprint 27 — Workspace file browser                    ✅ done (72a1438)
 │   │   ├── `GET /api/notebooks/tree` (admin-only) → nested
 │   │   │   dir listing with `parameters_tagged: bool` per
 │   │   │   notebook leaf; the top-level `runs/` executor-output
