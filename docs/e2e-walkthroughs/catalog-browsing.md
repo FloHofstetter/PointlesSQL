@@ -107,7 +107,130 @@ browser_click(element='PQL snippet Copy button')
 browser_evaluate('() => document.querySelector("[x-data]").__x.$data.copied')
 ```
 
+## Sprint 34 — inline schemas, inline tables, preview, columns, lineage, open-in-notebook
+
+Adds a second pass on top of the existing flow above. Same
+seed + auth preconditions apply.
+
+1. **Inline Schemas card on catalog detail**.
+   - Action: `browser_navigate('http://127.0.0.1:8000/catalogs/demo')`.
+   - Assert: a card titled "Schemas" sits below Metadata. It lists
+     `hr` and `sales` as monospace links to
+     `/catalogs/demo/schemas/hr` and `/catalogs/demo/schemas/sales`.
+     Each row carries a non-empty Updated cell
+     (falls back to `—` only if the seed set no `updated_at`).
+
+2. **Inline Tables card on schema detail**.
+   - Action: navigate to `/catalogs/demo/schemas/sales`.
+   - Assert: a card titled "Tables" lists `customers` and `orders`
+     with type + format badges (`MANAGED` / `DELTA`) and a non-zero
+     Columns count matching the actual column list (4 for `orders`).
+
+3. **Preview card — happy path**.
+   - Action: navigate to
+     `/catalogs/demo/schemas/sales/tables/orders`.
+   - Assert: a "Preview" card renders below the PQL snippet card;
+     once loading finishes, the table shows ≤ 10 rows with the
+     column headers `order_id`, `customer_id`, `amount`, `placed_at`.
+   - Assert (`browser_network_requests`): the
+     `/api/catalogs/demo/schemas/sales/tables/orders/preview`
+     response carries a `Cache-Control: no-store` header.
+
+4. **Preview card — server-side cap is not tunable**.
+   - Action (`browser_evaluate`): `fetch('/api/catalogs/demo/schemas/sales/tables/orders/preview?limit=1000').then(r => r.json()).then(d => d.rows.length)`.
+   - Assert: returns ≤ 10 — the query string is ignored server-side.
+
+5. **Preview card — degrades on broken table**.
+   - Prep: in a shell, temporarily move the Delta dir for one demo
+     table (`mv warehouse/.../orders/_delta_log warehouse/.../orders/_delta_log.bak`).
+   - Action: reload `.../tables/orders`.
+   - Assert: the Preview card shows a
+     `Preview unavailable: …` inline message instead of a
+     page-level 500; the rest of the page (metadata, PQL snippet,
+     columns, lineage) still renders.
+   - Cleanup: restore the `_delta_log.bak` rename.
+
+6. **Columns search + sort (≥ 20 columns)**.
+   - Prep: seed a wide table, e.g. via
+     ```python
+     from pointlessql import PQL
+     import pandas as pd
+     pql = PQL()
+     pql.write_table(
+         pd.DataFrame([[0]*25], columns=[f"c{i}" for i in range(25)]),
+         "demo.sales.wide25",
+     )
+     ```
+   - Action: navigate to `.../tables/wide25`.
+   - Assert: a search input appears in the Columns card header
+     (only when `columns|length >= 20`). Typing `c1` filters the
+     list via `listTable()`'s debounced handler.
+   - Assert: clicking the `Name` header cycles
+     `aria-sort` asc → desc → none.
+   - Negative: reload `.../tables/orders` (4 columns) — no search
+     input is present (progressive enhancement stays off below the
+     threshold).
+
+7. **Lineage — per-depth subheadings**.
+   - Prep: if the seed does not already produce lineage, run a
+     Python cell that reads `orders` and writes a derived table,
+     or add synthetic edges via the soyuz-catalog lineage API.
+   - Assert: the Lineage card renders `Depth 1`, `Depth 2`, …
+     subheadings; each three-part `full_name` is still a clickable
+     link to the target table detail page; the per-node depth
+     badge remains.
+
+8. **Open in notebook — admin happy path**.
+   - Assert: on `.../tables/orders` as `admin@pql.test` the
+     PQL-snippet card header shows an **Open in notebook**
+     button next to Copy.
+   - Action: click Open in notebook.
+   - Assert: the browser navigates to
+     `http://<host>:8888/lab/tree/scratch/demo_sales_orders_<hex>.ipynb`.
+     The notebook opens inside JupyterLab with a markdown header
+     `# Scratch: demo.sales.orders` and a single code cell
+     pre-filled with `pql.table("demo.sales.orders")`.
+   - Side-assert (server): `notebooks/scratch/` now contains the
+     generated file; `/notebooks/workspace` does **not** list
+     `scratch/` at the top level (skip-list gate).
+
+9. **Open in notebook — non-admin 403**.
+   - Prep: log out and log back in as the non-admin seed user
+     (`viewer@pql.test`, per `auth.md`).
+   - Assert: the Open in notebook button is **not rendered** on
+     `.../tables/orders`.
+   - Negative via direct request:
+     `fetch('/api/catalogs/demo/schemas/sales/tables/orders/open-in-notebook', {method: 'POST'})`
+     returns HTTP 403 with the standard
+     `{"error": {"code": "authorization_error", ...}}` envelope.
+
+## Playwright MCP script — Sprint 34 additions
+
+```text
+browser_navigate('http://127.0.0.1:8000/catalogs/demo')
+browser_snapshot()
+
+browser_navigate('http://127.0.0.1:8000/catalogs/demo/schemas/sales')
+browser_snapshot()
+
+browser_navigate('http://127.0.0.1:8000/catalogs/demo/schemas/sales/tables/orders')
+browser_wait_for(text='Preview')
+browser_network_requests()
+
+browser_evaluate('() => fetch("/api/catalogs/demo/schemas/sales/tables/orders/preview?limit=1000").then(r => r.json()).then(d => d.rows.length)')
+
+browser_click(element='Open in notebook button inside PQL Snippet card header')
+# Browser navigates to http://<host>:8888/lab/tree/scratch/...
+```
+
 ## Found bugs
+
+_Sprint 34 live-run placeholder — fill in once the playbook is
+replayed against a composed stack. Bugs surfaced here either land
+as fixes in the same commit or are recorded as `BUG-34-NN` TODOs
+at the bottom of this section, per Phase-7/8 discipline._
+
+## Found bugs (Sprint 22)
 
 _No PointlesSQL bugs surfaced on this playbook. Live run
 confirmed welcome screen, sidebar tree expansion,

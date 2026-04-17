@@ -56,15 +56,33 @@
     </div>
 </div>
 
-<div class="card mb-4" x-data="{ copied: false }">
+<div class="card mb-4" x-data="{ copied: false, opening: false }">
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>PQL Snippet</span>
-        <button class="btn btn-sm btn-outline-secondary"
-                @click="navigator.clipboard.writeText($refs.snippet.textContent); copied = true; setTimeout(() => copied = false, 1500)"
-                :title="copied ? 'Copied!' : 'Copy to clipboard'">
-            <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
-            <span x-text="copied ? 'Copied' : 'Copy'" class="ms-1"></span>
-        </button>
+        <div class="d-flex gap-2">
+            {% if is_admin %}
+            <button class="btn btn-sm btn-outline-primary"
+                    :disabled="opening"
+                    @click="opening = true;
+                            fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/open-in-notebook', {method: 'POST'})
+                              .then(r => r.ok ? r.json() : Promise.reject(r))
+                              .then(data => window.location.assign(data.lab_url))
+                              .catch(async err => {
+                                opening = false;
+                                const msg = err && err.json ? (await err.json().catch(() => null))?.error?.message : null;
+                                window.pqlToast && window.pqlToast.error(msg || 'Could not create scratch notebook');
+                              })">
+                <i class="bi" :class="opening ? 'bi-hourglass-split' : 'bi-journal-plus'"></i>
+                <span x-text="opening ? 'Opening…' : 'Open in notebook'" class="ms-1"></span>
+            </button>
+            {% endif %}
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="navigator.clipboard.writeText($refs.snippet.textContent); copied = true; setTimeout(() => copied = false, 1500)"
+                    :title="copied ? 'Copied!' : 'Copy to clipboard'">
+                <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
+                <span x-text="copied ? 'Copied' : 'Copy'" class="ms-1"></span>
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <pre class="mb-0"><code x-ref="snippet">from pointlessql import PQL
@@ -73,6 +91,87 @@ pql = PQL()
 df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></pre>
     </div>
 </div>
+
+<div class="card mb-4" x-data="tablePreview()" x-init="load()">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Preview</span>
+        <span class="text-muted small" x-show="ready">
+            <span x-text="rows.length"></span> of <span x-text="truncated ? '10+' : rows.length"></span> rows
+        </span>
+    </div>
+    <div class="card-body p-0">
+        <template x-if="loading">
+            <div class="p-3 text-muted small">
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                Loading preview…
+            </div>
+        </template>
+        <template x-if="error">
+            <div class="p-3 text-muted small fst-italic">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Preview unavailable: <span x-text="error"></span>
+            </div>
+        </template>
+        <template x-if="ready && rows.length === 0">
+            <div class="p-3 text-muted small fst-italic">Table is empty.</div>
+        </template>
+        <template x-if="ready && rows.length > 0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <template x-for="col in columns" :key="col">
+                                <th class="font-monospace small" x-text="col"></th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(row, i) in rows" :key="i">
+                            <tr>
+                                <template x-for="(cell, j) in row" :key="j">
+                                    <td class="small" x-text="cell === null ? '—' : String(cell)"></td>
+                                </template>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </template>
+    </div>
+</div>
+
+<script>
+function tablePreview() {
+    return {
+        loading: true,
+        ready: false,
+        error: null,
+        columns: [],
+        rows: [],
+        truncated: false,
+        async load() {
+            try {
+                const resp = await fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/preview', {
+                    headers: {'Accept': 'application/json'},
+                });
+                const data = await resp.json();
+                if (!resp.ok || data.error) {
+                    this.error = data.detail || data.error || 'Unable to load preview';
+                } else {
+                    this.columns = data.columns || [];
+                    this.rows = data.rows || [];
+                    this.truncated = !!data.truncated;
+                    this.ready = true;
+                }
+            } catch (err) {
+                this.error = err.message || 'Network error';
+            } finally {
+                this.loading = false;
+            }
+        },
+    };
+}
+</script>
 
 {% with tags_url="/api/tags/table/" ~ catalog_name ~ "." ~ schema_name ~ "." ~ table_name, tags=tags %}
     {% include "components/tags_editor.html" %}
@@ -105,26 +204,39 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
 </div>
 {% endif %}
 
-<div class="card">
+{% set _col_search = table.columns|length >= 20 %}
+<div class="card"
+    {% if _col_search %}x-data="listTable({searchPlaceholder: 'Search columns…', initialSort: {key: 'position', dir: 'asc'}})"{% endif %}>
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Columns</span>
         <span class="text-muted small">{{ table.columns|length }} total</span>
     </div>
+    {% if _col_search %}
+    <div class="pql-list-controls p-2 border-bottom">
+        <input type="search" class="form-control form-control-sm"
+               x-ref="search" x-model="query" x-on:input="onInput()"
+               :placeholder="searchPlaceholder">
+    </div>
+    {% endif %}
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-sm mb-0 align-middle">
                 <thead>
                     <tr>
-                        <th style="width: 3rem;">#</th>
-                        <th>Name</th>
-                        <th>Type</th>
-                        <th>Nullable</th>
+                        <th {% if _col_search %}data-sort-key="position"{% endif %} style="width: 3rem;">#</th>
+                        <th {% if _col_search %}data-sort-key="name"{% endif %}>Name</th>
+                        <th {% if _col_search %}data-sort-key="type"{% endif %}>Type</th>
+                        <th {% if _col_search %}data-sort-key="nullable"{% endif %}>Nullable</th>
                         <th>Comment</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for col in table.columns|sort(attribute="position") %}
-                    <tr>
+                    <tr {% if _col_search %}data-search="{{ col.name|lower }} {{ col.type_text|lower }} {{ (col.comment or '')|lower }}"
+                        data-sort-position="{{ col.position }}"
+                        data-sort-name="{{ col.name|lower }}"
+                        data-sort-type="{{ col.type_text|lower }}"
+                        data-sort-nullable="{{ '1' if col.nullable else '0' }}"{% endif %}>
                         <td class="text-muted small">{{ col.position }}</td>
                         <td class="font-monospace fw-medium">
                             {{ col.name }}

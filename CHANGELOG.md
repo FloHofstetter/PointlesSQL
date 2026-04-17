@@ -4,6 +4,60 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 34)
+
+- Catalog detail page (`/catalogs/{c}`) gains an inline Schemas card.
+  Populated by `client.list_schemas` folded into the existing
+  `asyncio.gather`; shows name (linked to schema detail), updated,
+  and comment. Per-schema table counts were dropped from the original
+  scope to avoid O(N) fan-out to soyuz-catalog — `schema.updated_at`
+  alone keeps the card useful without the extra round-trips.
+- Schema detail page (`/catalogs/{c}/schemas/{s}`) gains an inline
+  Tables card with name (linked to table detail), type, format, column
+  count, updated, and comment — sourced from the existing
+  `list_tables` bypass path that already returns full `TableInfo`
+  payloads.
+- Table detail page (`/catalogs/{c}/schemas/{s}/tables/{t}`) gains a
+  Preview card. New `GET /api/catalogs/{c}/schemas/{s}/tables/{t}/preview`
+  runs `PQL().table(...)` inside `asyncio.to_thread` under the
+  caller's `X-Principal`, caps at 10 rows server-side (no
+  client-tunable `?limit=`), emits `Cache-Control: no-store` so row
+  data does not persist in the browser disk cache after a permission
+  revocation, and degrades to a single-card error banner on any
+  engine/Delta failure instead of 500-ing the page. Engine-agnostic
+  via a `_preview_head` helper that keeps DuckDB lazy
+  (`rel.limit(n).df()`) and coerces polars through `to_pandas()`.
+  Values flow through `fastapi.encoders.jsonable_encoder` so Decimal,
+  datetime, bytes, and numpy scalars serialise cleanly.
+- Columns table on the table detail page gains client-side search +
+  sort via Sprint-33 `listTable()` when `columns|length >= 20`.
+  Sortable keys: position, name, type, nullable. Below the threshold
+  the table stays server-rendered unchanged (progressive enhancement).
+- Lineage card (`components/lineage_card.html`) now groups upstream
+  and downstream nodes by depth under per-depth subheadings
+  ("Depth 1", "Depth 2", …) instead of a flat `sort(depth)` list
+  with padding-left indent. The per-node depth badge stays —
+  redundant-but-defensive survives a future collapse/filter. Node
+  links (3-part `catalog.schema.table` names → table detail) were
+  already present from an earlier sprint and are unchanged.
+- "Open in notebook" button on the PQL snippet card (admin-only).
+  New `POST /api/catalogs/{c}/schemas/{s}/tables/{t}/open-in-notebook`
+  sanitises identifiers with `re.sub(r"[^A-Za-z0-9_-]", "_", …)`,
+  appends `secrets.token_hex(3)` to defeat double-click filename
+  collisions, writes an `nbformat.v4` notebook (markdown header +
+  a `pql.table(...)`-pre-filled code cell) to
+  `{notebooks_dir}/scratch/…`, re-validates the path via
+  `resolve_upload_target` to block traversal escapes, and returns a
+  `lab_url` the Alpine handler navigates to with
+  `window.location.assign`. Writes an `open_in_notebook` audit entry.
+- `notebook_workspace` skip-list extended: `scratch/` joins `runs/`
+  as a top-level directory excluded from `list_workspace_tree` so
+  machine-generated scratch notebooks never pollute the
+  user-authored workspace view. Skip logic rewritten to match by
+  name against a `_SKIP_TOP_LEVEL_DIRS` frozenset scoped to the
+  notebooks root — same behaviour as before for `runs/`, adds
+  `scratch/` without duplicating the absolute-path equality check.
+
 ### Added (Sprint 33)
 
 - Shared `frontend/js/list_table.js` — `window.listTable(config)`

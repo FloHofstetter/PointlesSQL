@@ -14,6 +14,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import Body, FastAPI, File, Form, Request, UploadFile
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -51,7 +52,7 @@ from pointlessql.services.authorization import (
     has_privilege,
 )
 from pointlessql.services.jupyter import managed_jupyter
-from pointlessql.services.soyuz_client import make_soyuz_client
+from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
@@ -316,6 +317,175 @@ async def api_tables(
     return await client.list_tables(catalog_name, schema_name)
 
 
+_PREVIEW_ROW_LIMIT = 10
+
+
+def _preview_head(frame: Any, n: int) -> Any:
+    """Return at most *n* rows of *frame* as a pandas DataFrame.
+
+    Engine-aware: DuckDB relations expose ``limit``; polars frames
+    expose ``to_pandas``; pandas stays untouched. Keeps DuckDB lazy
+    instead of materialising the whole relation.
+
+    Args:
+        frame: Whatever :meth:`pointlessql.pql.pql.PQL.table` returned —
+            a pandas/polars frame or a DuckDB relation.
+        n: Maximum number of rows to return.
+
+    Returns:
+        A pandas DataFrame holding at most *n* rows.
+    """
+    import pandas as pd
+
+    if hasattr(frame, "limit") and hasattr(frame, "df"):
+        return frame.limit(n).df()
+    if hasattr(frame, "head"):
+        head = frame.head(n)
+        if hasattr(head, "to_pandas"):
+            return head.to_pandas()
+        return head
+    return pd.DataFrame(frame).head(n)
+
+
+def _run_table_preview(
+    settings: Settings, principal: str, full_name: str
+) -> dict[str, Any]:
+    """Read up to 10 rows of a Delta table and serialise them.
+
+    Runs inside :func:`asyncio.to_thread` so the sync :class:`PQL`
+    helper does not block the event loop. Degrades gracefully on any
+    failure: a broken table must fail this card, not the page.
+
+    Args:
+        settings: Application settings (for soyuz URL + engine).
+        principal: User email forwarded as ``X-Principal``. Empty
+            string falls back to the anonymous client.
+        full_name: Three-part table name ``catalog.schema.table``.
+
+    Returns:
+        Either ``{"columns": [...], "rows": [...], "truncated": bool}``
+        on success, or ``{"error": "preview_unavailable", "detail":
+        str}`` on failure.
+    """
+    from pointlessql.pql.pql import PQL
+
+    try:
+        client = (
+            make_principal_client(settings, principal)
+            if principal
+            else make_soyuz_client(settings)
+        )
+        pql = PQL(client=client, settings=settings)
+        frame = pql.table(full_name)
+        df = _preview_head(frame, _PREVIEW_ROW_LIMIT + 1)
+    except Exception as exc:  # noqa: BLE001 — degrade preview card
+        logger.warning("table preview failed for %s: %s", full_name, exc)
+        return {"error": "preview_unavailable", "detail": str(exc)}
+    truncated = len(df) > _PREVIEW_ROW_LIMIT
+    df = df.head(_PREVIEW_ROW_LIMIT)
+    columns = [str(c) for c in df.columns]
+    rows = df.values.tolist()
+    return jsonable_encoder(
+        {"columns": columns, "rows": rows, "truncated": truncated}
+    )
+
+
+@app.get(
+    "/api/catalogs/{catalog_name}/schemas/{schema_name}"
+    "/tables/{table_name}/preview"
+)
+async def api_table_preview(
+    request: Request,
+    catalog_name: str,
+    schema_name: str,
+    table_name: str,
+) -> Response:
+    """Return up to 10 rows from a Delta table as JSON.
+
+    The row limit is fixed at 10 server-side — no client-tunable
+    query param, to keep one fewer attack surface. Response carries
+    ``Cache-Control: no-store`` so row data does not sit in the
+    browser disk cache after a permission revocation.
+    """
+    client = _get_uc_client(request)
+    user = _get_user(request)
+    full_name = f"{catalog_name}.{schema_name}.{table_name}"
+    effective = await client.get_effective_permissions("table", full_name)
+    check_privilege_from_effective(
+        effective,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        "table",
+        full_name,
+        SELECT,
+    )
+    settings: Settings = request.app.state.settings
+    payload = await asyncio.to_thread(
+        _run_table_preview, settings, user.get("email", ""), full_name
+    )
+    return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
+
+
+@app.post(
+    "/api/catalogs/{catalog_name}/schemas/{schema_name}"
+    "/tables/{table_name}/open-in-notebook"
+)
+async def api_open_in_notebook(
+    request: Request,
+    catalog_name: str,
+    schema_name: str,
+    table_name: str,
+) -> dict[str, Any]:
+    """Create a scratch notebook pre-filled with ``pql.table(...)``.
+
+    Admin-only to keep the workspace clean. Writes a minimal
+    nbformat-4.5 notebook under ``{notebooks_dir}/scratch/`` with a
+    markdown header and a single code cell that reads the requested
+    table. Returns the on-disk path plus a JupyterLab deep-link the
+    client navigates to with ``window.location.assign``.
+    """
+    import secrets
+
+    import nbformat
+
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+    full_name = f"{catalog_name}.{schema_name}.{table_name}"
+
+    sanitiser = re.compile(r"[^A-Za-z0-9_-]")
+    stem = "_".join(
+        sanitiser.sub("_", part) for part in (catalog_name, schema_name, table_name)
+    )
+    filename = f"{stem}_{secrets.token_hex(3)}.ipynb"
+    scratch_dir = settings.notebooks_dir / "scratch"
+    scratch_dir.mkdir(parents=True, exist_ok=True)
+    target = notebook_workspace_service.resolve_upload_target(
+        settings.notebooks_dir, f"scratch/{filename}"
+    )
+
+    nb = nbformat.v4.new_notebook()
+    nb.cells = [
+        nbformat.v4.new_markdown_cell(
+            f"# Scratch: `{full_name}`\n\n"
+            "Generated from the PointlesSQL table detail page."
+        ),
+        nbformat.v4.new_code_cell(
+            "from pointlessql import PQL\n\n"
+            "pql = PQL()\n"
+            f'df = pql.table("{full_name}")\n'
+            "df.head()"
+        ),
+    ]
+    with target.open("w", encoding="utf-8") as fh:
+        nbformat.write(nb, fh)
+
+    _audit(request, "open_in_notebook", f"table:{full_name}", f"scratch/{filename}")
+    host = request.url.hostname or "localhost"
+    relative = f"scratch/{filename}"
+    lab_url = f"http://{host}:{settings.jupyter_port}/lab/tree/{relative}"
+    return {"path": relative, "lab_url": lab_url}
+
+
 @app.post("/api/catalogs")
 async def api_create_catalog(
     request: Request, body: dict[str, Any] = Body(...)
@@ -574,13 +744,15 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
     tags: list[dict[str, Any]] = []
     permissions: list[dict[str, Any]] = []
     effective: list[dict[str, Any]] = []
+    schemas: list[dict[str, Any]] = []
     error: str | None = None
     try:
-        catalog, tags, permissions, effective = await asyncio.gather(
+        catalog, tags, permissions, effective, schemas = await asyncio.gather(
             client.get_catalog(catalog_name),
             client.get_tags("catalog", catalog_name),
             client.get_permissions("catalog", catalog_name),
             client.get_effective_permissions("catalog", catalog_name),
+            client.list_schemas(catalog_name),
         )
     except CatalogUnavailableError as exc:
         error = exc.detail
@@ -629,6 +801,7 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
             "effective": effective,
             "can_manage": can_manage,
             "sync_runs": sync_runs,
+            "schemas": schemas,
             "is_admin": user.get("is_admin", False),
             "error": error,
             "active_catalog": catalog_name,
@@ -650,14 +823,16 @@ async def schema_detail(request: Request, catalog_name: str, schema_name: str) -
     tags: list[dict[str, Any]] = []
     permissions: list[dict[str, Any]] = []
     effective: list[dict[str, Any]] = []
+    tables: list[dict[str, Any]] = []
     error: str | None = None
     full_name = f"{catalog_name}.{schema_name}"
     try:
-        schema, tags, permissions, effective = await asyncio.gather(
+        schema, tags, permissions, effective, tables = await asyncio.gather(
             client.get_schema(catalog_name, schema_name),
             client.get_tags("schema", full_name),
             client.get_permissions("schema", full_name),
             client.get_effective_permissions("schema", full_name),
+            client.list_tables(catalog_name, schema_name),
         )
     except CatalogUnavailableError as exc:
         error = exc.detail
@@ -688,6 +863,7 @@ async def schema_detail(request: Request, catalog_name: str, schema_name: str) -
             "tags": tags,
             "permissions": permissions,
             "effective": effective,
+            "tables": tables,
             "can_manage": can_manage,
             "error": error,
             "active_catalog": catalog_name,
@@ -757,6 +933,7 @@ async def table_detail(
             "effective": effective,
             "lineage": lineage,
             "can_manage": can_manage,
+            "is_admin": user.get("is_admin", False),
             "error": error,
             "active_catalog": catalog_name,
             "active_schema": schema_name,

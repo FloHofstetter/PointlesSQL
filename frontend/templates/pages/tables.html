@@ -54,6 +54,57 @@
     </div>
 </div>
 
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Tables</span>
+        <span class="text-muted small">{{ tables|length }} total</span>
+    </div>
+    <div class="card-body p-0">
+        {% if tables %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Format</th>
+                        <th>Columns</th>
+                        <th>Updated</th>
+                        <th>Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tbl in tables %}
+                    <tr>
+                        <td class="font-monospace">
+                            <a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ tbl.name }}" class="text-decoration-none">{{ tbl.name }}</a>
+                        </td>
+                        <td>
+                            {% if tbl.table_type %}
+                            <span class="badge bg-primary">{{ tbl.table_type }}</span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if tbl.data_source_format %}
+                            <span class="badge bg-info text-dark">{{ tbl.data_source_format }}</span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        <td class="text-muted small">{{ (tbl.columns or [])|length }}</td>
+                        <td class="text-muted small">{{ tbl.updated_at|epoch_ms }}</td>
+                        <td class="text-muted small">{{ tbl.comment or "—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        {% with flush=true, icon="bi-table", title="No tables yet", message="Tables registered under this schema will appear here." %}
+            {% include "components/empty.html" %}
+        {% endwith %}
+        {% endif %}
+    </div>
+</div>
+
 {% with tags_url="/api/tags/schema/" ~ catalog_name ~ "." ~ schema_name, tags=tags %}
     {% include "components/tags_editor.html" %}
 {% endwith %}

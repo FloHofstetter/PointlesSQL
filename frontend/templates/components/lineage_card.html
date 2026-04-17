@@ -1,5 +1,5 @@
 {#
-  Lineage card showing upstream and downstream dependencies.
+  Lineage card showing upstream and downstream dependencies, grouped by depth.
 
   Params:
     lineage — dict with "upstream" and "downstream" keys, each containing
@@ -11,6 +11,32 @@
 {% set down_nodes = downstream.get("nodes", []) %}
 {% set up_edges = upstream.get("edges", []) %}
 {% set down_edges = downstream.get("edges", []) %}
+
+{% macro render_node(node, edges, side) %}
+<li class="d-flex align-items-center gap-2 py-1">
+    <span class="badge bg-secondary" title="Depth {{ node.depth }}">{{ node.depth }}</span>
+    {% if node.get("full_name") %}
+    {% set parts = node.full_name.split(".") %}
+    {% if parts|length == 3 %}
+    <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}"
+       class="font-monospace small text-decoration-none">{{ node.full_name }}</a>
+    {% else %}
+    <span class="font-monospace small">{{ node.full_name }}</span>
+    {% endif %}
+    {% else %}
+    <span class="font-monospace small text-muted">{{ node.securable_id }}</span>
+    {% endif %}
+    {% if side == "up" %}
+    {% for edge in edges if edge.target_securable_id == node.securable_id and edge.get("operation") %}
+    <span class="badge bg-info text-dark small">{{ edge.operation }}</span>
+    {% endfor %}
+    {% else %}
+    {% for edge in edges if edge.source_securable_id == node.securable_id and edge.get("operation") %}
+    <span class="badge bg-info text-dark small">{{ edge.operation }}</span>
+    {% endfor %}
+    {% endif %}
+</li>
+{% endmacro %}
 
 <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between">
@@ -26,31 +52,19 @@
 
         {% if up_nodes %}
         <div class="p-3">
-            <h6 class="text-muted small text-uppercase mb-2">
+            <h6 class="text-muted small text-uppercase mb-3">
                 <i class="bi bi-arrow-up-circle me-1"></i>Upstream
             </h6>
-            <ul class="list-unstyled mb-0">
-                {% for node in up_nodes|sort(attribute="depth") %}
-                <li class="d-flex align-items-center gap-2 py-1"
-                    style="padding-left: {{ node.depth * 1.5 }}rem;">
-                    <span class="badge bg-secondary">{{ node.depth }}</span>
-                    {% if node.get("full_name") %}
-                    {% set parts = node.full_name.split(".") %}
-                    {% if parts|length == 3 %}
-                    <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}"
-                       class="font-monospace small text-decoration-none">{{ node.full_name }}</a>
-                    {% else %}
-                    <span class="font-monospace small">{{ node.full_name }}</span>
-                    {% endif %}
-                    {% else %}
-                    <span class="font-monospace small text-muted">{{ node.securable_id }}</span>
-                    {% endif %}
-                    {% for edge in up_edges if edge.target_securable_id == node.securable_id and edge.get("operation") %}
-                    <span class="badge bg-info text-dark small">{{ edge.operation }}</span>
+            {% for depth, group in up_nodes|sort(attribute="depth")|groupby("depth") %}
+            <div class="mb-3">
+                <div class="text-muted small fw-semibold mb-1">Depth {{ depth }}</div>
+                <ul class="list-unstyled mb-0 ps-2 border-start">
+                    {% for node in group %}
+                    {{ render_node(node, up_edges, "up") }}
                     {% endfor %}
-                </li>
-                {% endfor %}
-            </ul>
+                </ul>
+            </div>
+            {% endfor %}
         </div>
         {% endif %}
 
@@ -60,31 +74,19 @@
 
         {% if down_nodes %}
         <div class="p-3">
-            <h6 class="text-muted small text-uppercase mb-2">
+            <h6 class="text-muted small text-uppercase mb-3">
                 <i class="bi bi-arrow-down-circle me-1"></i>Downstream
             </h6>
-            <ul class="list-unstyled mb-0">
-                {% for node in down_nodes|sort(attribute="depth") %}
-                <li class="d-flex align-items-center gap-2 py-1"
-                    style="padding-left: {{ node.depth * 1.5 }}rem;">
-                    <span class="badge bg-secondary">{{ node.depth }}</span>
-                    {% if node.get("full_name") %}
-                    {% set parts = node.full_name.split(".") %}
-                    {% if parts|length == 3 %}
-                    <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}"
-                       class="font-monospace small text-decoration-none">{{ node.full_name }}</a>
-                    {% else %}
-                    <span class="font-monospace small">{{ node.full_name }}</span>
-                    {% endif %}
-                    {% else %}
-                    <span class="font-monospace small text-muted">{{ node.securable_id }}</span>
-                    {% endif %}
-                    {% for edge in down_edges if edge.source_securable_id == node.securable_id and edge.get("operation") %}
-                    <span class="badge bg-info text-dark small">{{ edge.operation }}</span>
+            {% for depth, group in down_nodes|sort(attribute="depth")|groupby("depth") %}
+            <div class="mb-3">
+                <div class="text-muted small fw-semibold mb-1">Depth {{ depth }}</div>
+                <ul class="list-unstyled mb-0 ps-2 border-start">
+                    {% for node in group %}
+                    {{ render_node(node, down_edges, "down") }}
                     {% endfor %}
-                </li>
-                {% endfor %}
-            </ul>
+                </ul>
+            </div>
+            {% endfor %}
         </div>
         {% endif %}
 

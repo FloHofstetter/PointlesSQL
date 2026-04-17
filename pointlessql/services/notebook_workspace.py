@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 _RUNS_DIR_NAME = "runs"
+_SCRATCH_DIR_NAME = "scratch"
 _NOTEBOOK_SUFFIX = ".ipynb"
+_SKIP_TOP_LEVEL_DIRS = frozenset({_RUNS_DIR_NAME, _SCRATCH_DIR_NAME})
 
 
 def _is_parameters_tagged(notebook_path: Path) -> bool:
@@ -86,7 +88,7 @@ def _walk(directory: Path, notebooks_root: Path) -> list[dict[str, Any]]:
 
     for entry in sorted(directory.iterdir(), key=lambda p: p.name.lower()):
         if entry.is_dir():
-            if entry == notebooks_root / _RUNS_DIR_NAME:
+            if directory == notebooks_root and entry.name in _SKIP_TOP_LEVEL_DIRS:
                 continue
             if entry.name.startswith("."):
                 continue
@@ -116,8 +118,9 @@ def _walk(directory: Path, notebooks_root: Path) -> list[dict[str, Any]]:
 def list_workspace_tree(notebooks_dir: Path) -> list[dict[str, Any]]:
     """Return a nested directory listing of ``notebooks_dir``.
 
-    The top-level ``runs/`` directory is skipped because it holds
-    Papermill's executor output, not user-authored notebooks.
+    Top-level ``runs/`` (Papermill executor output) and ``scratch/``
+    (Sprint-34 Open-in-notebook output) are skipped because they hold
+    machine-generated notebooks, not user-authored ones.
 
     Args:
         notebooks_dir: Absolute path to the notebooks root.

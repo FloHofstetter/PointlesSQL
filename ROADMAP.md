@@ -994,21 +994,52 @@ PointlesSQL
 │   │       `frontend/js/job_row_actions.js` is the Alpine
 │   │       factory behind them
 │   │
-│   ├── Sprint 34 — Catalog / schema / table experience    ⏳ planned
-│   │   ├── Catalog detail shows schemas **inline** (table card
-│   │   │   with per-schema table-count + last-updated)
-│   │   ├── Schema detail shows tables inline
-│   │   ├── Table detail — new Preview card: `GET /api/tables/…
-│   │   │   /preview?limit=10` via `PQL().table(…)`, capped at
-│   │   │   10 rows server-side regardless of client hint
-│   │   ├── Columns table gains client-side search (shown only
-│   │   │   when ≥ 20 columns)
-│   │   ├── Lineage card becomes clickable upstream/downstream
-│   │   │   links, grouped by depth
-│   │   └── "Open in notebook" quick-action on table detail —
-│   │       creates scratch notebook pre-filled with
-│   │       `pql.table("c.s.t")`, redirects into JupyterLab
-│   │       (admin-only to keep the workspace clean)
+│   ├── Sprint 34 — Catalog / schema / table experience    ✅ done
+│   │   ├── Catalog detail gains an inline Schemas card (name ·
+│   │   │   updated · comment) sourced from the existing
+│   │   │   `client.list_schemas` via the detail-page
+│   │   │   `asyncio.gather`. Planned per-schema table count
+│   │   │   dropped to avoid an O(N) fan-out to soyuz-catalog —
+│   │   │   `schema.updated_at` alone keeps the card useful
+│   │   │   without the extra round-trips
+│   │   ├── Schema detail gains an inline Tables card (name ·
+│   │   │   type · format · column-count · updated · comment)
+│   │   │   sourced from the existing `list_tables` bypass path,
+│   │   │   which already returns full `TableInfo` payloads so
+│   │   │   the column count is free
+│   │   ├── Table detail — new Preview card. `GET /api/catalogs/
+│   │   │   {c}/schemas/{s}/tables/{t}/preview` runs
+│   │   │   `PQL().table(...)` inside `asyncio.to_thread` under
+│   │   │   the caller's `X-Principal`, caps at 10 rows
+│   │   │   server-side (no client-tunable `?limit=`), emits
+│   │   │   `Cache-Control: no-store`, and degrades to a
+│   │   │   single-card error state on any engine/Delta failure
+│   │   │   rather than 500-ing the page. Engine-agnostic via a
+│   │   │   `_preview_head` helper that keeps DuckDB lazy
+│   │   │   (`rel.limit(n).df()`) and coerces polars through
+│   │   │   `to_pandas()`
+│   │   ├── Columns table gains client-side search + sort via
+│   │   │   Sprint-33 `listTable()` when `columns|length >= 20`;
+│   │   │   sortable keys are position / name / type / nullable.
+│   │   │   Below the threshold the table stays server-rendered
+│   │   │   unchanged (progressive enhancement)
+│   │   ├── Lineage card replaces its flat `sort(depth)`
+│   │   │   indented list with per-depth subheading groups.
+│   │   │   Depth badge per node stays — redundant-but-defensive
+│   │   │   survives a future collapse/filter. Clickable 3-part
+│   │   │   links were already there from an earlier sprint
+│   │   └── Admin-only "Open in notebook" button on the PQL
+│   │       snippet card. `POST /api/catalogs/…/open-in-notebook`
+│   │       sanitises identifiers with `re.sub(r"[^A-Za-z0-9_-]",
+│   │       "_", …)`, appends `secrets.token_hex(3)` to defeat
+│   │       double-click collisions, writes an `nbformat.v4`
+│   │       notebook to `{notebooks_dir}/scratch/…`, re-validates
+│   │       with `resolve_upload_target`, and returns a
+│   │       `lab_url` the Alpine handler navigates to via
+│   │       `window.location.assign`. `scratch/` is added to the
+│   │       Sprint-27 workspace-tree skip-list alongside `runs/`
+│   │       so generated scratch notebooks never pollute the
+│   │       user-authored workspace view
 │   │
 │   ├── Sprint 35 — Mobile + responsive                    ⏳ planned
 │   │   ├── Breakpoint tokens (`--pql-breakpoint-sm/md/lg/xl`)

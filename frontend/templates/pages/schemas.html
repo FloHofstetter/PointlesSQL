@@ -68,6 +68,43 @@
 {% endwith %}
 {% endif %}
 
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span>Schemas</span>
+        <span class="text-muted small">{{ schemas|length }} total</span>
+    </div>
+    <div class="card-body p-0">
+        {% if schemas %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Updated</th>
+                        <th>Comment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sch in schemas %}
+                    <tr>
+                        <td class="font-monospace">
+                            <a href="/catalogs/{{ catalog.name }}/schemas/{{ sch.name }}" class="text-decoration-none">{{ sch.name }}</a>
+                        </td>
+                        <td class="text-muted small">{{ sch.updated_at|epoch_ms }}</td>
+                        <td class="text-muted small">{{ sch.comment or "—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        {% with flush=true, icon="bi-folder2-open", title="No schemas yet", message="Create a schema to start organising tables." %}
+            {% include "components/empty.html" %}
+        {% endwith %}
+        {% endif %}
+    </div>
+</div>
+
 {% with tags_url="/api/tags/catalog/" ~ catalog.name, tags=tags %}
     {% include "components/tags_editor.html" %}
 {% endwith %}
