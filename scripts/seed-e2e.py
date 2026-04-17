@@ -22,6 +22,7 @@ Run it with::
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -230,6 +231,63 @@ def _table_exists(pql: PQL, full_name: str) -> bool:
     return True
 
 
+SMOKE_PAPERMILL_NOTEBOOK = {
+    "cells": [
+        {
+            "cell_type": "code",
+            "metadata": {"tags": ["parameters"]},
+            "source": ['message = "hello"\n'],
+            "outputs": [],
+            "execution_count": None,
+        },
+        {
+            "cell_type": "code",
+            "metadata": {},
+            "source": [
+                "import os\n",
+                "from pointlessql.pql import PQL\n",
+                "print('principal=', os.environ.get('POINTLESSQL_PRINCIPAL'))\n",
+                "print('message=', message)\n",
+                "print('catalogs=', PQL().list_catalogs())\n",
+            ],
+            "outputs": [],
+            "execution_count": None,
+        },
+    ],
+    "metadata": {
+        "kernelspec": {
+            "name": "python3",
+            "display_name": "Python 3",
+            "language": "python",
+        },
+        "language_info": {"name": "python"},
+    },
+    "nbformat": 4,
+    "nbformat_minor": 5,
+}
+
+
+def _ensure_smoke_notebook() -> None:
+    """Drop ``smoke_papermill.ipynb`` into the notebooks dir idempotently.
+
+    The Sprint 24 ``notebook-jobs.md`` playbook expects a notebook with
+    a ``parameters``-tagged first cell plus a body cell that prints the
+    forwarded principal and a ``pql.list_catalogs()`` result. Writes to
+    ``$POINTLESSQL_NOTEBOOKS_DIR/smoke_papermill.ipynb`` (default
+    ``notebooks/smoke_papermill.ipynb`` — inside the container this is
+    ``/app/notebooks/smoke_papermill.ipynb`` via the compose bind
+    mount).
+    """
+    nb_root = Path(os.environ.get("POINTLESSQL_NOTEBOOKS_DIR", "notebooks"))
+    nb_root.mkdir(parents=True, exist_ok=True)
+    target = nb_root / "smoke_papermill.ipynb"
+    if target.exists():
+        print(f"  = notebook {target} exists")
+        return
+    target.write_text(json.dumps(SMOKE_PAPERMILL_NOTEBOOK, indent=1) + "\n")
+    print(f"  + notebook {target} written")
+
+
 def main() -> int:
     """Run the full seed and print a one-line summary."""
     print(f"seeding against {os.environ.get('POINTLESSQL_SOYUZ_CATALOG_URL', 'http://127.0.0.1:8080')}")
@@ -244,10 +302,11 @@ def main() -> int:
 
     new_tables = _seed_tables(pql)
     _ensure_connection(client)
+    _ensure_smoke_notebook()
 
     print(
         f"seed ok — 1 catalog, {len(SCHEMAS)} schemas, 4 tables "
-        f"({new_tables} newly written), 1 connection"
+        f"({new_tables} newly written), 1 connection, 1 notebook"
     )
     return 0
 

@@ -210,6 +210,48 @@ browser_snapshot()                 # verify rendered executed cells
 
 ## Found bugs
 
-_(Filled in during the live replay. Keep the same discipline as
-Sprint 22/23: same-commit fixes where trivial, otherwise a
-`BUG-24-NN` TODO with a named fix location.)_
+No bugs surfaced in the Sprint 24 live replay against the e2e
+overlay. All four parts and the four negative cases landed on the
+error strings documented above with no surprises.
+
+Live-run notes (no bugs):
+
+- Part A: the modal's `kind` select exposes `dag` and `papermill`;
+  flipping to `papermill` hides the DAG textarea
+  (`offsetParent === null`) and reveals the `notebook_path` +
+  `parameters` inputs. Submit built a payload with
+  `kind: "papermill"` and `run_as_user_id` set to the current
+  admin's id — verified by fetching `/api/jobs/{id}` after create.
+- Part B: a seeded `smoke_papermill.ipynb` with a
+  `parameters`-tagged cell + a body cell that prints
+  `os.environ['POINTLESSQL_PRINCIPAL']` and
+  `PQL().list_catalogs()` executed end-to-end in ~6.7 s. The
+  output notebook at `/app/notebooks/runs/{run_id}.ipynb` carried
+  `principal= <run-as-user-email>`, the papermill-injected
+  `# Parameters` cell with the submitted override, and a
+  catalog list served via the principal-forwarded client — all
+  three layers of Sprint 24 (executor, env-var hand-off, PQL
+  principal inheritance) verified at once.
+- Part C: the runs-table row gains a trailing "Open in JupyterLab"
+  cell with `href="http://<host>:8888/lab/tree/runs/{run_id}.ipynb"`.
+  JupyterLab's contents API (`/api/contents/runs/{run_id}.ipynb`)
+  returns the executed notebook JSON including the cell outputs.
+- Part D: all four negative cases produced the expected error
+  strings:
+  - Missing `notebookPath` — client-side Alpine guard:
+    `"notebook path is required"`, modal stays open, no POST.
+  - `..` traversal — Job row *is* created (API doesn't speculate
+    on executor-specific config), the Run-now landing flips
+    status to `failed` with
+    `"papermill notebook_path '../secret.ipynb' escapes the
+    notebooks directory"`.
+  - Missing file — same shape, error
+    `"papermill notebook not found: 'does_not_exist.ipynb'"`.
+  - `1 / 0` failing cell — status `failed` with
+    `"papermill execution failed in cell 1: ZeroDivisionError:
+    division by zero"`. The partial output at
+    `notebooks/runs/{run_id}.ipynb` carries the full traceback
+    in the offending cell's `outputs` array — visible when the
+    "Open in JupyterLab" link is followed.
+- Cross-check: the link renders on `failed` runs too, matching the
+  `run.status in ("succeeded", "failed")` template guard.

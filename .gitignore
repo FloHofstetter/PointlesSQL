@@ -22,3 +22,12 @@ node_modules/
 # Delta files or the Playwright MCP artefact directory.
 warehouse/
 .playwright-mcp/
+
+# Papermill job output (Sprint 24). The executor writes per-run
+# ipynb copies into notebooks/runs/ — ephemeral artefacts tied to
+# a specific run id, never tracked. The seeded playbook notebooks
+# are regenerated on demand by scripts/seed-e2e.py; the canonical
+# content lives in the script, not the workspace.
+notebooks/runs/
+notebooks/smoke_papermill.ipynb
+notebooks/bad_papermill.ipynb
