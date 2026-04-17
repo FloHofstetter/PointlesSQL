@@ -665,7 +665,7 @@ PointlesSQL
 │   │   │   `/lab/tree/runs/{run_id}.ipynb`
 │   │   └── `docs/e2e-walkthroughs/notebook-jobs.md` playbook
 │   │
-│   ├── Sprint 25 — Typed parameters UI                       ✅ done
+│   ├── Sprint 25 — Typed parameters UI                       ✅ done (d15e7ef)
 │   │   ├── `GET /api/notebooks/inspect` using
 │   │   │   `papermill.inspect_notebook` to return
 │   │   │   `[{name, default, inferred_type, help}]`
