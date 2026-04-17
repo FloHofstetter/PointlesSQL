@@ -845,7 +845,7 @@ PointlesSQL
 │   │   ruff+pyright+pydoclint+alembic gate plus a Playwright
 │   │   replay of the touched surface.
 │   │
-│   ├── Sprint 29 — Design-system foundation              ✅ done (pending)
+│   ├── Sprint 29 — Design-system foundation              ✅ done (75b4dd8)
 │   │   ├── CSS variable system: spacing (`--pql-space-1..8`),
 │   │   │   typography (`--pql-text-xs..3xl`), radius, elevation,
 │   │   │   motion — one token scale per concern, no magic values
@@ -862,7 +862,7 @@ PointlesSQL
 │   │   │   later sprints)
 │   │   └── `docs/design-tokens.md` reference
 │   │
-│   ├── Sprint 30 — Shell + empty states + error pages    ⏳ planned
+│   ├── Sprint 30 — Shell + empty states + error pages    ✅ done (pending)
 │   │   ├── New app shell in `base.html` — header + collapsible
 │   │   │   sidebar + main, mobile-aware grid (`minmax(0, 1fr)`
 │   │   │   on narrow viewports, `auto 1fr` on wide)

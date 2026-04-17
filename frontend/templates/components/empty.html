@@ -1,0 +1,43 @@
+{#
+    Render an empty-state panel for list pages and in-card no-data surfaces.
+
+    Usage::
+
+        {% include "components/empty.html" with context %}
+
+    Context variables (all optional except ``title``):
+      - ``icon``         Bootstrap Icons class (default ``bi-inbox``).
+      - ``title``        Headline, one short sentence.
+      - ``message``      Secondary detail line.
+      - ``action_href``  Optional CTA target.
+      - ``action_label`` Optional CTA label (required if ``action_href`` set).
+      - ``variant``      One of ``success|warning|danger|info`` — tints the
+                         icon. Omit for neutral.
+      - ``flush``        If truthy, drops the surrounding card so the block
+                         can sit inside an existing ``.pql-card`` / ``.card``.
+#}
+{% set _icon = icon or "bi-inbox" %}
+{% set _variant_class = " pql-empty--" ~ variant if variant else "" %}
+{% if flush %}
+<div class="pql-empty{{ _variant_class }}">
+    <i class="bi {{ _icon }} pql-empty__icon" aria-hidden="true"></i>
+    {% if title %}<p class="pql-empty__title">{{ title }}</p>{% endif %}
+    {% if message %}<p class="pql-empty__message">{{ message }}</p>{% endif %}
+    {% if action_href and action_label %}
+    <a href="{{ action_href }}" class="btn btn-outline-primary btn-sm pql-empty__action">
+        {{ action_label }}
+    </a>
+    {% endif %}
+</div>
+{% else %}
+<div class="pql-card pql-empty{{ _variant_class }}">
+    <i class="bi {{ _icon }} pql-empty__icon" aria-hidden="true"></i>
+    {% if title %}<p class="pql-empty__title">{{ title }}</p>{% endif %}
+    {% if message %}<p class="pql-empty__message">{{ message }}</p>{% endif %}
+    {% if action_href and action_label %}
+    <a href="{{ action_href }}" class="btn btn-outline-primary btn-sm pql-empty__action">
+        {{ action_label }}
+    </a>
+    {% endif %}
+</div>
+{% endif %}

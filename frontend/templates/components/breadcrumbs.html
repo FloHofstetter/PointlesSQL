@@ -1,0 +1,30 @@
+{#
+    Render a breadcrumb trail from a ``breadcrumbs`` context list.
+
+    Usage::
+
+        {% set breadcrumbs = [
+            {"label": "Home", "href": "/"},
+            {"label": "Jobs"},
+        ] %}
+        {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+    Items with a truthy ``href`` render as links. The final item (or any
+    item without ``href``) renders as the active terminal crumb.
+#}
+{% if breadcrumbs %}
+<nav aria-label="breadcrumb" class="pql-breadcrumbs">
+    <ol class="breadcrumb mb-0 ms-3">
+        {% for crumb in breadcrumbs %}
+        {% set is_last = loop.last %}
+        {% if crumb.href and not is_last %}
+        <li class="breadcrumb-item">
+            <a href="{{ crumb.href }}" class="text-decoration-none">{{ crumb.label }}</a>
+        </li>
+        {% else %}
+        <li class="breadcrumb-item active" aria-current="page">{{ crumb.label }}</li>
+        {% endif %}
+        {% endfor %}
+    </ol>
+</nav>
+{% endif %}

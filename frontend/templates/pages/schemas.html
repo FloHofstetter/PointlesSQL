@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ catalog_name }} · PointlesSQL{% endblock %}
 
-{% block breadcrumbs %}
-<ol class="breadcrumb mb-0 ms-3">
-    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
-    <li class="breadcrumb-item active">{{ catalog_name }}</li>
-</ol>
-{% endblock %}
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": catalog_name},
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4">

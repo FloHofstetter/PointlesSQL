@@ -1,12 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Jobs · PointlesSQL{% endblock %}
 
-{% block breadcrumbs %}
-<ol class="breadcrumb mb-0 ms-3">
-    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
-    <li class="breadcrumb-item active">Jobs</li>
-</ol>
-{% endblock %}
+{% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Jobs"}] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
@@ -55,7 +51,11 @@
             </table>
         </div>
         {% else %}
-        <div class="p-3 text-muted small fst-italic">No jobs configured.</div>
+        {% with flush=True, icon="bi-clock-history",
+                title="No jobs yet",
+                message="Schedule a job from the Workspace or create one via the button above." %}
+            {% include "components/empty.html" %}
+        {% endwith %}
         {% endif %}
     </div>
 </div>

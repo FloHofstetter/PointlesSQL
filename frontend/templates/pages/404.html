@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Page not found — PointlesSQL{% endblock %}
+
+{% block content_class %}pql-error-shell{% endblock %}
+
+{% block content %}
+{% with icon="bi-compass",
+        title="Page not found",
+        message="We couldn't find anything at " ~ request.url.path ~ ".",
+        action_href="/",
+        action_label="Back to Home" %}
+    {% include "components/empty.html" %}
+{% endwith %}
+{% endblock %}

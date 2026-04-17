@@ -1,12 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Workspace · PointlesSQL{% endblock %}
 
-{% block breadcrumbs %}
-<ol class="breadcrumb mb-0 ms-3">
-    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
-    <li class="breadcrumb-item active">Workspace</li>
-</ol>
-{% endblock %}
+{% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Workspace"}] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4">
@@ -35,8 +31,10 @@
                 </template>
 
                 <template x-if="tree && flatRows().length === 0 && !error">
-                    <div class="text-muted small p-2 fst-italic">
-                        No notebooks in the workspace yet. Upload one to get started.
+                    <div class="pql-empty">
+                        <i class="bi bi-folder2-open pql-empty__icon" aria-hidden="true"></i>
+                        <p class="pql-empty__title">No notebooks yet</p>
+                        <p class="pql-empty__message">Upload one using the form on the right to get started.</p>
                     </div>
                 </template>
 

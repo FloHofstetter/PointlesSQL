@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 30)
+
+- New app-shell layer in `base.html`: mobile-aware responsive grid
+  (`minmax(0, 1fr)` below `md`, `var(--pql-sidebar-width) minmax(0, 1fr)` ≥ md),
+  sidebar wrapped in Bootstrap 5.3 `offcanvas-md` with a hamburger
+  trigger visible only on narrow viewports. No new JS module — Bootstrap's
+  built-in offcanvas handles open/close, backdrop, and Esc-to-close.
+  Sprint 35 hardens touch targets and focus-trap.
+- `frontend/templates/components/breadcrumbs.html` — declarative
+  component that renders from a `breadcrumbs=[{label, href?}]` list;
+  the final item (or any item without `href`) becomes the active
+  terminal crumb. Migrated 8 pages: `jobs`, `dashboards`, `connections`,
+  `external_locations`, `credentials`, `notebooks_workspace`,
+  `schemas`, `tables`.
+- `frontend/templates/components/empty.html` — reusable empty-state
+  panel with optional `icon`, `title`, `message`, `action_href` /
+  `action_label`, and a `flush` variant for use inside an existing
+  card. Migrated the 6 list-page empty states (jobs, dashboards,
+  connections, external_locations, credentials, notebooks_workspace)
+  — in-card snippets (permissions, tags, lineage, properties,
+  sync_history) remain opportunistic follow-up.
+- New branded error pages: `pages/404.html` (bi-compass), `pages/500.html`
+  (bi-exclamation-octagon, renders `request_id` for bug reports),
+  both on the new app shell. `pages/403.html` refitted onto the same
+  `components/empty.html` primitive — preserving the existing
+  `required_privilege`/`securable_type`/`full_name` context.
+- `pointlessql/api/error_handlers.py` — Accept-aware dispatch:
+  `/api/` paths still always emit the JSON envelope; non-`/api/` paths
+  honour an explicit `Accept: application/json` without `text/html`,
+  otherwise render the HTML shell. Registered a `StarletteHTTPException`
+  handler so unmapped 404s render the branded page (not FastAPI's
+  default JSON), and an `Exception` catch-all that logs `exc_info` and
+  returns the 500 shell or JSON envelope.
+- `frontend/js/toast.js` — `window.pqlToast.{success, error, info}(msg, {timeout}?)`
+  mounted once in `base.html`. Each call builds a Bootstrap toast in
+  `#pql-toast-root`, applies a Sprint-29 semantic variant
+  (`.pql-toast--{success|error|info}`), and removes the node on
+  `hidden.bs.toast`. API only this sprint; Sprint 36 wires the five
+  existing components onto an `apiFetch` helper that emits toasts
+  on error.
+- CSS additions in `frontend/css/style.css`: responsive `.pql-shell`
+  grid, `.pql-sidebar-shell` offcanvas reset, `.pql-sidebar-toggle`,
+  `.pql-breadcrumbs`, `.pql-empty` (+ `.pql-empty--{variant}` tints,
+  `__icon` / `__title` / `__message` / `__meta` / `__action`),
+  `.pql-error-shell` centered wrapper, and `.pql-toast` (+ variants).
+  All colour pairs reuse Sprint-29 semantic tokens so light-mode
+  inherits for free.
+
 ### Added (Sprint 29)
 
 - Design-token system in `frontend/css/style.css`: spacing

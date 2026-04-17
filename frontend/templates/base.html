@@ -15,6 +15,16 @@
       hx-select="#main-content"
       hx-swap="outerHTML show:window:top">
     <nav class="navbar navbar-expand bg-body-tertiary border-bottom px-3 pql-topbar">
+        {% if not hide_sidebar %}
+        <button class="btn btn-link text-body p-0 me-2 d-md-none pql-sidebar-toggle"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#pqlSidebarOffcanvas"
+                aria-controls="pqlSidebarOffcanvas"
+                aria-label="Toggle sidebar">
+            <i class="bi bi-list fs-4"></i>
+        </button>
+        {% endif %}
         <a class="navbar-brand d-flex align-items-center gap-2" href="/">
             <i class="bi bi-database"></i>
             <span class="fw-semibold">PointlesSQL</span>
@@ -79,19 +89,37 @@
         </ul>
     </nav>
 
-    <div class="pql-shell">
+    <div class="pql-shell{% if hide_sidebar %} pql-shell--no-sidebar{% endif %}">
         {% if not hide_sidebar %}
+        <div class="offcanvas-md offcanvas-start pql-sidebar-shell"
+             id="pqlSidebarOffcanvas"
+             tabindex="-1"
+             aria-labelledby="pqlSidebarOffcanvasLabel">
+            <div class="offcanvas-header d-md-none">
+                <h5 class="offcanvas-title" id="pqlSidebarOffcanvasLabel">Navigation</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="offcanvas"
+                        data-bs-target="#pqlSidebarOffcanvas"
+                        aria-label="Close"></button>
+            </div>
             {% if active_page is defined and active_page == 'dashboards' %}
                 {% include "components/dashboards_sidebar.html" %}
             {% else %}
                 {% include "components/sidebar.html" %}
             {% endif %}
+        </div>
         {% endif %}
         <main class="pql-content {% block content_class %}{% endblock %}" id="main-content">
             {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
         </main>
     </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"
+         id="pql-toast-root"
+         aria-live="polite"
+         aria-atomic="true"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"></script>
     <script src="/static/js/editable.js"></script>
@@ -108,6 +136,7 @@
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/toast.js"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

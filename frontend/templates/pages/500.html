@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Something went wrong — PointlesSQL{% endblock %}
+
+{% block content_class %}pql-error-shell{% endblock %}
+
+{% block content %}
+<div class="pql-card pql-empty pql-empty--danger">
+    <i class="bi bi-exclamation-octagon pql-empty__icon" aria-hidden="true"></i>
+    <p class="pql-empty__title">{{ status_title or "Something went wrong" }}</p>
+    <p class="pql-empty__message">
+        {{ message or "An unexpected error occurred. The error has been logged." }}
+    </p>
+    {% if request_id %}
+    <p class="pql-empty__meta">
+        Request ID: <code>{{ request_id }}</code>
+    </p>
+    {% endif %}
+    <a href="/" class="btn btn-outline-primary btn-sm pql-empty__action">Back to Home</a>
+</div>
+{% endblock %}

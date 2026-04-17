@@ -167,16 +167,52 @@ body {
 
 .pql-shell {
     display: grid;
-    grid-template-columns: var(--pql-sidebar-width) 1fr;
     min-height: calc(100vh - var(--pql-topbar-height));
+    grid-template-columns: minmax(0, 1fr);
 }
+.pql-shell--no-sidebar {
+    grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+    .pql-shell {
+        grid-template-columns: var(--pql-sidebar-width) minmax(0, 1fr);
+    }
+    .pql-shell--no-sidebar {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Sidebar wrapper: static column ≥ md, slides in as an offcanvas drawer < md.
+   Bootstrap's ``.offcanvas-md`` handles the responsive switch — we only tune
+   the static variant so it fills the shell column, and give it an ``.offcanvas``
+   background on mobile. */
+.pql-sidebar-shell {
+    background: var(--bs-tertiary-bg);
+}
+@media (min-width: 768px) {
+    .pql-sidebar-shell {
+        position: sticky;
+        top: var(--pql-topbar-height);
+        max-height: calc(100vh - var(--pql-topbar-height));
+        overflow-y: auto;
+        background: transparent;
+    }
+}
+
+.pql-sidebar-toggle {
+    border: 0;
+    line-height: 1;
+}
+.pql-sidebar-toggle:focus { box-shadow: none; }
 
 .pql-sidebar {
     background: var(--bs-tertiary-bg);
     overflow-y: auto;
-    max-height: calc(100vh - var(--pql-topbar-height));
-    position: sticky;
-    top: var(--pql-topbar-height);
+}
+@media (min-width: 768px) {
+    .pql-sidebar {
+        max-height: calc(100vh - var(--pql-topbar-height));
+    }
 }
 
 .pql-sidebar-body {
@@ -267,3 +303,98 @@ body {
     border: none;
     display: block;
 }
+
+/* ---------------------------------------------------------------
+ * Breadcrumbs — Sprint 30. Wrapper tightens the Bootstrap spacing
+ * so the component sits flush above the page header.
+ * ------------------------------------------------------------- */
+.pql-breadcrumbs {
+    margin-bottom: var(--pql-space-4);
+}
+.pql-breadcrumbs .breadcrumb {
+    font-size: var(--pql-text-sm);
+}
+
+/* ---------------------------------------------------------------
+ * Empty-state component — Sprint 30. Reuses ``.pql-card`` padding
+ * so inline and full-page usages look consistent.
+ * ------------------------------------------------------------- */
+.pql-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--pql-space-2);
+    padding: var(--pql-space-6) var(--pql-space-4);
+}
+.pql-empty__icon {
+    font-size: var(--pql-text-3xl);
+    color: var(--bs-secondary-color);
+    opacity: 0.85;
+}
+.pql-empty--success .pql-empty__icon { color: var(--pql-color-success-fg); }
+.pql-empty--warning .pql-empty__icon { color: var(--pql-color-warning-fg); }
+.pql-empty--danger  .pql-empty__icon { color: var(--pql-color-danger-fg); }
+.pql-empty--info    .pql-empty__icon { color: var(--pql-color-info-fg); }
+.pql-empty__title {
+    font-size: var(--pql-text-lg);
+    font-weight: var(--pql-weight-semibold);
+    margin: 0;
+}
+.pql-empty__message,
+.pql-empty__meta {
+    color: var(--bs-secondary-color);
+    font-size: var(--pql-text-sm);
+    margin: 0;
+    max-width: 40rem;
+}
+.pql-empty__meta { font-size: var(--pql-text-xs); }
+.pql-empty__action {
+    margin-top: var(--pql-space-3);
+}
+
+/* Error pages use a focused centered shell (no sidebar is already set via
+   ``hide_sidebar=True`` on the handler side). */
+.pql-error-shell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--pql-space-7) var(--pql-space-4);
+}
+.pql-error-shell .pql-empty {
+    max-width: 32rem;
+    width: 100%;
+}
+
+/* ---------------------------------------------------------------
+ * Toast system — Sprint 30. ``window.pqlToast.{success,error,info}``
+ * builds nodes with ``.pql-toast`` + a variant class; the variants
+ * map onto the Sprint-29 semantic colour tokens so light mode comes
+ * for free.
+ * ------------------------------------------------------------- */
+.pql-toast {
+    border: 0;
+    border-radius: var(--pql-radius-md);
+    box-shadow: var(--pql-elev-2);
+    background: var(--pql-color-neutral-bg);
+    color: var(--pql-color-neutral-fg);
+    min-width: 16rem;
+}
+.pql-toast__body {
+    display: flex;
+    align-items: center;
+    gap: var(--pql-space-2);
+    padding: var(--pql-space-3) var(--pql-space-4);
+    font-size: var(--pql-text-sm);
+}
+.pql-toast__icon {
+    flex: 0 0 auto;
+}
+.pql-toast__message {
+    flex: 1 1 auto;
+    min-width: 0;
+    word-wrap: break-word;
+}
+.pql-toast--success { background: var(--pql-color-success-bg); color: var(--pql-color-success-fg); }
+.pql-toast--error   { background: var(--pql-color-danger-bg);  color: var(--pql-color-danger-fg); }
+.pql-toast--info    { background: var(--pql-color-info-bg);    color: var(--pql-color-info-fg); }
