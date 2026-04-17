@@ -745,7 +745,7 @@ PointlesSQL
 │   │       expands, plus the non-admin 403 pass and the
 │   │       `.py` / `..` / existing-without-overwrite negatives
 │   │
-│   └── Sprint 28 — Dashboards + run-compare; close Phase 8   ✅ done
+│   └── Sprint 28 — Dashboards + run-compare; close Phase 8   ✅ done (5f73115)
 │       ├── Alembic migration 008: `dashboards` table (slug
 │       │   unique, title, description, notebook_path, job_id FK
 │       │   nullable with `ON DELETE SET NULL`, owner_id FK,
