@@ -644,7 +644,7 @@ PointlesSQL
 │   │   spawns a fresh kernel per `execute_notebook`) is the
 │   │   native execution model; no custom kernel pool.
 │   │
-│   ├── Sprint 24 — Papermill executor + JupyterLab viewer    ⏳ planned
+│   ├── Sprint 24 — Papermill executor + JupyterLab viewer    ✅ done (062bb18)
 │   │   ├── `papermill>=2.6` dep; `_papermill_executor` added to
 │   │   │   `services/scheduler.py` `build_default_registry()` as
 │   │   │   a third built-in kind next to `pg_sync` and `python`
