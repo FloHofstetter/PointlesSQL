@@ -70,8 +70,71 @@
          tasks: JSON.stringify([{name: 'hello', kind: 'python', config: {entry_point: 'my_entry'}, depends_on: [], max_retries: 0, retry_backoff_seconds: 0}], null, 2),
          notebookPath: '',
          parametersJson: '{}',
+         params: [],
+         paramsError: null,
+         useAdvanced: false,
+         inspecting: false,
          error: null,
          submitting: false,
+         coerceDefault(p) {
+             const d = p.default;
+             if (d === null || d === undefined) return p.inferred_type === 'bool' ? false : '';
+             const t = p.inferred_type;
+             if (t === 'bool') return d === 'True';
+             if (t === 'int' || t === 'float') {
+                 const n = Number(d);
+                 return Number.isNaN(n) ? '' : n;
+             }
+             if (t === 'str') {
+                 if (typeof d === 'string' && d.length >= 2) {
+                     const c = d.charCodeAt(0);
+                     if ((c === 34 || c === 39) && d.charCodeAt(d.length - 1) === c) return d.slice(1, -1);
+                 }
+                 return String(d);
+             }
+             return String(d);
+         },
+         typedValue(p) {
+             const t = p.inferred_type;
+             if (t === 'bool') return Boolean(p.value);
+             if (t === 'int') return parseInt(p.value, 10);
+             if (t === 'float') return Number(p.value);
+             if (t === 'list' || t === 'dict') return JSON.parse(p.value || (t === 'list' ? '[]' : '{}'));
+             return String(p.value ?? '');
+         },
+         async inspect() {
+             this.paramsError = null;
+             if (!this.notebookPath) { this.paramsError = 'notebook path is required'; return; }
+             this.inspecting = true;
+             try {
+                 const r = await fetch('/api/notebooks/inspect?path=' + encodeURIComponent(this.notebookPath));
+                 if (!r.ok) {
+                     const body = await r.json().catch(() => null);
+                     this.paramsError = body?.error?.message || r.statusText;
+                     this.params = [];
+                     return;
+                 }
+                 const raw = await r.json();
+                 this.params = raw.map(p => ({...p, value: this.coerceDefault(p)}));
+                 this.useAdvanced = false;
+             } catch (e) {
+                 this.paramsError = String(e);
+             } finally {
+                 this.inspecting = false;
+             }
+         },
+         collectParams() {
+             if (this.useAdvanced || this.params.length === 0) {
+                 const parsed = JSON.parse(this.parametersJson || '{}');
+                 if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+                     throw new Error('parameters JSON must be an object');
+                 }
+                 return parsed;
+             }
+             const out = {};
+             for (const p of this.params) out[p.name] = this.typedValue(p);
+             return out;
+         },
          submit() {
              this.error = null;
              this.submitting = true;
@@ -87,15 +150,12 @@
                      max_parallel_runs: Number(this.maxParallel),
                  };
              } else if (this.kind === 'papermill') {
-                 let parsedParams;
-                 try { parsedParams = JSON.parse(this.parametersJson || '{}'); }
-                 catch (e) { this.error = 'parameters JSON is invalid: ' + e.message; this.submitting = false; return; }
-                 if (typeof parsedParams !== 'object' || Array.isArray(parsedParams) || parsedParams === null) {
-                     this.error = 'parameters JSON must be an object'; this.submitting = false; return;
-                 }
                  if (!this.notebookPath) {
                      this.error = 'notebook path is required'; this.submitting = false; return;
                  }
+                 let parsedParams;
+                 try { parsedParams = this.collectParams(); }
+                 catch (e) { this.error = 'parameters are invalid: ' + e.message; this.submitting = false; return; }
                  payload = {
                      name: this.name,
                      cron_expr: this.cron,
@@ -148,21 +208,73 @@
                     <textarea class="form-control font-monospace small" rows="12" x-model="tasks"></textarea>
                     <div class="form-text">
                         Each task: <code>{name, kind, config, depends_on (list of task names), max_retries, retry_backoff_seconds}</code>.
+                        Papermill example:
+                        <code>{"name":"run-etl","kind":"papermill","config":{"notebook_path":"pipelines/etl.ipynb","parameters":{}},"depends_on":[]}</code>
                     </div>
                 </div>
                 <div class="mb-3" x-show="kind === 'papermill'" x-cloak>
                     <label class="form-label">Notebook path</label>
-                    <input type="text" class="form-control font-monospace" x-model="notebookPath" placeholder="pipelines/etl.ipynb">
+                    <div class="input-group">
+                        <input type="text" class="form-control font-monospace" x-model="notebookPath" placeholder="pipelines/etl.ipynb">
+                        <button type="button" class="btn btn-outline-secondary"
+                                x-on:click="inspect()"
+                                x-bind:disabled="inspecting || !notebookPath">
+                            <span x-show="!inspecting">Load parameters</span>
+                            <span x-show="inspecting" x-cloak>Loading…</span>
+                        </button>
+                    </div>
                     <div class="form-text">
                         Path relative to the notebooks directory. Output is written to <code>runs/{run_id}.ipynb</code>.
                     </div>
+                    <div class="alert alert-warning mt-2 mb-0 py-1 px-2 small" x-show="paramsError" x-text="paramsError" x-cloak></div>
+                </div>
+                <div class="mb-3" x-show="kind === 'papermill' && params.length > 0" x-cloak>
+                    <label class="form-label">Parameters</label>
+                    <div class="border rounded p-2">
+                        <template x-for="p in params" x-bind:key="p.name">
+                            <div class="row align-items-center mb-2 g-2">
+                                <label class="col-sm-4 col-form-label col-form-label-sm font-monospace mb-0"
+                                       x-bind:title="p.help || p.inferred_type"
+                                       x-text="p.name + ' (' + p.inferred_type + ')'"></label>
+                                <div class="col-sm-8">
+                                    <template x-if="p.inferred_type === 'bool'">
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" x-model="p.value">
+                                        </div>
+                                    </template>
+                                    <template x-if="p.inferred_type === 'int' || p.inferred_type === 'float'">
+                                        <input type="number" class="form-control form-control-sm font-monospace"
+                                               x-bind:step="p.inferred_type === 'int' ? '1' : 'any'"
+                                               x-model="p.value">
+                                    </template>
+                                    <template x-if="p.inferred_type === 'list' || p.inferred_type === 'dict'">
+                                        <textarea class="form-control form-control-sm font-monospace small" rows="2" x-model="p.value"></textarea>
+                                    </template>
+                                    <template x-if="!['bool','int','float','list','dict'].includes(p.inferred_type)">
+                                        <input type="text" class="form-control form-control-sm font-monospace" x-model="p.value">
+                                    </template>
+                                    <div class="form-text small" x-show="p.help" x-text="p.help" x-cloak></div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
                 </div>
                 <div class="mb-3" x-show="kind === 'papermill'" x-cloak>
-                    <label class="form-label">Parameters (JSON object)</label>
-                    <textarea class="form-control font-monospace small" rows="6" x-model="parametersJson"></textarea>
-                    <div class="form-text">
-                        Passed to papermill as <code>-p</code> parameters. Use <code>{}</code> for none.
-                    </div>
+                    <details>
+                        <summary class="small text-muted">Advanced: raw JSON parameters</summary>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="jobUseAdvanced" x-model="useAdvanced">
+                            <label class="form-check-label small" for="jobUseAdvanced">
+                                Use raw JSON below instead of the typed form
+                            </label>
+                        </div>
+                        <textarea class="form-control font-monospace small mt-2" rows="6" x-model="parametersJson"
+                                  x-bind:disabled="!useAdvanced"></textarea>
+                        <div class="form-text">
+                            Passed to papermill as <code>-p</code> parameters. Use <code>{}</code> for none.
+                            Only used when the checkbox above is ticked, or when "Load parameters" has not been run.
+                        </div>
+                    </details>
                 </div>
                 <div class="alert alert-danger" x-show="error" x-text="error"></div>
             </div>

@@ -267,6 +267,63 @@ SMOKE_PAPERMILL_NOTEBOOK = {
 }
 
 
+SMOKE_TYPED_PARAMS_NOTEBOOK = {
+    "cells": [
+        {
+            "cell_type": "code",
+            "metadata": {"tags": ["parameters"]},
+            "source": [
+                "count: int = 3\n",
+                "enabled: bool = True\n",
+                'label: str = "hello"\n',
+            ],
+            "outputs": [],
+            "execution_count": None,
+        },
+        {
+            "cell_type": "code",
+            "metadata": {},
+            "source": [
+                "print('count=', count, type(count).__name__)\n",
+                "print('enabled=', enabled, type(enabled).__name__)\n",
+                "print('label=', label, type(label).__name__)\n",
+            ],
+            "outputs": [],
+            "execution_count": None,
+        },
+    ],
+    "metadata": {
+        "kernelspec": {
+            "name": "python3",
+            "display_name": "Python 3",
+            "language": "python",
+        },
+        "language_info": {"name": "python"},
+    },
+    "nbformat": 4,
+    "nbformat_minor": 5,
+}
+
+
+def _ensure_typed_params_notebook() -> None:
+    """Seed ``smoke_typed_params.ipynb`` for the Sprint 25 Part E playbook.
+
+    Declares one parameter per input type the typed-form UI handles
+    (``int``, ``bool``, ``str``) so ``/api/notebooks/inspect`` returns a
+    three-row schema the modal can render as number + checkbox + text.
+    The body cell echoes the resolved values so the executed notebook
+    visibly shows the override.
+    """
+    nb_root = Path(os.environ.get("POINTLESSQL_NOTEBOOKS_DIR", "notebooks"))
+    nb_root.mkdir(parents=True, exist_ok=True)
+    target = nb_root / "smoke_typed_params.ipynb"
+    if target.exists():
+        print(f"  = notebook {target} exists")
+        return
+    target.write_text(json.dumps(SMOKE_TYPED_PARAMS_NOTEBOOK, indent=1) + "\n")
+    print(f"  + notebook {target} written")
+
+
 def _ensure_smoke_notebook() -> None:
     """Drop ``smoke_papermill.ipynb`` into the notebooks dir idempotently.
 
@@ -303,10 +360,11 @@ def main() -> int:
     new_tables = _seed_tables(pql)
     _ensure_connection(client)
     _ensure_smoke_notebook()
+    _ensure_typed_params_notebook()
 
     print(
         f"seed ok — 1 catalog, {len(SCHEMAS)} schemas, 4 tables "
-        f"({new_tables} newly written), 1 connection, 1 notebook"
+        f"({new_tables} newly written), 1 connection, 2 notebooks"
     )
     return 0
 

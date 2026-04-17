@@ -11,8 +11,8 @@ import pytest
 from pointlessql.exceptions import EngineError, ValidationError
 from pointlessql.services.scheduler import (
     _papermill_executor,
-    _resolve_notebook_path,
     build_default_registry,
+    resolve_notebook_path,
 )
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
@@ -54,7 +54,7 @@ def test_registry_includes_papermill() -> None:
 def test_resolve_rejects_absolute_path(tmp_path: Path) -> None:
     """Absolute paths never escape the notebooks directory."""
     with pytest.raises(ValidationError, match="must be relative"):
-        _resolve_notebook_path(tmp_path, "/etc/passwd")
+        resolve_notebook_path(tmp_path, "/etc/passwd")
 
 
 def test_resolve_rejects_traversal(tmp_path: Path) -> None:
@@ -62,7 +62,7 @@ def test_resolve_rejects_traversal(tmp_path: Path) -> None:
     root = tmp_path / "notebooks"
     root.mkdir()
     with pytest.raises(ValidationError, match="escapes the notebooks directory"):
-        _resolve_notebook_path(root, "../outside.ipynb")
+        resolve_notebook_path(root, "../outside.ipynb")
 
 
 def test_resolve_rejects_missing_file(tmp_path: Path) -> None:
@@ -70,7 +70,7 @@ def test_resolve_rejects_missing_file(tmp_path: Path) -> None:
     root = tmp_path / "notebooks"
     root.mkdir()
     with pytest.raises(ValidationError, match="notebook not found"):
-        _resolve_notebook_path(root, "does_not_exist.ipynb")
+        resolve_notebook_path(root, "does_not_exist.ipynb")
 
 
 async def test_missing_notebook_path_raises(

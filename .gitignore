@@ -30,4 +30,5 @@ warehouse/
 # content lives in the script, not the workspace.
 notebooks/runs/
 notebooks/smoke_papermill.ipynb
+notebooks/smoke_typed_params.ipynb
 notebooks/bad_papermill.ipynb

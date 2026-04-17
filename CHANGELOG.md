@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 25)
+
+- `GET /api/notebooks/inspect?path=…` admin-only route wrapping
+  `papermill.inspect_notebook` — returns
+  `[{name, default, inferred_type, help}]` so the create-job modal
+  can render one typed input per declared parameter instead of a
+  free-form JSON textarea
+- Create-job modal gains a "Load parameters" button, a typed form
+  (`number` / `checkbox` / `text` / `textarea`) rendered via Alpine
+  `x-for`, and a collapsed `<details>` "Advanced" fallback that
+  keeps the raw JSON textarea for power users. Advanced mode wins
+  over the typed form when the `useAdvanced` checkbox is ticked
+- Job-detail Configuration card renders dedicated **Notebook** and
+  **Parameters** rows for papermill jobs (nested `<dl>` for the
+  parameters) instead of the catch-all `<pre>{{ config|tojson }}</pre>`
+- Promoted `_resolve_notebook_path` → public `resolve_notebook_path`
+  in `services/scheduler.py` so the inspect route reuses the same
+  traversal-safe path resolver the executor uses
+- Seed script writes `notebooks/smoke_typed_params.ipynb`
+  (`count: int = 3`, `enabled: bool = True`, `label: str = "hello"`)
+  for the new Part E playbook — one parameter per typed-input branch
+- `docs/e2e-walkthroughs/notebook-jobs.md` Part E walks the
+  inspect endpoint, the typed-form rendering + override, the
+  Advanced raw-JSON fallback, and two negative inspect cases
+  (missing file, traversal). Live-run findings appended to the
+  Found-bugs section — no bugs surfaced
+
 ### Added (Sprint 24)
 
 - Papermill job kind: `_papermill_executor` registered next to

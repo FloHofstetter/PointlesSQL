@@ -75,8 +75,24 @@
             <dd class="col-sm-9">#{{ job.run_as_user_id }}</dd>
             <dt class="col-sm-3">Max parallel runs</dt>
             <dd class="col-sm-9">{{ job.max_parallel_runs }}</dd>
+            {% if job.kind == "papermill" %}
+            <dt class="col-sm-3">Notebook</dt>
+            <dd class="col-sm-9 font-monospace">{{ job.config.get("notebook_path", "") }}</dd>
+            <dt class="col-sm-3">Parameters</dt>
+            <dd class="col-sm-9">
+                {% if job.config.get("parameters") %}
+                <dl class="row mb-0 small">
+                    {% for k, v in job.config["parameters"].items() %}
+                    <dt class="col-sm-4 font-monospace text-break">{{ k }}</dt>
+                    <dd class="col-sm-8 font-monospace text-break">{{ v|tojson }}</dd>
+                    {% endfor %}
+                </dl>
+                {% else %}<span class="text-muted fst-italic">none</span>{% endif %}
+            </dd>
+            {% else %}
             <dt class="col-sm-3">Config</dt>
             <dd class="col-sm-9"><pre class="mb-0 small">{{ job.config|tojson(indent=2) }}</pre></dd>
+            {% endif %}
         </dl>
     </div>
 </div>

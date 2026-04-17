@@ -753,6 +753,51 @@ async def jupyter_status(request: Request) -> dict[str, object]:
     }
 
 
+@app.get("/api/notebooks/inspect")
+async def api_inspect_notebook(
+    request: Request, path: str
+) -> list[dict[str, Any]]:
+    """Return a notebook's declared Papermill parameters.
+
+    Introspects the ``parameters``-tagged cell via
+    :func:`papermill.inspect_notebook` and returns one entry per
+    declared parameter. The create-job modal uses this to render a
+    typed form instead of the raw JSON textarea introduced in
+    Sprint 24.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        path: Relative notebook path, resolved under
+            :attr:`Settings.notebooks_dir`. Must not escape the
+            directory — uses the same validator as the executor.
+
+    Returns:
+        A list of ``{"name", "default", "inferred_type", "help"}``
+        dicts. ``default`` is the literal default string Papermill
+        extracts (the client coerces it per ``inferred_type``).
+    """
+    import papermill  # type: ignore[import-untyped]
+
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+    resolved = scheduler_service.resolve_notebook_path(
+        settings.notebooks_dir.resolve(), path
+    )
+    raw = papermill.inspect_notebook(str(resolved))
+    out: list[dict[str, Any]] = []
+    for name, meta in raw.items():
+        meta_dict: dict[str, Any] = meta
+        out.append(
+            {
+                "name": name,
+                "default": meta_dict.get("default"),
+                "inferred_type": meta_dict.get("inferred_type_name") or "str",
+                "help": meta_dict.get("help", ""),
+            }
+        )
+    return out
+
+
 # -- Federation: Connections --
 
 

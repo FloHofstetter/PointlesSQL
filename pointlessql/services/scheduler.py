@@ -265,7 +265,7 @@ async def _python_executor(
 _papermill_env_lock = threading.Lock()
 
 
-def _resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
+def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
     """Resolve *notebook_path* under *notebooks_dir*, rejecting traversal.
 
     Args:
@@ -428,7 +428,7 @@ async def _papermill_executor(
         )
 
     notebooks_dir = Path(settings.notebooks_dir).resolve()
-    input_path = _resolve_notebook_path(notebooks_dir, notebook_path)
+    input_path = resolve_notebook_path(notebooks_dir, notebook_path)
     runs_dir = notebooks_dir / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
     output_path = runs_dir / f"{job_run_id}.ipynb"

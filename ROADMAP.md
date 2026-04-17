@@ -665,19 +665,29 @@ PointlesSQL
 │   │   │   `/lab/tree/runs/{run_id}.ipynb`
 │   │   └── `docs/e2e-walkthroughs/notebook-jobs.md` playbook
 │   │
-│   ├── Sprint 25 — Typed parameters UI                       ⏳ planned
+│   ├── Sprint 25 — Typed parameters UI                       ✅ done
 │   │   ├── `GET /api/notebooks/inspect` using
 │   │   │   `papermill.inspect_notebook` to return
 │   │   │   `[{name, default, inferred_type, help}]`
 │   │   ├── Create-job modal renders typed inputs per parameter
 │   │   │   (text / number / checkbox / textarea) via Alpine
-│   │   │   `x-for="p in parameters"`
+│   │   │   `x-for="p in parameters"`; `<details>` advanced
+│   │   │   fallback keeps the raw JSON textarea for hand-edits
 │   │   ├── DAG support: a task of `kind=papermill` in the
 │   │   │   tasks-JSON textarea reuses the same `config.parameters`
-│   │   │   shape — no scheduler changes
+│   │   │   shape — no scheduler changes; help-text gained a
+│   │   │   worked example
 │   │   ├── Job-detail Configuration card surfaces the resolved
-│   │   │   parameters alongside the other config rows
-│   │   └── Playbook extension with a parameter-tagged notebook
+│   │   │   parameters (Notebook + Parameters rows) instead of
+│   │   │   the raw `<pre>{ config }</pre>` for papermill kinds
+│   │   ├── Promoted `_resolve_notebook_path` → public
+│   │   │   `resolve_notebook_path` so the inspect route reuses
+│   │   │   the executor's traversal guard
+│   │   └── Playbook extension: Part E in
+│   │       `docs/e2e-walkthroughs/notebook-jobs.md` + a second
+│   │       seed notebook `smoke_typed_params.ipynb`
+│   │       (`count: int = 3`, `enabled: bool = True`,
+│   │       `label: str = "hello"`) — one per typed-input branch
 │   │
 │   ├── Sprint 26 — Inline run render + Output artifacts       ⏳ planned
 │   │   ├── `nbconvert>=7.0` dep

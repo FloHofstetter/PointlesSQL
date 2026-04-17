@@ -177,6 +177,120 @@ traversal, cell failure).
       writes the partial output before raising) and the offending
       cell shows the traceback when opened in JupyterLab.
 
+### Part E — typed parameters UI (Sprint 25)
+
+Exercises the `GET /api/notebooks/inspect` endpoint and the typed
+form the create-job modal renders from its response. `seed-e2e.py`
+drops `notebooks/smoke_typed_params.ipynb` whose `parameters`-cell
+declares `count: int = 3`, `enabled: bool = True`, and
+`label: str = "hello"` — one parameter per input-type branch the
+modal handles.
+
+12. **Open the modal, switch to papermill, click "Load parameters"**.
+    - Action: navigate to `/jobs`, click "New job", then:
+      ```js
+      const d = Alpine.$data(document.querySelector('#createJobModal'));
+      d.kind = 'papermill';
+      d.name = 'smoke_typed_params';
+      d.cron = '0 0 1 1 *';
+      d.notebookPath = 'smoke_typed_params.ipynb';
+      await d.inspect();
+      return d.params.map(p => [p.name, p.inferred_type, p.value]);
+      ```
+    - Assert: the return is
+      `[['count', 'int', 3], ['enabled', 'bool', true], ['label', 'str', 'hello']]`.
+    - Assert: three rows render inside the "Parameters" card —
+      a number input, a checkbox, and a text input. Count them by
+      their Alpine binding, which is only set on the typed-form
+      inputs (not on the form-fixed name/cron/notebookPath
+      fields):
+      ```js
+      const inputs = Array.from(document.querySelectorAll('#createJobModal input[x-model="p.value"]'));
+      return inputs.map(i => i.type);   // ['number', 'checkbox', 'text']
+      ```
+      Do *not* filter by `offsetParent !== null` on children of the
+      `<details>` block — Firefox leaves the inner textarea in the
+      flow even when the disclosure is closed, so that check is
+      flaky across engines.
+
+13. **Override the values and submit**.
+    - Action:
+      ```js
+      d.params[0].value = 7;
+      d.params[1].value = false;
+      // d.params[2].value stays "hello"
+      d.name = 'smoke_typed_params';
+      d.cron = '0 0 1 1 *';
+      d.submit();                    // don't await — reload fires on success
+      ```
+    - Assert: `POST /api/jobs` captured via
+      `browser_network_requests(filter: '/api/jobs', requestBody: true)`
+      carries
+      `config.parameters = {count: 7, enabled: false, label: "hello"}`.
+      `count` serializes as the integer `7` (not the string `"7"`)
+      because `typedValue()` runs `parseInt` for `inferred_type ===
+      'int'`. Avoid trying to `await d.submit()` — the handler's
+      `window.location.reload()` tears down the evaluate context
+      before the promise resolves.
+    - Assert: the browser navigates to `/jobs/{new_id}`; the
+      Configuration card's new **Parameters** block renders three
+      rows — `count → 7`, `enabled → false`, `label → "hello"` —
+      instead of the raw JSON `<pre>` blob used before Sprint 25.
+
+14. **Run-now and verify the resolved overrides executed**.
+    - Action: trigger Run-now the same way Part B does
+      (`POST /api/jobs/{id}/run`).
+    - Wait ~5 s for the scheduler tick, then reload
+      `/jobs/{id}`. Assert the runs-table first row reads
+      `succeeded` / `manual`.
+    - Assert: the output notebook has the papermill-injected
+      overrides. Fetch directly from the Jupyter contents API
+      (note: path is `/api/contents/...`, not `/lab/api/...` —
+      the latter returns the lab HTML shell):
+      ```js
+      const r = await fetch(`http://127.0.0.1:8888/api/contents/runs/${runId}.ipynb`);
+      const nb = await r.json();
+      return nb.content.cells[2].outputs[0].text;
+      ```
+    - Assert: the body cell's stdout reads `count= 7 int\nenabled=
+      False bool\nlabel= hello str\n` — confirming the typed form's
+      values made it through `config.parameters` into the papermill
+      kernel with the right Python types.
+
+15. **Advanced fallback — raw JSON still works**.
+    - Action: re-open the modal, switch `kind` to papermill,
+      expand the `<details>` "Advanced" block, tick
+      "Use raw JSON below instead of the typed form", fill
+      `parametersJson` with `{"count": 11, "enabled": true, "label": "raw"}`,
+      submit without calling `inspect()`.
+    - Assert: `POST /api/jobs` carries those three keys verbatim,
+      with `count: 11` still an integer (the browser's `JSON.parse`
+      preserves numeric type).
+    - Assert: `d.useAdvanced === true` wins over any prior
+      `d.params` array — `collectParams()` returns the parsed
+      textarea, not the typed form.
+
+16. **Negative — notebook does not exist**.
+    - Action:
+      ```js
+      d.notebookPath = 'does_not_exist.ipynb';
+      d.params = [];
+      await d.inspect();
+      return [d.paramsError, d.params.length];
+      ```
+    - Assert: `paramsError` contains
+      `"papermill notebook not found: 'does_not_exist.ipynb'"`
+      (the 422 JSON envelope bubbles up from `_wrap_catalog_errors`
+      via the centralized handler), `params` stays empty, the
+      typed-form block does not render.
+
+17. **Negative — `..` traversal**.
+    - Action: `d.notebookPath = '../secret.ipynb'; await d.inspect();`
+    - Assert: `paramsError` contains `"escapes the notebooks directory"`.
+      The inspect call is validated by the same
+      `resolve_notebook_path` helper the executor uses, so the
+      error string matches Part D's traversal negative.
+
 ## Playwright MCP script
 
 ```text
@@ -255,3 +369,49 @@ Live-run notes (no bugs):
     "Open in JupyterLab" link is followed.
 - Cross-check: the link renders on `failed` runs too, matching the
   `run.status in ("succeeded", "failed")` template guard.
+
+### Sprint 25 — Part E live run
+
+No bugs surfaced in the Sprint 25 live replay. All six Part E steps
+produced the expected values on the first pass:
+
+- Step 12: `GET /api/notebooks/inspect?path=smoke_typed_params.ipynb`
+  returned `[{count, int, 3}, {enabled, bool, True}, {label, str,
+  "hello"}]`; the modal rendered three `input[x-model="p.value"]`
+  fields with types `number`, `checkbox`, and `text`. The `str`
+  default was correctly stripped of its surrounding `"` quotes by
+  the `coerceDefault` char-code check (34/39), so the text input
+  carried `"hello"` without quote literals.
+- Step 13: the captured `POST /api/jobs` request body carried
+  `config.parameters: {"count": 7, "enabled": false, "label":
+  "hello"}` with `count` as a JSON integer, confirming the
+  `parseInt` branch of `typedValue()` wins over the default string
+  coercion Alpine's `x-model` would have produced on the number
+  input.
+- Step 14: the output notebook at `/api/contents/runs/{rid}.ipynb`
+  carried a papermill-injected `# Parameters` cell reading
+  `count = 7`, `enabled = False`, `label = "hello"`, and the body
+  cell's stdout was `count= 7 int`, `enabled= False bool`,
+  `label= hello str` — end-to-end typed-form-to-kernel plumbing
+  verified in a single job run (~2.8 s total).
+- Step 15: advanced fallback — ticking the `<details>` checkbox
+  and re-submitting with `parametersJson = '{"count": 11,
+  "enabled": true, "label": "raw"}'` produced a POST body with
+  those three keys verbatim; the prior `d.params` array was
+  ignored because `collectParams()` short-circuits on
+  `this.useAdvanced`.
+- Steps 16/17: negative inspect calls against
+  `does_not_exist.ipynb` and `../secret.ipynb` each landed the
+  exact string the `resolve_notebook_path` helper raises
+  (`papermill notebook not found: 'does_not_exist.ipynb'` and
+  `papermill notebook_path '../secret.ipynb' escapes the notebooks
+  directory`) in `d.paramsError`, and `d.params` stayed empty so
+  no typed-form block rendered. The centralized error handler
+  (Sprint 14) turned the `ValidationError` into the standard 422
+  JSON envelope the Alpine `inspect()` method knows to unpack.
+- Notable quirk found during the walk (not a bug, but pinned in
+  the playbook): the Advanced `<details>` block's inner textarea
+  has non-null `offsetParent` in Firefox even when the disclosure
+  is closed, so "visible input" counts via `offsetParent !== null`
+  are unreliable. Part E step 12 now targets
+  `input[x-model="p.value"]` directly.
