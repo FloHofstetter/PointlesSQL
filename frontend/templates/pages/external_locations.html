@@ -27,6 +27,7 @@
         <div x-data="listTable({
                 searchPlaceholder: 'Search external locations…',
                 initialSort: { key: 'name', dir: 'asc' },
+                mobileSort: true,
              })">
             <div class="pql-list-controls">
                 <input type="search"
@@ -37,7 +38,7 @@
                        aria-label="Search external locations">
             </div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle">
+                <table class="table table-sm mb-0 align-middle pql-list-table">
                     <thead>
                         <tr>
                             <th class="ps-3" data-sort-key="name">Name</th>
@@ -53,12 +54,12 @@
                             data-sort-url="{{ (loc.url or '')|lower }}"
                             data-sort-credential="{{ (loc.credential_name or '')|lower }}"
                             data-sort-owner="{{ (loc.owner or '')|lower }}">
-                            <td class="ps-3">
+                            <td class="ps-3" data-label="Name">
                                 <a href="/external-locations/{{ loc.name }}" class="font-monospace text-decoration-none">{{ loc.name }}</a>
                             </td>
-                            <td class="font-monospace small">{{ loc.url or "—" }}</td>
-                            <td class="small">{{ loc.credential_name or "—" }}</td>
-                            <td class="text-muted small">{{ loc.owner or "—" }}</td>
+                            <td class="font-monospace small" data-label="URL">{{ loc.url or "—" }}</td>
+                            <td class="small" data-label="Credential">{{ loc.credential_name or "—" }}</td>
+                            <td class="text-muted small" data-label="Owner">{{ loc.owner or "—" }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

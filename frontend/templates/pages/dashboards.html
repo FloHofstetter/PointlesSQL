@@ -23,6 +23,7 @@
         <div x-data="listTable({
                 searchPlaceholder: 'Search dashboards…',
                 initialSort: { key: 'title', dir: 'asc' },
+                mobileSort: true,
                 chips: [
                     { id: 'has_job', label: 'Has bound job',
                       match: (tr) => tr.dataset.hasJob === '1' },
@@ -44,7 +45,7 @@
                 </template>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle">
+                <table class="table table-sm mb-0 align-middle pql-list-table">
                     <thead>
                         <tr>
                             <th class="ps-3" data-sort-key="title">Title</th>
@@ -61,12 +62,12 @@
                             data-sort-notebook="{{ d.notebook_path|lower }}"
                             data-sort-job="{{ d.job_id if d.job_id is not none else '' }}"
                             data-has-job="{{ 1 if d.job_id is not none else 0 }}">
-                            <td class="ps-3">
+                            <td class="ps-3" data-label="Title">
                                 <a href="/dashboards/{{ d.slug }}" class="text-decoration-none">{{ d.title }}</a>
                             </td>
-                            <td class="font-monospace small">{{ d.slug }}</td>
-                            <td class="font-monospace small">{{ d.notebook_path }}</td>
-                            <td class="small">
+                            <td class="font-monospace small" data-label="Slug">{{ d.slug }}</td>
+                            <td class="font-monospace small" data-label="Notebook">{{ d.notebook_path }}</td>
+                            <td class="small" data-label="Bound job">
                                 {% if d.job_id is not none %}
                                 <a href="/jobs/{{ d.job_id }}" class="text-decoration-none">#{{ d.job_id }}</a>
                                 {% else %}

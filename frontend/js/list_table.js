@@ -45,6 +45,7 @@ window.listTable = function (config) {
     const initialSort = cfg.initialSort || null;
     const emptyMessage = cfg.emptyMessage || 'No results.';
     const debounceMs = Number.isFinite(cfg.debounceMs) ? cfg.debounceMs : 150;
+    const mobileSort = !!cfg.mobileSort;
 
     const activeChips = {};
     for (const c of chips) activeChips[c.id] = false;
@@ -61,6 +62,8 @@ window.listTable = function (config) {
         _tbody: null,
         _emptyEl: null,
         _debounceTimer: null,
+        _mobileSelect: null,
+        _sortableKeys: [],
 
         init() {
             const table = this.$root.querySelector('table');
@@ -74,9 +77,11 @@ window.listTable = function (config) {
             const heads = table.tHead
                 ? Array.from(table.tHead.querySelectorAll('th[data-sort-key]'))
                 : [];
+            const sortables = [];
             for (const th of heads) {
                 const key = th.getAttribute('data-sort-key');
                 if (!key) continue;
+                sortables.push({ key, label: (th.textContent || key).trim() });
                 th.classList.add('pql-sortable');
                 th.setAttribute('role', 'button');
                 th.setAttribute('tabindex', '0');
@@ -89,7 +94,41 @@ window.listTable = function (config) {
                     }
                 });
             }
+            this._sortableKeys = sortables;
             this._reflectSortUi();
+
+            // Mobile sort dropdown — shown only on <640 px via CSS
+            // (`.pql-list-sort-mobile` hides at >=sm). Each sortable key
+            // surfaces as two options (asc / desc) so the dropdown can
+            // set both `sortKey` and `sortDir` in one pick, unlike the
+            // tri-state header cycle on desktop.
+            if (mobileSort && sortables.length) {
+                const wrap = document.createElement('div');
+                wrap.className = 'pql-list-sort-mobile d-sm-none';
+                const label = document.createElement('label');
+                label.className = 'form-label small mb-1 text-muted';
+                label.textContent = 'Sort by';
+                const select = document.createElement('select');
+                select.className = 'form-select form-select-sm';
+                select.setAttribute('aria-label', 'Sort');
+                // "No sort" default preserves server rendering order.
+                select.appendChild(new Option('—', ''));
+                for (const s of sortables) {
+                    select.appendChild(new Option(`${s.label} ↑`, `${s.key}:asc`));
+                    select.appendChild(new Option(`${s.label} ↓`, `${s.key}:desc`));
+                }
+                select.addEventListener('change', (e) => this._onMobileSort(e.target.value));
+                label.appendChild(select);
+                wrap.appendChild(label);
+                const controls = this.$root.querySelector('.pql-list-controls');
+                if (controls) {
+                    controls.insertAdjacentElement('afterend', wrap);
+                } else {
+                    table.parentNode.insertBefore(wrap, table);
+                }
+                this._mobileSelect = select;
+                this._reflectMobileSort();
+            }
 
             // Empty-state sibling.
             const empty = document.createElement('div');
@@ -126,7 +165,29 @@ window.listTable = function (config) {
             }
             this._applySort();
             this._reflectSortUi();
+            this._reflectMobileSort();
             this._applyFilter();
+        },
+
+        _onMobileSort(raw) {
+            if (!raw) {
+                this.sortKey = null;
+                this.sortDir = 'asc';
+            } else {
+                const [key, dir] = raw.split(':');
+                this.sortKey = key;
+                this.sortDir = dir === 'desc' ? 'desc' : 'asc';
+            }
+            this._applySort();
+            this._reflectSortUi();
+            this._applyFilter();
+        },
+
+        _reflectMobileSort() {
+            if (!this._mobileSelect) return;
+            this._mobileSelect.value = this.sortKey
+                ? `${this.sortKey}:${this.sortDir}`
+                : '';
         },
 
         _reflectSortUi() {

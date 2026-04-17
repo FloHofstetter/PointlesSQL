@@ -117,7 +117,7 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
         </template>
         <template x-if="ready && rows.length > 0">
             <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle">
+                <table class="table table-sm mb-0 align-middle pql-list-table">
                     <thead>
                         <tr>
                             <template x-for="col in columns" :key="col">
@@ -129,7 +129,9 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
                         <template x-for="(row, i) in rows" :key="i">
                             <tr>
                                 <template x-for="(cell, j) in row" :key="j">
-                                    <td class="small" x-text="cell === null ? '—' : String(cell)"></td>
+                                    <td class="small"
+                                        :data-label="columns[j]"
+                                        x-text="cell === null ? '—' : String(cell)"></td>
                                 </template>
                             </tr>
                         </template>
@@ -206,7 +208,7 @@ function tablePreview() {
 
 {% set _col_search = table.columns|length >= 20 %}
 <div class="card"
-    {% if _col_search %}x-data="listTable({searchPlaceholder: 'Search columns…', initialSort: {key: 'position', dir: 'asc'}})"{% endif %}>
+    {% if _col_search %}x-data="listTable({searchPlaceholder: 'Search columns…', initialSort: {key: 'position', dir: 'asc'}, mobileSort: true})"{% endif %}>
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>Columns</span>
         <span class="text-muted small">{{ table.columns|length }} total</span>
@@ -220,7 +222,7 @@ function tablePreview() {
     {% endif %}
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle pql-list-table">
                 <thead>
                     <tr>
                         <th {% if _col_search %}data-sort-key="position"{% endif %} style="width: 3rem;">#</th>
@@ -237,8 +239,8 @@ function tablePreview() {
                         data-sort-name="{{ col.name|lower }}"
                         data-sort-type="{{ col.type_text|lower }}"
                         data-sort-nullable="{{ '1' if col.nullable else '0' }}"{% endif %}>
-                        <td class="text-muted small">{{ col.position }}</td>
-                        <td class="font-monospace fw-medium">
+                        <td class="text-muted small" data-label="#">{{ col.position }}</td>
+                        <td class="font-monospace fw-medium" data-label="Name">
                             {{ col.name }}
                             {% if col.partition_index is not none %}
                             <span class="badge bg-warning text-dark ms-1" title="Partition column #{{ col.partition_index }}">
@@ -246,15 +248,15 @@ function tablePreview() {
                             </span>
                             {% endif %}
                         </td>
-                        <td class="font-monospace small text-info">{{ col.type_text }}</td>
-                        <td>
+                        <td class="font-monospace small text-info" data-label="Type">{{ col.type_text }}</td>
+                        <td data-label="Nullable">
                             {% if col.nullable %}
                             <span class="text-muted small">nullable</span>
                             {% else %}
                             <span class="badge bg-warning text-dark">NOT NULL</span>
                             {% endif %}
                         </td>
-                        <td class="text-muted small">{{ col.comment or "—" }}</td>
+                        <td class="text-muted small" data-label="Comment">{{ col.comment or "—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

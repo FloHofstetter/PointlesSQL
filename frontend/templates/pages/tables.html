@@ -62,7 +62,7 @@
     <div class="card-body p-0">
         {% if tables %}
         <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle pql-list-table">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -76,22 +76,22 @@
                 <tbody>
                     {% for tbl in tables %}
                     <tr>
-                        <td class="font-monospace">
+                        <td class="font-monospace" data-label="Name">
                             <a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ tbl.name }}" class="text-decoration-none">{{ tbl.name }}</a>
                         </td>
-                        <td>
+                        <td data-label="Type">
                             {% if tbl.table_type %}
                             <span class="badge bg-primary">{{ tbl.table_type }}</span>
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
-                        <td>
+                        <td data-label="Format">
                             {% if tbl.data_source_format %}
                             <span class="badge bg-info text-dark">{{ tbl.data_source_format }}</span>
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
-                        <td class="text-muted small">{{ (tbl.columns or [])|length }}</td>
-                        <td class="text-muted small">{{ tbl.updated_at|epoch_ms }}</td>
-                        <td class="text-muted small">{{ tbl.comment or "—" }}</td>
+                        <td class="text-muted small" data-label="Columns">{{ (tbl.columns or [])|length }}</td>
+                        <td class="text-muted small" data-label="Updated">{{ tbl.updated_at|epoch_ms }}</td>
+                        <td class="text-muted small" data-label="Comment">{{ tbl.comment or "—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

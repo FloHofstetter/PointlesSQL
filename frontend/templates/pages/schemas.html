@@ -76,7 +76,7 @@
     <div class="card-body p-0">
         {% if schemas %}
         <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle pql-list-table">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -87,11 +87,11 @@
                 <tbody>
                     {% for sch in schemas %}
                     <tr>
-                        <td class="font-monospace">
+                        <td class="font-monospace" data-label="Name">
                             <a href="/catalogs/{{ catalog.name }}/schemas/{{ sch.name }}" class="text-decoration-none">{{ sch.name }}</a>
                         </td>
-                        <td class="text-muted small">{{ sch.updated_at|epoch_ms }}</td>
-                        <td class="text-muted small">{{ sch.comment or "—" }}</td>
+                        <td class="text-muted small" data-label="Updated">{{ sch.updated_at|epoch_ms }}</td>
+                        <td class="text-muted small" data-label="Comment">{{ sch.comment or "—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

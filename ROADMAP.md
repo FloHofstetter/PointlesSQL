@@ -1041,20 +1041,60 @@ PointlesSQL
 │   │       so generated scratch notebooks never pollute the
 │   │       user-authored workspace view
 │   │
-│   ├── Sprint 35 — Mobile + responsive                    ⏳ planned
-│   │   ├── Breakpoint tokens (`--pql-breakpoint-sm/md/lg/xl`)
-│   │   │   = 640 / 768 / 1024 / 1280 px
-│   │   ├── Sidebar becomes a mobile drawer (<768 px) —
-│   │   │   hamburger in navbar, off-canvas slide-in, focus
-│   │   │   trap, Esc-to-close
-│   │   ├── Navbar collapses to hamburger (<640 px); Cmd+K
-│   │   │   trigger becomes a search-icon button
-│   │   ├── List tables render as 2-column label/value cards
-│   │   │   on <640 px; sortable headers swap for a dropdown
-│   │   ├── Touch targets ≥ 44 px everywhere interactive
-│   │   ├── Jupyter iframe shows a "desktop recommended" hint
-│   │   │   overlay on <768 px
-│   │   └── Manual Playwright replay at 375 / 768 / 1280 px
+│   ├── Sprint 35 — Mobile + responsive                    ✅ done
+│   │   ├── Breakpoint tokens `--pql-breakpoint-sm/md/lg/xl`
+│   │   │   = 640 / 768 / 1024 / 1280 px. Reference values only
+│   │   │   — `@media` rules cannot consume `var()`, so every
+│   │   │   query repeats the literal; the token block is the
+│   │   │   canonical contract (documented in
+│   │   │   `docs/design-tokens.md`)
+│   │   ├── Sidebar drawer polish — already wrapped in
+│   │   │   Bootstrap `offcanvas-md` from Sprint 30, so focus
+│   │   │   trap + Esc-to-close come for free. Verified end-to-
+│   │   │   end via Playwright MCP at 375 × 812
+│   │   ├── `<640 px` navbar story — scope originally called for
+│   │   │   a second hamburger at `<640 px`. Merged instead: at
+│   │   │   `<640 px` the inline `<ul class="navbar-nav">` hides
+│   │   │   (`d-none d-sm-flex` on a new `.pql-topbar-nav`
+│   │   │   wrapper), and a "Navigation" footer section inside
+│   │   │   the existing sidebar drawer surfaces all six nav
+│   │   │   links (Federation / Notebook / Workspace / Jobs /
+│   │   │   Dashboards / user dropdown). One hamburger, not two
+│   │   ├── `components/nav_links.html` — new, extracted from
+│   │   │   the inline base.html `<ul>` and reused in the drawer
+│   │   │   footer with an override `nav_list_class`
+│   │   ├── `listTable()` gains a `mobileSort: boolean` flag;
+│   │   │   when true it renders a `.pql-list-sort-mobile`
+│   │   │   `<select>` (`d-sm-none`) populated from every
+│   │   │   sortable `<th data-sort-key>` with asc / desc
+│   │   │   options. Picking an option calls a new
+│   │   │   `_onMobileSort(raw)` that sets `sortKey` + `sortDir`
+│   │   │   in one pick, unlike the tri-state header cycle.
+│   │   │   All four `listTable()` callers opt in (jobs,
+│   │   │   dashboards, external-locations, Sprint-34 columns
+│   │   │   card)
+│   │   ├── List tables collapse to 2-column label / value card
+│   │   │   rows at `<640 px` via a CSS-only transform on
+│   │   │   `.pql-list-table`. Every `<td>` carries a
+│   │   │   `data-label="…"` that the `::before` pseudo-element
+│   │   │   renders as the key; above the breakpoint the table
+│   │   │   stays a normal Bootstrap table. Applied to jobs,
+│   │   │   dashboards, external-locations, plus the Sprint-34
+│   │   │   Schemas / Tables / Preview / Columns cards
+│   │   ├── Touch targets ≥ 44 px under
+│   │   │   `@media (hover: none)` for buttons, inputs, selects,
+│   │   │   chips, nav-links, sortable headers. Scoped so a
+│   │   │   mouse-driven laptop touchscreen with hover support
+│   │   │   keeps its compact Sprint-33 spacing
+│   │   ├── Jupyter iframe gains a `.pql-notebook-mobile-notice`
+│   │   │   banner at `<768 px` ("JupyterLab is optimised for
+│   │   │   desktop…") above a still-mounted iframe — heads-up,
+│   │   │   not a blocker
+│   │   └── New playbook `docs/e2e-walkthroughs/mobile.md`
+│   │       exercising phone (375) / tablet (768) / desktop
+│   │       (1280) via `browser_resize` + `browser_navigate`.
+│   │       Sprint-35 found-bugs section filled in clean — no
+│   │       regressions at 1280, all breakpoints flip correctly
 │   │
 │   └── Sprint 36 — Shared utilities + shortcuts + close   ⏳ planned
 │       ├── `frontend/js/api.js` — `apiFetch(url, init)` that

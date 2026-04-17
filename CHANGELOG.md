@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 35)
+
+- Breakpoint tokens `--pql-breakpoint-sm/md/lg/xl` (640 / 768 /
+  1024 / 1280 px) added to the Sprint-29 token block. Reference
+  values only — CSS `@media` rules cannot consume `var()`, so
+  every media query in `style.css` repeats the literal; the token
+  block is the canonical contract, documented in
+  `docs/design-tokens.md`.
+- `components/nav_links.html` extracts the inline base.html
+  `<ul class="navbar-nav">` so the same link set renders in the
+  top navbar at `>=640 px` and again as a "Navigation" footer
+  inside the existing `offcanvas-md` sidebar drawer at `<640 px`.
+  One hamburger, not two — the scope's separate `<640 px`
+  hamburger was merged into the existing sidebar toggle.
+- `listTable()` gains a `mobileSort: boolean` config flag. When
+  true, mount renders a `.pql-list-sort-mobile <select>`
+  (hidden at `>=sm`) populated from every sortable `<th
+  data-sort-key>` with asc / desc options. A new
+  `_onMobileSort(raw)` method sets `sortKey` + `sortDir` in one
+  pick, complementing the tri-state desktop header cycle. Wired
+  up on jobs, dashboards, external-locations, and the Sprint-34
+  Columns card.
+- CSS-only card transform at `<640 px`: `.pql-list-table` rows
+  collapse into 2-column label / value stacks, with each `<td>`'s
+  `data-label="…"` rendered as an uppercase key via
+  `::before`. Applied to the four `listTable()` pages plus the
+  Sprint-34 Schemas / Tables / Preview / Columns cards. Row-
+  action cells opt out of the key rendering (no `::before`) and
+  stay right-aligned.
+- `.pql-notebook-mobile-notice` banner above the Jupyter iframe
+  at `<768 px` — "JupyterLab is optimised for desktop…". The
+  iframe itself stays mounted; the notice is a heads-up, not a
+  blocker.
+- Touch-target baseline `min-height: 44px` under
+  `@media (hover: none)` for buttons, links, inputs, selects,
+  chips, sortable headers. Scoped to touch-only devices so
+  hover-capable laptops keep the compact Sprint-33 spacing.
+- New playbook `docs/e2e-walkthroughs/mobile.md` exercising
+  phone (375 × 812) / tablet (768 × 1024) / desktop (1280 × 800)
+  viewports via `browser_resize` + `browser_navigate`; found-
+  bugs section filled in clean.
+
 ### Added (Sprint 34)
 
 - Catalog detail page (`/catalogs/{c}`) gains an inline Schemas card.

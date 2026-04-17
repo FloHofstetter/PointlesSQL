@@ -23,6 +23,7 @@
         <div x-data="listTable({
                 searchPlaceholder: 'Search jobs…',
                 initialSort: { key: 'name', dir: 'asc' },
+                mobileSort: true,
                 chips: [
                     { id: 'paused', label: 'Paused',
                       match: (tr) => tr.dataset.paused === '1' },
@@ -46,7 +47,7 @@
                 </template>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle">
+                <table class="table table-sm mb-0 align-middle pql-list-table">
                     <thead>
                         <tr>
                             <th class="ps-3" data-sort-key="name">Name</th>
@@ -68,15 +69,16 @@
                             data-sort-last-at="{{ job.last_run_at or '' }}"
                             data-paused="{{ 1 if job.is_paused else 0 }}"
                             data-last-status="{{ job.last_run_status or '' }}">
-                            <td class="ps-3">
+                            <td class="ps-3" data-label="Name">
                                 <a href="/jobs/{{ job.id }}" class="font-monospace text-decoration-none">{{ job.name }}</a>
                             </td>
-                            <td><span class="badge bg-info text-dark">{{ job.kind }}</span></td>
+                            <td data-label="Kind"><span class="badge bg-info text-dark">{{ job.kind }}</span></td>
                             <td class="font-monospace small"
+                                data-label="Cron"
                                 x-data='{ c: {{ job.cron_expr|tojson }} }'
                                 x-text="pqlHumanizeCron(c)"
                                 x-bind:title="c">{{ job.cron_expr }}</td>
-                            <td class="small text-muted font-monospace">
+                            <td class="small text-muted font-monospace" data-label="Last run">
                                 {% if job.last_run_status %}
                                 <span class="pql-status-dot pql-status-dot--{{ job.last_run_status }}"
                                       aria-hidden="true"></span>
@@ -88,7 +90,7 @@
                                 —
                                 {% endif %}
                             </td>
-                            <td>
+                            <td data-label="Status">
                                 {% if job.is_paused %}
                                 <span class="badge bg-warning text-dark">paused</span>
                                 {% else %}
@@ -97,6 +99,7 @@
                             </td>
                             {% if is_admin %}
                             <td class="pe-3 pql-row-actions"
+                                data-label="Actions"
                                 x-data="jobRowActions({ jobId: {{ job.id }}, paused: {{ 'true' if job.is_paused else 'false' }} })">
                                 <button type="button" class="btn btn-sm btn-outline-primary"
                                         x-bind:disabled="busy"

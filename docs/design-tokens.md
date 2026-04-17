@@ -175,6 +175,23 @@ classes map to the semantic palette.
 <span class="pql-badge pql-badge--info">Beta</span>
 ```
 
+### Breakpoints
+
+Added in Sprint 35 for the mobile/responsive pass. The tokens are
+*reference values only* — CSS `@media` rules cannot consume
+`var(…)`, so every media query in `style.css` repeats the literal.
+Treat this block as the canonical contract; any literal that drifts
+from these values is a bug.
+
+| Token                    | Value    | Used for                                               |
+|--------------------------|----------|--------------------------------------------------------|
+| `--pql-breakpoint-sm`    | `640px`  | Top-navbar nav-links → sidebar drawer footer; list tables collapse to label/value cards; mobile sort dropdown activates |
+| `--pql-breakpoint-md`    | `768px`  | Sidebar switches from `offcanvas-md` drawer to sticky two-column shell; Cmd+K label + keycap trigger replaces the search-icon button; Jupyter "desktop recommended" notice disappears |
+| `--pql-breakpoint-lg`    | `1024px` | Reserved — no rule consumes it yet                      |
+| `--pql-breakpoint-xl`    | `1280px` | Reserved — no rule consumes it yet                      |
+
+Touch targets switch to ≥ 44 px minimum under `@media (hover: none)`.
+
 ## Conventions
 
 - **Templates** — reach for a primitive first, a Bootstrap utility

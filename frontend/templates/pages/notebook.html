@@ -22,6 +22,14 @@
         </button>
     </div>
 
+    <div x-show="ready" x-cloak class="pql-notebook-mobile-notice d-md-none">
+        <i class="bi bi-display"></i>
+        <p>
+            JupyterLab is optimised for desktop. Drag-to-resize cells
+            and most keyboard shortcuts will not work on small screens.
+        </p>
+    </div>
+
     <iframe x-show="ready"
             x-cloak
             x-bind:src="ready ? 'http://localhost:{{ jupyter_port }}/lab' : ''"
