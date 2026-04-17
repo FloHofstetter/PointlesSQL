@@ -689,7 +689,7 @@ PointlesSQL
 │   │       (`count: int = 3`, `enabled: bool = True`,
 │   │       `label: str = "hello"`) — one per typed-input branch
 │   │
-│   ├── Sprint 26 — Inline run render + Output artifacts       ✅ done
+│   ├── Sprint 26 — Inline run render + Output artifacts       ✅ done (6652869)
 │   │   ├── `nbconvert>=7.0` dep
 │   │   ├── `GET /jobs/{id}/runs/{rid}/notebook` renders the
 │   │   │   output ipynb via
