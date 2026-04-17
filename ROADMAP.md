@@ -907,18 +907,45 @@ PointlesSQL
 │   │   │   collapses to a search-icon button
 │   │   └── New playbook `docs/e2e-walkthroughs/command-palette.md`
 │   │
-│   ├── Sprint 32 — Home dashboard                         ⏳ planned
+│   ├── Sprint 32 — Home dashboard                         ✅ done (pending-hash)
 │   │   ├── Rewrite `pages/catalogs.html` (the `/` route) into a
-│   │   │   real dashboard: welcome header, Recent catalogs
-│   │   │   (last 5 via `localStorage`), Latest job runs (10
-│   │   │   cross-job with status dot), Your dashboards card,
-│   │   │   Quick actions
-│   │   ├── Inline-SVG sparklines for 7-day job success-rate
-│   │   │   (no Chart.js — each is ~40 lines of Alpine)
-│   │   ├── `GET /api/home/summary` — one round-trip for all
-│   │   │   server-side aggregates
-│   │   └── 3-step onboarding checklist empty-state when no
-│   │       catalogs/jobs/dashboards exist
+│   │   │   real dashboard (`pages/home.html`): welcome header,
+│   │   │   Recent catalogs (last 5 via
+│   │   │   `localStorage['pql.recentCatalogs']`), Latest job runs
+│   │   │   (10 cross-job with status dot + relative time), Your
+│   │   │   dashboards card (owner-scoped), Quick actions
+│   │   │   (admin-only "Create foreign catalog" modal preserved
+│   │   │   via extracted `components/create_foreign_catalog_modal.html`)
+│   │   ├── Inline-SVG sparkline for 7-day job success-rate — 7
+│   │   │   bars over 168×40, semantic tint classes
+│   │   │   (`.pql-spark--ok/warn/bad/empty`) keyed on a single
+│   │   │   `homeSparkline()` Alpine factory. Only terminal
+│   │   │   statuses count (succeeded + failed); skipped/running
+│   │   │   excluded from both numerator and denominator
+│   │   ├── `GET /api/home/summary` — one round-trip for every
+│   │   │   server-side card. Soyuz + DB concurrent via
+│   │   │   `asyncio.gather` + `asyncio.to_thread`; a
+│   │   │   `CatalogUnavailableError` downgrades to
+│   │   │   `catalogs.unavailable=true` with a 200 response so the
+│   │   │   home page still renders local cards. `_build_home_summary`
+│   │   │   helper shared with the HTML handler so first-paint and
+│   │   │   refresh see identical shapes. Visibility mirrors
+│   │   │   `/api/jobs`: latest_runs + sparkline filter
+│   │   │   `Job.run_as_user_id == user.id` for non-admins
+│   │   ├── Catalog-visit instrumentation in `base.html` — any
+│   │   │   page that threads `active_catalog` writes the name
+│   │   │   into `localStorage['pql.recentCatalogs']`, deduped,
+│   │   │   capped at 5, mirroring Sprint 31's
+│   │   │   `pql.recentSearches` pattern
+│   │   ├── 3-step onboarding checklist empty-state when no
+│   │   │   catalogs/jobs/dashboards exist; suppressed when soyuz
+│   │   │   is unavailable (the red banner is the primary signal
+│   │   │   in that case, not "connect a data source")
+│   │   └── New playbook `docs/e2e-walkthroughs/home.md` covering
+│   │       the sparkline render, latest-runs table, Recent-catalogs
+│   │       visit tracking, Your-dashboards card, admin modal,
+│   │       fresh-user onboarding, JSON shape, and the soyuz-down
+│   │       200-response degradation
 │   │
 │   ├── Sprint 33 — List-page polish                       ⏳ planned
 │   │   ├── Shared `frontend/js/list_table.js` — debounced

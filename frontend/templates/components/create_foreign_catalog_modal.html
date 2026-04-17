@@ -1,42 +1,14 @@
-{% extends "base.html" %}
-{% block title %}PointlesSQL{% endblock %}
+{#
+    Admin-only modal for creating a foreign catalog bound to an existing
+    Connection. Included from pages that surface the "Create foreign
+    catalog" action — today that's the home page (onboarding checklist +
+    Quick actions). The modal body is unchanged from its original
+    ``pages/catalogs.html`` home.
 
-{% block content %}
-<div class="pql-stack pql-stack--loose pql-welcome">
-    {% if error %}
-    <div class="alert alert-danger m-0">
-        <i class="bi bi-exclamation-triangle me-1"></i>
-        Failed to reach Unity Catalog: {{ error }}
-    </div>
-    {% endif %}
-
-    <div class="pql-card text-center">
-        <div class="pql-stack" style="align-items: center;">
-            <i class="bi bi-database display-1 text-muted"></i>
-            <div class="pql-stack pql-stack--tight" style="align-items: center;">
-                <h1 class="h3 m-0">Welcome to PointlesSQL</h1>
-                <p class="text-muted m-0">A fast UI for Unity Catalog.</p>
-            </div>
-            <span class="pql-badge pql-badge--info" style="padding: var(--pql-space-2) var(--pql-space-4);">
-                <i class="bi bi-folder2"></i>
-                <span>{{ catalog_count }} catalog{{ "s" if catalog_count != 1 else "" }} available</span>
-            </span>
-            <p class="text-muted small m-0">
-                <i class="bi bi-arrow-left me-1"></i>Select a catalog from the sidebar to get started.
-            </p>
-
-            {% if is_admin %}
-            <button class="btn btn-outline-primary btn-sm"
-                    data-bs-toggle="modal"
-                    data-bs-target="#createForeignCatalogModal">
-                <i class="bi bi-plus-lg me-1"></i>Create foreign catalog
-            </button>
-            {% endif %}
-        </div>
-    </div>
-</div>
-
-{% if is_admin %}
+    Context variables:
+      - ``connections`` — list of connection dicts the current user can
+        target. Empty list is handled with an inline alert.
+#}
 <div class="modal fade" id="createForeignCatalogModal" tabindex="-1"
      x-data='createForeignCatalogForm({
          connections: {{ (connections or [])|tojson }}
@@ -113,5 +85,3 @@
         </div>
     </div>
 </div>
-{% endif %}
-{% endblock %}

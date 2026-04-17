@@ -15,12 +15,12 @@ the PQL snippet card on the table page.
 
 ## Walkthrough
 
-1. **Welcome screen** — catalog count + admin-only modal
-   trigger.
+1. **Home dashboard landing** — catalog counter + admin-only modal
+   trigger in Quick actions.
    - Action: `browser_navigate(url='http://127.0.0.1:8000/')`
-   - Assert: the pill "N catalogs available" shows at least 1.
+   - Assert: the Quick actions "Catalogs" counter shows at least 1.
    - Assert: the "Create foreign catalog" button is visible
-     (admin-only — gated by `is_admin` in `pages/catalogs.html`).
+     (admin-only — gated by `is_admin` in `pages/home.html`).
 
 2. **Sidebar tree — cold load** — the tree fetches from
    `/api/tree` on first render.

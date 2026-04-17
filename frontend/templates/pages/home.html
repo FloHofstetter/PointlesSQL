@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}PointlesSQL{% endblock %}
+
+{% block content %}
+{% set onboard = summary.onboarding %}
+{% set catalogs = summary.catalogs %}
+{% set jobs = summary.jobs %}
+{% set dashboards = summary.dashboards %}
+
+<div class="pql-stack pql-stack--loose pql-home">
+    {% if catalogs.unavailable %}
+    <div class="alert alert-danger m-0" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Failed to reach Unity Catalog: {{ catalogs.error }}
+    </div>
+    {% endif %}
+
+    <header class="pql-stack pql-stack--tight">
+        <h1 class="h3 m-0">Welcome, {{ summary.user.display_name }}</h1>
+        <p class="text-muted m-0">
+            Jump back in — recent activity across your PointlesSQL workspace.
+        </p>
+    </header>
+
+    {% if onboard.show %}
+    <section class="pql-card pql-home-onboarding" aria-labelledby="onboardingHeader">
+        <div class="pql-stack">
+            <div class="pql-stack pql-stack--tight">
+                <h2 class="h5 m-0" id="onboardingHeader">Get started in three steps</h2>
+                <p class="text-muted small m-0">
+                    Nothing to show yet. Follow the steps below to populate
+                    your workspace.
+                </p>
+            </div>
+            <ol class="pql-home-steps">
+                <li class="pql-home-step">
+                    <span class="pql-home-step__num">1</span>
+                    <div class="pql-home-step__body">
+                        <p class="pql-home-step__title">Create a catalog</p>
+                        <p class="pql-home-step__meta">
+                            PointlesSQL browses catalogs managed by
+                            soyuz-catalog. Connect a foreign Postgres via a
+                            Connection, or create one directly in
+                            soyuz-catalog.
+                        </p>
+                        {% if is_admin %}
+                        <button type="button" class="btn btn-primary btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createForeignCatalogModal">
+                            <i class="bi bi-plus-lg me-1"></i>Create foreign catalog
+                        </button>
+                        {% else %}
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Ask an admin to create a catalog or a Connection.
+                        </p>
+                        {% endif %}
+                    </div>
+                </li>
+                <li class="pql-home-step">
+                    <span class="pql-home-step__num">2</span>
+                    <div class="pql-home-step__body">
+                        <p class="pql-home-step__title">Schedule a notebook job</p>
+                        <p class="pql-home-step__meta">
+                            Run notebooks on a cron with typed parameters —
+                            Papermill-executed, output saved per run.
+                        </p>
+                        <a href="/jobs" class="btn btn-outline-primary btn-sm">
+                            Go to Jobs
+                        </a>
+                    </div>
+                </li>
+                <li class="pql-home-step">
+                    <span class="pql-home-step__num">3</span>
+                    <div class="pql-home-step__body">
+                        <p class="pql-home-step__title">Publish a dashboard</p>
+                        <p class="pql-home-step__meta">
+                            Pin a notebook's rendered output as a dashboard,
+                            hide the code cells, refresh on demand.
+                        </p>
+                        <a href="/dashboards" class="btn btn-outline-primary btn-sm">
+                            Go to Dashboards
+                        </a>
+                    </div>
+                </li>
+            </ol>
+        </div>
+    </section>
+    {% else %}
+    <section class="pql-home-grid">
+      <div class="pql-home-col pql-home-col--primary">
+        <div class="pql-card pql-home-card pql-home-card--sparkline">
+            <div class="pql-stack">
+                <header class="d-flex align-items-baseline justify-content-between">
+                    <h2 class="h6 m-0">
+                        <i class="bi bi-graph-up me-1"></i>Job activity
+                    </h2>
+                    <span class="text-muted small">Last 7 days</span>
+                </header>
+                {% set has_sparkline = summary.sparkline.days|selectattr("total", "gt", 0)|list|length > 0 %}
+                {% if has_sparkline %}
+                <div class="pql-home-sparkline"
+                     x-data='homeSparkline({ days: {{ summary.sparkline.days|tojson }} })'>
+                    <svg viewBox="0 0 168 40" width="168" height="40"
+                         role="img" aria-label="Daily job success rate, last 7 days"
+                         class="pql-sparkline">
+                        {% for d in summary.sparkline.days %}
+                        <rect x="{{ loop.index0 * 24 }}"
+                              y="{{ 40 - d.bar_height }}" width="20"
+                              height="{{ d.bar_height }}" rx="2"
+                              class="{{ d.bar_class }}">
+                            <title>{{ d.bar_title }}</title>
+                        </rect>
+                        {% endfor %}
+                    </svg>
+                    <dl class="pql-home-sparkline__meta">
+                        <dt>Total terminal runs</dt>
+                        <dd x-text="totals.total"></dd>
+                        <dt>Succeeded</dt>
+                        <dd x-text="totals.succeeded"></dd>
+                        <dt>Overall rate</dt>
+                        <dd x-text="totals.pct"></dd>
+                    </dl>
+                </div>
+                {% else %}
+                {% with flush=True, icon="bi-graph-up",
+                        title="No job runs in the last 7 days",
+                        message="Run a job manually or wait for the scheduler to kick in." %}
+                    {% include "components/empty.html" %}
+                {% endwith %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="pql-card pql-home-card pql-home-card--runs">
+            <div class="pql-stack">
+                <header class="d-flex align-items-baseline justify-content-between">
+                    <h2 class="h6 m-0">
+                        <i class="bi bi-clock-history me-1"></i>Latest job runs
+                    </h2>
+                    <a href="/jobs" class="small text-decoration-none">All jobs &rsaquo;</a>
+                </header>
+                {% if summary.latest_runs %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle pql-home-runs">
+                        <thead>
+                            <tr>
+                                <th scope="col">Job</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Started</th>
+                                <th scope="col" class="text-end">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for run in summary.latest_runs %}
+                            <tr>
+                                <td>
+                                    <a href="/jobs/{{ run.job_id }}"
+                                       class="font-monospace text-decoration-none">
+                                        {{ run.job_name }}
+                                    </a>
+                                    {% if run.trigger == "manual" %}
+                                    <span class="pql-badge ms-1" title="Manual trigger">manual</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="pql-status-dot pql-status-dot--{{ run.status }}"
+                                          aria-hidden="true"></span>
+                                    <span class="visually-hidden">{{ run.status }}</span>
+                                    <span class="small">{{ run.status }}</span>
+                                </td>
+                                <td class="small text-muted font-monospace"
+                                    x-data="{ iso: '{{ run.started_at }}' }"
+                                    x-text="pqlRelativeTime(iso)"
+                                    :title="new Date(iso).toLocaleString()">
+                                    {{ run.started_at }}
+                                </td>
+                                <td class="text-end small font-monospace text-muted">
+                                    {% if run.duration_s is not none %}
+                                    {{ '%.1f' % run.duration_s }}s
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                {% with flush=True, icon="bi-clock-history",
+                        title="No runs yet",
+                        message="Run a job to see its activity here." %}
+                    {% include "components/empty.html" %}
+                {% endwith %}
+                {% endif %}
+            </div>
+        </div>
+      </div>
+
+      <div class="pql-home-col pql-home-col--secondary">
+        <div class="pql-card pql-home-card pql-home-card--quick">
+            <div class="pql-stack">
+                <h2 class="h6 m-0">
+                    <i class="bi bi-lightning-charge me-1"></i>Quick actions
+                </h2>
+                <div class="pql-cluster">
+                    <a href="/notebook" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-journal-code me-1"></i>Open notebook
+                    </a>
+                    <a href="/jobs" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-clock-history me-1"></i>View jobs
+                    </a>
+                    <a href="/dashboards" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-speedometer2 me-1"></i>View dashboards
+                    </a>
+                    {% if is_admin %}
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#createForeignCatalogModal">
+                        <i class="bi bi-plus-lg me-1"></i>Create foreign catalog
+                    </button>
+                    {% endif %}
+                </div>
+                <dl class="pql-home-counters">
+                    <div class="pql-home-counter">
+                        <dt>Catalogs</dt>
+                        <dd>{{ catalogs.count }}</dd>
+                    </div>
+                    <div class="pql-home-counter">
+                        <dt>Jobs</dt>
+                        <dd>
+                            {{ jobs.count_visible }}
+                            {% if jobs.count_paused %}
+                            <span class="pql-badge pql-badge--warning ms-1">
+                                {{ jobs.count_paused }} paused
+                            </span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div class="pql-home-counter">
+                        <dt>Dashboards</dt>
+                        <dd>{{ dashboards.count_total }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <div class="pql-card pql-home-card pql-home-card--catalogs"
+             x-data="homeRecentCatalogs()">
+            <div class="pql-stack">
+                <h2 class="h6 m-0">
+                    <i class="bi bi-folder2 me-1"></i>Recent catalogs
+                </h2>
+                <template x-if="items.length > 0">
+                    <ul class="pql-home-list">
+                        <template x-for="item in items" :key="item.name">
+                            <li class="pql-home-list__item">
+                                <a :href="'/catalogs/' + encodeURIComponent(item.name)"
+                                   class="font-monospace text-decoration-none"
+                                   x-text="item.name"></a>
+                            </li>
+                        </template>
+                    </ul>
+                </template>
+                <template x-if="items.length === 0">
+                    <p class="text-muted small fst-italic m-0">
+                        Browse a catalog from the sidebar to see it here.
+                    </p>
+                </template>
+            </div>
+        </div>
+
+        <div class="pql-card pql-home-card pql-home-card--dashboards">
+            <div class="pql-stack">
+                <header class="d-flex align-items-baseline justify-content-between">
+                    <h2 class="h6 m-0">
+                        <i class="bi bi-speedometer2 me-1"></i>Your dashboards
+                    </h2>
+                    <a href="/dashboards" class="small text-decoration-none">
+                        All ({{ dashboards.count_total }}) &rsaquo;
+                    </a>
+                </header>
+                {% if dashboards.mine %}
+                <ul class="pql-home-list">
+                    {% for d in dashboards.mine %}
+                    <li class="pql-home-list__item">
+                        <a href="/dashboards/{{ d.slug }}"
+                           class="text-decoration-none">{{ d.title }}</a>
+                        <span class="text-muted small font-monospace">{{ d.notebook_path }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                {% with flush=True, icon="bi-speedometer2",
+                        title="No dashboards yet",
+                        message="Publish a notebook output to pin it here." %}
+                    {% include "components/empty.html" %}
+                {% endwith %}
+                {% endif %}
+            </div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+</div>
+
+{% if is_admin %}
+{% include "components/create_foreign_catalog_modal.html" %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    // Bars are server-rendered in pages/home.html (see BUG-32-01).
+    // The factory survives for the meta <dl> counters only.
+    window.homeSparkline = function (ctx) {
+        const days = Array.isArray(ctx && ctx.days) ? ctx.days : [];
+        let total = 0;
+        let succeeded = 0;
+        for (const d of days) {
+            total += d.total || 0;
+            succeeded += d.succeeded || 0;
+        }
+        const overall = total > 0 ? Math.round((succeeded / total) * 100) + '%' : '—';
+        return { totals: { total, succeeded, pct: overall } };
+    };
+
+    window.homeRecentCatalogs = function () {
+        return {
+            items: [],
+            init() {
+                try {
+                    const raw = localStorage.getItem('pql.recentCatalogs');
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    this.items = Array.isArray(parsed) ? parsed.slice(0, 5) : [];
+                } catch (e) {
+                    this.items = [];
+                }
+            },
+        };
+    };
+
+    if (!window.pqlRelativeTime) {
+        window.pqlRelativeTime = function (iso) {
+            if (!iso) return '';
+            const t = Date.parse(iso);
+            if (Number.isNaN(t)) return iso;
+            const delta = Math.max(0, (Date.now() - t) / 1000);
+            if (delta < 45) return 'just now';
+            if (delta < 90) return '1 min ago';
+            if (delta < 3600) return Math.round(delta / 60) + ' min ago';
+            if (delta < 5400) return '1 hour ago';
+            if (delta < 86400) return Math.round(delta / 3600) + ' hours ago';
+            if (delta < 129600) return '1 day ago';
+            if (delta < 2592000) return Math.round(delta / 86400) + ' days ago';
+            const d = new Date(t);
+            return d.toISOString().slice(0, 10);
+        };
+    }
+
+})();
+</script>
+{% endblock %}

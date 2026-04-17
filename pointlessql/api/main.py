@@ -8,7 +8,7 @@ import logging
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
@@ -533,31 +533,31 @@ async def api_lineage(request: Request, full_name: str, depth: int = 3) -> dict[
 
 @app.get("/", response_class=HTMLResponse)
 async def catalogs_index(request: Request) -> HTMLResponse:
-    """Render the welcome screen with the catalog count.
+    """Render the home dashboard.
 
-    Also fetches the connection list for admins so the "Create foreign
-    catalog" modal has a pre-populated dropdown. Non-admins see the
-    welcome screen without the create button.
+    Assembles every server-side card (catalog count, recent job runs,
+    7-day sparkline, dashboards owned by the user, onboarding
+    checklist) through :func:`_build_home_summary` so the first-paint
+    payload matches exactly what ``/api/home/summary`` would return.
+    Admins additionally get the connections list so the "Create
+    foreign catalog" modal has a pre-populated dropdown.
     """
-    client = _get_uc_client(request)
     user = _get_user(request)
-    catalog_count = 0
+    summary = await _build_home_summary(request, user)
     connections: list[dict[str, Any]] = []
-    error: str | None = None
-    try:
-        catalog_count = len(await client.list_catalogs())
-        if user.get("is_admin", False):
-            connections = await client.list_connections()
-    except CatalogUnavailableError as exc:
-        error = exc.detail
+    if user.get("is_admin") and not summary["catalogs"]["unavailable"]:
+        try:
+            connections = await _get_uc_client(request).list_connections()
+        except CatalogUnavailableError:
+            logger.warning("home: soyuz connections list unavailable", exc_info=True)
     return _TEMPLATES.TemplateResponse(
         request,
-        "pages/catalogs.html",
+        "pages/home.html",
         {
-            "catalog_count": catalog_count,
+            "summary": summary,
             "connections": connections,
             "is_admin": user.get("is_admin", False),
-            "error": error,
+            "active_page": "home",
             "active_catalog": None,
             "active_schema": None,
             "active_table": None,
@@ -2116,6 +2116,245 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
 
     hits.sort(key=lambda h: (-float(h["score"]), -float(h["updated_at"])))
     return hits[:limit]
+
+
+async def _build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]:
+    """Aggregate the payload that powers the home dashboard.
+
+    Shared by the HTML ``/`` handler and the JSON ``/api/home/summary``
+    endpoint so first-paint and subsequent refreshes see the same
+    shape. The soyuz catalog count is fetched concurrently with the
+    local DB aggregates; a soyuz outage downgrades to
+    ``catalogs.unavailable = True`` but does not fail the whole
+    response, matching the error-resilience rule used by
+    ``/api/search`` above.
+
+    Args:
+        request: The incoming FastAPI request. Used for the UC client
+            and the session factory.
+        user: The current user's info dict.
+
+    Returns:
+        A dict with keys ``user``, ``catalogs``, ``jobs``,
+        ``dashboards``, ``latest_runs``, ``sparkline``, and
+        ``onboarding``. See ``/api/home/summary`` for the documented
+        shape.
+    """
+    client = _get_uc_client(request)
+    is_admin = bool(user.get("is_admin"))
+    user_id = int(user.get("id") or 0)
+
+    async def _catalogs_block() -> dict[str, Any]:
+        try:
+            catalogs = await client.list_catalogs()
+        except CatalogUnavailableError as exc:
+            logger.warning("home: soyuz catalog list unavailable", exc_info=True)
+            return {
+                "count": 0,
+                "has_catalogs": False,
+                "unavailable": True,
+                "error": exc.detail,
+            }
+        count = len(catalogs)
+        return {
+            "count": count,
+            "has_catalogs": count > 0,
+            "unavailable": False,
+            "error": None,
+        }
+
+    def _db_block() -> dict[str, Any]:
+        from sqlalchemy import func
+        from sqlalchemy import select as _select
+
+        from pointlessql.models import Dashboard as DashboardModel
+        from pointlessql.models import Job as JobModel
+        from pointlessql.models import JobRun as JobRunModel
+
+        factory = request.app.state.session_factory
+        with factory() as session:
+            jobs_stmt = _select(JobModel)
+            if not is_admin:
+                jobs_stmt = jobs_stmt.where(JobModel.run_as_user_id == user_id)
+            jobs_rows = list(session.scalars(jobs_stmt).all())
+            count_visible = len(jobs_rows)
+            count_paused = sum(1 for j in jobs_rows if j.is_paused)
+            visible_job_ids = [j.id for j in jobs_rows]
+
+            latest_runs: list[dict[str, Any]] = []
+            if visible_job_ids:
+                runs_stmt = (
+                    _select(JobRunModel, JobModel.name)
+                    .join(JobModel, JobRunModel.job_id == JobModel.id)
+                    .where(JobRunModel.job_id.in_(visible_job_ids))
+                    .order_by(JobRunModel.started_at.desc())
+                    .limit(10)
+                )
+                for run, job_name in session.execute(runs_stmt).all():
+                    duration: float | None = None
+                    if run.started_at and run.finished_at:
+                        duration = (run.finished_at - run.started_at).total_seconds()
+                    latest_runs.append(
+                        {
+                            "id": run.id,
+                            "job_id": run.job_id,
+                            "job_name": job_name,
+                            "status": run.status,
+                            "trigger": run.trigger,
+                            "started_at": run.started_at.isoformat() if run.started_at else None,
+                            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+                            "duration_s": duration,
+                        }
+                    )
+
+            # 7-day rolling window including today. Only terminal runs
+            # (succeeded + failed) count: pending/running would make the
+            # rate drift mid-day, skipped is a scheduler signal, not a
+            # real outcome.
+            today = datetime.now(UTC).date()
+            start_day = today - timedelta(days=6)
+            window_start = datetime(start_day.year, start_day.month, start_day.day, tzinfo=UTC)
+            days: list[dict[str, Any]] = [
+                {
+                    "date": (start_day + timedelta(days=i)).isoformat(),
+                    "total": 0,
+                    "succeeded": 0,
+                    "rate": None,
+                }
+                for i in range(7)
+            ]
+            if visible_job_ids:
+                spark_stmt = (
+                    _select(JobRunModel.started_at, JobRunModel.status)
+                    .where(JobRunModel.job_id.in_(visible_job_ids))
+                    .where(JobRunModel.started_at >= window_start)
+                    .where(JobRunModel.status.in_(["succeeded", "failed"]))
+                )
+                for started_at, status in session.execute(spark_stmt).all():
+                    idx = (started_at.date() - start_day).days
+                    if 0 <= idx < 7:
+                        bucket = days[idx]
+                        bucket["total"] += 1
+                        if status == "succeeded":
+                            bucket["succeeded"] += 1
+                for bucket in days:
+                    if bucket["total"] > 0:
+                        bucket["rate"] = bucket["succeeded"] / bucket["total"]
+            # Pre-compute the SVG bar styling server-side. Alpine's
+            # ``<template x-for>`` inside ``<svg>`` doesn't work —
+            # ``<template>.content`` is HTML-namespaced so inner
+            # ``<rect>`` elements get parsed as unknown HTML, leaving
+            # the bars unbound (BUG-32-01 found during the Phase 9
+            # playbook replay). Moving the branch here keeps the
+            # template a plain Jinja ``{% for %}`` loop.
+            for bucket in days:
+                rate = bucket["rate"]
+                if rate is None:
+                    bucket["bar_height"] = 2
+                    bucket["bar_class"] = "pql-spark--empty"
+                    bucket["bar_title"] = f"{bucket['date']}: no runs"
+                else:
+                    bucket["bar_height"] = round(max(2.0, rate * 36), 2)
+                    if rate >= 0.9:
+                        bucket["bar_class"] = "pql-spark--ok"
+                    elif rate >= 0.5:
+                        bucket["bar_class"] = "pql-spark--warn"
+                    else:
+                        bucket["bar_class"] = "pql-spark--bad"
+                    pct = round(rate * 100)
+                    bucket["bar_title"] = (
+                        f"{bucket['date']}: {bucket['succeeded']}/"
+                        f"{bucket['total']} succeeded ({pct}%)"
+                    )
+
+            count_total = session.scalar(_select(func.count()).select_from(DashboardModel)) or 0
+            count_mine = (
+                session.scalar(
+                    _select(func.count())
+                    .select_from(DashboardModel)
+                    .where(DashboardModel.owner_id == user_id)
+                )
+                or 0
+            )
+            mine_rows = list(
+                session.scalars(
+                    _select(DashboardModel)
+                    .where(DashboardModel.owner_id == user_id)
+                    .order_by(DashboardModel.updated_at.desc())
+                    .limit(5)
+                ).all()
+            )
+            mine: list[dict[str, Any]] = [
+                {
+                    "slug": d.slug,
+                    "title": d.title,
+                    "notebook_path": d.notebook_path,
+                    "job_id": d.job_id,
+                    "updated_at": d.updated_at.isoformat() if d.updated_at else None,
+                }
+                for d in mine_rows
+            ]
+
+        return {
+            "jobs": {"count_visible": count_visible, "count_paused": count_paused},
+            "dashboards": {
+                "count_total": int(count_total),
+                "count_mine": int(count_mine),
+                "mine": mine,
+            },
+            "latest_runs": latest_runs,
+            "sparkline": {"days": days},
+        }
+
+    catalogs_block, db_block = await asyncio.gather(
+        _catalogs_block(),
+        asyncio.to_thread(_db_block),
+    )
+
+    have_catalogs = bool(catalogs_block["has_catalogs"])
+    have_jobs = db_block["jobs"]["count_visible"] > 0
+    have_dashboards = db_block["dashboards"]["count_total"] > 0
+    unavailable = bool(catalogs_block["unavailable"])
+    # Suppress onboarding when soyuz is down — "connect a data source"
+    # is the wrong prompt for a user whose data is fine but whose
+    # catalog server is momentarily unreachable.
+    show_onboarding = (
+        not unavailable and not have_catalogs and not have_jobs and not have_dashboards
+    )
+
+    return {
+        "user": {
+            "display_name": user.get("display_name") or user.get("email", ""),
+            "email": user.get("email", ""),
+            "is_admin": is_admin,
+        },
+        "catalogs": catalogs_block,
+        "jobs": db_block["jobs"],
+        "dashboards": db_block["dashboards"],
+        "latest_runs": db_block["latest_runs"],
+        "sparkline": db_block["sparkline"],
+        "onboarding": {
+            "show": show_onboarding,
+            "have_catalogs": have_catalogs,
+            "have_jobs": have_jobs,
+            "have_dashboards": have_dashboards,
+        },
+    }
+
+
+@app.get("/api/home/summary")
+async def api_home_summary(request: Request) -> dict[str, Any]:
+    """Return the aggregated payload that powers the home dashboard.
+
+    One round-trip for every server-side card on ``/``: catalog count,
+    jobs + paused counters, 10 most recent cross-job runs visible to
+    the user, a 7-day success-rate bucket list for the sparkline, and
+    the user's own dashboards + total dashboard count. Recent catalogs
+    are client-side in ``localStorage["pql.recentCatalogs"]`` and do
+    not flow through this endpoint.
+    """
+    user = _get_user(request)
+    return await _build_home_summary(request, user)
 
 
 @app.post("/api/dashboards")

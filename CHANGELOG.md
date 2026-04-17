@@ -4,6 +4,78 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 32)
+
+- Home dashboard — the `/` route (formerly the welcome hero in
+  `pages/catalogs.html`) is now a real dashboard. Welcome header,
+  7-day success-rate sparkline (inline SVG, no Chart.js),
+  10 most-recent job runs with status dots, a Recent catalogs card
+  driven by `localStorage['pql.recentCatalogs']`, Your-dashboards
+  card (owner-scoped), and a Quick actions cluster that keeps the
+  admin-only "Create foreign catalog" modal reachable.
+- 3-step onboarding checklist empty-state — shown only when the
+  current user has no visible catalogs, no jobs, and no dashboards;
+  suppressed when soyuz is unavailable so users whose data is fine
+  are not told to "connect a data source". Admin gets the inline
+  Create-foreign-catalog button; non-admin sees an
+  "ask an admin" hint.
+- `GET /api/home/summary` — one round-trip for every server-side
+  card. Returns `{user, catalogs, jobs, dashboards, latest_runs,
+  sparkline, onboarding}`. Soyuz `list_catalogs()` runs in parallel
+  with the local DB work via `asyncio.gather` + `asyncio.to_thread`;
+  a `CatalogUnavailableError` downgrades to `catalogs.unavailable =
+  true` with a 200 response so the page still renders every local
+  card. Visibility mirrors `/api/jobs` (latest_runs + sparkline
+  filter `Job.run_as_user_id == user.id` for non-admins).
+- Catalog-visit instrumentation in `base.html` — any page that
+  threads `active_catalog` (catalog/schema/table detail) writes
+  `{name, ts}` into `localStorage['pql.recentCatalogs']`, deduped
+  by name, capped at 5. Pattern mirrors the Sprint-31 palette's
+  `pql.recentSearches` writer.
+- Sparkline CSS in `frontend/css/style.css` uses three semantic
+  tints (`--pql-color-success-fg` / `--pql-color-warning-fg` /
+  `--pql-color-danger-fg`) plus a neutral empty-day style, so the
+  prepared light-mode variant comes for free. Bars have a 2 px
+  floor and a nested `<title>` tooltip for native hover.
+- `.pql-status-dot--{succeeded,failed,running,pending,skipped}` —
+  compact status indicators reused by the latest-runs table.
+- `pages/home.html` + `components/create_foreign_catalog_modal.html`
+  (extracted from the old welcome page; the modal markup itself is
+  unchanged). `pages/catalogs.html` deleted — `/` was its only
+  caller. The Sprint-22 `catalog-browsing.md` playbook's step 1 was
+  updated to assert the new Quick actions counter instead of the
+  old `N catalogs available` pill.
+- `docs/e2e-walkthroughs/home.md` — Playwright MCP playbook
+  covering the twelve home-page assertions including the soyuz-down
+  degradation (verified 200 + `catalogs.unavailable=true` + banner +
+  local cards still render), the visit-tracking instrumentation,
+  and the system-empty onboarding trigger.
+
+### Fixed (Sprint 32, same-commit from playbook replay)
+
+- **BUG-32-01**: the sparkline SVG didn't render because Alpine's
+  `<template x-for>` inside `<svg>` fails — `<template>.content`
+  is an HTML-namespaced DocumentFragment, so inner `<rect>` elements
+  were parsed as unknown HTML and never bound. Surfaced as
+  `ReferenceError: d is not defined` / `Document.importNode:
+  Argument 1 is not an object.` in the browser console on first
+  load. Fixed by computing `bar_height`, `bar_class`, and
+  `bar_title` server-side in `_build_home_summary` and rendering
+  the seven `<rect>`s via a plain Jinja `{% for %}` loop. The
+  `homeSparkline()` Alpine factory survives only for the meta
+  counters.
+- **BUG-32-02**: the home-page two-column CSS Grid used
+  `align-items: stretch` (the Grid default), which dehned the Job
+  activity card and the Quick actions card to match whichever
+  neighbour was tallest. Combined with `grid-row: 2 / span 2` on
+  the Latest runs card, the Sparkline card acquired a dead lower
+  half. Fixed by switching to two flex columns
+  (`.pql-home-col--primary` / `--secondary`) — each card now hugs
+  its natural height. Also added `justify-content: space-between`
+  to `.pql-home-sparkline` so the SVG and its meta counters sit at
+  opposite ends of the card header rather than clustering on the
+  left.
+
 ### Added (Sprint 31)
 
 - Global command palette — `Cmd+K` / `Ctrl+K` opens a centred dialog

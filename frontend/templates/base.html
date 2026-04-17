@@ -154,6 +154,36 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/toast.js"></script>
+    {% if active_catalog is defined and active_catalog %}
+    <script>
+    // Record a catalog "visit" for the Sprint-32 home dashboard's
+    // Recent catalogs card. Any page that threads ``active_catalog``
+    // (catalog/schema/table detail) counts as a visit; we dedupe by
+    // name, keep the five most recent, and write back to localStorage
+    // in the same shape the Alpine component expects. Pattern mirrors
+    // the command palette's pql.recentSearches writer.
+    (function () {
+        try {
+            const KEY = 'pql.recentCatalogs';
+            const MAX = 5;
+            const name = {{ active_catalog|tojson }};
+            if (!name) return;
+            let items = [];
+            const raw = localStorage.getItem(KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) items = parsed;
+            }
+            items = items.filter(i => i && i.name !== name);
+            items.unshift({ name: name, ts: Date.now() });
+            if (items.length > MAX) items.length = MAX;
+            localStorage.setItem(KEY, JSON.stringify(items));
+        } catch (e) {
+            /* quota / disabled storage — ignore */
+        }
+    })();
+    </script>
+    {% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>
