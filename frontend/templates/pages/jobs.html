@@ -16,7 +16,7 @@
     </div>
     {% if is_admin %}
     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createJobModal">
-        <i class="bi bi-plus-lg me-1"></i>New DAG job
+        <i class="bi bi-plus-lg me-1"></i>New job
     </button>
     {% endif %}
 </div>
@@ -63,27 +63,54 @@
 {% if is_admin %}
 <div class="modal fade" id="createJobModal" tabindex="-1" aria-hidden="true"
      x-data="{
+         kind: 'dag',
          name: '',
          cron: '* * * * *',
          maxParallel: 1,
          tasks: JSON.stringify([{name: 'hello', kind: 'python', config: {entry_point: 'my_entry'}, depends_on: [], max_retries: 0, retry_backoff_seconds: 0}], null, 2),
+         notebookPath: '',
+         parametersJson: '{}',
          error: null,
          submitting: false,
          submit() {
              this.error = null;
              this.submitting = true;
-             let parsedTasks;
-             try { parsedTasks = JSON.parse(this.tasks); }
-             catch (e) { this.error = 'tasks JSON is invalid: ' + e.message; this.submitting = false; return; }
-             fetch('/api/jobs', {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({
+             let payload;
+             if (this.kind === 'dag') {
+                 let parsedTasks;
+                 try { parsedTasks = JSON.parse(this.tasks); }
+                 catch (e) { this.error = 'tasks JSON is invalid: ' + e.message; this.submitting = false; return; }
+                 payload = {
                      name: this.name,
                      cron_expr: this.cron,
                      tasks: parsedTasks,
                      max_parallel_runs: Number(this.maxParallel),
-                 }),
+                 };
+             } else if (this.kind === 'papermill') {
+                 let parsedParams;
+                 try { parsedParams = JSON.parse(this.parametersJson || '{}'); }
+                 catch (e) { this.error = 'parameters JSON is invalid: ' + e.message; this.submitting = false; return; }
+                 if (typeof parsedParams !== 'object' || Array.isArray(parsedParams) || parsedParams === null) {
+                     this.error = 'parameters JSON must be an object'; this.submitting = false; return;
+                 }
+                 if (!this.notebookPath) {
+                     this.error = 'notebook path is required'; this.submitting = false; return;
+                 }
+                 payload = {
+                     name: this.name,
+                     cron_expr: this.cron,
+                     kind: 'papermill',
+                     config: {notebook_path: this.notebookPath, parameters: parsedParams},
+                     max_parallel_runs: Number(this.maxParallel),
+                     run_as_user_id: {{ current_user_id|tojson }},
+                 };
+             } else {
+                 this.error = 'unknown kind: ' + this.kind; this.submitting = false; return;
+             }
+             fetch('/api/jobs', {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify(payload),
              }).then(async r => {
                  if (!r.ok) { this.error = (await r.json()).error?.message || r.statusText; this.submitting = false; return; }
                  window.location.reload();
@@ -93,13 +120,20 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Create DAG job</h5>
+                <h5 class="modal-title">Create job</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
+                    <label class="form-label">Kind</label>
+                    <select class="form-select" x-model="kind">
+                        <option value="dag">DAG (multi-task)</option>
+                        <option value="papermill">Papermill (single notebook)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
                     <label class="form-label">Name</label>
-                    <input type="text" class="form-control" x-model="name" placeholder="my-dag">
+                    <input type="text" class="form-control" x-model="name" placeholder="my-job">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Cron expression</label>
@@ -109,11 +143,25 @@
                     <label class="form-label">Max parallel runs</label>
                     <input type="number" class="form-control" min="1" x-model.number="maxParallel">
                 </div>
-                <div class="mb-3">
+                <div class="mb-3" x-show="kind === 'dag'">
                     <label class="form-label">Tasks (JSON array)</label>
                     <textarea class="form-control font-monospace small" rows="12" x-model="tasks"></textarea>
                     <div class="form-text">
                         Each task: <code>{name, kind, config, depends_on (list of task names), max_retries, retry_backoff_seconds}</code>.
+                    </div>
+                </div>
+                <div class="mb-3" x-show="kind === 'papermill'" x-cloak>
+                    <label class="form-label">Notebook path</label>
+                    <input type="text" class="form-control font-monospace" x-model="notebookPath" placeholder="pipelines/etl.ipynb">
+                    <div class="form-text">
+                        Path relative to the notebooks directory. Output is written to <code>runs/{run_id}.ipynb</code>.
+                    </div>
+                </div>
+                <div class="mb-3" x-show="kind === 'papermill'" x-cloak>
+                    <label class="form-label">Parameters (JSON object)</label>
+                    <textarea class="form-control font-monospace small" rows="6" x-model="parametersJson"></textarea>
+                    <div class="form-text">
+                        Passed to papermill as <code>-p</code> parameters. Use <code>{}</code> for none.
                     </div>
                 </div>
                 <div class="alert alert-danger" x-show="error" x-text="error"></div>

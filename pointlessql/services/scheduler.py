@@ -44,7 +44,10 @@ import datetime
 import importlib.metadata as _md
 import json
 import logging
+import os
+import threading
 from collections.abc import Awaitable, Callable, Iterable
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -52,7 +55,7 @@ from croniter import croniter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from pointlessql.exceptions import PointlessSQLError, ValidationError
+from pointlessql.exceptions import EngineError, PointlessSQLError, ValidationError
 from pointlessql.logging_config import (
     job_run_id_var,
     request_id_var,
@@ -253,15 +256,224 @@ async def _python_executor(
     await fn(job_run_id, user_info, config, uc_client)
 
 
+# Papermill drives kernel subprocesses that inherit the parent's
+# ``os.environ``. Concurrent executions would otherwise race on the
+# ``POINTLESSQL_PRINCIPAL`` slot when set through ``os.environ``; this
+# lock serialises the narrow window between "set env" and "spawn kernel"
+# without blocking the rest of the scheduler loop. Cell execution itself
+# runs outside the lock.
+_papermill_env_lock = threading.Lock()
+
+
+def _resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
+    """Resolve *notebook_path* under *notebooks_dir*, rejecting traversal.
+
+    Args:
+        notebooks_dir: Absolute root directory the notebook must live under.
+        notebook_path: Relative path supplied in the job config.
+
+    Returns:
+        The resolved absolute path to the input notebook.
+
+    Raises:
+        ValidationError: When *notebook_path* is absolute, empty, escapes
+            *notebooks_dir*, or does not point at an existing file.
+    """
+    if not notebook_path:
+        raise ValidationError(
+            "papermill job config 'notebook_path' must be a non-empty string"
+        )
+    candidate = Path(notebook_path)
+    if candidate.is_absolute():
+        raise ValidationError(
+            f"papermill notebook_path must be relative to the notebooks "
+            f"directory: {notebook_path!r}"
+        )
+    resolved = (notebooks_dir / candidate).resolve()
+    try:
+        resolved.relative_to(notebooks_dir)
+    except ValueError as exc:
+        raise ValidationError(
+            f"papermill notebook_path {notebook_path!r} escapes the "
+            f"notebooks directory"
+        ) from exc
+    if not resolved.is_file():
+        raise ValidationError(
+            f"papermill notebook not found: {notebook_path!r}"
+        )
+    return resolved
+
+
+def _run_papermill_blocking(
+    input_path: Path,
+    output_path: Path,
+    parameters: dict[str, Any],
+    cwd: Path,
+    principal: str,
+    execution_timeout: int,
+) -> None:
+    """Invoke ``papermill.execute_notebook`` synchronously.
+
+    Runs inside an ``asyncio.to_thread`` worker. Sets
+    ``POINTLESSQL_PRINCIPAL`` on ``os.environ`` under a module-level
+    lock so the spawned Jupyter kernel inherits the run-as user's
+    email for :class:`~pointlessql.pql.PQL` to pick up.
+    """
+    import papermill  # type: ignore[import-untyped]
+    from papermill.exceptions import (  # type: ignore[import-untyped]
+        PapermillExecutionError,
+    )
+
+    with _papermill_env_lock:
+        previous = os.environ.get("POINTLESSQL_PRINCIPAL")
+        os.environ["POINTLESSQL_PRINCIPAL"] = principal
+        try:
+            try:
+                papermill.execute_notebook(
+                    input_path=str(input_path),
+                    output_path=str(output_path),
+                    parameters=parameters,
+                    kernel_name="python3",
+                    cwd=str(cwd),
+                    execution_timeout=execution_timeout,
+                    progress_bar=False,
+                )
+            except PapermillExecutionError as exc:
+                raise EngineError(
+                    f"papermill execution failed in cell {exc.exec_count}: "
+                    f"{exc.ename}: {exc.evalue}"
+                ) from exc
+        finally:
+            if previous is None:
+                os.environ.pop("POINTLESSQL_PRINCIPAL", None)
+            else:
+                os.environ["POINTLESSQL_PRINCIPAL"] = previous
+
+
+async def _papermill_executor(
+    job_run_id: int,
+    user_info: UserInfo,
+    config: dict[str, Any],
+    uc_client: UnityCatalogClient,
+) -> None:
+    """Execute a notebook via Papermill, writing the result under ``runs/``.
+
+    Config shape:
+
+    .. code-block:: json
+
+        {
+            "notebook_path": "pipelines/etl.ipynb",
+            "parameters": {"date": "2026-04-17"},
+            "timeout_seconds": 600
+        }
+
+    ``notebook_path`` is resolved relative to ``settings.notebooks_dir``
+    and must not escape it. The executed output lands at
+    ``{notebooks_dir}/runs/{job_run_id}.ipynb`` so the embedded
+    JupyterLab can serve it at ``/lab/tree/runs/{job_run_id}.ipynb``
+    (the job-detail page links straight to that URL). ``timeout_seconds``
+    is forwarded to papermill's per-cell ``execution_timeout`` and also
+    backstopped by an ``asyncio.wait_for`` around the blocking call.
+
+    The run-as user's email is exported as ``POINTLESSQL_PRINCIPAL`` in
+    the Jupyter kernel subprocess so any :class:`~pointlessql.pql.PQL`
+    instance constructed inside the notebook inherits the same
+    principal forwarding the scheduler applies to its own
+    ``uc_client``.
+
+    Args:
+        job_run_id: Current run id — used as the output filename.
+        user_info: The run-as user's :class:`UserInfo` — ``email`` is
+            exported as ``POINTLESSQL_PRINCIPAL`` for the kernel.
+        config: Must carry ``notebook_path``. ``parameters`` and
+            ``timeout_seconds`` are optional.
+        uc_client: Principal-forwarded facade. Not used directly by the
+            executor (notebook code constructs its own :class:`PQL`)
+            but kept in the signature for symmetry with the other
+            built-in kinds.
+
+    Raises:
+        ValidationError: When ``notebook_path`` is missing, not a
+            string, escapes ``notebooks_dir``, or does not exist; or
+            when ``parameters`` / ``timeout_seconds`` have the wrong
+            type.
+        EngineError: When the notebook raises during execution, when
+            the execution exceeds the timeout, or when papermill
+            itself errors out.
+    """
+    del uc_client  # kernel subprocess builds its own PQL client
+
+    notebook_path = config.get("notebook_path")
+    if not isinstance(notebook_path, str):
+        raise ValidationError(
+            "papermill job config is missing required key 'notebook_path'"
+        )
+
+    parameters = config.get("parameters", {})
+    if not isinstance(parameters, dict):
+        raise ValidationError(
+            "papermill job config 'parameters' must be an object"
+        )
+
+    settings = Settings()
+    timeout_cfg = config.get("timeout_seconds")
+    if timeout_cfg is None:
+        timeout_seconds = settings.notebook_execute_timeout_seconds
+    elif isinstance(timeout_cfg, int) and timeout_cfg > 0:
+        timeout_seconds = timeout_cfg
+    else:
+        raise ValidationError(
+            "papermill job config 'timeout_seconds' must be a positive int"
+        )
+
+    notebooks_dir = Path(settings.notebooks_dir).resolve()
+    input_path = _resolve_notebook_path(notebooks_dir, notebook_path)
+    runs_dir = notebooks_dir / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
+    output_path = runs_dir / f"{job_run_id}.ipynb"
+
+    principal = user_info["email"]
+    logger.info(
+        "papermill: executing %s → %s (timeout=%ds, principal=%s)",
+        input_path,
+        output_path,
+        timeout_seconds,
+        principal,
+    )
+
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(
+                _run_papermill_blocking,
+                input_path,
+                output_path,
+                dict(parameters),
+                notebooks_dir,
+                principal,
+                timeout_seconds,
+            ),
+            timeout=timeout_seconds + 5,
+        )
+    except TimeoutError as exc:
+        raise EngineError(
+            f"papermill execution timed out after {timeout_seconds}s"
+        ) from exc
+
+    logger.info("papermill: finished %s", output_path)
+
+
 def build_default_registry() -> KindRegistry:
     """Return a :class:`KindRegistry` with the built-in executors wired up.
 
     Returns:
-        A fresh registry with ``"pg_sync"`` and ``"python"`` bound.
+        A fresh registry with ``"pg_sync"``, ``"python"``, and
+        ``"papermill"`` bound.
     """
     registry = KindRegistry()
     registry.register("pg_sync", _pg_sync_executor)
     registry.register("python", _python_executor)
+    registry.register("papermill", _papermill_executor)
     return registry
 
 

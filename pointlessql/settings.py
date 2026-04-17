@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic import computed_field
@@ -24,6 +25,17 @@ class Settings(BaseSettings):
 
     jupyter_enabled: bool = True
     jupyter_port: int = 8888
+
+    # Root directory that both the embedded JupyterLab subprocess and the
+    # Papermill job executor use as their working tree. Defaults to
+    # ``notebooks/`` relative to the process CWD (``./notebooks`` in dev,
+    # ``/app/notebooks`` in Docker via the compose bind mount).
+    notebooks_dir: Path = Path("notebooks")
+    # Per-run ceiling enforced by the Papermill executor via
+    # ``asyncio.wait_for``. Kernel startup + trivial cells take a few
+    # seconds, so 300 s is a comfortable default for interactive-scale
+    # notebooks.
+    notebook_execute_timeout_seconds: int = 300
 
     engine: str = "pandas"
 

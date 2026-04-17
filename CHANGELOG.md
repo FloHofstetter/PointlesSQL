@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 24)
+
+- Papermill job kind: `_papermill_executor` registered next to
+  `pg_sync` and `python` in `scheduler_service.build_default_registry()`.
+  Config shape `{notebook_path, parameters, timeout_seconds}`;
+  output lands at `{notebooks_dir}/runs/{job_run_id}.ipynb` so the
+  embedded JupyterLab serves it at `/lab/tree/runs/{run_id}.ipynb`
+- `POINTLESSQL_PRINCIPAL` env var honoured by the `PQL` constructor
+  (via `make_principal_client`) so notebook code running under the
+  Papermill executor inherits the job's run-as user without extra
+  wiring — the scheduler exports the env var into the kernel
+  subprocess
+- New settings `POINTLESSQL_NOTEBOOKS_DIR` (default `notebooks`) and
+  `POINTLESSQL_NOTEBOOK_EXECUTE_TIMEOUT_SECONDS` (default `300`).
+  `services/jupyter.py` now resolves its `--notebook-dir` through
+  the setting so the executor and the embedded JupyterLab share a
+  single source of truth
+- Create-job modal (`frontend/templates/pages/jobs.html`) gains a
+  `kind` select with `DAG (multi-task)` and `Papermill (single
+  notebook)` options; Papermill-specific `notebook_path` +
+  `parameters` inputs render conditionally
+- Job detail page (`frontend/templates/pages/job_detail.html`)
+  recent-runs table gains a trailing "Open in JupyterLab" column
+  on rows of `kind=papermill` jobs whose run status is `succeeded`
+  or `failed`
+- `docs/e2e-walkthroughs/notebook-jobs.md` — Phase-8 playbook
+  covering create via modal, Run-now, output-artifact verification,
+  the JupyterLab deep-link, and four negative paths
+  (missing path, traversal, missing file, failing cell)
+
 ### Added (Sprint 23)
 
 - `docker-compose.e2e.yml` gains a `mock-oidc` service

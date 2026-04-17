@@ -1482,6 +1482,7 @@ async def jobs_index(request: Request) -> HTMLResponse:
         {
             "jobs": jobs_data,
             "is_admin": user.get("is_admin", False),
+            "current_user_id": user.get("id"),
             "active_page": "jobs",
             "active_catalog": None,
             "active_schema": None,
@@ -1558,6 +1559,7 @@ async def job_detail(request: Request, job_id: int) -> HTMLResponse:
             "runs": [_serialize_run(r) for r in runs],
             "tasks": task_rows,
             "can_manage": can_manage,
+            "jupyter_port": _startup_settings.jupyter_port,
             "active_page": "jobs",
             "active_catalog": None,
             "active_schema": None,

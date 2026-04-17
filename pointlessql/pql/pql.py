@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Literal
 
 import httpx
@@ -37,7 +38,7 @@ from pointlessql.exceptions import CatalogNotFoundError, CatalogUnavailableError
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine, make_engine
-from pointlessql.services.soyuz_client import make_soyuz_client
+from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.settings import Settings
 
 
@@ -48,9 +49,19 @@ class PQL:
     are synchronous — the web UI's async wrapper
     (``pointlessql.services.unitycatalog``) is a separate concern.
 
+    When the ``POINTLESSQL_PRINCIPAL`` environment variable is set and no
+    explicit ``client`` is passed, the constructor builds a
+    principal-forwarded client via ``make_principal_client()`` so every
+    catalog call carries an ``X-Principal`` header. The Sprint 24
+    Papermill executor uses this to make notebook code that instantiates
+    ``PQL()`` inherit the job's run-as user without any extra wiring —
+    regular interactive use is unaffected.
+
     Args:
         client: An existing ``soyuz_catalog_client.Client`` instance.
-            When ``None``, one is built via ``make_soyuz_client()``.
+            When ``None``, one is built via ``make_soyuz_client()`` (or
+            ``make_principal_client()`` if ``POINTLESSQL_PRINCIPAL`` is
+            set).
         settings: Optional ``Settings`` override.  Used for both
             client creation and engine selection when not provided
             explicitly.
@@ -66,7 +77,14 @@ class PQL:
         engine: Engine | str | None = None,
     ) -> None:
         resolved = settings or Settings()
-        self._client = client or make_soyuz_client(resolved)
+        if client is not None:
+            self._client = client
+        else:
+            principal = os.environ.get("POINTLESSQL_PRINCIPAL")
+            if principal:
+                self._client = make_principal_client(resolved, principal)
+            else:
+                self._client = make_soyuz_client(resolved)
         if engine is None:
             self._engine = make_engine(resolved.engine)
         elif isinstance(engine, str):

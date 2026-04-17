@@ -36,8 +36,8 @@ async def managed_jupyter(
         yield None
         return
 
-    notebook_dir = Path.cwd() / "notebooks"
-    notebook_dir.mkdir(exist_ok=True)
+    notebook_dir = Path(settings.notebooks_dir).resolve()
+    notebook_dir.mkdir(parents=True, exist_ok=True)
 
     cmd = [
         sys.executable,

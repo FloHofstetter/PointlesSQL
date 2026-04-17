@@ -21,24 +21,41 @@
         {% endif %}
     </div>
     {% if can_manage %}
-    <div class="d-flex gap-2">
-        <form method="post" action="/api/jobs/{{ job.id }}/run" hx-boost="false" class="m-0">
-            <button type="submit" class="btn btn-primary btn-sm">
-                <i class="bi bi-play-fill me-1"></i>Run now
-            </button>
-        </form>
+    <div class="d-flex gap-2"
+         x-data="{
+             busy: false,
+             post(path) {
+                 this.busy = true;
+                 fetch(path, {method: 'POST'})
+                     .then(async r => {
+                         if (!r.ok) {
+                             const body = await r.json().catch(() => ({}));
+                             alert(body.error?.message || r.statusText);
+                             this.busy = false;
+                             return;
+                         }
+                         window.location.reload();
+                     })
+                     .catch(e => { alert(String(e)); this.busy = false; });
+             }
+         }">
+        <button type="button" class="btn btn-primary btn-sm"
+                x-bind:disabled="busy"
+                x-on:click="post('/api/jobs/{{ job.id }}/run')">
+            <i class="bi bi-play-fill me-1"></i>Run now
+        </button>
         {% if job.is_paused %}
-        <form method="post" action="/api/jobs/{{ job.id }}/unpause" hx-boost="false" class="m-0">
-            <button type="submit" class="btn btn-outline-success btn-sm">
-                <i class="bi bi-play me-1"></i>Resume
-            </button>
-        </form>
+        <button type="button" class="btn btn-outline-success btn-sm"
+                x-bind:disabled="busy"
+                x-on:click="post('/api/jobs/{{ job.id }}/unpause')">
+            <i class="bi bi-play me-1"></i>Resume
+        </button>
         {% else %}
-        <form method="post" action="/api/jobs/{{ job.id }}/pause" hx-boost="false" class="m-0">
-            <button type="submit" class="btn btn-outline-warning btn-sm">
-                <i class="bi bi-pause me-1"></i>Pause
-            </button>
-        </form>
+        <button type="button" class="btn btn-outline-warning btn-sm"
+                x-bind:disabled="busy"
+                x-on:click="post('/api/jobs/{{ job.id }}/pause')">
+            <i class="bi bi-pause me-1"></i>Pause
+        </button>
         {% endif %}
     </div>
     {% endif %}
@@ -161,6 +178,7 @@
                         <th>Trigger</th>
                         <th>Duration</th>
                         <th>Error</th>
+                        <th class="pe-3"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -183,6 +201,15 @@
                             {% if run.duration_seconds is not none %}{{ "%.1f"|format(run.duration_seconds) }}s{% else %}—{% endif %}
                         </td>
                         <td class="small text-danger">{{ run.error or "" }}</td>
+                        <td class="pe-3 text-end">
+                            {% if job.kind == "papermill" and run.status in ("succeeded", "failed") %}
+                            <a href="http://{{ request.url.hostname }}:{{ jupyter_port }}/lab/tree/runs/{{ run.id }}.ipynb"
+                               target="_blank" rel="noopener"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-journal-code me-1"></i>Open in JupyterLab
+                            </a>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
