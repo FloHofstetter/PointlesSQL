@@ -1096,7 +1096,7 @@ PointlesSQL
 │   │       Sprint-35 found-bugs section filled in clean — no
 │   │       regressions at 1280, all breakpoints flip correctly
 │   │
-│   └── Sprint 36 — Shared utilities + shortcuts + close   ✅ done (<pending>)
+│   └── Sprint 36 — Shared utilities + shortcuts + close   ✅ done (ec3facc)
 │       ├── `frontend/js/api.js` exposes `window.pqlApi.fetch(url, init)`
 │       │   returning `{ok, status, data, error}` and auto-emitting
 │       │   a `pqlToast.error(...)` on non-ok responses (opt out
