@@ -92,7 +92,7 @@ soyuz_catalog_client  (generated, typed httpx wrapper)
 soyuz-catalog  (FastAPI server, own process)
 ```
 
-### Local development
+### Local development — default (clean-machine)
 
 In `~/git/soyuz-catalog` start the server in one terminal:
 
@@ -100,22 +100,53 @@ In `~/git/soyuz-catalog` start the server in one terminal:
 uv run soyuz-catalog       # listens on http://127.0.0.1:8080
 ```
 
-In this repo, the generated client is an **editable path
-dependency** on the soyuz-catalog workspace:
+In this repo, `soyuz-catalog-client` is pinned to a **private
+GitHub tag** under `[tool.uv.sources]`:
+
+```toml
+soyuz-catalog-client = {
+  git = "https://github.com/FloHofstetter/soyuz-catalog",
+  tag = "v0.2.0rc2",
+  subdirectory = "soyuz-catalog-client",
+}
+```
+
+`uv sync` fetches that wheel over HTTPS, reusing your shell's git
+credentials (SSH key or `GH_TOKEN`). A sibling `../soyuz-catalog`
+checkout is **no longer required** — Sprint 38 was the first sprint
+where `git clone && uv sync` works on a truly empty host.
 
 ```bash
-uv add --editable ../soyuz-catalog/soyuz-catalog-client
+uv sync
 uv run pointlessql         # listens on http://127.0.0.1:8000
 ```
 
-The editable install means soyuz-catalog's
-`scripts/regen_client.sh` regenerations are picked up immediately
-on the next Python reload — no `uv sync` round-trip. The trade-off
-is that `uv sync` will fail on any machine where
-`../soyuz-catalog` is not checked out. That is acceptable for
-local development; a future PointlesSQL packaging sprint (tracked
-on `ROADMAP.md`) will swap the path dependency for a PyPI pin
-once soyuz-catalog cuts a release.
+### Local development — editable escape hatch
+
+When you are iterating on soyuz-catalog itself and want
+`scripts/regen_client.sh` regens to surface without a tag bump,
+drop a gitignored `uv.toml` at this repo's root with the override:
+
+```toml
+# uv.toml — NOT committed. Present only when you want uv to resolve
+# soyuz-catalog-client from ../soyuz-catalog/soyuz-catalog-client
+# (editable) instead of the v0.2.0rc2 git tag pinned in
+# pyproject.toml.
+[sources]
+soyuz-catalog-client = { path = "../soyuz-catalog/soyuz-catalog-client", editable = true }
+```
+
+Re-run `uv sync`. Delete `uv.toml` when you are done — `uv.lock`
+on main always reflects the pinned path. The committed
+`.gitignore` keeps `uv.toml` out of commits.
+
+### Docker builds
+
+`docker compose build --ssh default pointlessql` forwards your
+local ssh-agent into the BuildKit build stage so `uv` can clone
+the private soyuz-catalog repo at the pinned tag. Full
+`--secret`-based auth and GHCR image pulls are Sprint 40's job —
+for now the SSH-agent path is the minimum viable build.
 
 ### Don't start the JVM UC server
 

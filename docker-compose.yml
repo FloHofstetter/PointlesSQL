@@ -29,8 +29,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      additional_contexts:
-        soyuz-catalog: ../soyuz-catalog
+      ssh:
+        - default
     ports:
       - "${PQL_HOST_PORT:-8000}:8000"
       - "${JUPYTER_HOST_PORT:-8888}:8888"

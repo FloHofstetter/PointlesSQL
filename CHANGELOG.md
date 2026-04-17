@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed (Sprint 38)
+
+- **`pyproject.toml`.** `[tool.uv.sources]` swapped from an
+  editable path dep (`../soyuz-catalog/soyuz-catalog-client`) to a
+  private-repo git-tag pin
+  (`git = "https://github.com/FloHofstetter/soyuz-catalog", tag = "v0.2.0rc2", subdirectory = "soyuz-catalog-client"`).
+  First sprint where `git clone && uv sync` works on a clean
+  host without a sibling `../soyuz-catalog` checkout.
+- **`uv.lock`.** Regenerated against the git pin; the client is
+  resolved from
+  `source = { git = "…?subdirectory=soyuz-catalog-client&tag=v0.2.0rc2#<sha>" }`.
+- **`Dockerfile`.** Collapsed from 3 stages to 2. The
+  `soyuz-client-builder` stage and the sed-strip on
+  `[tool.uv.sources]` are gone. The remaining builder stage
+  fetches the client wheel over git via BuildKit
+  `--mount=type=ssh`, reusing the contributor's ssh-agent. Sprint
+  40 will replace this with GHCR image pulls and
+  `--secret`-based `GH_TOKEN` auth.
+- **`docker-compose.yml`.** `additional_contexts.soyuz-catalog`
+  (only fed the now-removed Stage 1) replaced with
+  `build.ssh: [default]` so `docker compose build` forwards
+  ssh-agent to BuildKit. Invoke with
+  `docker compose build --ssh default pointlessql`.
+- **`CLAUDE.md`.** "Wiring soyuz-catalog" section rewritten.
+  Default clean-machine flow documented first; the editable
+  escape hatch (drop a gitignored `uv.toml` at repo root with
+  `[sources] soyuz-catalog-client = { path = …, editable = true }`)
+  documented second. Docker `--ssh default` requirement called
+  out with a Sprint 40 forward-reference.
+- **`.gitignore`.** `uv.toml` added so contributors' editable
+  overrides never land in commits.
+
 ### Added (Sprint 37)
 
 - Phase 10 (Packaging & private distribution) opened in

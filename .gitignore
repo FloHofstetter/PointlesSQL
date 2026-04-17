@@ -38,3 +38,10 @@ notebooks/runs/
 notebooks/smoke_papermill.ipynb
 notebooks/smoke_typed_params.ipynb
 notebooks/bad_papermill.ipynb
+
+# Dual-mode dev toggle for soyuz-catalog-client (Sprint 38).
+# Dropping a local uv.toml with [sources] soyuz-catalog-client = { path = …,
+# editable = true } overrides the committed git-tag pin in pyproject.toml
+# and pulls the sibling ../soyuz-catalog checkout so client regens show up
+# without a tag bump. Never committed.
+uv.toml

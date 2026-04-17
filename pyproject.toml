@@ -134,4 +134,4 @@ source = ["pointlessql"]
 show_missing = true
 
 [tool.uv.sources]
-soyuz-catalog-client = { path = "../soyuz-catalog/soyuz-catalog-client", editable = true }
+soyuz-catalog-client = { git = "https://github.com/FloHofstetter/soyuz-catalog", tag = "v0.2.0rc2", subdirectory = "soyuz-catalog-client" }

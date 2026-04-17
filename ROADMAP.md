@@ -1217,29 +1217,50 @@ PointlesSQL
 │   │   │   attached (server + client, wheel + sdist).
 │   │   │   `--prerelease` toggled automatically for PEP 440
 │   │   │   `rc*` / `a*` / `b*` / `dev*` shapes
-│   │   ├── First tag cut: `v0.2.0-rc1`. Both server and client
+│   │   ├── First tag cut: `v0.2.0rc1`. Both server and client
 │   │   │   at `0.2.0rc1` (incremental bump from `0.1.0`; does
-│   │   │   not claim 1.0 API stability)
-│   │   └── Sprint 38 can now pin
-│   │       `soyuz-catalog-client = { git = "…", tag = "v0.2.0-rc1",
+│   │   │   not claim 1.0 API stability). Tag was **local-only**
+│   │   │   — the push was blocked by three pre-push hooks and
+│   │   │   had to be re-cut as `v0.2.0rc2` during Sprint 38.
+│   │   │   Soyuz Sprint 19.1 (OpenAPI dedup + CI unblock) was
+│   │   │   the follow-on detour; see soyuz' CHANGELOG
+│   │   └── Sprint 38 pins
+│   │       `soyuz-catalog-client = { git = "…", tag = "v0.2.0rc2",
 │   │       subdirectory = "soyuz-catalog-client" }` in
 │   │       `[tool.uv.sources]`
 │   │
-│   ├── Sprint 38 — Swap path-dep to git-tag pin (dual-mode)  ⏳ planned
+│   ├── Sprint 38 — Swap path-dep to git-tag pin (dual-mode)  🔜 in progress
 │   │   ├── `pyproject.toml [tool.uv.sources]` — replace the
-│   │   │   editable path with a `{ git = "…", tag = "v0.2.0-rc1",
-│   │   │   subdirectory = "soyuz-catalog-client" }` pin
-│   │   ├── Dual-mode toggle: one env-var or extras-group flip
-│   │   │   brings the editable path back for local dev
-│   │   │   (`../soyuz-catalog` regen visible without a tag bump)
-│   │   ├── `uv.lock` regenerated against the tag pin — first
-│   │   │   lock that works on a clean clone
-│   │   ├── `Dockerfile` — collapse the 3-stage sed-strip pattern
-│   │   │   now that `uv sync` works without a sibling checkout
+│   │   │   editable path with a `{ git = "…", tag = "v0.2.0rc2",
+│   │   │   subdirectory = "soyuz-catalog-client" }` pin.
+│   │   │   `v0.2.0rc2` instead of `rc1` because Sprint 19.1 in
+│   │   │   soyuz had to land first (OpenAPI schema-name dedup
+│   │   │   + CI hook unblock) before the tag would push — the
+│   │   │   pushable retag is `rc2`
+│   │   ├── Dual-mode toggle: a **gitignored `uv.toml`** at repo
+│   │   │   root overrides `[tool.uv.sources]` with the editable
+│   │   │   path dep (`../soyuz-catalog/soyuz-catalog-client`)
+│   │   │   so client regens surface without a tag bump. Drop
+│   │   │   the file → `uv sync` → editable mode; delete it →
+│   │   │   `uv sync` → back to pinned mode
+│   │   ├── `uv.lock` regenerated against the git-tag pin — first
+│   │   │   lock that works on a clean clone with no sibling
+│   │   │   `../soyuz-catalog` checkout
+│   │   ├── `Dockerfile` — collapsed from 3 stages to 2. Stage 1
+│   │   │   (`soyuz-client-builder`) and the Stage 2 sed-strip
+│   │   │   on `[tool.uv.sources]` are gone. Client wheel fetches
+│   │   │   over git/SSH via BuildKit `--mount=type=ssh`;
+│   │   │   `docker compose build --ssh default` forwards the
+│   │   │   host ssh-agent. Sprint 40 replaces the SSH path with
+│   │   │   GHCR image pulls and `--secret`-based token auth
+│   │   ├── `docker-compose.yml` — `additional_contexts.soyuz-catalog`
+│   │   │   removed (only Stage 1 needed it); replaced with
+│   │   │   `build.ssh: [default]` for BuildKit ssh-agent forwarding
 │   │   ├── `CLAUDE.md` "Wiring soyuz-catalog" block rewritten
-│   │   │   to document both dev modes
+│   │   │   with both dev modes documented (default git-pin +
+│   │   │   editable escape hatch via `uv.toml`)
 │   │   └── Smoke test: fresh tmpdir, `git clone`, `uv sync`,
-│   │       `uv run pointlessql` — must succeed without
+│   │       `uv run pointlessql` — succeeded without
 │   │       `../soyuz-catalog`
 │   │
 │   ├── Sprint 39 — PointlesSQL release engineering         ⏳ planned

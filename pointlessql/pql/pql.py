@@ -251,10 +251,10 @@ class PQL:
         )
         if not isinstance(response, ListTablesResponse):
             return []
-        identifiers = response.identifiers
-        if not isinstance(identifiers, list):
+        tables = response.tables
+        if not isinstance(tables, list):
             return []
-        return [t.to_dict() for t in identifiers]
+        return [t.to_dict() for t in tables]
 
     # ------------------------------------------------------------------
     # Internal helpers

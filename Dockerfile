@@ -1,50 +1,45 @@
 # PointlesSQL — multi-stage Docker build
 #
 # Build context: this repo (.)
-# Additional context: soyuz-catalog (../soyuz-catalog, via docker-compose)
 #
 # Usage:
-#   docker compose up --build
+#   docker compose build --ssh default pointlessql
+#   docker compose up
+#
+# The builder stage fetches soyuz-catalog-client from its private
+# git tag (v0.2.0rc2) over SSH, reusing the contributor's local
+# ssh-agent via BuildKit. Sprint 40 will replace this with GHCR
+# image pulls and a GH_TOKEN-based --secret for CI.
 
 # ---------------------------------------------------------------------------
-# Stage 1: Build the soyuz-catalog-client wheel from source
-# ---------------------------------------------------------------------------
-FROM python:3.14-slim AS soyuz-client-builder
-
-RUN pip install --no-cache-dir uv
-
-COPY --from=soyuz-catalog soyuz-catalog-client/ /src/soyuz-catalog-client/
-
-RUN uv build /src/soyuz-catalog-client --wheel --out-dir /wheels
-
-# ---------------------------------------------------------------------------
-# Stage 2: Install PointlesSQL and all dependencies into a venv
+# Stage 1: Install PointlesSQL and all dependencies into a venv
 # ---------------------------------------------------------------------------
 FROM python:3.14-slim AS builder
 
-RUN pip install --no-cache-dir uv
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git openssh-client \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=soyuz-client-builder /wheels/ /wheels/
+RUN pip install --no-cache-dir uv
 
 RUN uv venv /opt/venv
 
-# Install the pre-built client wheel first so the bare
-# "soyuz-catalog-client" dependency in pyproject.toml is satisfied
-# without resolving the [tool.uv.sources] path reference.
-RUN uv pip install /wheels/soyuz_catalog_client-*.whl --python /opt/venv/bin/python
-
-# Copy project source and strip the [tool.uv.sources] section so uv
-# does not try to resolve the editable path dep at build time.
 COPY pyproject.toml README.md LICENSE /src/
-RUN sed -i '/^\[tool\.uv\.sources\]/,/^$/d' /src/pyproject.toml
-
 COPY pointlessql/ /src/pointlessql/
 COPY frontend/ /src/frontend/
 
-RUN uv pip install /src/ --python /opt/venv/bin/python
+# BuildKit `--mount=type=ssh` forwards the host's ssh-agent into this
+# RUN so uv can clone the private soyuz-catalog repo at the pinned
+# tag. Trust github.com's host key eagerly — strict-host-key checking
+# would otherwise stall the build on the interactive prompt.
+RUN --mount=type=ssh \
+    mkdir -p -m 700 /root/.ssh && \
+    ssh-keyscan github.com >> /root/.ssh/known_hosts && \
+    git config --global url."git@github.com:".insteadOf "https://github.com/" && \
+    uv pip install /src/ --python /opt/venv/bin/python
 
 # ---------------------------------------------------------------------------
-# Stage 3: Slim runtime image
+# Stage 2: Slim runtime image
 # ---------------------------------------------------------------------------
 FROM python:3.14-slim AS runtime
 
