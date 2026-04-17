@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 31)
+
+- Global command palette — `Cmd+K` / `Ctrl+K` opens a centred dialog
+  that searches catalogs, schemas, tables, connections, credentials,
+  external locations, jobs, dashboards, and (admin-only) workspace
+  notebooks in one shot. Prefix matches outrank substring matches;
+  ties resolve by `updated_at` descending. Empty query renders
+  `localStorage['pql.recentSearches']` (last 10, deduped by URL).
+  `?` opens a keyboard-shortcuts help modal.
+- `GET /api/search?q=&limit=` aggregates the seven sources via
+  `asyncio.gather` (reusing `unitycatalog.get_tree()`,
+  `list_connections/credentials/external_locations`, the local
+  `Job` / `Dashboard` ORM queries, and
+  `notebook_workspace.list_workspace_tree`). Per-source soyuz
+  failures degrade gracefully: a `PointlessSQLError` from one
+  fetcher logs at WARNING and the remaining sources still answer,
+  so a soyuz blip never 502's the palette.
+- `frontend/templates/components/command_palette.html` mounted once
+  in `base.html` so the shortcut is global. Alpine factory
+  `commandPalette()` owns palette + help-modal state, debounces
+  search to 150 ms, drops stale responses by sequence number, and
+  guards `?` against firing while focus is in an input or the
+  palette itself.
+- Navbar gains a ghost-button trigger (`.pql-cmdk-trigger`) with a
+  platform-aware `⌘K` / `Ctrl+K` keycap hint and a mobile-only
+  search-icon button below 768 px. Removed the `ms-auto` from the
+  navbar `<ul>` and put it on the trigger so the button anchors the
+  right-hand cluster.
+- Design-token-native CSS for the palette, hit list, type badges
+  (one accent per source family), help modal, and `<kbd>` keycaps;
+  reuses `--pql-color-*`, `--pql-elev-3`, and `--pql-radius-md`
+  from Sprint 29 so light mode works for free.
+- `docs/e2e-walkthroughs/command-palette.md` — Playwright MCP
+  playbook covering navbar trigger, Cmd+K, keyboard nav, recent
+  searches, admin/non-admin notebook visibility split, the `?`
+  help modal, and the soyuz-degraded fallback.
+
 ### Added (Sprint 30)
 
 - New app-shell layer in `base.html`: mobile-aware responsive grid

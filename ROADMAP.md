@@ -879,20 +879,33 @@ PointlesSQL
 │   │       `window.pqlToast.{success,error,info}(msg)` as a
 │   │       Bootstrap-toast wrapper mounted once in `base.html`
 │   │
-│   ├── Sprint 31 — Command palette (Cmd+K)               ⏳ planned
+│   ├── Sprint 31 — Command palette (Cmd+K)               ✅ done
 │   │   ├── `GET /api/search?q=…&limit=50` aggregates catalogs,
-│   │   │   schemas, tables, connections, jobs, dashboards,
-│   │   │   notebooks; prefix-match beats substring-match, ties
-│   │   │   broken by `updated_at` recency. No index —
-│   │   │   PointlesSQL's scale doesn't need one
-│   │   ├── `components/command_palette.html` +
-│   │   │   `frontend/js/command_palette.js`; Cmd+K / Ctrl+K
-│   │   │   opens, ↑↓ navigates, Enter opens, Esc closes
-│   │   ├── Recent searches in `localStorage` (last 10), shown
-│   │   │   when query is empty
-│   │   ├── `?` opens keyboard-shortcuts help modal
-│   │   └── Ghost-button "Search…" with `⌘K`/`Ctrl K` keycap hint
-│   │       in the navbar
+│   │   │   schemas, tables, connections, credentials, external
+│   │   │   locations, jobs, dashboards, and (admin-only)
+│   │   │   workspace notebooks via `asyncio.gather`; reuses
+│   │   │   `unitycatalog.get_tree()` + `list_*()` + the local
+│   │   │   `Job`/`Dashboard` queries + `list_workspace_tree`.
+│   │   │   Prefix-match scores 2.0, substring 1.0, ties broken
+│   │   │   by `updated_at` desc. Per-source soyuz failures
+│   │   │   degrade to "those hits missing" instead of 502'ing
+│   │   │   the palette. No index — scale doesn't need one
+│   │   ├── `components/command_palette.html` mounted once in
+│   │   │   `base.html`; Alpine factory `commandPalette()` lives
+│   │   │   in the same file (single-file convention, deviates
+│   │   │   from the planned two-file split — nothing else
+│   │   │   reuses the factory). Cmd+K / Ctrl+K opens, ↑↓
+│   │   │   navigates, Enter opens, Esc closes; debounced 150 ms;
+│   │   │   stale responses dropped by sequence number
+│   │   ├── Recent searches in `localStorage['pql.recentSearches']`
+│   │   │   (last 10, deduped by URL), shown when query is empty
+│   │   ├── `?` opens keyboard-shortcuts help modal; suppressed
+│   │   │   when focus is inside any input/textarea/select or
+│   │   │   `[contenteditable]`
+│   │   ├── Ghost-button "Search…" with platform-aware `⌘K` /
+│   │   │   `Ctrl+K` keycap hint in the navbar; mobile (< 768 px)
+│   │   │   collapses to a search-icon button
+│   │   └── New playbook `docs/e2e-walkthroughs/command-palette.md`
 │   │
 │   ├── Sprint 32 — Home dashboard                         ⏳ planned
 │   │   ├── Rewrite `pages/catalogs.html` (the `/` route) into a

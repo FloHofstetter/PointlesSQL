@@ -29,6 +29,7 @@ from pointlessql.db import get_session_factory, init_db
 from pointlessql.exceptions import (
     AuthorizationError,
     CatalogUnavailableError,
+    PointlessSQLError,
     ValidationError,
 )
 from pointlessql.logging_config import configure_logging, request_id_var
@@ -1865,6 +1866,258 @@ async def api_dashboards_tree(request: Request) -> list[dict[str, Any]]:
     return await api_list_dashboards(request)
 
 
+def _score_match(needle: str, haystack: str) -> float | None:
+    """Return the match score or ``None`` when *needle* is absent.
+
+    Prefix matches outrank substring matches so that typing ``prod`` ranks
+    ``prod_orders`` above ``backup_prod``. Needle is assumed already
+    casefolded; haystack is casefolded here so callers can pass raw names.
+    """
+    if not haystack:
+        return None
+    hay = haystack.casefold()
+    if hay.startswith(needle):
+        return 2.0
+    if needle in hay:
+        return 1.0
+    return None
+
+
+def _epoch_seconds(value: Any) -> float:
+    """Normalize a soyuz epoch-ms int or ORM ``datetime`` to float seconds.
+
+    Used as the tiebreak key for `/api/search`. ``None`` and unrecognized
+    types collapse to ``0.0`` so those hits always lose the tiebreak
+    rather than raising mid-sort.
+    """
+    if value is None:
+        return 0.0
+    if isinstance(value, bool):
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value) / 1000.0
+    if isinstance(value, datetime):
+        return value.timestamp()
+    return 0.0
+
+
+@app.get("/api/search")
+async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dict[str, Any]]:
+    """Aggregate global search hits for the Cmd+K command palette.
+
+    Merges catalog / schema / table / federation objects from soyuz with
+    local jobs, dashboards, and (for admins) workspace notebooks. Scoring
+    favours prefix matches over substring matches; ties resolve by
+    ``updated_at`` descending. An empty query returns ``[]``; the frontend
+    renders the localStorage recent-searches in that case so we avoid the
+    roundtrip entirely.
+
+    Each soyuz source is wrapped individually: a partial outage (e.g. the
+    connections list is momentarily 502) degrades to "those hits missing"
+    rather than 502'ing the whole palette, which would make the shortcut
+    disproportionately fragile for a supplementary navigation surface.
+    """
+    needle = q.strip().casefold()
+    if not needle:
+        return []
+    limit = max(1, min(int(limit), 100))
+
+    user = _get_user(request)
+    client = _get_uc_client(request)
+
+    async def _soyuz_tree() -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        try:
+            tree = await client.get_tree()
+        except PointlessSQLError:
+            logger.warning("search: soyuz tree unavailable", exc_info=True)
+            return out
+        for cat in tree:
+            cat_name = str(cat.get("name") or "")
+            cat_score = _score_match(needle, cat_name)
+            if cat_score is not None:
+                out.append(
+                    {
+                        "type": "catalog",
+                        "label": cat_name,
+                        "description": str(cat.get("comment") or ""),
+                        "url": f"/catalogs/{cat_name}",
+                        "updated_at": _epoch_seconds(cat.get("updated_at")),
+                        "score": cat_score,
+                    }
+                )
+            for schema in cat.get("schemas") or []:
+                s_name = str(schema.get("name") or "")
+                s_score = _score_match(needle, s_name)
+                if s_score is not None:
+                    out.append(
+                        {
+                            "type": "schema",
+                            "label": f"{cat_name}.{s_name}",
+                            "description": str(schema.get("comment") or ""),
+                            "url": f"/catalogs/{cat_name}/schemas/{s_name}",
+                            "updated_at": _epoch_seconds(schema.get("updated_at")),
+                            "score": s_score,
+                        }
+                    )
+                for table in schema.get("tables") or []:
+                    t_name = str(table.get("name") or "")
+                    t_score = _score_match(needle, t_name)
+                    if t_score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "table",
+                            "label": f"{cat_name}.{s_name}.{t_name}",
+                            "description": str(table.get("comment") or ""),
+                            "url": (f"/catalogs/{cat_name}/schemas/{s_name}/tables/{t_name}"),
+                            "updated_at": _epoch_seconds(table.get("updated_at")),
+                            "score": t_score,
+                        }
+                    )
+        return out
+
+    async def _soyuz_federation() -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        sources: list[tuple[str, Any, str]] = [
+            ("connection", client.list_connections, "/connections/{name}"),
+            ("credential", client.list_credentials, "/credentials/{name}"),
+            (
+                "external_location",
+                client.list_external_locations,
+                "/external-locations/{name}",
+            ),
+        ]
+        for type_name, fetcher, url_tmpl in sources:
+            try:
+                rows = await fetcher()
+            except PointlessSQLError:
+                logger.warning("search: %s list unavailable", type_name, exc_info=True)
+                continue
+            for row in rows:
+                name = str(row.get("name") or "")
+                score = _score_match(needle, name)
+                if score is None:
+                    continue
+                out.append(
+                    {
+                        "type": type_name,
+                        "label": name,
+                        "description": str(row.get("comment") or ""),
+                        "url": url_tmpl.format(name=name),
+                        "updated_at": _epoch_seconds(row.get("updated_at")),
+                        "score": score,
+                    }
+                )
+        return out
+
+    def _local_jobs() -> list[dict[str, Any]]:
+        from sqlalchemy import select as _select
+
+        from pointlessql.models import Job as JobModel
+
+        out: list[dict[str, Any]] = []
+        factory = request.app.state.session_factory
+        with factory() as session:
+            stmt = _select(JobModel)
+            if not user.get("is_admin"):
+                stmt = stmt.where(JobModel.run_as_user_id == user["id"])
+            for row in session.scalars(stmt).all():
+                score = _score_match(needle, row.name)
+                if score is None:
+                    continue
+                out.append(
+                    {
+                        "type": "job",
+                        "label": row.name,
+                        "description": f"{row.kind} · {row.cron_expr}",
+                        "url": f"/jobs/{row.id}",
+                        "updated_at": _epoch_seconds(row.updated_at),
+                        "score": score,
+                    }
+                )
+        return out
+
+    def _local_dashboards() -> list[dict[str, Any]]:
+        from sqlalchemy import select as _select
+
+        from pointlessql.models import Dashboard as DashboardModel
+
+        out: list[dict[str, Any]] = []
+        factory = request.app.state.session_factory
+        with factory() as session:
+            for row in session.scalars(_select(DashboardModel)).all():
+                title_score = _score_match(needle, row.title)
+                slug_score = _score_match(needle, row.slug)
+                score = title_score
+                if slug_score is not None and (score is None or slug_score > score):
+                    score = slug_score
+                if score is None:
+                    continue
+                out.append(
+                    {
+                        "type": "dashboard",
+                        "label": row.title,
+                        "description": row.description or row.slug,
+                        "url": f"/dashboards/{row.slug}",
+                        "updated_at": _epoch_seconds(row.updated_at),
+                        "score": score,
+                    }
+                )
+        return out
+
+    def _local_notebooks() -> list[dict[str, Any]]:
+        # Matches the Sprint-27 admin boundary on /api/notebooks/tree.
+        if not user.get("is_admin"):
+            return []
+        settings_obj: Settings = request.app.state.settings
+        try:
+            tree = notebook_workspace_service.list_workspace_tree(
+                settings_obj.notebooks_dir.resolve()
+            )
+        except Exception:
+            logger.warning("search: notebook tree unavailable", exc_info=True)
+            return []
+        out: list[dict[str, Any]] = []
+
+        def _walk(nodes: list[dict[str, Any]]) -> None:
+            for node in nodes:
+                kind = node.get("kind")
+                if kind == "notebook":
+                    name = str(node.get("name") or "")
+                    path = str(node.get("path") or "")
+                    score = _score_match(needle, name) or _score_match(needle, path)
+                    if score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "notebook",
+                            "label": name,
+                            "description": path,
+                            "url": f"/notebooks/workspace?path={path}",
+                            "updated_at": 0.0,
+                            "score": score,
+                        }
+                    )
+                elif kind == "dir":
+                    children = node.get("children") or []
+                    _walk(children)
+
+        _walk(tree)
+        return out
+
+    tree_hits, fed_hits = await asyncio.gather(_soyuz_tree(), _soyuz_federation())
+    hits: list[dict[str, Any]] = []
+    hits.extend(tree_hits)
+    hits.extend(fed_hits)
+    hits.extend(_local_jobs())
+    hits.extend(_local_dashboards())
+    hits.extend(_local_notebooks())
+
+    hits.sort(key=lambda h: (-float(h["score"]), -float(h["updated_at"])))
+    return hits[:limit]
+
+
 @app.post("/api/dashboards")
 async def api_create_dashboard(
     request: Request, body: dict[str, Any] = Body(...)
@@ -1882,9 +2135,7 @@ async def api_create_dashboard(
         raise ValidationError("slug, title and notebook_path are required")
     slug = str(slug_raw).strip()
     if not _SLUG_PATTERN.match(slug):
-        raise ValidationError(
-            "slug must be lowercase letters, digits and hyphens (1-200 chars)"
-        )
+        raise ValidationError("slug must be lowercase letters, digits and hyphens (1-200 chars)")
 
     description_raw = body.get("description")
     description: str | None = None
@@ -1906,9 +2157,7 @@ async def api_create_dashboard(
     with factory() as session:
         from sqlalchemy import select as _select
 
-        existing = session.scalar(
-            _select(DashboardModel).where(DashboardModel.slug == slug)
-        )
+        existing = session.scalar(_select(DashboardModel).where(DashboardModel.slug == slug))
         if existing is not None:
             raise ValidationError(f"dashboard slug {slug!r} already exists")
 
@@ -2137,15 +2386,11 @@ async def dashboard_output(request: Request, slug: str) -> HTMLResponse:
         if job is None or run is None or run.job_id != dashboard.job_id:
             raise CatalogNotFoundError(f"Dashboard {slug!r} output not available")
         if job.kind != "papermill":
-            raise CatalogNotFoundError(
-                f"Dashboard {slug!r} bound job is not a papermill job"
-            )
+            raise CatalogNotFoundError(f"Dashboard {slug!r} bound job is not a papermill job")
 
     settings: Settings = request.app.state.settings
     runs_dir = settings.notebooks_dir.resolve() / "runs"
-    html = notebook_render_service.render_run_notebook(
-        runs_dir, latest_run_id, exclude_input=True
-    )
+    html = notebook_render_service.render_run_notebook(runs_dir, latest_run_id, exclude_input=True)
     return HTMLResponse(html)
 
 
