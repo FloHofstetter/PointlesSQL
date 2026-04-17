@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 37)
+
+- Phase 10 (Packaging & private distribution) opened in
+  [`ROADMAP.md`](ROADMAP.md). Distribution contract locked in as
+  private GitHub tags over `[tool.uv.sources]` git-subdirectory
+  pins; no public PyPI.
+- Sprint 37 — forward-pulled soyuz-catalog Sprint 19 release
+  engineering. Lands in the sibling repo `../soyuz-catalog/` at
+  commit `be9c5c6`: `cliff.toml`, `scripts/bump-version.sh`
+  (lockstep version bump + CHANGELOG `[Unreleased]` flip +
+  annotated tag, does not push), and
+  `.github/workflows/release.yml` (on-tag; runs the existing
+  `check_client_drift.sh` gate, builds server + client wheels +
+  sdists, attaches all four to the GitHub Release with git-cliff
+  release notes).
+- First tag cut in soyuz-catalog: `v0.2.0-rc1`. Sprint 38 will
+  pin PointlesSQL's `soyuz-catalog-client` source against it,
+  retiring the editable path-dep that currently blocks
+  clean-machine `uv sync`.
+
 ### Added (Sprint 36)
 
 - New `frontend/js/api.js` exposes `window.pqlApi.fetch(url, init)`

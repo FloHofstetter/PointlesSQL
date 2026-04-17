@@ -1164,6 +1164,114 @@ PointlesSQL
 │   reduced-motion, ships one toast contract, and surfaces
 │   every keyboard shortcut in one help modal.
 │
+├── Phase 10 — Packaging & private distribution           ⏳ in progress
+│   │
+│   │   Goal: unblock clean-machine installs. `uv sync`
+│   │   currently fails on any host without
+│   │   `../soyuz-catalog` checked out, because
+│   │   `soyuz-catalog-client` is an editable path dep. Phase
+│   │   10 swaps that for a private git-tag pin, gives both
+│   │   repos a real release process, and lets docker-compose
+│   │   pull images from GHCR instead of building locally.
+│   │
+│   │   Distribution contract: **private GitHub tags** consumed
+│   │   via uv's `[tool.uv.sources]` git-subdirectory shape.
+│   │   **No public PyPI** — explicitly deferred. Dual-mode dev
+│   │   stays: the editable path to `../soyuz-catalog` is an
+│   │   opt-in toggle so client regeneration is still visible
+│   │   without a tag bump.
+│   │
+│   ├── Sprint 37 — soyuz-catalog release engineering     ✅ done (be9c5c6 in soyuz)
+│   │   │
+│   │   │   Forward-pulled from soyuz-catalog's own Sprint 19.
+│   │   │   Lands in the sibling repo; tracked here because
+│   │   │   PointlesSQL is what unblocks. The original Sprint
+│   │   │   19 scope was narrowed — no public PyPI, no GHCR
+│   │   │   image (Sprint 40 owns that instead).
+│   │   │
+│   │   ├── `soyuz-catalog/cliff.toml` — git-cliff template
+│   │   │   keyed to the Conventional Commit scopes on main
+│   │   │   (`feat(catalogs)`, `feat(tables)`, `feat(connections)`,
+│   │   │   `fix(client)`, `docs(roadmap)`, …). Commit subjects
+│   │   │   wrapped in backticks so release-notes output
+│   │   │   tolerates `_parse_response`-style tokens under
+│   │   │   markdownlint MD037
+│   │   ├── `soyuz-catalog/scripts/bump-version.sh` — lockstep
+│   │   │   version bump across root + client `pyproject.toml`,
+│   │   │   re-locks `uv.lock`, renames `## [Unreleased]` →
+│   │   │   `## [X.Y.Z] - <date>` in CHANGELOG.md (anchored
+│   │   │   multiline regex, hand-written prose preserved
+│   │   │   verbatim), commits `chore(release): vX.Y.Z`, and
+│   │   │   creates an annotated tag. Does not push — the user
+│   │   │   pushes manually so the action stays reversible.
+│   │   │   Errors loudly on dirty tree, non-main branch,
+│   │   │   invalid PEP 440, existing tag, or missing
+│   │   │   `[Unreleased]` heading
+│   │   ├── `soyuz-catalog/.github/workflows/release.yml` —
+│   │   │   on-tag `v*`, runs `check_client_drift.sh` first
+│   │   │   (reuses the existing gate from `test.yml`; no new
+│   │   │   drift logic), `uv build` at root + inside
+│   │   │   `soyuz-catalog-client/`, generates short release-
+│   │   │   notes via `uvx git-cliff --latest --strip all`, and
+│   │   │   `gh release create`s with all four artifacts
+│   │   │   attached (server + client, wheel + sdist).
+│   │   │   `--prerelease` toggled automatically for PEP 440
+│   │   │   `rc*` / `a*` / `b*` / `dev*` shapes
+│   │   ├── First tag cut: `v0.2.0-rc1`. Both server and client
+│   │   │   at `0.2.0rc1` (incremental bump from `0.1.0`; does
+│   │   │   not claim 1.0 API stability)
+│   │   └── Sprint 38 can now pin
+│   │       `soyuz-catalog-client = { git = "…", tag = "v0.2.0-rc1",
+│   │       subdirectory = "soyuz-catalog-client" }` in
+│   │       `[tool.uv.sources]`
+│   │
+│   ├── Sprint 38 — Swap path-dep to git-tag pin (dual-mode)  ⏳ planned
+│   │   ├── `pyproject.toml [tool.uv.sources]` — replace the
+│   │   │   editable path with a `{ git = "…", tag = "v0.2.0-rc1",
+│   │   │   subdirectory = "soyuz-catalog-client" }` pin
+│   │   ├── Dual-mode toggle: one env-var or extras-group flip
+│   │   │   brings the editable path back for local dev
+│   │   │   (`../soyuz-catalog` regen visible without a tag bump)
+│   │   ├── `uv.lock` regenerated against the tag pin — first
+│   │   │   lock that works on a clean clone
+│   │   ├── `Dockerfile` — collapse the 3-stage sed-strip pattern
+│   │   │   now that `uv sync` works without a sibling checkout
+│   │   ├── `CLAUDE.md` "Wiring soyuz-catalog" block rewritten
+│   │   │   to document both dev modes
+│   │   └── Smoke test: fresh tmpdir, `git clone`, `uv sync`,
+│   │       `uv run pointlessql` — must succeed without
+│   │       `../soyuz-catalog`
+│   │
+│   ├── Sprint 39 — PointlesSQL release engineering         ⏳ planned
+│   │   ├── `cliff.toml`, `scripts/bump-version.sh`,
+│   │   │   `.github/workflows/release.yml` — mirror of Sprint
+│   │   │   37's soyuz shape
+│   │   ├── First CI for this repo: `.github/workflows/test.yml`
+│   │   │   running ruff + pyright + pydoclint + alembic-check
+│   │   │   on every push (pytest stays skipped per the
+│   │   │   standing sprint-gate discipline)
+│   │   ├── Wheel must force-include the frontend and the
+│   │   │   alembic migrations (validate by unzipping the
+│   │   │   built wheel)
+│   │   └── Cut tag `v0.1.0-rc1`
+│   │
+│   └── Sprint 40 — Docker registry + clean-machine install + close  ⏳ planned
+│       ├── `.github/workflows/docker.yml` — on-tag, build
+│       │   PointlesSQL + soyuz-catalog images, push to GHCR
+│       │   (private; consumers `docker login ghcr.io`)
+│       ├── `docker-compose.yml` — add commented `image:` line
+│       │   next to each `build:` so users can switch between
+│       │   build-locally and pull-from-GHCR with two-line edits
+│       ├── `docs/install.md` — three flavours (source checkout,
+│       │   pip + git-tag, docker-compose), each with auth-token
+│       │   step called out
+│       ├── `docs/e2e-walkthroughs/packaging.md` — fresh-VM
+│       │   playbook: docker login → compose pull → compose up
+│       │   → home page renders
+│       └── Phase 10 close-out section mirroring the Phase 7/8/9
+│           pattern — what this phase bought, any bugs surfaced,
+│           deferred work
+│
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
     │   soyuz-catalog's job; PointlesSQL is a consumer
