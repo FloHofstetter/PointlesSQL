@@ -73,7 +73,7 @@
                             </td>
                             <td><span class="badge bg-info text-dark">{{ job.kind }}</span></td>
                             <td class="font-monospace small"
-                                x-data="{ c: {{ job.cron_expr|tojson }} }"
+                                x-data='{ c: {{ job.cron_expr|tojson }} }'
                                 x-text="pqlHumanizeCron(c)"
                                 x-bind:title="c">{{ job.cron_expr }}</td>
                             <td class="small text-muted font-monospace">
@@ -81,7 +81,7 @@
                                 <span class="pql-status-dot pql-status-dot--{{ job.last_run_status }}"
                                       aria-hidden="true"></span>
                                 <span class="visually-hidden">{{ job.last_run_status }}</span>
-                                <span x-data="{ iso: {{ (job.last_run_at or '')|tojson }} }"
+                                <span x-data='{ iso: {{ (job.last_run_at or "")|tojson }} }'
                                       x-text="pqlRelativeTime(iso)"
                                       x-bind:title="iso ? new Date(iso).toLocaleString() : ''">{{ job.last_run_at or '' }}</span>
                                 {% else %}

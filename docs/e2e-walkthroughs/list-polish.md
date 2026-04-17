@@ -166,5 +166,22 @@ and the toast-then-reload cadence for row mutations.
 
 ## Found bugs
 
-_None at the time Sprint 33 landed. Append as `BUG-33-NN` entries
-here with a clear next action if a future replay surfaces one._
+- **BUG-33-01** (fixed same-sprint): `x-data="{ c: {{ job.cron_expr|tojson }} }"`
+  on the Cron and Last-run cells broke the HTML parser — `tojson`
+  emits a double-quoted JSON string, and the outer double-quoted
+  attribute terminated after the opening inner quote (`x-data="{ c: "`).
+  Alpine logged `expected expression, got '}'` and the cells rendered
+  empty. Fixed by switching the outer attribute to single quotes
+  (`x-data='{ c: {{ job.cron_expr|tojson }} }'`) on both
+  [jobs.html](../../frontend/templates/pages/jobs.html) and
+  [job_detail.html](../../frontend/templates/pages/job_detail.html).
+  Surfaced by the Sprint-33 post-merge Playwright replay.
+
+## Known pre-existing
+
+- Relative-time strings drift by the local UTC offset because
+  `JobRun.started_at` is stored as UTC-naive and `Date.parse` treats
+  no-tz ISO strings as local. A run fired "just now" displays as
+  "2 hours ago" on a CEST client. Predates Sprint 33 — the same
+  helper and timestamps fed the Sprint-32 home `latest_runs` table.
+  Not in scope for this sprint.

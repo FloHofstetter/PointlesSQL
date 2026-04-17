@@ -155,6 +155,16 @@ before landing; fixes for bugs surfaced in a replay land in the
 same commit if trivial, otherwise as a `BUG-NN-NN` TODO with a
 named fix location at the bottom of the playbook.
 
+If Playwright-MCP fails to launch Firefox with `process did exit:
+exitCode=0` *immediately* after `<launched>` (juggler-pipe never
+completes the handshake), the profile dir has a stale lock. Check
+`~/.cache/ms-playwright/mcp-firefox-*/lock` — it is a symlink whose
+target encodes the owning PID (`127.0.1.1:+<pid>`). If that PID is
+dead (`ps -p <pid>` shows no row), just `rm` the symlink and
+retry. Firefox itself runs fine standalone in that state, so the
+smoke test is to launch firefox by hand with the bundled binary
+before suspecting the install.
+
 ## Conventions
 
 - Apache-2.0 license
