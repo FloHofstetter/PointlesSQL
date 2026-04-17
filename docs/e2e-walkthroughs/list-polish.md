@@ -177,11 +177,17 @@ and the toast-then-reload cadence for row mutations.
   [job_detail.html](../../frontend/templates/pages/job_detail.html).
   Surfaced by the Sprint-33 post-merge Playwright replay.
 
-## Known pre-existing
-
-- Relative-time strings drift by the local UTC offset because
-  `JobRun.started_at` is stored as UTC-naive and `Date.parse` treats
-  no-tz ISO strings as local. A run fired "just now" displays as
-  "2 hours ago" on a CEST client. Predates Sprint 33 — the same
-  helper and timestamps fed the Sprint-32 home `latest_runs` table.
-  Not in scope for this sprint.
+- **BUG-33-02** (fixed same-sprint): relative-time strings drifted
+  by the client's UTC offset — a run fired "just now" showed up as
+  "2 hours ago" on a CEST browser. Root cause: `JobRun.started_at`
+  is stamped `datetime.now(UTC)` server-side but SQLite strips the
+  tzinfo on readback, so `.isoformat()` emits no-tz strings like
+  `"2026-04-17T15:15:44.341818"`, which `Date.parse` then parses as
+  local. Predates Sprint 33 (the same helper fed Sprint 32's home
+  `latest_runs`), but Sprint 33 surfaced it on the new jobs
+  Last-run column so the fix lands here. Added
+  `window.pqlParseServerIso(iso)` in
+  [relative_time.js](../../frontend/js/relative_time.js) — appends
+  'Z' only when the string has no tz marker — and routed
+  `pqlRelativeTime` + both `toLocaleString` tooltip call sites
+  (jobs.html, home.html) through it.

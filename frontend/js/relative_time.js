@@ -13,10 +13,30 @@
  * an ISO date (YYYY-MM-DD) for anything older than ~30 days.
  */
 (function () {
+    // The backend stamps JobRun.started_at with datetime.now(UTC) but
+    // SQLite drops timezone info on readback, so the server emits
+    // ISO-8601 like "2026-04-17T15:15:44.341818" — no Z suffix, no
+    // offset. Date.parse treats that as *local*, which drifts "just
+    // now" by the client's UTC offset (a CEST client sees "2 hours
+    // ago"). Append 'Z' when the string lacks any tz marker so the
+    // browser parses it as UTC and the relative-time math is right.
+    function parseServerIso(iso) {
+        if (!iso) return null;
+        const s = String(iso);
+        // Already has a zone: trailing Z, or ±HH:MM / ±HHMM after the T.
+        if (/(Z|[+-]\d{2}:?\d{2})$/.test(s)) return s;
+        // No zone — treat as UTC.
+        return s + 'Z';
+    }
+
+    if (!window.pqlParseServerIso) {
+        window.pqlParseServerIso = parseServerIso;
+    }
+
     if (window.pqlRelativeTime) return;
     window.pqlRelativeTime = function (iso) {
         if (!iso) return '';
-        const t = Date.parse(iso);
+        const t = Date.parse(parseServerIso(iso));
         if (Number.isNaN(t)) return iso;
         const delta = Math.max(0, (Date.now() - t) / 1000);
         if (delta < 45) return 'just now';

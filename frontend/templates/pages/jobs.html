@@ -83,7 +83,7 @@
                                 <span class="visually-hidden">{{ job.last_run_status }}</span>
                                 <span x-data='{ iso: {{ (job.last_run_at or "")|tojson }} }'
                                       x-text="pqlRelativeTime(iso)"
-                                      x-bind:title="iso ? new Date(iso).toLocaleString() : ''">{{ job.last_run_at or '' }}</span>
+                                      x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ job.last_run_at or '' }}</span>
                                 {% else %}
                                 —
                                 {% endif %}
