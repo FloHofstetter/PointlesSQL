@@ -862,7 +862,7 @@ PointlesSQL
 │   │   │   later sprints)
 │   │   └── `docs/design-tokens.md` reference
 │   │
-│   ├── Sprint 30 — Shell + empty states + error pages    ✅ done (pending)
+│   ├── Sprint 30 — Shell + empty states + error pages    ✅ done (8d939fe)
 │   │   ├── New app shell in `base.html` — header + collapsible
 │   │   │   sidebar + main, mobile-aware grid (`minmax(0, 1fr)`
 │   │   │   on narrow viewports, `auto 1fr` on wide)
