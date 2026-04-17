@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -33,8 +33,25 @@ class User(Base):
 
     __tablename__ = "users"
 
+    # Indexes mirror the migration-created shapes so autogen
+    # round-trips cleanly. ``ix_users_oidc_identity`` is a **partial**
+    # unique index (only constrains rows with an OIDC identity) — the
+    # ``*_where`` dialect kwargs emit ``WHERE oidc_provider IS NOT
+    # NULL`` on both SQLite and Postgres.
+    __table_args__ = (
+        Index("ix_users_email", "email", unique=True),
+        Index(
+            "ix_users_oidc_identity",
+            "oidc_provider",
+            "oidc_subject",
+            unique=True,
+            sqlite_where=text("oidc_provider IS NOT NULL"),
+            postgresql_where=text("oidc_provider IS NOT NULL"),
+        ),
+    )
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(254), nullable=False)
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -58,6 +75,11 @@ class AuditLog(Base):
     """
 
     __tablename__ = "audit_log"
+
+    __table_args__ = (
+        Index("ix_audit_log_user_created", "user_id", "created_at"),
+        Index("ix_audit_log_target_created", "target", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -97,6 +119,10 @@ class SyncRun(Base):
     """
 
     __tablename__ = "sync_run"
+
+    __table_args__ = (
+        Index("ix_sync_run_catalog_started", "catalog_name", "started_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     catalog_name: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -279,6 +305,8 @@ class TaskRun(Base):
     """
 
     __tablename__ = "task_runs"
+
+    __table_args__ = (Index("ix_task_runs_job_run", "job_run_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     job_run_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_runs.id"), nullable=False)
