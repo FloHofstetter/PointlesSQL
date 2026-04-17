@@ -415,3 +415,76 @@ produced the expected values on the first pass:
   is closed, so "visible input" counts via `offsetParent !== null`
   are unreliable. Part E step 12 now targets
   `input[x-model="p.value"]` directly.
+
+## Part F — Output artifacts card (Sprint 26)
+
+Sprint 26 lands an "Output artifacts" card on `/jobs/{id}` that
+renders the executed notebook inline via nbconvert, with a toggle
+between the static `Rendered` HTML and the interactive
+`JupyterLab` iframe. The card auto-selects the most recent
+completed run; clicking any row in the "Recent runs" table below
+swaps the selection.
+
+Precondition: Part E left a succeeded papermill run on disk at
+`notebooks/runs/{run_id}.ipynb`. If the stack was restarted between
+Part E and here, Run-now the `smoke_typed_params.ipynb` job once.
+
+### Steps
+
+1. `browser_navigate` to `/jobs/{id}` for the Sprint 25 typed-params
+   job (or any papermill job with a completed run).
+2. `browser_snapshot` — confirm the DOM ordering is:
+   1. "DAG tasks" card (if present)
+   2. **"Output artifacts" card** (new; the header reads
+      `Output artifacts · run #<rid>` once the Alpine `init()`
+      auto-select fires)
+   3. "Recent runs" card
+3. Assert the iframe's `src` attribute equals
+   `/jobs/{id}/runs/{latest_rid}/notebook` — this is the
+   `viewMode === "rendered"` branch of `iframeSrc()`. The iframe
+   body should contain the parameter injection cell's
+   `count = 3 (int)` output line (or whatever the seed notebook
+   prints).
+4. Click the `JupyterLab` toggle button. `browser_wait_for` the
+   iframe's `src` to change to
+   `http://{host}:{jupyter_port}/lab/tree/runs/{latest_rid}.ipynb`.
+   The embedded JupyterLab loads the same ipynb in the editable
+   kernel view.
+5. Toggle back to `Rendered`. `browser_network_requests` should
+   show **only one** `GET /jobs/{id}/runs/{rid}/notebook` — the
+   second hit loads from the `runs/{rid}.html` sidecar written
+   during step 3's first render, and the iframe cache hit keeps
+   the browser from reissuing a request.
+6. Scroll to the Recent runs table. Click a **different** row
+   (any succeeded/failed run from an earlier tick, if present).
+   Assert the `$dispatch("run-selected", …)` Alpine event fires
+   and the card's iframe src updates to the clicked `run_id`.
+7. With a row still selected, click "Download .ipynb" in the card
+   footer. `browser_network_requests` should record a
+   `GET /jobs/{id}/runs/{rid}/notebook/download?format=ipynb` with
+   `Content-Disposition: attachment; filename=…ipynb` and a `200`
+   status.
+8. Click "Download .html". First hit triggers the nbconvert
+   sidecar write (same mechanics as the inline route), returns the
+   cached HTML with a `.html` filename.
+
+### Negative paths
+
+- Navigate to `/jobs/{id}/runs/99999999/notebook` for a `run_id`
+  that does not belong to this job — expect 404 from
+  `_load_papermill_run_output_path`, served through the centralized
+  error handler.
+- Navigate to `/jobs/{non_papermill_id}/runs/{rid}/notebook` for a
+  `python` or `pg_sync` job — same 404 path (the validator rejects
+  non-papermill kinds before touching disk).
+- Sign in as a non-owner, non-admin and visit the render route for
+  a job owned by another user — 404 (the validator inherits
+  `_load_job_or_404`'s ownership rule; the render endpoint never
+  reveals whether a run exists for a job the caller cannot see).
+
+### Expected bugs surfaced
+
+Nothing pre-identified. Playbook replay notes land below; if
+something is weird, file it as `BUG-26-NN` with a concrete fix
+location (template line, route file + line, service function) —
+no "felt off" entries.

@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 26)
+
+- `nbconvert>=7.0` dep and new `pointlessql/services/notebook_render.py`
+  with `render_run_notebook(runs_dir, run_id)` — first call runs
+  `HTMLExporter(template_name="lab")` on
+  `runs/{run_id}.ipynb`, writes an atomic `.html` sidecar next to
+  it, and returns the HTML; subsequent calls serve the sidecar
+- `GET /jobs/{id}/runs/{rid}/notebook` — inline-renders a
+  papermill run's output notebook for iframe embedding on the
+  job-detail page
+- `GET /jobs/{id}/runs/{rid}/notebook/download?format={ipynb,html}`
+  — visibility-checked downloads of the raw notebook or its
+  rendered sidecar. Replaces the originally planned
+  `/notebooks/runs/` StaticFiles mount so non-owner logged-in
+  users can't exfiltrate other users' run outputs by guessing
+  `run_id`s. Both routes share `_load_papermill_run_output_path`
+  which validates job ownership, papermill kind, and run
+  ownership before touching disk
+- New "Output artifacts" card on `job_detail.html` (between
+  the DAG tasks and Recent runs cards, guarded by
+  `job.kind == "papermill"`): auto-selects the most recent
+  succeeded/failed run on page load, Rendered/JupyterLab view
+  toggle wired to the two iframe sources, download links for
+  `.ipynb` and `.html`
+- Recent runs rows are now clickable on papermill jobs;
+  `$dispatch("run-selected", { runId })` swaps the card's
+  iframe to the clicked run's output. The Sprint 24 "Open in
+  JupyterLab" anchor retains `@click.stop` so row-click and
+  popout-click don't collide
+- `docs/e2e-walkthroughs/notebook-jobs.md` Part F walks the
+  card's auto-select, view-toggle, row-click swap, downloads,
+  and the three 404 negatives
+
 ### Added (Sprint 25)
 
 - `GET /api/notebooks/inspect?path=…` admin-only route wrapping

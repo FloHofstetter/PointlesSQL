@@ -689,7 +689,7 @@ PointlesSQL
 │   │       (`count: int = 3`, `enabled: bool = True`,
 │   │       `label: str = "hello"`) — one per typed-input branch
 │   │
-│   ├── Sprint 26 — Inline run render + Output artifacts       ⏳ planned
+│   ├── Sprint 26 — Inline run render + Output artifacts       ✅ done
 │   │   ├── `nbconvert>=7.0` dep
 │   │   ├── `GET /jobs/{id}/runs/{rid}/notebook` renders the
 │   │   │   output ipynb via
@@ -701,8 +701,13 @@ PointlesSQL
 │   │   ├── View-mode toggle inside the card: **Rendered**
 │   │   │   (static HTML, fast) vs **JupyterLab** (interactive
 │   │   │   iframe), both pointing at the same ipynb
-│   │   ├── `/notebooks/runs/` mounted via `StaticFiles` so the
-│   │   │   raw ipynb + cached HTML are downloadable
+│   │   ├── Downloads served via `/jobs/{id}/runs/{rid}/notebook/
+│   │   │   download?format={ipynb,html}` with `_load_job_or_404`
+│   │   │   visibility enforcement. Scope change: the original
+│   │   │   plan mounted `/notebooks/runs/` via `StaticFiles`, but
+│   │   │   that would let any logged-in user exfiltrate another
+│   │   │   user's run output by guessing `run_id`s. The
+│   │   │   visibility-checked route closes that leak
 │   │   └── Playbook extension: click past run → see cells inline
 │   │
 │   ├── Sprint 27 — Workspace file browser                    ⏳ planned

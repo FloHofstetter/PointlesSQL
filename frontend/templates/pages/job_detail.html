@@ -179,6 +179,68 @@
 </div>
 {% endif %}
 
+{% if job.kind == "papermill" %}
+{% set completed_run_ids = runs|selectattr("status", "in", ["succeeded", "failed"])|map(attribute="id")|list %}
+<div class="card mb-4"
+     x-data='{
+         jobId: {{ job.id }},
+         jupyterPort: {{ jupyter_port }},
+         completedRunIds: {{ completed_run_ids|tojson }},
+         viewMode: "rendered",
+         selectedRunId: null,
+         init() {
+             this.selectedRunId = this.completedRunIds.length > 0 ? this.completedRunIds[0] : null;
+             window.addEventListener("run-selected", (e) => {
+                 this.selectedRunId = e.detail.runId;
+             });
+         },
+         iframeSrc() {
+             if (this.selectedRunId === null) return "";
+             if (this.viewMode === "jupyterlab") {
+                 return `http://${window.location.hostname}:${this.jupyterPort}/lab/tree/runs/${this.selectedRunId}.ipynb`;
+             }
+             return `/jobs/${this.jobId}/runs/${this.selectedRunId}/notebook`;
+         }
+     }'>
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-file-earmark-richtext"></i>Output artifacts
+        <span class="text-muted small" x-show="selectedRunId !== null">
+            · run #<span x-text="selectedRunId"></span>
+        </span>
+        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="View mode">
+            <button type="button"
+                    :class="viewMode === 'rendered' ? 'btn btn-primary' : 'btn btn-outline-primary'"
+                    x-on:click="viewMode = 'rendered'">Rendered</button>
+            <button type="button"
+                    :class="viewMode === 'jupyterlab' ? 'btn btn-primary' : 'btn btn-outline-primary'"
+                    x-on:click="viewMode = 'jupyterlab'">JupyterLab</button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <template x-if="selectedRunId === null">
+            <div class="p-3 text-muted small fst-italic">
+                No completed runs yet. Run this job to populate the output.
+            </div>
+        </template>
+        <template x-if="selectedRunId !== null">
+            <iframe :src="iframeSrc()"
+                    class="w-100"
+                    style="height: 600px; border: 0;"
+                    title="Notebook output"></iframe>
+        </template>
+    </div>
+    <div class="card-footer small" x-show="selectedRunId !== null" x-cloak>
+        <a :href="`/jobs/${jobId}/runs/${selectedRunId}/notebook/download?format=ipynb`"
+           class="me-3">
+            <i class="bi bi-download me-1"></i>Download .ipynb
+        </a>
+        <a :href="`/jobs/${jobId}/runs/${selectedRunId}/notebook/download?format=html`">
+            <i class="bi bi-download me-1"></i>Download .html
+        </a>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-header d-flex align-items-center gap-2">
         <i class="bi bi-list-ul"></i>Recent runs
@@ -199,7 +261,9 @@
                 </thead>
                 <tbody>
                     {% for run in runs %}
-                    <tr>
+                    {% set is_selectable = job.kind == "papermill" and run.status in ["succeeded", "failed"] %}
+                    <tr {% if is_selectable %}style="cursor: pointer;"
+                        x-on:click="$dispatch('run-selected', { runId: {{ run.id }} })"{% endif %}>
                         <td class="ps-3 small">{{ run.started_at }}</td>
                         <td>
                             {% if run.status == "succeeded" %}
@@ -221,6 +285,7 @@
                             {% if job.kind == "papermill" and run.status in ("succeeded", "failed") %}
                             <a href="http://{{ request.url.hostname }}:{{ jupyter_port }}/lab/tree/runs/{{ run.id }}.ipynb"
                                target="_blank" rel="noopener"
+                               x-on:click.stop
                                class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-journal-code me-1"></i>Open in JupyterLab
                             </a>

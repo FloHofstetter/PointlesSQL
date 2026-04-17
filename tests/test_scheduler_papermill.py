@@ -1,14 +1,20 @@
-"""Tests for the Sprint 24 papermill executor."""
+"""Tests for the Sprint 24 papermill executor and Sprint 26 run routes."""
 
 from __future__ import annotations
 
+import datetime
+import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
+from sqlalchemy import select
 
+from pointlessql.api.main import app
 from pointlessql.exceptions import EngineError, ValidationError
+from pointlessql.models import Job, JobRun, User
 from pointlessql.services.scheduler import (
     _papermill_executor,
     build_default_registry,
@@ -151,9 +157,7 @@ async def test_executor_writes_output_and_forwards_principal(
         pass
 
     fake_exc_module.PapermillExecutionError = _FakeErr
-    monkeypatch.setitem(
-        __import__("sys").modules, "papermill.exceptions", fake_exc_module
-    )
+    monkeypatch.setitem(__import__("sys").modules, "papermill.exceptions", fake_exc_module)
 
     await _papermill_executor(
         42,
@@ -189,9 +193,7 @@ async def test_executor_papermill_execution_error_becomes_engine_error(
 
     fake_exc_module = MagicMock()
     fake_exc_module.PapermillExecutionError = _FakeErr
-    monkeypatch.setitem(
-        __import__("sys").modules, "papermill.exceptions", fake_exc_module
-    )
+    monkeypatch.setitem(__import__("sys").modules, "papermill.exceptions", fake_exc_module)
 
     def failing_execute(**_: Any) -> None:
         raise _FakeErr()
@@ -209,3 +211,172 @@ async def test_executor_papermill_execution_error_becomes_engine_error(
         )
 
 
+# -- Sprint 26: /jobs/{id}/runs/{rid}/notebook + /download routes --
+
+
+def _minimal_ipynb_source() -> str:
+    """Return a valid ipynb-4.5 document as a JSON string."""
+    return json.dumps(
+        {
+            "cells": [
+                {
+                    "cell_type": "code",
+                    "source": "print('sprint-26-route-smoke')",
+                    "outputs": [],
+                    "execution_count": 1,
+                    "metadata": {},
+                }
+            ],
+            "metadata": {
+                "kernelspec": {"name": "python3", "display_name": "Python 3"},
+                "language_info": {"name": "python"},
+            },
+            "nbformat": 4,
+            "nbformat_minor": 5,
+        }
+    )
+
+
+def _seed_papermill_job_and_run(
+    *, kind: str = "papermill", owner_email: str = "test@test.com"
+) -> tuple[int, int]:
+    """Seed one :class:`Job` (optionally non-papermill) plus a succeeded run.
+
+    Returns ``(job_id, run_id)`` so the caller can hit the new routes.
+    """
+    factory = app.state.session_factory
+    with factory() as session:
+        owner = session.scalars(select(User).where(User.email == owner_email)).first()
+        assert owner is not None
+        now = datetime.datetime.now(datetime.UTC)
+        job = Job(
+            name=f"sprint26-{kind}-{owner.id}-{now.timestamp()}",
+            cron_expr="* * * * *",
+            run_as_user_id=owner.id,
+            kind=kind,
+            config=json.dumps({"notebook_path": "ignored.ipynb"}),
+            is_paused=False,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(job)
+        session.commit()
+        run = JobRun(
+            job_id=job.id,
+            started_at=now,
+            finished_at=now + datetime.timedelta(seconds=1),
+            status="succeeded",
+            trigger="manual",
+        )
+        session.add(run)
+        session.commit()
+        return job.id, run.id
+
+
+def _admin_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_auth_cookie,
+    )
+
+
+def _non_admin_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_non_admin_cookie,
+    )
+
+
+@pytest.fixture
+def run_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point ``settings.notebooks_dir`` at an isolated workspace with a ``runs/``."""
+    nb_root = tmp_path / "notebooks"
+    runs = nb_root / "runs"
+    runs.mkdir(parents=True)
+    monkeypatch.setattr(app.state.settings, "notebooks_dir", nb_root)
+    return runs
+
+
+async def test_render_route_serves_nbconvert_html(run_output_dir: Path) -> None:
+    """Happy path: owner requests the inline render and gets the cell source back."""
+    job_id, run_id = _seed_papermill_job_and_run()
+    (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
+
+    async with _admin_client() as client:
+        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+
+    assert resp.status_code == 200
+    assert "sprint-26-route-smoke" in resp.text
+    assert (run_output_dir / f"{run_id}.html").is_file()
+
+
+async def test_render_route_missing_ipynb_404s(run_output_dir: Path) -> None:
+    """A run with no output ipynb surfaces as 404 via CatalogNotFoundError."""
+    job_id, run_id = _seed_papermill_job_and_run()
+
+    async with _admin_client() as client:
+        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+
+    assert resp.status_code == 404
+
+
+async def test_render_route_cross_job_run_id_404s(run_output_dir: Path) -> None:
+    """A run_id from a different job cannot be rendered under this job."""
+    job_a, run_a = _seed_papermill_job_and_run()
+    _job_b, run_b = _seed_papermill_job_and_run()
+    (run_output_dir / f"{run_b}.ipynb").write_text(_minimal_ipynb_source())
+
+    async with _admin_client() as client:
+        resp = await client.get(f"/jobs/{job_a}/runs/{run_b}/notebook")
+
+    assert resp.status_code == 404
+
+
+async def test_render_route_rejects_non_papermill_job(run_output_dir: Path) -> None:
+    """Only papermill jobs expose the render route; other kinds 404."""
+    job_id, run_id = _seed_papermill_job_and_run(kind="python")
+    (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
+
+    async with _admin_client() as client:
+        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+
+    assert resp.status_code == 404
+
+
+async def test_render_route_non_owner_404s(run_output_dir: Path) -> None:
+    """Non-admin non-owner cannot see another user's job output."""
+    job_id, run_id = _seed_papermill_job_and_run(owner_email="test@test.com")
+    (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
+
+    async with _non_admin_client() as client:
+        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+
+    assert resp.status_code == 404
+
+
+async def test_download_ipynb_serves_raw_file(run_output_dir: Path) -> None:
+    """``?format=ipynb`` returns the raw notebook bytes with a download filename."""
+    job_id, run_id = _seed_papermill_job_and_run()
+    (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
+
+    async with _admin_client() as client:
+        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook/download?format=ipynb")
+
+    assert resp.status_code == 200
+    assert "sprint-26-route-smoke" in resp.text
+    assert f"job{job_id}_run{run_id}.ipynb" in resp.headers.get("content-disposition", "")
+
+
+async def test_download_html_triggers_render(run_output_dir: Path) -> None:
+    """``?format=html`` writes the sidecar on first hit and serves it."""
+    job_id, run_id = _seed_papermill_job_and_run()
+    (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
+
+    async with _admin_client() as client:
+        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook/download?format=html")
+
+    assert resp.status_code == 200
+    assert (run_output_dir / f"{run_id}.html").is_file()
+    assert "sprint-26-route-smoke" in resp.text

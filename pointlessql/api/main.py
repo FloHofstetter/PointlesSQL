@@ -9,11 +9,17 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import Body, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -24,6 +30,7 @@ from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services import metrics as metrics_service
+from pointlessql.services import notebook_render as notebook_render_service
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.authorization import (
@@ -63,10 +70,8 @@ def _format_epoch_ms(value: Any) -> str:
     if value is None:
         return "—"
     try:
-        return datetime.fromtimestamp(int(value) / 1000, tz=UTC).strftime(
-            "%Y-%m-%d %H:%M UTC"
-        )
-    except (TypeError, ValueError):
+        return datetime.fromtimestamp(int(value) / 1000, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
+    except TypeError, ValueError:
         return str(value)
 
 
@@ -81,9 +86,7 @@ def _template_response_with_user(request: Request, *args: Any, **kwargs: Any) ->
     # TemplateResponse(request, name, context) or (name, context, request=request)
     # Starlette 0.37+ signature: TemplateResponse(request, name, context={}, ...)
     if "context" in kwargs:
-        kwargs["context"].setdefault(
-            "current_user", getattr(request.state, "user", None)
-        )
+        kwargs["context"].setdefault("current_user", getattr(request.state, "user", None))
     elif len(args) >= 2 and isinstance(args[1], dict):
         mutable = list(args)
         mutable[1].setdefault("current_user", getattr(request.state, "user", None))
@@ -115,9 +118,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     scheduler: scheduler_service.Scheduler | None = None
     if settings.scheduler_enabled:
-        scheduler = scheduler_service.Scheduler(
-            app.state.session_factory, settings
-        )
+        scheduler = scheduler_service.Scheduler(app.state.session_factory, settings)
         scheduler.start()
     app.state.scheduler = scheduler
 
@@ -203,9 +204,7 @@ def _get_uc_client(request: Request) -> UnityCatalogClient:
     """Return a per-request UC facade with the current user's principal."""
     user = getattr(request.state, "user", None)
     if user is not None:
-        return UnityCatalogClient.for_principal(
-            request.app.state.settings, user["email"]
-        )
+        return UnityCatalogClient.for_principal(request.app.state.settings, user["email"])
     return request.app.state.uc_client
 
 
@@ -234,9 +233,7 @@ def _audit(request: Request, action: str, target: str, detail: str | None = None
     user = _get_user(request)
     factory = getattr(request.app.state, "session_factory", None)
     if factory is not None and user["id"]:
-        audit_service.log_action(
-            factory, user["id"], user["email"], action, target, detail
-        )
+        audit_service.log_action(factory, user["id"], user["email"], action, target, detail)
 
 
 @app.get("/healthz")
@@ -279,15 +276,17 @@ async def api_catalogs(request: Request) -> list[dict[str, object]]:
 
 
 @app.get("/api/catalogs/{catalog_name}/schemas")
-async def api_schemas(
-    request: Request, catalog_name: str
-) -> list[dict[str, object]]:
+async def api_schemas(request: Request, catalog_name: str) -> list[dict[str, object]]:
     """Return schemas inside a catalog as JSON."""
     client = _get_uc_client(request)
     user = _get_user(request)
     await check_privilege(
-        client, user.get("email", ""), user.get("is_admin", False),
-        "catalog", catalog_name, USE_CATALOG,
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        "catalog",
+        catalog_name,
+        USE_CATALOG,
     )
     return await client.list_schemas(catalog_name)
 
@@ -300,8 +299,12 @@ async def api_tables(
     client = _get_uc_client(request)
     user = _get_user(request)
     await check_privilege(
-        client, user.get("email", ""), user.get("is_admin", False),
-        "schema", f"{catalog_name}.{schema_name}", USE_SCHEMA,
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        "schema",
+        f"{catalog_name}.{schema_name}",
+        USE_SCHEMA,
     )
     return await client.list_tables(catalog_name, schema_name)
 
@@ -320,16 +323,12 @@ async def api_create_catalog(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.create_catalog(body)
-    _audit(
-        request, "create_catalog", f"catalog:{body.get('name', '?')}", json.dumps(body)
-    )
+    _audit(request, "create_catalog", f"catalog:{body.get('name', '?')}", json.dumps(body))
     return result
 
 
 @app.post("/api/catalogs/{catalog_name}/sync")
-async def api_sync_catalog(
-    request: Request, catalog_name: str
-) -> dict[str, object]:
+async def api_sync_catalog(request: Request, catalog_name: str) -> dict[str, object]:
     """Trigger a Postgres → UC sync for a foreign catalog (admin-only).
 
     Reads the catalog's bound Connection, resolves a Credential by the
@@ -387,8 +386,12 @@ async def api_update_catalog(
     client = _get_uc_client(request)
     user = _get_user(request)
     await check_privilege(
-        client, user.get("email", ""), user.get("is_admin", False),
-        "catalog", catalog_name, MODIFY,
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        "catalog",
+        catalog_name,
+        MODIFY,
     )
     result = await client.update_catalog(catalog_name, patch)
     _audit(request, "update_catalog", f"catalog:{catalog_name}", json.dumps(patch))
@@ -407,8 +410,12 @@ async def api_update_schema(
     user = _get_user(request)
     full_name = f"{catalog_name}.{schema_name}"
     await check_privilege(
-        client, user.get("email", ""), user.get("is_admin", False),
-        "schema", full_name, MODIFY,
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        "schema",
+        full_name,
+        MODIFY,
     )
     result = await client.update_schema(catalog_name, schema_name, patch)
     _audit(request, "update_schema", f"schema:{full_name}", json.dumps(patch))
@@ -435,14 +442,18 @@ async def api_update_tags(
     client = _get_uc_client(request)
     user = _get_user(request)
     await check_privilege(
-        client, user.get("email", ""), user.get("is_admin", False),
-        securable_type, full_name, MODIFY,
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        securable_type,
+        full_name,
+        MODIFY,
     )
-    result = await client.update_tags(
-        securable_type, full_name, body.get("changes", [])
-    )
+    result = await client.update_tags(securable_type, full_name, body.get("changes", []))
     _audit(
-        request, "update_tags", f"{securable_type}:{full_name}",
+        request,
+        "update_tags",
+        f"{securable_type}:{full_name}",
         json.dumps(body.get("changes", [])),
     )
     return result
@@ -468,14 +479,18 @@ async def api_update_permissions(
     client = _get_uc_client(request)
     user = _get_user(request)
     await check_privilege(
-        client, user.get("email", ""), user.get("is_admin", False),
-        securable_type, full_name, MANAGE_GRANTS,
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        securable_type,
+        full_name,
+        MANAGE_GRANTS,
     )
-    result = await client.update_permissions(
-        securable_type, full_name, body.get("changes", [])
-    )
+    result = await client.update_permissions(securable_type, full_name, body.get("changes", []))
     _audit(
-        request, "update_permissions", f"{securable_type}:{full_name}",
+        request,
+        "update_permissions",
+        f"{securable_type}:{full_name}",
         json.dumps(body.get("changes", [])),
     )
     return result
@@ -491,15 +506,17 @@ async def api_get_effective_permissions(
 
 
 @app.get("/api/lineage/{full_name:path}")
-async def api_lineage(
-    request: Request, full_name: str, depth: int = 3
-) -> dict[str, object]:
+async def api_lineage(request: Request, full_name: str, depth: int = 3) -> dict[str, object]:
     """Return combined upstream/downstream lineage for a table."""
     client = _get_uc_client(request)
     user = _get_user(request)
     await check_privilege(
-        client, user.get("email", ""), user.get("is_admin", False),
-        "table", full_name, SELECT,
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        "table",
+        full_name,
+        SELECT,
     )
     return await client.get_lineage(full_name, depth)
 
@@ -565,12 +582,19 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
     # AuthorizationError propagates to the centralized handler → 403.html.
     if error is None:
         check_privilege_from_effective(
-            effective, user.get("email", ""), user.get("is_admin", False),
-            "catalog", catalog_name, USE_CATALOG,
+            effective,
+            user.get("email", ""),
+            user.get("is_admin", False),
+            "catalog",
+            catalog_name,
+            USE_CATALOG,
         )
 
     can_manage = has_privilege(
-        effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
+        effective,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        MANAGE_GRANTS,
     )
 
     # Load sync history for foreign catalogs so the history card has
@@ -611,9 +635,7 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
     "/catalogs/{catalog_name}/schemas/{schema_name}",
     response_class=HTMLResponse,
 )
-async def schema_detail(
-    request: Request, catalog_name: str, schema_name: str
-) -> HTMLResponse:
+async def schema_detail(request: Request, catalog_name: str, schema_name: str) -> HTMLResponse:
     """Render metadata for a single schema."""
     client = _get_uc_client(request)
     user = _get_user(request)
@@ -635,12 +657,19 @@ async def schema_detail(
 
     if error is None:
         check_privilege_from_effective(
-            effective, user.get("email", ""), user.get("is_admin", False),
-            "schema", full_name, USE_SCHEMA,
+            effective,
+            user.get("email", ""),
+            user.get("is_admin", False),
+            "schema",
+            full_name,
+            USE_SCHEMA,
         )
 
     can_manage = has_privilege(
-        effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
+        effective,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        MANAGE_GRANTS,
     )
     return _TEMPLATES.TemplateResponse(
         request,
@@ -694,12 +723,19 @@ async def table_detail(
 
     if error is None:
         check_privilege_from_effective(
-            effective, user.get("email", ""), user.get("is_admin", False),
-            "table", full_name, SELECT,
+            effective,
+            user.get("email", ""),
+            user.get("is_admin", False),
+            "table",
+            full_name,
+            SELECT,
         )
 
     can_manage = has_privilege(
-        effective, user.get("email", ""), user.get("is_admin", False), MANAGE_GRANTS,
+        effective,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        MANAGE_GRANTS,
     )
     return _TEMPLATES.TemplateResponse(
         request,
@@ -754,9 +790,7 @@ async def jupyter_status(request: Request) -> dict[str, object]:
 
 
 @app.get("/api/notebooks/inspect")
-async def api_inspect_notebook(
-    request: Request, path: str
-) -> list[dict[str, Any]]:
+async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, Any]]:
     """Return a notebook's declared Papermill parameters.
 
     Introspects the ``parameters``-tagged cell via
@@ -780,9 +814,7 @@ async def api_inspect_notebook(
 
     _require_admin(request)
     settings: Settings = request.app.state.settings
-    resolved = scheduler_service.resolve_notebook_path(
-        settings.notebooks_dir.resolve(), path
-    )
+    resolved = scheduler_service.resolve_notebook_path(settings.notebooks_dir.resolve(), path)
     raw = papermill.inspect_notebook(str(resolved))
     out: list[dict[str, Any]] = []
     for name, meta in raw.items():
@@ -1205,9 +1237,7 @@ async def api_list_jobs(request: Request) -> list[dict[str, Any]]:
 
 
 @app.post("/api/jobs")
-async def api_create_job(
-    request: Request, body: dict[str, Any] = Body(...)
-) -> dict[str, Any]:
+async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Create a new job (admin-only).
 
     Two shapes are accepted:
@@ -1328,9 +1358,7 @@ async def api_create_job(
                     config=json.dumps(t_entry.get("config") or {}),
                     depends_on="[]",
                     max_retries=int(t_entry.get("max_retries") or 0),
-                    retry_backoff_seconds=int(
-                        t_entry.get("retry_backoff_seconds") or 0
-                    ),
+                    retry_backoff_seconds=int(t_entry.get("retry_backoff_seconds") or 0),
                 )
                 session.add(jt)
                 session.flush()
@@ -1346,9 +1374,7 @@ async def api_create_job(
                 resolved: list[int] = []
                 for dn in deps_names:  # pyright: ignore[reportUnknownVariableType]
                     if dn not in by_name:
-                        raise _VE(
-                            f"task {t_name!r} depends on unknown task {dn!r}"
-                        )
+                        raise _VE(f"task {t_name!r} depends on unknown task {dn!r}")
                     resolved.append(by_name[str(dn)].id)
                 by_name[t_name].depends_on = json.dumps(resolved)
 
@@ -1371,17 +1397,13 @@ async def api_run_job(request: Request, job_id: int) -> dict[str, Any]:
     _require_job_owner_or_admin(request, job)
     settings: Settings = request.app.state.settings
     factory = request.app.state.session_factory
-    run = await scheduler_service.execute_run(
-        factory, settings, _JOB_REGISTRY, job_id, "manual"
-    )
+    run = await scheduler_service.execute_run(factory, settings, _JOB_REGISTRY, job_id, "manual")
     _audit(request, "run_job", f"job:{job.name}")
     return _serialize_run(run)
 
 
 @app.get("/api/jobs/{job_id}/tasks")
-async def api_list_job_tasks(
-    request: Request, job_id: int
-) -> list[dict[str, Any]]:
+async def api_list_job_tasks(request: Request, job_id: int) -> list[dict[str, Any]]:
     """Return the :class:`JobTask` DAG nodes for *job_id*."""
     from sqlalchemy import select as _select
 
@@ -1390,11 +1412,7 @@ async def api_list_job_tasks(
     _load_job_or_404(request, job_id)
     factory = request.app.state.session_factory
     with factory() as session:
-        stmt = (
-            _select(JobTaskModel)
-            .where(JobTaskModel.job_id == job_id)
-            .order_by(JobTaskModel.id)
-        )
+        stmt = _select(JobTaskModel).where(JobTaskModel.job_id == job_id).order_by(JobTaskModel.id)
         rows = list(session.scalars(stmt).all())
         for r in rows:
             session.expunge(r)
@@ -1402,9 +1420,7 @@ async def api_list_job_tasks(
 
 
 @app.get("/api/jobs/{job_id}/runs/{run_id}/tasks")
-async def api_list_task_runs(
-    request: Request, job_id: int, run_id: int
-) -> list[dict[str, Any]]:
+async def api_list_task_runs(request: Request, job_id: int, run_id: int) -> list[dict[str, Any]]:
     """Return per-task state rows for one :class:`JobRun`."""
     from sqlalchemy import select as _select
 
@@ -1414,9 +1430,7 @@ async def api_list_task_runs(
     factory = request.app.state.session_factory
     with factory() as session:
         stmt = (
-            _select(TaskRunModel)
-            .where(TaskRunModel.job_run_id == run_id)
-            .order_by(TaskRunModel.id)
+            _select(TaskRunModel).where(TaskRunModel.job_run_id == run_id).order_by(TaskRunModel.id)
         )
         rows = list(session.scalars(stmt).all())
         for r in rows:
@@ -1462,6 +1476,91 @@ async def api_list_job_logs(
         }
         for r in rows
     ]
+
+
+def _load_papermill_run_output_path(request: Request, job_id: int, run_id: int) -> Path:
+    """Validate *run_id* belongs to papermill *job_id* and return its runs dir.
+
+    Shared validator for the inline render route and the download route.
+    Both need the same three checks: caller can see the job, the job is a
+    papermill job, and *run_id* really belongs to *job_id*.
+
+    Args:
+        request: Incoming FastAPI request; visibility is enforced via
+            :func:`_load_job_or_404`.
+        job_id: The :class:`Job` id from the URL path.
+        run_id: The :class:`JobRun` id from the URL path.
+
+    Returns:
+        The absolute ``runs/`` directory where ``{run_id}.ipynb`` lives.
+
+    Raises:
+        CatalogNotFoundError: If the job is not visible to the caller,
+            the run does not belong to the job, or the job is not a
+            papermill kind.
+    """
+    from pointlessql.exceptions import CatalogNotFoundError
+    from pointlessql.models import JobRun as JobRunModel
+
+    job = _load_job_or_404(request, job_id)
+    if job.kind != "papermill":
+        raise CatalogNotFoundError(f"Job {job_id} is not a papermill job")
+    factory = request.app.state.session_factory
+    with factory() as session:
+        run = session.get(JobRunModel, run_id)
+        if run is None or run.job_id != job_id:
+            raise CatalogNotFoundError(f"Run {run_id} not found for job {job_id}")
+    settings: Settings = request.app.state.settings
+    return settings.notebooks_dir.resolve() / "runs"
+
+
+@app.get("/jobs/{job_id}/runs/{run_id}/notebook", response_class=HTMLResponse)
+async def job_run_notebook(request: Request, job_id: int, run_id: int) -> HTMLResponse:
+    """Render an executed Papermill notebook inline.
+
+    Returns the nbconvert ``lab``-template HTML body for
+    ``{notebooks_dir}/runs/{run_id}.ipynb``. The job-detail page embeds
+    this route in an iframe inside the "Output artifacts" card. A
+    ``runs/{run_id}.html`` sidecar is written on first render so
+    subsequent hits skip the nbconvert cost.
+    """
+    runs_dir = _load_papermill_run_output_path(request, job_id, run_id)
+    html = notebook_render_service.render_run_notebook(runs_dir, run_id)
+    return HTMLResponse(html)
+
+
+@app.get("/jobs/{job_id}/runs/{run_id}/notebook/download")
+async def job_run_notebook_download(
+    request: Request,
+    job_id: int,
+    run_id: int,
+    format: Literal["ipynb", "html"] = "ipynb",
+) -> FileResponse:
+    """Download the raw ipynb or cached-HTML sidecar for a run.
+
+    Sprint 26 chose a visibility-checked route over a StaticFiles mount
+    so non-owner logged-in users cannot guess ``run_id`` values and
+    exfiltrate another user's job output. ``format=html`` triggers a
+    render if the sidecar is not yet present.
+    """
+    from pointlessql.exceptions import CatalogNotFoundError
+
+    runs_dir = _load_papermill_run_output_path(request, job_id, run_id)
+    if format == "html":
+        # Ensure the sidecar exists before serving it.
+        notebook_render_service.render_run_notebook(runs_dir, run_id)
+        path = runs_dir / f"{run_id}.html"
+        media_type = "text/html"
+    else:
+        path = runs_dir / f"{run_id}.ipynb"
+        media_type = "application/x-ipynb+json"
+    if not path.is_file():
+        raise CatalogNotFoundError(f"Run {run_id} {format} artifact not found")
+    return FileResponse(
+        path,
+        filename=f"job{job_id}_run{run_id}.{format}",
+        media_type=media_type,
+    )
 
 
 @app.post("/api/jobs/{job_id}/pause")
@@ -1560,9 +1659,7 @@ async def job_detail(request: Request, job_id: int) -> HTMLResponse:
             session.expunge(r)
 
         tasks_stmt = (
-            _select(JobTaskModel)
-            .where(JobTaskModel.job_id == job_id)
-            .order_by(JobTaskModel.id)
+            _select(JobTaskModel).where(JobTaskModel.job_id == job_id).order_by(JobTaskModel.id)
         )
         tasks = list(session.scalars(tasks_stmt).all())
         for t in tasks:
@@ -1573,28 +1670,25 @@ async def job_detail(request: Request, job_id: int) -> HTMLResponse:
         latest_task_runs: dict[int, Any] = {}
         if runs and tasks:
             latest_run_id = runs[0].id
-            tr_stmt = _select(TaskRunModel).where(
-                TaskRunModel.job_run_id == latest_run_id
-            )
+            tr_stmt = _select(TaskRunModel).where(TaskRunModel.job_run_id == latest_run_id)
             for tr in session.scalars(tr_stmt).all():
                 session.expunge(tr)
                 latest_task_runs[tr.task_id] = tr
 
-    can_manage = (
-        user.get("is_admin", False)
-        or job.run_as_user_id == user.get("id")
-    )
+    can_manage = user.get("is_admin", False) or job.run_as_user_id == user.get("id")
 
     task_rows: list[dict[str, Any]] = []
     for t in tasks:
         tr = latest_task_runs.get(t.id)
-        task_rows.append({
-            **_serialize_task(t),
-            "latest_status": tr.status if tr is not None else None,
-            "latest_attempts": tr.attempts if tr is not None else 0,
-            "latest_error": tr.error if tr is not None else None,
-            "latest_run_id": tr.job_run_id if tr is not None else None,
-        })
+        task_rows.append(
+            {
+                **_serialize_task(t),
+                "latest_status": tr.status if tr is not None else None,
+                "latest_attempts": tr.attempts if tr is not None else 0,
+                "latest_error": tr.error if tr is not None else None,
+                "latest_run_id": tr.job_run_id if tr is not None else None,
+            }
+        )
 
     return _TEMPLATES.TemplateResponse(
         request,

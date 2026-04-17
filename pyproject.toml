@@ -46,6 +46,7 @@ dependencies = [
     "pyarrow>=17.0",
     "croniter>=6.2.2",
     "papermill>=2.6",
+    "nbconvert>=7.0",
 ]
 
 [dependency-groups]
