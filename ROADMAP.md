@@ -1181,7 +1181,7 @@ PointlesSQL
 │   │   opt-in toggle so client regeneration is still visible
 │   │   without a tag bump.
 │   │
-│   ├── Sprint 37 — soyuz-catalog release engineering     ✅ done (be9c5c6 in soyuz)
+│   ├── Sprint 37 — soyuz-catalog release engineering     ✅ done (774b419 here, be9c5c6 in soyuz)
 │   │   │
 │   │   │   Forward-pulled from soyuz-catalog's own Sprint 19.
 │   │   │   Lands in the sibling repo; tracked here because
