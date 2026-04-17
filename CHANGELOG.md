@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0rc1] - 2026-04-17
+
 ### Added (Sprint 39)
 
 - **`cliff.toml`.** git-cliff template keyed to PointlesSQL's
