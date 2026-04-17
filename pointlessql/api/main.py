@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import Body, FastAPI, Request
+from fastapi import Body, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -25,12 +25,17 @@ from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.db import get_session_factory, init_db
-from pointlessql.exceptions import AuthorizationError, CatalogUnavailableError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    CatalogUnavailableError,
+    ValidationError,
+)
 from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import notebook_render as notebook_render_service
+from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.authorization import (
@@ -828,6 +833,145 @@ async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, An
             }
         )
     return out
+
+
+@app.get("/api/notebooks/tree")
+async def api_notebooks_tree(request: Request) -> list[dict[str, Any]]:
+    """Return a nested listing of the notebooks workspace directory.
+
+    Admin-only, matching the inspect + upload routes in this family.
+    Each notebook leaf carries a ``parameters_tagged`` flag so the
+    workspace UI can hint which files will render a typed form in
+    the create-job modal.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+
+    Returns:
+        A list of directory and notebook nodes. See
+        :func:`pointlessql.services.notebook_workspace.list_workspace_tree`
+        for the shape of each node.
+    """
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+    return notebook_workspace_service.list_workspace_tree(settings.notebooks_dir.resolve())
+
+
+@app.post("/api/notebooks/upload")
+async def api_upload_notebook(
+    request: Request,
+    file: UploadFile = File(...),
+    target_path: str = Form(...),
+    overwrite: bool = Form(False),
+) -> dict[str, str]:
+    """Upload an ``.ipynb`` file into the notebooks workspace.
+
+    Admin-only. The ``target_path`` is resolved under
+    :attr:`Settings.notebooks_dir` with the same traversal guard the
+    executor uses (via
+    :func:`pointlessql.services.notebook_workspace.resolve_upload_target`).
+    The upload payload must be a well-formed JSON notebook; the body
+    is parsed before the file hits disk so a corrupt upload never
+    leaves a half-written file in the workspace. Writes are atomic
+    via a ``.tmp`` sidecar + :func:`os.replace`.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        file: The multipart upload. ``file.filename`` must end in
+            ``.ipynb``.
+        target_path: Relative path under the notebooks directory
+            where the upload should land.
+        overwrite: When ``True``, an existing file at ``target_path``
+            is replaced. When ``False`` (the default), attempting to
+            upload over an existing file raises
+            :class:`~pointlessql.exceptions.ValidationError`.
+
+    Returns:
+        A dict with ``path`` (the relative path the file was written
+        to) and ``status`` (``"created"`` or ``"overwritten"``).
+
+    Raises:
+        ValidationError: On any of the upload guards (bad filename,
+            path traversal, malformed JSON body, existing file
+            without ``overwrite=True``). ``AuthorizationError`` is
+            raised out of ``_require_admin`` for non-admin callers
+            and surfaced as 403 by the centralized error handler.
+    """
+    import os
+
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+
+    filename = file.filename or ""
+    if not filename.endswith(".ipynb"):
+        raise ValidationError(f"uploaded file must have an .ipynb extension: {filename!r}")
+
+    resolved = notebook_workspace_service.resolve_upload_target(
+        settings.notebooks_dir.resolve(), target_path
+    )
+
+    raw = await file.read()
+    try:
+        json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ValidationError(f"uploaded file is not valid JSON: {exc}") from exc
+
+    existed = resolved.exists()
+    if existed and not overwrite:
+        raise ValidationError(
+            f"file already exists at {target_path!r}; pass overwrite=true to replace"
+        )
+
+    tmp_path = resolved.with_suffix(resolved.suffix + ".tmp")
+    tmp_path.write_bytes(raw)
+    os.replace(tmp_path, resolved)
+
+    _audit(
+        request,
+        action="notebook.upload",
+        target=target_path,
+        detail=f"overwrite={overwrite}",
+    )
+    logger.info(
+        "notebook uploaded to %s (overwrite=%s, existed=%s)",
+        target_path,
+        overwrite,
+        existed,
+    )
+    return {
+        "path": target_path,
+        "status": "overwritten" if existed else "created",
+    }
+
+
+@app.get("/notebooks/workspace", response_class=HTMLResponse)
+async def notebooks_workspace_page(request: Request) -> HTMLResponse:
+    """Render the Sprint 27 workspace file browser (admin-only).
+
+    The page pairs a notebook-tree sidebar (served by
+    ``/api/notebooks/tree``) with an upload card. Tree-leaf
+    *Schedule…* buttons navigate to
+    ``/jobs?prefill_kind=papermill&prefill_notebook_path=<path>``;
+    the create-job modal reads those query params on load and
+    pre-fills itself.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+
+    Returns:
+        The rendered ``pages/notebooks_workspace.html`` template.
+    """
+    _require_admin(request)
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/notebooks_workspace.html",
+        {
+            "active_page": "workspace",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 # -- Federation: Connections --

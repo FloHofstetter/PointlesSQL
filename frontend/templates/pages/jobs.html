@@ -62,6 +62,7 @@
 
 {% if is_admin %}
 <div class="modal fade" id="createJobModal" tabindex="-1" aria-hidden="true"
+     x-init="applyPrefill()"
      x-data="{
          kind: 'dag',
          name: '',
@@ -76,6 +77,18 @@
          inspecting: false,
          error: null,
          submitting: false,
+         async applyPrefill() {
+             const qs = new URLSearchParams(window.location.search);
+             const prefillKind = qs.get('prefill_kind');
+             const prefillPath = qs.get('prefill_notebook_path');
+             if (prefillKind !== 'papermill' || !prefillPath) return;
+             this.kind = 'papermill';
+             this.notebookPath = prefillPath;
+             try { history.replaceState({}, '', '/jobs'); } catch (e) {}
+             await this.inspect();
+             const el = document.getElementById('createJobModal');
+             if (el && window.bootstrap) new bootstrap.Modal(el).show();
+         },
          coerceDefault(p) {
              const d = p.default;
              if (d === null || d === undefined) return p.inferred_type === 'bool' ? false : '';

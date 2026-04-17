@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 27)
+
+- New `pointlessql/services/notebook_workspace.py` with
+  `list_workspace_tree(notebooks_dir)` (nested listing with per-
+  notebook `parameters_tagged: bool`; skips the executor `runs/`
+  subdir) and `resolve_upload_target(notebooks_dir, relative_path)`
+  (mirrors `resolve_notebook_path` but allows a not-yet-existing
+  target and requires the parent directory to exist)
+- `GET /api/notebooks/tree` — admin-only directory listing for
+  the workspace browser
+- `POST /api/notebooks/upload` — admin-only multipart upload of
+  `.ipynb` files into the notebooks workspace; validates
+  `.ipynb` extension, parses the body as JSON before writing,
+  atomically replaces via a `.tmp` sidecar, and requires an
+  explicit `overwrite=true` form field to clobber an existing
+  file
+- `GET /notebooks/workspace` — new admin-only HTML page with a
+  flattened-tree component keyed on `sessionStorage`
+  `pql.notebooks` / `pql.notebooks.open`, plus a per-leaf
+  **Schedule…** button that navigates to
+  `/jobs?prefill_kind=papermill&prefill_notebook_path=<path>`
+- Create-job modal (`pages/jobs.html`) reads those query params
+  on mount, pre-fills `kind=papermill` + `notebookPath`, chains
+  `inspect()` for the typed-parameters form, opens the modal,
+  and strips the query string via `history.replaceState`
+- Navbar gains a **Workspace** link (admin-only) between
+  Notebook and Jobs
+- Playbook extension: Part G in
+  `docs/e2e-walkthroughs/notebook-jobs.md` covers upload →
+  schedule → run-now → Output artifacts card, plus non-admin
+  403 and the overwrite / traversal / non-`.ipynb` negative paths
+
 ### Added (Sprint 26)
 
 - `nbconvert>=7.0` dep and new `pointlessql/services/notebook_render.py`

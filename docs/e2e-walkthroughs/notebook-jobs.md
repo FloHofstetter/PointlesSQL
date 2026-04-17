@@ -538,3 +538,103 @@ MCP session; both fixed in the same sprint commit.
   non-papermill job kind → 404, nonexistent `run_id` → 404)
   with the exact domain-exception messages emitted by
   `_load_papermill_run_output_path`.
+
+## Part G — Workspace browser (Sprint 27)
+
+Sprint 27 closes the last authoring gap: a `/notebooks/workspace`
+page with a sidebar-style notebook tree, a browser-driven upload
+endpoint, and a **Schedule…** button per notebook leaf that pre-
+fills the create-job modal on `/jobs`. Together they replace the
+Sprint 24 ritual of `docker cp`-ing notebooks into the container
+and typing the path into the modal by hand.
+
+Precondition: logged in as `admin@pql.test`. The workspace nav
+link is only visible for admins — non-admins see the stack
+without it (that is verified in the negative pass at the bottom).
+
+### Steps
+
+1. `browser_navigate` to `/notebooks/workspace`. `browser_snapshot`
+   the tree card. Assert:
+   - `smoke_papermill.ipynb` (from Part A) is present as a leaf
+     with a `PARAMS` badge on the row — it has a
+     `parameters`-tagged cell, so
+     `list_workspace_tree` → `papermill.inspect_notebook` returns
+     a non-empty dict.
+   - `smoke_typed_params.ipynb` (from Part E) is present with a
+     `PARAMS` badge.
+   - No top-level `runs/` directory appears. The tree helper
+     skips it at the root level because its contents are
+     executor output keyed by `job_run_id`.
+2. Upload a fresh notebook via the **Upload notebook** card on
+   the right:
+   - `browser_fill_form` on `#wsTargetPath` with
+     `playbook_upload.ipynb`, leave the **Overwrite** checkbox
+     unchecked.
+   - `browser_file_upload` on `#wsFile` with a minimal
+     `playbook_upload.ipynb` blob whose first cell is
+     `parameters`-tagged (`message: str = "hello"` is enough).
+   - Click **Upload**. `browser_network_requests` should show
+     `POST /api/notebooks/upload` → `200`; the response body
+     reads `{"path": "playbook_upload.ipynb", "status": "created"}`.
+     The Alpine card flashes the `Uploaded …` success alert and
+     the tree refreshes (another `GET /api/notebooks/tree` fires
+     from `reload()`).
+3. Assert `playbook_upload.ipynb` is now in the tree.
+4. Click **Schedule…** on the `playbook_upload.ipynb` row.
+   `browser_wait_for` the URL to become
+   `/jobs?prefill_kind=papermill&prefill_notebook_path=playbook_upload.ipynb`.
+   `browser_snapshot` the modal. Assert:
+   - The create-job modal is open (Bootstrap `modal.show` called
+     from `applyPrefill`).
+   - `select[x-model="kind"]` reads `papermill`.
+   - `input[x-model="notebookPath"]` contains
+     `playbook_upload.ipynb`.
+   - The typed-parameters card rendered a single row for
+     `message (str)` with the quoted default stripped to `hello`
+     — the `x-init="applyPrefill()"` chains
+     `inspect()` before the modal opens, so the typed form is
+     already populated by the time the user sees it.
+   - `browser_evaluate` reads `window.location.search` — it
+     should be empty (the `history.replaceState({}, '', '/jobs')`
+     call swapped the query string out so a reload does not re-
+     open the modal).
+5. Fill the **Name** input (`workspace-upload-demo`) and submit.
+   Assert the page reloads to `/jobs` and the new job row is
+   present.
+6. Click into the new job. **Run-now**. `browser_wait_for` the
+   run status to become `succeeded` (the scheduler tick is
+   2 s under the e2e overlay). Scroll to the **Output artifacts**
+   card from Part F; assert the most recent run is auto-selected
+   and the rendered HTML iframe shows the parameter-injection
+   output line (`message = "hello"`).
+
+### Negative paths
+
+- Upload a `.py` file via the same form (or `curl -F` against
+  `/api/notebooks/upload`): expect `422`, error message
+  `uploaded file must have an .ipynb extension: 'script.py'`.
+  The request never touches disk.
+- Upload an `.ipynb` with `target_path=../escape.ipynb`: expect
+  `422`, error message contains
+  `escapes the notebooks directory`. Matches the
+  `resolve_upload_target` traversal guard.
+- Re-upload the same `playbook_upload.ipynb` without the
+  **Overwrite** box ticked: expect `422`,
+  `file already exists at 'playbook_upload.ipynb'; pass overwrite=true to replace`.
+  Re-upload once more **with** the box ticked: expect `200` and
+  `{"status": "overwritten"}`. The tree still shows exactly one
+  `playbook_upload.ipynb` leaf.
+- `browser_navigate` to `/jobs?prefill_kind=papermill` (without
+  `prefill_notebook_path`): the modal must stay closed — the
+  `applyPrefill()` guard short-circuits when the path is missing.
+- Sign out, sign in as `user@pql.test`, then `browser_navigate`
+  to `/notebooks/workspace`: expect `403`. `browser_snapshot`
+  the navbar: the **Workspace** link is absent (the `{% if
+  current_user.is_admin %}` gate in `base.html` hides it).
+
+### Expected bugs surfaced
+
+Nothing pre-identified. Playbook replay notes land below; if
+something is weird, file it as `BUG-27-NN` with a concrete fix
+location (template line, route file + line, service function).

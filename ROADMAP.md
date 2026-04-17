@@ -710,22 +710,40 @@ PointlesSQL
 │   │   │   visibility-checked route closes that leak
 │   │   └── Playbook extension: click past run → see cells inline
 │   │
-│   ├── Sprint 27 — Workspace file browser                    ⏳ planned
-│   │   ├── `GET /api/notebooks/tree` → dir listing with
-│   │   │   `parameters_tagged: bool` flag per notebook
-│   │   ├── `GET /notebooks/workspace` page with a sidebar-tree
-│   │   │   clone of `components/sidebar.html` `catalogTree()` —
-│   │   │   same sessionStorage `pql.notebooks.open` pattern
-│   │   ├── Tree-leaf "Schedule…" button pre-fills the
-│   │   │   `#createJobModal` with `kind=papermill` +
-│   │   │   `notebook_path=<clicked-path>`
+│   ├── Sprint 27 — Workspace file browser                    ✅ done
+│   │   ├── `GET /api/notebooks/tree` (admin-only) → nested
+│   │   │   dir listing with `parameters_tagged: bool` per
+│   │   │   notebook leaf; the top-level `runs/` executor-output
+│   │   │   subdir is skipped
+│   │   ├── `GET /notebooks/workspace` page (admin-only) with a
+│   │   │   flattened-tree Alpine component — `sessionStorage`
+│   │   │   keys `pql.notebooks` + `pql.notebooks.open`, same
+│   │   │   shape as the catalog sidebar's `catalogTree()`
+│   │   ├── Tree-leaf "Schedule…" button navigates to
+│   │   │   `/jobs?prefill_kind=papermill&prefill_notebook_path=<path>`;
+│   │   │   the existing `#createJobModal` reads those query
+│   │   │   params on mount, pre-fills `kind` + `notebookPath`,
+│   │   │   chains `inspect()`, and opens the modal
 │   │   ├── `POST /api/notebooks/upload` multipart endpoint
-│   │   │   (admin-only) so the playbook can upload a notebook
-│   │   │   from the browser, not via `docker cp`
-│   │   ├── Navbar gains a "Workspace" link between Notebook
-│   │   │   and Jobs
-│   │   └── Playbook extension: upload → click-Schedule →
-│   │       Run-now → Output artifacts card expands
+│   │   │   (admin-only); validates `.ipynb` extension, parses
+│   │   │   the body as JSON before writing, atomically replaces
+│   │   │   via a `.tmp` sidecar, and requires an explicit
+│   │   │   `overwrite=true` form field to clobber an existing
+│   │   │   file — safer-by-default so a re-upload never silently
+│   │   │   loses hand-edits made inside the embedded JupyterLab
+│   │   ├── New service module
+│   │   │   `pointlessql/services/notebook_workspace.py` holds
+│   │   │   `list_workspace_tree` and `resolve_upload_target`
+│   │   │   (sibling of Sprint 24's `resolve_notebook_path` that
+│   │   │   allows a not-yet-existing file but requires the
+│   │   │   parent dir to exist)
+│   │   ├── Navbar gains a "Workspace" link (admin-only) between
+│   │   │   Notebook and Jobs
+│   │   └── Playbook extension: Part G in
+│   │       `docs/e2e-walkthroughs/notebook-jobs.md` — upload →
+│   │       click-Schedule → Run-now → Output artifacts card
+│   │       expands, plus the non-admin 403 pass and the
+│   │       `.py` / `..` / existing-without-overwrite negatives
 │   │
 │   └── Sprint 28 — Dashboards + run-compare; close Phase 8   ⏳ planned
 │       ├── Alembic migration 008: `dashboards` table (slug

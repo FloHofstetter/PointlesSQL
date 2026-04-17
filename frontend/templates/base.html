@@ -36,6 +36,14 @@
                     <i class="bi bi-journal-code"></i> Notebook
                 </a>
             </li>
+            {% if current_user is defined and current_user and current_user.is_admin %}
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'workspace' %} active{% endif %}"
+                   href="/notebooks/workspace">
+                    <i class="bi bi-folder2-open"></i> Workspace
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-item">
                 <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'jobs' %} active{% endif %}"
                    href="/jobs">
