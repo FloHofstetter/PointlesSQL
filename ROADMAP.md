@@ -947,7 +947,7 @@ PointlesSQL
 │   │       fresh-user onboarding, JSON shape, and the soyuz-down
 │   │       200-response degradation
 │   │
-│   ├── Sprint 33 — List-page polish                       ✅ done
+│   ├── Sprint 33 — List-page polish                       ✅ done (c26b9e5)
 │   │   ├── Shared `frontend/js/list_table.js` — debounced
 │   │   │   (150 ms) client-side search, sortable headers (asc →
 │   │   │   desc → none via `aria-sort` + CSS pseudo-arrow), and
