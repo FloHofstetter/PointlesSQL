@@ -947,21 +947,52 @@ PointlesSQL
 │   │       fresh-user onboarding, JSON shape, and the soyuz-down
 │   │       200-response degradation
 │   │
-│   ├── Sprint 33 — List-page polish                       ⏳ planned
+│   ├── Sprint 33 — List-page polish                       ✅ done
 │   │   ├── Shared `frontend/js/list_table.js` — debounced
-│   │   │   client-side search (150 ms), sortable headers,
-│   │   │   optional filter chips
+│   │   │   (150 ms) client-side search, sortable headers (asc →
+│   │   │   desc → none via `aria-sort` + CSS pseudo-arrow), and
+│   │   │   optional filter chips on top of any Bootstrap table
+│   │   │   whose rows carry `data-search` + `data-sort-<key>`
+│   │   │   attributes. Progressive enhancement — the server
+│   │   │   renders the full table, JS just hides/reorders rows
 │   │   ├── Applied to `/jobs`, `/dashboards`, `/connections`,
-│   │   │   `/credentials`, `/external-locations`,
-│   │   │   `/notebooks/workspace`
-│   │   ├── `frontend/js/humanize_cron.js` — tiny parser turns
-│   │   │   `0 0 1 1 *` into "Every Jan 1st at 00:00"; falls
-│   │   │   back to the raw expression for non-matching patterns
-│   │   ├── `GET /api/jobs` gains `last_run_status` +
-│   │   │   `last_run_at` + `last_run_duration`; `/jobs` row
-│   │   │   shows status dot + relative time
-│   │   └── Hover quick-actions on job rows (Run now / Pause)
-│   │       via the Sprint-30 toast system
+│   │   │   `/credentials`, `/external-locations`. Chips per
+│   │   │   page: jobs = Paused + Last-run-failed, dashboards =
+│   │   │   Has-bound-job, connections = one per distinct
+│   │   │   `connection_type`, credentials = one per distinct
+│   │   │   `purpose`, external-locations = none.
+│   │   │   `/notebooks/workspace` deferred to Sprint 34 — the
+│   │   │   tree has its own `sessionStorage` expand/collapse
+│   │   │   state and a flat-table helper doesn't fit
+│   │   ├── `frontend/js/humanize_cron.js` — `pqlHumanizeCron()`
+│   │   │   turns the six `@`-macros + common 5-field shapes
+│   │   │   (`* * * * *`, `*/N * * * *`, `M H * * *`, weekly /
+│   │   │   monthly / yearly) into friendly strings; falls back
+│   │   │   to the raw expression otherwise. Applied on the jobs
+│   │   │   list Cron cell + the detail Configuration card, with
+│   │   │   `title=<raw>` preserved for tooltip
+│   │   ├── `frontend/js/relative_time.js` — the Sprint-32
+│   │   │   `window.pqlRelativeTime` helper lifted into its own
+│   │   │   file so the jobs list can reuse it; `home.html`'s
+│   │   │   inline copy swapped for a one-line pointer
+│   │   ├── `GET /api/jobs` gains `last_run_status`,
+│   │   │   `last_run_at`, `last_run_duration_s` (`null` when a
+│   │   │   job has no runs yet). New `_latest_run_per_job(session,
+│   │   │   job_ids)` helper fetches one row per job in a single
+│   │   │   round-trip via `group_by(job_id)` + `max(started_at)`
+│   │   │   — portable across SQLite + Postgres, rides the
+│   │   │   existing `(job_id, started_at)` index on `JobRun`.
+│   │   │   `/jobs` rows render the new "Last run" column as a
+│   │   │   status dot + `pqlRelativeTime(iso)`; duration field
+│   │   │   ships in the API for a later row-level display
+│   │   └── Hover quick-actions on `/jobs` rows (admin-only) —
+│   │       `.pql-row-actions` cell, `visibility: hidden` until
+│   │       `tr:hover` / `tr:focus-within` (always on for touch
+│   │       via `@media (hover: none)`). Buttons POST to existing
+│   │       `/api/jobs/{id}/run|pause|unpause`; success toast
+│   │       through `window.pqlToast` + reload after 400 ms.
+│   │       `frontend/js/job_row_actions.js` is the Alpine
+│   │       factory behind them
 │   │
 │   ├── Sprint 34 — Catalog / schema / table experience    ⏳ planned
 │   │   ├── Catalog detail shows schemas **inline** (table card

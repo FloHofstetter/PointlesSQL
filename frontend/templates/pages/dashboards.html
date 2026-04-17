@@ -20,35 +20,64 @@
 <div class="card">
     <div class="card-body p-0">
         {% if dashboards %}
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th class="ps-3">Title</th>
-                        <th>Slug</th>
-                        <th>Notebook</th>
-                        <th>Bound job</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for d in dashboards %}
-                    <tr>
-                        <td class="ps-3">
-                            <a href="/dashboards/{{ d.slug }}" class="text-decoration-none">{{ d.title }}</a>
-                        </td>
-                        <td class="font-monospace small">{{ d.slug }}</td>
-                        <td class="font-monospace small">{{ d.notebook_path }}</td>
-                        <td class="small">
-                            {% if d.job_id is not none %}
-                            <a href="/jobs/{{ d.job_id }}" class="text-decoration-none">#{{ d.job_id }}</a>
-                            {% else %}
-                            <span class="text-muted fst-italic">unbound</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div x-data="listTable({
+                searchPlaceholder: 'Search dashboards…',
+                initialSort: { key: 'title', dir: 'asc' },
+                chips: [
+                    { id: 'has_job', label: 'Has bound job',
+                      match: (tr) => tr.dataset.hasJob === '1' },
+                ],
+             })">
+            <div class="pql-list-controls">
+                <input type="search"
+                       class="form-control form-control-sm pql-list-controls__search"
+                       x-model="query"
+                       x-on:input="onInput()"
+                       x-bind:placeholder="searchPlaceholder"
+                       aria-label="Search dashboards">
+                <template x-for="chip in chips" :key="chip.id">
+                    <button type="button"
+                            class="pql-chip"
+                            x-bind:class="activeChips[chip.id] ? 'pql-chip--active' : ''"
+                            x-on:click="toggleChip(chip.id)"
+                            x-text="chip.label"></button>
+                </template>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-3" data-sort-key="title">Title</th>
+                            <th data-sort-key="slug">Slug</th>
+                            <th data-sort-key="notebook">Notebook</th>
+                            <th data-sort-key="job">Bound job</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in dashboards %}
+                        <tr data-search="{{ d.title|lower }} {{ d.slug|lower }} {{ d.notebook_path|lower }}"
+                            data-sort-title="{{ d.title|lower }}"
+                            data-sort-slug="{{ d.slug|lower }}"
+                            data-sort-notebook="{{ d.notebook_path|lower }}"
+                            data-sort-job="{{ d.job_id if d.job_id is not none else '' }}"
+                            data-has-job="{{ 1 if d.job_id is not none else 0 }}">
+                            <td class="ps-3">
+                                <a href="/dashboards/{{ d.slug }}" class="text-decoration-none">{{ d.title }}</a>
+                            </td>
+                            <td class="font-monospace small">{{ d.slug }}</td>
+                            <td class="font-monospace small">{{ d.notebook_path }}</td>
+                            <td class="small">
+                                {% if d.job_id is not none %}
+                                <a href="/jobs/{{ d.job_id }}" class="text-decoration-none">#{{ d.job_id }}</a>
+                                {% else %}
+                                <span class="text-muted fst-italic">unbound</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% else %}
         {% with flush=True, icon="bi-speedometer2",

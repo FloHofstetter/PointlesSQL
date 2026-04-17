@@ -70,7 +70,10 @@
             <dt class="col-sm-3">Kind</dt>
             <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ job.kind }}</span></dd>
             <dt class="col-sm-3">Cron</dt>
-            <dd class="col-sm-9 font-monospace">{{ job.cron_expr }}</dd>
+            <dd class="col-sm-9 font-monospace"
+                x-data="{ c: {{ job.cron_expr|tojson }} }"
+                x-text="pqlHumanizeCron(c)"
+                x-bind:title="c">{{ job.cron_expr }}</dd>
             <dt class="col-sm-3">Run as user</dt>
             <dd class="col-sm-9">#{{ job.run_as_user_id }}</dd>
             <dt class="col-sm-3">Max parallel runs</dt>

@@ -20,35 +20,103 @@
 <div class="card">
     <div class="card-body p-0">
         {% if jobs %}
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th class="ps-3">Name</th>
-                        <th>Kind</th>
-                        <th>Cron</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for job in jobs %}
-                    <tr>
-                        <td class="ps-3">
-                            <a href="/jobs/{{ job.id }}" class="font-monospace text-decoration-none">{{ job.name }}</a>
-                        </td>
-                        <td><span class="badge bg-info text-dark">{{ job.kind }}</span></td>
-                        <td class="font-monospace small">{{ job.cron_expr }}</td>
-                        <td>
-                            {% if job.is_paused %}
-                            <span class="badge bg-warning text-dark">paused</span>
-                            {% else %}
-                            <span class="badge bg-success">active</span>
+        <div x-data="listTable({
+                searchPlaceholder: 'Search jobs…',
+                initialSort: { key: 'name', dir: 'asc' },
+                chips: [
+                    { id: 'paused', label: 'Paused',
+                      match: (tr) => tr.dataset.paused === '1' },
+                    { id: 'failed', label: 'Last run failed',
+                      match: (tr) => tr.dataset.lastStatus === 'failed' },
+                ],
+             })">
+            <div class="pql-list-controls">
+                <input type="search"
+                       class="form-control form-control-sm pql-list-controls__search"
+                       x-model="query"
+                       x-on:input="onInput()"
+                       x-bind:placeholder="searchPlaceholder"
+                       aria-label="Search jobs">
+                <template x-for="chip in chips" :key="chip.id">
+                    <button type="button"
+                            class="pql-chip"
+                            x-bind:class="activeChips[chip.id] ? 'pql-chip--active' : ''"
+                            x-on:click="toggleChip(chip.id)"
+                            x-text="chip.label"></button>
+                </template>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-3" data-sort-key="name">Name</th>
+                            <th data-sort-key="kind">Kind</th>
+                            <th>Cron</th>
+                            <th data-sort-key="last-at">Last run</th>
+                            <th data-sort-key="paused">Status</th>
+                            {% if is_admin %}
+                            <th class="pe-3"></th>
                             {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in jobs %}
+                        <tr data-search="{{ job.name|lower }} {{ job.kind|lower }} {{ job.cron_expr|lower }}"
+                            data-sort-name="{{ job.name|lower }}"
+                            data-sort-kind="{{ job.kind|lower }}"
+                            data-sort-paused="{{ 1 if job.is_paused else 0 }}"
+                            data-sort-last-at="{{ job.last_run_at or '' }}"
+                            data-paused="{{ 1 if job.is_paused else 0 }}"
+                            data-last-status="{{ job.last_run_status or '' }}">
+                            <td class="ps-3">
+                                <a href="/jobs/{{ job.id }}" class="font-monospace text-decoration-none">{{ job.name }}</a>
+                            </td>
+                            <td><span class="badge bg-info text-dark">{{ job.kind }}</span></td>
+                            <td class="font-monospace small"
+                                x-data="{ c: {{ job.cron_expr|tojson }} }"
+                                x-text="pqlHumanizeCron(c)"
+                                x-bind:title="c">{{ job.cron_expr }}</td>
+                            <td class="small text-muted font-monospace">
+                                {% if job.last_run_status %}
+                                <span class="pql-status-dot pql-status-dot--{{ job.last_run_status }}"
+                                      aria-hidden="true"></span>
+                                <span class="visually-hidden">{{ job.last_run_status }}</span>
+                                <span x-data="{ iso: {{ (job.last_run_at or '')|tojson }} }"
+                                      x-text="pqlRelativeTime(iso)"
+                                      x-bind:title="iso ? new Date(iso).toLocaleString() : ''">{{ job.last_run_at or '' }}</span>
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if job.is_paused %}
+                                <span class="badge bg-warning text-dark">paused</span>
+                                {% else %}
+                                <span class="badge bg-success">active</span>
+                                {% endif %}
+                            </td>
+                            {% if is_admin %}
+                            <td class="pe-3 pql-row-actions"
+                                x-data="jobRowActions({ jobId: {{ job.id }}, paused: {{ 'true' if job.is_paused else 'false' }} })">
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                        x-bind:disabled="busy"
+                                        x-on:click.stop="runNow()"
+                                        title="Run now">
+                                    <i class="bi bi-play-fill"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        x-bind:disabled="busy"
+                                        x-on:click.stop="togglePause()"
+                                        x-bind:title="paused ? 'Resume' : 'Pause'">
+                                    <i class="bi" x-bind:class="paused ? 'bi-play' : 'bi-pause'"></i>
+                                </button>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% else %}
         {% with flush=True, icon="bi-clock-history",

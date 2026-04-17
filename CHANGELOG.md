@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 33)
+
+- Shared `frontend/js/list_table.js` — `window.listTable(config)`
+  Alpine factory that adds debounced (150 ms) client-side search,
+  sortable column headers (asc → desc → none, driven by `aria-sort`
+  + a CSS pseudo-element arrow so no className juggling is required),
+  and optional filter chips on top of any Bootstrap `<table>` whose
+  rows carry `data-search` + `data-sort-<key>` attributes.
+  Progressive enhancement — rows stay rendered server-side and the
+  page is still usable if JS never runs.
+- Applied `listTable` to `/jobs`, `/dashboards`, `/connections`,
+  `/credentials`, `/external-locations`. Chips configured per page:
+  `Paused` + `Last run failed` on jobs, `Has bound job` on
+  dashboards, one chip per distinct `connection_type` on
+  connections, one chip per distinct `purpose` on credentials,
+  none on external-locations.
+- `frontend/js/humanize_cron.js` — `window.pqlHumanizeCron(expr)`
+  turns the common 5-field cron shapes + the six `@`-macros into
+  human-readable strings ("Daily at 00:00", "Weekly on Monday at
+  08:30"), falls back to the raw expression for anything the helper
+  doesn't recognise. Applied on the `/jobs` list Cron cell and the
+  `/jobs/{id}` detail Configuration card; the cell's `title`
+  attribute still shows the raw expression for hover tooltips.
+- `frontend/js/relative_time.js` — extracted the Sprint 32 inline
+  `window.pqlRelativeTime` helper into its own file so the
+  `/jobs` "last run" column can reuse it without duplicating code.
+  `home.html`'s local copy is now a one-line pointer comment; the
+  helper's behaviour is unchanged.
+- `GET /api/jobs` now emits `last_run_status`, `last_run_at` and
+  `last_run_duration_s` per job. Populated by a new
+  `_latest_run_per_job(session, job_ids)` helper that fetches the
+  latest run per job in one round-trip via a `group_by(job_id)` +
+  `max(started_at)` subquery, portable across SQLite and Postgres
+  and riding the existing `(job_id, started_at)` index on
+  `JobRun`. The same map also feeds the server-rendered `/jobs`
+  row rendering.
+- `/jobs` rows gain a "Last run" column — a
+  `.pql-status-dot--{status}` + `pqlRelativeTime(iso)` pair
+  mirroring the home dashboard's latest-runs table. Rows with no
+  runs yet show `—`.
+- Hover quick-actions on `/jobs` rows (admin-only) — a trailing
+  `<td class="pql-row-actions">` whose buttons are revealed on
+  `tr:hover` and `tr:focus-within` (always visible on touch
+  devices via `@media (hover: none)`). "Run now" POSTs to the
+  existing `/api/jobs/{id}/run`; "Pause" / "Resume" POSTs to
+  `/pause` or `/unpause`. Both fire through `window.pqlToast` for
+  the success/error banner and reload 400 ms later, matching the
+  Sprint-36-direction already established by Sprint 32.
+- `frontend/js/job_row_actions.js` — `window.jobRowActions({jobId,
+  paused})` Alpine factory backing the new row-action buttons.
+- CSS additions in `frontend/css/style.css`: `.pql-list-controls`,
+  `.pql-chip` + `.pql-chip--active`, `.pql-sortable` with arrow
+  pseudo-element, `.pql-row-actions` with hover/focus-within
+  reveal.
+- `docs/e2e-walkthroughs/list-polish.md` — Playwright MCP playbook
+  covering search debounce, sortable cycle, chip AND-ing, cron
+  humanization + raw-title tooltip, last-run column rendering,
+  hover-reveal + toast-then-reload on Run-now / Pause, the
+  non-admin column gating, the four other flat list pages, the
+  `/api/jobs` JSON shape, and a Sprint-32 relative-time
+  regression check.
+
 ### Added (Sprint 32)
 
 - Home dashboard — the `/` route (formerly the welcome hero in

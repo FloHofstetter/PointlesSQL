@@ -24,29 +24,46 @@
 <div class="card">
     <div class="card-body p-0">
         {% if locations %}
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
-                <thead>
-                    <tr>
-                        <th class="ps-3">Name</th>
-                        <th>URL</th>
-                        <th>Credential</th>
-                        <th>Owner</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for loc in locations %}
-                    <tr>
-                        <td class="ps-3">
-                            <a href="/external-locations/{{ loc.name }}" class="font-monospace text-decoration-none">{{ loc.name }}</a>
-                        </td>
-                        <td class="font-monospace small">{{ loc.url or "—" }}</td>
-                        <td class="small">{{ loc.credential_name or "—" }}</td>
-                        <td class="text-muted small">{{ loc.owner or "—" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div x-data="listTable({
+                searchPlaceholder: 'Search external locations…',
+                initialSort: { key: 'name', dir: 'asc' },
+             })">
+            <div class="pql-list-controls">
+                <input type="search"
+                       class="form-control form-control-sm pql-list-controls__search"
+                       x-model="query"
+                       x-on:input="onInput()"
+                       x-bind:placeholder="searchPlaceholder"
+                       aria-label="Search external locations">
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-3" data-sort-key="name">Name</th>
+                            <th data-sort-key="url">URL</th>
+                            <th data-sort-key="credential">Credential</th>
+                            <th data-sort-key="owner">Owner</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loc in locations %}
+                        <tr data-search="{{ loc.name|lower }} {{ (loc.url or '')|lower }} {{ (loc.credential_name or '')|lower }} {{ (loc.owner or '')|lower }}"
+                            data-sort-name="{{ loc.name|lower }}"
+                            data-sort-url="{{ (loc.url or '')|lower }}"
+                            data-sort-credential="{{ (loc.credential_name or '')|lower }}"
+                            data-sort-owner="{{ (loc.owner or '')|lower }}">
+                            <td class="ps-3">
+                                <a href="/external-locations/{{ loc.name }}" class="font-monospace text-decoration-none">{{ loc.name }}</a>
+                            </td>
+                            <td class="font-monospace small">{{ loc.url or "—" }}</td>
+                            <td class="small">{{ loc.credential_name or "—" }}</td>
+                            <td class="text-muted small">{{ loc.owner or "—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% else %}
         {% with flush=True, icon="bi-hdd-network",
