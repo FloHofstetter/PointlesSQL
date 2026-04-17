@@ -845,7 +845,7 @@ PointlesSQL
 │   │   ruff+pyright+pydoclint+alembic gate plus a Playwright
 │   │   replay of the touched surface.
 │   │
-│   ├── Sprint 29 — Design-system foundation              ⏳ planned
+│   ├── Sprint 29 — Design-system foundation              ✅ done (pending)
 │   │   ├── CSS variable system: spacing (`--pql-space-1..8`),
 │   │   │   typography (`--pql-text-xs..3xl`), radius, elevation,
 │   │   │   motion — one token scale per concern, no magic values

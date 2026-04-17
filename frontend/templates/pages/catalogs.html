@@ -2,38 +2,37 @@
 {% block title %}PointlesSQL{% endblock %}
 
 {% block content %}
-<div class="pql-welcome">
+<div class="pql-stack pql-stack--loose pql-welcome">
     {% if error %}
-    <div class="alert alert-danger">
+    <div class="alert alert-danger m-0">
         <i class="bi bi-exclamation-triangle me-1"></i>
         Failed to reach Unity Catalog: {{ error }}
     </div>
     {% endif %}
 
-    <div class="text-center py-5">
-        <i class="bi bi-database display-1 text-muted mb-3"></i>
-        <h1 class="h3 mb-2">Welcome to PointlesSQL</h1>
-        <p class="text-muted mb-4">
-            A fast UI for Unity Catalog.
-        </p>
-        <div class="d-inline-flex align-items-center gap-2 px-4 py-2 rounded-pill bg-body-tertiary">
-            <i class="bi bi-folder2"></i>
-            <span class="fw-semibold">{{ catalog_count }}</span>
-            <span class="text-muted">catalog{{ "s" if catalog_count != 1 else "" }} available</span>
-        </div>
-        <p class="text-muted small mt-4 mb-0">
-            <i class="bi bi-arrow-left me-1"></i>Select a catalog from the sidebar to get started.
-        </p>
+    <div class="pql-card text-center">
+        <div class="pql-stack" style="align-items: center;">
+            <i class="bi bi-database display-1 text-muted"></i>
+            <div class="pql-stack pql-stack--tight" style="align-items: center;">
+                <h1 class="h3 m-0">Welcome to PointlesSQL</h1>
+                <p class="text-muted m-0">A fast UI for Unity Catalog.</p>
+            </div>
+            <span class="pql-badge pql-badge--info" style="padding: var(--pql-space-2) var(--pql-space-4);">
+                <i class="bi bi-folder2"></i>
+                <span>{{ catalog_count }} catalog{{ "s" if catalog_count != 1 else "" }} available</span>
+            </span>
+            <p class="text-muted small m-0">
+                <i class="bi bi-arrow-left me-1"></i>Select a catalog from the sidebar to get started.
+            </p>
 
-        {% if is_admin %}
-        <div class="mt-4">
+            {% if is_admin %}
             <button class="btn btn-outline-primary btn-sm"
                     data-bs-toggle="modal"
                     data-bs-target="#createForeignCatalogModal">
                 <i class="bi bi-plus-lg me-1"></i>Create foreign catalog
             </button>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 </div>
 

@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 29)
+
+- Design-token system in `frontend/css/style.css`: spacing
+  (`--pql-space-1..8`, 4-px scale), typography
+  (`--pql-text-xs..3xl`, ~1.125 modular ratio), radius
+  (`--pql-radius-sm|md|lg|pill`), elevation (`--pql-elev-0..3`,
+  dark-mode-tuned), motion (`--pql-duration-fast|normal|slow` +
+  `--pql-ease`), and semantic colour pairs (success / warning /
+  danger / info / neutral — each with a `bg` + `fg` variable so
+  chip text meets AA contrast against its own background). Brand
+  accent `#76b900` preserved as `--pql-color-accent`
+- Light-mode variant **prepared** via a
+  `:root[data-bs-theme="light"]` override block — tokens flip
+  automatically when the attribute changes. No toggle is wired
+  yet; switching in DevTools is enough to verify downstream
+  primitives adapt
+- Inter font self-hosted (OFL-1.1, Latin subset) at
+  `frontend/fonts/inter-regular.woff2` (23.7 kB) and
+  `inter-semibold.woff2` (24.3 kB) — combined 48 kB, under the
+  50 kB per-page budget. Two `@font-face` blocks with
+  `font-display: swap`; `body { font-family: var(--pql-font-sans); }`
+  picks it up globally. Regular is `<link rel="preload">`-ed in
+  `base.html`; SemiBold is lazy-loaded on first use
+- CSS-only primitives: `.pql-stack` (vertical flex with token
+  gap; `--tight`/`--loose` modifiers), `.pql-cluster`
+  (horizontal wrapping cluster), `.pql-card` (panel surface
+  replacing the 18-site `card mb-4 p-4` pattern; sibling
+  `.pql-card + .pql-card` auto-margins; `.pql-card--flush`
+  strips padding for iframe wrappers), `.pql-badge` (pill-shaped
+  status chip, semantic-palette modifiers `--success|warning|danger|info`)
+- Proof-of-concept template migrations: `base.html` (font
+  preload + Inter via body rule), `pages/login.html` (card ↦
+  `.pql-card` + nested `.pql-stack` form layout), and
+  `pages/catalogs.html` (welcome hero wrapped in `.pql-card` +
+  `.pql-stack --loose`; catalog-count chip becomes
+  `.pql-badge --info`). The remaining 27 templates stay on
+  Bootstrap utilities and will migrate in Sprints 30 / 33 / 34
+  as those sprints touch each surface
+- `docs/design-tokens.md` reference — token tables with
+  "when to use" notes, primitive snippets, light-mode override
+  pattern, and contribution conventions (new tokens land
+  alongside a doc update in the same commit)
+
 ### Added (Sprint 28)
 
 - Alembic migration `008_dashboards.py` creating the

@@ -4,26 +4,26 @@
 {% block content_class %}d-flex align-items-center justify-content-center{% endblock %}
 
 {% block content %}
-<div class="card border-secondary" style="max-width: 420px; width: 100%;">
-    <div class="card-body p-4">
-        <h4 class="card-title text-center mb-4">
+<div class="pql-card" style="max-width: 420px; width: 100%;">
+    <div class="pql-stack">
+        <h4 class="text-center m-0">
             <i class="bi bi-database"></i> PointlesSQL
         </h4>
 
         {% if error %}
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="alert alert-danger alert-dismissible fade show m-0" role="alert">
             {{ error }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         {% endif %}
 
-        <form method="post" action="/auth/login" hx-boost="false">
-            <div class="mb-3">
+        <form method="post" action="/auth/login" hx-boost="false" class="pql-stack">
+            <div>
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email"
                        required autofocus placeholder="you@example.com">
             </div>
-            <div class="mb-3">
+            <div>
                 <label for="password" class="form-label">Password</label>
                 <input type="password" class="form-control" id="password" name="password"
                        required>
@@ -32,15 +32,15 @@
         </form>
 
         {% if oidc_enabled %}
-        <div class="d-flex align-items-center my-3">
-            <hr class="flex-grow-1"><span class="mx-2 text-muted">or</span><hr class="flex-grow-1">
+        <div class="pql-cluster" style="justify-content: center;">
+            <hr class="flex-grow-1 m-0"><span class="text-muted">or</span><hr class="flex-grow-1 m-0">
         </div>
         <a href="/auth/sso" class="btn btn-outline-secondary w-100" hx-boost="false">
             Sign in with SSO
         </a>
         {% endif %}
 
-        <p class="text-center text-muted mt-3 mb-0">
+        <p class="text-center text-muted m-0">
             Don't have an account? <a href="/auth/register">Register</a>
         </p>
     </div>
