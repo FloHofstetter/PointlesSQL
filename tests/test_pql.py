@@ -87,11 +87,13 @@ class TestColumnsFromDataframe:
         assert cols[0].type_text == "boolean"
 
     def test_mixed_columns_positions(self) -> None:
-        df = pd.DataFrame({
-            "id": pd.array([1], dtype="int64"),
-            "name": ["alice"],
-            "score": pd.array([9.5], dtype="float64"),
-        })
+        df = pd.DataFrame(
+            {
+                "id": pd.array([1], dtype="int64"),
+                "name": ["alice"],
+                "score": pd.array([9.5], dtype="float64"),
+            }
+        )
         cols = columns_from_dataframe(df)
         assert len(cols) == 3
         assert cols[0].position == 0
@@ -217,9 +219,7 @@ class TestPQLWriteTable:
         with patch(f"{_MOD}._create_table") as mock_create:
             pql = PQL(client=MagicMock(), engine=mock_engine)
             pql.write_table(df, "cat.sch.tbl")
-            mock_engine.write.assert_called_once_with(
-                df, "/data/cat/sch/tbl", "overwrite"
-            )
+            mock_engine.write.assert_called_once_with(df, "/data/cat/sch/tbl", "overwrite")
             mock_create.sync.assert_not_called()
 
     @patch(f"{_MOD}._create_table")
@@ -276,16 +276,12 @@ class TestPQLWriteTable:
 
     @patch(f"{_MOD}._get_table")
     def test_mode_forwarded(self, mock_get: MagicMock) -> None:
-        mock_get.sync.return_value = TableInfo(
-            storage_location="/data/tbl", name="tbl"
-        )
+        mock_get.sync.return_value = TableInfo(storage_location="/data/tbl", name="tbl")
         mock_engine = MagicMock(spec=Engine)
         df = pd.DataFrame({"x": [1]})
         pql = PQL(client=MagicMock(), engine=mock_engine)
         pql.write_table(df, "cat.sch.tbl", mode="append")
-        mock_engine.write.assert_called_once_with(
-            df, "/data/tbl", "append"
-        )
+        mock_engine.write.assert_called_once_with(df, "/data/tbl", "append")
 
 
 # ------------------------------------------------------------------

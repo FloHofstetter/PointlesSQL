@@ -122,7 +122,10 @@ async def register_submit(
             "hide_sidebar": True,
         }
         return _templates(request).TemplateResponse(
-            request, "pages/register.html", ctx, status_code=status,
+            request,
+            "pages/register.html",
+            ctx,
+            status_code=status,
         )
 
     if password != password_confirm:
@@ -171,7 +174,8 @@ async def sso_redirect(request: Request):
 
     async with httpx.AsyncClient() as client:
         discovery = await oidc_service.fetch_discovery(
-            settings.oidc_discovery_url, client  # type: ignore[arg-type]
+            settings.oidc_discovery_url,  # type: ignore[arg-type]
+            client,  # type: ignore[arg-type]
         )
 
     code_verifier, code_challenge = oidc_service.generate_pkce()
@@ -212,27 +216,31 @@ async def oidc_callback(request: Request):
     if error := request.query_params.get("error"):
         desc = request.query_params.get("error_description", error)
         return RedirectResponse(
-            url=f"/auth/login?error={quote(desc)}", status_code=303,
+            url=f"/auth/login?error={quote(desc)}",
+            status_code=303,
         )
 
     code = request.query_params.get("code")
     state = request.query_params.get("state")
     if not code or not state:
         return RedirectResponse(
-            url="/auth/login?error=Missing+code+or+state", status_code=303,
+            url="/auth/login?error=Missing+code+or+state",
+            status_code=303,
         )
 
     # Verify state cookie.
     cookie_raw = request.cookies.get(oidc_service.STATE_COOKIE_NAME)
     if cookie_raw is None:
         return RedirectResponse(
-            url="/auth/login?error=SSO+session+expired", status_code=303,
+            url="/auth/login?error=SSO+session+expired",
+            status_code=303,
         )
 
     cookie_payload = oidc_service.verify_state_cookie(cookie_raw, settings.secret_key)
     if cookie_payload is None or cookie_payload.get("state") != state:
         return RedirectResponse(
-            url="/auth/login?error=Invalid+SSO+state", status_code=303,
+            url="/auth/login?error=Invalid+SSO+state",
+            status_code=303,
         )
 
     redirect_uri = _oidc_redirect_uri(request, settings)
@@ -240,7 +248,8 @@ async def oidc_callback(request: Request):
     try:
         async with httpx.AsyncClient() as client:
             discovery = await oidc_service.fetch_discovery(
-                settings.oidc_discovery_url, client  # type: ignore[arg-type]
+                settings.oidc_discovery_url,  # type: ignore[arg-type]
+                client,  # type: ignore[arg-type]
             )
             tokens = await oidc_service.exchange_code(
                 discovery,
@@ -252,20 +261,19 @@ async def oidc_callback(request: Request):
                 client,
             )
             userinfo = await oidc_service.fetch_userinfo(
-                discovery, tokens["access_token"], client,
+                discovery,
+                tokens["access_token"],
+                client,
             )
     except oidc_service.OIDCError as exc:
         return RedirectResponse(
-            url=f"/auth/login?error={quote(str(exc))}", status_code=303,
+            url=f"/auth/login?error={quote(str(exc))}",
+            status_code=303,
         )
 
     # Map claims to local user.
     email = userinfo.get("email") or userinfo.get("preferred_username", "")
-    display_name = (
-        userinfo.get("name")
-        or userinfo.get("preferred_username")
-        or email
-    )
+    display_name = userinfo.get("name") or userinfo.get("preferred_username") or email
 
     try:
         user = oidc_service.find_or_create_oidc_user(
@@ -277,12 +285,16 @@ async def oidc_callback(request: Request):
         )
     except oidc_service.OIDCError as exc:
         return RedirectResponse(
-            url=f"/auth/login?error={quote(str(exc))}", status_code=303,
+            url=f"/auth/login?error={quote(str(exc))}",
+            status_code=303,
         )
 
     token = auth.create_jwt(
-        user.id, user.email, user.is_admin,
-        settings.secret_key, settings.jwt_expiry_hours,
+        user.id,
+        user.email,
+        user.is_admin,
+        settings.secret_key,
+        settings.jwt_expiry_hours,
     )
 
     response = RedirectResponse(url="/", status_code=303)

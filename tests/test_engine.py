@@ -39,11 +39,13 @@ def engine(request: pytest.FixtureRequest) -> Engine:
 def sample_delta(tmp_path):
     """Write a small Delta table for read tests."""
     location = str(tmp_path / "test_table")
-    df = pd.DataFrame({
-        "id": pd.array([1, 2, 3], dtype="int64"),
-        "name": ["alice", "bob", "charlie"],
-        "score": pd.array([9.5, 8.0, 7.3], dtype="float64"),
-    })
+    df = pd.DataFrame(
+        {
+            "id": pd.array([1, 2, 3], dtype="int64"),
+            "name": ["alice", "bob", "charlie"],
+            "score": pd.array([9.5, 8.0, 7.3], dtype="float64"),
+        }
+    )
     deltalake.write_deltalake(location, df)
     return location, df
 

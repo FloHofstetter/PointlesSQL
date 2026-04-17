@@ -19,19 +19,11 @@
     <div class="d-flex gap-2"
          x-data='{
              busy: false,
-             refresh() {
+             async refresh() {
                  this.busy = true;
-                 fetch("/api/dashboards/{{ dashboard.slug }}/refresh", {method: "POST"})
-                     .then(async r => {
-                         if (!r.ok) {
-                             const body = await r.json().catch(() => ({}));
-                             alert(body.error?.message || r.statusText);
-                             this.busy = false;
-                             return;
-                         }
-                         window.location.reload();
-                     })
-                     .catch(e => { alert(String(e)); this.busy = false; });
+                 const res = await window.pqlApi.fetch("/api/dashboards/{{ dashboard.slug }}/refresh", {method: "POST"});
+                 if (!res.ok) { this.busy = false; return; }
+                 window.pqlApi.reloadWithToast("Dashboard refreshing.", {variant: "info"});
              }
          }'>
         <button type="button" class="btn btn-primary btn-sm"

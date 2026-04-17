@@ -46,9 +46,7 @@ _SEED_COUNTER = itertools.count()
 @pytest.fixture
 def dag_factory() -> Any:
     """Return an in-memory session factory seeded with one runner user."""
-    engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
-    )
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
     with factory() as session:
@@ -156,9 +154,7 @@ class _RecordingRegistry(KindRegistry):
                 raise RuntimeError(f"{name} always fails")
             thresh = self.fail_names_until_attempt.get(name)
             if thresh is not None and self.attempts_per_name[name] < thresh:
-                raise RuntimeError(
-                    f"{name} failing attempt {self.attempts_per_name[name]}"
-                )
+                raise RuntimeError(f"{name} failing attempt {self.attempts_per_name[name]}")
 
         self.register("fake", _fake)
 
@@ -166,50 +162,106 @@ class _RecordingRegistry(KindRegistry):
 class TestValidateDag:
     def test_cycle_detected(self) -> None:
         a = JobTask(
-            id=1, job_id=1, name="a", order=0, kind="fake",
-            config="{}", depends_on=json.dumps([2]),
-            max_retries=0, retry_backoff_seconds=0,
+            id=1,
+            job_id=1,
+            name="a",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([2]),
+            max_retries=0,
+            retry_backoff_seconds=0,
         )
         b = JobTask(
-            id=2, job_id=1, name="b", order=0, kind="fake",
-            config="{}", depends_on=json.dumps([1]),
-            max_retries=0, retry_backoff_seconds=0,
+            id=2,
+            job_id=1,
+            name="b",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([1]),
+            max_retries=0,
+            retry_backoff_seconds=0,
         )
         with pytest.raises(ValidationError, match="cycle"):
             validate_dag([a, b])
 
     def test_self_loop_detected(self) -> None:
         a = JobTask(
-            id=1, job_id=1, name="a", order=0, kind="fake",
-            config="{}", depends_on=json.dumps([1]),
-            max_retries=0, retry_backoff_seconds=0,
+            id=1,
+            job_id=1,
+            name="a",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([1]),
+            max_retries=0,
+            retry_backoff_seconds=0,
         )
         with pytest.raises(ValidationError, match="cycle"):
             validate_dag([a])
 
     def test_unknown_dependency_rejected(self) -> None:
         a = JobTask(
-            id=1, job_id=1, name="a", order=0, kind="fake",
-            config="{}", depends_on=json.dumps([99]),
-            max_retries=0, retry_backoff_seconds=0,
+            id=1,
+            job_id=1,
+            name="a",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([99]),
+            max_retries=0,
+            retry_backoff_seconds=0,
         )
         with pytest.raises(ValidationError, match="unknown task"):
             validate_dag([a])
 
     def test_valid_diamond_passes(self) -> None:
         # a → b,c → d
-        a = JobTask(id=1, job_id=1, name="a", order=0, kind="fake",
-                    config="{}", depends_on=json.dumps([]),
-                    max_retries=0, retry_backoff_seconds=0)
-        b = JobTask(id=2, job_id=1, name="b", order=0, kind="fake",
-                    config="{}", depends_on=json.dumps([1]),
-                    max_retries=0, retry_backoff_seconds=0)
-        c = JobTask(id=3, job_id=1, name="c", order=0, kind="fake",
-                    config="{}", depends_on=json.dumps([1]),
-                    max_retries=0, retry_backoff_seconds=0)
-        d = JobTask(id=4, job_id=1, name="d", order=0, kind="fake",
-                    config="{}", depends_on=json.dumps([2, 3]),
-                    max_retries=0, retry_backoff_seconds=0)
+        a = JobTask(
+            id=1,
+            job_id=1,
+            name="a",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([]),
+            max_retries=0,
+            retry_backoff_seconds=0,
+        )
+        b = JobTask(
+            id=2,
+            job_id=1,
+            name="b",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([1]),
+            max_retries=0,
+            retry_backoff_seconds=0,
+        )
+        c = JobTask(
+            id=3,
+            job_id=1,
+            name="c",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([1]),
+            max_retries=0,
+            retry_backoff_seconds=0,
+        )
+        d = JobTask(
+            id=4,
+            job_id=1,
+            name="d",
+            order=0,
+            kind="fake",
+            config="{}",
+            depends_on=json.dumps([2, 3]),
+            max_retries=0,
+            retry_backoff_seconds=0,
+        )
         # Should not raise.
         validate_dag([a, b, c, d])
 
@@ -235,9 +287,7 @@ class TestTopologicalExecution:
             ],
         )
 
-        run = await execute_run(
-            dag_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(dag_factory, _settings(), registry, job_id, "manual")
         assert run.status == "succeeded"
         # "a" runs first, "d" runs last; b and c both come between.
         assert registry.calls[0] == "a"
@@ -262,17 +312,13 @@ class TestTopologicalExecution:
                 {"name": "c", "config": {"_name": "c"}, "depends_on": ["b"]},
             ],
         )
-        run = await execute_run(
-            dag_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(dag_factory, _settings(), registry, job_id, "manual")
         assert run.status == "failed"
         # "b" and "c" should be marked skipped — executor never invoked.
         assert registry.calls == ["a"]
         with dag_factory() as session:
             task_runs = list(
-                session.scalars(
-                    select(TaskRun).where(TaskRun.job_run_id == run.id)
-                ).all()
+                session.scalars(select(TaskRun).where(TaskRun.job_run_id == run.id)).all()
             )
         statuses = {tr.task_id: tr.status for tr in task_runs}
         assert statuses[names["a"]] == "failed"
@@ -309,18 +355,14 @@ class TestRetryPolicy:
                 }
             ],
         )
-        run = await execute_run(
-            dag_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(dag_factory, _settings(), registry, job_id, "manual")
         assert run.status == "succeeded"
         # Three attempts total.
         assert registry.attempts_per_name["flaky"] == 3
         # Two sleeps (after attempts 1 and 2). Linear backoff: 1*2=2, 2*2=4.
         assert sleep_calls == [2.0, 4.0]
         with dag_factory() as session:
-            tr = session.scalars(
-                select(TaskRun).where(TaskRun.task_id == names["flaky"])
-            ).first()
+            tr = session.scalars(select(TaskRun).where(TaskRun.task_id == names["flaky"])).first()
         assert tr is not None
         assert tr.status == "succeeded"
         assert tr.attempts == 3
@@ -352,15 +394,11 @@ class TestRetryPolicy:
                 }
             ],
         )
-        run = await execute_run(
-            dag_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(dag_factory, _settings(), registry, job_id, "manual")
         assert run.status == "failed"
         assert registry.attempts_per_name["doomed"] == 3  # initial + 2 retries
         with dag_factory() as session:
-            tr = session.scalars(
-                select(TaskRun).where(TaskRun.task_id == names["doomed"])
-            ).first()
+            tr = session.scalars(select(TaskRun).where(TaskRun.task_id == names["doomed"])).first()
         assert tr is not None
         assert tr.status == "failed"
         assert tr.attempts == 3
@@ -395,9 +433,7 @@ class TestConcurrencyCaps:
                 session.add(
                     JobRun(
                         job_id=job_id,
-                        started_at=datetime.datetime(
-                            2026, 4, 1, 11, 0, tzinfo=datetime.UTC
-                        ),
+                        started_at=datetime.datetime(2026, 4, 1, 11, 0, tzinfo=datetime.UTC),
                         status="running",
                         trigger="scheduled",
                     )
@@ -496,14 +532,10 @@ class TestContextVars:
         registry = KindRegistry()
         registry.register("fake", _capture)
 
-        job_id, names = _seed_job_with_tasks(
-            dag_factory, [{"name": "only", "config": {}}]
-        )
+        job_id, names = _seed_job_with_tasks(dag_factory, [{"name": "only", "config": {}}])
 
         caplog.set_level(logging.INFO, logger="pointlessql.test")
-        run = await execute_run(
-            dag_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(dag_factory, _settings(), registry, job_id, "manual")
         assert run.status == "succeeded"
         # Both contextvars were set during executor invocation.
         assert seen_job_ids == [str(run.id)]
@@ -530,14 +562,22 @@ class TestLogJobWriter:
             assert user is not None
             now = datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC)
             job = Job(
-                name="j", cron_expr="* * * * *", run_as_user_id=user.id,
-                kind="fake", config="{}", is_paused=False,
-                max_parallel_runs=1, created_at=now, updated_at=now,
+                name="j",
+                cron_expr="* * * * *",
+                run_as_user_id=user.id,
+                kind="fake",
+                config="{}",
+                is_paused=False,
+                max_parallel_runs=1,
+                created_at=now,
+                updated_at=now,
             )
             session.add(job)
             session.flush()
             jr = JobRun(
-                job_id=job.id, started_at=now, status="running",
+                job_id=job.id,
+                started_at=now,
+                status="running",
                 trigger="manual",
             )
             session.add(jr)

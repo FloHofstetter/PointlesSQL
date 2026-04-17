@@ -17,19 +17,13 @@
         async syncNow() {
           this.syncing = true;
           this.error = null;
-          try {
-            const r = await fetch('/api/catalogs/{{ catalog_name }}/sync', {method: 'POST'});
-            if (!r.ok) {
-              const body = await r.json().catch(() => ({}));
-              this.error = (body && body.error && body.error.message) || ('HTTP ' + r.status);
-              this.syncing = false;
-              return;
-            }
-            window.location.reload();
-          } catch (e) {
-            this.error = e.message || 'Network error';
+          const res = await window.pqlApi.fetch('/api/catalogs/{{ catalog_name }}/sync', {method: 'POST'});
+          if (!res.ok) {
+            this.error = res.error;
             this.syncing = false;
+            return;
           }
+          window.pqlApi.reloadWithToast('Catalog sync started.');
         }
      }">
     <div class="card-header d-flex align-items-center justify-content-between">

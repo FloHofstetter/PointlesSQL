@@ -17,9 +17,7 @@ def uc_client() -> UnityCatalogClient:
 
 
 class TestConnections:
-    async def test_list_connections(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_list_connections(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.list_connections_response import (
             ListConnectionsResponse,
         )
@@ -38,9 +36,7 @@ class TestConnections:
 
         assert result == [{"name": "pg", "connection_type": "POSTGRESQL"}]
 
-    async def test_list_connections_empty(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_list_connections_empty(self, uc_client: UnityCatalogClient) -> None:
         with patch(
             "pointlessql.services.unitycatalog._list_connections.asyncio",
             new_callable=AsyncMock,
@@ -50,9 +46,7 @@ class TestConnections:
 
         assert result == []
 
-    async def test_get_connection(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_get_connection(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.connection_info import ConnectionInfo
 
         resp = MagicMock(spec=ConnectionInfo)
@@ -67,9 +61,7 @@ class TestConnections:
 
         assert result["name"] == "pg"
 
-    async def test_create_connection(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_create_connection(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.connection_info import ConnectionInfo
 
         resp = MagicMock(spec=ConnectionInfo)
@@ -86,9 +78,7 @@ class TestConnections:
 
         assert result["name"] == "pg"
 
-    async def test_delete_connection(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_delete_connection(self, uc_client: UnityCatalogClient) -> None:
         with patch(
             "pointlessql.services.unitycatalog._delete_connection.asyncio",
             new_callable=AsyncMock,
@@ -97,9 +87,7 @@ class TestConnections:
 
 
 class TestCatalogsCreate:
-    async def test_create_managed_catalog(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_create_managed_catalog(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.catalog_info import CatalogInfo
 
         resp = MagicMock(spec=CatalogInfo)
@@ -114,9 +102,7 @@ class TestCatalogsCreate:
 
         assert result == {"name": "managed_cat", "type": "MANAGED"}
 
-    async def test_create_foreign_catalog(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_create_foreign_catalog(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.catalog_info import CatalogInfo
 
         resp = MagicMock(spec=CatalogInfo)
@@ -148,9 +134,7 @@ class TestCatalogsCreate:
         assert body.name == "pg_cat"
         assert body.connection_name == "my_pg"
 
-    async def test_create_catalog_empty_response(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_create_catalog_empty_response(self, uc_client: UnityCatalogClient) -> None:
         with patch(
             "pointlessql.services.unitycatalog._create_catalog.asyncio",
             new_callable=AsyncMock,
@@ -169,9 +153,7 @@ class TestCatalogsCreate:
 
 
 class TestExternalLocations:
-    async def test_list_external_locations(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_list_external_locations(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.list_external_locations_response import (
             ListExternalLocationsResponse,
         )
@@ -190,9 +172,7 @@ class TestExternalLocations:
 
         assert result == [{"name": "s3_bucket", "url": "s3://bucket"}]
 
-    async def test_get_external_location(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_get_external_location(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.external_location_info import (
             ExternalLocationInfo,
         )
@@ -209,9 +189,7 @@ class TestExternalLocations:
 
         assert result["name"] == "s3_bucket"
 
-    async def test_delete_external_location(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_delete_external_location(self, uc_client: UnityCatalogClient) -> None:
         with patch(
             "pointlessql.services.unitycatalog._delete_ext_loc.asyncio",
             new_callable=AsyncMock,
@@ -220,9 +198,7 @@ class TestExternalLocations:
 
 
 class TestCredentials:
-    async def test_list_credentials(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_list_credentials(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.list_credentials_response import (
             ListCredentialsResponse,
         )
@@ -241,9 +217,7 @@ class TestCredentials:
 
         assert result == [{"name": "my_cred", "purpose": "STORAGE"}]
 
-    async def test_get_credential(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_get_credential(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.credential_info import CredentialInfo
 
         resp = MagicMock(spec=CredentialInfo)
@@ -258,9 +232,7 @@ class TestCredentials:
 
         assert result["name"] == "my_cred"
 
-    async def test_create_credential(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_create_credential(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.credential_info import CredentialInfo
 
         resp = MagicMock(spec=CredentialInfo)
@@ -271,15 +243,11 @@ class TestCredentials:
             new_callable=AsyncMock,
             return_value=resp,
         ):
-            result = await uc_client.create_credential(
-                {"name": "my_cred", "purpose": "STORAGE"}
-            )
+            result = await uc_client.create_credential({"name": "my_cred", "purpose": "STORAGE"})
 
         assert result["name"] == "my_cred"
 
-    async def test_delete_credential(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_delete_credential(self, uc_client: UnityCatalogClient) -> None:
         with patch(
             "pointlessql.services.unitycatalog._delete_credential.asyncio",
             new_callable=AsyncMock,

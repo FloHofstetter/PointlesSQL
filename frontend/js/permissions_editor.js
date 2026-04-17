@@ -29,65 +29,51 @@ window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, ef
             }
             this.saving = true;
             this.error = null;
-            try {
-                const res = await fetch(permissionsUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        changes: [{
-                            principal,
-                            add: [this.grantPrivilege],
-                            remove: [],
-                        }],
-                    }),
-                });
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || ('HTTP ' + res.status));
-                }
-                this.assignments = await res.json();
+            const res = await window.pqlApi.fetch(permissionsUrl, {
+                method: 'PATCH',
+                body: {
+                    changes: [{
+                        principal,
+                        add: [this.grantPrivilege],
+                        remove: [],
+                    }],
+                },
+            });
+            if (res.ok) {
+                this.assignments = res.data || [];
                 this.grantPrincipal = '';
-            } catch (e) {
-                this.error = 'Grant failed: ' + e.message;
-            } finally {
-                this.saving = false;
+            } else {
+                this.error = 'Grant failed: ' + res.error;
             }
+            this.saving = false;
         },
 
         async revoke(principal, privilege) {
             if (!this.canManage) return;
             this.saving = true;
             this.error = null;
-            try {
-                const res = await fetch(permissionsUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        changes: [{
-                            principal,
-                            add: [],
-                            remove: [privilege],
-                        }],
-                    }),
-                });
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || ('HTTP ' + res.status));
-                }
-                this.assignments = await res.json();
-            } catch (e) {
-                this.error = 'Revoke failed: ' + e.message;
-            } finally {
-                this.saving = false;
+            const res = await window.pqlApi.fetch(permissionsUrl, {
+                method: 'PATCH',
+                body: {
+                    changes: [{
+                        principal,
+                        add: [],
+                        remove: [privilege],
+                    }],
+                },
+            });
+            if (res.ok) {
+                this.assignments = res.data || [];
+            } else {
+                this.error = 'Revoke failed: ' + res.error;
             }
+            this.saving = false;
         },
 
         async loadEffective() {
             if (this.effective.length > 0) return;
-            try {
-                const res = await fetch(effectiveUrl);
-                if (res.ok) this.effective = await res.json();
-            } catch (e) { /* silent */ }
+            const res = await window.pqlApi.fetch(effectiveUrl, { silent: true });
+            if (res.ok && Array.isArray(res.data)) this.effective = res.data;
         },
     };
 };

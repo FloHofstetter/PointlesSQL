@@ -14,49 +14,33 @@ window.tagsEditor = function ({ tagsUrl, initial }) {
             }
             this.saving = true;
             this.error = null;
-            try {
-                const res = await fetch(tagsUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        changes: [{ key, op: 'set', value: this.newValue || '' }],
-                    }),
-                });
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || ('HTTP ' + res.status));
-                }
-                this.tags = await res.json();
+            const res = await window.pqlApi.fetch(tagsUrl, {
+                method: 'PATCH',
+                body: { changes: [{ key, op: 'set', value: this.newValue || '' }] },
+            });
+            if (res.ok) {
+                this.tags = res.data || [];
                 this.newKey = '';
                 this.newValue = '';
-            } catch (e) {
-                this.error = 'Failed to add tag: ' + e.message;
-            } finally {
-                this.saving = false;
+            } else {
+                this.error = 'Failed to add tag: ' + res.error;
             }
+            this.saving = false;
         },
 
         async removeTag(key) {
             this.saving = true;
             this.error = null;
-            try {
-                const res = await fetch(tagsUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        changes: [{ key, op: 'remove' }],
-                    }),
-                });
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || ('HTTP ' + res.status));
-                }
-                this.tags = await res.json();
-            } catch (e) {
-                this.error = 'Failed to remove tag: ' + e.message;
-            } finally {
-                this.saving = false;
+            const res = await window.pqlApi.fetch(tagsUrl, {
+                method: 'PATCH',
+                body: { changes: [{ key, op: 'remove' }] },
+            });
+            if (res.ok) {
+                this.tags = res.data || [];
+            } else {
+                this.error = 'Failed to remove tag: ' + res.error;
             }
+            this.saving = false;
         },
     };
 };

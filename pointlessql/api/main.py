@@ -347,9 +347,7 @@ def _preview_head(frame: Any, n: int) -> Any:
     return pd.DataFrame(frame).head(n)
 
 
-def _run_table_preview(
-    settings: Settings, principal: str, full_name: str
-) -> dict[str, Any]:
+def _run_table_preview(settings: Settings, principal: str, full_name: str) -> dict[str, Any]:
     """Read up to 10 rows of a Delta table and serialise them.
 
     Runs inside :func:`asyncio.to_thread` so the sync :class:`PQL`
@@ -371,9 +369,7 @@ def _run_table_preview(
 
     try:
         client = (
-            make_principal_client(settings, principal)
-            if principal
-            else make_soyuz_client(settings)
+            make_principal_client(settings, principal) if principal else make_soyuz_client(settings)
         )
         pql = PQL(client=client, settings=settings)
         frame = pql.table(full_name)
@@ -385,15 +381,10 @@ def _run_table_preview(
     df = df.head(_PREVIEW_ROW_LIMIT)
     columns = [str(c) for c in df.columns]
     rows = df.values.tolist()
-    return jsonable_encoder(
-        {"columns": columns, "rows": rows, "truncated": truncated}
-    )
+    return jsonable_encoder({"columns": columns, "rows": rows, "truncated": truncated})
 
 
-@app.get(
-    "/api/catalogs/{catalog_name}/schemas/{schema_name}"
-    "/tables/{table_name}/preview"
-)
+@app.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/preview")
 async def api_table_preview(
     request: Request,
     catalog_name: str,
@@ -426,10 +417,7 @@ async def api_table_preview(
     return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
 
 
-@app.post(
-    "/api/catalogs/{catalog_name}/schemas/{schema_name}"
-    "/tables/{table_name}/open-in-notebook"
-)
+@app.post("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/open-in-notebook")
 async def api_open_in_notebook(
     request: Request,
     catalog_name: str,
@@ -453,9 +441,7 @@ async def api_open_in_notebook(
     full_name = f"{catalog_name}.{schema_name}.{table_name}"
 
     sanitiser = re.compile(r"[^A-Za-z0-9_-]")
-    stem = "_".join(
-        sanitiser.sub("_", part) for part in (catalog_name, schema_name, table_name)
-    )
+    stem = "_".join(sanitiser.sub("_", part) for part in (catalog_name, schema_name, table_name))
     filename = f"{stem}_{secrets.token_hex(3)}.ipynb"
     scratch_dir = settings.notebooks_dir / "scratch"
     scratch_dir.mkdir(parents=True, exist_ok=True)
@@ -466,14 +452,10 @@ async def api_open_in_notebook(
     nb = nbformat.v4.new_notebook()
     nb.cells = [
         nbformat.v4.new_markdown_cell(
-            f"# Scratch: `{full_name}`\n\n"
-            "Generated from the PointlesSQL table detail page."
+            f"# Scratch: `{full_name}`\n\nGenerated from the PointlesSQL table detail page."
         ),
         nbformat.v4.new_code_cell(
-            "from pointlessql import PQL\n\n"
-            "pql = PQL()\n"
-            f'df = pql.table("{full_name}")\n'
-            "df.head()"
+            f'from pointlessql import PQL\n\npql = PQL()\ndf = pql.table("{full_name}")\ndf.head()'
         ),
     ]
     with target.open("w", encoding="utf-8") as fh:
@@ -1329,7 +1311,12 @@ async def connections_index(request: Request) -> HTMLResponse:
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/connections.html",
-        {"connections": connections, "error": error, "active_page": "connections"},
+        {
+            "connections": connections,
+            "error": error,
+            "active_page": "connections",
+            "list_page": True,
+        },
     )
 
 
@@ -1365,7 +1352,12 @@ async def external_locations_index(request: Request) -> HTMLResponse:
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/external_locations.html",
-        {"locations": locations, "error": error, "active_page": "external_locations"},
+        {
+            "locations": locations,
+            "error": error,
+            "active_page": "external_locations",
+            "list_page": True,
+        },
     )
 
 
@@ -1401,7 +1393,12 @@ async def credentials_index(request: Request) -> HTMLResponse:
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/credentials.html",
-        {"credentials": credentials, "error": error, "active_page": "credentials"},
+        {
+            "credentials": credentials,
+            "error": error,
+            "active_page": "credentials",
+            "list_page": True,
+        },
     )
 
 
@@ -2811,6 +2808,7 @@ async def dashboards_index(request: Request) -> HTMLResponse:
             "active_catalog": None,
             "active_schema": None,
             "active_table": None,
+            "list_page": True,
         },
     )
 
@@ -2964,6 +2962,7 @@ async def jobs_index(request: Request) -> HTMLResponse:
             "active_catalog": None,
             "active_schema": None,
             "active_table": None,
+            "list_page": True,
         },
     )
 

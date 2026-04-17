@@ -77,13 +77,9 @@ async def check_privilege(
     if is_admin:
         return
 
-    effective = await uc_client.get_effective_permissions(
-        securable_type, full_name
-    )
+    effective = await uc_client.get_effective_permissions(securable_type, full_name)
     if not _user_has_privilege(effective, user_email, required_privilege):
-        raise AccessDenied(
-            user_email, required_privilege, securable_type, full_name
-        )
+        raise AccessDenied(user_email, required_privilege, securable_type, full_name)
 
 
 def check_privilege_from_effective(
@@ -115,9 +111,7 @@ def check_privilege_from_effective(
         return
 
     if not _user_has_privilege(effective, user_email, required_privilege):
-        raise AccessDenied(
-            user_email, required_privilege, securable_type, full_name
-        )
+        raise AccessDenied(user_email, required_privilege, securable_type, full_name)
 
 
 def has_privilege(

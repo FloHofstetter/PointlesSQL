@@ -114,7 +114,7 @@ def verify_state_cookie(cookie: str, secret_key: str) -> dict[str, Any] | None:
         return None
     try:
         return json.loads(base64.urlsafe_b64decode(raw + "=="))
-    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+    except json.JSONDecodeError, ValueError, UnicodeDecodeError:
         return None
 
 

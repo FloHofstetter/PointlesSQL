@@ -94,9 +94,7 @@ def upgrade() -> None:
         sa.Column("status", sa.String(20), nullable=False),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column(
-            "attempts", sa.Integer, nullable=False, server_default="0"
-        ),
+        sa.Column("attempts", sa.Integer, nullable=False, server_default="0"),
         sa.Column("error", sa.Text, nullable=True),
     )
     op.create_index(
@@ -110,9 +108,7 @@ def upgrade() -> None:
             sa.Column(
                 "task_id",
                 sa.Integer,
-                sa.ForeignKey(
-                    "job_tasks.id", name="fk_job_logs_task_id"
-                ),
+                sa.ForeignKey("job_tasks.id", name="fk_job_logs_task_id"),
                 nullable=True,
             )
         )

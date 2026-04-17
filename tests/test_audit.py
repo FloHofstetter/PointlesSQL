@@ -37,8 +37,12 @@ class TestLogAction:
     def test_with_detail(self) -> None:
         factory = _make_factory()
         log_action(
-            factory, 2, "admin@test.com", "grant_permission",
-            "catalog:my_cat", detail='{"privilege": "USE CATALOG"}',
+            factory,
+            2,
+            "admin@test.com",
+            "grant_permission",
+            "catalog:my_cat",
+            detail='{"privilege": "USE CATALOG"}',
         )
 
         with factory() as session:
@@ -55,6 +59,4 @@ class TestLogAction:
         with factory() as session:
             rows = session.execute(select(AuditLog)).scalars().all()
         assert len(rows) == 3
-        assert {r.action for r in rows} == {
-            "view_catalog", "update_schema", "delete_connection"
-        }
+        assert {r.action for r in rows} == {"view_catalog", "update_schema", "delete_connection"}

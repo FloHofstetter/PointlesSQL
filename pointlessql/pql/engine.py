@@ -177,9 +177,7 @@ class DuckDBEngine:
         arrow_dataset = dt.to_pyarrow_dataset()
         return self._conn.from_arrow(arrow_dataset)
 
-    def write(
-        self, frame: duckdb.DuckDBPyRelation, storage_location: str, mode: WriteMode
-    ) -> None:
+    def write(self, frame: duckdb.DuckDBPyRelation, storage_location: str, mode: WriteMode) -> None:
         """Write a DuckDB relation to a Delta table.
 
         Converts the relation to a PyArrow table first, then writes
@@ -195,9 +193,7 @@ class DuckDBEngine:
         arrow_table = frame.arrow()
         deltalake.write_deltalake(storage_location, arrow_table, mode=mode)
 
-    def columns_info(
-        self, frame: duckdb.DuckDBPyRelation
-    ) -> list[tuple[str, str, str, bool]]:
+    def columns_info(self, frame: duckdb.DuckDBPyRelation) -> list[tuple[str, str, str, bool]]:
         """Extract column metadata from a DuckDB relation.
 
         Args:

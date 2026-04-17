@@ -26,24 +26,17 @@ window.editable = function ({ patchUrl, field, initial, placeholder }) {
             }
             this.saving = true;
             this.error = null;
-            try {
-                const res = await fetch(patchUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ [field]: this.draft }),
-                });
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || ('HTTP ' + res.status));
-                }
-                const data = await res.json();
-                this.current = data[field] ?? this.draft;
+            const res = await window.pqlApi.fetch(patchUrl, {
+                method: 'PATCH',
+                body: { [field]: this.draft },
+            });
+            if (res.ok) {
+                this.current = (res.data && res.data[field] !== undefined) ? res.data[field] : this.draft;
                 this.editing = false;
-            } catch (e) {
-                this.error = 'Save failed: ' + e.message;
-            } finally {
-                this.saving = false;
+            } else {
+                this.error = 'Save failed: ' + res.error;
             }
+            this.saving = false;
         },
     };
 };

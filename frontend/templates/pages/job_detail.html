@@ -24,36 +24,28 @@
     <div class="d-flex gap-2"
          x-data="{
              busy: false,
-             post(path) {
+             async post(path, successMsg) {
                  this.busy = true;
-                 fetch(path, {method: 'POST'})
-                     .then(async r => {
-                         if (!r.ok) {
-                             const body = await r.json().catch(() => ({}));
-                             alert(body.error?.message || r.statusText);
-                             this.busy = false;
-                             return;
-                         }
-                         window.location.reload();
-                     })
-                     .catch(e => { alert(String(e)); this.busy = false; });
+                 const res = await window.pqlApi.fetch(path, {method: 'POST'});
+                 if (!res.ok) { this.busy = false; return; }
+                 window.pqlApi.reloadWithToast(successMsg);
              }
          }">
         <button type="button" class="btn btn-primary btn-sm"
                 x-bind:disabled="busy"
-                x-on:click="post('/api/jobs/{{ job.id }}/run')">
+                x-on:click="post('/api/jobs/{{ job.id }}/run', 'Run started.')">
             <i class="bi bi-play-fill me-1"></i>Run now
         </button>
         {% if job.is_paused %}
         <button type="button" class="btn btn-outline-success btn-sm"
                 x-bind:disabled="busy"
-                x-on:click="post('/api/jobs/{{ job.id }}/unpause')">
+                x-on:click="post('/api/jobs/{{ job.id }}/unpause', 'Job resumed.')">
             <i class="bi bi-play me-1"></i>Resume
         </button>
         {% else %}
         <button type="button" class="btn btn-outline-warning btn-sm"
                 x-bind:disabled="busy"
-                x-on:click="post('/api/jobs/{{ job.id }}/pause')">
+                x-on:click="post('/api/jobs/{{ job.id }}/pause', 'Job paused.')">
             <i class="bi bi-pause me-1"></i>Pause
         </button>
         {% endif %}

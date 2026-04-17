@@ -116,6 +116,15 @@ body {
     font-family: var(--pql-font-sans);
 }
 
+/* Global keyboard-focus ring — Sprint 36. The Sprint-33 `.pql-sortable`
+   rule later in this file keeps its tighter outline-offset, but every
+   focusable element now gets a visible ring by default so tab-navigation
+   is legible without per-component CSS. */
+:focus-visible {
+    outline: 2px solid var(--pql-color-accent);
+    outline-offset: 2px;
+}
+
 /* ---------------------------------------------------------------
  * Primitives — replace scattered `d-flex gap-N` / `card mb-4`
  * repetition. Dark-mode-first; light-mode overrides above.
@@ -602,6 +611,17 @@ body {
     margin: 0;
     color: var(--bs-secondary-color);
 }
+/* Each Alpine x-for iteration wraps its <dt>+<dd> in a .pql-cmdk-shortcut-row
+   so `display: contents` collapses that wrapper into the parent 2-column
+   grid. Sprint 36 promoted the shortcut list from hard-coded DOM to a
+   data-driven registry. */
+.pql-cmdk-shortcut-row {
+    display: contents;
+}
+.pql-cmdk-shortcut-sep {
+    color: var(--bs-secondary-color);
+    padding: 0 var(--pql-space-1);
+}
 
 @media (max-width: 640px) {
     .pql-cmdk-dialog { top: 4vh; max-height: 88vh; }
@@ -1009,5 +1029,25 @@ tr:focus-within .pql-row-actions {
     .pql-list-controls input.form-control-sm,
     .pql-list-sort-mobile select.form-select-sm {
         min-height: 44px;
+    }
+}
+
+/* Reduced-motion respect — Sprint 36. Users who set
+   `prefers-reduced-motion: reduce` get every transition and animation
+   zeroed (including Bootstrap's toast fade, Alpine's x-transition, and
+   the sidebar offcanvas slide). The token reset below handles our own
+   Sprint-29 motion scale; the blanket `*` rule handles third-party CSS
+   that ships literal durations. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --pql-duration-fast: 0ms;
+        --pql-duration-normal: 0ms;
+        --pql-duration-slow: 0ms;
+    }
+    *, *::before, *::after {
+        animation-duration: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0ms !important;
+        scroll-behavior: auto !important;
     }
 }

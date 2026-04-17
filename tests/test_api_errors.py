@@ -106,9 +106,7 @@ class TestJsonEndpointsReturn502:
 
     async def test_patch_catalog(self) -> None:
         async with _authed_client() as client:
-            resp = await client.patch(
-                "/api/catalogs/test_cat", json={"comment": "hi"}
-            )
+            resp = await client.patch("/api/catalogs/test_cat", json={"comment": "hi"})
         _assert_502_json(resp)
 
     async def test_patch_schema(self) -> None:
@@ -190,9 +188,7 @@ class TestJsonEndpointsReturn502:
 
     async def test_request_id_forwarded(self) -> None:
         async with _authed_client() as client:
-            resp = await client.get(
-                "/api/tree", headers={"X-Request-ID": "test-req-123"}
-            )
+            resp = await client.get("/api/tree", headers={"X-Request-ID": "test-req-123"})
         assert resp.headers["X-Request-ID"] == "test-req-123"
         assert resp.json()["error"]["request_id"] == "test-req-123"
 

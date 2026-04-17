@@ -39,11 +39,13 @@ class TestE2ESmoke:
         pql = env["pql"]
 
         # Write a table via PQL.
-        df = pd.DataFrame({
-            "id": pd.array([1, 2, 3], dtype="int64"),
-            "name": pd.array(["alice", "bob", "charlie"], dtype="object"),
-            "score": pd.array([9.5, 8.0, 7.3], dtype="float64"),
-        })
+        df = pd.DataFrame(
+            {
+                "id": pd.array([1, 2, 3], dtype="int64"),
+                "name": pd.array(["alice", "bob", "charlie"], dtype="object"),
+                "score": pd.array([9.5, 8.0, 7.3], dtype="float64"),
+            }
+        )
         pql.write_table(df, env["full_name"])
 
         # Verify via web endpoints.
@@ -68,18 +70,12 @@ class TestE2ESmoke:
             schema_names = [s["name"] for s in cat_node["schemas"]]
             assert env["schema"] in schema_names
 
-            sch_node = next(
-                s for s in cat_node["schemas"] if s["name"] == env["schema"]
-            )
+            sch_node = next(s for s in cat_node["schemas"] if s["name"] == env["schema"])
             table_names = [t["name"] for t in sch_node["tables"]]
             assert env["table"] in table_names
 
             # Table detail page shows columns and PQL snippet.
-            url = (
-                f"/catalogs/{env['catalog']}"
-                f"/schemas/{env['schema']}"
-                f"/tables/{env['table']}"
-            )
+            url = f"/catalogs/{env['catalog']}/schemas/{env['schema']}/tables/{env['table']}"
             resp = await client.get(url)
             assert resp.status_code == 200
             body = resp.text

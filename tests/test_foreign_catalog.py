@@ -55,7 +55,8 @@ _MANAGED_CATALOG = {
 
 
 def _make_uc_mock(
-    *, catalog: dict[str, object] | None = None,
+    *,
+    catalog: dict[str, object] | None = None,
     connections: list[dict[str, object]] | None = None,
 ) -> MagicMock:
     """Build a UnityCatalogClient mock wired for the routes under test."""
@@ -142,9 +143,7 @@ class TestPatchOptions:
         app.state.uc_client = _make_uc_mock(catalog=_FOREIGN_CATALOG)
         new_options = {"database": "analytics", "schema_filter": "reporting"}
         async with _admin_client() as client:
-            resp = await client.patch(
-                "/api/catalogs/pg_cat", json={"options": new_options}
-            )
+            resp = await client.patch("/api/catalogs/pg_cat", json={"options": new_options})
         assert resp.status_code == 200
         app.state.uc_client.update_catalog.assert_awaited_once_with(
             "pg_cat", {"options": new_options}

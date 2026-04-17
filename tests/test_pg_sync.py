@@ -117,9 +117,7 @@ def _pg_table(schema: str, name: str, *cols: tuple[str, str]) -> PgTable:
     return PgTable(
         schema=schema,
         name=name,
-        columns=tuple(
-            PgColumn(name=c[0], data_type=c[1], nullable=True) for c in cols
-        ),
+        columns=tuple(PgColumn(name=c[0], data_type=c[1], nullable=True) for c in cols),
     )
 
 
@@ -133,17 +131,13 @@ def _uc_table(schema: str, name: str, *cols: tuple[str, str]) -> UcTable:
 
 class TestDiffSnapshots:
     def test_empty_matches_produce_empty_diff(self) -> None:
-        pg = PostgresSnapshot(
-            tables=(_pg_table("public", "users", ("id", "integer")),)
-        )
+        pg = PostgresSnapshot(tables=(_pg_table("public", "users", ("id", "integer")),))
         uc = [_uc_table("public", "users", ("id", "INT"))]
         d = diff_snapshots(pg, uc)
         assert d.is_empty()
 
     def test_new_schema_detected(self) -> None:
-        pg = PostgresSnapshot(
-            tables=(_pg_table("sales", "orders", ("id", "integer")),)
-        )
+        pg = PostgresSnapshot(tables=(_pg_table("sales", "orders", ("id", "integer")),))
         d = diff_snapshots(pg, [])
         assert d.add_schemas == ("sales",)
         assert len(d.add_tables) == 1
@@ -164,9 +158,7 @@ class TestDiffSnapshots:
 
     def test_column_change_detected(self) -> None:
         pg = PostgresSnapshot(
-            tables=(
-                _pg_table("public", "users", ("id", "integer"), ("email", "text")),
-            )
+            tables=(_pg_table("public", "users", ("id", "integer"), ("email", "text")),)
         )
         uc = [_uc_table("public", "users", ("id", "INT"))]  # missing email
         d = diff_snapshots(pg, uc)
@@ -174,9 +166,7 @@ class TestDiffSnapshots:
         assert d.change_tables[0].name == "users"
 
     def test_column_type_change_detected(self) -> None:
-        pg = PostgresSnapshot(
-            tables=(_pg_table("public", "users", ("id", "bigint")),)
-        )
+        pg = PostgresSnapshot(tables=(_pg_table("public", "users", ("id", "bigint")),))
         uc = [_uc_table("public", "users", ("id", "INT"))]  # was integer
         d = diff_snapshots(pg, uc)
         assert len(d.change_tables) == 1
@@ -192,9 +182,7 @@ class TestDiffSnapshots:
             tables=(
                 _pg_table("public", "users", ("id", "integer")),  # unchanged
                 _pg_table("public", "new_tbl", ("id", "integer")),  # added
-                _pg_table(
-                    "sales", "orders", ("id", "integer")
-                ),  # new schema + table
+                _pg_table("sales", "orders", ("id", "integer")),  # new schema + table
             )
         )
         uc = [
@@ -319,9 +307,7 @@ class TestApplyDiff:
         )
         counts = await apply_diff(uc, "pg_cat", diff)
         assert counts == (2, 0, 0)  # 1 schema + 1 table
-        uc.create_schema.assert_awaited_once_with(
-            {"catalog_name": "pg_cat", "name": "public"}
-        )
+        uc.create_schema.assert_awaited_once_with({"catalog_name": "pg_cat", "name": "public"})
         (call,) = uc.create_table.await_args_list
         body = call.args[0]
         assert body["catalog_name"] == "pg_cat"
@@ -415,9 +401,7 @@ class TestRunSync:
         uc.delete_table = AsyncMock()
 
         introspector = _StubIntrospector(
-            PostgresSnapshot(
-                tables=(_pg_table("public", "users", ("id", "integer")),)
-            )
+            PostgresSnapshot(tables=(_pg_table("public", "users", ("id", "integer")),))
         )
         connection = {
             "name": "pg1",
@@ -456,9 +440,7 @@ class TestRunSync:
         assert run.error is not None
         assert "boom" in run.error
 
-    async def test_missing_host_records_validation_error(
-        self, metadata_factory: Any
-    ) -> None:
+    async def test_missing_host_records_validation_error(self, metadata_factory: Any) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
         introspector = _StubIntrospector(PostgresSnapshot(tables=()))
         connection = {"options": {}}  # no host
@@ -485,9 +467,7 @@ def test_list_recent_runs_most_recent_first(metadata_factory: Any) -> None:
             session.add(
                 SyncRun(
                     catalog_name="pg_cat",
-                    started_at=datetime.datetime(
-                        2026, 4, 1 + i, 12, 0, tzinfo=datetime.UTC
-                    ),
+                    started_at=datetime.datetime(2026, 4, 1 + i, 12, 0, tzinfo=datetime.UTC),
                     finished_at=None,
                     status="succeeded",
                     added_count=i,
@@ -545,9 +525,7 @@ class TestSyncRoute:
             resp = await client.post("/api/catalogs/pg_cat/sync")
         assert resp.status_code == 403
 
-    async def test_admin_sync_happy_path(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_admin_sync_happy_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
         uc.get_catalog = AsyncMock(
             return_value={
@@ -572,9 +550,7 @@ class TestSyncRoute:
             pg_sync,
             "PsycopgIntrospector",
             lambda: _StubIntrospector(
-                PostgresSnapshot(
-                    tables=(_pg_table("public", "users", ("id", "integer")),)
-                )
+                PostgresSnapshot(tables=(_pg_table("public", "users", ("id", "integer")),))
             ),
         )
 
@@ -588,24 +564,16 @@ class TestSyncRoute:
 
     async def test_sync_non_foreign_catalog_denied(self) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
-        uc.get_catalog = AsyncMock(
-            return_value={"name": "managed_cat", "type": "MANAGED"}
-        )
+        uc.get_catalog = AsyncMock(return_value={"name": "managed_cat", "type": "MANAGED"})
         app.state.uc_client = uc
         async with _admin_client() as client:
             resp = await client.post("/api/catalogs/managed_cat/sync")
         assert resp.status_code == 403
 
-    async def test_audit_log_written(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_audit_log_written(self, monkeypatch: pytest.MonkeyPatch) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
-        uc.get_catalog = AsyncMock(
-            return_value={"name": "pg_cat", "connection_name": "pg1"}
-        )
-        uc.get_connection = AsyncMock(
-            return_value={"name": "pg1", "options": {"host": "h"}}
-        )
+        uc.get_catalog = AsyncMock(return_value={"name": "pg_cat", "connection_name": "pg1"})
+        uc.get_connection = AsyncMock(return_value={"name": "pg1", "options": {"host": "h"}})
         uc.list_schemas = AsyncMock(return_value=[])
         uc.list_tables = AsyncMock(return_value=[])
         uc.create_schema = AsyncMock(return_value={})
@@ -637,9 +605,7 @@ class TestSyncRoute:
 
 
 class TestCatalogDetailHistory:
-    async def test_history_card_renders_runs(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_history_card_renders_runs(self, monkeypatch: pytest.MonkeyPatch) -> None:
         import datetime
 
         uc = MagicMock(spec=UnityCatalogClient)
@@ -672,12 +638,8 @@ class TestCatalogDetailHistory:
             session.add(
                 SyncRun(
                     catalog_name="pg_cat",
-                    started_at=datetime.datetime(
-                        2026, 4, 10, 12, 0, tzinfo=datetime.UTC
-                    ),
-                    finished_at=datetime.datetime(
-                        2026, 4, 10, 12, 1, tzinfo=datetime.UTC
-                    ),
+                    started_at=datetime.datetime(2026, 4, 10, 12, 0, tzinfo=datetime.UTC),
+                    finished_at=datetime.datetime(2026, 4, 10, 12, 1, tzinfo=datetime.UTC),
                     status="succeeded",
                     added_count=3,
                     changed_count=1,
@@ -720,9 +682,7 @@ def test_psycopg_introspector_roundtrip_postgres() -> None:
         conn.commit()
 
     try:
-        snap = PsycopgIntrospector().snapshot(
-            dsn, schema_filter=["pointlessql_sync_test"]
-        )
+        snap = PsycopgIntrospector().snapshot(dsn, schema_filter=["pointlessql_sync_test"])
         assert len(snap.tables) == 1
         tbl = snap.tables[0]
         assert tbl.name == "users"

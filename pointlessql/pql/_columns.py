@@ -99,7 +99,6 @@ def columns_from_dataframe(df: pd.DataFrame) -> list[ColumnInfo]:
         A list of ``ColumnInfo`` objects ready for a ``CreateTable`` request.
     """
     tuples = [
-        (str(col_name), *_resolve_dtype(dtype), True)
-        for col_name, dtype in df.dtypes.items()
+        (str(col_name), *_resolve_dtype(dtype), True) for col_name, dtype in df.dtypes.items()
     ]
     return columns_from_tuples(tuples)

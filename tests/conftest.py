@@ -68,9 +68,7 @@ def _auth_db():
     if not hasattr(app.state, "settings") or app.state.settings is None:
         from pointlessql.settings import Settings
 
-        app.state.settings = Settings(
-            jupyter_enabled=False, scheduler_enabled=False
-        )
+        app.state.settings = Settings(jupyter_enabled=False, scheduler_enabled=False)
     else:
         app.state.settings.scheduler_enabled = False  # type: ignore[attr-defined]
 
@@ -84,9 +82,7 @@ def _auth_db():
 
     # Create a second, non-admin user for enforcement tests.
     auth.register(factory, "nonadmin@test.com", "Non Admin", "password123")
-    non_admin_token = auth.login(
-        factory, "nonadmin@test.com", "password123", _TEST_SECRET
-    )
+    non_admin_token = auth.login(factory, "nonadmin@test.com", "password123", _TEST_SECRET)
     app.state._test_non_admin_cookie = {auth.COOKIE_NAME: non_admin_token}
 
     yield
@@ -107,6 +103,7 @@ def auth_cookies() -> dict[str, str]:
 def non_admin_cookies() -> dict[str, str]:
     """Return a dict with the auth cookie for the non-admin test user."""
     return app.state._test_non_admin_cookie
+
 
 _E2E_CATALOG = "e2e_smoke_catalog"
 _E2E_SCHEMA = "e2e_smoke_schema"

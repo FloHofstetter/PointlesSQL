@@ -207,31 +207,24 @@ def _wrap_catalog_errors[T](
         try:
             return await fn(*args, **kwargs)
         except UnexpectedStatus as exc:
-            logger.warning(
-                "soyuz-catalog request failed in %s", fn.__name__, exc_info=True
-            )
+            logger.warning("soyuz-catalog request failed in %s", fn.__name__, exc_info=True)
             code = exc.status_code
             if code == 404:
                 raise CatalogNotFoundError(str(exc)) from exc
             if 400 <= code < 500:
                 raise ValidationError(str(exc)) from exc
-            raise CatalogUnavailableError(
-                f"Catalog server unavailable: {exc}"
-            ) from exc
+            raise CatalogUnavailableError(f"Catalog server unavailable: {exc}") from exc
         except httpx.HTTPError as exc:
-            logger.warning(
-                "soyuz-catalog transport failed in %s", fn.__name__, exc_info=True
-            )
-            raise CatalogUnavailableError(
-                f"Catalog server unavailable: {exc}"
-            ) from exc
+            logger.warning("soyuz-catalog transport failed in %s", fn.__name__, exc_info=True)
+            raise CatalogUnavailableError(f"Catalog server unavailable: {exc}") from exc
         except (KeyError, TypeError) as exc:
             # Generated ``Create*.from_dict()`` raises these when a
             # required request-body field is missing or the wrong type.
             # That is user input, not a server failure — surface it as
             # a validation error rather than a 500.
             logger.warning(
-                "soyuz-catalog body validation failed in %s", fn.__name__,
+                "soyuz-catalog body validation failed in %s",
+                fn.__name__,
                 exc_info=True,
             )
             raise ValidationError(f"Invalid request body: {exc}") from exc
@@ -251,9 +244,7 @@ class UnityCatalogClient:
         self._client = client
 
     @classmethod
-    def for_principal(
-        cls, settings: object, principal: str
-    ) -> UnityCatalogClient:
+    def for_principal(cls, settings: object, principal: str) -> UnityCatalogClient:
         """Create a per-request facade with an ``X-Principal`` header.
 
         Args:
@@ -297,9 +288,7 @@ class UnityCatalogClient:
         return response.to_dict()
 
     @_wrap_catalog_errors
-    async def get_schema(
-        self, catalog_name: str, schema_name: str
-    ) -> dict[str, Any]:
+    async def get_schema(self, catalog_name: str, schema_name: str) -> dict[str, Any]:
         """Return metadata for a single schema."""
         full_name = f"{catalog_name}.{schema_name}"
         response = await _get_schema.asyncio(full_name=full_name, client=self._client)
@@ -352,14 +341,10 @@ class UnityCatalogClient:
                 contained schemas and tables instead of rejecting with
                 409 if the catalog is non-empty.
         """
-        await _delete_catalog.asyncio(
-            name=catalog_name, client=self._client, force=force
-        )
+        await _delete_catalog.asyncio(name=catalog_name, client=self._client, force=force)
 
     @_wrap_catalog_errors
-    async def update_catalog(
-        self, catalog_name: str, patch: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def update_catalog(self, catalog_name: str, patch: dict[str, Any]) -> dict[str, Any]:
         """Apply a partial update to a catalog.
 
         Args:
@@ -370,9 +355,7 @@ class UnityCatalogClient:
             The updated catalog object as returned by soyuz-catalog.
         """
         body = UpdateCatalog.from_dict(patch)
-        response = await _update_catalog.asyncio(
-            name=catalog_name, client=self._client, body=body
-        )
+        response = await _update_catalog.asyncio(name=catalog_name, client=self._client, body=body)
         if response is None:
             return {}
         return response.to_dict()
@@ -425,9 +408,7 @@ class UnityCatalogClient:
         return response.to_dict()
 
     @_wrap_catalog_errors
-    async def delete_table(
-        self, catalog_name: str, schema_name: str, table_name: str
-    ) -> None:
+    async def delete_table(self, catalog_name: str, schema_name: str, table_name: str) -> None:
         """Delete a table by its three-part name.
 
         Used by the Postgres sync worker to drop tables that have
@@ -448,17 +429,13 @@ class UnityCatalogClient:
         """Apply a partial update to a schema."""
         full_name = f"{catalog_name}.{schema_name}"
         body = UpdateSchema.from_dict(patch)
-        response = await _update_schema.asyncio(
-            full_name=full_name, client=self._client, body=body
-        )
+        response = await _update_schema.asyncio(full_name=full_name, client=self._client, body=body)
         if response is None:
             return {}
         return response.to_dict()
 
     @_wrap_catalog_errors
-    async def get_tags(
-        self, securable_type: str, full_name: str
-    ) -> list[dict[str, Any]]:
+    async def get_tags(self, securable_type: str, full_name: str) -> list[dict[str, Any]]:
         """Return tags for a securable (catalog, schema, or table).
 
         Args:
@@ -513,9 +490,7 @@ class UnityCatalogClient:
         return [t.to_dict() for t in tags]
 
     @_wrap_catalog_errors
-    async def get_permissions(
-        self, securable_type: str, full_name: str
-    ) -> list[dict[str, Any]]:
+    async def get_permissions(self, securable_type: str, full_name: str) -> list[dict[str, Any]]:
         """Return privilege assignments for a securable.
 
         Args:
@@ -591,9 +566,7 @@ class UnityCatalogClient:
         return [a.to_dict() for a in response.privilege_assignments]
 
     @_wrap_catalog_errors
-    async def get_lineage(
-        self, full_name: str, depth: int = 3
-    ) -> dict[str, Any]:
+    async def get_lineage(self, full_name: str, depth: int = 3) -> dict[str, Any]:
         """Return combined upstream and downstream lineage for a table.
 
         Args:
@@ -606,12 +579,8 @@ class UnityCatalogClient:
             if no lineage data exists).
         """
         upstream_resp, downstream_resp = await asyncio.gather(
-            _get_upstream.asyncio(
-                full_name=full_name, client=self._client, depth=depth
-            ),
-            _get_downstream.asyncio(
-                full_name=full_name, client=self._client, depth=depth
-            ),
+            _get_upstream.asyncio(full_name=full_name, client=self._client, depth=depth),
+            _get_downstream.asyncio(full_name=full_name, client=self._client, depth=depth),
         )
         result: dict[str, Any] = {"upstream": {}, "downstream": {}}
         if isinstance(upstream_resp, LineageGraphResponse):
@@ -630,9 +599,7 @@ class UnityCatalogClient:
         Returns:
             A list of schema dicts.
         """
-        response = await _list_schemas.asyncio(
-            client=self._client, catalog_name=catalog_name
-        )
+        response = await _list_schemas.asyncio(client=self._client, catalog_name=catalog_name)
         if not isinstance(response, ListSchemasResponse):
             return []
         schemas = response.schemas
@@ -641,9 +608,7 @@ class UnityCatalogClient:
         return [s.to_dict() for s in schemas]
 
     @_wrap_catalog_errors
-    async def list_tables(
-        self, catalog_name: str, schema_name: str
-    ) -> list[dict[str, Any]]:
+    async def list_tables(self, catalog_name: str, schema_name: str) -> list[dict[str, Any]]:
         """Return all tables inside a schema.
 
         Bypasses the generated client's response parser because
@@ -690,22 +655,16 @@ class UnityCatalogClient:
     async def create_connection(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new connection."""
         body = CreateConnection.from_dict(data)
-        response = await _create_connection.asyncio(
-            client=self._client, body=body
-        )
+        response = await _create_connection.asyncio(client=self._client, body=body)
         if not isinstance(response, ConnectionInfo):
             return {}
         return response.to_dict()
 
     @_wrap_catalog_errors
-    async def update_connection(
-        self, name: str, patch: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def update_connection(self, name: str, patch: dict[str, Any]) -> dict[str, Any]:
         """Update an existing connection."""
         body = UpdateConnection.from_dict(patch)
-        response = await _update_connection.asyncio(
-            name=name, client=self._client, body=body
-        )
+        response = await _update_connection.asyncio(name=name, client=self._client, body=body)
         if not isinstance(response, ConnectionInfo):
             return {}
         return response.to_dict()
@@ -734,27 +693,19 @@ class UnityCatalogClient:
         return response.to_dict()
 
     @_wrap_catalog_errors
-    async def create_external_location(
-        self, data: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def create_external_location(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new external location."""
         body = CreateExternalLocation.from_dict(data)
-        response = await _create_ext_loc.asyncio(
-            client=self._client, body=body
-        )
+        response = await _create_ext_loc.asyncio(client=self._client, body=body)
         if not isinstance(response, ExternalLocationInfo):
             return {}
         return response.to_dict()
 
     @_wrap_catalog_errors
-    async def update_external_location(
-        self, name: str, patch: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def update_external_location(self, name: str, patch: dict[str, Any]) -> dict[str, Any]:
         """Update an existing external location."""
         body = UpdateExternalLocation.from_dict(patch)
-        response = await _update_ext_loc.asyncio(
-            name=name, client=self._client, body=body
-        )
+        response = await _update_ext_loc.asyncio(name=name, client=self._client, body=body)
         if not isinstance(response, ExternalLocationInfo):
             return {}
         return response.to_dict()
@@ -786,22 +737,16 @@ class UnityCatalogClient:
     async def create_credential(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new credential."""
         body = CreateCredentialRequest.from_dict(data)
-        response = await _create_credential.asyncio(
-            client=self._client, body=body
-        )
+        response = await _create_credential.asyncio(client=self._client, body=body)
         if not isinstance(response, CredentialInfo):
             return {}
         return response.to_dict()
 
     @_wrap_catalog_errors
-    async def update_credential(
-        self, name: str, patch: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def update_credential(self, name: str, patch: dict[str, Any]) -> dict[str, Any]:
         """Update an existing credential."""
         body = UpdateCredentialRequest.from_dict(patch)
-        response = await _update_credential.asyncio(
-            name=name, client=self._client, body=body
-        )
+        response = await _update_credential.asyncio(name=name, client=self._client, body=body)
         if not isinstance(response, CredentialInfo):
             return {}
         return response.to_dict()
@@ -832,9 +777,7 @@ class UnityCatalogClient:
                 tables = await self.list_tables(cat["name"], schema["name"])
                 return {**schema, "tables": tables}
 
-            schema_results = await asyncio.gather(
-                *(_with_tables(s) for s in schemas)
-            )
+            schema_results = await asyncio.gather(*(_with_tables(s) for s in schemas))
             return {**cat, "schemas": list(schema_results)}
 
         return list(await asyncio.gather(*(_with_schemas(c) for c in catalogs)))

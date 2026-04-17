@@ -23,6 +23,12 @@ node_modules/
 warehouse/
 .playwright-mcp/
 
+# Playwright-MCP screenshots dropped into the repo root during live
+# replays (ux-*, sprint*, compare-*, dashboard*, non-admin*,
+# run-compare, etc.). Ephemeral debug artefacts; the playbooks are
+# the source of truth, not these PNGs.
+/*.png
+
 # Papermill job output (Sprint 24). The executor writes per-run
 # ipynb copies into notebooks/runs/ — ephemeral artefacts tied to
 # a specific run id, never tracked. The seeded playbook notebooks

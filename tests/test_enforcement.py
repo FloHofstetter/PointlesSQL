@@ -28,24 +28,46 @@ def _make_uc_mock(
     client.list_catalogs = AsyncMock(return_value=[])
     client.list_schemas = AsyncMock(return_value=[])
     client.list_tables = AsyncMock(return_value=[])
-    client.get_catalog = AsyncMock(return_value={
-        "name": "test_cat", "comment": "", "properties": {},
-        "created_at": 1700000000000, "updated_at": None,
-        "created_by": None, "updated_by": None,
-    })
-    client.get_schema = AsyncMock(return_value={
-        "name": "test_sch", "catalog_name": "test_cat", "comment": "",
-        "properties": {}, "created_at": 1700000000000, "updated_at": None,
-        "created_by": None, "updated_by": None,
-    })
-    client.get_table = AsyncMock(return_value={
-        "name": "test_tbl", "catalog_name": "test_cat",
-        "schema_name": "test_sch", "table_type": "MANAGED",
-        "data_source_format": "DELTA", "storage_location": "/tmp/test",
-        "columns": [], "comment": "", "properties": {},
-        "created_at": 1700000000000, "updated_at": None,
-        "created_by": None, "updated_by": None,
-    })
+    client.get_catalog = AsyncMock(
+        return_value={
+            "name": "test_cat",
+            "comment": "",
+            "properties": {},
+            "created_at": 1700000000000,
+            "updated_at": None,
+            "created_by": None,
+            "updated_by": None,
+        }
+    )
+    client.get_schema = AsyncMock(
+        return_value={
+            "name": "test_sch",
+            "catalog_name": "test_cat",
+            "comment": "",
+            "properties": {},
+            "created_at": 1700000000000,
+            "updated_at": None,
+            "created_by": None,
+            "updated_by": None,
+        }
+    )
+    client.get_table = AsyncMock(
+        return_value={
+            "name": "test_tbl",
+            "catalog_name": "test_cat",
+            "schema_name": "test_sch",
+            "table_type": "MANAGED",
+            "data_source_format": "DELTA",
+            "storage_location": "/tmp/test",
+            "columns": [],
+            "comment": "",
+            "properties": {},
+            "created_at": 1700000000000,
+            "updated_at": None,
+            "created_by": None,
+            "updated_by": None,
+        }
+    )
 
     # Permissions
     client.get_permissions = AsyncMock(return_value=[])
@@ -57,10 +79,12 @@ def _make_uc_mock(
     client.update_tags = AsyncMock(return_value=[])
 
     # Lineage
-    client.get_lineage = AsyncMock(return_value={
-        "upstream": {"nodes": [], "edges": []},
-        "downstream": {"nodes": [], "edges": []},
-    })
+    client.get_lineage = AsyncMock(
+        return_value={
+            "upstream": {"nodes": [], "edges": []},
+            "downstream": {"nodes": [], "edges": []},
+        }
+    )
 
     # Write operations
     client.update_catalog = AsyncMock(return_value={"name": "test_cat"})
@@ -122,9 +146,7 @@ class TestCatalogEnforcement:
 
     async def test_non_admin_allowed_with_use_catalog(self) -> None:
         app.state.uc_client = _make_uc_mock(
-            effective_for_user=[
-                {"principal": "nonadmin@test.com", "privileges": ["USE CATALOG"]}
-            ]
+            effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["USE CATALOG"]}]
         )
         async with _non_admin_client() as client:
             resp = await client.get("/catalogs/test_cat")
@@ -151,9 +173,7 @@ class TestSchemaEnforcement:
 
     async def test_non_admin_allowed_with_use_schema(self) -> None:
         app.state.uc_client = _make_uc_mock(
-            effective_for_user=[
-                {"principal": "nonadmin@test.com", "privileges": ["USE SCHEMA"]}
-            ]
+            effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["USE SCHEMA"]}]
         )
         async with _non_admin_client() as client:
             resp = await client.get("/catalogs/test_cat/schemas/test_sch")
@@ -167,21 +187,15 @@ class TestTableEnforcement:
     async def test_non_admin_denied_without_grant(self) -> None:
         app.state.uc_client = _make_uc_mock(effective_for_user=[])
         async with _non_admin_client() as client:
-            resp = await client.get(
-                "/catalogs/test_cat/schemas/test_sch/tables/test_tbl"
-            )
+            resp = await client.get("/catalogs/test_cat/schemas/test_sch/tables/test_tbl")
         assert resp.status_code == 403
 
     async def test_non_admin_allowed_with_select(self) -> None:
         app.state.uc_client = _make_uc_mock(
-            effective_for_user=[
-                {"principal": "nonadmin@test.com", "privileges": ["SELECT"]}
-            ]
+            effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["SELECT"]}]
         )
         async with _non_admin_client() as client:
-            resp = await client.get(
-                "/catalogs/test_cat/schemas/test_sch/tables/test_tbl"
-            )
+            resp = await client.get("/catalogs/test_cat/schemas/test_sch/tables/test_tbl")
         assert resp.status_code == 200
 
 
@@ -192,22 +206,16 @@ class TestUpdateEnforcement:
     async def test_update_catalog_denied(self) -> None:
         app.state.uc_client = _make_uc_mock(effective_for_user=[])
         async with _non_admin_client() as client:
-            resp = await client.patch(
-                "/api/catalogs/test_cat", json={"comment": "hi"}
-            )
+            resp = await client.patch("/api/catalogs/test_cat", json={"comment": "hi"})
         assert resp.status_code == 403
         assert resp.json()["error"]["code"] == "authorization_error"
 
     async def test_update_catalog_allowed_with_modify(self) -> None:
         app.state.uc_client = _make_uc_mock(
-            effective_for_user=[
-                {"principal": "nonadmin@test.com", "privileges": ["MODIFY"]}
-            ]
+            effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["MODIFY"]}]
         )
         async with _non_admin_client() as client:
-            resp = await client.patch(
-                "/api/catalogs/test_cat", json={"comment": "hi"}
-            )
+            resp = await client.patch("/api/catalogs/test_cat", json={"comment": "hi"})
         assert resp.status_code == 200
 
     async def test_update_schema_denied(self) -> None:
@@ -235,9 +243,7 @@ class TestUpdateEnforcement:
 class TestPermissionsEnforcement:
     async def test_update_permissions_denied_without_manage_grants(self) -> None:
         app.state.uc_client = _make_uc_mock(
-            effective_for_user=[
-                {"principal": "nonadmin@test.com", "privileges": ["MODIFY"]}
-            ]
+            effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["MODIFY"]}]
         )
         async with _non_admin_client() as client:
             resp = await client.patch(
@@ -248,9 +254,7 @@ class TestPermissionsEnforcement:
 
     async def test_update_permissions_allowed_with_manage_grants(self) -> None:
         app.state.uc_client = _make_uc_mock(
-            effective_for_user=[
-                {"principal": "nonadmin@test.com", "privileges": ["MANAGE_GRANTS"]}
-            ]
+            effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["MANAGE_GRANTS"]}]
         )
         async with _non_admin_client() as client:
             resp = await client.patch(

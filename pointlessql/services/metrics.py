@@ -134,9 +134,7 @@ def record_run(
     """
     job_runs_total.labels(status=status, job_name=job_name).inc()
     if duration_seconds is not None:
-        job_run_duration_seconds.labels(job_name=job_name).observe(
-            duration_seconds
-        )
+        job_run_duration_seconds.labels(job_name=job_name).observe(duration_seconds)
 
 
 def observe_tick_lag(lag_seconds: float) -> None:

@@ -31,9 +31,7 @@ from pointlessql.exceptions import CatalogNotFoundError, EngineError
 logger = logging.getLogger(__name__)
 
 
-def render_run_notebook(
-    runs_dir: Path, run_id: int, *, exclude_input: bool = False
-) -> str:
+def render_run_notebook(runs_dir: Path, run_id: int, *, exclude_input: bool = False) -> str:
     """Return rendered HTML for ``runs/{run_id}.ipynb``, caching a sidecar.
 
     The sidecar is written atomically via a ``.tmp`` rename so concurrent
@@ -73,9 +71,7 @@ def render_run_notebook(
     from nbconvert import HTMLExporter  # type: ignore[import-untyped]
 
     try:
-        exporter = HTMLExporter(
-            template_name="lab", exclude_input=exclude_input
-        )
+        exporter = HTMLExporter(template_name="lab", exclude_input=exclude_input)
         body, _resources = exporter.from_filename(str(ipynb_path))  # type: ignore[no-untyped-call]
     except Exception as exc:
         logger.exception("nbconvert failed rendering run %d", run_id)

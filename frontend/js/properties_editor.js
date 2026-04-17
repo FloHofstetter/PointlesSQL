@@ -46,27 +46,20 @@ function _makeDictEditor(field, patchUrl, initial) {
             }
             this.saving = true;
             this.error = null;
-            try {
-                const body = {};
-                body[field] = dict;
-                const res = await fetch(patchUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body),
-                });
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || ('HTTP ' + res.status));
-                }
-                const data = await res.json();
-                this.rows = toRows(data[field] || {});
+            const body = {};
+            body[field] = dict;
+            const res = await window.pqlApi.fetch(patchUrl, {
+                method: 'PATCH',
+                body: body,
+            });
+            if (res.ok) {
+                this.rows = toRows((res.data && res.data[field]) || {});
                 this.snapshot = [];
                 this.editing = false;
-            } catch (e) {
-                this.error = 'Save failed: ' + e.message;
-            } finally {
-                this.saving = false;
+            } else {
+                this.error = 'Save failed: ' + res.error;
             }
+            this.saving = false;
         },
     };
 }

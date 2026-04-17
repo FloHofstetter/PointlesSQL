@@ -87,8 +87,7 @@ async def _wait_until_ready(port: int) -> None:
             elapsed += _HEALTH_POLL_INTERVAL
 
     _log.warning(
-        "JupyterLab did not become ready within %.0f s — "
-        "the notebook iframe may fail to load",
+        "JupyterLab did not become ready within %.0f s — the notebook iframe may fail to load",
         _HEALTH_POLL_TIMEOUT,
     )
 

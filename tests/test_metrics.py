@@ -26,9 +26,7 @@ from pointlessql.types import UserInfo
 @pytest.fixture
 def metrics_factory() -> Any:
     """Return an in-memory session factory seeded with one runner user."""
-    engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
-    )
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
     with factory() as session:
@@ -166,21 +164,15 @@ class TestMetricEmission:
         before = metrics_service.job_runs_total.labels(
             status="succeeded", job_name="ok-job"
         )._value.get()
-        before_hist = metrics_service.job_run_duration_seconds.labels(
-            job_name="ok-job"
-        )._sum.get()
+        before_hist = metrics_service.job_run_duration_seconds.labels(job_name="ok-job")._sum.get()
 
-        run = await execute_run(
-            metrics_factory, _settings(), _OkRegistry(), job_id, "manual"
-        )
+        run = await execute_run(metrics_factory, _settings(), _OkRegistry(), job_id, "manual")
         assert run.status == "succeeded"
 
         after = metrics_service.job_runs_total.labels(
             status="succeeded", job_name="ok-job"
         )._value.get()
-        after_hist = metrics_service.job_run_duration_seconds.labels(
-            job_name="ok-job"
-        )._sum.get()
+        after_hist = metrics_service.job_run_duration_seconds.labels(job_name="ok-job")._sum.get()
 
         assert after == before + 1
         # The executor does no real work so the observed duration is
@@ -204,9 +196,7 @@ class TestMetricEmission:
             status="failed", job_name="fail-job"
         )._value.get()
 
-        run = await execute_run(
-            metrics_factory, _settings(), _FailRegistry(), job_id, "manual"
-        )
+        run = await execute_run(metrics_factory, _settings(), _FailRegistry(), job_id, "manual")
         assert run.status == "failed"
 
         after = metrics_service.job_runs_total.labels(
@@ -216,9 +206,7 @@ class TestMetricEmission:
 
     def test_render_metrics_produces_text_exposition(self) -> None:
         # Nudge the counter so the render has something to print.
-        metrics_service.job_runs_total.labels(
-            status="succeeded", job_name="render-probe"
-        ).inc()
+        metrics_service.job_runs_total.labels(status="succeeded", job_name="render-probe").inc()
         body, content_type = metrics_service.render_metrics()
         assert content_type.startswith("text/plain")
         text = body.decode()
@@ -227,9 +215,7 @@ class TestMetricEmission:
 
 
 class TestMetricsRouteAuth:
-    async def test_admin_gets_200_with_text(
-        self, auth_cookies: dict[str, str]
-    ) -> None:
+    async def test_admin_gets_200_with_text(self, auth_cookies: dict[str, str]) -> None:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
@@ -240,9 +226,7 @@ class TestMetricsRouteAuth:
         assert resp.headers["content-type"].startswith("text/plain")
         assert "pointlessql_job_runs_total" in resp.text
 
-    async def test_non_admin_gets_403(
-        self, non_admin_cookies: dict[str, str]
-    ) -> None:
+    async def test_non_admin_gets_403(self, non_admin_cookies: dict[str, str]) -> None:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://test",
@@ -264,9 +248,7 @@ class TestFailureWebhook:
             classmethod(lambda cls, s, p: MagicMock(spec=UnityCatalogClient)),
         )
         stub = _CapturingHTTPClient()
-        monkeypatch.setattr(
-            scheduler_service, "_webhook_client_factory", lambda: stub
-        )
+        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(
             metrics_factory,
@@ -315,9 +297,7 @@ class TestFailureWebhook:
             classmethod(lambda cls, s, p: MagicMock(spec=UnityCatalogClient)),
         )
         stub = _CapturingHTTPClient()
-        monkeypatch.setattr(
-            scheduler_service, "_webhook_client_factory", lambda: stub
-        )
+        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(metrics_factory, name="no-hook", on_failure_url=None)
         run = await execute_run(
@@ -341,18 +321,14 @@ class TestFailureWebhook:
             classmethod(lambda cls, s, p: MagicMock(spec=UnityCatalogClient)),
         )
         stub = _CapturingHTTPClient()
-        monkeypatch.setattr(
-            scheduler_service, "_webhook_client_factory", lambda: stub
-        )
+        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(
             metrics_factory,
             name="succeed-hook",
             on_failure_url="https://hooks.example.com/on-fail",
         )
-        run = await execute_run(
-            metrics_factory, _settings(), _OkRegistry(), job_id, "manual"
-        )
+        run = await execute_run(metrics_factory, _settings(), _OkRegistry(), job_id, "manual")
         assert run.status == "succeeded"
         assert stub.calls == []
 
@@ -368,9 +344,7 @@ class TestFailureWebhook:
         )
         stub = _CapturingHTTPClient()
         stub.raise_on_post = httpx.ConnectError("no listener")
-        monkeypatch.setattr(
-            scheduler_service, "_webhook_client_factory", lambda: stub
-        )
+        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(
             metrics_factory,

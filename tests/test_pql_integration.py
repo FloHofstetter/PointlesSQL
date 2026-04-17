@@ -109,11 +109,13 @@ def test_pql_create_write_read_verify(
 ) -> None:
     pql, _storage_root = _soyuz_env
 
-    df = pd.DataFrame({
-        "id": pd.array([1, 2, 3], dtype="int64"),
-        "name": pd.array(["alice", "bob", "charlie"], dtype="object"),
-        "score": pd.array([9.5, 8.0, 7.3], dtype="float64"),
-    })
+    df = pd.DataFrame(
+        {
+            "id": pd.array([1, 2, 3], dtype="int64"),
+            "name": pd.array(["alice", "bob", "charlie"], dtype="object"),
+            "score": pd.array([9.5, 8.0, 7.3], dtype="float64"),
+        }
+    )
 
     # Write
     pql.write_table(df, _FULL_NAME)

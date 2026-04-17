@@ -52,7 +52,7 @@ def verify_password(password: str, hashed: str) -> bool:
     """
     try:
         return _hasher.verify(password, hashed)
-    except (ValueError, TypeError, PwdlibError):
+    except ValueError, TypeError, PwdlibError:
         logger.warning("Password verification error (corrupt hash?)", exc_info=True)
         return False
 
@@ -233,7 +233,7 @@ def get_current_user(
 
     try:
         user_id = int(sub)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
     with factory() as session:

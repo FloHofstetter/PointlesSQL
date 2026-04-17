@@ -31,9 +31,7 @@ from pointlessql.types import UserInfo
 @pytest.fixture
 def scheduler_factory() -> Any:
     """Return an in-memory session factory with a single seed user."""
-    engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
-    )
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
     with factory() as session:
@@ -191,9 +189,7 @@ class TestTickOnce:
             session.add(
                 JobRun(
                     job_id=job_id,
-                    started_at=datetime.datetime(
-                        2026, 4, 1, 11, 0, tzinfo=datetime.UTC
-                    ),
+                    started_at=datetime.datetime(2026, 4, 1, 11, 0, tzinfo=datetime.UTC),
                     status="running",
                     trigger="scheduled",
                 )
@@ -260,9 +256,7 @@ class TestExecuteRun:
             classmethod(_fake_for_principal),
         )
         job_id = _seed_job(scheduler_factory)
-        run = await execute_run(
-            scheduler_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(scheduler_factory, _settings(), registry, job_id, "manual")
         assert run.status == "succeeded"
         assert captured_principals == ["runner@test.com"]
 
@@ -281,9 +275,7 @@ class TestExecuteRun:
             assert job is not None
             job.config = "{not valid json"
             session.commit()
-        run = await execute_run(
-            scheduler_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(scheduler_factory, _settings(), registry, job_id, "manual")
         assert run.status == "failed"
         assert run.error is not None
         assert "invalid job config" in run.error
@@ -298,9 +290,7 @@ class TestPgSyncKind:
         from pointlessql.services import pg_sync as pg_sync_service
 
         uc = MagicMock(spec=UnityCatalogClient)
-        uc.get_catalog = AsyncMock(
-            return_value={"name": "pg_cat", "connection_name": "pg1"}
-        )
+        uc.get_catalog = AsyncMock(return_value={"name": "pg_cat", "connection_name": "pg1"})
         uc.get_connection = AsyncMock(
             return_value={"name": "pg1", "options": {"host": "h", "database": "d"}}
         )
@@ -332,16 +322,12 @@ class TestPgSyncKind:
                         PgTable(
                             schema="public",
                             name="users",
-                            columns=(
-                                PgColumn(name="id", data_type="integer", nullable=False),
-                            ),
+                            columns=(PgColumn(name="id", data_type="integer", nullable=False),),
                         ),
                     )
                 )
 
-        monkeypatch.setattr(
-            pg_sync_service, "PsycopgIntrospector", _StubIntrospector
-        )
+        monkeypatch.setattr(pg_sync_service, "PsycopgIntrospector", _StubIntrospector)
 
         registry = build_default_registry()
         job_id = _seed_job(
@@ -349,9 +335,7 @@ class TestPgSyncKind:
             kind="pg_sync",
             config={"catalog_name": "pg_cat"},
         )
-        run = await execute_run(
-            scheduler_factory, _settings(), registry, job_id, "manual"
-        )
+        run = await execute_run(scheduler_factory, _settings(), registry, job_id, "manual")
         assert run.status == "succeeded"
 
         # A SyncRun row landed in our metadata DB.
@@ -375,21 +359,15 @@ class TestPgSyncKind:
             classmethod(lambda cls, s, p: uc),
         )
         registry = build_default_registry()
-        job_id = _seed_job(
-            scheduler_factory, kind="pg_sync", config={}
-        )
-        run = await execute_run(
-            scheduler_factory, _settings(), registry, job_id, "manual"
-        )
+        job_id = _seed_job(scheduler_factory, kind="pg_sync", config={})
+        run = await execute_run(scheduler_factory, _settings(), registry, job_id, "manual")
         assert run.status == "failed"
         assert run.error is not None
         assert "catalog_name" in run.error
 
 
 class TestSchedulerLifecycle:
-    async def test_start_stop_is_idempotent(
-        self, scheduler_factory: Any
-    ) -> None:
+    async def test_start_stop_is_idempotent(self, scheduler_factory: Any) -> None:
         settings = _settings()
         # Very fast tick so the loop iterates at least once.
         settings = Settings(
@@ -497,9 +475,7 @@ class TestJobRoutes:
         factory = app.state.session_factory
         # Seed: admin-owned job and non-admin-owned job.
         with factory() as session:
-            admin_user = session.scalars(
-                select(User).where(User.email == "test@test.com")
-            ).first()
+            admin_user = session.scalars(select(User).where(User.email == "test@test.com")).first()
             non_admin_user = session.scalars(
                 select(User).where(User.email == "nonadmin@test.com")
             ).first()
@@ -543,9 +519,7 @@ class TestJobRoutes:
         names = {j["name"] for j in resp.json()}
         assert names == {"user-owned"}
 
-    async def test_manual_run_and_pause_unpause(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_manual_run_and_pause_unpause(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Register a fake kind so we don't require pg_sync plumbing.
         recording_registry = _RecordingRegistry()
 
@@ -556,9 +530,7 @@ class TestJobRoutes:
 
         factory = app.state.session_factory
         with factory() as session:
-            admin_user = session.scalars(
-                select(User).where(User.email == "test@test.com")
-            ).first()
+            admin_user = session.scalars(select(User).where(User.email == "test@test.com")).first()
             assert admin_user is not None
             now = datetime.datetime.now(datetime.UTC)
             job = Job(
@@ -592,14 +564,10 @@ class TestJobRoutes:
         assert unpause_resp.status_code == 200
         assert unpause_resp.json()["is_paused"] is False
 
-    async def test_non_owner_cannot_run(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_non_owner_cannot_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
         factory = app.state.session_factory
         with factory() as session:
-            admin_user = session.scalars(
-                select(User).where(User.email == "test@test.com")
-            ).first()
+            admin_user = session.scalars(select(User).where(User.email == "test@test.com")).first()
             assert admin_user is not None
             now = datetime.datetime.now(datetime.UTC)
             job = Job(
@@ -630,9 +598,7 @@ class TestJobRoutes:
     async def test_job_detail_renders_runs(self) -> None:
         factory = app.state.session_factory
         with factory() as session:
-            admin_user = session.scalars(
-                select(User).where(User.email == "test@test.com")
-            ).first()
+            admin_user = session.scalars(select(User).where(User.email == "test@test.com")).first()
             assert admin_user is not None
             now = datetime.datetime.now(datetime.UTC)
             job = Job(

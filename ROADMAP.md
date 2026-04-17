@@ -820,7 +820,7 @@ PointlesSQL
 │   view (Sprint 28). The embedded JupyterLab and the
 │   scheduler are no longer two islands.
 │
-├── Phase 9 — UX overhaul & discoverability              🔜 next
+├── Phase 9 — UX overhaul & discoverability              ✅ done
 │   │
 │   │   Goal: turn the *functionally complete* Databricks-style
 │   │   UI of Phase 8 into one that actually *feels* like a
@@ -1096,25 +1096,73 @@ PointlesSQL
 │   │       Sprint-35 found-bugs section filled in clean — no
 │   │       regressions at 1280, all breakpoints flip correctly
 │   │
-│   └── Sprint 36 — Shared utilities + shortcuts + close   ⏳ planned
-│       ├── `frontend/js/api.js` — `apiFetch(url, init)` that
-│       │   returns `{ok, status, data, error}` and emits
-│       │   toasts on error; migrates 5 existing components
-│       │   (editable, properties_editor, tags_editor,
-│       │   permissions_editor, federation) off their ad-hoc
-│       │   fetch patterns
-│       ├── All `window.location.reload()` after mutations
-│       │   become toast-then-reload (400 ms delay)
-│       ├── Keyboard shortcuts registry: Cmd+K (palette), `?`
-│       │   (help), `g h`/`g j`/`g d` (Vim-style chords), `r`
-│       │   (refresh current list); all listed in the help modal
-│       ├── `:focus-visible` outlines + `@media (prefers-
-│       │   reduced-motion)` disables shell animations
-│       ├── Playbook `docs/e2e-walkthroughs/ux-overhaul.md`
-│       │   covering mobile + palette + home flows
-│       └── Phase-9 close-out block in `ROADMAP.md` mirroring
-│           Phase-7 & 8 summaries (bugs surfaced / fixed /
-│           deferred)
+│   └── Sprint 36 — Shared utilities + shortcuts + close   ✅ done (<pending>)
+│       ├── `frontend/js/api.js` exposes `window.pqlApi.fetch(url, init)`
+│       │   returning `{ok, status, data, error}` and auto-emitting
+│       │   a `pqlToast.error(...)` on non-ok responses (opt out
+│       │   with `init.silent = true`). Soyuz `detail` / `message`
+│       │   / `error` field extraction, network-failure handling
+│       │   (`status: 0`). Also `pqlApi.reloadWithToast(msg, opts)`
+│       │   for the toast-then-reload helper (400 ms default)
+│       ├── Migrated five Alpine components off ad-hoc `fetch`
+│       │   onto `pqlApi.fetch`: `editable`, `properties_editor`,
+│       │   `tags_editor`, `permissions_editor` (incl. the
+│       │   `silent: true` effective-permissions GET), and all
+│       │   four `federation.js` create/delete forms. Inline
+│       │   `this.error` hints kept; toast fires on top so
+│       │   failures no longer hide in a tiny red span
+│       ├── Every mutation-triggered reload now routes through
+│       │   `pqlApi.reloadWithToast(...)` —
+│       │   `job_row_actions`, `/jobs` create modal,
+│       │   `/jobs/{id}` run / pause / resume, the
+│       │   `/dashboards/{slug}` Refresh button, the
+│       │   `sync_history_card` Sync-now button
+│       ├── Keyboard-shortcut registry extends the Sprint-31
+│       │   `commandPalette()` Alpine component: `shortcuts`
+│       │   array with `{keys, combiner, label}` entries drives
+│       │   the help-modal `<dl>`. New bindings `g h` / `g j` /
+│       │   `g d` (1 s pending window) + `r` on list pages,
+│       │   all behind the existing editable-target / modifier
+│       │   guards
+│       ├── `list_page: True` threaded through the five list-
+│       │   route template contexts; `base.html` renders
+│       │   `data-pql-refresh="1"` on `<body>` so `r` opts in
+│       │   without touching each page template
+│       ├── Global `:focus-visible` in `style.css` + a
+│       │   `@media (prefers-reduced-motion: reduce)` block that
+│       │   zeroes `--pql-duration-*` and forces
+│       │   `animation-duration: 0ms` on `*, *::before, *::after`
+│       │   so Bootstrap fades, Alpine x-transitions, and the
+│       │   offcanvas slide all respect the preference
+│       └── New playbook `docs/e2e-walkthroughs/ux-overhaul.md`
+│           covering shortcut chords + toast flow + focus rings
+│           + reduced-motion branch
+│
+│   Phase 9 close-out — the UX overhaul closed the gap between
+│   "functionally complete" (Phase 8) and "feels like a modern
+│   alternative". Eight sprints shipped the design-token
+│   foundation (29), the shell + empty states + error pages
+│   (30), a Cmd+K command palette (31), a real home dashboard
+│   (32), list polish (33), the catalog/schema/table experience
+│   (34), mobile + responsive breakpoints (35), and finally the
+│   shared-fetch helper + keyboard-shortcut registry + a11y
+│   polish (36). Replays surfaced a handful of small bugs
+│   captured in their respective sprint playbooks' found-bugs
+│   sections; no Phase-9 bugs deferred.
+│
+│   What Phase 9 bought: the survey that kicked off the phase
+│   found raw-JSON 404s, a left-stuck login card, an empty
+│   home, list pages without search/filter/sort, a table detail
+│   without data, no global search, no toasts, no mobile
+│   layout, and ad-hoc `fetch` error-handling copy-pasted
+│   across five JS files. All nine gaps are now closed. The
+│   stack never forked (FastAPI + Jinja2 + Bootstrap 5.3 + HTMX
+│   + Alpine.js throughout) — every improvement was a token,
+│   a component, or a helper. Future sprints picking up
+│   Phase-10+ work (docker-compose packaging, DuckDB / Polars
+│   engines) inherit a UI that tab-navigates cleanly, respects
+│   reduced-motion, ships one toast contract, and surfaces
+│   every keyboard shortcut in one help modal.
 │
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is

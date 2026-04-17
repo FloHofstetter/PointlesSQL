@@ -35,9 +35,7 @@ def upgrade() -> None:
         ),
         sa.Column("kind", sa.String(50), nullable=False),
         sa.Column("config", sa.Text, nullable=False, server_default="{}"),
-        sa.Column(
-            "is_paused", sa.Boolean, nullable=False, server_default=sa.false()
-        ),
+        sa.Column("is_paused", sa.Boolean, nullable=False, server_default=sa.false()),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     )
@@ -45,9 +43,7 @@ def upgrade() -> None:
     op.create_table(
         "job_runs",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column(
-            "job_id", sa.Integer, sa.ForeignKey("jobs.id"), nullable=False
-        ),
+        sa.Column("job_id", sa.Integer, sa.ForeignKey("jobs.id"), nullable=False),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("status", sa.String(20), nullable=False),
@@ -66,9 +62,7 @@ def upgrade() -> None:
     op.create_table(
         "job_tasks",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column(
-            "job_id", sa.Integer, sa.ForeignKey("jobs.id"), nullable=False
-        ),
+        sa.Column("job_id", sa.Integer, sa.ForeignKey("jobs.id"), nullable=False),
         sa.Column("name", sa.String(200), nullable=False),
         sa.Column("order", sa.Integer, nullable=False, server_default="0"),
         sa.Column("config", sa.Text, nullable=False, server_default="{}"),

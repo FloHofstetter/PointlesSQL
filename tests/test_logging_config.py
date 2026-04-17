@@ -94,9 +94,7 @@ class TestConfigureLogging:
         ("fmt", "expected_cls"),
         [("text", logging.Formatter), ("json", JSONFormatter)],
     )
-    def test_configure_logging_text_vs_json(
-        self, fmt: str, expected_cls: type
-    ) -> None:
+    def test_configure_logging_text_vs_json(self, fmt: str, expected_cls: type) -> None:
         configure_logging("INFO", fmt)  # pyright: ignore[reportArgumentType]
         root = logging.getLogger()
         ours = [h for h in root.handlers if getattr(h, "_pointlessql_handler", False)]
@@ -129,9 +127,7 @@ class TestRequestIdPropagation:
             base_url="http://test",
             cookies=app.state._test_auth_cookie,
         ) as client:
-            resp = await client.get(
-                "/api/tree", headers={"X-Request-ID": "trace-xyz"}
-            )
+            resp = await client.get("/api/tree", headers={"X-Request-ID": "trace-xyz"})
         assert resp.headers["X-Request-ID"] == "trace-xyz"
         # The error handler logs a warning for CatalogUnavailableError.
         # The LogRecord factory stamps request_id on every record, so

@@ -83,16 +83,18 @@
          x-transition>
         <h5 class="m-0">Keyboard shortcuts</h5>
         <dl class="pql-cmdk-shortcuts">
-            <dt><kbd x-text="modKey"></kbd>+<kbd>K</kbd></dt>
-            <dd>Open command palette</dd>
-            <dt><kbd>?</kbd></dt>
-            <dd>Show this help</dd>
-            <dt><kbd>esc</kbd></dt>
-            <dd>Close any modal</dd>
-            <dt><kbd>↑</kbd><kbd>↓</kbd></dt>
-            <dd>Move selection in palette</dd>
-            <dt><kbd>↵</kbd></dt>
-            <dd>Open the selected hit</dd>
+            <template x-for="s in shortcuts" :key="s.label">
+                <div class="pql-cmdk-shortcut-row">
+                    <dt>
+                        <template x-for="(k, i) in s.keys" :key="i">
+                            <span>
+                                <span x-show="i > 0" class="pql-cmdk-shortcut-sep" x-text="s.combiner"></span><kbd x-text="k"></kbd>
+                            </span>
+                        </template>
+                    </dt>
+                    <dd x-text="s.label"></dd>
+                </div>
+            </template>
         </dl>
     </div>
 </div>
@@ -134,7 +136,11 @@
         }
     }
 
+    const CHORD_TIMEOUT_MS = 1000;
+    const CHORD_ROUTES = { h: '/', j: '/jobs', d: '/dashboards' };
+
     window.commandPalette = function () {
+        const mod = isMac() ? '⌘' : 'Ctrl';
         return {
             open: false,
             helpOpen: false,
@@ -143,9 +149,22 @@
             selected: 0,
             recent: [],
             loading: false,
-            modKey: isMac() ? '⌘' : 'Ctrl',
+            modKey: mod,
+            shortcuts: [
+                { keys: [mod, 'K'], combiner: '+', label: 'Open command palette' },
+                { keys: ['?'],       combiner: '',  label: 'Show this help' },
+                { keys: ['esc'],     combiner: '',  label: 'Close any modal' },
+                { keys: ['↑', '↓'],  combiner: ' ', label: 'Move selection in palette' },
+                { keys: ['↵'],       combiner: '',  label: 'Open the selected hit' },
+                { keys: ['g', 'h'],  combiner: ' ', label: 'Go to home' },
+                { keys: ['g', 'j'],  combiner: ' ', label: 'Go to jobs' },
+                { keys: ['g', 'd'],  combiner: ' ', label: 'Go to dashboards' },
+                { keys: ['r'],       combiner: '',  label: 'Refresh current list' },
+            ],
             _debounceTimer: null,
             _seq: 0,
+            _chordTimer: null,
+            _chordPending: false,
 
             init() {
                 this.recent = loadRecent();
@@ -183,6 +202,7 @@
                 const isK = e.key === 'k' || e.key === 'K';
                 if (isK && (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
                     e.preventDefault();
+                    this._cancelChord();
                     if (this.open) this.closePalette();
                     else this.openPalette();
                     return;
@@ -190,13 +210,54 @@
                 // Escape — close help even when palette is closed
                 if (e.key === 'Escape' && this.helpOpen) {
                     e.preventDefault();
+                    this._cancelChord();
                     this.helpOpen = false;
                     return;
                 }
-                // ? opens help — but never while typing into a form
-                if (e.key === '?' && !this.open && !isEditableTarget(e.target)) {
+                // The remaining unmodified single-key bindings never fire
+                // while a modal is open or the user is typing.
+                if (this.open || this.helpOpen) return;
+                if (isEditableTarget(e.target)) return;
+                if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+                // ? opens help
+                if (e.key === '?') {
                     e.preventDefault();
+                    this._cancelChord();
                     this.toggleHelp();
+                    return;
+                }
+
+                // r — refresh the current list page (opt-in via <body data-pql-refresh>)
+                if (e.key === 'r' && document.body.dataset.pqlRefresh === '1') {
+                    e.preventDefault();
+                    this._cancelChord();
+                    window.pqlApi.reloadWithToast('Refreshing.', { delay: 0 });
+                    return;
+                }
+
+                // Vim-style chord: `g` then {h,j,d} within 1s
+                if (this._chordPending) {
+                    const target = CHORD_ROUTES[e.key];
+                    this._cancelChord();
+                    if (target) {
+                        e.preventDefault();
+                        window.location.href = target;
+                    }
+                    return;
+                }
+                if (e.key === 'g') {
+                    e.preventDefault();
+                    this._chordPending = true;
+                    this._chordTimer = setTimeout(() => this._cancelChord(), CHORD_TIMEOUT_MS);
+                }
+            },
+
+            _cancelChord() {
+                this._chordPending = false;
+                if (this._chordTimer) {
+                    clearTimeout(this._chordTimer);
+                    this._chordTimer = null;
                 }
             },
 

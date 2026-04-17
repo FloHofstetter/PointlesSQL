@@ -54,9 +54,7 @@ class TestGeneratePKCE:
     def test_challenge_is_sha256_of_verifier(self):
         verifier, challenge = oidc_service.generate_pkce()
         expected = (
-            base64.urlsafe_b64encode(
-                hashlib.sha256(verifier.encode("ascii")).digest()
-            )
+            base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest())
             .rstrip(b"=")
             .decode()
         )
@@ -110,8 +108,12 @@ class TestBuildAuthorizeURL:
 
     def test_contains_all_params(self):
         url = oidc_service.build_authorize_url(
-            FAKE_DISCOVERY, "my-client", "http://localhost/cb",
-            "state123", "nonce456", "challenge789",
+            FAKE_DISCOVERY,
+            "my-client",
+            "http://localhost/cb",
+            "state123",
+            "nonce456",
+            "challenge789",
         )
         assert url.startswith("https://fake-idp.example/authorize?")
         assert "response_type=code" in url
@@ -194,8 +196,13 @@ class TestExchangeCode:
         mock_client.post.return_value = mock_resp
 
         result = await oidc_service.exchange_code(
-            FAKE_DISCOVERY, "code123", "verifier",
-            "client-id", None, "http://localhost/cb", mock_client,
+            FAKE_DISCOVERY,
+            "code123",
+            "verifier",
+            "client-id",
+            None,
+            "http://localhost/cb",
+            mock_client,
         )
         assert result["access_token"] == "at"
 
@@ -213,8 +220,13 @@ class TestExchangeCode:
         mock_client.post.return_value = mock_resp
 
         await oidc_service.exchange_code(
-            FAKE_DISCOVERY, "code123", "verifier",
-            "client-id", "client-secret", "http://localhost/cb", mock_client,
+            FAKE_DISCOVERY,
+            "code123",
+            "verifier",
+            "client-id",
+            "client-secret",
+            "http://localhost/cb",
+            mock_client,
         )
 
         call_kwargs = mock_client.post.call_args
@@ -227,7 +239,13 @@ class TestExchangeCode:
 
         with pytest.raises(oidc_service.OIDCError, match="Token exchange failed"):
             await oidc_service.exchange_code(
-                FAKE_DISCOVERY, "c", "v", "cid", None, "http://x", mock_client,
+                FAKE_DISCOVERY,
+                "c",
+                "v",
+                "cid",
+                None,
+                "http://x",
+                mock_client,
             )
 
 
@@ -243,7 +261,9 @@ class TestFetchUserinfo:
     async def test_success(self):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {
-            "sub": "user-123", "email": "u@x.com", "name": "User",
+            "sub": "user-123",
+            "email": "u@x.com",
+            "name": "User",
         }
         mock_resp.raise_for_status = MagicMock()
 
@@ -277,7 +297,11 @@ class TestFindOrCreateOIDCUser:
 
     def test_create_new_user(self, db_factory):
         user = oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "new@test.com", "New User",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "new@test.com",
+            "New User",
         )
         assert user.email == "new@test.com"
         assert user.oidc_provider == FAKE_DISCOVERY_URL
@@ -286,25 +310,45 @@ class TestFindOrCreateOIDCUser:
 
     def test_first_oidc_user_is_admin(self, db_factory):
         user = oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "first@test.com", "First",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "first@test.com",
+            "First",
         )
         assert user.is_admin is True
 
     def test_second_oidc_user_not_admin(self, db_factory):
         oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "first@test.com", "First",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "first@test.com",
+            "First",
         )
         user = oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-2", "second@test.com", "Second",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-2",
+            "second@test.com",
+            "Second",
         )
         assert user.is_admin is False
 
     def test_existing_oidc_user_returned(self, db_factory):
         user1 = oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "u@test.com", "User",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "u@test.com",
+            "User",
         )
         user2 = oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "u@test.com", "User",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "u@test.com",
+            "User",
         )
         assert user1.id == user2.id
 
@@ -314,7 +358,11 @@ class TestFindOrCreateOIDCUser:
 
         # OIDC login with same email should link.
         user = oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-oidc", "local@test.com", "OIDC Name",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-oidc",
+            "local@test.com",
+            "OIDC Name",
         )
         assert user.oidc_provider == FAKE_DISCOVERY_URL
         assert user.oidc_subject == "sub-oidc"
@@ -323,10 +371,18 @@ class TestFindOrCreateOIDCUser:
 
     def test_updates_profile_on_existing(self, db_factory):
         oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "old@test.com", "Old Name",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "old@test.com",
+            "Old Name",
         )
         user = oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "new@test.com", "New Name",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "new@test.com",
+            "New Name",
         )
         assert user.email == "new@test.com"
         assert user.display_name == "New Name"
@@ -347,9 +403,11 @@ def _setup_oidc_app():
     app.state.session_factory = factory
 
     from pointlessql.api.main import _TEMPLATES
+
     app.state.templates = _TEMPLATES
 
     from pointlessql.settings import Settings
+
     app.state.settings = Settings(
         jupyter_enabled=False,
         secret_key=SECRET,
@@ -417,7 +475,8 @@ class TestOIDCCallback:
         state = "test-state-value"
         verifier = "test-verifier"
         cookie = oidc_service.sign_state_cookie(
-            {"state": state, "code_verifier": verifier, "nonce": "n"}, SECRET,
+            {"state": state, "code_verifier": verifier, "nonce": "n"},
+            SECRET,
         )
 
         with (
@@ -443,9 +502,7 @@ class TestOIDCCallback:
                 follow_redirects=False,
                 cookies={oidc_service.STATE_COOKIE_NAME: cookie},
             ) as client:
-                resp = await client.get(
-                    f"/auth/callback?code=authcode&state={state}"
-                )
+                resp = await client.get(f"/auth/callback?code=authcode&state={state}")
 
         assert resp.status_code == 303
         assert resp.headers["location"] == "/"
@@ -454,7 +511,8 @@ class TestOIDCCallback:
     @pytest.mark.asyncio
     async def test_state_mismatch(self):
         cookie = oidc_service.sign_state_cookie(
-            {"state": "expected", "code_verifier": "v", "nonce": "n"}, SECRET,
+            {"state": "expected", "code_verifier": "v", "nonce": "n"},
+            SECRET,
         )
 
         async with httpx.AsyncClient(
@@ -542,7 +600,11 @@ class TestOIDCUserCannotLocalLogin:
     @pytest.mark.asyncio
     async def test_oidc_user_password_login_fails(self, db_factory):
         oidc_service.find_or_create_oidc_user(
-            db_factory, FAKE_DISCOVERY_URL, "sub-1", "oidc@test.com", "OIDC User",
+            db_factory,
+            FAKE_DISCOVERY_URL,
+            "sub-1",
+            "oidc@test.com",
+            "OIDC User",
         )
         result = auth.login(db_factory, "oidc@test.com", "anypassword", SECRET)
         assert result is None

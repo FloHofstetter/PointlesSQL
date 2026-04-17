@@ -38,9 +38,7 @@ class TestCheckPrivilege:
         """Admin users bypass all checks without making any HTTP call."""
         uc = MagicMock()
         uc.get_effective_permissions = AsyncMock()
-        await check_privilege(
-            uc, "admin@test.com", True, "catalog", "my_cat", USE_CATALOG
-        )
+        await check_privilege(uc, "admin@test.com", True, "catalog", "my_cat", USE_CATALOG)
         uc.get_effective_permissions.assert_not_called()
 
     async def test_user_with_privilege_passes(self) -> None:
@@ -48,19 +46,13 @@ class TestCheckPrivilege:
         uc.get_effective_permissions = AsyncMock(
             return_value=_effective("user@test.com", [USE_CATALOG])
         )
-        await check_privilege(
-            uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG
-        )
+        await check_privilege(uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG)
 
     async def test_user_without_privilege_denied(self) -> None:
         uc = MagicMock()
-        uc.get_effective_permissions = AsyncMock(
-            return_value=_effective("user@test.com", [SELECT])
-        )
+        uc.get_effective_permissions = AsyncMock(return_value=_effective("user@test.com", [SELECT]))
         with pytest.raises(AccessDenied) as exc_info:
-            await check_privilege(
-                uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG
-            )
+            await check_privilege(uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG)
         assert exc_info.value.privilege == USE_CATALOG
         assert exc_info.value.principal == "user@test.com"
         assert exc_info.value.securable_type == "catalog"
@@ -72,17 +64,13 @@ class TestCheckPrivilege:
             return_value=_effective("other@test.com", [USE_CATALOG])
         )
         with pytest.raises(AccessDenied):
-            await check_privilege(
-                uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG
-            )
+            await check_privilege(uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG)
 
     async def test_empty_effective_permissions_denied(self) -> None:
         uc = MagicMock()
         uc.get_effective_permissions = AsyncMock(return_value=[])
         with pytest.raises(AccessDenied):
-            await check_privilege(
-                uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG
-            )
+            await check_privilege(uc, "user@test.com", False, "catalog", "my_cat", USE_CATALOG)
 
 
 # -- check_privilege_from_effective (sync, uses existing data) --
@@ -90,9 +78,7 @@ class TestCheckPrivilege:
 
 class TestCheckPrivilegeFromEffective:
     def test_admin_passes(self) -> None:
-        check_privilege_from_effective(
-            [], "admin@test.com", True, "catalog", "my_cat", USE_CATALOG
-        )
+        check_privilege_from_effective([], "admin@test.com", True, "catalog", "my_cat", USE_CATALOG)
 
     def test_user_with_privilege_passes(self) -> None:
         effective = _effective("user@test.com", [USE_SCHEMA, MODIFY])

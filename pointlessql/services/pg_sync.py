@@ -205,9 +205,7 @@ class SyncDiff:
 
     def is_empty(self) -> bool:
         """Return True when no mutation is required."""
-        return not (
-            self.add_schemas or self.add_tables or self.change_tables or self.drop_tables
-        )
+        return not (self.add_schemas or self.add_tables or self.change_tables or self.drop_tables)
 
 
 class PostgresIntrospector(Protocol):
@@ -219,9 +217,7 @@ class PostgresIntrospector(Protocol):
     tests can swap in a fixture.
     """
 
-    def snapshot(
-        self, dsn: str, schema_filter: Sequence[str] | None = None
-    ) -> PostgresSnapshot:
+    def snapshot(self, dsn: str, schema_filter: Sequence[str] | None = None) -> PostgresSnapshot:
         """Return a snapshot of *dsn*.
 
         Args:
@@ -310,16 +306,12 @@ def diff_snapshots(pg: PostgresSnapshot, uc_tables: Iterable[UcTable]) -> SyncDi
         if uc_tbl is None:
             add_tables.append(pg_tbl)
             continue
-        pg_cols = tuple(
-            (c.name, map_pg_type_to_uc(c)[0]) for c in pg_tbl.columns
-        )
+        pg_cols = tuple((c.name, map_pg_type_to_uc(c)[0]) for c in pg_tbl.columns)
         uc_cols = tuple((c.name, c.type_name) for c in uc_tbl.columns)
         if pg_cols != uc_cols:
             change_tables.append(pg_tbl)
 
-    drop_tables = tuple(
-        sorted(key for key in uc_by_key if key not in pg_by_key)
-    )
+    drop_tables = tuple(sorted(key for key in uc_by_key if key not in pg_by_key))
 
     return SyncDiff(
         add_schemas=add_schemas,
@@ -383,9 +375,7 @@ def build_dsn(options: dict[str, Any]) -> str:
     """
     host = options.get("host")
     if not host:
-        raise ValidationError(
-            "Postgres connection options missing required key 'host'"
-        )
+        raise ValidationError("Postgres connection options missing required key 'host'")
     pairs: list[str] = [f"host={host}"]
     port = options.get("port")
     if port:
@@ -410,9 +400,7 @@ class PsycopgIntrospector:
     implements :meth:`snapshot`, no monkeypatching required.
     """
 
-    def snapshot(
-        self, dsn: str, schema_filter: Sequence[str] | None = None
-    ) -> PostgresSnapshot:
+    def snapshot(self, dsn: str, schema_filter: Sequence[str] | None = None) -> PostgresSnapshot:
         """Read ``information_schema`` from *dsn*.
 
         Args:
@@ -459,25 +447,17 @@ class PsycopgIntrospector:
         params: list[Any] = [exclude[0], exclude[1]]
         query: sql.Composable = base_query
         if schema_filter:
-            placeholders = sql.SQL(", ").join(
-                sql.Placeholder() for _ in schema_filter
-            )
-            query = query + sql.SQL(" AND c.table_schema IN ({f})").format(
-                f=placeholders
-            )
+            placeholders = sql.SQL(", ").join(sql.Placeholder() for _ in schema_filter)
+            query = query + sql.SQL(" AND c.table_schema IN ({f})").format(f=placeholders)
             params.extend(schema_filter)
-        query = query + sql.SQL(
-            " ORDER BY c.table_schema, c.table_name, c.ordinal_position"
-        )
+        query = query + sql.SQL(" ORDER BY c.table_schema, c.table_name, c.ordinal_position")
 
         try:
             with psycopg.connect(dsn) as conn, conn.cursor() as cur:
                 cur.execute(query, params)
                 rows = cur.fetchall()
         except psycopg.Error as exc:
-            raise CatalogUnavailableError(
-                f"Postgres introspection failed: {exc}"
-            ) from exc
+            raise CatalogUnavailableError(f"Postgres introspection failed: {exc}") from exc
 
         tables: dict[tuple[str, str], list[PgColumn]] = {}
         for row in rows:
@@ -493,15 +473,12 @@ class PsycopgIntrospector:
             )
         return PostgresSnapshot(
             tables=tuple(
-                PgTable(schema=k[0], name=k[1], columns=tuple(cols))
-                for k, cols in tables.items()
+                PgTable(schema=k[0], name=k[1], columns=tuple(cols)) for k, cols in tables.items()
             )
         )
 
 
-async def collect_uc_tables(
-    uc: UnityCatalogClient, catalog_name: str
-) -> list[UcTable]:
+async def collect_uc_tables(uc: UnityCatalogClient, catalog_name: str) -> list[UcTable]:
     """Return every table currently mirrored under *catalog_name*.
 
     Walks schemas → tables → columns. Used by :func:`run_sync` to
@@ -619,9 +596,7 @@ async def apply_diff(
     dropped = 0
 
     for schema_name in diff.add_schemas:
-        await uc.create_schema(
-            {"catalog_name": catalog_name, "name": schema_name}
-        )
+        await uc.create_schema({"catalog_name": catalog_name, "name": schema_name})
         added += 1
 
     for tbl in diff.add_tables:
@@ -633,9 +608,7 @@ async def apply_diff(
                 "table_type": _EXTERNAL_TABLE_TYPE,
                 "data_source_format": _FOREIGN_DATA_SOURCE_FORMAT,
                 "columns": _columns_payload(tbl),
-                "storage_location": _storage_location_stub(
-                    catalog_name, tbl.schema, tbl.name
-                ),
+                "storage_location": _storage_location_stub(catalog_name, tbl.schema, tbl.name),
             }
         )
         added += 1
@@ -652,9 +625,7 @@ async def apply_diff(
                 "table_type": _EXTERNAL_TABLE_TYPE,
                 "data_source_format": _FOREIGN_DATA_SOURCE_FORMAT,
                 "columns": _columns_payload(tbl),
-                "storage_location": _storage_location_stub(
-                    catalog_name, tbl.schema, tbl.name
-                ),
+                "storage_location": _storage_location_stub(catalog_name, tbl.schema, tbl.name),
             }
         )
         changed += 1

@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 36)
+
+- New `frontend/js/api.js` exposes `window.pqlApi.fetch(url, init)`
+  returning `{ok, status, data, error}` and auto-emitting a
+  `window.pqlToast.error(...)` on non-ok responses (opt out with
+  `init.silent = true`). Soyuz error bodies have their `detail` /
+  `message` / `error` field extracted; network failures report
+  `status: 0`. Also exposes `pqlApi.reloadWithToast(message, opts)`
+  for the toast-then-reload pattern (400 ms default delay).
+- Migrated five Alpine components off their hand-rolled
+  `fetch` + try/catch/error-string blocks onto `pqlApi.fetch`:
+  `editable`, `properties_editor`, `tags_editor`, `permissions_editor`
+  (including the `silent: true` effective-permissions background
+  GET), and the four `federation.js` create/delete forms. The
+  inline `this.error` hints stay; the toast fires on top so
+  mutations fail loudly instead of burying the error in a tiny
+  red span.
+- Replaced every silent `window.location.reload()` after a
+  mutation with `pqlApi.reloadWithToast(...)` — `job_row_actions`,
+  `/jobs` create modal, `/jobs/{id}` run/pause/resume, the
+  `/dashboards/{slug}` Refresh button, and the `sync_history_card`
+  Sync-now button each surface a success/info toast before the
+  400 ms reload.
+- Expanded the Sprint-31 command-palette Alpine component into a
+  keyboard-shortcut registry. The hard-coded help-modal `<dl>` now
+  iterates a `shortcuts` array with `{keys, combiner, label}`
+  entries. New bindings: `g h` / `g j` / `g d` Vim-style chords
+  (go home / jobs / dashboards) with a 1 s pending window; `r`
+  reloads the current list page when `<body data-pql-refresh="1">`
+  is set. Editable-target and modifier guards match the existing
+  `?` handler.
+- Plumbed `list_page: True` through the five list-route template
+  contexts (`/jobs`, `/dashboards`, `/connections`,
+  `/external-locations`, `/credentials`); `base.html` renders
+  `data-pql-refresh="1"` on the `<body>` when the flag is set, so
+  `r`-to-refresh opts in without touching each page template.
+- Global `:focus-visible` rule in `style.css` gives every
+  focusable element the same 2 px accent outline. The Sprint-33
+  `.pql-sortable:focus-visible` rule is kept for its tighter
+  offset. A new `@media (prefers-reduced-motion: reduce)` block
+  zeroes the `--pql-duration-*` tokens and forces
+  `animation-duration: 0ms` + `transition-duration: 0ms` on
+  every element so Bootstrap fades, Alpine x-transitions, and
+  the offcanvas slide all respect the user preference.
+- New playbook `docs/e2e-walkthroughs/ux-overhaul.md` covering
+  shortcut chords, the toast flow (error → red toast, success →
+  toast-then-reload), focus rings, and the reduced-motion branch.
+
 ### Added (Sprint 35)
 
 - Breakpoint tokens `--pql-breakpoint-sm/md/lg/xl` (640 / 768 /

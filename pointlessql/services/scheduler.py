@@ -172,9 +172,7 @@ async def _pg_sync_executor(
 
     catalog_name = config.get("catalog_name")
     if not catalog_name:
-        raise ValidationError(
-            "pg_sync job config is missing required key 'catalog_name'"
-        )
+        raise ValidationError("pg_sync job config is missing required key 'catalog_name'")
 
     from pointlessql.db import get_session_factory
     from pointlessql.services import pg_sync as pg_sync_service
@@ -182,15 +180,11 @@ async def _pg_sync_executor(
     catalog = await uc_client.get_catalog(str(catalog_name))
     connection_name = catalog.get("connection_name")
     if not connection_name:
-        raise ValidationError(
-            f"pg_sync job target '{catalog_name}' is not a foreign catalog"
-        )
+        raise ValidationError(f"pg_sync job target '{catalog_name}' is not a foreign catalog")
     connection = await uc_client.get_connection(str(connection_name))
     credential: dict[str, Any] | None = None
     options = connection.get("options") or {}
-    credential_name = (
-        options.get("credential_name") if isinstance(options, dict) else None
-    )
+    credential_name = options.get("credential_name") if isinstance(options, dict) else None
     if credential_name:
         credential = await uc_client.get_credential(str(credential_name))
 
@@ -237,9 +231,7 @@ async def _python_executor(
     """
     entry_point_name = config.get("entry_point")
     if not entry_point_name:
-        raise ValidationError(
-            "python job config is missing required key 'entry_point'"
-        )
+        raise ValidationError("python job config is missing required key 'entry_point'")
 
     try:
         entries = _md.entry_points(group="pointlessql.jobs")
@@ -248,9 +240,7 @@ async def _python_executor(
 
     matches = [ep for ep in entries if ep.name == entry_point_name]
     if not matches:
-        raise ValidationError(
-            f"python job entry point not found: {entry_point_name!r}"
-        )
+        raise ValidationError(f"python job entry point not found: {entry_point_name!r}")
 
     fn = matches[0].load()
     await fn(job_run_id, user_info, config, uc_client)
@@ -280,9 +270,7 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
             *notebooks_dir*, or does not point at an existing file.
     """
     if not notebook_path:
-        raise ValidationError(
-            "papermill job config 'notebook_path' must be a non-empty string"
-        )
+        raise ValidationError("papermill job config 'notebook_path' must be a non-empty string")
     candidate = Path(notebook_path)
     if candidate.is_absolute():
         raise ValidationError(
@@ -294,13 +282,10 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
         resolved.relative_to(notebooks_dir)
     except ValueError as exc:
         raise ValidationError(
-            f"papermill notebook_path {notebook_path!r} escapes the "
-            f"notebooks directory"
+            f"papermill notebook_path {notebook_path!r} escapes the notebooks directory"
         ) from exc
     if not resolved.is_file():
-        raise ValidationError(
-            f"papermill notebook not found: {notebook_path!r}"
-        )
+        raise ValidationError(f"papermill notebook not found: {notebook_path!r}")
     return resolved
 
 
@@ -406,15 +391,11 @@ async def _papermill_executor(
 
     notebook_path = config.get("notebook_path")
     if not isinstance(notebook_path, str):
-        raise ValidationError(
-            "papermill job config is missing required key 'notebook_path'"
-        )
+        raise ValidationError("papermill job config is missing required key 'notebook_path'")
 
     parameters = config.get("parameters", {})
     if not isinstance(parameters, dict):
-        raise ValidationError(
-            "papermill job config 'parameters' must be an object"
-        )
+        raise ValidationError("papermill job config 'parameters' must be an object")
 
     settings = Settings()
     timeout_cfg = config.get("timeout_seconds")
@@ -423,9 +404,7 @@ async def _papermill_executor(
     elif isinstance(timeout_cfg, int) and timeout_cfg > 0:
         timeout_seconds = timeout_cfg
     else:
-        raise ValidationError(
-            "papermill job config 'timeout_seconds' must be a positive int"
-        )
+        raise ValidationError("papermill job config 'timeout_seconds' must be a positive int")
 
     notebooks_dir = Path(settings.notebooks_dir).resolve()
     input_path = resolve_notebook_path(notebooks_dir, notebook_path)
@@ -456,9 +435,7 @@ async def _papermill_executor(
             timeout=timeout_seconds + 5,
         )
     except TimeoutError as exc:
-        raise EngineError(
-            f"papermill execution timed out after {timeout_seconds}s"
-        ) from exc
+        raise EngineError(f"papermill execution timed out after {timeout_seconds}s") from exc
 
     logger.info("papermill: finished %s", output_path)
 
@@ -489,11 +466,7 @@ def _load_job_by_id(session: Session, job_id: int) -> Job | None:
 
 def _count_running_runs(session: Session, job_id: int) -> int:
     """Return the number of runs currently in ``running`` for *job_id*."""
-    stmt = (
-        select(JobRun.id)
-        .where(JobRun.job_id == job_id)
-        .where(JobRun.status == "running")
-    )
+    stmt = select(JobRun.id).where(JobRun.job_id == job_id).where(JobRun.status == "running")
     return len(list(session.scalars(stmt).all()))
 
 
@@ -575,9 +548,7 @@ def _load_user_info(session: Session, user_id: int) -> UserInfo | None:
     )
 
 
-def _start_run(
-    session: Session, job_id: int, trigger: str
-) -> JobRun:
+def _start_run(session: Session, job_id: int, trigger: str) -> JobRun:
     """Insert a fresh ``running`` :class:`JobRun` and return it."""
     run = JobRun(
         job_id=job_id,
@@ -669,17 +640,13 @@ def _parse_depends_on(raw: str) -> list[int]:
     try:
         value = json.loads(raw or "[]")
     except json.JSONDecodeError as exc:
-        raise ValidationError(
-            f"task depends_on is not valid JSON: {raw!r}"
-        ) from exc
+        raise ValidationError(f"task depends_on is not valid JSON: {raw!r}") from exc
     if not isinstance(value, list):
         raise ValidationError("task depends_on must be a JSON array")
     typed: list[int] = []
     for item in value:  # pyright: ignore[reportUnknownVariableType]
         if not isinstance(item, int):
-            raise ValidationError(
-                "task depends_on entries must be integers"
-            )
+            raise ValidationError("task depends_on entries must be integers")
         typed.append(item)
     return typed
 
@@ -714,9 +681,7 @@ def validate_dag(tasks: Iterable[JobTask]) -> None:
         parsed = _parse_depends_on(t.depends_on)
         for dep_id in parsed:
             if dep_id not in by_id:
-                raise ValidationError(
-                    f"task {t.id} depends on unknown task id {dep_id}"
-                )
+                raise ValidationError(f"task {t.id} depends on unknown task id {dep_id}")
         deps_of[t.id] = parsed
 
     for root in task_list:
@@ -726,9 +691,7 @@ def validate_dag(tasks: Iterable[JobTask]) -> None:
         # frames push a copy of ``deps_of[node]`` so we can pop from
         # it without mutating the shared map.
         path: list[int] = [root.id]
-        stack: list[tuple[int, list[int]]] = [
-            (root.id, list(deps_of[root.id]))
-        ]
+        stack: list[tuple[int, list[int]]] = [(root.id, list(deps_of[root.id]))]
         color[root.id] = GRAY
         while stack:
             node_id, remaining = stack[-1]
@@ -740,10 +703,8 @@ def validate_dag(tasks: Iterable[JobTask]) -> None:
             next_dep = remaining.pop(0)
             state = color[next_dep]
             if state == GRAY:
-                cycle = path[path.index(next_dep):] + [next_dep]
-                raise ValidationError(
-                    f"cycle detected in task graph: {cycle}"
-                )
+                cycle = path[path.index(next_dep) :] + [next_dep]
+                raise ValidationError(f"cycle detected in task graph: {cycle}")
             if state == BLACK:
                 continue
             color[next_dep] = GRAY
@@ -957,8 +918,7 @@ async def _run_one_task(
                 job_run_id,
                 task.id,
                 "WARNING",
-                f"task {task.name!r} attempt {attempt}/{max_attempts} "
-                f"failed: {last_error}",
+                f"task {task.name!r} attempt {attempt}/{max_attempts} failed: {last_error}",
             )
             with factory() as session:
                 _update_task_run(
@@ -1031,14 +991,9 @@ async def _run_dag(
 
     for t in ordered:
         deps = _parse_depends_on(t.depends_on)
-        upstream_failed = [
-            d for d in deps if results.get(d) in {"failed", "skipped"}
-        ]
+        upstream_failed = [d for d in deps if results.get(d) in {"failed", "skipped"}]
         if upstream_failed:
-            detail = (
-                f"task {t.name!r} skipped: upstream "
-                f"{upstream_failed} did not succeed"
-            )
+            detail = f"task {t.name!r} skipped: upstream {upstream_failed} did not succeed"
             log_job(factory, job_run_id, t.id, "INFO", detail)
             with factory() as session:
                 _update_task_run(
@@ -1068,10 +1023,7 @@ async def _run_dag(
             results[t.id] = "failed"
             run_ok = False
             if run_error is None:
-                run_error = (
-                    f"task {t.name!r} failed: {err}" if err else
-                    f"task {t.name!r} failed"
-                )
+                run_error = f"task {t.name!r} failed: {err}" if err else f"task {t.name!r} failed"
 
     return run_ok, run_error
 
@@ -1152,11 +1104,7 @@ async def _execute_run_core(
         kind = job.kind
         config_json = job.config
         missing_user_run_as = job.run_as_user_id
-        tasks = list(
-            session.scalars(
-                select(JobTask).where(JobTask.job_id == job_id)
-            ).all()
-        )
+        tasks = list(session.scalars(select(JobTask).where(JobTask.job_id == job_id)).all())
         for t in tasks:
             session.expunge(t)
 
@@ -1199,13 +1147,9 @@ async def _execute_run_core(
             return _detached_run(factory, run_id)
 
         try:
-            uc_client = UnityCatalogClient.for_principal(
-                settings, user_info["email"]
-            )
+            uc_client = UnityCatalogClient.for_principal(settings, user_info["email"])
         except PointlessSQLError as exc:
-            logger.warning(
-                "scheduler: job %d principal client failed: %s", job_id, exc.detail
-            )
+            logger.warning("scheduler: job %d principal client failed: %s", job_id, exc.detail)
             log_job(factory, run_id, None, "ERROR", exc.detail)
             with factory() as session:
                 _finish_run(session, run_id, "failed", exc.detail)
@@ -1213,13 +1157,9 @@ async def _execute_run_core(
 
         if is_dag:
             try:
-                ok, err = await _run_dag(
-                    factory, registry, tasks, run_id, user_info, uc_client
-                )
+                ok, err = await _run_dag(factory, registry, tasks, run_id, user_info, uc_client)
             except ValidationError as exc:
-                logger.warning(
-                    "scheduler: job %d DAG invalid: %s", job_id, exc.detail
-                )
+                logger.warning("scheduler: job %d DAG invalid: %s", job_id, exc.detail)
                 log_job(factory, run_id, None, "ERROR", exc.detail)
                 with factory() as session:
                     _finish_run(session, run_id, "failed", exc.detail)
@@ -1237,22 +1177,21 @@ async def _execute_run_core(
         try:
             executor = registry.get(kind)
             log_job(
-                factory, run_id, None, "INFO",
+                factory,
+                run_id,
+                None,
+                "INFO",
                 f"single-task job kind={kind} starting",
             )
             await executor(run_id, user_info, config, uc_client)
         except PointlessSQLError as exc:
-            logger.warning(
-                "scheduler: job %d (%s) failed: %s", job_id, kind, exc.detail
-            )
+            logger.warning("scheduler: job %d (%s) failed: %s", job_id, kind, exc.detail)
             log_job(factory, run_id, None, "ERROR", exc.detail)
             with factory() as session:
                 _finish_run(session, run_id, "failed", exc.detail)
             return _detached_run(factory, run_id)
         except Exception as exc:  # noqa: BLE001 — scheduler must not crash
-            logger.exception(
-                "scheduler: job %d (%s) raised unexpectedly", job_id, kind
-            )
+            logger.exception("scheduler: job %d (%s) raised unexpectedly", job_id, kind)
             log_job(factory, run_id, None, "ERROR", str(exc))
             with factory() as session:
                 _finish_run(session, run_id, "failed", str(exc))
@@ -1267,9 +1206,7 @@ async def _execute_run_core(
         request_id_var.reset(req_token)
 
 
-def _detached_run(
-    factory: sessionmaker[Session], run_id: int
-) -> JobRun:
+def _detached_run(factory: sessionmaker[Session], run_id: int) -> JobRun:
     """Load a :class:`JobRun` and detach it for the caller."""
     with factory() as session:
         run = session.get(JobRun, run_id)
@@ -1337,13 +1274,9 @@ async def _post_failure_webhook(
     """
     try:
         async with _webhook_client_factory() as client:
-            await client.post(
-                url, json=payload, timeout=_WEBHOOK_TIMEOUT_SECONDS
-            )
+            await client.post(url, json=payload, timeout=_WEBHOOK_TIMEOUT_SECONDS)
     except httpx.HTTPError as exc:
-        logger.warning(
-            "scheduler: on_failure_url webhook to %s failed: %s", url, exc
-        )
+        logger.warning("scheduler: on_failure_url webhook to %s failed: %s", url, exc)
     except Exception as exc:  # noqa: BLE001 — webhook boundary
         logger.warning(
             "scheduler: on_failure_url webhook to %s raised %s: %s",
@@ -1546,9 +1479,7 @@ class Scheduler:
         if self._task is not None and not self._task.done():
             return
         self._stop_event = asyncio.Event()
-        self._global_sem = asyncio.Semaphore(
-            max(1, self._settings.scheduler_max_concurrent_runs)
-        )
+        self._global_sem = asyncio.Semaphore(max(1, self._settings.scheduler_max_concurrent_runs))
         self._per_job_sems = {}
         self._task = asyncio.create_task(self._run(), name="pointlessql-scheduler")
         logger.info(

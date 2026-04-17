@@ -347,7 +347,9 @@ def _ensure_smoke_notebook() -> None:
 
 def main() -> int:
     """Run the full seed and print a one-line summary."""
-    print(f"seeding against {os.environ.get('POINTLESSQL_SOYUZ_CATALOG_URL', 'http://127.0.0.1:8080')}")
+    print(
+        f"seeding against {os.environ.get('POINTLESSQL_SOYUZ_CATALOG_URL', 'http://127.0.0.1:8080')}"
+    )
     client = make_soyuz_client()
     pql = PQL(client=client)
 

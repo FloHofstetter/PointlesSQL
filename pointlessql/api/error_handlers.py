@@ -78,9 +78,7 @@ def _render_error_page(
     extra: dict[str, Any] | None = None,
 ) -> HTMLResponse:
     """Render a branded error page on the app shell."""
-    templates: Jinja2Templates | None = getattr(
-        request.app.state, "templates", None
-    )
+    templates: Jinja2Templates | None = getattr(request.app.state, "templates", None)
     if templates is None:
         # Templates were never mounted (e.g. unit test with a bare app).
         # Fall back to a tiny HTML stub so the caller still gets HTML.
@@ -137,9 +135,7 @@ def register_error_handlers(app: FastAPI) -> None:
             )
 
         if _wants_json(request):
-            return _json_envelope(
-                exc.status_code, exc.error_code, exc.detail, request_id
-            )
+            return _json_envelope(exc.status_code, exc.error_code, exc.detail, request_id)
 
         extra: dict[str, Any] | None = None
         if isinstance(exc, AuthorizationError):
@@ -163,15 +159,11 @@ def register_error_handlers(app: FastAPI) -> None:
         request: Request, exc: StarletteHTTPException
     ) -> Response:
         request_id: str | None = getattr(request.state, "request_id", None)
-        detail = str(exc.detail) if exc.detail else _STATUS_TITLES.get(
-            exc.status_code, "Error"
-        )
+        detail = str(exc.detail) if exc.detail else _STATUS_TITLES.get(exc.status_code, "Error")
         error_code = f"http_{exc.status_code}"
 
         if _wants_json(request):
-            return _json_envelope(
-                exc.status_code, error_code, detail, request_id
-            )
+            return _json_envelope(exc.status_code, error_code, detail, request_id)
 
         return _render_error_page(
             request,
@@ -186,9 +178,7 @@ def register_error_handlers(app: FastAPI) -> None:
         request: Request, exc: Exception
     ) -> Response:
         request_id: str | None = getattr(request.state, "request_id", None)
-        logger.exception(
-            "unhandled exception on %s %s", request.method, request.url.path
-        )
+        logger.exception("unhandled exception on %s %s", request.method, request.url.path)
 
         if _wants_json(request):
             return _json_envelope(

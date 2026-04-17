@@ -251,14 +251,13 @@
              } else {
                  this.error = 'unknown kind: ' + this.kind; this.submitting = false; return;
              }
-             fetch('/api/jobs', {
+             window.pqlApi.fetch('/api/jobs', {
                  method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify(payload),
-             }).then(async r => {
-                 if (!r.ok) { this.error = (await r.json()).error?.message || r.statusText; this.submitting = false; return; }
-                 window.location.reload();
-             }).catch(e => { this.error = String(e); this.submitting = false; });
+                 body: payload,
+             }).then(res => {
+                 if (!res.ok) { this.error = res.error; this.submitting = false; return; }
+                 window.pqlApi.reloadWithToast('Job created.');
+             });
          }
      }">
     <div class="modal-dialog modal-lg">

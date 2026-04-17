@@ -35,9 +35,7 @@ class TestGetTags:
 
         assert result == [{"key": "env", "value": "prod"}]
 
-    async def test_returns_empty_on_none(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_returns_empty_on_none(self, uc_client: UnityCatalogClient) -> None:
         with patch(
             "pointlessql.services.unitycatalog._get_tags.asyncio",
             new_callable=AsyncMock,
@@ -49,9 +47,7 @@ class TestGetTags:
 
 
 class TestUpdateTags:
-    async def test_sends_changes_and_returns(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_sends_changes_and_returns(self, uc_client: UnityCatalogClient) -> None:
         tag_entry = MagicMock()
         tag_entry.to_dict.return_value = {"key": "env", "value": "staging"}
         tag_list = MagicMock()
@@ -75,9 +71,7 @@ class TestUpdateTags:
 
 
 class TestGetPermissions:
-    async def test_returns_assignments(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_returns_assignments(self, uc_client: UnityCatalogClient) -> None:
         assignment = MagicMock()
         assignment.to_dict.return_value = {
             "principal": "admin",
@@ -100,9 +94,7 @@ class TestGetPermissions:
 
         assert result == [{"principal": "admin", "privileges": ["SELECT"]}]
 
-    async def test_returns_empty_on_none(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_returns_empty_on_none(self, uc_client: UnityCatalogClient) -> None:
         with patch(
             "pointlessql.services.unitycatalog._get_permissions.asyncio",
             new_callable=AsyncMock,
@@ -114,9 +106,7 @@ class TestGetPermissions:
 
 
 class TestGetEffectivePermissions:
-    async def test_returns_effective(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_returns_effective(self, uc_client: UnityCatalogClient) -> None:
         assignment = MagicMock()
         assignment.to_dict.return_value = {
             "principal": "user1",
@@ -135,18 +125,14 @@ class TestGetEffectivePermissions:
             )
 
             perm_list.__class__ = PermissionsList
-            result = await uc_client.get_effective_permissions(
-                "catalog", "my_catalog"
-            )
+            result = await uc_client.get_effective_permissions("catalog", "my_catalog")
 
         assert len(result) == 1
         assert result[0]["principal"] == "user1"
 
 
 class TestGetLineage:
-    async def test_returns_combined(
-        self, uc_client: UnityCatalogClient
-    ) -> None:
+    async def test_returns_combined(self, uc_client: UnityCatalogClient) -> None:
         from soyuz_catalog_client.models.lineage_graph_response import (
             LineageGraphResponse,
         )

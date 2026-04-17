@@ -265,9 +265,7 @@ class PQL:
         url = self._client._base_url  # pyright: ignore[reportPrivateUsage]
         return f"Cannot reach soyuz-catalog at {url}. Is the server running?"
 
-    def _derive_storage_location(
-        self, catalog: str, schema: str, table: str
-    ) -> str:
+    def _derive_storage_location(self, catalog: str, schema: str, table: str) -> str:
         """Compute a storage location for a new table from its parent schema.
 
         Args:

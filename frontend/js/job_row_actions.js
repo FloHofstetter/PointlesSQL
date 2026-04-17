@@ -22,21 +22,12 @@ window.jobRowActions = function (params) {
         async _post(path, successMsg) {
             if (this.busy) return;
             this.busy = true;
-            try {
-                const r = await fetch(path, { method: 'POST' });
-                if (!r.ok) {
-                    const body = await r.json().catch(() => ({}));
-                    const msg = (body && body.error && body.error.message) || r.statusText;
-                    if (window.pqlToast) window.pqlToast.error(msg);
-                    this.busy = false;
-                    return;
-                }
-                if (window.pqlToast) window.pqlToast.success(successMsg);
-                setTimeout(() => window.location.reload(), 400);
-            } catch (e) {
-                if (window.pqlToast) window.pqlToast.error(String(e));
+            const res = await window.pqlApi.fetch(path, { method: 'POST' });
+            if (!res.ok) {
                 this.busy = false;
+                return;
             }
+            window.pqlApi.reloadWithToast(successMsg);
         },
 
         runNow() {

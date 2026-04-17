@@ -49,9 +49,7 @@ def _authed_client() -> httpx.AsyncClient:
 
 class TestJsonErrorEnvelope:
     async def test_catalog_unavailable_produces_502(self) -> None:
-        app.state.uc_client.get_tree = AsyncMock(
-            side_effect=CatalogUnavailableError("server down")
-        )
+        app.state.uc_client.get_tree = AsyncMock(side_effect=CatalogUnavailableError("server down"))
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 502
@@ -81,9 +79,7 @@ class TestJsonErrorEnvelope:
         assert body["code"] == "authorization_error"
 
     async def test_engine_error_produces_500(self) -> None:
-        app.state.uc_client.get_tree = AsyncMock(
-            side_effect=EngineError("delta read failed")
-        )
+        app.state.uc_client.get_tree = AsyncMock(side_effect=EngineError("delta read failed"))
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 500
@@ -91,9 +87,7 @@ class TestJsonErrorEnvelope:
         assert body["code"] == "engine_error"
 
     async def test_validation_error_produces_422(self) -> None:
-        app.state.uc_client.get_tree = AsyncMock(
-            side_effect=ValidationError("bad table name")
-        )
+        app.state.uc_client.get_tree = AsyncMock(side_effect=ValidationError("bad table name"))
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 422
@@ -107,9 +101,7 @@ class TestJsonErrorEnvelope:
 class TestHtmlErrorHandling:
     async def test_authorization_error_renders_403_page(self) -> None:
         app.state.uc_client.list_catalogs = AsyncMock(
-            side_effect=AuthorizationError(
-                "user@test.com", "USE CATALOG", "catalog", "test_cat"
-            )
+            side_effect=AuthorizationError("user@test.com", "USE CATALOG", "catalog", "test_cat")
         )
         async with _authed_client() as client:
             resp = await client.get("/")
@@ -139,13 +131,9 @@ class TestRequestId:
         assert resp.headers["X-Request-ID"] == "my-trace-id"
 
     async def test_request_id_in_json_error_envelope(self) -> None:
-        app.state.uc_client.get_tree = AsyncMock(
-            side_effect=CatalogUnavailableError("down")
-        )
+        app.state.uc_client.get_tree = AsyncMock(side_effect=CatalogUnavailableError("down"))
         async with _authed_client() as client:
-            resp = await client.get(
-                "/api/tree", headers={"X-Request-ID": "err-trace-42"}
-            )
+            resp = await client.get("/api/tree", headers={"X-Request-ID": "err-trace-42"})
         assert resp.json()["error"]["request_id"] == "err-trace-42"
 
 
