@@ -28,13 +28,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
-          # Token-as-username form. GitHub rejects the
-          # `x-access-token:<token>` password form for PATs
-          # ("Password authentication is not supported") — that
-          # shape is only accepted for GitHub App installation
-          # tokens. For fine-grained and classic PATs, the token
-          # goes in the username position with an empty password.
-          git config --global url."https://${GH_TOKEN}@github.com/FloHofstetter/".insteadOf "https://github.com/FloHofstetter/"
+          # Hand off to `gh auth setup-git` — it installs a
+          # credential helper that calls `gh auth git-credential`,
+          # which in turn uses GH_TOKEN. Avoids the landmine of
+          # picking the "right" basic-auth URL shape: neither
+          # `<token>@` (empty password, rejected) nor
+          # `x-access-token:<token>@` (installation-token-only
+          # form, rejected for PATs) actually works.
+          gh auth setup-git
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:

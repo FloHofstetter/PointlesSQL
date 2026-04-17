@@ -35,8 +35,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
-          # Token-as-username form — see test.yml for the rationale.
-          git config --global url."https://${GH_TOKEN}@github.com/FloHofstetter/".insteadOf "https://github.com/FloHofstetter/"
+          # See test.yml for why `gh auth setup-git` is the right
+          # abstraction (neither bare-token-as-username nor
+          # `x-access-token:` works for PATs).
+          gh auth setup-git
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
