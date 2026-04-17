@@ -28,7 +28,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
-          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/FloHofstetter/".insteadOf "https://github.com/FloHofstetter/"
+          # Token-as-username form. GitHub rejects the
+          # `x-access-token:<token>` password form for PATs
+          # ("Password authentication is not supported") — that
+          # shape is only accepted for GitHub App installation
+          # tokens. For fine-grained and classic PATs, the token
+          # goes in the username position with an empty password.
+          git config --global url."https://${GH_TOKEN}@github.com/FloHofstetter/".insteadOf "https://github.com/FloHofstetter/"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
