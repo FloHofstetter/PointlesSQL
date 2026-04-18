@@ -1546,7 +1546,7 @@ PointlesSQL
 │   │       service-layer unit tests
 │   │
 │   │
-│   ├── Sprint 44 — RFC 9457 error envelope + HTMX toast bridge  ⏳ in progress
+│   ├── Sprint 44 — RFC 9457 error envelope + HTMX toast bridge  ✅ done (f6f327c)
 │   │   ├── Port shoreguard-fresh's RFC 9457 ``application/problem+json``
 │   │   │   envelope to replace PointlesSQL's nested
 │   │   │   ``{"error":{"code","message","request_id"}}`` shape.
