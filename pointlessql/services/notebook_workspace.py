@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 _RUNS_DIR_NAME = "runs"
 _SCRATCH_DIR_NAME = "scratch"
 _NOTEBOOK_SUFFIX = ".ipynb"
+_PY_NOTEBOOK_SUFFIX = ".py"
+_NOTEBOOK_SUFFIXES = frozenset({_NOTEBOOK_SUFFIX, _PY_NOTEBOOK_SUFFIX})
 _SKIP_TOP_LEVEL_DIRS = frozenset({_RUNS_DIR_NAME, _SCRATCH_DIR_NAME})
 
 
@@ -101,14 +103,28 @@ def _walk(directory: Path, notebooks_root: Path) -> list[dict[str, Any]]:
                 }
             )
         elif (
-            entry.is_file() and entry.suffix == _NOTEBOOK_SUFFIX and not entry.name.startswith(".")
+            entry.is_file() and entry.suffix in _NOTEBOOK_SUFFIXES
+            and not entry.name.startswith(".")
         ):
+            # Sprint 63: .py jupytext notebooks are first-class
+            # citizens in the workspace tree; the frontend routes
+            # "Open in editor" clicks based on the ``format`` marker.
+            # ``parameters_tagged`` remains .ipynb-only because
+            # papermill's inspect_notebook can't read .py directly —
+            # Sprint 63's jupytext-convert step handles the .py path
+            # at execute time, not at inspect time.
+            notebook_format = (
+                "py" if entry.suffix == _PY_NOTEBOOK_SUFFIX else "ipynb"
+            )
             notebooks.append(
                 {
                     "name": entry.name,
                     "path": str(entry.relative_to(notebooks_root)),
                     "kind": "notebook",
-                    "parameters_tagged": _is_parameters_tagged(entry),
+                    "format": notebook_format,
+                    "parameters_tagged": (
+                        _is_parameters_tagged(entry) if notebook_format == "ipynb" else False
+                    ),
                 }
             )
 

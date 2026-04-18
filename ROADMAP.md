@@ -2057,25 +2057,63 @@ PointlesSQL
 │   │       Phase 12.6.  Anything that needs ``comm_msg`` round-
 │   │       trips lands in Phase 12.7.
 │   │
-│   ├── Sprint 63 — Papermill bridge + retire JupyterLab       ⏳ planned
-│   │   ├── Phase-8 Papermill: jupytext-convert step in
-│   │   │   ``services/scheduler.py``'s papermill executor so
-│   │   │   ``.py`` notebooks can be scheduled (convert →
-│   │   │   papermill → keep ``.ipynb`` output for Sprint-26
-│   │   │   viewer)
-│   │   ├── Sprint-26 viewer re-points at the Sprint-60
-│   │   │   renderer; ``nbconvert`` HTML sidecar becomes a
-│   │   │   fallback-only codepath
-│   │   ├── Sprint-27 workspace tree: show ``.py`` notebooks
-│   │   │   with a notebook icon, "Open in editor" = new editor
-│   │   │   route; ``.ipynb`` still opens the legacy iframe for
-│   │   │   one release
-│   │   ├── Retire ``pointlessql/services/jupyter.py``, remove
-│   │   │   ``jupyterlab`` from ``pyproject.toml``, drop
-│   │   │   ``/notebook`` iframe route + template, drop the
-│   │   │   ``Content-Security-Policy: frame-ancestors`` entry
-│   │   └── CHANGELOG breaking-change note + migration section
-│   │       in ``README.md`` (one release grace window)
+│   ├── Sprint 63 — Papermill bridge + retire JupyterLab       🔜 in progress
+│   │   ├── Phase-8 Papermill: ``_papermill_executor`` in
+│   │   │   ``services/scheduler.py`` gains a jupytext-convert
+│   │   │   step — ``.py`` inputs are written to a sibling
+│   │   │   ``runs/{run_id}.input.ipynb`` via
+│   │   │   ``_jupytext_py_to_ipynb`` before papermill sees
+│   │   │   them, and the temp ``.ipynb`` is unlinked in a
+│   │   │   ``finally`` block.  ``resolve_notebook_path`` now
+│   │   │   accepts both suffixes.
+│   │   ├── Sprint-26 viewer simplification: the
+│   │   │   ``Rendered / JupyterLab`` view-mode toggle is
+│   │   │   gone.  ``nbconvert``'s lab template is the sole
+│   │   │   renderer; the ``Open in JupyterLab`` anchor became
+│   │   │   a ``Download ipynb`` button that hits the existing
+│   │   │   download endpoint.  The original plan had the
+│   │   │   viewer re-pointing at the Sprint-60 renderer; that
+│   │   │   meant converting ``.ipynb`` cells + outputs into the
+│   │   │   native-editor shape at render time, which doubled
+│   │   │   the sprint's complexity for no user-visible win
+│   │   │   over nbconvert's static HTML.  Deliberately scoped
+│   │   │   down (smaller-than-sketched OK per the Phase-12.6
+│   │   │   memory rule).
+│   │   ├── Sprint-27 workspace tree: ``services/
+│   │   │   notebook_workspace.py`` now walks both ``.py`` and
+│   │   │   ``.ipynb`` and tags each entry with a ``format``
+│   │   │   marker.  The Alpine template adds a themed
+│   │   │   ``Open`` button for ``.py`` that routes into the
+│   │   │   native editor; ``.ipynb`` entries keep the
+│   │   │   Schedule action only (upload + execute, no edit
+│   │   │   surface).  The upload helper stays ``.ipynb``-only
+│   │   │   for papermill compatibility — authoring happens in
+│   │   │   the editor.
+│   │   ├── Sprint-34 open-in-notebook: the
+│   │   │   ``/api/catalogs/.../open-in-notebook`` route now
+│   │   │   scaffolds a ``.py`` jupytext notebook (one markdown
+│   │   │   header + one code cell, both with UUIDs via
+│   │   │   ``notebook_doc.save_document``) and returns
+│   │   │   ``{editor_url: …}``.  The legacy ``lab_url`` key
+│   │   │   ships on the response as a one-release alias so
+│   │   │   in-flight clients don't 500; Sprint 64 drops it.
+│   │   ├── Retirement:
+│   │   │   - ``pointlessql/services/jupyter.py`` deleted.
+│   │   │   - ``"jupyterlab>=4.0"`` dropped from
+│   │   │     ``pyproject.toml`` (``uv sync`` cleared ~30
+│   │   │     transitive packages).
+│   │   │   - ``/notebook`` becomes a 302 to
+│   │   │     ``/notebook/editor?path=scratch.py``.
+│   │   │   - ``pages/notebook.html`` deleted.
+│   │   │   - ``GET /api/jupyter/status`` deleted.
+│   │   │   - Navbar dropdown collapsed to a single direct link.
+│   │   │   - CSP ``frame-ancestors`` entry lived only in
+│   │   │     ``services/jupyter.py`` — gone with the file.
+│   │   └── CHANGELOG breaking-change section + README
+│   │       migration section.  Grace window is one release:
+│   │       the ``/notebook`` redirect + the ``lab_url`` alias
+│   │       on ``open-in-notebook`` stay for Sprint 64's close-
+│   │       out.
 │   │
 │   └── Sprint 64 — E2E playbook + phase close                ⏳ planned
 │       ├── New ``docs/e2e-walkthroughs/notebook-editor.md``

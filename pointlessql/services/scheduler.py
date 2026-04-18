@@ -255,8 +255,16 @@ async def _python_executor(
 _papermill_env_lock = threading.Lock()
 
 
+_PAPERMILL_INPUT_SUFFIXES = frozenset({".ipynb", ".py"})
+
+
 def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
     """Resolve *notebook_path* under *notebooks_dir*, rejecting traversal.
+
+    Sprint 63 accepts both ``.ipynb`` and ``.py`` (jupytext percent
+    format) inputs — the :func:`_papermill_executor` converts ``.py``
+    to a temporary ``.ipynb`` before papermill runs it, so callers
+    upstream can pass either format transparently.
 
     Args:
         notebooks_dir: Absolute root directory the notebook must live under.
@@ -266,8 +274,9 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
         The resolved absolute path to the input notebook.
 
     Raises:
-        ValidationError: When *notebook_path* is absolute, empty, escapes
-            *notebooks_dir*, or does not point at an existing file.
+        ValidationError: When *notebook_path* is absolute, empty, has
+            an unsupported suffix, escapes *notebooks_dir*, or does
+            not point at an existing file.
     """
     if not notebook_path:
         raise ValidationError("papermill job config 'notebook_path' must be a non-empty string")
@@ -276,6 +285,10 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
         raise ValidationError(
             f"papermill notebook_path must be relative to the notebooks "
             f"directory: {notebook_path!r}"
+        )
+    if candidate.suffix not in _PAPERMILL_INPUT_SUFFIXES:
+        raise ValidationError(
+            f"papermill notebook_path must end in .ipynb or .py: {notebook_path!r}"
         )
     resolved = (notebooks_dir / candidate).resolve()
     try:
@@ -412,10 +425,25 @@ async def _papermill_executor(
     runs_dir.mkdir(parents=True, exist_ok=True)
     output_path = runs_dir / f"{job_run_id}.ipynb"
 
+    # Sprint 63: if the user scheduled a ``.py`` notebook (Phase-12.6
+    # Percent format), convert it to a sibling ``.ipynb`` inside the
+    # runs dir before papermill sees it.  Papermill itself stays
+    # ``.ipynb``-only; the convert step is a cheap jupytext call.
+    papermill_input = input_path
+    converted_temp: Path | None = None
+    if input_path.suffix == ".py":
+        converted_temp = runs_dir / f"{job_run_id}.input.ipynb"
+        await asyncio.to_thread(_jupytext_py_to_ipynb, input_path, converted_temp)
+        papermill_input = converted_temp
+        logger.info(
+            "papermill: converted %s → %s before execute (Sprint 63)",
+            input_path, converted_temp,
+        )
+
     principal = user_info["email"]
     logger.info(
         "papermill: executing %s → %s (timeout=%ds, principal=%s)",
-        input_path,
+        papermill_input,
         output_path,
         timeout_seconds,
         principal,
@@ -425,7 +453,7 @@ async def _papermill_executor(
         await asyncio.wait_for(
             asyncio.to_thread(
                 _run_papermill_blocking,
-                input_path,
+                papermill_input,
                 output_path,
                 dict(parameters),
                 notebooks_dir,
@@ -436,8 +464,32 @@ async def _papermill_executor(
         )
     except TimeoutError as exc:
         raise EngineError(f"papermill execution timed out after {timeout_seconds}s") from exc
-
+    finally:
+        if converted_temp is not None and converted_temp.exists():
+            try:
+                converted_temp.unlink()
+            except OSError:
+                logger.warning("failed to delete jupytext-convert temp %s", converted_temp)
     logger.info("papermill: finished %s", output_path)
+
+
+def _jupytext_py_to_ipynb(src: Path, dst: Path) -> None:
+    """Convert a jupytext Percent ``.py`` to an ``.ipynb`` on disk.
+
+    Runs inside an :func:`asyncio.to_thread` worker because jupytext's
+    read + nbformat write are both synchronous.  Used by
+    :func:`_papermill_executor` before handing the notebook to
+    papermill, which only speaks ``.ipynb``.
+
+    Args:
+        src: Absolute path to the ``.py`` input.
+        dst: Absolute path the converted ``.ipynb`` will land at.
+    """
+    import jupytext  # type: ignore[import-untyped]
+    import nbformat  # type: ignore[import-untyped]
+
+    notebook = jupytext.read(src, fmt="py:percent")
+    nbformat.write(notebook, dst)
 
 
 async def _alert_check_executor(

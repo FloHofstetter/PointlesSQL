@@ -63,7 +63,6 @@ from pointlessql.services.authorization import (
     check_privilege_from_effective,
     has_privilege,
 )
-from pointlessql.services.jupyter import managed_jupyter
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
@@ -157,18 +156,20 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.kernel_registry = kernel_registry
 
-    async with managed_jupyter(settings) as jupyter_proc:
-        app.state.jupyter_process = jupyter_proc
-        try:
-            yield
-        finally:
-            audit_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await audit_task
-            if scheduler is not None:
-                await scheduler.stop()
-            await kernel_registry.shutdown_all()
-            await app.state.uc_client.aclose()
+    # Sprint 63: the embedded JupyterLab subprocess is retired.  The
+    # native Phase-12.6 editor + per-notebook ipykernel registry
+    # (Sprint 59) serve every notebook-facing use case; papermill
+    # spawns its own kernel per run.  Nothing else to start here.
+    try:
+        yield
+    finally:
+        audit_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await audit_task
+        if scheduler is not None:
+            await scheduler.stop()
+        await kernel_registry.shutdown_all()
+        await app.state.uc_client.aclose()
 
 
 async def _audit_retention_loop(
@@ -2838,17 +2839,17 @@ async def api_open_in_notebook(
     schema_name: str,
     table_name: str,
 ) -> dict[str, Any]:
-    """Create a scratch notebook pre-filled with ``pql.table(...)``.
+    """Create a scratch ``.py`` notebook pre-filled with ``pql.table(...)``.
 
-    Admin-only to keep the workspace clean. Writes a minimal
-    nbformat-4.5 notebook under ``{notebooks_dir}/scratch/`` with a
-    markdown header and a single code cell that reads the requested
-    table. Returns the on-disk path plus a JupyterLab deep-link the
+    Admin-only to keep the workspace clean. Sprint 63 writes a
+    jupytext Percent-format ``.py`` under
+    ``{notebooks_dir}/scratch/`` (one markdown cell + one code cell
+    with UUID markers so the native editor picks it up on mount).
+    Returns the on-disk path plus a ``/notebook/editor`` URL the
     client navigates to with ``window.location.assign``.
     """
     import secrets
-
-    import nbformat
+    import uuid
 
     _require_admin(request)
     settings: Settings = request.app.state.settings
@@ -2856,30 +2857,44 @@ async def api_open_in_notebook(
 
     sanitiser = re.compile(r"[^A-Za-z0-9_-]")
     stem = "_".join(sanitiser.sub("_", part) for part in (catalog_name, schema_name, table_name))
-    filename = f"{stem}_{secrets.token_hex(3)}.ipynb"
+    filename = f"{stem}_{secrets.token_hex(3)}.py"
     scratch_dir = settings.jupyter.notebooks_dir / "scratch"
     scratch_dir.mkdir(parents=True, exist_ok=True)
-    target = notebook_workspace_service.resolve_upload_target(
-        settings.jupyter.notebooks_dir, f"scratch/{filename}"
+    target = notebook_doc_service.resolve_py_notebook_path(
+        settings.jupyter.notebooks_dir.resolve(),
+        f"scratch/{filename}",
+        must_exist=False,
     )
 
-    nb = nbformat.v4.new_notebook()
-    nb.cells = [
-        nbformat.v4.new_markdown_cell(
-            f"# Scratch: `{full_name}`\n\nGenerated from the PointlesSQL table detail page."
+    cells = [
+        notebook_doc_service.NotebookCell(
+            id=str(uuid.uuid4()),
+            cell_type="markdown",
+            source=(
+                f"# Scratch: `{full_name}`\n\n"
+                "Generated from the PointlesSQL table detail page."
+            ),
         ),
-        nbformat.v4.new_code_cell(
-            f'from pointlessql import PQL\n\npql = PQL()\ndf = pql.table("{full_name}")\ndf.head()'
+        notebook_doc_service.NotebookCell(
+            id=str(uuid.uuid4()),
+            cell_type="code",
+            source=(
+                "from pointlessql import PQL\n\n"
+                "pql = PQL()\n"
+                f'df = pql.table("{full_name}")\n'
+                "df.head()"
+            ),
         ),
     ]
-    with target.open("w", encoding="utf-8") as fh:
-        nbformat.write(nb, fh)
+    notebook_doc_service.save_document(target, cells)
 
     await _audit(request, "open_in_notebook", f"table:{full_name}", f"scratch/{filename}")
-    host = request.url.hostname or "localhost"
     relative = f"scratch/{filename}"
-    lab_url = f"http://{host}:{settings.jupyter.port}/lab/tree/{relative}"
-    return {"path": relative, "lab_url": lab_url}
+    editor_url = f"/notebook/editor?path={relative}"
+    # ``lab_url`` stays on the response for one grace release so any
+    # in-flight client that still has the pre-retirement JS can read
+    # it without 500-ing; Sprint 64 removes the alias.
+    return {"path": relative, "editor_url": editor_url, "lab_url": editor_url}
 
 
 @app.post("/api/catalogs")
@@ -3339,21 +3354,23 @@ async def table_detail(
 
 
 @app.get("/notebook", response_class=HTMLResponse)
-async def notebook_page(request: Request) -> HTMLResponse:
-    """Render the embedded JupyterLab notebook page."""
-    settings: Settings = request.app.state.settings
-    return _TEMPLATES.TemplateResponse(
-        request,
-        "pages/notebook.html",
-        {
-            "jupyter_enabled": settings.jupyter.enabled,
-            "jupyter_port": settings.jupyter.port,
-            "active_page": "notebook",
-            "active_catalog": None,
-            "active_schema": None,
-            "active_table": None,
-        },
-    )
+async def notebook_redirect(request: Request) -> RedirectResponse:
+    """Redirect legacy ``/notebook`` URL to the native editor.
+
+    Sprint 63 retires the embedded JupyterLab iframe.  The
+    ``/notebook`` path stays registered as a redirect for one grace
+    release so bookmarks + the Sprint-3 navbar don't 404; Sprint 64
+    drops the redirect entirely.
+
+    Args:
+        request: Incoming request (unused — kept for the FastAPI
+            signature + future middleware hooks).
+
+    Returns:
+        A 302 to ``/notebook/editor?path=scratch.py``.
+    """
+    del request
+    return RedirectResponse(url="/notebook/editor?path=scratch.py", status_code=302)
 
 
 @app.get("/notebook/editor", response_class=HTMLResponse)
@@ -3798,19 +3815,6 @@ async def ws_notebook_lsp(websocket: WebSocket, path: str) -> None:
         pass
     finally:
         await session.shutdown()
-
-
-@app.get("/api/jupyter/status")
-async def jupyter_status(request: Request) -> dict[str, object]:
-    """Return Jupyter subprocess status."""
-    settings: Settings = request.app.state.settings
-    proc = getattr(request.app.state, "jupyter_process", None)
-    running = proc is not None and proc.returncode is None
-    return {
-        "enabled": settings.jupyter.enabled,
-        "running": running,
-        "port": settings.jupyter.port,
-    }
 
 
 @app.get("/api/notebooks/inspect")
@@ -6112,7 +6116,6 @@ async def job_detail(request: Request, job_id: int) -> HTMLResponse:
             "runs": [_serialize_run(r) for r in runs],
             "tasks": task_rows,
             "can_manage": can_manage,
-            "jupyter_port": _startup_settings.jupyter.port,
             "active_page": "jobs",
             "active_catalog": None,
             "active_schema": None,

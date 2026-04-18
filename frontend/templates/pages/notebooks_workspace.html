@@ -59,8 +59,13 @@
                                     <template x-if="row.kind === 'dir'">
                                         <i class="bi bi-folder2"></i>
                                     </template>
-                                    <template x-if="row.kind === 'notebook'">
-                                        <i class="bi bi-journal-code"></i>
+                                    <template x-if="row.kind === 'notebook' && row.format === 'py'">
+                                        <i class="bi bi-journal-code text-info"
+                                           title=".py notebook (jupytext Percent)"></i>
+                                    </template>
+                                    <template x-if="row.kind === 'notebook' && row.format !== 'py'">
+                                        <i class="bi bi-journal-code"
+                                           title=".ipynb notebook"></i>
                                     </template>
                                     <span class="text-truncate font-monospace" x-text="row.name"></span>
                                     <template x-if="row.kind === 'notebook' && row.parameters_tagged">
@@ -73,12 +78,22 @@
                                 </span>
 
                                 <template x-if="row.kind === 'notebook'">
-                                    <button type="button"
-                                            class="btn btn-sm btn-outline-primary ms-auto py-0 px-2"
-                                            style="font-size: 0.75rem;"
-                                            @click="schedule(row.path)">
-                                        <i class="bi bi-calendar-plus"></i> Schedule…
-                                    </button>
+                                    <span class="ms-auto d-flex gap-1">
+                                        <template x-if="row.format === 'py'">
+                                            <a :href="'/notebook/editor?path=' + encodeURIComponent(row.path)"
+                                               class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                               style="font-size: 0.75rem;"
+                                               @click.stop>
+                                                <i class="bi bi-pencil-square"></i> Open
+                                            </a>
+                                        </template>
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-primary py-0 px-2"
+                                                style="font-size: 0.75rem;"
+                                                @click="schedule(row.path)">
+                                            <i class="bi bi-calendar-plus"></i> Schedule…
+                                        </button>
+                                    </span>
                                 </template>
                             </div>
                         </li>
@@ -104,7 +119,11 @@
                                placeholder="pipelines/my_notebook.ipynb"
                                required>
                         <div class="form-text small">
-                            Relative to the notebooks directory. Must end in <code>.ipynb</code>.
+                            Relative to the notebooks directory. Must end in
+                            <code>.ipynb</code> (upload endpoint stays
+                            <code>.ipynb</code>-only for Papermill compatibility;
+                            author new notebooks via the <strong>Notebook</strong>
+                            editor to get <code>.py</code> jupytext format).
                         </div>
                     </div>
                     <div class="mb-3">
@@ -166,6 +185,7 @@
                         path: n.path,
                         name: n.name,
                         kind: n.kind,
+                        format: n.format || 'ipynb',
                         depth: depth,
                         parameters_tagged: !!n.parameters_tagged,
                     });

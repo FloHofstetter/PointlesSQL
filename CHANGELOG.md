@@ -4,6 +4,68 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — Breaking (Sprint 63) — JupyterLab iframe retired
+
+Phase 12.6 Sprint 63 retires the Sprint-3 embedded JupyterLab
+iframe.  The native Monaco editor that Sprints 58–62 built ships
+every notebook-facing use case end-to-end; the iframe came out in
+this commit.
+
+Breaking changes to a running deployment:
+
+- **``jupyterlab`` is no longer a runtime dep.**  ``pyproject.toml``
+  drops ``jupyterlab>=4.0``.  ``uv sync`` removes ~30 transitive
+  packages from the venv.  Docker images shrink accordingly.
+- **No more JupyterLab subprocess.**  ``services/jupyter.py`` is
+  gone.  The FastAPI lifespan no longer starts a kernel server
+  on port 8888.  ``POINTLESSQL_JUPYTER_PORT`` stays on the
+  settings class for backward-compat but does nothing.
+- **``GET /notebook`` now 302-redirects** to
+  ``/notebook/editor?path=scratch.py``.  The Sprint-3 iframe page
+  template (``pages/notebook.html``) is deleted.
+- **``GET /api/jupyter/status`` is removed.**  The endpoint was
+  only used by the Sprint-3 loader polling the JupyterLab
+  subprocess — the native editor has no equivalent gate.
+- **User-authored ``.ipynb`` editing is unsupported.**  The
+  editor reads / writes ``.py`` only.  Papermill-generated
+  ``.ipynb`` under ``notebooks/runs/`` still works (execute-only
+  artefact) and the Sprint-27 workspace browser still lists
+  ``.ipynb`` uploads for scheduling.  Migration: run
+  ``jupytext --to py:percent file.ipynb`` manually.  README
+  gained a migration section.
+- **Navbar simplified.**  The Sprint-58 dropdown
+  (JupyterLab-classic + Editor-preview) collapsed into one
+  ``Notebook`` link that goes straight to the editor.
+- **Sprint-26 job-detail output card** dropped the
+  ``Rendered / JupyterLab`` view-mode toggle.  The rendered
+  HTML (nbconvert's lab template) is now the only mode.  The
+  ``Open in JupyterLab`` anchor became a ``Download ipynb``
+  button that hits the existing download endpoint.
+- **``Sprint-34 open-in-notebook``** now scaffolds a ``.py``
+  jupytext notebook and returns ``{editor_url: …}`` instead of
+  ``{lab_url: …}``.  The ``lab_url`` alias still ships on the
+  response as a one-release grace for clients that have not
+  been reloaded; Sprint 64 drops it.
+
+Positive changes enabled by the retirement:
+
+- **Papermill can schedule ``.py`` notebooks.**  The scheduler's
+  ``_papermill_executor`` gains a jupytext-convert step —
+  ``.py`` inputs are converted to a sibling ``.ipynb`` in
+  ``runs/``, papermill executes, and the temp ``.ipynb`` is
+  unlinked in a ``finally`` block.  ``resolve_notebook_path``
+  accepts both suffixes.
+- **Workspace tree shows ``.py`` notebooks** with a themed icon
+  and an ``Open`` button that routes into the native editor.
+  ``.ipynb`` entries keep the Schedule action only.
+- **CSP cleanup.**  The Sprint-3 ``frame-ancestors 'self'
+  http://localhost:8000 http://127.0.0.1:8000`` header was
+  scoped to the JupyterLab subprocess and went away with it.
+  No separate main.py CSP entry to unwind.
+
+All gates green: ruff, pyright (0 errors, ~87 third-party
+warnings, no regressions), pydoclint.
+
 ### Added (Sprint 62) — Variable Explorer + catalog insert + rich script exec
 
 Phase 12.6 Sprint 62 rounds out the native editor's read-side

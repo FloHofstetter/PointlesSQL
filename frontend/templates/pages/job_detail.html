@@ -179,9 +179,7 @@
 <div class="card mb-4"
      x-data='{
          jobId: {{ job.id }},
-         jupyterPort: {{ jupyter_port }},
          completedRunIds: {{ completed_run_ids|tojson }},
-         viewMode: "rendered",
          selectedRunId: null,
          init() {
              this.selectedRunId = this.completedRunIds.length > 0 ? this.completedRunIds[0] : null;
@@ -191,9 +189,6 @@
          },
          iframeSrc() {
              if (this.selectedRunId === null) return "";
-             if (this.viewMode === "jupyterlab") {
-                 return `http://${window.location.hostname}:${this.jupyterPort}/lab/tree/runs/${this.selectedRunId}.ipynb`;
-             }
              return `/jobs/${this.jobId}/runs/${this.selectedRunId}/notebook`;
          }
      }'>
@@ -202,14 +197,6 @@
         <span class="text-muted small" x-show="selectedRunId !== null">
             · run #<span x-text="selectedRunId"></span>
         </span>
-        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="View mode">
-            <button type="button"
-                    :class="viewMode === 'rendered' ? 'btn btn-primary' : 'btn btn-outline-primary'"
-                    x-on:click="viewMode = 'rendered'">Rendered</button>
-            <button type="button"
-                    :class="viewMode === 'jupyterlab' ? 'btn btn-primary' : 'btn btn-outline-primary'"
-                    x-on:click="viewMode = 'jupyterlab'">JupyterLab</button>
-        </div>
     </div>
     <div class="card-body p-0">
         <div class="p-3 text-muted small fst-italic" x-show="selectedRunId === null" x-cloak>
@@ -316,11 +303,11 @@
                         <td class="small text-danger">{{ run.error or "" }}</td>
                         <td class="pe-3 text-end">
                             {% if job.kind == "papermill" and run.status in ("succeeded", "failed") %}
-                            <a href="http://{{ request.url.hostname }}:{{ jupyter_port }}/lab/tree/runs/{{ run.id }}.ipynb"
-                               target="_blank" rel="noopener"
+                            <a href="/jobs/{{ job.id }}/runs/{{ run.id }}/notebook/download?format=ipynb"
                                onclick="event.stopPropagation()"
-                               class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-journal-code me-1"></i>Open in JupyterLab
+                               class="btn btn-sm btn-outline-primary"
+                               title="Download the executed notebook as .ipynb">
+                                <i class="bi bi-download me-1"></i>Download
                             </a>
                             {% endif %}
                         </td>

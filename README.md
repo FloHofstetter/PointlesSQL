@@ -14,8 +14,11 @@ capabilities:
    columns in a dark-mode web UI with inline metadata editing
 2. **PQL library** -- `from pointlessql import PQL` -- read and write
    Delta tables as pandas DataFrames using Unity Catalog metadata
-3. **Embedded notebook** -- a JupyterLab tab with sidebar navigation
-   so you can browse catalog metadata while working in a notebook
+3. **Native notebook editor** -- a first-party Monaco-based editor
+   (Phase 12.6) with pyright LSP, per-notebook ipykernel, Variable
+   Explorer, Insert-from-Catalog command, and autosaved
+   ``.py`` jupytext Percent-format files.  Replaced the Sprint-3
+   JupyterLab iframe in Sprint 63
 
 See [`ROADMAP.md`](ROADMAP.md) for the full sprint history and
 upcoming phases.
@@ -30,7 +33,12 @@ upcoming phases.
 - **Delta Lake** (`deltalake>=0.24`) -- storage format for managed
   tables
 - **pandas** (`>=2.2`) -- DataFrame engine for PQL
-- **JupyterLab** (`>=4.0`) -- embedded notebook server
+- **`jupyter_client`** (`>=8.6`) + **`ipykernel`** (`>=6.29`) --
+  per-notebook kernel subprocess for the native editor (Sprint 59)
+- **`pyright`** (`>=1.1`) -- language server for completion / hover
+  / diagnostics in the native editor (Sprint 61)
+- **`jupytext`** (`>=1.16`) -- ``.py`` Percent format as the
+  native-editor on-disk source of truth (Sprint 58)
 - **SQLAlchemy 2.0 + Alembic** -- for our own metadata DB (sessions,
   UI preferences); soyuz-catalog owns the lakehouse metadata
 - **pytest / ruff / pyright / pydoclint / pre-commit**
@@ -45,8 +53,8 @@ upcoming phases.
 |  Web UI - soyuz_catalog_client -+------->|  Unity Catalog REST    |
 |  PQL   - soyuz_catalog_client --+------->|  + over-the-spec       |
 |                                 |        |    extensions          |
-|  JupyterLab subprocess (:8888)  |        +----------+-------------+
-|  - embedded via iframe          |                   |
+|  Native editor + pyright LSP +  |        +----------+-------------+
+|  per-notebook ipykernel         |                   |
 +---------------------------------+                   v
                                            +------------------------+
                                            | Delta Lake / storage   |
@@ -92,10 +100,11 @@ docker compose up -d
 
 - **soyuz-catalog** on <http://localhost:8080>
 - **PointlesSQL** on <http://localhost:8000>
-- **JupyterLab** on <http://localhost:8888>
 
 Delta tables are stored in `./warehouse/` (bind-mounted into both
-containers). Notebooks are stored in `./notebooks/`.
+containers). Notebooks are stored in `./notebooks/` as
+``.py`` jupytext Percent-format files (Sprint 63 retired the
+JupyterLab iframe; see the [migration note](#migrating-from-the-jupyterlab-iframe-sprint-63)).
 
 ## Quick start (local development)
 
@@ -139,8 +148,9 @@ inline.
 
 **4. Use PQL in the notebook:**
 
-Click the **Notebook** tab in the navbar. JupyterLab starts
-automatically. In a new notebook cell:
+Click the **Notebook** tab in the navbar.  The native Monaco-based
+editor (Phase 12.6) opens at ``notebooks/scratch.py``.  In a new
+code cell:
 
 ```python
 from pointlessql import PQL
@@ -160,6 +170,33 @@ pql.write_table(df, "my_catalog.my_schema.new_table")
 ```
 
 New tables appear immediately in the sidebar.
+
+## Migrating from the JupyterLab iframe (Sprint 63)
+
+Phase 12.6 Sprint 63 retired the embedded JupyterLab subprocess
+that Sprint 3 set up.  The native editor that replaced it supports
+**``.py`` jupytext Percent-format notebooks only** — papermill-
+generated ``.ipynb`` files under ``notebooks/runs/`` continue to
+work as run artefacts and the workspace browser still lists
+``.ipynb`` uploads for scheduling.
+
+If you have hand-authored ``.ipynb`` files you want to keep editing:
+
+```bash
+jupytext --to py:percent notebooks/my_notebook.ipynb
+```
+
+This produces ``notebooks/my_notebook.py``; the editor picks it up
+on open and assigns UUIDs to every cell on first save (ADR 0001 in
+``docs/adr/0001-notebook-editor.md`` explains the ``pql_cell_id``
+marker format).
+
+The ``jupyterlab`` pypi dep is gone, ``POINTLESSQL_JUPYTER_PORT``
+is no longer listened on (the setting stays for backward-compat but
+does nothing), the ``/notebook`` URL now 302-redirects to
+``/notebook/editor?path=scratch.py``, and the job-detail page's
+``Open in JupyterLab`` deep-link became a ``Download ipynb``
+button.
 
 ## Development
 

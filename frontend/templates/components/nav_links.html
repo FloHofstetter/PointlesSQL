@@ -25,15 +25,11 @@
             <li><a class="dropdown-item{% if active_page is defined and active_page == 'credentials' %} active{% endif %}" href="/credentials">Credentials</a></li>
         </ul>
     </li>
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('notebook', 'notebook_editor') %} active{% endif %}"
-           href="#" data-bs-toggle="dropdown">
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'notebook_editor' %} active{% endif %}"
+           href="/notebook/editor?path=scratch.py">
             <i class="bi bi-journal-code"></i> Notebook
         </a>
-        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'notebook' %} active{% endif %}" href="/notebook">JupyterLab <span class="text-muted small">(classic)</span></a></li>
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'notebook_editor' %} active{% endif %}" href="/notebook/editor?path=scratch.py">Editor <span class="badge text-bg-warning ms-1">preview</span></a></li>
-        </ul>
     </li>
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('sql', 'queries') %} active{% endif %}"
