@@ -4,7 +4,18 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -729,3 +740,41 @@ class AlertEvent(Base):
     row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     outcome: Mapped[str] = mapped_column(String(20), nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class TableStats(Base):
+    """Cached per-column statistics for a UC table at a Delta version.
+
+    Sprint 56 profile button computes count / null_count /
+    distinct_count / min / max / mean / top_5 for every column of a
+    Delta table; each column lands as its own row so the cache
+    survives partial failures.  Results are keyed by
+    ``(full_name, delta_log_version, column_name)`` — re-profiling
+    the same version is a single index seek.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        full_name: UC three-part dotted name.
+        delta_log_version: Delta log ``version()`` at profile time.
+        column_name: Column identifier from the Delta schema.
+        stats_json: Serialised dict of per-column stats.
+        computed_at: When the profile run finished.
+    """
+
+    __tablename__ = "table_stats"
+    __table_args__ = (
+        UniqueConstraint(
+            "full_name", "delta_log_version", "column_name",
+            name="uq_table_stats_col_version",
+        ),
+        Index("ix_table_stats_lookup", "full_name", "delta_log_version"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    full_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    delta_log_version: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    column_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    stats_json: Mapped[str] = mapped_column(Text, nullable=False)
+    computed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

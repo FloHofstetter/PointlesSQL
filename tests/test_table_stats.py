@@ -1,0 +1,253 @@
+"""Tests for Sprint-56 column statistics."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+
+import deltalake
+import httpx
+import pandas as pd
+import pytest
+
+from pointlessql.api.main import app
+from pointlessql.services import table_stats as ts
+from pointlessql.services.unitycatalog import UnityCatalogClient
+
+# ---------------------------------------------------------------------------
+# Fixtures
+
+
+@pytest.fixture(autouse=True)
+def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        UnityCatalogClient,
+        "for_principal",
+        classmethod(lambda cls, s, p: app.state.uc_client),  # type: ignore[arg-type]
+    )
+
+
+@pytest.fixture
+def orders_delta(tmp_path: Path) -> str:
+    loc = str(tmp_path / "orders")
+    df = pd.DataFrame(
+        {
+            "id": [1, 2, 3, 4, 5],
+            "category": ["a", "b", "a", "c", "a"],
+            "amount": [10.0, 20.0, 15.0, None, 30.0],
+        }
+    )
+    deltalake.write_deltalake(loc, df)
+    return loc
+
+
+def _admin_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_auth_cookie,
+    )
+
+
+def _non_admin_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=app.state._test_non_admin_cookie,
+    )
+
+
+def _make_uc_mock(storage_location: str) -> MagicMock:
+    client = MagicMock(spec=UnityCatalogClient)
+    client.get_table = AsyncMock(
+        return_value={
+            "name": "orders",
+            "catalog_name": "main",
+            "schema_name": "sales",
+            "storage_location": storage_location,
+            "columns": [
+                {"name": "id", "type_text": "bigint"},
+                {"name": "category", "type_text": "string"},
+                {"name": "amount", "type_text": "double"},
+            ],
+        }
+    )
+    client.get_effective_permissions = AsyncMock(return_value=[])
+    return client
+
+
+# ---------------------------------------------------------------------------
+# Pure service layer
+
+
+def test_compute_stats_produces_expected_columns(orders_delta: str) -> None:
+    stats = ts.compute_stats(
+        "main.sales.orders",
+        orders_delta,
+        columns=[
+            {"name": "id", "type": "BIGINT"},
+            {"name": "category", "type": "VARCHAR"},
+            {"name": "amount", "type": "DOUBLE"},
+        ],
+    )
+    assert set(stats.keys()) == {"id", "category", "amount"}
+
+    id_stats = stats["id"]
+    assert id_stats["count"] == 5
+    assert id_stats["null_count"] == 0
+    assert id_stats["distinct_count"] == 5
+    assert id_stats["is_numeric"] is True
+    assert id_stats["mean"] == pytest.approx(3.0)
+
+    cat_stats = stats["category"]
+    assert cat_stats["count"] == 5
+    assert cat_stats["distinct_count"] == 3
+    assert cat_stats["mean"] is None, "Non-numeric columns never get a mean"
+    assert isinstance(cat_stats["top_5"], list)
+    # top_5 entries sorted by descending count; "a" appears 3 times.
+    assert cat_stats["top_5"][0] == ["a", 3]
+
+    amount_stats = stats["amount"]
+    assert amount_stats["null_count"] == 1
+    assert amount_stats["is_numeric"] is True
+
+
+def test_compute_stats_skips_top_5_when_distinct_above_ceiling(
+    orders_delta: str,
+) -> None:
+    stats = ts.compute_stats(
+        "main.sales.orders",
+        orders_delta,
+        columns=[{"name": "id", "type": "BIGINT"}],
+        top_k_ceiling=2,  # below the actual distinct count (5)
+    )
+    assert stats["id"]["top_5"] is None
+
+
+def test_cache_round_trip_evicts_stale_version() -> None:
+    factory = app.state.session_factory
+    full_name = "main.sales.orders"
+    initial = {"id": {"column_name": "id", "count": 3}}
+    ts.write_cached(
+        factory, full_name=full_name, delta_log_version=1, stats=initial,
+    )
+    cached = ts.read_cached(
+        factory, full_name=full_name, delta_log_version=1,
+    )
+    assert cached is not None
+    assert cached[0]["column_name"] == "id"
+    # Re-writing at the same version should overwrite (idempotent).
+    updated = {"id": {"column_name": "id", "count": 42}}
+    ts.write_cached(
+        factory, full_name=full_name, delta_log_version=1, stats=updated,
+    )
+    again = ts.read_cached(
+        factory, full_name=full_name, delta_log_version=1,
+    )
+    assert again is not None
+    assert again[0]["stats"]["count"] == 42
+
+
+def test_delete_cached_removes_every_version() -> None:
+    factory = app.state.session_factory
+    ts.write_cached(
+        factory, full_name="main.sales.orders",
+        delta_log_version=1, stats={"id": {"count": 1}},
+    )
+    ts.write_cached(
+        factory, full_name="main.sales.orders",
+        delta_log_version=2, stats={"id": {"count": 2}},
+    )
+    removed = ts.delete_cached(factory, "main.sales.orders")
+    assert removed >= 2
+    assert ts.read_cached(factory, full_name="main.sales.orders") is None
+
+
+def test_read_delta_log_version_reads_a_real_table(orders_delta: str) -> None:
+    version = ts.read_delta_log_version(orders_delta)
+    # Fresh write produces version 0.
+    assert version == 0
+
+
+# ---------------------------------------------------------------------------
+# HTTP surface
+
+
+@pytest.mark.asyncio
+async def test_profile_and_stats_round_trip_for_admin(
+    orders_delta: str,
+) -> None:
+    app.state.uc_client = _make_uc_mock(orders_delta)
+    full_name = "main.sales.orders"
+    async with _admin_client() as client:
+        profile = await client.post(f"/api/tables/{full_name}/profile")
+        assert profile.status_code == 200
+        body = profile.json()
+        assert body["full_name"] == full_name
+        assert body["delta_log_version"] == 0
+        assert body["cached"] is False
+        names = [c["column_name"] for c in body["columns"]]
+        assert set(names) == {"id", "category", "amount"}
+
+        # Second call: cache hit with cached=True.
+        profile2 = await client.post(f"/api/tables/{full_name}/profile")
+        assert profile2.status_code == 200
+        assert profile2.json()["cached"] is True
+
+        # GET /stats returns the cached columns.
+        stats_resp = await client.get(f"/api/tables/{full_name}/stats")
+        assert stats_resp.status_code == 200
+        assert len(stats_resp.json()["columns"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_delete_stats_requires_admin(orders_delta: str) -> None:
+    app.state.uc_client = _make_uc_mock(orders_delta)
+    full_name = "main.sales.orders"
+    # Admin populates + clears.
+    async with _admin_client() as client:
+        await client.post(f"/api/tables/{full_name}/profile")
+        clear = await client.delete(f"/api/tables/{full_name}/stats")
+        assert clear.status_code == 204
+    # Non-admin DELETE is 403 even when there are no cached rows.
+    async with _non_admin_client() as client:
+        forbidden = await client.delete(f"/api/tables/{full_name}/stats")
+        assert forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_profile_enforces_select(
+    orders_delta: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A caller without SELECT on the table is refused at enforcement."""
+    app.state.uc_client = _make_uc_mock(orders_delta)
+
+    async def deny(
+        client: Any, email: str, is_admin: bool,
+        resource_type: str, full_name: str, privilege: str,
+    ) -> None:
+        from pointlessql.exceptions import AuthorizationError
+        raise AuthorizationError(
+            email, privilege, resource_type, full_name,
+        )
+
+    # Patch check_privilege inside the api/main namespace where the
+    # profile route imported it.
+    from pointlessql.api import main as api_main
+    monkeypatch.setattr(api_main, "check_privilege", deny)
+
+    async with _non_admin_client() as client:
+        res = await client.post("/api/tables/main.sales.orders/profile")
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_profile_404_when_table_missing() -> None:
+    client_mock = MagicMock(spec=UnityCatalogClient)
+    client_mock.get_table = AsyncMock(return_value=None)
+    client_mock.get_effective_permissions = AsyncMock(return_value=[])
+    app.state.uc_client = client_mock
+    async with _admin_client() as client:
+        res = await client.post("/api/tables/no.such.table/profile")
+    assert res.status_code == 404

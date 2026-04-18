@@ -2100,6 +2100,229 @@ async def alert_detail_page(request: Request, slug: str) -> HTMLResponse:
     )
 
 
+# -- Phase 12.5 / Sprint 56: column statistics -----------------------------
+
+
+def _split_full_name(full_name: str) -> tuple[str, str, str]:
+    """Split a UC three-part name, raising on bad shape.
+
+    Args:
+        full_name: Dotted identifier ``catalog.schema.table``.
+
+    Returns:
+        Tuple ``(catalog, schema, table)``.
+
+    Raises:
+        ValidationError: If *full_name* does not have exactly three
+            non-empty dotted parts.
+    """
+    parts = full_name.split(".")
+    if len(parts) != 3 or not all(p for p in parts):
+        raise ValidationError(
+            f"Expected three-part catalog.schema.table, got {full_name!r}.",
+        )
+    return parts[0], parts[1], parts[2]
+
+
+async def _enforce_table_profile_access(
+    request: Request, full_name: str
+) -> dict[str, Any]:
+    """Resolve table info and check that the caller may profile it.
+
+    Admin short-circuits SELECT enforcement; every other caller must
+    hold SELECT on the table before they can trigger a profile run.
+
+    Args:
+        request: Incoming request.
+        full_name: Three-part UC name.
+
+    Returns:
+        The UC ``table_info`` dict.
+
+    Raises:
+        CatalogNotFoundError: When the table is missing or has no
+            ``storage_location``.
+        AuthorizationError: When the caller lacks SELECT on the table.
+    """  # noqa: DOC502,DOC503 — raised via await below
+    from pointlessql.exceptions import CatalogNotFoundError
+
+    client = _get_uc_client(request)
+    user = _get_user(request)
+    email = user.get("email", "")
+    is_admin = bool(user.get("is_admin", False))
+    catalog, schema, table = _split_full_name(full_name)
+    table_info = await client.get_table(catalog, schema, table)
+    if not table_info:
+        raise CatalogNotFoundError(f"Table {full_name!r} not found.")
+    storage_location = table_info.get("storage_location")
+    if not isinstance(storage_location, str) or not storage_location:
+        raise CatalogNotFoundError(
+            f"Table {full_name!r} has no storage_location on soyuz-catalog.",
+        )
+    await check_privilege(client, email, is_admin, "table", full_name, SELECT)
+    return table_info
+
+
+@app.post("/api/tables/{full_name:path}/profile")
+async def api_profile_table(
+    request: Request, full_name: str
+) -> dict[str, Any]:
+    """Compute + cache per-column statistics for the Delta table.
+
+    The caller must hold SELECT on the table or be an administrator.
+    Results are cached by ``(full_name, delta_log_version)`` so a
+    second call at the same Delta version is a single index seek.
+
+    Args:
+        request: Incoming request.
+        full_name: UC three-part dotted name (path-encoded).
+
+    Returns:
+        Dict with ``full_name``, ``delta_log_version``, and a
+        ``columns`` list of serialised stats rows.
+
+    Raises:
+        CatalogNotFoundError: On missing table or missing storage.
+        AuthorizationError: When the caller lacks SELECT.
+    """  # noqa: DOC502,DOC503 — raised via helpers
+    from pointlessql.services import table_stats as ts_service
+
+    table_info = await _enforce_table_profile_access(request, full_name)
+    storage_location = str(table_info.get("storage_location") or "")
+    columns = [
+        {"name": str(c.get("name") or ""), "type": str(c.get("type_text") or "")}
+        for c in (table_info.get("columns") or [])
+        if c.get("name")
+    ]
+    factory = getattr(request.app.state, "session_factory", None)
+
+    # Short-circuit: if the current version is already cached we
+    # still surface it but do not recompute.
+    current_version = await asyncio.to_thread(
+        ts_service.read_delta_log_version, storage_location
+    )
+    if factory is not None:
+        cached = await asyncio.to_thread(
+            ts_service.read_cached,
+            factory, full_name=full_name, delta_log_version=current_version,
+        )
+        if cached is not None:
+            await _audit(
+                request, "table.profile_cache_hit",
+                f"table:{full_name}",
+                {"delta_log_version": current_version},
+            )
+            return {
+                "full_name": full_name,
+                "delta_log_version": current_version,
+                "cached": True,
+                "columns": cached,
+            }
+
+    stats = await asyncio.to_thread(
+        ts_service.compute_stats, full_name, storage_location, columns,
+    )
+    if factory is not None:
+        await asyncio.to_thread(
+            ts_service.write_cached,
+            factory, full_name=full_name,
+            delta_log_version=current_version, stats=stats,
+        )
+    await _audit(
+        request, "table.profiled", f"table:{full_name}",
+        {
+            "delta_log_version": current_version,
+            "column_count": len(stats),
+        },
+    )
+    serialised = [
+        {
+            "column_name": col_name,
+            "delta_log_version": current_version,
+            "computed_at": datetime.now(UTC).isoformat(),
+            "stats": stats_dict,
+        }
+        for col_name, stats_dict in stats.items()
+    ]
+    return {
+        "full_name": full_name,
+        "delta_log_version": current_version,
+        "cached": False,
+        "columns": serialised,
+    }
+
+
+@app.get("/api/tables/{full_name:path}/stats")
+async def api_get_table_stats(
+    request: Request, full_name: str, version: int | None = None
+) -> dict[str, Any]:
+    """Return cached stats for a UC table, optionally pinned to a version.
+
+    Args:
+        request: Incoming request.
+        full_name: UC three-part dotted name.
+        version: Optional Delta log version; defaults to the latest
+            cached version for this table.
+
+    Returns:
+        Dict with ``full_name``, ``delta_log_version``, and
+        ``columns`` (empty list if nothing is cached yet).
+
+    Raises:
+        CatalogNotFoundError: On missing table or missing storage.
+        AuthorizationError: When the caller lacks SELECT.
+    """  # noqa: DOC502,DOC503 — raised via helpers
+    from pointlessql.services import table_stats as ts_service
+
+    await _enforce_table_profile_access(request, full_name)
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return {"full_name": full_name, "delta_log_version": None, "columns": []}
+    cached = await asyncio.to_thread(
+        ts_service.read_cached,
+        factory, full_name=full_name, delta_log_version=version,
+    )
+    if cached is None:
+        return {"full_name": full_name, "delta_log_version": version, "columns": []}
+    latest_version = max(row["delta_log_version"] for row in cached)
+    return {
+        "full_name": full_name,
+        "delta_log_version": version if version is not None else latest_version,
+        "columns": cached,
+    }
+
+
+@app.delete(
+    "/api/tables/{full_name:path}/stats", status_code=204
+)
+async def api_delete_table_stats(
+    request: Request, full_name: str
+) -> Response:
+    """Evict every cached statistics row for *full_name* (admin only).
+
+    Args:
+        request: Incoming request.
+        full_name: UC three-part name.
+
+    Returns:
+        Empty 204.
+    """
+    from pointlessql.services import table_stats as ts_service
+
+    _require_admin(request)
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return Response(status_code=204)
+    removed = await asyncio.to_thread(
+        ts_service.delete_cached, factory, full_name
+    )
+    await _audit(
+        request, "table.stats_cleared", f"table:{full_name}",
+        {"rows_removed": removed},
+    )
+    return Response(status_code=204)
+
+
 @app.post("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/open-in-notebook")
 async def api_open_in_notebook(
     request: Request,
