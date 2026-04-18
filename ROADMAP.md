@@ -1772,23 +1772,14 @@ PointlesSQL
 │   │   bridges those via n8n / Zapier / Make and we stay portable.
 │   │
 │   ├── Sprint 54 — Charts in the SQL editor                ✅ done (88898d2)
+│   ├── Sprint 55 — Query alerts (CloudEvents + feeds)       ✅ done (832087c)
 │   │   Bar / Line / Scatter / Pie toolbar below the results table;
 │   │   ``c`` toggles table ↔ chart when focus is outside CodeMirror;
 │   │   PNG download via ``canvas.toBlob``; chart config persists per
 │   │   ``query_history.id`` via Alembic 014 so re-run from history
 │   │   replays the same visualisation.  Chart.js 4.x UMD (not ESM)
 │   │   vendored via jsDelivr in ``base.html``.
-│   ├── Sprint 55 — Query alerts (webhook + pull feed)      ⏳ planned
-│   │   Alembic 015 adds ``alerts`` / ``alert_destinations`` /
-│   │   ``alert_events`` + ``users.feed_token``.  New
-│   │   ``alert_check`` scheduler job-kind ticks a saved-query
-│   │   condition (``row_count op threshold``) and, when it fires,
-│   │   emits a CloudEvents 1.0 JSON envelope to every enabled
-│   │   destination.  Two destination kinds: webhook (POST with
-│   │   optional HMAC-SHA256 signing, 5s/10s timeouts, 2 retries)
-│   │   and pull feed (Atom 1.0 + JSON Feed 1.1, per-user opaque
-│   │   token, 30-day event retention).  Zero lock-in: user bridges
-│   │   into Slack / PagerDuty / email via n8n / Zapier / Huginn.
+│   │   Sprint 55 — already landed above (832087c)
 │   ├── Sprint 56 — Column statistics / data profiling      ⏳ planned
 │   │   "Profile table" button on the UC table-detail page.  Server
 │   │   computes per-column count / null_count / distinct_count /

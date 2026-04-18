@@ -4,6 +4,74 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 55) — Query alerts (CloudEvents webhook + Atom/JSON Feed)
+
+- **Alembic 015** — ``alerts`` / ``alert_destinations`` /
+  ``alert_events`` + ``users.feed_token``.  ``CHECK`` constraints on
+  ``condition_op`` (``gt``/``lt``/``eq``/``ne``), ``kind``
+  (``webhook``/``feed``), ``outcome`` (``fired``/``suppressed``/
+  ``delivery_failed``).  Per-owner unique index on the nullable
+  ``feed_token``.
+- **Models.** ``Alert``, ``AlertDestination``, ``AlertEvent`` under
+  ``pointlessql/models.py``; each alert holds a ``backing_job_id``
+  FK so the existing scheduler drives firing via the new
+  ``alert_check`` job-kind.
+- **Service layer** (``pointlessql/services/alerts.py``).  Slug
+  generation mirrors Sprint-51's saved-queries shape; CRUD with
+  ``(user_id, is_admin)`` enforcement at the boundary; destination
+  add/remove; event record/list/prune.  Pure helpers
+  ``evaluate_condition`` + ``build_cloudevent`` are covered by
+  dedicated tests.
+- **Dispatcher** (``pointlessql/services/alert_dispatcher.py``).
+  ``dispatch_webhook`` canonicalises the envelope with
+  ``json.dumps(sort_keys=True, separators=(",",":"))`` so receivers
+  can reserialise after decoding to verify HMAC-SHA256.  Timeouts
+  ``connect=5s`` + ``read=10s``; retry ladder 2 extra attempts at
+  1s / 2s backoff on 5xx / transport errors; 4xx is a permanent
+  failure.
+- **Feeds** (``pointlessql/services/alert_feeds.py``).  Atom 1.0
+  via ``xml.etree.ElementTree`` with XML prolog; JSON Feed 1.1
+  per ``jsonfeed.org/version/1.1``.  Both cap to last 30 days.
+- **Scheduler wiring.** New ``_alert_check_executor`` registered
+  under ``alert_check`` in ``build_default_registry``.  Reuses the
+  existing ``KindRegistry`` + cron-tick infrastructure: the alert's
+  hidden backing ``Job`` carries the user's cron expression, the
+  executor parses + enforces + runs the saved query, evaluates the
+  condition, inserts one ``AlertEvent``, and fans out dispatch.
+  Delivery failure flips the event's ``outcome`` to
+  ``delivery_failed`` via a second UPDATE.
+- **CloudEvents envelope** ``data``: ``alert_slug`` +
+  ``saved_query_slug`` + ``condition`` (``{op, threshold}``) +
+  ``row_count`` + ``duration_ms`` + ``referenced_tables`` +
+  ``fired_at``.  ``duration_ms`` + ``referenced_tables`` carried
+  explicitly so Phase-13's EXPLAIN-agent cost-gate can consume the
+  same webhook sink without a later payload-shape break.
+- **Routes.** ``GET|POST /api/alerts``, ``GET|PATCH|DELETE
+  /api/alerts/{slug}``, ``POST /api/alerts/{slug}/destinations``,
+  ``DELETE /api/alerts/{slug}/destinations/{id}``,
+  ``GET|POST /api/me/feed-token{,/rotate}``,
+  ``GET /alerts/feed.atom?token=<opaque>`` returning
+  ``application/atom+xml``, ``GET /alerts/feed.json?token=<opaque>``
+  returning ``application/feed+json``, HTML pages ``/alerts`` (list)
+  + ``/alerts/{slug}`` (detail with destinations + last 50 events).
+  Every per-slug endpoint collapses missing + forbidden to 404.
+- **Audit actions.** ``alert.created``, ``alert.updated``,
+  ``alert.deleted``, ``alert.destination_added``,
+  ``alert.destination_removed``, ``alert.feed_token_rotated`` —
+  all through ``log_action`` wrapped in ``asyncio.to_thread``.
+- **Frontend.** ``/alerts`` list with create-alert modal;
+  ``/alerts/{slug}`` detail with destination manager;
+  feed URLs panel with copy + rotate actions.  Non-module IIFEs
+  publish ``window.alertsPage`` / ``window.alertDetail``
+  synchronously (Phase-12 trap #1 preempted).
+- **Nav.** New "Alerts" entry in ``nav_links.html``.
+- Tests: 19 new cases in ``tests/test_alerts.py`` — condition
+  evaluator, CloudEvents envelope shape, dispatcher HMAC +
+  retry ladder, Atom + JSON feed parseability, service-level CRUD
+  + owner gating, HTTP round-trip (create/list/delete/stranger 404/
+  feed-token auth), scheduler executor (fires + records event +
+  envelope parses).
+
 ### Added (Sprint 54) — Chart toolbar + chart_config persistence
 
 - **Alembic 014** — ``ALTER TABLE query_history ADD COLUMN
