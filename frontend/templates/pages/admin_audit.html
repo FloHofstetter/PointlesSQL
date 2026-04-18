@@ -56,11 +56,27 @@
                        value="{{ filter_target }}" placeholder="catalog:&hellip;">
             </div>
         </div>
-        <div class="d-flex gap-2 mt-3">
+        <div class="d-flex gap-2 mt-3 flex-wrap">
             <button type="submit" class="btn btn-primary btn-sm">
                 <i class="bi bi-funnel me-1"></i>Apply filters
             </button>
             <a href="/admin/audit" class="btn btn-outline-secondary btn-sm">Reset</a>
+            {# Sprint 48: export the currently-filtered set as JSON / CSV.
+               The server mirrors the same filter surface on
+               ``/admin/audit/export`` so operators can download what they
+               see. Cap: 10 000 rows per export. #}
+            <div class="ms-auto d-flex gap-2">
+                <a href="/admin/audit/export?fmt=json&since={{ filter_since }}{% if filter_action %}&action={{ filter_action|urlencode }}{% endif %}{% if filter_user %}&user={{ filter_user|urlencode }}{% endif %}{% if filter_target %}&target={{ filter_target|urlencode }}{% endif %}"
+                   class="btn btn-outline-primary btn-sm"
+                   hx-boost="false">
+                    <i class="bi bi-filetype-json me-1"></i>Export JSON
+                </a>
+                <a href="/admin/audit/export?fmt=csv&since={{ filter_since }}{% if filter_action %}&action={{ filter_action|urlencode }}{% endif %}{% if filter_user %}&user={{ filter_user|urlencode }}{% endif %}{% if filter_target %}&target={{ filter_target|urlencode }}{% endif %}"
+                   class="btn btn-outline-primary btn-sm"
+                   hx-boost="false">
+                    <i class="bi bi-filetype-csv me-1"></i>Export CSV
+                </a>
+            </div>
         </div>
     </div>
 </form>
@@ -108,18 +124,22 @@
                         <tr>
                             <th class="ps-3" data-sort-key="created-at">Time</th>
                             <th data-sort-key="user-email">User</th>
+                            <th data-sort-key="actor-role">Role</th>
                             <th data-sort-key="action">Action</th>
                             <th data-sort-key="target">Target</th>
+                            <th data-sort-key="client-ip">IP</th>
                             <th class="pe-3">Detail</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for entry in entries %}
-                        <tr data-search="{{ entry.user_email|lower }} {{ entry.action|lower }} {{ entry.target|lower }}"
+                        <tr data-search="{{ entry.user_email|lower }} {{ entry.action|lower }} {{ entry.target|lower }} {{ entry.client_ip or '' }}"
                             data-sort-created-at="{{ entry.created_at }}"
                             data-sort-user-email="{{ entry.user_email|lower }}"
+                            data-sort-actor-role="{{ entry.actor_role|lower }}"
                             data-sort-action="{{ entry.action|lower }}"
                             data-sort-target="{{ entry.target|lower }}"
+                            data-sort-client-ip="{{ entry.client_ip or '' }}"
                             data-user-id="{{ entry.user_id }}">
                             <td class="ps-3 small text-muted font-monospace" data-label="Time">
                                 <span x-data='{ iso: {{ entry.created_at|tojson }} }'
@@ -127,10 +147,27 @@
                                       x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ entry.created_at }}</span>
                             </td>
                             <td data-label="User" class="small">{{ entry.user_email }}</td>
+                            <td data-label="Role">
+                                {# Sprint 48: role badges — admin rows get the
+                                   darker ``bg-dark`` so an operator scanning
+                                   the log can isolate privileged actions at a
+                                   glance; ``system`` (rate-limit rejects) is
+                                   muted. #}
+                                {% if entry.actor_role == 'admin' %}
+                                <span class="badge bg-dark">admin</span>
+                                {% elif entry.actor_role == 'system' %}
+                                <span class="badge bg-secondary">system</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark">user</span>
+                                {% endif %}
+                            </td>
                             <td data-label="Action">
                                 <span class="badge bg-secondary font-monospace">{{ entry.action }}</span>
                             </td>
                             <td data-label="Target" class="font-monospace small">{{ entry.target }}</td>
+                            <td data-label="IP" class="font-monospace small text-muted">
+                                {{ entry.client_ip or '—' }}
+                            </td>
                             <td class="pe-3 small" data-label="Detail"
                                 x-data="{ open: false }">
                                 {% if entry.detail %}

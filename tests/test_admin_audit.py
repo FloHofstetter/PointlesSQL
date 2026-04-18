@@ -3,33 +3,38 @@
 from __future__ import annotations
 
 import datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import _TEMPLATES, app
 from pointlessql.models import AuditLog, Base
 from pointlessql.services import auth
+from pointlessql.settings import Settings
 
 
 @pytest.fixture(autouse=True)
 def _setup_app(tmp_path):
     """Wire an in-memory DB + templates onto the FastAPI app."""
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
 
     app.state.session_factory = factory
-    app.state.settings = MagicMock(
-        secret_key="test-secret-key-for-unit-tests!!",
-        jwt_expiry_hours=168,
-        soyuz_catalog_url="http://localhost:8080",
-        jupyter_enabled=False,
-        jupyter_port=8888,
-        database_url="sqlite:///:memory:",
+    app.state.settings = Settings(
+        auth={"secret_key": "test-secret-key-for-unit-tests!!"},
+        soyuz={"catalog_url": "http://localhost:8080"},
+        jupyter={"enabled": False, "port": 8888},
+        db={"url": "sqlite:///:memory:"},
+        scheduler={"enabled": False},
     )
     app.state.templates = _TEMPLATES
 
@@ -231,3 +236,106 @@ class TestAdminAuditContent:
             '<td data-label="Target" class="font-monospace small">catalog:demo</td>'
             not in body
         )
+
+
+class TestAdminAuditExport:
+    """Sprint 48: JSON + CSV export endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_non_admin_export_denied(self):
+        factory = app.state.session_factory
+        _admin_token, user_token = _seed_users(factory)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies={auth.COOKIE_NAME: user_token},
+        ) as client:
+            resp = await client.get("/admin/audit/export?fmt=json")
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_json_export_returns_attachment(self):
+        import json
+
+        factory = app.state.session_factory
+        admin_token, _ = _seed_users(factory)
+        now = datetime.datetime.now(datetime.UTC)
+        _seed_rows(factory, now)
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies={auth.COOKIE_NAME: admin_token},
+        ) as client:
+            resp = await client.get("/admin/audit/export?fmt=json&since=all")
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/json")
+        cd = resp.headers["content-disposition"]
+        assert cd.startswith("attachment;")
+        assert "pql-audit-" in cd and cd.endswith('.json"')
+
+        payload = json.loads(resp.text)
+        assert "exported_at" in payload
+        entries = payload["entries"]
+        assert len(entries) == 4  # all four _seed_rows entries
+        # Spot-check the row shape.
+        sample = entries[0]
+        for key in (
+            "id",
+            "created_at",
+            "user_id",
+            "user_email",
+            "actor_role",
+            "action",
+            "target",
+            "client_ip",
+            "detail",
+        ):
+            assert key in sample
+
+    @pytest.mark.asyncio
+    async def test_csv_export_has_header_and_rows(self):
+        factory = app.state.session_factory
+        admin_token, _ = _seed_users(factory)
+        now = datetime.datetime.now(datetime.UTC)
+        _seed_rows(factory, now)
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies={auth.COOKIE_NAME: admin_token},
+        ) as client:
+            resp = await client.get("/admin/audit/export?fmt=csv&since=all")
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/csv")
+        lines = [line for line in resp.text.splitlines() if line]
+        # Header + 4 data rows.
+        assert len(lines) == 5
+        assert lines[0].split(",")[:4] == ["id", "created_at", "user_id", "user_email"]
+        # At least one action string from the seed shows up in the body.
+        assert any("update_catalog" in line for line in lines[1:])
+
+    @pytest.mark.asyncio
+    async def test_export_respects_filters(self):
+        factory = app.state.session_factory
+        admin_token, _ = _seed_users(factory)
+        now = datetime.datetime.now(datetime.UTC)
+        _seed_rows(factory, now)
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies={auth.COOKIE_NAME: admin_token},
+        ) as client:
+            resp = await client.get(
+                "/admin/audit/export?fmt=json&since=all&action=sync_catalog"
+            )
+
+        assert resp.status_code == 200
+        import json
+
+        entries = json.loads(resp.text)["entries"]
+        assert len(entries) == 1
+        assert entries[0]["action"] == "sync_catalog"

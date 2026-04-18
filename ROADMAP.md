@@ -1662,7 +1662,7 @@ PointlesSQL
 │           rotation, third-key rejection, missing-fallback rejection,
 │           expiry-preservation, ``get_current_user`` threading
 │
-├── Phase 12 — SQL editor + query history                 ⏳ planned
+├── Phase 12 — SQL editor + query history                 🔜 in progress
 │   │
 │   │   Goal: close the second first-class-workspace gap after
 │   │   notebooks (Phase 8). Dedicated `/sql` page (CodeMirror
@@ -1670,6 +1670,49 @@ PointlesSQL
 │   │   answers "which user ran which query on which table when".
 │   │   Auditability is free — Phase 3 already enforces SELECT at
 │   │   the UC layer; Phase 12 just adds the telemetry plus the UI.
+│   │
+│   ├── Sprint 48 — Audit-log hardening (shoreguard-port)       ⏳ in progress
+│   │   ├── Alembic ``011`` widens ``audit_log.detail`` to ``Text``
+│   │   │   and adds ``client_ip`` + ``actor_role`` columns
+│   │   ├── ``services/audit.py`` ports the shoreguard-fresh
+│   │   │   append-only ORM guards (``before_update`` +
+│   │   │   ``before_delete`` event listeners that raise
+│   │   │   ``AuditIntegrityError``) plus a
+│   │   │   ``_allow_audit_mutation()`` ContextVar bypass that only
+│   │   │   the retention sweep opens
+│   │   ├── ``log_action`` accepts a JSON-encodable dict for
+│   │   │   ``detail``; string callers still work unchanged
+│   │   ├── ``AuditSettings`` sub-model (``retention_days``,
+│   │   │   ``cleanup_interval_seconds``); a lifespan-owned
+│   │   │   background task sweeps expired rows on that cadence
+│   │   ├── ``_audit()`` dispatches the INSERT via
+│   │   │   ``asyncio.to_thread`` — HTTP requests no longer block
+│   │   │   on the audit DB round-trip. All 22 call sites rewritten
+│   │   │   to ``await _audit(...)``. Rate-limit-middleware's
+│   │   │   ``rate_limit.blocked`` hook uses the same async path
+│   │   ├── ``GET /admin/audit/export?fmt=json|csv`` mirrors the
+│   │   │   viewer's filter surface (since/action/user/target),
+│   │   │   streams a filename-stamped attachment, caps at 10 000
+│   │   │   rows per call
+│   │   ├── Admin audit-log template gains a Role badge column
+│   │   │   (admin/user/system styling) and a compact IP column;
+│   │   │   two "Export" buttons build the same query string
+│   │   │   operators see in the URL
+│   │   ├── ``.env.example`` + ``CHANGELOG.md`` document the new
+│   │   │   ``POINTLESSQL_AUDIT_*`` knobs + the 9 shoreguard
+│   │   │   patterns ported vs. 3 deliberately skipped (CLI sha256
+│   │   │   manifest, syslog/webhook sinks, action-string
+│   │   │   renaming) as scope-creep for PointlesSQL's scale
+│   │   └── Tests: 5 new unit tests in ``tests/test_audit.py``
+│   │       (append-only guards, cleanup round-trip, retention=0
+│   │       no-op, broken-factory swallow, dict-detail JSON
+│   │       round-trip); 4 new integration tests in
+│   │       ``tests/test_admin_audit.py`` (non-admin 403,
+│   │       JSON/CSV/filter shape). ``test_admin_audit`` +
+│   │       ``test_rate_limit`` also migrated off the ``MagicMock``
+│   │       settings fixture that Sprint 47 missed, and both pin
+│   │       their engines to ``StaticPool`` so the new async write
+│   │       path works under ``asyncio.to_thread``
 │   │
 │   │   Settled design decisions (before any sprint starts):
 │   │

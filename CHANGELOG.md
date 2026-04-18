@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 48) — audit-log hardening
+
+- **Append-only ORM guards.** :class:`AuditLog` ``before_update``
+  and ``before_delete`` SQLAlchemy event listeners raise a new
+  :class:`AuditIntegrityError`; every existing audit row is
+  effectively immutable at the ORM layer. The retention cleanup
+  path opens a :class:`~contextvars.ContextVar` (the
+  ``_allow_audit_mutation`` scope) to bypass the delete guard —
+  that's the only way to remove a row through the ORM. Raw SQL
+  can still bypass; deployments that need true WORM should layer
+  PostgreSQL ``REVOKE DELETE`` on top. Pattern ported verbatim
+  from ``shoreguard-fresh/shoreguard/services/audit.py:46–115``.
+- **Async audit writes.** :func:`api.main._audit` now dispatches
+  the INSERT via :func:`asyncio.to_thread`, so request handlers
+  never block on the audit DB round-trip. The rate-limit
+  middleware's ``rate_limit.blocked`` hook uses the same async
+  path. All 22 call sites in ``api/main.py`` were rewritten to
+  ``await _audit(…)``.
+- **Structured ``detail`` and richer columns.** Alembic ``011``
+  widens ``audit_log.detail`` from ``String(2000)`` to ``Text``
+  and adds ``client_ip`` (IPv4/IPv6, nullable) + ``actor_role``
+  (``admin``/``user``/``system``, defaults to ``user``). The
+  :func:`log_action` helper accepts a JSON-encodable dict for
+  ``detail`` and JSON-encodes it; plain-string callers still
+  work for backwards compatibility.
+- **Retention policy.** New :class:`AuditSettings` sub-model
+  exposes ``POINTLESSQL_AUDIT_RETENTION_DAYS`` (default 365) and
+  ``POINTLESSQL_AUDIT_CLEANUP_INTERVAL_SECONDS`` (default 86 400).
+  A lifespan-owned background task calls
+  :func:`cleanup_old_entries` on that cadence; failures are
+  logged and swallowed. Setting ``retention_days=0`` disables
+  the sweep entirely (pre-Sprint-48 behaviour).
+- **JSON + CSV export.** New ``GET /admin/audit/export?fmt=json|csv``
+  endpoint mirrors the viewer's filter surface (``since`` / ``action`` /
+  ``user`` / ``target``) and streams a filename-stamped attachment,
+  capped at 10 000 rows per call. Two new "Export" buttons in the
+  Sprint-41 viewer build the same query string so operators get
+  "what you see is what you download".
+- **Viewer surfaces new columns.** The admin-audit template gains a
+  Role badge column (admin/user/system styling) and a compact IP
+  column. Existing search/sort/chip behaviour ported over the new
+  ``data-sort-*`` attributes.
+
+### Fixed (Sprint 48, tests)
+
+- ``tests/test_admin_audit.py`` + ``tests/test_rate_limit.py``
+  migrated from ``MagicMock(secret_key=…)`` fixtures to real
+  :class:`Settings` instances (Sprint 47 missed these two files),
+  and both now pin their engines to ``StaticPool +
+  check_same_thread=False`` so the Sprint-48 async audit writes
+  can hand the factory to ``asyncio.to_thread`` without the
+  worker seeing an empty in-memory DB.
+
 ### Fixed (Sprint 47) — test-suite regressions
 
 - **In-memory SQLite test schemas survive the worker thread.**

@@ -246,6 +246,21 @@ class SchedulerSettings(BaseSettings):
     max_concurrent_runs: int = 4
 
 
+class AuditSettings(BaseSettings):
+    """Audit-log retention and cleanup configuration (Sprint 48).
+
+    Reads ``POINTLESSQL_AUDIT_*`` environment variables. Rows older
+    than ``retention_days`` are deleted by the scheduler's periodic
+    audit-cleanup tick.  Set ``retention_days=0`` to keep every
+    audit row forever (the pre-Sprint-48 behaviour).
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AUDIT_")
+
+    retention_days: int = 365
+    cleanup_interval_seconds: int = 86400  # once per day
+
+
 class DeltaSettings(BaseSettings):
     """Delta-Lake compute engine selection.
 
@@ -281,4 +296,5 @@ class Settings(BaseSettings):
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
     jupyter: JupyterSettings = Field(default_factory=JupyterSettings)
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
+    audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)

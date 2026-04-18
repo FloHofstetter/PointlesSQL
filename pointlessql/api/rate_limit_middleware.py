@@ -21,6 +21,7 @@ viewer surfaces the feature without a second dashboard.
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -225,13 +226,18 @@ async def rate_limit_middleware(request: Request, call_next: Any) -> Response:
             # attacker maps to a real account. The identifying detail
             # lives in ``target`` (the bucket string) which the admin
             # viewer already renders verbatim.
-            audit_service.log_action(
+            # Async write (Sprint 48) — the reject path is hot and
+            # we do not want the audit INSERT to block the 429.
+            await asyncio.to_thread(
+                audit_service.log_action,
                 factory,
-                user_id=0,
-                user_email="anon",
-                action="rate_limit.blocked",
-                target=bucket,
-                detail=None,
+                0,  # user_id=0 keeps the audit row non-null-constrained
+                "anon",
+                "rate_limit.blocked",
+                bucket,
+                None,
+                actor_role="system",
+                client_ip=ip,
             )
             return _render_429(retry_after)
 

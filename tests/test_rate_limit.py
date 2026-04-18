@@ -17,6 +17,7 @@ import httpx
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import _TEMPLATES, app
 from pointlessql.models import AuditLog, Base, RateLimitEvent
@@ -34,7 +35,15 @@ def _setup_app():
     ``MagicMock``) keeps the tests honest: if a setting is renamed the
     middleware and its tests fail together rather than drifting apart.
     """
-    engine = create_engine("sqlite:///:memory:")
+    # Sprint 48: audit writes now run via ``asyncio.to_thread``, so
+    # the test engine needs StaticPool + check_same_thread=False to
+    # keep the schema visible across worker threads (same fix as
+    # Sprint 47's conftest.py).
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
 

@@ -68,9 +68,15 @@ class AuditLog(Base):
         user_id: ID of the user who performed the action (no FK so
             entries survive user deletion).
         user_email: Email snapshot at time of action.
+        actor_role: Role of the actor at time of action
+            (``admin`` / ``user`` / ``system``). Sprint 48 addition.
         action: Short verb describing the action (e.g. ``update_catalog``).
         target: Identifier of the affected resource (e.g. ``catalog:my_cat``).
-        detail: Optional JSON context (e.g. patch body).
+        client_ip: IPv4/IPv6 address of the requesting client, or
+            ``None`` for system-generated rows. Sprint 48 addition.
+        detail: Optional JSON-encoded context (stored as ``Text`` to
+            allow arbitrarily-sized structured payloads — Sprint 48
+            widened this from ``String(2000)``).
         created_at: Timestamp when the action occurred.
     """
 
@@ -85,9 +91,13 @@ class AuditLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     user_email: Mapped[str] = mapped_column(String(254), nullable=False)
+    actor_role: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="user", server_default="user"
+    )
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     target: Mapped[str] = mapped_column(String(500), nullable=False)
-    detail: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    client_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

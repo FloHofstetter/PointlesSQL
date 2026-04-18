@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import re
@@ -134,14 +135,60 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         scheduler.start()
     app.state.scheduler = scheduler
 
+    # Sprint 48: periodic audit-log retention sweep. Runs on its own
+    # tick cadence (``audit.cleanup_interval_seconds``) so it does
+    # not compete with the job scheduler; swallows its own errors
+    # via ``cleanup_old_entries`` so a transient DB hiccup never
+    # takes the lifespan down.
+    audit_task = asyncio.create_task(
+        _audit_retention_loop(app.state.session_factory, settings),
+        name="audit-retention",
+    )
+
     async with managed_jupyter(settings) as jupyter_proc:
         app.state.jupyter_process = jupyter_proc
         try:
             yield
         finally:
+            audit_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await audit_task
             if scheduler is not None:
                 await scheduler.stop()
             await app.state.uc_client.aclose()
+
+
+async def _audit_retention_loop(
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Run ``cleanup_old_entries`` on a fixed cadence for the lifetime of the app.
+
+    A separate task rather than a scheduler-kind keeps the
+    cleanup path independent of the job scheduler — operators who
+    disable the scheduler (``POINTLESSQL_SCHEDULER_ENABLED=false``)
+    still want retention to run.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the rest
+            of the app.
+        settings: Snapshotted :class:`Settings` — only
+            ``audit.retention_days`` and
+            ``audit.cleanup_interval_seconds`` are read.
+    """
+    interval = max(60, settings.audit.cleanup_interval_seconds)
+    retention = settings.audit.retention_days
+    while True:
+        try:
+            await asyncio.to_thread(
+                audit_service.cleanup_old_entries, factory, retention
+            )
+        except Exception:  # noqa: BLE001 — retention loop must survive everything
+            logger.exception("audit: retention loop tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
 
 
 app = FastAPI(title="PointlesSQL", version="0.1.0", lifespan=_lifespan)
@@ -263,12 +310,63 @@ def _require_admin(request: Request) -> None:
         )
 
 
-def _audit(request: Request, action: str, target: str, detail: str | None = None) -> None:
-    """Write an audit log entry for the current user."""
+def _client_ip(request: Request) -> str | None:
+    """Best-effort extraction of the client IP for audit rows.
+
+    ASGI's ``request.client`` returns ``None`` for ASGI transports
+    without a remote peer (unit tests hit this path). Behind a
+    trusted reverse proxy the operator should configure Starlette's
+    ``ProxyHeadersMiddleware`` upstream of this call; Sprint 48
+    deliberately does not honour ``X-Forwarded-For`` here because
+    the audit surface has no separate "trusted-proxy" opt-in like
+    Sprint 43's rate limiter does.
+
+    Args:
+        request: The incoming HTTP request.
+
+    Returns:
+        str | None: IPv4/IPv6 address or ``None`` if unavailable.
+    """
+    return request.client.host if request.client else None
+
+
+async def _audit(
+    request: Request,
+    action: str,
+    target: str,
+    detail: str | dict[str, Any] | None = None,
+) -> None:
+    """Write an audit log entry for the current user.
+
+    The insert is dispatched to :func:`asyncio.to_thread` so the
+    HTTP request handler never blocks on the DB round-trip —
+    this is the shoreguard-fresh pattern ported in Sprint 48.
+
+    Args:
+        request: The incoming HTTP request.
+        action: Short verb describing the action (e.g.
+            ``update_catalog``).
+        target: Identifier of the affected resource (e.g.
+            ``catalog:my_cat``).
+        detail: Optional JSON-encodable dict or plain string with
+            extra context.
+    """
     user = _get_user(request)
     factory = getattr(request.app.state, "session_factory", None)
-    if factory is not None and user["id"]:
-        audit_service.log_action(factory, user["id"], user["email"], action, target, detail)
+    if factory is None or not user["id"]:
+        return
+    role = "admin" if user.get("is_admin") else "user"
+    await asyncio.to_thread(
+        audit_service.log_action,
+        factory,
+        user["id"],
+        user["email"],
+        action,
+        target,
+        detail,
+        actor_role=role,
+        client_ip=_client_ip(request),
+    )
 
 
 @app.get("/healthz")
@@ -488,7 +586,7 @@ async def api_open_in_notebook(
     with target.open("w", encoding="utf-8") as fh:
         nbformat.write(nb, fh)
 
-    _audit(request, "open_in_notebook", f"table:{full_name}", f"scratch/{filename}")
+    await _audit(request, "open_in_notebook", f"table:{full_name}", f"scratch/{filename}")
     host = request.url.hostname or "localhost"
     relative = f"scratch/{filename}"
     lab_url = f"http://{host}:{settings.jupyter.port}/lab/tree/{relative}"
@@ -509,7 +607,7 @@ async def api_create_catalog(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.create_catalog(body)
-    _audit(request, "create_catalog", f"catalog:{body.get('name', '?')}", json.dumps(body))
+    await _audit(request, "create_catalog", f"catalog:{body.get('name', '?')}", json.dumps(body))
     return result
 
 
@@ -548,7 +646,7 @@ async def api_sync_catalog(request: Request, catalog_name: str) -> dict[str, obj
         connection=connection,
         credential=credential,
     )
-    _audit(request, "sync_catalog", f"catalog:{catalog_name}")
+    await _audit(request, "sync_catalog", f"catalog:{catalog_name}")
     return {
         "id": run.id,
         "catalog_name": run.catalog_name,
@@ -580,7 +678,7 @@ async def api_update_catalog(
         MODIFY,
     )
     result = await client.update_catalog(catalog_name, patch)
-    _audit(request, "update_catalog", f"catalog:{catalog_name}", json.dumps(patch))
+    await _audit(request, "update_catalog", f"catalog:{catalog_name}", json.dumps(patch))
     return result
 
 
@@ -604,7 +702,7 @@ async def api_update_schema(
         MODIFY,
     )
     result = await client.update_schema(catalog_name, schema_name, patch)
-    _audit(request, "update_schema", f"schema:{full_name}", json.dumps(patch))
+    await _audit(request, "update_schema", f"schema:{full_name}", json.dumps(patch))
     return result
 
 
@@ -636,7 +734,7 @@ async def api_update_tags(
         MODIFY,
     )
     result = await client.update_tags(securable_type, full_name, body.get("changes", []))
-    _audit(
+    await _audit(
         request,
         "update_tags",
         f"{securable_type}:{full_name}",
@@ -673,7 +771,7 @@ async def api_update_permissions(
         MANAGE_GRANTS,
     )
     result = await client.update_permissions(securable_type, full_name, body.get("changes", []))
-    _audit(
+    await _audit(
         request,
         "update_permissions",
         f"{securable_type}:{full_name}",
@@ -1116,7 +1214,7 @@ async def api_upload_notebook(
     tmp_path.write_bytes(raw)
     os.replace(tmp_path, resolved)
 
-    _audit(
+    await _audit(
         request,
         action="notebook.upload",
         target=target_path,
@@ -1183,7 +1281,7 @@ async def api_create_connection(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.create_connection(body)
-    _audit(request, "create_connection", f"connection:{body.get('name', '?')}")
+    await _audit(request, "create_connection", f"connection:{body.get('name', '?')}")
     return result
 
 
@@ -1203,7 +1301,7 @@ async def api_update_connection(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.update_connection(name, body)
-    _audit(request, "update_connection", f"connection:{name}", json.dumps(body))
+    await _audit(request, "update_connection", f"connection:{name}", json.dumps(body))
     return result
 
 
@@ -1213,7 +1311,7 @@ async def api_delete_connection(request: Request, name: str) -> dict[str, str]:
     _require_admin(request)
     client = _get_uc_client(request)
     await client.delete_connection(name)
-    _audit(request, "delete_connection", f"connection:{name}")
+    await _audit(request, "delete_connection", f"connection:{name}")
     return {"status": "deleted"}
 
 
@@ -1236,7 +1334,7 @@ async def api_create_external_location(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.create_external_location(body)
-    _audit(request, "create_ext_location", f"ext_location:{body.get('name', '?')}")
+    await _audit(request, "create_ext_location", f"ext_location:{body.get('name', '?')}")
     return result
 
 
@@ -1256,7 +1354,7 @@ async def api_update_external_location(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.update_external_location(name, body)
-    _audit(request, "update_ext_location", f"ext_location:{name}", json.dumps(body))
+    await _audit(request, "update_ext_location", f"ext_location:{name}", json.dumps(body))
     return result
 
 
@@ -1266,7 +1364,7 @@ async def api_delete_external_location(request: Request, name: str) -> dict[str,
     _require_admin(request)
     client = _get_uc_client(request)
     await client.delete_external_location(name)
-    _audit(request, "delete_ext_location", f"ext_location:{name}")
+    await _audit(request, "delete_ext_location", f"ext_location:{name}")
     return {"status": "deleted"}
 
 
@@ -1289,7 +1387,7 @@ async def api_create_credential(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.create_credential(body)
-    _audit(request, "create_credential", f"credential:{body.get('name', '?')}")
+    await _audit(request, "create_credential", f"credential:{body.get('name', '?')}")
     return result
 
 
@@ -1309,7 +1407,7 @@ async def api_update_credential(
     _require_admin(request)
     client = _get_uc_client(request)
     result = await client.update_credential(name, body)
-    _audit(request, "update_credential", f"credential:{name}", json.dumps(body))
+    await _audit(request, "update_credential", f"credential:{name}", json.dumps(body))
     return result
 
 
@@ -1319,7 +1417,7 @@ async def api_delete_credential(request: Request, name: str) -> dict[str, str]:
     _require_admin(request)
     client = _get_uc_client(request)
     await client.delete_credential(name)
-    _audit(request, "delete_credential", f"credential:{name}")
+    await _audit(request, "delete_credential", f"credential:{name}")
     return {"status": "deleted"}
 
 
@@ -1820,7 +1918,7 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
         session.commit()
         session.refresh(job)
         session.expunge(job)
-    _audit(request, "create_job", f"job:{name}", json.dumps(body))
+    await _audit(request, "create_job", f"job:{name}", json.dumps(body))
     return _serialize_job(job)
 
 
@@ -1832,7 +1930,7 @@ async def api_run_job(request: Request, job_id: int) -> dict[str, Any]:
     settings: Settings = request.app.state.settings
     factory = request.app.state.session_factory
     run = await scheduler_service.execute_run(factory, settings, _JOB_REGISTRY, job_id, "manual")
-    _audit(request, "run_job", f"job:{job.name}")
+    await _audit(request, "run_job", f"job:{job.name}")
     return _serialize_run(run)
 
 
@@ -2702,7 +2800,7 @@ async def api_create_dashboard(
         session.commit()
         session.refresh(dashboard)
         session.expunge(dashboard)
-    _audit(request, "create_dashboard", f"dashboard:{slug}", json.dumps(body))
+    await _audit(request, "create_dashboard", f"dashboard:{slug}", json.dumps(body))
     return _serialize_dashboard(dashboard)
 
 
@@ -2757,7 +2855,7 @@ async def api_update_dashboard(
         session.commit()
         session.refresh(row)
         session.expunge(row)
-    _audit(request, "update_dashboard", f"dashboard:{slug}", json.dumps(body))
+    await _audit(request, "update_dashboard", f"dashboard:{slug}", json.dumps(body))
     return _serialize_dashboard(row)
 
 
@@ -2778,7 +2876,7 @@ async def api_delete_dashboard(request: Request, slug: str) -> dict[str, str]:
             raise _NF(f"Dashboard {slug!r} not found")
         session.delete(row)
         session.commit()
-    _audit(request, "delete_dashboard", f"dashboard:{slug}")
+    await _audit(request, "delete_dashboard", f"dashboard:{slug}")
     return {"status": "deleted", "slug": slug}
 
 
@@ -2799,7 +2897,7 @@ async def api_refresh_dashboard(request: Request, slug: str) -> dict[str, Any]:
     run = await scheduler_service.execute_run(
         factory, settings, _JOB_REGISTRY, dashboard.job_id, "manual"
     )
-    _audit(request, "refresh_dashboard", f"dashboard:{slug}")
+    await _audit(request, "refresh_dashboard", f"dashboard:{slug}")
     return _serialize_run(run)
 
 
@@ -2938,7 +3036,7 @@ async def api_pause_job(request: Request, job_id: int) -> dict[str, Any]:
         session.commit()
         session.refresh(row)
         session.expunge(row)
-    _audit(request, "pause_job", f"job:{row.name}")
+    await _audit(request, "pause_job", f"job:{row.name}")
     return _serialize_job(row)
 
 
@@ -2958,7 +3056,7 @@ async def api_unpause_job(request: Request, job_id: int) -> dict[str, Any]:
         session.commit()
         session.refresh(row)
         session.expunge(row)
-    _audit(request, "unpause_job", f"job:{row.name}")
+    await _audit(request, "unpause_job", f"job:{row.name}")
     return _serialize_job(row)
 
 
@@ -3062,8 +3160,10 @@ async def admin_audit_index(
             "id": r.id,
             "user_id": r.user_id,
             "user_email": r.user_email,
+            "actor_role": r.actor_role,
             "action": r.action,
             "target": r.target,
+            "client_ip": r.client_ip,
             "detail": r.detail,
             "created_at": r.created_at.isoformat() if r.created_at else "",
         }
@@ -3093,6 +3193,125 @@ async def admin_audit_index(
             "active_schema": None,
             "active_table": None,
             "list_page": True,
+        },
+    )
+
+
+_AUDIT_EXPORT_LIMIT = 10_000
+_AUDIT_EXPORT_FORMATS: tuple[str, ...] = ("json", "csv")
+
+
+@app.get("/admin/audit/export")
+async def admin_audit_export(
+    request: Request,
+    fmt: Literal["json", "csv"] = "json",
+    action: str | None = None,
+    user: str | None = None,
+    target: str | None = None,
+    since: Literal["24h", "7d", "30d", "all"] = "7d",
+) -> Response:
+    """Stream the filtered audit log as JSON or CSV.
+
+    Mirrors the :func:`admin_audit_index` filter surface so
+    operators can "what you see is what you export" from the same
+    query string — just swap ``/admin/audit?…`` for
+    ``/admin/audit/export?fmt=csv&…``.  Capped at
+    :data:`_AUDIT_EXPORT_LIMIT` rows per call so a broad ``since=all``
+    query cannot blow memory; operators wanting more paginate by
+    shrinking the time window.
+
+    Args:
+        request: The incoming HTTP request (used for admin gate).
+        fmt: ``json`` or ``csv``.
+        action: Optional exact-match action filter.
+        user: Optional ``ILIKE %…%`` filter on ``user_email``.
+        target: Optional ``ILIKE %…%`` filter on ``target``.
+        since: Time-window preset (same as the HTML viewer).
+
+    Returns:
+        Response: Content-Disposition-attachment response; the
+            download filename embeds the export timestamp.
+    """
+    import csv
+    import io
+
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import AuditLog as AuditLogModel
+
+    _require_admin(request)
+    factory = request.app.state.session_factory
+
+    since_delta = _ADMIN_AUDIT_SINCE_WINDOWS[since]
+    since_cutoff = datetime.now(UTC) - since_delta if since_delta is not None else None
+
+    stmt = _select(AuditLogModel).order_by(AuditLogModel.created_at.desc())
+    if since_cutoff is not None:
+        stmt = stmt.where(AuditLogModel.created_at >= since_cutoff)
+    if action:
+        stmt = stmt.where(AuditLogModel.action == action)
+    if user:
+        stmt = stmt.where(AuditLogModel.user_email.ilike(f"%{user}%"))
+    if target:
+        stmt = stmt.where(AuditLogModel.target.ilike(f"%{target}%"))
+    stmt = stmt.limit(_AUDIT_EXPORT_LIMIT)
+
+    def _rows() -> list[dict[str, Any]]:
+        with factory() as session:
+            result = list(session.scalars(stmt).all())
+        return [
+            {
+                "id": r.id,
+                "created_at": r.created_at.isoformat() if r.created_at else "",
+                "user_id": r.user_id,
+                "user_email": r.user_email,
+                "actor_role": r.actor_role,
+                "action": r.action,
+                "target": r.target,
+                "client_ip": r.client_ip or "",
+                "detail": r.detail or "",
+            }
+            for r in result
+        ]
+
+    rows = await asyncio.to_thread(_rows)
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+
+    if fmt == "json":
+        body = json.dumps({"exported_at": timestamp, "entries": rows}, indent=2)
+        return Response(
+            content=body,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="pql-audit-{timestamp}.json"'
+                )
+            },
+        )
+
+    # CSV
+    buf = io.StringIO()
+    columns = [
+        "id",
+        "created_at",
+        "user_id",
+        "user_email",
+        "actor_role",
+        "action",
+        "target",
+        "client_ip",
+        "detail",
+    ]
+    writer = csv.DictWriter(buf, fieldnames=columns)
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="pql-audit-{timestamp}.csv"'
+            )
         },
     )
 
