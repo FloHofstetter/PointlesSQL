@@ -2967,6 +2967,107 @@ async def jobs_index(request: Request) -> HTMLResponse:
     )
 
 
+_ADMIN_AUDIT_LIMIT = 1000
+_ADMIN_AUDIT_SINCE_WINDOWS: dict[str, timedelta | None] = {
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+    "30d": timedelta(days=30),
+    "all": None,
+}
+
+
+@app.get("/admin/audit", response_class=HTMLResponse)
+async def admin_audit_index(
+    request: Request,
+    action: str | None = None,
+    user: str | None = None,
+    target: str | None = None,
+    since: Literal["24h", "7d", "30d", "all"] = "7d",
+) -> HTMLResponse:
+    """Render the admin audit-log viewer.
+
+    Reads from the Sprint-7 ``audit_log`` table (written append-only
+    by every admin state-change via :func:`_audit`) and shows the
+    newest :data:`_ADMIN_AUDIT_LIMIT` rows matching the requested
+    filters. Admin-gated because the log carries cross-user activity
+    that a non-admin principal must not see. Re-uses the ``/jobs``
+    ``listTable`` Alpine component for search and chip filtering so
+    the page inherits sorting, search, and mobile stacking without
+    new frontend primitives.
+    """
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import AuditLog as AuditLogModel
+
+    _require_admin(request)
+    current_user = _get_user(request)
+    factory = request.app.state.session_factory
+
+    since_delta = _ADMIN_AUDIT_SINCE_WINDOWS[since]
+    since_cutoff = datetime.now(UTC) - since_delta if since_delta is not None else None
+
+    stmt = _select(AuditLogModel).order_by(AuditLogModel.created_at.desc())
+    if since_cutoff is not None:
+        stmt = stmt.where(AuditLogModel.created_at >= since_cutoff)
+    if action:
+        stmt = stmt.where(AuditLogModel.action == action)
+    if user:
+        stmt = stmt.where(AuditLogModel.user_email.ilike(f"%{user}%"))
+    if target:
+        stmt = stmt.where(AuditLogModel.target.ilike(f"%{target}%"))
+    # Fetch one extra row so we can tell the page whether the
+    # ``_ADMIN_AUDIT_LIMIT`` cap hid older history.
+    stmt = stmt.limit(_ADMIN_AUDIT_LIMIT + 1)
+
+    with factory() as session:
+        rows = list(session.scalars(stmt).all())
+        for row in rows:
+            session.expunge(row)
+
+    truncated = len(rows) > _ADMIN_AUDIT_LIMIT
+    if truncated:
+        rows = rows[:_ADMIN_AUDIT_LIMIT]
+
+    entries = [
+        {
+            "id": r.id,
+            "user_id": r.user_id,
+            "user_email": r.user_email,
+            "action": r.action,
+            "target": r.target,
+            "detail": r.detail,
+            "created_at": r.created_at.isoformat() if r.created_at else "",
+        }
+        for r in rows
+    ]
+    # Distinct action list for the server-side filter dropdown.
+    # Derived from the currently-loaded page so new actions show up
+    # automatically; the 1000-row cap keeps this cheap.
+    distinct_actions = sorted({e["action"] for e in entries})
+
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/admin_audit.html",
+        {
+            "entries": entries,
+            "distinct_actions": distinct_actions,
+            "filter_action": action or "",
+            "filter_user": user or "",
+            "filter_target": target or "",
+            "filter_since": since,
+            "truncated": truncated,
+            "row_limit": _ADMIN_AUDIT_LIMIT,
+            "current_user_id": current_user.get("id"),
+            "current_user_email": current_user.get("email"),
+            "active_page": "admin_audit",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+            "list_page": True,
+        },
+    )
+
+
 @app.get("/jobs/{job_id}", response_class=HTMLResponse)
 async def job_detail(request: Request, job_id: int) -> HTMLResponse:
     """Render job detail with task list, latest task statuses, and run history."""

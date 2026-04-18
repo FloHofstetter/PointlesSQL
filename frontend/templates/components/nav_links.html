@@ -50,6 +50,17 @@
             <i class="bi bi-speedometer2"></i> Dashboards
         </a>
     </li>
+    {% if current_user is defined and current_user and current_user.is_admin %}
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('admin_audit',) %} active{% endif %}"
+           href="#" data-bs-toggle="dropdown">
+            <i class="bi bi-shield-check"></i> Admin
+        </a>
+        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+            <li><a class="dropdown-item{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}" href="/admin/audit">Audit log</a></li>
+        </ul>
+    </li>
+    {% endif %}
     {% if current_user is defined and current_user %}
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"

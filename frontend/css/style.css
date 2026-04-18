@@ -894,6 +894,19 @@ tr:focus-within .pql-row-actions {
     .pql-row-actions { visibility: visible; }
 }
 
+/* Detail cell on the admin audit log — wraps long JSON strings so
+   the table layout stays predictable even with a 2 KB payload. */
+.pql-audit-detail {
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 12rem;
+    overflow-y: auto;
+    margin-bottom: 0;
+    background: var(--bs-tertiary-bg);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+}
+
 /* ---------------------------------------------------------------
  * Sprint 35 — mobile + responsive.
  * Breakpoint literals mirror the --pql-breakpoint-* tokens block

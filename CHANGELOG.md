@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 41)
+
+- **Admin audit-log viewer at `/admin/audit`.** First sprint of
+  Phase 11 (Hardening). The Sprint-7 `audit_log` table has been
+  write-only since it landed; Sprint 41 adds the read side. Admins
+  get a filterable, newest-first list view that reuses the `/jobs`
+  `listTable` Alpine component, the `pql-list-*` CSS, and the
+  existing `_require_admin` gate — no new frontend primitives. The
+  route supports four server-side filters (`since=24h|7d|30d|all`,
+  `action=`, `user=` substring, `target=` substring) plus a client-
+  side "Mine only" chip. A new Alembic migration `009` adds
+  `ix_audit_log_created` so the cross-user "latest N" ordering
+  query has a supporting index. New "Admin" dropdown in the top
+  navbar (admin-only, gated in `components/nav_links.html`)
+  anchors the `/admin/*` namespace that Phase 11's remaining
+  sprints will extend. New playbook
+  `docs/e2e-walkthroughs/admin-audit.md` replays the flow.
+
 ### Changed
 
 - **`ROADMAP.md`.** Opened ⏳ entries for four forward-looking

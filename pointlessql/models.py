@@ -79,6 +79,7 @@ class AuditLog(Base):
     __table_args__ = (
         Index("ix_audit_log_user_created", "user_id", "created_at"),
         Index("ix_audit_log_target_created", "target", "created_at"),
+        Index("ix_audit_log_created", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

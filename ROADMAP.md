@@ -1437,7 +1437,7 @@ PointlesSQL
 │   time, build the publish pipeline in the same sprint that
 │   flips visibility.
 │
-├── Phase 11 — Hardening                                 ⏳ planned
+├── Phase 11 — Hardening                                 🔜 in progress
 │   │
 │   │   Goal: harden the runtime surfaces before layering more
 │   │   features on. Phase 10 shipped a working release pipeline,
@@ -1448,17 +1448,39 @@ PointlesSQL
 │   │   to Phase 14 (queued last, on purpose). Sequence from here:
 │   │   hardening (11) → features (12, 13) → public launch (14).
 │   │
-│   │   Scope (not yet split into sprints):
+│   ├── Sprint 41 — Admin audit-log viewer                ✅ done (pending)
+│   │   ├── `GET /admin/audit` gated by `_require_admin`; reuses
+│   │   │   the `/jobs` `listTable` Alpine component + `pql-list-*`
+│   │   │   CSS so the page inherits search, sort, chips, and
+│   │   │   mobile stacking without new frontend primitives
+│   │   ├── Server-side filters: `since=24h|7d|30d|all` (default
+│   │   │   `7d`), `action`, `user` substring, `target` substring;
+│   │   │   client-side "Mine only" chip layered on top
+│   │   ├── Alembic `009` adds `ix_audit_log_created` on
+│   │   │   `(created_at)`; the two existing composite indexes cover
+│   │   │   user- and target-scoped lookups but the new cross-user
+│   │   │   "latest N" ordering query had no supporting index
+│   │   ├── New "Admin" dropdown in `components/nav_links.html`,
+│   │   │   admin-only, first item is "Audit log". Anchors the
+│   │   │   `/admin/*` namespace that the remaining Phase 11 sprints
+│   │   │   (and Phase 12 query-history, Phase 13 agent dashboards)
+│   │   │   hang off without re-plumbing
+│   │   ├── New playbook `docs/e2e-walkthroughs/admin-audit.md`
+│   │   │   covering the admin happy path, filters, detail
+│   │   │   expand/collapse, and the non-admin 403 lockout
+│   │   └── `tests/test_admin_audit.py` — anon redirect, non-admin
+│   │       403, newest-first ordering, `since=all` surfaces old
+│   │       rows + tolerates non-JSON `detail`, action + target
+│   │       filters narrow correctly
+│   │
+│   │   Remaining Phase 11 scope (not yet split into sprints):
 │   │
 │   ├── CSRF protection on all state-changing HTML form routes
 │   │   (the JSON API is fine; browser-form POSTs currently are not)
 │   ├── Rate limiting on `/auth/*` and on `/api/sql/*` once
 │   │   Phase 12 lands
-│   ├── Graceful-rotation story for `secret_key` (JWT signing) so
-│   │   mid-flight tokens survive a rotation
-│   └── Admin audit-log viewer page over the Sprint-7 `audit_log`
-│       table; reuses the `/jobs` list-table machinery — filter
-│       by user, action, target, time window
+│   └── Graceful-rotation story for `secret_key` (JWT signing) so
+│       mid-flight tokens survive a rotation
 │
 ├── Phase 12 — SQL editor + query history                 ⏳ planned
 │   │
