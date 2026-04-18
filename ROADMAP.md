@@ -1748,7 +1748,7 @@ PointlesSQL
 │   │   Alembic 012 adds `query_history` + `query_history_tables`;
 │   │   `/queries` page with filter chips + re-run button;
 │   │   non-admin sees only own rows.
-│   ├── Sprint 51 — Saved queries                           🔜 in progress
+│   ├── Sprint 51 — Saved queries                           ✅ done (0f93345)
 │   │   Alembic 013 adds `saved_queries`; share model parallel
 │   │   to Sprint-28 dashboards; sidebar drawer on the editor.
 │   ├── Sprint 52 — Export + limits + cancel                 ⏳ planned
