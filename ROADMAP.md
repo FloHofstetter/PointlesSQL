@@ -1876,7 +1876,7 @@ PointlesSQL
 │   │   └── Out of scope: execution, LSP, outputs, workspace-
 │   │       tree integration (lives under Sprint 63)
 │   │
-│   ├── Sprint 59 — Kernel + WS proxy + basic execution       🔜 in progress
+│   ├── Sprint 59 — Kernel + WS proxy + basic execution       ✅ done (f672564)
 │   │   ├── New deps: ``jupyter_client>=8.6`` + ``ipykernel>=6.29``
 │   │   │   (both already transitively via papermill; now pinned
 │   │   │   explicitly).
