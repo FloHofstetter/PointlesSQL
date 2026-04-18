@@ -2020,7 +2020,7 @@ PointlesSQL
 │   │       (``dumps``, ``loads``, …) came back, and the trailing
 │   │       ``.`` was flagged by pyright's diagnostics channel.
 │   │
-│   ├── Sprint 62 — Variable Explorer + catalog insert         🔜 in progress
+│   ├── Sprint 62 — Variable Explorer + catalog insert         ✅ done (95b4a2b)
 │   │   ├── Variable Explorer sidebar driven by an
 │   │   │   ``__pql_namespace__`` internal introspect — a small
 │   │   │   Python snippet the editor injects under the reserved
