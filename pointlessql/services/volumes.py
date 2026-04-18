@@ -1,13 +1,18 @@
 """HTTP helpers for the soyuz-catalog Volumes surface (Sprint 57).
 
-The generated ``soyuz-catalog-client`` ships metadata CRUD for
-volumes but the file IO endpoints — upload / browse / download /
-delete — landed in a later soyuz release and have not been
-regenerated into the pinned wheel yet.  Rather than block Phase
-12.5 on a client-regen round-trip, this module calls the endpoints
-directly via ``httpx`` using the same ``settings.soyuz.catalog_url``
-the generated client is configured with, and forwards
-``X-Principal`` so soyuz applies the right identity.
+The generated ``soyuz-catalog-client`` now ships stubs for the four
+Sprint-57 file endpoints (browse / download / delete / upload) as
+of soyuz's post-f8ef973 regen, but this module deliberately keeps
+calling the endpoints directly via ``httpx``.  Rationale:
+
+* The generated ``BodyUploadVolumeFileApi21…Post`` models the
+  ``upload`` field as ``str`` — openapi-python-client cannot express
+  a FastAPI ``UploadFile`` as binary multipart, so the stub
+  stringifies the payload and would break every real file upload.
+* Keeping the browse / download / delete calls on the same raw
+  ``httpx`` path as upload avoids a split-brain service module; the
+  stubs can be swapped in cleanly once the upload case round-trips
+  bytes.
 
 Every helper is async and requires a caller-supplied
 :class:`httpx.AsyncClient` so tests can inject a
