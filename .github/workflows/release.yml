@@ -73,7 +73,11 @@ jobs:
         run: uv run pydoclint --style=google pointlessql/
 
       - name: Gate — alembic drift
-        run: uv run alembic check
+        # Fresh runner has no sqlite DB; upgrade to head first so
+        # `alembic check` has a migrated target to compare against.
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
 
       - name: Build wheel + sdist
         run: uv build

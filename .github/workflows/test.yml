@@ -63,4 +63,10 @@ jobs:
       - name: Pydoclint (Google style)
         run: uv run pydoclint --style=google pointlessql/
       - name: Alembic — no autogen drift
-        run: uv run alembic check
+        # Fresh runner has no pointlessql.db — `alembic check`
+        # needs a migrated target to compare against, not an empty
+        # file. Upgrade to head first (creates the sqlite file at
+        # the latest revision), then check compares ORM models.
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
