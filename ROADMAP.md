@@ -1237,12 +1237,19 @@ PointlesSQL
 │   │   │   soyuz had to land first (OpenAPI schema-name dedup
 │   │   │   + CI hook unblock) before the tag would push — the
 │   │   │   pushable retag is `rc2`
-│   │   ├── Dual-mode toggle: a **gitignored `uv.toml`** at repo
-│   │   │   root overrides `[tool.uv.sources]` with the editable
-│   │   │   path dep (`../soyuz-catalog/soyuz-catalog-client`)
-│   │   │   so client regens surface without a tag bump. Drop
-│   │   │   the file → `uv sync` → editable mode; delete it →
-│   │   │   `uv sync` → back to pinned mode
+│   │   ├── Dual-mode toggle: two helper scripts swap
+│   │   │   `[tool.uv.sources]` in-place.
+│   │   │   `scripts/use-editable-soyuz.sh` rewrites the git-tag
+│   │   │   pin to `{ path = "../soyuz-catalog/soyuz-catalog-client",
+│   │   │   editable = true }` and re-`uv sync`s;
+│   │   │   `scripts/use-pinned-soyuz.sh` restores pyproject.toml
+│   │   │   + uv.lock from HEAD. The editable swap leaves the tree
+│   │   │   dirty on purpose so the escape-hatch state stays
+│   │   │   visible. (A Sprint-38 attempt at a gitignored
+│   │   │   `uv.toml` with a `[sources]` block was later found
+│   │   │   invalid — `uv` only accepts `sources` inside a
+│   │   │   `pyproject.toml`'s `[tool.uv.sources]`; the scripts are
+│   │   │   the working replacement)
 │   │   ├── `uv.lock` regenerated against the git-tag pin — first
 │   │   │   lock that works on a clean clone with no sibling
 │   │   │   `../soyuz-catalog` checkout
@@ -1258,7 +1265,8 @@ PointlesSQL
 │   │   │   `build.ssh: [default]` for BuildKit ssh-agent forwarding
 │   │   ├── `CLAUDE.md` "Wiring soyuz-catalog" block rewritten
 │   │   │   with both dev modes documented (default git-pin +
-│   │   │   editable escape hatch via `uv.toml`)
+│   │   │   editable escape hatch via the `use-editable-soyuz.sh`
+│   │   │   / `use-pinned-soyuz.sh` script pair)
 │   │   └── Smoke test: fresh tmpdir, `git clone`, `uv sync`,
 │   │       `uv run pointlessql` — succeeded without
 │   │       `../soyuz-catalog`
@@ -1289,9 +1297,17 @@ PointlesSQL
 │   │   ├── `.github/workflows/test.yml` — first CI for this
 │   │   │   repo. Jobs: ruff, pyright, pydoclint (Google),
 │   │   │   `alembic check`. No pytest (standing sprint-gate
-│   │   │   discipline). Private soyuz-catalog dep pulled via
-│   │   │   `SOYUZ_READ_TOKEN` org-secret rewrite of
-│   │   │   github.com URLs to `x-access-token:…` form
+│   │   │   discipline). Private soyuz-catalog dep pulled by
+│   │   │   `uv sync` at authentication-time via a single
+│   │   │   `git config --global url.insteadOf` rewrite with the
+│   │   │   `SOYUZ_READ_TOKEN` classic PAT as
+│   │   │   `x-access-token:…` basic auth. Initial shape used a
+│   │   │   sibling `git clone` + `uv.toml [sources]` override;
+│   │   │   that was torn out as a follow-on fix when `uv`
+│   │   │   rejected the `uv.toml` `[sources]` block and when
+│   │   │   `actions/checkout@v4`'s fine-grained-PAT handling
+│   │   │   failed (the PAT was swapped to a classic one). The 16
+│   │   │   `fix(ci)` commits on main trace the investigation
 │   │   ├── `.github/workflows/release.yml` — on-tag `v*`. Runs
 │   │   │   the gate (ruff/pyright/pydoclint/alembic), builds
 │   │   │   wheel + sdist via `uv build`, asserts the wheel

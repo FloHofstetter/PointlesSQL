@@ -4,7 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.1.0rc1] - 2026-04-17
+### Fixed (Sprint 38 follow-on)
+
+- **Dual-mode dev toggle.** The documented escape hatch — dropping
+  a gitignored `uv.toml` with a `[sources]` block to flip
+  `soyuz-catalog-client` to the sibling `../soyuz-catalog`
+  checkout — was rejected by `uv` with `error: Failed to parse:
+  uv.toml. The sources field is not allowed in a uv.toml file.
+  sources is only applicable in the context of a project`. The
+  mechanism never actually worked; Sprint 38's smoke test only
+  covered the default-pinned path. Replaced with two helper
+  scripts, `scripts/use-editable-soyuz.sh` and
+  `scripts/use-pinned-soyuz.sh`, that swap `[tool.uv.sources]` in
+  `pyproject.toml` in-place. The swap intentionally leaves the
+  tree dirty so the escape-hatch state stays visible. `.gitignore`
+  loses its `uv.toml` stanza (the mechanism is gone); `CLAUDE.md`
+  "Wiring soyuz-catalog" rewrites the editable-hatch section.
+
+### Changed (Sprint 39 follow-on — CI)
+
+- **`.github/workflows/test.yml` + `release.yml`.** Torn out the
+  broken sibling-checkout + `uv.toml`-drop construction. Both
+  workflows now consume the private `soyuz-catalog` dep the same
+  way a local checkout does: `uv sync` resolves the pinned
+  `[tool.uv.sources]` git-tag source, authenticated by a single
+  `git config --global url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf "https://github.com/"`
+  step before `uv sync`. Removed: the debug curl-probes step, the
+  raw `git clone --branch v0.2.0rc2 …` sibling-checkout step, the
+  `cat > uv.toml <<EOF [sources] …` override step, and every
+  `working-directory: PointlesSQL` (the main checkout lives at
+  the default path again).
+- **`SOYUZ_READ_TOKEN`.** The previous org-secret was a
+  fine-grained PAT — `actions/checkout@v4` could not use it
+  ("could not read Username" despite a verified `Contents: Read`
+  scope). The 16-commit `fix(ci)` investigation on main was this
+  plus the `uv.toml` bug tangled up. The secret has been
+  regenerated as a **classic PAT** (repo scope on the
+  soyuz-catalog private repo); that change was made via the
+  GitHub UI and no file change is needed to consume it.
+
+
 
 ### Added (Sprint 39)
 

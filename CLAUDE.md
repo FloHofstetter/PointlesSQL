@@ -125,20 +125,26 @@ uv run pointlessql         # listens on http://127.0.0.1:8000
 
 When you are iterating on soyuz-catalog itself and want
 `scripts/regen_client.sh` regens to surface without a tag bump,
-drop a gitignored `uv.toml` at this repo's root with the override:
+flip `pyproject.toml`'s `[tool.uv.sources]` to an editable path
+dep on the sibling checkout. Two helper scripts do the swap in
+place:
 
-```toml
-# uv.toml — NOT committed. Present only when you want uv to resolve
-# soyuz-catalog-client from ../soyuz-catalog/soyuz-catalog-client
-# (editable) instead of the v0.2.0rc2 git tag pinned in
-# pyproject.toml.
-[sources]
-soyuz-catalog-client = { path = "../soyuz-catalog/soyuz-catalog-client", editable = true }
+```bash
+bash scripts/use-editable-soyuz.sh   # git-tag pin → editable ../soyuz-catalog path
+# …iterate on soyuz-catalog, regen client, uv run pointlessql, etc.
+bash scripts/use-pinned-soyuz.sh     # restore pyproject.toml + uv.lock from HEAD
 ```
 
-Re-run `uv sync`. Delete `uv.toml` when you are done — `uv.lock`
-on main always reflects the pinned path. The committed
-`.gitignore` keeps `uv.toml` out of commits.
+The editable swap leaves `pyproject.toml` dirty on purpose — that
+is the signal you are in escape-hatch mode. Do not commit the
+swapped `pyproject.toml`; run `use-pinned-soyuz.sh` (or
+`git restore pyproject.toml uv.lock`) before committing anything
+else on main.
+
+An earlier attempt at a gitignored `uv.toml` with a `[sources]`
+block is **not** supported by uv — `sources` is only valid inside
+a `pyproject.toml`'s `[tool.uv.sources]` table. The swap-in-place
+approach above is the working replacement.
 
 ### Docker builds
 

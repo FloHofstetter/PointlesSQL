@@ -16,77 +16,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: PointlesSQL
-      # Clone soyuz-catalog as a sibling directory so uv can
-      # resolve the client via a local path dep (see the
-      # uv.toml-override step below).
-      #
-      # Raw `git clone` with `x-access-token:<pat>@` URL auth —
-      # actions/checkout@v4 cross-repo checkout failed for this
-      # PAT ("could not read Username" despite a verified-working
-      # `Contents: Read` scope), apparently a bug in how
-      # actions/checkout formats basic-auth for fine-grained PATs.
-      # Direct git clone with the same credentials works.
-      - name: Debug — verify secret + auth
+      # Rewrite HTTPS clones of github.com to tunnel through the
+      # SOYUZ_READ_TOKEN (classic PAT, Contents: Read on the private
+      # soyuz-catalog repo). `uv sync` resolves the pinned
+      # `[tool.uv.sources]` git-tag source directly — no sibling
+      # checkout, no uv.toml override.
+      - name: Configure git for private soyuz-catalog pull
         env:
           SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
-          echo "=== secret length (expected 93) ==="
-          printf '%s' "$SOYUZ_READ_TOKEN" | wc -c
-          echo "=== secret prefix (first 14 chars) ==="
-          printf '%s' "$SOYUZ_READ_TOKEN" | head -c 14
-          echo ""
-          echo "=== secret suffix (last 6 chars) ==="
-          printf '%s' "$SOYUZ_READ_TOKEN" | tail -c 6
-          echo ""
-          echo "=== hex dump of last 5 bytes (check for stray \\n/\\r) ==="
-          printf '%s' "$SOYUZ_READ_TOKEN" | tail -c 5 | od -c | head -1
-          echo "=== curl Bearer auth to api.github.com ==="
-          curl -s -o /dev/null -w "api status: %{http_code}\n" \
-            -H "Authorization: Bearer $SOYUZ_READ_TOKEN" \
-            https://api.github.com/repos/FloHofstetter/soyuz-catalog
-          echo "=== curl basic auth to api.github.com ==="
-          curl -s -o /dev/null -w "basic status: %{http_code}\n" \
-            -u "x-access-token:$SOYUZ_READ_TOKEN" \
-            https://api.github.com/repos/FloHofstetter/soyuz-catalog
-      - name: Clone soyuz-catalog at pinned tag
-        env:
-          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
-        run: |
-          git clone --depth 1 --branch v0.2.0rc2 \
-            "https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/FloHofstetter/soyuz-catalog.git" \
-            soyuz-catalog
+          git config --global \
+            url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
       - name: Set up Python
-        working-directory: PointlesSQL
         run: uv python install 3.14
-      - name: Override soyuz-catalog-client to sibling path
-        working-directory: PointlesSQL
-        # Drop a gitignored uv.toml that overrides
-        # [tool.uv.sources] in pyproject.toml to use the sibling
-        # checkout as an editable path dep. Identical to the
-        # developer escape hatch documented in CLAUDE.md.
-        run: |
-          cat > uv.toml <<'EOF'
-          [sources]
-          soyuz-catalog-client = { path = "../soyuz-catalog/soyuz-catalog-client", editable = true }
-          EOF
       - name: Install dependencies
-        working-directory: PointlesSQL
         run: uv sync --all-extras
       - name: Ruff
-        working-directory: PointlesSQL
         run: uv run ruff check .
       - name: Pyright
-        working-directory: PointlesSQL
         run: uv run pyright
       - name: Pydoclint (Google style)
-        working-directory: PointlesSQL
         run: uv run pydoclint --style=google pointlessql/
       - name: Alembic — no autogen drift
-        working-directory: PointlesSQL
         run: uv run alembic check
