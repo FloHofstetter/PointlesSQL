@@ -1754,7 +1754,7 @@ PointlesSQL
 │   ├── Sprint 52 — Export + limits + cancel                ✅ done (b4bfee5)
 │   │   CSV / Parquet download via re-run-from-history; row
 │   │   limit + query timeout; cancel via DuckDB `.interrupt()`.
-│   └── Sprint 53 — EXPLAIN + autocomplete + close          🔜 in progress
+│   └── Sprint 53 — EXPLAIN + autocomplete + close          ✅ done (b718839)
 │       EXPLAIN toggle, table-name autocomplete from catalog
 │       tree, mobile stacking,
 │       `docs/e2e-walkthroughs/sql-editor.md` playbook, phase close.
