@@ -66,7 +66,7 @@
                     @click="opening = true;
                             fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/open-in-notebook', {method: 'POST'})
                               .then(r => r.ok ? r.json() : Promise.reject(r))
-                              .then(data => window.location.assign(data.editor_url || data.lab_url))
+                              .then(data => window.location.assign(data.editor_url))
                               .catch(async err => {
                                 opening = false;
                                 const msg = err && err.json ? (await err.json().catch(() => null))?.error?.message : null;

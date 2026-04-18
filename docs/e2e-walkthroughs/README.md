@@ -50,9 +50,14 @@ data-surface playbooks have run at least once:
    Run-now, retry + fail-skip propagation, Pause/Resume, per-task
    log panel, and a `pg_sync`-kind cross-feature smoke against
    `pg_mirror`.
-7. [`notebook.md`](notebook.md) — `/notebook` + `/api/jupyter/status`
-   in both `jupyter_enabled=true` (default) and `=false` passes.
-   Cell-level iframe interaction is explicitly out of scope.
+7. [`notebook-editor.md`](notebook-editor.md) — Phase-12.6 native
+   editor end-to-end: open + autosave, cell execute + output
+   persistence across reload, kernel restart, Pyright LSP
+   (completion / hover / diagnostics), Variable Explorer,
+   Insert-from-catalog modal, and the post-retirement surfaces
+   that prove the JupyterLab iframe is really gone.  Replaced
+   the Sprint-23 `notebook.md` playbook in Sprint 64 when the
+   iframe retired.
 8. [`oidc.md`](oidc.md) — OIDC-off (SSO button absent) then
    OIDC-on via the `mock-oidc` sidecar; full authorize-code + PKCE
    round-trip with auto-user-creation and claim mapping.
@@ -117,7 +122,7 @@ exports the override:
 | Host env var                        | Default | Used by              |
 | ----------------------------------- | ------- | -------------------- |
 | `POINTLESSQL_SCHEDULER_TICK_SECONDS`| `2`     | `jobs-dag.md`        |
-| `POINTLESSQL_JUPYTER_ENABLED`       | `true`  | `notebook.md` Pass 2 |
+| `POINTLESSQL_JUPYTER_ENABLED`       | `true`  | (Sprint 63 no-op; kept for backward-compat) |
 | `POINTLESSQL_LOG_FORMAT`            | `text`  | `config-matrix.md`   |
 | `POINTLESSQL_DELTA_ENGINE`          | `pandas`| `config-matrix.md`   |
 | `POINTLESSQL_OIDC_DISCOVERY_URL`    | (empty) | `oidc.md` Pass 2     |

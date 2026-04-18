@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 64) — Phase 12.6 close: editor E2E playbook
+
+Phase 12.6 closes with its e2e playbook and the one-release
+grace aliases from Sprint 63 removed.
+
+- **``docs/e2e-walkthroughs/notebook-editor.md``** — six-part
+  deterministic playbook (First open / Execute+persistence /
+  Pyright LSP / Insert-from-catalog / Variable Explorer /
+  Post-retirement surfaces) replacing the Sprint-23 JupyterLab
+  iframe playbook.  Same step-by-step shape the other
+  playbooks follow so a human with a browser or an MCP-driven
+  Claude Code session can replay it deterministically.
+- **Grace aliases removed.**  ``GET /notebook`` no longer
+  302-redirects (the route is unregistered; the navbar link
+  goes straight to the editor so no internal caller relied on
+  the redirect).  ``open-in-notebook`` response dropped the
+  ``lab_url`` alias; ``pages/table.html`` reads
+  ``editor_url`` directly.
+- **Sprint-23 ``notebook.md`` playbook retired** — obsoleted
+  by the iframe retirement.  The walkthroughs README index
+  points at ``notebook-editor.md`` as slot #7.
+
+**Phase 12.6 → ✅**.  The native notebook editor started as a
+Sprint-58 skeleton (Monaco + jupytext round-trip), layered
+execution (59) + persisted rich outputs (60) + Pyright LSP (61)
++ Variable Explorer / catalog insert (62) + papermill ``.py``
+bridge + iframe retirement (63), and closed with the playbook
+here in Sprint 64.  The quality bar ("as good as VSCode Python
+Interactive Window") landed unchanged from the plan.
+
 ### Changed — Breaking (Sprint 63) — JupyterLab iframe retired
 
 Phase 12.6 Sprint 63 retires the Sprint-3 embedded JupyterLab

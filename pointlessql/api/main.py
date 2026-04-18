@@ -2891,10 +2891,7 @@ async def api_open_in_notebook(
     await _audit(request, "open_in_notebook", f"table:{full_name}", f"scratch/{filename}")
     relative = f"scratch/{filename}"
     editor_url = f"/notebook/editor?path={relative}"
-    # ``lab_url`` stays on the response for one grace release so any
-    # in-flight client that still has the pre-retirement JS can read
-    # it without 500-ing; Sprint 64 removes the alias.
-    return {"path": relative, "editor_url": editor_url, "lab_url": editor_url}
+    return {"path": relative, "editor_url": editor_url}
 
 
 @app.post("/api/catalogs")
@@ -3351,26 +3348,6 @@ async def table_detail(
             "active_table": table_name,
         },
     )
-
-
-@app.get("/notebook", response_class=HTMLResponse)
-async def notebook_redirect(request: Request) -> RedirectResponse:
-    """Redirect legacy ``/notebook`` URL to the native editor.
-
-    Sprint 63 retires the embedded JupyterLab iframe.  The
-    ``/notebook`` path stays registered as a redirect for one grace
-    release so bookmarks + the Sprint-3 navbar don't 404; Sprint 64
-    drops the redirect entirely.
-
-    Args:
-        request: Incoming request (unused — kept for the FastAPI
-            signature + future middleware hooks).
-
-    Returns:
-        A 302 to ``/notebook/editor?path=scratch.py``.
-    """
-    del request
-    return RedirectResponse(url="/notebook/editor?path=scratch.py", status_code=302)
 
 
 @app.get("/notebook/editor", response_class=HTMLResponse)

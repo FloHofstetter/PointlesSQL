@@ -1811,7 +1811,7 @@ PointlesSQL
 │       existing generated client.  The "I have a CSV, make it go"
 │       moment.
 │
-├── Phase 12.6 — Native Python notebook editor            ⏳ in progress
+├── Phase 12.6 — Native Python notebook editor            ✅ done
 │   │
 │   │   Replace the Sprint-3 JupyterLab iframe with a first-party
 │   │   Monaco-based notebook editor. Quality bar = VSCode Python
@@ -2115,16 +2115,33 @@ PointlesSQL
 │   │       on ``open-in-notebook`` stay for Sprint 64's close-
 │   │       out.
 │   │
-│   └── Sprint 64 — E2E playbook + phase close                ⏳ planned
-│       ├── New ``docs/e2e-walkthroughs/notebook-editor.md``
-│       │   playbook — open editor, type cell, run, see output,
-│       │   reload (outputs persist), restart (outputs clear),
-│       │   autocomplete, hover, insert-from-catalog, variable
-│       │   explorer
-│       ├── Playwright-MCP replay against Firefox (bundled
-│       │   chrome-for-testing if firefox flakes — see
-│       │   ``CLAUDE.md`` note)
-│       └── ROADMAP / CHANGELOG close-out; Phase-12.6 → ✅
+│   └── Sprint 64 — E2E playbook + phase close                🔜 in progress
+│       ├── ``docs/e2e-walkthroughs/notebook-editor.md`` —
+│       │   six-part deterministic playbook covering:  first
+│       │   open (UUID mint + autosave flush) → execute cell
+│       │   (rich-mime output) → reload (outputs persist,
+│       │   Sprint-60 replay) → clear / restart (outputs
+│       │   wiped) → Pyright LSP (completion / hover /
+│       │   diagnostics) → Insert-from-catalog modal (Ctrl+
+│       │   Shift+I) → Variable Explorer + scheduled
+│       │   refresh → post-retirement surfaces (no ``lab/``
+│       │   iframes anywhere, ``/api/jupyter/status`` is
+│       │   404, Sprint-26 card is single-view, Sprint-34
+│       │   returns ``editor_url``).
+│       ├── Grace aliases from Sprint 63 removed:
+│       │   ``GET /notebook`` no longer 302-redirects (the
+│       │   route is unregistered, giving a 404 — the single
+│       │   ``Notebook`` navbar link points directly at the
+│       │   editor so no internal caller relies on the
+│       │   redirect).  ``open-in-notebook`` response dropped
+│       │   the ``lab_url`` alias; the one call-site in
+│       │   ``pages/table.html`` now reads ``editor_url``
+│       │   directly.
+│       ├── Sprint-23 ``notebook.md`` playbook retired —
+│       │   obsoleted by the iframe retirement.  The
+│       │   ``docs/e2e-walkthroughs/README.md`` index points
+│       │   at ``notebook-editor.md`` as slot #7.
+│       └── **Phase 12.6 marked ✅** in this roadmap.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
