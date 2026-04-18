@@ -208,7 +208,16 @@ app.mount(
 )
 
 # Paths that do not require authentication.
-_PUBLIC_PREFIXES = ("/auth/", "/static/", "/healthz")
+# Sprint 55: ``/alerts/feed.atom`` + ``/alerts/feed.json`` authenticate
+# via the opaque ``?token=…`` query-string, not the session cookie —
+# feed readers (Miniflux, FreshRSS, …) do not have a browser session.
+# They are listed here so the session auth_middleware does not
+# redirect them to ``/auth/login``; the route handlers themselves
+# reject unknown tokens with 401.
+_PUBLIC_PREFIXES = (
+    "/auth/", "/static/", "/healthz",
+    "/alerts/feed.atom", "/alerts/feed.json",
+)
 
 
 @app.middleware("http")
