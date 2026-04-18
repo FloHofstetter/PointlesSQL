@@ -35,9 +35,18 @@ window.sqlEditor = function () {
                 },
                 preventDefault: true,
             };
+            // Honour ?prefill=<urlencoded sql> so the /queries re-run button
+            // (Sprint 50) and future deep-links open with a pre-filled query.
+            // Clean the URL so a reload isn't a second re-run.
+            const qs = new URLSearchParams(window.location.search);
+            const prefill = qs.get('prefill');
+            const startingDoc = prefill && prefill.trim() ? prefill : 'SELECT 1 AS n';
+            if (prefill) {
+                try { history.replaceState({}, '', '/sql'); } catch (e) { /* ignore */ }
+            }
             cmView = new EditorView({
                 state: EditorState.create({
-                    doc: 'SELECT 1 AS n',
+                    doc: startingDoc,
                     extensions: [
                         lineNumbers(),
                         highlightActiveLine(),

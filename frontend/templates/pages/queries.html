@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Queries · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Queries"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history fs-3"></i>
+        <h1 class="h3 mb-0">Query history</h1>
+    </div>
+    <span class="text-muted small">
+        {{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }} shown
+    </span>
+</div>
+
+{% if not entries %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-inbox display-4 d-block mb-2"></i>
+        <p class="mb-2">No queries yet.</p>
+        <a href="/sql" class="btn btn-primary btn-sm">
+            <i class="bi bi-code-square"></i> Open SQL editor
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body p-0">
+        <div x-data="listTable({
+                searchPlaceholder: 'Search SQL / tables / user…',
+                initialSort: { key: 'started-at', dir: 'desc' },
+                mobileSort: true,
+                chips: [
+                    { id: 'mine', label: 'Mine only',
+                      match: (tr) => tr.dataset.userId === '{{ current_user.id if current_user else 0 }}' },
+                    { id: 'failed', label: 'Failed',
+                      match: (tr) => tr.dataset.status === 'failed' },
+                    { id: 'last24h', label: 'Last 24h',
+                      match: (tr) => {
+                          const iso = tr.dataset.startedAt;
+                          if (!iso) return false;
+                          const t = new Date(iso).getTime();
+                          return !Number.isNaN(t) && (Date.now() - t) <= 24 * 3600 * 1000;
+                      } },
+                ],
+             })">
+            <div class="pql-list-controls">
+                <input type="search"
+                       class="form-control form-control-sm pql-list-controls__search"
+                       x-model="query"
+                       x-on:input="onInput()"
+                       x-bind:placeholder="searchPlaceholder"
+                       aria-label="Search queries">
+                <template x-for="chip in chips" :key="chip.id">
+                    <button type="button"
+                            class="pql-chip"
+                            x-bind:class="activeChips[chip.id] ? 'pql-chip--active' : ''"
+                            x-on:click="toggleChip(chip.id)"
+                            x-text="chip.label"></button>
+                </template>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle pql-list-table">
+                    <thead>
+                        <tr>
+                            <th class="ps-3" data-sort-key="started-at">Started</th>
+                            <th data-sort-key="status">Status</th>
+                            <th data-sort-key="user-email">User</th>
+                            <th data-sort-key="duration-ms">Duration</th>
+                            <th data-sort-key="row-count">Rows</th>
+                            <th>SQL</th>
+                            <th class="pe-3">Tables</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in entries %}
+                        {% set sql_snip = (entry.sql_text or '')[:120] %}
+                        <tr data-search="{{ (entry.sql_text or '')|lower }} {{ entry.user_email|lower }} {{ (entry.tables or [])|join(' ')|lower }}"
+                            data-sort-started-at="{{ entry.started_at or '' }}"
+                            data-sort-status="{{ entry.status or '' }}"
+                            data-sort-user-email="{{ entry.user_email|lower }}"
+                            data-sort-duration-ms="{{ entry.duration_ms if entry.duration_ms is not none else -1 }}"
+                            data-sort-row-count="{{ entry.row_count if entry.row_count is not none else -1 }}"
+                            data-user-id="{{ entry.user_id }}"
+                            data-status="{{ entry.status }}"
+                            data-started-at="{{ entry.started_at or '' }}">
+                            <td class="ps-3 small text-muted font-monospace" data-label="Started">
+                                <span x-data='{ iso: {{ (entry.started_at or "")|tojson }} }'
+                                      x-text="iso ? pqlRelativeTime(iso) : '—'"
+                                      x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ entry.started_at }}</span>
+                            </td>
+                            <td data-label="Status">
+                                {% if entry.status == 'succeeded' %}
+                                <span class="badge bg-success">succeeded</span>
+                                {% elif entry.status == 'failed' %}
+                                <span class="badge bg-danger">failed</span>
+                                {% elif entry.status == 'cancelled' %}
+                                <span class="badge bg-warning text-dark">cancelled</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ entry.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="User" class="small">{{ entry.user_email }}</td>
+                            <td data-label="Duration" class="font-monospace small text-muted">
+                                {% if entry.duration_ms is not none %}{{ entry.duration_ms }} ms{% else %}—{% endif %}
+                            </td>
+                            <td data-label="Rows" class="font-monospace small text-muted">
+                                {% if entry.row_count is not none %}{{ entry.row_count }}{% else %}—{% endif %}
+                            </td>
+                            <td data-label="SQL" class="font-monospace small"
+                                x-data="{ open: false }">
+                                <code>{{ sql_snip }}{% if (entry.sql_text or '')|length > 120 %}…{% endif %}</code>
+                                {% if entry.error_message %}
+                                <button type="button"
+                                        class="btn btn-link btn-sm p-0 ms-1 text-decoration-none text-danger"
+                                        x-on:click.stop="open = !open"
+                                        x-text="open ? 'Hide error' : 'Show error'"></button>
+                                <pre class="small mb-0 mt-1 text-danger"
+                                     x-show="open"
+                                     x-cloak>{{ entry.error_message }}</pre>
+                                {% endif %}
+                            </td>
+                            <td data-label="Tables" class="pe-3 small">
+                                {% for full in entry.tables or [] %}
+                                <span class="badge text-bg-secondary me-1 font-monospace">{{ full }}</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <a href="/sql?prefill={{ entry.sql_text|urlencode }}"
+                                   class="btn btn-outline-primary btn-sm"
+                                   title="Re-run in SQL editor">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

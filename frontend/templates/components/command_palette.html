@@ -137,7 +137,13 @@
     }
 
     const CHORD_TIMEOUT_MS = 1000;
-    const CHORD_ROUTES = { h: '/', j: '/jobs', d: '/dashboards', s: '/sql' };
+    const CHORD_ROUTES = {
+        h: '/',
+        j: '/jobs',
+        d: '/dashboards',
+        s: '/sql',
+        q: '/queries',
+    };
 
     window.commandPalette = function () {
         const mod = isMac() ? '⌘' : 'Ctrl';
@@ -160,6 +166,7 @@
                 { keys: ['g', 'j'],  combiner: ' ', label: 'Go to jobs' },
                 { keys: ['g', 'd'],  combiner: ' ', label: 'Go to dashboards' },
                 { keys: ['g', 's'],  combiner: ' ', label: 'Go to SQL editor' },
+                { keys: ['g', 'q'],  combiner: ' ', label: 'Go to query history' },
                 { keys: ['r'],       combiner: '',  label: 'Refresh current list' },
             ],
             _debounceTimer: null,

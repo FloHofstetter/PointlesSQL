@@ -411,6 +411,99 @@ class RateLimitEvent(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class QueryHistory(Base):
+    """One execution of an ad-hoc SQL query from the Phase-12 editor.
+
+    Written on every ``POST /api/sql/execute`` call — including
+    failures — so the ``/queries`` page can render the full stream of
+    activity without "phantom" gaps for errors.  Non-admin users see
+    only their own rows; admin sees everyone's.
+
+    Retention of successful + failed rows is currently unbounded;
+    Phase 12 deliberately does not ship a cleanup job because the
+    per-row volume is tiny compared to the audit log.  If retention
+    becomes a concern it can reuse the Sprint-48 audit-cleanup task
+    pattern.
+
+    ``request_id`` lets ops cross-reference a history row with the
+    Sprint-16 request-id-tagged log line for the same execution.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        user_id: ID of the user who ran the query (no FK so entries
+            survive user deletion).
+        user_email: Email snapshot at time of run.
+        sql_text: Verbatim query as submitted (NOT the DuckDB-rewritten
+            form, since the original is what the UI re-runs).
+        started_at: Timestamp when the route handler began.
+        finished_at: Timestamp when the DuckDB call returned (or the
+            route raised on enforcement / parse).
+        status: ``"succeeded"`` / ``"failed"`` / ``"cancelled"``.
+            Cancellation is Sprint 52; Sprint 50 only writes
+            succeeded / failed.
+        row_count: Result row count after :meth:`PQL.sql` row-cap
+            slicing, or ``None`` on failure.
+        duration_ms: DuckDB wall-clock time in milliseconds, or
+            ``None`` on failure.
+        error_message: Exception detail on failure, else ``None``.
+        request_id: Correlates with structured log lines.
+    """
+
+    __tablename__ = "query_history"
+
+    __table_args__ = (
+        Index("ix_query_history_user_started", "user_id", "started_at"),
+        Index("ix_query_history_started", "started_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    user_email: Mapped[str] = mapped_column(String(254), nullable=False)
+    sql_text: Mapped[str] = mapped_column(Text, nullable=False)
+    started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+
+
+class QueryHistoryTable(Base):
+    """One UC table referenced by a :class:`QueryHistory` row.
+
+    Populated from the sqlglot parse of ``sql_text``.  Exists as a
+    separate relation so "who queried table X" is a fast reverse
+    lookup via ``full_name``.  ``access_type`` is always ``"read"``
+    in Phase 12 (the editor only permits SELECT); reserved so
+    Phase 13's agent-workload write paths can distinguish read vs.
+    write access for the same history surface.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        query_history_id: FK to ``query_history.id``.
+        full_name: Dotted UC identifier (``catalog.schema.table``).
+        access_type: ``"read"`` (Phase 12) or ``"write"`` (reserved).
+    """
+
+    __tablename__ = "query_history_tables"
+
+    __table_args__ = (
+        Index("ix_query_history_tables_full_name", "full_name", "query_history_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    query_history_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("query_history.id"), nullable=False
+    )
+    full_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    access_type: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="read", server_default="read"
+    )
+
+
 class JobLog(Base):
     """One structured log line written during a :class:`JobRun`.
 

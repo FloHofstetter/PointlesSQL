@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 50) — Query history
+
+- **Alembic 012** creates two new tables. ``query_history``
+  (``id``, ``user_id``, ``user_email``, ``sql_text`` TEXT,
+  ``started_at`` + ``finished_at``, ``status`` CHECK IN
+  ``succeeded|failed|cancelled``, nullable ``row_count`` /
+  ``duration_ms`` / ``error_message``, ``request_id`` for
+  Sprint-16 log correlation) with composite indexes on
+  ``(user_id, started_at)`` and a forward index on
+  ``started_at``.  ``query_history_tables`` (``id``,
+  ``query_history_id`` FK, ``full_name``, ``access_type``
+  defaulting to ``"read"``) with a reverse-lookup index on
+  ``(full_name, query_history_id)`` so the "who queried table X"
+  pattern is a single index seek.
+- **`POST /api/sql/execute` now persists history on both paths.**
+  Success and failure each write a ``query_history`` row via the
+  new :func:`_record_query_async` helper, which dispatches the
+  INSERT through :func:`asyncio.to_thread` (same pattern as
+  Sprint-48's ``_audit``).  Parse failures log an empty
+  ``referenced_tables`` array; enforcement failures carry the
+  refs that were extracted before ``check_privilege`` raised.
+  ``error_message`` is the exception detail verbatim so the
+  ``/queries`` detail panel can surface DuckDB's "column not
+  found" without a second fetch.
+- **`GET /queries` page** — Jinja template ``pages/queries.html``
+  driven by the Sprint-33 ``listTable`` Alpine component.  Filter
+  chips: *Mine only*, *Failed*, *Last 24h*.  Each row renders a
+  status badge, SQL snippet (truncated at 120 chars with an
+  expand-to-show-error toggle for failed rows), referenced-table
+  chips, a duration, and a re-run button that links to
+  ``/sql?prefill=<urlencoded sql>``.  Non-admin callers see only
+  their own rows — enforcement lives in
+  :func:`api_list_queries` and mirrors Sprint-33's ``/api/jobs``
+  scoping.  The page opts into the Sprint-36 ``r``-refresh via
+  ``list_page: True`` in its template context.
+- **`GET /api/queries?user_id=&status=&since=&limit=`** — JSON
+  endpoint the page preloads from.  ``since`` accepts ``24h`` /
+  ``7d`` / ``30d`` / ``all`` (anything else → no filter, never a
+  400).  Admin-only scoping: a non-admin's ``user_id`` is
+  clamped to their own ID.  Hard cap at 1000 rows even if the
+  caller asks for more.
+- **Editor prefill.** ``sql_editor.js`` now reads
+  ``?prefill=<urlencoded sql>`` on mount and seeds the CodeMirror
+  doc with it.  URL cleanup via ``history.replaceState`` so a
+  page reload isn't a second re-run.  Pattern lifted verbatim
+  from Sprint-27's ``prefill_notebook_path`` in ``pages/jobs.html``.
+- **Navbar collapses Notebook/SQL.** The new "SQL" nav entry
+  becomes a dropdown with *Editor* → ``/sql`` and *History* →
+  ``/queries``.  ``g s`` still jumps to the editor;
+  Sprint 50 adds ``g q`` chord for the history.
+- Tests: 5 new service cases in ``tests/test_query_history.py``
+  (happy record, failure-with-error-message, user+status
+  filtering, reverse table lookup, count) plus 4 new route cases
+  (execute writes succeeded history, parse-fail writes failed
+  history, non-admin sees only own rows on ``/api/queries``,
+  ``/queries`` page renders).
+
 ### Added (Sprint 49) — SQL editor MVP
 
 - **`POST /api/sql/execute` + `GET /sql` page.** First Phase 12 sprint.

@@ -1744,7 +1744,7 @@ PointlesSQL
 │   │   CodeMirror + `/sql` + `PQL.sql()` + sqlglot-based
 │   │   table resolution + SELECT enforcement per referenced
 │   │   table. No history, no save, no export yet.
-│   ├── Sprint 50 — Query history                           ⏳ planned
+│   ├── Sprint 50 — Query history                           🔜 in progress
 │   │   Alembic 012 adds `query_history` + `query_history_tables`;
 │   │   `/queries` page with filter chips + re-run button;
 │   │   non-admin sees only own rows.

@@ -31,11 +31,15 @@
             <i class="bi bi-journal-code"></i> Notebook
         </a>
     </li>
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'sql' %} active{% endif %}"
-           href="/sql">
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('sql', 'queries') %} active{% endif %}"
+           href="#" data-bs-toggle="dropdown">
             <i class="bi bi-code-square"></i> SQL
         </a>
+        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+            <li><a class="dropdown-item{% if active_page is defined and active_page == 'sql' %} active{% endif %}" href="/sql">Editor</a></li>
+            <li><a class="dropdown-item{% if active_page is defined and active_page == 'queries' %} active{% endif %}" href="/queries">History</a></li>
+        </ul>
     </li>
     {% if current_user is defined and current_user and current_user.is_admin %}
     <li class="nav-item">

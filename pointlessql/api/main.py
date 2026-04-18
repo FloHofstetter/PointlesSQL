@@ -45,6 +45,7 @@ from pointlessql.services import metrics as metrics_service
 from pointlessql.services import notebook_render as notebook_render_service
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.services import pg_sync as pg_sync_service
+from pointlessql.services import query_history as query_history_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.authorization import (
     MANAGE_GRANTS,
@@ -328,6 +329,70 @@ def _client_ip(request: Request) -> str | None:
         str | None: IPv4/IPv6 address or ``None`` if unavailable.
     """
     return request.client.host if request.client else None
+
+
+async def _record_query_async(
+    request: Request,
+    *,
+    sql_text: str,
+    started_at: datetime,
+    finished_at: datetime,
+    status: str,
+    row_count: int | None,
+    duration_ms: int | None,
+    referenced_tables: list[str],
+    error_message: str | None = None,
+) -> int | None:
+    """Persist a Phase-12 query-history row without blocking the loop.
+
+    Mirrors :func:`_audit` for the dedicated ``query_history`` surface
+    landed in Sprint 50.  The INSERT happens inside
+    :func:`asyncio.to_thread` so the request handler continues
+    serving other requests during the write.  Swallows DB errors
+    after logging — a lost history row must never mask a successful
+    (or failing) query response.
+
+    Args:
+        request: The incoming FastAPI request.
+        sql_text: Verbatim user-submitted SQL.
+        started_at: When the route began handling the request.
+        finished_at: When the route's try/except exited.
+        status: ``"succeeded"`` / ``"failed"`` / ``"cancelled"``.
+        row_count: Final row count or ``None`` on failure.
+        duration_ms: DuckDB wall-clock time or ``None`` on failure.
+        referenced_tables: Three-part names extracted from the parse.
+            May be empty if the SQL did not parse.
+        error_message: Exception detail for failures; ``None`` on
+            success.
+
+    Returns:
+        The new ``query_history.id`` on success; ``None`` if no
+        session factory is bound or the INSERT failed.
+    """
+    user = _get_user(request)
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return None
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        return await asyncio.to_thread(
+            query_history_service.record_query,
+            factory,
+            user_id=user["id"],
+            user_email=user["email"],
+            sql_text=sql_text,
+            started_at=started_at,
+            finished_at=finished_at,
+            status=status,
+            row_count=row_count,
+            duration_ms=duration_ms,
+            referenced_tables=referenced_tables,
+            error_message=error_message,
+            request_id=request_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — never mask the query response
+        logger.warning("failed to record query_history row: %s", exc)
+        return None
 
 
 async def _audit(
@@ -645,42 +710,75 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     if not isinstance(query, str):
         raise SQLExecutionError("The 'sql' field must be a string.")
 
+    started_at = datetime.now(UTC)
+    parsed_refs: list[str] = []
     try:
-        prepared = prepare_sql(query)
-    except SQLParseError as exc:
-        raise SQLExecutionError(str(exc)) from exc
+        try:
+            prepared = prepare_sql(query)
+        except SQLParseError as exc:
+            raise SQLExecutionError(str(exc)) from exc
+        parsed_refs = list(prepared.refs)
 
-    client = _get_uc_client(request)
-    user = _get_user(request)
-    email = user.get("email", "")
-    is_admin = user.get("is_admin", False)
+        client = _get_uc_client(request)
+        user = _get_user(request)
+        email = user.get("email", "")
+        is_admin = user.get("is_admin", False)
 
-    approved: dict[str, str] = {}
-    for full_name in prepared.refs:
-        parts = full_name.split(".")
-        if len(parts) != 3:
-            raise SQLExecutionError(
-                f"Internal error: expected 3-part name, got {full_name!r}.",
-            )
-        table_info = await client.get_table(parts[0], parts[1], parts[2])
-        if not table_info:
-            raise CatalogNotFoundError(f"Table not found: {full_name!r}")
-        storage_location = table_info.get("storage_location")
-        if not isinstance(storage_location, str) or not storage_location:
-            raise CatalogNotFoundError(
-                f"Table {full_name!r} has no storage_location on soyuz-catalog.",
-            )
-        await check_privilege(client, email, is_admin, "table", full_name, SELECT)
-        approved[full_name] = storage_location
+        approved: dict[str, str] = {}
+        for full_name in prepared.refs:
+            parts = full_name.split(".")
+            if len(parts) != 3:
+                raise SQLExecutionError(
+                    f"Internal error: expected 3-part name, got {full_name!r}.",
+                )
+            table_info = await client.get_table(parts[0], parts[1], parts[2])
+            if not table_info:
+                raise CatalogNotFoundError(f"Table not found: {full_name!r}")
+            storage_location = table_info.get("storage_location")
+            if not isinstance(storage_location, str) or not storage_location:
+                raise CatalogNotFoundError(
+                    f"Table {full_name!r} has no storage_location on soyuz-catalog.",
+                )
+            await check_privilege(client, email, is_admin, "table", full_name, SELECT)
+            approved[full_name] = storage_location
 
-    result = await asyncio.to_thread(
-        _run_sql_sync,
-        settings,
-        query,
-        approved,
-        settings.sql.max_rows,
+        result = await asyncio.to_thread(
+            _run_sql_sync,
+            settings,
+            query,
+            approved,
+            settings.sql.max_rows,
+        )
+    except Exception as exc:
+        # Failure path: record history row before the centralised
+        # error handler renders the response.  Parse failures have
+        # empty ``parsed_refs``; enforcement failures carry the
+        # references extracted before the check raised.
+        finished_at = datetime.now(UTC)
+        await _record_query_async(
+            request,
+            sql_text=query,
+            started_at=started_at,
+            finished_at=finished_at,
+            status="failed",
+            row_count=None,
+            duration_ms=None,
+            referenced_tables=parsed_refs,
+            error_message=str(exc),
+        )
+        raise
+
+    finished_at = datetime.now(UTC)
+    await _record_query_async(
+        request,
+        sql_text=query,
+        started_at=started_at,
+        finished_at=finished_at,
+        status="succeeded",
+        row_count=result.row_count,
+        duration_ms=result.duration_ms,
+        referenced_tables=result.referenced_tables,
     )
-
     await _audit(
         request,
         "query.executed",
@@ -717,6 +815,111 @@ async def sql_editor_page(request: Request) -> HTMLResponse:
             "active_catalog": None,
             "active_schema": None,
             "active_table": None,
+        },
+    )
+
+
+def _parse_since(raw: str | None) -> datetime | None:
+    """Map a ``?since=`` query param to a cutoff datetime.
+
+    Accepts ``24h``, ``7d``, ``30d``, ``all``, or ``None``.  Any other
+    value maps to ``None`` (no filter) — invalid input should never
+    reject the whole page.
+
+    Args:
+        raw: The raw query-string value.
+
+    Returns:
+        The cutoff :class:`datetime` in UTC, or ``None`` for
+        ``"all"`` / unparseable / missing.
+    """
+    if not raw or raw == "all":
+        return None
+    mapping = {
+        "24h": timedelta(hours=24),
+        "7d": timedelta(days=7),
+        "30d": timedelta(days=30),
+    }
+    delta = mapping.get(raw)
+    if delta is None:
+        return None
+    return datetime.now(UTC) - delta
+
+
+@app.get("/api/queries")
+async def api_list_queries(
+    request: Request,
+    *,
+    user_id: int | None = None,
+    status: str | None = None,
+    since: str | None = None,
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    """Return recent query-history rows as JSON.
+
+    Non-admin callers see only their own rows — the ``user_id``
+    query param is clamped to the caller's ID regardless of what
+    was requested (Sprint-50 parity with ``/api/jobs`` from Sprint
+    33).  Admin can pass ``user_id=123`` to scope or ``None`` to
+    see everyone.
+
+    Args:
+        request: Incoming request (for the current user).
+        user_id: Optional user-ID filter (admin only).
+        status: Optional status filter.
+        since: Window string (``24h`` / ``7d`` / ``30d`` / ``all``).
+        limit: Hard row cap (default 200).
+
+    Returns:
+        A list of history dicts — see
+        :func:`pointlessql.services.query_history.list_queries`.
+    """
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return []
+    user = _get_user(request)
+    if not user.get("is_admin"):
+        user_id = user["id"]
+    effective_limit = max(1, min(int(limit), 1000))
+    return await asyncio.to_thread(
+        query_history_service.list_queries,
+        factory,
+        user_id=user_id,
+        status=status,
+        since=_parse_since(since),
+        limit=effective_limit,
+    )
+
+
+@app.get("/queries", response_class=HTMLResponse)
+async def queries_page(request: Request) -> HTMLResponse:
+    """Render the Phase-12 query history page.
+
+    Pre-loads the initial history slice server-side so the page
+    paints without waiting on a second round-trip; the list-table
+    Alpine component then takes over for chip filtering and sort.
+    """
+    factory = getattr(request.app.state, "session_factory", None)
+    user = _get_user(request)
+    entries: list[dict[str, Any]] = []
+    if factory is not None:
+        user_filter: int | None = None if user.get("is_admin") else user["id"]
+        entries = await asyncio.to_thread(
+            query_history_service.list_queries,
+            factory,
+            user_id=user_filter,
+            limit=200,
+        )
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/queries.html",
+        {
+            "entries": entries,
+            "active_page": "queries",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+            "list_page": True,
         },
     )
 
