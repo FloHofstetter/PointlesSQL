@@ -2115,7 +2115,7 @@ PointlesSQL
 │   │       on ``open-in-notebook`` stay for Sprint 64's close-
 │   │       out.
 │   │
-│   └── Sprint 64 — E2E playbook + phase close                🔜 in progress
+│   └── Sprint 64 — E2E playbook + phase close                ✅ done (2ab5df1)
 │       ├── ``docs/e2e-walkthroughs/notebook-editor.md`` —
 │       │   six-part deterministic playbook covering:  first
 │       │   open (UUID mint + autosave flush) → execute cell
