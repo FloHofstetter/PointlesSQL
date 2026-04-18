@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 62) — Variable Explorer + catalog insert + rich script exec
+
+Phase 12.6 Sprint 62 rounds out the native editor's read-side
+ergonomics: a live Variable Explorer reflects the kernel's user
+namespace, an ``Insert from catalog`` modal drops
+``pql.read_table(...)`` snippets at the cursor, Monaco's
+command palette surfaces the run / clear / restart / insert
+actions, and the ``text/html`` output path now executes inline
+scripts so plotly / altair / bokeh render for real.
+
+- **``__pql_`` internal cell-id namespace.**  The WS handler's
+  persistence hooks skip any cell_id starting with ``__pql_``
+  on both ``notebook_outputs`` inserts and
+  ``notebook_cell_runs`` upserts.  This lets the editor run
+  silent introspects (Variable Explorer, future autocomplete
+  helpers) under reserved cell ids without polluting the DB —
+  a non-breaking-change hook Sprint 63's workspace-tree
+  integration can also lean on.
+- **Variable Explorer sidebar.**  Toggleable right-side panel
+  that lists every user-defined variable by name + type + shape
+  + a 5-row ``DataFrame`` preview (pandas-styled HTML) or a
+  truncated ``repr()`` fallback.  The introspect snippet runs
+  under ``__pql_namespace__`` and re-fires after every user
+  cell goes idle, but only when the panel is open so inactive
+  tabs pay zero introspect cost.  Smoke-tested end-to-end
+  against a real ipykernel: a 2×2 pandas DataFrame round-trips
+  as ``{type: "DataFrame", shape: [2, 2], repr: "…"}``.
+- **Insert from catalog** modal.  Fetches ``/api/tree``,
+  flattens the catalog → schema → table hierarchy into a
+  searchable list, inserts ``pql.read_table("cat.schema.tbl")``
+  at the cursor on pick.  Binding: Ctrl+Shift+I or toolbar
+  ``Catalog`` button or the command-palette entry.
+- **Command palette actions.**  Every notebook-editor command
+  is registered via ``editor.addAction`` so F1 / Ctrl+Shift+P
+  lists them:  ``Run all``, ``Run all cells above cursor``,
+  ``Insert cell above / below``, ``Insert markdown cell below``,
+  ``Clear outputs``, ``Restart kernel``, ``Insert from
+  catalog…``, ``Toggle variable explorer``.  Single-letter
+  ``M`` / ``Y`` / ``DD`` shortcuts deliberately skipped — the
+  editor stays always-in-edit-mode, Jupyter-classic's
+  command-mode state machine is not worth the bookkeeping.
+- **Plotly / altair / bokeh render inline.**  ``text/html``
+  output is painted via ``innerHTML`` (which sandboxes
+  ``<script>``) and then every ``<script>`` in the rendered
+  subtree is cloned into a freshly-parsed node so the browser
+  actually executes it.  Same trick Jupyter's nbrenderer
+  uses; no additional vendoring.
+- **Scope-gate honoured**.  ipywidgets + any ``comm_msg`` /
+  ``display_data`` updating stays out of Phase 12.6 per the
+  memory decision.  If a future cell emits a widget bundle
+  the renderer will simply show the fallback ``text/plain``
+  rep; widgets land in Phase 12.7.
+
 ### Added (Sprint 61) — Pyright LSP (completion / hover / diagnostics)
 
 Phase 12.6 Sprint 61 wires ``pyright-langserver`` into the native

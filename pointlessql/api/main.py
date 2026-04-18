@@ -3554,8 +3554,16 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
     # counter to 0, so persisted rows always stay contiguous.
     output_counters: dict[tuple[str, str], int] = {}
 
+    # Sprint 62: ``__pql_``-prefixed cell IDs are reserved for the
+    # editor's internal introspects (Variable Explorer namespace
+    # scan, future autocomplete helpers).  Skipping persistence on
+    # these keeps the ``notebook_outputs`` table free of silent-
+    # execute rows that never surface in the UI.
+    def _is_internal_cell(cell_id: str | None) -> bool:
+        return bool(cell_id) and cell_id.startswith("__pql_")
+
     async def _persist_kernel_msg(msg: kernel_session_service.KernelMessage) -> None:
-        if not msg.cell_id:
+        if not msg.cell_id or _is_internal_cell(msg.cell_id):
             return
         if not notebook_outputs_service.is_persistable(msg.msg_type):
             return
@@ -3578,6 +3586,8 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         msg: kernel_session_service.KernelMessage,
     ) -> None:
         if msg.msg_type != "execute_reply" or not msg.cell_id:
+            return
+        if _is_internal_cell(msg.cell_id):
             return
         raw_status = msg.content.get("status", "ok")
         status: str = raw_status if isinstance(raw_status, str) else "ok"
@@ -3633,22 +3643,26 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         {"type": "error", "message": "execute needs string code + cell_id"}
                     )
                     continue
-                # Wipe the previous output slice for this cell before
-                # the new execute emits anything — both in the DB and
-                # in our local counter so new rows start at 0.
-                await asyncio.to_thread(
-                    notebook_outputs_service.clear_cell,
-                    factory, file_path=path, cell_id=cell_id,
-                )
-                output_counters.pop((cell_id, session.session_id), None)
-                await asyncio.to_thread(
-                    notebook_outputs_service.upsert_cell_run,
-                    factory,
-                    file_path=path,
-                    cell_id=cell_id,
-                    kernel_session_id=session.session_id,
-                    status="running",
-                )
+                if not _is_internal_cell(cell_id):
+                    # Wipe the previous output slice for this cell
+                    # before the new execute emits anything — both
+                    # in the DB and in our local counter so new
+                    # rows start at 0.  Internal introspects skip
+                    # this so they never touch the persistence
+                    # layer.
+                    await asyncio.to_thread(
+                        notebook_outputs_service.clear_cell,
+                        factory, file_path=path, cell_id=cell_id,
+                    )
+                    output_counters.pop((cell_id, session.session_id), None)
+                    await asyncio.to_thread(
+                        notebook_outputs_service.upsert_cell_run,
+                        factory,
+                        file_path=path,
+                        cell_id=cell_id,
+                        kernel_session_id=session.session_id,
+                        status="running",
+                    )
                 msg_id = await session.execute(code, cell_id)
                 await websocket.send_json(
                     {"type": "ack", "msg_id": msg_id, "cell_id": cell_id}

@@ -50,6 +50,29 @@
     .pql-nbedit-md-preview pre.pql-nbedit-md-code code { background: transparent; padding: 0; }
     .pql-nbedit-md-preview ul { margin: 0.25rem 0 0.25rem 1.5rem; padding: 0; }
     .pql-nbedit-md-preview a { color: var(--bs-info); }
+    .pql-nbedit-layout { display: flex; flex: 1 1 auto; min-height: 0; }
+    .pql-nbedit-editor-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+    .pql-nbedit-vars { width: 320px; border-left: 1px solid var(--bs-border-color);
+                       overflow-y: auto; background: var(--bs-body-bg); padding: 0.5rem 0.75rem; }
+    .pql-nbedit-vars h6 { font-size: 0.78rem; text-transform: uppercase; color: var(--bs-secondary-color);
+                          margin: 0.5rem 0 0.35rem 0; letter-spacing: 0.05em; }
+    .pql-nbedit-vars .pql-var { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--bs-border-color);
+                                 font-size: 12.5px; cursor: pointer; }
+    .pql-nbedit-vars .pql-var:hover { background: rgba(255,255,255,0.03); }
+    .pql-nbedit-vars .pql-var-head { display: flex; justify-content: space-between; gap: 0.5rem; }
+    .pql-nbedit-vars .pql-var-name { font-family: var(--bs-font-monospace); font-weight: 600; }
+    .pql-nbedit-vars .pql-var-type { color: var(--bs-info); font-size: 11px; }
+    .pql-nbedit-vars .pql-var-shape { color: var(--bs-secondary-color); font-size: 11px; }
+    .pql-nbedit-vars .pql-var-repr { font-family: var(--bs-font-monospace); font-size: 11.5px;
+                                      color: var(--bs-body-color); opacity: 0.8; margin-top: 0.2rem;
+                                      white-space: pre-wrap; word-break: break-word; }
+    .pql-nbedit-vars .pql-nbedit-vars-df { font-size: 11px; margin-top: 0.25rem; border-collapse: collapse; }
+    .pql-nbedit-vars .pql-nbedit-vars-df th, .pql-nbedit-vars .pql-nbedit-vars-df td {
+        border: 1px solid var(--bs-border-color); padding: 0.15rem 0.3rem;
+    }
+    .pql-nbedit-catalog-modal { font-size: 13px; }
+    .pql-nbedit-catalog-modal .list-group-item { cursor: pointer; padding: 0.35rem 0.6rem; }
+    .pql-nbedit-catalog-modal .list-group-item:hover { background: rgba(13, 110, 253, 0.1); }
 </style>
 {% endblock %}
 
@@ -136,6 +159,19 @@
                 <i class="bi bi-arrow-clockwise me-1"></i>Restart
             </button>
             <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="openCatalogInsert()"
+                    title="Insert from catalog (Ctrl+Shift+I)">
+                <i class="bi bi-database-add me-1"></i>Catalog
+            </button>
+            <button type="button"
+                    class="btn btn-sm"
+                    :class="variablesVisible ? 'btn-primary' : 'btn-outline-secondary'"
+                    @click="toggleVariables()"
+                    title="Toggle variable explorer">
+                <i class="bi bi-braces-asterisk me-1"></i>Variables
+            </button>
+            <button type="button"
                     class="btn btn-sm btn-primary"
                     @click="runCurrentCell()"
                     :disabled="kernelStatus !== 'ready'"
@@ -144,7 +180,82 @@
             </button>
         </div>
     </div>
-    <div class="pql-nbedit-editor" x-ref="editor"></div>
+    <div class="pql-nbedit-layout">
+        <div class="pql-nbedit-editor-wrap">
+            <div class="pql-nbedit-editor" x-ref="editor"></div>
+        </div>
+        <aside class="pql-nbedit-vars" x-show="variablesVisible" x-cloak>
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="m-0">Variables</h6>
+                <button type="button" class="btn btn-sm btn-link p-0"
+                        @click="_refreshVariables()"
+                        :disabled="kernelStatus !== 'ready'"
+                        title="Refresh">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            <div class="text-muted small mt-1"
+                 x-show="Object.keys(variables).length === 0">
+                No user variables yet. Run a cell that defines one.
+            </div>
+            <template x-for="[name, info] in Object.entries(variables)" :key="name">
+                <div class="pql-var">
+                    <div class="pql-var-head">
+                        <span class="pql-var-name" x-text="name"></span>
+                        <span class="pql-var-type" x-text="info.type"></span>
+                    </div>
+                    <div class="pql-var-shape" x-show="info.shape"
+                         x-text="info.shape ? 'shape: ' + JSON.stringify(info.shape) : ''"></div>
+                    <div class="pql-var-repr" x-show="info.repr && !info.preview_html"
+                         x-text="info.repr"></div>
+                    <div x-show="info.preview_html" x-html="info.preview_html"></div>
+                </div>
+            </template>
+        </aside>
+    </div>
+
+    <!-- Insert-from-Catalog modal (Ctrl+Shift+I) -->
+    <div class="modal fade show pql-nbedit-catalog-modal"
+         x-show="catalogInsertOpen"
+         x-cloak
+         style="display:block; background: rgba(0,0,0,0.55);"
+         tabindex="-1"
+         @keydown.escape.window="catalogInsertOpen = false">
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Insert from catalog</h5>
+                    <button type="button" class="btn-close" @click="catalogInsertOpen = false"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control form-control-sm mb-2"
+                           placeholder="Filter tables (cat.schema.tbl)"
+                           x-model="catalogInsertQuery"
+                           x-effect="catalogInsertOpen && $el.focus()">
+                    <div class="text-muted small mb-1"
+                         x-show="!_catalogTables">
+                        Loading catalog tree…
+                    </div>
+                    <div class="text-muted small mb-1"
+                         x-show="_catalogTables && _catalogTables.length === 0">
+                        No tables found.
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <template x-for="tbl in filteredCatalogTables" :key="tbl.full">
+                            <a href="#"
+                               class="list-group-item list-group-item-action bg-body"
+                               @click.prevent="pickCatalogTable(tbl)">
+                                <code x-text="tbl.full"></code>
+                            </a>
+                        </template>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" @click="catalogInsertOpen = false">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 

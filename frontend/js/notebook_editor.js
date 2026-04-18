@@ -1,4 +1,4 @@
-// Phase 12.6 Sprint 58 + 59 + 60 + 61 — Monaco-based notebook editor.
+// Phase 12.6 Sprint 58 + 59 + 60 + 61 + 62 — Monaco-based notebook editor.
 //
 // ADR 0001 locks the architecture: single Monaco instance over the
 // whole .py file, cell boundaries rendered via Monaco decorations,
@@ -21,16 +21,21 @@
 //            cells rendered when not being edited.
 // Sprint 61: pyright-langserver over a dedicated WebSocket —
 //            completion, hover, signatureHelp, definition,
-//            diagnostics.  LSP-only for Sprint 61 per the
-//            plan's scope-killer escape hatch; kernel-backed
-//            dual-source completion follows as a 61 follow-up.
+//            diagnostics.
+// Sprint 62: Monaco command-palette actions (Run All / Run Above /
+//            Insert Above/Below / Clear / Restart / Insert from
+//            Catalog), Insert-from-Catalog modal, Variable
+//            Explorer sidebar driven by an ``__pql_namespace__``
+//            internal introspect (skipped server-side from the
+//            output-persistence table), and post-HTML script-tag
+//            execution so plotly/altair/bokeh renderers ship too.
 //
-// Out of scope for Sprint 61 and deferred:
+// Out of scope for Sprint 62 and deferred:
 //   - Kernel ``complete_request`` merged into Monaco's completion
-//     list as a second source → 61 follow-up (or Sprint 62)
-//   - Variable explorer + "insert from catalog" → Sprint 62
+//     list as a second source → Sprint 63 follow-up if needed
 //   - ipywidgets (interactive widgets) → Phase 12.7 (explicit
-//     split per the Phase-12.6 memory decision)
+//     split per the Phase-12.6 memory decision; anything that
+//     needs comm-msg lands there, not here)
 //
 // Loader pattern mirrors the Monaco AMD bundle: base.html loads
 // `vs/loader.js` synchronously, we then configure `require.paths.vs`
@@ -144,6 +149,59 @@
 
     const CELL_MARKER_RE = /^#\s*%%(\s+\[markdown\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"\s*$/;
 
+    // Sprint 62 namespace introspect.  Runs inside the user's
+    // kernel under cell_id=__pql_namespace__; the persistence
+    // layer + the client's output renderer both filter that
+    // cell_id so it never pollutes the notebook UI.  Keeps the
+    // payload compact: name → {type, shape, repr, preview_html}.
+    const NAMESPACE_INTROSPECT_CODE = [
+        'def _pql_introspect():',
+        '    import json',
+        '    out = {}',
+        '    try:',
+        '        g = globals()',
+        '    except NameError:',
+        '        return json.dumps({})',
+        '    skip = {"In", "Out", "exit", "quit", "get_ipython", "_pql_introspect"}',
+        '    for name, val in list(g.items()):',
+        '        if name.startswith("_") or name in skip:',
+        '            continue',
+        '        if callable(val) and getattr(val, "__module__", "") in (',
+        '                "builtins", "IPython.core.interactiveshell"):',
+        '            continue',
+        '        try:',
+        '            tname = type(val).__name__',
+        '            module = getattr(type(val), "__module__", "")',
+        '            if module and module not in ("builtins",):',
+        '                tname = module.split(".")[0] + "." + tname',
+        '        except Exception:',
+        '            tname = "?"',
+        '        shape = None',
+        '        try:',
+        '            if hasattr(val, "shape"):',
+        '                shape = list(getattr(val, "shape"))',
+        '            elif isinstance(val, (list, tuple, set, dict)):',
+        '                shape = [len(val)]',
+        '        except Exception:',
+        '            shape = None',
+        '        preview_html = None',
+        '        try:',
+        '            if tname.endswith("DataFrame") and hasattr(val, "head"):',
+        '                preview_html = val.head().to_html(classes="pql-nbedit-vars-df", border=0)',
+        '        except Exception:',
+        '            preview_html = None',
+        '        repr_ = None',
+        '        if preview_html is None:',
+        '            try:',
+        '                repr_ = repr(val)',
+        '                if len(repr_) > 200: repr_ = repr_[:197] + "..."',
+        '            except Exception:',
+        '                repr_ = "<unrepresentable>"',
+        '        out[name] = {"type": tname, "shape": shape, "preview_html": preview_html, "repr": repr_}',
+        '    return json.dumps(out)',
+        'print(_pql_introspect())',
+    ].join('\n');
+
     // ANSI → HTML span conversion for tracebacks.  Jupyter error
     // messages carry SGR colour codes straight out of IPython's
     // ``ultratb`` formatter; we translate the common foreground
@@ -246,6 +304,23 @@
         on(method, callback) {
             this._notifications[method] = callback;
         }
+    }
+
+    // Sprint 62: plotly / altair / bokeh emit ``<script>`` tags in
+    // their ``text/html`` rendering.  ``innerHTML`` does not run
+    // scripts (browser sandbox); we walk the subtree and re-create
+    // each ``<script>`` node so the parser treats the new one as
+    // executable.  Same approach Jupyter's own renderer uses.
+    function executeInlineScripts(root) {
+        const scripts = root.querySelectorAll('script');
+        scripts.forEach((orig) => {
+            const clone = document.createElement('script');
+            for (const attr of orig.attributes) {
+                clone.setAttribute(attr.name, attr.value);
+            }
+            if (!orig.src) clone.textContent = orig.textContent || '';
+            orig.replaceWith(clone);
+        });
     }
 
     // Map an LSP ``CompletionItemKind`` enum value to the Monaco
@@ -494,6 +569,16 @@
             // kernelStatus on the toolbar so the user sees when
             // completions / hovers should be expected to respond.
             lspStatus: 'connecting',
+            // Variable Explorer state — populated by the
+            // ``__pql_namespace__`` internal introspect that fires
+            // on every kernel idle.  ``items`` is the parsed dict
+            // of name → {type, shape, repr, preview_html}.
+            variables: {},
+            variablesVisible: false,
+            _namespaceBuffer: '',
+            _catalogTables: null,
+            catalogInsertOpen: false,
+            catalogInsertQuery: '',
             _outputZones: {},  // cellId → { zoneId, domNode }
             _markdownZones: {},  // cellId → { zoneId, domNode, editing }
             // Per-cell output-index counter for replay on mount.
@@ -533,6 +618,7 @@
                         monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
                         () => this.runCurrentCell(),
                     );
+                    this._registerPaletteActions(monaco);
                     // Foreign-notebook load path: UUIDs were minted
                     // server-side, flush them to disk so the user
                     // doesn't see a stale "unsaved" badge on first
@@ -759,6 +845,16 @@
             },
 
             _renderKernelMsg(frame) {
+                // Sprint 62: route ``__pql_`` cell_ids to the
+                // internal-introspect handler instead of the
+                // output renderer + persistence path.
+                if (frame.cell_id && frame.cell_id.startsWith('__pql_')) {
+                    if (frame.cell_id === '__pql_namespace__') {
+                        this._handleNamespaceFrame(frame);
+                    }
+                    // Also refresh after any user cell finishes.
+                    return;
+                }
                 // `status` isn't tied to a cell when it's the generic
                 // idle/busy beat — but the parent msg_id (if present)
                 // lets the server annotate which execute it maps to.
@@ -768,6 +864,13 @@
                             const next = { ...this.executingCells };
                             delete next[frame.cell_id];
                             this.executingCells = next;
+                            // Namespace has likely changed — refresh
+                            // the Variable Explorer only when the
+                            // user panel is open, so inactive tabs
+                            // don't pay for the introspect.
+                            if (this.variablesVisible) {
+                                window.setTimeout(() => this._refreshVariables(), 50);
+                            }
                         } else if (frame.content.execution_state === 'busy') {
                             this.executingCells = { ...this.executingCells, [frame.cell_id]: true };
                         }
@@ -847,6 +950,13 @@
                         ? data['text/html'].join('')
                         : data['text/html'];
                     dom.appendChild(wrap);
+                    // Sprint 62: rehydrate <script> tags.  innerHTML
+                    // deliberately does NOT execute them (standard
+                    // browser behaviour); plotly / altair / bokeh
+                    // rely on their emitted <script>s running, so we
+                    // replace each one with a freshly-created clone
+                    // that the parser treats as executable.
+                    executeInlineScripts(wrap);
                     return;
                 }
                 if (data['image/svg+xml']) {
@@ -889,6 +999,184 @@
                         ? data['text/plain'].join('')
                         : data['text/plain'];
                     dom.appendChild(pre);
+                }
+            },
+
+            // ───────────────── command palette + actions ─────────────────
+
+            _registerPaletteActions(monaco) {
+                // Monaco's built-in command palette opens on F1 /
+                // Ctrl+Shift+P; addAction registrations show up
+                // there automatically, and each action can bind
+                // its own keybindings if we want one.
+                const ed = this._editor;
+                const add = (id, label, run, keybindings) =>
+                    ed.addAction({
+                        id: `pql.${id}`,
+                        label,
+                        keybindings: keybindings || [],
+                        contextMenuGroupId: 'pql',
+                        run: () => run(),
+                    });
+                add('runAll', 'PointlesSQL: Run all cells', () => this.runAllCells());
+                add('runAbove', 'PointlesSQL: Run all cells above cursor', () => this.runCellsAbove());
+                add('clearOutputs', 'PointlesSQL: Clear outputs of current cell', () =>
+                    this.clearCurrentCellOutputs());
+                add('restartKernel', 'PointlesSQL: Restart kernel', () => this.restartKernel());
+                add('insertBelow', 'PointlesSQL: Insert cell below', () => this.addCellBelow());
+                add('insertAbove', 'PointlesSQL: Insert cell above', () => this.addCellAbove());
+                add('insertMarkdown', 'PointlesSQL: Insert markdown cell below', () =>
+                    this.addCellBelow(true));
+                add('insertFromCatalog', 'PointlesSQL: Insert from catalog…', () =>
+                    this.openCatalogInsert(),
+                    [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI]);
+                add('toggleVariables', 'PointlesSQL: Toggle variable explorer', () =>
+                    this.toggleVariables());
+            },
+
+            runAllCells() {
+                const cells = splitCells(this._model.getValue());
+                for (const c of cells) {
+                    if (c.cell_type === 'code') {
+                        this._clearOutput(c.id);
+                        this.executingCells = { ...this.executingCells, [c.id]: true };
+                        this._sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
+                    }
+                }
+            },
+
+            runCellsAbove() {
+                const cell = this._currentCellAtCursor();
+                if (!cell) return;
+                const cells = splitCells(this._model.getValue());
+                for (const c of cells) {
+                    if (c.id === cell.id) break;
+                    if (c.cell_type === 'code') {
+                        this._clearOutput(c.id);
+                        this.executingCells = { ...this.executingCells, [c.id]: true };
+                        this._sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
+                    }
+                }
+            },
+
+            addCellAbove(markdown) {
+                const cell = this._currentCellAtCursor();
+                const monaco = window.monaco;
+                const newId = (window.crypto && window.crypto.randomUUID)
+                    ? window.crypto.randomUUID() : 'cell-' + Date.now();
+                const tag = markdown ? ' [markdown]' : '';
+                const marker = `# %%${tag} pql_cell_id="${newId}"\n\n`;
+                const targetLine = cell ? this._findCellMarkerLine(cell.id) : 1;
+                const insertAt = new monaco.Range(targetLine, 1, targetLine, 1);
+                this._editor.executeEdits('add-cell-above', [{
+                    range: insertAt, text: marker, forceMoveMarkers: true,
+                }]);
+                this._editor.setPosition({ lineNumber: targetLine + 1, column: 1 });
+                this._rescanDecorations();
+            },
+
+            _findCellMarkerLine(cellId) {
+                const lines = this._model.getValue().split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    const m = lines[i].match(CELL_MARKER_RE);
+                    if (m && m[2] === cellId) return i + 1;  // 1-based
+                }
+                return 1;
+            },
+
+            toggleVariables() {
+                this.variablesVisible = !this.variablesVisible;
+                if (this.variablesVisible) this._refreshVariables();
+            },
+
+            // ─────────────────── insert from catalog ───────────────────
+
+            async openCatalogInsert() {
+                this.catalogInsertOpen = true;
+                this.catalogInsertQuery = '';
+                if (this._catalogTables) return;
+                try {
+                    const res = await fetch('/api/tree');
+                    if (!res.ok) {
+                        this._catalogTables = [];
+                        return;
+                    }
+                    const tree = await res.json();
+                    const items = [];
+                    for (const cat of tree || []) {
+                        for (const sch of cat.schemas || []) {
+                            for (const tbl of sch.tables || []) {
+                                items.push({
+                                    full: `${cat.name}.${sch.name}.${tbl.name}`,
+                                    catalog: cat.name,
+                                    schema: sch.name,
+                                    name: tbl.name,
+                                });
+                            }
+                        }
+                    }
+                    this._catalogTables = items;
+                } catch (e) {
+                    console.error('[notebook-editor] tree fetch failed', e);
+                    this._catalogTables = [];
+                }
+            },
+
+            get filteredCatalogTables() {
+                const q = (this.catalogInsertQuery || '').toLowerCase().trim();
+                const all = this._catalogTables || [];
+                if (!q) return all.slice(0, 80);
+                return all.filter((t) => t.full.toLowerCase().includes(q)).slice(0, 80);
+            },
+
+            pickCatalogTable(table) {
+                const snippet = `pql.read_table("${table.full}")`;
+                const pos = this._editor.getPosition();
+                if (!pos) return;
+                const monaco = window.monaco;
+                this._editor.executeEdits('pql-insert-catalog', [{
+                    range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
+                    text: snippet,
+                    forceMoveMarkers: true,
+                }]);
+                this.catalogInsertOpen = false;
+                this._editor.focus();
+            },
+
+            // ─────────────────── variable explorer ───────────────────
+
+            _refreshVariables() {
+                if (!this.variablesVisible) return;
+                if (!this._ws || this.kernelStatus !== 'ready') return;
+                // Internal cell_id — the server skips persistence for
+                // anything prefixed __pql_ (Sprint-62 invariant).  The
+                // client filters this cell_id out of the output
+                // renderer and routes stream data into
+                // _namespaceBuffer instead.
+                this._namespaceBuffer = '';
+                const code = NAMESPACE_INTROSPECT_CODE;
+                this._sendKernelFrame({
+                    type: 'execute',
+                    cell_id: '__pql_namespace__',
+                    code,
+                });
+            },
+
+            _handleNamespaceFrame(frame) {
+                if (frame.msg_type === 'stream'
+                        && frame.content && frame.content.name === 'stdout') {
+                    this._namespaceBuffer += frame.content.text || '';
+                    return;
+                }
+                if (frame.msg_type === 'status'
+                        && frame.content && frame.content.execution_state === 'idle') {
+                    try {
+                        const parsed = JSON.parse(this._namespaceBuffer);
+                        if (parsed && typeof parsed === 'object') {
+                            this.variables = parsed;
+                        }
+                    } catch {}
+                    this._namespaceBuffer = '';
                 }
             },
 

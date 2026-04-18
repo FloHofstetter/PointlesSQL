@@ -2020,21 +2020,42 @@ PointlesSQL
 │   │       (``dumps``, ``loads``, …) came back, and the trailing
 │   │       ``.`` was flagged by pyright's diagnostics channel.
 │   │
-│   ├── Sprint 62 — Variable Explorer + catalog insert         ⏳ planned
-│   │   ├── ``%who_ls`` / ``inspect_request``-driven Variable
-│   │   │   Explorer sidebar — name, type, shape, preview
-│   │   │   (DataFrames: first 5 rows as Pandas-styled HTML)
-│   │   ├── "Insert from catalog" command (Ctrl+Shift+P modal):
-│   │   │   catalog tree picker → inserts
-│   │   │   ``pql.read_table("cat.schema.tbl")`` at cursor
-│   │   ├── Command palette bindings: Run All, Run Above, Clear
-│   │   │   Outputs, Restart Kernel, Insert Cell Above / Below,
-│   │   │   Toggle Markdown / Code (M / Y), Delete Cell (DD)
-│   │   ├── Plotly / altair sanity smoke (render-only; not a
-│   │   │   full widget story)
-│   │   └── **Scope-gate**: if ipywidgets / interactive widgets
-│   │       start leaking in, split them to Phase 12.7 (new
-│   │       sibling phase) instead of bundling here
+│   ├── Sprint 62 — Variable Explorer + catalog insert         🔜 in progress
+│   │   ├── Variable Explorer sidebar driven by an
+│   │   │   ``__pql_namespace__`` internal introspect — a small
+│   │   │   Python snippet the editor injects under the reserved
+│   │   │   ``__pql_`` cell-id prefix.  The server's persistence
+│   │   │   layer filters every ``__pql_``-prefixed cell_id from
+│   │   │   both ``notebook_outputs`` and ``notebook_cell_runs``,
+│   │   │   so silent introspects never pollute the DB.  The
+│   │   │   sidebar refreshes after every user cell goes idle
+│   │   │   (only when the panel is open — idle tabs pay zero
+│   │   │   introspect cost).  Each entry renders name / type /
+│   │   │   shape + a DataFrame.head() HTML preview for pandas
+│   │   │   objects, or a truncated ``repr`` otherwise.
+│   │   ├── Insert-from-Catalog modal (Ctrl+Shift+I or toolbar
+│   │   │   button) — fetches ``/api/tree``, flattens the
+│   │   │   cat→schema→table hierarchy into a searchable list,
+│   │   │   inserts ``pql.read_table("cat.schema.tbl")`` at the
+│   │   │   cursor on pick.  Modal lives in the page template,
+│   │   │   Alpine-driven, Bootstrap-styled.
+│   │   ├── Command palette actions (F1 / Ctrl+Shift+P opens
+│   │   │   Monaco's palette): Run All, Run Above, Insert Cell
+│   │   │   Above / Below, Insert Markdown Cell Below, Clear
+│   │   │   Outputs, Restart Kernel, Insert from Catalog,
+│   │   │   Toggle Variable Explorer.  Single-letter M/Y/DD
+│   │   │   shortcuts deliberately skipped — Phase 12.6 keeps
+│   │   │   the editor's always-editing model, command-mode
+│   │   │   state machine is Jupyter-classic baggage.
+│   │   ├── Plotly / altair / bokeh now render inline:
+│   │   │   ``text/html`` output is appended via ``innerHTML``
+│   │   │   (which browsers sandbox against script execution),
+│   │   │   then the subtree's ``<script>`` tags are cloned
+│   │   │   into freshly-parsed nodes so they actually run —
+│   │   │   same trick Jupyter's own nbrenderer uses.
+│   │   └── **Scope-gate honoured**: ipywidgets stays out of
+│   │       Phase 12.6.  Anything that needs ``comm_msg`` round-
+│   │       trips lands in Phase 12.7.
 │   │
 │   ├── Sprint 63 — Papermill bridge + retire JupyterLab       ⏳ planned
 │   │   ├── Phase-8 Papermill: jupytext-convert step in
