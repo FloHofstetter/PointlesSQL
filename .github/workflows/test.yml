@@ -16,25 +16,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Do not persist the auth header into local git config.
+          # Otherwise later git operations inside this cloned repo
+          # (uv's soyuz-catalog fetch, any `git ls-remote`, ...)
+          # collide with our own env-provided extraheader →
+          # GitHub returns `400 Duplicate header: "Authorization"`.
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
       - name: Set up Python
         run: uv python install 3.14
-      - name: Debug — show what git sees
-        env:
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
-          GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
-        run: |
-          echo "=== env (GIT_CONFIG_*) ==="
-          env | grep -i '^GIT_CONFIG' | sed 's/=.*Bearer.*/=Authorization: Bearer ***REDACTED***/'
-          echo "=== git config --list ==="
-          git config --list | sed 's/extraheader=.*/extraheader=***REDACTED***/' | head -20
-          echo "=== direct git ls-remote test ==="
-          git ls-remote https://github.com/FloHofstetter/soyuz-catalog HEAD 2>&1 | head -3 || echo "(failed)"
       - name: Install dependencies
+        # Inject a Bearer extraheader for uv's git subprocess via
+        # the GIT_CONFIG_COUNT/KEY/VALUE env trio. Step-local so
+        # it is only active while uv is fetching the private
+        # soyuz-catalog dep. Combined with persist-credentials:
+        # false on the checkout above, this is the only
+        # Authorization header git sees.
         env:
           GIT_CONFIG_COUNT: "1"
           GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
