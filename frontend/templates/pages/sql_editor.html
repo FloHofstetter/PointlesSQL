@@ -258,8 +258,14 @@
                                 </label>
                                 <label class="d-flex align-items-center gap-1">
                                     <span class="text-muted">X</span>
+                                    <!-- x-effect keeps the native <select>.value in sync with
+                                         chartConfig.x even when the options are re-rendered by
+                                         the x-for template.  x-model alone picks up the bound
+                                         value once at mount and misses later programmatic
+                                         changes (e.g. _autoPickAxes). -->
                                     <select class="form-select form-select-sm"
                                             x-model="chartConfig.x"
+                                            x-effect="$el.value = chartConfig.x || ''"
                                             @change="onChartConfigChange()">
                                         <template x-for="c in (result ? result.columns : [])" :key="'x-' + c.name">
                                             <option :value="c.name" x-text="c.name"></option>
@@ -270,6 +276,7 @@
                                     <span class="text-muted">Y</span>
                                     <select class="form-select form-select-sm"
                                             x-model="chartConfig.y"
+                                            x-effect="$el.value = chartConfig.y || ''"
                                             @change="onChartConfigChange()">
                                         <template x-for="c in (result ? result.columns : [])" :key="'y-' + c.name">
                                             <option :value="c.name" x-text="c.name"></option>

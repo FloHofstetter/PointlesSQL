@@ -2292,22 +2292,48 @@ def _convert_volume_file_sync(
     deltalake.write_deltalake(target_location, arrow_table, mode="overwrite")
 
 
-def _duckdb_type_to_uc(duckdb_type: str) -> tuple[str, str]:
-    """Return UC ``(type_name, type_text)`` for a DuckDB type string.
+# Delta ``PrimitiveType.type`` string → UC ``(type_name, type_text)``.
+# Mirrors the DuckDB / UC type codes used by
+# :mod:`pointlessql.pql.engine` for sync-path table rows, but keyed
+# off the Delta schema surface rather than the DuckDB one so the
+# convert-to-Delta flow can register columns with correct numeric
+# types instead of falling back to ``string``.
+_DELTA_PRIMITIVE_TO_UC: dict[str, tuple[str, str]] = {
+    "boolean": ("BOOLEAN", "boolean"),
+    "byte": ("BYTE", "byte"),
+    "short": ("SHORT", "short"),
+    "integer": ("INT", "int"),
+    "long": ("LONG", "long"),
+    "float": ("FLOAT", "float"),
+    "double": ("DOUBLE", "double"),
+    "date": ("DATE", "date"),
+    "timestamp": ("TIMESTAMP", "timestamp"),
+    "timestampntz": ("TIMESTAMP_NTZ", "timestamp_ntz"),
+    "string": ("STRING", "string"),
+    "binary": ("BINARY", "binary"),
+}
 
-    Reuses the mapping from :mod:`pointlessql.pql.engine` so the
-    convert-to-Delta audit column list matches the shape used
-    elsewhere.
+
+def _delta_field_to_uc(field: Any) -> tuple[str, str]:
+    """Map a ``deltalake`` schema field to UC ``(type_name, type_text)``.
+
+    ``deltalake`` exposes a field's type as a ``PrimitiveType`` (or a
+    compound type) whose ``type`` attribute is a lowercase Delta type
+    code — ``"long"`` / ``"double"`` / ``"string"`` and so on.  Compound
+    types (structs, arrays, maps) stringify to a JSON-like repr and
+    fall back to ``("STRING", "string")`` for now; Phase-13 can map
+    them properly when the agent workloads actually care.
 
     Args:
-        duckdb_type: The DuckDB column type string.
+        field: A ``deltalake.Field``-shaped object with ``.type``.
 
     Returns:
         Tuple of UC ``type_name`` and ``type_text``.
     """
-    from pointlessql.pql import engine
-
-    return engine._duckdb_type_to_uc(duckdb_type)  # type: ignore[attr-defined]
+    prim = getattr(field.type, "type", None)
+    if isinstance(prim, str):
+        return _DELTA_PRIMITIVE_TO_UC.get(prim.lower(), ("STRING", "string"))
+    return ("STRING", "string")
 
 
 @app.post("/api/volumes/{full_name:path}/convert-to-delta")
@@ -2418,7 +2444,7 @@ async def api_convert_volume_file_to_delta(
     schema_fields = dt.schema().fields
     columns = []
     for position, field in enumerate(schema_fields):
-        type_name, type_text = _duckdb_type_to_uc(str(field.type).upper())
+        type_name, type_text = _delta_field_to_uc(field)
         columns.append(
             {
                 "name": field.name,
