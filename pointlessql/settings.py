@@ -70,6 +70,26 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: Literal["text", "json"] = "text"
 
+    # Rate limiting on ``/auth/*`` (Sprint 43). Counts are fixed-window
+    # per bucket (IP or submitted email), windows are in seconds.
+    # Defaults are tuned for a single-node deploy: ten login attempts
+    # per IP every ten minutes is well above any human retry pattern
+    # but below the rate a credential-stuffing script expects. The
+    # ``trust_x_forwarded_for`` flag stays OFF by default because
+    # trusting it unconditionally would let any client forge the
+    # header and escape the per-IP bucket; flip it ON in production
+    # deployments that terminate TLS at a known reverse proxy.
+    rate_limit_enabled: bool = True
+    rate_limit_login_ip_count: int = 10
+    rate_limit_login_ip_window_s: int = 600
+    rate_limit_login_email_count: int = 5
+    rate_limit_login_email_window_s: int = 600
+    rate_limit_register_ip_count: int = 5
+    rate_limit_register_ip_window_s: int = 3600
+    rate_limit_oidc_ip_count: int = 20
+    rate_limit_oidc_ip_window_s: int = 600
+    rate_limit_trust_x_forwarded_for: bool = False
+
     # Scheduler. Defaults to enabled; tests flip the toggle off in
     # conftest so the background loop never ticks during normal runs.
     scheduler_enabled: bool = True

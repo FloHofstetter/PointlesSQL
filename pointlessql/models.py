@@ -368,6 +368,39 @@ class Dashboard(Base):
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class RateLimitEvent(Base):
+    """One recorded hit against an auth-surface rate limiter (Sprint 43).
+
+    The :mod:`pointlessql.api.rate_limit_middleware` middleware inserts
+    one row per incoming request that matches a configured rule (e.g.
+    ``POST /auth/login`` keyed by IP) and counts rows within the rule's
+    window to decide whether the current request exceeds the limit.
+
+    Rows are append-only while the window is live and pruned
+    opportunistically by the same middleware before each count — no
+    background sweeper is needed because the ``(bucket, created_at)``
+    index keeps both the count and the cleanup DELETE cheap.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        bucket: Rule-scoped key combining the route tag with the
+            rate-limit dimension, e.g. ``"auth.login.ip:1.2.3.4"`` or
+            ``"auth.login.email:flo@example.com"``. Fixed-length ceiling
+            keeps the index compact.
+        created_at: Timestamp when the event was recorded.
+    """
+
+    __tablename__ = "rate_limit_events"
+
+    __table_args__ = (
+        Index("ix_rate_limit_events_bucket_created", "bucket", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    bucket: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class JobLog(Base):
     """One structured log line written during a :class:`JobRun`.
 

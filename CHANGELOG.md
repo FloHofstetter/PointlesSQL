@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 43)
+
+- **Rate limiting on `/auth/*`.** Third Phase 11 hardening sprint. A
+  new `rate_limit_middleware` enforces per-IP and per-email fixed-
+  window caps on the auth surface: 10/10min per IP + 5/10min per
+  submitted email on `POST /auth/login`, 5/1h per IP on
+  `POST /auth/register`, and a shared 20/10min per-IP bucket across
+  `GET /auth/sso` + `GET /auth/callback`. Buckets live in a new
+  `rate_limit_events` table (Alembic migration `010`) so the limiter
+  ships with zero new runtime dependencies — no Redis, no slowapi,
+  no background sweeper. Opportunistic cleanup inside every check
+  `DELETE`s rows older than the window, and the composite
+  `(bucket, created_at)` index covers both the count and the
+  delete. The middleware sits between CSRF (outer) and auth (inner)
+  so cross-site forged floods still fail the cheap CSRF check
+  before they can burn a slot, while CSRF-clean abuse is caught
+  before bcrypt + JWT-decode run on every attempt. Rejections
+  return 429 with a `Retry-After` header and emit an
+  `audit_log` row with `action="rate_limit.blocked"` so the
+  Sprint-41 `/admin/audit` viewer surfaces the feature without a
+  second dashboard. The `rate_limit_trust_x_forwarded_for` setting
+  defaults OFF and must be flipped on explicitly behind a known
+  reverse proxy — otherwise any client could forge the header and
+  escape the per-IP bucket; the per-email axis still catches
+  distributed attacks that probe one account from many IPs. New
+  playbook `docs/e2e-walkthroughs/rate-limit.md` and
+  `tests/test_rate_limit.py` cover login + register + OIDC floors,
+  window expiry, the `/healthz` and `/api/*` exemptions, body
+  re-injection, and the audit hook.
+
 ### Added (Sprint 42)
 
 - **CSRF protection for HTML form routes.** Second Phase 11 hardening

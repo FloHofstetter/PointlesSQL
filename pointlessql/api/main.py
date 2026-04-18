@@ -27,6 +27,9 @@ from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.api.csrf_middleware import csrf_middleware as _csrf_middleware
+from pointlessql.api.rate_limit_middleware import (
+    rate_limit_middleware as _rate_limit_middleware,
+)
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.exceptions import (
     AuthorizationError,
@@ -186,6 +189,16 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     if path.startswith("/api/"):
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
     return RedirectResponse(url="/auth/login", status_code=303)
+
+
+# Rate limiting on /auth/* runs inside CSRF but outside auth: a
+# cross-site flood must still fail the cheap CSRF check before it
+# burns a bucket slot, but a CSRF-clean flood is caught before
+# auth_middleware runs bcrypt + JWT-decode on every attempt.
+# Starlette stacks middleware LIFO (last-registered is outermost),
+# so registering it after auth and before csrf puts it at that exact
+# position in the execution order. Sprint 43.
+app.middleware("http")(_rate_limit_middleware)
 
 
 # CSRF enforcement runs between auth and request_id: Starlette stacks

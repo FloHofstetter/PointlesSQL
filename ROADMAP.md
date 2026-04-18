@@ -1504,12 +1504,54 @@ PointlesSQL
 │   │       login and logout rotation, `/api/*` exemption, body
 │   │       re-injection so handlers still see form fields
 │   │
+│   ├── Sprint 43 — Rate limiting on `/auth/*`                ✅ done (PENDING)
+│   │   ├── New `rate_limit_middleware` sits between
+│   │   │   `csrf_middleware` (outer) and `auth_middleware` (inner)
+│   │   │   in the Starlette stack so cross-site forged floods still
+│   │   │   fail the cheap CSRF check, but CSRF-clean abuse is
+│   │   │   caught before the bcrypt/JWT-decode path runs on every
+│   │   │   attempt
+│   │   ├── Fixed-window counter backed by a new
+│   │   │   `rate_limit_events` table; no new runtime dep, no Redis.
+│   │   │   Default caps: `POST /auth/login` 10/10min per IP +
+│   │   │   5/10min per submitted email, `POST /auth/register`
+│   │   │   5/1h per IP, `/auth/sso` + `/auth/callback` share a
+│   │   │   20/10min per-IP bucket
+│   │   ├── Opportunistic cleanup: every check `DELETE`s rows older
+│   │   │   than the window for this bucket before counting, so the
+│   │   │   table stays bounded without a background sweeper
+│   │   ├── 429 response carries `Retry-After: <seconds>` and a
+│   │   │   minimal HTML body matching Sprint 42's CSRF 403 shape —
+│   │   │   no templating pipeline, no new frontend primitives
+│   │   ├── `rate_limit_trust_x_forwarded_for` setting defaults to
+│   │   │   `false`; flip it on only behind a known reverse proxy,
+│   │   │   otherwise any client could forge the header and escape
+│   │   │   the per-IP bucket. The per-email axis still catches
+│   │   │   distributed attacks that probe one account from many IPs
+│   │   ├── Alembic `010` creates `rate_limit_events` plus the
+│   │   │   composite `(bucket, created_at)` index that serves both
+│   │   │   the count query and the cleanup delete
+│   │   ├── Every reject emits an `audit_log` row with
+│   │   │   `action="rate_limit.blocked"` and the bucket string in
+│   │   │   `target`, so the Sprint-41 `/admin/audit` viewer
+│   │   │   surfaces the feature without a second dashboard
+│   │   ├── New playbook `docs/e2e-walkthroughs/rate-limit.md`
+│   │   │   covering login + register + OIDC floods, the `/healthz`
+│   │   │   and `/api/*` exemptions, and the admin-audit surface
+│   │   └── `tests/test_rate_limit.py` — login IP + per-email caps,
+│   │       register cap independence from login, OIDC shared
+│   │       bucket across `/sso` + `/callback`, `/healthz` and
+│   │       `/api/*` exemptions, `rate_limit_enabled=False` bypass,
+│   │       body re-injection, audit-row assertion, and direct
+│   │       service-layer unit tests
+│   │
 │   │   Remaining Phase 11 scope (not yet split into sprints):
 │   │
-│   ├── Rate limiting on `/auth/*` and on `/api/sql/*` once
-│   │   Phase 12 lands
+│   ├── Rate limiting on `/api/sql/*` — scheduled as a Phase-12
+│   │   sprint once the SQL editor lands (the route doesn't exist
+│   │   yet)
 │   └── Graceful-rotation story for `secret_key` (JWT signing) so
-│       mid-flight tokens survive a rotation
+│       mid-flight tokens survive a rotation — Sprint 44 target
 │
 ├── Phase 12 — SQL editor + query history                 ⏳ planned
 │   │
