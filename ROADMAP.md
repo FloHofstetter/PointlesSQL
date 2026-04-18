@@ -1504,7 +1504,7 @@ PointlesSQL
 │   │       login and logout rotation, `/api/*` exemption, body
 │   │       re-injection so handlers still see form fields
 │   │
-│   ├── Sprint 43 — Rate limiting on `/auth/*`                ✅ done (PENDING)
+│   ├── Sprint 43 — Rate limiting on `/auth/*`                ✅ done (ad4d768)
 │   │   ├── New `rate_limit_middleware` sits between
 │   │   │   `csrf_middleware` (outer) and `auth_middleware` (inner)
 │   │   │   in the Starlette stack so cross-site forged floods still
