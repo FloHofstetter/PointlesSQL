@@ -150,5 +150,29 @@ browser_evaluate(() => !!document.querySelector('.navbar .dropdown-toggle i.bi-s
 
 ## Found bugs
 
-_None surfaced during the Sprint 41 replay. Future bugs should
-land as `BUG-41-NN` entries here with a fix location tag._
+_No bugs surfaced. Sprint 41 replay confirmed (live run on the
+`feat(admin): Sprint 41` commit):_
+
+- _`/admin/audit` loads with default `since=7d`, shows only the
+  rows inside the window, newest-first, with `pqlRelativeTime()`
+  driving the time column (e.g. "3 min ago", "2 days ago");_
+- _`since=all` surfaces the older rows; a row with a non-JSON
+  `detail` string renders without crashing the page;_
+- _`target=other` narrows to the single matching row and the
+  `f-target` input round-trips the value;_
+- _the `listTable` "Mine only" chip flips `pql-chip--active` and
+  sets `tr.hidden=true` on rows whose `data-user-id` does not
+  match the current admin;_
+- _detail expand/collapse toggles the button label
+  (`Show` ↔ `Hide`) and the `<pre class="pql-audit-detail">`
+  display (`none` ↔ `block`) via Alpine `x-show`;_
+- _non-admin user gets HTTP 403 with the `pages/403.html` shell
+  ("Access denied — You do not have admin on system admin") and
+  the admin-only navbar dropdown is gone (zero matches for
+  `a[href="/admin/audit"]` in the rendered DOM)._
+
+_Harness note: calling `chip.click()` via `browser_evaluate` did
+not propagate through Alpine's `x-on:click` handler reliably in
+this run. Using
+`Alpine.$data(host).toggleChip('mine')` + a 100 ms settle is the
+stable path; the script above reflects that._
