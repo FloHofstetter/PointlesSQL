@@ -1621,7 +1621,7 @@ PointlesSQL
 │   │   sprint once the SQL editor lands (the route doesn't exist
 │   │   yet)
 │   │
-│   └── Sprint 46 — Graceful JWT signing-key rotation  ⏳ in progress
+│   └── Sprint 46 — Graceful JWT signing-key rotation  ✅ done (fc2cc99)
 │       ├── New optional ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS``
 │       │   env var on ``AuthSettings``; ``verify_jwt`` tries the
 │       │   primary key first and falls back to the previous key
