@@ -12,8 +12,47 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
 import { sql } from '@codemirror/lang-sql';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 
 let cmView = null;
+
+// Sprint 53: flattened catalog.schema.table list used as the
+// CodeMirror completion source.  Fetched once on mount; falls
+// back silently when /api/tree is unavailable (e.g. anonymous
+// smoke tests) so the editor still loads.
+let catalogCompletions = [];
+
+function tableCompletionSource(context) {
+    if (!catalogCompletions.length) return null;
+    const word = context.matchBefore(/[\w.]*/);
+    if (!word || (word.from === word.to && !context.explicit)) return null;
+    return {
+        from: word.from,
+        options: catalogCompletions.map((full) => ({
+            label: full,
+            type: 'class',
+            boost: 1,
+        })),
+    };
+}
+
+function flattenTree(tree) {
+    const out = [];
+    for (const cat of tree || []) {
+        const catName = cat && cat.name;
+        if (!catName) continue;
+        for (const sch of cat.schemas || []) {
+            const schName = sch && sch.name;
+            if (!schName) continue;
+            for (const tbl of sch.tables || []) {
+                const tblName = tbl && tbl.name;
+                if (!tblName) continue;
+                out.push(`${catName}.${schName}.${tblName}`);
+            }
+        }
+    }
+    return out;
+}
 
 window.sqlEditor = function () {
     return {
@@ -34,6 +73,9 @@ window.sqlEditor = function () {
         currentQueryId: null,
         elapsedSeconds: 0,
         _tickHandle: null,
+
+        // EXPLAIN (Sprint 53).
+        explainText: null,
 
         init() {
             const host = document.getElementById('pql-sql-editor-root');
@@ -74,9 +116,11 @@ window.sqlEditor = function () {
                         syntaxHighlighting(defaultHighlightStyle),
                         sql(),
                         oneDark,
+                        autocompletion({ override: [tableCompletionSource] }),
                         keymap.of([
                             runShortcut,
                             saveShortcut,
+                            ...completionKeymap,
                             ...defaultKeymap,
                             ...historyKeymap,
                         ]),
@@ -85,6 +129,19 @@ window.sqlEditor = function () {
                 parent: host,
             });
             this.refreshSaved();
+            this.refreshCompletions();
+        },
+
+        async refreshCompletions() {
+            // /api/tree already exists for the sidebar; we reuse
+            // it as the autocomplete source.  Non-admin callers
+            // see only catalogs they have USE on, which is the
+            // correct scope for autocomplete anyway — you should
+            // not see tables you can't query.
+            const res = await window.pqlApi.fetch('/api/tree', { silent: true });
+            if (res.ok && Array.isArray(res.data)) {
+                catalogCompletions = flattenTree(res.data);
+            }
         },
 
         // -- Saved queries (Sprint 51) --
@@ -210,24 +267,27 @@ window.sqlEditor = function () {
             }
         },
 
-        async run() {
+        async run(opts) {
             if (this.running) return;
             const query = this.getSQL().trim();
             if (!query) {
                 this.error = 'Enter a query to run.';
                 this.errorTitle = 'Nothing to run';
                 this.result = null;
+                this.explainText = null;
                 return;
             }
+            const explain = !!(opts && opts.explain);
             this.running = true;
             this.error = null;
             this.result = null;
+            this.explainText = null;
             this.currentQueryId = this._generateQueryId();
             this._startElapsed();
             const started = performance.now();
             const res = await window.pqlApi.fetch('/api/sql/execute', {
                 method: 'POST',
-                body: { sql: query, query_id: this.currentQueryId },
+                body: { sql: query, query_id: this.currentQueryId, explain },
                 silent: true, // we render the error inline, no auto-toast
             });
             this._stopElapsed();
@@ -235,12 +295,21 @@ window.sqlEditor = function () {
             this.currentQueryId = null;
             const elapsed = Math.round(performance.now() - started);
             if (res.ok && res.data) {
-                this.result = res.data;
-                this.referencedTables = res.data.referenced_tables || [];
-                this.lastRun = {
-                    ok: true,
-                    summary: `Ran in ${res.data.duration_ms} ms · ${res.data.row_count} row${res.data.row_count === 1 ? '' : 's'}`,
-                };
+                if (res.data.is_explain) {
+                    this.explainText = res.data.explain_text || '(empty plan)';
+                    this.referencedTables = res.data.referenced_tables || [];
+                    this.lastRun = {
+                        ok: true,
+                        summary: `Explained in ${res.data.duration_ms} ms`,
+                    };
+                } else {
+                    this.result = res.data;
+                    this.referencedTables = res.data.referenced_tables || [];
+                    this.lastRun = {
+                        ok: true,
+                        summary: `Ran in ${res.data.duration_ms} ms · ${res.data.row_count} row${res.data.row_count === 1 ? '' : 's'}`,
+                    };
+                }
             } else {
                 this.errorTitle = res.status === 403 ? 'Permission denied' : 'Query failed';
                 this.error = res.error || `HTTP ${res.status}`;

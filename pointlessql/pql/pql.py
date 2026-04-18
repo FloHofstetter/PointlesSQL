@@ -180,6 +180,7 @@ class PQL:
         approved_tables: dict[str, str],
         max_rows: int = 10_000,
         conn: Any = None,
+        explain: bool = False,
     ) -> SQLResult:
         """Run a single SELECT against DuckDB with UC-backed views.
 
@@ -208,6 +209,11 @@ class PQL:
                 provided, the method uses it and leaves it open —
                 the caller owns the lifecycle.  When ``None`` a
                 fresh connection is created and closed here.
+            explain: When ``True``, prepend ``EXPLAIN ANALYZE`` to
+                the rewritten SQL so DuckDB returns the physical
+                plan instead of the actual result.  The plan rows
+                come back as regular columns — the caller can join
+                them into a single ``<pre>`` block.  Sprint 53.
 
         Returns:
             A :class:`SQLResult` with columns, rows, and metrics.
@@ -241,9 +247,14 @@ class PQL:
             for ref in prepared.refs:
                 register_delta_view(conn, ref, approved_tables[ref])
 
+            final_sql = (
+                f"EXPLAIN ANALYZE {prepared.rewritten_sql}"
+                if explain
+                else prepared.rewritten_sql
+            )
             start = time.perf_counter()
             try:
-                arrow_result = conn.execute(prepared.rewritten_sql).to_arrow_table()
+                arrow_result = conn.execute(final_sql).to_arrow_table()
             except duckdb.Error as exc:
                 raise SQLExecutionError(str(exc)) from exc
             duration_ms = int((time.perf_counter() - start) * 1000)

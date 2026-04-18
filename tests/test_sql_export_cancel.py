@@ -114,7 +114,8 @@ async def test_parquet_export_roundtrip(orders_delta: str) -> None:
             json={"sql": "SELECT id FROM main.sales.orders"},
         )
         assert resp.status_code == 200, resp.text
-        history_id = resp.json().get("query_id") and (await client.get("/api/queries")).json()[0]["id"]
+        entries = (await client.get("/api/queries")).json()
+        history_id = entries[0]["id"]
 
         resp = await client.get(
             f"/api/sql/execute/{history_id}/download?format=parquet"

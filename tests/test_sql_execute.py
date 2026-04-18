@@ -191,3 +191,31 @@ async def test_sql_editor_page_renders() -> None:
     assert b'id="pql-sql-editor-root"' in resp.content
     # The SQL tab should be marked active.
     assert b'active_page' not in resp.content  # server context var, not rendered
+
+
+async def test_explain_mode_returns_plan_and_skips_history(orders_delta: str) -> None:
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    # Capture history row count before the EXPLAIN call so we can
+    # assert it did NOT grow (Sprint-53 decision: EXPLAIN is
+    # diagnostic, not recorded).
+    async with _admin_client() as client:
+        before = (await client.get("/api/queries")).json()
+        before_count = len(before)
+
+        resp = await client.post(
+            "/api/sql/execute",
+            json={
+                "sql": "SELECT id FROM main.sales.orders",
+                "explain": True,
+            },
+        )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["is_explain"] is True
+    assert isinstance(body["explain_text"], str)
+    # Plans are non-empty for a real query.
+    assert body["explain_text"]
+
+    async with _admin_client() as client:
+        after = (await client.get("/api/queries")).json()
+    assert len(after) == before_count, "EXPLAIN must not write to query_history"

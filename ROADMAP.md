@@ -1662,7 +1662,7 @@ PointlesSQL
 │           rotation, third-key rejection, missing-fallback rejection,
 │           expiry-preservation, ``get_current_user`` threading
 │
-├── Phase 12 — SQL editor + query history                 🔜 in progress
+├── Phase 12 — SQL editor + query history                 ✅ done (Sprint 53)
 │   │
 │   │   Goal: close the second first-class-workspace gap after
 │   │   notebooks (Phase 8). Dedicated `/sql` page (CodeMirror
@@ -1754,7 +1754,7 @@ PointlesSQL
 │   ├── Sprint 52 — Export + limits + cancel                ✅ done (b4bfee5)
 │   │   CSV / Parquet download via re-run-from-history; row
 │   │   limit + query timeout; cancel via DuckDB `.interrupt()`.
-│   └── Sprint 53 — EXPLAIN + autocomplete + close           ⏳ planned
+│   └── Sprint 53 — EXPLAIN + autocomplete + close          🔜 in progress
 │       EXPLAIN toggle, table-name autocomplete from catalog
 │       tree, mobile stacking,
 │       `docs/e2e-walkthroughs/sql-editor.md` playbook, phase close.

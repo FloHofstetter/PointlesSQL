@@ -634,6 +634,7 @@ def _run_sql_sync(
     approved_tables: dict[str, str],
     max_rows: int,
     conn: Any = None,
+    explain: bool = False,
 ) -> Any:
     """Execute *query* in the sync :class:`PQL` SQL bridge.
 
@@ -653,6 +654,9 @@ def _run_sql_sync(
         max_rows: Row cap applied after execution.
         conn: Optional pre-created DuckDB connection so the route
             can hold the handle for cancel / timeout interrupt.
+        explain: When ``True``, prepend ``EXPLAIN ANALYZE`` to the
+            rewritten SQL so the caller gets the physical plan
+            instead of the actual rows.
 
     Returns:
         A :class:`pointlessql.pql.pql.SQLResult` dataclass.
@@ -665,6 +669,7 @@ def _run_sql_sync(
         approved_tables=approved_tables,
         max_rows=max_rows,
         conn=conn,
+        explain=explain,
     )
 
 
@@ -754,6 +759,13 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     raw_qid = (body or {}).get("query_id")
     query_id = raw_qid if isinstance(raw_qid, str) and raw_qid else uuid4().hex
 
+    # Sprint 53: optional EXPLAIN ANALYZE mode.  The server parses
+    # + enforces the raw SELECT as usual, then wraps the final
+    # statement with ``EXPLAIN ANALYZE``.  Diagnostic runs skip
+    # history recording + audit to keep the operator-facing
+    # surfaces clean.
+    explain = bool((body or {}).get("explain", False))
+
     started_at = datetime.now(UTC)
     parsed_refs: list[str] = []
     cancelled = False
@@ -805,6 +817,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                     approved,
                     settings.sql.max_rows,
                     conn,
+                    explain,
                 ),
                 timeout=timeout_s,
             )
@@ -828,22 +841,24 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
             raise SQLExecutionError("Query cancelled by user.") from exc
     except Exception as exc:
         # Failure path: record history row before the centralised
-        # error handler renders the response.  Parse failures have
-        # empty ``parsed_refs``; enforcement failures carry the
+        # error handler renders the response.  EXPLAIN runs skip
+        # history (diagnostic only).  Parse failures have empty
+        # ``parsed_refs``; enforcement failures carry the
         # references extracted before the check raised.
         finished_at = datetime.now(UTC)
         status = "cancelled" if (cancelled or timed_out) else "failed"
-        await _record_query_async(
-            request,
-            sql_text=query,
-            started_at=started_at,
-            finished_at=finished_at,
-            status=status,
-            row_count=None,
-            duration_ms=None,
-            referenced_tables=parsed_refs,
-            error_message=str(exc),
-        )
+        if not explain:
+            await _record_query_async(
+                request,
+                sql_text=query,
+                started_at=started_at,
+                finished_at=finished_at,
+                status=status,
+                row_count=None,
+                duration_ms=None,
+                referenced_tables=parsed_refs,
+                error_message=str(exc),
+            )
         raise
     finally:
         registry.pop(query_id, None)
@@ -854,30 +869,44 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 logger.debug("conn.close() raised: %s", exc)
 
     finished_at = datetime.now(UTC)
-    await _record_query_async(
-        request,
-        sql_text=query,
-        started_at=started_at,
-        finished_at=finished_at,
-        status="succeeded",
-        row_count=result.row_count,
-        duration_ms=result.duration_ms,
-        referenced_tables=result.referenced_tables,
-    )
-    await _audit(
-        request,
-        "query.executed",
-        f"query:{_short_sql_hash(query)}",
-        {
-            "row_count": result.row_count,
-            "duration_ms": result.duration_ms,
-            "tables": result.referenced_tables,
-            "truncated": result.truncated,
-        },
-    )
+    if not explain:
+        await _record_query_async(
+            request,
+            sql_text=query,
+            started_at=started_at,
+            finished_at=finished_at,
+            status="succeeded",
+            row_count=result.row_count,
+            duration_ms=result.duration_ms,
+            referenced_tables=result.referenced_tables,
+        )
+        await _audit(
+            request,
+            "query.executed",
+            f"query:{_short_sql_hash(query)}",
+            {
+                "row_count": result.row_count,
+                "duration_ms": result.duration_ms,
+                "tables": result.referenced_tables,
+                "truncated": result.truncated,
+            },
+        )
+
+    explain_text: str | None = None
+    if explain:
+        # DuckDB returns EXPLAIN ANALYZE as a set of rows with
+        # column(s) like ``explain_key`` / ``explain_value``.
+        # Flatten everything into a single monospace blob that
+        # the frontend can drop straight into a <pre>.
+        lines: list[str] = []
+        for row in result.rows:
+            lines.append("\t".join("" if cell is None else str(cell) for cell in row))
+        explain_text = "\n".join(lines)
 
     return {
         "query_id": query_id,
+        "is_explain": explain,
+        "explain_text": explain_text,
         "columns": result.columns,
         "rows": result.rows,
         "row_count": result.row_count,

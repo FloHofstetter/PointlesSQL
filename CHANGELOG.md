@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 53) — EXPLAIN + autocomplete + polish + Phase 12 close-out
+
+- **EXPLAIN ANALYZE toggle.** Second button next to Run sends
+  ``{explain: true}`` to ``/api/sql/execute``.  Server-side flow:
+  parse + enforce as usual, then prepend ``EXPLAIN ANALYZE`` to
+  the rewritten SQL and execute.  The multi-row plan output is
+  flattened into a single ``explain_text`` string (tab-joined
+  cells, newline-joined rows) that the editor drops into a
+  ``<pre class="pql-sql-explain-panel">`` block.  EXPLAIN runs
+  deliberately skip ``query_history`` and audit — they are
+  diagnostic, not operational activity.
+- **Catalog-tree autocomplete.** CodeMirror's ``autocompletion``
+  extension wired to a custom completion source.  On mount, the
+  editor fetches ``/api/tree`` once, flattens to
+  ``catalog.schema.table`` strings, and serves them as
+  completions whenever the caret touches a word.  Non-admin
+  callers see only catalogs they have ``USE`` on — correct
+  scope because you should not autocomplete something you can't
+  query.  ``@codemirror/autocomplete@6.18.4`` is now in the
+  import-map.
+- **Mobile stacking.** New ``@media (max-width: 767.98px)`` block
+  raises the editor's ``min-height`` so it dominates the
+  viewport on phones; the Bootstrap grid already collapses the
+  drawer under the editor at ``<lg`` breakpoints.  Results
+  table stays horizontally scrollable so wide schemas don't
+  overflow.
+- **`g s` keyboard shortcut** for "Go to SQL editor" landed in
+  Sprint 49 — documented here for the phase index.
+- **Playbook.**
+  [docs/e2e-walkthroughs/sql-editor.md](docs/e2e-walkthroughs/sql-editor.md) —
+  16-step walkthrough covering the golden path (editor → run →
+  save → history → re-run → CSV + Parquet export → EXPLAIN →
+  cancel) and the two negative paths (non-admin without
+  ``SELECT`` gets 403, non-admin can't see admin's private
+  saved query gets 404).  Includes a Playwright-MCP script
+  and a "Known-limit notes" block that calls out the
+  single-worker cancel scope, the no-column autocomplete,
+  and the silent row-cap on export.
+- **Phase 12 closes.** ROADMAP flips the phase to ✅ done; every
+  sprint 49-53 landed with its feat + ``docs(roadmap)`` pair.
+- Tests: 1 new EXPLAIN route test in ``tests/test_sql_execute.py``
+  (explain=true returns ``is_explain=True`` + non-empty
+  ``explain_text``; history row count does not grow).
+
 ### Added (Sprint 52) — Export + timeout + cancel
 
 - **`GET /api/sql/execute/{history_id}/download?format=csv|parquet`.**
