@@ -30,12 +30,13 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
       GIT_CONFIG_COUNT: "1"
-      GIT_CONFIG_KEY_0: "http.https://github.com/FloHofstetter/soyuz-catalog.extraheader"
+      GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
       GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # git-cliff needs full history
+          persist-credentials: false  # avoid Authorization header collision; see test.yml
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5

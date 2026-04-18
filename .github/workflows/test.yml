@@ -39,15 +39,18 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
       GIT_CONFIG_COUNT: "1"
-      # Scope to the soyuz-catalog URL prefix ONLY. A broader
-      # `https://github.com/` scope collides with the
-      # Authorization header actions/checkout@v4 installs for
-      # checking out *this* repo, and GitHub returns
-      # `400 Duplicate header: "Authorization"` on double-auth.
-      GIT_CONFIG_KEY_0: "http.https://github.com/FloHofstetter/soyuz-catalog.extraheader"
+      GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
       GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Skip actions/checkout's own auth-header injection so
+          # our job-level extraheader (needed by uv's git
+          # subprocess) does not collide with it — GitHub returns
+          # `400 Duplicate header: "Authorization"` on double-auth.
+          # We only check this repo out once; no later git
+          # operations against it are needed.
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
