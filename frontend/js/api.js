@@ -29,7 +29,7 @@
     async function extractError(res) {
         const ct = res.headers.get('content-type') || '';
         try {
-            if (ct.indexOf('application/json') !== -1) {
+            if (/\bjson\b/.test(ct)) {
                 const body = await res.json();
                 if (body && typeof body === 'object') {
                     const msg = body.detail || body.message || body.error;
@@ -50,7 +50,7 @@
 
     async function parseBody(res) {
         const ct = res.headers.get('content-type') || '';
-        if (ct.indexOf('application/json') === -1) return null;
+        if (!/\bjson\b/.test(ct)) return null;
         try {
             return await res.json();
         } catch (e) {
