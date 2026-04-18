@@ -1620,8 +1620,27 @@ PointlesSQL
 │   ├── Rate limiting on `/api/sql/*` — scheduled as a Phase-12
 │   │   sprint once the SQL editor lands (the route doesn't exist
 │   │   yet)
-│   └── Graceful-rotation story for `secret_key` (JWT signing) so
-│       mid-flight tokens survive a rotation — target Sprint 46
+│   │
+│   └── Sprint 46 — Graceful JWT signing-key rotation  ⏳ in progress
+│       ├── New optional ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS``
+│       │   env var on ``AuthSettings``; ``verify_jwt`` tries the
+│       │   primary key first and falls back to the previous key
+│       │   only if the primary rejects the token. Expired or
+│       │   tampered tokens fail under both. New tokens always
+│       │   sign with the primary
+│       ├── ``get_current_user`` accepts a ``previous_key`` kwarg
+│       │   and forwards it into ``verify_jwt`` — auth middleware
+│       │   in ``api/main.py`` reads ``settings.auth.secret_key_previous``
+│       │   so routes can honour the grace window without per-route
+│       │   edits
+│       ├── Rotation procedure documented in CHANGELOG with the
+│       │   four-step flow (set previous → change primary → wait
+│       │   ``jwt_expiry_hours`` → drop previous). ``.env.example``
+│       │   updated to surface the new knob
+│       └── Six new unit tests in ``tests/test_auth.py``: happy-path
+│           previous-key verification, fresh-token behaviour during
+│           rotation, third-key rejection, missing-fallback rejection,
+│           expiry-preservation, ``get_current_user`` threading
 │
 ├── Phase 12 — SQL editor + query history                 ⏳ planned
 │   │

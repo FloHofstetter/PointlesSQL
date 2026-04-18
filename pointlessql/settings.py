@@ -81,13 +81,26 @@ class AuthSettings(BaseSettings):
     """JWT signing and session lifetime.
 
     Reads ``POINTLESSQL_AUTH_*`` environment variables.  ``secret_key``
-    MUST be overridden in production.  ``jwt_expiry_hours`` defaults to
-    168 (seven days).
+    MUST be overridden in production.  ``jwt_expiry_hours`` defaults
+    to 168 (seven days).
+
+    ``secret_key_previous`` (Sprint 46) is an optional grace-period
+    key: when rotating the primary key operators set
+    ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS`` to the *old* value before
+    changing ``POINTLESSQL_AUTH_SECRET_KEY`` to the new one, wait for
+    the current ``jwt_expiry_hours`` window so every outstanding
+    session re-signs on its next request, then drop the previous-
+    key env var.  New tokens are always signed with the primary key;
+    verification falls back to the previous key only if the primary
+    rejects the token.  When unset, the rotation fallback is
+    disabled and a changed primary key invalidates every live
+    session immediately.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AUTH_")
 
     secret_key: str = "change-me-in-production"
+    secret_key_previous: str | None = None
     jwt_expiry_hours: int = 168  # 7 days
 
 

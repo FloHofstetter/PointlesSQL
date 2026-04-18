@@ -61,6 +61,54 @@ class TestJWT:
         assert auth.verify_jwt("not.a.jwt", SECRET) is None
 
 
+class TestJwtKeyRotation:
+    """Sprint-46 grace-window fallback to a previous signing key."""
+
+    _OLD_KEY = "previous-test-secret-key-32-bytes"
+    _NEW_KEY = "rotated-test-secret-key-32-bytes!"
+
+    def test_previous_key_verifies_token_after_rotation(self):
+        """Token signed with the old key verifies under the new+previous combo."""
+        legacy = auth.create_jwt(7, "a@b.com", False, self._OLD_KEY)
+        payload = auth.verify_jwt(legacy, self._NEW_KEY, previous_key=self._OLD_KEY)
+        assert payload is not None
+        assert payload["sub"] == "7"
+
+    def test_new_key_still_verifies_fresh_tokens(self):
+        """Tokens signed with the primary key keep working during rotation."""
+        fresh = auth.create_jwt(8, "b@b.com", True, self._NEW_KEY)
+        payload = auth.verify_jwt(fresh, self._NEW_KEY, previous_key=self._OLD_KEY)
+        assert payload is not None
+        assert payload["sub"] == "8"
+        assert payload["is_admin"] is True
+
+    def test_rotation_rejects_unknown_key(self):
+        """A token signed with a third key still fails both current and previous."""
+        foreign = auth.create_jwt(9, "c@b.com", False, "some-other-32-byte-key-here!!!!!")
+        assert auth.verify_jwt(foreign, self._NEW_KEY, previous_key=self._OLD_KEY) is None
+
+    def test_without_previous_key_old_tokens_fail(self):
+        """Without the grace window, a changed primary key invalidates old tokens."""
+        legacy = auth.create_jwt(10, "d@b.com", False, self._OLD_KEY)
+        assert auth.verify_jwt(legacy, self._NEW_KEY) is None
+
+    def test_previous_key_does_not_bypass_expiry(self):
+        """Expired tokens signed with the previous key still fail."""
+        expired = auth.create_jwt(11, "e@b.com", False, self._OLD_KEY, expiry_hours=0)
+        assert auth.verify_jwt(expired, self._NEW_KEY, previous_key=self._OLD_KEY) is None
+
+    def test_get_current_user_threads_previous_key(self, db_factory):
+        """``get_current_user`` forwards ``previous_key`` into ``verify_jwt``."""
+        user = auth.register(db_factory, "r@b.com", "Rotator", "pass1234")
+        assert user is not None
+        legacy = auth.create_jwt(user.id, user.email, user.is_admin, self._OLD_KEY)
+        info = auth.get_current_user(
+            db_factory, legacy, self._NEW_KEY, previous_key=self._OLD_KEY
+        )
+        assert info is not None
+        assert info["email"] == "r@b.com"
+
+
 class TestRegister:
     """User registration."""
 

@@ -173,7 +173,12 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
         factory = getattr(request.app.state, "session_factory", None)
         settings = getattr(request.app.state, "settings", None)
         if factory is not None and settings is not None:
-            user = auth_service.get_current_user(factory, token, settings.auth.secret_key)
+            user = auth_service.get_current_user(
+                factory,
+                token,
+                settings.auth.secret_key,
+                previous_key=settings.auth.secret_key_previous,
+            )
             if user is not None:
                 request.state.user = user
 

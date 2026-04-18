@@ -87,18 +87,38 @@ def create_jwt(
     return jwt.encode(payload, secret_key, algorithm="HS256")
 
 
-def verify_jwt(token: str, secret_key: str) -> dict[str, Any] | None:
+def verify_jwt(
+    token: str,
+    secret_key: str,
+    *,
+    previous_key: str | None = None,
+) -> dict[str, Any] | None:
     """Verify and decode a JWT token.
+
+    Tries the primary ``secret_key`` first.  If that rejects the
+    token and ``previous_key`` is set, retries once with the old
+    key — this is the Sprint-46 mid-flight grace window that lets
+    operators rotate the signing key without terminating every live
+    session.  Corrupt, expired, or tampered tokens still fail under
+    both keys.
 
     Args:
         token: The JWT token string to verify.
-        secret_key: Secret key used to sign the token.
+        secret_key: Primary signing key (all new tokens use this).
+        previous_key: Optional prior signing key, honoured only for
+            verification so mid-flight tokens from before a
+            rotation keep working until they expire naturally.
 
     Returns:
         dict[str, Any] | None: Decoded payload on success, ``None`` on failure.
     """
     try:
         return jwt.decode(token, secret_key, algorithms=["HS256"])
+    except jwt.InvalidTokenError:
+        if not previous_key:
+            return None
+    try:
+        return jwt.decode(token, previous_key, algorithms=["HS256"])
     except jwt.InvalidTokenError:
         return None
 
@@ -212,18 +232,22 @@ def get_current_user(
     factory: sessionmaker[Session],
     token: str,
     secret_key: str,
+    *,
+    previous_key: str | None = None,
 ) -> UserInfo | None:
     """Decode a JWT and look up the corresponding user.
 
     Args:
         factory: SQLAlchemy session factory.
         token: JWT token string.
-        secret_key: Secret key for verification.
+        secret_key: Primary signing key for verification.
+        previous_key: Optional prior key for the Sprint-46 rotation
+            grace window (see :func:`verify_jwt`).
 
     Returns:
         UserInfo | None: User info dict or ``None`` if invalid.
     """
-    payload = verify_jwt(token, secret_key)
+    payload = verify_jwt(token, secret_key, previous_key=previous_key)
     if payload is None:
         return None
 

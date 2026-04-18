@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 46)
+
+- **Graceful JWT signing-key rotation.** Final Phase 11 hardening
+  sprint. A new optional ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS``
+  env var lets operators rotate the primary signing key without
+  invalidating every outstanding session. New tokens are always
+  signed with the primary key; ``verify_jwt`` tries the primary
+  first and falls back to the previous key only if the primary
+  rejects the token. Expired, tampered, or third-key tokens still
+  fail under both. Rotation procedure:
+
+  1. Set ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS`` to the *current*
+     (old) key value.
+  2. Change ``POINTLESSQL_AUTH_SECRET_KEY`` to the new value.
+     Restart / recreate the container so both settings are picked
+     up at the same time.
+  3. Wait for ``jwt_expiry_hours`` (default 168 h = 7 d) so every
+     live session has either re-logged-in or naturally timed out.
+     During this window, fresh logins emit tokens signed with the
+     new key while existing cookies continue to verify under the
+     old.
+  4. Drop ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS``. Any cookie
+     still signed with the old key now fails verification and the
+     user is bounced to ``/auth/login``.
+
+  When ``secret_key_previous`` is unset (the default) the fallback
+  path is disabled and a key change invalidates every live session
+  immediately. Six new unit tests in ``tests/test_auth.py`` cover
+  the happy path, fresh tokens during rotation, unknown keys,
+  missing-fallback rejection, expiry preservation, and
+  ``get_current_user``'s ``previous_key`` threading.
+
 ### Changed (Sprint 45) — BREAKING: nested Settings + renamed env vars
 
 - **Flat `Settings` split into nine `BaseSettings` sub-models.** Fifth
