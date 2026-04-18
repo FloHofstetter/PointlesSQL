@@ -165,5 +165,49 @@ browser_evaluate(async () => {
 
 ## Found bugs
 
-_No bugs surfaced in dry-run authoring. Live Playwright replay is
-queued for a follow-up `docs(e2e)` commit after Sprint 42 lands._
+_No bugs surfaced. Sprint 42 replay confirmed (live run on the
+`feat(auth): Sprint 42` commit `811fb5c` against soyuz-catalog
+`v0.2.0rc2`, Firefox via Playwright MCP):_
+
+- _GET `/auth/login` issues the `pql_csrf` cookie with
+  `HttpOnly; SameSite=Lax; Max-Age=604800; Path=/` as advertised
+  (confirmed via `curl -I` on the response headers);_
+- _`<meta name="csrf-token">` and the hidden
+  `<input name="csrf_token">` both carry the same 43-character
+  (32 random bytes, URL-safe base64) value; `document.cookie` does
+  NOT expose `pql_csrf` — the HttpOnly attribute holds;_
+- _local login with `admin@pql.test` rotates the cookie (observed
+  `r6XU…` → `pAyl…`) and redirects to `/` as expected;_
+- _an HTMX-driven `PATCH /api/catalogs/analytics` (fired via
+  `htmx.ajax` from the DevTools console) carries
+  `x-csrf-token: pAyl…` matching the current `pql_csrf` cookie —
+  the `base.html` `htmx:configRequest` hook picks the value up
+  from the meta tag and attaches it on every non-safe verb
+  without per-route edits;_
+- _logout rotates again (observed `pAyl…` → `cQmT…`) and lands
+  on `/auth/login`;_
+- _`fetch('/auth/logout', { method: 'POST', headers: {'X-CSRF-Token': 'wrong'} })`
+  returns 403 with the expected
+  `<h1>403 — CSRF token mismatch</h1>` stub;_
+- _`fetch('/auth/logout', { method: 'POST', credentials: 'omit' })`
+  (no cookie at all) also returns 403 — the middleware's
+  `issued_new` guard short-circuits the first POST after cookie
+  deletion, which is exactly the attack-case for a cross-origin
+  form submit;_
+- _`fetch('/api/jobs', { method: 'POST', body: '{}', credentials: 'omit' })`
+  returns `401` from the auth middleware, **not** `403` from
+  the CSRF middleware — confirming the `/api/*` prefix exemption
+  that Sprint 42 deliberately leaves in place
+  (`SameSite=Lax` + JSON content-type enforcement cover that
+  surface)._
+
+_Replay notes:_
+- _HTMX ships as XHR, not `fetch`, so capturing the outgoing
+  `X-CSRF-Token` header from page JS requires Playwright's
+  `browser_network_requests({ requestHeaders: true })` rather
+  than a `window.fetch` override — the override captured
+  nothing. The playbook script above reflects that._
+- _The inline-edit PATCH surfaces a pre-existing 422 because
+  `htmx.ajax` serialises form-urlencoded while the route expects
+  JSON. That is unrelated to CSRF — the token attached
+  correctly — so it is not logged as a `BUG-42-NN`._
