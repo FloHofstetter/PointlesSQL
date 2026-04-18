@@ -213,9 +213,42 @@ playbook (the embedded JupyterLab iframe retired in Sprint 63).
 
 ## Found bugs
 
-Record any BUG-64-NN entries here in the same shape as Sprint 22
-/ Sprint 23's close-outs: diagnosis + fix location, or TODO
-reference when the fix lives in a follow-up commit.
+**BUG-64-01** (commit TBD). The Sprint-58 editor template opened
+the root `x-data` attribute with double quotes and pasted the
+``{{ notebook_path|tojson }}`` expression straight inside:
+
+```html
+<div class="pql-nbedit-root"
+     x-data="notebookEditor({ path: {{ notebook_path|tojson }}, ... })">
+```
+
+Jinja's ``|tojson`` emits proper JSON (``"scratch.py"``), but
+those inner double quotes terminate the outer ``x-data`` HTML
+attribute — Alpine then parses only up to the first inner
+quote, reports ``expected expression, got '}'``, and every
+subsequent ``x-data``-scoped reference ("mount is not defined",
+"saveState is not defined", "kernelStatus is not defined")
+fires against an empty Alpine scope.  The symptom was a blank
+editor page with 25 console errors.
+
+Fixed by switching the outer attribute to single quotes:
+
+```html
+<div class="pql-nbedit-root"
+     x-data='notebookEditor({ path: {{ notebook_path|tojson }}, ... })'>
+```
+
+Single-quoted attribute + double-quoted JSON round-trips cleanly;
+the trailing comma before the closing ``})`` was also dropped
+(JSON5 tolerance doesn't live inside Alpine's expression parser).
+This class of bug escaped every Sprint 58–63 gate because
+``ruff`` / ``pyright`` / ``pydoclint`` don't inspect Jinja
+templates + Alpine x-data expressions, and the playbook (which
+was going to catch it) landed in the same sprint as the bug.
+**Lesson**: run the playbook as a gate, not a close-out, when
+the sprint touches Alpine scopes.
+
+## What worked on the first try
 
 ## What worked on the first try
 
