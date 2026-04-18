@@ -2,14 +2,19 @@
 #
 # Build context: this repo (.)
 #
-# Usage:
+# Usage (local contributor, ssh-agent authenticated against github.com):
 #   docker compose build --ssh default pointlessql
-#   docker compose up
+#
+# Usage (token-based, clean-machine / CI parity):
+#   GH_PAT=$(gh auth token) docker compose build pointlessql
 #
 # The builder stage fetches soyuz-catalog-client from its private
-# git tag (v0.2.0rc2) over SSH, reusing the contributor's local
-# ssh-agent via BuildKit. Sprint 40 will replace this with GHCR
-# image pulls and a GH_TOKEN-based --secret for CI.
+# git tag (pinned in pyproject.toml's [tool.uv.sources]) using
+# dual auth: BuildKit forwards EITHER the host ssh-agent
+# (`--mount=type=ssh`) OR a token file (`--mount=type=secret,id=gh_pat`).
+# The RUN prefers the token if present, else falls back to SSH.
+# Sprint 40 added the secret path so CI's docker.yml workflow can
+# build without an ssh key.
 
 # ---------------------------------------------------------------------------
 # Stage 1: Install PointlesSQL and all dependencies into a venv
@@ -28,14 +33,25 @@ COPY pyproject.toml README.md LICENSE /src/
 COPY pointlessql/ /src/pointlessql/
 COPY frontend/ /src/frontend/
 
-# BuildKit `--mount=type=ssh` forwards the host's ssh-agent into this
-# RUN so uv can clone the private soyuz-catalog repo at the pinned
-# tag. Trust github.com's host key eagerly — strict-host-key checking
-# would otherwise stall the build on the interactive prompt.
-RUN --mount=type=ssh \
+# BuildKit dual auth: `--mount=type=secret,id=gh_pat` is preferred
+# (CI + clean-machine), with `--mount=type=ssh` as the contributor
+# fallback (Sprint 38 ergonomics). Both mounts are `required=false`
+# so whichever one is passed wins — passing neither fails at the
+# `uv pip install` step. Trust github.com's host key eagerly —
+# strict-host-key checking would otherwise stall the build on the
+# interactive prompt.
+RUN --mount=type=ssh,required=false \
+    --mount=type=secret,id=gh_pat,required=false \
     mkdir -p -m 700 /root/.ssh && \
-    ssh-keyscan github.com >> /root/.ssh/known_hosts && \
-    git config --global url."git@github.com:".insteadOf "https://github.com/" && \
+    if [ -s /run/secrets/gh_pat ]; then \
+        git config --global \
+          url."https://x-access-token:$(cat /run/secrets/gh_pat)@github.com/".insteadOf \
+          "https://github.com/"; \
+    else \
+        ssh-keyscan github.com >> /root/.ssh/known_hosts && \
+        git config --global \
+          url."git@github.com:".insteadOf "https://github.com/"; \
+    fi && \
     uv pip install /src/ --python /opt/venv/bin/python
 
 # ---------------------------------------------------------------------------
@@ -52,6 +68,17 @@ WORKDIR /app
 # out of the box.  The compose file bind-mounts ./notebooks on top of
 # this so user edits persist on the host.
 COPY notebooks/ /app/notebooks/
+
+# OCI labels: `source` links the package to its repo on GHCR's sidebar;
+# `revision` + `version` come from build args passed by docker.yml.
+ARG VCS_REF=unknown
+ARG VERSION=dev
+LABEL org.opencontainers.image.source="https://github.com/FloHofstetter/PointlesSQL" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.title="PointlesSQL" \
+      org.opencontainers.image.description="Functional Databricks clone from Python-only OSS parts" \
+      org.opencontainers.image.licenses="Apache-2.0"
 
 EXPOSE 8000 8888
 

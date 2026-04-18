@@ -4,6 +4,93 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 40)
+
+- **`.github/workflows/docker.yml`.** On-tag image publish to
+  GHCR. Builds both the PointlesSQL image (from `Dockerfile`) and
+  the soyuz-catalog image (from `Dockerfile.soyuz` with a
+  `build-contexts: soyuz-catalog=soyuz-catalog` overlay pointing at
+  a just-cloned soyuz-catalog checkout). Pushes to
+  `ghcr.io/flohofstetter/pointlessql:<tag>` and
+  `ghcr.io/flohofstetter/soyuz-catalog:<pinned-soyuz-tag>`. The
+  soyuz tag is parsed from `pyproject.toml`'s `[tool.uv.sources]`
+  at workflow time so no hard-coded version lives in CI. A
+  `verify-soyuz-tag-exists` step does `git ls-remote` with
+  `SOYUZ_READ_TOKEN` before building — fails fast on a
+  never-pushed tag, guarding against the Sprint 37 `v0.2.0rc1`
+  failure mode. Prerelease tags (`rc*`, `a[0-9]*`, `b[0-9]*`,
+  `dev[0-9]*`) do not get the `:latest` alias, matching the
+  `release.yml` regex.
+- **GHCR image labels.** Both `Dockerfile` and `Dockerfile.soyuz`
+  grew `ARG VCS_REF` / `ARG VERSION` + `LABEL
+  org.opencontainers.image.{source,revision,version,title,
+  description,licenses}` on the runtime stage. `docker.yml`
+  passes `--build-arg VCS_REF=${github.sha} --build-arg
+  VERSION=${github.ref_name}`. The `source` label is what GHCR
+  uses to link the package to the repo sidebar.
+- **`docs/install.md`.** First formal install guide. Three
+  flavours: Docker + GHCR images (recommended primary), pip
+  install from git tag, source checkout for contributors. Each
+  ends with an "expected state" assertion and a troubleshooting
+  section calls out the usual landmines — `DOCKER_BUILDKIT=0`
+  silently dropping `--mount=type=secret`, fine-grained PAT
+  requiring per-repo grants vs. classic-PAT scopes just working,
+  stale `/app/data` SQLite after a version bump.
+- **`docs/e2e-walkthroughs/packaging.md`.** Eleventh playbook —
+  the clean-machine flow. Preconditions assert the Sprint 40 tag
+  has shipped and images exist on GHCR. Steps: `cd
+  "$(mktemp -d)"`, assert anonymous `docker pull` fails
+  (proves the images are private), `docker login ghcr.io`, re-pull
+  succeeds, `curl` the compose file at the tag, `sed` flips
+  `build:` → `image:`, `docker compose pull && up -d`, healthcheck
+  poll, Playwright MCP `browser_navigate` asserts the home-page
+  Welcome `<h1>`, `docker image inspect` confirms
+  `org.opencontainers.image.source` labels, teardown. Found-bugs
+  section left with the `(none at time of writing — fill in
+  during the first live replay)` placeholder that matches
+  Phase 7/8/9 convention. Index in
+  `docs/e2e-walkthroughs/README.md` grew a third section
+  (`Packaging`).
+
+### Changed (Sprint 40)
+
+- **`Dockerfile` dual auth.** The single `--mount=type=ssh` RUN
+  grew a second mount: `--mount=type=secret,id=gh_pat`, both
+  `required=false`. Inline shell branch prefers the token if
+  `/run/secrets/gh_pat` is non-empty, else falls back to the
+  ssh-agent path. Sprint 38's `docker compose build --ssh default`
+  contributor flow still works; the new `GH_PAT=$(gh auth token)
+  docker compose build` path is what CI + clean-machine users hit.
+- **`docker-compose.yml`.** The `pointlessql` service's `build:`
+  block grew `secrets: - gh_pat` alongside the existing `ssh:
+  [default]`; a top-level `secrets: gh_pat: { environment:
+  GH_PAT }` block wires the env var to the BuildKit secret file.
+  Each service also grew a commented `# image: ghcr.io/…:<tag>`
+  line above its `build:` block with a two-line explainer so
+  clean-machine users can flip to the pull path with a
+  comment-out-and-uncomment edit.
+- **`README.md` quickstart.** "Quick start (Docker + GHCR
+  images)" is now the primary top-level install path — `docker
+  login ghcr.io` → `curl docker-compose.yml` → flip two lines →
+  `docker compose pull && up`. The `../soyuz-catalog` sibling
+  prerequisite is gone from this section. Source-build demoted to
+  "Quick start (local development)" below it; both sections
+  cross-link to `docs/install.md`.
+- **`CLAUDE.md`.** "Docker builds" subsection rewritten for
+  dual-auth; new "GHCR images" subsection documents the on-tag
+  publish pipeline + the PAT-based pull flow. "Replaying the e2e
+  walkthroughs" bumped playbook count ten → eleven.
+
+### Docs (Sprint 40)
+
+- **`ROADMAP.md`.** Sprint 40 flipped to ✅. Phase 10 flipped to
+  ✅ done. Phase 10 close-out block added following the
+  Phase 7/8/9 shape: what the phase bought (clean `git clone &&
+  uv sync` for source, clean `docker login && compose pull && up`
+  for users, every future release cuts a GH Release plus two
+  GHCR images automatically), plus Deferred-to-Phase-11 list
+  (multi-arch arm64, PyPI publish, Helm chart, public-GHCR flip).
+
 ## [0.1.0rc2] - 2026-04-18
 
 ### Fixed (Sprint 38 follow-on)

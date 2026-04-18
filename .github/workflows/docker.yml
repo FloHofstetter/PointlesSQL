@@ -1,0 +1,144 @@
+name: docker
+
+# Sprint 40 on-tag workflow. Builds and pushes two images to GHCR
+# under the repo-owner namespace on every `v*` tag:
+#
+#   ghcr.io/flohofstetter/pointlessql:<tag>
+#   ghcr.io/flohofstetter/soyuz-catalog:<pinned-soyuz-tag>
+#
+# Soyuz tag is parsed from pyproject.toml's [tool.uv.sources] so the
+# two repos stay in lockstep — no hard-coded version here.
+#
+# Two tokens are in play, do not confuse them:
+#   - GITHUB_TOKEN      — writes packages to the PointlesSQL namespace
+#   - SOYUZ_READ_TOKEN  — reads the private soyuz-catalog repo
+#                         (both the cross-repo checkout AND the
+#                         Dockerfile secret that installs the
+#                         soyuz-catalog-client wheel)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    name: build + push images to GHCR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: pointlessql
+
+      - name: Resolve pinned soyuz-catalog tag from pyproject.toml
+        id: pin
+        run: |
+          SOYUZ_TAG=$(python3 -c "
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path('pointlessql/pyproject.toml').read_text())
+          print(data['tool']['uv']['sources']['soyuz-catalog-client']['tag'])
+          ")
+          echo "Pinned soyuz-catalog tag: ${SOYUZ_TAG}"
+          echo "soyuz_tag=${SOYUZ_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify SOYUZ_READ_TOKEN + soyuz tag exists on github.com
+        env:
+          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+          SOYUZ_TAG: ${{ steps.pin.outputs.soyuz_tag }}
+        run: |
+          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
+          if [ "$LEN" -lt 30 ]; then
+            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes)." >&2
+            exit 1
+          fi
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${SOYUZ_READ_TOKEN}" \
+            https://api.github.com/user)
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::SOYUZ_READ_TOKEN is not accepted by GitHub (HTTP ${STATUS})." >&2
+            exit 1
+          fi
+          # ls-remote fails fast if the pinned tag was never pushed
+          # (the Sprint 37 `v0.2.0rc1`-not-pushed failure mode).
+          REFS=$(git ls-remote \
+            "https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/FloHofstetter/soyuz-catalog" \
+            "refs/tags/${SOYUZ_TAG}")
+          if [ -z "$REFS" ]; then
+            echo "::error::soyuz-catalog tag ${SOYUZ_TAG} does not exist on github.com." >&2
+            exit 1
+          fi
+
+      - name: Checkout soyuz-catalog at pinned tag
+        uses: actions/checkout@v4
+        with:
+          repository: FloHofstetter/soyuz-catalog
+          ref: ${{ steps.pin.outputs.soyuz_tag }}
+          token: ${{ secrets.SOYUZ_READ_TOKEN }}
+          path: soyuz-catalog
+
+      - name: Detect prerelease
+        id: prerelease
+        run: |
+          # Mirror release.yml lines 121-126 — PEP 440 rc/a/b/dev shapes
+          # do not get the :latest tag.
+          case "${GITHUB_REF_NAME}" in
+              *rc*|*a[0-9]*|*b[0-9]*|*dev[0-9]*) IS_PRE=true ;;
+              *) IS_PRE=false ;;
+          esac
+          echo "is_pre=${IS_PRE}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute PointlesSQL tags
+        id: pql_tags
+        env:
+          IS_PRE: ${{ steps.prerelease.outputs.is_pre }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAGS="ghcr.io/flohofstetter/pointlessql:${REF_NAME}"
+          if [ "$IS_PRE" = "false" ]; then
+            TAGS="${TAGS},ghcr.io/flohofstetter/pointlessql:latest"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build + push PointlesSQL image
+        uses: docker/build-push-action@v6
+        with:
+          context: pointlessql
+          file: pointlessql/Dockerfile
+          push: true
+          tags: ${{ steps.pql_tags.outputs.tags }}
+          build-args: |
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ github.ref_name }}
+          secrets: |
+            gh_pat=${{ secrets.SOYUZ_READ_TOKEN }}
+          cache-from: type=gha,scope=pointlessql
+          cache-to: type=gha,mode=max,scope=pointlessql
+
+      - name: Build + push soyuz-catalog image (idempotent on same tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: pointlessql
+          file: pointlessql/Dockerfile.soyuz
+          push: true
+          tags: ghcr.io/flohofstetter/soyuz-catalog:${{ steps.pin.outputs.soyuz_tag }}
+          build-contexts: |
+            soyuz-catalog=soyuz-catalog
+          build-args: |
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ steps.pin.outputs.soyuz_tag }}
+          cache-from: type=gha,scope=soyuz-catalog
+          cache-to: type=gha,mode=max,scope=soyuz-catalog

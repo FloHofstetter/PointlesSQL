@@ -148,11 +148,36 @@ approach above is the working replacement.
 
 ### Docker builds
 
-`docker compose build --ssh default pointlessql` forwards your
-local ssh-agent into the BuildKit build stage so `uv` can clone
-the private soyuz-catalog repo at the pinned tag. Full
-`--secret`-based auth and GHCR image pulls are Sprint 40's job —
-for now the SSH-agent path is the minimum viable build.
+Sprint 40 made the Dockerfile dual-auth. BuildKit can fetch the
+private soyuz-catalog-client wheel via EITHER
+`--mount=type=ssh` (ssh-agent, Sprint 38 ergonomics) OR
+`--mount=type=secret,id=gh_pat` (token file, CI + clean-machine).
+Both mounts are `required=false`; the `RUN` prefers the token if
+present, else falls back to SSH. Pick whichever your workstation
+already has authenticated:
+
+```bash
+docker compose build --ssh default pointlessql           # contributor
+GH_PAT=$(gh auth token) docker compose build pointlessql # token path
+```
+
+### GHCR images (recommended for end users)
+
+Every `v*` tag push fires
+[`.github/workflows/docker.yml`](.github/workflows/docker.yml),
+which builds and pushes both images to GHCR under the repo-owner
+namespace:
+
+- `ghcr.io/flohofstetter/pointlessql:<tag>`
+- `ghcr.io/flohofstetter/soyuz-catalog:<pinned-soyuz-tag>`
+
+Images are private; consumers authenticate with
+`docker login ghcr.io` and a classic PAT scoped `read:packages`.
+The commented `image:` lines in `docker-compose.yml` turn the
+stack into a pure-pull install with no source checkout required —
+[`docs/install.md`](docs/install.md) and the
+[`docs/e2e-walkthroughs/packaging.md`](docs/e2e-walkthroughs/packaging.md)
+playbook walk through this flow.
 
 ### Don't start the JVM UC server
 
@@ -173,11 +198,12 @@ invent new milestone or sprint names — extend the existing tree.
 
 ## Replaying the e2e walkthroughs
 
-`docs/e2e-walkthroughs/` holds ten deterministic Markdown
+`docs/e2e-walkthroughs/` holds eleven deterministic Markdown
 playbooks (five data-surface from Sprint 22, five orchestration
-+ operational from Sprint 23). Each one can be replayed by a
-human with a browser or by Claude Code through the
-`mcp__playwright__browser_*` tool family. The Sprint 23
++ operational from Sprint 23, one packaging/clean-machine-install
+from Sprint 40). Each one can be replayed by a human with a
+browser or by Claude Code through the `mcp__playwright__browser_*`
+tool family. The Sprint 23
 orchestration + operational playbooks use host env overlays
 (`POINTLESSQL_JUPYTER_ENABLED`, `POINTLESSQL_LOG_FORMAT`,
 `POINTLESSQL_OIDC_*`, etc.) exposed by

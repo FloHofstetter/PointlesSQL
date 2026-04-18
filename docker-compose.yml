@@ -1,5 +1,11 @@
 services:
   soyuz-catalog:
+    # GHCR alternative — comment out the entire `build:` block below
+    # and uncomment the `image:` line to pull from GHCR instead of
+    # building locally. Requires `docker login ghcr.io` first. The
+    # tag must match the `soyuz-catalog-client` tag pinned in
+    # pyproject.toml's [tool.uv.sources].
+    # image: ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2
     build:
       context: .
       dockerfile: Dockerfile.soyuz
@@ -26,11 +32,21 @@ services:
       start_period: 10s
 
   pointlessql:
+    # GHCR alternative — comment out the entire `build:` block below
+    # and uncomment the `image:` line to pull from GHCR instead of
+    # building locally. Requires `docker login ghcr.io` first. See
+    # docs/install.md for the full clean-machine pull flow.
+    # image: ghcr.io/flohofstetter/pointlessql:v0.1.0rc3
     build:
       context: .
       dockerfile: Dockerfile
+      # Dual-auth: contributor path uses ssh-agent via
+      # `docker compose build --ssh default`; clean-machine / CI path
+      # uses a PAT via `GH_PAT=$(gh auth token) docker compose build`.
       ssh:
         - default
+      secrets:
+        - gh_pat
     ports:
       - "${PQL_HOST_PORT:-8000}:8000"
       - "${JUPYTER_HOST_PORT:-8888}:8888"
@@ -63,3 +79,11 @@ services:
 volumes:
   soyuz_data:
   pointlessql_data:
+
+secrets:
+  # Token used by the PointlesSQL Dockerfile to fetch the private
+  # soyuz-catalog-client wheel at the pinned git tag. Optional for
+  # contributors who use the ssh-agent path (Sprint 38 ergonomics).
+  # Set via `GH_PAT=$(gh auth token) docker compose build`.
+  gh_pat:
+    environment: GH_PAT

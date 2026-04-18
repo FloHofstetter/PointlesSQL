@@ -1164,7 +1164,7 @@ PointlesSQL
 │   reduced-motion, ships one toast contract, and surfaces
 │   every keyboard shortcut in one help modal.
 │
-├── Phase 10 — Packaging & private distribution           ⏳ in progress
+├── Phase 10 — Packaging & private distribution           ✅ done
 │   │
 │   │   Goal: unblock clean-machine installs. `uv sync`
 │   │   currently fails on any host without
@@ -1325,22 +1325,94 @@ PointlesSQL
 │   │   └── First tag: `v0.1.0rc1` (PEP 440 canonical — not
 │   │       `v0.1.0-rc1`; same typo-correction as soyuz Sprint 19.1)
 │   │
-│   └── Sprint 40 — Docker registry + clean-machine install + close  ⏳ planned
-│       ├── `.github/workflows/docker.yml` — on-tag, build
-│       │   PointlesSQL + soyuz-catalog images, push to GHCR
-│       │   (private; consumers `docker login ghcr.io`)
-│       ├── `docker-compose.yml` — add commented `image:` line
-│       │   next to each `build:` so users can switch between
-│       │   build-locally and pull-from-GHCR with two-line edits
-│       ├── `docs/install.md` — three flavours (source checkout,
-│       │   pip + git-tag, docker-compose), each with auth-token
-│       │   step called out
-│       ├── `docs/e2e-walkthroughs/packaging.md` — fresh-VM
-│       │   playbook: docker login → compose pull → compose up
-│       │   → home page renders
-│       └── Phase 10 close-out section mirroring the Phase 7/8/9
-│           pattern — what this phase bought, any bugs surfaced,
-│           deferred work
+│   └── Sprint 40 — Docker registry + clean-machine install + close  ✅ done
+│       ├── `.github/workflows/docker.yml` — on-tag, builds
+│       │   PointlesSQL + soyuz-catalog images, pushes to GHCR
+│       │   under the repo-owner namespace (private; consumers
+│       │   `docker login ghcr.io` with a classic PAT scoped
+│       │   `read:packages`). Soyuz tag is parsed from
+│       │   `pyproject.toml`'s `[tool.uv.sources]` at workflow
+│       │   time so the two repos stay in lockstep — no hard-coded
+│       │   version. `verify-soyuz-tag-exists` step does a
+│       │   `git ls-remote` with `SOYUZ_READ_TOKEN` to fail fast
+│       │   on a never-pushed tag (the Sprint 37 `v0.2.0rc1`
+│       │   failure mode, guarded against)
+│       ├── `Dockerfile` — dual auth. `--mount=type=ssh` (Sprint 38
+│       │   ergonomics) AND `--mount=type=secret,id=gh_pat` (CI +
+│       │   clean-machine). RUN prefers the token if present,
+│       │   falls back to SSH. Plus OCI labels
+│       │   (`org.opencontainers.image.source/revision/version/…`)
+│       │   with `ARG VCS_REF` / `ARG VERSION` populated by
+│       │   `docker.yml`
+│       ├── `Dockerfile.soyuz` — OCI labels only. No auth change
+│       │   needed (this Dockerfile only `COPY --from=soyuz-catalog`s
+│       │   from a build context; no private git fetches inside)
+│       ├── `docker-compose.yml` — commented `image:
+│       │   ghcr.io/flohofstetter/…:<tag>` line above each
+│       │   service's `build:` block, with explainer; `pointlessql`
+│       │   build grew `secrets: [gh_pat]` alongside the existing
+│       │   `ssh: [default]`; top-level `secrets: gh_pat: {
+│       │   environment: GH_PAT }` block so `GH_PAT=$(gh auth token)
+│       │   docker compose build` works
+│       ├── `docs/install.md` — first formal install guide. Three
+│       │   flavours: Docker + GHCR (primary), pip install from
+│       │   git tag, source checkout for contributors. Each ends
+│       │   with an "expected state" assertion. Final section:
+│       │   Troubleshooting for the usual landmines
+│       │   (`DOCKER_BUILDKIT=0`, fine-grained vs classic PAT,
+│       │   stale `/app/data` volume after a version bump)
+│       ├── `docs/e2e-walkthroughs/packaging.md` — eleventh
+│       │   playbook. Fresh-`$(mktemp -d)` walkthrough: assert
+│       │   anonymous pull **fails** (proves private), `docker
+│       │   login ghcr.io`, re-pull succeeds, download compose
+│       │   file at the tag, `sed` flips `build:` → `image:`,
+│       │   `docker compose pull && up -d`, healthcheck poll,
+│       │   Playwright MCP `browser_navigate` home-page assertion,
+│       │   OCI-label inspection, teardown. Index in
+│       │   `docs/e2e-walkthroughs/README.md` grew a third section
+│       │   (`Packaging`)
+│       ├── `README.md` — "Quick start (Docker + GHCR images)"
+│       │   section replaces the old `docker compose up --build`
+│       │   flow as the primary quick-start path; the
+│       │   `../soyuz-catalog/` sibling-required prerequisite is
+│       │   removed. Source-build demoted under "Quick start (local
+│       │   development)". Both sections cross-link to the new
+│       │   `docs/install.md`
+│       └── `CLAUDE.md` — "Docker builds" + new "GHCR images"
+│           subsections documenting dual-auth + on-tag publish;
+│           e2e playbook count bumped from ten to eleven
+│
+│   Phase 10 close-out — four sprints (37, 38, 39, 40) turned two
+│   sibling repos into two independently-releasable artifacts with
+│   on-tag pipelines that hand-off cleanly. Sprint 37 gave
+│   soyuz-catalog its first tag-cutter + on-tag release workflow.
+│   Sprint 38 swapped PointlesSQL's editable path dep for a
+│   git-tag pin of the soyuz-catalog-client wheel, with the
+│   in-place `pyproject.toml` swap scripts preserving the
+│   escape-hatch ergonomics. Sprint 39 mirrored Sprint 37's
+│   release-engineering on PointlesSQL — first CI for the repo,
+│   first tag, first GitHub Release. Sprint 40 closed the loop
+│   with on-tag GHCR publishes of both images and a three-flavour
+│   install guide.
+│
+│   What Phase 10 bought: `git clone && uv sync && uv run
+│   pointlessql` now works on an empty host; `docker login ghcr.io
+│   && docker compose pull && docker compose up` works without
+│   any source checkout at all; and every future release cuts a
+│   GitHub Release plus two GHCR images automatically. The
+│   `../soyuz-catalog/` sibling prerequisite that gated every
+│   earlier sprint is gone. A handful of investigation-heavy
+│   follow-on fixes landed mid-phase (the sixteen-plus `fix(ci)`
+│   commits chasing the `uv.toml [sources]` rejection and
+│   `actions/checkout@v4` fine-grained-PAT edge case, plus the
+│   alembic-drift and preflight fixes) and all the work they
+│   bought is rolled forward.
+│
+│   Deferred to Phase 11 / beyond: multi-arch (arm64) image
+│   builds, public PyPI publish, Helm chart, flipping the GHCR
+│   packages from private to public once the project is ready
+│   for a broader audience. The `docker.yml` wiring is the
+│   substrate that those future efforts bolt onto unchanged.
 │
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is

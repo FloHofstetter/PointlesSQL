@@ -64,6 +64,15 @@ data-surface playbooks have run at least once:
     walks for every non-default value of `POINTLESSQL_ENGINE`,
     `POINTLESSQL_LOG_FORMAT`, and `POINTLESSQL_DATABASE_URL`.
 
+**Packaging** (Sprint 40). Validates the GHCR-pull install path —
+the one install flavour that cannot be run from a source checkout
+at all. Runs on its own, no dependency on the harness above:
+
+11. [`packaging.md`](packaging.md) — clean-machine flow: `docker
+    login ghcr.io`, download the compose file at a tag, flip
+    `build:` → `image:`, `docker compose pull && up`, home page
+    renders, OCI labels verified on the pulled images.
+
 ## Stack start
 
 ```bash

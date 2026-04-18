@@ -35,6 +35,17 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
+# OCI labels: `source` links the package to its repo on GHCR's sidebar;
+# `revision` + `version` come from build args passed by docker.yml.
+ARG VCS_REF=unknown
+ARG VERSION=dev
+LABEL org.opencontainers.image.source="https://github.com/FloHofstetter/soyuz-catalog" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.title="soyuz-catalog" \
+      org.opencontainers.image.description="Python reimplementation of the Unity Catalog REST API" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
 EXPOSE 8080
 
 CMD ["uvicorn", "soyuz_catalog.api.main:app", "--host", "0.0.0.0", "--port", "8080"]

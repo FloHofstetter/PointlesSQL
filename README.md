@@ -58,15 +58,37 @@ PointlesSQL imports the typed client library and talks to
 soyuz-catalog over HTTP -- no shared Python state, no shared
 database.
 
-## Quick start (Docker)
+## Quick start (Docker + GHCR images)
 
-Run the full stack with a single command:
+Zero-build install — both images pull from GHCR. No source
+checkout required. Full detail including PAT-creation and
+troubleshooting in [`docs/install.md`](docs/install.md).
+
+**1. Log in to GHCR** with a classic PAT that has `read:packages`:
 
 ```bash
-docker compose up --build
+echo "$GHCR_PAT" | docker login ghcr.io -u <your-github-username> --password-stdin
 ```
 
-This starts:
+**2. Download the reference compose file into a fresh directory:**
+
+```bash
+mkdir ~/pointlessql && cd ~/pointlessql
+curl -L -o docker-compose.yml \
+  https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
+```
+
+**3. Flip both services from `build:` to `image:`** — in each
+service comment out the `build:` block and uncomment the `image:`
+line directly above it. See [`docs/install.md`](docs/install.md)
+for the exact two-line edit.
+
+**4. Pull and start:**
+
+```bash
+docker compose pull
+docker compose up -d
+```
 
 - **soyuz-catalog** on <http://localhost:8080>
 - **PointlesSQL** on <http://localhost:8000>
@@ -75,22 +97,16 @@ This starts:
 Delta tables are stored in `./warehouse/` (bind-mounted into both
 containers). Notebooks are stored in `./notebooks/`.
 
-**Prerequisites:** Docker Engine 24+ with Compose v2.17+ (for
-`additional_contexts`). The `soyuz-catalog` repo must be checked
-out at `../soyuz-catalog/` (sibling directory).
-
-> The first build takes a few minutes to install Python 3.14
-> dependencies. Subsequent builds use Docker layer caching.
-
 ## Quick start (local development)
 
-This assumes you have `~/git/soyuz-catalog` checked out as a
-sibling of this repository, since the generated client is
-installed as an editable path dependency during development.
+Source-checkout flow for contributors. See
+[`docs/install.md`](docs/install.md) for the full three-flavour
+guide.
 
 **1. Start soyuz-catalog:**
 
 ```bash
+git clone git@github.com:FloHofstetter/soyuz-catalog.git ~/git/soyuz-catalog
 cd ~/git/soyuz-catalog
 uv sync
 uv run soyuz-catalog
@@ -100,11 +116,19 @@ uv run soyuz-catalog
 **2. Start PointlesSQL:**
 
 ```bash
+git clone git@github.com:FloHofstetter/PointlesSQL.git ~/git/PointlesSQL
 cd ~/git/PointlesSQL
 uv sync
 uv run pointlessql
 # listening on http://127.0.0.1:8000
 ```
+
+`uv sync` fetches the private `soyuz-catalog-client` wheel at the
+pinned git tag using your shell's existing git credentials — an
+ssh key against `git@github.com` is the simplest setup. If you
+want edits to `../soyuz-catalog` to surface without a tag bump,
+`bash scripts/use-editable-soyuz.sh` swaps the pin to the sibling
+checkout.
 
 **3. Browse the catalog:**
 
@@ -147,11 +171,12 @@ uv run pyright               # type-check
 uv run pre-commit run -a     # all hooks
 ```
 
-If `uv sync` complains about a missing `soyuz-catalog-client`,
-it is because the editable path dependency points at
-`../soyuz-catalog/soyuz-catalog-client`. Either check out
-soyuz-catalog next to this repo or edit `pyproject.toml` /
-`uv.lock` to point at a different location.
+If `uv sync` fails to fetch `soyuz-catalog-client`, confirm your
+shell has git credentials for the private soyuz-catalog repo (an
+ssh key against `github.com`, or a classic PAT wired through
+`git config --global url.insteadOf`). See
+[`docs/install.md`](docs/install.md) Troubleshooting for the full
+checklist.
 
 ## Configuration
 
