@@ -447,6 +447,10 @@ class QueryHistory(Base):
             ``None`` on failure.
         error_message: Exception detail on failure, else ``None``.
         request_id: Correlates with structured log lines.
+        chart_config: Sprint-54 JSON-as-text payload capturing the
+            user's chart selection (type, X column, Y column) so
+            re-runs from ``/queries`` replay the same visualisation.
+            ``None`` means "show the table view".
     """
 
     __tablename__ = "query_history"
@@ -469,6 +473,7 @@ class QueryHistory(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    chart_config: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class QueryHistoryTable(Base):

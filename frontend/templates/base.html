@@ -93,6 +93,13 @@
          aria-atomic="true"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"></script>
+    <!-- Sprint 54: Chart.js 4.x UMD.  Loaded non-module so every page
+         gets ``window.Chart`` synchronously.  Do NOT switch to the
+         ``chart.esm.js`` build — the SQL editor's Alpine IIFE expects
+         ``window.Chart`` at factory-return time, and the Phase-12
+         Alpine-race replay fix (commit b830300) burned us on exactly
+         this category of bug. -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     <script src="/static/js/editable.js"></script>
     <script src="/static/js/properties_editor.js"></script>
     <script src="/static/js/tags_editor.js"></script>

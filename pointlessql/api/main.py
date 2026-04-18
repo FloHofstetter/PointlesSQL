@@ -869,8 +869,9 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 logger.debug("conn.close() raised: %s", exc)
 
     finished_at = datetime.now(UTC)
+    history_id: int | None = None
     if not explain:
-        await _record_query_async(
+        history_id = await _record_query_async(
             request,
             sql_text=query,
             started_at=started_at,
@@ -905,6 +906,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
 
     return {
         "query_id": query_id,
+        "history_id": history_id,
         "is_explain": explain,
         "explain_text": explain_text,
         "columns": result.columns,
@@ -1227,6 +1229,104 @@ async def api_list_queries(
         since=_parse_since(since),
         limit=effective_limit,
     )
+
+
+@app.get("/api/queries/{history_id}")
+async def api_get_query(request: Request, history_id: int) -> dict[str, Any]:
+    """Return a single ``query_history`` row as JSON.
+
+    Used by the Sprint-54 chart-replay flow: the editor fetches a
+    row by id to seed its chart config when the user opens a deep
+    link.  404 collapses ``missing`` and ``forbidden`` so an
+    unprivileged caller cannot probe IDs.
+
+    Args:
+        request: Incoming request (for the current user).
+        history_id: ``query_history.id`` to fetch.
+
+    Returns:
+        The history row dict.
+
+    Raises:
+        CatalogNotFoundError: If the row is missing or invisible.
+    """  # noqa: DOC502,DOC503 — raised below
+    from pointlessql.exceptions import CatalogNotFoundError
+
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise CatalogNotFoundError(f"Query {history_id} not found.")
+    user = _get_user(request)
+    row = await asyncio.to_thread(
+        query_history_service.get_by_id,
+        factory,
+        history_id,
+        user_id=user["id"],
+        is_admin=bool(user.get("is_admin", False)),
+    )
+    if row is None:
+        raise CatalogNotFoundError(f"Query {history_id} not found.")
+    return row
+
+
+@app.patch("/api/queries/{history_id}/chart-config")
+async def api_update_query_chart_config(
+    request: Request,
+    history_id: int,
+    body: dict[str, Any] = Body(...),
+) -> dict[str, Any]:
+    """Persist the user's chart selection for a history row.
+
+    The body carries ``chart_config`` as either a dict (stored
+    canonically as ``json.dumps``-serialised text) or ``null`` to
+    clear the persisted selection.  Only the row owner and admin
+    users may mutate.
+
+    Args:
+        request: Incoming request.
+        history_id: ``query_history.id`` to update.
+        body: Mapping with a ``chart_config`` key carrying either a
+            dict ``{type, x, y}`` or ``null``.
+
+    Returns:
+        The updated history row dict.
+
+    Raises:
+        CatalogNotFoundError: If the row is missing or not owned by
+            the caller (admins exempt).
+        ValidationError: If ``chart_config`` is present but is neither
+            a mapping nor ``null``.
+    """  # noqa: DOC502,DOC503 — raised below
+    from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise CatalogNotFoundError(f"Query {history_id} not found.")
+    user = _get_user(request)
+    payload = body or {}
+    raw = payload.get("chart_config")
+    if raw is None:
+        serialised: str | None = None
+    elif isinstance(raw, dict):
+        serialised = json.dumps(raw, separators=(",", ":"), sort_keys=True)
+    else:
+        raise ValidationError("chart_config must be an object or null.")
+    row = await asyncio.to_thread(
+        query_history_service.update_chart_config,
+        factory,
+        history_id,
+        user_id=user["id"],
+        is_admin=bool(user.get("is_admin", False)),
+        chart_config=serialised,
+    )
+    if row is None:
+        raise CatalogNotFoundError(f"Query {history_id} not found.")
+    await _audit(
+        request,
+        "query.chart_config_updated",
+        f"query_history:{history_id}",
+        {"cleared": serialised is None},
+    )
+    return row
 
 
 @app.get("/queries", response_class=HTMLResponse)

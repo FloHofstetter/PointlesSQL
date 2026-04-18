@@ -170,9 +170,113 @@ def list_queries(
                 "error_message": r.error_message,
                 "request_id": r.request_id,
                 "tables": tables_by_id.get(r.id, []),
+                "chart_config": r.chart_config,
             }
             for r in rows
         ]
+
+
+def get_by_id(
+    factory: sessionmaker[Session],
+    history_id: int,
+    *,
+    user_id: int,
+    is_admin: bool,
+) -> dict[str, Any] | None:
+    """Return a single history row if visible to the caller, else ``None``.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        history_id: ``query_history.id`` to fetch.
+        user_id: Caller's user id for owner gating.
+        is_admin: Whether the caller is an admin.
+
+    Returns:
+        The row as a dict (same shape as :func:`list_queries` entries),
+        or ``None`` if the row is missing or the caller lacks visibility.
+        Missing and forbidden collapse to the same return value so
+        unguessable IDs cannot be probed.
+    """
+    with factory() as session:
+        row = session.get(QueryHistory, history_id)
+        if row is None:
+            return None
+        if not is_admin and row.user_id != user_id:
+            return None
+        tables = session.scalars(
+            select(QueryHistoryTable).where(
+                QueryHistoryTable.query_history_id == row.id
+            )
+        ).all()
+        return {
+            "id": row.id,
+            "user_id": row.user_id,
+            "user_email": row.user_email,
+            "sql_text": row.sql_text,
+            "started_at": row.started_at.isoformat() if row.started_at else None,
+            "finished_at": row.finished_at.isoformat() if row.finished_at else None,
+            "status": row.status,
+            "row_count": row.row_count,
+            "duration_ms": row.duration_ms,
+            "error_message": row.error_message,
+            "request_id": row.request_id,
+            "tables": [t.full_name for t in tables],
+            "chart_config": row.chart_config,
+        }
+
+
+def update_chart_config(
+    factory: sessionmaker[Session],
+    history_id: int,
+    *,
+    user_id: int,
+    is_admin: bool,
+    chart_config: str | None,
+) -> dict[str, Any] | None:
+    """Persist the user's chart selection on an existing history row.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        history_id: ``query_history.id`` to update.
+        user_id: Caller's user id for owner gating.
+        is_admin: Whether the caller is an admin.
+        chart_config: JSON-as-text payload with ``{type, x, y}`` keys,
+            or ``None`` to clear the persisted chart and revert to
+            the table-only view.
+
+    Returns:
+        The updated row as a dict, or ``None`` when the row is absent
+        or invisible to the caller.
+    """
+    with factory() as session:
+        row = session.get(QueryHistory, history_id)
+        if row is None:
+            return None
+        if not is_admin and row.user_id != user_id:
+            return None
+        row.chart_config = chart_config
+        session.commit()
+        session.refresh(row)
+        tables = session.scalars(
+            select(QueryHistoryTable).where(
+                QueryHistoryTable.query_history_id == row.id
+            )
+        ).all()
+        return {
+            "id": row.id,
+            "user_id": row.user_id,
+            "user_email": row.user_email,
+            "sql_text": row.sql_text,
+            "started_at": row.started_at.isoformat() if row.started_at else None,
+            "finished_at": row.finished_at.isoformat() if row.finished_at else None,
+            "status": row.status,
+            "row_count": row.row_count,
+            "duration_ms": row.duration_ms,
+            "error_message": row.error_message,
+            "request_id": row.request_id,
+            "tables": [t.full_name for t in tables],
+            "chart_config": row.chart_config,
+        }
 
 
 def count_queries(factory: sessionmaker[Session]) -> int:

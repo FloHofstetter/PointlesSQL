@@ -132,7 +132,7 @@
                                 {% endfor %}
                             </td>
                             <td class="text-end pe-3">
-                                <a href="/sql?prefill={{ entry.sql_text|urlencode }}"
+                                <a href="/sql?prefill={{ entry.sql_text|urlencode }}&history_id={{ entry.id }}"
                                    class="btn btn-outline-primary btn-sm"
                                    title="Re-run in SQL editor">
                                     <i class="bi bi-arrow-clockwise"></i>
