@@ -1968,7 +1968,7 @@ PointlesSQL
 │   │       Sprint-58 decision — MVP ships static mime bundles
 │   │       only.
 │   │
-│   ├── Sprint 61 — Pyright LSP + autocomplete                🔜 in progress
+│   ├── Sprint 61 — Pyright LSP + autocomplete                ✅ done (027ac66)
 │   │   ├── ``pyright>=1.1`` moves from dev-only to a runtime
 │   │   │   dep so the pypi package's ``pyright-langserver``
 │   │   │   binary lands on ``.venv/bin`` for both local dev
