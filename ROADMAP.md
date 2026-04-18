@@ -1844,7 +1844,7 @@ PointlesSQL
 │   │     users.
 │   │   - Phase-8 Papermill pipeline stays functional throughout.
 │   │
-│   ├── Sprint 58 — Percent parser + Monaco skeleton          🔜 in progress
+│   ├── Sprint 58 — Percent parser + Monaco skeleton          ✅ done (513fd68)
 │   │   ├── New dep: ``jupytext>=1.16`` for cell parsing /
 │   │   │   writing
 │   │   ├── ``pointlessql/services/notebook_doc.py`` — load /
