@@ -1437,7 +1437,7 @@ PointlesSQL
 │   time, build the publish pipeline in the same sprint that
 │   flips visibility.
 │
-├── Phase 11 — Hardening                                 🔜 in progress
+├── Phase 11 — Hardening                                 ✅ done
 │   │
 │   │   Goal: harden the runtime surfaces before layering more
 │   │   features on. Phase 10 shipped a working release pipeline,
@@ -1623,7 +1623,7 @@ PointlesSQL
 │   │
 │   ├── Sprint 46 — Graceful JWT signing-key rotation  ✅ done (fc2cc99)
 │   │
-│   └── Sprint 47 — Test-suite regressions  ⏳ in progress
+│   └── Sprint 47 — Test-suite regressions  ✅ done (b6381a6)
 │       ├── Pin every in-memory SQLite test engine to
 │       │   ``StaticPool`` + ``check_same_thread=False`` so the
 │       │   schema survives when ``asyncio.to_thread``-backed code
