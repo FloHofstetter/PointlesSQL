@@ -1740,7 +1740,7 @@ PointlesSQL
 │   │
 │   │   Sprint outline:
 │   │
-│   ├── Sprint 49 — SQL editor MVP                          🔜 in progress
+│   ├── Sprint 49 — SQL editor MVP                          ✅ done (b0f705d)
 │   │   CodeMirror + `/sql` + `PQL.sql()` + sqlglot-based
 │   │   table resolution + SELECT enforcement per referenced
 │   │   table. No history, no save, no export yet.
