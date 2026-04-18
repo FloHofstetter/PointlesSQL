@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/csrf.html" import csrf_input with context %}
 {% block title %}Login — PointlesSQL{% endblock %}
 
 {% block content_class %}d-flex align-items-center justify-content-center{% endblock %}
@@ -18,6 +19,7 @@
         {% endif %}
 
         <form method="post" action="/auth/login" hx-boost="false" class="pql-stack">
+            {{ csrf_input() }}
             <div>
                 <label for="email" class="form-label">Email</label>
                 <input type="email" class="form-control" id="email" name="email"

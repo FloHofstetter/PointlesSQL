@@ -1,0 +1,17 @@
+{#
+  CSRF hidden-input macro.
+
+  Import with ``{% from "_macros/csrf.html" import csrf_input %}`` and
+  call ``{{ csrf_input() }}`` as the first child of every state-changing
+  ``<form>``. The value comes from ``request.state.csrf_token`` which
+  ``csrf_middleware`` attaches on every request.
+
+  HTMX-boosted state-changing requests receive the same token via the
+  ``X-CSRF-Token`` header (auto-injected by the hook in ``base.html``),
+  so they do not need a hidden input — the macro is for non-boosted
+  forms like ``/auth/login``, ``/auth/register``, and the logout
+  dropdown item.
+#}
+{% macro csrf_input() -%}
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+{%- endmacro %}

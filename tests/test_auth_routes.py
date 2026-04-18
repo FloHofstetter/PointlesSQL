@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from pointlessql.api.main import app
 from pointlessql.models import Base
 from pointlessql.services import auth
+from tests.conftest import seed_csrf
 
 
 @pytest.fixture(autouse=True)
@@ -93,6 +94,7 @@ class TestRegisterFlow:
             base_url="http://test",
             follow_redirects=False,
         ) as client:
+            token = await seed_csrf(client)
             # Register.
             resp = await client.post(
                 "/auth/register",
@@ -101,6 +103,7 @@ class TestRegisterFlow:
                     "display_name": "Test User",
                     "password": "password123",
                     "password_confirm": "password123",
+                    "csrf_token": token,
                 },
             )
             assert resp.status_code == 303
@@ -109,7 +112,11 @@ class TestRegisterFlow:
             # Login.
             resp = await client.post(
                 "/auth/login",
-                data={"email": "user@test.com", "password": "password123"},
+                data={
+                    "email": "user@test.com",
+                    "password": "password123",
+                    "csrf_token": token,
+                },
             )
             assert resp.status_code == 303
             assert resp.headers["location"] == "/"
@@ -120,6 +127,7 @@ class TestRegisterFlow:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
+            token = await seed_csrf(client)
             resp = await client.post(
                 "/auth/register",
                 data={
@@ -127,6 +135,7 @@ class TestRegisterFlow:
                     "display_name": "Test",
                     "password": "password123",
                     "password_confirm": "different",
+                    "csrf_token": token,
                 },
             )
         assert resp.status_code == 400
@@ -137,6 +146,7 @@ class TestRegisterFlow:
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
+            token = await seed_csrf(client)
             resp = await client.post(
                 "/auth/register",
                 data={
@@ -144,6 +154,7 @@ class TestRegisterFlow:
                     "display_name": "Test",
                     "password": "short",
                     "password_confirm": "short",
+                    "csrf_token": token,
                 },
             )
         assert resp.status_code == 400
@@ -232,7 +243,11 @@ class TestLogout:
             cookies={auth.COOKIE_NAME: token},
             follow_redirects=False,
         ) as client:
-            resp = await client.post("/auth/logout")
+            csrf_token = await seed_csrf(client)
+            resp = await client.post(
+                "/auth/logout",
+                data={"csrf_token": csrf_token},
+            )
         assert resp.status_code == 303
         assert resp.headers["location"] == "/auth/login"
         # Cookie should be deleted (set to empty or max_age=0).

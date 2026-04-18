@@ -11,6 +11,7 @@
   the current-user dropdown follow the same ``current_user`` /
   ``current_user.is_admin`` gating as the original inline markup.
 #}
+{% from "_macros/csrf.html" import csrf_input with context %}
 {% set nav_list_class = nav_list_class or "navbar-nav" %}
 <ul class="{{ nav_list_class }}">
     <li class="nav-item dropdown">
@@ -74,6 +75,7 @@
             <li><hr class="dropdown-divider"></li>
             <li>
                 <form method="post" action="/auth/logout" hx-boost="false" class="m-0">
+                    {{ csrf_input() }}
                     <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Sign out</button>
                 </form>
             </li>

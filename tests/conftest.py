@@ -33,7 +33,7 @@ from sqlalchemy.orm import sessionmaker
 from pointlessql.api.main import app
 from pointlessql.models import Base
 from pointlessql.pql.pql import PQL
-from pointlessql.services import auth
+from pointlessql.services import auth, csrf
 from pointlessql.services.soyuz_client import make_soyuz_client
 
 _TEST_SECRET = "test-secret-key-for-unit-tests!!"
@@ -103,6 +103,19 @@ def auth_cookies() -> dict[str, str]:
 def non_admin_cookies() -> dict[str, str]:
     """Return a dict with the auth cookie for the non-admin test user."""
     return app.state._test_non_admin_cookie
+
+
+async def seed_csrf(client: Any) -> str:
+    """Seed the CSRF cookie on an ``httpx.AsyncClient`` and return the token.
+
+    The Sprint 42 CSRF middleware rejects any non-safe request that
+    arrives without a matching ``pql_csrf`` cookie. Tests that submit
+    form POSTs to ``/auth/*`` (or any future non-API HTML form route)
+    should ``await seed_csrf(client)`` before the POST to obtain the
+    token and let httpx's cookie jar carry the cookie into the POST.
+    """
+    resp = await client.get("/auth/login")
+    return resp.cookies[csrf.COOKIE_NAME]
 
 
 _E2E_CATALOG = "e2e_smoke_catalog"

@@ -26,6 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.auth_routes import router as auth_router
+from pointlessql.api.csrf_middleware import csrf_middleware as _csrf_middleware
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.exceptions import (
     AuthorizationError,
@@ -185,6 +186,14 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     if path.startswith("/api/"):
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
     return RedirectResponse(url="/auth/login", status_code=303)
+
+
+# CSRF enforcement runs between auth and request_id: Starlette stacks
+# middleware LIFO (last-registered is outermost), so request_id wraps
+# csrf wraps auth. A CSRF failure short-circuits before auth's user
+# lookup, and the 403 response still carries the outer request-id
+# header for ops. Sprint 42.
+app.middleware("http")(_csrf_middleware)
 
 
 @app.middleware("http")

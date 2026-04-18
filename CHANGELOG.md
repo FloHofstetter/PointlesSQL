@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 42)
+
+- **CSRF protection for HTML form routes.** Second Phase 11 hardening
+  sprint. A new `csrf_middleware` implements the OWASP
+  double-submit-cookie pattern: every request without a `pql_csrf`
+  cookie gets one (`HttpOnly`, `SameSite=Lax`, matches the JWT
+  cookie's `max_age`), and every non-safe method outside `/api/`,
+  `/static/`, or `/healthz` must echo that cookie back via either a
+  `csrf_token` form field or an `X-CSRF-Token` header. The
+  `base.html` HTMX hook auto-attaches the header for every
+  boosted request from the `<meta name="csrf-token">` tag, so
+  existing HTMX flows pick up protection with zero per-route edits.
+  A new `{{ csrf_input() }}` Jinja macro wires the three non-boosted
+  forms (login, register, logout). Token rotates on local-login,
+  OIDC-login, and logout to prevent fixation; failed login keeps the
+  existing cookie so retry works without a page reload. New playbook
+  `docs/e2e-walkthroughs/csrf.md` and `tests/test_csrf.py` cover
+  cookie issuance, both submission paths, rotation, the `/api/*`
+  exemption, and body re-injection so downstream handlers still see
+  posted fields.
+
 ### Added (Sprint 41)
 
 - **Admin audit-log viewer at `/admin/audit`.** First sprint of

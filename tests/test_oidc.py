@@ -15,6 +15,7 @@ from pointlessql.api.main import app
 from pointlessql.models import Base
 from pointlessql.services import auth
 from pointlessql.services import oidc as oidc_service
+from tests.conftest import seed_csrf
 
 SECRET = "test-secret-key-for-unit-tests!!"
 
@@ -623,9 +624,14 @@ class TestLocalLoginWithOIDCEnabled:
             base_url="http://test",
             follow_redirects=False,
         ) as client:
+            csrf_token = await seed_csrf(client)
             resp = await client.post(
                 "/auth/login",
-                data={"email": "local@test.com", "password": "password123"},
+                data={
+                    "email": "local@test.com",
+                    "password": "password123",
+                    "csrf_token": csrf_token,
+                },
             )
 
         assert resp.status_code == 303

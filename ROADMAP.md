@@ -1473,10 +1473,39 @@ PointlesSQL
 │   │       rows + tolerates non-JSON `detail`, action + target
 │   │       filters narrow correctly
 │   │
+│   ├── Sprint 42 — CSRF protection for HTML form routes     ⏳ in progress
+│   │   ├── New `csrf_middleware` enforces the OWASP double-
+│   │   │   submit-cookie pattern on every non-safe request that
+│   │   │   does not start with `/api/`, `/static/`, or equal
+│   │   │   `/healthz`. Token comparison is timing-safe via
+│   │   │   `secrets.compare_digest`
+│   │   ├── Cookie `pql_csrf` is `HttpOnly`, `SameSite=Lax`,
+│   │   │   `max_age` matches the JWT auth cookie. Middleware
+│   │   │   issues a token on every request without one and
+│   │   │   rejects any state-changing POST that cookie could not
+│   │   │   plausibly have matched yet
+│   │   ├── `{{ csrf_input() }}` Jinja macro wired into the three
+│   │   │   non-boosted forms (`pages/login.html`,
+│   │   │   `pages/register.html`, the logout form in
+│   │   │   `components/nav_links.html`)
+│   │   ├── HTMX hook in `base.html` injects `X-CSRF-Token` on
+│   │   │   every non-safe request from the `<meta name="csrf-token">`
+│   │   │   tag — zero per-route edits for the boosted routes
+│   │   ├── Token rotates on local-login, OIDC-login, and logout
+│   │   │   to prevent fixation; failed login keeps the existing
+│   │   │   cookie so retry works without a reload
+│   │   ├── New playbook `docs/e2e-walkthroughs/csrf.md` covering
+│   │   │   cookie issuance, meta/input agreement, login rotation,
+│   │   │   HTMX auto-header, tamper → 403, and the `/api/*`
+│   │   │   exemption
+│   │   └── `tests/test_csrf.py` — cookie issuance + rendered
+│   │       meta/input match, form-field path, `X-CSRF-Token`
+│   │       header path, missing/mismatched token → 403,
+│   │       login and logout rotation, `/api/*` exemption, body
+│   │       re-injection so handlers still see form fields
+│   │
 │   │   Remaining Phase 11 scope (not yet split into sprints):
 │   │
-│   ├── CSRF protection on all state-changing HTML form routes
-│   │   (the JSON API is fine; browser-form POSTs currently are not)
 │   ├── Rate limiting on `/auth/*` and on `/api/sql/*` once
 │   │   Phase 12 lands
 │   └── Graceful-rotation story for `secret_key` (JWT signing) so

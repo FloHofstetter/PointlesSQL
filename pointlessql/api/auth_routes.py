@@ -10,7 +10,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from pointlessql.services import auth
+from pointlessql.services import auth, csrf
 from pointlessql.services import oidc as oidc_service
 from pointlessql.settings import Settings
 
@@ -90,6 +90,16 @@ async def login_submit(
         samesite="lax",
         max_age=settings.jwt_expiry_hours * 3600,
     )
+    # Rotate the CSRF cookie on successful login — standard token
+    # fixation prevention, matching the auth cookie's attributes.
+    response.set_cookie(
+        csrf.COOKIE_NAME,
+        csrf.generate_token(),
+        httponly=True,
+        samesite="lax",
+        max_age=settings.jwt_expiry_hours * 3600,
+        path="/",
+    )
     return response
 
 
@@ -144,8 +154,21 @@ async def register_submit(
 @router.post("/logout")
 async def logout(request: Request):
     """Clear the session cookie and redirect to login."""
+    settings = _settings(request)
     response = RedirectResponse(url="/auth/login", status_code=303)
     response.delete_cookie(auth.COOKIE_NAME)
+    # Rotate the CSRF cookie alongside the auth cookie. Deleting it
+    # would just force the middleware to re-issue a fresh one on the
+    # redirect target; rotating in place keeps the token bound to the
+    # new anonymous session and makes the state change observable.
+    response.set_cookie(
+        csrf.COOKIE_NAME,
+        csrf.generate_token(),
+        httponly=True,
+        samesite="lax",
+        max_age=settings.jwt_expiry_hours * 3600,
+        path="/",
+    )
     return response
 
 
@@ -304,6 +327,16 @@ async def oidc_callback(request: Request):
         httponly=True,
         samesite="lax",
         max_age=settings.jwt_expiry_hours * 3600,
+    )
+    # Rotate the CSRF cookie on SSO login, matching the local-login
+    # path in ``login_submit``.
+    response.set_cookie(
+        csrf.COOKIE_NAME,
+        csrf.generate_token(),
+        httponly=True,
+        samesite="lax",
+        max_age=settings.jwt_expiry_hours * 3600,
+        path="/",
     )
     response.delete_cookie(oidc_service.STATE_COOKIE_NAME)
     return response
