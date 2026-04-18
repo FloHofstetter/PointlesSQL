@@ -180,3 +180,21 @@ class PQLWriteError(EngineError):
     """
 
     error_code: str = "pql_write_error"
+
+
+class SQLExecutionError(PointlessSQLError):
+    """Raised when Phase 12's DuckDB execution path rejects a query.
+
+    Covers both the parse / scope guard (``SELECT`` only, single
+    statement, 3-part refs only) and DuckDB's own runtime errors
+    (column not found, type mismatch, etc.).  Both are user-facing
+    400s — the message is shown verbatim in the editor so the user
+    can fix their query.
+
+    Attributes:
+        status_code: Always 400.
+        error_code: Always ``"sql_execution_error"``.
+    """
+
+    status_code: int = 400
+    error_code: str = "sql_execution_error"

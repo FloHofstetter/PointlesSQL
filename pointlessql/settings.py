@@ -274,6 +274,23 @@ class DeltaSettings(BaseSettings):
     engine: str = "pandas"
 
 
+class SQLSettings(BaseSettings):
+    """Phase-12 ad-hoc SQL editor configuration.
+
+    Reads ``POINTLESSQL_SQL_*`` environment variables.  ``enabled``
+    hides ``/sql`` and rejects ``/api/sql/*`` at the route layer when
+    ``False``.  ``max_rows`` caps the LIMIT DuckDB applies to every
+    query; ``query_timeout_seconds`` is wired in Sprint 52 but the
+    knob is declared here so operators can set it once and forget.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SQL_")
+
+    enabled: bool = True
+    max_rows: int = 10_000
+    query_timeout_seconds: int = 60
+
+
 class Settings(BaseSettings):
     """Root settings aggregating every sub-model.
 
@@ -298,3 +315,4 @@ class Settings(BaseSettings):
     scheduler: SchedulerSettings = Field(default_factory=SchedulerSettings)
     audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
+    sql: SQLSettings = Field(default_factory=SQLSettings)

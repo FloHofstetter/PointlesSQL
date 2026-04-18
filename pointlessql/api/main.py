@@ -542,6 +542,185 @@ async def api_table_preview(
     return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
 
 
+def _short_sql_hash(sql: str) -> str:
+    """Return a short deterministic digest of *sql* for audit-log targets.
+
+    The audit-log ``target`` field is a single human-readable identifier
+    (``catalog:foo``, ``query:abc123``…); a full SQL string would blow
+    past the reasonable column width.  A 12-char truncated SHA-256 is
+    enough to correlate with the ``query_history`` row landing in
+    Sprint 50 and to tell apart identical-looking queries.
+
+    Args:
+        sql: The SQL string to hash.
+
+    Returns:
+        A 12-character hexadecimal digest.
+    """
+    import hashlib
+
+    return hashlib.sha256(sql.encode("utf-8")).hexdigest()[:12]
+
+
+def _run_sql_sync(
+    settings: Settings,
+    query: str,
+    approved_tables: dict[str, str],
+    max_rows: int,
+) -> Any:
+    """Execute *query* in the sync :class:`PQL` SQL bridge.
+
+    Wrapped in a thin module-level helper so the FastAPI route can
+    dispatch it via :func:`asyncio.to_thread` without capturing the
+    PQL import at request time.  Any :class:`SQLExecutionError` or
+    :class:`ValidationError` raised inside propagates unchanged — the
+    centralised error handler turns them into RFC 9457 responses.
+
+    Args:
+        settings: Application settings (unused by :meth:`PQL.sql` at
+            present but threaded through so future engine selection
+            can read it without signature churn).
+        query: The user-entered SQL.
+        approved_tables: Full-name → storage-location map that the
+            route already enforced ``SELECT`` on.
+        max_rows: Row cap applied after execution.
+
+    Returns:
+        A :class:`pointlessql.pql.pql.SQLResult` dataclass.
+    """
+    from pointlessql.pql.pql import PQL
+
+    del settings  # reserved for future engine selection
+    return PQL.sql(query, approved_tables=approved_tables, max_rows=max_rows)
+
+
+@app.post("/api/sql/execute")
+async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    """Parse, enforce, execute a single SELECT against the UC lakehouse.
+
+    Flow (Sprint 49 scope):
+
+    1. Parse via :func:`~pointlessql.pql.sql_parser.prepare_sql` to
+       extract the 3-part table references and a DuckDB-safe rewrite
+       of the SQL.
+    2. For every referenced table: fetch ``storage_location`` from
+       soyuz-catalog and call ``check_privilege(SELECT)``.  Admin
+       short-circuits per :mod:`pointlessql.services.authorization`.
+    3. Dispatch :meth:`PQL.sql` via :func:`asyncio.to_thread` so the
+       event loop keeps serving other requests during the DuckDB
+       call.
+    4. Audit the execution with the Phase-12 ``query.executed``
+       action string (per ROADMAP settled decision).
+
+    Sprint 49 explicit non-goals: history (50), save (51), export
+    (52), EXPLAIN / autocomplete / cancel (52, 53).  Errors raised
+    inside the parse / enforce / execute stages map to RFC 9457
+    problem+json via the centralised handler.
+
+    Args:
+        request: The incoming FastAPI request.  Needs ``request.state.user``
+            (auth middleware) and ``request.app.state.settings``.
+        body: JSON body with a single ``sql`` key.
+
+    Returns:
+        The serialised :class:`SQLResult` as a plain dict.
+
+    Raises:
+        SQLExecutionError: If the SQL editor is disabled, the SQL is
+            malformed or out-of-scope, or DuckDB rejects the query
+            at execution time.
+        AuthorizationError: If the user lacks ``SELECT`` on any
+            referenced table (raised by :func:`check_privilege`).
+        CatalogNotFoundError: If a referenced table is unknown to
+            soyuz-catalog or has no ``storage_location``.
+    """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
+    from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
+    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+
+    settings: Settings = request.app.state.settings
+    if not settings.sql.enabled:
+        raise SQLExecutionError("The SQL editor is disabled on this deployment.")
+
+    query = (body or {}).get("sql") or ""
+    if not isinstance(query, str):
+        raise SQLExecutionError("The 'sql' field must be a string.")
+
+    try:
+        prepared = prepare_sql(query)
+    except SQLParseError as exc:
+        raise SQLExecutionError(str(exc)) from exc
+
+    client = _get_uc_client(request)
+    user = _get_user(request)
+    email = user.get("email", "")
+    is_admin = user.get("is_admin", False)
+
+    approved: dict[str, str] = {}
+    for full_name in prepared.refs:
+        parts = full_name.split(".")
+        if len(parts) != 3:
+            raise SQLExecutionError(
+                f"Internal error: expected 3-part name, got {full_name!r}.",
+            )
+        table_info = await client.get_table(parts[0], parts[1], parts[2])
+        if not table_info:
+            raise CatalogNotFoundError(f"Table not found: {full_name!r}")
+        storage_location = table_info.get("storage_location")
+        if not isinstance(storage_location, str) or not storage_location:
+            raise CatalogNotFoundError(
+                f"Table {full_name!r} has no storage_location on soyuz-catalog.",
+            )
+        await check_privilege(client, email, is_admin, "table", full_name, SELECT)
+        approved[full_name] = storage_location
+
+    result = await asyncio.to_thread(
+        _run_sql_sync,
+        settings,
+        query,
+        approved,
+        settings.sql.max_rows,
+    )
+
+    await _audit(
+        request,
+        "query.executed",
+        f"query:{_short_sql_hash(query)}",
+        {
+            "row_count": result.row_count,
+            "duration_ms": result.duration_ms,
+            "tables": result.referenced_tables,
+            "truncated": result.truncated,
+        },
+    )
+
+    return {
+        "columns": result.columns,
+        "rows": result.rows,
+        "row_count": result.row_count,
+        "truncated": result.truncated,
+        "duration_ms": result.duration_ms,
+        "executed_sql": result.executed_sql,
+        "referenced_tables": result.referenced_tables,
+    }
+
+
+@app.get("/sql", response_class=HTMLResponse)
+async def sql_editor_page(request: Request) -> HTMLResponse:
+    """Render the Phase-12 SQL editor page."""
+    settings: Settings = request.app.state.settings
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/sql_editor.html",
+        {
+            "sql_enabled": settings.sql.enabled,
+            "active_page": "sql",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
 @app.post("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/open-in-notebook")
 async def api_open_in_notebook(
     request: Request,

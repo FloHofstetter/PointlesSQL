@@ -149,6 +149,33 @@ def _duckdb_type_to_uc(duckdb_type: str) -> tuple[str, str]:
     return _DUCKDB_TYPE_MAP.get(duckdb_type.upper(), ("STRING", "string"))
 
 
+def register_delta_view(
+    conn: duckdb.DuckDBPyConnection,
+    full_name: str,
+    storage_location: str,
+) -> None:
+    """Register a Delta table as a DuckDB view named after its UC path.
+
+    Reuses the :class:`DuckDBEngine` bridge (Delta → PyArrow Dataset →
+    DuckDB).  The view is created at the dotted catalog name so the
+    user's verbatim SQL (``SELECT * FROM main.sales.orders``) binds
+    to this registration without rewriting.  We use ``register`` with
+    the 3-part name verbatim so the view is scoped to the connection
+    and disappears when the connection closes.
+
+    Args:
+        conn: A live DuckDB connection.
+        full_name: The UC ``catalog.schema.table`` three-part name,
+            used verbatim as the view identifier.
+        storage_location: Filesystem path or URI of the Delta table.
+    """
+    import deltalake
+
+    dt = deltalake.DeltaTable(storage_location)
+    arrow_dataset = dt.to_pyarrow_dataset()
+    conn.register(full_name, arrow_dataset)
+
+
 class DuckDBEngine:
     """Engine that reads Delta tables as DuckDB relations.
 

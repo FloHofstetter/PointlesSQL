@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import time
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import httpx
@@ -34,12 +36,51 @@ from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.exceptions import CatalogNotFoundError, CatalogUnavailableError
+from pointlessql.exceptions import (
+    CatalogNotFoundError,
+    CatalogUnavailableError,
+    SQLExecutionError,
+    ValidationError,
+)
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._parsing import parse_full_name
-from pointlessql.pql.engine import Engine, make_engine
+from pointlessql.pql.engine import Engine, make_engine, register_delta_view
+from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.settings import Settings
+
+
+@dataclass(frozen=True)
+class SQLResult:
+    """The outcome of a Phase-12 :meth:`PQL.sql` execution.
+
+    All fields are JSON-encodable so the route handler can serialise
+    the result straight into a ``JSONResponse`` body.
+
+    Attributes:
+        columns: One dict per output column with ``name`` and
+            stringified DuckDB ``type``.
+        rows: The result rows as a list of lists (column order matches
+            :attr:`columns`).
+        row_count: Length of :attr:`rows` after any row-cap slicing.
+        truncated: ``True`` iff the underlying query produced more
+            rows than ``max_rows`` and the excess was dropped.
+        duration_ms: Wall-clock execution time on the DuckDB engine.
+        executed_sql: The SQL string the caller supplied (unchanged).
+        rewritten_sql: What was actually sent to DuckDB after the
+            3-part → single-quoted-identifier rewrite.
+        referenced_tables: The list of UC ``catalog.schema.table``
+            references extracted from the parsed SQL.
+    """
+
+    columns: list[dict[str, str]]
+    rows: list[list[Any]]
+    row_count: int
+    truncated: bool
+    duration_ms: int
+    executed_sql: str
+    rewritten_sql: str
+    referenced_tables: list[str]
 
 
 class PQL:
@@ -127,6 +168,105 @@ class PQL:
             raise CatalogNotFoundError(msg)
 
         return self._engine.read(location)
+
+    # ------------------------------------------------------------------
+    # SQL execution (Phase 12)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def sql(
+        query: str,
+        *,
+        approved_tables: dict[str, str],
+        max_rows: int = 10_000,
+    ) -> SQLResult:
+        """Run a single SELECT against DuckDB with UC-backed views.
+
+        The caller is responsible for enforcement: every 3-part
+        reference parsed out of *query* must appear in
+        *approved_tables* mapped to its Delta ``storage_location``.
+        The method will refuse to execute if a reference is missing
+        so a silent privilege-check bypass cannot leak data.
+
+        Always opens a fresh :class:`duckdb.DuckDBPyConnection` so
+        view registrations from one query never bleed into another.
+
+        Args:
+            query: The user-entered SQL.  Must be a single SELECT.
+            approved_tables: Mapping of fully-qualified table name to
+                its Delta storage location.  Keys must be a superset
+                of the table references extracted from *query*.
+            max_rows: Post-execution row cap.  Extra rows are dropped
+                and :attr:`SQLResult.truncated` is set to ``True``.
+                Set by ``POINTLESSQL_SQL_MAX_ROWS`` in normal use.
+
+        Returns:
+            A :class:`SQLResult` with columns, rows, and metrics.
+
+        Raises:
+            SQLExecutionError: If *query* fails to parse, falls
+                outside Phase-12's SELECT-only scope, or DuckDB
+                rejects it at execution time.
+            ValidationError: If a referenced table is not present in
+                *approved_tables* (defence-in-depth against a route
+                that forgot to enforce).
+        """
+        import duckdb
+
+        try:
+            prepared = prepare_sql(query)
+        except SQLParseError as exc:
+            raise SQLExecutionError(str(exc)) from exc
+        missing = [r for r in prepared.refs if r not in approved_tables]
+        if missing:
+            msg = (
+                f"Cannot execute: table reference(s) {missing!r} were not "
+                f"approved by the route layer. This is a bug in the caller."
+            )
+            raise ValidationError(msg)
+
+        conn = duckdb.connect()
+        try:
+            for ref in prepared.refs:
+                register_delta_view(conn, ref, approved_tables[ref])
+
+            start = time.perf_counter()
+            try:
+                arrow_result = conn.execute(prepared.rewritten_sql).to_arrow_table()
+            except duckdb.Error as exc:
+                raise SQLExecutionError(str(exc)) from exc
+            duration_ms = int((time.perf_counter() - start) * 1000)
+
+            total = arrow_result.num_rows
+            if total > max_rows:
+                arrow_result = arrow_result.slice(0, max_rows)
+                truncated = True
+            else:
+                truncated = False
+
+            columns = [
+                {"name": name, "type": str(arrow_result.schema.field(name).type)}
+                for name in arrow_result.column_names
+            ]
+            # Convert to JSON-friendly lists.  ``to_pylist`` yields a
+            # list of dicts keyed by column name; flatten to lists so
+            # the frontend's listTable can iterate positionally.
+            rows_as_dicts = arrow_result.to_pylist()
+            col_names = list(arrow_result.column_names)
+            rows = [[row.get(c) for c in col_names] for row in rows_as_dicts]
+
+            return SQLResult(
+                columns=columns,
+                rows=rows,
+                row_count=len(rows),
+                truncated=truncated,
+                duration_ms=duration_ms,
+                executed_sql=query,
+                rewritten_sql=prepared.rewritten_sql,
+                referenced_tables=list(prepared.refs),
+            )
+        finally:
+            conn.close()
 
     # ------------------------------------------------------------------
     # Write

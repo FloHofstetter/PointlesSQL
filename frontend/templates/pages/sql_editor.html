@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}SQL · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "SQL"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Phase-12 editor surface. Mobile stacking lives in Sprint 53. */
+    .pql-sql-editor-host {
+        min-height: 30vh;
+        border: 1px solid var(--bs-border-color);
+        border-radius: 0.25rem;
+        overflow: hidden;
+    }
+    .pql-sql-editor-host .cm-editor { height: 100%; }
+    .pql-sql-results-wrap { overflow-x: auto; }
+    .pql-sql-results-wrap table { font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not sql_enabled %}
+<div class="text-center py-5">
+    <i class="bi bi-code-square display-1 text-muted mb-3 d-block"></i>
+    <h2 class="h4 mb-2">SQL editor disabled</h2>
+    <p class="text-muted">
+        Set <code>POINTLESSQL_SQL_ENABLED=true</code> to enable the Phase-12 SQL editor.
+    </p>
+</div>
+{% else %}
+<div x-data="sqlEditor()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-code-square fs-3"></i>
+            <h1 class="h3 mb-0">SQL</h1>
+        </div>
+        <div class="text-muted small" x-show="lastRun" x-cloak>
+            <span x-text="lastRun.summary"></span>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div id="pql-sql-editor-root" class="pql-sql-editor-host mb-3"></div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        @click="run()"
+                        :disabled="running">
+                    <span x-show="!running">
+                        <i class="bi bi-play-fill"></i> Run
+                    </span>
+                    <span x-show="running" x-cloak>
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        Running…
+                    </span>
+                </button>
+                <span class="text-muted small align-self-center ms-2">
+                    <kbd>Cmd</kbd>+<kbd>Enter</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>
+                </span>
+                <span class="ms-auto text-muted small align-self-center" x-show="referencedTables.length" x-cloak>
+                    Tables: <template x-for="t in referencedTables" :key="t"><code class="me-1" x-text="t"></code></template>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" x-show="result || error" x-cloak>
+        <div class="card-body">
+            <template x-if="error">
+                <div class="alert alert-danger mb-0 mb-0">
+                    <div class="fw-semibold mb-1">
+                        <i class="bi bi-x-octagon me-1"></i> <span x-text="errorTitle"></span>
+                    </div>
+                    <pre class="mb-0" x-text="error"></pre>
+                </div>
+            </template>
+
+            <template x-if="result">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">
+                        <span>
+                            <span x-text="result.row_count"></span>
+                            row<span x-text="result.row_count === 1 ? '' : 's'"></span>
+                            <span x-show="result.truncated" class="badge text-bg-warning ms-2">truncated</span>
+                        </span>
+                        <span><span x-text="result.duration_ms"></span> ms</span>
+                    </div>
+                    <div class="pql-sql-results-wrap">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead>
+                                <tr>
+                                    <template x-for="c in result.columns" :key="c.name">
+                                        <th class="text-nowrap">
+                                            <span x-text="c.name"></span>
+                                            <small class="text-muted ms-1" x-text="c.type"></small>
+                                        </th>
+                                    </template>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(row, i) in result.rows" :key="i">
+                                    <tr>
+                                        <template x-for="(cell, j) in row" :key="j">
+                                            <td class="text-nowrap" x-text="formatCell(cell)"></td>
+                                        </template>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script type="importmap">
+{
+  "imports": {
+    "@codemirror/state": "https://cdn.jsdelivr.net/npm/@codemirror/state@6.5.2/+esm",
+    "@codemirror/view": "https://cdn.jsdelivr.net/npm/@codemirror/view@6.37.2/+esm",
+    "@codemirror/commands": "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/+esm",
+    "@codemirror/language": "https://cdn.jsdelivr.net/npm/@codemirror/language@6.11.1/+esm",
+    "@codemirror/lang-sql": "https://cdn.jsdelivr.net/npm/@codemirror/lang-sql@6.9.0/+esm",
+    "@codemirror/theme-one-dark": "https://cdn.jsdelivr.net/npm/@codemirror/theme-one-dark@6.1.3/+esm"
+  }
+}
+</script>
+<script type="module" src="/static/js/sql_editor.js"></script>
+{% endblock %}

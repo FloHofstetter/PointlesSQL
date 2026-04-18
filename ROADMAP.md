@@ -1740,22 +1740,24 @@ PointlesSQL
 │   │
 │   │   Sprint outline:
 │   │
-│   ├── SQL editor MVP — CodeMirror + `/sql` + `PQL.sql()` +
-│   │   sqlglot-based table resolution + SELECT enforcement per
-│   │   referenced table. No history, no save, no export yet
-│   ├── Query history — Alembic migration adds `query_history` +
-│   │   `query_history_tables`; `/queries` page with filter
-│   │   chips + re-run button; non-admin sees only own rows
-│   ├── Saved queries — Alembic migration adds `saved_queries`;
-│   │   share model parallel to Sprint-28 dashboards; sidebar
-│   │   drawer on the editor
-│   ├── Export + limits + cancel — CSV / Parquet download via
-│   │   re-run-from-history; row limit + query timeout; cancel
-│   │   button via DuckDB `.interrupt()`
-│   └── EXPLAIN + autocomplete + close — EXPLAIN toggle,
-│       table-name autocomplete from catalog tree, `g s`
-│       keyboard shortcut, mobile stacking,
-│       `docs/e2e-walkthroughs/sql-editor.md` playbook, phase close
+│   ├── Sprint 49 — SQL editor MVP                          🔜 in progress
+│   │   CodeMirror + `/sql` + `PQL.sql()` + sqlglot-based
+│   │   table resolution + SELECT enforcement per referenced
+│   │   table. No history, no save, no export yet.
+│   ├── Sprint 50 — Query history                           ⏳ planned
+│   │   Alembic 012 adds `query_history` + `query_history_tables`;
+│   │   `/queries` page with filter chips + re-run button;
+│   │   non-admin sees only own rows.
+│   ├── Sprint 51 — Saved queries                            ⏳ planned
+│   │   Alembic 013 adds `saved_queries`; share model parallel
+│   │   to Sprint-28 dashboards; sidebar drawer on the editor.
+│   ├── Sprint 52 — Export + limits + cancel                 ⏳ planned
+│   │   CSV / Parquet download via re-run-from-history; row
+│   │   limit + query timeout; cancel via DuckDB `.interrupt()`.
+│   └── Sprint 53 — EXPLAIN + autocomplete + close           ⏳ planned
+│       EXPLAIN toggle, table-name autocomplete from catalog
+│       tree, mobile stacking,
+│       `docs/e2e-walkthroughs/sql-editor.md` playbook, phase close.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

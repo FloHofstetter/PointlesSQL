@@ -4,6 +4,87 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 49) — SQL editor MVP
+
+- **`POST /api/sql/execute` + `GET /sql` page.** First Phase 12 sprint.
+  A dedicated ad-hoc SQL surface next to the Notebook tab: the user
+  types ``SELECT … FROM catalog.schema.table`` in a CodeMirror-6
+  editor, presses :kbd:`Cmd+Enter`, and sees the result table
+  inline.  No history, no save, no export, no EXPLAIN, no cancel
+  yet — those land in Sprints 50-53.
+- **`PQL.sql()` + DuckDB-only engine for SQL.** Phase-5's
+  ``POINTLESSQL_DELTA_ENGINE`` still drives :meth:`PQL.table` reads,
+  but ad-hoc SQL is hard-wired to DuckDB (``duckdb`` was already a
+  dep).  The new :meth:`pointlessql.pql.pql.PQL.sql` is a
+  :func:`staticmethod` that opens a fresh DuckDB connection per
+  request, registers every referenced Delta table as a view, runs
+  the query, caps the result at ``POINTLESSQL_SQL_MAX_ROWS`` (default
+  10 000), and returns a JSON-friendly ``SQLResult`` dataclass.
+- **sqlglot-based 3-part-reference parser + rewriter.** New
+  ``pointlessql/pql/sql_parser.py`` parses the user's SQL once with
+  ``sqlglot.parse(dialect="duckdb")`` and returns a ``PreparedSQL``
+  carrying (a) the distinct ``catalog.schema.table`` references in
+  first-appearance order and (b) a rewritten form where each 3-part
+  reference is collapsed to a single quoted identifier.  DuckDB
+  reserves ``main`` as a catalog name and refuses to bind 3-part UC
+  references natively; the route registers each Delta view at
+  exactly that quoted identifier so the rewrite binds.  CTE
+  aliases, subquery aliases, and 2-part / 1-part references are
+  handled correctly (skipped or rejected).
+- **Per-table SELECT enforcement.** The route fetches
+  ``storage_location`` + effective permissions from soyuz-catalog
+  for every referenced table and calls :func:`check_privilege` with
+  ``SELECT``.  Admin short-circuits per the Phase 7 behaviour.  A
+  missing grant raises :class:`AuthorizationError`, which the
+  Sprint-44 RFC 9457 handler renders as
+  ``application/problem+json`` with ``required_privilege=SELECT`` +
+  ``full_name`` extension members.
+- **Audit on execute.** Every successful call writes a
+  ``query.executed`` audit row (per ROADMAP's Sprint-48 follow-up:
+  Phase 12 audit actions use the ``resource.verb`` convention).
+  The ``target`` is a truncated-SHA256 hash of the SQL so identical
+  queries from different users collapse into one reverse-lookup key
+  without blowing out the audit row width; ``detail`` carries a
+  dict with ``row_count``, ``duration_ms``, referenced ``tables``,
+  and the ``truncated`` flag.
+- **CodeMirror 6 via CDN import-map.** The new ``pages/sql_editor.html``
+  loads ``@codemirror/state``, ``@codemirror/view``,
+  ``@codemirror/lang-sql`` and ``@codemirror/theme-one-dark``
+  straight from ``cdn.jsdelivr.net`` through a ``<script type=
+  "importmap">`` — matches the existing Bootstrap/Alpine/htmx CDN
+  strategy.  Vendoring is deferred until a CSP or offline-install
+  requirement makes it necessary.
+- **Navbar + shortcut.** New "SQL" entry in
+  ``components/nav_links.html`` (between Notebook and Jobs; shown
+  to every logged-in user, not admin-gated — everyone is allowed
+  to query what they have ``SELECT`` on).  ``g s`` added to the
+  command-palette chord registry (``components/command_palette.html``)
+  so ``g s`` from any page jumps to ``/sql``.
+- **Settings.** New :class:`pointlessql.settings.SQLSettings`
+  sub-model.  ``POINTLESSQL_SQL_ENABLED`` (default ``True``),
+  ``POINTLESSQL_SQL_MAX_ROWS`` (default 10 000), and
+  ``POINTLESSQL_SQL_QUERY_TIMEOUT_SECONDS`` (default 60 — the
+  timeout knob is declared now; wiring lands in Sprint 52).  Set
+  ``POINTLESSQL_SQL_ENABLED=false`` and the ``/sql`` page renders
+  a disabled placeholder while ``/api/sql/execute`` returns a
+  400 ``sql_execution_error``.
+- **New exception ``SQLExecutionError``.** ``status_code=400``,
+  ``error_code="sql_execution_error"``.  Covers both parse-time
+  rejections (multi-statement, non-SELECT, 2-part refs) and
+  DuckDB's own runtime errors (unknown column, type mismatch, …).
+  Both surface the message verbatim so the user can fix their
+  query without guessing.
+- **Deps.** Added ``sqlglot>=26.0`` (resolved to 30.4.3 at lock
+  time).  CodeMirror is CDN-loaded; no Python-side dep needed.
+- Tests: 13 new unit tests in ``tests/test_sql_parser.py`` covering
+  single refs, joins, CTE aliases, subqueries, deduplication,
+  no-table queries, bad-format rejection, and the DuckDB rewrite
+  output shape.  8 new route tests in ``tests/test_sql_execute.py``
+  covering admin happy path, non-admin-without-SELECT 403,
+  non-admin-with-SELECT happy path, malformed SQL 400, 2-part
+  rejection 400, row-cap truncation, zero-table SELECT 1, and
+  ``/sql`` page render.
+
 ### Added (Sprint 48) — audit-log hardening
 
 - **Append-only ORM guards.** :class:`AuditLog` ``before_update``
