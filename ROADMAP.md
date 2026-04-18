@@ -1621,7 +1621,27 @@ PointlesSQL
 │   │   sprint once the SQL editor lands (the route doesn't exist
 │   │   yet)
 │   │
-│   └── Sprint 46 — Graceful JWT signing-key rotation  ✅ done (fc2cc99)
+│   ├── Sprint 46 — Graceful JWT signing-key rotation  ✅ done (fc2cc99)
+│   │
+│   └── Sprint 47 — Test-suite regressions  ⏳ in progress
+│       ├── Pin every in-memory SQLite test engine to
+│       │   ``StaticPool`` + ``check_same_thread=False`` so the
+│       │   schema survives when ``asyncio.to_thread``-backed code
+│       │   paths (the home-summary ``_db_block``) hit the engine
+│       │   from a worker thread. Covers ``test_catalogs_index``,
+│       │   ``test_non_admin_denied_without_grant``,
+│       │   ``test_connections_html_denied_for_non_admin``,
+│       │   ``test_authenticated_access``, and the two
+│       │   ``test_foreign_catalog`` home-modal tests (5 tests)
+│       ├── ``test_enforcement`` 403-copy assertions updated from
+│       │   ``"Access Denied"`` (pre-Sprint-30 title) to the
+│       │   current ``"Access denied"`` that the 403 template
+│       │   actually renders (2 tests)
+│       └── ``test_list_tables`` updated from
+│           ``ListTablesResponse(identifiers=…)`` to ``tables=…``
+│           after the soyuz-catalog-client v0.2 rename — the
+│           production ``pql.list_tables`` already reads
+│           ``response.tables`` (1 test)
 │       ├── New optional ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS``
 │       │   env var on ``AuthSettings``; ``verify_jwt`` tries the
 │       │   primary key first and falls back to the previous key

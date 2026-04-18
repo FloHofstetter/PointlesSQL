@@ -29,6 +29,7 @@ from soyuz_catalog_client.models.create_catalog import CreateCatalog
 from soyuz_catalog_client.models.create_schema import CreateSchema
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import app
 from pointlessql.models import Base
@@ -47,10 +48,19 @@ def _auth_db():
     backend. Defaults to in-memory SQLite when unset.
     """
     db_url = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
-    connect_args: dict[str, object] = {}
+    engine_kwargs: dict[str, object] = {}
     if db_url.startswith("sqlite"):
-        connect_args["check_same_thread"] = False
-    engine = create_engine(db_url, connect_args=connect_args)
+        # ``sqlite:///:memory:`` creates a *per-connection* database, so
+        # a pooled QueuePool gives each worker thread its own empty
+        # copy — ``asyncio.to_thread``-backed code paths like
+        # ``_build_home_summary._db_block`` then report "no such
+        # table: jobs". Pinning every test to a single shared
+        # connection (``StaticPool`` + ``check_same_thread=False``)
+        # keeps the schema alive across threads without forcing
+        # callers onto a temp file (Sprint 47).
+        engine_kwargs["connect_args"] = {"check_same_thread": False}
+        engine_kwargs["poolclass"] = StaticPool
+    engine = create_engine(db_url, **engine_kwargs)
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
 

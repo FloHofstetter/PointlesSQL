@@ -142,7 +142,7 @@ class TestCatalogEnforcement:
         async with _non_admin_client() as client:
             resp = await client.get("/catalogs/test_cat")
         assert resp.status_code == 403
-        assert "Access Denied" in resp.text
+        assert "Access denied" in resp.text
 
     async def test_non_admin_allowed_with_use_catalog(self) -> None:
         app.state.uc_client = _make_uc_mock(
@@ -298,7 +298,7 @@ class TestFederationAdminOnly:
         async with _non_admin_client() as client:
             resp = await client.get("/connections")
         assert resp.status_code == 403
-        assert "Access Denied" in resp.text
+        assert "Access denied" in resp.text
 
     async def test_connections_html_allowed_for_admin(self) -> None:
         app.state.uc_client = _make_uc_mock()

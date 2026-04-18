@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed (Sprint 47) — test-suite regressions
+
+- **In-memory SQLite test schemas survive the worker thread.**
+  ``asyncio.to_thread``-backed code paths (``_build_home_summary``'s
+  ``_db_block``) hit the engine from a separate thread, and the
+  default ``QueuePool`` + ``sqlite:///:memory:`` combination gives
+  each worker its own empty database — tests that touched ``/`` or
+  ``/catalogs/…`` reported "no such table: jobs" even though the
+  root-conftest ran ``Base.metadata.create_all``. Fix: pin every
+  in-memory engine to ``StaticPool`` + ``check_same_thread=False``
+  in ``tests/conftest.py`` and ``tests/test_auth_routes.py``. No
+  production code changes.
+- **403 enforcement tests match the rendered title case.**
+  ``test_enforcement.py`` still asserted the pre-Sprint-30
+  ``"Access Denied"`` title; the current 403 template renders
+  ``"Access denied"`` (lowercase ``d``) via ``_STATUS_TITLES`` and
+  hardcoded copy. Two assertions updated.
+- **``test_list_tables`` matches the current soyuz-catalog-client
+  wire format.** ``ListTablesResponse(identifiers=…)`` → ``tables=…``
+  after the v0.2 rename (the production ``pql.list_tables`` already
+  reads ``response.tables``).
+
 ### Added (Sprint 46)
 
 - **Graceful JWT signing-key rotation.** Final Phase 11 hardening

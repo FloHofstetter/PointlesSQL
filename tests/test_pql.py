@@ -313,7 +313,10 @@ class TestPQLListMethods:
     def test_list_tables(self, mock_list: MagicMock) -> None:
         tbl = MagicMock()
         tbl.to_dict.return_value = {"name": "t1"}
-        mock_list.sync.return_value = ListTablesResponse(identifiers=[tbl])
+        # soyuz-catalog-client ``ListTablesResponse`` renamed
+        # ``identifiers`` → ``tables`` in v0.2 (matches UC's
+        # ``/tables`` wire format). Keep the test in sync.
+        mock_list.sync.return_value = ListTablesResponse(tables=[tbl])
         pql = PQL(client=MagicMock())
         result = pql.list_tables("cat", "sch")
         mock_list.sync.assert_called_once_with(

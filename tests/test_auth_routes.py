@@ -8,6 +8,7 @@ import httpx
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import app
 from pointlessql.models import Base
@@ -19,7 +20,14 @@ from tests.conftest import seed_csrf
 @pytest.fixture(autouse=True)
 def _setup_app(tmp_path):
     """Set up app state with an in-memory auth DB for every test."""
-    engine = create_engine("sqlite:///:memory:")
+    # StaticPool + check_same_thread=False keep the in-memory schema
+    # alive when ``asyncio.to_thread``-backed code paths (the home-
+    # summary ``_db_block``) run on a worker thread (Sprint 47).
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine)
 
