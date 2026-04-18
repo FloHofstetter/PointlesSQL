@@ -2057,7 +2057,7 @@ PointlesSQL
 │   │       Phase 12.6.  Anything that needs ``comm_msg`` round-
 │   │       trips lands in Phase 12.7.
 │   │
-│   ├── Sprint 63 — Papermill bridge + retire JupyterLab       🔜 in progress
+│   ├── Sprint 63 — Papermill bridge + retire JupyterLab       ✅ done (accbeca)
 │   │   ├── Phase-8 Papermill: ``_papermill_executor`` in
 │   │   │   ``services/scheduler.py`` gains a jupytext-convert
 │   │   │   step — ``.py`` inputs are written to a sibling
