@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 58) — Native notebook editor skeleton
+
+Phase 12.6 opens with the skeleton of a first-party Monaco-based
+notebook editor that will eventually replace the Sprint-3
+JupyterLab iframe. Scope for Sprint 58 is deliberately narrow:
+load, render, save. Execution, LSP, and persisted outputs land in
+Sprints 59–60.
+
+- **ADR 0001** — ``docs/adr/0001-notebook-editor.md`` locks in
+  the three decisions every subsequent Phase-12.6 sprint builds
+  on: single Monaco over a virtual document (not one editor per
+  cell), output-persistence schema keyed by
+  ``(file_path, cell_id, kernel_session_id)``, cell identity
+  via UUIDs written into jupytext cell-marker metadata under the
+  custom ``pql_cell_id`` key (marker form
+  ``# %% pql_cell_id="<uuid>"``; the filter
+  ``cell_metadata_filter: pql_cell_id,-all`` pins it into the
+  notebook frontmatter so jupytext preserves the key on
+  round-trip).
+- **Service layer.** ``pointlessql/services/notebook_doc.py``
+  wraps jupytext for ``.py`` Percent-format load / save with a
+  ``resolve_py_notebook_path`` traversal guard that mirrors the
+  Sprint-27 upload helper.  First load of a foreign notebook
+  mints UUIDs for any cell without one and flags the document
+  ``dirty`` so the editor can prompt a save.
+- **Routes.** ``GET /notebook/editor?path=<relative>`` renders
+  the editor with the initial document as a JSON blob the
+  Alpine component consumes synchronously on mount.  Missing
+  files scaffold an empty cell and are materialised on first
+  save.  ``POST /api/notebook/doc`` persists the client's cell
+  list back to disk; the CSRF middleware gates it via the
+  ``X-CSRF-Token`` header.  Both routes reject paths that
+  escape the notebooks directory or lack a ``.py`` suffix.
+- **Frontend.** ``frontend/templates/pages/notebook_editor.html``
+  hosts a single Monaco instance; cell boundaries render as
+  background colour bands via ``deltaDecorations``.  Add-cell
+  inserts a ``# %% pql_cell_id="<uuid>"`` marker through
+  ``editor.executeEdits`` — no DOM mount / unmount.  The
+  client-side cell parser accepts only the canonical UUID
+  marker form the server writes; foreign marker variants stay
+  a jupytext-on-the-server concern.
+- **Monaco vendoring.** ``scripts/vendor-monaco.sh`` pins
+  monaco-editor 0.52.0, fetches the tarball from
+  ``registry.npmjs.org`` and extracts ``min/vs`` into
+  ``frontend/js/vendor/monaco/vs/``.  Contents are gitignored
+  (~14 MB); run the script once after ``git clone`` and
+  whenever ``MONACO_VERSION`` bumps.
+- **Navbar.** "Notebook" becomes a dropdown — ``JupyterLab
+  (classic)`` still points at the Sprint-3 iframe,
+  ``Editor (preview)`` opens the new route at
+  ``?path=scratch.py``.  Hard rule: the iframe stays live
+  until Sprint 63.
+
 ### Added (Sprint 57) — UC Volumes (upload + convert-to-Delta)
 
 Phase 12.5 closes with the "I have a CSV, make it go" moment.

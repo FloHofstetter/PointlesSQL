@@ -43,6 +43,7 @@ from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services import metrics as metrics_service
+from pointlessql.services import notebook_doc as notebook_doc_service
 from pointlessql.services import notebook_render as notebook_render_service
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.services import pg_sync as pg_sync_service
@@ -3344,6 +3345,117 @@ async def notebook_page(request: Request) -> HTMLResponse:
             "active_table": None,
         },
     )
+
+
+@app.get("/notebook/editor", response_class=HTMLResponse)
+async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
+    """Render the native Phase-12.6 notebook editor (preview).
+
+    The editor opens the ``.py`` (jupytext Percent format) notebook at
+    ``path``, relative to the notebooks directory. If the file does
+    not exist yet the page renders with a single empty code cell and
+    first save materialises the file on disk — mirrors how VSCode's
+    Python Interactive window treats a fresh buffer.
+
+    Args:
+        request: Incoming FastAPI request.
+        path: Relative path under :attr:`Settings.notebooks_dir`.
+            Must end in ``.py`` and must not escape the notebooks
+            directory.
+
+    Returns:
+        Rendered HTML carrying the initial document as a JSON blob
+        the Alpine component consumes synchronously on mount.
+    """
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    resolved = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, path, must_exist=False
+    )
+    if resolved.is_file():
+        document = notebook_doc_service.load_document(resolved, path)
+        initial = {
+            "cells": [
+                {"id": cell.id, "cell_type": cell.cell_type, "source": cell.source}
+                for cell in document.cells
+            ],
+            "dirty": document.dirty,
+        }
+    else:
+        initial = {
+            "cells": [
+                {"id": str(uuid4()), "cell_type": "code", "source": ""},
+            ],
+            "dirty": True,
+        }
+    return _TEMPLATES.TemplateResponse(
+        request,
+        "pages/notebook_editor.html",
+        {
+            "notebook_path": path,
+            "initial_document": initial,
+            "active_page": "notebook_editor",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+@app.post("/api/notebook/doc")
+async def api_save_notebook_doc(
+    request: Request,
+    body: dict[str, Any] = Body(...),
+) -> dict[str, str]:
+    """Persist a notebook document from the Sprint-58 editor to disk.
+
+    The request body is ``{"path": str, "cells": [{"id", "cell_type",
+    "source"}, …]}``. Cells are written in jupytext Percent format
+    via :func:`notebook_doc.save_document`; a missing parent directory
+    is a :class:`ValidationError` so the editor never silently creates
+    arbitrary nested folders.
+
+    Args:
+        request: Incoming FastAPI request. The CSRF middleware already
+            checks the ``X-CSRF-Token`` header before the handler runs.
+        body: The parsed JSON payload.
+
+    Returns:
+        ``{"path": str, "status": "saved"}``.
+
+    Raises:
+        ValidationError: On bad payload shape, traversal attempt, or
+            non-existent parent directory.
+    """
+    settings: Settings = request.app.state.settings
+    path = body.get("path")
+    raw_cells = body.get("cells")
+    if not isinstance(path, str) or not isinstance(raw_cells, list):
+        raise ValidationError("payload must carry 'path': str and 'cells': list")
+    cells: list[notebook_doc_service.NotebookCell] = []
+    for idx, raw in enumerate(raw_cells):
+        if not isinstance(raw, dict):
+            raise ValidationError(f"cell {idx} must be an object")
+        cell_id = raw.get("id")
+        cell_type = raw.get("cell_type")
+        source = raw.get("source")
+        if not isinstance(cell_id, str) or not cell_id:
+            raise ValidationError(f"cell {idx} missing 'id'")
+        if cell_type not in ("code", "markdown"):
+            raise ValidationError(f"cell {idx} has unsupported cell_type {cell_type!r}")
+        if not isinstance(source, str):
+            raise ValidationError(f"cell {idx} 'source' must be a string")
+        cells.append(
+            notebook_doc_service.NotebookCell(
+                id=cell_id, cell_type=cell_type, source=source
+            )
+        )
+    resolved = notebook_doc_service.resolve_py_notebook_path(
+        settings.jupyter.notebooks_dir.resolve(), path, must_exist=False
+    )
+    notebook_doc_service.save_document(resolved, cells)
+    await _audit(request, "notebook.saved", f"notebook:{path}", f"cells={len(cells)}")
+    return {"path": path, "status": "saved"}
 
 
 @app.get("/api/jupyter/status")

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Editor · {{ notebook_path }} · PointlesSQL{% endblock %}
+{% block content_class %}pql-content--notebook-editor{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="/static/js/vendor/monaco/vs/editor/editor.main.css">
+<style>
+    .pql-nbedit-root { display: flex; flex-direction: column; min-height: calc(100vh - 60px); }
+    .pql-nbedit-toolbar { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem;
+                          border-bottom: 1px solid var(--bs-border-color); background: var(--bs-body-bg); }
+    .pql-nbedit-toolbar .pql-nbedit-path { font-family: var(--bs-font-monospace); font-size: 0.9rem;
+                                           color: var(--bs-secondary-color); }
+    .pql-nbedit-toolbar .pql-nbedit-dirty { font-size: 0.8rem; color: var(--bs-warning); }
+    .pql-nbedit-editor { flex: 1 1 auto; min-height: 400px; }
+    .pql-nbedit-cell-band-code { background: rgba(108, 117, 125, 0.08); }
+    .pql-nbedit-cell-band-markdown { background: rgba(13, 110, 253, 0.07); }
+    .pql-nbedit-cell-marker { color: var(--bs-info); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pql-nbedit-root"
+     x-data="notebookEditor({
+         path: {{ notebook_path|tojson }},
+         initial: {{ initial_document|tojson }},
+     })"
+     x-init="mount()">
+    <div class="pql-nbedit-toolbar">
+        <span class="pql-nbedit-path" x-text="path"></span>
+        <template x-if="dirty">
+            <span class="pql-nbedit-dirty">
+                <i class="bi bi-exclamation-circle me-1"></i>unsaved changes
+            </span>
+        </template>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="addCellBelow()"
+                    :disabled="loading">
+                <i class="bi bi-plus-lg me-1"></i>Add cell
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="save()"
+                    :disabled="loading || !dirty">
+                <i class="bi bi-save me-1"></i>Save
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-primary"
+                    disabled
+                    title="Execution lands in Sprint 59">
+                <i class="bi bi-play-fill me-1"></i>Run cell
+            </button>
+        </div>
+    </div>
+    <div class="pql-nbedit-editor" x-ref="editor"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/vendor/monaco/vs/loader.js"></script>
+<script src="/static/js/notebook_editor.js"></script>
+{% endblock %}

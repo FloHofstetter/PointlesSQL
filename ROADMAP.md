@@ -1811,6 +1811,164 @@ PointlesSQL
 │       existing generated client.  The "I have a CSV, make it go"
 │       moment.
 │
+├── Phase 12.6 — Native Python notebook editor            ⏳ in progress
+│   │
+│   │   Replace the Sprint-3 JupyterLab iframe with a first-party
+│   │   Monaco-based notebook editor. Quality bar = VSCode Python
+│   │   Interactive Window: single Monaco instance over a virtual
+│   │   document with cell decorations, Pyright LSP, dual-source
+│   │   autocomplete (static + kernel), rich outputs persisted in
+│   │   SQLite, Variable Explorer, "Insert from catalog".
+│   │
+│   │   Architecture invariants (locked; see Sprint-58 ADR 0001 at
+│   │   ``docs/adr/0001-notebook-editor.md``):
+│   │   - On-disk source of truth: ``.py`` in jupytext Percent
+│   │     format. ``.ipynb`` lives only where Phase 8 Papermill
+│   │     needs it; Sprint 63 adds a convert-step there.
+│   │   - Cell parsing via ``jupytext`` (all marker variants
+│   │     parsed, ``# %%`` written by default, jupytext per-file
+│   │     header honoured).
+│   │   - Single Monaco instance + view zones (rejects Monaco-
+│   │     per-cell — LSP / undo / cross-cell-nav argument).
+│   │   - Kernel via ``jupyter_client`` ZMQ, FastAPI WS proxy
+│   │     (no ``jupyter_server``).
+│   │   - LSP via ``pyright-langserver --stdio``, FastAPI WS bridge.
+│   │   - Outputs persisted in SQLite keyed by
+│   │     ``(file_path, cell_id, kernel_session_id)`` — non-
+│   │     negotiable: without persistence every reopen of a
+│   │     notebook with a slow ``pql.read_table()`` is a 90 s wait.
+│   │
+│   │   Hard rules:
+│   │   - JupyterLab iframe stays live at ``/notebook`` until
+│   │     Sprint 63 acceptance — no regress window for current
+│   │     users.
+│   │   - Phase-8 Papermill pipeline stays functional throughout.
+│   │
+│   ├── Sprint 58 — Percent parser + Monaco skeleton          🔜 in progress
+│   │   ├── New dep: ``jupytext>=1.16`` for cell parsing /
+│   │   │   writing
+│   │   ├── ``pointlessql/services/notebook_doc.py`` — load /
+│   │   │   save round-trip for ``.py`` percent notebooks;
+│   │   │   writes ``# %%`` by default, honours per-file
+│   │   │   jupytext header if present; UUID assignment on
+│   │   │   first load of a foreign notebook (``dirty`` flag)
+│   │   ├── Monaco 0.52.0 vendored under
+│   │   │   ``frontend/js/vendor/monaco/`` via
+│   │   │   ``scripts/vendor-monaco.sh`` (gitignored ~14 MB
+│   │   │   AMD bundle; dev / Docker bootstraps run the script
+│   │   │   once per version bump)
+│   │   ├── ``GET /notebook/editor?path=<relative>`` Alpine page
+│   │   │   with single Monaco, Python syntax, cell background
+│   │   │   decorations + top toolbar (Run button stubbed,
+│   │   │   tooltip'd "execution lands in Sprint 59"); missing-
+│   │   │   file flow scaffolds an empty cell and first save
+│   │   │   materialises the file
+│   │   ├── ``POST /api/notebook/doc`` save endpoint with the
+│   │   │   same traversal guard the executor uses
+│   │   ├── Navbar: ``Notebook`` link becomes a dropdown with
+│   │   │   ``JupyterLab (classic)`` + ``Editor (preview)``
+│   │   │   entries; existing ``/notebook`` iframe route
+│   │   │   untouched
+│   │   ├── **ADR 0001** committed at
+│   │   │   ``docs/adr/0001-notebook-editor.md`` covering:
+│   │   │   single- vs multi-Monaco, output-DB schema,
+│   │   │   cell-ID strategy
+│   │   └── Out of scope: execution, LSP, outputs, workspace-
+│   │       tree integration (lives under Sprint 63)
+│   │
+│   ├── Sprint 59 — Kernel + WS proxy + basic execution       ⏳ planned
+│   │   ├── New dep: ``jupyter_client>=8.6`` + ``ipykernel>=6.29``
+│   │   ├── ``pointlessql/services/kernel_session.py`` launches
+│   │   │   an ipykernel subprocess per editor tab, exposes
+│   │   │   execute / interrupt / restart; ``POINTLESSQL_PRINCIPAL``
+│   │   │   env forwarding reuses Sprint-24's pattern
+│   │   ├── ``WS /ws/notebook/{session_id}`` FastAPI endpoint
+│   │   │   proxying ZMQ shell / iopub messages as JSON frames
+│   │   ├── Frontend: Shift+Enter / Ctrl+Enter run a cell;
+│   │   │   text / stream / error outputs render under the cell
+│   │   │   (ephemeral — cleared on reload; Sprint 60 persists)
+│   │   ├── Interrupt + restart buttons on the editor toolbar
+│   │   └── Out of scope: rich outputs, persistence, LSP
+│   │
+│   ├── Sprint 60 — Output persistence + rich outputs         ⏳ planned
+│   │   ├── Alembic 017: ``notebook_outputs`` +
+│   │   │   ``notebook_cell_runs`` tables keyed by
+│   │   │   ``(file_path, cell_id, kernel_session_id)`` — DDL
+│   │   │   already pinned in ADR 0001
+│   │   ├── ``pointlessql/services/notebook_outputs.py`` —
+│   │   │   append-on-stream, load-on-open, clear-on-restart
+│   │   ├── Frontend renderers: text / stream / html / png /
+│   │   │   svg / json / pandas-HTML / matplotlib-inline /
+│   │   │   ANSI-traceback; Pandas styling matched to the
+│   │   │   catalog theme
+│   │   ├── Clear-outputs + restart-kernel flows explicitly
+│   │   │   purge persisted rows
+│   │   └── ipywidgets explicitly deferred to Phase 12.7 if it
+│   │       creeps in — MVP uses static mime bundles only
+│   │
+│   ├── Sprint 61 — Pyright LSP + dual-source autocomplete    ⏳ planned
+│   │   ├── New dep: ``pyright>=1.1`` (or ``nodeenv``-pinned
+│   │   │   pyright binary; decide at Sprint-61 kickoff)
+│   │   ├── ``pointlessql/services/pyright_bridge.py`` —
+│   │   │   ``pyright-langserver --stdio`` subprocess per tab,
+│   │   │   WS bridge on ``/ws/lsp/{session_id}``
+│   │   ├── Monaco LSP client wired: completion, hover,
+│   │   │   signatureHelp, definition, diagnostics
+│   │   ├── Kernel ``complete_request`` merged client-side into
+│   │   │   Monaco's completion list (tagged "runtime") so
+│   │   │   DataFrame columns + dynamic attrs surface
+│   │   ├── Scope-killer escape hatch: if dual-source merge is
+│   │   │   brittle, land LSP-only in Sprint 61 and defer
+│   │   │   kernel-autocomplete to a follow-up
+│   │   └── Pydoclint-compatible docstrings on new modules
+│   │
+│   ├── Sprint 62 — Variable Explorer + catalog insert         ⏳ planned
+│   │   ├── ``%who_ls`` / ``inspect_request``-driven Variable
+│   │   │   Explorer sidebar — name, type, shape, preview
+│   │   │   (DataFrames: first 5 rows as Pandas-styled HTML)
+│   │   ├── "Insert from catalog" command (Ctrl+Shift+P modal):
+│   │   │   catalog tree picker → inserts
+│   │   │   ``pql.read_table("cat.schema.tbl")`` at cursor
+│   │   ├── Command palette bindings: Run All, Run Above, Clear
+│   │   │   Outputs, Restart Kernel, Insert Cell Above / Below,
+│   │   │   Toggle Markdown / Code (M / Y), Delete Cell (DD)
+│   │   ├── Plotly / altair sanity smoke (render-only; not a
+│   │   │   full widget story)
+│   │   └── **Scope-gate**: if ipywidgets / interactive widgets
+│   │       start leaking in, split them to Phase 12.7 (new
+│   │       sibling phase) instead of bundling here
+│   │
+│   ├── Sprint 63 — Papermill bridge + retire JupyterLab       ⏳ planned
+│   │   ├── Phase-8 Papermill: jupytext-convert step in
+│   │   │   ``services/scheduler.py``'s papermill executor so
+│   │   │   ``.py`` notebooks can be scheduled (convert →
+│   │   │   papermill → keep ``.ipynb`` output for Sprint-26
+│   │   │   viewer)
+│   │   ├── Sprint-26 viewer re-points at the Sprint-60
+│   │   │   renderer; ``nbconvert`` HTML sidecar becomes a
+│   │   │   fallback-only codepath
+│   │   ├── Sprint-27 workspace tree: show ``.py`` notebooks
+│   │   │   with a notebook icon, "Open in editor" = new editor
+│   │   │   route; ``.ipynb`` still opens the legacy iframe for
+│   │   │   one release
+│   │   ├── Retire ``pointlessql/services/jupyter.py``, remove
+│   │   │   ``jupyterlab`` from ``pyproject.toml``, drop
+│   │   │   ``/notebook`` iframe route + template, drop the
+│   │   │   ``Content-Security-Policy: frame-ancestors`` entry
+│   │   └── CHANGELOG breaking-change note + migration section
+│   │       in ``README.md`` (one release grace window)
+│   │
+│   └── Sprint 64 — E2E playbook + phase close                ⏳ planned
+│       ├── New ``docs/e2e-walkthroughs/notebook-editor.md``
+│       │   playbook — open editor, type cell, run, see output,
+│       │   reload (outputs persist), restart (outputs clear),
+│       │   autocomplete, hover, insert-from-catalog, variable
+│       │   explorer
+│       ├── Playwright-MCP replay against Firefox (bundled
+│       │   chrome-for-testing if firefox flakes — see
+│       │   ``CLAUDE.md`` note)
+│       └── ROADMAP / CHANGELOG close-out; Phase-12.6 → ✅
+│
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
 │   │   Goal: bring "AI employees on the lakehouse" into

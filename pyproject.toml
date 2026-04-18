@@ -48,6 +48,7 @@ dependencies = [
     "papermill>=2.6",
     "nbconvert>=7.0",
     "sqlglot>=26.0",
+    "jupytext>=1.16",
 ]
 
 [dependency-groups]
