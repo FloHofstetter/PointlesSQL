@@ -1597,7 +1597,7 @@ PointlesSQL
 │   │
 │   │   Remaining Phase 11 scope (not yet split into sprints):
 │   │
-│   ├── Sprint 45 — Nested ``BaseSettings`` refactor  ⏳ in progress
+│   ├── Sprint 45 — Nested ``BaseSettings`` refactor  ✅ done (c3cae8c)
 │   │   ├── Flat ``Settings`` split into nine sub-models
 │   │   │   (Server, Soyuz, Database, Auth, OIDC, Logging, RateLimit,
 │   │   │   Jupyter, Scheduler, Delta) each with their own
