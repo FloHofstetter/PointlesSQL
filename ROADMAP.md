@@ -1271,7 +1271,7 @@ PointlesSQL
 │   │       `uv run pointlessql` — succeeded without
 │   │       `../soyuz-catalog`
 │   │
-│   ├── Sprint 39 — PointlesSQL release engineering         ✅ done (9f73dc3, tag v0.1.0rc1 at f578326)
+│   ├── Sprint 39 — PointlesSQL release engineering         ✅ done (9f73dc3; first GitHub Release at v0.1.0rc2 / 74d6dfa after CI-auth follow-on)
 │   │   │
 │   │   │   Mirrors Sprint 37's soyuz shape. Adds the first CI
 │   │   │   this repo has ever had plus a tag-cutting script that
