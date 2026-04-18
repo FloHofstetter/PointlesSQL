@@ -1797,6 +1797,27 @@ PointlesSQL
 │   │   of the `pql`-preinstalled sandbox image; streaming agent
 │   │   logs into PointlesSQL's UI; Paperclip budget metrics
 │   │   propagating into the job-run dashboards
+│   ├── **EXPLAIN-agent query optimiser loop** (Phase-12 bridge):
+│   │   expose ``GET /api/sql/explain?sql=...`` that returns
+│   │   DuckDB's ``EXPLAIN (FORMAT JSON)`` output, then let
+│   │   agents read the plan JSON before execute. Two concrete
+│   │   wins: (a) pre-flight cost estimator — plans above a
+│   │   threshold (rough-row-count × join-depth heuristic) route
+│   │   to Paperclip for human approval instead of running blind;
+│   │   (b) rewrite loop — agent analyses slow operators
+│   │   (cardinality mismatch, CARTESIAN_JOIN on >1M rows), pro-
+│   │   poses a rewrite, re-explains, iterates. Market rationale:
+│   │   Databricks' DBU pricing punishes unoptimised queries
+│   │   linearly, and most analytics teams lack a pre-execute
+│   │   cost-feedback loop — Query Profile UI is ex-post only, so
+│   │   the bill arrives at month-end with no per-query
+│   │   drilldown. PointlesSQL already owns the execute surface
+│   │   (Phase 12) and the audit + history trail (Sprint 50); an
+│   │   EXPLAIN gate turns the stack from "lets agents run SQL"
+│   │   into "forces every SQL — agent or human — through a
+│   │   cost-review". See
+│   │   ``~/.claude/projects/-home-flo-git-PointlesSQL/memory/project_phase13_explain_agent_loop.md``
+│   │   for the session-captured design angle.
 │   └── Optional sidequest `openclaw-plugin-pointlessql` —
 │       chat interface to catalog / SQL / jobs / dashboards via
 │       OpenClaw messaging integrations. Not a sprint inside
