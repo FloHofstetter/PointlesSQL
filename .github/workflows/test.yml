@@ -19,18 +19,22 @@ jobs:
         with:
           path: PointlesSQL
       # Clone soyuz-catalog as a sibling directory so uv can
-      # resolve the client via a local path dep. This is the
-      # "sibling checkout" pattern — avoids fighting uv's git
-      # subprocess auth, because actions/checkout handles the
-      # private-repo fetch via its own battle-tested token flow.
-      # The ref pins the exact soyuz-catalog commit PointlesSQL's
-      # pyproject.toml otherwise pins via git tag.
-      - uses: actions/checkout@v4
-        with:
-          repository: FloHofstetter/soyuz-catalog
-          ref: v0.2.0rc2
-          token: ${{ secrets.SOYUZ_READ_TOKEN }}
-          path: soyuz-catalog
+      # resolve the client via a local path dep (see the
+      # uv.toml-override step below).
+      #
+      # Raw `git clone` with `x-access-token:<pat>@` URL auth —
+      # actions/checkout@v4 cross-repo checkout failed for this
+      # PAT ("could not read Username" despite a verified-working
+      # `Contents: Read` scope), apparently a bug in how
+      # actions/checkout formats basic-auth for fine-grained PATs.
+      # Direct git clone with the same credentials works.
+      - name: Clone soyuz-catalog at pinned tag
+        env:
+          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+        run: |
+          git clone --depth 1 --branch v0.2.0rc2 \
+            "https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/FloHofstetter/soyuz-catalog.git" \
+            soyuz-catalog
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:

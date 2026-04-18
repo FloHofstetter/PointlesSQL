@@ -28,16 +28,16 @@ jobs:
         with:
           fetch-depth: 0  # git-cliff needs full history
           path: PointlesSQL
-      # Sibling-checkout pattern: actions/checkout handles the
-      # private-repo auth for us, then uv resolves soyuz-catalog-
-      # client as an editable path dep (via a CI-only uv.toml
-      # override). See test.yml for the rationale.
-      - uses: actions/checkout@v4
-        with:
-          repository: FloHofstetter/soyuz-catalog
-          ref: v0.2.0rc2
-          token: ${{ secrets.SOYUZ_READ_TOKEN }}
-          path: soyuz-catalog
+      # Raw git clone with x-access-token:<pat>@ URL — see
+      # test.yml for why this replaces actions/checkout@v4's
+      # cross-repo auth path.
+      - name: Clone soyuz-catalog at pinned tag
+        env:
+          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+        run: |
+          git clone --depth 1 --branch v0.2.0rc2 \
+            "https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/FloHofstetter/soyuz-catalog.git" \
+            soyuz-catalog
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
