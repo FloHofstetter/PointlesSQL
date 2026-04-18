@@ -49,6 +49,7 @@ from pointlessql.services import notebook_outputs as notebook_outputs_service
 from pointlessql.services import notebook_render as notebook_render_service
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.services import pg_sync as pg_sync_service
+from pointlessql.services import pyright_bridge as pyright_bridge_service
 from pointlessql.services import query_history as query_history_service
 from pointlessql.services import saved_queries as saved_queries_service
 from pointlessql.services import scheduler as scheduler_service
@@ -3694,6 +3695,95 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
             with contextlib.suppress(asyncio.CancelledError):
                 await task
         session.unsubscribe(subscription)
+
+
+@app.websocket("/ws/notebook/lsp")
+async def ws_notebook_lsp(websocket: WebSocket, path: str) -> None:
+    """Bidirectional LSP JSON-RPC proxy for the notebook editor.
+
+    Sprint 61 endpoint.  Mirrors the Sprint-59 kernel WS: manual
+    cookie-based auth (WS upgrades bypass HTTP middleware), same
+    traversal guard for the notebook path.  One pyright-langserver
+    subprocess is spawned per WS connection and torn down on
+    disconnect — per-tab isolation keeps the routing trivial.
+
+    The WS frames carry raw LSP JSON-RPC messages (request /
+    response / notification) verbatim.  The server is a pure
+    framing proxy: it adds the ``Content-Length`` header on the
+    way in, strips it on the way out.  Client code can therefore
+    use any off-the-shelf LSP client or (in our case) a hand-
+    rolled minimal one on top of Monaco's provider APIs.
+
+    Args:
+        websocket: Incoming FastAPI WebSocket.
+        path: Relative notebook path (query param). Validated with
+            the same traversal guard as the save endpoint.
+    """
+    token = websocket.cookies.get(auth_service.COOKIE_NAME)
+    if not token:
+        await websocket.close(code=4401)
+        return
+
+    factory = websocket.app.state.session_factory
+    settings: Settings = websocket.app.state.settings
+    user = auth_service.get_current_user(
+        factory,
+        token,
+        settings.auth.secret_key,
+        previous_key=settings.auth.secret_key_previous,
+    )
+    if user is None:
+        await websocket.close(code=4401)
+        return
+
+    try:
+        notebook_doc_service.resolve_py_notebook_path(
+            settings.jupyter.notebooks_dir.resolve(),
+            path,
+            must_exist=False,
+        )
+    except ValidationError:
+        await websocket.close(code=4400)
+        return
+
+    if pyright_bridge_service.find_pyright_langserver() is None:
+        await websocket.close(code=4404)
+        return
+
+    await websocket.accept()
+
+    async def _forward_from_pyright(message: dict[str, Any]) -> None:
+        try:
+            await websocket.send_text(json.dumps(message))
+        except WebSocketDisconnect:
+            return
+
+    session = pyright_bridge_service.PyrightSession(_forward_from_pyright)
+    try:
+        await session.start()
+    except Exception as exc:  # noqa: BLE001 — langserver spawn can fail in several ways
+        logger.exception("pyright-langserver start failed for %s", user["email"])
+        await websocket.send_json({
+            "type": "error",
+            "message": f"pyright start failed: {exc}",
+        })
+        await websocket.close(code=1011)
+        return
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(msg, dict):
+                continue
+            await session.send(msg)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await session.shutdown()
 
 
 @app.get("/api/jupyter/status")

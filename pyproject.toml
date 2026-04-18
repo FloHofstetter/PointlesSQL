@@ -51,6 +51,7 @@ dependencies = [
     "jupytext>=1.16",
     "jupyter_client>=8.6",
     "ipykernel>=6.29",
+    "pyright>=1.1",
 ]
 
 [dependency-groups]

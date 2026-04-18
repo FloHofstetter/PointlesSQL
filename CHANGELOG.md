@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 61) — Pyright LSP (completion / hover / diagnostics)
+
+Phase 12.6 Sprint 61 wires ``pyright-langserver`` into the native
+editor over a dedicated WebSocket.  Monaco's CompletionItem,
+Hover, SignatureHelp, and Definition providers now route through
+pyright; diagnostics populate the gutter via
+``monaco.editor.setModelMarkers``.  Kernel-backed dual-source
+completion is explicitly deferred to a follow-up per the plan's
+scope-killer escape hatch — LSP-only ships a clean sprint.
+
+- **Deps.** ``pyright>=1.1`` moves from dev-only to a runtime
+  dep so the ``pyright-langserver`` binary ships on
+  ``.venv/bin`` for both local dev and Docker.
+- **Service layer** (``pointlessql/services/pyright_bridge.py``).
+  ``PyrightSession`` spawns ``pyright-langserver --stdio`` and
+  handles the LSP ``Content-Length`` framing in both directions
+  via asyncio stdio.  Inbound messages dispatch to an async
+  callback (subscriber errors are caught + logged so a broken
+  consumer doesn't tear the reader loop down); outbound
+  messages add the header before writing.  ``shutdown`` sends
+  SIGTERM with a 2 s timeout, then SIGKILL.
+- **WS route.** ``/ws/notebook/lsp?path=<rel>`` mirrors the
+  Sprint-59 kernel WS: manual ``pql_session`` cookie auth,
+  same traversal guard via ``resolve_py_notebook_path``, one
+  pyright subprocess per connection so subprocess lifetime
+  equals tab lifetime.  A 4404 close code fires when
+  ``pyright-langserver`` is missing from ``PATH`` so the UI
+  can say "Pyright unavailable" instead of reconnect-looping.
+- **Frontend.** A ~40-line ``PyrightClient`` handles JSON-RPC
+  request/response correlation + notification subscribers.
+  Monaco provider registration is gated with a module-level
+  flag + a ``WeakMap`` so the same global language id can
+  serve multiple editor instances without cross-fire.
+  ``initialize`` → ``initialized`` → ``textDocument/didOpen``
+  on mount; full-document ``didChange`` on every
+  ``onDidChangeContent`` (notebook-sized buffers, incremental
+  sync is not worth the bookkeeping).
+  ``textDocument/publishDiagnostics`` notifications repaint
+  markers via ``monaco.editor.setModelMarkers``.
+- **Toolbar**. New ``lspStatus`` pill reads "Loading Pyright…"
+  / "Pyright ready" / "Pyright error" / "Pyright unavailable"
+  next to the ``kernelStatus`` pill.
+- **Out of scope (deferred).** Kernel ``complete_request``
+  merged into Monaco's completion list as a second source —
+  explicit scope-killer invocation, lands as a Sprint-61
+  follow-up (or Sprint 62) as a ~30-line provider with no
+  backend changes required.
+- **Validation.** Pyright subprocess smoke proved initialize →
+  didOpen → completion + diagnostics round-trip against a
+  seeded ``json.`` buffer: real module members came back in
+  the completion list, the trailing ``.`` was flagged by the
+  diagnostics channel.  All gates green.
+
 ### Added (Sprint 60) — Output persistence + rich outputs
 
 Phase 12.6 Sprint 60 closes the "reopen doesn't cost 90 seconds"

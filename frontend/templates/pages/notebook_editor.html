@@ -88,6 +88,19 @@
                   'text-warning': kernelStatus === 'connecting' || kernelStatus === 'restarting',
                   'text-danger': kernelStatus === 'disconnected' || kernelStatus === 'error',
               }"></span>
+        <span class="small"
+              x-text="{
+                  'connecting': 'Loading Pyright…',
+                  'ready': 'Pyright ready',
+                  'error': 'Pyright error',
+                  'unavailable': 'Pyright unavailable',
+              }[lspStatus]"
+              :class="{
+                  'text-success': lspStatus === 'ready',
+                  'text-warning': lspStatus === 'connecting',
+                  'text-danger': lspStatus === 'error',
+                  'text-muted': lspStatus === 'unavailable',
+              }"></span>
         <div class="ms-auto d-flex align-items-center gap-2">
             <button type="button"
                     class="btn btn-sm btn-outline-secondary"

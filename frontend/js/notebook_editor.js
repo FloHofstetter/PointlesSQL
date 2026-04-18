@@ -1,4 +1,4 @@
-// Phase 12.6 Sprint 58 + 59 + 60 — Monaco-based notebook editor.
+// Phase 12.6 Sprint 58 + 59 + 60 + 61 — Monaco-based notebook editor.
 //
 // ADR 0001 locks the architecture: single Monaco instance over the
 // whole .py file, cell boundaries rendered via Monaco decorations,
@@ -19,9 +19,15 @@
 //            rich mimes (text/html, image/png, image/svg+xml,
 //            application/json, ANSI-traceback → HTML), Markdown
 //            cells rendered when not being edited.
+// Sprint 61: pyright-langserver over a dedicated WebSocket —
+//            completion, hover, signatureHelp, definition,
+//            diagnostics.  LSP-only for Sprint 61 per the
+//            plan's scope-killer escape hatch; kernel-backed
+//            dual-source completion follows as a 61 follow-up.
 //
-// Out of scope for Sprint 60 and deferred:
-//   - Pyright LSP + dual-source autocomplete → Sprint 61
+// Out of scope for Sprint 61 and deferred:
+//   - Kernel ``complete_request`` merged into Monaco's completion
+//     list as a second source → 61 follow-up (or Sprint 62)
 //   - Variable explorer + "insert from catalog" → Sprint 62
 //   - ipywidgets (interactive widgets) → Phase 12.7 (explicit
 //     split per the Phase-12.6 memory decision)
@@ -188,6 +194,228 @@
         return html;
     }
 
+    // Minimal JSON-RPC / LSP client.  Correlates requests to
+    // responses via the LSP ``id`` field and dispatches
+    // notifications (publishDiagnostics, logMessage) to named
+    // subscribers.  The WebSocket carries raw LSP messages; the
+    // server-side proxy in pointlessql/api/main.py wraps them in
+    // the ``Content-Length`` framing pyright-langserver expects.
+    class PyrightClient {
+        constructor(ws) {
+            this._ws = ws;
+            this._nextId = 1;
+            this._pending = new Map();  // id → {resolve, reject}
+            this._notifications = {};   // method → fn(params)
+        }
+
+        _onMessage(msg) {
+            if (msg.id !== undefined && this._pending.has(msg.id)) {
+                const p = this._pending.get(msg.id);
+                this._pending.delete(msg.id);
+                if (msg.error) p.reject(msg.error);
+                else p.resolve(msg.result);
+            } else if (msg.method && this._notifications[msg.method]) {
+                this._notifications[msg.method](msg.params || {});
+            }
+        }
+
+        request(method, params) {
+            if (this._ws.readyState !== WebSocket.OPEN) {
+                return Promise.reject(new Error('LSP ws not open'));
+            }
+            const id = this._nextId++;
+            this._ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+            return new Promise((resolve, reject) => {
+                this._pending.set(id, { resolve, reject });
+                // Bound safety timeout so the Monaco provider
+                // never hangs forever on a mute pyright.
+                window.setTimeout(() => {
+                    if (this._pending.has(id)) {
+                        this._pending.delete(id);
+                        reject(new Error(`LSP ${method} timed out`));
+                    }
+                }, 8000);
+            });
+        }
+
+        notify(method, params) {
+            if (this._ws.readyState !== WebSocket.OPEN) return;
+            this._ws.send(JSON.stringify({ jsonrpc: '2.0', method, params }));
+        }
+
+        on(method, callback) {
+            this._notifications[method] = callback;
+        }
+    }
+
+    // Map an LSP ``CompletionItemKind`` enum value to the Monaco
+    // constant.  Both are documented integer codes from the LSP
+    // spec / Monaco's d.ts; straight table lookup keeps the
+    // mapping readable even as the list grows.
+    function lspCompletionKindToMonaco(kind, monaco) {
+        const k = monaco.languages.CompletionItemKind;
+        return ({
+            1: k.Text, 2: k.Method, 3: k.Function, 4: k.Constructor,
+            5: k.Field, 6: k.Variable, 7: k.Class, 8: k.Interface,
+            9: k.Module, 10: k.Property, 11: k.Unit, 12: k.Value,
+            13: k.Enum, 14: k.Keyword, 15: k.Snippet, 16: k.Color,
+            17: k.File, 18: k.Reference, 19: k.Folder, 20: k.EnumMember,
+            21: k.Constant, 22: k.Struct, 23: k.Event, 24: k.Operator,
+            25: k.TypeParameter,
+        }[kind] || k.Text);
+    }
+
+    function lspSeverityToMonaco(severity, monaco) {
+        return ({
+            1: monaco.MarkerSeverity.Error,
+            2: monaco.MarkerSeverity.Warning,
+            3: monaco.MarkerSeverity.Info,
+            4: monaco.MarkerSeverity.Hint,
+        }[severity] || monaco.MarkerSeverity.Info);
+    }
+
+    // Monaco provider registration is a global side-effect (keyed
+    // on language id, not the editor instance).  The same language
+    // shared across multiple editor tabs would register one
+    // provider per tab — we guard inside the provider so each
+    // responds only to its own model.
+    let _pyrightProvidersRegistered = false;
+    const _pyrightClientsByModel = new WeakMap();  // Monaco model → PyrightClient + uri
+
+    function registerPyrightProvidersOnce(monaco) {
+        if (_pyrightProvidersRegistered) return;
+        _pyrightProvidersRegistered = true;
+
+        const lookup = (model) => _pyrightClientsByModel.get(model);
+
+        const positionToLsp = (position) => ({
+            line: position.lineNumber - 1,
+            character: position.column - 1,
+        });
+
+        monaco.languages.registerCompletionItemProvider('python', {
+            triggerCharacters: ['.', '(', ',', '='],
+            provideCompletionItems: async (model, position) => {
+                const ctx = lookup(model);
+                if (!ctx) return { suggestions: [] };
+                const word = model.getWordUntilPosition(position);
+                const range = new monaco.Range(
+                    position.lineNumber, word.startColumn,
+                    position.lineNumber, word.endColumn,
+                );
+                try {
+                    const res = await ctx.client.request('textDocument/completion', {
+                        textDocument: { uri: ctx.uri },
+                        position: positionToLsp(position),
+                    });
+                    const items = Array.isArray(res) ? res : (res?.items || []);
+                    return {
+                        suggestions: items.map((item) => ({
+                            label: item.label,
+                            kind: lspCompletionKindToMonaco(item.kind || 1, monaco),
+                            insertText: item.insertText || item.label,
+                            detail: item.detail,
+                            documentation: item.documentation?.value
+                                ? { value: item.documentation.value, isTrusted: false }
+                                : (typeof item.documentation === 'string'
+                                    ? item.documentation : undefined),
+                            sortText: item.sortText,
+                            range,
+                        })),
+                    };
+                } catch (e) {
+                    return { suggestions: [] };
+                }
+            },
+        });
+
+        monaco.languages.registerHoverProvider('python', {
+            provideHover: async (model, position) => {
+                const ctx = lookup(model);
+                if (!ctx) return null;
+                try {
+                    const res = await ctx.client.request('textDocument/hover', {
+                        textDocument: { uri: ctx.uri },
+                        position: positionToLsp(position),
+                    });
+                    if (!res || !res.contents) return null;
+                    const parts = Array.isArray(res.contents) ? res.contents : [res.contents];
+                    return {
+                        contents: parts.map((p) =>
+                            typeof p === 'string'
+                                ? { value: p }
+                                : { value: p.value || '' }),
+                    };
+                } catch (e) {
+                    return null;
+                }
+            },
+        });
+
+        monaco.languages.registerSignatureHelpProvider('python', {
+            signatureHelpTriggerCharacters: ['(', ','],
+            provideSignatureHelp: async (model, position) => {
+                const ctx = lookup(model);
+                if (!ctx) return null;
+                try {
+                    const res = await ctx.client.request('textDocument/signatureHelp', {
+                        textDocument: { uri: ctx.uri },
+                        position: positionToLsp(position),
+                    });
+                    if (!res || !res.signatures) return null;
+                    return {
+                        value: {
+                            signatures: res.signatures.map((s) => ({
+                                label: s.label,
+                                documentation: s.documentation?.value || s.documentation,
+                                parameters: (s.parameters || []).map((p) => ({
+                                    label: p.label,
+                                    documentation: p.documentation?.value || p.documentation,
+                                })),
+                            })),
+                            activeSignature: res.activeSignature || 0,
+                            activeParameter: res.activeParameter || 0,
+                        },
+                        dispose: () => {},
+                    };
+                } catch (e) {
+                    return null;
+                }
+            },
+        });
+
+        monaco.languages.registerDefinitionProvider('python', {
+            provideDefinition: async (model, position) => {
+                const ctx = lookup(model);
+                if (!ctx) return null;
+                try {
+                    const res = await ctx.client.request('textDocument/definition', {
+                        textDocument: { uri: ctx.uri },
+                        position: positionToLsp(position),
+                    });
+                    if (!res) return null;
+                    const arr = Array.isArray(res) ? res : [res];
+                    // Same-document only for Sprint 61 — cross-file
+                    // navigation would need a model-by-uri resolver we
+                    // don't have yet.
+                    return arr
+                        .filter((loc) => loc.uri === ctx.uri)
+                        .map((loc) => ({
+                            uri: model.uri,
+                            range: {
+                                startLineNumber: loc.range.start.line + 1,
+                                startColumn: loc.range.start.character + 1,
+                                endLineNumber: loc.range.end.line + 1,
+                                endColumn: loc.range.end.character + 1,
+                            },
+                        }));
+                } catch (e) {
+                    return null;
+                }
+            },
+        });
+    }
+
     // Minimal markdown → HTML renderer.  Covers the common cell
     // shapes: headings, paragraphs, bold / italic, inline code,
     // code fences, links, single-level bullet lists.  Sprint 60
@@ -258,6 +486,14 @@
             _saveQueued: false,
             _ws: null,
             _wsReconnectTimer: null,
+            _lspWs: null,
+            _lspClient: null,
+            _lspDocUri: null,
+            _lspDocVersion: 0,
+            // "connecting" | "ready" | "error" — surfaced next to
+            // kernelStatus on the toolbar so the user sees when
+            // completions / hovers should be expected to respond.
+            lspStatus: 'connecting',
             _outputZones: {},  // cellId → { zoneId, domNode }
             _markdownZones: {},  // cellId → { zoneId, domNode, editing }
             // Per-cell output-index counter for replay on mount.
@@ -319,8 +555,12 @@
                     this._model.onDidChangeContent(() => {
                         this._rebuildMarkdownZones();
                         this._updateHiddenAreas();
+                        this._notifyLspDidChange();
                     });
+                    registerPyrightProvidersOnce(monaco);
                     this._openKernelWS();
+                    this._openLSP(monaco).catch((err) =>
+                        console.error('[notebook-editor] lsp open failed', err));
                 } catch (err) {
                     console.error('[notebook-editor] mount failed', err);
                     if (window.pqlToast) {
@@ -650,6 +890,124 @@
                         : data['text/plain'];
                     dom.appendChild(pre);
                 }
+            },
+
+            // ─────────────────── LSP / pyright wiring ───────────────────
+
+            async _openLSP(monaco) {
+                const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+                const url = `${proto}://${location.host}/ws/notebook/lsp`
+                    + `?path=${encodeURIComponent(this.path)}`;
+                this.lspStatus = 'connecting';
+                try {
+                    this._lspWs = new WebSocket(url);
+                } catch (err) {
+                    console.error('[notebook-editor] lsp ws failed', err);
+                    this.lspStatus = 'error';
+                    return;
+                }
+                this._lspClient = new PyrightClient(this._lspWs);
+                this._lspWs.addEventListener('message', (ev) => {
+                    try { this._lspClient._onMessage(JSON.parse(ev.data)); } catch {}
+                });
+                this._lspWs.addEventListener('close', (ev) => {
+                    if (ev.code === 4404) {
+                        this.lspStatus = 'unavailable';
+                    } else {
+                        this.lspStatus = 'error';
+                    }
+                });
+                this._lspWs.addEventListener('error', () => {
+                    this.lspStatus = 'error';
+                });
+                await new Promise((resolve, reject) => {
+                    const onOpen = () => { resolve(); };
+                    const onErr = () => reject(new Error('ws errored before open'));
+                    this._lspWs.addEventListener('open', onOpen, { once: true });
+                    this._lspWs.addEventListener('error', onErr, { once: true });
+                });
+
+                // Initialise pyright.  rootUri is the notebooks dir
+                // exposed by the server (we don't know the absolute
+                // path on the client, so pyright proxies with a file
+                // URI derived from the current path — good enough
+                // for single-document checking).
+                this._lspDocUri = `file:///notebook/${this.path}`;
+                this._lspDocVersion = 1;
+                try {
+                    await this._lspClient.request('initialize', {
+                        processId: null,
+                        clientInfo: { name: 'pointlessql-editor', version: '0.1' },
+                        rootUri: null,
+                        capabilities: {
+                            textDocument: {
+                                synchronization: { didSave: false, dynamicRegistration: false },
+                                completion: {
+                                    completionItem: {
+                                        snippetSupport: false,
+                                        documentationFormat: ['markdown', 'plaintext'],
+                                    },
+                                },
+                                hover: { contentFormat: ['markdown', 'plaintext'] },
+                                signatureHelp: {
+                                    signatureInformation: {
+                                        documentationFormat: ['markdown', 'plaintext'],
+                                    },
+                                },
+                                definition: { linkSupport: false },
+                                publishDiagnostics: { relatedInformation: false },
+                            },
+                        },
+                    });
+                } catch (e) {
+                    console.error('[notebook-editor] lsp initialize failed', e);
+                    this.lspStatus = 'error';
+                    return;
+                }
+                this._lspClient.notify('initialized', {});
+                this._lspClient.notify('textDocument/didOpen', {
+                    textDocument: {
+                        uri: this._lspDocUri,
+                        languageId: 'python',
+                        version: this._lspDocVersion,
+                        text: this._model.getValue(),
+                    },
+                });
+                _pyrightClientsByModel.set(this._model, {
+                    client: this._lspClient,
+                    uri: this._lspDocUri,
+                });
+                this._lspClient.on('textDocument/publishDiagnostics', (params) => {
+                    if (params.uri !== this._lspDocUri) return;
+                    const markers = (params.diagnostics || []).map((d) => ({
+                        startLineNumber: d.range.start.line + 1,
+                        startColumn: d.range.start.character + 1,
+                        endLineNumber: d.range.end.line + 1,
+                        endColumn: d.range.end.character + 1,
+                        severity: lspSeverityToMonaco(d.severity || 1, monaco),
+                        message: d.message,
+                        source: d.source || 'pyright',
+                        code: typeof d.code === 'object' ? d.code.value : d.code,
+                    }));
+                    monaco.editor.setModelMarkers(this._model, 'pyright', markers);
+                });
+                this.lspStatus = 'ready';
+            },
+
+            _notifyLspDidChange() {
+                if (!this._lspClient || !this._lspDocUri) return;
+                if (this.lspStatus !== 'ready') return;
+                this._lspDocVersion++;
+                // Full-document sync — cheap enough for notebooks,
+                // avoids the range-based diff tracking we'd need
+                // for incremental sync.
+                this._lspClient.notify('textDocument/didChange', {
+                    textDocument: {
+                        uri: this._lspDocUri,
+                        version: this._lspDocVersion,
+                    },
+                    contentChanges: [{ text: this._model.getValue() }],
+                });
             },
 
             // ─────────────────── markdown preview zones ───────────────────

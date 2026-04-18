@@ -1968,21 +1968,57 @@ PointlesSQL
 │   │       Sprint-58 decision — MVP ships static mime bundles
 │   │       only.
 │   │
-│   ├── Sprint 61 — Pyright LSP + dual-source autocomplete    ⏳ planned
-│   │   ├── New dep: ``pyright>=1.1`` (or ``nodeenv``-pinned
-│   │   │   pyright binary; decide at Sprint-61 kickoff)
-│   │   ├── ``pointlessql/services/pyright_bridge.py`` —
-│   │   │   ``pyright-langserver --stdio`` subprocess per tab,
-│   │   │   WS bridge on ``/ws/lsp/{session_id}``
-│   │   ├── Monaco LSP client wired: completion, hover,
-│   │   │   signatureHelp, definition, diagnostics
-│   │   ├── Kernel ``complete_request`` merged client-side into
-│   │   │   Monaco's completion list (tagged "runtime") so
-│   │   │   DataFrame columns + dynamic attrs surface
-│   │   ├── Scope-killer escape hatch: if dual-source merge is
-│   │   │   brittle, land LSP-only in Sprint 61 and defer
-│   │   │   kernel-autocomplete to a follow-up
-│   │   └── Pydoclint-compatible docstrings on new modules
+│   ├── Sprint 61 — Pyright LSP + autocomplete                🔜 in progress
+│   │   ├── ``pyright>=1.1`` moves from dev-only to a runtime
+│   │   │   dep so the pypi package's ``pyright-langserver``
+│   │   │   binary lands on ``.venv/bin`` for both local dev
+│   │   │   and Docker runtimes.  No ``nodeenv`` pin — the
+│   │   │   pypi wheel already bundles the needed Node binary.
+│   │   ├── ``pointlessql/services/pyright_bridge.py`` — per-
+│   │   │   tab subprocess wrapper with asyncio stdio framing
+│   │   │   (``Content-Length: N\\r\\n\\r\\n<JSON body>``).  One
+│   │   │   pyright subprocess per WS connection; subprocess
+│   │   │   lifetime == tab lifetime, no cross-tab routing to
+│   │   │   reason about, no registry on ``app.state``.
+│   │   ├── ``WS /ws/notebook/lsp?path=<rel>`` FastAPI endpoint.
+│   │   │   Mirrors the Sprint-59 kernel WS shape: manual
+│   │   │   cookie auth, same traversal guard, transparent
+│   │   │   JSON-RPC proxy (server strips/adds LSP framing,
+│   │   │   client sends raw LSP objects).  A 4404 close code
+│   │   │   fires when ``pyright-langserver`` is missing from
+│   │   │   PATH — the toolbar pill just says "Pyright
+│   │   │   unavailable" instead of hammering reconnects.
+│   │   ├── Frontend: a 40-line ``PyrightClient`` handles
+│   │   │   JSON-RPC correlation + notification subscribers.
+│   │   │   Monaco provider registrations (completion, hover,
+│   │   │   signatureHelp, definition) live once per tab; the
+│   │   │   active model lookup goes through a ``WeakMap`` so
+│   │   │   multiple editor instances share the registration
+│   │   │   without cross-fire.  Diagnostics land via
+│   │   │   ``monaco.editor.setModelMarkers``.
+│   │   ├── Document lifecycle: ``initialize`` → ``initialized``
+│   │   │   → ``textDocument/didOpen`` on mount; full-document
+│   │   │   ``didChange`` on every ``onDidChangeContent`` (cheap
+│   │   │   enough for notebook-size files, avoids incremental-
+│   │   │   sync bookkeeping).  Document URI is
+│   │   │   ``file:///notebook/<rel>`` — pyright runs single-
+│   │   │   file checking, which is what we want for a
+│   │   │   notebook-centric editor anyway.
+│   │   ├── Toolbar gains an ``lspStatus`` pill ("Loading
+│   │   │   Pyright…" / "Pyright ready" / "Pyright error" /
+│   │   │   "Pyright unavailable") next to ``kernelStatus``.
+│   │   ├── Scope-killer invoked: kernel ``complete_request``
+│   │   │   dual-source merging is explicitly **deferred** to a
+│   │   │   Sprint 61 follow-up (or Sprint 62).  LSP-only is
+│   │   │   enough to cleanly ship completion / hover /
+│   │   │   signatureHelp / definition / diagnostics end-to-end;
+│   │   │   the runtime-source second column is a 30-line
+│   │   │   provider that can land without backend changes.
+│   │   └── Subprocess + LSP smoke test proved initialize +
+│   │       didOpen + completion + diagnostics round-trip end-
+│   │       to-end against ``json.`` — real completion items
+│   │       (``dumps``, ``loads``, …) came back, and the trailing
+│   │       ``.`` was flagged by pyright's diagnostics channel.
 │   │
 │   ├── Sprint 62 — Variable Explorer + catalog insert         ⏳ planned
 │   │   ├── ``%who_ls`` / ``inspect_request``-driven Variable
