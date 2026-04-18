@@ -114,15 +114,28 @@
         return meta ? meta.content : '';
     }
 
+    // Databricks-style debounce: save 1500 ms after the user stops
+    // typing. Explicit Save button still works as a force-flush.
+    const AUTOSAVE_DEBOUNCE_MS = 1500;
+    // Brief delay on initial load before auto-flushing the
+    // UUID-upgrade save for a foreign notebook. Keeps the user-
+    // visible "Saving…" tag from flashing during the render.
+    const INITIAL_FLUSH_MS = 400;
+
     window.notebookEditor = function notebookEditor({ path, initial }) {
         return {
             path,
             dirty: initial.dirty === true,
             loading: false,
+            // "idle" | "pending" | "saving" | "saved" | "error"
+            saveState: initial.dirty === true ? 'pending' : 'saved',
             _editor: null,
             _model: null,
             _decorationIds: [],
             _cells: initial.cells.slice(),
+            _saveTimer: null,
+            _saveInFlight: false,
+            _saveQueued: false,
 
             async mount() {
                 try {
@@ -138,13 +151,35 @@
                         scrollBeyondLastLine: false,
                     });
                     this._applyDecorations(joined.cellRanges);
-                    this._model.onDidChangeContent(() => { this.dirty = true; });
+                    this._model.onDidChangeContent(() => {
+                        this.dirty = true;
+                        this.saveState = 'pending';
+                        this._scheduleAutosave();
+                    });
+                    // Foreign-notebook load path: UUIDs were minted
+                    // server-side, flush them to disk so the user
+                    // doesn't see a stale "unsaved" badge on first
+                    // visit.
+                    if (this.dirty) {
+                        this._saveTimer = window.setTimeout(
+                            () => this.save(),
+                            INITIAL_FLUSH_MS,
+                        );
+                    }
                 } catch (err) {
                     console.error('[notebook-editor] mount failed', err);
                     if (window.pqlToast) {
                         window.pqlToast.error('Editor failed to load: ' + err.message);
                     }
                 }
+            },
+
+            _scheduleAutosave() {
+                if (this._saveTimer) window.clearTimeout(this._saveTimer);
+                this._saveTimer = window.setTimeout(
+                    () => this.save(),
+                    AUTOSAVE_DEBOUNCE_MS,
+                );
             },
 
             _applyDecorations(ranges) {
@@ -205,8 +240,23 @@
             },
 
             async save() {
-                if (!this._model || this.loading) return;
+                if (!this._model) return;
+                if (this._saveTimer) {
+                    window.clearTimeout(this._saveTimer);
+                    this._saveTimer = null;
+                }
+                // Serialise concurrent saves — autosave + a manual
+                // click during flight must not race on the same
+                // file. If a save is already running, mark that the
+                // buffer has moved on so we re-fire once the in-
+                // flight save completes.
+                if (this._saveInFlight) {
+                    this._saveQueued = true;
+                    return;
+                }
+                this._saveInFlight = true;
                 this.loading = true;
+                this.saveState = 'saving';
                 try {
                     const cells = splitCells(this._model.getValue());
                     const resp = await fetch('/api/notebook/doc', {
@@ -223,12 +273,19 @@
                     }
                     this._cells = cells;
                     this.dirty = false;
-                    if (window.pqlToast) window.pqlToast.success('Saved');
+                    this.saveState = 'saved';
                 } catch (err) {
                     console.error('[notebook-editor] save failed', err);
+                    this.saveState = 'error';
                     if (window.pqlToast) window.pqlToast.error('Save failed: ' + err.message);
                 } finally {
                     this.loading = false;
+                    this._saveInFlight = false;
+                    if (this._saveQueued) {
+                        this._saveQueued = false;
+                        // Flush whatever was typed during the last save.
+                        this._scheduleAutosave();
+                    }
                 }
             },
         };

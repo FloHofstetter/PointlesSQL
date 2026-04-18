@@ -27,11 +27,19 @@
      x-init="mount()">
     <div class="pql-nbedit-toolbar">
         <span class="pql-nbedit-path" x-text="path"></span>
-        <template x-if="dirty">
-            <span class="pql-nbedit-dirty">
-                <i class="bi bi-exclamation-circle me-1"></i>unsaved changes
-            </span>
-        </template>
+        <span class="pql-nbedit-status small text-muted"
+              x-text="{
+                  'saved': 'Saved',
+                  'saving': 'Saving…',
+                  'pending': 'Unsaved changes',
+                  'error': 'Save failed',
+                  'idle': '',
+              }[saveState]"
+              :class="{
+                  'text-success': saveState === 'saved',
+                  'text-warning': saveState === 'pending' || saveState === 'saving',
+                  'text-danger': saveState === 'error',
+              }"></span>
         <div class="ms-auto d-flex align-items-center gap-2">
             <button type="button"
                     class="btn btn-sm btn-outline-secondary"
@@ -42,7 +50,8 @@
             <button type="button"
                     class="btn btn-sm btn-outline-secondary"
                     @click="save()"
-                    :disabled="loading || !dirty">
+                    :disabled="loading"
+                    title="Force-flush (autosave normally handles this)">
                 <i class="bi bi-save me-1"></i>Save
             </button>
             <button type="button"
