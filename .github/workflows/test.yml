@@ -39,7 +39,12 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
       GIT_CONFIG_COUNT: "1"
-      GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
+      # Scope to the soyuz-catalog URL prefix ONLY. A broader
+      # `https://github.com/` scope collides with the
+      # Authorization header actions/checkout@v4 installs for
+      # checking out *this* repo, and GitHub returns
+      # `400 Duplicate header: "Authorization"` on double-auth.
+      GIT_CONFIG_KEY_0: "http.https://github.com/FloHofstetter/soyuz-catalog.extraheader"
       GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
     steps:
       - uses: actions/checkout@v4
