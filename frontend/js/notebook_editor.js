@@ -48,25 +48,42 @@
     function loadMonaco() {
         if (monacoReady) return monacoReady;
         monacoReady = new Promise((resolve, reject) => {
-            try {
-                // Monaco's loader publishes `require`/`define` as globals.
-                // The RequireJS-style config below pins the base URL so
-                // every sub-module (language workers, themes) resolves
-                // under our vendored tree.
-                if (typeof require !== 'function' || !require.config) {
-                    reject(new Error('monaco loader not present — check vendor script'));
-                    return;
-                }
-                require.config({ paths: { vs: MONACO_BASE } });
-                require(['vs/editor/editor.main'], () => {
-                    if (typeof monaco === 'undefined') {
-                        reject(new Error('monaco module loaded but global missing'));
+            const start = () => {
+                try {
+                    // Monaco's loader publishes `require`/`define` as globals.
+                    // The RequireJS-style config below pins the base URL so
+                    // every sub-module (language workers, themes) resolves
+                    // under our vendored tree.
+                    if (typeof require !== 'function' || !require.config) {
+                        reject(new Error('monaco loader not present — check vendor script'));
                         return;
                     }
-                    resolve(monaco);
-                });
-            } catch (err) {
-                reject(err);
+                    require.config({ paths: { vs: MONACO_BASE } });
+                    require(['vs/editor/editor.main'], () => {
+                        if (typeof monaco === 'undefined') {
+                            reject(new Error('monaco module loaded but global missing'));
+                            return;
+                        }
+                        resolve(monaco);
+                    });
+                } catch (err) {
+                    reject(err);
+                }
+            };
+            // Why: Monaco's AMD loader injects ~30 <script> tags for
+            // editor.main, basic-languages, themes, NLS bundles. In Firefox
+            // these dynamic scripts inserted *before* `load` fires keep
+            // `load` pending until every last one resolves — Playwright's
+            // `page.goto(..., waitUntil:'load')` then times out at 30 s
+            // with the page perfectly usable but never officially "loaded".
+            // Deferring AMD until after `load` lets the load event fire
+            // immediately (only static scripts pending), then Monaco
+            // streams in while the user already sees the toolbar with
+            // "Connecting kernel…" / "Loading Pyright…" pills.
+            if (document.readyState === 'complete') {
+                start();
+            } else {
+                window.addEventListener('load', start, { once: true });
             }
         });
         return monacoReady;
@@ -542,6 +559,16 @@
     }
 
     window.notebookEditor = function notebookEditor({ path, initial }) {
+        // Why: Monaco objects (`editor`, `model`) MUST live in closure scope,
+        // not as `this.X` fields, because Alpine wraps every property of the
+        // returned object in a deep-reactive Proxy. Passing a Proxy-wrapped
+        // model to `monaco.editor.create({ model })` makes Monaco follow the
+        // proxy chain into its own circular-ref internals and the call hangs
+        // forever (Sprint 64 BUG-64-02). The factory still exposes the editor
+        // via methods that close over these locals; the Alpine-reactive part
+        // of the returned object only carries primitive UI state.
+        let _editor = null;
+        let _model = null;
         return {
             path,
             dirty: initial.dirty === true,
@@ -552,8 +579,6 @@
             kernelStatus: 'connecting',
             kernelSessionId: null,
             executingCells: {},  // cellId → true while kernel is busy for that cell
-            _editor: null,
-            _model: null,
             _decorationIds: [],
             _cells: initial.cells.slice(),
             _saveTimer: null,
@@ -591,9 +616,9 @@
                 try {
                     const monaco = await loadMonaco();
                     const joined = joinCells(this._cells);
-                    this._model = monaco.editor.createModel(joined.text, 'python');
-                    this._editor = monaco.editor.create(this.$refs.editor, {
-                        model: this._model,
+                    _model = monaco.editor.createModel(joined.text, 'python');
+                    _editor = monaco.editor.create(this.$refs.editor, {
+                        model: _model,
                         theme: 'vs-dark',
                         automaticLayout: true,
                         minimap: { enabled: false },
@@ -601,7 +626,7 @@
                         scrollBeyondLastLine: false,
                     });
                     this._applyDecorations(joined.cellRanges);
-                    this._model.onDidChangeContent(() => {
+                    _model.onDidChangeContent(() => {
                         this.dirty = true;
                         this.saveState = 'pending';
                         this._scheduleAutosave();
@@ -610,11 +635,11 @@
                     // instance — they only fire when Monaco has focus,
                     // which keeps the toolbar and Alpine inputs safe
                     // to use normal Enter semantics.
-                    this._editor.addCommand(
+                    _editor.addCommand(
                         monaco.KeyMod.Shift | monaco.KeyCode.Enter,
                         () => this.runCurrentCell(),
                     );
-                    this._editor.addCommand(
+                    _editor.addCommand(
                         monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
                         () => this.runCurrentCell(),
                     );
@@ -637,8 +662,8 @@
                     // only (cheaper path).
                     this._rebuildMarkdownZones();
                     this._updateHiddenAreas();
-                    this._editor.onDidChangeCursorPosition(() => this._updateHiddenAreas());
-                    this._model.onDidChangeContent(() => {
+                    _editor.onDidChangeCursorPosition(() => this._updateHiddenAreas());
+                    _model.onDidChangeContent(() => {
                         this._rebuildMarkdownZones();
                         this._updateHiddenAreas();
                         this._notifyLspDidChange();
@@ -752,12 +777,12 @@
             },
 
             _currentCellAtCursor() {
-                if (!this._editor || !this._model) return null;
-                const pos = this._editor.getPosition();
+                if (!_editor || !_model) return null;
+                const pos = _editor.getPosition();
                 if (!pos) return null;
-                const above = this._model.getValueInRange({
+                const above = _model.getValueInRange({
                     startLineNumber: 1, startColumn: 1,
-                    endLineNumber: pos.lineNumber, endColumn: this._model.getLineMaxColumn(pos.lineNumber),
+                    endLineNumber: pos.lineNumber, endColumn: _model.getLineMaxColumn(pos.lineNumber),
                 }).split('\n');
                 for (let i = above.length - 1; i >= 0; i--) {
                     const m = above[i].match(CELL_MARKER_RE);
@@ -767,7 +792,7 @@
             },
 
             _cellSourceById(cellId) {
-                const lines = this._model.getValue().split('\n');
+                const lines = _model.getValue().split('\n');
                 const out = [];
                 let collecting = false;
                 for (const line of lines) {
@@ -783,7 +808,7 @@
             },
 
             _cellEndLine(cellId) {
-                const lines = this._model.getValue().split('\n');
+                const lines = _model.getValue().split('\n');
                 let start = null;
                 for (let i = 0; i < lines.length; i++) {
                     const m = lines[i].match(CELL_MARKER_RE);
@@ -799,7 +824,7 @@
                 let zone = this._outputZones[cellId];
                 if (zone) {
                     // Re-anchor if the cell's end line has shifted.
-                    this._editor.changeViewZones((accessor) => {
+                    _editor.changeViewZones((accessor) => {
                         accessor.removeZone(zone.zoneId);
                         zone.zoneId = accessor.addZone({
                             afterLineNumber,
@@ -812,7 +837,7 @@
                 const dom = document.createElement('div');
                 dom.className = 'pql-nbedit-output';
                 let zoneId = null;
-                this._editor.changeViewZones((accessor) => {
+                _editor.changeViewZones((accessor) => {
                     zoneId = accessor.addZone({
                         afterLineNumber,
                         heightInPx: 24,
@@ -826,7 +851,7 @@
             _layoutOutputZone(cellId) {
                 const zone = this._outputZones[cellId];
                 if (!zone) return;
-                this._editor.changeViewZones((accessor) => {
+                _editor.changeViewZones((accessor) => {
                     accessor.layoutZone(zone.zoneId);
                 });
             },
@@ -1009,7 +1034,7 @@
                 // Ctrl+Shift+P; addAction registrations show up
                 // there automatically, and each action can bind
                 // its own keybindings if we want one.
-                const ed = this._editor;
+                const ed = _editor;
                 const add = (id, label, run, keybindings) =>
                     ed.addAction({
                         id: `pql.${id}`,
@@ -1035,7 +1060,7 @@
             },
 
             runAllCells() {
-                const cells = splitCells(this._model.getValue());
+                const cells = splitCells(_model.getValue());
                 for (const c of cells) {
                     if (c.cell_type === 'code') {
                         this._clearOutput(c.id);
@@ -1048,7 +1073,7 @@
             runCellsAbove() {
                 const cell = this._currentCellAtCursor();
                 if (!cell) return;
-                const cells = splitCells(this._model.getValue());
+                const cells = splitCells(_model.getValue());
                 for (const c of cells) {
                     if (c.id === cell.id) break;
                     if (c.cell_type === 'code') {
@@ -1068,15 +1093,15 @@
                 const marker = `# %%${tag} pql_cell_id="${newId}"\n\n`;
                 const targetLine = cell ? this._findCellMarkerLine(cell.id) : 1;
                 const insertAt = new monaco.Range(targetLine, 1, targetLine, 1);
-                this._editor.executeEdits('add-cell-above', [{
+                _editor.executeEdits('add-cell-above', [{
                     range: insertAt, text: marker, forceMoveMarkers: true,
                 }]);
-                this._editor.setPosition({ lineNumber: targetLine + 1, column: 1 });
+                _editor.setPosition({ lineNumber: targetLine + 1, column: 1 });
                 this._rescanDecorations();
             },
 
             _findCellMarkerLine(cellId) {
-                const lines = this._model.getValue().split('\n');
+                const lines = _model.getValue().split('\n');
                 for (let i = 0; i < lines.length; i++) {
                     const m = lines[i].match(CELL_MARKER_RE);
                     if (m && m[2] === cellId) return i + 1;  // 1-based
@@ -1131,16 +1156,16 @@
 
             pickCatalogTable(table) {
                 const snippet = `pql.read_table("${table.full}")`;
-                const pos = this._editor.getPosition();
+                const pos = _editor.getPosition();
                 if (!pos) return;
                 const monaco = window.monaco;
-                this._editor.executeEdits('pql-insert-catalog', [{
+                _editor.executeEdits('pql-insert-catalog', [{
                     range: new monaco.Range(pos.lineNumber, pos.column, pos.lineNumber, pos.column),
                     text: snippet,
                     forceMoveMarkers: true,
                 }]);
                 this.catalogInsertOpen = false;
-                this._editor.focus();
+                _editor.focus();
             },
 
             // ─────────────────── variable explorer ───────────────────
@@ -1258,10 +1283,10 @@
                         uri: this._lspDocUri,
                         languageId: 'python',
                         version: this._lspDocVersion,
-                        text: this._model.getValue(),
+                        text: _model.getValue(),
                     },
                 });
-                _pyrightClientsByModel.set(this._model, {
+                _pyrightClientsByModel.set(_model, {
                     client: this._lspClient,
                     uri: this._lspDocUri,
                 });
@@ -1277,7 +1302,7 @@
                         source: d.source || 'pyright',
                         code: typeof d.code === 'object' ? d.code.value : d.code,
                     }));
-                    monaco.editor.setModelMarkers(this._model, 'pyright', markers);
+                    monaco.editor.setModelMarkers(_model, 'pyright', markers);
                 });
                 this.lspStatus = 'ready';
             },
@@ -1294,15 +1319,15 @@
                         uri: this._lspDocUri,
                         version: this._lspDocVersion,
                     },
-                    contentChanges: [{ text: this._model.getValue() }],
+                    contentChanges: [{ text: _model.getValue() }],
                 });
             },
 
             // ─────────────────── markdown preview zones ───────────────────
 
             _rebuildMarkdownZones() {
-                if (!this._editor || !this._model) return;
-                const lines = this._model.getValue().split('\n');
+                if (!_editor || !_model) return;
+                const lines = _model.getValue().split('\n');
                 const cells = [];
                 let current = null;
                 for (let i = 0; i < lines.length; i++) {
@@ -1323,7 +1348,7 @@
                 for (const cellId of Object.keys(this._markdownZones)) {
                     if (!alive.has(cellId)) {
                         const z = this._markdownZones[cellId];
-                        this._editor.changeViewZones((acc) => acc.removeZone(z.zoneId));
+                        _editor.changeViewZones((acc) => acc.removeZone(z.zoneId));
                         delete this._markdownZones[cellId];
                     }
                 }
@@ -1343,7 +1368,7 @@
                         dom.className = 'pql-nbedit-md-preview';
                         dom.addEventListener('click', () => this._focusMarkdownSource(cell.id));
                         let zoneId = null;
-                        this._editor.changeViewZones((acc) => {
+                        _editor.changeViewZones((acc) => {
                             zoneId = acc.addZone({
                                 afterLineNumber: cell.markerLine,
                                 heightInPx: 40,
@@ -1354,7 +1379,7 @@
                         this._markdownZones[cell.id] = zone;
                     } else {
                         // Re-anchor if marker line shifted.
-                        this._editor.changeViewZones((acc) => {
+                        _editor.changeViewZones((acc) => {
                             acc.removeZone(zone.zoneId);
                             zone.zoneId = acc.addZone({
                                 afterLineNumber: cell.markerLine,
@@ -1366,26 +1391,26 @@
                     zone.sourceRange = { startLine: cell.sourceStart, endLine: cell.endLine };
                     zone.domNode.innerHTML = renderMarkdown(body)
                         || '<em class="text-muted">Empty markdown cell — click to edit.</em>';
-                    this._editor.changeViewZones((acc) => acc.layoutZone(zone.zoneId));
+                    _editor.changeViewZones((acc) => acc.layoutZone(zone.zoneId));
                 }
             },
 
             _focusMarkdownSource(cellId) {
                 const zone = this._markdownZones[cellId];
                 if (!zone || !zone.sourceRange) return;
-                this._editor.setPosition({
+                _editor.setPosition({
                     lineNumber: zone.sourceRange.startLine,
                     column: 1,
                 });
-                this._editor.focus();
+                _editor.focus();
                 // setPosition fires onDidChangeCursorPosition which
                 // in turn re-computes hidden areas, so the click-to-
                 // edit unhide is automatic.
             },
 
             _updateHiddenAreas() {
-                if (!this._editor) return;
-                const pos = this._editor.getPosition();
+                if (!_editor) return;
+                const pos = _editor.getPosition();
                 const cursorLine = pos ? pos.lineNumber : 1;
                 const hidden = [];
                 for (const cellId of Object.keys(this._markdownZones)) {
@@ -1405,7 +1430,7 @@
                 // IStandaloneCodeEditor since Monaco 0.20; it hides
                 // the ranges purely at the view layer — the model
                 // (and therefore getValue() + save) stay intact.
-                this._editor.setHiddenAreas(hidden);
+                _editor.setHiddenAreas(hidden);
             },
 
             _replayPersistedOutputs() {
@@ -1436,7 +1461,7 @@
             },
 
             _applyDecorations(ranges) {
-                if (!this._editor) return;
+                if (!_editor) return;
                 const monaco = window.monaco;
                 const decos = ranges.map((r) => ({
                     range: new monaco.Range(r.startLine, 1, r.endLine, 1),
@@ -1447,18 +1472,18 @@
                             : 'pql-nbedit-cell-band-code',
                     },
                 }));
-                this._decorationIds = this._editor.deltaDecorations(this._decorationIds, decos);
+                this._decorationIds = _editor.deltaDecorations(this._decorationIds, decos);
             },
 
             addCellBelow() {
-                if (!this._model) return;
+                if (!_model) return;
                 const newId = (window.crypto && window.crypto.randomUUID)
                     ? window.crypto.randomUUID()
                     : 'cell-' + Date.now();
                 const marker = `\n\n# %% pql_cell_id="${newId}"\n`;
-                const lastLine = this._model.getLineCount();
-                const lastCol = this._model.getLineMaxColumn(lastLine);
-                this._editor.executeEdits('add-cell', [{
+                const lastLine = _model.getLineCount();
+                const lastCol = _model.getLineMaxColumn(lastLine);
+                _editor.executeEdits('add-cell', [{
                     range: new window.monaco.Range(lastLine, lastCol, lastLine, lastCol),
                     text: marker,
                     forceMoveMarkers: true,
@@ -1467,11 +1492,11 @@
             },
 
             _rescanDecorations() {
-                const cells = splitCells(this._model.getValue());
+                const cells = splitCells(_model.getValue());
                 // Recompute ranges from the live buffer — marker
                 // positions have moved since mount().
                 const ranges = [];
-                const lines = this._model.getValue().split('\n');
+                const lines = _model.getValue().split('\n');
                 const markerRe = /^#\s*%%(\s+\[markdown\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"\s*$/;
                 let currentStart = null;
                 let currentType = 'code';
@@ -1493,7 +1518,7 @@
             },
 
             async save() {
-                if (!this._model) return;
+                if (!_model) return;
                 if (this._saveTimer) {
                     window.clearTimeout(this._saveTimer);
                     this._saveTimer = null;
@@ -1511,7 +1536,7 @@
                 this.loading = true;
                 this.saveState = 'saving';
                 try {
-                    const cells = splitCells(this._model.getValue());
+                    const cells = splitCells(_model.getValue());
                     const resp = await fetch('/api/notebook/doc', {
                         method: 'POST',
                         headers: {

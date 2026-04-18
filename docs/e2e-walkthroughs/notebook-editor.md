@@ -248,7 +248,79 @@ was going to catch it) landed in the same sprint as the bug.
 **Lesson**: run the playbook as a gate, not a close-out, when
 the sprint touches Alpine scopes.
 
-## What worked on the first try
+**BUG-64-02** (commit TBD). After BUG-64-01's x-data fix, Alpine
+mounted the editor scope but `mount()` froze on the very first
+``monaco.editor.create()`` call when the model used a non-trivial
+language (`python`, `javascript`, ...). A plaintext model worked.
+The hang was completely silent: no console.error, Firefox at 1 %
+CPU, no thrown exception, just `monaco.editor.create()` never
+returning.
+
+Root cause: every property of an Alpine ``x-data`` return value
+is wrapped in a deep-reactive Vue Proxy. Sprint 58's `mount()`
+stored the model on `this._model`, then passed `this._model`
+into ``monaco.editor.create({ model: this._model })``. Monaco
+read the proxied model's internal properties (uri, version,
+tokenization state) — each read returns *another* proxy and
+also touches Monaco's own circular references. The recursion
+plus reactive tracking on every internal field stalled the
+synchronous create call indefinitely.
+
+Standalone repro confirmed Monaco itself is fine: a plain HTML
+page that loads vendored Monaco and runs the same
+`createModel('print(1)', 'python')` + `editor.create({model})`
+returns in ~80 ms. Same code under our Alpine x-data: hangs
+forever.
+
+Fix in [frontend/js/notebook_editor.js](../../frontend/js/notebook_editor.js):
+hoist `_model` and `_editor` into closure-scoped `let` vars
+inside the `notebookEditor()` factory and remove them from the
+returned object. All 50-odd in-method `this._editor` /
+`this._model` references stay as plain `_editor` / `_model`
+identifiers (lexically scoped to the factory closure, never
+proxied). The reactive part of the returned object now only
+carries primitive UI state (`saveState`, `kernelStatus`, dirty
+flag, etc.) — Monaco internals never go through Vue reactivity.
+
+This class of bug also escapes ruff/pyright/pydoclint because
+neither the AMD bundle nor the Alpine wrapper is type-checked
+at the JS layer. **Lesson**: Monaco / Web Worker / WebSocket
+objects must NEVER live as `this.X` inside an Alpine factory —
+they belong in closure scope. Add a CodeQL or grep gate in CI
+that fails on `this\._(editor|model)\s*=` if we add more
+Monaco surfaces.
+
+**BUG-64-03** (commit TBD). With BUG-64-02 fixed, the editor
+rendered and both pills (Kernel ready / Pyright ready) flipped
+green within 10 s. The first keystroke triggered Sprint-58
+autosave → ``POST /api/notebook/doc`` writes ``notebooks/scratch.py``
+on disk → uvicorn's dev-mode autoreload watcher saw the file
+change and restarted the entire ASGI process → kernel + Pyright
+WebSockets dropped → pills went red ("Kernel disconnected",
+"Pyright error"). Symptom in the log:
+
+```
+INFO:     127.0.0.1:54554 - "POST /api/notebook/doc HTTP/1.1" 200 OK
+StatReload detected changes in 'notebooks/scratch.py'. Reloading...
+WARNING  pyright-langserver did not stop — killing
+INFO     scheduler: stopped
+INFO     kernel shut down for demo@pql.test notebook=scratch.py
+```
+
+Fix in [pointlessql/api/main.py:cli()](../../pointlessql/api/main.py):
+pin uvicorn's reload watcher to the source trees:
+
+```python
+project_root = Path(__file__).resolve().parent.parent
+uvicorn.run(..., reload=True,
+            reload_dirs=[str(project_root),
+                         str(project_root.parent / "frontend")])
+```
+
+After the fix, the autosave POST round-trips silently and the
+WS connections survive. **Lesson**: when adding a feature that
+writes to the working directory in dev, audit ``reload=True``
+upstream and explicitly scope ``reload_dirs``.
 
 ## What worked on the first try
 

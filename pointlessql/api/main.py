@@ -6106,9 +6106,17 @@ def cli() -> None:
     import uvicorn
 
     settings = Settings()
+    # Why: uvicorn's reload watcher defaults to the whole working directory.
+    # That includes ``notebooks/``, so the editor's autosave triggers a server
+    # reload — kernel + Pyright WebSockets get torn down mid-typing
+    # (Sprint 64 BUG-64-03). Pinning reload_dirs to the source trees keeps
+    # autosave invisible to the watcher; SQLite files (.db) and Delta tables
+    # (notebooks/, /tmp) stay outside scope.
+    project_root = Path(__file__).resolve().parent.parent
     uvicorn.run(
         "pointlessql.api.main:app",
         host=settings.server.host,
         port=settings.server.port,
         reload=True,
+        reload_dirs=[str(project_root), str(project_root.parent / "frontend")],
     )
