@@ -24,6 +24,12 @@ window.sqlEditor = function () {
         referencedTables: [],
         lastRun: null,
 
+        // Saved queries (Sprint 51) state.
+        saved: [],
+        savedLoading: false,
+        saving: false,
+        saveForm: { title: '', description: '', is_shared: false },
+
         init() {
             const host = document.getElementById('pql-sql-editor-root');
             if (!host || cmView) return;
@@ -44,6 +50,14 @@ window.sqlEditor = function () {
             if (prefill) {
                 try { history.replaceState({}, '', '/sql'); } catch (e) { /* ignore */ }
             }
+            const saveShortcut = {
+                key: 'Mod-s',
+                run: () => {
+                    this.openSaveModal();
+                    return true;
+                },
+                preventDefault: true,
+            };
             cmView = new EditorView({
                 state: EditorState.create({
                     doc: startingDoc,
@@ -55,11 +69,103 @@ window.sqlEditor = function () {
                         syntaxHighlighting(defaultHighlightStyle),
                         sql(),
                         oneDark,
-                        keymap.of([runShortcut, ...defaultKeymap, ...historyKeymap]),
+                        keymap.of([
+                            runShortcut,
+                            saveShortcut,
+                            ...defaultKeymap,
+                            ...historyKeymap,
+                        ]),
                     ],
                 }),
                 parent: host,
             });
+            this.refreshSaved();
+        },
+
+        // -- Saved queries (Sprint 51) --
+
+        async refreshSaved() {
+            this.savedLoading = true;
+            const res = await window.pqlApi.fetch('/api/saved-queries', { silent: true });
+            this.savedLoading = false;
+            this.saved = res.ok && Array.isArray(res.data) ? res.data : [];
+        },
+
+        setSQL(value) {
+            if (!cmView) return;
+            cmView.dispatch({
+                changes: { from: 0, to: cmView.state.doc.length, insert: value || '' },
+            });
+        },
+
+        loadSaved(row) {
+            if (!row || typeof row.sql_text !== 'string') return;
+            this.setSQL(row.sql_text);
+            if (window.pqlToast) {
+                window.pqlToast.info(`Loaded "${row.title}"`);
+            }
+        },
+
+        async deleteSaved(row) {
+            if (!row || !row.slug) return;
+            if (!window.confirm(`Delete saved query "${row.title}"?`)) return;
+            const res = await window.pqlApi.fetch(`/api/saved-queries/${encodeURIComponent(row.slug)}`, {
+                method: 'DELETE',
+                silent: true,
+            });
+            if (res.ok || res.status === 204) {
+                if (window.pqlToast) {
+                    window.pqlToast.success(`Deleted "${row.title}"`);
+                }
+                await this.refreshSaved();
+            } else if (window.pqlToast) {
+                window.pqlToast.error(res.error || `HTTP ${res.status}`);
+            }
+        },
+
+        openSaveModal() {
+            this.saveForm = { title: '', description: '', is_shared: false };
+            const el = document.getElementById('pqlSaveQueryModal');
+            if (!el || !window.bootstrap) return;
+            const modal = window.bootstrap.Modal.getOrCreateInstance(el);
+            modal.show();
+        },
+
+        async saveCurrent() {
+            const sqlText = this.getSQL().trim();
+            const title = (this.saveForm.title || '').trim();
+            if (!title) {
+                if (window.pqlToast) window.pqlToast.error('Title is required.');
+                return;
+            }
+            if (!sqlText) {
+                if (window.pqlToast) window.pqlToast.error('Nothing to save — the editor is empty.');
+                return;
+            }
+            this.saving = true;
+            const res = await window.pqlApi.fetch('/api/saved-queries', {
+                method: 'POST',
+                body: {
+                    title,
+                    description: this.saveForm.description || '',
+                    sql: sqlText,
+                    is_shared: !!this.saveForm.is_shared,
+                },
+                silent: true,
+            });
+            this.saving = false;
+            if (res.ok && res.data) {
+                if (window.pqlToast) {
+                    window.pqlToast.success(`Saved as "${res.data.title}"`);
+                }
+                const el = document.getElementById('pqlSaveQueryModal');
+                if (el && window.bootstrap) {
+                    window.bootstrap.Modal.getOrCreateInstance(el).hide();
+                }
+                await this.refreshSaved();
+            } else if (window.pqlToast) {
+                window.pqlToast.error(res.error || `HTTP ${res.status}`);
+            }
         },
 
         /** Format a single result cell for text rendering. */

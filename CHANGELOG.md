@@ -4,6 +4,65 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 51) — Saved queries
+
+- **Alembic 013** creates ``saved_queries`` (id, unique slug,
+  title, optional description, ``sql_text`` TEXT, ``owner_id`` FK
+  users, ``is_shared`` BOOL default FALSE, created_at, updated_at)
+  plus a ``(owner_id, updated_at)`` index so the drawer's
+  "most-recently-touched first" ordering is a single index scan.
+- **Visibility model.** Owner + admin always see the row; every
+  other logged-in user sees it only when ``is_shared = True``.
+  Mutation (PATCH / DELETE / re-share) is restricted to owner +
+  admin.  The ``/api/saved-queries/{slug}`` endpoints collapse
+  "not found" and "forbidden" into a single 404 so unguessable
+  slugs double as a mild privacy guard for private rows.
+- **`services/saved_queries.py`** — pure helpers independent of
+  FastAPI.  ``make_slug(title)`` derives a URL-safe identifier
+  with a 6-char hex suffix (two users saving "Daily orders"
+  don't collide).  ``create_saved_query``,
+  ``list_visible``, ``get_by_slug``, ``update_by_slug``,
+  ``delete_by_slug`` cover the full CRUD surface; every mutation
+  takes the ``(user_id, is_admin)`` pair up-front so the
+  enforcement is at the service boundary, not the route.
+  ``ValidationError`` on empty title / empty SQL.
+- **API.**
+  - ``GET /api/saved-queries`` — list visible rows, admin or
+    owner view, ordered by ``updated_at DESC`` (limit 200).
+  - ``POST /api/saved-queries`` — create; audit tag
+    ``query.saved`` (private) or ``query.shared`` (on creation
+    with ``is_shared: true``).
+  - ``GET /api/saved-queries/{slug}`` — single lookup, 404 on
+    miss or privacy.
+  - ``PATCH /api/saved-queries/{slug}`` — partial update; audit
+    tag ``query.updated`` unless the sharing flag flipped, in
+    which case ``query.shared`` / ``query.unshared``.
+  - ``DELETE /api/saved-queries/{slug}`` → 204; audit tag
+    ``query.deleted``.
+- **Editor sidebar drawer.** New ``components/saved_queries_drawer.html``
+  included on ``/sql`` as a 3-col right-hand column on desktop
+  (Sprint-53 will add the mobile stack).  Shows title +
+  description + owner email + "shared" badge; click the title
+  to load into the editor, click the red ``x`` to delete with a
+  confirm dialog.
+- **Save current query modal + Cmd+S.** ``<div id="pqlSaveQueryModal">``
+  renders a Bootstrap modal with title / description / shared
+  checkbox.  CodeMirror's ``Mod-s`` keybind and a new "Save"
+  button next to "Run" both open the modal; on submit
+  ``pqlApi.fetch('POST /api/saved-queries')`` creates the row
+  and refreshes the drawer.
+- **Audit actions.** ``query.saved``, ``query.shared``,
+  ``query.unshared``, ``query.updated``, ``query.deleted`` —
+  every new audit string follows the Sprint-48 ``resource.verb``
+  convention settled for Phase 12.
+- Tests: 11 new cases in ``tests/test_saved_queries.py`` —
+  slug generation + sanitising, empty title/SQL validation,
+  private peer query hidden from non-owner, shared query visible
+  to non-owner, PATCH/DELETE by non-owner returns None/False,
+  owner toggles ``is_shared``, full API round-trip (create →
+  list → get → private-is-404-for-other-user → PATCH-by-non-
+  owner-404 → DELETE-204).
+
 ### Added (Sprint 50) — Query history
 
 - **Alembic 012** creates two new tables. ``query_history``

@@ -46,6 +46,7 @@ from pointlessql.services import notebook_render as notebook_render_service
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services import query_history as query_history_service
+from pointlessql.services import saved_queries as saved_queries_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.authorization import (
     MANAGE_GRANTS,
@@ -922,6 +923,201 @@ async def queries_page(request: Request) -> HTMLResponse:
             "list_page": True,
         },
     )
+
+
+# -- Phase 12 saved queries (Sprint 51) ------------------------------------
+
+
+@app.get("/api/saved-queries")
+async def api_list_saved_queries(request: Request) -> list[dict[str, Any]]:
+    """Return every saved query visible to the current user.
+
+    Admin sees all rows; non-admin sees their own + every row
+    with ``is_shared = True``.  Ordered by ``updated_at`` so the
+    most recent edits float to the top.
+    """
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return []
+    user = _get_user(request)
+    return await asyncio.to_thread(
+        saved_queries_service.list_visible,
+        factory,
+        user_id=user["id"],
+        is_admin=user.get("is_admin", False),
+    )
+
+
+@app.post("/api/saved-queries")
+async def api_create_saved_query(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Create a new saved query owned by the current user.
+
+    Args:
+        request: The incoming FastAPI request.
+        body: JSON body with ``title``, ``sql`` (or ``sql_text``),
+            optional ``description`` and ``is_shared``.
+
+    Returns:
+        The serialised row as a dict.
+
+    Raises:
+        ValidationError: If ``title`` or the SQL field is missing
+            / empty.
+    """  # noqa: DOC502 — raised by services.saved_queries.create_saved_query
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise ValidationError("Saved queries unavailable: no session factory bound.")
+    user = _get_user(request)
+    payload = body or {}
+    title = payload.get("title", "")
+    description = payload.get("description")
+    sql_text = payload.get("sql_text") or payload.get("sql") or ""
+    is_shared = bool(payload.get("is_shared", False))
+    row = await asyncio.to_thread(
+        saved_queries_service.create_saved_query,
+        factory,
+        owner_id=user["id"],
+        title=title if isinstance(title, str) else "",
+        description=description if isinstance(description, str) else None,
+        sql_text=sql_text if isinstance(sql_text, str) else "",
+        is_shared=is_shared,
+    )
+    action = "query.shared" if row["is_shared"] else "query.saved"
+    await _audit(request, action, f"saved_query:{row['slug']}", {"title": row["title"]})
+    return row
+
+
+@app.get("/api/saved-queries/{slug}")
+async def api_get_saved_query(request: Request, slug: str) -> dict[str, Any]:
+    """Return a saved query by slug or 404 if hidden/missing.
+
+    Args:
+        request: The incoming request.
+        slug: The saved-query slug.
+
+    Returns:
+        The serialised row.
+
+    Raises:
+        CatalogNotFoundError: If the slug does not exist or the
+            current user cannot see it.  We collapse "not found"
+            and "forbidden" so private slugs are not discoverable.
+    """  # noqa: DOC502 — CatalogNotFoundError raised via module import below
+    from pointlessql.exceptions import CatalogNotFoundError
+
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
+    user = _get_user(request)
+    row = await asyncio.to_thread(
+        saved_queries_service.get_by_slug,
+        factory,
+        slug,
+        user_id=user["id"],
+        is_admin=user.get("is_admin", False),
+    )
+    if row is None:
+        raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
+    return row
+
+
+@app.patch("/api/saved-queries/{slug}")
+async def api_update_saved_query(
+    request: Request, slug: str, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Update a saved query.  Only owner + admin may mutate.
+
+    Args:
+        request: The incoming request.
+        slug: The slug of the row to update.
+        body: Partial update payload — ``title``, ``description``,
+            ``sql_text`` / ``sql``, ``is_shared``.  Any field not
+            present is left unchanged.
+
+    Returns:
+        The updated row as a dict.
+
+    Raises:
+        CatalogNotFoundError: If the row is missing or the user
+            is not the owner / admin.  (We do not differentiate
+            so unauthorised clients cannot probe for existence.)
+        ValidationError: If a non-``None`` title / sql is empty.
+    """  # noqa: DOC502,DOC503 — raised by saved_queries.update_by_slug
+    from pointlessql.exceptions import CatalogNotFoundError
+
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
+    user = _get_user(request)
+    payload = body or {}
+    previous = await asyncio.to_thread(
+        saved_queries_service.get_by_slug,
+        factory,
+        slug,
+        user_id=user["id"],
+        is_admin=user.get("is_admin", False),
+    )
+    row = await asyncio.to_thread(
+        saved_queries_service.update_by_slug,
+        factory,
+        slug,
+        user_id=user["id"],
+        is_admin=user.get("is_admin", False),
+        title=payload.get("title") if isinstance(payload.get("title"), str) else None,
+        description=payload.get("description")
+        if isinstance(payload.get("description"), str)
+        else None,
+        sql_text=payload.get("sql_text")
+        if isinstance(payload.get("sql_text"), str)
+        else (payload.get("sql") if isinstance(payload.get("sql"), str) else None),
+        is_shared=bool(payload.get("is_shared"))
+        if "is_shared" in payload
+        else None,
+    )
+    if row is None:
+        raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
+
+    action = "query.updated"
+    if previous is not None and previous["is_shared"] != row["is_shared"]:
+        action = "query.shared" if row["is_shared"] else "query.unshared"
+    await _audit(request, action, f"saved_query:{slug}", {"title": row["title"]})
+    return row
+
+
+@app.delete("/api/saved-queries/{slug}", status_code=204)
+async def api_delete_saved_query(request: Request, slug: str) -> Response:
+    """Delete a saved query.  Only owner + admin may delete.
+
+    Args:
+        request: The incoming request.
+        slug: The slug of the row to delete.
+
+    Returns:
+        Empty 204 response on success.
+
+    Raises:
+        CatalogNotFoundError: If the row is missing or the user
+            is not owner / admin.
+    """  # noqa: DOC502 — raised via service return value check
+    from pointlessql.exceptions import CatalogNotFoundError
+
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
+    user = _get_user(request)
+    ok = await asyncio.to_thread(
+        saved_queries_service.delete_by_slug,
+        factory,
+        slug,
+        user_id=user["id"],
+        is_admin=user.get("is_admin", False),
+    )
+    if not ok:
+        raise CatalogNotFoundError(f"Saved query {slug!r} not found.")
+    await _audit(request, "query.deleted", f"saved_query:{slug}", None)
+    return Response(status_code=204)
 
 
 @app.post("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/open-in-notebook")

@@ -504,6 +504,55 @@ class QueryHistoryTable(Base):
     )
 
 
+class SavedQuery(Base):
+    """A named, slug-addressable snippet of SQL the user saved.
+
+    Sprint 51 landed the "save current query" flow so operators can
+    park frequently-run analyses and re-open them from the editor's
+    sidebar drawer.
+
+    Visibility model: the ``owner_id`` user and all admins always
+    see the row; every other logged-in user sees it only when
+    ``is_shared`` is ``True``.  Admin can also mutate any row
+    (edit / delete / toggle sharing) — everyone else can only
+    mutate rows they own.  Enforcement lives in
+    :mod:`pointlessql.services.saved_queries` and the API layer.
+
+    The slug is the canonical URL-visible identifier.  Generated
+    from ``slugify(title) + "-" + short-random`` so two saved
+    queries sharing a title don't collide.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        slug: URL-visible identifier, unique across all rows.
+        title: Human-readable name shown in the drawer.
+        description: Optional free-form description.
+        sql_text: The verbatim SQL to load back into the editor.
+        owner_id: FK to ``users.id``.  The user who saved the query.
+        is_shared: When ``True`` every logged-in user sees this row
+            in their drawer; when ``False`` only the owner and
+            admins do.
+        created_at: Timestamp when the row was saved.
+        updated_at: Timestamp of the most recent mutation.
+    """
+
+    __tablename__ = "saved_queries"
+
+    __table_args__ = (
+        Index("ix_saved_queries_owner_updated", "owner_id", "updated_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    sql_text: Mapped[str] = mapped_column(Text, nullable=False)
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    is_shared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class JobLog(Base):
     """One structured log line written during a :class:`JobRun`.
 
