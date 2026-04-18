@@ -1448,7 +1448,7 @@ PointlesSQL
 │   │   to Phase 14 (queued last, on purpose). Sequence from here:
 │   │   hardening (11) → features (12, 13) → public launch (14).
 │   │
-│   ├── Sprint 41 — Admin audit-log viewer                ✅ done (pending)
+│   ├── Sprint 41 — Admin audit-log viewer                ✅ done (2b25b89)
 │   │   ├── `GET /admin/audit` gated by `_require_admin`; reuses
 │   │   │   the `/jobs` `listTable` Alpine component + `pql-list-*`
 │   │   │   CSS so the page inherits search, sort, chips, and
