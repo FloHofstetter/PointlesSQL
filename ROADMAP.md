@@ -1759,6 +1759,53 @@ PointlesSQL
 │       tree, mobile stacking,
 │       `docs/e2e-walkthroughs/sql-editor.md` playbook, phase close.
 │
+├── Phase 12.5 — Data operations parity add-ons            ⏳ in progress
+│   │
+│   │   Narrow follow-up between Phase 12 (SQL editor) and Phase 13
+│   │   (agents).  Four back-to-back sprints close the "data-
+│   │   operations parity" gaps every Databricks user expects once
+│   │   they've got a SQL editor: charts, alerts, column statistics,
+│   │   and UC Volumes.  Guiding principle: **no vendor lock-in** —
+│   │   every external-facing wire format is an open standard
+│   │   (CloudEvents 1.0, Atom 1.0, JSON Feed 1.1, HMAC-SHA256).  No
+│   │   SMTP / Slack / Discord / Teams / PagerDuty SDKs — the user
+│   │   bridges those via n8n / Zapier / Make and we stay portable.
+│   │
+│   ├── Sprint 54 — Charts in the SQL editor                ✅ done (88898d2)
+│   │   Bar / Line / Scatter / Pie toolbar below the results table;
+│   │   ``c`` toggles table ↔ chart when focus is outside CodeMirror;
+│   │   PNG download via ``canvas.toBlob``; chart config persists per
+│   │   ``query_history.id`` via Alembic 014 so re-run from history
+│   │   replays the same visualisation.  Chart.js 4.x UMD (not ESM)
+│   │   vendored via jsDelivr in ``base.html``.
+│   ├── Sprint 55 — Query alerts (webhook + pull feed)      ⏳ planned
+│   │   Alembic 015 adds ``alerts`` / ``alert_destinations`` /
+│   │   ``alert_events`` + ``users.feed_token``.  New
+│   │   ``alert_check`` scheduler job-kind ticks a saved-query
+│   │   condition (``row_count op threshold``) and, when it fires,
+│   │   emits a CloudEvents 1.0 JSON envelope to every enabled
+│   │   destination.  Two destination kinds: webhook (POST with
+│   │   optional HMAC-SHA256 signing, 5s/10s timeouts, 2 retries)
+│   │   and pull feed (Atom 1.0 + JSON Feed 1.1, per-user opaque
+│   │   token, 30-day event retention).  Zero lock-in: user bridges
+│   │   into Slack / PagerDuty / email via n8n / Zapier / Huginn.
+│   ├── Sprint 56 — Column statistics / data profiling      ⏳ planned
+│   │   "Profile table" button on the UC table-detail page.  Server
+│   │   computes per-column count / null_count / distinct_count /
+│   │   min / max / mean / top_5 via a single DuckDB pass (reusing
+│   │   Sprint-49 infra), caches by
+│   │   ``(full_name, delta_log_version)`` in a new ``table_stats``
+│   │   table (Alembic 016), and renders sparklines with the Chart.js
+│   │   CDN Sprint 54 already loaded.
+│   └── Sprint 57 — UC Volumes (upload + convert-to-Delta)  ⏳ planned
+│       Cross-repo sprint.  Soyuz-catalog adds file
+│       upload/download/browse/delete routes + a local-FS storage
+│       backend (metadata CRUD already ships).  PointlesSQL adds a
+│       ``/volumes`` page + upload flow + "Convert to Delta" action
+│       for CSV / Parquet / JSON that reads via DuckDB, writes a
+│       managed Delta table, and registers via UC.  The "I have a
+│       CSV, make it go" moment.
+│
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
 │   │   Goal: bring "AI employees on the lakehouse" into

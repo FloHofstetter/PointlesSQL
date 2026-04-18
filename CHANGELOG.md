@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 54) — Chart toolbar + chart_config persistence
+
+- **Alembic 014** — ``ALTER TABLE query_history ADD COLUMN
+  chart_config TEXT NULL``.  JSON-as-text carrying the user's chart
+  selection ``{type, x, y}``; ``NULL`` means table view, which is
+  correct for every pre-Sprint-54 row.
+- **New routes.** ``GET /api/queries/{history_id}`` fetches a single
+  row as JSON so the editor can seed its chart config when the page
+  is deep-linked from ``/queries``.  ``PATCH /api/queries/{history_id}/
+  chart-config`` persists the user's selection; payload is either
+  ``{type, x, y}`` (server canonicalises via
+  ``json.dumps(sort_keys=True)``) or ``null`` to clear.  Owner + admin
+  only; 404 collapses missing + forbidden the same way the Sprint-51
+  saved-queries surface does.  Audit action:
+  ``query.chart_config_updated``.
+- **`POST /api/sql/execute`** success payload now echoes
+  ``history_id`` so the frontend's debounced PATCH knows which row
+  to update without a second round-trip.
+- **Service layer.** ``query_history.get_by_id`` + ``update_chart_config``
+  alongside the existing record / list helpers; every mutation takes
+  ``(user_id, is_admin)`` up-front so enforcement lives at the
+  service boundary, not the route.
+- **Chart.js 4.4.1 UMD** via jsDelivr in ``base.html``.  Non-module —
+  the Phase-12 replay (commit b830300) burned us once on Alpine/ESM
+  races; rule is "factories register on ``window.<lib>`` synchronously".
+- **Frontend.** New ``viewMode`` / ``chartConfig`` / ``_chartInstance``
+  state on the editor component, plus ``toggleView`` /
+  ``renderChart`` / ``destroyChart`` / ``downloadChartPng`` /
+  ``seedFromHistory`` methods.  Global ``c`` key toggles table ↔
+  chart when focus is outside CodeMirror + form controls.  Results
+  card now gates table vs. chart via ``<template x-if>`` branches
+  with a Bootstrap btn-group view switch.  PNG download uses
+  ``canvas.toBlob`` + an ephemeral ``<a download>``.
+- **`/queries` re-run link** now carries ``&history_id=<id>`` so the
+  editor's ``seedFromHistory`` fetch can seed the chart config.
+- Tests: 7 new cases in ``tests/test_query_history_chart_config.py`` —
+  service-level (write + clear + non-owner refusal) + HTTP (owner
+  round-trip, null-clears, 422 on invalid payload, 404 for strangers
+  on both GET and PATCH).
+
 ### Added (Sprint 53) — EXPLAIN + autocomplete + polish + Phase 12 close-out
 
 - **EXPLAIN ANALYZE toggle.** Second button next to Run sends
