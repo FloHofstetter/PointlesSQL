@@ -17,38 +17,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Do not persist the auth header into local git config.
-          # Otherwise later git operations inside this cloned repo
-          # (uv's soyuz-catalog fetch, any `git ls-remote`, ...)
-          # collide with our own env-provided extraheader →
-          # GitHub returns `400 Duplicate header: "Authorization"`.
-          persist-credentials: false
+          path: PointlesSQL
+      # Clone soyuz-catalog as a sibling directory so uv can
+      # resolve the client via a local path dep. This is the
+      # "sibling checkout" pattern — avoids fighting uv's git
+      # subprocess auth, because actions/checkout handles the
+      # private-repo fetch via its own battle-tested token flow.
+      # The ref pins the exact soyuz-catalog commit PointlesSQL's
+      # pyproject.toml otherwise pins via git tag.
+      - uses: actions/checkout@v4
+        with:
+          repository: FloHofstetter/soyuz-catalog
+          ref: v0.2.0rc2
+          token: ${{ secrets.SOYUZ_READ_TOKEN }}
+          path: soyuz-catalog
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
       - name: Set up Python
+        working-directory: PointlesSQL
         run: uv python install 3.14
-      - name: Install dependencies
-        # File-based global git config instead of GIT_CONFIG_*
-        # env vars. Attempt-8 debug revealed that only
-        # GIT_CONFIG_VALUE_0 appeared in the step's env at all —
-        # the COUNT and KEY_0 vars somehow didn't propagate
-        # (YAML parser quirk, masking side-effect — unknown).
-        # Writing directly to ~/.gitconfig sidesteps the env
-        # propagation mystery. Combined with
-        # `persist-credentials: false` on the checkout above,
-        # this is the only Authorization header git sees.
+      - name: Override soyuz-catalog-client to sibling path
+        working-directory: PointlesSQL
+        # Drop a gitignored uv.toml that overrides
+        # [tool.uv.sources] in pyproject.toml to use the sibling
+        # checkout as an editable path dep. Identical to the
+        # developer escape hatch documented in CLAUDE.md.
         run: |
-          git config --global \
-            http.https://github.com/.extraheader \
-            "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
-          uv sync --all-extras
+          cat > uv.toml <<'EOF'
+          [sources]
+          soyuz-catalog-client = { path = "../soyuz-catalog/soyuz-catalog-client", editable = true }
+          EOF
+      - name: Install dependencies
+        working-directory: PointlesSQL
+        run: uv sync --all-extras
       - name: Ruff
+        working-directory: PointlesSQL
         run: uv run ruff check .
       - name: Pyright
+        working-directory: PointlesSQL
         run: uv run pyright
       - name: Pydoclint (Google style)
+        working-directory: PointlesSQL
         run: uv run pydoclint --style=google pointlessql/
       - name: Alembic — no autogen drift
+        working-directory: PointlesSQL
         run: uv run alembic check

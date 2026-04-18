@@ -23,17 +23,21 @@ jobs:
   release:
     name: build + publish release
     runs-on: ubuntu-latest
-    # Inject a Bearer extraheader for every git invocation via
-    # GIT_CONFIG_COUNT — this is read by uv's git subprocess even
-    # when it runs under a modified HOME. See test.yml for the
-    # full rationale and prior failure modes.
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # git-cliff needs full history
-          # See test.yml — prevents Authorization-header collision
-          # with the extraheader we inject for uv's soyuz fetch.
-          persist-credentials: false
+          path: PointlesSQL
+      # Sibling-checkout pattern: actions/checkout handles the
+      # private-repo auth for us, then uv resolves soyuz-catalog-
+      # client as an editable path dep (via a CI-only uv.toml
+      # override). See test.yml for the rationale.
+      - uses: actions/checkout@v4
+        with:
+          repository: FloHofstetter/soyuz-catalog
+          ref: v0.2.0rc2
+          token: ${{ secrets.SOYUZ_READ_TOKEN }}
+          path: soyuz-catalog
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -41,33 +45,43 @@ jobs:
           enable-cache: true
 
       - name: Set up Python
+        working-directory: PointlesSQL
         run: uv python install 3.14
 
-      - name: Install dependencies
-        # See test.yml — file-based git config + persist-credentials:
-        # false is the only combination that reliably works.
+      - name: Override soyuz-catalog-client to sibling path
+        working-directory: PointlesSQL
         run: |
-          git config --global \
-            http.https://github.com/.extraheader \
-            "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
-          uv sync --all-extras
+          cat > uv.toml <<'EOF'
+          [sources]
+          soyuz-catalog-client = { path = "../soyuz-catalog/soyuz-catalog-client", editable = true }
+          EOF
+
+      - name: Install dependencies
+        working-directory: PointlesSQL
+        run: uv sync --all-extras
 
       - name: Gate — ruff
+        working-directory: PointlesSQL
         run: uv run ruff check .
 
       - name: Gate — pyright
+        working-directory: PointlesSQL
         run: uv run pyright
 
       - name: Gate — pydoclint
+        working-directory: PointlesSQL
         run: uv run pydoclint --style=google pointlessql/
 
       - name: Gate — alembic drift
+        working-directory: PointlesSQL
         run: uv run alembic check
 
       - name: Build wheel + sdist
+        working-directory: PointlesSQL
         run: uv build
 
       - name: Verify wheel force-includes frontend + alembic
+        working-directory: PointlesSQL
         run: |
           WHL=$(ls dist/pointlessql-*.whl | head -1)
           echo "inspecting $WHL"
@@ -91,6 +105,7 @@ jobs:
           " "$WHL"
 
       - name: Generate release notes
+        working-directory: PointlesSQL
         run: |
           uvx --from git-cliff git-cliff \
             --latest \
@@ -100,6 +115,7 @@ jobs:
           cat RELEASE_NOTES.md
 
       - name: Create GitHub Release
+        working-directory: PointlesSQL
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
