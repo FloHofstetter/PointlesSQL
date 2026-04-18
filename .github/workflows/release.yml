@@ -36,6 +36,18 @@ jobs:
         env:
           SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
+          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
+          if [ "$LEN" -lt 30 ]; then
+            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes). Re-paste it in Settings → Secrets → Actions." >&2
+            exit 1
+          fi
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${SOYUZ_READ_TOKEN}" \
+            https://api.github.com/user)
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::SOYUZ_READ_TOKEN is not accepted by GitHub (GET /user → HTTP ${STATUS}). The PAT may be revoked, expired, or corrupted during paste." >&2
+            exit 1
+          fi
           git config --global \
             url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
             "https://github.com/"

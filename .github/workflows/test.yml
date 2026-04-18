@@ -25,28 +25,26 @@ jobs:
         env:
           SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
+          # Preflight: catch an empty / truncated / typo'd secret
+          # before we get the inscrutable
+          # `remote: Invalid username or token` from git. Classic PATs
+          # are 40 chars (ghp_ + 36); fine-grained PATs are ~93 chars.
           LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
-          echo "SOYUZ_READ_TOKEN length: ${LEN}"
           if [ "$LEN" -lt 30 ]; then
-            echo "::error::SOYUZ_READ_TOKEN is too short (${LEN} bytes)" >&2
+            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes). Re-paste it in Settings → Secrets → Actions." >&2
             exit 1
           fi
-          echo "=== scope probe: GET /user ==="
-          curl -s -o /dev/null -w "status=%{http_code} scopes=%header{x-oauth-scopes}\n" \
+          # Validate that GitHub actually accepts the PAT. An expired
+          # or revoked PAT returns 401 from /user — which is the
+          # cheapest way to surface the right error before uv spends
+          # a minute resolving dependencies.
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: token ${SOYUZ_READ_TOKEN}" \
-            https://api.github.com/user
-          echo "=== scope probe: GET /repos/FloHofstetter/soyuz-catalog ==="
-          curl -s -o /dev/null -w "status=%{http_code} scopes=%header{x-oauth-scopes}\n" \
-            -H "Authorization: token ${SOYUZ_READ_TOKEN}" \
-            https://api.github.com/repos/FloHofstetter/soyuz-catalog
-          echo "=== git ls-remote via x-access-token:PAT ==="
-          set +e
-          git ls-remote "https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/FloHofstetter/soyuz-catalog.git" HEAD 2>&1 | head -5
-          echo "exit=$?"
-          echo "=== git ls-remote via PAT-as-username only ==="
-          git ls-remote "https://${SOYUZ_READ_TOKEN}@github.com/FloHofstetter/soyuz-catalog.git" HEAD 2>&1 | head -5
-          echo "exit=$?"
-          set -e
+            https://api.github.com/user)
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::SOYUZ_READ_TOKEN is not accepted by GitHub (GET /user → HTTP ${STATUS}). The PAT may be revoked, expired, or corrupted during paste." >&2
+            exit 1
+          fi
           git config --global \
             url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
             "https://github.com/"
