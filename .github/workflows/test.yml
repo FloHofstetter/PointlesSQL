@@ -25,6 +25,16 @@ jobs:
         env:
           SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
         run: |
+          # Non-leaking sanity check: classic PATs are ~40 chars
+          # (ghp_ + 36), fine-grained PATs are ~93 chars
+          # (github_pat_ + 82). A 1-byte secret means the org-secret
+          # was typo'd when it was pasted into the GitHub UI.
+          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
+          echo "SOYUZ_READ_TOKEN length: ${LEN}"
+          if [ "$LEN" -lt 30 ]; then
+            echo "::error::SOYUZ_READ_TOKEN is suspiciously short (${LEN} bytes) — re-paste the PAT in repo Settings → Secrets" >&2
+            exit 1
+          fi
           git config --global \
             url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
             "https://github.com/"
