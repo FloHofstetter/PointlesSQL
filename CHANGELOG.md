@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0rc3] - 2026-04-18
+
 ### Added (Sprint 40)
 
 - **`.github/workflows/docker.yml`.** On-tag image publish to
