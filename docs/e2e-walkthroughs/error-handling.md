@@ -140,5 +140,24 @@ extension members.
 
 ## Replay log
 
-- 2026-04-18 — Sprint 44 landing (`<pending>`): playbook authored.
-  Physical replay deferred to post-commit.
+- 2026-04-18 — Sprint 44 landing (`f6f327c`): playbook authored.
+- 2026-04-18 — Sprint 44 replay (clean): all seven steps passed
+  against the rebuilt docker image (`docker compose build pointlessql`
+  + `docker compose up -d`). Verified via Playwright-MCP (Firefox
+  bundle) using a non-admin ``alice@pql.test`` session. Highlights:
+  Step 1 body emitted all nine expected members
+  (``type``/``title``/``status``/``detail``/``code``/``request_id`` +
+  the three ``AuthorizationError`` extensions) with
+  ``Content-Type: application/problem+json``. Step 3 fired the
+  browser-side toast via ``htmx.ajax('GET', '/connections', …)`` —
+  ``#pql-toast-root`` gained a ``.pql-toast--error`` node carrying
+  ``alice@pql.test lacks admin on system 'admin' [req <hex>]`` while
+  the page URL stayed at ``/``. Step 6 surfaced the 502
+  ``catalog_unavailable`` body after ``docker compose stop
+  soyuz-catalog``. Step 7 threaded ``X-Request-ID:
+  req-playbook-trace-99`` through the response header, the
+  ``request_id`` body field, and *two* server log lines
+  (``pointlessql.services.unitycatalog`` transport-failure +
+  ``pointlessql.api.error_handlers handled domain error:
+  catalog_unavailable``) at the ``[req=req-playbook-trace-99]``
+  correlation tag.
