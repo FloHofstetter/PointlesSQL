@@ -1437,6 +1437,167 @@ PointlesSQL
 │   time, build the publish pipeline in the same sprint that
 │   flips visibility.
 │
+├── Phase 11 — Hardening                                 ⏳ planned
+│   │
+│   │   Goal: harden the runtime surfaces before layering more
+│   │   features on. Phase 10 shipped a working release pipeline,
+│   │   but the app itself is still single-user-laptop-grade —
+│   │   no CSRF, no rate limiting, no JWT-key rotation story, no
+│   │   in-app audit viewer. The public-visibility / external-
+│   │   distribution work that was briefly mooted here has moved
+│   │   to Phase 14 (queued last, on purpose). Sequence from here:
+│   │   hardening (11) → features (12, 13) → public launch (14).
+│   │
+│   │   Scope (not yet split into sprints):
+│   │
+│   ├── CSRF protection on all state-changing HTML form routes
+│   │   (the JSON API is fine; browser-form POSTs currently are not)
+│   ├── Rate limiting on `/auth/*` and on `/api/sql/*` once
+│   │   Phase 12 lands
+│   ├── Graceful-rotation story for `secret_key` (JWT signing) so
+│   │   mid-flight tokens survive a rotation
+│   └── Admin audit-log viewer page over the Sprint-7 `audit_log`
+│       table; reuses the `/jobs` list-table machinery — filter
+│       by user, action, target, time window
+│
+├── Phase 12 — SQL editor + query history                 ⏳ planned
+│   │
+│   │   Goal: close the second first-class-workspace gap after
+│   │   notebooks (Phase 8). Dedicated `/sql` page (CodeMirror
+│   │   editor + results table), plus `/queries` history that
+│   │   answers "which user ran which query on which table when".
+│   │   Auditability is free — Phase 3 already enforces SELECT at
+│   │   the UC layer; Phase 12 just adds the telemetry plus the UI.
+│   │
+│   │   Settled design decisions (before any sprint starts):
+│   │
+│   │   - Query history lives in PointlesSQL's own Alembic DB,
+│   │     not in soyuz-catalog — it is operational telemetry per
+│   │     tenant, not lakehouse metadata
+│   │   - Referenced tables extracted via `sqlglot` at execute-
+│   │     time into a `query_history_tables` relation so
+│   │     "who queried table X" is a fast reverse lookup
+│   │   - SQL execution hard-wired to DuckDB (Pandas can't,
+│   │     Polars only rudimentary); Phase 5's `POINTLESSQL_ENGINE`
+│   │     setting stays for `PQL.table()` reads
+│   │   - Delta-table export of query history as a `system`
+│   │     catalog is deliberately deferred — offered as optional
+│   │     Phase 12.5 only if retention requirements appear
+│   │
+│   │   Sprint outline:
+│   │
+│   ├── SQL editor MVP — CodeMirror + `/sql` + `PQL.sql()` +
+│   │   sqlglot-based table resolution + SELECT enforcement per
+│   │   referenced table. No history, no save, no export yet
+│   ├── Query history — Alembic migration adds `query_history` +
+│   │   `query_history_tables`; `/queries` page with filter
+│   │   chips + re-run button; non-admin sees only own rows
+│   ├── Saved queries — Alembic migration adds `saved_queries`;
+│   │   share model parallel to Sprint-28 dashboards; sidebar
+│   │   drawer on the editor
+│   ├── Export + limits + cancel — CSV / Parquet download via
+│   │   re-run-from-history; row limit + query timeout; cancel
+│   │   button via DuckDB `.interrupt()`
+│   └── EXPLAIN + autocomplete + close — EXPLAIN toggle,
+│       table-name autocomplete from catalog tree, `g s`
+│       keyboard shortcut, mobile stacking,
+│       `docs/e2e-walkthroughs/sql-editor.md` playbook, phase close
+│
+├── Phase 13 — Agent workloads                            ⏳ sketch
+│   │
+│   │   Goal: bring "AI employees on the lakehouse" into
+│   │   production — but as an integration with first-party
+│   │   tooling, not as a new agent stack inside PointlesSQL.
+│   │   The ecosystem already exists around this project:
+│   │   shoreguard-fresh (policy / control plane),
+│   │   NVIDIA OpenShell (sandbox runtime), and Paperclip
+│   │   (org / budget / approval layer above agent frameworks).
+│   │   Phase 13 wires those pieces together with PointlesSQL
+│   │   staying focused on being the data surface. Three-layer
+│   │   governance falls out naturally: UC permissions (what
+│   │   data the agent can touch), OpenShell policy (what
+│   │   filesystem / network / processes), Paperclip approvals
+│   │   (which actions require a human).
+│   │
+│   │   Scope sketch (many open design questions — only worth
+│   │   firming up once Phase 12 is landing):
+│   │
+│   ├── New companion repo `paperclip-adapter-pointlessql`
+│   │   exposing PointlesSQL's REST API + PQL snippets as tools
+│   │   Paperclip agents can call; sits next to the existing
+│   │   `paperclip-plugin-shoreguard`
+│   ├── New job kind `agent_run` in the Sprint-19 DAG engine so
+│   │   scheduled agent workloads inherit scheduling, run
+│   │   history, and dashboards without reinvention
+│   ├── `X-Principal` forwarded into the Paperclip-managed
+│   │   sandbox as the agent's UC identity, so Phase-3 SELECT /
+│   │   MODIFY enforcement applies to every agent query without
+│   │   new plumbing
+│   ├── Read-only `/agents` discovery page in PointlesSQL;
+│   │   authoring UI stays in Paperclip — PointlesSQL doesn't
+│   │   compete with it
+│   ├── Open decisions to settle: OIDC federation vs API-key
+│   │   for PointlesSQL ↔ shoreguard authentication; ownership
+│   │   of the `pql`-preinstalled sandbox image; streaming agent
+│   │   logs into PointlesSQL's UI; Paperclip budget metrics
+│   │   propagating into the job-run dashboards
+│   └── Optional sidequest `openclaw-plugin-pointlessql` —
+│       chat interface to catalog / SQL / jobs / dashboards via
+│       OpenClaw messaging integrations. Not a sprint inside
+│       the phase, just ecosystem work worth doing in the same
+│       window
+│
+│   Exploratory follow-ons (not yet committed phases):
+│
+│   - **Ontology layer / Foundry-lite**: semantic "object" layer
+│     above UC tables (User, Order, Campaign as first-class
+│     entities with properties, relationships, derived
+│     attributes). Would move the stack toward "governed-
+│     operations platform for small teams". 3-6 months of work;
+│     only worth picking up if Phase 13 proves the agent-
+│     workload thesis carries
+│   - **OSINT playbook**: not a phase on its own — Phase 6
+│     foreign-catalog primitives + Phase 8 agent-authored
+│     dashboards + Phase 13 agents already describe an
+│     OSINT-capable substrate. Worth writing up as a pattern
+│     playbook once the underlying phases stabilise
+│
+├── Phase 14 — Public launch + external distribution      ⏳ queued (last)
+│   │
+│   │   Deliberately queued for the end. Phase 10's retrospective
+│   │   spelled it out: building release-engineering against a
+│   │   private audience of one generates self-inflicted auth
+│   │   friction, and release candidates shipped without
+│   │   downstream consumers are wasted motion. Hardening
+│   │   (Phase 11) and features (Phase 12, 13) come first. When
+│   │   this phase runs, it is the moment the stack goes from
+│   │   "my project" to "something strangers can try". Until
+│   │   then this entry exists as an anchor so the future work
+│   │   isn't forgotten — not as a scheduled commitment.
+│   │
+│   │   Scope (not yet split into sprints):
+│   │
+│   ├── GHCR packages flipped private → public for both
+│   │   `pointlessql` and `soyuz-catalog` images; the Phase-10-
+│   │   deferred `docs/e2e-walkthroughs/packaging.md` dogfood
+│   │   replay finally runs end-to-end without the PAT dance
+│   ├── Multi-arch (amd64 + arm64) image builds via docker
+│   │   buildx — the single-sprint work that Phase 10 couldn't
+│   │   justify for an audience of one
+│   ├── Public PyPI publish of `soyuz-catalog-client` (first)
+│   │   and the `pointlessql` wheel (second); replaces Phase 10's
+│   │   private git-tag pin for the general audience while
+│   │   keeping the tag-pin option available for consumers who
+│   │   prefer reproducible git-based installs
+│   ├── Optional: Helm chart for K8s deployments, generalising
+│   │   "runs on a €15/month vServer" to "runs on a cluster"
+│   └── README / docs pass: swap the "functional Databricks
+│       clone" alpha framing for whatever the honest public
+│       positioning is at the time. License decision (Apache 2.0
+│       is the default-obvious choice — UC-compatible, no
+│       ethical-use clauses worth the drama; revisit only if
+│       something has changed)
+│
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
     │   soyuz-catalog's job; PointlesSQL is a consumer

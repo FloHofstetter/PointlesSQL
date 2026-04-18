@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **`ROADMAP.md`.** Opened ⏳ entries for four forward-looking
+  phases with a deliberate sequence: hardening first, features
+  second, public launch last. **Phase 11 (Hardening)** — CSRF
+  on HTML forms, rate limiting on `/auth/*` and future
+  `/api/sql/*`, graceful `secret_key` rotation, admin audit-log
+  viewer reusing the `/jobs` list-table machinery.
+  **Phase 12 (SQL editor + query history)** — CodeMirror `/sql`
+  page, DuckDB-only `PQL.sql()` with sqlglot-based table
+  resolution, `query_history` + `query_history_tables` Alembic
+  migration, saved queries, export, EXPLAIN, `g s` shortcut.
+  **Phase 13 (Agent workloads — sketch)** —
+  `paperclip-adapter-pointlessql` companion repo, new
+  `agent_run` job kind, `X-Principal`-into-sandbox for UC
+  enforcement on agent queries, read-only `/agents` discovery
+  page; plus two uncommitted follow-ons (ontology / Foundry-
+  lite; OSINT pattern playbook). **Phase 14 (Public launch +
+  external distribution — queued last)** — GHCR private→public
+  flip + Phase-10-deferred packaging replay, multi-arch builds,
+  public PyPI publish, optional Helm chart, positioning /
+  license decisions. Phase 14 is deliberately queued for the
+  end per the Phase 10 retrospective ("release engineering
+  against a private audience generates self-inflicted
+  friction"). No code touched — these entries anchor scope
+  discussed in-session so later sessions pick up where this
+  one left off.
+
 ## [0.1.0rc3] - 2026-04-18
 
 ### Added (Sprint 40)
