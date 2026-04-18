@@ -1325,7 +1325,7 @@ PointlesSQL
 │   │   └── First tag: `v0.1.0rc1` (PEP 440 canonical — not
 │   │       `v0.1.0-rc1`; same typo-correction as soyuz Sprint 19.1)
 │   │
-│   └── Sprint 40 — Docker registry + clean-machine install + close  ✅ done
+│   └── Sprint 40 — Docker registry + clean-machine install + close  ✅ done (c242464)
 │       ├── `.github/workflows/docker.yml` — on-tag, builds
 │       │   PointlesSQL + soyuz-catalog images, pushes to GHCR
 │       │   under the repo-owner namespace (private; consumers
