@@ -1921,7 +1921,7 @@ PointlesSQL
 │   │   └── Out of scope: rich outputs (html / png / svg /
 │   │       pandas / matplotlib), output persistence, LSP
 │   │
-│   ├── Sprint 60 — Output persistence + rich outputs         🔜 in progress
+│   ├── Sprint 60 — Output persistence + rich outputs         ✅ done (5a17c0a, 9d03ca0)
 │   │   ├── Alembic 017 lands the two tables pinned in ADR 0001:
 │   │   │   ``notebook_outputs`` (id + quadruple uniq on
 │   │   │   ``(file_path, cell_id, kernel_session_id,
