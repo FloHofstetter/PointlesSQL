@@ -28,6 +28,28 @@ jobs:
       # `Contents: Read` scope), apparently a bug in how
       # actions/checkout formats basic-auth for fine-grained PATs.
       # Direct git clone with the same credentials works.
+      - name: Debug — verify secret + auth
+        env:
+          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+        run: |
+          echo "=== secret length (expected 93) ==="
+          printf '%s' "$SOYUZ_READ_TOKEN" | wc -c
+          echo "=== secret prefix (first 14 chars) ==="
+          printf '%s' "$SOYUZ_READ_TOKEN" | head -c 14
+          echo ""
+          echo "=== secret suffix (last 6 chars) ==="
+          printf '%s' "$SOYUZ_READ_TOKEN" | tail -c 6
+          echo ""
+          echo "=== hex dump of last 5 bytes (check for stray \\n/\\r) ==="
+          printf '%s' "$SOYUZ_READ_TOKEN" | tail -c 5 | od -c | head -1
+          echo "=== curl Bearer auth to api.github.com ==="
+          curl -s -o /dev/null -w "api status: %{http_code}\n" \
+            -H "Authorization: Bearer $SOYUZ_READ_TOKEN" \
+            https://api.github.com/repos/FloHofstetter/soyuz-catalog
+          echo "=== curl basic auth to api.github.com ==="
+          curl -s -o /dev/null -w "basic status: %{http_code}\n" \
+            -u "x-access-token:$SOYUZ_READ_TOKEN" \
+            https://api.github.com/repos/FloHofstetter/soyuz-catalog
       - name: Clone soyuz-catalog at pinned tag
         env:
           SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
