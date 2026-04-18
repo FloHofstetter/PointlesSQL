@@ -314,7 +314,7 @@ def _ensure_typed_params_notebook() -> None:
     The body cell echoes the resolved values so the executed notebook
     visibly shows the override.
     """
-    nb_root = Path(os.environ.get("POINTLESSQL_NOTEBOOKS_DIR", "notebooks"))
+    nb_root = Path(os.environ.get("POINTLESSQL_JUPYTER_NOTEBOOKS_DIR", "notebooks"))
     nb_root.mkdir(parents=True, exist_ok=True)
     target = nb_root / "smoke_typed_params.ipynb"
     if target.exists():
@@ -330,12 +330,12 @@ def _ensure_smoke_notebook() -> None:
     The Sprint 24 ``notebook-jobs.md`` playbook expects a notebook with
     a ``parameters``-tagged first cell plus a body cell that prints the
     forwarded principal and a ``pql.list_catalogs()`` result. Writes to
-    ``$POINTLESSQL_NOTEBOOKS_DIR/smoke_papermill.ipynb`` (default
+    ``$POINTLESSQL_JUPYTER_NOTEBOOKS_DIR/smoke_papermill.ipynb`` (default
     ``notebooks/smoke_papermill.ipynb`` — inside the container this is
     ``/app/notebooks/smoke_papermill.ipynb`` via the compose bind
     mount).
     """
-    nb_root = Path(os.environ.get("POINTLESSQL_NOTEBOOKS_DIR", "notebooks"))
+    nb_root = Path(os.environ.get("POINTLESSQL_JUPYTER_NOTEBOOKS_DIR", "notebooks"))
     nb_root.mkdir(parents=True, exist_ok=True)
     target = nb_root / "smoke_papermill.ipynb"
     if target.exists():

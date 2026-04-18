@@ -18,9 +18,9 @@ run. One fully-written primary walk + five delta walks.
 
 | Env var                          | Default   | Accepted values                    |
 | -------------------------------- | --------- | ---------------------------------- |
-| `POINTLESSQL_ENGINE`             | `pandas`  | `pandas`, `duckdb`, `polars`       |
+| `POINTLESSQL_DELTA_ENGINE`             | `pandas`  | `pandas`, `duckdb`, `polars`       |
 | `POINTLESSQL_LOG_FORMAT`         | `text`    | `text`, `json`                     |
-| `POINTLESSQL_DATABASE_URL`       | sqlite…   | any SQLAlchemy URL (sqlite/postgres) |
+| `POINTLESSQL_DB_URL`             | sqlite…   | any SQLAlchemy URL (sqlite/postgres) |
 
 ## Primary walk — `engine=pandas`, `log=text`, `db=sqlite`
 
@@ -55,10 +55,10 @@ Each delta reuses the primary walk but flips exactly one env var
 the primary walk is the override and the one extra assertion that
 confirms the override landed.
 
-### Delta A — `POINTLESSQL_ENGINE=duckdb`
+### Delta A — `POINTLESSQL_DELTA_ENGINE=duckdb`
 
 ```bash
-POINTLESSQL_ENGINE=duckdb docker compose -f docker-compose.yml \
+POINTLESSQL_DELTA_ENGINE=duckdb docker compose -f docker-compose.yml \
     -f docker-compose.e2e.yml up -d --force-recreate pointlessql
 ```
 
@@ -66,7 +66,7 @@ Assert startup log shows `engine=duckdb`. Re-run seed (harmless,
 idempotent). Browser walk as primary. Since the UI does not expose
 the engine, the startup-log grep is the authoritative check.
 
-### Delta B — `POINTLESSQL_ENGINE=polars`
+### Delta B — `POINTLESSQL_DELTA_ENGINE=polars`
 
 Same pattern; expect `engine=polars`.
 

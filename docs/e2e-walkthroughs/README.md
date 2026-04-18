@@ -61,8 +61,8 @@ data-surface playbooks have run at least once:
    `X-Request-ID` generate-and-forward middleware contract.
 10. [`config-matrix.md`](config-matrix.md) — one primary golden
     path (`engine=pandas, log=text, db=sqlite`) plus five delta
-    walks for every non-default value of `POINTLESSQL_ENGINE`,
-    `POINTLESSQL_LOG_FORMAT`, and `POINTLESSQL_DATABASE_URL`.
+    walks for every non-default value of `POINTLESSQL_DELTA_ENGINE`,
+    `POINTLESSQL_LOG_FORMAT`, and `POINTLESSQL_DB_URL`.
 
 **Packaging** (Sprint 40). Validates the GHCR-pull install path —
 the one install flavour that cannot be run from a source checkout

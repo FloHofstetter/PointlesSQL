@@ -35,7 +35,7 @@ def _settings(request: Request) -> Settings:
 def _oidc_redirect_uri(request: Request, settings: Settings) -> str:
     """Build the OIDC callback redirect URI.
 
-    Uses ``POINTLESSQL_BASE_URL`` when set so the URI is correct behind
+    Uses ``POINTLESSQL_SERVER_BASE_URL`` when set so the URI is correct behind
     reverse proxies or inside Docker. Falls back to deriving the URI
     from the incoming request.
     """

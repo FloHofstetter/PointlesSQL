@@ -77,7 +77,7 @@ on (full round-trip, auto-user-creation, claim mapping).
    POINTLESSQL_OIDC_DISCOVERY_URL=http://$MOCK_IP:8080/default/.well-known/openid-configuration \
    POINTLESSQL_OIDC_CLIENT_ID=pql-e2e \
    POINTLESSQL_OIDC_CLIENT_SECRET=secret \
-   POINTLESSQL_BASE_URL=http://127.0.0.1:8000 \
+   POINTLESSQL_SERVER_BASE_URL=http://127.0.0.1:8000 \
    docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
        up -d --force-recreate pointlessql
    ```
@@ -98,7 +98,7 @@ on (full round-trip, auto-user-creation, claim mapping).
    - Action: click the "Sign in with SSO" button.
    - Assert: browser navigates to the mock's issuer — the URL
      host is `127.0.0.1:9090` or `localhost:9090` (depending on
-     `POINTLESSQL_BASE_URL` resolution), the page contains a form
+     `POINTLESSQL_SERVER_BASE_URL` resolution), the page contains a form
      with `username` and `claims` fields.
    - Action: fill the mock's form with a test subject:
      `username=oidc-user-1`, and (via the claims textarea)
@@ -139,7 +139,7 @@ on (full round-trip, auto-user-creation, claim mapping).
     preconditions hold):
     ```bash
     POINTLESSQL_OIDC_DISCOVERY_URL= POINTLESSQL_OIDC_CLIENT_ID= \
-    POINTLESSQL_OIDC_CLIENT_SECRET= POINTLESSQL_BASE_URL= \
+    POINTLESSQL_OIDC_CLIENT_SECRET= POINTLESSQL_SERVER_BASE_URL= \
     docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
         up -d --force-recreate pointlessql
     ```

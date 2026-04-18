@@ -182,13 +182,18 @@ checklist.
 
 PointlesSQL is configured via environment variables:
 
+Sprint 45 split the flat `Settings` into nine sub-models with
+per-sub-model `env_prefix`. Every variable below follows the
+`POINTLESSQL_<SUBMODEL>_<FIELD>` pattern; see `.env.example` for
+the full list and `CHANGELOG.md` for the Sprint-45 rename map.
+
 | Variable | Default | Description |
 |---|---|---|
 | `POINTLESSQL_SOYUZ_CATALOG_URL` | `http://127.0.0.1:8080` | soyuz-catalog server URL |
-| `POINTLESSQL_HOST` | `127.0.0.1` | Bind address (`0.0.0.0` in Docker) |
-| `POINTLESSQL_PORT` | `8000` | HTTP port |
-| `POINTLESSQL_DATABASE_URL` | `sqlite:///./pointlessql.db` | SQLAlchemy database URL |
-| `POINTLESSQL_SECRET_KEY` | `change-me-in-production` | JWT signing key |
+| `POINTLESSQL_SERVER_HOST` | `127.0.0.1` | Bind address (`0.0.0.0` in Docker) |
+| `POINTLESSQL_SERVER_PORT` | `8000` | HTTP port |
+| `POINTLESSQL_DB_URL` | `sqlite:///./pointlessql.db` | SQLAlchemy database URL |
+| `POINTLESSQL_AUTH_SECRET_KEY` | `change-me-in-production` | JWT signing key |
 | `POINTLESSQL_JUPYTER_ENABLED` | `true` | Enable embedded JupyterLab |
 | `POINTLESSQL_JUPYTER_PORT` | `8888` | JupyterLab port |
 
