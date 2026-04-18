@@ -30,17 +30,20 @@ jobs:
       - name: Set up Python
         run: uv python install 3.14
       - name: Install dependencies
-        # Inject a Bearer extraheader for uv's git subprocess via
-        # the GIT_CONFIG_COUNT/KEY/VALUE env trio. Step-local so
-        # it is only active while uv is fetching the private
-        # soyuz-catalog dep. Combined with persist-credentials:
-        # false on the checkout above, this is the only
-        # Authorization header git sees.
-        env:
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
-          GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
-        run: uv sync --all-extras
+        # File-based global git config instead of GIT_CONFIG_*
+        # env vars. Attempt-8 debug revealed that only
+        # GIT_CONFIG_VALUE_0 appeared in the step's env at all —
+        # the COUNT and KEY_0 vars somehow didn't propagate
+        # (YAML parser quirk, masking side-effect — unknown).
+        # Writing directly to ~/.gitconfig sidesteps the env
+        # propagation mystery. Combined with
+        # `persist-credentials: false` on the checkout above,
+        # this is the only Authorization header git sees.
+        run: |
+          git config --global \
+            http.https://github.com/.extraheader \
+            "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
+          uv sync --all-extras
       - name: Ruff
         run: uv run ruff check .
       - name: Pyright

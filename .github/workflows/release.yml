@@ -44,15 +44,13 @@ jobs:
         run: uv python install 3.14
 
       - name: Install dependencies
-        # GIT_CONFIG_COUNT injects a scoped extraheader for uv's
-        # git subprocess. Scoped to this step only so it does not
-        # collide with actions/checkout's own Authorization
-        # header. See test.yml for the full rationale.
-        env:
-          GIT_CONFIG_COUNT: "1"
-          GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
-          GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
-        run: uv sync --all-extras
+        # See test.yml — file-based git config + persist-credentials:
+        # false is the only combination that reliably works.
+        run: |
+          git config --global \
+            http.https://github.com/.extraheader \
+            "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
+          uv sync --all-extras
 
       - name: Gate — ruff
         run: uv run ruff check .
