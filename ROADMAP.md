@@ -1414,6 +1414,29 @@ PointlesSQL
 │   for a broader audience. The `docker.yml` wiring is the
 │   substrate that those future efforts bolt onto unchanged.
 │
+│   Also deferred: the `docs/e2e-walkthroughs/packaging.md`
+│   dogfood replay. Attempted at the end of Sprint 40 and
+│   abandoned mid-run — the private-GHCR auth dance (the
+│   `read:packages` scope is not on the default `gh` CLI token)
+│   is self-inflicted friction that disappears the moment the
+│   packages flip to public. The playbook's clean-machine
+│   assertion is only truly exercised when "clean machine" means
+│   "anyone with docker, no PAT dance" — i.e. post-publication.
+│   The replay is Phase 11's gate, not Phase 10's.
+│
+│   Scope retrospective: Phase 10 overreached. Sprint 38
+│   (clean-machine `git clone && uv sync`) paid for itself in
+│   everyday reduced friction. Sprints 37, 39, 40 built a full
+│   release pipeline (wheels, GHCR images, install.md) for an
+│   audience of one — the author. Three release candidates
+│   (`v0.1.0rc1`–`rc3`) shipped with nobody downstream. The
+│   plumbing is not wasted — it activates as-is in Phase 11 —
+│   but the lesson is: release-engineering against a private
+│   audience generates its own private-auth friction, and that
+│   friction is what the eventual public flip dissolves. Next
+│   time, build the publish pipeline in the same sprint that
+│   flips visibility.
+│
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
     │   soyuz-catalog's job; PointlesSQL is a consumer
