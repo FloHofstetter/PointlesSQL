@@ -62,6 +62,12 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'volumes' %} active{% endif %}"
+           href="/volumes">
+            <i class="bi bi-hdd-stack"></i> Volumes
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'dashboards' %} active{% endif %}"
            href="/dashboards">
             <i class="bi bi-speedometer2"></i> Dashboards

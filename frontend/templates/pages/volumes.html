@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Volumes · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Volumes"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-hdd-stack fs-3"></i>
+        <h1 class="h3 mb-0">Volumes</h1>
+    </div>
+    <span class="text-muted small">
+        {{ volumes|length }} volume{{ '' if volumes|length == 1 else 's' }} visible
+    </span>
+</div>
+
+{% if not volumes %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-inbox display-4 d-block mb-2"></i>
+        <p class="mb-2">No volumes found.</p>
+        <p class="small">
+            Create a volume through the soyuz-catalog API or the UC CLI;
+            once it has a <code>file://</code> storage location PointlesSQL
+            can accept uploads and convert files to Delta tables.
+        </p>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Full name</th>
+                    <th>Type</th>
+                    <th>Storage location</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in volumes %}
+                <tr>
+                    <td>
+                        <a href="/volumes/{{ v.full_name }}"
+                           class="font-monospace">{{ v.full_name }}</a>
+                    </td>
+                    <td>
+                        <span class="badge text-bg-info">{{ v.volume_type }}</span>
+                    </td>
+                    <td class="font-monospace small">{{ v.storage_location or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

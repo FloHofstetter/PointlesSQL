@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}{{ volume.full_name }} · Volumes · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Volumes", "href": "/volumes"},
+    {"label": volume.full_name}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="volumeDetail()" x-init="init()">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-hdd-stack fs-3"></i>
+            <h1 class="h3 mb-0">{{ volume.full_name }}</h1>
+            <span class="badge text-bg-info ms-2">{{ volume.volume_type }}</span>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" href="/volumes">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header small fw-semibold">Metadata</div>
+        <div class="card-body small">
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-muted">Storage</dt>
+                <dd class="col-sm-9 font-monospace">{{ volume.storage_location or '—' }}</dd>
+                <dt class="col-sm-3 text-muted">Owner</dt>
+                <dd class="col-sm-9">{{ volume.owner or '—' }}</dd>
+                <dt class="col-sm-3 text-muted">Comment</dt>
+                <dd class="col-sm-9">{{ volume.comment or '—' }}</dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span class="small fw-semibold">Upload a file</span>
+            <span class="text-muted small">
+                Supported for convert-to-Delta: <code>.csv</code>,
+                <code>.parquet</code>, <code>.json</code>
+            </span>
+        </div>
+        <div class="card-body">
+            <form @submit.prevent="submitUpload()" class="d-flex gap-2 flex-wrap align-items-end">
+                <div class="flex-grow-1" style="min-width: 240px;">
+                    <label class="form-label small">File</label>
+                    <input type="file" class="form-control form-control-sm"
+                           x-ref="fileInput"
+                           @change="onFileChange($event)">
+                </div>
+                <div>
+                    <label class="form-label small">Destination path</label>
+                    <input type="text" class="form-control form-control-sm"
+                           x-model="uploadPath"
+                           placeholder="hello.csv">
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary btn-sm"
+                            :disabled="uploading || !uploadPath">
+                        <span x-show="!uploading">
+                            <i class="bi bi-upload"></i> Upload
+                        </span>
+                        <span x-show="uploading" x-cloak>
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                            Uploading…
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header small fw-semibold">Files</div>
+        <div class="card-body p-0">
+            <template x-if="files.length === 0">
+                <div class="p-3 text-muted small">Volume is empty.</div>
+            </template>
+            <template x-if="files.length > 0">
+                <table class="table table-sm mb-0 small">
+                    <thead>
+                        <tr>
+                            <th>Path</th>
+                            <th class="text-end">Size</th>
+                            <th class="text-end pe-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="file in files" :key="file.path">
+                            <tr>
+                                <td class="font-monospace" x-text="file.path"></td>
+                                <td class="text-end font-monospace"
+                                    x-text="humanBytes(file.size_bytes)"></td>
+                                <td class="text-end pe-3">
+                                    <button type="button"
+                                            class="btn btn-outline-primary btn-sm me-1"
+                                            x-show="isConvertible(file)"
+                                            @click="convertToDelta(file)">
+                                        <i class="bi bi-lightning-charge"></i>
+                                        Convert to Delta
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-danger btn-sm"
+                                            @click="removeFile(file)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </template>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    const FULL_NAME = {{ volume.full_name|tojson }};
+    const INITIAL_FILES = {{ files|tojson }};
+
+    function createVolumeDetail() {
+        return {
+            files: INITIAL_FILES,
+            uploadPath: '',
+            uploadBlob: null,
+            uploadName: '',
+            uploading: false,
+
+            init() { /* data seeded server-side */ },
+
+            humanBytes(n) {
+                if (!n && n !== 0) return '—';
+                if (n < 1024) return n + ' B';
+                if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+                return (n / (1024 * 1024)).toFixed(2) + ' MB';
+            },
+
+            onFileChange(ev) {
+                const file = ev.target.files && ev.target.files[0];
+                if (!file) return;
+                this.uploadBlob = file;
+                this.uploadName = file.name;
+                if (!this.uploadPath) this.uploadPath = file.name;
+            },
+
+            async refresh() {
+                const res = await window.pqlApi.fetch(
+                    '/api/volumes/' + encodeURIComponent(FULL_NAME) + '/files',
+                    { silent: true },
+                );
+                if (res.ok && res.data) this.files = res.data.files || [];
+            },
+
+            async submitUpload() {
+                if (!this.uploadBlob) {
+                    if (window.pqlToast) window.pqlToast.error('Choose a file first.');
+                    return;
+                }
+                this.uploading = true;
+                const form = new FormData();
+                form.append('path', this.uploadPath);
+                form.append('upload', this.uploadBlob, this.uploadName);
+                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+                const token = csrfMeta ? csrfMeta.content : '';
+                try {
+                    const res = await fetch(
+                        '/api/volumes/' + encodeURIComponent(FULL_NAME) + '/files',
+                        {
+                            method: 'POST',
+                            headers: token ? { 'X-CSRF-Token': token } : {},
+                            body: form,
+                        },
+                    );
+                    if (!res.ok) {
+                        const detail = await res.text();
+                        throw new Error(detail || ('HTTP ' + res.status));
+                    }
+                    if (window.pqlToast) window.pqlToast.success('Uploaded.');
+                    this.uploadBlob = null;
+                    this.uploadName = '';
+                    this.uploadPath = '';
+                    if (this.$refs.fileInput) this.$refs.fileInput.value = '';
+                    await this.refresh();
+                } catch (err) {
+                    if (window.pqlToast) window.pqlToast.error(err.message || 'Upload failed.');
+                } finally {
+                    this.uploading = false;
+                }
+            },
+
+            async removeFile(file) {
+                if (!window.confirm('Delete ' + file.path + '?')) return;
+                const res = await window.pqlApi.fetch(
+                    '/api/volumes/' + encodeURIComponent(FULL_NAME) +
+                    '/files/' + file.path,
+                    { method: 'DELETE', silent: true },
+                );
+                if (res.ok || res.status === 204) await this.refresh();
+            },
+
+            isConvertible(file) {
+                return /\.(csv|parquet|json)$/i.test(file.path || '');
+            },
+
+            async convertToDelta(file) {
+                const suggested = file.path.split('/').pop().replace(
+                    /\.(csv|parquet|json)$/i, '',
+                );
+                const table = window.prompt(
+                    'Target table name in ' +
+                    FULL_NAME.split('.').slice(0, 2).join('.') + ':',
+                    suggested,
+                );
+                if (!table) return;
+                const res = await window.pqlApi.fetch(
+                    '/api/volumes/' + encodeURIComponent(FULL_NAME) +
+                    '/convert-to-delta',
+                    {
+                        method: 'POST',
+                        body: { path: file.path, table_name: table },
+                        silent: true,
+                    },
+                );
+                if (res.ok && res.data) {
+                    if (window.pqlToast) {
+                        window.pqlToast.success(
+                            'Registered as Delta table: ' + res.data.full_name,
+                        );
+                    }
+                } else if (window.pqlToast) {
+                    window.pqlToast.error(res.error || 'Convert failed');
+                }
+            },
+        };
+    }
+
+    window.volumeDetail = createVolumeDetail;
+})();
+</script>
+{% endblock %}
