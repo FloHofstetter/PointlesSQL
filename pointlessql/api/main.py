@@ -15,7 +15,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 import httpx
-from fastapi import Body, FastAPI, File, Form, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import (
     FileResponse,
@@ -42,6 +42,7 @@ from pointlessql.exceptions import (
 from pointlessql.logging_config import configure_logging, request_id_var
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
+from pointlessql.services import kernel_session as kernel_session_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import notebook_doc as notebook_doc_service
 from pointlessql.services import notebook_render as notebook_render_service
@@ -149,6 +150,11 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         name="audit-retention",
     )
 
+    kernel_registry = kernel_session_service.KernelRegistry(
+        settings.jupyter.notebooks_dir.resolve()
+    )
+    app.state.kernel_registry = kernel_registry
+
     async with managed_jupyter(settings) as jupyter_proc:
         app.state.jupyter_process = jupyter_proc
         try:
@@ -159,6 +165,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
                 await audit_task
             if scheduler is not None:
                 await scheduler.stop()
+            await kernel_registry.shutdown_all()
             await app.state.uc_client.aclose()
 
 
@@ -3456,6 +3463,145 @@ async def api_save_notebook_doc(
     notebook_doc_service.save_document(resolved, cells)
     await _audit(request, "notebook.saved", f"notebook:{path}", f"cells={len(cells)}")
     return {"path": path, "status": "saved"}
+
+
+@app.websocket("/ws/notebook/kernel")
+async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
+    """Bidirectional ZMQ↔WS proxy for the native-editor kernel.
+
+    Sprint 59 endpoint. WebSocket upgrades bypass the HTTP auth
+    middleware, so we pull the ``pql_session`` cookie manually and
+    decode the JWT via :func:`auth_service.get_current_user`. A
+    client frame is a JSON object with ``type`` in
+    ``{"execute", "interrupt", "restart"}``; the server responds
+    with ``type`` in ``{"hello", "ack", "restarted", "kernel_msg",
+    "error"}``.
+
+    One WS connection maps to one subscriber on the shared kernel;
+    a second tab for the same ``(user, notebook_path)`` pair gets a
+    second subscription on the same subprocess — ADR-0001 "kernel
+    per notebook path" decision.
+
+    Args:
+        websocket: Incoming FastAPI WebSocket.
+        path: Relative notebook path (query param) — validated with
+            the same traversal guard the HTTP save endpoint uses.
+    """
+    token = websocket.cookies.get(auth_service.COOKIE_NAME)
+    if not token:
+        await websocket.close(code=4401)
+        return
+
+    factory = websocket.app.state.session_factory
+    settings: Settings = websocket.app.state.settings
+    user = auth_service.get_current_user(
+        factory,
+        token,
+        settings.auth.secret_key,
+        previous_key=settings.auth.secret_key_previous,
+    )
+    if user is None:
+        await websocket.close(code=4401)
+        return
+
+    try:
+        notebook_doc_service.resolve_py_notebook_path(
+            settings.jupyter.notebooks_dir.resolve(),
+            path,
+            must_exist=False,
+        )
+    except ValidationError:
+        await websocket.close(code=4400)
+        return
+
+    await websocket.accept()
+
+    registry: kernel_session_service.KernelRegistry = (
+        websocket.app.state.kernel_registry
+    )
+    try:
+        session = await registry.get_or_start(user["id"], user["email"], path)
+    except Exception as exc:  # noqa: BLE001 — kernel start can fail for many reasons
+        logger.exception("kernel start failed for %s notebook=%s", user["email"], path)
+        await websocket.send_json(
+            {"type": "error", "message": f"kernel start failed: {exc}"}
+        )
+        await websocket.close(code=1011)
+        return
+
+    subscription = session.subscribe()
+    await websocket.send_json(
+        {
+            "type": "hello",
+            "kernel_session_id": session.session_id,
+            "notebook_path": path,
+        }
+    )
+
+    async def _forward(channel: str) -> None:
+        queue = subscription.iopub if channel == "iopub" else subscription.shell
+        try:
+            async for msg in kernel_session_service.drain(queue):
+                payload = {
+                    "type": "kernel_msg",
+                    "channel": msg.channel,
+                    "msg_type": msg.msg_type,
+                    "cell_id": msg.cell_id,
+                    "parent_msg_id": msg.parent_msg_id,
+                    "content": jsonable_encoder(msg.content),
+                    "metadata": jsonable_encoder(msg.metadata),
+                }
+                await websocket.send_text(json.dumps(payload))
+        except WebSocketDisconnect:
+            return
+        except asyncio.CancelledError:
+            return
+
+    forward_tasks = [
+        asyncio.create_task(_forward("iopub"), name="ws-kernel-iopub"),
+        asyncio.create_task(_forward("shell"), name="ws-kernel-shell"),
+    ]
+
+    try:
+        while True:
+            frame = await websocket.receive_json()
+            ftype = frame.get("type")
+            if ftype == "execute":
+                code = frame.get("code", "")
+                cell_id = frame.get("cell_id", "")
+                if not isinstance(code, str) or not isinstance(cell_id, str):
+                    await websocket.send_json(
+                        {"type": "error", "message": "execute needs string code + cell_id"}
+                    )
+                    continue
+                msg_id = await session.execute(code, cell_id)
+                await websocket.send_json(
+                    {"type": "ack", "msg_id": msg_id, "cell_id": cell_id}
+                )
+            elif ftype == "interrupt":
+                await session.interrupt()
+                await websocket.send_json({"type": "interrupted"})
+            elif ftype == "restart":
+                await session.restart()
+                await websocket.send_json(
+                    {
+                        "type": "restarted",
+                        "kernel_session_id": session.session_id,
+                    }
+                )
+            else:
+                await websocket.send_json(
+                    {"type": "error", "message": f"unknown frame type {ftype!r}"}
+                )
+    except WebSocketDisconnect:
+        pass
+    finally:
+        for task in forward_tasks:
+            task.cancel()
+        for task in forward_tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        session.unsubscribe(subscription)
 
 
 @app.get("/api/jupyter/status")

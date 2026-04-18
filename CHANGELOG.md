@@ -4,6 +4,65 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 59) — Kernel + WebSocket proxy + basic execution
+
+Phase 12.6 Sprint 59 adds the second layer of the native notebook
+story: one long-lived ``ipykernel`` subprocess per
+``(user_id, notebook_path)`` pair, a FastAPI WebSocket endpoint
+that proxies ZMQ shell / iopub messages as JSON frames, and the
+client half that turns Shift+Enter into a round-trip execute
+with text / stream / error outputs rendered under the cell via
+Monaco view zones.  Output persistence and rich mime rendering
+land in Sprint 60; LSP in Sprint 61.
+
+- **Deps.** ``jupyter_client>=8.6`` + ``ipykernel>=6.29`` now
+  pinned explicitly in ``pyproject.toml`` (both already arrived
+  via papermill's transitive closure).
+- **Service layer** (``pointlessql/services/kernel_session.py``).
+  ``KernelSession`` wraps ``AsyncKernelManager`` + a single ZMQ
+  reader pump per channel that fans out to N subscriber queues
+  — two browser tabs of the same notebook can watch the same
+  kernel without starving each other on ``get_iopub_msg``.
+  ``KernelRegistry`` owns the dict keyed by ``(user_id, path)``
+  and lives on ``app.state.kernel_registry``; the FastAPI
+  lifespan's existing cleanup block calls ``shutdown_all`` so a
+  clean app stop tears down every in-flight subprocess
+  gracefully (SIGTERM + 5 s timeout, then force-kill — mirrors
+  the Sprint-3 ``jupyter._shutdown`` pattern).
+  ``POINTLESSQL_PRINCIPAL`` forwards via the kernel manager's
+  ``env=`` kwarg rather than the Sprint-24 ``os.environ`` lock —
+  kernels are long-lived, no concurrent ``setenv`` race to
+  dodge.
+- **WebSocket route.** ``/ws/notebook/kernel?path=<rel>``.
+  WebSocket upgrades bypass the HTTP auth middleware, so the
+  handler pulls the ``pql_session`` cookie directly and decodes
+  the JWT via ``auth_service.get_current_user`` — same call
+  chain the HTTP middleware uses, just from a WS context.
+  Traversal guard reuses ``notebook_doc_service.
+  resolve_py_notebook_path``.  Client frames: ``{type: "execute"
+  | "interrupt" | "restart"}``; server frames: ``{type: "hello"
+  | "ack" | "kernel_msg" | "interrupted" | "restarted" |
+  "error"}``.
+- **Frontend.** Shift+Enter / Ctrl+Enter run the cell at the
+  cursor (Monaco ``addCommand`` bindings fire only when the
+  editor has focus so the toolbar and Alpine inputs keep normal
+  Enter semantics).  Current-cell detection walks upward from
+  the cursor line for the nearest ``pql_cell_id`` marker.
+  Output zones are Monaco view zones anchored below each cell's
+  last line — ``pql-nbedit-output`` styling colour-codes
+  stream/stdout, stderr, ``execute_result``, and ``error``;
+  tracebacks strip ANSI codes until Sprint 60 lands ANSI-to-HTML.
+  Toolbar gained Interrupt (sends SIGINT) and Restart (bumps
+  ``kernel_session_id``, clears outputs) buttons plus a live
+  ``kernelStatus`` indicator.
+- **Out of scope (Sprint 60).** Rich mimes (``text/html``,
+  ``image/png``, ``image/svg+xml``, pandas-HTML, matplotlib
+  inline), persisted outputs, ANSI-to-HTML traceback rendering.
+  The kernel message shape already matches what the Alembic-017
+  ``notebook_outputs`` table will capture — Sprint 60 swaps the
+  ephemeral DOM writes for queries against the persistence
+  layer without touching the WS protocol.
+
 ### Added (Sprint 58) — Native notebook editor skeleton
 
 Phase 12.6 opens with the skeleton of a first-party Monaco-based

@@ -1876,19 +1876,50 @@ PointlesSQL
 │   │   └── Out of scope: execution, LSP, outputs, workspace-
 │   │       tree integration (lives under Sprint 63)
 │   │
-│   ├── Sprint 59 — Kernel + WS proxy + basic execution       ⏳ planned
-│   │   ├── New dep: ``jupyter_client>=8.6`` + ``ipykernel>=6.29``
-│   │   ├── ``pointlessql/services/kernel_session.py`` launches
-│   │   │   an ipykernel subprocess per editor tab, exposes
-│   │   │   execute / interrupt / restart; ``POINTLESSQL_PRINCIPAL``
-│   │   │   env forwarding reuses Sprint-24's pattern
-│   │   ├── ``WS /ws/notebook/{session_id}`` FastAPI endpoint
-│   │   │   proxying ZMQ shell / iopub messages as JSON frames
-│   │   ├── Frontend: Shift+Enter / Ctrl+Enter run a cell;
-│   │   │   text / stream / error outputs render under the cell
-│   │   │   (ephemeral — cleared on reload; Sprint 60 persists)
-│   │   ├── Interrupt + restart buttons on the editor toolbar
-│   │   └── Out of scope: rich outputs, persistence, LSP
+│   ├── Sprint 59 — Kernel + WS proxy + basic execution       🔜 in progress
+│   │   ├── New deps: ``jupyter_client>=8.6`` + ``ipykernel>=6.29``
+│   │   │   (both already transitively via papermill; now pinned
+│   │   │   explicitly).
+│   │   ├── ``pointlessql/services/kernel_session.py`` — one
+│   │   │   ipykernel subprocess per ``(user_id, notebook_path)``
+│   │   │   (ADR-0001 kernel-identity decision), fan-out pump
+│   │   │   from a single ZMQ reader to N browser-tab subscribers
+│   │   │   so multiple tabs of one notebook don't starve each
+│   │   │   other on iopub. ``POINTLESSQL_PRINCIPAL`` env
+│   │   │   forwarding reuses the Sprint-24 pattern but via
+│   │   │   ``AsyncKernelManager(env=…)`` instead of the
+│   │   │   ``os.environ`` lock (kernels are long-lived; no
+│   │   │   concurrent setenv race to dodge).
+│   │   ├── ``WS /ws/notebook/kernel?path=<rel>`` FastAPI
+│   │   │   endpoint.  WebSocket upgrades bypass the HTTP auth
+│   │   │   middleware, so the handler pulls the ``pql_session``
+│   │   │   cookie off the request and decodes the JWT manually
+│   │   │   via ``auth_service.get_current_user``.  Frame shape:
+│   │   │   client → ``{type: "execute"/"interrupt"/"restart"}``;
+│   │   │   server → ``{type: "hello"/"ack"/"kernel_msg"/…}``.
+│   │   ├── Lifespan integration: ``KernelRegistry`` lives on
+│   │   │   ``app.state.kernel_registry``; ``shutdown_all`` runs
+│   │   │   alongside the existing scheduler / uc-client cleanup
+│   │   │   so a clean app stop also tears down every in-flight
+│   │   │   kernel subprocess.
+│   │   ├── Frontend: Shift+Enter + Ctrl+Enter run the cell at
+│   │   │   the cursor.  Current-cell detection walks upward from
+│   │   │   the cursor line for the nearest ``pql_cell_id``
+│   │   │   marker.  Output zones are Monaco view zones anchored
+│   │   │   below each cell's last line — ephemeral (Sprint-60
+│   │   │   persists them) but already following the shape ADR
+│   │   │   0001 pinned for the Alembic 017 schema.
+│   │   ├── Toolbar: Run / Interrupt / Restart buttons plus a
+│   │   │   live ``kernelStatus`` indicator ("Connecting kernel…"
+│   │   │   / "Kernel ready" / "Restarting…" / "Kernel
+│   │   │   disconnected").
+│   │   ├── Kernel round-trip validated: in-process smoke proved
+│   │   │   execute / stream / execute_result / interrupt flows
+│   │   │   end-to-end; full HTTP-WS E2E deferred to Sprint 64's
+│   │   │   Playwright playbook (TestClient blocks on the
+│   │   │   JupyterLab subprocess in the shared lifespan).
+│   │   └── Out of scope: rich outputs (html / png / svg /
+│   │       pandas / matplotlib), output persistence, LSP
 │   │
 │   ├── Sprint 60 — Output persistence + rich outputs         ⏳ planned
 │   │   ├── Alembic 017: ``notebook_outputs`` +

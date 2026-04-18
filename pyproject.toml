@@ -49,6 +49,8 @@ dependencies = [
     "nbconvert>=7.0",
     "sqlglot>=26.0",
     "jupytext>=1.16",
+    "jupyter_client>=8.6",
+    "ipykernel>=6.29",
 ]
 
 [dependency-groups]

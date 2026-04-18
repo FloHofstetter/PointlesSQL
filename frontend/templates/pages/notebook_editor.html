@@ -15,6 +15,14 @@
     .pql-nbedit-cell-band-code { background: rgba(108, 117, 125, 0.08); }
     .pql-nbedit-cell-band-markdown { background: rgba(13, 110, 253, 0.07); }
     .pql-nbedit-cell-marker { color: var(--bs-info); font-weight: 600; }
+    .pql-nbedit-output { padding: 0.5rem 1rem; background: rgba(0, 0, 0, 0.18);
+                        border-left: 3px solid var(--bs-secondary); font-family: var(--bs-font-monospace);
+                        font-size: 12.5px; white-space: pre-wrap; word-break: break-word; }
+    .pql-nbedit-output pre { margin: 0; padding: 0; background: transparent; color: inherit; white-space: pre-wrap; }
+    .pql-nbedit-output-stream { color: var(--bs-body-color); }
+    .pql-nbedit-output-stderr { color: var(--bs-warning); }
+    .pql-nbedit-output-result { color: var(--bs-info); }
+    .pql-nbedit-output-error { color: var(--bs-danger); }
 </style>
 {% endblock %}
 
@@ -27,7 +35,7 @@
      x-init="mount()">
     <div class="pql-nbedit-toolbar">
         <span class="pql-nbedit-path" x-text="path"></span>
-        <span class="pql-nbedit-status small text-muted"
+        <span class="pql-nbedit-status small"
               x-text="{
                   'saved': 'Saved',
                   'saving': 'Saving…',
@@ -39,6 +47,19 @@
                   'text-success': saveState === 'saved',
                   'text-warning': saveState === 'pending' || saveState === 'saving',
                   'text-danger': saveState === 'error',
+              }"></span>
+        <span class="small"
+              x-text="{
+                  'connecting': 'Connecting kernel…',
+                  'ready': 'Kernel ready',
+                  'restarting': 'Restarting…',
+                  'disconnected': 'Kernel disconnected',
+                  'error': 'Kernel error',
+              }[kernelStatus]"
+              :class="{
+                  'text-success': kernelStatus === 'ready',
+                  'text-warning': kernelStatus === 'connecting' || kernelStatus === 'restarting',
+                  'text-danger': kernelStatus === 'disconnected' || kernelStatus === 'error',
               }"></span>
         <div class="ms-auto d-flex align-items-center gap-2">
             <button type="button"
@@ -55,9 +76,24 @@
                 <i class="bi bi-save me-1"></i>Save
             </button>
             <button type="button"
+                    class="btn btn-sm btn-outline-warning"
+                    @click="interruptKernel()"
+                    :disabled="kernelStatus !== 'ready'"
+                    title="Send SIGINT — raises KeyboardInterrupt in the kernel">
+                <i class="bi bi-stop-fill me-1"></i>Interrupt
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    @click="restartKernel()"
+                    :disabled="kernelStatus !== 'ready' && kernelStatus !== 'error' && kernelStatus !== 'disconnected'"
+                    title="Restart the kernel and clear all outputs">
+                <i class="bi bi-arrow-clockwise me-1"></i>Restart
+            </button>
+            <button type="button"
                     class="btn btn-sm btn-primary"
-                    disabled
-                    title="Execution lands in Sprint 59">
+                    @click="runCurrentCell()"
+                    :disabled="kernelStatus !== 'ready'"
+                    title="Run cell at cursor (Shift+Enter)">
                 <i class="bi bi-play-fill me-1"></i>Run cell
             </button>
         </div>
