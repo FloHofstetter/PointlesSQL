@@ -32,6 +32,24 @@
     .pql-nbedit-output-html th, .pql-nbedit-output-html td { border: 1px solid var(--bs-border-color); padding: 0.2rem 0.4rem; }
     .pql-nbedit-output-html th { background: rgba(255, 255, 255, 0.04); font-weight: 600; }
     .pql-nbedit-output-html tr:hover { background: rgba(255, 255, 255, 0.02); }
+    .pql-nbedit-md-preview { padding: 0.6rem 1rem; background: rgba(13, 110, 253, 0.06);
+                             border-left: 3px solid var(--bs-info); cursor: pointer;
+                             font-size: 13.5px; line-height: 1.5; color: var(--bs-body-color); }
+    .pql-nbedit-md-preview:hover { background: rgba(13, 110, 253, 0.10); }
+    .pql-nbedit-md-preview h3, .pql-nbedit-md-preview h4, .pql-nbedit-md-preview h5,
+    .pql-nbedit-md-preview h6 { margin: 0.6rem 0 0.25rem 0; font-weight: 600; }
+    .pql-nbedit-md-preview h3 { font-size: 1.15rem; }
+    .pql-nbedit-md-preview h4 { font-size: 1.05rem; }
+    .pql-nbedit-md-preview h5, .pql-nbedit-md-preview h6 { font-size: 1rem; }
+    .pql-nbedit-md-preview p { margin: 0.3rem 0; }
+    .pql-nbedit-md-preview code { background: rgba(0, 0, 0, 0.25); padding: 1px 4px;
+                                   border-radius: 3px; font-family: var(--bs-font-monospace); }
+    .pql-nbedit-md-preview pre.pql-nbedit-md-code { background: rgba(0, 0, 0, 0.25);
+                                                     padding: 0.5rem 0.75rem; border-radius: 4px;
+                                                     overflow-x: auto; margin: 0.35rem 0; }
+    .pql-nbedit-md-preview pre.pql-nbedit-md-code code { background: transparent; padding: 0; }
+    .pql-nbedit-md-preview ul { margin: 0.25rem 0 0.25rem 1.5rem; padding: 0; }
+    .pql-nbedit-md-preview a { color: var(--bs-info); }
 </style>
 {% endblock %}
 

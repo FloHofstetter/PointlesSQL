@@ -188,6 +188,56 @@
         return html;
     }
 
+    // Minimal markdown → HTML renderer.  Covers the common cell
+    // shapes: headings, paragraphs, bold / italic, inline code,
+    // code fences, links, single-level bullet lists.  Sprint 60
+    // intentionally avoids vendoring a markdown library; the view
+    // zone is a preview target, users always retain the raw source
+    // (cursor-enters-cell unhides it).  HTML in the source passes
+    // through — same trust model as cell output HTML.
+    function renderMarkdown(src) {
+        if (!src) return '';
+        // Fenced code blocks first, so their inner text is not
+        // subject to later inline-markdown passes.  We tag them
+        // with a placeholder and re-inject after the inline pass.
+        const fences = [];
+        src = src.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)\n?```/g, (_, lang, code) => {
+            const idx = fences.length;
+            fences.push(`<pre class="pql-nbedit-md-code"><code>${escapeHtml(code)}</code></pre>`);
+            return `\u0000FENCE${idx}\u0000`;
+        });
+        // Headings (leading #'s must start at column 0)
+        src = src.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+        src = src.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+        src = src.replace(/^####\s+(.+)$/gm, '<h5>$1</h5>');
+        src = src.replace(/^###\s+(.+)$/gm, '<h5>$1</h5>');
+        src = src.replace(/^##\s+(.+)$/gm, '<h4>$1</h4>');
+        src = src.replace(/^#\s+(.+)$/gm, '<h3>$1</h3>');
+        // Bold + italic (non-greedy, avoid eating ** inside code)
+        src = src.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+        src = src.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+        // Inline code
+        src = src.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+        // Links [text](url)
+        src = src.replace(/\[([^\]]+)\]\(([^\s)]+)\)/g,
+            '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        // Simple bullet lists — one level only
+        src = src.replace(/^(?:-|\*)\s+(.+)$/gm, '<li>$1</li>');
+        src = src.replace(/(<li>[^\n]+<\/li>(?:\n<li>[^\n]+<\/li>)*)/g, '<ul>$1</ul>');
+        // Paragraphs: split on blank lines, leave block-level tags alone.
+        const paragraphs = src.split(/\n{2,}/).map((block) => {
+            const trimmed = block.trim();
+            if (!trimmed) return '';
+            if (/^\u0000FENCE\d+\u0000$/.test(trimmed)) return trimmed;
+            if (/^<(h[1-6]|ul|ol|pre|blockquote)/.test(trimmed)) return block;
+            return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+        });
+        let out = paragraphs.join('\n');
+        // Re-inject fences
+        out = out.replace(/\u0000FENCE(\d+)\u0000/g, (_, idx) => fences[Number(idx)]);
+        return out;
+    }
+
     window.notebookEditor = function notebookEditor({ path, initial }) {
         return {
             path,
@@ -258,6 +308,18 @@
                         );
                     }
                     this._replayPersistedOutputs();
+                    // Sprint 60 follow-up: markdown preview zones +
+                    // source-collapse on cursor-outside-cell.  Rebuild
+                    // once on mount, then again on every content
+                    // change; cursor moves trigger hidden-area refresh
+                    // only (cheaper path).
+                    this._rebuildMarkdownZones();
+                    this._updateHiddenAreas();
+                    this._editor.onDidChangeCursorPosition(() => this._updateHiddenAreas());
+                    this._model.onDidChangeContent(() => {
+                        this._rebuildMarkdownZones();
+                        this._updateHiddenAreas();
+                    });
                     this._openKernelWS();
                 } catch (err) {
                     console.error('[notebook-editor] mount failed', err);
@@ -588,6 +650,116 @@
                         : data['text/plain'];
                     dom.appendChild(pre);
                 }
+            },
+
+            // ─────────────────── markdown preview zones ───────────────────
+
+            _rebuildMarkdownZones() {
+                if (!this._editor || !this._model) return;
+                const lines = this._model.getValue().split('\n');
+                const cells = [];
+                let current = null;
+                for (let i = 0; i < lines.length; i++) {
+                    const m = lines[i].match(CELL_MARKER_RE);
+                    if (m) {
+                        if (current) {
+                            current.endLine = i; // 1-based: last body line is i (0-based index = i-1 → line i in 1-based)
+                            cells.push(current);
+                        }
+                        current = m[1]
+                            ? { id: m[2], markerLine: i + 1, sourceStart: i + 2, endLine: lines.length }
+                            : null;
+                    }
+                }
+                if (current) cells.push(current);
+
+                const alive = new Set(cells.map((c) => c.id));
+                for (const cellId of Object.keys(this._markdownZones)) {
+                    if (!alive.has(cellId)) {
+                        const z = this._markdownZones[cellId];
+                        this._editor.changeViewZones((acc) => acc.removeZone(z.zoneId));
+                        delete this._markdownZones[cellId];
+                    }
+                }
+
+                for (const cell of cells) {
+                    // Strip jupytext's leading "# " from each
+                    // markdown body line so the rendered markdown
+                    // matches how the user sees it in .ipynb tools.
+                    const body = cell.sourceStart <= cell.endLine
+                        ? lines.slice(cell.sourceStart - 1, cell.endLine)
+                              .map((l) => l.replace(/^#\s?/, ''))
+                              .join('\n')
+                        : '';
+                    let zone = this._markdownZones[cell.id];
+                    if (!zone) {
+                        const dom = document.createElement('div');
+                        dom.className = 'pql-nbedit-md-preview';
+                        dom.addEventListener('click', () => this._focusMarkdownSource(cell.id));
+                        let zoneId = null;
+                        this._editor.changeViewZones((acc) => {
+                            zoneId = acc.addZone({
+                                afterLineNumber: cell.markerLine,
+                                heightInPx: 40,
+                                domNode: dom,
+                            });
+                        });
+                        zone = { zoneId, domNode: dom };
+                        this._markdownZones[cell.id] = zone;
+                    } else {
+                        // Re-anchor if marker line shifted.
+                        this._editor.changeViewZones((acc) => {
+                            acc.removeZone(zone.zoneId);
+                            zone.zoneId = acc.addZone({
+                                afterLineNumber: cell.markerLine,
+                                heightInPx: Math.max(zone.domNode.offsetHeight, 40),
+                                domNode: zone.domNode,
+                            });
+                        });
+                    }
+                    zone.sourceRange = { startLine: cell.sourceStart, endLine: cell.endLine };
+                    zone.domNode.innerHTML = renderMarkdown(body)
+                        || '<em class="text-muted">Empty markdown cell — click to edit.</em>';
+                    this._editor.changeViewZones((acc) => acc.layoutZone(zone.zoneId));
+                }
+            },
+
+            _focusMarkdownSource(cellId) {
+                const zone = this._markdownZones[cellId];
+                if (!zone || !zone.sourceRange) return;
+                this._editor.setPosition({
+                    lineNumber: zone.sourceRange.startLine,
+                    column: 1,
+                });
+                this._editor.focus();
+                // setPosition fires onDidChangeCursorPosition which
+                // in turn re-computes hidden areas, so the click-to-
+                // edit unhide is automatic.
+            },
+
+            _updateHiddenAreas() {
+                if (!this._editor) return;
+                const pos = this._editor.getPosition();
+                const cursorLine = pos ? pos.lineNumber : 1;
+                const hidden = [];
+                for (const cellId of Object.keys(this._markdownZones)) {
+                    const z = this._markdownZones[cellId];
+                    if (!z.sourceRange) continue;
+                    const { startLine, endLine } = z.sourceRange;
+                    if (cursorLine < startLine || cursorLine > endLine) {
+                        hidden.push({
+                            startLineNumber: startLine,
+                            endLineNumber: endLine,
+                            startColumn: 1,
+                            endColumn: 1,
+                        });
+                    }
+                }
+                // ``setHiddenAreas`` is standard on
+                // IStandaloneCodeEditor since Monaco 0.20; it hides
+                // the ranges purely at the view layer — the model
+                // (and therefore getValue() + save) stay intact.
+                this._editor.setHiddenAreas(hidden);
             },
 
             _replayPersistedOutputs() {
