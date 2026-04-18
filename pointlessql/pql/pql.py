@@ -179,6 +179,7 @@ class PQL:
         *,
         approved_tables: dict[str, str],
         max_rows: int = 10_000,
+        conn: Any = None,
     ) -> SQLResult:
         """Run a single SELECT against DuckDB with UC-backed views.
 
@@ -188,8 +189,12 @@ class PQL:
         The method will refuse to execute if a reference is missing
         so a silent privilege-check bypass cannot leak data.
 
-        Always opens a fresh :class:`duckdb.DuckDBPyConnection` so
-        view registrations from one query never bleed into another.
+        The optional *conn* argument lets the route layer pre-create
+        the :class:`duckdb.DuckDBPyConnection` so it can register
+        the handle in its cancel registry before the thread starts
+        running.  When omitted the method opens and closes its own
+        connection — that is the notebook-style entry point that
+        Phase 12 keeps for callers that do not need cancel.
 
         Args:
             query: The user-entered SQL.  Must be a single SELECT.
@@ -199,6 +204,10 @@ class PQL:
             max_rows: Post-execution row cap.  Extra rows are dropped
                 and :attr:`SQLResult.truncated` is set to ``True``.
                 Set by ``POINTLESSQL_SQL_MAX_ROWS`` in normal use.
+            conn: Optional pre-created DuckDB connection.  When
+                provided, the method uses it and leaves it open —
+                the caller owns the lifecycle.  When ``None`` a
+                fresh connection is created and closed here.
 
         Returns:
             A :class:`SQLResult` with columns, rows, and metrics.
@@ -225,7 +234,9 @@ class PQL:
             )
             raise ValidationError(msg)
 
-        conn = duckdb.connect()
+        owns_conn = conn is None
+        if owns_conn:
+            conn = duckdb.connect()
         try:
             for ref in prepared.refs:
                 register_delta_view(conn, ref, approved_tables[ref])
@@ -266,7 +277,8 @@ class PQL:
                 referenced_tables=list(prepared.refs),
             )
         finally:
-            conn.close()
+            if owns_conn:
+                conn.close()
 
     # ------------------------------------------------------------------
     # Write

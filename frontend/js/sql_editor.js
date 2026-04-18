@@ -30,6 +30,11 @@ window.sqlEditor = function () {
         saving: false,
         saveForm: { title: '', description: '', is_shared: false },
 
+        // Cancel + elapsed counter (Sprint 52).
+        currentQueryId: null,
+        elapsedSeconds: 0,
+        _tickHandle: null,
+
         init() {
             const host = document.getElementById('pql-sql-editor-root');
             if (!host || cmView) return;
@@ -180,6 +185,31 @@ window.sqlEditor = function () {
             return cmView.state.doc.toString();
         },
 
+        _generateQueryId() {
+            // Prefer crypto.randomUUID where available; fall back to a
+            // timestamp+random blend so sessions on older browsers still
+            // emit unique IDs.  Only used as a registry key, not a secret.
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return window.crypto.randomUUID();
+            }
+            return `qid-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+        },
+
+        _startElapsed() {
+            this.elapsedSeconds = 0;
+            const started = performance.now();
+            this._tickHandle = setInterval(() => {
+                this.elapsedSeconds = Math.floor((performance.now() - started) / 1000);
+            }, 250);
+        },
+
+        _stopElapsed() {
+            if (this._tickHandle) {
+                clearInterval(this._tickHandle);
+                this._tickHandle = null;
+            }
+        },
+
         async run() {
             if (this.running) return;
             const query = this.getSQL().trim();
@@ -192,13 +222,17 @@ window.sqlEditor = function () {
             this.running = true;
             this.error = null;
             this.result = null;
+            this.currentQueryId = this._generateQueryId();
+            this._startElapsed();
             const started = performance.now();
             const res = await window.pqlApi.fetch('/api/sql/execute', {
                 method: 'POST',
-                body: { sql: query },
+                body: { sql: query, query_id: this.currentQueryId },
                 silent: true, // we render the error inline, no auto-toast
             });
+            this._stopElapsed();
             this.running = false;
+            this.currentQueryId = null;
             const elapsed = Math.round(performance.now() - started);
             if (res.ok && res.data) {
                 this.result = res.data;
@@ -215,6 +249,20 @@ window.sqlEditor = function () {
                     ok: false,
                     summary: `Failed in ${elapsed} ms`,
                 };
+            }
+        },
+
+        async cancel() {
+            if (!this.running || !this.currentQueryId) return;
+            const qid = this.currentQueryId;
+            const res = await window.pqlApi.fetch(
+                `/api/sql/execute/${encodeURIComponent(qid)}/cancel`,
+                { method: 'POST', silent: true },
+            );
+            if ((res.ok || res.status === 204) && window.pqlToast) {
+                window.pqlToast.info('Cancel requested.');
+            } else if (window.pqlToast) {
+                window.pqlToast.error(res.error || `Cancel failed (HTTP ${res.status})`);
             }
         },
     };

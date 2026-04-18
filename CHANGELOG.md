@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 52) — Export + timeout + cancel
+
+- **`GET /api/sql/execute/{history_id}/download?format=csv|parquet`.**
+  Re-runs a previously recorded query (reads ``sql_text`` from the
+  :class:`QueryHistory` row, re-parses, re-fetches
+  ``storage_location`` for every referenced table, re-enforces
+  ``SELECT`` via ``check_privilege``) and streams the result out
+  as either CSV (``StreamingResponse``, row-by-row generator) or
+  Parquet (``pyarrow.parquet.write_table`` into a ``BytesIO`` +
+  single ``Response``).  Filename pattern is
+  ``query-{history_id}-{YYYYmmdd-HHMMSS}.{ext}``.  Non-owner
+  non-admin callers receive 404 — history IDs are not a bypass.
+  Row-cap applies so a huge download cannot be coerced by
+  editing ``?format=``.  Emits a ``query.exported`` audit row
+  with ``format`` + ``row_count`` in ``detail``.
+- **Query timeout (``POINTLESSQL_SQL_QUERY_TIMEOUT_SECONDS``,
+  default 60).** The execute route now dispatches the DuckDB
+  call via :func:`asyncio.wait_for` and fires ``conn.interrupt()``
+  on the pre-captured connection when the window elapses.  A
+  timeout is recorded as ``status="cancelled"`` (not ``"failed"``)
+  in ``query_history`` — the query may have been valid, just
+  slow.
+- **Cancel button.** New ``POST /api/sql/execute/{query_id}/cancel``
+  endpoint looks up the client-supplied ``query_id`` in a
+  per-app :class:`dict` of live :class:`duckdb.DuckDBPyConnection`
+  handles (``app.state._live_queries``), calls ``.interrupt()``,
+  and returns 204.  Unknown / already-completed IDs are 204 too —
+  the client races the execute response and we want idempotence.
+  Exceptions raised by ``.interrupt()`` are logged but swallowed
+  so a flaky backend can't 500 the cancel request.  The
+  ``/sql`` page shows an orange "Cancel" button + elapsed-seconds
+  counter while a query is in flight; the Alpine component
+  generates a ``crypto.randomUUID`` per run so each execute call
+  carries a unique ``query_id`` and the Cancel button targets the
+  right connection even if the user fires another query in rapid
+  succession.  Execute responses now echo ``query_id`` so clients
+  never have to reconstruct it.  Single-worker-correct only;
+  multi-worker cancel is Phase 14.
+- **`PQL.sql()` + `_run_sql_sync` + `_run_sql_export_sync` accept
+  an optional pre-created ``conn``.** The route owns the
+  connection lifecycle so it can register the handle in the
+  cancel registry *before* the worker thread starts running —
+  a race-free design.  The notebook-style entry point (``conn=None``)
+  still creates + closes its own connection for callers that
+  don't need cancel.
+- **Audit actions.** ``query.exported``, ``query.cancelled`` join
+  the Sprint-48 ``resource.verb`` Phase-12 vocabulary.
+- Tests: 4 export cases in ``tests/test_sql_export_cancel.py``
+  (CSV + Parquet round-trip against a small Delta table,
+  missing-history 404, re-enforcement 404 for non-owner);
+  3 cancel cases (interrupt invoked on registered conn, unknown
+  qid → 204, backend raise swallowed → 204); 1 execute-shape
+  case (the JSON response now carries ``query_id``).  The
+  cancel tests are **fully mocked** — they never run a real
+  long-running DuckDB query that would need actually aborting,
+  so no risk of the test harness hanging on a regressed
+  interrupt path.
+
 ### Added (Sprint 51) — Saved queries
 
 - **Alembic 013** creates ``saved_queries`` (id, unique slug,

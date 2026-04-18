@@ -633,6 +633,7 @@ def _run_sql_sync(
     query: str,
     approved_tables: dict[str, str],
     max_rows: int,
+    conn: Any = None,
 ) -> Any:
     """Execute *query* in the sync :class:`PQL` SQL bridge.
 
@@ -650,6 +651,8 @@ def _run_sql_sync(
         approved_tables: Full-name → storage-location map that the
             route already enforced ``SELECT`` on.
         max_rows: Row cap applied after execution.
+        conn: Optional pre-created DuckDB connection so the route
+            can hold the handle for cancel / timeout interrupt.
 
     Returns:
         A :class:`pointlessql.pql.pql.SQLResult` dataclass.
@@ -657,7 +660,39 @@ def _run_sql_sync(
     from pointlessql.pql.pql import PQL
 
     del settings  # reserved for future engine selection
-    return PQL.sql(query, approved_tables=approved_tables, max_rows=max_rows)
+    return PQL.sql(
+        query,
+        approved_tables=approved_tables,
+        max_rows=max_rows,
+        conn=conn,
+    )
+
+
+def _live_queries(request: Request) -> dict[str, Any]:
+    """Return the per-app live-queries registry, creating it on first use.
+
+    Stored on ``app.state._live_queries`` so every worker in the same
+    process shares one dict.  Keys are client-supplied query IDs
+    (UUIDs); values are live :class:`duckdb.DuckDBPyConnection`
+    handles.  The execute route registers on entry and pops on exit;
+    the cancel route calls ``.interrupt()`` on whatever it finds.
+    Multi-worker deployments don't share this map across processes —
+    Sprint 52 accepts single-worker correctness; multi-worker cancel
+    is a Phase-14 concern.
+
+    Args:
+        request: The incoming request (for ``request.app.state``).
+
+    Returns:
+        The mutable registry dict (live for the app's lifetime).
+    """
+    registry: dict[str, Any] | None = getattr(
+        request.app.state, "_live_queries", None
+    )
+    if registry is None:
+        registry = {}
+        request.app.state._live_queries = registry
+    return registry
 
 
 @app.post("/api/sql/execute")
@@ -700,6 +735,8 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         CatalogNotFoundError: If a referenced table is unknown to
             soyuz-catalog or has no ``storage_location``.
     """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
+    import duckdb
+
     from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
     from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
 
@@ -711,8 +748,18 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     if not isinstance(query, str):
         raise SQLExecutionError("The 'sql' field must be a string.")
 
+    # Sprint 52: client supplies an opaque query_id the cancel
+    # endpoint uses to reach the live DuckDB conn.  Empty / non-str
+    # → generate one server-side so old clients keep working.
+    raw_qid = (body or {}).get("query_id")
+    query_id = raw_qid if isinstance(raw_qid, str) and raw_qid else uuid4().hex
+
     started_at = datetime.now(UTC)
     parsed_refs: list[str] = []
+    cancelled = False
+    timed_out = False
+    conn: Any = None
+    registry = _live_queries(request)
     try:
         try:
             prepared = prepare_sql(query)
@@ -743,31 +790,68 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
             await check_privilege(client, email, is_admin, "table", full_name, SELECT)
             approved[full_name] = storage_location
 
-        result = await asyncio.to_thread(
-            _run_sql_sync,
-            settings,
-            query,
-            approved,
-            settings.sql.max_rows,
-        )
+        # Sprint 52: open the connection here and hand it to the
+        # thread so the cancel endpoint can reach ``.interrupt()``
+        # via the live-queries registry.
+        conn = duckdb.connect()
+        registry[query_id] = conn
+        timeout_s = max(1, int(settings.sql.query_timeout_seconds))
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    _run_sql_sync,
+                    settings,
+                    query,
+                    approved,
+                    settings.sql.max_rows,
+                    conn,
+                ),
+                timeout=timeout_s,
+            )
+        except TimeoutError:
+            # Signal DuckDB to abort the running statement; the
+            # worker thread observes the interrupt and raises.  We
+            # then surface the timeout as a ``cancelled`` history
+            # row (not ``failed``) because the query may have been
+            # valid — just slow.
+            timed_out = True
+            try:
+                conn.interrupt()
+            except Exception as exc:  # noqa: BLE001 — diagnostic only
+                logger.debug("conn.interrupt() after timeout raised: %s", exc)
+            raise SQLExecutionError(
+                f"Query exceeded {timeout_s}s timeout and was cancelled.",
+            ) from None
+        except duckdb.InterruptException as exc:
+            # Cancelled by the /cancel endpoint.
+            cancelled = True
+            raise SQLExecutionError("Query cancelled by user.") from exc
     except Exception as exc:
         # Failure path: record history row before the centralised
         # error handler renders the response.  Parse failures have
         # empty ``parsed_refs``; enforcement failures carry the
         # references extracted before the check raised.
         finished_at = datetime.now(UTC)
+        status = "cancelled" if (cancelled or timed_out) else "failed"
         await _record_query_async(
             request,
             sql_text=query,
             started_at=started_at,
             finished_at=finished_at,
-            status="failed",
+            status=status,
             row_count=None,
             duration_ms=None,
             referenced_tables=parsed_refs,
             error_message=str(exc),
         )
         raise
+    finally:
+        registry.pop(query_id, None)
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception as exc:  # noqa: BLE001 — diagnostic
+                logger.debug("conn.close() raised: %s", exc)
 
     finished_at = datetime.now(UTC)
     await _record_query_async(
@@ -793,6 +877,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     )
 
     return {
+        "query_id": query_id,
         "columns": result.columns,
         "rows": result.rows,
         "row_count": result.row_count,
@@ -801,6 +886,229 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         "executed_sql": result.executed_sql,
         "referenced_tables": result.referenced_tables,
     }
+
+
+@app.post("/api/sql/execute/{query_id}/cancel", status_code=204)
+async def api_sql_cancel(request: Request, query_id: str) -> Response:
+    """Interrupt a running query by its client-supplied ``query_id``.
+
+    The execute route registers each live :class:`duckdb.DuckDBPyConnection`
+    in a per-app dict keyed by ``query_id``; this endpoint looks it
+    up and calls ``.interrupt()``, which signals DuckDB to abort
+    the currently-executing statement.  The worker thread observes
+    an :class:`duckdb.InterruptException`, which the execute route
+    maps to a ``cancelled`` history row.
+
+    Cancelling an unknown / already-completed ``query_id`` is a
+    no-op (204) — the client may race the execute response and we
+    want idempotence.  Audit tag ``query.cancelled`` records the
+    intent either way so operators can see cancel attempts.
+
+    Args:
+        request: Incoming FastAPI request.
+        query_id: The client-supplied identifier from the execute body.
+
+    Returns:
+        An empty 204 response.
+    """
+    registry = _live_queries(request)
+    conn = registry.get(query_id)
+    if conn is not None:
+        try:
+            conn.interrupt()
+        except Exception as exc:  # noqa: BLE001 — diagnostic only
+            logger.warning("conn.interrupt() raised on cancel: %s", exc)
+    await _audit(request, "query.cancelled", f"query_id:{query_id}", None)
+    return Response(status_code=204)
+
+
+def _run_sql_export_sync(
+    settings: Settings,
+    query: str,
+    approved_tables: dict[str, str],
+    max_rows: int,
+) -> Any:
+    """Execute *query* and return the full pyarrow Table.
+
+    Export needs the arrow buffer, not a JSON-flattened dict.  We
+    run via a fresh connection (no cancel registry; the export
+    request is expected to be brief since it re-runs a previously
+    successful query from history).  Row-cap applies so a huge
+    download cannot be coerced by editing ``?format=``.
+
+    Args:
+        settings: Reserved for future engine switches.
+        query: The SQL to re-run.
+        approved_tables: Enforcement-gated mapping.
+        max_rows: Row cap.
+
+    Returns:
+        A :class:`pyarrow.Table` already sliced to *max_rows*.
+
+    Raises:
+        SQLExecutionError: If DuckDB rejects the query at execution
+            time (column not found, type mismatch, …).
+    """
+    import duckdb
+
+    from pointlessql.exceptions import SQLExecutionError
+    from pointlessql.pql.engine import register_delta_view
+    from pointlessql.pql.sql_parser import prepare_sql
+
+    del settings
+    prepared = prepare_sql(query)
+    conn = duckdb.connect()
+    try:
+        for ref in prepared.refs:
+            register_delta_view(conn, ref, approved_tables[ref])
+        try:
+            arrow_table = conn.execute(prepared.rewritten_sql).to_arrow_table()
+        except duckdb.Error as exc:
+            raise SQLExecutionError(str(exc)) from exc
+    finally:
+        conn.close()
+    if arrow_table.num_rows > max_rows:
+        arrow_table = arrow_table.slice(0, max_rows)
+    return arrow_table
+
+
+@app.get("/api/sql/execute/{history_id}/download")
+async def api_sql_download(
+    request: Request,
+    history_id: int,
+    format: Literal["csv", "parquet"] = "csv",
+) -> Response:
+    """Stream a historical query's result as CSV or Parquet.
+
+    The flow mirrors ``POST /api/sql/execute`` but reads the SQL
+    from the ``query_history`` row instead of the request body:
+
+    1. Fetch the history row; require the caller to be the owner
+       or an admin.  Any other user sees a 404 so they cannot
+       probe for history IDs.
+    2. Re-run enforcement per referenced table — a history row is
+       **not** a bypass.  Grants can be revoked after the original
+       run; we must not leak data via an old history ID.
+    3. Re-execute the SQL against DuckDB.  Stream the resulting
+       Arrow table out as CSV (generator over rows) or Parquet
+       (full write to an in-memory buffer, single response).
+
+    Args:
+        request: The incoming request.
+        history_id: Primary key of the :class:`QueryHistory` row.
+        format: ``"csv"`` (default) or ``"parquet"``.
+
+    Returns:
+        A :class:`StreamingResponse` (CSV) or :class:`Response`
+        (Parquet) with a filename-stamped ``Content-Disposition``.
+
+    Raises:
+        CatalogNotFoundError: If the history row is missing, the
+            caller cannot see it, or a referenced table is no
+            longer registered in soyuz-catalog.
+        SQLExecutionError: If re-parse or re-execution fails.
+        AuthorizationError: If the caller lost ``SELECT`` on a
+            referenced table since the original run.
+    """  # noqa: DOC502,DOC503 — raised by helpers below + check_privilege
+    import csv
+    import io
+
+    from fastapi.responses import StreamingResponse
+
+    from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
+    from pointlessql.models import QueryHistory
+    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+
+    settings: Settings = request.app.state.settings
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise CatalogNotFoundError(f"History row {history_id!r} not found.")
+
+    user = _get_user(request)
+    is_admin = user.get("is_admin", False)
+
+    def _fetch_row() -> QueryHistory | None:
+        from sqlalchemy import select as _select
+
+        with factory() as session:
+            return session.scalar(_select(QueryHistory).where(QueryHistory.id == history_id))
+
+    row = await asyncio.to_thread(_fetch_row)
+    if row is None or (not is_admin and row.user_id != user["id"]):
+        raise CatalogNotFoundError(f"History row {history_id!r} not found.")
+
+    try:
+        prepared = prepare_sql(row.sql_text)
+    except SQLParseError as exc:
+        raise SQLExecutionError(str(exc)) from exc
+
+    client = _get_uc_client(request)
+    email = user.get("email", "")
+    approved: dict[str, str] = {}
+    for full_name in prepared.refs:
+        parts = full_name.split(".")
+        table_info = await client.get_table(parts[0], parts[1], parts[2])
+        if not table_info:
+            raise CatalogNotFoundError(f"Table not found: {full_name!r}")
+        storage_location = table_info.get("storage_location")
+        if not isinstance(storage_location, str) or not storage_location:
+            raise CatalogNotFoundError(
+                f"Table {full_name!r} has no storage_location on soyuz-catalog.",
+            )
+        await check_privilege(client, email, is_admin, "table", full_name, SELECT)
+        approved[full_name] = storage_location
+
+    arrow_table = await asyncio.to_thread(
+        _run_sql_export_sync,
+        settings,
+        row.sql_text,
+        approved,
+        settings.sql.max_rows,
+    )
+
+    fmt = format.lower()
+    ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    filename = f"query-{history_id}-{ts}.{fmt}"
+    await _audit(
+        request,
+        "query.exported",
+        f"history:{history_id}",
+        {"format": fmt, "row_count": arrow_table.num_rows},
+    )
+
+    if fmt == "parquet":
+        import pyarrow.parquet as pq
+
+        sink = io.BytesIO()
+        pq.write_table(arrow_table, sink)
+        body = sink.getvalue()
+        return Response(
+            content=body,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # CSV default — stream row-by-row so large results don't
+    # materialise in memory twice.
+    def _csv_stream() -> Any:
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(arrow_table.column_names)
+        yield buf.getvalue()
+        buf.seek(0)
+        buf.truncate()
+        for batch in arrow_table.to_batches(max_chunksize=1000):
+            for rec in batch.to_pylist():
+                writer.writerow([rec.get(c) for c in arrow_table.column_names])
+            yield buf.getvalue()
+            buf.seek(0)
+            buf.truncate()
+
+    return StreamingResponse(
+        _csv_stream(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/sql", response_class=HTMLResponse)

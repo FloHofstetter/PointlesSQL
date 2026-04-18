@@ -58,8 +58,15 @@
                             </span>
                             <span x-show="running" x-cloak>
                                 <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                Running…
+                                Running… <span x-text="elapsedSeconds"></span>s
                             </span>
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm"
+                                x-show="running"
+                                x-cloak
+                                @click="cancel()">
+                            <i class="bi bi-x-octagon"></i> Cancel
                         </button>
                         <button type="button"
                                 class="btn btn-outline-secondary btn-sm"
