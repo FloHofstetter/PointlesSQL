@@ -27,13 +27,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configure git for private soyuz-catalog pull
         run: |
-          # `gh auth setup-git` installs a credential helper that
-          # reads GH_TOKEN and returns it for any github.com URL.
-          # Works uniformly for PATs and installation tokens;
-          # avoids the basic-auth URL-shape landmines (neither
-          # `<token>@` nor `x-access-token:<token>@` are accepted
-          # for PATs).
-          gh auth setup-git
+          # Use `http.extraheader` with a Bearer token — the same
+          # shape `actions/checkout` uses internally. Previous
+          # attempts failed:
+          #   1. `x-access-token:<token>@` URL → GitHub rejects PATs
+          #      through that form ("Password authentication is
+          #      not supported")
+          #   2. `<token>@` URL (bare) → empty password, rejected
+          #   3. `gh auth setup-git` credential helper → the
+          #      username gh picks is not accepted by GitHub's
+          #      basic-auth gate for fine-grained PATs
+          # The extraheader form bypasses basic auth entirely and
+          # uses Bearer-token auth, which GitHub accepts for any
+          # valid PAT with Contents:Read on the target repo.
+          git config --global \
+            http.https://github.com/FloHofstetter/.extraheader \
+            "Authorization: Bearer ${GH_TOKEN}"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
