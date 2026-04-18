@@ -22,29 +22,19 @@ jobs:
           enable-cache: true
       - name: Set up Python
         run: uv python install 3.14
+      - name: Debug — show what git sees
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
+          GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
+        run: |
+          echo "=== env (GIT_CONFIG_*) ==="
+          env | grep -i '^GIT_CONFIG' | sed 's/=.*Bearer.*/=Authorization: Bearer ***REDACTED***/'
+          echo "=== git config --list ==="
+          git config --list | sed 's/extraheader=.*/extraheader=***REDACTED***/' | head -20
+          echo "=== direct git ls-remote test ==="
+          git ls-remote https://github.com/FloHofstetter/soyuz-catalog HEAD 2>&1 | head -3 || echo "(failed)"
       - name: Install dependencies
-        # soyuz-catalog-client is pinned to a private-repo git tag
-        # under [tool.uv.sources]. `uv sync` invokes git internally
-        # to clone the tag; git needs a credential for
-        # `github.com/FloHofstetter/soyuz-catalog`.
-        #
-        # `GIT_CONFIG_COUNT` + `GIT_CONFIG_KEY_N` + `GIT_CONFIG_VALUE_N`
-        # inject a config entry via environment, read by every git
-        # invocation. Scoped to THIS step only so it does not
-        # conflict with the Authorization header `actions/checkout@v4`
-        # adds on the repo-fetch invocation above (both would apply
-        # → GitHub returns `400 Duplicate header: "Authorization"`).
-        #
-        # We reached this form after six earlier attempts:
-        #   1. `x-access-token:<token>@` URL rewrite → rejected
-        #   2. `<token>@` URL (bare, empty password) → rejected
-        #   3. `gh auth setup-git` helper → creds not accepted
-        #   4. `git config --global http.<prefix>.extraheader` →
-        #      didn't reach uv's git subprocess
-        #   5. GIT_CONFIG_COUNT at job level, broad scope →
-        #      collided with actions/checkout (dup Authorization)
-        #   6. GIT_CONFIG_COUNT at job level, narrow scope →
-        #      git URL-match didn't hit (narrow didn't apply)
         env:
           GIT_CONFIG_COUNT: "1"
           GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
