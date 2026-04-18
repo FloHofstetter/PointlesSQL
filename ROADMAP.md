@@ -1545,13 +1545,66 @@ PointlesSQL
 │   │       body re-injection, audit-row assertion, and direct
 │   │       service-layer unit tests
 │   │
+│   │
+│   ├── Sprint 44 — RFC 9457 error envelope + HTMX toast bridge  ⏳ in progress
+│   │   ├── Port shoreguard-fresh's RFC 9457 ``application/problem+json``
+│   │   │   envelope to replace PointlesSQL's nested
+│   │   │   ``{"error":{"code","message","request_id"}}`` shape.
+│   │   │   Single ``_problem_body()`` helper in
+│   │   │   [`error_handlers.py`](pointlessql/api/error_handlers.py)
+│   │   │   is the one place the wire format is defined; JSON, toast,
+│   │   │   and HTML renderers all source it through ``_dispatch()``
+│   │   ├── New ``_wants_htmx_toast`` branch in the dispatch: a
+│   │   │   non-boosted ``HX-Request: true`` caller gets an
+│   │   │   ``HX-Trigger`` header carrying a ``pqlToast`` event (level,
+│   │   │   code, message, request_id) + an empty body. Boosted
+│   │   │   navigations keep the existing HTML page render so htmx
+│   │   │   can swap ``#main-content`` normally
+│   │   ├── Client-side bridge: ``base.html`` listens for the
+│   │   │   ``pqlToast`` DOM event (auto-dispatched from ``HX-Trigger``)
+│   │   │   and forwards level + message + request_id into the
+│   │   │   existing ``window.pqlToast.error`` Bootstrap-toast API —
+│   │   │   zero new CSS or JS file, reuses Sprint-30 toast plumbing
+│   │   ├── Three new domain exceptions: ``SchedulerError`` (500,
+│   │   │   scheduler plumbing failures pre-notebook-run),
+│   │   │   ``NotebookRenderError`` (500, nbconvert failures that are
+│   │   │   no longer misclassified as ``EngineError``),
+│   │   │   ``PQLWriteError`` (subclasses ``EngineError`` so existing
+│   │   │   catches keep working, but its own code lets the UI
+│   │   │   distinguish write failures from generic engine failures).
+│   │   │   ``notebook_render.py`` now raises ``NotebookRenderError``
+│   │   │   instead of ``EngineError``
+│   │   ├── ``AuthorizationError`` extras (privilege, securable type,
+│   │   │   full name) are now RFC 9457 extension members in the JSON
+│   │   │   body — no longer template-only context
+│   │   ├── All nine ``except Exception`` sites in ``pointlessql/``
+│   │   │   surveyed: scheduler (4×) and
+│   │   │   ``services/{pg_sync,notebook_workspace}.py`` are legitimate
+│   │   │   graceful-degradation paths and keep their ``BLE001`` noqa
+│   │   │   plus a sharpened one-line reason comment; only
+│   │   │   ``services/notebook_render.py`` changes exception type
+│   │   ├── New playbook `docs/e2e-walkthroughs/error-handling.md`
+│   │   │   covers problem+json media type on `/api/*`, HTMX-toast
+│   │   │   trigger without page swap, boosted-navigation HTML
+│   │   │   fallback, and 403 authorization envelope extension members
+│   │   └── ``tests/test_problem_json.py`` — media type, extension
+│   │       members, HTMX toast branch, boosted fallthrough, envelope
+│   │       shape; existing ``test_error_handlers.py`` +
+│   │       ``test_api_errors.py`` + ``test_enforcement.py`` +
+│   │       ``test_api_notebook_workspace.py`` migrated from the old
+│   │       ``body["error"][...]`` shape to the new top-level
+│   │       ``body["detail"] / body["code"]`` shape
+│   │
 │   │   Remaining Phase 11 scope (not yet split into sprints):
 │   │
+│   ├── Sprint 45 — Nested ``BaseSettings`` refactor (6–8 sub-models,
+│   │   per-sub-model ``env_prefix``; most env vars stay identical,
+│   │   a small breaking subset is documented in CHANGELOG)  ⏳ planned
 │   ├── Rate limiting on `/api/sql/*` — scheduled as a Phase-12
 │   │   sprint once the SQL editor lands (the route doesn't exist
 │   │   yet)
 │   └── Graceful-rotation story for `secret_key` (JWT signing) so
-│       mid-flight tokens survive a rotation — Sprint 44 target
+│       mid-flight tokens survive a rotation — target Sprint 46
 │
 ├── Phase 12 — SQL editor + query history                 ⏳ planned
 │   │

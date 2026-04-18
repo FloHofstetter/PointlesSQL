@@ -44,18 +44,22 @@ def _authed_client() -> httpx.AsyncClient:
     )
 
 
-# -- JSON error envelope tests --
+# -- RFC 9457 problem+json envelope tests --
 
 
-class TestJsonErrorEnvelope:
+class TestProblemJsonEnvelope:
     async def test_catalog_unavailable_produces_502(self) -> None:
         app.state.uc_client.get_tree = AsyncMock(side_effect=CatalogUnavailableError("server down"))
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 502
-        body = resp.json()["error"]
+        assert resp.headers["content-type"].startswith("application/problem+json")
+        body = resp.json()
+        assert body["type"] == "about:blank"
+        assert body["title"] == "Upstream catalog unavailable"
+        assert body["status"] == 502
         assert body["code"] == "catalog_unavailable"
-        assert body["message"] == "server down"
+        assert body["detail"] == "server down"
         assert body["request_id"] is not None
 
     async def test_catalog_not_found_produces_404(self) -> None:
@@ -65,8 +69,10 @@ class TestJsonErrorEnvelope:
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 404
-        body = resp.json()["error"]
+        body = resp.json()
         assert body["code"] == "catalog_not_found"
+        assert body["status"] == 404
+        assert body["detail"] == "no such catalog"
 
     async def test_authorization_error_produces_403(self) -> None:
         app.state.uc_client.get_tree = AsyncMock(
@@ -75,15 +81,19 @@ class TestJsonErrorEnvelope:
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 403
-        body = resp.json()["error"]
+        body = resp.json()
         assert body["code"] == "authorization_error"
+        # AuthorizationError surfaces the extra context as RFC 9457 extension members.
+        assert body["required_privilege"] == "SELECT"
+        assert body["securable_type"] == "table"
+        assert body["full_name"] == "cat.sch.tbl"
 
     async def test_engine_error_produces_500(self) -> None:
         app.state.uc_client.get_tree = AsyncMock(side_effect=EngineError("delta read failed"))
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 500
-        body = resp.json()["error"]
+        body = resp.json()
         assert body["code"] == "engine_error"
 
     async def test_validation_error_produces_422(self) -> None:
@@ -91,7 +101,7 @@ class TestJsonErrorEnvelope:
         async with _authed_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 422
-        body = resp.json()["error"]
+        body = resp.json()
         assert body["code"] == "validation_error"
 
 
@@ -108,7 +118,9 @@ class TestHtmlErrorHandling:
         # catalogs_index catches CatalogUnavailableError but lets
         # AuthorizationError propagate to the centralized handler.
         assert resp.status_code == 403
-        assert "Access Denied" in resp.text
+        # The 403 template renders "Access denied" (lowercase 'd') via
+        # both the ``status_title`` context and the static page copy.
+        assert "Access denied" in resp.text
 
 
 # -- Request-ID tests --
@@ -130,11 +142,11 @@ class TestRequestId:
             )
         assert resp.headers["X-Request-ID"] == "my-trace-id"
 
-    async def test_request_id_in_json_error_envelope(self) -> None:
+    async def test_request_id_in_problem_body(self) -> None:
         app.state.uc_client.get_tree = AsyncMock(side_effect=CatalogUnavailableError("down"))
         async with _authed_client() as client:
             resp = await client.get("/api/tree", headers={"X-Request-ID": "err-trace-42"})
-        assert resp.json()["error"]["request_id"] == "err-trace-42"
+        assert resp.json()["request_id"] == "err-trace-42"
 
 
 # -- Admin enforcement via centralized handler --
@@ -150,7 +162,8 @@ class TestAdminEnforcement:
         async with non_admin_client as client:
             resp = await client.get("/api/connections")
         assert resp.status_code == 403
-        assert resp.json()["error"]["code"] == "authorization_error"
+        body = resp.json()
+        assert body["code"] == "authorization_error"
 
     async def test_non_admin_gets_403_html_on_page(self) -> None:
         non_admin_client = httpx.AsyncClient(
@@ -161,4 +174,4 @@ class TestAdminEnforcement:
         async with non_admin_client as client:
             resp = await client.get("/connections")
         assert resp.status_code == 403
-        assert "Access Denied" in resp.text
+        assert "Access denied" in resp.text

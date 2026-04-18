@@ -26,7 +26,7 @@ import logging
 import os
 from pathlib import Path
 
-from pointlessql.exceptions import CatalogNotFoundError, EngineError
+from pointlessql.exceptions import CatalogNotFoundError, NotebookRenderError
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def render_run_notebook(runs_dir: Path, run_id: int, *, exclude_input: bool = Fa
     Raises:
         CatalogNotFoundError: When ``runs/{run_id}.ipynb`` does not
             exist. Surfaces as a 404 via the centralized error handler.
-        EngineError: When nbconvert raises while rendering the notebook.
+        NotebookRenderError: When nbconvert raises while rendering the notebook.
     """
     ipynb_path = runs_dir / f"{run_id}.ipynb"
     if not ipynb_path.is_file():
@@ -73,9 +73,11 @@ def render_run_notebook(runs_dir: Path, run_id: int, *, exclude_input: bool = Fa
     try:
         exporter = HTMLExporter(template_name="lab", exclude_input=exclude_input)
         body, _resources = exporter.from_filename(str(ipynb_path))  # type: ignore[no-untyped-call]
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — nbconvert surfaces Jinja/template errors as bare Exception
         logger.exception("nbconvert failed rendering run %d", run_id)
-        raise EngineError(f"Failed to render run {run_id} notebook: {exc}") from exc
+        raise NotebookRenderError(
+            f"Failed to render run {run_id} notebook: {exc}"
+        ) from exc
 
     body_str: str = body if isinstance(body, str) else str(body)
     tmp_path = html_path.parent / f"{html_path.name}.tmp"

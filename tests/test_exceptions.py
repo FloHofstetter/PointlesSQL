@@ -10,7 +10,10 @@ from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
     EngineError,
+    NotebookRenderError,
     PointlessSQLError,
+    PQLWriteError,
+    SchedulerError,
     ValidationError,
 )
 
@@ -24,6 +27,9 @@ class TestHierarchy:
             AuthenticationError,
             AuthorizationError,
             EngineError,
+            NotebookRenderError,
+            PQLWriteError,
+            SchedulerError,
             ValidationError,
         ],
     )
@@ -35,6 +41,12 @@ class TestHierarchy:
 
     def test_authorization_error_not_value_error(self) -> None:
         assert not issubclass(AuthorizationError, ValueError)
+
+    def test_pql_write_error_subclasses_engine_error(self) -> None:
+        """``except EngineError`` must still trap ``PQLWriteError``."""
+        assert issubclass(PQLWriteError, EngineError)
+        with pytest.raises(EngineError):
+            raise PQLWriteError("disk full")
 
 
 class TestAttributes:
@@ -74,6 +86,21 @@ class TestAttributes:
         exc = ValidationError("bad name")
         assert exc.status_code == 422
         assert exc.error_code == "validation_error"
+
+    def test_scheduler_error_attributes(self) -> None:
+        exc = SchedulerError("papermill launch failed")
+        assert exc.status_code == 500
+        assert exc.error_code == "scheduler_error"
+
+    def test_notebook_render_error_attributes(self) -> None:
+        exc = NotebookRenderError("template not found")
+        assert exc.status_code == 500
+        assert exc.error_code == "notebook_render_error"
+
+    def test_pql_write_error_attributes(self) -> None:
+        exc = PQLWriteError("disk full")
+        assert exc.status_code == 500
+        assert exc.error_code == "pql_write_error"
 
 
 class TestCatchability:

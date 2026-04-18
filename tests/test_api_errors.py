@@ -75,12 +75,14 @@ def _authed_client() -> httpx.AsyncClient:
 
 
 def _assert_502_json(resp: httpx.Response) -> None:
-    """Assert a response matches the centralized 502 JSON error envelope."""
+    """Assert a response matches the centralized 502 problem+json envelope."""
     assert resp.status_code == 502
+    assert resp.headers["content-type"].startswith("application/problem+json")
     body = resp.json()
-    assert body["error"]["code"] == "catalog_unavailable"
-    assert "Connection refused" in body["error"]["message"]
-    assert "request_id" in body["error"]
+    assert body["status"] == 502
+    assert body["code"] == "catalog_unavailable"
+    assert "Connection refused" in body["detail"]
+    assert "request_id" in body
 
 
 class TestJsonEndpointsReturn502:
@@ -190,7 +192,7 @@ class TestJsonEndpointsReturn502:
         async with _authed_client() as client:
             resp = await client.get("/api/tree", headers={"X-Request-ID": "test-req-123"})
         assert resp.headers["X-Request-ID"] == "test-req-123"
-        assert resp.json()["error"]["request_id"] == "test-req-123"
+        assert resp.json()["request_id"] == "test-req-123"
 
 
 class TestHtmlPagesShowError:

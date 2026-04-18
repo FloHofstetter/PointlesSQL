@@ -732,7 +732,7 @@ async def run_sync(
         )
         added, changed, dropped = await apply_diff(uc, catalog_name, diff)
         status = "succeeded"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — pg_sync records every failure type onto the run row
         error = str(exc)
         status = "failed"
         logger.exception("pg_sync: sync failed for catalog=%s", catalog_name)

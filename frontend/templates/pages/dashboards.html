@@ -120,7 +120,7 @@
              }).then(async r => {
                  if (!r.ok) {
                      const body = await r.json().catch(() => ({}));
-                     this.error = body.error?.message || r.statusText;
+                     this.error = body.detail || body.error?.message || r.statusText;
                      this.submitting = false;
                      return;
                  }

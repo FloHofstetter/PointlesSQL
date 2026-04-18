@@ -126,6 +126,26 @@
                 window.Alpine.initTree(e.detail.target);
             }
         });
+        // Sprint 44: server-side HX-Trigger toast bridge. Domain errors
+        // from a non-boosted HTMX request do not swap the DOM (htmx
+        // ignores 4xx/5xx by default); the server emits an HX-Trigger
+        // header carrying a ``pqlToast`` payload and htmx dispatches it
+        // as a DOM event here. We defer the display until pqlToast is
+        // defined (toast.js loads after htmx.min.js) so the listener is
+        // safe to register at any point in the script ordering.
+        document.body.addEventListener('pqlToast', (e) => {
+            if (!window.pqlToast) return;
+            const data = (e.detail && typeof e.detail === 'object') ? e.detail : {};
+            const level = data.level || 'info';
+            const fn = window.pqlToast[level] || window.pqlToast.info;
+            let message = data.message || '';
+            if (data.request_id) {
+                message = message
+                    ? message + ' [req ' + data.request_id + ']'
+                    : '[req ' + data.request_id + ']';
+            }
+            fn(message, { timeout: 6000 });
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/toast.js"></script>

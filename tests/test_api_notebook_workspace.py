@@ -136,7 +136,7 @@ async def test_upload_rejects_non_ipynb_extension(workspace_dir: Path) -> None:
             data={"target_path": "script.py"},
         )
     assert resp.status_code == 422
-    assert ".ipynb" in resp.json()["error"]["message"]
+    assert ".ipynb" in resp.json()["detail"]
 
 
 async def test_upload_rejects_invalid_json(workspace_dir: Path) -> None:
@@ -166,7 +166,7 @@ async def test_upload_rejects_traversal(workspace_dir: Path) -> None:
             data={"target_path": "../escape.ipynb"},
         )
     assert resp.status_code == 422
-    assert "escape" in resp.json()["error"]["message"].lower()
+    assert "escape" in resp.json()["detail"].lower()
 
 
 async def test_upload_rejects_existing_without_overwrite(
@@ -181,7 +181,7 @@ async def test_upload_rejects_existing_without_overwrite(
             data={"target_path": "dup.ipynb"},
         )
     assert resp.status_code == 422
-    assert "overwrite=true" in resp.json()["error"]["message"]
+    assert "overwrite=true" in resp.json()["detail"]
 
 
 async def test_upload_overwrite_replaces_existing(workspace_dir: Path) -> None:

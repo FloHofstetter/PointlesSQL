@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pointlessql.exceptions import CatalogNotFoundError, EngineError
+from pointlessql.exceptions import CatalogNotFoundError, NotebookRenderError
 from pointlessql.services import notebook_render
 
 
@@ -86,10 +86,10 @@ def test_sidecar_is_reused_on_second_call(runs_dir: Path, monkeypatch: pytest.Mo
     assert second == first
 
 
-def test_nbconvert_error_becomes_engine_error(
+def test_nbconvert_error_becomes_render_error(
     runs_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A raising ``HTMLExporter`` surfaces as ``EngineError``."""
+    """A raising ``HTMLExporter`` surfaces as ``NotebookRenderError``."""
     (runs_dir / "42.ipynb").write_text(json.dumps(_minimal_ipynb()))
 
     import nbconvert  # type: ignore[import-untyped]
@@ -98,7 +98,7 @@ def test_nbconvert_error_becomes_engine_error(
     fake.from_filename.side_effect = RuntimeError("template not found")
     monkeypatch.setattr(nbconvert, "HTMLExporter", lambda **_kwargs: fake)
 
-    with pytest.raises(EngineError, match="Failed to render run 42"):
+    with pytest.raises(NotebookRenderError, match="Failed to render run 42"):
         notebook_render.render_run_notebook(runs_dir, 42)
     # No sidecar should have been written on failure.
     assert not (runs_dir / "42.html").exists()

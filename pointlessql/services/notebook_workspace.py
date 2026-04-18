@@ -61,7 +61,7 @@ def _is_parameters_tagged(notebook_path: Path) -> bool:
 
     try:
         raw = papermill.inspect_notebook(str(notebook_path))
-    except Exception:
+    except Exception:  # noqa: BLE001 — papermill raises varied errors; inspect is best-effort UI hint
         logger.warning(
             "failed to inspect notebook %s; reporting parameters_tagged=False",
             notebook_path,

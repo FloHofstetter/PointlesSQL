@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed (Sprint 44) — BREAKING: error envelope shape
+
+- **Error responses migrated to RFC 9457 `application/problem+json`.**
+  Fourth Phase 11 hardening sprint. The previous nested envelope
+  `{"error": {"code": "...", "message": "...", "request_id": "..."}}`
+  is replaced by a flat top-level body `{"type": "about:blank",
+  "title": "<status title>", "status": <code>, "detail": "<message>",
+  "code": "<identifier>", "request_id": "..."}` served with
+  `Content-Type: application/problem+json`. Domain `AuthorizationError`
+  surfaces its `required_privilege`, `securable_type`, and `full_name`
+  as RFC 9457 extension members; FastAPI's `RequestValidationError`
+  flows through the same envelope with an `errors` array extension.
+  API clients that read the old nested `.error.code` / `.error.message`
+  fields must switch to top-level `.code` / `.detail`. The only known
+  clients — PointlesSQL's own frontend via `frontend/js/api.js` and
+  two Alpine templates — were updated in the same sprint.
+
+### Added (Sprint 44)
+
+- **HTMX toast bridge for inline errors.** Non-boosted HTMX fragment
+  requests (`HX-Request: true` without `HX-Boosted: true`) that raise
+  a domain error now receive an empty body at the real error status
+  plus an `HX-Trigger` header carrying a `pqlToast` event. A
+  `base.html` listener forwards level + message + request_id into the
+  existing Sprint-30 `window.pqlToast.error` API so the user sees an
+  inline Bootstrap toast without losing the current page. Boosted
+  navigations keep the branded HTML error page so htmx can still swap
+  `#main-content`. The primary consumer is the upcoming Phase-12 SQL
+  editor: a failed query can now surface as a toast without the
+  editor losing focus.
+- **Three new domain exceptions.** `SchedulerError` (scheduler
+  plumbing failures pre-notebook-run), `NotebookRenderError`
+  (nbconvert failures, previously misclassified as generic
+  `EngineError`), and `PQLWriteError` (subclasses `EngineError` so
+  existing catches keep working, but its own code lets the UI
+  distinguish write failures from read/compute failures).
+  `services/notebook_render.py` now raises `NotebookRenderError`
+  instead of `EngineError`; `tests/test_notebook_render.py` updated.
+- **Playbook `docs/e2e-walkthroughs/error-handling.md`** covers
+  problem+json media type on `/api/*`, HTMX toast trigger without
+  page swap, boosted-navigation HTML fallback, and 403 extension
+  members.
+
 ### Added (Sprint 43)
 
 - **Rate limiting on `/auth/*`.** Third Phase 11 hardening sprint. A

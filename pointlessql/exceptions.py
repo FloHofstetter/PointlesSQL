@@ -123,3 +123,60 @@ class ValidationError(PointlessSQLError, ValueError):
 
     status_code: int = 422
     error_code: str = "validation_error"
+
+
+class SchedulerError(PointlessSQLError):
+    """Raised when the job scheduler cannot persist or dispatch a run.
+
+    Covers failures that belong to the scheduler's own plumbing —
+    launching a papermill subprocess, recording a run row, applying a
+    cron trigger — as opposed to the business-logic failures inside a
+    notebook (those bubble up as ``NotebookRenderError`` /
+    ``EngineError``).  Keeping the scheduler's own plumbing under a
+    distinct code lets ops filter on ``scheduler_error`` and instantly
+    know the failure was before notebook execution began.
+
+    Attributes:
+        status_code: Always 500.
+        error_code: Always ``"scheduler_error"``.
+    """
+
+    status_code: int = 500
+    error_code: str = "scheduler_error"
+
+
+class NotebookRenderError(PointlessSQLError):
+    """Raised when nbconvert fails to render a completed notebook run.
+
+    The scheduled run itself succeeded — papermill produced an
+    ``.ipynb`` — but rendering that notebook to HTML for the run-detail
+    page blew up (template missing, invalid output cell, etc.).
+    Separating this from ``EngineError`` matters because the fix lives
+    in nbconvert/Jupyter config, not in the Delta/compute path, and
+    because a render failure must not mask a successful run in the
+    audit trail.
+
+    Attributes:
+        status_code: Always 500.
+        error_code: Always ``"notebook_render_error"``.
+    """
+
+    status_code: int = 500
+    error_code: str = "notebook_render_error"
+
+
+class PQLWriteError(EngineError):
+    """Raised when ``PQL.write_table`` cannot persist a DataFrame.
+
+    Subclass of ``EngineError`` so existing catches continue to trap
+    the whole engine failure family, but ``pql_write_error`` as its
+    own code lets the UI distinguish "we could not write" (retriable,
+    likely a schema or permission issue) from a generic read / compute
+    failure.
+
+    Attributes:
+        error_code: Always ``"pql_write_error"``. ``status_code``
+            inherits ``500`` from :class:`EngineError`.
+    """
+
+    error_code: str = "pql_write_error"
