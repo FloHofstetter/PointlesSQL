@@ -4,6 +4,52 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 57) — UC Volumes (upload + convert-to-Delta)
+
+Phase 12.5 closes with the "I have a CSV, make it go" moment.
+Cross-repo work: soyuz-catalog gained file IO routes under
+``{prefix}/volumes/{full_name}/files`` plus a ``file://`` storage
+backend behind a ``VolumeFileBackend`` protocol
+(soyuz commit f8ef973).
+
+- **Service layer** (``pointlessql/services/volumes.py``).  Async
+  httpx helpers — ``upload_file``, ``browse_files``,
+  ``download_file`` (streaming), ``delete_file``, ``volume_url``,
+  ``build_headers`` — that talk directly to the new soyuz
+  endpoints, forwarding the caller's email as ``X-Principal`` so UC
+  enforcement applies.  The generated client stubs have not been
+  regenerated for these routes; the raw httpx layer unblocks Phase
+  12.5 without a client-regen round-trip and will be swapped in
+  after the soyuz tag bumps.
+- **Routes.** ``GET /volumes`` list + ``GET /volumes/{full_name}``
+  detail pages; ``GET|POST /api/volumes/{full_name}/files``
+  (multipart upload + browse);
+  ``DELETE /api/volumes/{full_name}/files/{path:path}``; and
+  ``POST /api/volumes/{full_name}/convert-to-delta`` (admin-only).
+- **Convert-to-Delta.**  Streams the source file out of soyuz into
+  a temp path, reads it with DuckDB's ``read_csv_auto`` /
+  ``read_parquet`` / ``read_json_auto``, writes a managed Delta
+  directory inside the volume's ``file://`` root at
+  ``_delta_<table>/``, inspects the Delta schema via ``deltalake``,
+  and calls UC's ``create_table`` to register an ``EXTERNAL``
+  table with the correct columns.  Only ``file://`` volumes are
+  supported this sprint — cloud backends are a soyuz follow-up.
+- **Audit.** ``volume.file_uploaded``, ``volume.file_deleted``,
+  ``volume.converted_to_delta``.
+- **Frontend.** ``pages/volumes.html`` (list) +
+  ``pages/volume_detail.html`` (detail).  Upload form uses raw
+  ``fetch(..., {body: FormData})`` with the CSRF header read from
+  the ``<meta name="csrf-token">`` tag.  A per-file "Convert to
+  Delta" button is rendered only for supported extensions
+  (``.csv`` / ``.parquet`` / ``.json``).  Component scripts are
+  non-module IIFEs that publish ``window.volumeDetail``
+  synchronously before Alpine walks (Phase-12 trap #1 preempted).
+- **Nav.**  "Volumes" entry in ``nav_links.html``.
+- Tests: 6 new cases in ``tests/test_volumes.py`` — URL + header
+  helpers + four httpx ``MockTransport`` round-trips covering
+  upload (multipart body + X-Principal), browse (JSON list),
+  delete (boolean), and download (streamed chunks).
+
 ### Added (Sprint 56) — Column statistics / data profiling
 
 - **Alembic 016** — new ``table_stats`` table keyed by

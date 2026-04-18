@@ -1759,10 +1759,10 @@ PointlesSQL
 │       tree, mobile stacking,
 │       `docs/e2e-walkthroughs/sql-editor.md` playbook, phase close.
 │
-├── Phase 12.5 — Data operations parity add-ons            ⏳ in progress
+├── Phase 12.5 — Data operations parity add-ons            ✅ done
 │   │
 │   │   Narrow follow-up between Phase 12 (SQL editor) and Phase 13
-│   │   (agents).  Four back-to-back sprints close the "data-
+│   │   (agents).  Four back-to-back sprints closed the "data-
 │   │   operations parity" gaps every Databricks user expects once
 │   │   they've got a SQL editor: charts, alerts, column statistics,
 │   │   and UC Volumes.  Guiding principle: **no vendor lock-in** —
@@ -1770,26 +1770,46 @@ PointlesSQL
 │   │   (CloudEvents 1.0, Atom 1.0, JSON Feed 1.1, HMAC-SHA256).  No
 │   │   SMTP / Slack / Discord / Teams / PagerDuty SDKs — the user
 │   │   bridges those via n8n / Zapier / Make and we stay portable.
+│   │   Phase-13's EXPLAIN-agent cost-gate will subscribe to the same
+│   │   CloudEvents ``data`` shape Sprint 55 emits without a payload-
+│   │   shape break.
 │   │
-│   ├── Sprint 54 — Charts in the SQL editor                ✅ done (88898d2)
-│   ├── Sprint 55 — Query alerts (CloudEvents + feeds)       ✅ done (832087c)
-│   ├── Sprint 56 — Column statistics / data profiling       ✅ done (1ff3c90)
+│   ├── Sprint 54 — Charts in the SQL editor                 ✅ done (88898d2)
 │   │   Bar / Line / Scatter / Pie toolbar below the results table;
 │   │   ``c`` toggles table ↔ chart when focus is outside CodeMirror;
 │   │   PNG download via ``canvas.toBlob``; chart config persists per
 │   │   ``query_history.id`` via Alembic 014 so re-run from history
 │   │   replays the same visualisation.  Chart.js 4.x UMD (not ESM)
 │   │   vendored via jsDelivr in ``base.html``.
-│   │   Sprint 55 — already landed above (832087c)
-│   │   Sprint 56 — already landed above (1ff3c90)
-│   └── Sprint 57 — UC Volumes (upload + convert-to-Delta)  ⏳ planned
-│       Cross-repo sprint.  Soyuz-catalog adds file
-│       upload/download/browse/delete routes + a local-FS storage
-│       backend (metadata CRUD already ships).  PointlesSQL adds a
-│       ``/volumes`` page + upload flow + "Convert to Delta" action
-│       for CSV / Parquet / JSON that reads via DuckDB, writes a
-│       managed Delta table, and registers via UC.  The "I have a
-│       CSV, make it go" moment.
+│   ├── Sprint 55 — Query alerts (CloudEvents + feeds)        ✅ done (832087c)
+│   │   Alembic 015 adds ``alerts`` / ``alert_destinations`` /
+│   │   ``alert_events`` + ``users.feed_token``.  New ``alert_check``
+│   │   scheduler job-kind ticks a saved-query condition
+│   │   (``row_count op threshold``); when it fires, emits a
+│   │   CloudEvents 1.0 JSON envelope to every enabled destination.
+│   │   Two destination kinds: webhook (POST with optional
+│   │   HMAC-SHA256 signing, 5s/10s timeouts, 2 retries) and pull
+│   │   feed (Atom 1.0 + JSON Feed 1.1, per-user opaque token,
+│   │   30-day event retention).
+│   ├── Sprint 56 — Column statistics / data profiling        ✅ done (1ff3c90)
+│   │   "Profile columns" button on every UC table detail page;
+│   │   DuckDB pass computes count / null_count / distinct_count /
+│   │   min / max / mean / top_5; cached by
+│   │   ``(full_name, delta_log_version)`` in ``table_stats``
+│   │   (Alembic 016).  Sparklines rendered via the Sprint-54
+│   │   Chart.js CDN — zero extra network weight.
+│   └── Sprint 57 — UC Volumes (upload + convert-to-Delta)    ✅ done (7662c29)
+│       Cross-repo sprint.  soyuz-catalog (f8ef973) adds file
+│       upload/download/browse/delete routes + a ``file://`` storage
+│       backend behind a ``VolumeFileBackend`` protocol so S3 / ABFSS
+│       / GCS can plug in later without route changes.  PointlesSQL
+│       adds ``/volumes`` list + ``/volumes/{full_name}`` detail page
+│       with an upload form, a browse / delete table, and a
+│       "Convert to Delta" action for CSV / Parquet / JSON that
+│       reads via DuckDB, writes a managed Delta table inside the
+│       volume root, and registers the new table in UC via the
+│       existing generated client.  The "I have a CSV, make it go"
+│       moment.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
