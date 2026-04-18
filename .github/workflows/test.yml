@@ -15,34 +15,34 @@ jobs:
     name: lint + type + docstring + alembic
     runs-on: ubuntu-latest
     # soyuz-catalog-client is pinned to a private-repo git tag
-    # under [tool.uv.sources]. `uv sync` needs a credential with
-    # read access. The `SOYUZ_READ_TOKEN` repo secret is a fine-
-    # grained PAT scoped read-only to the soyuz-catalog repo.
-    # GH_TOKEN lives at job-level so *every* step (gh auth
-    # setup-git below, but also `uv sync` which calls git via a
-    # subprocess that inherits env) sees it.
+    # under [tool.uv.sources]. `uv sync` invokes git internally
+    # to clone the tag. For that clone to succeed, git needs a
+    # credential for `github.com/FloHofstetter/soyuz-catalog`.
+    #
+    # `GIT_CONFIG_COUNT` + `GIT_CONFIG_KEY_N` + `GIT_CONFIG_VALUE_N`
+    # inject a git config entry via environment — this is read by
+    # every git invocation, including ones spawned under a modified
+    # HOME that doesn't point at the runner's `~/.gitconfig`. We
+    # reached this form after four earlier attempts failed:
+    #   1. `https://x-access-token:<token>@github.com/...` URL
+    #      rewrite → rejected ("Password authentication is not
+    #      supported for Git operations")
+    #   2. `https://<token>@github.com/...` (bare token, empty
+    #      password) → same rejection
+    #   3. `gh auth setup-git` credential helper → produced
+    #      credentials that GitHub didn't accept for this PAT
+    #   4. `git config --global http.<prefix>.extraheader` →
+    #      entry didn't reach uv's git subprocess (likely HOME
+    #      divergence under setup-uv's cache dir)
+    # The Bearer header via GIT_CONFIG_COUNT bypasses basic auth
+    # entirely and is immune to HOME mismatches.
     env:
       GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
+      GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
     steps:
       - uses: actions/checkout@v4
-      - name: Configure git for private soyuz-catalog pull
-        run: |
-          # Use `http.extraheader` with a Bearer token — the same
-          # shape `actions/checkout` uses internally. Previous
-          # attempts failed:
-          #   1. `x-access-token:<token>@` URL → GitHub rejects PATs
-          #      through that form ("Password authentication is
-          #      not supported")
-          #   2. `<token>@` URL (bare) → empty password, rejected
-          #   3. `gh auth setup-git` credential helper → the
-          #      username gh picks is not accepted by GitHub's
-          #      basic-auth gate for fine-grained PATs
-          # The extraheader form bypasses basic auth entirely and
-          # uses Bearer-token auth, which GitHub accepts for any
-          # valid PAT with Contents:Read on the target repo.
-          git config --global \
-            http.https://github.com/FloHofstetter/.extraheader \
-            "Authorization: Bearer ${GH_TOKEN}"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
