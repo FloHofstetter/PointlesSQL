@@ -1751,7 +1751,7 @@ PointlesSQL
 │   ├── Sprint 51 — Saved queries                           ✅ done (0f93345)
 │   │   Alembic 013 adds `saved_queries`; share model parallel
 │   │   to Sprint-28 dashboards; sidebar drawer on the editor.
-│   ├── Sprint 52 — Export + limits + cancel                🔜 in progress
+│   ├── Sprint 52 — Export + limits + cancel                ✅ done (b4bfee5)
 │   │   CSV / Parquet download via re-run-from-history; row
 │   │   limit + query timeout; cancel via DuckDB `.interrupt()`.
 │   └── Sprint 53 — EXPLAIN + autocomplete + close           ⏳ planned
