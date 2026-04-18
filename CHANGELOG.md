@@ -34,14 +34,32 @@ All notable changes to this project will be documented in this file.
   `cat > uv.toml <<EOF [sources] …` override step, and every
   `working-directory: PointlesSQL` (the main checkout lives at
   the default path again).
-- **`SOYUZ_READ_TOKEN`.** The previous org-secret was a
-  fine-grained PAT — `actions/checkout@v4` could not use it
-  ("could not read Username" despite a verified `Contents: Read`
-  scope). The 16-commit `fix(ci)` investigation on main was this
-  plus the `uv.toml` bug tangled up. The secret has been
-  regenerated as a **classic PAT** (repo scope on the
-  soyuz-catalog private repo); that change was made via the
-  GitHub UI and no file change is needed to consume it.
+- **`SOYUZ_READ_TOKEN` preflight.** Added a 2-check gate step
+  before `uv sync`: length ≥ 30 bytes (catches empty/truncated
+  paste) and `GET https://api.github.com/user` returning 200
+  (catches a revoked, expired, or typo'd PAT). Fails with a
+  `::error::` annotation whose prose tells the maintainer exactly
+  where to re-paste. No token material is echoed. Cost is one
+  HTTPS request per run; saves a minute of dep resolution on
+  every bad-secret state.
+- **Alembic gate needs a migrated target.** `alembic check` on a
+  fresh runner produced `FAILED: Target database is not up to
+  date.` — the runner has no `pointlessql.db`, so `check` has
+  nothing to compare the ORM models against. Workflows now run
+  `alembic upgrade head` before `alembic check` so the sqlite
+  file exists at the latest revision. Locally unchanged — the
+  developer's working DB is already at head.
+
+### Notes on external fix (SOYUZ_READ_TOKEN)
+
+The previous org-secret values were all rejected by GitHub
+(the first at `3ceaf45` was 1 byte; the later re-pastes were
+40-byte strings that GitHub returned HTTP 401 for on
+`/user`). The 16-commit `fix(ci)` investigation on main was
+this plus the `uv.toml` bug tangled up. Resolved by pasting a
+freshly-generated fine-grained PAT with `Contents: Read` on
+`FloHofstetter/soyuz-catalog` into the repo secret. File
+content unchanged.
 
 
 
