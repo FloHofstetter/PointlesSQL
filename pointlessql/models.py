@@ -778,3 +778,105 @@ class TableStats(Base):
     computed_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class NotebookOutput(Base):
+    """A single kernel output captured for the native notebook editor.
+
+    Phase 12.6 Sprint 60.  Every iopub message the WS handler
+    forwards to a client is also appended here so that reopening a
+    notebook after kernel restart (or a page reload) replays the
+    outputs without a 90-second ``pql.read_table()`` redo.
+
+    Keyed by ``(file_path, cell_id, kernel_session_id, output_index)``
+    per ADR 0001 — ``kernel_session_id`` lets us keep pre- and
+    post-restart histories side by side for free (a future sprint
+    can surface "previous session" as a toggle without a schema
+    change).  The frontend renders by reading the whole
+    ``(file_path, cell_id)`` pair's rows for the latest session.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        file_path: Notebook path relative to the notebooks dir —
+            the same string the editor's URL and the jupytext
+            round-trip use.
+        cell_id: Cell UUID pulled from the jupytext
+            ``pql_cell_id`` marker metadata.
+        kernel_session_id: UUID of the :class:`KernelSession` the
+            message came from (bumps on restart).
+        output_index: 0-based position within the cell's outputs
+            for this kernel session.
+        msg_type: Jupyter message type — ``stream`` /
+            ``execute_result`` / ``display_data`` / ``error``.
+            ``status`` + ``execute_input`` are *not* persisted
+            (they carry no output content).
+        mime_bundle: JSON-encoded ``content`` dict of the original
+            Jupyter message.  Binary mimes travel base64 per the
+            Jupyter convention.
+        output_metadata: Optional JSON-encoded ``metadata`` dict.
+        created_at: When the message was forwarded.
+    """
+
+    __tablename__ = "notebook_outputs"
+    __table_args__ = (
+        UniqueConstraint(
+            "file_path", "cell_id", "kernel_session_id", "output_index",
+            name="uq_notebook_outputs_position",
+        ),
+        Index("ix_notebook_outputs_lookup", "file_path", "cell_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    cell_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    kernel_session_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    output_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    msg_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    mime_bundle: Mapped[str] = mapped_column(Text, nullable=False)
+    output_metadata: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class NotebookCellRun(Base):
+    """Execution lifecycle for one cell of one kernel session.
+
+    Phase 12.6 Sprint 60.  Companion to :class:`NotebookOutput` —
+    tracks when a cell started, whether it succeeded, the
+    ``execution_count`` the kernel gave it, and when it finished.
+    Sprint 60 only uses it to show "cell X is running" + the
+    execution counter; future sprints can add elapsed-time pills
+    without a schema change.
+
+    Primary key is the same ``(file_path, cell_id,
+    kernel_session_id)`` triple as the outputs; a cell can be
+    re-run within the same session but only the latest run's
+    status is kept (re-execute == UPDATE).
+
+    Attributes:
+        file_path: Notebook path relative to the notebooks dir.
+        cell_id: Cell UUID.
+        kernel_session_id: Session UUID (bumps on restart).
+        execution_count: Jupyter's monotonic counter — ``None``
+            while the cell is still running.
+        status: ``"running"`` | ``"ok"`` | ``"error"`` |
+            ``"aborted"`` (interrupted).
+        started_at: When the ``execute_request`` landed.
+        finished_at: When the kernel transitioned back to idle
+            for this cell, or ``None`` while still busy.
+    """
+
+    __tablename__ = "notebook_cell_runs"
+
+    file_path: Mapped[str] = mapped_column(String(1024), primary_key=True)
+    cell_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    kernel_session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    execution_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

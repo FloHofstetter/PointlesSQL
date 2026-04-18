@@ -45,6 +45,7 @@ from pointlessql.services import auth as auth_service
 from pointlessql.services import kernel_session as kernel_session_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import notebook_doc as notebook_doc_service
+from pointlessql.services import notebook_outputs as notebook_outputs_service
 from pointlessql.services import notebook_render as notebook_render_service
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.services import pg_sync as pg_sync_service
@@ -3395,6 +3396,14 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
             ],
             "dirty": True,
         }
+    # Sprint 60: replay every persisted output for this notebook on
+    # mount.  The frontend filters to the latest kernel_session_id
+    # once the WS hello frame tells it which session is live.
+    initial["outputs"] = await asyncio.to_thread(
+        notebook_outputs_service.load_outputs_for_path,
+        request.app.state.session_factory,
+        path,
+    )
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/notebook_editor.html",
@@ -3538,10 +3547,59 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         }
     )
 
+    # Sprint 60: per-(cell_id, kernel_session_id) output counter.
+    # A new `execute` on a cell wipes the previous outputs (both in
+    # memory and in the DB via ``clear_cell``) and resets its
+    # counter to 0, so persisted rows always stay contiguous.
+    output_counters: dict[tuple[str, str], int] = {}
+
+    async def _persist_kernel_msg(msg: kernel_session_service.KernelMessage) -> None:
+        if not msg.cell_id:
+            return
+        if not notebook_outputs_service.is_persistable(msg.msg_type):
+            return
+        key = (msg.cell_id, session.session_id)
+        idx = output_counters.get(key, 0)
+        output_counters[key] = idx + 1
+        await asyncio.to_thread(
+            notebook_outputs_service.append_output,
+            factory,
+            file_path=path,
+            cell_id=msg.cell_id,
+            kernel_session_id=session.session_id,
+            output_index=idx,
+            msg_type=msg.msg_type,
+            content=msg.content,
+            metadata=msg.metadata or None,
+        )
+
+    async def _handle_shell_lifecycle(
+        msg: kernel_session_service.KernelMessage,
+    ) -> None:
+        if msg.msg_type != "execute_reply" or not msg.cell_id:
+            return
+        raw_status = msg.content.get("status", "ok")
+        status: str = raw_status if isinstance(raw_status, str) else "ok"
+        execution_count = msg.content.get("execution_count")
+        await asyncio.to_thread(
+            notebook_outputs_service.upsert_cell_run,
+            factory,
+            file_path=path,
+            cell_id=msg.cell_id,
+            kernel_session_id=session.session_id,
+            status=status,
+            execution_count=execution_count if isinstance(execution_count, int) else None,
+            finished=True,
+        )
+
     async def _forward(channel: str) -> None:
         queue = subscription.iopub if channel == "iopub" else subscription.shell
         try:
             async for msg in kernel_session_service.drain(queue):
+                if channel == "iopub":
+                    await _persist_kernel_msg(msg)
+                else:
+                    await _handle_shell_lifecycle(msg)
                 payload = {
                     "type": "kernel_msg",
                     "channel": msg.channel,
@@ -3574,6 +3632,22 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         {"type": "error", "message": "execute needs string code + cell_id"}
                     )
                     continue
+                # Wipe the previous output slice for this cell before
+                # the new execute emits anything — both in the DB and
+                # in our local counter so new rows start at 0.
+                await asyncio.to_thread(
+                    notebook_outputs_service.clear_cell,
+                    factory, file_path=path, cell_id=cell_id,
+                )
+                output_counters.pop((cell_id, session.session_id), None)
+                await asyncio.to_thread(
+                    notebook_outputs_service.upsert_cell_run,
+                    factory,
+                    file_path=path,
+                    cell_id=cell_id,
+                    kernel_session_id=session.session_id,
+                    status="running",
+                )
                 msg_id = await session.execute(code, cell_id)
                 await websocket.send_json(
                     {"type": "ack", "msg_id": msg_id, "cell_id": cell_id}
@@ -3582,6 +3656,15 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                 await session.interrupt()
                 await websocket.send_json({"type": "interrupted"})
             elif ftype == "restart":
+                # Purge the outgoing session's rows *before* the
+                # kernel starts handing out a new session_id.
+                await asyncio.to_thread(
+                    notebook_outputs_service.clear_session,
+                    factory,
+                    file_path=path,
+                    kernel_session_id=session.session_id,
+                )
+                output_counters.clear()
                 await session.restart()
                 await websocket.send_json(
                     {
@@ -3589,6 +3672,15 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         "kernel_session_id": session.session_id,
                     }
                 )
+            elif ftype == "clear_cell":
+                cell_id = frame.get("cell_id", "")
+                if isinstance(cell_id, str) and cell_id:
+                    await asyncio.to_thread(
+                        notebook_outputs_service.clear_cell,
+                        factory, file_path=path, cell_id=cell_id,
+                    )
+                    output_counters.pop((cell_id, session.session_id), None)
+                await websocket.send_json({"type": "cell_cleared", "cell_id": cell_id})
             else:
                 await websocket.send_json(
                     {"type": "error", "message": f"unknown frame type {ftype!r}"}

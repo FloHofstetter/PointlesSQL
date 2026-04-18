@@ -1921,21 +1921,52 @@ PointlesSQL
 │   │   └── Out of scope: rich outputs (html / png / svg /
 │   │       pandas / matplotlib), output persistence, LSP
 │   │
-│   ├── Sprint 60 — Output persistence + rich outputs         ⏳ planned
-│   │   ├── Alembic 017: ``notebook_outputs`` +
-│   │   │   ``notebook_cell_runs`` tables keyed by
-│   │   │   ``(file_path, cell_id, kernel_session_id)`` — DDL
-│   │   │   already pinned in ADR 0001
+│   ├── Sprint 60 — Output persistence + rich outputs         🔜 in progress
+│   │   ├── Alembic 017 lands the two tables pinned in ADR 0001:
+│   │   │   ``notebook_outputs`` (id + quadruple uniq on
+│   │   │   ``(file_path, cell_id, kernel_session_id,
+│   │   │   output_index)`` + index on ``(file_path, cell_id)``)
+│   │   │   and ``notebook_cell_runs`` (composite PK on the
+│   │   │   ``(file_path, cell_id, kernel_session_id)`` triple,
+│   │   │   tracks status / execution_count / started_at /
+│   │   │   finished_at).
 │   │   ├── ``pointlessql/services/notebook_outputs.py`` —
-│   │   │   append-on-stream, load-on-open, clear-on-restart
-│   │   ├── Frontend renderers: text / stream / html / png /
-│   │   │   svg / json / pandas-HTML / matplotlib-inline /
-│   │   │   ANSI-traceback; Pandas styling matched to the
-│   │   │   catalog theme
-│   │   ├── Clear-outputs + restart-kernel flows explicitly
-│   │   │   purge persisted rows
-│   │   └── ipywidgets explicitly deferred to Phase 12.7 if it
-│   │       creeps in — MVP uses static mime bundles only
+│   │   │   ``append_output`` / ``load_outputs_for_path`` /
+│   │   │   ``clear_cell`` / ``clear_session`` / ``upsert_cell_run``.
+│   │   │   Only the four content-carrying msg types persist
+│   │   │   (``stream`` / ``execute_result`` / ``display_data`` /
+│   │   │   ``error``) — ``status`` + ``execute_input`` never
+│   │   │   land in the table.
+│   │   ├── WS handler wires persistence without the kernel
+│   │   │   service knowing about the DB: per-connection
+│   │   │   ``output_counters`` drive ``output_index``,
+│   │   │   ``execute`` triggers ``clear_cell`` + upsert
+│   │   │   ``status=running`` before the ZMQ send, shell-
+│   │   │   channel ``execute_reply`` closes the run row with
+│   │   │   status / execution_count / finished_at, and a
+│   │   │   client-initiated ``clear_cell`` frame purges both
+│   │   │   the view zone and the DB row set.
+│   │   ├── Editor route payload replay: the ``GET
+│   │   │   /notebook/editor`` initial document now carries every
+│   │   │   persisted output row so the Alpine mount paints them
+│   │   │   into view zones *before* the WS ``hello`` frame
+│   │   │   arrives — no more 90-second waits on reopen of a
+│   │   │   notebook whose cells ran a slow ``pql.read_table()``.
+│   │   ├── Frontend rich-mime renderer picks richest supported
+│   │   │   type per bundle: ``text/html`` (pandas-styled tables
+│   │   │   themed against the catalog dark mode), ``image/svg+xml``,
+│   │   │   ``image/png`` / ``image/jpeg`` (matplotlib inline),
+│   │   │   ``application/json`` (pretty-printed), ``text/plain``
+│   │   │   fallback.  Errors convert IPython's ANSI traceback to
+│   │   │   colour-preserving HTML spans via a dependency-free
+│   │   │   SGR walker — no ``xterm.js`` bundle needed.
+│   │   ├── Toolbar gains ``Clear cell`` (purges outputs + DB
+│   │   │   rows for the cell at the cursor); ``Restart`` now
+│   │   │   also wipes every persisted row for the outgoing
+│   │   │   kernel session before the subprocess restarts.
+│   │   └── ipywidgets explicitly deferred to Phase 12.7 per the
+│   │       Sprint-58 decision — MVP ships static mime bundles
+│   │       only.
 │   │
 │   ├── Sprint 61 — Pyright LSP + dual-source autocomplete    ⏳ planned
 │   │   ├── New dep: ``pyright>=1.1`` (or ``nodeenv``-pinned

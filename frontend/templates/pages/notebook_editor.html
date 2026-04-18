@@ -23,6 +23,15 @@
     .pql-nbedit-output-stderr { color: var(--bs-warning); }
     .pql-nbedit-output-result { color: var(--bs-info); }
     .pql-nbedit-output-error { color: var(--bs-danger); }
+    .pql-nbedit-output-json { color: var(--bs-info); font-size: 12px; }
+    .pql-nbedit-output-image { max-width: 100%; display: block; margin: 0.25rem 0; }
+    .pql-nbedit-output-svg { max-width: 100%; display: block; margin: 0.25rem 0; }
+    .pql-nbedit-output-svg svg { max-width: 100%; height: auto; }
+    .pql-nbedit-output-html { color: var(--bs-body-color); font-size: 13px; }
+    .pql-nbedit-output-html table { border-collapse: collapse; font-size: 12.5px; margin: 0.25rem 0; }
+    .pql-nbedit-output-html th, .pql-nbedit-output-html td { border: 1px solid var(--bs-border-color); padding: 0.2rem 0.4rem; }
+    .pql-nbedit-output-html th { background: rgba(255, 255, 255, 0.04); font-weight: 600; }
+    .pql-nbedit-output-html tr:hover { background: rgba(255, 255, 255, 0.02); }
 </style>
 {% endblock %}
 
@@ -74,6 +83,12 @@
                     :disabled="loading"
                     title="Force-flush (autosave normally handles this)">
                 <i class="bi bi-save me-1"></i>Save
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="clearCurrentCellOutputs()"
+                    title="Clear outputs of the cell at the cursor (Sprint 60: also purges persisted rows)">
+                <i class="bi bi-eraser me-1"></i>Clear cell
             </button>
             <button type="button"
                     class="btn btn-sm btn-outline-warning"

@@ -1,11 +1,12 @@
-// Phase 12.6 Sprint 58 + 59 — Monaco-based notebook editor.
+// Phase 12.6 Sprint 58 + 59 + 60 — Monaco-based notebook editor.
 //
 // ADR 0001 locks the architecture: single Monaco instance over the
 // whole .py file, cell boundaries rendered via Monaco decorations,
 // cell identities carried as UUIDs in jupytext markers of the form
 // `# %% pql_cell_id="<uuid>"`. This file is the client half; the
 // server halves live in pointlessql/services/notebook_doc.py (save/
-// load) and pointlessql/services/kernel_session.py (WS ↔ ZMQ).
+// load), pointlessql/services/kernel_session.py (WS ↔ ZMQ), and
+// pointlessql/services/notebook_outputs.py (output persistence).
 //
 // Sprint 58: load, render, autosave.
 // Sprint 59: WebSocket to the per-notebook ipykernel, Shift+Enter /
@@ -13,12 +14,17 @@
 //            stream / error outputs rendered ephemerally in a
 //            Monaco view zone beneath the cell; Interrupt + Restart
 //            toolbar actions.
+// Sprint 60: output persistence (load-on-mount, append-per-iopub,
+//            clear-on-reexecute / clear-on-restart, Alembic 017),
+//            rich mimes (text/html, image/png, image/svg+xml,
+//            application/json, ANSI-traceback → HTML), Markdown
+//            cells rendered when not being edited.
 //
-// Out of scope for Sprint 59 and deferred:
-//   - Rich outputs (html, png, svg, pandas, matplotlib) + output
-//     persistence → Sprint 60 (Alembic 017)
+// Out of scope for Sprint 60 and deferred:
 //   - Pyright LSP + dual-source autocomplete → Sprint 61
 //   - Variable explorer + "insert from catalog" → Sprint 62
+//   - ipywidgets (interactive widgets) → Phase 12.7 (explicit
+//     split per the Phase-12.6 memory decision)
 //
 // Loader pattern mirrors the Monaco AMD bundle: base.html loads
 // `vs/loader.js` synchronously, we then configure `require.paths.vs`
@@ -132,13 +138,54 @@
 
     const CELL_MARKER_RE = /^#\s*%%(\s+\[markdown\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"\s*$/;
 
-    // Strip ANSI escape sequences for the Sprint-59 plain-text error
-    // path — Sprint 60 renders ANSI-to-HTML properly; until then we
-    // just read tracebacks as-is.
-    const ANSI_RE = /\x1B\[[0-?]*[ -/]*[@-~]/g;
+    // ANSI → HTML span conversion for tracebacks.  Jupyter error
+    // messages carry SGR colour codes straight out of IPython's
+    // ``ultratb`` formatter; we translate the common foreground
+    // colours, bold, and reset so the traceback reads as intended.
+    // Anything we don't handle falls through as a stripped span.
+    const ANSI_ESCAPE_RE = /\x1B\[([0-9;]*)m/g;
+    const ANSI_FG = {
+        30: '#6c757d', 31: '#e85050', 32: '#30c030', 33: '#d0a030',
+        34: '#4080ff', 35: '#c050c0', 36: '#30c0c0', 37: '#d0d0d0',
+        90: '#a0a0a0', 91: '#ff7070', 92: '#50e050', 93: '#ffd050',
+        94: '#6090ff', 95: '#e070e0', 96: '#50d0d0', 97: '#ffffff',
+    };
 
-    function stripAnsi(s) {
-        return (s || '').replace(ANSI_RE, '');
+    function escapeHtml(s) {
+        return (s || '').replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+        })[c]);
+    }
+
+    function ansiToHtml(text) {
+        // Walk the string, closing/opening `<span>`s as SGR codes
+        // appear.  Keeps the implementation dependency-free and
+        // round-trips multi-line tracebacks faithfully.
+        let html = '';
+        let openSpans = 0;
+        let lastIndex = 0;
+        text = text || '';
+        let m;
+        ANSI_ESCAPE_RE.lastIndex = 0;
+        while ((m = ANSI_ESCAPE_RE.exec(text)) !== null) {
+            html += escapeHtml(text.slice(lastIndex, m.index));
+            lastIndex = ANSI_ESCAPE_RE.lastIndex;
+            const codes = m[1] ? m[1].split(';').map(Number) : [0];
+            for (const code of codes) {
+                if (code === 0) {
+                    while (openSpans > 0) { html += '</span>'; openSpans--; }
+                } else if (code === 1) {
+                    html += '<span style="font-weight:bold">';
+                    openSpans++;
+                } else if (ANSI_FG[code]) {
+                    html += `<span style="color:${ANSI_FG[code]}">`;
+                    openSpans++;
+                }
+            }
+        }
+        html += escapeHtml(text.slice(lastIndex));
+        while (openSpans > 0) { html += '</span>'; openSpans--; }
+        return html;
     }
 
     window.notebookEditor = function notebookEditor({ path, initial }) {
@@ -162,6 +209,12 @@
             _ws: null,
             _wsReconnectTimer: null,
             _outputZones: {},  // cellId → { zoneId, domNode }
+            _markdownZones: {},  // cellId → { zoneId, domNode, editing }
+            // Per-cell output-index counter for replay on mount.
+            // Sprint 60: we reuse this when persisted outputs are
+            // rehydrated into view zones so later kernel messages
+            // append below them.
+            _initialOutputs: initial.outputs || [],
 
             async mount() {
                 try {
@@ -204,6 +257,7 @@
                             INITIAL_FLUSH_MS,
                         );
                     }
+                    this._replayPersistedOutputs();
                     this._openKernelWS();
                 } catch (err) {
                     console.error('[notebook-editor] mount failed', err);
@@ -211,6 +265,16 @@
                         window.pqlToast.error('Editor failed to load: ' + err.message);
                     }
                 }
+            },
+
+            // Client-side nuke: sends a clear_cell frame for the
+            // current cell so both the local view zone *and* the
+            // persisted rows go away.  Toolbar "Clear outputs" button.
+            clearCurrentCellOutputs() {
+                const cell = this._currentCellAtCursor();
+                if (!cell) return;
+                this._clearOutput(cell.id);
+                this._sendKernelFrame({ type: 'clear_cell', cell_id: cell.id });
             },
 
             // ────────────────────────── kernel / WS ──────────────────────────
@@ -409,51 +473,140 @@
                     return;
                 }
                 if (!frame.cell_id) return;
-                const endLine = this._cellEndLine(frame.cell_id);
+                this._appendOutput(frame.cell_id, frame.msg_type, frame.content);
+            },
+
+            // Shared path for both live kernel_msg frames and the
+            // persisted replay that runs on mount.  ``msg_type`` and
+            // ``content`` match Jupyter's wire shape; everything else
+            // is inferred from the current Monaco buffer.
+            _appendOutput(cellId, msgType, content) {
+                const endLine = this._cellEndLine(cellId);
                 if (endLine === null) return;
-                const dom = this._ensureOutputZone(frame.cell_id, endLine);
-                switch (frame.msg_type) {
+                const dom = this._ensureOutputZone(cellId, endLine);
+                switch (msgType) {
                     case 'stream': {
-                        const span = document.createElement('pre');
-                        span.className = 'pql-nbedit-output-stream'
-                            + (frame.content.name === 'stderr' ? ' pql-nbedit-output-stderr' : '');
-                        span.textContent = frame.content.text || '';
-                        dom.appendChild(span);
+                        const pre = document.createElement('pre');
+                        pre.className = 'pql-nbedit-output-stream'
+                            + (content.name === 'stderr' ? ' pql-nbedit-output-stderr' : '');
+                        pre.textContent = content.text || '';
+                        dom.appendChild(pre);
                         break;
                     }
                     case 'execute_result':
-                    case 'display_data': {
-                        const text = (frame.content.data && frame.content.data['text/plain']) || '';
-                        if (text) {
-                            const pre = document.createElement('pre');
-                            pre.className = 'pql-nbedit-output-result';
-                            pre.textContent = text;
-                            dom.appendChild(pre);
-                        }
-                        // Rich mimes (html, png, svg) land in Sprint 60.
+                    case 'display_data':
+                        this._renderMimeBundle(dom, content.data || {}, content.metadata || {});
                         break;
-                    }
                     case 'error': {
                         const block = document.createElement('pre');
                         block.className = 'pql-nbedit-output-error';
-                        const tb = (frame.content.traceback || [])
-                            .map(stripAnsi)
-                            .join('\n');
-                        block.textContent = tb
-                            || `${frame.content.ename}: ${frame.content.evalue}`;
+                        const rawTb = (content.traceback || []).join('\n');
+                        if (rawTb) {
+                            // ANSI → HTML so IPython's coloured
+                            // ultratb reads as intended; fallback to
+                            // ename/evalue when traceback is empty.
+                            block.innerHTML = ansiToHtml(rawTb);
+                        } else {
+                            block.textContent = `${content.ename}: ${content.evalue}`;
+                        }
                         dom.appendChild(block);
                         break;
                     }
                     case 'execute_input':
                         // Server echoes the submitted code — we already
-                        // have the source in the editor buffer, no need
-                        // to repaint it.
+                        // have the source in the editor buffer.
                         break;
                     default:
-                        // Unknown msg types: drop silently for Sprint 59.
                         break;
                 }
-                this._layoutOutputZone(frame.cell_id);
+                this._layoutOutputZone(cellId);
+            },
+
+            // Render a Jupyter mime bundle (``{mime: data}``) by
+            // picking the richest representation the client can
+            // display.  Rich mimes (HTML, images, SVG, JSON) land
+            // from Sprint 60; ``text/plain`` is the unconditional
+            // fallback so a bundle without richer types still
+            // renders.
+            _renderMimeBundle(dom, data, /* metadata */ _m) {
+                if (!data || typeof data !== 'object') return;
+                // Priority: html > svg > png > jpeg > json > plain.
+                // Matches what nbconvert does for the "lab" template,
+                // which is what Sprint-26's papermill view uses.
+                if (data['text/html']) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'pql-nbedit-output-html';
+                    // The kernel is already trusted (it runs arbitrary
+                    // user code as the editor user) — emitting raw
+                    // HTML does not widen the attack surface.  Any
+                    // future sandboxing would need a kernel-level
+                    // sandbox, not a client-side sanitiser.
+                    wrap.innerHTML = Array.isArray(data['text/html'])
+                        ? data['text/html'].join('')
+                        : data['text/html'];
+                    dom.appendChild(wrap);
+                    return;
+                }
+                if (data['image/svg+xml']) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'pql-nbedit-output-svg';
+                    const svg = Array.isArray(data['image/svg+xml'])
+                        ? data['image/svg+xml'].join('')
+                        : data['image/svg+xml'];
+                    wrap.innerHTML = svg;
+                    dom.appendChild(wrap);
+                    return;
+                }
+                if (data['image/png']) {
+                    const img = document.createElement('img');
+                    img.className = 'pql-nbedit-output-image';
+                    img.src = `data:image/png;base64,${data['image/png']}`;
+                    img.alt = 'output image';
+                    dom.appendChild(img);
+                    return;
+                }
+                if (data['image/jpeg']) {
+                    const img = document.createElement('img');
+                    img.className = 'pql-nbedit-output-image';
+                    img.src = `data:image/jpeg;base64,${data['image/jpeg']}`;
+                    img.alt = 'output image';
+                    dom.appendChild(img);
+                    return;
+                }
+                if (data['application/json']) {
+                    const pre = document.createElement('pre');
+                    pre.className = 'pql-nbedit-output-json';
+                    pre.textContent = JSON.stringify(data['application/json'], null, 2);
+                    dom.appendChild(pre);
+                    return;
+                }
+                if (data['text/plain']) {
+                    const pre = document.createElement('pre');
+                    pre.className = 'pql-nbedit-output-result';
+                    pre.textContent = Array.isArray(data['text/plain'])
+                        ? data['text/plain'].join('')
+                        : data['text/plain'];
+                    dom.appendChild(pre);
+                }
+            },
+
+            _replayPersistedOutputs() {
+                if (!this._initialOutputs || this._initialOutputs.length === 0) return;
+                // Pick the latest kernel_session_id we see in the
+                // replay.  If the current live WS session differs
+                // (hello frame arrives later) we still paint the
+                // most recent persisted snapshot — the first
+                // live execute will clear and re-emit.
+                let latestSession = null;
+                for (const row of this._initialOutputs) {
+                    if (!latestSession || row.kernel_session_id > latestSession) {
+                        latestSession = row.kernel_session_id;
+                    }
+                }
+                for (const row of this._initialOutputs) {
+                    if (row.kernel_session_id !== latestSession) continue;
+                    this._appendOutput(row.cell_id, row.msg_type, row.content);
+                }
             },
 
             _scheduleAutosave() {

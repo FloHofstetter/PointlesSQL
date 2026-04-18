@@ -4,6 +4,61 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 60) — Output persistence + rich outputs
+
+Phase 12.6 Sprint 60 closes the "reopen doesn't cost 90 seconds"
+loop locked in ADR 0001 (kernel + output-schema decisions), and
+upgrades the Sprint-59 text-only renderer to the full mime-bundle
+matrix Jupyter clients ship with.
+
+- **Alembic 017.** ``notebook_outputs`` +
+  ``notebook_cell_runs`` with the exact DDL ADR 0001 pinned.
+  No surprise column additions, no silent PK changes.
+- **ORM models** (``pointlessql/models.py``). ``NotebookOutput``
+  and ``NotebookCellRun`` follow the Sprint-56 ``TableStats``
+  pattern — composite index keyed on ``(file_path, cell_id)`` for
+  the hot read path, quadruple unique on the output-index triple
+  for write safety.
+- **Service layer** (``pointlessql/services/notebook_outputs.py``).
+  Deliberately thin: ``append_output`` / ``load_outputs_for_path``
+  / ``clear_cell`` / ``clear_session`` / ``clear_path`` /
+  ``upsert_cell_run``.  Only four content-carrying msg types
+  persist (``stream`` / ``execute_result`` / ``display_data`` /
+  ``error``); status + execute_input stay ephemeral.
+- **WS handler persistence hooks**.  Per-connection
+  ``output_counters`` drive monotonic ``output_index`` values
+  across a single session.  ``execute`` triggers
+  ``clear_cell`` + upsert ``status=running`` before the ZMQ
+  send.  Shell-channel ``execute_reply`` closes the run row
+  with mapped status (ok/error/aborted) and the kernel's
+  ``execution_count``.  A new client-initiated ``clear_cell``
+  frame purges both the view zone and the DB row set.
+  Restart now ``clear_session``'s the outgoing kernel session
+  *before* the subprocess restart bumps the session id.
+- **Editor route replay**. ``GET /notebook/editor`` threads every
+  persisted output through the initial Alpine payload so the
+  mount paints them into view zones synchronously — the WS hello
+  frame arrives ``after`` the user sees their previous outputs,
+  eliminating the reopen-wait.
+- **Rich mime renderer** (``frontend/js/notebook_editor.js``).
+  Priority list: ``text/html`` > ``image/svg+xml`` >
+  ``image/png`` > ``image/jpeg`` > ``application/json`` >
+  ``text/plain`` fallback.  Pandas-styled HTML tables inherit the
+  catalog dark theme via scoped CSS.  Inline matplotlib (PNG),
+  altair / plotly (HTML), and standard Jupyter display_data
+  flows all land on this path.
+- **ANSI tracebacks**.  A dependency-free SGR walker converts
+  IPython's ``ultratb`` output into coloured ``<span>``s — no
+  ``xterm.js`` bundle, no vendor-script work.  Covers the
+  standard 30-37 / 90-97 foreground palette + bold + reset.
+- **Toolbar** gained a ``Clear cell`` button.  Sprint 59's
+  ``Restart`` button now wipes the outgoing kernel session's
+  persisted rows in the same click so "restart + clear" stays
+  one user action.
+- **ipywidgets** remain out of scope per the Phase-12.6 decision
+  memory — interactive widgets are deferred to Phase 12.7 if they
+  prove load-bearing.
+
 ### Added (Sprint 59) — Kernel + WebSocket proxy + basic execution
 
 Phase 12.6 Sprint 59 adds the second layer of the native notebook
