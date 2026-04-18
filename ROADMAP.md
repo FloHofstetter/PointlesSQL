@@ -1473,7 +1473,7 @@ PointlesSQL
 │   │       rows + tolerates non-JSON `detail`, action + target
 │   │       filters narrow correctly
 │   │
-│   ├── Sprint 42 — CSRF protection for HTML form routes     ⏳ in progress
+│   ├── Sprint 42 — CSRF protection for HTML form routes     ✅ done (811fb5c)
 │   │   ├── New `csrf_middleware` enforces the OWASP double-
 │   │   │   submit-cookie pattern on every non-safe request that
 │   │   │   does not start with `/api/`, `/static/`, or equal
