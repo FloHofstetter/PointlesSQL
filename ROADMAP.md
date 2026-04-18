@@ -1671,7 +1671,7 @@ PointlesSQL
 │   │   Auditability is free — Phase 3 already enforces SELECT at
 │   │   the UC layer; Phase 12 just adds the telemetry plus the UI.
 │   │
-│   ├── Sprint 48 — Audit-log hardening (shoreguard-port)       ⏳ in progress
+│   ├── Sprint 48 — Audit-log hardening (shoreguard-port)       ✅ done (14b1249)
 │   │   ├── Alembic ``011`` widens ``audit_log.detail`` to ``Text``
 │   │   │   and adds ``client_ip`` + ``actor_role`` columns
 │   │   ├── ``services/audit.py`` ports the shoreguard-fresh
