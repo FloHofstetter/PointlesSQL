@@ -1597,9 +1597,26 @@ PointlesSQL
 │   │
 │   │   Remaining Phase 11 scope (not yet split into sprints):
 │   │
-│   ├── Sprint 45 — Nested ``BaseSettings`` refactor (6–8 sub-models,
-│   │   per-sub-model ``env_prefix``; most env vars stay identical,
-│   │   a small breaking subset is documented in CHANGELOG)  ⏳ planned
+│   ├── Sprint 45 — Nested ``BaseSettings`` refactor  ⏳ in progress
+│   │   ├── Flat ``Settings`` split into nine sub-models
+│   │   │   (Server, Soyuz, Database, Auth, OIDC, Logging, RateLimit,
+│   │   │   Jupyter, Scheduler, Delta) each with their own
+│   │   │   ``env_prefix``; ``Settings`` composes them via
+│   │   │   ``Field(default_factory=…)`` so env reads happen at each
+│   │   │   instantiation (matches papermill's CWD-fresh pattern)
+│   │   ├── Most ``POINTLESSQL_*`` env vars unchanged; the 9-entry
+│   │   │   BREAKING subset (``HOST``→``SERVER_HOST``,
+│   │   │   ``DATABASE_URL``→``DB_URL``, ``SECRET_KEY``→``AUTH_SECRET_KEY``,
+│   │   │   ``NOTEBOOKS_DIR``→``JUPYTER_NOTEBOOKS_DIR``, etc.) is
+│   │   │   documented in CHANGELOG with a full mapping; docker-compose
+│   │   │   files updated in-sprint
+│   │   ├── Rate-limit and CSRF middleware dynamic-attribute lookups
+│   │   │   rewritten to read the ``settings.rate_limit`` /
+│   │   │   ``settings.auth`` sub-models instead of flat attributes
+│   │   └── Tests that built ``Settings(secret_key="…")`` migrated to
+│   │       ``Settings(auth={"secret_key": "…"})``; two fixtures that
+│   │       used ``MagicMock(secret_key="…")`` now build real
+│   │       ``Settings`` instances so nested access works
 │   ├── Rate limiting on `/api/sql/*` — scheduled as a Phase-12
 │   │   sprint once the SQL editor lands (the route doesn't exist
 │   │   yet)

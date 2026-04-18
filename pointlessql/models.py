@@ -342,7 +342,7 @@ class Dashboard(Base):
         slug: URL-visible identifier, unique across all dashboards.
         title: Human-readable name shown in the list and detail pages.
         description: Optional free-form description.
-        notebook_path: Path relative to ``settings.notebooks_dir``. Kept
+        notebook_path: Path relative to ``settings.jupyter.notebooks_dir``. Kept
             alongside the bound job even though the job config already
             carries a notebook_path — surfaces in the list view before
             the user clicks through.

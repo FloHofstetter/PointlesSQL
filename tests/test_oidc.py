@@ -410,10 +410,12 @@ def _setup_oidc_app():
     from pointlessql.settings import Settings
 
     app.state.settings = Settings(
-        jupyter_enabled=False,
-        secret_key=SECRET,
-        oidc_discovery_url=FAKE_DISCOVERY_URL,
-        oidc_client_id="test-client",
+        jupyter={"enabled": False},
+        auth={"secret_key": SECRET},
+        oidc={
+            "discovery_url": FAKE_DISCOVERY_URL,
+            "client_id": "test-client",
+        },
     )
 
     mock_uc = AsyncMock()
@@ -451,7 +453,7 @@ class TestSSORedirect:
 
     @pytest.mark.asyncio
     async def test_sso_disabled(self):
-        app.state.settings.oidc_discovery_url = None
+        app.state.settings.oidc.discovery_url = None
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -464,7 +466,7 @@ class TestSSORedirect:
         assert "not+configured" in resp.headers["location"]
 
         # Restore.
-        app.state.settings.oidc_discovery_url = FAKE_DISCOVERY_URL
+        app.state.settings.oidc.discovery_url = FAKE_DISCOVERY_URL
 
 
 class TestOIDCCallback:
@@ -581,7 +583,7 @@ class TestLoginPageSSO:
 
     @pytest.mark.asyncio
     async def test_hides_sso_button_when_disabled(self):
-        app.state.settings.oidc_discovery_url = None
+        app.state.settings.oidc.discovery_url = None
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -592,7 +594,7 @@ class TestLoginPageSSO:
         assert "Sign in with SSO" not in resp.text
 
         # Restore.
-        app.state.settings.oidc_discovery_url = FAKE_DISCOVERY_URL
+        app.state.settings.oidc.discovery_url = FAKE_DISCOVERY_URL
 
 
 class TestOIDCUserCannotLocalLogin:

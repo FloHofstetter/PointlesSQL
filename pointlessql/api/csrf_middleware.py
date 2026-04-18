@@ -128,7 +128,8 @@ async def csrf_middleware(request: Request, call_next: Any) -> Response:
 
     if issued_new:
         settings = getattr(request.app.state, "settings", None)
-        max_age = int(getattr(settings, "jwt_expiry_hours", 168)) * 3600
+        auth_cfg = getattr(settings, "auth", None)
+        max_age = int(getattr(auth_cfg, "jwt_expiry_hours", 168)) * 3600
         _set_cookie(response, cookie_token, max_age)
 
     return response

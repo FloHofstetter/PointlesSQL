@@ -30,7 +30,7 @@ def notebooks_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "notebooks"
     root.mkdir()
     (root / "smoke.ipynb").write_text("{}\n")
-    monkeypatch.setenv("POINTLESSQL_NOTEBOOKS_DIR", str(root))
+    monkeypatch.setenv("POINTLESSQL_JUPYTER_NOTEBOOKS_DIR", str(root))
     return root
 
 
@@ -291,11 +291,11 @@ def _non_admin_client() -> httpx.AsyncClient:
 
 @pytest.fixture
 def run_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point ``settings.notebooks_dir`` at an isolated workspace with a ``runs/``."""
+    """Point ``settings.jupyter.notebooks_dir`` at an isolated workspace with a ``runs/``."""
     nb_root = tmp_path / "notebooks"
     runs = nb_root / "runs"
     runs.mkdir(parents=True)
-    monkeypatch.setattr(app.state.settings, "notebooks_dir", nb_root)
+    monkeypatch.setattr(app.state.settings.jupyter, "notebooks_dir", nb_root)
     return runs
 
 

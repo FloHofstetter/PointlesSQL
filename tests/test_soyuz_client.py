@@ -61,7 +61,7 @@ async def test_get_tree(uc_client: UnityCatalogClient) -> None:
 @pytest.mark.integration
 async def test_settings_default() -> None:
     settings = Settings()
-    assert settings.soyuz_catalog_url == "http://127.0.0.1:8080"
+    assert settings.soyuz.catalog_url == "http://127.0.0.1:8080"
 
 
 @pytest.mark.integration

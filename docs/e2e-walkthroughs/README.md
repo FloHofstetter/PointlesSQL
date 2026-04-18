@@ -119,11 +119,18 @@ exports the override:
 | `POINTLESSQL_SCHEDULER_TICK_SECONDS`| `2`     | `jobs-dag.md`        |
 | `POINTLESSQL_JUPYTER_ENABLED`       | `true`  | `notebook.md` Pass 2 |
 | `POINTLESSQL_LOG_FORMAT`            | `text`  | `config-matrix.md`   |
-| `POINTLESSQL_ENGINE`                | `pandas`| `config-matrix.md`   |
+| `POINTLESSQL_DELTA_ENGINE`          | `pandas`| `config-matrix.md`   |
 | `POINTLESSQL_OIDC_DISCOVERY_URL`    | (empty) | `oidc.md` Pass 2     |
 | `POINTLESSQL_OIDC_CLIENT_ID`        | (empty) | `oidc.md` Pass 2     |
 | `POINTLESSQL_OIDC_CLIENT_SECRET`    | (empty) | `oidc.md` Pass 2     |
-| `POINTLESSQL_BASE_URL`              | (empty) | `oidc.md` Pass 2     |
+| `POINTLESSQL_SERVER_BASE_URL`       | (empty) | `oidc.md` Pass 2     |
+
+**Sprint 45 note:** ``POINTLESSQL_ENGINE`` and ``POINTLESSQL_BASE_URL``
+were renamed to ``POINTLESSQL_DELTA_ENGINE`` and
+``POINTLESSQL_SERVER_BASE_URL`` when the flat :class:`Settings` moved
+to nested sub-models.  See ``CHANGELOG.md`` for the full mapping;
+``config-matrix.md`` and ``oidc.md`` still document the old names
+and will be refreshed on their next replay.
 
 Flipping an override requires recreating the `pointlessql`
 container so the new env reaches the uvicorn process:

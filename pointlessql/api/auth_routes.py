@@ -39,8 +39,8 @@ def _oidc_redirect_uri(request: Request, settings: Settings) -> str:
     reverse proxies or inside Docker. Falls back to deriving the URI
     from the incoming request.
     """
-    if settings.base_url:
-        return settings.base_url.rstrip("/") + "/auth/callback"
+    if settings.server.base_url:
+        return settings.server.base_url.rstrip("/") + "/auth/callback"
     return str(request.url_for("oidc_callback"))
 
 
@@ -54,7 +54,7 @@ async def login_page(request: Request, error: str = ""):
         {
             "error": error,
             "hide_sidebar": True,
-            "oidc_enabled": settings.oidc_enabled,
+            "oidc_enabled": settings.oidc.enabled,
         },
     )
 
@@ -71,8 +71,8 @@ async def login_submit(
         _factory(request),
         email,
         password,
-        settings.secret_key,
-        settings.jwt_expiry_hours,
+        settings.auth.secret_key,
+        settings.auth.jwt_expiry_hours,
     )
     if token is None:
         return _templates(request).TemplateResponse(
@@ -88,7 +88,7 @@ async def login_submit(
         token,
         httponly=True,
         samesite="lax",
-        max_age=settings.jwt_expiry_hours * 3600,
+        max_age=settings.auth.jwt_expiry_hours * 3600,
     )
     # Rotate the CSRF cookie on successful login — standard token
     # fixation prevention, matching the auth cookie's attributes.
@@ -97,7 +97,7 @@ async def login_submit(
         csrf.generate_token(),
         httponly=True,
         samesite="lax",
-        max_age=settings.jwt_expiry_hours * 3600,
+        max_age=settings.auth.jwt_expiry_hours * 3600,
         path="/",
     )
     return response
@@ -166,7 +166,7 @@ async def logout(request: Request):
         csrf.generate_token(),
         httponly=True,
         samesite="lax",
-        max_age=settings.jwt_expiry_hours * 3600,
+        max_age=settings.auth.jwt_expiry_hours * 3600,
         path="/",
     )
     return response
@@ -190,14 +190,14 @@ async def current_user(request: Request):
 async def sso_redirect(request: Request):
     """Initiate OIDC authorization-code flow with PKCE."""
     settings = _settings(request)
-    if not settings.oidc_enabled:
+    if not settings.oidc.enabled:
         return RedirectResponse(url="/auth/login?error=SSO+is+not+configured", status_code=303)
 
     redirect_uri = _oidc_redirect_uri(request, settings)
 
     async with httpx.AsyncClient() as client:
         discovery = await oidc_service.fetch_discovery(
-            settings.oidc_discovery_url,  # type: ignore[arg-type]
+            settings.oidc.discovery_url,  # type: ignore[arg-type]
             client,  # type: ignore[arg-type]
         )
 
@@ -207,7 +207,7 @@ async def sso_redirect(request: Request):
 
     authorize_url = oidc_service.build_authorize_url(
         discovery,
-        settings.oidc_client_id,  # type: ignore[arg-type]
+        settings.oidc.client_id,  # type: ignore[arg-type]
         redirect_uri,
         state,
         nonce,
@@ -216,7 +216,7 @@ async def sso_redirect(request: Request):
 
     cookie_value = oidc_service.sign_state_cookie(
         {"state": state, "code_verifier": code_verifier, "nonce": nonce},
-        settings.secret_key,
+        settings.auth.secret_key,
     )
 
     response = RedirectResponse(url=authorize_url, status_code=302)
@@ -259,7 +259,7 @@ async def oidc_callback(request: Request):
             status_code=303,
         )
 
-    cookie_payload = oidc_service.verify_state_cookie(cookie_raw, settings.secret_key)
+    cookie_payload = oidc_service.verify_state_cookie(cookie_raw, settings.auth.secret_key)
     if cookie_payload is None or cookie_payload.get("state") != state:
         return RedirectResponse(
             url="/auth/login?error=Invalid+SSO+state",
@@ -271,15 +271,15 @@ async def oidc_callback(request: Request):
     try:
         async with httpx.AsyncClient() as client:
             discovery = await oidc_service.fetch_discovery(
-                settings.oidc_discovery_url,  # type: ignore[arg-type]
+                settings.oidc.discovery_url,  # type: ignore[arg-type]
                 client,  # type: ignore[arg-type]
             )
             tokens = await oidc_service.exchange_code(
                 discovery,
                 code,
                 cookie_payload["code_verifier"],
-                settings.oidc_client_id,  # type: ignore[arg-type]
-                settings.oidc_client_secret,
+                settings.oidc.client_id,  # type: ignore[arg-type]
+                settings.oidc.client_secret,
                 redirect_uri,
                 client,
             )
@@ -301,7 +301,7 @@ async def oidc_callback(request: Request):
     try:
         user = oidc_service.find_or_create_oidc_user(
             _factory(request),
-            settings.oidc_discovery_url,  # type: ignore[arg-type]
+            settings.oidc.discovery_url,  # type: ignore[arg-type]
             userinfo["sub"],
             email,
             display_name,
@@ -316,8 +316,8 @@ async def oidc_callback(request: Request):
         user.id,
         user.email,
         user.is_admin,
-        settings.secret_key,
-        settings.jwt_expiry_hours,
+        settings.auth.secret_key,
+        settings.auth.jwt_expiry_hours,
     )
 
     response = RedirectResponse(url="/", status_code=303)
@@ -326,7 +326,7 @@ async def oidc_callback(request: Request):
         token,
         httponly=True,
         samesite="lax",
-        max_age=settings.jwt_expiry_hours * 3600,
+        max_age=settings.auth.jwt_expiry_hours * 3600,
     )
     # Rotate the CSRF cookie on SSO login, matching the local-login
     # path in ``login_submit``.
@@ -335,7 +335,7 @@ async def oidc_callback(request: Request):
         csrf.generate_token(),
         httponly=True,
         samesite="lax",
-        max_age=settings.jwt_expiry_hours * 3600,
+        max_age=settings.auth.jwt_expiry_hours * 3600,
         path="/",
     )
     response.delete_cookie(oidc_service.STATE_COOKIE_NAME)

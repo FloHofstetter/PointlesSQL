@@ -42,7 +42,7 @@ def render_run_notebook(runs_dir: Path, run_id: int, *, exclude_input: bool = Fa
 
     Args:
         runs_dir: Directory containing ``{run_id}.ipynb`` output files.
-            Typically ``settings.notebooks_dir / "runs"``.
+            Typically ``settings.jupyter.notebooks_dir / "runs"``.
         run_id: The :class:`~pointlessql.models.JobRun` id whose output
             notebook should be rendered.
         exclude_input: When true, render with ``exclude_input=True`` so

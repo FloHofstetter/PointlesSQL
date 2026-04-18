@@ -18,11 +18,11 @@ from pointlessql.settings import Settings
 class TestSettingsJupyterDefaults:
     def test_jupyter_enabled_default(self) -> None:
         s = Settings()
-        assert s.jupyter_enabled is True
+        assert s.jupyter.enabled is True
 
     def test_jupyter_port_default(self) -> None:
         s = Settings()
-        assert s.jupyter_port == 8888
+        assert s.jupyter.port == 8888
 
 
 # ------------------------------------------------------------------
@@ -32,7 +32,7 @@ class TestSettingsJupyterDefaults:
 
 class TestManagedJupyterDisabled:
     async def test_yields_none_when_disabled(self) -> None:
-        settings = Settings(jupyter_enabled=False)
+        settings = Settings(jupyter={"enabled": False})
         with patch("pointlessql.services.jupyter.asyncio") as mock_aio:
             async with managed_jupyter(settings) as proc:
                 assert proc is None
@@ -58,7 +58,7 @@ def _make_mock_process(*, returncode: int | None = None) -> MagicMock:
 class TestManagedJupyterStartsProcess:
     async def test_starts_and_terminates(self) -> None:
         mock_proc = _make_mock_process()
-        settings = Settings(jupyter_enabled=True, jupyter_port=9999)
+        settings = Settings(jupyter={"enabled": True, "port": 9999})
 
         with (
             patch(
@@ -88,7 +88,7 @@ class TestManagedJupyterStartsProcess:
         import signal
 
         mock_proc = _make_mock_process()
-        settings = Settings(jupyter_enabled=True)
+        settings = Settings(jupyter={"enabled": True})
 
         with (
             patch(
@@ -108,7 +108,7 @@ class TestManagedJupyterStartsProcess:
 
     async def test_kills_on_timeout(self) -> None:
         mock_proc = _make_mock_process()
-        settings = Settings(jupyter_enabled=True)
+        settings = Settings(jupyter={"enabled": True})
 
         with (
             patch(
@@ -130,7 +130,7 @@ class TestManagedJupyterStartsProcess:
 
     async def test_skips_shutdown_if_already_exited(self) -> None:
         mock_proc = _make_mock_process(returncode=0)
-        settings = Settings(jupyter_enabled=True)
+        settings = Settings(jupyter={"enabled": True})
 
         with (
             patch(
@@ -160,8 +160,8 @@ class TestNotebookRoute:
         """Prepare app.state so the route handlers work without the real lifespan."""
         from pointlessql.api.main import app
 
-        app.state.settings.jupyter_enabled = True
-        app.state.settings.jupyter_port = 9999
+        app.state.settings.jupyter.enabled = True
+        app.state.settings.jupyter.port = 9999
         app.state.uc_client = MagicMock()
         app.state.jupyter_process = None
 
@@ -186,7 +186,7 @@ class TestNotebookRoute:
     async def test_notebook_disabled_shows_message(self) -> None:
         from pointlessql.api.main import app
 
-        app.state.settings.jupyter_enabled = False
+        app.state.settings.jupyter.enabled = False
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -210,8 +210,8 @@ class TestJupyterStatusAPI:
     def _app(self) -> None:
         from pointlessql.api.main import app
 
-        app.state.settings.jupyter_enabled = True
-        app.state.settings.jupyter_port = 8888
+        app.state.settings.jupyter.enabled = True
+        app.state.settings.jupyter.port = 8888
         app.state.uc_client = MagicMock()
         app.state.jupyter_process = None
 

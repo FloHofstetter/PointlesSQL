@@ -47,9 +47,9 @@ def metrics_factory() -> Any:
 
 def _settings() -> Settings:
     return Settings(
-        jupyter_enabled=False,
-        scheduler_enabled=False,
-        soyuz_catalog_url="http://127.0.0.1:8080",
+        jupyter={"enabled": False},
+        scheduler={"enabled": False},
+        soyuz={"catalog_url": "http://127.0.0.1:8080"},
     )
 
 

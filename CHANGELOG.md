@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed (Sprint 45) — BREAKING: nested Settings + renamed env vars
+
+- **Flat `Settings` split into nine `BaseSettings` sub-models.** Fifth
+  Phase 11 hardening sprint, porting the shoreguard-fresh nested-
+  settings pattern 1:1.  Each sub-model owns its own ``env_prefix``:
+  ``ServerSettings``, ``SoyuzSettings``, ``DatabaseSettings``,
+  ``AuthSettings``, ``OIDCSettings``, ``LoggingSettings``,
+  ``RateLimitSettings``, ``JupyterSettings``, ``SchedulerSettings``,
+  ``DeltaSettings``.  Access moves from ``settings.secret_key`` to
+  ``settings.auth.secret_key``, from ``settings.notebooks_dir`` to
+  ``settings.jupyter.notebooks_dir``, etc.  Most environment
+  variables are unchanged because the old flat prefix already
+  overlapped — ``POINTLESSQL_RATE_LIMIT_*``,
+  ``POINTLESSQL_SCHEDULER_*``, ``POINTLESSQL_OIDC_*``,
+  ``POINTLESSQL_JUPYTER_*``, ``POINTLESSQL_SOYUZ_CATALOG_URL``,
+  ``POINTLESSQL_LOG_LEVEL``, ``POINTLESSQL_LOG_FORMAT`` all still
+  read the same value.  The breaking subset:
+
+  | Old                                          | New                                              |
+  | -------------------------------------------- | ------------------------------------------------ |
+  | ``POINTLESSQL_HOST``                         | ``POINTLESSQL_SERVER_HOST``                      |
+  | ``POINTLESSQL_PORT``                         | ``POINTLESSQL_SERVER_PORT``                      |
+  | ``POINTLESSQL_BASE_URL``                     | ``POINTLESSQL_SERVER_BASE_URL``                  |
+  | ``POINTLESSQL_DATABASE_URL``                 | ``POINTLESSQL_DB_URL``                           |
+  | ``POINTLESSQL_SECRET_KEY``                   | ``POINTLESSQL_AUTH_SECRET_KEY``                  |
+  | ``POINTLESSQL_JWT_EXPIRY_HOURS``             | ``POINTLESSQL_AUTH_JWT_EXPIRY_HOURS``            |
+  | ``POINTLESSQL_ENGINE``                       | ``POINTLESSQL_DELTA_ENGINE``                     |
+  | ``POINTLESSQL_NOTEBOOKS_DIR``                | ``POINTLESSQL_JUPYTER_NOTEBOOKS_DIR``            |
+  | ``POINTLESSQL_NOTEBOOK_EXECUTE_TIMEOUT_SECONDS`` | ``POINTLESSQL_JUPYTER_EXECUTE_TIMEOUT_SECONDS`` |
+
+  The ``docker-compose.yml`` and ``docker-compose.postgres.yml``
+  default env blocks were updated in this sprint; the
+  ``docker-compose.e2e.yml`` overlay accepts both the old and new
+  ``BASE_URL`` name for a one-release transition.  Tests that built
+  ``Settings`` with flat kwargs (``Settings(secret_key="…")``) must
+  switch to nested dict kwargs (``Settings(auth={"secret_key":
+  "…"})``).  The validator that anchors ``notebooks_dir`` to the
+  startup CWD (BUG-28-02) and the ``oidc.enabled`` computed field
+  both carried over unchanged — see ``pointlessql/settings.py`` for
+  the new shape.
+
 ### Changed (Sprint 44) — BREAKING: error envelope shape
 
 - **Error responses migrated to RFC 9457 `application/problem+json`.**

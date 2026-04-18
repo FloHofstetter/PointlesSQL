@@ -59,10 +59,10 @@ def _non_admin_client() -> httpx.AsyncClient:
 
 @pytest.fixture
 def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point ``settings.notebooks_dir`` at an isolated tmp directory."""
+    """Point ``settings.jupyter.notebooks_dir`` at an isolated tmp directory."""
     root = tmp_path / "notebooks"
     root.mkdir()
-    monkeypatch.setattr(app.state.settings, "notebooks_dir", root)
+    monkeypatch.setattr(app.state.settings.jupyter, "notebooks_dir", root)
     return root
 
 

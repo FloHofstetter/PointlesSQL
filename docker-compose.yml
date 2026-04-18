@@ -52,10 +52,13 @@ services:
       - "${JUPYTER_HOST_PORT:-8888}:8888"
     environment:
       POINTLESSQL_SOYUZ_CATALOG_URL: "http://soyuz-catalog:8080"
-      POINTLESSQL_ENGINE: "${POINTLESSQL_ENGINE:-pandas}"
-      POINTLESSQL_HOST: "0.0.0.0"
-      POINTLESSQL_DATABASE_URL: "sqlite:////app/data/pointlessql.db"
-      POINTLESSQL_SECRET_KEY: "docker-dev-secret-change-in-prod"
+      # Sprint 45 moved these four under sub-model ``env_prefix``:
+      # ``ENGINE`` → ``DELTA_ENGINE``, ``HOST`` → ``SERVER_HOST``,
+      # ``DATABASE_URL`` → ``DB_URL``, ``SECRET_KEY`` → ``AUTH_SECRET_KEY``.
+      POINTLESSQL_DELTA_ENGINE: "${POINTLESSQL_DELTA_ENGINE:-pandas}"
+      POINTLESSQL_SERVER_HOST: "0.0.0.0"
+      POINTLESSQL_DB_URL: "sqlite:////app/data/pointlessql.db"
+      POINTLESSQL_AUTH_SECRET_KEY: "docker-dev-secret-change-in-prod"
     volumes:
       - ./warehouse:/app/warehouse
       - pointlessql_data:/app/data

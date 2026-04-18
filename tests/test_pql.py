@@ -148,14 +148,14 @@ class TestPQLConstructor:
     @patch(f"{_MOD}.make_soyuz_client")
     def test_engine_polars_from_settings(self, mock_factory: MagicMock) -> None:
         mock_factory.return_value = MagicMock()
-        settings = Settings(engine="polars")
+        settings = Settings(delta={"engine": "polars"})
         pql = PQL(settings=settings)
         assert isinstance(pql._engine, PolarsEngine)
 
     @patch(f"{_MOD}.make_soyuz_client")
     def test_engine_from_settings(self, mock_factory: MagicMock) -> None:
         mock_factory.return_value = MagicMock()
-        settings = Settings(engine="duckdb")
+        settings = Settings(delta={"engine": "duckdb"})
         pql = PQL(settings=settings)
         assert isinstance(pql._engine, DuckDBEngine)
 

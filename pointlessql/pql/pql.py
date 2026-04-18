@@ -66,7 +66,7 @@ class PQL:
             client creation and engine selection when not provided
             explicitly.
         engine: Engine instance, engine name string, or ``None``.
-            When ``None``, auto-selects from ``settings.engine``
+            When ``None``, auto-selects from ``settings.delta.engine``
             (default ``"pandas"``).
     """
 
@@ -86,7 +86,7 @@ class PQL:
             else:
                 self._client = make_soyuz_client(resolved)
         if engine is None:
-            self._engine = make_engine(resolved.engine)
+            self._engine = make_engine(resolved.delta.engine)
         elif isinstance(engine, str):
             self._engine = make_engine(engine)
         else:

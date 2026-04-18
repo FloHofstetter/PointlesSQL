@@ -66,7 +66,7 @@ from pointlessql.types import UserInfo
 # this module but does not go through cli(). Idempotent; subsequent
 # calls replace our own handlers without disturbing pytest's caplog.
 _startup_settings = Settings()
-configure_logging(_startup_settings.log_level, _startup_settings.log_format)
+configure_logging(_startup_settings.logging.level, _startup_settings.logging.format)
 
 logger = logging.getLogger(__name__)
 
@@ -115,21 +115,21 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = Settings()
     logger.info(
         "PointlesSQL starting on %s:%d (engine=%s, log_format=%s)",
-        settings.host,
-        settings.port,
-        settings.engine,
-        settings.log_format,
+        settings.server.host,
+        settings.server.port,
+        settings.delta.engine,
+        settings.logging.format,
     )
     soyuz = make_soyuz_client(settings)
     app.state.uc_client = UnityCatalogClient(soyuz)
     app.state.settings = settings
     app.state.templates = _TEMPLATES
 
-    init_db(settings.database_url)
+    init_db(settings.db.url)
     app.state.session_factory = get_session_factory()
 
     scheduler: scheduler_service.Scheduler | None = None
-    if settings.scheduler_enabled:
+    if settings.scheduler.enabled:
         scheduler = scheduler_service.Scheduler(app.state.session_factory, settings)
         scheduler.start()
     app.state.scheduler = scheduler
@@ -173,7 +173,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
         factory = getattr(request.app.state, "session_factory", None)
         settings = getattr(request.app.state, "settings", None)
         if factory is not None and settings is not None:
-            user = auth_service.get_current_user(factory, token, settings.secret_key)
+            user = auth_service.get_current_user(factory, token, settings.auth.secret_key)
             if user is not None:
                 request.state.user = user
 
@@ -465,10 +465,10 @@ async def api_open_in_notebook(
     sanitiser = re.compile(r"[^A-Za-z0-9_-]")
     stem = "_".join(sanitiser.sub("_", part) for part in (catalog_name, schema_name, table_name))
     filename = f"{stem}_{secrets.token_hex(3)}.ipynb"
-    scratch_dir = settings.notebooks_dir / "scratch"
+    scratch_dir = settings.jupyter.notebooks_dir / "scratch"
     scratch_dir.mkdir(parents=True, exist_ok=True)
     target = notebook_workspace_service.resolve_upload_target(
-        settings.notebooks_dir, f"scratch/{filename}"
+        settings.jupyter.notebooks_dir, f"scratch/{filename}"
     )
 
     nb = nbformat.v4.new_notebook()
@@ -486,7 +486,7 @@ async def api_open_in_notebook(
     _audit(request, "open_in_notebook", f"table:{full_name}", f"scratch/{filename}")
     host = request.url.hostname or "localhost"
     relative = f"scratch/{filename}"
-    lab_url = f"http://{host}:{settings.jupyter_port}/lab/tree/{relative}"
+    lab_url = f"http://{host}:{settings.jupyter.port}/lab/tree/{relative}"
     return {"path": relative, "lab_url": lab_url}
 
 
@@ -954,8 +954,8 @@ async def notebook_page(request: Request) -> HTMLResponse:
         request,
         "pages/notebook.html",
         {
-            "jupyter_enabled": settings.jupyter_enabled,
-            "jupyter_port": settings.jupyter_port,
+            "jupyter_enabled": settings.jupyter.enabled,
+            "jupyter_port": settings.jupyter.port,
             "active_page": "notebook",
             "active_catalog": None,
             "active_schema": None,
@@ -971,9 +971,9 @@ async def jupyter_status(request: Request) -> dict[str, object]:
     proc = getattr(request.app.state, "jupyter_process", None)
     running = proc is not None and proc.returncode is None
     return {
-        "enabled": settings.jupyter_enabled,
+        "enabled": settings.jupyter.enabled,
         "running": running,
-        "port": settings.jupyter_port,
+        "port": settings.jupyter.port,
     }
 
 
@@ -1002,7 +1002,9 @@ async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, An
 
     _require_admin(request)
     settings: Settings = request.app.state.settings
-    resolved = scheduler_service.resolve_notebook_path(settings.notebooks_dir.resolve(), path)
+    resolved = scheduler_service.resolve_notebook_path(
+        settings.jupyter.notebooks_dir.resolve(), path
+    )
     raw = papermill.inspect_notebook(str(resolved))
     out: list[dict[str, Any]] = []
     for name, meta in raw.items():
@@ -1037,7 +1039,7 @@ async def api_notebooks_tree(request: Request) -> list[dict[str, Any]]:
     """
     _require_admin(request)
     settings: Settings = request.app.state.settings
-    return notebook_workspace_service.list_workspace_tree(settings.notebooks_dir.resolve())
+    return notebook_workspace_service.list_workspace_tree(settings.jupyter.notebooks_dir.resolve())
 
 
 @app.post("/api/notebooks/upload")
@@ -1090,7 +1092,7 @@ async def api_upload_notebook(
         raise ValidationError(f"uploaded file must have an .ipynb extension: {filename!r}")
 
     resolved = notebook_workspace_service.resolve_upload_target(
-        settings.notebooks_dir.resolve(), target_path
+        settings.jupyter.notebooks_dir.resolve(), target_path
     )
 
     raw = await file.read()
@@ -1938,7 +1940,7 @@ def _load_papermill_run_output_path(request: Request, job_id: int, run_id: int) 
         if run is None or run.job_id != job_id:
             raise CatalogNotFoundError(f"Run {run_id} not found for job {job_id}")
     settings: Settings = request.app.state.settings
-    return settings.notebooks_dir.resolve() / "runs"
+    return settings.jupyter.notebooks_dir.resolve() / "runs"
 
 
 @app.get("/jobs/{job_id}/runs/{run_id}/notebook", response_class=HTMLResponse)
@@ -2354,7 +2356,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
         settings_obj: Settings = request.app.state.settings
         try:
             tree = notebook_workspace_service.list_workspace_tree(
-                settings_obj.notebooks_dir.resolve()
+                settings_obj.jupyter.notebooks_dir.resolve()
             )
         except Exception:
             logger.warning("search: notebook tree unavailable", exc_info=True)
@@ -2910,7 +2912,7 @@ async def dashboard_output(request: Request, slug: str) -> HTMLResponse:
             raise CatalogNotFoundError(f"Dashboard {slug!r} bound job is not a papermill job")
 
     settings: Settings = request.app.state.settings
-    runs_dir = settings.notebooks_dir.resolve() / "runs"
+    runs_dir = settings.jupyter.notebooks_dir.resolve() / "runs"
     html = notebook_render_service.render_run_notebook(runs_dir, latest_run_id, exclude_input=True)
     return HTMLResponse(html)
 
@@ -3153,7 +3155,7 @@ async def job_detail(request: Request, job_id: int) -> HTMLResponse:
             "runs": [_serialize_run(r) for r in runs],
             "tasks": task_rows,
             "can_manage": can_manage,
-            "jupyter_port": _startup_settings.jupyter_port,
+            "jupyter_port": _startup_settings.jupyter.port,
             "active_page": "jobs",
             "active_catalog": None,
             "active_schema": None,
@@ -3167,4 +3169,9 @@ def cli() -> None:
     import uvicorn
 
     settings = Settings()
-    uvicorn.run("pointlessql.api.main:app", host=settings.host, port=settings.port, reload=True)
+    uvicorn.run(
+        "pointlessql.api.main:app",
+        host=settings.server.host,
+        port=settings.server.port,
+        reload=True,
+    )

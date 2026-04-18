@@ -353,7 +353,7 @@ async def _papermill_executor(
             "timeout_seconds": 600
         }
 
-    ``notebook_path`` is resolved relative to ``settings.notebooks_dir``
+    ``notebook_path`` is resolved relative to ``settings.jupyter.notebooks_dir``
     and must not escape it. The executed output lands at
     ``{notebooks_dir}/runs/{job_run_id}.ipynb`` so the embedded
     JupyterLab can serve it at ``/lab/tree/runs/{job_run_id}.ipynb``
@@ -400,13 +400,13 @@ async def _papermill_executor(
     settings = Settings()
     timeout_cfg = config.get("timeout_seconds")
     if timeout_cfg is None:
-        timeout_seconds = settings.notebook_execute_timeout_seconds
+        timeout_seconds = settings.jupyter.execute_timeout_seconds
     elif isinstance(timeout_cfg, int) and timeout_cfg > 0:
         timeout_seconds = timeout_cfg
     else:
         raise ValidationError("papermill job config 'timeout_seconds' must be a positive int")
 
-    notebooks_dir = Path(settings.notebooks_dir).resolve()
+    notebooks_dir = Path(settings.jupyter.notebooks_dir).resolve()
     input_path = resolve_notebook_path(notebooks_dir, notebook_path)
     runs_dir = notebooks_dir / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
@@ -1479,13 +1479,13 @@ class Scheduler:
         if self._task is not None and not self._task.done():
             return
         self._stop_event = asyncio.Event()
-        self._global_sem = asyncio.Semaphore(max(1, self._settings.scheduler_max_concurrent_runs))
+        self._global_sem = asyncio.Semaphore(max(1, self._settings.scheduler.max_concurrent_runs))
         self._per_job_sems = {}
         self._task = asyncio.create_task(self._run(), name="pointlessql-scheduler")
         logger.info(
             "scheduler: started (tick=%ds, max_concurrent=%d)",
-            self._settings.scheduler_tick_seconds,
-            self._settings.scheduler_max_concurrent_runs,
+            self._settings.scheduler.tick_seconds,
+            self._settings.scheduler.max_concurrent_runs,
         )
 
     async def stop(self) -> None:
@@ -1514,7 +1514,7 @@ class Scheduler:
         is falling behind its cadence under load.
         """
         expected_next: float = asyncio.get_event_loop().time()
-        tick_seconds = float(self._settings.scheduler_tick_seconds)
+        tick_seconds = float(self._settings.scheduler.tick_seconds)
         while not self._stop_event.is_set():
             actual = asyncio.get_event_loop().time()
             metrics_service.observe_tick_lag(actual - expected_next)

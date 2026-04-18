@@ -31,12 +31,12 @@ async def managed_jupyter(
     On context exit the subprocess receives SIGTERM; if it does not
     exit within *_SHUTDOWN_TIMEOUT* seconds it is killed.
     """
-    if not settings.jupyter_enabled:
+    if not settings.jupyter.enabled:
         _log.info("Jupyter integration disabled — skipping subprocess start")
         yield None
         return
 
-    notebook_dir = Path(settings.notebooks_dir).resolve()
+    notebook_dir = Path(settings.jupyter.notebooks_dir).resolve()
     notebook_dir.mkdir(parents=True, exist_ok=True)
 
     cmd = [
@@ -45,8 +45,8 @@ async def managed_jupyter(
         "jupyterlab",
         "--no-browser",
         "--allow-root",
-        f"--port={settings.jupyter_port}",
-        f"--ip={settings.host}",
+        f"--port={settings.jupyter.port}",
+        f"--ip={settings.server.host}",
         "--ServerApp.token=''",
         "--ServerApp.password=''",
         "--ServerApp.disable_check_xsrf=True",
@@ -55,14 +55,14 @@ async def managed_jupyter(
         f"--notebook-dir={notebook_dir}",
     ]
 
-    _log.info("Starting JupyterLab on port %d …", settings.jupyter_port)
+    _log.info("Starting JupyterLab on port %d …", settings.jupyter.port)
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.DEVNULL,
         stderr=asyncio.subprocess.DEVNULL,
     )
 
-    await _wait_until_ready(settings.jupyter_port)
+    await _wait_until_ready(settings.jupyter.port)
 
     try:
         yield proc

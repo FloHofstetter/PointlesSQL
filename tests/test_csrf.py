@@ -8,7 +8,7 @@ re-injection so the downstream route still sees posted fields.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -18,6 +18,7 @@ from sqlalchemy.orm import sessionmaker
 from pointlessql.api.main import _TEMPLATES, app
 from pointlessql.models import Base
 from pointlessql.services import auth, csrf
+from pointlessql.settings import Settings
 
 
 @pytest.fixture(autouse=True)
@@ -28,13 +29,12 @@ def _setup_app():
     factory = sessionmaker(bind=engine)
 
     app.state.session_factory = factory
-    app.state.settings = MagicMock(
-        secret_key="test-secret-key-for-unit-tests!!",
-        jwt_expiry_hours=168,
-        soyuz_catalog_url="http://localhost:8080",
-        jupyter_enabled=False,
-        jupyter_port=8888,
-        database_url="sqlite:///:memory:",
+    app.state.settings = Settings(
+        auth={"secret_key": "test-secret-key-for-unit-tests!!"},
+        soyuz={"catalog_url": "http://localhost:8080"},
+        jupyter={"enabled": False, "port": 8888},
+        db={"url": "sqlite:///:memory:"},
+        scheduler={"enabled": False},
     )
     app.state.templates = _TEMPLATES
 

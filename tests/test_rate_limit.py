@@ -40,11 +40,11 @@ def _setup_app():
 
     app.state.session_factory = factory
     settings = Settings(
-        jupyter_enabled=False,
-        scheduler_enabled=False,
-        rate_limit_enabled=True,
+        jupyter={"enabled": False},
+        scheduler={"enabled": False},
+        rate_limit={"enabled": True},
     )
-    settings.secret_key = "test-secret-key-for-unit-tests!!"  # type: ignore[misc]
+    settings.auth.secret_key = "test-secret-key-for-unit-tests!!"  # type: ignore[misc]
     app.state.settings = settings
     app.state.templates = _TEMPLATES
 
@@ -128,7 +128,7 @@ class TestLoginEmailLimit:
 
     @pytest.mark.asyncio
     async def test_login_email_limit_trips_across_ips(self):
-        app.state.settings.rate_limit_trust_x_forwarded_for = True
+        app.state.settings.rate_limit.trust_x_forwarded_for = True
         try:
             async with _client() as client:
                 token = await _csrf_token(client)
@@ -150,7 +150,7 @@ class TestLoginEmailLimit:
             assert resp.status_code == 429
             assert "Retry-After" in resp.headers
         finally:
-            app.state.settings.rate_limit_trust_x_forwarded_for = False
+            app.state.settings.rate_limit.trust_x_forwarded_for = False
 
 
 class TestWindowExpiry:
@@ -336,7 +336,7 @@ class TestBypass:
     @pytest.mark.asyncio
     async def test_disabled_setting_skips_check(self, _setup_app):
         factory = _setup_app
-        app.state.settings.rate_limit_enabled = False
+        app.state.settings.rate_limit.enabled = False
         try:
             async with _client() as client:
                 token = await _csrf_token(client)
@@ -350,7 +350,7 @@ class TestBypass:
                 count = session.scalar(select(RateLimitEvent.id).limit(1))
             assert count is None
         finally:
-            app.state.settings.rate_limit_enabled = True
+            app.state.settings.rate_limit.enabled = True
 
 
 class TestAuditHook:

@@ -130,9 +130,10 @@ def _resolve_dimensions(rule: _Rule, settings: Any) -> list[_Dimension]:
     soft-disable a specific bucket without patching code.
     """
     out: list[_Dimension] = []
+    rate_limit_cfg = settings.rate_limit
     for name in rule.dimensions:
-        count = int(getattr(settings, f"rate_limit_{rule.settings_tag}_{name}_count"))
-        window = int(getattr(settings, f"rate_limit_{rule.settings_tag}_{name}_window_s"))
+        count = int(getattr(rate_limit_cfg, f"{rule.settings_tag}_{name}_count"))
+        window = int(getattr(rate_limit_cfg, f"{rule.settings_tag}_{name}_window_s"))
         if count > 0 and window > 0:
             out.append(_Dimension(name=name, count=count, window_s=window))
     return out
@@ -180,7 +181,8 @@ async def rate_limit_middleware(request: Request, call_next: Any) -> Response:
     factory = getattr(request.app.state, "session_factory", None)
     if settings is None or factory is None:
         return await call_next(request)
-    if not getattr(settings, "rate_limit_enabled", True):
+    rate_limit_cfg = getattr(settings, "rate_limit", None)
+    if rate_limit_cfg is None or not getattr(rate_limit_cfg, "enabled", True):
         return await call_next(request)
 
     rule = _find_rule(request)
@@ -191,7 +193,7 @@ async def rate_limit_middleware(request: Request, call_next: Any) -> Response:
     if not dims:
         return await call_next(request)
 
-    trust_xff = bool(getattr(settings, "rate_limit_trust_x_forwarded_for", False))
+    trust_xff = bool(getattr(rate_limit_cfg, "trust_x_forwarded_for", False))
     ip = _client_ip(request, trust_xff)
 
     # Look up the submitted email once — only needed when a rule

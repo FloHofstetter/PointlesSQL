@@ -316,7 +316,7 @@ class TestPrincipalForwarding:
         from pointlessql.services.soyuz_client import make_principal_client
         from pointlessql.settings import Settings
 
-        settings = Settings(jupyter_enabled=False)
+        settings = Settings(jupyter={"enabled": False})
         client = make_principal_client(settings, "user@test.com")
         assert client._headers["X-Principal"] == "user@test.com"
 
@@ -325,8 +325,8 @@ class TestPrincipalForwarding:
         from pointlessql.settings import Settings
 
         settings = Settings(
-            jupyter_enabled=False,
-            soyuz_catalog_url="http://custom:9090",
+            jupyter={"enabled": False},
+            soyuz={"catalog_url": "http://custom:9090"},
         )
         client = make_principal_client(settings, "user@test.com")
         assert client._base_url == "http://custom:9090"

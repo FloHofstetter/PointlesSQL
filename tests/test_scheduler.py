@@ -84,9 +84,9 @@ def _seed_job(
 
 def _settings() -> Settings:
     return Settings(
-        jupyter_enabled=False,
-        scheduler_enabled=False,
-        soyuz_catalog_url="http://127.0.0.1:8080",
+        jupyter={"enabled": False},
+        scheduler={"enabled": False},
+        soyuz={"catalog_url": "http://127.0.0.1:8080"},
     )
 
 
@@ -371,10 +371,9 @@ class TestSchedulerLifecycle:
         settings = _settings()
         # Very fast tick so the loop iterates at least once.
         settings = Settings(
-            jupyter_enabled=False,
-            scheduler_enabled=False,
-            scheduler_tick_seconds=60,
-            soyuz_catalog_url="http://127.0.0.1:8080",
+            jupyter={"enabled": False},
+            scheduler={"enabled": False, "tick_seconds": 60},
+            soyuz={"catalog_url": "http://127.0.0.1:8080"},
         )
         sched = Scheduler(scheduler_factory, settings, registry=KindRegistry())
         sched.start()

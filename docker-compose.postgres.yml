@@ -26,7 +26,7 @@ services:
 
   pointlessql:
     environment:
-      POINTLESSQL_DATABASE_URL: "postgresql+psycopg://pointlessql:pointlessql@postgres:5432/pointlessql"
+      POINTLESSQL_DB_URL: "postgresql+psycopg://pointlessql:pointlessql@postgres:5432/pointlessql"
     depends_on:
       postgres:
         condition: service_healthy

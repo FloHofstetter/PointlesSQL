@@ -30,7 +30,7 @@ class TestE2ESmoke:
         self.env = e2e_env
         client = make_soyuz_client()
         app.state.uc_client = UnityCatalogClient(client)
-        app.state.settings = Settings(jupyter_enabled=False)
+        app.state.settings = Settings(jupyter={"enabled": False})
         app.state.jupyter_process = None
 
     async def test_full_roundtrip(self) -> None:

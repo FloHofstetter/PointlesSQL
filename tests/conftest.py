@@ -68,12 +68,15 @@ def _auth_db():
     if not hasattr(app.state, "settings") or app.state.settings is None:
         from pointlessql.settings import Settings
 
-        app.state.settings = Settings(jupyter_enabled=False, scheduler_enabled=False)
+        app.state.settings = Settings(
+            jupyter={"enabled": False},
+            scheduler={"enabled": False},
+        )
     else:
-        app.state.settings.scheduler_enabled = False  # type: ignore[attr-defined]
+        app.state.settings.scheduler.enabled = False  # type: ignore[attr-defined]
 
     # Ensure secret_key is always set.
-    app.state.settings.secret_key = _TEST_SECRET  # type: ignore[attr-defined]
+    app.state.settings.auth.secret_key = _TEST_SECRET  # type: ignore[attr-defined]
 
     # Create a test user (admin — first user bootstrap) and attach cookie.
     auth.register(factory, "test@test.com", "Test User", "password123")
