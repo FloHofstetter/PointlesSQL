@@ -1728,6 +1728,15 @@ PointlesSQL
 │   │   - Delta-table export of query history as a `system`
 │   │     catalog is deliberately deferred — offered as optional
 │   │     Phase 12.5 only if retention requirements appear
+│   │   - **Audit-action naming convention** (Sprint 48 follow-up):
+│   │     new events emitted by Phase 12/13 use the
+│   │     ``resource.verb`` form (``query.executed``,
+│   │     ``query.saved``, ``query.shared``, ``agent.plan.approved``)
+│   │     to match shoreguard-fresh's convention and stay
+│   │     consistent with the already-landed ``rate_limit.blocked``.
+│   │     Existing pre-Sprint-48 strings (``update_catalog``,
+│   │     ``create_connection``, …) stay as-is — retroactive
+│   │     rename is pure churn.
 │   │
 │   │   Sprint outline:
 │   │
@@ -1842,6 +1851,56 @@ PointlesSQL
 │       is the default-obvious choice — UC-compatible, no
 │       ethical-use clauses worth the drama; revisit only if
 │       something has changed)
+│
+├── Icebox — enterprise-audit follow-ups                  🧊 on ice
+│   │
+│   │   Sprint 48 ported six of nine shoreguard-fresh audit
+│   │   patterns. The three skipped ones are legitimately wanted
+│   │   in enterprise / compliance scenarios but do not pay for
+│   │   themselves at the single-node-vServer scale today. Parked
+│   │   here so Phase 14's enterprise-positioning pass knows where
+│   │   to look; trivially promotable to a numbered sprint when a
+│   │   real consumer asks.
+│   │
+│   ├── Audit export with sha256 digest + manifest  🧊 on ice
+│   │   ├── CLI ``pointlessql audit export --out FILE`` that
+│   │   │   mirrors ``/admin/audit/export`` but writes three
+│   │   │   mode-0600 files: data (JSON or CSV), ``FILE.sha256``
+│   │   │   in ``sha256sum``-compatible format, and
+│   │   │   ``FILE.manifest.json`` carrying export timestamp,
+│   │   │   filters applied, entry count, tool version
+│   │   ├── Optional: a "download with manifest" toggle in the
+│   │   │   web viewer that ships the three files as a
+│   │   │   ``.tar.gz`` bundle so the browser-only admin path
+│   │   │   also produces tamper-evidence artefacts
+│   │   └── Why deferred: the compliance conversation where a
+│   │       third-party auditor demands a verifiable export has
+│   │       not happened yet. Pattern verbatim in
+│   │       ``shoreguard-fresh/shoreguard/api/cli_audit.py:34-169``
+│   │       when the need appears
+│   │
+│   ├── Audit-to-SIEM export sinks                  🧊 on ice
+│   │   ├── Opt-in fan-out from ``log_action`` to external
+│   │   │   observability targets — ``audit.sink_stdout_json``
+│   │   │   (for container-log harvesters), ``audit.sink_syslog``
+│   │   │   (RFC 5424 over UDP/TCP/TLS), ``audit.sink_webhook``
+│   │   │   (POST per event, HMAC-signed payload)
+│   │   ├── Each sink is a named ``AuditSink`` subclass
+│   │   │   registered via entry-point or settings-driven
+│   │   │   construction; dispatch failures swallowed + logged
+│   │   │   (never blocks the primary DB write)
+│   │   └── Why deferred: nobody running on a €15/month vServer
+│   │       has a SIEM. Re-open once PointlesSQL has its first
+│   │       multi-tenant / enterprise-positioned consumer
+│   │
+│   └── Retroactive action-string rename to ``resource.verb``  🧊 on ice
+│       └── Churn-only refactor of the 25 pre-Sprint-48 action
+│           strings (``update_catalog`` → ``catalog.updated``, …)
+│           to fully align with the convention Phase 12 adopts
+│           for new events. Pure ergonomics for the
+│           ``/admin/audit`` dropdown — no behavioural change —
+│           so only worth doing the day the whole fleet gets
+│           rewired (e.g. a release-notes-worthy version bump)
 │
 └── Explicitly out of scope (probably ever)
     ├── Reimplementing the Unity Catalog REST API — that is
