@@ -27,16 +27,10 @@ jobs:
     # GIT_CONFIG_COUNT — this is read by uv's git subprocess even
     # when it runs under a modified HOME. See test.yml for the
     # full rationale and prior failure modes.
-    env:
-      GH_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
-      GIT_CONFIG_COUNT: "1"
-      GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
-      GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # git-cliff needs full history
-          persist-credentials: false  # avoid Authorization header collision; see test.yml
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -47,6 +41,14 @@ jobs:
         run: uv python install 3.14
 
       - name: Install dependencies
+        # GIT_CONFIG_COUNT injects a scoped extraheader for uv's
+        # git subprocess. Scoped to this step only so it does not
+        # collide with actions/checkout's own Authorization
+        # header. See test.yml for the full rationale.
+        env:
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
+          GIT_CONFIG_VALUE_0: "Authorization: Bearer ${{ secrets.SOYUZ_READ_TOKEN }}"
         run: uv sync --all-extras
 
       - name: Gate — ruff
