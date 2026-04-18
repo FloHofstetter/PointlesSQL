@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 56) — Column statistics / data profiling
+
+- **Alembic 016** — new ``table_stats`` table keyed by
+  ``(full_name, delta_log_version, column_name)`` with a composite
+  unique constraint + ``ix_table_stats_lookup`` for the read path.
+- **Model.** ``TableStats`` under ``pointlessql/models.py``.
+- **Service layer** (``pointlessql/services/table_stats.py``).
+  ``read_delta_log_version`` wraps ``DeltaTable.version()``.
+  ``compute_stats`` opens a DuckDB conn, registers the Delta view
+  via the Sprint-49 ``register_delta_view`` helper, and issues one
+  aggregate SQL per column plus a second ``GROUP BY`` when
+  cardinality permits.  ``write_cached`` is idempotent,
+  ``read_cached`` returns parsed dicts, ``delete_cached`` evicts
+  every version.  Non-numeric columns never carry a ``mean``;
+  ``top_5`` is skipped when ``distinct_count`` exceeds
+  ``TOP_K_DISTINCT_CEILING`` (10 000 default).
+- **Routes.**
+  ``POST /api/tables/{full_name:path}/profile`` — SELECT-gated,
+  checks the cache first, falls back to compute + write, emits one
+  ``table.profiled`` or ``table.profile_cache_hit`` audit row.
+  ``GET /api/tables/{full_name:path}/stats?version=<opt>`` —
+  SELECT-gated read path.
+  ``DELETE /api/tables/{full_name:path}/stats`` — admin-only
+  eviction with a ``table.stats_cleared`` audit row.
+- **Frontend.** New "Column statistics" card on the table detail
+  page with Profile + admin-only Clear cache buttons; ``top_5`` bars
+  render via Chart.js (reusing Sprint-54's CDN — zero extra network
+  weight).  Non-module IIFE publishes ``window.tableStats``.
+- Tests: 9 new cases in ``tests/test_table_stats.py`` — pure
+  helpers (end-to-end compute against a Delta fixture, top_5 ceiling,
+  cache round-trip, eviction, fresh-Delta version read) + HTTP
+  surface (profile → cache-hit → stats round-trip, DELETE
+  admin-only, profile enforces SELECT, 404 on unknown table).
+
 ### Added (Sprint 55) — Query alerts (CloudEvents webhook + Atom/JSON Feed)
 
 - **Alembic 015** — ``alerts`` / ``alert_destinations`` /

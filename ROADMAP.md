@@ -1773,6 +1773,7 @@ PointlesSQL
 │   │
 │   ├── Sprint 54 — Charts in the SQL editor                ✅ done (88898d2)
 │   ├── Sprint 55 — Query alerts (CloudEvents + feeds)       ✅ done (832087c)
+│   ├── Sprint 56 — Column statistics / data profiling       ✅ done (1ff3c90)
 │   │   Bar / Line / Scatter / Pie toolbar below the results table;
 │   │   ``c`` toggles table ↔ chart when focus is outside CodeMirror;
 │   │   PNG download via ``canvas.toBlob``; chart config persists per
@@ -1780,14 +1781,7 @@ PointlesSQL
 │   │   replays the same visualisation.  Chart.js 4.x UMD (not ESM)
 │   │   vendored via jsDelivr in ``base.html``.
 │   │   Sprint 55 — already landed above (832087c)
-│   ├── Sprint 56 — Column statistics / data profiling      ⏳ planned
-│   │   "Profile table" button on the UC table-detail page.  Server
-│   │   computes per-column count / null_count / distinct_count /
-│   │   min / max / mean / top_5 via a single DuckDB pass (reusing
-│   │   Sprint-49 infra), caches by
-│   │   ``(full_name, delta_log_version)`` in a new ``table_stats``
-│   │   table (Alembic 016), and renders sparklines with the Chart.js
-│   │   CDN Sprint 54 already loaded.
+│   │   Sprint 56 — already landed above (1ff3c90)
 │   └── Sprint 57 — UC Volumes (upload + convert-to-Delta)  ⏳ planned
 │       Cross-repo sprint.  Soyuz-catalog adds file
 │       upload/download/browse/delete routes + a local-FS storage
