@@ -3525,7 +3525,7 @@ PointlesSQL
 │       ``docs/e2e-walkthroughs/dashboards.md`` playbook); other
 │       suites unaffected.
 │
-│   └── Sprint 90 — api/main.py admin/home/catalog-html + endgame ✅ done (pending-commit)
+│   └── Sprint 90 — api/main.py admin/home/catalog-html + endgame ✅ done (9c8e997)
 │       Final api/main.py decomposition slice.  Three new modules
 │       lift out everything left:
 │
