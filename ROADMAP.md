@@ -3885,7 +3885,7 @@ PointlesSQL
 │   │       round-trip on a fresh SQLite DB;
 │   │       ``pytest tests/test_notebook_doc.py`` 11/11 passing.
 │   │
-│   ├── Sprint 97 — Parser hardening against manual edits       ✅ done (pending-commit)
+│   ├── Sprint 97 — Parser hardening against manual edits       ✅ done (ac6958e)
 │   │       Defensive guards in ``notebook_doc.py`` +
 │   │       ``cell_parser.js`` for every shape a user can produce
 │   │       by editing a ``.py`` directly in VSCode / Vim.  Both
