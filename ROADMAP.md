@@ -2459,7 +2459,7 @@ PointlesSQL
 │   │   version stamp threaded into every dynamic import URL) is
 │   │   out of scope here and noted as a follow-on.
 │   │
-│   ├── Sprint 73 — Per-cell run history + diff (Alembic 018)      ✅ done
+│   ├── Sprint 73 — Per-cell run history + diff (Alembic 018)      ✅ done (dc530eb)
 │   │   New ``notebook_cell_run_sources`` table — sibling to the
 │   │   Sprint-60 ``notebook_cell_runs`` upsert (which keeps
 │   │   "current state per session" and would otherwise clobber the
