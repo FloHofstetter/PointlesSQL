@@ -2332,7 +2332,7 @@ PointlesSQL
 │   │   / ``<link>`` tags reverts to plain markdown-it without
 │   │   breaking anything else.
 │   │
-│   ├── Sprint 70 — Outline / TOC panel + cell jump                ✅ done
+│   ├── Sprint 70 — Outline / TOC panel + cell jump                ✅ done (b6fe0e2)
 │   │   Right-side Outline panel peers with the Variable Explorer
 │   │   (same 320px slot, mutually exclusive via
 │   │   ``toggleOutline`` / ``toggleVariables``).  Lists ATX
