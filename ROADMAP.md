@@ -3527,7 +3527,7 @@ PointlesSQL
 │
 │   └── Sprint 90 — api/main.py admin/home/catalog-html + endgame ✅ done (9c8e997)
 │
-│   ├── Sprint 91 — frontend sql_editor.js → 4-module split        ✅ done (pending-commit)
+│   ├── Sprint 91 — frontend sql_editor.js → 4-module split        ✅ done (0d5700d)
 │       Tranche-2 of the Sprint-76 frontend modularisation plan.
 │       The 608-LOC ``frontend/js/sql_editor.js`` factory splits
 │       into a 86-LOC façade + four sibling ESM modules under the
