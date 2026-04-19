@@ -1,4 +1,10 @@
-window.createConnectionForm = function () {
+// Sprint 75 Phase 4: ES-module shape; window registration via
+// bootstrap.js.  Five form factories share validateRequired from
+// editor_base for the trim+null-check that used to be inline in each
+// submit().
+import { validateRequired } from './editor_base.js';
+
+export function createConnectionForm() {
     return {
         name: '',
         connectionType: 'POSTGRESQL',
@@ -8,7 +14,8 @@ window.createConnectionForm = function () {
 
         async submit() {
             const n = (this.name || '').trim();
-            if (!n) { this.error = 'Name is required.'; return; }
+            const validationErr = validateRequired(n, 'Name');
+            if (validationErr) { this.error = validationErr; return; }
             this.saving = true;
             this.error = null;
             const res = await window.pqlApi.fetch('/api/connections', {
@@ -28,9 +35,9 @@ window.createConnectionForm = function () {
             this.saving = false;
         },
     };
-};
+}
 
-window.createExternalLocationForm = function () {
+export function createExternalLocationForm() {
     return {
         name: '',
         url: '',
@@ -41,8 +48,10 @@ window.createExternalLocationForm = function () {
 
         async submit() {
             const n = (this.name || '').trim();
-            if (!n) { this.error = 'Name is required.'; return; }
-            if (!(this.url || '').trim()) { this.error = 'URL is required.'; return; }
+            const nameErr = validateRequired(n, 'Name');
+            if (nameErr) { this.error = nameErr; return; }
+            const urlErr = validateRequired(this.url, 'URL');
+            if (urlErr) { this.error = urlErr; return; }
             const credName = (this.credentialName || '').trim();
             if (!credName) {
                 this.error = 'Credential is required — create one under Federation ▸ Credentials first.';
@@ -68,9 +77,9 @@ window.createExternalLocationForm = function () {
             this.saving = false;
         },
     };
-};
+}
 
-window.createCredentialForm = function () {
+export function createCredentialForm() {
     return {
         name: '',
         awsRoleArn: '',
@@ -80,7 +89,8 @@ window.createCredentialForm = function () {
 
         async submit() {
             const n = (this.name || '').trim();
-            if (!n) { this.error = 'Name is required.'; return; }
+            const validationErr = validateRequired(n, 'Name');
+            if (validationErr) { this.error = validationErr; return; }
             this.saving = true;
             this.error = null;
             const body = {
@@ -93,7 +103,7 @@ window.createCredentialForm = function () {
             }
             const res = await window.pqlApi.fetch('/api/credentials', {
                 method: 'POST',
-                body: body,
+                body,
             });
             if (res.ok) {
                 const data = res.data || {};
@@ -104,9 +114,9 @@ window.createCredentialForm = function () {
             this.saving = false;
         },
     };
-};
+}
 
-window.createForeignCatalogForm = function ({ connections }) {
+export function createForeignCatalogForm({ connections }) {
     return {
         connections: connections || [],
         name: '',
@@ -126,7 +136,8 @@ window.createForeignCatalogForm = function ({ connections }) {
 
         async submit() {
             const n = (this.name || '').trim();
-            if (!n) { this.error = 'Name is required.'; return; }
+            const validationErr = validateRequired(n, 'Name');
+            if (validationErr) { this.error = validationErr; return; }
             if (!this.connectionName) {
                 this.error = 'Pick a connection.';
                 return;
@@ -149,7 +160,7 @@ window.createForeignCatalogForm = function ({ connections }) {
             this.error = null;
             const res = await window.pqlApi.fetch('/api/catalogs', {
                 method: 'POST',
-                body: body,
+                body,
             });
             if (res.ok) {
                 const data = res.data || {};
@@ -160,9 +171,9 @@ window.createForeignCatalogForm = function ({ connections }) {
             this.saving = false;
         },
     };
-};
+}
 
-window.deleteConfirm = function ({ deleteUrl, redirectUrl }) {
+export function deleteConfirm({ deleteUrl, redirectUrl }) {
     return {
         confirming: false,
         deleting: false,
@@ -181,4 +192,4 @@ window.deleteConfirm = function ({ deleteUrl, redirectUrl }) {
             this.deleting = false;
         },
     };
-};
+}

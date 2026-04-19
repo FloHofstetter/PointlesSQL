@@ -323,5 +323,9 @@
   }
 }
 </script>
-<script src="/static/js/sql_editor.js"></script>
+{# Sprint 75 Phase 4: sql_editor.js is now an ES module imported via
+   bootstrap.js (in base.html).  The importmap above still resolves
+   ``@codemirror/*`` to esm.sh URLs for the dynamic ``import()`` calls
+   inside sqlEditor().init() — that lazy-load is unchanged so non-/sql
+   pages don't pay the 200 kB+ download. #}
 {% endblock %}

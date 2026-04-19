@@ -39,7 +39,8 @@
  *   - The "no results" fallback is injected once as a sibling of
  *     the table; it uses the component's configured `emptyMessage`.
  */
-window.listTable = function (config) {
+// Sprint 75 Phase 4: ES-module shape; window registration via bootstrap.js.
+export function listTable(config) {
     const cfg = config || {};
     const chips = Array.isArray(cfg.chips) ? cfg.chips : [];
     const initialSort = cfg.initialSort || null;
@@ -260,4 +261,4 @@ window.listTable = function (config) {
             if (this._emptyEl) this._emptyEl.hidden = visible > 0;
         },
     };
-};
+}

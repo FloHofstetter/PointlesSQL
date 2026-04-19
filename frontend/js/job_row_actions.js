@@ -1,5 +1,5 @@
 /*
- * PointlesSQL job-row hover actions — Sprint 33.
+ * PointlesSQL job-row hover actions — Sprint 33, ES-module Sprint 75 Phase 4.
  *
  * Mount on the per-row `<td class="pql-row-actions">` via
  *   <td class="pql-row-actions" x-data="jobRowActions({ jobId, paused })">
@@ -10,10 +10,10 @@
  * Posts to the existing /api/jobs/{id}/run|pause|unpause routes,
  * fires a toast through window.pqlToast, and reloads after 400 ms so
  * the list picks up the new run / paused flag without bespoke
- * row-patching logic — this matches the Sprint-32 "home dashboard
- * refresh" cadence and the Sprint-36 direction already on the roadmap.
+ * row-patching logic.  bootstrap.js re-attaches the factory to
+ * ``window.jobRowActions``.
  */
-window.jobRowActions = function (params) {
+export function jobRowActions(params) {
     const jobId = params.jobId;
     return {
         paused: !!params.paused,
@@ -42,4 +42,4 @@ window.jobRowActions = function (params) {
             this._post(path, msg);
         },
     };
-};
+}

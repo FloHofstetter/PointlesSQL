@@ -100,20 +100,14 @@
          Alpine-race replay fix (commit b830300) burned us on exactly
          this category of bug. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-    <!-- Sprint 75 Phase 3: editable / properties_editor / tags_editor /
-         permissions_editor migrated to native ES modules; bootstrap.js
-         imports + re-attaches them to ``window`` for x-data lookup.
-         Phase 4 will fold federation / list_table / relative_time /
-         humanize_cron / job_row_actions into the same bridge. -->
-    <script src="/static/js/federation.js"></script>
-    <script src="/static/js/relative_time.js"></script>
-    <script src="/static/js/humanize_cron.js"></script>
-    <script src="/static/js/list_table.js"></script>
-    <script src="/static/js/job_row_actions.js"></script>
-    <!-- Sprint 75 Phase 2: ESM bridge entrypoint.  ``type="module"`` is
-         defer-by-default and runs in document order, so anything
-         bootstrap.js registers on ``window`` is live before Alpine's
-         x-data walk begins.  MUST stay before the Alpine CDN script —
+    <!-- Sprint 75 Phase 4: every former IIFE-shape JS file under
+         frontend/js/ is now a native ES module imported via
+         bootstrap.js, which re-attaches each factory / singleton to
+         ``window.*`` under the same name templates already reference
+         in their x-data attributes.  ``type="module"`` is
+         defer-by-default and runs in document order, so the windowed
+         re-attachments are live before Alpine's x-data walk begins.
+         MUST stay before the Alpine CDN script —
          scripts/check-frontend-bootstrap-order.sh asserts the ordering. -->
     <script type="module" src="/static/js/bootstrap.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
@@ -162,8 +156,13 @@
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/static/js/toast.js"></script>
-    <script src="/static/js/api.js"></script>
+    <!-- Sprint 75 Phase 4: toast.js + api.js are now ES modules
+         imported by bootstrap.js (loaded as <script type="module">
+         further up the body).  bootstrap.js re-attaches the singletons
+         to ``window.pqlToast`` / ``window.pqlApi`` before Alpine walks
+         the x-data tree.  Anything that reads those window globals
+         (the inline pqlToast bridge above, page templates, etc.)
+         continues to find them. -->
     {% if active_catalog is defined and active_catalog %}
     <script>
     // Record a catalog "visit" for the Sprint-32 home dashboard's

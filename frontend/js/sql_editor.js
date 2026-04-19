@@ -1,44 +1,43 @@
 /**
  * Phase 12 SQL editor Alpine component.
  *
- * This is a regular (non-module) script so Alpine's
- * ``<script defer>`` CDN loads see ``window.sqlEditor`` defined
- * before they walk the DOM.  CodeMirror 6 is ESM-only; we lazy-
- * load it via dynamic ``import()`` inside ``init()`` — the
- * page's ``<script type="importmap">`` supplies the module
- * resolutions.
+ * Sprint 75 Phase 4: native ES module shape; bootstrap.js re-attaches
+ * the factory to ``window.sqlEditor`` so Alpine's x-data lookup keeps
+ * working unchanged.  The previously module-level ``cmView`` and
+ * ``catalogCompletions`` now live inside the factory closure — ESM
+ * makes module-singleton state more dangerous on revisit (the original
+ * ``host.dataset.pqlCmInit`` re-entry guard catches double-init within
+ * one page life, but a fresh factory per call is cleaner).  CodeMirror
+ * 6 is ESM-only; we still lazy-load it via dynamic ``import()`` inside
+ * ``init()`` so non-/sql pages don't pay the 200 kB+ download.
  */
-(function () {
-    'use strict';
 
-    let cmView = null;
-
-    // Sprint 53: flattened catalog.schema.table list used as the
-    // CodeMirror completion source.  Fetched once on mount; falls
-    // back silently when /api/tree is unavailable (e.g. anonymous
-    // smoke tests) so the editor still loads.
-    let catalogCompletions = [];
-
-    function flattenTree(tree) {
-        const out = [];
-        for (const cat of tree || []) {
-            const catName = cat && cat.name;
-            if (!catName) continue;
-            for (const sch of cat.schemas || []) {
-                const schName = sch && sch.name;
-                if (!schName) continue;
-                for (const tbl of sch.tables || []) {
-                    const tblName = tbl && tbl.name;
-                    if (!tblName) continue;
-                    out.push(`${catName}.${schName}.${tblName}`);
-                }
+function flattenTree(tree) {
+    const out = [];
+    for (const cat of tree || []) {
+        const catName = cat && cat.name;
+        if (!catName) continue;
+        for (const sch of cat.schemas || []) {
+            const schName = sch && sch.name;
+            if (!schName) continue;
+            for (const tbl of sch.tables || []) {
+                const tblName = tbl && tbl.name;
+                if (!tblName) continue;
+                out.push(`${catName}.${schName}.${tblName}`);
             }
         }
-        return out;
     }
+    return out;
+}
 
-    function createSqlEditor() {
-        return {
+export function sqlEditor() {
+    // Sprint 75: per-instance closure state.  Pre-Sprint-75 these were
+    // module-level ``let`` vars; in ESM that means cross-mount carryover
+    // on the same page.  Closure-scoping isolates each Alpine instance.
+    let cmView = null;
+    let catalogCompletions = [];
+
+    return {
             running: false,
             result: null,
             error: null,
@@ -605,9 +604,4 @@
                 }
             },
         };
-    }
-
-    // Publish synchronously so Alpine's ``defer``-loaded CDN
-    // script sees the factory when it walks the DOM.
-    window.sqlEditor = createSqlEditor;
-})();
+}
