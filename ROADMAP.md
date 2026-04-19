@@ -2143,6 +2143,143 @@ PointlesSQL
 │       │   at ``notebook-editor.md`` as slot #7.
 │       └── **Phase 12.6 marked ✅** in this roadmap.
 │
+├── Phase 12.7 — Notebook editor UX overhaul              ⏳ open
+│   │
+│   │   Lift the native editor from Sprint-58–64 mechanics-only to a
+│   │   Marimo / VSCode-Jupyter / Hex-grade UI as a series of small
+│   │   sprints (1–3 days each), not a big-bang rewrite.  Sprint 65
+│   │   first removes the two structural blockers (1571-LoC
+│   │   IIFE, BUG-64-02 reactivity landmine) so every later sprint
+│   │   touches small modules instead of bloating the single file
+│   │   further.
+│   │
+│   │   Architecture invariants (carried forward from ADR 0001):
+│   │   - One Monaco instance per notebook file (per-tab Monaco for
+│   │     Sprint 68 multi-tab is fine — each tab is its own page).
+│   │   - jupytext Percent on disk, UUIDs in markers.
+│   │   - Single ipykernel per ``(user, notebook_path)``.
+│   │   - Stack stays Alpine + HTMX + Bootstrap.
+│   │   - Monaco / WebWorker / WebSocket-Refs MUST live in closure
+│   │     scope, never as ``this.X`` — Sprint 65 enforces with the
+│   │     ``createClosureRefs`` helper + a CI grep gate.
+│   │
+│   │   Trim points: 67, 69-KaTeX, 70, 71, 72 can be dropped without
+│   │   breaking the dependency chain.  Hard chain: 65 → all later;
+│   │   66 → 71; 67 → 68.  Max-trim = 65 → 66 → 68 → 73 → 74.
+│   │
+│   ├── Sprint 65 — Editor JS module split + reactivity-boundary gate ✅ done
+│   │   ├── Architectural opener; no visible UX change.
+│   │   ├── ``frontend/js/notebook_editor.js`` (1571-LoC IIFE) split
+│   │   │   into nine ESM modules under
+│   │   │   ``frontend/js/notebook/``: ``cell_parser.js`` (markers +
+│   │   │   namespace introspect), ``ansi.js`` (SGR → HTML),
+│   │   │   ``markdown.js`` (regex preview renderer; Sprint 69 swaps
+│   │   │   for markdown-it), ``monaco_loader.js`` (vendored AMD +
+│   │   │   defer-until-load wrapper), ``pyright_client.js``
+│   │   │   (JSON-RPC client + Monaco provider registration via
+│   │   │   WeakMap), ``output_renderer.js`` (mime bundle dispatch +
+│   │   │   inline-script rehydration), ``closure_state.js``
+│   │   │   (``createClosureRefs`` helper), ``main.js``
+│   │   │   (orchestrator), ``bootstrap.js`` (ESM entry that exposes
+│   │   │   ``window.notebookEditor``).
+│   │   ├── ``frontend/templates/pages/notebook_editor.html`` —
+│   │   │   ``<script type="module" src=".../bootstrap.js">``;
+│   │   │   the legacy ``notebook_editor.js`` is deleted (no grace
+│   │   │   alias — sole consumer was edited in the same commit).
+│   │   ├── ``createClosureRefs(['editor', 'model'])`` formalises
+│   │   │   the BUG-64-02 lesson (Sprint 64 commit ``0af7984``):
+│   │   │   Monaco model + editor refs live in a closure-scoped
+│   │   │   sealed bag so the deep-reactive Vue Proxy from Alpine
+│   │   │   never reaches Monaco's circular internals.  Other
+│   │   │   private state (timers, WS handles, output-zone DOM
+│   │   │   maps, accumulator buffers) also moved to closure-scoped
+│   │   │   ``let`` vars; the returned reactive object only carries
+│   │   │   primitive UI state + bound methods.
+│   │   ├── ``scripts/check-frontend-no-reactive-monaco.sh`` greps
+│   │   │   for forbidden ``this\._(editor|model|monaco|worker|
+│   │   │   wsRaw|lspWsRaw|saveTimer)\s*=`` patterns inside
+│   │   │   ``frontend/js/notebook/`` and exits non-zero on a hit.
+│   │   │   Wired into ``.github/workflows/test.yml`` as a step
+│   │   │   after the ``alembic check``.
+│   │   └── Out of scope (lands later in Phase 12.7): cell-type
+│   │       registry, file-tree sidebar, multi-tab, markdown-it +
+│   │       KaTeX, outline, SQL cell, ipywidgets, run history,
+│   │       theme/keymap.  Each gets its own sprint against the
+│   │       new module structure.
+│   │
+│   ├── Sprint 66 — Cell-type registry + per-cell affordances     ⏳
+│   │   Replace hardcoded ``code | markdown`` with a registry; add
+│   │   per-cell run button, execution-count gutter, elapsed-time
+│   │   pill, status pill (running / ok / error), ``+`` inserter
+│   │   between cells.  Cell-type API is the seam Sprint 71's SQL
+│   │   cell will plug into.  Constraint: closure-state convention
+│   │   from Sprint 65 must hold for any new per-cell DOM refs.
+│   │   Playbook update + replay is a gate.
+│   │
+│   ├── Sprint 67 — File-tree sidebar inside the editor           ⏳ trim-point
+│   │   Mount the Sprint-27 workspace tree as a left sidebar in
+│   │   ``/notebook/editor``; add open / new / rename / delete
+│   │   actions (delete cascades into ``notebook_outputs`` via the
+│   │   ``clear_path`` stub already wired in
+│   │   ``services/notebook_outputs.py``).  ``/notebooks/workspace``
+│   │   stays as a dedicated full-screen view; the editor sidebar is
+│   │   a slim mirror.
+│   │
+│   ├── Sprint 68 — Multi-notebook tab bar                        ⏳
+│   │   Tab bar above the editor; each tab is one Monaco instance
+│   │   over one file, sharing Sprint-65's modules.  Open-tabs list
+│   │   persists in ``localStorage``; the Sprint-67 file-tree click
+│   │   opens a tab.  Kernel registry already keys by
+│   │   ``(user_id, path)`` so two tabs of the same file share one
+│   │   kernel.  No backend changes.  Sprint-65's
+│   │   ``createClosureRefs`` factory must scale to N instances per
+│   │   page — the grep gate keeps it honest.
+│   │
+│   ├── Sprint 69 — Markdown polish + dual-mode + KaTeX            ⏳ trim-point
+│   │   Replace the regex markdown renderer with ``markdown-it``
+│   │   (vendored next to Monaco); add KaTeX for ``$…$`` /
+│   │   ``$$…$$`` blocks; add a per-cell pencil toggle so the user
+│   │   can pin a markdown cell into edit-mode without moving the
+│   │   cursor.  KaTeX is independently droppable.
+│   │
+│   ├── Sprint 70 — Outline / TOC panel + cell jump                ⏳ trim-point
+│   │   Right-side panel (peer of Variable Explorer) listing
+│   │   markdown headers + code-cell first-line as outline; click
+│   │   jumps Monaco to the cell.  Pure additive UI.
+│   │
+│   ├── Sprint 71 — SQL cell (DuckDB via PQL.sql)                  ⏳ trim-point
+│   │   First non-Python cell type, validates Sprint-66's registry.
+│   │   Marker grammar: ``# %% [sql] pql_cell_id="<uuid>"``.  Source
+│   │   sent to ``PQL.sql()`` (already used by ``/sql`` page,
+│   │   Sprint 49–53).  Result table renders inline as the same
+│   │   rich-mime path Sprint 60 built; result available as a
+│   │   pandas DataFrame in the kernel namespace under
+│   │   ``_pql_sql_<short-uuid>`` so Variable Explorer surfaces it
+│   │   and Python cells can chain on it.  Engine-themes (DuckDB
+│   │   tuning, Spark routing) stay Phase 13 — this sprint is
+│   │   syntactic-sugar over the Phase-12 SQL execute path.
+│   │
+│   ├── Sprint 72 — ipywidgets (``comm_msg`` round-trip)           ⏳ trim-point
+│   │   Was deferred from Phase 12.6 explicitly.  Wires the comm
+│   │   protocol through the Sprint-59 WS, registers the widget-
+│   │   manager bundle, renders ``application/vnd.jupyter.widget-
+│   │   view+json`` bundles.  No Alembic migration (widget state is
+│   │   kernel-side only).
+│   │
+│   ├── Sprint 73 — Per-cell run history + diff                    ⏳
+│   │   ``notebook_cell_runs`` (Alembic 017) already records every
+│   │   run's status / execution_count / timestamps; extend the
+│   │   schema with the cell source snapshot (Alembic 018) and add
+│   │   a per-cell history popover (last N runs, diff against
+│   │   current source, re-run button).
+│   │
+│   └── Sprint 74 — Theme + keymap overlay + phase close           ⏳
+│       Settings drawer (``vs-dark`` / ``vs-light`` / ``hc`` themes;
+│       font-size; autosave-debounce knob); ``Ctrl+/`` opens a
+│       keymap overlay listing every Sprint-62 + 65–73 command +
+│       binding; playbook update covering the new surface; phase
+│       close.
+│
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
 │   │   Goal: bring "AI employees on the lakehouse" into

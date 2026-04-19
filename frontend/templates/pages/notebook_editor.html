@@ -233,11 +233,11 @@
                            x-model="catalogInsertQuery"
                            x-effect="catalogInsertOpen && $el.focus()">
                     <div class="text-muted small mb-1"
-                         x-show="!_catalogTables">
+                         x-show="!catalogTablesLoaded">
                         Loading catalog tree…
                     </div>
                     <div class="text-muted small mb-1"
-                         x-show="_catalogTables && _catalogTables.length === 0">
+                         x-show="catalogTablesEmpty">
                         No tables found.
                     </div>
                     <div class="list-group list-group-flush">
@@ -261,5 +261,5 @@
 
 {% block extra_js %}
 <script src="/static/js/vendor/monaco/vs/loader.js"></script>
-<script src="/static/js/notebook_editor.js"></script>
+<script type="module" src="/static/js/notebook/bootstrap.js"></script>
 {% endblock %}

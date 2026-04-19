@@ -70,3 +70,9 @@ jobs:
         run: |
           uv run alembic upgrade head
           uv run alembic check
+      - name: Frontend — BUG-64-02 reactivity-boundary gate
+        # Sprint-65 grep gate.  Fails on `this._(editor|model|...)`
+        # assignments inside frontend/js/notebook/ — those refs MUST
+        # live in closure scope (see closure_state.js + commit
+        # 0af7984).  Pure shell, no Python venv needed.
+        run: bash scripts/check-frontend-no-reactive-monaco.sh

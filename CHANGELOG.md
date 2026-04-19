@@ -4,6 +4,62 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 65) — Phase 12.7 opener: editor JS modularisation
+
+Phase 12.7 ("Notebook editor UX overhaul") opens with a structural
+sprint that prepares the notebook editor codebase for the eight UX-
+heavy follow-on sprints (cell-type registry, file-tree sidebar,
+multi-tab, markdown-it + KaTeX, outline, SQL cell, ipywidgets,
+history + diff, theme + keymap).  No visible UX change — the
+existing 22-step playbook still passes unchanged; visible-UX sprints
+starting with Sprint 66 will replay the playbook before commit.
+
+- **JS module split.**  ``frontend/js/notebook_editor.js`` (1571-LoC
+  IIFE) is replaced by nine ESM modules under
+  ``frontend/js/notebook/``: ``cell_parser.js`` (markers + namespace
+  introspect snippet), ``ansi.js`` (SGR → HTML traceback rendering),
+  ``markdown.js`` (regex preview renderer; Sprint 69 will swap for
+  ``markdown-it``), ``monaco_loader.js`` (vendored AMD + the Sprint-
+  64 defer-until-load wrapper), ``pyright_client.js`` (JSON-RPC
+  client + Monaco completion / hover / signature / definition
+  provider registration via ``WeakMap``), ``output_renderer.js``
+  (mime-bundle dispatch + Sprint-62 inline-script rehydration),
+  ``closure_state.js`` (``createClosureRefs`` helper — see below),
+  ``main.js`` (Alpine-factory orchestrator), and ``bootstrap.js``
+  (ESM entry that exposes ``window.notebookEditor`` so Alpine's
+  ``x-data="notebookEditor(...)"`` keeps resolving).
+- **``createClosureRefs`` helper.**  Promotes the Sprint-64
+  BUG-64-02 fix from inline-comment mahnung to a documented sealed
+  bag of mutable refs that never leaves the factory closure.  Monaco
+  model + editor refs live in ``refs`` (named slots; typo throws);
+  other private state (timers, WebSocket handles, output-zone DOM
+  maps, accumulator buffers, parsed-cell cache) moved to closure-
+  scoped ``let`` vars.  The reactive object Alpine sees now carries
+  primitive UI state + bound methods only.
+- **CI grep gate.**  ``scripts/check-frontend-no-reactive-monaco.sh``
+  greps ``frontend/js/notebook/`` for the forbidden assignment
+  pattern ``this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|
+  saveTimer)\s*=`` and exits non-zero on a hit.  Wired into
+  ``.github/workflows/test.yml`` after the ``alembic check`` step
+  — pure shell, no Python venv needed.  Belt-and-suspenders against
+  Sprint-66+ accidentally re-introducing the BUG-64-02 class of
+  bug under a different field name.
+- **Template** (``frontend/templates/pages/notebook_editor.html``)
+  now loads ``<script type="module"
+  src=".../notebook/bootstrap.js">``; the legacy
+  ``notebook_editor.js`` is **deleted** (no grace alias — the sole
+  consumer was edited in the same commit).  Two ``x-show``
+  expressions that referenced the now-closure-scoped
+  ``_catalogTables`` switched to the new ``catalogTablesLoaded``
+  flag and ``catalogTablesEmpty`` getter on the reactive object.
+- **ROADMAP.md** opens Phase 12.7 with the ten-sprint tree (65–74)
+  and five trim-points marked.  Hard dependency chain: 65 unblocks
+  all later sprints, 66 unblocks 71, 67 → 68.  Max-trim path is
+  ``65 → 66 → 68 → 73 → 74``.
+
+All gates green: ruff, pyright, pydoclint, alembic upgrade head +
+check, plus the new ``check-frontend-no-reactive-monaco.sh``.
+
 ### Added (Sprint 64) — Phase 12.6 close: editor E2E playbook
 
 Phase 12.6 closes with its e2e playbook and the one-release
