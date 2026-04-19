@@ -3391,7 +3391,7 @@ PointlesSQL
 │       ``pytest -k notebook --ignore=tests/test_jupyter.py``
 │       34/34 passed.
 │
-│   └── Sprint 88b — api/main.py notebook WS endpoints extract    ✅ done (pending-commit)
+│   ├── Sprint 88b — api/main.py notebook WS endpoints extract    ✅ done (7687f5e)
 │       Ninth api/main.py decomposition slice — closes out the
 │       notebook surface.  The two ``@app.websocket`` handlers
 │       (``/ws/notebook/kernel`` + ``/ws/notebook/lsp``) and their
@@ -3427,6 +3427,26 @@ PointlesSQL
 │       integration coverage runs through
 │       ``docs/e2e-walkthroughs/notebook_kernel.md`` (Playwright
 │       playbook) which the user replays manually.
+│
+│   └── Sprint 89a — api/main.py federation routes extract        ✅ done (pending-commit)
+│       Tenth api/main.py decomposition slice — first cut of
+│       Sprint 89's federation+jobs+dashboards triple.  All UC
+│       federation administration lifts out: connections,
+│       external-locations, credentials (5 routes each + 6 HTML
+│       pages = 21 routes total).  main.py drops 2.683 → 2.406
+│       LOC (-277).
+│
+│       - ``api/federation_routes.py`` (322 LOC) — 21 routes,
+│         all admin-only.  Mirrors the soyuz-catalog rule that
+│         federation administration is admin-only until a finer-
+│         grained CREATE_* privilege ships.
+│       - ``main.py`` mount: ``app.include_router(federation_router)``.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 25 warnings (-1), ``pydoclint`` 0
+│       violations.  ``pytest -k 'connection or credential or
+│       federation or external' --ignore=tests/test_jupyter.py``
+│       34/34 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

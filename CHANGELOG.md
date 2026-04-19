@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 89a: api/main.py federation routes extract
+
+Tenth decomposition slice for ``api/main.py`` — first cut of Sprint
+89's federation+jobs+dashboards triple. All UC federation
+administration moves out: connections, external-locations,
+credentials (5 routes each + 6 HTML pages = 21 routes total).
+main.py drops 2,683 → 2,406 LOC (-277).
+
+- **New module** [federation_routes.py](pointlessql/api/federation_routes.py)
+  (322 LOC). All 21 routes are ``require_admin``-gated, mirroring
+  the soyuz-catalog rule that federation administration is
+  admin-only until a finer-grained CREATE_* privilege ships.
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(federation_router)``
+  next to the other nine routers.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 25 warnings (-1), ``pydoclint`` 0 violations,
+  ``pytest -k 'connection or credential or federation or
+  external' --ignore=tests/test_jupyter.py`` 34/34 passed.
+
 ### Refactored — Phase 12.9 / Sprint 88b: api/main.py notebook WS endpoints extract
 
 Ninth decomposition slice for ``api/main.py`` — closes out the
