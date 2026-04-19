@@ -4,6 +4,72 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 69) — Phase 12.7: markdown-it + KaTeX + pencil pin
+
+Fifth Phase 12.7 sprint.  Replaces the Sprint-65 regex markdown
+preview renderer with ``markdown-it`` (CommonMark-conformant —
+tables, nested lists, task lists, autolinking), layers KaTeX for
+``$…$`` / ``$$…$$`` math via ``markdown-it-texmath``, and adds a
+per-cell pencil button that pins a markdown cell into source view
+independently of cursor position.
+
+- **Vendored bundles** ([scripts/vendor-markdown-libs.sh](scripts/vendor-markdown-libs.sh)
+  — new).  Fetches markdown-it 14.1.0, markdown-it-texmath 1.0.0,
+  and KaTeX 0.16.11 from the npm registry into gitignored dirs
+  under ``frontend/js/vendor/``.  Mirrors the Monaco vendoring
+  pattern from ADR 0001.  Appends a ``window.texmath = texmath``
+  line to the vendored ``texmath.js`` because the package ships
+  CommonJS-only.
+- **Renderer swap** ([frontend/js/notebook/markdown.js](frontend/js/notebook/markdown.js)).
+  Exported signature unchanged — ``renderMarkdown(src) → string`` —
+  so the single call site in ``main.js`` stays untouched.  Cached
+  markdown-it instance lives in a module-scoped ``let`` (closure,
+  not Alpine proxy); KaTeX registration is a single ``.use(...)``
+  line, layer-droppable without touching the rest of the module.
+- **Pencil-pin affordance** ([frontend/js/notebook/cell_affordances.js](frontend/js/notebook/cell_affordances.js),
+  [frontend/js/notebook/cell_types.js](frontend/js/notebook/cell_types.js),
+  [frontend/js/notebook/main.js](frontend/js/notebook/main.js)).
+  Markdown descriptor gains ``affordances: ['pin']``; the toolbar
+  renders a ``bi-pencil`` button right of the cell-type label on
+  cells whose descriptor opts in.  Click toggles
+  ``markdownZones[cellId].editModePinned`` (closure-scoped,
+  session-only — no marker grammar changes, no ADR 0001 churn);
+  pinned cells stay unhidden by ``updateHiddenAreas`` regardless
+  of cursor position.  A rebuild re-syncs the pencil state so a
+  content edit does not desync the icon.
+- **Template wiring** ([frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html)).
+  KaTeX CSS link added; three UMD script tags (markdown-it,
+  katex, texmath) load **before** ``monaco/vs/loader.js`` so
+  their UMD wrappers fall through to the plain-script branch
+  (BUG-69-01 replay-caught).  New CSS rules for the pencil
+  button + markdown-it tables / nested lists / blockquotes /
+  KaTeX blocks.  ``bootstrap.js`` cache bust bumped to
+  ``?v=sprint69``.
+- **Reactivity-boundary gate widened** ([scripts/check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh))
+  to block ``this._mdSingleton`` / ``this._mdPinState`` /
+  ``this._pinHandlers``.  markdown-it's rule registries are
+  exactly the kind of deep-circular object that Alpine's
+  reactive walk would wrap and traverse on every re-render —
+  same BUG-64-02 class of bug, pre-empted.
+- **Playbook Part J** ([docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md))
+  — ten-step walkthrough (CommonMark table, nested lists, inline
+  KaTeX, block KaTeX, pin keeps source visible, unpin collapses,
+  session-only reset, code cells have no pencil, KaTeX drop-
+  sanity, earlier-sprint regression pass).
+
+### Fixed (Sprint 69 replay catch)
+
+- **BUG-69-01 — UMD vs AMD loader-order collision.**  The first
+  Part-J replay loaded ``markdown-it.min.js`` and ``katex.min.js``
+  after ``monaco/vs/loader.js``.  Both scripts ship UMD wrappers
+  that detect Monaco's ``window.define`` and register as anonymous
+  AMD modules, colliding with Monaco's "one anonymous define per
+  script file" contract.  Fixed by loading the three markdown
+  vendor scripts **before** Monaco's loader, so ``window.define``
+  does not yet exist when their UMD wrappers execute and they
+  bind to ``window.markdownit`` / ``window.katex`` as globals.
+  The template now documents the ordering rationale inline.
+
 ### Added (Sprint 68) — Phase 12.7: multi-notebook tab bar
 
 Fourth Phase 12.7 sprint.  Adds a tab bar above the editor so the

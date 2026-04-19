@@ -36,7 +36,7 @@ function formatElapsed(ms) {
     return `${mins}m${rem.toString().padStart(2, '0')}s`;
 }
 
-function makeToolbarDom(cellId, typeId, onRun) {
+function makeToolbarDom(cellId, typeId, onRun, onTogglePin) {
     const root = document.createElement('div');
     root.className = 'pql-nbedit-cell-toolbar';
     root.dataset.cellId = cellId;
@@ -82,7 +82,29 @@ function makeToolbarDom(cellId, typeId, onRun) {
     labelEl.textContent = descriptor.label;
     root.appendChild(labelEl);
 
-    return { root, runBtn, statusEl, countEl, elapsedEl };
+    // Sprint 69: per-cell pin toggle for cell types that opt into it
+    // (currently markdown only, registered via descriptor.affordances).
+    // The button reflects the *requested* state — main.js owns the
+    // source-of-truth flag in the closure-scoped markdownZones map and
+    // calls ``setPinState`` after toggling.
+    let pinBtn = null;
+    if (Array.isArray(descriptor.affordances) && descriptor.affordances.includes('pin')) {
+        pinBtn = document.createElement('button');
+        pinBtn.type = 'button';
+        pinBtn.className = 'pql-nbedit-pin-btn';
+        pinBtn.title = 'Pin to source view';
+        pinBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+        pinBtn.dataset.pinned = 'false';
+        pinBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onTogglePin();
+        });
+        pinBtn.addEventListener('mousedown', (ev) => ev.stopPropagation());
+        root.appendChild(pinBtn);
+    }
+
+    return { root, runBtn, statusEl, countEl, elapsedEl, pinBtn };
 }
 
 function makeInserterDom(cellId, onInsert) {
@@ -109,10 +131,11 @@ function makeInserterDom(cellId, onInsert) {
 }
 
 export function mountAffordances(editor, cellId, typeId, markerLine, handlers) {
-    const { root, runBtn, statusEl, countEl, elapsedEl } = makeToolbarDom(
+    const { root, runBtn, statusEl, countEl, elapsedEl, pinBtn } = makeToolbarDom(
         cellId,
         typeId,
         () => handlers.onRun(cellId),
+        () => handlers.onTogglePin && handlers.onTogglePin(cellId),
     );
     // Toolbar sits on the line immediately above the marker.
     // ``afterLineNumber: 0`` is valid and places the zone above
@@ -131,6 +154,7 @@ export function mountAffordances(editor, cellId, typeId, markerLine, handlers) {
         toolbarZone: { zoneId, domNode: root, afterLineNumber },
         inserterZone: null,
         runBtn,
+        pinBtn,
         rootEl: root,
         statusEl,
         countEl,
@@ -140,6 +164,20 @@ export function mountAffordances(editor, cellId, typeId, markerLine, handlers) {
         status: 'idle',
         typeId,
     };
+}
+
+// Sprint 69: reflect the pin flag onto the pencil button.  Called by
+// main.js after toggling ``markdownZones[cellId].editModePinned``.
+// No-op on cells whose descriptor does not include the ``pin``
+// affordance.
+export function setPinState(record, pinned) {
+    if (!record || !record.pinBtn) return;
+    record.pinBtn.dataset.pinned = pinned ? 'true' : 'false';
+    record.pinBtn.title = pinned ? 'Unpin (return to preview)' : 'Pin to source view';
+    record.pinBtn.innerHTML = pinned
+        ? '<i class="bi bi-pencil-fill"></i>'
+        : '<i class="bi bi-pencil"></i>';
+    record.pinBtn.classList.toggle('pql-nbedit-pin-btn-active', !!pinned);
 }
 
 export function mountInserter(editor, cellId, afterLineNumber, handlers) {

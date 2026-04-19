@@ -44,3 +44,10 @@ notebooks/bad_papermill.ipynb
 # scripts/vendor-monaco.sh on first checkout and on MONACO_VERSION
 # bumps. Never committed to keep the repo small.
 frontend/js/vendor/monaco/
+
+# Phase 12.7 Sprint 69 — markdown-it + KaTeX + markdown-it-texmath.
+# Same pattern as Monaco: pre-built UMD bundles fetched on first
+# checkout by scripts/vendor-markdown-libs.sh and on version bumps.
+frontend/js/vendor/markdown-it/
+frontend/js/vendor/markdown-it-texmath/
+frontend/js/vendor/katex/

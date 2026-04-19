@@ -4,6 +4,10 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/js/vendor/monaco/vs/editor/editor.main.css">
+{# Sprint 69: KaTeX CSS for math rendering inside markdown cells.
+   Resolves font WOFF/WOFF2 URLs relative to itself, so the vendored
+   ``katex/fonts/`` directory must remain a sibling of katex.min.css. #}
+<link rel="stylesheet" href="/static/js/vendor/katex/katex.min.css?v=sprint69">
 <style>
     .pql-nbedit-root { display: flex; flex-direction: column; min-height: calc(100vh - 60px); }
     .pql-nbedit-toolbar { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem;
@@ -163,6 +167,47 @@
         margin-left: auto; color: var(--bs-secondary-color);
         font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em;
     }
+    /* Sprint 69: per-cell pencil-pin button (markdown cells only) */
+    .pql-nbedit-pin-btn {
+        border: 1px solid var(--bs-border-color);
+        background: transparent; color: var(--bs-secondary-color);
+        border-radius: 3px; padding: 0 0.45rem; line-height: 18px;
+        font-size: 11px; cursor: pointer;
+    }
+    .pql-nbedit-pin-btn:hover {
+        color: var(--bs-info); border-color: var(--bs-info);
+        background: rgba(13, 110, 253, 0.08);
+    }
+    .pql-nbedit-pin-btn-active {
+        color: var(--bs-warning); border-color: var(--bs-warning);
+        background: rgba(255, 193, 7, 0.10);
+    }
+
+    /* Sprint 69: markdown-it produces real <table>, nested <ol>/<ul>,
+       and KaTeX <span class="katex"> blocks — give them sane defaults
+       inside the preview view zone. */
+    .pql-nbedit-md-preview table {
+        border-collapse: collapse; margin: 0.4rem 0;
+    }
+    .pql-nbedit-md-preview th, .pql-nbedit-md-preview td {
+        border: 1px solid var(--bs-border-color);
+        padding: 2px 8px; font-size: 12.5px;
+    }
+    .pql-nbedit-md-preview th { background: rgba(255, 255, 255, 0.04); }
+    .pql-nbedit-md-preview ol { margin: 0.25rem 0 0.25rem 1.5rem; padding: 0; }
+    .pql-nbedit-md-preview ul ul, .pql-nbedit-md-preview ol ol,
+    .pql-nbedit-md-preview ul ol, .pql-nbedit-md-preview ol ul {
+        margin: 0.1rem 0 0.1rem 1.25rem;
+    }
+    .pql-nbedit-md-preview blockquote {
+        border-left: 3px solid var(--bs-border-color);
+        padding-left: 0.6rem; margin: 0.4rem 0;
+        color: var(--bs-secondary-color);
+    }
+    .pql-nbedit-md-preview .katex { font-size: 1.05em; }
+    .pql-nbedit-md-preview eqn { display: inline-block; padding: 0 0.2em; }
+    .pql-nbedit-md-preview section eqn { display: block; text-align: center; padding: 0.3em 0; }
+
     .pql-nbedit-inserter {
         display: flex; justify-content: center; gap: 0.5rem;
         height: 22px; align-items: center; opacity: 0;
@@ -769,6 +814,25 @@
 {% endblock %}
 
 {% block extra_js %}
+{#
+  Sprint 69: vendored UMD globals for the markdown-it preview
+  renderer.  These MUST load BEFORE monaco/vs/loader.js — markdown-it
+  and KaTeX both ship UMD wrappers that detect AMD (Monaco's loader
+  sets ``window.define``) and register as anonymous AMD modules,
+  which collides with Monaco's "one anonymous define per script"
+  contract (BUG-69-01 caught on first replay).  Loaded in pure
+  script/global mode before ``window.define`` exists, they fall
+  through to their ``else`` branch and bind to ``window.markdownit``
+  / ``window.katex`` as intended.  Order within this block — KaTeX
+  before texmath — because texmath's ``.use(...)`` call reads
+  ``window.katex`` as its engine during registration.  All three are
+  independently optional: dropping any one falls back to the
+  next-best behaviour (texmath without KaTeX = literal $…$; no
+  markdown-it = empty preview, raw source still editable).
+#}
+<script src="/static/js/vendor/markdown-it/markdown-it.min.js?v=sprint69"></script>
+<script src="/static/js/vendor/katex/katex.min.js?v=sprint69"></script>
+<script src="/static/js/vendor/markdown-it-texmath/texmath.js?v=sprint69"></script>
 <script src="/static/js/vendor/monaco/vs/loader.js"></script>
 {#
   Sprint 66: classic <script> (not type="module") so the factories
@@ -778,5 +842,5 @@
   (shell) and ``notebookTabEditor`` (per-tab) — both exported from
   the same bootstrap file.
 #}
-<script src="/static/js/notebook/bootstrap.js?v=sprint68"></script>
+<script src="/static/js/notebook/bootstrap.js?v=sprint69"></script>
 {% endblock %}

@@ -25,11 +25,15 @@
 # per-tab closure-ref bags and tab-editor factory handles cannot be
 # aggregated onto the shell's Alpine proxy — N tabs would otherwise
 # reproduce BUG-64-02 at N× scale the moment the shell's reactive
-# deep-walk reached into any tab's Monaco state.
+# deep-walk reached into any tab's Monaco state.  Sprint 69 adds
+# `mdSingleton`, `mdPinState`, and `pinHandlers` so the cached
+# markdown-it instance, per-cell pin flags, and pin-toggle handler
+# closures stay closure-scoped — markdown-it instances carry deep
+# rule registries that Alpine's reactive walk would otherwise wrap.
 
 set -euo pipefail
 
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories)\s*='
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then

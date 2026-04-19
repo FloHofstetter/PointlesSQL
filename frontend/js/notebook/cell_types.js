@@ -24,6 +24,9 @@ export const cellTypeRegistry = {
         markerTag: ' [markdown]',
         canExecute: false,
         bandClass: 'pql-nbedit-cell-band-markdown',
+        // Sprint 69: opt into the per-cell pencil button that pins
+        // the cell into source view independently of cursor position.
+        affordances: ['pin'],
     },
 };
 

@@ -43,6 +43,7 @@ import {
     removeAffordances,
     setStatus,
     setExecutionCount,
+    setPinState,
     startElapsed,
     stopElapsed,
     resetElapsed,
@@ -756,6 +757,17 @@ export function createNotebookTabEditor({
                 if (!alpine) return;
                 alpine.insertCellAfter(cellId, typeId);
             },
+            // Sprint 69: pin a markdown cell into source view.  The
+            // flag lives on markdownZones[cellId] so it survives
+            // rebuilds within the session but not page reload.
+            onTogglePin: (cellId) => {
+                const zone = markdownZones[cellId];
+                if (!zone) return;
+                zone.editModePinned = !zone.editModePinned;
+                const record = cellAffordances[cellId];
+                if (record) setPinState(record, zone.editModePinned);
+                updateHiddenAreas();
+            },
         };
 
         for (const cell of cellList) {
@@ -769,6 +781,13 @@ export function createNotebookTabEditor({
                     handlers,
                 );
                 cellAffordances[cell.id] = record;
+                // Sprint 69: a freshly mounted markdown toolbar must
+                // mirror any pin flag already on the zone (e.g. after
+                // a content edit triggered a full rebuild).
+                if (cell.typeId === 'markdown') {
+                    const z = markdownZones[cell.id];
+                    if (z && z.editModePinned) setPinState(record, true);
+                }
             } else {
                 moveToolbar(editor, record, cell.markerLine);
             }
@@ -843,7 +862,7 @@ export function createNotebookTabEditor({
                         domNode: dom,
                     });
                 });
-                zone = { zoneId, domNode: dom };
+                zone = { zoneId, domNode: dom, editModePinned: false };
                 markdownZones[cell.id] = zone;
             } else {
                 editor.changeViewZones((acc) => {
@@ -885,6 +904,11 @@ export function createNotebookTabEditor({
         for (const cellId of Object.keys(markdownZones)) {
             const z = markdownZones[cellId];
             if (!z.sourceRange) continue;
+            // Sprint 69: a pinned cell stays unhidden regardless of
+            // cursor position — the user explicitly clicked the
+            // pencil to keep its source visible while typing
+            // elsewhere.
+            if (z.editModePinned) continue;
             const { startLine, endLine } = z.sourceRange;
             if (cursorLine < startLine || cursorLine > endLine) {
                 hidden.push({

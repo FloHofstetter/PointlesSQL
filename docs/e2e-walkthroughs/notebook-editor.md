@@ -213,6 +213,25 @@ playbook (the embedded JupyterLab iframe retired in Sprint 63).
 
 ## Found bugs
 
+**BUG-69-01** (commit TBD). The first Sprint-69 replay loaded
+``markdown-it.min.js`` and ``katex.min.js`` *after*
+``monaco/vs/loader.js``.  Both scripts ship UMD wrappers that
+detect ``typeof define === 'function' && define.amd`` and register
+as anonymous AMD modules — which collides with Monaco's loader
+contract ("Can only have one anonymous define call per script
+file") and throws the moment KaTeX executes.  Fix: reorder the
+three markdown vendor scripts to load *before* ``monaco/vs/
+loader.js``, so ``window.define`` does not yet exist when their
+UMD wrappers execute and they fall through to the plain-script
+branch that binds ``window.markdownit`` / ``window.katex`` as
+globals.  The template now documents the ordering rationale in a
+Jinja comment so a future refactor does not shuffle the two
+blocks by accident.  Caught on the Part-J first-open step during
+the mandated Playwright-MCP replay — a clean illustration of
+``feedback_run_playbook_as_gate``: neither ruff nor pyright nor
+pydoclint nor the reactivity-boundary grep gate could have caught
+an AMD vs global loader-order collision.
+
 **BUG-64-01** (commit TBD). The Sprint-58 editor template opened
 the root `x-data` attribute with double quotes and pasted the
 ``{{ notebook_path|tojson }}`` expression straight inside:
@@ -842,3 +861,154 @@ async Monaco/kernel/LSP work.  The shell's listener updates
 step 2 replay when a second-tab-open visibly blanked the first
 tab — the fix landed in the same sprint before the walkthrough
 went green.
+
+## Part J — Sprint 69: markdown-it + KaTeX + pencil pin
+
+Phase 12.7 fifth sprint replaces the Sprint-65 regex markdown
+renderer with ``markdown-it`` (CommonMark-conformant — tables,
+nested lists, task lists, autolinking), layers KaTeX for
+``$…$`` / ``$$…$$`` math via ``markdown-it-texmath``, and adds a
+per-cell pencil button that pins a markdown cell into source view
+independently of cursor position.  All three libs are vendored under
+``frontend/js/vendor/`` via ``scripts/vendor-markdown-libs.sh``
+(mirrors the Monaco pattern from ADR 0001); the pencil button is
+the first per-cell affordance gated by the Sprint-66 descriptor's
+new optional ``affordances`` array.
+
+Setup: run ``bash scripts/vendor-markdown-libs.sh`` once to populate
+the three gitignored vendor dirs.  Clear
+``localStorage['pql.nbedit.tabs.v1']`` and open
+``/notebook/editor?path=scratch.py`` in Firefox (Playwright MCP's
+bundled Firefox; the Chrome channel is unsupported per the
+Sprint-22 backstory).
+
+1. **markdown-it renders a CommonMark table** — insert a markdown
+   cell whose source is:
+   ```
+   | Catalog | Tables |
+   |---|---|
+   | bronze | 12 |
+   | silver | 7  |
+   ```
+   Expect: the preview view zone renders a real ``<table>`` with
+   borders (styled by ``.pql-nbedit-md-preview table`` in the
+   template).  The Sprint-65 regex renderer would have rendered
+   this as plain text lines — a regression here means the new
+   script tag order is wrong or markdown-it failed to load.
+
+2. **Nested bullet list** — source:
+   ```
+   - top
+     - nested
+       - deeper
+   ```
+   Expect: real nested ``<ul>`` structure with progressive
+   indentation.  The Sprint-65 pass only supported one level.
+
+3. **Inline KaTeX math** — source ``Einstein: $E = mc^2$``.
+   Expect: ``$E = mc^2$`` renders as a ``<span class="katex">``
+   block with the KaTeX-formatted equation (the inline ``c^2``
+   shows as a superscript, not a literal ``^2``).  Hovering over
+   the KaTeX node shows no browser console warnings.
+
+4. **Block KaTeX math** — source:
+   ```
+   $$\int_0^1 x^2 \, dx = \frac{1}{3}$$
+   ```
+   Expect: centered block equation with an integral sign, proper
+   limits, and a fraction.  The output wraps in a ``<section>``
+   (texmath's block marker) and the CSS pins it centered.
+
+5. **Pencil pin — keeps source visible** — hover the markdown
+   cell's toolbar; a pencil button appears to the right of the
+   cell-type label.  Click it.  Expect:
+   - Button icon switches from ``bi-pencil`` (outline) to
+     ``bi-pencil-fill`` and gains the warning-coloured
+     ``pql-nbedit-pin-btn-active`` treatment.
+   - Button title flips to "Unpin (return to preview)".
+   - Click into a different cell (code or markdown).  The pinned
+     cell's source stays visible — the Sprint-65 auto-hide on
+     cursor-leave is suppressed for this cell.
+
+6. **Pencil unpin** — click the pinned cell's pencil again.  Expect:
+   - Button reverts to outline ``bi-pencil``.
+   - With the cursor still outside the cell, Monaco re-hides the
+     source; the preview pane takes over the view zone.
+
+7. **Pin state is session-only** — pin a cell, then hard-reload
+   the page (Ctrl+Shift+R).  Expect: every markdown cell opens
+   with pencil outline / unpinned.  The flag lives on the in-memory
+   ``markdownZones[cellId]`` object; the jupytext marker grammar
+   and ADR 0001 are untouched by this sprint.
+
+8. **Cells without ``pin`` affordance have no pencil** — verify
+   code cells do not render a pencil button.  Only cell types
+   whose registry descriptor includes ``affordances: ['pin']``
+   (currently ``markdown`` only) get the button.
+
+9. **KaTeX drop sanity (optional)** — temporarily delete the
+   ``<script src="/static/js/vendor/katex/...">`` and the
+   ``<script src="/static/js/vendor/markdown-it-texmath/...">``
+   tags from ``frontend/templates/pages/notebook_editor.html``
+   and hard-reload.  Expect: markdown still renders; ``$E=mc^2$``
+   shows as literal dollar-wrapped text.  Revert the template
+   edits — this step only exists to prove the drop is
+   one-commit-sized for the Phase-12.7 trim policy.
+
+10. **Regression — Sprint-66 / 67 / 68 stay green** — run the
+    relevant earlier-sprint steps (toolbar affordances, file tree
+    sidebar, tab bar) and confirm no visual regressions.
+
+### What shipped for Sprint 69
+
+- [frontend/js/notebook/markdown.js](../../frontend/js/notebook/markdown.js)
+  — full rewrite.  ``renderMarkdown(src)`` now delegates to a
+  cached ``markdown-it`` instance (cached in a module-scoped
+  ``let mdSingleton`` variable, not on any Alpine proxy) with
+  linkify + breaks, layered ``markdown-it-texmath`` when
+  ``window.texmath`` + ``window.katex`` are both present.
+- [frontend/js/notebook/cell_types.js](../../frontend/js/notebook/cell_types.js)
+  — ``markdown`` descriptor gains ``affordances: ['pin']``.
+- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+  — pencil button in ``makeToolbarDom`` gated on
+  ``descriptor.affordances.includes('pin')``; new exported
+  ``setPinState(record, pinned)`` flips the icon + title +
+  active class.
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — ``handlers.onTogglePin`` owns the in-memory pin flag on
+  ``markdownZones[cellId].editModePinned``; ``updateHiddenAreas``
+  skips pinned cells; a rebuild re-syncs the pencil state via
+  ``setPinState`` so a content edit that rebuilds affordances
+  does not desync the button icon.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — KaTeX CSS link, three UMD ``<script>`` tags (markdown-it,
+  katex, texmath — KaTeX before texmath so ``.use(window.texmath,
+  { engine: window.katex })`` finds its engine), bootstrap.js
+  cache bust bumped to ``?v=sprint69``, new CSS for the pencil
+  button + markdown-it tables / nested lists / blockquotes /
+  KaTeX blocks.
+- [scripts/vendor-markdown-libs.sh](../../scripts/vendor-markdown-libs.sh)
+  — **new** fetch script mirroring ``vendor-monaco.sh``.  Pins
+  markdown-it 14.1.0, markdown-it-texmath 1.0.0, KaTeX 0.16.11
+  via env overrides.  Appends a ``window.texmath = texmath``
+  line to the vendored texmath.js (ships CommonJS-only).
+- [.gitignore](../../.gitignore) — three new vendor dirs.
+- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden list to cover ``this._mdSingleton``,
+  ``this._mdPinState``, ``this._pinHandlers`` so a future
+  temptation to cache the markdown-it instance or pin-handler
+  closures on an Alpine proxy trips CI.  markdown-it carries deep
+  rule registries that Alpine's reactive walk would wrap and
+  traverse on every re-render — Sprint 69's variant of the
+  Sprint-64 / BUG-64-02 class of bug.
+
+### What the replay caught
+
+**BUG-69-01 — UMD vs AMD loader-order collision.**  See the
+Found-bugs section at the top of this playbook for the full
+write-up.  Caught on the first Part-J open; fixed in the same
+sprint by swapping the script-tag order so the three markdown
+vendor bundles load before Monaco's AMD loader activates.
+The Playwright-MCP replay is what surfaced it — the module
+graph boots fine in Node / unit-style probes where no AMD loader
+exists at all.
