@@ -84,3 +84,19 @@ window.sqlEditor = sqlEditor;
 import { commandPalette } from './components/command_palette.js';
 
 window.commandPalette = commandPalette;
+
+// Page-template factories migrated to ESM (Sprint 94+).  Each was
+// previously an inline ``<script>`` IIFE inside its
+// pages/*.html file; lifting them here means a single shared
+// import graph and Phase-12 trap #1 (synchronous window-attach
+// before Alpine's DOM walk) stays defused without per-page
+// boilerplate.
+import { alertsPage } from './pages/alerts.js';
+import { alertDetail } from './pages/alert_detail.js';
+import { volumeDetail } from './pages/volume_detail.js';
+import { notebookWorkspace } from './pages/notebooks_workspace.js';
+
+window.alertsPage = alertsPage;
+window.alertDetail = alertDetail;
+window.volumeDetail = volumeDetail;
+window.notebookWorkspace = notebookWorkspace;

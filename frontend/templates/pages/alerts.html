@@ -8,7 +8,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="alertsPage()" x-init="init()">
+<div x-data='alertsPage({alerts: {{ alerts|tojson }}, savedQueries: {{ saved_queries|tojson }}})' x-init="init()">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-bell fs-3"></i>
@@ -194,102 +194,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// Sprint 55: alerts list page.  Non-module IIFE so ``window.alertsPage`` is
-// published synchronously before Alpine walks the DOM (Phase-12 trap #1).
-(function () {
-    'use strict';
-
-    function createAlertsPage() {
-        return {
-            alerts: {{ alerts|tojson }},
-            savedQueries: {{ saved_queries|tojson }},
-            creating: false,
-            showToken: false,
-            feedToken: '',
-            form: { title: '', saved_query_id: '', cron_expr: '*/15 * * * *',
-                    condition_op: 'gt', threshold: 0 },
-
-            init() { /* data seeded server-side */ },
-
-            atomUrl() {
-                return window.location.origin + '/alerts/feed.atom?token=' + this.feedToken;
-            },
-
-            jsonUrl() {
-                return window.location.origin + '/alerts/feed.json?token=' + this.feedToken;
-            },
-
-            async ensureToken() {
-                if (this.feedToken) return;
-                const res = await window.pqlApi.fetch('/api/me/feed-token', { silent: true });
-                if (res.ok && res.data) this.feedToken = res.data.token || '';
-            },
-
-            async rotateToken() {
-                if (!window.confirm('Rotate the token?  Existing subscribers will break.')) return;
-                const res = await window.pqlApi.fetch(
-                    '/api/me/feed-token/rotate', { method: 'POST', silent: true },
-                );
-                if (res.ok && res.data) {
-                    this.feedToken = res.data.token || '';
-                    if (window.pqlToast) window.pqlToast.info('Token rotated.');
-                }
-            },
-
-            openCreate() {
-                this.form = { title: '', saved_query_id: '',
-                              cron_expr: '*/15 * * * *',
-                              condition_op: 'gt', threshold: 0 };
-                const el = document.getElementById('pqlCreateAlertModal');
-                if (!el || !window.bootstrap) return;
-                window.bootstrap.Modal.getOrCreateInstance(el).show();
-            },
-
-            async submitCreate() {
-                this.creating = true;
-                const res = await window.pqlApi.fetch('/api/alerts', {
-                    method: 'POST', body: this.form, silent: true,
-                });
-                this.creating = false;
-                if (res.ok && res.data) {
-                    if (window.pqlToast) window.pqlToast.success('Alert created.');
-                    const el = document.getElementById('pqlCreateAlertModal');
-                    if (el && window.bootstrap) {
-                        window.bootstrap.Modal.getOrCreateInstance(el).hide();
-                    }
-                    this.alerts = [res.data, ...this.alerts];
-                } else if (window.pqlToast) {
-                    window.pqlToast.error(res.error || ('HTTP ' + res.status));
-                }
-            },
-
-            async toggleActive(alert) {
-                const res = await window.pqlApi.fetch(
-                    '/api/alerts/' + encodeURIComponent(alert.slug),
-                    { method: 'PATCH',
-                      body: { is_active: !alert.is_active },
-                      silent: true },
-                );
-                if (res.ok && res.data) {
-                    alert.is_active = res.data.is_active;
-                }
-            },
-
-            async deleteAlert(alert) {
-                if (!window.confirm('Delete alert "' + alert.title + '"?')) return;
-                const res = await window.pqlApi.fetch(
-                    '/api/alerts/' + encodeURIComponent(alert.slug),
-                    { method: 'DELETE', silent: true },
-                );
-                if (res.ok || res.status === 204) {
-                    this.alerts = this.alerts.filter((a) => a.slug !== alert.slug);
-                }
-            },
-        };
-    }
-
-    window.alertsPage = createAlertsPage;
-})();
-</script>
+{# Sprint 94: alertsPage() factory lives in frontend/js/pages/alerts.js.
+   bootstrap.js re-attaches it to window.alertsPage so the x-data
+   resolution above keeps working; first-paint state seeds via the
+   x-data attribute's parameter object (Jinja-substituted JSON). #}
 {% endblock %}

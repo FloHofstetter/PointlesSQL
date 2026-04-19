@@ -9,7 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="volumeDetail()" x-init="init()">
+<div x-data='volumeDetail({fullName: {{ volume.full_name|tojson }}, files: {{ files|tojson }}})' x-init="init()">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-hdd-stack fs-3"></i>
@@ -119,130 +119,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-(function () {
-    'use strict';
-
-    const FULL_NAME = {{ volume.full_name|tojson }};
-    const INITIAL_FILES = {{ files|tojson }};
-
-    function createVolumeDetail() {
-        return {
-            files: INITIAL_FILES,
-            uploadPath: '',
-            uploadBlob: null,
-            uploadName: '',
-            uploading: false,
-
-            init() { /* data seeded server-side */ },
-
-            humanBytes(n) {
-                if (!n && n !== 0) return '—';
-                if (n < 1024) return n + ' B';
-                if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
-                return (n / (1024 * 1024)).toFixed(2) + ' MB';
-            },
-
-            onFileChange(ev) {
-                const file = ev.target.files && ev.target.files[0];
-                if (!file) return;
-                this.uploadBlob = file;
-                this.uploadName = file.name;
-                if (!this.uploadPath) this.uploadPath = file.name;
-            },
-
-            async refresh() {
-                const res = await window.pqlApi.fetch(
-                    '/api/volumes/' + encodeURIComponent(FULL_NAME) + '/files',
-                    { silent: true },
-                );
-                if (res.ok && res.data) this.files = res.data.files || [];
-            },
-
-            async submitUpload() {
-                if (!this.uploadBlob) {
-                    if (window.pqlToast) window.pqlToast.error('Choose a file first.');
-                    return;
-                }
-                this.uploading = true;
-                const form = new FormData();
-                form.append('path', this.uploadPath);
-                form.append('upload', this.uploadBlob, this.uploadName);
-                const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-                const token = csrfMeta ? csrfMeta.content : '';
-                try {
-                    const res = await fetch(
-                        '/api/volumes/' + encodeURIComponent(FULL_NAME) + '/files',
-                        {
-                            method: 'POST',
-                            headers: token ? { 'X-CSRF-Token': token } : {},
-                            body: form,
-                        },
-                    );
-                    if (!res.ok) {
-                        const detail = await res.text();
-                        throw new Error(detail || ('HTTP ' + res.status));
-                    }
-                    if (window.pqlToast) window.pqlToast.success('Uploaded.');
-                    this.uploadBlob = null;
-                    this.uploadName = '';
-                    this.uploadPath = '';
-                    if (this.$refs.fileInput) this.$refs.fileInput.value = '';
-                    await this.refresh();
-                } catch (err) {
-                    if (window.pqlToast) window.pqlToast.error(err.message || 'Upload failed.');
-                } finally {
-                    this.uploading = false;
-                }
-            },
-
-            async removeFile(file) {
-                if (!window.confirm('Delete ' + file.path + '?')) return;
-                const res = await window.pqlApi.fetch(
-                    '/api/volumes/' + encodeURIComponent(FULL_NAME) +
-                    '/files/' + file.path,
-                    { method: 'DELETE', silent: true },
-                );
-                if (res.ok || res.status === 204) await this.refresh();
-            },
-
-            isConvertible(file) {
-                return /\.(csv|parquet|json)$/i.test(file.path || '');
-            },
-
-            async convertToDelta(file) {
-                const suggested = file.path.split('/').pop().replace(
-                    /\.(csv|parquet|json)$/i, '',
-                );
-                const table = window.prompt(
-                    'Target table name in ' +
-                    FULL_NAME.split('.').slice(0, 2).join('.') + ':',
-                    suggested,
-                );
-                if (!table) return;
-                const res = await window.pqlApi.fetch(
-                    '/api/volumes/' + encodeURIComponent(FULL_NAME) +
-                    '/convert-to-delta',
-                    {
-                        method: 'POST',
-                        body: { path: file.path, table_name: table },
-                        silent: true,
-                    },
-                );
-                if (res.ok && res.data) {
-                    if (window.pqlToast) {
-                        window.pqlToast.success(
-                            'Registered as Delta table: ' + res.data.full_name,
-                        );
-                    }
-                } else if (window.pqlToast) {
-                    window.pqlToast.error(res.error || 'Convert failed');
-                }
-            },
-        };
-    }
-
-    window.volumeDetail = createVolumeDetail;
-})();
-</script>
+{# Sprint 94: volumeDetail() factory lives in
+   frontend/js/pages/volume_detail.js; bootstrap.js attaches it
+   to window.volumeDetail. #}
 {% endblock %}

@@ -3531,7 +3531,50 @@ PointlesSQL
 │
 │   ├── Sprint 92 — frontend federation.js + command_palette       ✅ done (47cfdad)
 │
-│   ├── Sprint 93 — notebook_editor.html modals → partial          ✅ done (pending-commit)
+│   ├── Sprint 93 — notebook_editor.html modals → partial          ✅ done (d14f4e7)
+│
+│   ├── Sprint 94 — page templates → ESM (4 of 7 pilots)            ✅ done (pending-commit)
+│       Tranche-5 of the Sprint-76 frontend modularisation plan.
+│       Four of the seven sketched page-template inline scripts
+│       lift into ``frontend/js/pages/*.js`` ESM modules.  Each
+│       picks up its server-rendered seed via the template's
+│       ``x-data`` attribute as a Jinja-rendered JSON parameter
+│       object — first-paint state stays single-roundtrip.
+│
+│       - ``alerts.html`` 295 → 201 LOC.
+│         New ``frontend/js/pages/alerts.js`` (112 LOC) seeded
+│         with ``{alerts, savedQueries}``.
+│       - ``alert_detail.html`` 251 → 199 LOC.
+│         New ``frontend/js/pages/alert_detail.js`` (57 LOC)
+│         seeded with ``{slug, destinations}``.
+│       - ``volume_detail.html`` 248 → 125 LOC.
+│         New ``frontend/js/pages/volume_detail.js`` (115 LOC)
+│         seeded with ``{fullName, files}``.  Multipart upload
+│         still uses raw ``fetch()`` because pqlApi.fetch is
+│         JSON-only.
+│       - ``notebooks_workspace.html`` 311 → 172 LOC.
+│         New ``frontend/js/pages/notebooks_workspace.js`` (152
+│         LOC).  No seed needed — fetches its own tree from
+│         ``GET /api/notebooks/tree`` via sessionStorage cache
+│         + revalidate.
+│
+│       ``bootstrap.js`` adds four new factory imports +
+│       ``window.*`` re-attaches.  No template ``x-data=`` value
+│       changed except the new seed parameters.
+│
+│       **Three pages deferred** to a follow-up sprint because
+│       each is a larger / more interactive surface that warrants
+│       its own playbook-replay: ``table.html`` (467 LOC, two
+│       inline scripts), ``jobs.html`` (372 LOC,
+│       ``createJobModal`` factory inside the create-job modal),
+│       ``job_detail.html`` (324 LOC, run-history popover +
+│       compare-runs UI).
+│
+│       **Static gates (all green):** ``node --check`` passes for
+│       all four new modules + bootstrap.js,
+│       ``check-frontend-bootstrap-order.sh`` still green,
+│       ``jinja2.Environment.get_template()`` parses each
+│       updated template cleanly.
 │       Tranche-4 of the Sprint-76 frontend modularisation plan.
 │       Narrowed from the sketched 7-partial split down to the
 │       lowest-risk extract: the four shell-scope modals (New

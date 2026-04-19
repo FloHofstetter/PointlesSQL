@@ -9,7 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="alertDetail()" x-init="init()">
+<div x-data='alertDetail({slug: {{ alert.slug|tojson }}, destinations: {{ alert.destinations|tojson }}})' x-init="init()">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-bell fs-3"></i>
@@ -192,60 +192,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-(function () {
-    'use strict';
-
-    const ALERT_SLUG = {{ alert.slug|tojson }};
-    const INIT_DESTS = {{ alert.destinations|tojson }};
-
-    function createAlertDetail() {
-        return {
-            destinations: INIT_DESTS,
-            destForm: { kind: 'webhook', webhook_url: '', hmac_secret: '' },
-
-            init() { /* seeded server-side */ },
-
-            openAddDest() {
-                this.destForm = { kind: 'webhook', webhook_url: '', hmac_secret: '' };
-                const el = document.getElementById('pqlAddDestModal');
-                if (!el || !window.bootstrap) return;
-                window.bootstrap.Modal.getOrCreateInstance(el).show();
-            },
-
-            async submitAddDest() {
-                const res = await window.pqlApi.fetch(
-                    '/api/alerts/' + encodeURIComponent(ALERT_SLUG) + '/destinations',
-                    { method: 'POST', body: this.destForm, silent: true },
-                );
-                if (res.ok && res.data) {
-                    this.destinations = [...this.destinations, res.data];
-                    const el = document.getElementById('pqlAddDestModal');
-                    if (el && window.bootstrap) {
-                        window.bootstrap.Modal.getOrCreateInstance(el).hide();
-                    }
-                } else if (window.pqlToast) {
-                    window.pqlToast.error(res.error || ('HTTP ' + res.status));
-                }
-            },
-
-            async removeDest(dest) {
-                if (!window.confirm('Remove this destination?')) return;
-                const res = await window.pqlApi.fetch(
-                    '/api/alerts/' + encodeURIComponent(ALERT_SLUG) +
-                    '/destinations/' + dest.id,
-                    { method: 'DELETE', silent: true },
-                );
-                if (res.ok || res.status === 204) {
-                    this.destinations = this.destinations.filter(
-                        (d) => d.id !== dest.id,
-                    );
-                }
-            },
-        };
-    }
-
-    window.alertDetail = createAlertDetail;
-})();
-</script>
+{# Sprint 94: alertDetail() factory lives in
+   frontend/js/pages/alert_detail.js; bootstrap.js attaches it to
+   window.alertDetail.  First-paint state seeds via the x-data
+   attribute's parameter object. #}
 {% endblock %}
