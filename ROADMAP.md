@@ -2513,7 +2513,7 @@ PointlesSQL
 │   │   (file delete) and ``rename_path`` (file rename).  Caught
 │   │   at the N2 step on the first replay.
 │   │
-│   └── Sprint 74 — Theme + keymap overlay + phase close           ✅ done
+│   └── Sprint 74 — Theme + keymap overlay + phase close           ✅ done (a184ef3)
 │       Settings drawer (``vs-dark`` / ``vs`` / ``hc-black`` themes;
 │       font-size 10-22; autosave-debounce 200-2000 ms) + keymap
 │       overlay listing every editor command + phase-12.7 close.
@@ -2578,7 +2578,7 @@ PointlesSQL
 │   - Sprint 71 — SQL cell (DuckDB via PQL.sql) (e0043dc).
 │   - Sprint 72 — ipywidgets minimal placeholder (b8ef7dc).
 │   - Sprint 73 — per-cell run history + diff (Alembic 018) (dc530eb).
-│   - Sprint 74 — settings drawer + keymap overlay + phase close.
+│   - Sprint 74 — settings drawer + keymap overlay + phase close (a184ef3).
 │   Phase 13 (Agent workloads) is next on the roadmap with the
 │   EXPLAIN-agent loop sketched as the natural Phase-12 → Phase-13
 │   bridge.
