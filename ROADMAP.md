@@ -2976,7 +2976,7 @@ PointlesSQL
 │       0 errors / 0 warnings, ``pydoclint`` 0 violations,
 │       ``pytest tests/test_alerts.py`` 19/19 passed.
 │
-│   └── Sprint 82 — services/pg_sync.py → 5-module package      ✅ done (pending-commit)
+│   ├── Sprint 82 — services/pg_sync.py → 5-module package      ✅ done (c535b70)
 │       Sixth backend split.  Carved 778-LOC ``pg_sync.py`` along its
 │       pipeline boundaries (introspect → diff → apply → record):
 │
@@ -3009,6 +3009,50 @@ PointlesSQL
 │       0 errors / 8 warnings (all pre-existing dict-unpack patterns
 │       in ``collect_uc_tables``), ``pydoclint`` 0 violations,
 │       ``pytest tests/test_pg_sync.py`` 46/46 passed.
+│
+│   └── Sprint 83 — services/unitycatalog.py → mixin package    ✅ done (pending-commit)
+│       Seventh backend split — broadest blast radius (18+ call
+│       sites, 23 tests patch the soyuz function names by string).
+│       Carved 783-LOC ``unitycatalog.py`` along securable type using
+│       a mixin architecture so ``UnityCatalogClient`` keeps its
+│       single-import surface.
+│
+│       **Package layout** ``pointlessql/services/unitycatalog/``:
+│       - ``_api.py`` (~190 LOC) — every soyuz typed function imported
+│         as ``_get_X`` / ``_create_X`` / ``_list_X`` / ``_update_X``
+│         / ``_delete_X``, plus the shared ``wrap_catalog_errors``
+│         decorator (renamed from ``_wrap_catalog_errors`` for the
+│         same cross-module scope reason as the kernel_session +
+│         alerts + pg_sync splits).
+│       - ``_catalogs.py`` (~130 LOC) — ``CatalogsMixin`` (catalog
+│         CRUD + ``get_tree`` aggregator that calls back into the
+│         metadata mixin via ``self``).
+│       - ``_metadata.py`` (~210 LOC) — ``MetadataMixin`` (schema +
+│         table + tag CRUD).
+│       - ``_permissions.py`` (~110 LOC) — ``PermissionsMixin``.
+│       - ``_lineage.py`` (~50 LOC) — ``LineageMixin``.
+│       - ``_federation.py`` (~180 LOC) — ``FederationMixin``
+│         (connections + external locations + credentials).
+│       - ``__init__.py`` (~135 LOC) — re-exports every soyuz
+│         ``_xxx`` function binding at the legacy
+│         ``pointlessql.services.unitycatalog._xyz`` path so existing
+│         tests' ``patch("...unitycatalog._get_tags.asyncio")``
+│         continue to find the same module object the mixin calls
+│         into.  Defines ``class UnityCatalogClient(CatalogsMixin,
+│         MetadataMixin, PermissionsMixin, LineageMixin,
+│         FederationMixin)``.
+│
+│       **MRO verified:** ``UnityCatalogClient → CatalogsMixin →
+│       MetadataMixin → PermissionsMixin → LineageMixin →
+│       FederationMixin → object``.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 4 warnings (3 pre-existing isinstance/list-typing,
+│       all unchanged), ``pydoclint`` 0 violations,
+│       ``pytest tests/test_tags_permissions.py
+│       tests/test_federation.py`` 23/23 +
+│       ``tests/test_pg_sync.py tests/test_foreign_catalog.py
+│       tests/test_e2e.py tests/test_problem_json.py`` 60/60 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 83: services/unitycatalog.py → mixin package
+
+Seventh backend split — broadest blast radius of the arc (18+ call
+sites, 23 tests patch soyuz function names by string). The 783-LOC
+``services/unitycatalog.py`` module became the package
+``services/unitycatalog/`` with one mixin per securable type plus a
+shared ``_api.py`` for the soyuz function bindings + error decorator.
+``UnityCatalogClient`` composes the mixins so its single-import
+surface (``from pointlessql.services.unitycatalog import
+UnityCatalogClient``) is unchanged.
+
+- **Package layout** under ``pointlessql/services/unitycatalog/``:
+  [_api.py](pointlessql/services/unitycatalog/_api.py) (~190 LOC) —
+  every soyuz typed function imported as ``_get_X`` / ``_create_X``
+  / ``_list_X`` / ``_update_X`` / ``_delete_X``, plus the shared
+  ``wrap_catalog_errors`` decorator.
+  [_catalogs.py](pointlessql/services/unitycatalog/_catalogs.py)
+  (~130 LOC) — ``CatalogsMixin`` (catalog CRUD + ``get_tree``
+  aggregator that reaches into ``MetadataMixin.list_schemas`` /
+  ``list_tables`` via ``self``).
+  [_metadata.py](pointlessql/services/unitycatalog/_metadata.py)
+  (~210 LOC) — ``MetadataMixin`` (schema + table + tag CRUD).
+  [_permissions.py](pointlessql/services/unitycatalog/_permissions.py)
+  (~110 LOC) — ``PermissionsMixin`` (direct + effective).
+  [_lineage.py](pointlessql/services/unitycatalog/_lineage.py)
+  (~50 LOC) — ``LineageMixin``.
+  [_federation.py](pointlessql/services/unitycatalog/_federation.py)
+  (~180 LOC) — ``FederationMixin`` (connections + external locations
+  + credentials).
+
+- **Test patch surface preserved.** The package
+  [__init__.py](pointlessql/services/unitycatalog/__init__.py)
+  re-exports every soyuz function binding at the legacy
+  ``pointlessql.services.unitycatalog._xyz`` path. Tests that do
+  ``patch("pointlessql.services.unitycatalog._get_tags.asyncio")``
+  hit the same module object the mixin's call resolves to (Python
+  module objects are singletons), so 23 patch sites in
+  ``test_tags_permissions.py`` + ``test_federation.py`` work
+  unchanged.
+
+- **Renamed ``_wrap_catalog_errors`` → ``wrap_catalog_errors``.** Same
+  reason the Sprint-77 kernel_session + Sprint-81 alerts + Sprint-82
+  pg_sync splits dropped their leading underscores from cross-module
+  helpers: pyright's ``reportPrivateUsage`` flags any access from a
+  non-owning module, and the decorator is now used by every mixin.
+
+- **MRO verified:** ``UnityCatalogClient → CatalogsMixin →
+  MetadataMixin → PermissionsMixin → LineageMixin → FederationMixin
+  → object``. ``isinstance(client, UnityCatalogClient)`` still works
+  for every existing call site.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 4 warnings (3 pre-existing isinstance/list-typing
+  patterns, unchanged), ``pydoclint`` 0 violations, ``pytest
+  tests/test_tags_permissions.py tests/test_federation.py`` 23/23 +
+  ``pytest tests/test_pg_sync.py tests/test_foreign_catalog.py
+  tests/test_e2e.py tests/test_problem_json.py`` 60/60 passed.
+
 ### Refactored — Phase 12.9 / Sprint 82: services/pg_sync.py → 5-module package
 
 Sixth backend split. The 778-LOC ``services/pg_sync.py`` module became
