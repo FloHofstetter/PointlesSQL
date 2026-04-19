@@ -2844,7 +2844,7 @@ PointlesSQL
 │       No tests directly import this module; no Alembic, no
 │       template, no JS touched.
 │
-│   └── Sprint 78 — pql/pql.py → 5 sibling helpers              ✅ done (pending-commit)
+│   ├── Sprint 78 — pql/pql.py → 5 sibling helpers              ✅ done (31fda97)
 │       Second backend split.  Façade pattern: :class:`PQL` stays in
 │       ``pql.py`` as the public class; method bodies delegate to
 │       per-concern helper modules so the orchestration shape is
@@ -2880,6 +2880,34 @@ PointlesSQL
 │       polars/pyarrow untyped-arg warnings), ``pydoclint`` 0
 │       violations, ``pytest tests/test_pql.py tests/test_alerts.py``
 │       51/51 passed.
+│
+│   └── Sprint 79 — services/notebook_outputs.py → 2-module package    ✅ done (pending-commit)
+│       Third backend split.  Two-bucket package divides the 480-LOC
+│       module along the natural concern boundary already implied by
+│       the underlying tables: output frames vs cell-run lifecycle.
+│
+│       **Package layout** ``pointlessql/services/notebook_outputs/``:
+│       - ``outputs.py`` (~270 LOC) — ``NotebookOutput`` table:
+│         ``is_persistable``, ``append_output``,
+│         ``load_outputs_for_path``.  Plus the cross-table
+│         cleanup operations (``clear_cell``, ``clear_session``,
+│         ``clear_path``, ``rename_path``) that scrub output frames
+│         + cell-run lifecycle rows together when a notebook is
+│         re-executed, restarted, deleted, or renamed.
+│       - ``cell_runs.py`` (~210 LOC) — ``NotebookCellRun`` (current
+│         state per session) and ``NotebookCellRunSource`` (per-
+│         execute history): ``upsert_cell_run``,
+│         ``record_cell_run_start``, ``record_cell_run_finish``,
+│         ``list_cell_run_sources``.
+│       - ``__init__.py`` re-exports the full public surface so the
+│         lone caller
+│         [pointlessql/api/main.py:48](pointlessql/api/main.py#L48)
+│         (``from pointlessql.services import notebook_outputs as
+│         notebook_outputs_service``) keeps working unchanged.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 0 warnings, ``pydoclint`` 0 violations, smoke
+│       import OK.  No tests directly import this module.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

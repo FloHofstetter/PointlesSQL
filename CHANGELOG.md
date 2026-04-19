@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 79: services/notebook_outputs.py → 2-module package
+
+Third backend split. The 480-LOC ``services/notebook_outputs.py``
+module became the package ``services/notebook_outputs/`` with two
+sibling modules + an ``__init__.py`` re-export shim. Pure structural
+refactor; no SQL, no schema, no behaviour change.
+
+- **Two-bucket split** along the underlying-table boundary that the
+  monolithic file already implied:
+  [outputs.py](pointlessql/services/notebook_outputs/outputs.py)
+  (~270 LOC) owns the ``NotebookOutput`` table — append-on-iopub,
+  replay-on-open, plus the cross-table ``clear_*`` / ``rename_path``
+  helpers that scrub output frames and cell-run lifecycle rows
+  together on re-execute, restart, delete, or rename.
+  [cell_runs.py](pointlessql/services/notebook_outputs/cell_runs.py)
+  (~210 LOC) owns the ``NotebookCellRun`` (current state per session)
+  and ``NotebookCellRunSource`` (per-execute history) tables —
+  ``upsert_cell_run``, ``record_cell_run_start`` / ``_finish``,
+  ``list_cell_run_sources``.
+
+- **Public surface preserved.**
+  [__init__.py](pointlessql/services/notebook_outputs/__init__.py)
+  re-exports every function the API layer uses, so the lone
+  external caller
+  [pointlessql/api/main.py:48](pointlessql/api/main.py#L48)
+  keeps working through ``notebook_outputs_service.X`` access.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 0 warnings, ``pydoclint`` 0 violations, smoke import
+  OK.
+
 ### Refactored — Phase 12.9 / Sprint 78: pql/pql.py → 5 sibling helpers
 
 Second backend split. The 461-LOC ``PQL`` module is now a 192-LOC
