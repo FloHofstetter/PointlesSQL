@@ -19,12 +19,18 @@
 // aggregated — a singleton right-sidebar list — so it does not
 // plug into the per-cell affordance seam.
 //
-// Why stateless: this module is re-entrant and idempotent.
-// Callers own the closure ``cells`` snapshot; every call produces
-// a fresh array.  No closure ``let``s, no caches, no side effects.
+// Why stateless extractor: ``buildOutline`` is re-entrant and
+// idempotent.  Callers own the cells snapshot; every call produces a
+// fresh array.  Sprint 75 layers a ``createOutlineRecomputer`` factory
+// on top that owns the 150ms recompute-debounce timer so the
+// orchestrator (main.js) does not have to.  The timer + cached
+// entries stay in the factory's closure (BUG-64-02 / BUG-70-01:
+// setTimeout handles parked on Alpine's proxy let the reactive walk
+// reach into the timer's captured closure on every re-render).
 
 const HEADING_RE = /^(#{1,3})\s+(.+?)\s*$/;
 const CODE_LABEL_LIMIT = 60;
+const DEFAULT_DEBOUNCE_MS = 150;
 
 export function stripCodeLabel(line) {
     let out = (line ?? '').trim();
@@ -77,4 +83,37 @@ export function buildOutline(cells) {
         }
     }
     return out;
+}
+
+// Sprint 75: debounced recompute manager.  ``getCells`` resolves the
+// live cells array (the orchestrator passes a closure that splits the
+// Monaco model — see main.js::recomputeOutline pre-Sprint-75 for the
+// re-split rationale).  ``onUpdate`` receives a fresh array on every
+// recompute so Alpine's x-for diffs once per real change; a getter
+// would produce a fresh array on every reactive tick and thrash DOM.
+export function createOutlineRecomputer({ getCells, onUpdate, debounceMs = DEFAULT_DEBOUNCE_MS }) {
+    let timer = null;
+    let entries = [];
+
+    function recompute() {
+        entries = buildOutline(getCells());
+        onUpdate(entries.slice());
+    }
+
+    function recomputeDebounced() {
+        if (timer) window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+            timer = null;
+            recompute();
+        }, debounceMs);
+    }
+
+    function cancel() {
+        if (timer) {
+            window.clearTimeout(timer);
+            timer = null;
+        }
+    }
+
+    return { recompute, recomputeDebounced, cancel };
 }

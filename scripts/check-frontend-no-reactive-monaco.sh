@@ -54,7 +54,19 @@ set -euo pipefail
 # would let the reactive deep-walk reach into the WHATWG fetch
 # stream's deep registry state, the same class as markdown-it's
 # rule registries (BUG-69-01) and the BUG-64-02 footgun.
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers|outlineEntries|outlineTimer|outlineDebounce|resultVarTimers|sqlBootstrap|historyCache|historyPopover|historyAbort)\s*='
+#
+# Sprint 75 adds `autosaveScheduler`, `autosaveTimer`,
+# `zoneManager`, `outputZones`, `markdownZones`, and
+# `outlineRecomputer` so the carve-up of main.js (see sibling
+# modules: autosave_scheduler.js, output_zone_manager.js,
+# outline.js::createOutlineRecomputer, cell_introspector.js,
+# commands.js) cannot be undone by a future submodule that parks
+# the returned factory objects or their closure-held maps / timers
+# on Alpine's proxy.  Each of those factories captures a timer
+# handle or a view-zone DOM-node map in its closure; aggregating
+# them onto `this._X` would reproduce BUG-64-02 at the same scale
+# the pre-Sprint-75 inline code would have.
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers|outlineEntries|outlineTimer|outlineDebounce|resultVarTimers|sqlBootstrap|historyCache|historyPopover|historyAbort|autosaveScheduler|autosaveTimer|zoneManager|outputZones|markdownZones|outlineRecomputer)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then

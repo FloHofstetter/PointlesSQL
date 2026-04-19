@@ -48,7 +48,6 @@ import {
     stopElapsed,
     resetElapsed,
 } from './cell_affordances.js';
-import { renderMarkdown } from './markdown.js';
 import { loadMonaco } from './monaco_loader.js';
 import {
     PyrightClient,
@@ -56,12 +55,22 @@ import {
     lspSeverityToMonaco,
     registerPyrightProvidersOnce,
 } from './pyright_client.js';
-import { appendOutputFrame } from './output_renderer.js';
 import { createClosureRefs } from './closure_state.js';
-import { buildOutline } from './outline.js';
+import { createOutlineRecomputer } from './outline.js';
 import { openPopover as openRunHistoryPopover, closePopover as closeRunHistoryPopover } from './run_history.js';
 import { mountSettingsDrawer, openSettingsDrawer, loadSettings } from './settings_drawer.js';
 import { mountKeymapOverlay, openKeymapOverlay } from './keymap_overlay.js';
+import {
+    currentCellAtCursor as introspectCurrentCellAtCursor,
+    cellTypeOf as introspectCellTypeOf,
+    cellSourceById as introspectCellSourceById,
+    cellResultVarById as introspectCellResultVarById,
+    cellEndLine as introspectCellEndLine,
+    findCellMarkerLine as introspectFindCellMarkerLine,
+} from './cell_introspector.js';
+import { createOutputZoneManager } from './output_zone_manager.js';
+import { createAutosaveScheduler } from './autosave_scheduler.js';
+import { registerNotebookCommands } from './commands.js';
 
 function csrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -71,15 +80,10 @@ function csrfToken() {
 // Databricks-style debounce: save 1500 ms after the user stops typing
 // by default; Sprint 74 makes the value mutable per-tab via the
 // settings drawer (broadcast over ``pql:settings-changed``).  The
-// initial-load constant below is kept for the foreign-notebook UUID
-// upgrade flush only — that specific path wants a near-immediate
-// flush regardless of the user's debounce preference.
+// per-tab autosaveScheduler (autosave_scheduler.js) now owns the
+// mutable debounce + timer + in-flight + queued state — main.js no
+// longer keeps a module-level ``let _autosaveDebounceMs``.
 const AUTOSAVE_DEBOUNCE_MS = 1500;
-// Sprint 74: per-tab mutable copy.  Set on mount from
-// ``loadSettings().debounceMs`` and updated on
-// ``pql:settings-changed`` broadcasts.  Accessor function so the
-// scheduler reads the current value at flush-queue time.
-let _autosaveDebounceMs = AUTOSAVE_DEBOUNCE_MS;
 // Brief delay on initial load before auto-flushing the UUID-upgrade
 // save for a foreign notebook.  Keeps the user-visible "Saving…" tag
 // from flashing during the render.
@@ -95,21 +99,14 @@ export function createNotebookTabEditor({
 
     // Closure-scoped private state.  Anything that does not need to
     // reactively re-render the DOM lives here, not as `this._X`.
+    // Sprint 75 carved the autosave timer/flags, outline cache/timer,
+    // outputZones/markdownZones maps, and the cell-introspection /
+    // command-palette helpers out into sibling modules — what remains
+    // here is orchestration state only.
     let decorationIds = [];
     // Sprint 68: initial bundle may be null on lazy-loaded tabs; cells
     // are populated inside mount() once the bundle resolves.
     let cells = [];
-    // Sprint 70: outline entries derived from ``cells`` + a 150ms
-    // debounce timer for onDidChangeContent-triggered recomputes.
-    // Both MUST live in closure scope — the reactivity-boundary gate
-    // blocks ``this._outlineEntries`` / ``this._outlineTimer`` because
-    // a setTimeout handle parked on Alpine's proxy would let the
-    // reactive walk recurse into the timer's captured closure.
-    let outlineEntries = [];
-    let outlineTimer = null;
-    let saveTimerHandle = null;
-    let saveInFlight = false;
-    let saveQueued = false;
     let ws = null;
     let lspWs = null;
     let lspClient = null;
@@ -117,12 +114,9 @@ export function createNotebookTabEditor({
     let lspDocVersion = 0;
     let namespaceBuffer = '';
     let catalogTables = null;
-    const outputZones = {};   // cellId → { zoneId, domNode }
-    const markdownZones = {}; // cellId → { zoneId, domNode, sourceRange }
     // Sprint 66: per-cell affordances (toolbar content widget +
     // below-cell inserter view zone).  Closure-scoped so Monaco
-    // content-widget + DOM refs never reach Alpine's reactive proxy
-    // — same BUG-64-02 discipline as outputZones / markdownZones.
+    // content-widget + DOM refs never reach Alpine's reactive proxy.
     const cellAffordances = {}; // cellId → record (see cell_affordances.js)
     // Sprint 66: captured at mount() so closure-scoped callbacks
     // (per-cell run button, inserter) can re-enter the Alpine object
@@ -131,6 +125,29 @@ export function createNotebookTabEditor({
     let reactiveRoot = null;
     let initialOutputs = [];
     let mounted = false;
+
+    // Sprint 75: closure-scoped sub-managers.  Each owns its own
+    // private state (timers, view-zone maps, in-flight flags) inside
+    // its factory closure — the BUG-64-02 reactivity boundary stays
+    // intact because the manager objects themselves carry only method
+    // refs, no raw timers / DOM nodes / Monaco refs.
+    const autosaveScheduler = createAutosaveScheduler({
+        debounceMs: AUTOSAVE_DEBOUNCE_MS,
+    });
+    const zoneManager = createOutputZoneManager({
+        getEditor: () => refs.get('editor'),
+        getModel: () => refs.get('model'),
+        getCellEndLine: (cellId) => introspectCellEndLine(refs.get('model'), cellId),
+    });
+    const outlineRecomputer = createOutlineRecomputer({
+        getCells: () => {
+            const model = refs.get('model');
+            return model ? splitCells(model.getValue()) : cells;
+        },
+        onUpdate: (entries) => {
+            if (reactiveRoot) reactiveRoot.outline = entries;
+        },
+    });
 
     // Sprint 68: notify the shell whenever dirty or save state
     // transitions so the tab-bar chrome (filename + unsaved dot) stays
@@ -226,7 +243,7 @@ export function createNotebookTabEditor({
                     }
                     return out;
                 });
-                recomputeOutline();
+                outlineRecomputer.recompute();
                 initialOutputs = bundle.outputs || [];
                 this.dirty = bundle.dirty === true;
                 this.saveState = this.dirty ? 'pending' : 'saved';
@@ -239,7 +256,7 @@ export function createNotebookTabEditor({
                 // debounce is read by the autosave scheduler each
                 // time it queues a flush.
                 const settings = loadSettings();
-                _autosaveDebounceMs = settings.debounceMs;
+                autosaveScheduler.setDebounceMs(settings.debounceMs);
                 const joined = joinCells(cells);
                 const model = monaco.editor.createModel(joined.text, 'python');
                 refs.set('model', model);
@@ -262,7 +279,7 @@ export function createNotebookTabEditor({
                     if (next.theme) monaco.editor.setTheme(next.theme);
                     if (next.fontSize) editor.updateOptions({ fontSize: next.fontSize });
                     if (Number.isFinite(next.debounceMs)) {
-                        _autosaveDebounceMs = next.debounceMs;
+                        autosaveScheduler.setDebounceMs(next.debounceMs);
                     }
                 });
                 // Lazy-mount the settings drawer + keymap overlay
@@ -275,7 +292,7 @@ export function createNotebookTabEditor({
                     this.dirty = true;
                     this.saveState = 'pending';
                     emitStateChange({ dirty: true, saveState: 'pending' });
-                    scheduleAutosave(() => this.save());
+                    autosaveScheduler.schedule(() => this.save());
                 });
                 // Shift+Enter / Ctrl+Enter bind to the editor instance
                 // — they only fire when Monaco has focus, which keeps
@@ -289,27 +306,24 @@ export function createNotebookTabEditor({
                     monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
                     () => this.runCurrentCell(),
                 );
-                registerPaletteActions(monaco, editor, this);
+                registerNotebookCommands(monaco, editor, this);
                 // Foreign-notebook load path: UUIDs were minted server-
                 // side, flush them to disk so the user doesn't see a
                 // stale "unsaved" badge on first visit.
                 if (this.dirty) {
-                    saveTimerHandle = window.setTimeout(
-                        () => this.save(),
-                        INITIAL_FLUSH_MS,
-                    );
+                    autosaveScheduler.scheduleWith(() => this.save(), INITIAL_FLUSH_MS);
                 }
-                replayPersistedOutputs();
+                zoneManager.replayPersistedOutputs(initialOutputs);
                 rebuildCellAffordances();
-                rebuildMarkdownZones();
-                updateHiddenAreas();
-                editor.onDidChangeCursorPosition(() => updateHiddenAreas());
+                zoneManager.rebuildMarkdownZones();
+                zoneManager.updateHiddenAreas();
+                editor.onDidChangeCursorPosition(() => zoneManager.updateHiddenAreas());
                 model.onDidChangeContent(() => {
                     rebuildCellAffordances();
-                    rebuildMarkdownZones();
-                    updateHiddenAreas();
+                    zoneManager.rebuildMarkdownZones();
+                    zoneManager.updateHiddenAreas();
                     notifyLspDidChange();
-                    recomputeOutlineDebounced();
+                    outlineRecomputer.recomputeDebounced();
                 });
                 registerPyrightProvidersOnce(monaco);
                 openKernelWS(this);
@@ -337,14 +351,14 @@ export function createNotebookTabEditor({
         },
 
         clearCurrentCellOutputs() {
-            const cell = currentCellAtCursor();
+            const cell = introspectCurrentCellAtCursor(refs.get('editor'), refs.get('model'));
             if (!cell) return;
-            clearOutput(cell.id);
+            zoneManager.clearOutput(cell.id);
             sendKernelFrame({ type: 'clear_cell', cell_id: cell.id });
         },
 
         runCurrentCell() {
-            const cell = currentCellAtCursor();
+            const cell = introspectCurrentCellAtCursor(refs.get('editor'), refs.get('model'));
             if (!cell) return;
             this.runCellById(cell.id, cell.cellType);
         },
@@ -356,17 +370,18 @@ export function createNotebookTabEditor({
         // server-side route can parse + privilege-check before the
         // kernel ever sees the wrapped Python helper call.
         runCellById(cellId, cellType) {
-            const typeId = cellType || cellTypeOf(cellId);
+            const model = refs.get('model');
+            const typeId = cellType || introspectCellTypeOf(model, cellId);
             if (!getCellType(typeId).canExecute) return;
-            const source = cellSourceById(cellId);
-            clearOutput(cellId);
+            const source = introspectCellSourceById(model, cellId);
+            zoneManager.clearOutput(cellId);
             this.executingCells = { ...this.executingCells, [cellId]: true };
             if (typeId === 'sql') {
                 sendKernelFrame({
                     type: 'execute_sql',
                     cell_id: cellId,
                     source,
-                    result_var: cellResultVarById(cellId),
+                    result_var: introspectCellResultVarById(model, cellId),
                 });
             } else {
                 sendKernelFrame({ type: 'execute', cell_id: cellId, code: source });
@@ -386,20 +401,20 @@ export function createNotebookTabEditor({
             const allCells = splitCells(refs.get('model').getValue());
             for (const c of allCells) {
                 if (!getCellType(c.cell_type).canExecute) continue;
-                clearOutput(c.id);
+                zoneManager.clearOutput(c.id);
                 this.executingCells = { ...this.executingCells, [c.id]: true };
                 sendCellFrame(c);
             }
         },
 
         runCellsAbove() {
-            const cell = currentCellAtCursor();
+            const cell = introspectCurrentCellAtCursor(refs.get('editor'), refs.get('model'));
             if (!cell) return;
             const allCells = splitCells(refs.get('model').getValue());
             for (const c of allCells) {
                 if (c.id === cell.id) break;
                 if (!getCellType(c.cell_type).canExecute) continue;
-                clearOutput(c.id);
+                zoneManager.clearOutput(c.id);
                 this.executingCells = { ...this.executingCells, [c.id]: true };
                 sendCellFrame(c);
             }
@@ -420,7 +435,7 @@ export function createNotebookTabEditor({
                 ? window.crypto.randomUUID()
                 : 'cell-' + Date.now();
             const marker = `\n# %%${descriptor.markerTag} pql_cell_id="${newId}"\n\n`;
-            const endLine = cellEndLine(afterCellId);
+            const endLine = introspectCellEndLine(model, afterCellId);
             const anchorLine = endLine === null ? model.getLineCount() : endLine;
             const anchorCol = model.getLineMaxColumn(anchorLine);
             editor.executeEdits('pql-insert-after', [{
@@ -451,14 +466,14 @@ export function createNotebookTabEditor({
         },
 
         addCellAbove(markdown) {
-            const cell = currentCellAtCursor();
+            const cell = introspectCurrentCellAtCursor(refs.get('editor'), refs.get('model'));
             const monaco = window.monaco;
             const editor = refs.get('editor');
             const newId = (window.crypto && window.crypto.randomUUID)
                 ? window.crypto.randomUUID() : 'cell-' + Date.now();
             const tag = markdown ? getCellType('markdown').markerTag : getCellType('code').markerTag;
             const marker = `# %%${tag} pql_cell_id="${newId}"\n\n`;
-            const targetLine = cell ? findCellMarkerLine(cell.id) : 1;
+            const targetLine = cell ? introspectFindCellMarkerLine(refs.get('model'), cell.id) : 1;
             const insertAt = new monaco.Range(targetLine, 1, targetLine, 1);
             editor.executeEdits('add-cell-above', [{
                 range: insertAt, text: marker, forceMoveMarkers: true,
@@ -491,7 +506,7 @@ export function createNotebookTabEditor({
         jumpToCell(cellId) {
             const editor = refs.get('editor');
             if (!editor) return;
-            const contentLine = findCellMarkerLine(cellId) + 1;
+            const contentLine = introspectFindCellMarkerLine(refs.get('model'), cellId) + 1;
             editor.setPosition({ lineNumber: contentLine, column: 1 });
             editor.revealLineInCenter(contentLine);
             editor.focus();
@@ -512,7 +527,7 @@ export function createNotebookTabEditor({
         // the palette-action counterpart that resolves the cell from
         // the cursor and uses the run button as the anchor.
         openHistoryForCurrentCell() {
-            const cell = currentCellAtCursor();
+            const cell = introspectCurrentCellAtCursor(refs.get('editor'), refs.get('model'));
             if (!cell) return;
             const record = cellAffordances[cell.id];
             const anchorEl = record && record.historyBtn
@@ -595,15 +610,8 @@ export function createNotebookTabEditor({
         async save() {
             const model = refs.get('model');
             if (!model) return;
-            if (saveTimerHandle) {
-                window.clearTimeout(saveTimerHandle);
-                saveTimerHandle = null;
-            }
-            if (saveInFlight) {
-                saveQueued = true;
-                return;
-            }
-            saveInFlight = true;
+            autosaveScheduler.cancel();
+            if (!autosaveScheduler.beginSave()) return; // queued — earlier in-flight save will re-fire
             this.loading = true;
             this.saveState = 'saving';
             try {
@@ -640,11 +648,7 @@ export function createNotebookTabEditor({
                 if (window.pqlToast) window.pqlToast.error('Save failed: ' + err.message);
             } finally {
                 this.loading = false;
-                saveInFlight = false;
-                if (saveQueued) {
-                    saveQueued = false;
-                    scheduleAutosave(() => this.save());
-                }
+                autosaveScheduler.endSave(() => this.save());
             }
         },
     });
@@ -653,43 +657,11 @@ export function createNotebookTabEditor({
     //
     // Defined after the return object so the orchestrator's outer
     // shape reads top-down.  Each helper closes over `refs` plus the
-    // closure-scoped state above; none touches `this`.
-
-    function scheduleAutosave(callback) {
-        if (saveTimerHandle) window.clearTimeout(saveTimerHandle);
-        // Sprint 74: read the current per-tab debounce so the next
-        // queued flush picks up the user's settings-drawer change
-        // without restarting the editor.
-        saveTimerHandle = window.setTimeout(callback, _autosaveDebounceMs);
-    }
-
-    // Sprint 70: recompute the outline and mirror it onto the reactive
-    // root as a fresh array.  Re-splits from the live Monaco model
-    // rather than reading the closure-local ``cells`` because ``cells``
-    // is only refreshed on save / ``rescanDecorations`` — NOT on every
-    // content change.  Replay-caught: without a re-split, the outline
-    // lags behind typing until the next autosave.  A 150ms debounce
-    // (NOT the 1500ms autosave cadence) keeps the TOC feeling
-    // responsive without running the regex on every keystroke.  The
-    // ``reactiveRoot`` guard is defensive — mount() captures ``this``
-    // before content changes can fire.  See outline.js for the
-    // extractor's BUG-69-01 rationale.
-    function recomputeOutline() {
-        const model = refs.get('model');
-        const liveCells = model ? splitCells(model.getValue()) : cells;
-        outlineEntries = buildOutline(liveCells);
-        if (reactiveRoot) {
-            reactiveRoot.outline = outlineEntries.slice();
-        }
-    }
-
-    function recomputeOutlineDebounced() {
-        if (outlineTimer) window.clearTimeout(outlineTimer);
-        outlineTimer = window.setTimeout(() => {
-            outlineTimer = null;
-            recomputeOutline();
-        }, 150);
-    }
+    // closure-scoped state above; none touches `this`.  Sprint 75
+    // moved the autosave / outline / view-zone / cell-introspection /
+    // command-palette helpers into sibling modules — what remains
+    // here is the orchestration glue that owns Monaco lifecycle,
+    // kernel WS, LSP WS, and per-cell affordance handlers.
 
     function applyDecorations(monaco, ranges) {
         const editor = refs.get('editor');
@@ -727,68 +699,7 @@ export function createNotebookTabEditor({
         applyDecorations(window.monaco, ranges);
         cells = newCells;
         rebuildCellAffordances();
-        recomputeOutline();
-    }
-
-    function currentCellAtCursor() {
-        const editor = refs.get('editor');
-        const model = refs.get('model');
-        if (!editor || !model) return null;
-        const pos = editor.getPosition();
-        if (!pos) return null;
-        const above = model.getValueInRange({
-            startLineNumber: 1, startColumn: 1,
-            endLineNumber: pos.lineNumber, endColumn: model.getLineMaxColumn(pos.lineNumber),
-        }).split('\n');
-        for (let i = above.length - 1; i >= 0; i--) {
-            const m = above[i].match(CELL_MARKER_RE);
-            if (m) return { id: m[2], cellType: parseMarkerTag(m[1]) };
-        }
-        return null;
-    }
-
-    function cellTypeOf(cellId) {
-        const model = refs.get('model');
-        if (!model) return 'code';
-        const lines = model.getValue().split('\n');
-        for (const line of lines) {
-            const m = line.match(CELL_MARKER_RE);
-            if (m && m[2] === cellId) return parseMarkerTag(m[1]);
-        }
-        return 'code';
-    }
-
-    function cellSourceById(cellId) {
-        const lines = refs.get('model').getValue().split('\n');
-        const out = [];
-        let collecting = false;
-        for (const line of lines) {
-            const m = line.match(CELL_MARKER_RE);
-            if (m) {
-                if (m[2] === cellId) { collecting = true; continue; }
-                if (collecting) break;
-            } else if (collecting) {
-                out.push(line);
-            }
-        }
-        return out.join('\n');
-    }
-
-    // Sprint 71: read the ``result_var`` segment from the marker line
-    // for SQL cells.  Returns ``null`` for any cell type other than
-    // SQL or for SQL cells with no segment / an invalid identifier.
-    function cellResultVarById(cellId) {
-        const model = refs.get('model');
-        if (!model) return null;
-        const lines = model.getValue().split('\n');
-        for (const line of lines) {
-            const m = line.match(CELL_MARKER_RE);
-            if (m && m[2] === cellId) {
-                if (parseMarkerTag(m[1]) !== 'sql') return null;
-                return m[3] || null;
-            }
-        }
-        return null;
+        outlineRecomputer.recompute();
     }
 
     // Sprint 71: send the matching frame for a parsed cell.  Single
@@ -807,28 +718,6 @@ export function createNotebookTabEditor({
         }
     }
 
-    function cellEndLine(cellId) {
-        const lines = refs.get('model').getValue().split('\n');
-        let start = null;
-        for (let i = 0; i < lines.length; i++) {
-            const m = lines[i].match(CELL_MARKER_RE);
-            if (m) {
-                if (start !== null) return i;
-                if (m[2] === cellId) start = i + 1;
-            }
-        }
-        return start !== null ? lines.length : null;
-    }
-
-    function findCellMarkerLine(cellId) {
-        const lines = refs.get('model').getValue().split('\n');
-        for (let i = 0; i < lines.length; i++) {
-            const m = lines[i].match(CELL_MARKER_RE);
-            if (m && m[2] === cellId) return i + 1;
-        }
-        return 1;
-    }
-
     // Sprint 73: open the per-cell run-history popover.  Resolves
     // the current Monaco source for diffing against historical
     // snapshots; ``onRerun`` ships the historical source straight to
@@ -842,9 +731,9 @@ export function createNotebookTabEditor({
             path,
             cellId,
             anchorEl,
-            currentSource: cellSourceById(cellId),
+            currentSource: introspectCellSourceById(refs.get('model'), cellId),
             onRerun: (historicalSource) => {
-                clearOutput(cellId);
+                zoneManager.clearOutput(cellId);
                 sendKernelFrame({
                     type: 'execute',
                     cell_id: cellId,
@@ -864,7 +753,7 @@ export function createNotebookTabEditor({
         const model = refs.get('model');
         const monaco = window.monaco;
         if (!editor || !model || !monaco) return;
-        const lineNumber = findCellMarkerLine(cellId);
+        const lineNumber = introspectFindCellMarkerLine(model, cellId);
         const lineText = model.getLineContent(lineNumber);
         const m = lineText.match(CELL_MARKER_RE);
         if (!m || parseMarkerTag(m[1]) !== 'sql') return;
@@ -876,82 +765,6 @@ export function createNotebookTabEditor({
             lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber),
         );
         editor.executeEdits('result-var-edit', [{ range, text: newLine, forceMoveMarkers: true }]);
-    }
-
-    function ensureOutputZone(cellId, afterLineNumber) {
-        const editor = refs.get('editor');
-        let zone = outputZones[cellId];
-        if (zone) {
-            // Re-anchor if the cell's end line has shifted.
-            editor.changeViewZones((accessor) => {
-                accessor.removeZone(zone.zoneId);
-                zone.zoneId = accessor.addZone({
-                    afterLineNumber,
-                    heightInPx: Math.max(zone.domNode.offsetHeight, 24),
-                    domNode: zone.domNode,
-                });
-            });
-            return zone.domNode;
-        }
-        const dom = document.createElement('div');
-        dom.className = 'pql-nbedit-output';
-        let zoneId = null;
-        editor.changeViewZones((accessor) => {
-            zoneId = accessor.addZone({
-                afterLineNumber,
-                heightInPx: 24,
-                domNode: dom,
-            });
-        });
-        outputZones[cellId] = { zoneId, domNode: dom };
-        return dom;
-    }
-
-    function layoutOutputZone(cellId) {
-        const zone = outputZones[cellId];
-        if (!zone) return;
-        refs.get('editor').changeViewZones((accessor) => {
-            accessor.layoutZone(zone.zoneId);
-        });
-    }
-
-    function clearOutput(cellId) {
-        const zone = outputZones[cellId];
-        if (!zone) return;
-        zone.domNode.innerHTML = '';
-        layoutOutputZone(cellId);
-    }
-
-    function clearAllOutputs() {
-        for (const cellId of Object.keys(outputZones)) {
-            clearOutput(cellId);
-        }
-    }
-
-    function appendOutput(cellId, msgType, content) {
-        const endLine = cellEndLine(cellId);
-        if (endLine === null) return;
-        const dom = ensureOutputZone(cellId, endLine);
-        appendOutputFrame(dom, msgType, content);
-        layoutOutputZone(cellId);
-    }
-
-    function replayPersistedOutputs() {
-        if (!initialOutputs || initialOutputs.length === 0) return;
-        // Pick the latest kernel_session_id we see in the replay.
-        // If the current live WS session differs (hello arrives later)
-        // we still paint the most recent persisted snapshot — the
-        // first live execute will clear and re-emit.
-        let latestSession = null;
-        for (const row of initialOutputs) {
-            if (!latestSession || row.kernel_session_id > latestSession) {
-                latestSession = row.kernel_session_id;
-            }
-        }
-        for (const row of initialOutputs) {
-            if (row.kernel_session_id !== latestSession) continue;
-            appendOutput(row.cell_id, row.msg_type, row.content);
-        }
     }
 
     // ─────────── per-cell affordances (Sprint 66) ───────────
@@ -1011,15 +824,15 @@ export function createNotebookTabEditor({
                 alpine.insertCellAfter(cellId, typeId);
             },
             // Sprint 69: pin a markdown cell into source view.  The
-            // flag lives on markdownZones[cellId] so it survives
-            // rebuilds within the session but not page reload.
+            // flag lives on the markdown zone record (Sprint 75: owned
+            // by the zoneManager closure) so it survives rebuilds
+            // within the session but not page reload.
             onTogglePin: (cellId) => {
-                const zone = markdownZones[cellId];
-                if (!zone) return;
-                zone.editModePinned = !zone.editModePinned;
+                const pinned = zoneManager.toggleMarkdownPin(cellId);
+                if (pinned === null) return;
                 const record = cellAffordances[cellId];
-                if (record) setPinState(record, zone.editModePinned);
-                updateHiddenAreas();
+                if (record) setPinState(record, pinned);
+                zoneManager.updateHiddenAreas();
             },
             // Sprint 71: persist the result_var input back into the
             // marker line via a Monaco edit op so on-disk state stays
@@ -1048,14 +861,14 @@ export function createNotebookTabEditor({
                     cell.typeId,
                     cell.markerLine,
                     handlers,
-                    cell.typeId === 'sql' ? cellResultVarById(cell.id) : null,
+                    cell.typeId === 'sql' ? introspectCellResultVarById(model, cell.id) : null,
                 );
                 cellAffordances[cell.id] = record;
                 // Sprint 69: a freshly mounted markdown toolbar must
                 // mirror any pin flag already on the zone (e.g. after
                 // a content edit triggered a full rebuild).
                 if (cell.typeId === 'markdown') {
-                    const z = markdownZones[cell.id];
+                    const z = zoneManager.getMarkdownZone(cell.id);
                     if (z && z.editModePinned) setPinState(record, true);
                 }
             } else {
@@ -1076,122 +889,6 @@ export function createNotebookTabEditor({
                 moveInserter(editor, record.inserterZone, afterLine);
             }
         }
-    }
-
-    // ─────────── markdown preview zones + hidden-areas ───────────
-
-    function rebuildMarkdownZones() {
-        const editor = refs.get('editor');
-        const model = refs.get('model');
-        if (!editor || !model) return;
-        const lines = model.getValue().split('\n');
-        const cellList = [];
-        let current = null;
-        for (let i = 0; i < lines.length; i++) {
-            const m = lines[i].match(CELL_MARKER_RE);
-            if (m) {
-                if (current) {
-                    current.endLine = i;
-                    cellList.push(current);
-                }
-                current = parseMarkerTag(m[1]) === 'markdown'
-                    ? { id: m[2], markerLine: i + 1, sourceStart: i + 2, endLine: lines.length }
-                    : null;
-            }
-        }
-        if (current) cellList.push(current);
-
-        const alive = new Set(cellList.map((c) => c.id));
-        for (const cellId of Object.keys(markdownZones)) {
-            if (!alive.has(cellId)) {
-                const z = markdownZones[cellId];
-                editor.changeViewZones((acc) => acc.removeZone(z.zoneId));
-                delete markdownZones[cellId];
-            }
-        }
-
-        for (const cell of cellList) {
-            // Strip jupytext's leading "# " from each markdown body
-            // line so the rendered markdown matches how the user sees
-            // it in .ipynb tools.
-            const body = cell.sourceStart <= cell.endLine
-                ? lines.slice(cell.sourceStart - 1, cell.endLine)
-                      .map((l) => l.replace(/^#\s?/, ''))
-                      .join('\n')
-                : '';
-            let zone = markdownZones[cell.id];
-            if (!zone) {
-                const dom = document.createElement('div');
-                dom.className = 'pql-nbedit-md-preview';
-                dom.addEventListener('click', () => focusMarkdownSource(cell.id));
-                let zoneId = null;
-                editor.changeViewZones((acc) => {
-                    zoneId = acc.addZone({
-                        afterLineNumber: cell.markerLine,
-                        heightInPx: 40,
-                        domNode: dom,
-                    });
-                });
-                zone = { zoneId, domNode: dom, editModePinned: false };
-                markdownZones[cell.id] = zone;
-            } else {
-                editor.changeViewZones((acc) => {
-                    acc.removeZone(zone.zoneId);
-                    zone.zoneId = acc.addZone({
-                        afterLineNumber: cell.markerLine,
-                        heightInPx: Math.max(zone.domNode.offsetHeight, 40),
-                        domNode: zone.domNode,
-                    });
-                });
-            }
-            zone.sourceRange = { startLine: cell.sourceStart, endLine: cell.endLine };
-            zone.domNode.innerHTML = renderMarkdown(body)
-                || '<em class="text-muted">Empty markdown cell — click to edit.</em>';
-            editor.changeViewZones((acc) => acc.layoutZone(zone.zoneId));
-        }
-    }
-
-    function focusMarkdownSource(cellId) {
-        const zone = markdownZones[cellId];
-        if (!zone || !zone.sourceRange) return;
-        const editor = refs.get('editor');
-        editor.setPosition({
-            lineNumber: zone.sourceRange.startLine,
-            column: 1,
-        });
-        editor.focus();
-        // setPosition fires onDidChangeCursorPosition which in turn
-        // re-computes hidden areas, so the click-to-edit unhide is
-        // automatic.
-    }
-
-    function updateHiddenAreas() {
-        const editor = refs.get('editor');
-        if (!editor) return;
-        const pos = editor.getPosition();
-        const cursorLine = pos ? pos.lineNumber : 1;
-        const hidden = [];
-        for (const cellId of Object.keys(markdownZones)) {
-            const z = markdownZones[cellId];
-            if (!z.sourceRange) continue;
-            // Sprint 69: a pinned cell stays unhidden regardless of
-            // cursor position — the user explicitly clicked the
-            // pencil to keep its source visible while typing
-            // elsewhere.
-            if (z.editModePinned) continue;
-            const { startLine, endLine } = z.sourceRange;
-            if (cursorLine < startLine || cursorLine > endLine) {
-                hidden.push({
-                    startLineNumber: startLine,
-                    endLineNumber: endLine,
-                    startColumn: 1,
-                    endColumn: 1,
-                });
-            }
-        }
-        // setHiddenAreas hides the ranges purely at the view layer —
-        // the model (and therefore getValue() + save) stays intact.
-        editor.setHiddenAreas(hidden);
     }
 
     // ─────────────────── kernel WebSocket ───────────────────
@@ -1237,7 +934,7 @@ export function createNotebookTabEditor({
                 break;
             case 'restarted':
                 alpine.kernelSessionId = frame.kernel_session_id;
-                clearAllOutputs();
+                zoneManager.clearAllOutputs();
                 alpine.executingCells = {};
                 alpine.kernelStatus = 'ready';
                 // Sprint 66: kernel was reset — counters and elapsed
@@ -1371,7 +1068,7 @@ export function createNotebookTabEditor({
             }
             return;
         }
-        appendOutput(frame.cell_id, frame.msg_type, frame.content);
+        zoneManager.appendOutput(frame.cell_id, frame.msg_type, frame.content);
     }
 
     function handleNamespaceFrame(alpine, frame) {
@@ -1504,44 +1201,4 @@ export function createNotebookTabEditor({
         });
     }
 
-    // ─────────────── command palette registrations ───────────────
-
-    function registerPaletteActions(monaco, editor, alpine) {
-        // Monaco's built-in command palette opens on F1 / Ctrl+Shift+P;
-        // addAction registrations show up there automatically, and
-        // each action can bind its own keybindings if we want one.
-        const add = (id, label, run, keybindings) =>
-            editor.addAction({
-                id: `pql.${id}`,
-                label,
-                keybindings: keybindings || [],
-                contextMenuGroupId: 'pql',
-                run: () => run(),
-            });
-        add('runAll', 'PointlesSQL: Run all cells', () => alpine.runAllCells());
-        add('runAbove', 'PointlesSQL: Run all cells above cursor', () => alpine.runCellsAbove());
-        add('clearOutputs', 'PointlesSQL: Clear outputs of current cell', () =>
-            alpine.clearCurrentCellOutputs());
-        add('restartKernel', 'PointlesSQL: Restart kernel', () => alpine.restartKernel());
-        add('insertBelow', 'PointlesSQL: Insert cell below', () => alpine.addCellBelow());
-        add('insertAbove', 'PointlesSQL: Insert cell above', () => alpine.addCellAbove());
-        add('insertMarkdown', 'PointlesSQL: Insert markdown cell below', () =>
-            alpine.addCellAbove(true));
-        add('insertFromCatalog', 'PointlesSQL: Insert from catalog…', () =>
-            alpine.openCatalogInsert(),
-            [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI]);
-        add('toggleVariables', 'PointlesSQL: Toggle variable explorer', () =>
-            alpine.toggleVariables());
-        // Sprint 74: surface the post-Sprint-70 / -73 / -74 commands
-        // in Monaco's command palette with stable ``pql.*`` ids.
-        add('toggleOutline', 'PointlesSQL: Toggle outline / table of contents', () =>
-            alpine.toggleOutline());
-        add('openHistory', 'PointlesSQL: Show run history for current cell', () =>
-            alpine.openHistoryForCurrentCell());
-        add('openSettings', 'PointlesSQL: Open editor settings…', () =>
-            alpine.openSettings());
-        add('openKeymap', 'PointlesSQL: Show keymap overlay…', () =>
-            alpine.openKeymap(),
-            [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.Slash]);
-    }
 }
