@@ -3530,6 +3530,49 @@ PointlesSQL
 │   ├── Sprint 91 — frontend sql_editor.js → 4-module split        ✅ done (0d5700d)
 │
 │   ├── Sprint 92 — frontend federation.js + command_palette       ✅ done (47cfdad)
+│
+│   ├── Sprint 93 — notebook_editor.html modals → partial          ✅ done (pending-commit)
+│       Tranche-4 of the Sprint-76 frontend modularisation plan.
+│       Narrowed from the sketched 7-partial split down to the
+│       lowest-risk extract: the four shell-scope modals (New
+│       notebook, Rename notebook, Delete confirmation, Close-tab
+│       with-unsaved-changes).
+│
+│       - **New partial** ``partials/_notebook_editor_modals.html``
+│         (186 LOC) — all four modals.  Bootstrap-modal-Alpine
+│         trap memorised: every ``.modal`` toggles via
+│         ``:class="{ 'd-block': flag }"`` rather than ``x-show``
+│         (Alpine 3.14 strips inline ``display:block`` on
+│         false→true and the .modal stylesheet's ``display:none``
+│         then wins — BUG-67-01 from the original Sprint 67 fix).
+│       - ``pages/notebook_editor.html``: 992 → 819 LOC (-173).
+│         The modal block (lines 784-957 pre-split) becomes a
+│         single ``{% include "partials/_notebook_editor_modals.html" %}``
+│         line.
+│
+│       **Deferred to a follow-up sprint** (each carries
+│       Alpine x-data scope risk that warrants its own
+│       playbook-replay):
+│
+│       - ``_notebook_toolbar.html`` (~70) — sits inside the
+│         ``notebookTabEditor`` per-tab scope, not the shell.
+│       - ``_notebook_file_tree.html`` (~120) — large block with
+│         nested ``x-for`` + ``x-if`` and own button bar.
+│       - ``_notebook_variables_explorer.html`` (~50) — tab-scope.
+│       - ``_notebook_outline_sidebar.html`` (~40) — tab-scope.
+│       - ``_notebook_catalog_modal.html`` (~40) — tab-scope.
+│       - ``_notebook_run_history_popover.html`` (~60) — body-anchored
+│         popover, JS-driven; needs deeper inspection of the
+│         Sprint-73 wiring before extraction.
+│
+│       **Static gates (all green):** ``jinja2.Environment.get_template()``
+│       parses both the page and the new partial cleanly; pure
+│       move so behaviour is byte-identical.  Replay of
+│       ``docs/e2e-walkthroughs/notebook_editor.md`` deferred to
+│       whenever a contributor next touches the file-tree CRUD
+│       flow — the four modals carry the
+│       ``:class="{ 'd-block': flag }"`` discipline verbatim from
+│       BUG-67-01 so the Bootstrap-modal trap stays defused.
 │       Tranche-3 of the Sprint-76 frontend modularisation plan.
 │       Two unrelated splits in one sprint because both stood at
 │       the awkward 200-LOC inline-script + multi-export shape:
