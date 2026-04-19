@@ -92,6 +92,11 @@ include = ["pointlessql", "frontend", "notebooks", "LICENSE", "README.md"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
+# Sprint 69 housekeeping: per-developer scratch notebooks under
+# ``notebooks/scratch*`` are workspace state, not shipped code, and
+# don't carry module docstrings — exclude them from lint.  Tracked
+# notebooks (e.g. ``getting_started.ipynb``) stay in scope.
+extend-exclude = ["notebooks/scratch*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "D"]

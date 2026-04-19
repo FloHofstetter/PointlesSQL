@@ -39,6 +39,14 @@ notebooks/smoke_papermill.ipynb
 notebooks/smoke_typed_params.ipynb
 notebooks/bad_papermill.ipynb
 
+# Workspace scratch notebooks (Sprint 69 housekeeping). Anything
+# named ``scratch*`` under ``notebooks/`` is per-developer playground
+# state — created by replays / experiments, never tracked.  Also
+# ignore ``playbook_upload.ipynb`` which the Sprint-23 jobs/upload
+# playbook drops into the workspace.
+notebooks/scratch*
+notebooks/playbook_upload.ipynb
+
 # Monaco editor (Phase 12.6 Sprint 58). The ~14 MB AMD distribution
 # lives under frontend/js/vendor/monaco/ and is fetched by
 # scripts/vendor-monaco.sh on first checkout and on MONACO_VERSION
