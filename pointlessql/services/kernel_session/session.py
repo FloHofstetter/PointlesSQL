@@ -1,4 +1,4 @@
-"""Per-notebook ipykernel subprocess manager for the native editor.
+"""One ipykernel subprocess wrapped as :class:`KernelSession`.
 
 Phase 12.6 Sprint 59 — second layer of the native notebook story.
 One ipykernel subprocess runs per ``(user_id, notebook_path)`` pair
@@ -6,23 +6,10 @@ One ipykernel subprocess runs per ``(user_id, notebook_path)`` pair
 classic-style-per-tab). Two browser tabs of the same ``.py`` share
 one kernel, one namespace, one ``kernel_session_id``.
 
-The module has two halves:
-
-* :class:`KernelSession` wraps a single kernel subprocess and
-  exposes async iopub / shell streams as subscriber queues. A
-  single pump task reads from ZMQ and fans out to every subscriber,
-  which lets N browser tabs watch the same kernel without starving
-  each other on the ZMQ queue.
-* :class:`KernelRegistry` owns the dict of live sessions keyed by
-  ``(user_id, notebook_path)``. Registered on ``app.state`` from
-  the FastAPI lifespan so shutdown is coordinated with the rest of
-  the app.
-
-Sprint 59 deliberately stops at text / stream / error outputs
-flowing ephemerally to the connected client. Sprint 60 persists
-outputs in SQLite keyed by ``(file_path, cell_id,
-kernel_session_id)`` — the schema is locked in ADR 0001 already,
-so this sprint writes its in-memory shape against it without fuss.
+Sprint 77 split this off from the original ``kernel_session.py``:
+this module owns the lifecycle + ZMQ pump tasks; the registry
+that maps ``(user_id, path) → KernelSession`` lives in
+``registry.py``; message dataclasses live in ``messages.py``.
 """
 
 from __future__ import annotations
@@ -31,19 +18,20 @@ import asyncio
 import logging
 import os
 import uuid
-from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from jupyter_client.asynchronous.client import AsyncKernelClient  # type: ignore[import-untyped]
 from jupyter_client.manager import AsyncKernelManager  # type: ignore[import-untyped]
+
+from pointlessql.services.kernel_session.messages import (
+    KernelMessage,
+    Subscription,
+)
 
 logger = logging.getLogger(__name__)
 
 _KERNEL_READY_TIMEOUT = 30.0
 _SHUTDOWN_TIMEOUT = 5.0
-_SUBSCRIBER_QUEUE_MAXSIZE = 1024
 _BOOTSTRAP_TIMEOUT = 10.0
 
 
@@ -71,51 +59,6 @@ def __pql_sql_run(query, *, approved_tables, result_var, max_rows):
     display(df)
     return None
 """
-
-
-@dataclass
-class KernelMessage:
-    """A single iopub / shell message on its way from kernel to client.
-
-    Attributes:
-        cell_id: Source cell's UUID when the kernel's parent message
-            originated from a tracked ``execute_request``. Kernel-
-            initiated messages (status heartbeats, display from
-            untracked code) carry ``None``.
-        channel: ``"iopub"`` or ``"shell"``.
-        msg_type: Raw Jupyter msg type (``stream``,
-            ``execute_result``, ``display_data``, ``error``,
-            ``status``, ``execute_input``, ``execute_reply``, …).
-        content: Raw message content dict — structure varies by
-            msg_type. See the Jupyter messaging spec.
-        metadata: Raw metadata dict. Rare; usually empty.
-        parent_msg_id: The ``execute_request`` msg_id this is a reply
-            to, when applicable.
-    """
-
-    cell_id: str | None
-    channel: str
-    msg_type: str
-    content: dict[str, Any]
-    metadata: dict[str, Any]
-    parent_msg_id: str | None
-
-
-@dataclass(eq=False)
-class _Subscription:
-    """A pair of per-client queues fed by the session pump tasks.
-
-    ``eq=False`` keeps the dataclass hashable by object identity so
-    instances can live in the ``set[_Subscription]`` on
-    :class:`KernelSession` without colliding on value-equality.
-    """
-
-    iopub: asyncio.Queue[KernelMessage] = field(
-        default_factory=lambda: asyncio.Queue(maxsize=_SUBSCRIBER_QUEUE_MAXSIZE)
-    )
-    shell: asyncio.Queue[KernelMessage] = field(
-        default_factory=lambda: asyncio.Queue(maxsize=_SUBSCRIBER_QUEUE_MAXSIZE)
-    )
 
 
 class KernelSession:
@@ -166,7 +109,7 @@ class KernelSession:
         self._kc: AsyncKernelClient | None = None
         self.session_id: str = str(uuid.uuid4())
         self._msg_to_cell: dict[str, str] = {}
-        self._subscribers: set[_Subscription] = set()
+        self._subscribers: set[Subscription] = set()
         self._iopub_task: asyncio.Task[None] | None = None
         self._shell_task: asyncio.Task[None] | None = None
         self._exec_lock = asyncio.Lock()
@@ -294,7 +237,7 @@ class KernelSession:
                         "subscriber queue full on %s — dropping message", channel
                     )
 
-    def subscribe(self) -> _Subscription:
+    def subscribe(self) -> Subscription:
         """Register a new subscriber for iopub + shell streams.
 
         Returns:
@@ -302,11 +245,11 @@ class KernelSession:
             ``sub.iopub.get()`` / ``sub.shell.get()``. Unsubscribe
             via :meth:`unsubscribe` when the client disconnects.
         """
-        sub = _Subscription()
+        sub = Subscription()
         self._subscribers.add(sub)
         return sub
 
-    def unsubscribe(self, sub: _Subscription) -> None:
+    def unsubscribe(self, sub: Subscription) -> None:
         """Drop a subscriber handle.
 
         Args:
@@ -392,80 +335,3 @@ class KernelSession:
             self._user_email,
             self._notebook_path,
         )
-
-
-class KernelRegistry:
-    """Process-global map of live kernels, keyed by ``(user_id, path)``.
-
-    One instance lives on ``app.state.kernel_registry`` for the
-    lifetime of the FastAPI process. The lifespan context manager
-    creates it, hands it to the WS route handler, and calls
-    :meth:`shutdown_all` on app exit to clean up every in-flight
-    subprocess.
-
-    Args:
-        notebooks_dir: Kernel working directory root — the cwd
-            every spawned kernel inherits.
-    """
-
-    def __init__(self, notebooks_dir: Path) -> None:
-        self._notebooks_dir = notebooks_dir
-        self._sessions: dict[tuple[int, str], KernelSession] = {}
-        self._lock = asyncio.Lock()
-
-    async def get_or_start(
-        self,
-        user_id: int,
-        user_email: str,
-        notebook_path: str,
-    ) -> KernelSession:
-        """Return the kernel for ``(user_id, notebook_path)``, launching if absent.
-
-        Args:
-            user_id: Authenticated user id.
-            user_email: Used as ``POINTLESSQL_PRINCIPAL`` on start.
-            notebook_path: Relative notebook path (stable key).
-
-        Returns:
-            A running :class:`KernelSession`.
-        """
-        key = (user_id, notebook_path)
-        async with self._lock:
-            session = self._sessions.get(key)
-            if session is None:
-                session = KernelSession(
-                    user_email=user_email,
-                    notebook_path=notebook_path,
-                    cwd=self._notebooks_dir,
-                )
-                await session.start()
-                self._sessions[key] = session
-            return session
-
-    async def shutdown_all(self) -> None:
-        """Tear down every live kernel. Called from the FastAPI lifespan."""
-        sessions = list(self._sessions.values())
-        self._sessions.clear()
-        await asyncio.gather(
-            *(s.shutdown() for s in sessions),
-            return_exceptions=True,
-        )
-
-
-async def drain(
-    queue: asyncio.Queue[KernelMessage],
-) -> AsyncIterator[KernelMessage]:
-    """Yield kernel messages forever until the caller cancels.
-
-    Small helper kept here rather than in the WS handler so the
-    await-on-queue pattern has a single, documented home.
-
-    Args:
-        queue: A subscriber queue returned from
-            :meth:`KernelSession.subscribe`.
-
-    Yields:
-        Each :class:`KernelMessage` in arrival order.
-    """
-    while True:
-        yield await queue.get()

@@ -2737,16 +2737,19 @@ PointlesSQL
 │       file split); a behaviour-touching change in the same
 │       neighbourhood would still warrant the playbook gate.
 │
-├── Phase 12.9 — LLM-friendly modularization (notebook carve-up II)  🔜 in progress
+├── Phase 12.9 — LLM-friendly modularization (full-stack carve-up)  🔜 in progress
 │   │
 │   │   Follow-up to Phase 12.8.  The Sprint-75 carve-up brought
 │   │   notebook/main.js from 1547 → 1204 LOC but the file was still
 │   │   the single largest module in the frontend.  Phase 12.9 targets
 │   │   aggressive modularization for LLM-friendliness: small,
 │   │   single-purpose modules so an agent editing one concern doesn't
-│   │   load the whole orchestrator into context.  Plan tranches
-│   │   documented in
-│   │   [.claude/plans/wir-haben-in-diesem-warm-dream.md](/home/flo/.claude/plans/wir-haben-in-diesem-warm-dream.md).
+│   │   load the whole orchestrator into context.  Sprint 76 closed the
+│   │   first frontend tranche; Sprint 77+ extends the work backend-side
+│   │   (api/main.py 6.6k LOC, scheduler.py 1.8k LOC, models.py, every
+│   │   service file >400 LOC) and finishes Tranches 2-6 of the
+│   │   original frontend plan.  19-sprint plan documented in
+│   │   [.claude/plans/ich-m-chte-eine-weitere-precious-goose.md](/home/flo/.claude/plans/ich-m-chte-eine-weitere-precious-goose.md).
 │   │
 │   └── Sprint 76 — notebook/main.js → 4 sub-modules + toast helper   ✅ done (pending-commit)
 │       Four sibling modules carved out of main.js + a cross-cutting
@@ -2805,6 +2808,41 @@ PointlesSQL
 │       replaces sendKernelFrame/sendLspFrame closures); the first
 │       Phase 12.9 sprint that touches x-data/template structure
 │       will carry a playbook replay.
+│
+│   └── Sprint 77 — services/kernel_session.py → 3 sub-modules    ✅ done (pending-commit)
+│       Pilot of the backend modularization arc (Sprints 77-90).
+│       Smallest isolated split (471 LOC, one external caller) —
+│       validates the package + ``__init__.py`` re-export recipe
+│       before applying the same pattern to ``models.py``,
+│       ``scheduler.py``, and ``api/main.py``.
+│
+│       **Package** ``pointlessql/services/kernel_session/``
+│       replaces the single 472-LOC module:
+│       - ``messages.py`` (61 LOC) — :class:`KernelMessage`,
+│         :class:`Subscription` (renamed from ``_Subscription`` —
+│         the leading underscore conveyed file-private scope and is
+│         no longer accurate now that :class:`KernelSession` imports
+│         it across modules; pyright ``reportPrivateUsage`` flagged
+│         this immediately).
+│       - ``session.py`` (337 LOC) — :class:`KernelSession`
+│         lifecycle + ZMQ pump tasks + bootstrap code +
+│         ``_KERNEL_READY_TIMEOUT``/``_SHUTDOWN_TIMEOUT``/
+│         ``_BOOTSTRAP_TIMEOUT`` constants.
+│       - ``registry.py`` (94 LOC) — :class:`KernelRegistry` +
+│         :func:`drain` helper.
+│       - ``__init__.py`` (38 LOC) — re-exports the full public
+│         surface so ``from pointlessql.services import
+│         kernel_session as kernel_session_service`` in
+│         [pointlessql/api/main.py:45](pointlessql/api/main.py#L45)
+│         continues to resolve every symbol unchanged.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 5 warnings (all from jupyter_client's
+│       partially-unknown async types — pre-existing), ``pydoclint``
+│       0 violations, smoke import via
+│       ``python -c "from pointlessql.services import kernel_session"``.
+│       No tests directly import this module; no Alembic, no
+│       template, no JS touched.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

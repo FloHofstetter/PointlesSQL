@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 77: services/kernel_session.py → package
+
+Pilot of the backend modularization arc (Sprints 77-90). The single
+472-LOC ``services/kernel_session.py`` module became the package
+``services/kernel_session/`` with three sibling modules + an
+``__init__.py`` re-export shim. No behaviour change, no Alembic, no
+new dependencies; pure structural refactor.
+
+- **New package layout.**
+  [messages.py](pointlessql/services/kernel_session/messages.py)
+  (61 LOC) carries ``KernelMessage`` and ``Subscription``
+  dataclasses + the ``_SUBSCRIBER_QUEUE_MAXSIZE`` constant.
+  [session.py](pointlessql/services/kernel_session/session.py)
+  (337 LOC) owns the ``KernelSession`` lifecycle, ZMQ pump
+  tasks, bootstrap helper code, and the
+  ``_KERNEL_READY_TIMEOUT``/``_SHUTDOWN_TIMEOUT``/``_BOOTSTRAP_TIMEOUT``
+  constants.
+  [registry.py](pointlessql/services/kernel_session/registry.py)
+  (94 LOC) owns ``KernelRegistry`` + the ``drain`` async iterator.
+
+- **Public surface preserved.** The lone external caller
+  [pointlessql/api/main.py:45](pointlessql/api/main.py#L45)
+  imports the module as ``kernel_session_service`` and accesses
+  ``KernelRegistry``, ``KernelMessage``, ``KernelSession``,
+  ``drain`` through that namespace. The new
+  [__init__.py](pointlessql/services/kernel_session/__init__.py)
+  re-exports the full surface so the import resolves unchanged.
+  No tests directly import this module.
+
+- **Renamed ``_Subscription`` → ``Subscription``.** The leading
+  underscore conveyed file-private scope, which is no longer
+  accurate now that ``KernelSession`` imports it across modules.
+  Pyright's ``reportPrivateUsage`` rule flagged this immediately
+  on the first split attempt.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 5 warnings (all from ``jupyter_client``'s partially-
+  unknown async types — pre-existing), ``pydoclint`` 0 violations,
+  smoke import via ``python -c "from pointlessql.services import
+  kernel_session"``.
+
 ### Refactored — Phase 12.9 / Sprint 76: notebook/main.js → 4 sub-modules + toast helper
 
 Follow-up to Phase 12.8.  Four sibling modules carved out of
