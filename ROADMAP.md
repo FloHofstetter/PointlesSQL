@@ -3526,6 +3526,41 @@ PointlesSQL
 │       suites unaffected.
 │
 │   └── Sprint 90 — api/main.py admin/home/catalog-html + endgame ✅ done (9c8e997)
+│
+│   ├── Sprint 91 — frontend sql_editor.js → 4-module split        ✅ done (pending-commit)
+│       Tranche-2 of the Sprint-76 frontend modularisation plan.
+│       The 608-LOC ``frontend/js/sql_editor.js`` factory splits
+│       into a 86-LOC façade + four sibling ESM modules under the
+│       same namespace; ``bootstrap.js`` re-attaches ``sqlEditor``
+│       unchanged so the template's ``x-data="sqlEditor"`` is
+│       invisible to the carve-up.
+│
+│       - ``sql_editor_monaco.js`` (198 LOC) — CodeMirror lifecycle
+│         + autocomplete + Cmd-Enter/Cmd-S keymap + ``c`` toggle +
+│         catalog-tree completions refresh + getSQL/setSQL.
+│       - ``sql_editor_execute.js`` (131 LOC) — ``run({explain})``
+│         + ``cancel()`` + elapsed counter + ``_generateQueryId``
+│         + ``formatCell``.
+│       - ``sql_editor_saved.js`` (89 LOC) — ``/api/saved-queries``
+│         CRUD + load-into-editor + Save modal.
+│       - ``sql_editor_chart.js`` (189 LOC) — Chart.js view, axis
+│         auto-pick, bar/line/pie/scatter render, PNG download,
+│         debounced PATCH /api/queries/{id}/chart-config,
+│         ``seedFromHistory`` deep-link entry point.
+│
+│       Closure state from the pre-split shape (``cmView`` +
+│       ``catalogCompletions``) lives on ``this._cmView`` +
+│       ``this._catalogCompletions`` so all four sub-modules can
+│       reach the EditorView via ``this``.  Each sub-module
+│       exports a methods object the façade spreads into the
+│       returned x-data shape.
+│
+│       **Static gates (all green):** ``node --check`` passes for
+│       all five files, ``bash scripts/check-frontend-bootstrap-order.sh``
+│       still green (line 112 bootstrap.js precedes line 113 Alpine
+│       CDN in base.html).  Playbook replay deferred to whenever
+│       a contributor next touches /sql; the split is a pure move
+│       so behaviour is byte-identical.
 │       Final api/main.py decomposition slice.  Three new modules
 │       lift out everything left:
 │
