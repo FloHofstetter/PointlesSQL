@@ -3533,7 +3533,7 @@ PointlesSQL
 │
 │   ├── Sprint 93 — notebook_editor.html modals → partial          ✅ done (d14f4e7)
 │
-│   ├── Sprint 94 — page templates → ESM (4 of 7 pilots)            ✅ done (pending-commit)
+│   ├── Sprint 94 — page templates → ESM (4 of 7 pilots)            ✅ done (33a0a6c)
 │       Tranche-5 of the Sprint-76 frontend modularisation plan.
 │       Four of the seven sketched page-template inline scripts
 │       lift into ``frontend/js/pages/*.js`` ESM modules.  Each
