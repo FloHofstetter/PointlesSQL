@@ -1323,3 +1323,124 @@ Caught at the L4 step on the first replay.
 - [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden pattern to cover ``this._resultVarTimers``
   / ``this._sqlBootstrap``.
+
+## Part M — Sprint 72: ipywidgets minimal placeholder
+
+**Preconditions.**
+
+- ``ipywidgets>=8.1`` is in the resolved environment (added to
+  ``pyproject.toml`` as part of this sprint; ``uv sync`` after
+  pulling).
+- Fresh kernel — restart it via the toolbar after the dependency
+  bump so the kernel subprocess inherits the new ``sys.path``.
+- ``scratch.py`` open in [/notebook/editor](../../).
+
+**M1 — Synthetic widget bundle renders the placeholder card.**
+Insert a Code cell, type:
+
+```python
+from IPython.display import display
+display({'application/vnd.jupyter.widget-view+json':
+         {'model_id': 'abc12345xyz9876', 'version_major': 2,
+          'version_minor': 0}}, raw=True)
+```
+
+Run.  Assert: status pill flips ``running`` → ``ok``; output zone
+contains a ``.pql-nbedit-output-widget-placeholder`` card showing
+``model_id: abc12345…`` and the disclaimer ``Interactive widgets
+will render in a future release. Install widgets in the kernel to
+see live updates here.``  No ``error`` mime; no console errors.
+
+**M2 — Real ``ipywidgets.IntSlider``.**  Insert a Code cell:
+
+```python
+import ipywidgets as w
+w.IntSlider(value=42, min=0, max=100)
+```
+
+Run.  Assert: status pill flips ``ok``; output zone shows the
+placeholder card with the kernel-emitted widget ``model_id``.
+Behind the scenes the kernel emits ``execute_result`` with BOTH
+``application/vnd.jupyter.widget-view+json`` and ``text/plain``
+("IntSlider(value=42)"); the renderer's new branch picks the
+widget bundle over the text fallback so users do not see the bare
+repr leak through.
+
+**M3 — Comm frames silently swallowed.**  Run:
+
+```python
+slider = w.IntSlider()
+slider.observe(lambda c: print(c))
+slider
+```
+
+Assert: placeholder card renders for the slider; no client-side
+crash; **DevTools console shows no ``comm_open`` / ``comm_msg`` /
+``comm_close`` entries** — the WS forwards them as before but the
+client's ``renderKernelMsg`` swallows them (a single
+``IntSlider()`` instantiation emits dozens; logging would flood
+DevTools and obscure real errors).  ``slider.observe(...)``'s
+callback never fires because no real widget-manager round-trip
+exists yet — this is expected; the placeholder text says so.
+
+**M4 — Missing-``model_id`` fallback.**  Send a malformed widget
+bundle:
+
+```python
+display({'application/vnd.jupyter.widget-view+json': {}}, raw=True)
+```
+
+Assert: output zone shows a placeholder card whose text is exactly
+``Widget output (unrenderable)`` (no model_id, no disclaimer).
+
+**M5 — Persistence + replay.**  Hard-reload the editor.  Assert:
+the M1 / M2 / M4 placeholder cards rebuild from
+``notebook_outputs`` rows — the widget bundle survives the
+serialise / deserialise round-trip because Sprint 60's
+``mime_bundle`` column stores the raw ``data`` dict verbatim.
+
+### What the replay caught
+
+**BUG-72-01 — ES module disk cache hides new mime branches in
+PointlesSQL until you hard-reload.**  The notebook editor's
+[bootstrap.js](../../frontend/js/notebook/bootstrap.js) carries a
+``?v=sprintNN`` query param so its own ``<script>`` invalidates,
+but the modules it dynamically imports
+([editor_shell.js](../../frontend/js/notebook/editor_shell.js) +
+[main.js](../../frontend/js/notebook/main.js) + the eight
+siblings, including [output_renderer.js](../../frontend/js/notebook/output_renderer.js))
+do **not** carry a version param, so the browser keeps the
+previous deploy's modules in disk cache even after the bootstrap
+script bumps.  Verified via
+``import('/static/js/notebook/output_renderer.js?_t=' + Date.now())``
+in DevTools — the cache-busted URL pulled the new code, while the
+unversioned import in the editor page still resolved to the old
+function body.  Workaround for this sprint: bumped the
+bootstrap.js version to ``?v=sprint72`` and noted this in the
+playbook so reviewers know to hard-reload (``Ctrl+Shift+R``) when
+testing.  Permanent fix is a follow-on sprint that threads a
+build-time version stamp into every dynamic import URL — out of
+scope here.
+
+### Files changed (Sprint 72)
+
+- [pyproject.toml](../../pyproject.toml) — added
+  ``ipywidgets>=8.1`` dependency.  ``uv lock`` resolved
+  ``ipywidgets-8.1.8`` + ``jupyterlab-widgets-3.0.16`` +
+  ``widgetsnbextension-4.0.15``.
+- [frontend/js/notebook/output_renderer.js](../../frontend/js/notebook/output_renderer.js)
+  — new high-priority MIME branch in ``renderMimeBundle`` for
+  ``application/vnd.jupyter.widget-view+json`` (must come BEFORE
+  ``text/html`` so the widget bundle wins over the fallback
+  ``text/plain`` repr).
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — silent swallow of ``comm_open`` / ``comm_msg`` / ``comm_close``
+  in ``renderKernelMsg``.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — ``.pql-nbedit-output-widget-placeholder`` + ``.pql-nbedit-widget-model-id``
+  + ``.pql-nbedit-widget-note`` styles; bootstrap script version
+  bumped to ``sprint72``.
+
+**No Alembic migration.** Trim-safe — the placeholder branch is
+the upgrade seam a future sprint will replace with a real
+widget-manager.

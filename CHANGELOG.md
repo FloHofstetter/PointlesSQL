@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 72) — Phase 12.7: ipywidgets minimal placeholder
+
+Eighth Phase 12.7 sprint.  Scope deliberately trimmed to a
+placeholder layer; full bidirectional ``comm_msg`` round-trip +
+vendored widget-manager bundle deferred to a future sprint per the
+Phase-12.7 master-plan decision.  ``import ipywidgets as w`` now
+works in the kernel, and the output renderer paints a styled
+placeholder card whenever a ``display_data`` /
+``execute_result`` carries
+``application/vnd.jupyter.widget-view+json`` — the user sees
+where the slider / dropdown WOULD live once a future sprint wires
+the widget-manager.
+
+- [pyproject.toml](pyproject.toml) — added ``ipywidgets>=8.1`` to
+  the dependency list; ``uv lock`` resolved
+  ``ipywidgets-8.1.8`` + ``jupyterlab-widgets-3.0.16`` +
+  ``widgetsnbextension-4.0.15``.
+- [frontend/js/notebook/output_renderer.js](frontend/js/notebook/output_renderer.js)
+  — new high-priority MIME branch in ``renderMimeBundle``.  Must
+  come BEFORE ``text/html`` so the widget bundle wins over the
+  fallback ``text/plain`` repr (every ipywidgets ``execute_result``
+  carries both).  Renders a ``.pql-nbedit-output-widget-placeholder``
+  card with truncated ``model_id`` + disclaimer.  Missing
+  ``model_id`` falls back to ``Widget output (unrenderable)``.
+- [frontend/js/notebook/main.js](frontend/js/notebook/main.js)
+  — ``renderKernelMsg`` silently swallows ``comm_open`` /
+  ``comm_msg`` / ``comm_close``.  No console log: a single
+  ``IntSlider()`` instantiation emits dozens of comm frames and
+  logging would flood DevTools.
+- [frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html)
+  — ``.pql-nbedit-output-widget-placeholder`` +
+  ``.pql-nbedit-widget-model-id`` + ``.pql-nbedit-widget-note``
+  styles; bootstrap.js script tag bumped to ``?v=sprint72``.
+- [docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md)
+  — Playbook **Part M** added with synthetic + real-widget +
+  comm-swallow + missing-``model_id`` + persist/replay steps.
+  Renderer verified end-to-end via a cache-busted
+  ``import('/static/js/notebook/output_renderer.js?_t=' + Date.now())``
+  because of BUG-72-01 below.
+
+**BUG-72-01 — ES module disk cache hides new mime branches.**  The
+notebook editor's [bootstrap.js](frontend/js/notebook/bootstrap.js)
+carries a ``?v=sprintNN`` query param so its own ``<script>``
+invalidates, but the modules it dynamically imports
+(``editor_shell.js`` + ``main.js`` + the eight siblings,
+including ``output_renderer.js``) do not carry a version param, so
+the browser keeps the previous deploy's modules in disk cache.
+Workaround for this sprint: bumped bootstrap.js to ``?v=sprint72``
+and documented the hard-reload requirement (``Ctrl+Shift+R``) in
+Part M.  Permanent fix is a follow-on sprint that threads a build-
+time version stamp into every dynamic import URL — out of scope
+here.
+
+No Alembic migration.  Trim-safe — the placeholder branch is the
+upgrade seam a future sprint will replace with a real widget-
+manager.  No closure state added, so the reactivity-boundary grep
+gate is unchanged.
+
 ### Added (Sprint 71) — Phase 12.7: SQL cell (DuckDB via PQL.sql)
 
 Seventh Phase 12.7 sprint.  Adds the first non-Python cell type and

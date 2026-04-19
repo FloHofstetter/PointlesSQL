@@ -2420,12 +2420,44 @@ PointlesSQL
 │   │   isinstance(c, dict) else c for c in res.columns]`` before
 │   │   constructing the DataFrame.
 │   │
-│   ├── Sprint 72 — ipywidgets (``comm_msg`` round-trip)           ⏳ trim-point
-│   │   Was deferred from Phase 12.6 explicitly.  Wires the comm
-│   │   protocol through the Sprint-59 WS, registers the widget-
-│   │   manager bundle, renders ``application/vnd.jupyter.widget-
-│   │   view+json`` bundles.  No Alembic migration (widget state is
-│   │   kernel-side only).
+│   ├── Sprint 72 — ipywidgets (minimal placeholder)               ✅ done
+│   │   Scope deliberately trimmed to a placeholder layer; full
+│   │   bidirectional ``comm_msg`` round-trip + vendored widget-
+│   │   manager bundle deferred to a future sprint per the
+│   │   Phase-12.7 master-plan decision.  ``ipywidgets>=8.1`` added
+│   │   to ``pyproject.toml`` so ``import ipywidgets as w`` works in
+│   │   the kernel without a NameError.  The output renderer gains a
+│   │   high-priority MIME branch for ``application/vnd.jupyter
+│   │   .widget-view+json`` that paints a styled placeholder card
+│   │   showing a truncated ``model_id`` and the disclaimer
+│   │   "Interactive widgets will render in a future release.
+│   │   Install widgets in the kernel to see live updates here."
+│   │   Missing ``model_id`` degrades to "Widget output
+│   │   (unrenderable)".  The widget branch must come BEFORE
+│   │   ``text/html`` in ``renderMimeBundle`` because every
+│   │   ipywidgets ``execute_result`` also carries a ``text/plain``
+│   │   repr like "IntSlider(value=42)" that we do NOT want to leak
+│   │   through.  ``renderKernelMsg`` silently swallows ``comm_open``
+│   │   / ``comm_msg`` / ``comm_close`` (no console log — a single
+│   │   ``IntSlider()`` instantiation emits dozens; logging would
+│   │   flood DevTools).  No closure state added, so the
+│   │   reactivity-boundary grep gate is unchanged.  No Alembic
+│   │   migration.  Playbook Part M added; replayed in Firefox via
+│   │   Playwright-MCP — the renderer was verified end-to-end via a
+│   │   cache-busted ``import()`` of ``output_renderer.js`` because
+│   │   of the BUG-72-01 cache issue noted below.
+│   │   **BUG-72-01 (replay-caught + workaround in same commit):**
+│   │   the editor's [bootstrap.js](frontend/js/notebook/bootstrap.js)
+│   │   carries a ``?v=sprintNN`` query param so its own ``<script>``
+│   │   invalidates, but the modules it dynamically imports
+│   │   (``editor_shell.js`` + ``main.js`` + the eight siblings
+│   │   including ``output_renderer.js``) do **not** carry a
+│   │   version param, so the browser keeps the previous deploy's
+│   │   modules in disk cache.  Workaround for this sprint: bumped
+│   │   bootstrap.js to ``?v=sprint72`` and documented the hard-
+│   │   reload requirement in Part M.  Permanent fix (build-time
+│   │   version stamp threaded into every dynamic import URL) is
+│   │   out of scope here and noted as a follow-on.
 │   │
 │   ├── Sprint 73 — Per-cell run history + diff                    ⏳
 │   │   ``notebook_cell_runs`` (Alembic 017) already records every

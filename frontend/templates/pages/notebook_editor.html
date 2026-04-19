@@ -30,6 +30,25 @@
                                     box-shadow: 0 0 0 2px rgba(13, 202, 240, 0.18); }
     .pql-nbedit-result-var-error { border-color: var(--bs-danger);
                                     box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.15); }
+    /* Sprint 72: ipywidgets minimal placeholder card.  Renders inside
+       a cell's output zone when display_data carries
+       application/vnd.jupyter.widget-view+json.  Sized to look like a
+       real interactive widget would, so the user knows where the
+       slider/dropdown WOULD be once a future sprint wires the
+       widget-manager. */
+    .pql-nbedit-output-widget-placeholder { display: block; padding: 0.6rem 0.8rem;
+                                              border: 1px dashed var(--bs-border-color);
+                                              background: rgba(13, 110, 253, 0.04);
+                                              border-radius: 4px; margin: 0.25rem 0;
+                                              font-size: 12.5px; color: var(--bs-body-color); }
+    .pql-nbedit-output-widget-placeholder::before { content: "ⓘ "; color: var(--bs-info);
+                                                     font-weight: 600; margin-right: 0.25rem; }
+    .pql-nbedit-widget-model-id { display: inline-block; font-family: var(--bs-font-monospace);
+                                   font-size: 11.5px; color: var(--bs-secondary-color);
+                                   background: rgba(0, 0, 0, 0.18); padding: 1px 6px;
+                                   border-radius: 3px; }
+    .pql-nbedit-widget-note { margin: 0.35rem 0 0 0; color: var(--bs-secondary-color);
+                               font-size: 12px; }
     .pql-nbedit-cell-marker { color: var(--bs-info); font-weight: 600; }
     .pql-nbedit-output { padding: 0.5rem 1rem; background: rgba(0, 0, 0, 0.18);
                         border-left: 3px solid var(--bs-secondary); font-family: var(--bs-font-monospace);
@@ -905,5 +924,5 @@
   (shell) and ``notebookTabEditor`` (per-tab) — both exported from
   the same bootstrap file.
 #}
-<script src="/static/js/notebook/bootstrap.js?v=sprint69"></script>
+<script src="/static/js/notebook/bootstrap.js?v=sprint72"></script>
 {% endblock %}

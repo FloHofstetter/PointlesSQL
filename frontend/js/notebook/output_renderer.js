@@ -26,6 +26,36 @@ export function executeInlineScripts(root) {
 
 export function renderMimeBundle(dom, data, /* metadata */ _m) {
     if (!data || typeof data !== 'object') return;
+    // Sprint 72: ipywidgets minimal placeholder.  The widget-view
+    // bundle MUST win over text/html / text/plain because every
+    // ipywidgets display also includes a ``text/plain`` fallback like
+    // ``IntSlider(value=0)`` that we do NOT want to render — that
+    // would mask the placeholder card behind a confusing repr.  Full
+    // bidirectional widget rendering (vendored widget-manager,
+    // round-trip ``comm_msg``) lands in a future sprint; this branch
+    // keeps the cell from emitting noise + advertises the upgrade
+    // path right inside the output zone.
+    if (data['application/vnd.jupyter.widget-view+json']) {
+        const spec = data['application/vnd.jupyter.widget-view+json'] || {};
+        const card = document.createElement('div');
+        card.className = 'pql-nbedit-output-widget-placeholder';
+        const modelId = typeof spec.model_id === 'string' ? spec.model_id : '';
+        if (modelId) {
+            const idEl = document.createElement('code');
+            idEl.className = 'pql-nbedit-widget-model-id';
+            idEl.textContent = `model_id: ${modelId.slice(0, 8)}…`;
+            card.appendChild(idEl);
+            const note = document.createElement('p');
+            note.className = 'pql-nbedit-widget-note';
+            note.textContent = 'Interactive widgets will render in a future release. '
+                + 'Install widgets in the kernel to see live updates here.';
+            card.appendChild(note);
+        } else {
+            card.textContent = 'Widget output (unrenderable)';
+        }
+        dom.appendChild(card);
+        return;
+    }
     if (data['text/html']) {
         const wrap = document.createElement('div');
         wrap.className = 'pql-nbedit-output-html';

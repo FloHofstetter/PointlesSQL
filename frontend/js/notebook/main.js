@@ -1212,6 +1212,21 @@ export function createNotebookTabEditor({
         // skipped-due-to-prior-error).  Remap KeyboardInterrupt to
         // ``cancelled`` so the red error pill doesn't mislabel an
         // intentional stop.
+        // Sprint 72: ipywidgets minimal placeholder.  ``comm_open`` /
+        // ``comm_msg`` / ``comm_close`` carry the bidirectional
+        // widget-state protocol; until a future sprint vendors a real
+        // widget-manager, we silently swallow them so the default
+        // ``appendOutput`` branch does not paint protocol noise into
+        // the cell's output zone.  The user-visible affordance is the
+        // placeholder card the renderer paints when ``display_data``
+        // carries ``application/vnd.jupyter.widget-view+json``.  No
+        // ``console`` log — a single ``IntSlider()`` instantiation
+        // emits dozens of comm frames and would flood DevTools.
+        if (frame.msg_type === 'comm_open'
+                || frame.msg_type === 'comm_msg'
+                || frame.msg_type === 'comm_close') {
+            return;
+        }
         if (frame.msg_type === 'execute_reply') {
             const record = cellAffordances[frame.cell_id];
             if (record) {
