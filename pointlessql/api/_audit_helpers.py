@@ -1,0 +1,129 @@
+"""Async audit + query-history record helpers used by the route layer.
+
+Sprint 85 split out of ``api/main.py``.  Every mutation route calls
+:func:`audit` after the underlying service committed; every SQL
+execute / cancel / export call goes through :func:`record_query_async`
+so the ``/queries`` page sees every attempt.
+
+Both functions dispatch their write to :func:`asyncio.to_thread` so
+the request handler never blocks on the DB round-trip — the
+shoreguard-fresh pattern ported in Sprint 48.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import datetime
+from typing import Any
+
+from fastapi import Request
+
+from pointlessql.api.dependencies import client_ip, get_user
+from pointlessql.services import audit as audit_service
+from pointlessql.services import query_history as query_history_service
+
+logger = logging.getLogger(__name__)
+
+
+async def record_query_async(
+    request: Request,
+    *,
+    sql_text: str,
+    started_at: datetime,
+    finished_at: datetime,
+    status: str,
+    row_count: int | None,
+    duration_ms: int | None,
+    referenced_tables: list[str],
+    error_message: str | None = None,
+) -> int | None:
+    """Persist a Phase-12 query-history row without blocking the loop.
+
+    Mirrors :func:`audit` for the dedicated ``query_history`` surface
+    landed in Sprint 50.  The INSERT happens inside
+    :func:`asyncio.to_thread` so the request handler continues
+    serving other requests during the write.  Swallows DB errors
+    after logging — a lost history row must never mask a successful
+    (or failing) query response.
+
+    Args:
+        request: The incoming FastAPI request.
+        sql_text: Verbatim user-submitted SQL.
+        started_at: When the route began handling the request.
+        finished_at: When the route's try/except exited.
+        status: ``"succeeded"`` / ``"failed"`` / ``"cancelled"``.
+        row_count: Final row count or ``None`` on failure.
+        duration_ms: DuckDB wall-clock time or ``None`` on failure.
+        referenced_tables: Three-part names extracted from the parse.
+            May be empty if the SQL did not parse.
+        error_message: Exception detail for failures; ``None`` on
+            success.
+
+    Returns:
+        The new ``query_history.id`` on success; ``None`` if no
+        session factory is bound or the INSERT failed.
+    """
+    user = get_user(request)
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        return None
+    request_id = getattr(request.state, "request_id", None)
+    try:
+        return await asyncio.to_thread(
+            query_history_service.record_query,
+            factory,
+            user_id=user["id"],
+            user_email=user["email"],
+            sql_text=sql_text,
+            started_at=started_at,
+            finished_at=finished_at,
+            status=status,
+            row_count=row_count,
+            duration_ms=duration_ms,
+            referenced_tables=referenced_tables,
+            error_message=error_message,
+            request_id=request_id,
+        )
+    except Exception as exc:  # noqa: BLE001 — never mask the query response
+        logger.warning("failed to record query_history row: %s", exc)
+        return None
+
+
+async def audit(
+    request: Request,
+    action: str,
+    target: str,
+    detail: str | dict[str, Any] | None = None,
+) -> None:
+    """Write an audit log entry for the current user.
+
+    The insert is dispatched to :func:`asyncio.to_thread` so the
+    HTTP request handler never blocks on the DB round-trip —
+    this is the shoreguard-fresh pattern ported in Sprint 48.
+
+    Args:
+        request: The incoming HTTP request.
+        action: Short verb describing the action (e.g.
+            ``update_catalog``).
+        target: Identifier of the affected resource (e.g.
+            ``catalog:my_cat``).
+        detail: Optional JSON-encodable dict or plain string with
+            extra context.
+    """
+    user = get_user(request)
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None or not user["id"]:
+        return
+    role = "admin" if user.get("is_admin") else "user"
+    await asyncio.to_thread(
+        audit_service.log_action,
+        factory,
+        user["id"],
+        user["email"],
+        action,
+        target,
+        detail,
+        actor_role=role,
+        client_ip=client_ip(request),
+    )

@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 85: api/main.py middleware + helpers extract
+
+First decomposition slice for the 6,599-LOC ``api/main.py``. The
+lowest-risk pieces — middleware stack + per-request dependencies +
+async fire-and-forget audit/query-history writers — moved into three
+new modules. main.py drops 6,599 → 6,341 LOC (-258); no route logic
+moved this sprint.
+
+- **New modules** under ``pointlessql/api/``:
+  [middleware.py](pointlessql/api/middleware.py) (~155 LOC) — five
+  middleware functions wired into a single
+  ``register_middleware(app)`` entrypoint that preserves the
+  LIFO stacking order (``request_id → static_revalidate → csrf →
+  rate_limit → auth → handler`` on every incoming request).
+  ``PUBLIC_PREFIXES`` lifted out of its underscore-prefixed private
+  name since the new module owns it.
+  [dependencies.py](pointlessql/api/dependencies.py) (~90 LOC) —
+  request-scoped helpers ``get_uc_client`` / ``get_user`` /
+  ``require_admin`` / ``client_ip``. main.py re-imports them with
+  the legacy ``_get_user`` etc. aliases so the ~hundred call sites
+  inside its route handlers keep working unchanged.
+  [_audit_helpers.py](pointlessql/api/_audit_helpers.py) (~130 LOC)
+  — ``audit`` + ``record_query_async`` async writers, pulled out
+  so route-group modules in Sprints 86-90 can import them without
+  dragging in the full main module.
+
+- **Middleware order preserved.** ``register_middleware`` calls
+  ``app.middleware("http")()`` in the exact same order the decorators
+  previously fired in main.py, so the LIFO execution chain on an
+  incoming request is byte-identical to the pre-Sprint-85 build.
+
+- **Public surface preserved.** Every existing call into the helpers
+  works through the legacy underscore-prefixed re-imports
+  (``_get_uc_client``, ``_get_user``, ``_require_admin``,
+  ``_record_query_async``, ``_audit``) at the top of main.py, so
+  the route handlers below — which still total >5,000 LOC — were
+  not touched at all.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 74 pre-existing warnings, ``pytest tests/test_csrf.py
+  tests/test_rate_limit.py tests/test_auth.py`` 52/52 passed.
+
 ### Refactored — Phase 12.9 / Sprint 84: services/scheduler.py → 5-module package
 
 Eighth backend split — largest service (1,776 LOC). The

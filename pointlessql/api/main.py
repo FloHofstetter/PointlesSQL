@@ -21,17 +21,28 @@ from fastapi.responses import (
     FileResponse,
     HTMLResponse,
     JSONResponse,
-    RedirectResponse,
     Response,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.auth_routes import router as auth_router
-from pointlessql.api.csrf_middleware import csrf_middleware as _csrf_middleware
-from pointlessql.api.rate_limit_middleware import (
-    rate_limit_middleware as _rate_limit_middleware,
+from pointlessql.api._audit_helpers import (
+    audit as _audit,
 )
+from pointlessql.api._audit_helpers import (
+    record_query_async as _record_query_async,
+)
+from pointlessql.api.auth_routes import router as auth_router
+from pointlessql.api.dependencies import (
+    get_uc_client as _get_uc_client,
+)
+from pointlessql.api.dependencies import (
+    get_user as _get_user,
+)
+from pointlessql.api.dependencies import (
+    require_admin as _require_admin,
+)
+from pointlessql.api.middleware import register_middleware
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.exceptions import (
     AuthorizationError,
@@ -39,7 +50,7 @@ from pointlessql.exceptions import (
     PointlessSQLError,
     ValidationError,
 )
-from pointlessql.logging_config import configure_logging, request_id_var
+from pointlessql.logging_config import configure_logging
 from pointlessql.services import audit as audit_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services import kernel_session as kernel_session_service
@@ -218,270 +229,7 @@ app.mount(
     name="static",
 )
 
-# Paths that do not require authentication.
-# Sprint 55: ``/alerts/feed.atom`` + ``/alerts/feed.json`` authenticate
-# via the opaque ``?token=…`` query-string, not the session cookie —
-# feed readers (Miniflux, FreshRSS, …) do not have a browser session.
-# They are listed here so the session auth_middleware does not
-# redirect them to ``/auth/login``; the route handlers themselves
-# reject unknown tokens with 401.
-_PUBLIC_PREFIXES = (
-    "/auth/", "/static/", "/healthz",
-    "/alerts/feed.atom", "/alerts/feed.json",
-)
-
-
-@app.middleware("http")
-async def auth_middleware(request: Request, call_next: Any) -> Response:
-    """Extract user from JWT cookie; redirect to login if unauthenticated."""
-    path = request.url.path
-
-    # Always try to resolve user from cookie (even on public paths,
-    # so templates can show the navbar user menu).
-    token = request.cookies.get(auth_service.COOKIE_NAME)
-    if token is not None:
-        factory = getattr(request.app.state, "session_factory", None)
-        settings = getattr(request.app.state, "settings", None)
-        if factory is not None and settings is not None:
-            user = auth_service.get_current_user(
-                factory,
-                token,
-                settings.auth.secret_key,
-                previous_key=settings.auth.secret_key_previous,
-            )
-            if user is not None:
-                request.state.user = user
-
-    # Public paths pass through regardless of auth.
-    if any(path.startswith(p) for p in _PUBLIC_PREFIXES):
-        return await call_next(request)
-
-    # Protected paths require authentication.
-    if getattr(request.state, "user", None) is not None:
-        return await call_next(request)
-
-    # Unauthenticated — redirect HTML requests, 401 for API.
-    if path.startswith("/api/"):
-        return JSONResponse({"error": "Not authenticated"}, status_code=401)
-    return RedirectResponse(url="/auth/login", status_code=303)
-
-
-# Rate limiting on /auth/* runs inside CSRF but outside auth: a
-# cross-site flood must still fail the cheap CSRF check before it
-# burns a bucket slot, but a CSRF-clean flood is caught before
-# auth_middleware runs bcrypt + JWT-decode on every attempt.
-# Starlette stacks middleware LIFO (last-registered is outermost),
-# so registering it after auth and before csrf puts it at that exact
-# position in the execution order. Sprint 43.
-app.middleware("http")(_rate_limit_middleware)
-
-
-# CSRF enforcement runs between auth and request_id: Starlette stacks
-# middleware LIFO (last-registered is outermost), so request_id wraps
-# csrf wraps auth. A CSRF failure short-circuits before auth's user
-# lookup, and the 403 response still carries the outer request-id
-# header for ops. Sprint 42.
-app.middleware("http")(_csrf_middleware)
-
-
-@app.middleware("http")
-async def static_module_revalidate_middleware(
-    request: Request, call_next: Any,
-) -> Response:
-    """Force conditional revalidation for the notebook editor's ES modules.
-
-    Phase 12.7 BUG-72-01 fix.  The notebook editor's ``bootstrap.js``
-    carries a ``?v=sprintNN`` script-tag query so its own ``<script>``
-    invalidates on a sprint bump, but the eleven ESM modules it
-    dynamically imports do **not** carry a version param — and ES
-    module URLs are cached by the browser in the regular HTTP cache
-    keyed by their URL.  Without a Cache-Control header, browsers
-    apply heuristic freshness based on Last-Modified, which can keep
-    a stale ``output_renderer.js`` (or ``main.js`` etc.) bytes alive
-    across deploys until the user hard-reloads.  This middleware
-    stamps ``Cache-Control: no-cache`` on every ``/static/js/notebook/``
-    response so the browser MUST issue a conditional ``If-Modified-
-    Since`` request next time — Starlette's StaticFiles already
-    answers 304 when unchanged, so the network cost stays minimal,
-    but a sprint-fresh module is delivered immediately on the next
-    page load.
-    """
-    response = await call_next(request)
-    if request.url.path.startswith("/static/js/notebook/"):
-        response.headers["Cache-Control"] = "no-cache, must-revalidate"
-    return response
-
-
-@app.middleware("http")
-async def request_id_middleware(request: Request, call_next: Any) -> Response:
-    """Attach a unique request ID to every request and echo it in the response.
-
-    The ID is stored both on ``request.state`` (for the error handler)
-    and in the ``request_id_var`` contextvar (so service-layer log
-    records emitted during this request pick it up via the
-    ``RequestIdFilter``). The contextvar is reset in ``finally`` so
-    concurrent requests never leak IDs into each other's scope.
-    """
-    request_id = request.headers.get("X-Request-ID") or str(uuid4())
-    request.state.request_id = request_id
-    token = request_id_var.set(request_id)
-    try:
-        response = await call_next(request)
-    finally:
-        request_id_var.reset(token)
-    response.headers["X-Request-ID"] = request_id
-    return response
-
-
-def _get_uc_client(request: Request) -> UnityCatalogClient:
-    """Return a per-request UC facade with the current user's principal."""
-    user = getattr(request.state, "user", None)
-    if user is not None:
-        return UnityCatalogClient.for_principal(request.app.state.settings, user["email"])
-    return request.app.state.uc_client
-
-
-def _get_user(request: Request) -> UserInfo:
-    """Return the current user dict from request state."""
-    user: UserInfo | None = getattr(request.state, "user", None)
-    if user is None:
-        return UserInfo(id=0, email="", display_name="", is_admin=False)
-    return user
-
-
-def _require_admin(request: Request) -> None:
-    """Raise :class:`AuthorizationError` if the current user is not an admin."""
-    user = _get_user(request)
-    if not user.get("is_admin"):
-        raise AuthorizationError(
-            principal=user.get("email", ""),
-            privilege="admin",
-            securable_type="system",
-            full_name="admin",
-        )
-
-
-def _client_ip(request: Request) -> str | None:
-    """Best-effort extraction of the client IP for audit rows.
-
-    ASGI's ``request.client`` returns ``None`` for ASGI transports
-    without a remote peer (unit tests hit this path). Behind a
-    trusted reverse proxy the operator should configure Starlette's
-    ``ProxyHeadersMiddleware`` upstream of this call; Sprint 48
-    deliberately does not honour ``X-Forwarded-For`` here because
-    the audit surface has no separate "trusted-proxy" opt-in like
-    Sprint 43's rate limiter does.
-
-    Args:
-        request: The incoming HTTP request.
-
-    Returns:
-        str | None: IPv4/IPv6 address or ``None`` if unavailable.
-    """
-    return request.client.host if request.client else None
-
-
-async def _record_query_async(
-    request: Request,
-    *,
-    sql_text: str,
-    started_at: datetime,
-    finished_at: datetime,
-    status: str,
-    row_count: int | None,
-    duration_ms: int | None,
-    referenced_tables: list[str],
-    error_message: str | None = None,
-) -> int | None:
-    """Persist a Phase-12 query-history row without blocking the loop.
-
-    Mirrors :func:`_audit` for the dedicated ``query_history`` surface
-    landed in Sprint 50.  The INSERT happens inside
-    :func:`asyncio.to_thread` so the request handler continues
-    serving other requests during the write.  Swallows DB errors
-    after logging — a lost history row must never mask a successful
-    (or failing) query response.
-
-    Args:
-        request: The incoming FastAPI request.
-        sql_text: Verbatim user-submitted SQL.
-        started_at: When the route began handling the request.
-        finished_at: When the route's try/except exited.
-        status: ``"succeeded"`` / ``"failed"`` / ``"cancelled"``.
-        row_count: Final row count or ``None`` on failure.
-        duration_ms: DuckDB wall-clock time or ``None`` on failure.
-        referenced_tables: Three-part names extracted from the parse.
-            May be empty if the SQL did not parse.
-        error_message: Exception detail for failures; ``None`` on
-            success.
-
-    Returns:
-        The new ``query_history.id`` on success; ``None`` if no
-        session factory is bound or the INSERT failed.
-    """
-    user = _get_user(request)
-    factory = getattr(request.app.state, "session_factory", None)
-    if factory is None:
-        return None
-    request_id = getattr(request.state, "request_id", None)
-    try:
-        return await asyncio.to_thread(
-            query_history_service.record_query,
-            factory,
-            user_id=user["id"],
-            user_email=user["email"],
-            sql_text=sql_text,
-            started_at=started_at,
-            finished_at=finished_at,
-            status=status,
-            row_count=row_count,
-            duration_ms=duration_ms,
-            referenced_tables=referenced_tables,
-            error_message=error_message,
-            request_id=request_id,
-        )
-    except Exception as exc:  # noqa: BLE001 — never mask the query response
-        logger.warning("failed to record query_history row: %s", exc)
-        return None
-
-
-async def _audit(
-    request: Request,
-    action: str,
-    target: str,
-    detail: str | dict[str, Any] | None = None,
-) -> None:
-    """Write an audit log entry for the current user.
-
-    The insert is dispatched to :func:`asyncio.to_thread` so the
-    HTTP request handler never blocks on the DB round-trip —
-    this is the shoreguard-fresh pattern ported in Sprint 48.
-
-    Args:
-        request: The incoming HTTP request.
-        action: Short verb describing the action (e.g.
-            ``update_catalog``).
-        target: Identifier of the affected resource (e.g.
-            ``catalog:my_cat``).
-        detail: Optional JSON-encodable dict or plain string with
-            extra context.
-    """
-    user = _get_user(request)
-    factory = getattr(request.app.state, "session_factory", None)
-    if factory is None or not user["id"]:
-        return
-    role = "admin" if user.get("is_admin") else "user"
-    await asyncio.to_thread(
-        audit_service.log_action,
-        factory,
-        user["id"],
-        user["email"],
-        action,
-        target,
-        detail,
-        actor_role=role,
-        client_ip=_client_ip(request),
-    )
+register_middleware(app)
 
 
 @app.get("/healthz")

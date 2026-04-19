@@ -3054,7 +3054,7 @@ PointlesSQL
 │       ``tests/test_pg_sync.py tests/test_foreign_catalog.py
 │       tests/test_e2e.py tests/test_problem_json.py`` 60/60 passed.
 │
-│   └── Sprint 84 — services/scheduler.py → 5-module package    ✅ done (pending-commit)
+│   ├── Sprint 84 — services/scheduler.py → 5-module package    ✅ done (8127b13)
 │       Eighth backend split — largest service (1.776 LOC).
 │       Carved along the natural pipeline boundaries:
 │
@@ -3117,6 +3117,41 @@ PointlesSQL
 │       tests/test_scheduler_dag.py tests/test_metrics.py
 │       tests/test_alerts.py tests/test_scheduler_papermill.py``
 │       80/80 passed.
+│
+│   └── Sprint 85 — api/main.py middleware + helpers extract     ✅ done (pending-commit)
+│       First api/main.py decomposition slice — lowest risk,
+│       no route logic moved.  Three new modules carved out;
+│       main.py drops 6.599 → 6.341 LOC (-258).
+│
+│       - ``api/middleware.py`` (~155 LOC) — 5 middleware functions
+│         (``auth_middleware``, ``static_module_revalidate_middleware``,
+│         ``request_id_middleware``) + the imported
+│         ``rate_limit_middleware`` + ``csrf_middleware``, all wired
+│         into a single ``register_middleware(app)`` entrypoint that
+│         preserves the LIFO stacking order
+│         (``request_id → static → csrf → rate_limit → auth → handler``
+│         on every incoming request).
+│         ``PUBLIC_PREFIXES`` lifted out of the underscore-prefixed
+│         private name since the new module owns it.
+│       - ``api/dependencies.py`` (~90 LOC) — request-scoped helpers
+│         ``get_uc_client`` / ``get_user`` / ``require_admin`` /
+│         ``client_ip``.  Underscored variants re-imported in
+│         ``main.py`` (``get_user as _get_user`` etc.) so the ~hundred
+│         existing call sites inside route handlers keep working
+│         unchanged.
+│       - ``api/_audit_helpers.py`` (~130 LOC) — ``audit`` and
+│         ``record_query_async`` async fire-and-forget DB writers,
+│         pulled out of ``main.py`` so route modules in Sprints 86-90
+│         can import them without dragging the full main module.
+│
+│       **Middleware order preserved.** ``register_middleware``
+│       calls ``app.middleware("http")()`` in the exact same order
+│       the decorators previously fired in main.py, so the LIFO
+│       execution chain is byte-identical.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 74 pre-existing warnings, ``pytest tests/test_csrf.py
+│       tests/test_rate_limit.py tests/test_auth.py`` 52/52 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
