@@ -3359,7 +3359,7 @@ PointlesSQL
 │       open_in_notebook' --ignore=tests/test_jupyter.py`` 27/27
 │       passed.
 │
-│   └── Sprint 88a — api/main.py notebook HTTP routes extract     ✅ done (pending-commit)
+│   ├── Sprint 88a — api/main.py notebook HTTP routes extract     ✅ done (e621c44)
 │       Eighth api/main.py decomposition slice — the HTTP half of
 │       the notebook surface lifts out: editor page, doc bundle
 │       (GET + POST), per-cell run history, the workspace tree
@@ -3390,6 +3390,43 @@ PointlesSQL
 │       partial-unknown warnings), ``pydoclint`` 0 violations.
 │       ``pytest -k notebook --ignore=tests/test_jupyter.py``
 │       34/34 passed.
+│
+│   └── Sprint 88b — api/main.py notebook WS endpoints extract    ✅ done (pending-commit)
+│       Ninth api/main.py decomposition slice — closes out the
+│       notebook surface.  The two ``@app.websocket`` handlers
+│       (``/ws/notebook/kernel`` + ``/ws/notebook/lsp``) and their
+│       shared ``resolve_sql_approved_tables`` helper move into a
+│       dedicated ``notebook_kernel_ws.py``.  main.py drops 3.227
+│       → 2.683 LOC (-544).
+│
+│       - ``api/notebook_kernel_ws.py`` (601 LOC) — both WS
+│         endpoints plus the SQL-approval helper.  Underscore
+│         dropped from helper name (``resolve_sql_approved_tables``
+│         is now module-public within the new package).  WS auth
+│         model unchanged: cookie + JWT decode, traversal guard,
+│         4401/4400/4404 close codes preserved verbatim.
+│       - ``main.py`` mount: ``app.include_router(notebook_ws_router)``.
+│         Now-unused ``contextlib``, ``WebSocket``,
+│         ``WebSocketDisconnect``, ``UnityCatalogClient``,
+│         ``UserInfo``, ``check_privilege``, ``SELECT``, plus the
+│         ``services.pyright_bridge`` import all auto-trimmed by
+│         ruff (the WS routes were the only remaining callers).
+│
+│       **WS lifecycle preserved.** All five close codes
+│       (4401 unauthenticated, 4400 bad path, 4404 missing pyright,
+│       1011 spawn failure, normal close) plus the ZMQ↔WS forward
+│       tasks + per-cell output counters + per-execute history-row
+│       stamping all moved verbatim.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 26 warnings (-18 from Sprint 88a
+│       because the WS code carried 18 partial-unknown warnings),
+│       ``pydoclint`` 0 violations.  ``pytest tests/test_api_
+│       notebook_workspace.py tests/test_notebook_workspace.py``
+│       27/27 passed.  WS endpoints have no unit tests; their
+│       integration coverage runs through
+│       ``docs/e2e-walkthroughs/notebook_kernel.md`` (Playwright
+│       playbook) which the user replays manually.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

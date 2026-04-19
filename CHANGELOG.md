@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 88b: api/main.py notebook WS endpoints extract
+
+Ninth decomposition slice for ``api/main.py`` — closes out the
+notebook surface. The two ``@app.websocket`` handlers
+(``/ws/notebook/kernel`` + ``/ws/notebook/lsp``) and their shared
+``resolve_sql_approved_tables`` helper move into a dedicated
+``notebook_kernel_ws.py``. main.py drops 3,227 → 2,683 LOC (-544).
+
+- **New module** [notebook_kernel_ws.py](pointlessql/api/notebook_kernel_ws.py)
+  (601 LOC). Both WS endpoints plus the SQL-approval helper.
+  Underscore prefix dropped from helper name
+  (``resolve_sql_approved_tables`` is module-public within the
+  new package). WS auth model preserved verbatim: cookie + JWT
+  decode, traversal guard, 4401/4400/4404/1011 close codes.
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(notebook_ws_router)``
+  next to the other eight routers. Now-unused ``contextlib``,
+  ``WebSocket``, ``WebSocketDisconnect``, ``UnityCatalogClient``,
+  ``UserInfo``, ``check_privilege``, ``SELECT``, plus the
+  ``services.pyright_bridge`` import all auto-trimmed by ruff
+  (the WS routes were the only remaining callers).
+
+- **WS lifecycle preserved.** All five close codes (4401
+  unauthenticated, 4400 bad path, 4404 missing pyright, 1011 spawn
+  failure, normal close) plus the ZMQ↔WS forward tasks +
+  per-cell output counters + per-execute history-row stamping
+  moved verbatim.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 26 warnings (-18 from Sprint 88a because the WS code
+  carried 18 partial-unknown warnings), ``pydoclint`` 0
+  violations. ``pytest tests/test_api_notebook_workspace.py
+  tests/test_notebook_workspace.py`` 27/27 passed. WS endpoints
+  have no unit tests; their integration coverage runs through
+  ``docs/e2e-walkthroughs/notebook_kernel.md`` (Playwright
+  playbook).
+
 ### Refactored — Phase 12.9 / Sprint 88a: api/main.py notebook HTTP routes extract
 
 Eighth decomposition slice for ``api/main.py``. The HTTP half of the
