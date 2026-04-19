@@ -3997,7 +3997,7 @@ PointlesSQL
 │   │   Sprint-96 marker-grammar invariants.  Plan lives at
 │   │   [.claude/plans/phase-12-11-notebook-unified-anchor.md](/home/flo/.claude/plans/phase-12-11-notebook-unified-anchor.md).
 │   │
-│   ├── Sprint 99 — Toolbar + status badges               🔜 in progress
+│   ├── Sprint 99 — Toolbar + status badges               ✅ done (529aa57)
 │   │       Editor toolbar moved to Bootstrap-native chrome.
 │   │       The audit walked back the original sketch's "9 bare
 │   │       buttons" framing — the buttons already carried
