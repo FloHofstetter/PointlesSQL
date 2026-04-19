@@ -2579,6 +2579,26 @@ PointlesSQL
 │   - Sprint 72 — ipywidgets minimal placeholder (b8ef7dc).
 │   - Sprint 73 — per-cell run history + diff (Alembic 018) (dc530eb).
 │   - Sprint 74 — settings drawer + keymap overlay + phase close (a184ef3).
+│
+│   **Phase 12.7 tail commit:** closing audit-pass replay surfaced
+│   BUG-71-02 (server-side notebook_doc.py dropped the ``[sql]``
+│   tag + ``result_var`` on round-trip via jupytext) and exposed
+│   the Sprint-72 BUG-72-01 "workaround" claim as wrong.  Both
+│   fixed in a single follow-up: ``notebook_doc.py`` post-parses
+│   the raw .py with a ``_PQL_MARKER_RE`` (mirrors
+│   ``cell_parser.js``) to recover ``[sql]`` + ``result_var`` and
+│   post-writes via ``_rewrite_sql_markers`` to put them back;
+│   the API save validator + load bundle thread the new field
+│   through; ``main.js`` normalises ``result_var`` ↔ ``resultVar``
+│   at the wire boundary.  BUG-72-01 root fix is a new
+│   ``static_module_revalidate_middleware`` that stamps
+│   ``Cache-Control: no-cache, must-revalidate`` on every
+│   ``/static/js/notebook/*`` response so browsers do conditional
+│   GETs (304 when unchanged, fresh bytes on deploy) without
+│   needing a hard-reload.  Replay coverage completed for L6 / L7 /
+│   L8 / L9 / M1-M5 / N6 / N7 / N8 / O3 / O5 / O6 — documented in
+│   the Phase-12.7 tail block of
+│   [docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md).
 │   Phase 13 (Agent workloads) is next on the roadmap with the
 │   EXPLAIN-agent loop sketched as the natural Phase-12 → Phase-13
 │   bridge.

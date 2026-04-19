@@ -285,6 +285,34 @@ app.middleware("http")(_csrf_middleware)
 
 
 @app.middleware("http")
+async def static_module_revalidate_middleware(
+    request: Request, call_next: Any,
+) -> Response:
+    """Force conditional revalidation for the notebook editor's ES modules.
+
+    Phase 12.7 BUG-72-01 fix.  The notebook editor's ``bootstrap.js``
+    carries a ``?v=sprintNN`` script-tag query so its own ``<script>``
+    invalidates on a sprint bump, but the eleven ESM modules it
+    dynamically imports do **not** carry a version param — and ES
+    module URLs are cached by the browser in the regular HTTP cache
+    keyed by their URL.  Without a Cache-Control header, browsers
+    apply heuristic freshness based on Last-Modified, which can keep
+    a stale ``output_renderer.js`` (or ``main.js`` etc.) bytes alive
+    across deploys until the user hard-reloads.  This middleware
+    stamps ``Cache-Control: no-cache`` on every ``/static/js/notebook/``
+    response so the browser MUST issue a conditional ``If-Modified-
+    Since`` request next time — Starlette's StaticFiles already
+    answers 304 when unchanged, so the network cost stays minimal,
+    but a sprint-fresh module is delivered immediately on the next
+    page load.
+    """
+    response = await call_next(request)
+    if request.url.path.startswith("/static/js/notebook/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
+
+
+@app.middleware("http")
 async def request_id_middleware(request: Request, call_next: Any) -> Response:
     """Attach a unique request ID to every request and echo it in the response.
 
@@ -3379,7 +3407,16 @@ async def _build_notebook_doc_bundle(
         document = notebook_doc_service.load_document(resolved, path)
         bundle: dict[str, Any] = {
             "cells": [
-                {"id": cell.id, "cell_type": cell.cell_type, "source": cell.source}
+                {
+                    "id": cell.id,
+                    "cell_type": cell.cell_type,
+                    "source": cell.source,
+                    # Sprint 71 BUG-71-02 fix: round-trip the SQL
+                    # cell's optional ``result_var`` through the
+                    # bundle so the editor's affordances re-mount
+                    # with the user-defined name pre-populated.
+                    "result_var": cell.result_var,
+                }
                 for cell in document.cells
             ],
             "dirty": document.dirty,
@@ -3534,15 +3571,26 @@ async def api_save_notebook_doc(
         cell_id = raw.get("id")
         cell_type = raw.get("cell_type")
         source = raw.get("source")
+        # Sprint 71 BUG-71-02 fix: accept ``sql`` alongside ``code`` /
+        # ``markdown`` and read the optional ``result_var`` field so
+        # the post-jupytext rewrite can put the segment back on disk.
+        result_var = raw.get("result_var")
         if not isinstance(cell_id, str) or not cell_id:
             raise ValidationError(f"cell {idx} missing 'id'")
-        if cell_type not in ("code", "markdown"):
+        if cell_type not in ("code", "markdown", "sql"):
             raise ValidationError(f"cell {idx} has unsupported cell_type {cell_type!r}")
         if not isinstance(source, str):
             raise ValidationError(f"cell {idx} 'source' must be a string")
+        if result_var is not None and not isinstance(result_var, str):
+            raise ValidationError(
+                f"cell {idx} 'result_var' must be a string or null",
+            )
         cells.append(
             notebook_doc_service.NotebookCell(
-                id=cell_id, cell_type=cell_type, source=source
+                id=cell_id,
+                cell_type=cell_type,
+                source=source,
+                result_var=result_var if cell_type == "sql" else None,
             )
         )
     resolved = notebook_doc_service.resolve_py_notebook_path(

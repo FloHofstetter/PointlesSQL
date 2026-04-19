@@ -4,6 +4,67 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — Phase 12.7 tail: BUG-71-02 + BUG-72-01 root fix + replay completion
+
+Closing audit pass on the Phase-12.7 sprints surfaced two bugs
+the in-sprint replays missed; both fixed in a single follow-up
+commit.
+
+**BUG-71-02 — server-side notebook_doc dropped the [sql] tag +
+result_var on round-trip.**  Sprint 71's frontend correctly
+emitted ``# %% [sql] pql_cell_id="…" result_var="…"`` markers,
+but the server-side
+[notebook_doc.py](pointlessql/services/notebook_doc.py) used
+jupytext for both load and save; jupytext only recognises
+``[markdown]`` as a cell-type tag — anything else (``[sql]``,
+``[raw]``, …) is silently dropped from the marker line, and the
+cell is parsed as a plain code cell.  The ``result_var`` segment
+was equally invisible.  Saving was rejected outright by the
+server validator (``cell_type='sql'`` not in the allow-list).
+Result: editor showed SQL cells as code cells on reload, autosave
+silently failed for SQL cells.  Fix:
+
+- Extended ``NotebookCell`` with ``result_var: str | None``.
+- Added module-level ``_PQL_MARKER_RE`` mirroring the
+  client-side ``CELL_MARKER_RE`` in
+  [cell_parser.js](frontend/js/notebook/cell_parser.js).
+- ``load_document`` post-parses the raw .py file with the regex
+  to recover ``[sql]`` tags + ``result_var`` segments and
+  overrides the cell type jupytext returned.
+- ``save_document`` post-writes via a new ``_rewrite_sql_markers``
+  helper that rewrites code-cell markers for SQL cells back to
+  ``# %% [sql] pql_cell_id="…" result_var="…"``.
+- ``api_save_notebook_doc`` accepts ``cell_type='sql'`` + reads
+  optional ``result_var``.
+- ``api_load_notebook_doc`` includes ``result_var`` in the
+  bundle for every cell.
+- [main.js](frontend/js/notebook/main.js) normalises
+  ``result_var`` ↔ ``resultVar`` at the wire boundary on both
+  load and save so the rest of the JS-side cell shape stays in
+  one consistent form.
+
+**BUG-72-01 root fix.**  The Sprint-72 commit's "workaround"
+claim — that bumping bootstrap.js's ``?v=`` query busts the
+inner ESM imports — was wrong; that param only invalidates
+bootstrap.js itself, not the dynamically-imported siblings.  Real
+fix: a new HTTP middleware
+[``static_module_revalidate_middleware``](pointlessql/api/main.py)
+stamps ``Cache-Control: no-cache, must-revalidate`` on every
+``/static/js/notebook/*`` response, so the browser must issue a
+conditional ``If-Modified-Since`` request next time.  Starlette's
+StaticFiles answers 304 when unchanged (cheap); a sprint-fresh
+module is delivered immediately on the next page load — no
+hard-reload needed.  Sprint 72's "What the replay caught"
+section in
+[docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md)
+is also corrected to reflect the real fix.
+
+**Replay completion** for the Sprint-71 / -72 / -73 / -74
+playbook steps that the in-sprint walkthroughs had skipped (L6,
+L7, L8, L9, M1-M5, N6, N7, N8, O3, O5, O6).  Documented in the
+new "Phase 12.7 tail" block at the end of
+[notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md).
+
 ### Added (Sprint 74) — Phase 12.7: Settings drawer + keymap overlay + phase close
 
 Tenth and final Phase 12.7 sprint.  Settings drawer (theme,

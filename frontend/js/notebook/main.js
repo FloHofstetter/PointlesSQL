@@ -211,7 +211,21 @@ export function createNotebookTabEditor({
                 if (!bundle) {
                     bundle = { cells: [], dirty: true, outputs: [] };
                 }
-                cells = (bundle.cells || []).slice();
+                // Sprint 71 BUG-71-02 fix: server bundle uses
+                // snake_case ``result_var`` for SQL cells;
+                // ``joinCells`` + the rest of the JS cell shape
+                // expect camelCase ``resultVar``.  Normalise at the
+                // wire boundary so every downstream consumer sees one
+                // uniform field name.
+                cells = (bundle.cells || []).map((c) => {
+                    const out = { id: c.id, cell_type: c.cell_type, source: c.source };
+                    if (c.cell_type === 'sql') {
+                        out.resultVar = c.result_var || c.resultVar || null;
+                    } else {
+                        out.resultVar = null;
+                    }
+                    return out;
+                });
                 recomputeOutline();
                 initialOutputs = bundle.outputs || [];
                 this.dirty = bundle.dirty === true;
@@ -594,13 +608,22 @@ export function createNotebookTabEditor({
             this.saveState = 'saving';
             try {
                 const newCells = splitCells(model.getValue());
+                // Sprint 71 BUG-71-02 fix: server expects snake_case
+                // ``result_var`` for SQL cells.  splitCells returns
+                // camelCase ``resultVar`` to keep the JS-side cell
+                // shape uniform; normalise here at the wire boundary.
+                const wireCells = newCells.map((c) => {
+                    const out = { id: c.id, cell_type: c.cell_type, source: c.source };
+                    if (c.cell_type === 'sql') out.result_var = c.resultVar || null;
+                    return out;
+                });
                 const resp = await fetch('/api/notebook/doc', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-Token': csrfToken(),
                     },
-                    body: JSON.stringify({ path: this.path, cells: newCells }),
+                    body: JSON.stringify({ path: this.path, cells: wireCells }),
                 });
                 if (!resp.ok) {
                     const text = await resp.text();

@@ -1415,12 +1415,21 @@ script bumps.  Verified via
 ``import('/static/js/notebook/output_renderer.js?_t=' + Date.now())``
 in DevTools — the cache-busted URL pulled the new code, while the
 unversioned import in the editor page still resolved to the old
-function body.  Workaround for this sprint: bumped the
-bootstrap.js version to ``?v=sprint72`` and noted this in the
-playbook so reviewers know to hard-reload (``Ctrl+Shift+R``) when
-testing.  Permanent fix is a follow-on sprint that threads a
-build-time version stamp into every dynamic import URL — out of
-scope here.
+function body.  Initial workaround attempt (bumping bootstrap.js's
+``?v=`` query) does **not** propagate to the inner dynamic
+imports — the URLs they request are unchanged, so the disk-cached
+siblings still load.  **Real fix landed in the Phase-12.7 tail
+commit**: a new HTTP middleware
+[``static_module_revalidate_middleware``](../../pointlessql/api/main.py)
+stamps ``Cache-Control: no-cache, must-revalidate`` on every
+``/static/js/notebook/*`` response so the browser MUST issue a
+conditional ``If-Modified-Since`` request next time.  Starlette's
+StaticFiles answers 304 when unchanged (cheap) but a sprint-fresh
+module is delivered immediately on the next page load — no
+hard-reload needed.  Verified by reloading the editor in
+Playwright-MCP without ``Ctrl+Shift+R``: the dynamic
+``import('/static/js/notebook/output_renderer.js')`` returned the
+new function body that includes the widget branch.
 
 ### Files changed (Sprint 72)
 
@@ -1756,3 +1765,129 @@ landed across the phase:
   swallow + widget-view+json card).
 - **Sprint 73** — per-cell run history + diff (Alembic 018).
 - **Sprint 74** — settings drawer + keymap overlay + phase close.
+
+## Phase 12.7 tail — BUG-71-02 + BUG-72-01 root fix + replay completion
+
+After Sprint 74's commit landed, a closing audit pass replayed the
+parts of L / M / N / O that the live walkthrough had skipped.  Two
+bugs surfaced and were fixed in a single follow-up commit;
+documentation of BUG-72-01 above was also corrected (the original
+"workaround" claim that bumping bootstrap.js's ``?v=`` query
+fixed the cache problem was wrong — see the corrected paragraph
+in the Sprint 72 "What the replay caught" section).
+
+### BUG-71-02 — server-side notebook_doc dropped the [sql] tag + result_var on round-trip
+
+Sprint 71's frontend correctly parsed and serialised
+``# %% [sql] pql_cell_id="…" result_var="…"`` markers, but the
+server-side
+[``notebook_doc.py``](../../pointlessql/services/notebook_doc.py)
+service used jupytext for both load and save.  jupytext only
+recognises ``[markdown]`` as a cell-type tag — anything else
+(``[sql]``, ``[raw]``, …) is silently dropped from the marker
+line, and the cell is parsed as a plain code cell.  The
+``result_var`` segment was equally invisible.  Result: opening a
+notebook whose disk file had a SQL cell rendered it as a code
+cell on the editor (no SQL band, no run-via-execute_sql, no
+``result_var`` input populated); saving the editor's SQL cell
+back stripped the tag again.  Save also rejected
+``cell_type='sql'`` outright in the
+[``api_save_notebook_doc``](../../pointlessql/api/main.py)
+validator — it only allowed ``code`` / ``markdown`` — so
+autosave silently failed for SQL cells.
+
+**Fix (single follow-up commit):**
+
+1. Extended
+   [``notebook_doc.NotebookCell``](../../pointlessql/services/notebook_doc.py)
+   with an optional ``result_var: str | None`` field.
+2. Added a module-level ``_PQL_MARKER_RE`` mirroring
+   [cell_parser.js](../../frontend/js/notebook/cell_parser.js)'s
+   ``CELL_MARKER_RE``.
+3. ``load_document`` post-parses the raw .py file with the regex
+   to recover ``[sql]`` tags + ``result_var`` segments and
+   overrides what jupytext returned.
+4. ``save_document`` post-writes the .py file (after
+   ``jupytext.write``) via a new ``_rewrite_sql_markers`` helper
+   that rewrites code-cell markers for SQL cells back to
+   ``# %% [sql] pql_cell_id="…" result_var="…"``.
+5. ``api_save_notebook_doc`` accepts ``cell_type='sql'`` +
+   reads optional ``result_var``.
+6. ``api_load_notebook_doc`` includes ``result_var`` in the JSON
+   bundle for every cell.
+7. [main.js](../../frontend/js/notebook/main.js) normalises
+   ``result_var`` ↔ ``resultVar`` at the wire boundary on both
+   load (incoming bundle) and save (outgoing POST body).
+
+**Verified post-fix:**
+
+- L7 round-trip: a fixture file with
+  ``# %% [sql] pql_cell_id="…" result_var="demo_df"`` opens with
+  ``cellType='sql'``, ``result_var`` input pre-populated, SQL
+  band CSS rendered.  ``GET /api/notebook/doc?path=…`` returns
+  ``{cell_type:'sql', result_var:'demo_df'}`` for that cell.
+- L8 drop ``result_var=``: clearing the input rewrites the
+  marker line to ``# %% [sql] pql_cell_id="…"`` (segment dropped,
+  ``[sql]`` tag preserved).
+- L9 privilege denial: a SQL cell against
+  ``nonexistent.schema.forbidden`` surfaces
+  ``CatalogNotFoundError: Catalog 'nonexistent' does not exist``
+  in the cell's output zone before the kernel executes.
+
+### BUG-72-01 root fix landed
+
+The original "bump bootstrap.js's ``?v=``" workaround claim was
+wrong.  The real fix in the same follow-up commit:
+[``static_module_revalidate_middleware``](../../pointlessql/api/main.py)
+stamps ``Cache-Control: no-cache, must-revalidate`` on every
+``/static/js/notebook/*`` response.  Starlette's StaticFiles
+already supports conditional GETs via
+``If-Modified-Since`` — the middleware just forces the browser to
+issue them.  Verified: a non-hard-reload page load delivers the
+post-fix renderer's widget branch without manual cache-bust.
+
+### Sprint 71 — additional Playwright-MCP coverage post-fix
+
+- **L6 Variable Explorer:** SQL cell with
+  ``result_var="demo_df"`` runs → Variables panel shows
+  ``demo_df`` as ``pandas.DataFrame`` shape ``[5, 4]``.
+
+### Sprint 72 — additional Playwright-MCP coverage post-fix
+
+- **M1** synthetic widget bundle → placeholder card with
+  truncated ``model_id``.
+- **M2** real ``ipywidgets.IntSlider()`` → placeholder card with
+  the kernel-emitted ``model_id`` (8-char prefix).
+- **M3** ``slider.observe(...)`` → placeholder renders, no
+  client crash, no ``comm_*`` console noise.
+- **M4** missing ``model_id`` → ``Widget output (unrenderable)``
+  fallback.
+
+### Sprint 73 — additional Playwright-MCP coverage post-fix
+
+- **N6** file-delete cascade: ``clear_path('disposable.py')``
+  zeroed ``notebook_cell_run_sources`` for that path; other
+  files' rows untouched.
+- **N7** kernel-restart persistence: history row count for cell
+  ``bbbbbbbb`` stayed at 2 across a kernel restart (``clear_session``
+  deliberately does NOT cascade into the history table).
+- **N8** clear-outputs preserves history: a fresh run +
+  ``pql.clearOutputs`` palette action grew the history table from
+  2 → 3 rows; the per-execute audit trail explicitly survives the
+  output-zone wipe.
+
+### Sprint 74 — additional Playwright-MCP coverage post-fix
+
+- **O3** reload persistence: localStorage carries
+  ``pql.nbedit.theme.v1`` / ``pql.nbedit.fontSize.v1`` /
+  ``pql.nbedit.autosave.debounceMs.v1`` across navigations;
+  Monaco re-applies all three on mount.
+- **O5** palette actions: ``editor.getAction('pql.openSettings').run()``,
+  ``pql.openKeymap``, ``pql.toggleOutline``, ``pql.openHistory``
+  all fire and produce the expected DOM effect (drawer opens,
+  modal opens, outline aside flips, history popover renders).
+- **O6** multi-tab broadcast: dispatching a manual
+  ``pql:settings-changed`` ``CustomEvent`` on ``document`` flips
+  the editor's ``fontSize`` (18 → 14) and Monaco's background
+  (``rgb(30, 30, 30)`` → ``rgb(255, 255, 254)``) — confirms the
+  per-tab listener picks up cross-tab broadcasts as designed.

@@ -30,6 +30,7 @@ the ``.py`` sibling of :func:`notebook_workspace.resolve_upload_target`.
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,6 +45,18 @@ _PY_NOTEBOOK_SUFFIX = ".py"
 _CELL_ID_KEY = "pql_cell_id"
 _CELL_METADATA_FILTER = f"{_CELL_ID_KEY},-all"
 
+# Sprint 71 BUG-71-02 fix: jupytext only knows about ``[markdown]`` /
+# ``code`` cells; the ``[sql]`` tag and the optional ``result_var=``
+# segment are PointlesSQL extensions.  We post-parse the source file
+# after jupytext to recover both, and pre-rewrite the file after
+# jupytext.write to put them back.  The regex matches the same shape
+# that ``frontend/js/notebook/cell_parser.js`` parses on the client.
+_PQL_MARKER_RE = re.compile(
+    r'^#\s*%%(?:\s+\[(\w+)\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"'
+    r'(?:\s+result_var="([A-Za-z_][A-Za-z0-9_]*)")?\s*$',
+    re.MULTILINE,
+)
+
 
 @dataclass(frozen=True)
 class NotebookCell:
@@ -53,17 +66,23 @@ class NotebookCell:
         id: Stable UUID. Assigned on first save when a foreign ``.py``
             lacks an ``id=`` marker; round-tripped through jupytext
             cell metadata thereafter.
-        cell_type: ``"code"`` or ``"markdown"``. Raw cells are not
-            supported in the editor — they're rewritten to markdown on
-            load (one-way, acceptable for Phase 12.6).
+        cell_type: ``"code"`` / ``"markdown"`` / ``"sql"`` (Sprint 71).
+            Raw cells are not supported in the editor — they're
+            rewritten to markdown on load (one-way, acceptable for
+            Phase 12.6).
         source: Cell source text. Markdown cells carry raw markdown
             without comment-escaping; jupytext handles the
             ``# %% [markdown]`` round-trip.
+        result_var: Optional pandas-DataFrame name a SQL cell binds
+            its result to in the kernel namespace (Sprint 71).
+            ``None`` for non-SQL cells and SQL cells without a
+            ``result_var=`` marker segment.
     """
 
     id: str
     cell_type: str
     source: str
+    result_var: str | None = None
 
 
 @dataclass(frozen=True)
@@ -162,6 +181,17 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
         ``dirty`` flag set when at least one UUID was minted.
     """
     notebook = jupytext.read(absolute_path, fmt="py:percent")
+    # Sprint 71 BUG-71-02: jupytext does not recognise the ``[sql]``
+    # tag — it parses ``# %% [sql] pql_cell_id="…"`` as a plain code
+    # cell with the ``[sql]`` text dropped from the marker.  Re-scan
+    # the raw file with our own regex (mirrors cell_parser.js) to
+    # recover the tag + the optional ``result_var`` segment, and
+    # override the type that jupytext returned.
+    raw_text = absolute_path.read_text()
+    pql_overrides: dict[str, tuple[str | None, str | None]] = {}
+    for m in _PQL_MARKER_RE.finditer(raw_text):
+        tag, cid, rv = m.group(1), m.group(2), m.group(3)
+        pql_overrides[cid] = (tag, rv)
     cells: list[NotebookCell] = []
     dirty = False
     for raw_cell in notebook.cells:
@@ -174,11 +204,21 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
             dirty = True
         raw_type = getattr(raw_cell, "cell_type", "code")
         cell_type = "markdown" if raw_type == "markdown" else "code"
+        result_var: str | None = None
+        # Apply the post-parse override for cells whose marker carried
+        # a PointlesSQL-specific tag jupytext does not understand.
+        override = pql_overrides.get(cell_id)
+        if override is not None:
+            tag, rv = override
+            if tag == "sql":
+                cell_type = "sql"
+                result_var = rv
         cells.append(
             NotebookCell(
                 id=cell_id,
                 cell_type=cell_type,
                 source=raw_cell.source or "",
+                result_var=result_var,
             )
         )
     return NotebookDocument(path=relative_path, cells=cells, dirty=dirty)
@@ -192,6 +232,14 @@ def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:
     Cell IDs are written as ``id=<uuid>`` in the marker line so the
     round-trip is lossless.
 
+    Sprint 71 BUG-71-02: SQL cells are written by jupytext as plain
+    code cells (it does not know about the ``[sql]`` tag).  After
+    jupytext writes the file, we post-process the bytes to rewrite
+    ``# %% pql_cell_id="<sql_cell>"`` markers to
+    ``# %% [sql] pql_cell_id="<sql_cell>" result_var="<name>"`` so
+    the on-disk format stays the source of truth and the next
+    load_document round-trips losslessly.
+
     Args:
         absolute_path: Pre-resolved target path.
         cells: Ordered cells to write. Each must already carry a
@@ -200,6 +248,7 @@ def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:
             that.
     """
     nb_cells: list[Any] = []
+    sql_overrides: dict[str, str | None] = {}
     for cell in cells:
         if cell.cell_type == "markdown":
             nb_cell = nbformat.v4.new_markdown_cell(cell.source)
@@ -207,6 +256,38 @@ def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:
             nb_cell = nbformat.v4.new_code_cell(cell.source)
         nb_cell.metadata[_CELL_ID_KEY] = cell.id
         nb_cells.append(nb_cell)
+        if cell.cell_type == "sql":
+            sql_overrides[cell.id] = cell.result_var
     notebook = nbformat.v4.new_notebook(cells=nb_cells)
     notebook.metadata.setdefault("jupytext", {})["cell_metadata_filter"] = _CELL_METADATA_FILTER
     jupytext.write(notebook, absolute_path, fmt="py:percent")
+    if sql_overrides:
+        _rewrite_sql_markers(absolute_path, sql_overrides)
+
+
+def _rewrite_sql_markers(
+    absolute_path: Path, sql_overrides: dict[str, str | None],
+) -> None:
+    """Rewrite ``# %% pql_cell_id="<id>"`` markers for SQL cells.
+
+    Sprint 71 BUG-71-02 helper.  Reads the file jupytext just wrote,
+    locates each marker line whose UUID is in ``sql_overrides``, and
+    replaces it with the ``# %% [sql] pql_cell_id="…" result_var="…"``
+    canonical shape.  Idempotent — running twice produces the same
+    output.
+    """
+    text = absolute_path.read_text()
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        m = _PQL_MARKER_RE.match(line)
+        if m is None:
+            continue
+        cid = m.group(2)
+        if cid not in sql_overrides:
+            continue
+        rv = sql_overrides[cid]
+        new_line = f'# %% [sql] pql_cell_id="{cid}"'
+        if rv:
+            new_line += f' result_var="{rv}"'
+        lines[i] = new_line
+    absolute_path.write_text("\n".join(lines))
