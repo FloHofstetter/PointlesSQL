@@ -3262,7 +3262,7 @@ PointlesSQL
 │       query_history or queries' --ignore=tests/test_jupyter.py``
 │       26/26 passed.
 │
-│   └── Sprint 87 — api/main.py alerts + feed routes extract      ✅ done (pending-commit)
+│   ├── Sprint 87 — api/main.py alerts + feed routes extract      ✅ done (c45f4a5)
 │       Fifth api/main.py decomposition slice.  The full alerts
 │       surface lifts out: ``/api/alerts`` CRUD (5 routes),
 │       destinations sub-resource (2 routes), per-user feed-token
@@ -3293,6 +3293,40 @@ PointlesSQL
 │       ``pyright`` 0 errors / 67 warnings (unchanged),
 │       ``pydoclint`` 0 violations.  ``pytest -k alert
 │       --ignore=tests/test_jupyter.py`` 19/19 passed.
+│
+│   └── Sprint 87b — api/main.py UC volumes routes extract        ✅ done (pending-commit)
+│       Sixth api/main.py decomposition slice.  The full UC
+│       volumes surface lifts out: 4 JSON endpoints (browse,
+│       upload, delete file + convert-to-Delta) + 2 HTML pages
+│       (volumes list + per-volume detail).  main.py drops
+│       4.717 → 4.242 LOC (-475).
+│
+│       - ``api/volumes_routes.py`` (527 LOC) — 6 routes plus
+│         ``soyuz_base_url``, ``volume_full_name_split``,
+│         ``convert_volume_file_sync``, the
+│         ``DELTA_PRIMITIVE_TO_UC`` dict + ``delta_field_to_uc``
+│         field-mapper.  Underscores dropped from helper names;
+│         the type-mapping pair is re-exported from main.py
+│         under its legacy ``_DELTA_PRIMITIVE_TO_UC`` /
+│         ``_delta_field_to_uc`` aliases (Invariant 8) so
+│         ``tests/test_volume_convert_type_mapping.py`` keeps
+│         importing them from ``pointlessql.api.main``.
+│       - ``main.py`` mount: ``app.include_router(volumes_router)``.
+│         Stale ``_soyuz_base_url`` helper deleted (no remaining
+│         caller); top-level ``httpx`` import dropped (only the
+│         moved routes used it).
+│
+│       **Convert-to-Delta admin gate preserved.** The
+│       ``api_convert_volume_file_to_delta`` route still calls
+│       ``require_admin(request)`` before any work, mirroring the
+│       original behaviour.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 67 warnings (unchanged),
+│       ``pydoclint`` 0 violations.  ``pytest -k volume
+│       --ignore=tests/test_jupyter.py`` 15/15 passed; the
+│       targeted ``tests/test_volume_convert_type_mapping.py``
+│       9/9 passed (re-export gate intact).
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

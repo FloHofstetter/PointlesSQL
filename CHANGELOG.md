@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 87b: api/main.py UC volumes routes extract
+
+Sixth decomposition slice for ``api/main.py``. The full UC volumes
+surface lifts out: 4 JSON endpoints (browse, upload, delete file +
+convert-to-Delta) + 2 HTML pages (volumes list + per-volume detail).
+main.py drops 4,717 → 4,242 LOC (-475).
+
+- **New module** [volumes_routes.py](pointlessql/api/volumes_routes.py)
+  (527 LOC). Owns 6 routes plus ``soyuz_base_url``,
+  ``volume_full_name_split``, ``convert_volume_file_sync``, the
+  ``DELTA_PRIMITIVE_TO_UC`` dict + ``delta_field_to_uc``
+  field-mapper. Underscore prefixes dropped from helper names;
+  the type-mapping pair is re-exported from main.py under its
+  legacy ``_DELTA_PRIMITIVE_TO_UC`` / ``_delta_field_to_uc``
+  aliases (Invariant 8 of the modularisation plan) so
+  ``tests/test_volume_convert_type_mapping.py`` keeps importing
+  them from ``pointlessql.api.main``.
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(volumes_router)``
+  next to the other five routers. Stale ``_soyuz_base_url`` helper
+  deleted (the moved volumes routes were the only callers); top-
+  level ``httpx`` import dropped for the same reason.
+
+- **Convert-to-Delta admin gate preserved.** The
+  ``api_convert_volume_file_to_delta`` route still calls
+  ``require_admin(request)`` before any work, mirroring the
+  original behaviour.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 67 warnings (unchanged), ``pydoclint`` 0 violations,
+  ``pytest -k volume --ignore=tests/test_jupyter.py`` 15/15
+  passed; the targeted
+  ``tests/test_volume_convert_type_mapping.py`` 9/9 passed
+  (re-export gate intact).
+
 ### Refactored — Phase 12.9 / Sprint 87: api/main.py alerts + feed routes extract
 
 Fifth decomposition slice for ``api/main.py``. The full alerts
