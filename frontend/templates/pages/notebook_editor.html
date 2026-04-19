@@ -107,6 +107,24 @@
     .pql-nbedit-vars .pql-nbedit-vars-df th, .pql-nbedit-vars .pql-nbedit-vars-df td {
         border: 1px solid var(--bs-border-color); padding: 0.15rem 0.3rem;
     }
+    /* Sprint 70 — Outline / TOC panel, peer of Variables on the right. */
+    .pql-nbedit-outline { width: 320px; border-left: 1px solid var(--bs-border-color);
+                           overflow-y: auto; background: var(--bs-body-bg); padding: 0.5rem 0.75rem; }
+    .pql-nbedit-outline h6 { font-size: 0.78rem; text-transform: uppercase; color: var(--bs-secondary-color);
+                              margin: 0.5rem 0 0.35rem 0; letter-spacing: 0.05em; }
+    .pql-nbedit-outline .pql-outline-row { display: flex; align-items: center; gap: 0.35rem;
+                                             padding: 3px 4px; border-radius: 3px; cursor: pointer;
+                                             font-size: 12.5px; line-height: 1.4;
+                                             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pql-nbedit-outline .pql-outline-row:hover { background: rgba(13, 110, 253, 0.10); }
+    .pql-nbedit-outline .pql-outline-l1 { padding-left: 0.25rem; font-weight: 600; }
+    .pql-nbedit-outline .pql-outline-l2 { padding-left: 1.1rem; }
+    .pql-nbedit-outline .pql-outline-l3 { padding-left: 1.95rem; color: var(--bs-secondary-color); }
+    .pql-nbedit-outline .pql-outline-code { padding-left: 0.25rem;
+                                              font-family: var(--bs-font-monospace);
+                                              color: var(--bs-secondary-color); font-size: 11.5px; }
+    .pql-nbedit-outline .pql-outline-icon { color: var(--bs-info); flex: 0 0 auto; }
+    .pql-nbedit-outline .pql-outline-label { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
     .pql-nbedit-catalog-modal { font-size: 13px; }
     .pql-nbedit-catalog-modal .list-group-item { cursor: pointer; padding: 0.35rem 0.6rem; }
     .pql-nbedit-catalog-modal .list-group-item:hover { background: rgba(13, 110, 253, 0.1); }
@@ -543,6 +561,13 @@
                                         <i class="bi bi-braces-asterisk me-1"></i>Variables
                                     </button>
                                     <button type="button"
+                                            class="btn btn-sm"
+                                            :class="outlineVisible ? 'btn-primary' : 'btn-outline-secondary'"
+                                            @click="toggleOutline()"
+                                            title="Toggle outline / table of contents">
+                                        <i class="bi bi-list-columns-reverse me-1"></i>Outline
+                                    </button>
+                                    <button type="button"
                                             class="btn btn-sm btn-primary"
                                             @click="runCurrentCell()"
                                             :disabled="kernelStatus !== 'ready'"
@@ -579,6 +604,32 @@
                                         <div class="pql-var-repr" x-show="info.repr && !info.preview_html"
                                              x-text="info.repr"></div>
                                         <div x-show="info.preview_html" x-html="info.preview_html"></div>
+                                    </div>
+                                </template>
+                            </aside>
+                            <!-- Sprint 70: right-side Outline / TOC panel.
+                                 Peer of the Variables aside above; the two
+                                 share the 320px right slot via mutually-
+                                 exclusive ``toggleOutline`` / ``toggleVariables``.
+                                 ``x-for`` rebuilds only on outline reassignment
+                                 (fresh array from recomputeOutline) so typing
+                                 in Monaco does not churn DOM rows. -->
+                            <aside class="pql-nbedit-outline" x-show="outlineVisible" x-cloak>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0">Outline</h6>
+                                </div>
+                                <div class="text-muted small mt-1" x-show="outline.length === 0">
+                                    No headings or code cells yet.
+                                </div>
+                                <template x-for="entry in outline"
+                                          :key="entry.cellId + ':' + entry.level + ':' + entry.label">
+                                    <div class="pql-outline-row"
+                                         :class="'pql-outline-' + (entry.kind === 'heading' ? ('l' + entry.level) : 'code')"
+                                         @click="jumpToCell(entry.cellId)">
+                                        <span x-show="entry.kind === 'code'" class="pql-outline-icon">
+                                            <i class="bi bi-code-slash"></i>
+                                        </span>
+                                        <span class="pql-outline-label" x-text="entry.label"></span>
                                     </div>
                                 </template>
                             </aside>

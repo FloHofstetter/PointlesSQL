@@ -58,6 +58,7 @@ import {
 } from './pyright_client.js';
 import { appendOutputFrame } from './output_renderer.js';
 import { createClosureRefs } from './closure_state.js';
+import { buildOutline } from './outline.js';
 
 function csrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -86,6 +87,14 @@ export function createNotebookTabEditor({
     // Sprint 68: initial bundle may be null on lazy-loaded tabs; cells
     // are populated inside mount() once the bundle resolves.
     let cells = [];
+    // Sprint 70: outline entries derived from ``cells`` + a 150ms
+    // debounce timer for onDidChangeContent-triggered recomputes.
+    // Both MUST live in closure scope — the reactivity-boundary gate
+    // blocks ``this._outlineEntries`` / ``this._outlineTimer`` because
+    // a setTimeout handle parked on Alpine's proxy would let the
+    // reactive walk recurse into the timer's captured closure.
+    let outlineEntries = [];
+    let outlineTimer = null;
     let saveTimerHandle = null;
     let saveInFlight = false;
     let saveQueued = false;
@@ -143,6 +152,14 @@ export function createNotebookTabEditor({
         // name → {type, shape, repr, preview_html}.
         variables: {},
         variablesVisible: false,
+        // Sprint 70: reactive mirror of the closure-scoped
+        // ``outlineEntries`` list.  Assigned a fresh array
+        // (``outlineEntries.slice()``) on every recompute so Alpine's
+        // x-for diffs once per real change; a getter would produce a
+        // fresh array on every reactive tick and thrash DOM.  Mirrors
+        // how ``variables`` is reassigned on each introspect reply.
+        outline: [],
+        outlineVisible: false,
         catalogInsertOpen: false,
         catalogInsertQuery: '',
         // True once openCatalogInsert() has populated the closure-
@@ -183,6 +200,7 @@ export function createNotebookTabEditor({
                     bundle = { cells: [], dirty: true, outputs: [] };
                 }
                 cells = (bundle.cells || []).slice();
+                recomputeOutline();
                 initialOutputs = bundle.outputs || [];
                 this.dirty = bundle.dirty === true;
                 this.saveState = this.dirty ? 'pending' : 'saved';
@@ -239,6 +257,7 @@ export function createNotebookTabEditor({
                     rebuildMarkdownZones();
                     updateHiddenAreas();
                     notifyLspDidChange();
+                    recomputeOutlineDebounced();
                 });
                 registerPyrightProvidersOnce(monaco);
                 openKernelWS(this);
@@ -388,7 +407,32 @@ export function createNotebookTabEditor({
 
         toggleVariables() {
             this.variablesVisible = !this.variablesVisible;
-            if (this.variablesVisible) this._refreshVariables();
+            if (this.variablesVisible) {
+                this.outlineVisible = false;
+                this._refreshVariables();
+            }
+        },
+
+        // Sprint 70: right-side Outline panel toggle.  Mutually
+        // exclusive with ``variablesVisible`` so the two asides never
+        // occupy the 320px right slot at the same time.
+        toggleOutline() {
+            this.outlineVisible = !this.outlineVisible;
+            if (this.outlineVisible) this.variablesVisible = false;
+        },
+
+        // Sprint 70: outline-row click handler.  Reuses
+        // ``findCellMarkerLine`` to locate the cell's marker line and
+        // jumps Monaco to the first content line (marker + 1), mirrors
+        // the ``addCellAbove`` navigation pattern and adds
+        // ``revealLineInCenter`` for smooth viewport scrolling.
+        jumpToCell(cellId) {
+            const editor = refs.get('editor');
+            if (!editor) return;
+            const contentLine = findCellMarkerLine(cellId) + 1;
+            editor.setPosition({ lineNumber: contentLine, column: 1 });
+            editor.revealLineInCenter(contentLine);
+            editor.focus();
         },
 
         async openCatalogInsert() {
@@ -521,6 +565,34 @@ export function createNotebookTabEditor({
         saveTimerHandle = window.setTimeout(callback, AUTOSAVE_DEBOUNCE_MS);
     }
 
+    // Sprint 70: recompute the outline and mirror it onto the reactive
+    // root as a fresh array.  Re-splits from the live Monaco model
+    // rather than reading the closure-local ``cells`` because ``cells``
+    // is only refreshed on save / ``rescanDecorations`` — NOT on every
+    // content change.  Replay-caught: without a re-split, the outline
+    // lags behind typing until the next autosave.  A 150ms debounce
+    // (NOT the 1500ms autosave cadence) keeps the TOC feeling
+    // responsive without running the regex on every keystroke.  The
+    // ``reactiveRoot`` guard is defensive — mount() captures ``this``
+    // before content changes can fire.  See outline.js for the
+    // extractor's BUG-69-01 rationale.
+    function recomputeOutline() {
+        const model = refs.get('model');
+        const liveCells = model ? splitCells(model.getValue()) : cells;
+        outlineEntries = buildOutline(liveCells);
+        if (reactiveRoot) {
+            reactiveRoot.outline = outlineEntries.slice();
+        }
+    }
+
+    function recomputeOutlineDebounced() {
+        if (outlineTimer) window.clearTimeout(outlineTimer);
+        outlineTimer = window.setTimeout(() => {
+            outlineTimer = null;
+            recomputeOutline();
+        }, 150);
+    }
+
     function applyDecorations(monaco, ranges) {
         const editor = refs.get('editor');
         if (!editor) return;
@@ -557,6 +629,7 @@ export function createNotebookTabEditor({
         applyDecorations(window.monaco, ranges);
         cells = newCells;
         rebuildCellAffordances();
+        recomputeOutline();
     }
 
     function currentCellAtCursor() {

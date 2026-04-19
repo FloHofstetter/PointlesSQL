@@ -4,6 +4,56 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 70) — Phase 12.7: Outline / TOC panel + cell jump
+
+Sixth Phase 12.7 sprint.  Adds a right-side Outline panel that peers
+with the Variable Explorer (mutually exclusive, same 320px slot,
+same chrome).  Lists markdown H1/H2/H3 ATX headings (indented per
+level) and each code cell's first non-blank stripped line
+(truncated to ~60 chars).  Clicking a row jumps Monaco to the
+cell's first content line and scrolls it to the viewport centre
+via ``editor.revealLineInCenter`` + ``editor.focus``.
+
+- **New module** [frontend/js/notebook/outline.js](frontend/js/notebook/outline.js)
+  — pure ``buildOutline(cells)`` regex helper + ``stripCodeLabel``.
+  No markdown-it dependency (dodges the Sprint-69 UMD/AMD
+  loader-order class, BUG-69-01).  No closure state — re-entrant,
+  idempotent.
+- [frontend/js/notebook/main.js](frontend/js/notebook/main.js)
+  — closure-scoped ``outlineEntries`` + 150ms debounce timer;
+  mirrored into reactive ``this.outline`` as a fresh array on
+  every change so Alpine's x-for diffs once per real edit.
+  ``toggleOutline()`` mutually excludes with ``toggleVariables()``.
+  ``jumpToCell(cellId)`` reuses ``findCellMarkerLine`` verbatim
+  and adds ``revealLineInCenter`` + ``focus``.  Recompute
+  re-splits from the live Monaco model
+  (``splitCells(model.getValue())``) rather than reading the
+  closure-scoped ``cells`` array — ``cells`` is only refreshed on
+  save / ``rescanDecorations``, so free-form typing inside a cell
+  would have left the outline stale (BUG-70-01, replay-caught).
+- [frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html)
+  — ``Outline`` toolbar button between Variables and Run cell;
+  right-side ``<aside class="pql-nbedit-outline">`` mirroring the
+  Variables aside; inline CSS for per-level indent classes
+  (``.pql-outline-l1`` / ``-l2`` / ``-l3`` / ``-code``).
+- [scripts/check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden list to cover ``this._outlineEntries``,
+  ``this._outlineTimer``, ``this._outlineDebounce`` so a future
+  change cannot regress by parking the 150ms debounce handle on
+  Alpine's proxy (its captured closure holds the live ``cells``
+  array; Alpine's reactive walk would recurse — exactly the
+  BUG-64-02 shape).
+- [docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md)
+  — Part K replay added with 7 numbered steps + known-quirks
+  section + bug-catch write-ups for BUG-70-01 (stale closure
+  ``cells``) and BUG-70-02 (over-stripping jupytext prefix
+  double-shifted heading levels).
+
+**No Alembic migration.**  Pure frontend, no backend change, no
+persisted state (open/closed panel is session-only).  Trim-safe
+per the Phase 12.7 roadmap — nothing downstream depends on
+``outline.js`` or ``this.outline``; revert is O(1) sprint-local.
+
 ### Added (Sprint 69) — Phase 12.7: markdown-it + KaTeX + pencil pin
 
 Fifth Phase 12.7 sprint.  Replaces the Sprint-65 regex markdown

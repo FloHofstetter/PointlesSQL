@@ -2332,10 +2332,40 @@ PointlesSQL
 │   │   / ``<link>`` tags reverts to plain markdown-it without
 │   │   breaking anything else.
 │   │
-│   ├── Sprint 70 — Outline / TOC panel + cell jump                ⏳ trim-point
-│   │   Right-side panel (peer of Variable Explorer) listing
-│   │   markdown headers + code-cell first-line as outline; click
-│   │   jumps Monaco to the cell.  Pure additive UI.
+│   ├── Sprint 70 — Outline / TOC panel + cell jump                ✅ done
+│   │   Right-side Outline panel peers with the Variable Explorer
+│   │   (same 320px slot, mutually exclusive via
+│   │   ``toggleOutline`` / ``toggleVariables``).  Lists ATX
+│   │   H1/H2/H3 headings from markdown cells (indented per level)
+│   │   and each code cell's first non-blank stripped line
+│   │   (leading ``# `` stripped, truncated to 60 chars).  Click
+│   │   an entry → Monaco jumps to the cell's first content line
+│   │   via ``findCellMarkerLine`` + ``revealLineInCenter`` +
+│   │   ``focus``.  New ESM module
+│   │   [frontend/js/notebook/outline.js](frontend/js/notebook/outline.js)
+│   │   is a pure leaf: ``buildOutline(cells)`` returns a flat
+│   │   entry list, no imports from the notebook tree.
+│   │   **Extraction is regex-based, deliberately NOT markdown-it**
+│   │   — dodges the Sprint-69 UMD/AMD loader-order class
+│   │   (BUG-69-01), so the outline still renders when the
+│   │   markdown vendor bundle fails to load.  Closure-scoped
+│   │   ``outlineEntries`` + 150ms debounce timer in
+│   │   [main.js](frontend/js/notebook/main.js); the reactive
+│   │   ``this.outline`` gets a fresh array via
+│   │   ``reactiveRoot.outline = outlineEntries.slice()`` on
+│   │   change so Alpine's x-for diffs once per real edit instead
+│   │   of on every tick.  Recompute re-splits from the live
+│   │   Monaco model (``splitCells(model.getValue())``) to
+│   │   sidestep stale closure ``cells`` — BUG-70-01,
+│   │   replay-caught and fixed in the same commit.
+│   │   Reactivity-boundary grep gate widened to block
+│   │   ``this._outlineEntries`` / ``_outlineTimer`` /
+│   │   ``_outlineDebounce``.  Playbook Part K added; replayed in
+│   │   Firefox (MCP) as the land gate per
+│   │   ``feedback_run_playbook_as_gate``.
+│   │   **No Alembic migration.** Trim-safe — no downstream
+│   │   sprints (71-74) import ``outline.js`` or read
+│   │   ``this.outline``; revert is O(1) sprint-local.
 │   │
 │   ├── Sprint 71 — SQL cell (DuckDB via PQL.sql)                  ⏳ trim-point
 │   │   First non-Python cell type, validates Sprint-66's registry.

@@ -1012,3 +1012,176 @@ vendor bundles load before Monaco's AMD loader activates.
 The Playwright-MCP replay is what surfaced it — the module
 graph boots fine in Node / unit-style probes where no AMD loader
 exists at all.
+
+## Part K — Sprint 70: Outline / TOC panel + cell jump
+
+Phase 12.7 sixth sprint bolts on a right-side Outline panel — peer
+of the Variable Explorer (same 320px slot, mutually exclusive).
+Lists markdown H1/H2/H3 ATX headings (indented per level) and
+each code cell's first non-blank stripped line (``# Load …`` stripped
+to ``Load …``, truncated to 60 chars with ``…``).  Click an entry
+and Monaco jumps to the cell's first content line via
+``revealLineInCenter`` + ``focus``.
+
+Extraction is a pure regex over ``cell.source`` — no markdown-it
+coupling, which deliberately dodges the Sprint-69 UMD/AMD
+loader-order class (BUG-69-01).  The outline renders even if the
+markdown vendor bundle fails to load.
+
+### Fixture
+
+Open ``/notebook/editor?path=scratch.py`` in Firefox (Playwright
+MCP's bundled Firefox; the system Chrome channel is unsupported
+per the Sprint-22 backstory).  The fixture used when replaying
+Sprint 70 is four cells:
+
+```
+# %% [markdown] pql_cell_id="aaaaaaaa-…"
+# Heading 1
+## Sub
+### Deep
+
+# %% pql_cell_id="bbbbbbbb-…"
+import pandas as pd
+x = 1
+
+# %% pql_cell_id="cccccccc-…"
+# Load customers
+df = pd.DataFrame({"a": [1,2,3]})
+
+# %% [markdown] pql_cell_id="dddddddd-…"
+Just prose here, no headings at all.
+```
+
+### Step 1 — Panel mounts empty
+
+1. Confirm the ``Outline`` toolbar button is present between
+   ``Variables`` and ``Run cell``, styled ``btn-outline-secondary``
+   (outlined).
+2. Confirm no right panel is visible.
+
+### Step 2 — Open outline
+
+1. Click ``Outline``.
+2. Assert: button flips to ``btn-primary`` (filled).
+3. Assert: a 320px right aside appears (``display: block``,
+   ``offsetWidth: 320``).
+4. Assert: five rows rendered in source order:
+    - "Heading 1" (l1 indent, bold)
+    - "Sub" (l2 indent)
+    - "Deep" (l3 indent, muted)
+    - "import pandas as pd" (code row, monospace, muted)
+    - "Load customers" (code row — leading ``# `` stripped)
+5. The no-heading markdown cell contributes zero rows.
+
+### Step 3 — Click jumps + scrolls + focuses
+
+1. Move Monaco's cursor to line 1 and call
+   ``editor.revealLine(1)`` so the target cell is out of view.
+2. Click the "import pandas as pd" row.
+3. Assert: ``editor.getPosition()`` returns
+   ``{lineNumber: <cell body line>, column: 1}``.
+4. Assert: ``editor.hasTextFocus() === true`` (``revealLineInCenter``
+   + ``focus`` both fired).
+
+### Step 4 — Edit updates outline (debounced 150ms)
+
+1. Insert ``## Newly Added\n`` before the ``## Sub`` line via
+   ``model.setValue()``.
+2. Wait 250ms (> 150ms debounce).
+3. Assert: outline grows to 6 rows; the heading-level sequence
+   becomes ``[H1 Heading 1, H2 Newly Added, H2 Sub, H3 Deep]``.
+4. ``model.setValue(original)`` to restore and wait another 250ms
+   so the on-disk fixture stays clean.
+
+### Step 5 — Mutual exclusion with Variables
+
+1. With Outline open, click ``Variables``.
+2. Assert after ~50ms: ``outlineVisible === false``,
+   ``variablesVisible === true``; outline aside ``display: none``,
+   vars aside ``display: block``.
+3. Click ``Outline``.
+4. Assert: flags swap again; only the Outline panel is visible.
+
+### Step 6 — Close both
+
+1. Click ``Outline`` again.
+2. Assert: ``outlineVisible === false``, ``variablesVisible ===
+   false``; Monaco fills the full horizontal room.
+
+### Step 7 — Gated CI still passes
+
+```
+bash scripts/check-frontend-no-reactive-monaco.sh
+```
+
+Expect exit 0 with ``OK — no Alpine-reactive Monaco/Worker/WS/
+timer refs in frontend/js/notebook/``.  The Sprint-70 widening
+added ``outlineEntries``, ``outlineTimer``, ``outlineDebounce`` to
+the forbidden list so a future change cannot regress by parking
+the 150ms debounce handle on Alpine's proxy.
+
+### Known quirks (v1)
+
+- **Leading ``#`` stripped from code-cell label.** A first
+  non-blank line like ``# Load customers`` becomes "Load
+  customers" — intentional, mirrors how Databricks names cells
+  via ``# MAGIC`` / ``# COMMAND`` prefixes.  A Python comment
+  that happens to start with ``#`` + space will read as the
+  cell's name, which is usually what the author wants.
+- **Fenced code blocks inside markdown cells are NOT
+  fence-aware.**  A line like ``# bash comment`` at column 1
+  inside a ```` ```bash ```` fence still regex-matches as H1.
+  Accepted for v1; fence tracking would pull markdown-it
+  back into the extractor and reopen the BUG-69-01 class.
+- **Setext headings (``Heading\n====`` / ``----``) not
+  rendered.**  ATX (``#``, ``##``, ``###``) only; H4+ silently
+  skipped.
+
+### What the replay caught
+
+**BUG-70-01 — stale closure ``cells`` in debounced recompute.**
+First Part-K Step 4 replay flipped the expected outline entries
+to the PRE-edit list, not the POST-edit one.  Root cause: the
+initial wiring called ``buildOutline(cells)`` with the
+closure-scoped ``cells`` array, which is only refreshed on save
+path + ``rescanDecorations()``.  Free-form typing inside a cell
+never refreshes it, so the 150ms debounce was reading stale
+data.  Fix in the same commit: ``recomputeOutline()`` re-splits
+from the live Monaco model (``splitCells(model.getValue())``)
+with a fallback to ``cells`` when ``refs.get('model')`` is null
+(mount-time before Monaco creates the model).  See
+[frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+``recomputeOutline`` near the ``scheduleAutosave`` block.
+
+**BUG-70-02 — over-stripping jupytext prefix double-shifted
+headings.**  First regex pass stripped a leading ``# `` from
+each markdown line to mirror Sprint 69's ``rebuildMarkdownZones``
+unwrap.  That turned ``## Sub`` → ``# Sub`` (level 1) and
+``### Deep`` → ``## Deep`` (level 2) — every heading's level
+shifted down by one.  Root cause: the server's notebook_doc
+load path already strips the jupytext ``# `` comment-prefix
+before sending the bundle; Monaco's model and
+``/api/notebook/doc`` both return raw, unwrapped markdown.  Fix
+in the same commit: removed the client-side strip from
+[frontend/js/notebook/outline.js](../../frontend/js/notebook/outline.js).
+
+### Files changed (Sprint 70)
+
+- [frontend/js/notebook/outline.js](../../frontend/js/notebook/outline.js)
+  — **new**, pure ``buildOutline(cells)`` regex extractor.
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — closure-scoped ``outlineEntries`` + 150ms debounce timer;
+  reactive ``this.outline`` assigned fresh slice on change;
+  ``toggleOutline`` (mutex with ``toggleVariables``);
+  ``jumpToCell(cellId)`` reusing ``findCellMarkerLine``;
+  recompute re-splits from the live Monaco model to sidestep
+  the stale-closure-``cells`` trap.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — ``Outline`` toolbar button; right-side ``<aside class
+  ="pql-nbedit-outline">`` mirroring the Variables aside;
+  inline CSS for per-level indent classes.
+- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden pattern to cover
+  ``this._outlineEntries``, ``this._outlineTimer``,
+  ``this._outlineDebounce``.

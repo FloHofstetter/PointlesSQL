@@ -30,10 +30,18 @@
 # markdown-it instance, per-cell pin flags, and pin-toggle handler
 # closures stay closure-scoped — markdown-it instances carry deep
 # rule registries that Alpine's reactive walk would otherwise wrap.
+# Sprint 70 adds `outlineEntries`, `outlineTimer`, and
+# `outlineDebounce` so the right-side Outline panel's cached entry
+# list and 150ms recompute-debounce timer stay closure-scoped — a
+# `setTimeout` handle parked on Alpine's proxy would let the
+# reactive deep-walk reach into the timer's captured closure
+# (which holds the live `cells` array) on every re-render,
+# reproducing the BUG-64-02 class the next time Monaco state grew
+# a cycle.
 
 set -euo pipefail
 
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers)\s*='
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers|outlineEntries|outlineTimer|outlineDebounce)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then
