@@ -3777,7 +3777,7 @@ PointlesSQL
 │   │   lives at
 │   │   [.claude/plans/ich-m-chte-dass-du-luminous-ullman.md](/home/flo/.claude/plans/ich-m-chte-dass-du-luminous-ullman.md).
 │   │
-│   ├── Sprint 96 — Cell-ID refactor: marker grammar + content-hash identity ✅ done (pending-commit)
+│   ├── Sprint 96 — Cell-ID refactor: marker grammar + content-hash identity ✅ done (4c59b85)
 │   │       Merged the two sprints the plan originally sketched
 │   │       ("A: DB migration" + "B: marker grammar drop") into a
 │   │       single coherent commit because the pair is a
