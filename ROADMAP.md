@@ -3535,7 +3535,7 @@ PointlesSQL
 │
 │   ├── Sprint 94 — page templates → ESM (4 of 7 pilots)            ✅ done (33a0a6c)
 │
-│   └── Sprint 95 — CSS feinschliff + cache-busting parity          ✅ done (pending-commit)
+│   └── Sprint 95 — CSS feinschliff + cache-busting parity          ✅ done (90d40b8)
 │       Tranche-6 of the Sprint-76 frontend modularisation plan
 │       and the closing sprint of the Sprint-77-95 effort.
 │
