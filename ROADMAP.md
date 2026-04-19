@@ -3931,16 +3931,53 @@ PointlesSQL
 │   │       ``pyright`` 0 errors, ``pydoclint --style=google`` 0
 │   │       violations, 20/20 tests pass.
 │   │
-│   └── Sprint 98 — Browser walkthrough + bug sprint            ⏳ queued
-│           Deterministic Playwright playbook
-│           ``docs/e2e-walkthroughs/notebook_full_walkthrough.md``
-│           walking the 14 output scenarios (pandas DataFrame,
-│           matplotlib, markdown, SQL, stderr, traceback,
-│           interrupt, large stdout, IPython HTML, post-reload
-│           replay, post-reorder history, external edit reload).
-│           Each gets a screenshot; bugs surface as
-│           ``BUG-96-NN`` tags with inline fixes when trivial
-│           and playbook-tail TODOs when substantial.
+│   └── Sprint 98 — Browser walkthrough + bug sprint            ✅ done (pending-commit)
+│           Deterministic Playwright playbook landed at
+│           [docs/e2e-walkthroughs/notebook_full_walkthrough.md](docs/e2e-walkthroughs/notebook_full_walkthrough.md)
+│           walking 14 output scenarios (stdout, pandas
+│           DataFrame, matplotlib, markdown cell, display
+│           (Markdown), stderr + stdout, traceback, HTML,
+│           save, reload, external edit, markerless file,
+│           BOM / CRLF).  Screenshots live under
+│           ``docs/e2e-walkthroughs/screenshots/sprint-98/``.
+│
+│           Two inline fixes landed with this sprint because
+│           they surfaced as clear regressions of the
+│           Sprint-96 rewrite:
+│
+│           - **BUG-98-02** — ``display(Markdown("…"))`` showed
+│             ``<IPython.core.display.Markdown object>`` because
+│             ``output_renderer.js`` lacked a ``text/markdown``
+│             mime branch.  Added the branch, re-using the
+│             existing ``renderMarkdown`` helper from
+│             ``markdown.js``; also added a
+│             ``.pql-nbedit-output-markdown`` CSS rule in
+│             ``notebook_editor.html`` for heading + code +
+│             spacing.  Verified fix in Playwright (screenshot
+│             ``12-markdown-display-fixed.png``).
+│
+│           - **BUG-98-05** — output view-zones keyed by the
+│             transient ``cell-N`` label accumulated as ghosts
+│             across ``setValue`` calls because
+│             ``rebuildCellAffordances`` only pruned the
+│             affordance widgets, not the view zones.  Added
+│             ``pruneOrphanOutputZones(alive)`` on the
+│             output-zone manager + wired it into
+│             ``main.js``'s ``rebuildCellAffordances`` pass.
+│
+│           One deferred follow-up tagged in the playbook tail:
+│           **BUG-98-01** — markdown view-zone preview misses
+│           its first paint after a synthetic ``setValue``
+│           (real users hit the ``+ Markdown`` toolbar button
+│           which triggers the rebuild through the normal
+│           content-change path, so the bug is only observable
+│           in the Playwright replay).  Low priority.
+│
+│           On-disk invariant verified: a freshly-saved
+│           ``sprint98_walkthrough.py`` has zero
+│           ``pql_cell_id`` tokens + zero UUID-shaped
+│           substrings — Sprint 96's goal reached in the
+│           browser, not just in the tests.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

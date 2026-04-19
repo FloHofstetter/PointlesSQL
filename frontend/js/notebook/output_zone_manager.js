@@ -88,6 +88,26 @@ export function createOutputZoneManager({
         }
     }
 
+    // Sprint 98 BUG-98-05 fix: remove output zones whose cell-id is no
+    // longer in the live cell list.  Called from
+    // ``rebuildCellAffordances`` in main.js after every model change
+    // so a source edit that renumbers / drops a cell does not leave
+    // stale outputs anchored to dead labels.  Without this the DOM
+    // accumulates ghost zones from every prior ``setValue`` call.
+    function pruneOrphanOutputZones(aliveCellIds) {
+        const editor = getEditor();
+        if (!editor) return;
+        const alive = aliveCellIds instanceof Set
+            ? aliveCellIds
+            : new Set(aliveCellIds);
+        for (const cellId of Object.keys(outputZones)) {
+            if (alive.has(cellId)) continue;
+            const zone = outputZones[cellId];
+            editor.changeViewZones((acc) => acc.removeZone(zone.zoneId));
+            delete outputZones[cellId];
+        }
+    }
+
     function appendOutput(cellId, msgType, content) {
         const endLine = getCellEndLine(cellId);
         if (endLine === null) return;
@@ -274,6 +294,7 @@ export function createOutputZoneManager({
         layoutOutputZone,
         clearOutput,
         clearAllOutputs,
+        pruneOrphanOutputZones,
         appendOutput,
         replayPersistedOutputs,
         rebuildMarkdownZones,

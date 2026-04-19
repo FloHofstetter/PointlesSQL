@@ -698,6 +698,12 @@ export function createNotebookTabEditor({
                 delete cellAffordances[cellId];
             }
         }
+        // Sprint 98 BUG-98-05: output zones are keyed on the transient
+        // cell-id label, which renumbers on every source edit.  Prune
+        // zones whose label is no longer in the live set so a
+        // ``setValue`` / insert / delete does not leave ghost outputs
+        // glued to dead labels.
+        zoneManager.pruneOrphanOutputZones(alive);
 
         const handlers = {
             onRun: (cellId) => {

@@ -6,6 +6,7 @@
 // is what Sprint-26's papermill view uses.
 
 import { ansiToHtml } from './ansi.js';
+import { renderMarkdown } from './markdown.js';
 
 // Sprint 62: plotly / altair / bokeh emit ``<script>`` tags in their
 // ``text/html`` rendering.  ``innerHTML`` does not run scripts
@@ -54,6 +55,22 @@ export function renderMimeBundle(dom, data, /* metadata */ _m) {
             card.textContent = 'Widget output (unrenderable)';
         }
         dom.appendChild(card);
+        return;
+    }
+    // Sprint 98 BUG-98-02: ``display(Markdown("…"))`` and every
+    // ``_repr_markdown_`` caller emits a ``text/markdown`` payload
+    // (plus a ``text/plain`` fallback whose repr was previously
+    // shown).  Render markdown before falling through to HTML /
+    // plain so users see the formatted output rather than
+    // ``<IPython.core.display.Markdown object>``.
+    if (data['text/markdown']) {
+        const src = Array.isArray(data['text/markdown'])
+            ? data['text/markdown'].join('')
+            : data['text/markdown'];
+        const wrap = document.createElement('div');
+        wrap.className = 'pql-nbedit-output-markdown';
+        wrap.innerHTML = renderMarkdown(src);
+        dom.appendChild(wrap);
         return;
     }
     if (data['text/html']) {

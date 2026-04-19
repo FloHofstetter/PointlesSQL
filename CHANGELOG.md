@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — Phase 12.10 / Sprint 98: Notebook browser walkthrough + two output-zone regressions
+
+Deterministic Playwright playbook landed at
+[docs/e2e-walkthroughs/notebook_full_walkthrough.md](docs/e2e-walkthroughs/notebook_full_walkthrough.md)
+walking 14 output scenarios (stdout, pandas DataFrame,
+matplotlib, markdown cell, ``display(Markdown)``, stderr + stdout,
+traceback, HTML, save, reload, external edit, markerless file,
+BOM / CRLF).  Screenshots under
+``docs/e2e-walkthroughs/screenshots/sprint-98/``.
+
+Two regressions of the Sprint-96 rewrite were caught + fixed:
+
+- **BUG-98-02 — ``display(Markdown("…"))`` rendered the repr.**
+  ``output_renderer.js`` had no ``text/markdown`` mime branch so
+  the renderer fell through to ``text/plain`` + showed
+  ``<IPython.core.display.Markdown object>``.  Added the branch,
+  re-using the existing ``renderMarkdown`` helper from
+  ``markdown.js``.  Added a ``.pql-nbedit-output-markdown`` CSS
+  rule in ``notebook_editor.html`` for heading + code + spacing.
+
+- **BUG-98-05 — ghost output zones across ``setValue`` calls.**
+  Output view-zones are keyed on the transient ``cell-N`` label
+  which renumbers on every source rewrite; ``rebuildCell
+  Affordances`` only pruned the affordance widgets, not the view
+  zones, so every edit accumulated DOM ghosts.  Added
+  ``pruneOrphanOutputZones(alive)`` on the output-zone manager
+  and wired it into ``main.js``'s rebuild pass.
+
+One deferred tag: **BUG-98-01** — the markdown view-zone
+preview misses its first paint after a Playwright-style
+synthetic ``setValue``.  Real users hit the ``+ Markdown``
+toolbar button which routes through the normal content-change
+handler, so the bug is unobservable outside the replay path.
+Playbook tail documents the limitation.
+
+On-disk invariant verified in the browser:
+``notebooks/sprint98_walkthrough.py`` after save has zero
+``pql_cell_id`` tokens + zero UUID-shaped substrings — the
+Sprint 96 goal reached end-to-end, not just in unit tests.
+
 ### Improved — Phase 12.10 / Sprint 97: Notebook parser hardening against manual edits
 
 ``.py`` notebooks that a user has edited by hand in VSCode / Vim no
