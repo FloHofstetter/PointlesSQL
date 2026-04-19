@@ -4,6 +4,75 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 84: services/scheduler.py → 5-module package
+
+Eighth backend split — largest service (1,776 LOC). The
+``services/scheduler.py`` module became the package
+``services/scheduler/`` with five sibling modules carved along the
+pipeline boundaries (registry → executors → DAG → runs → loop).
+
+- **Package layout** under ``pointlessql/services/scheduler/``:
+  [registry.py](pointlessql/services/scheduler/registry.py) (~95 LOC)
+  — ``KindRegistry``, ``JobExecutor`` type alias,
+  ``build_default_registry``.
+  [executors.py](pointlessql/services/scheduler/executors.py)
+  (~555 LOC) — the four built-in executors
+  (``_pg_sync_executor``, ``_python_executor``,
+  ``_papermill_executor`` + helpers, ``_alert_check_executor``).
+  Function-local imports for ``pql.pql`` / ``alerts`` / ``models``
+  / ``authorization`` are preserved verbatim — the pre-Sprint-84
+  code dodged a circular chain through ``pointlessql.db`` and the
+  same pattern continues to work.
+  [dag.py](pointlessql/services/scheduler/dag.py) (~135 LOC) —
+  pure graph algorithms: ``validate_dag`` (cycle detection),
+  ``_topological_order`` (Kahn's algorithm), ``_parse_depends_on``.
+  [runs.py](pointlessql/services/scheduler/runs.py) (~825 LOC) —
+  DB helpers, ``log_job``, per-task lifecycle (``_run_one_task``,
+  ``_run_dag``), run orchestration (``execute_run`` +
+  ``_execute_run_core``), telemetry helpers. Owns the test-hook
+  globals ``_sleep`` / ``_webhook_client_factory`` /
+  ``_WEBHOOK_TIMEOUT_SECONDS``.
+  [loop.py](pointlessql/services/scheduler/loop.py) (~250 LOC) —
+  ``tick_once``, ``_execute_with_semaphores``, the ``Scheduler``
+  driver class.
+
+- **Public surface preserved.** The package
+  [__init__.py](pointlessql/services/scheduler/__init__.py)
+  re-exports every name the API layer
+  ([pointlessql/api/main.py:55](pointlessql/api/main.py#L55)),
+  scheduler tests, and external docs reference (``KindRegistry``,
+  ``Scheduler``, ``build_default_registry``, ``execute_run``,
+  ``tick_once``, ``validate_dag``, ``log_job``,
+  ``_alert_check_executor``, ``_papermill_executor``,
+  ``resolve_notebook_path``, ``_is_due``,
+  ``_execute_with_semaphores``, ``_WEBHOOK_TIMEOUT_SECONDS``,
+  ``_sleep``, ``_webhook_client_factory``).
+
+- **Test-hook patch sites moved.** 6 monkeypatch sites across
+  ``tests/test_scheduler_dag.py`` (``_sleep``) and
+  ``tests/test_metrics.py`` (``_webhook_client_factory``) now patch
+  ``scheduler_service.runs._sleep`` /
+  ``scheduler_service.runs._webhook_client_factory`` directly. The
+  runs.py module reads them via local-name lookup, so monkeypatching
+  the package-level re-export does not take effect — the right
+  structural fix is to patch the module where the symbol is used.
+
+- **Per-file pyright suppressions.** Added ``# pyright:
+  reportPrivateUsage=false`` to ``__init__.py``, ``loop.py``,
+  ``registry.py``, and ``runs.py``; and ``# pyright:
+  reportUnusedFunction=false`` to ``executors.py``, ``dag.py``,
+  and ``runs.py``. Pyright's strict-mode rules treat any
+  underscore-prefixed cross-module access as private leakage —
+  legitimate within a single package, and the public contract
+  (``__all__`` lists, the test patches) is what actually
+  constrains the surface.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 15 pre-existing warnings, ``pydoclint`` 0 violations,
+  ``pytest tests/test_scheduler.py tests/test_scheduler_dag.py
+  tests/test_metrics.py tests/test_alerts.py
+  tests/test_scheduler_papermill.py`` 80/80 passed.
+
 ### Refactored — Phase 12.9 / Sprint 83: services/unitycatalog.py → mixin package
 
 Seventh backend split — broadest blast radius of the arc (18+ call

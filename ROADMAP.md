@@ -3010,7 +3010,7 @@ PointlesSQL
 │       in ``collect_uc_tables``), ``pydoclint`` 0 violations,
 │       ``pytest tests/test_pg_sync.py`` 46/46 passed.
 │
-│   └── Sprint 83 — services/unitycatalog.py → mixin package    ✅ done (pending-commit)
+│   ├── Sprint 83 — services/unitycatalog.py → mixin package    ✅ done (57a2a46)
 │       Seventh backend split — broadest blast radius (18+ call
 │       sites, 23 tests patch the soyuz function names by string).
 │       Carved 783-LOC ``unitycatalog.py`` along securable type using
@@ -3053,6 +3053,70 @@ PointlesSQL
 │       tests/test_federation.py`` 23/23 +
 │       ``tests/test_pg_sync.py tests/test_foreign_catalog.py
 │       tests/test_e2e.py tests/test_problem_json.py`` 60/60 passed.
+│
+│   └── Sprint 84 — services/scheduler.py → 5-module package    ✅ done (pending-commit)
+│       Eighth backend split — largest service (1.776 LOC).
+│       Carved along the natural pipeline boundaries:
+│
+│       - ``registry.py`` (~95 LOC) — :class:`KindRegistry`,
+│         :data:`JobExecutor` type alias, :func:`build_default_registry`.
+│       - ``executors.py`` (~555 LOC) — built-in executors
+│         ``_pg_sync_executor`` / ``_python_executor`` /
+│         ``_papermill_executor`` (+ ``resolve_notebook_path``,
+│         ``_run_papermill_blocking``, ``_jupytext_py_to_ipynb``) /
+│         ``_alert_check_executor``.  Function-local imports for
+│         ``pql.pql`` / ``alerts`` / ``models`` / ``authorization``
+│         preserved verbatim — pre-Sprint-84 code dodged a circular
+│         chain through ``pointlessql.db`` and the same pattern
+│         continues to work.
+│       - ``dag.py`` (~135 LOC) — pure graph algorithms:
+│         ``validate_dag`` (cycle detection), ``_topological_order``
+│         (Kahn's algorithm), ``_parse_depends_on``.
+│       - ``runs.py`` (~825 LOC) — DB helpers, :func:`log_job`,
+│         per-task lifecycle (``_run_one_task`` + ``_run_dag``),
+│         run orchestration (:func:`execute_run` +
+│         ``_execute_run_core``), telemetry helpers
+│         (``_emit_run_telemetry`` + ``_post_failure_webhook``).
+│         Owns the test-hook globals ``_sleep`` /
+│         ``_webhook_client_factory`` / ``_WEBHOOK_TIMEOUT_SECONDS``.
+│       - ``loop.py`` (~250 LOC) — :func:`tick_once`,
+│         ``_execute_with_semaphores``, :class:`Scheduler` driver
+│         class.
+│       - ``__init__.py`` (~95 LOC) — re-exports the full public
+│         surface so ``from pointlessql.services.scheduler import X``
+│         (KindRegistry, Scheduler, build_default_registry,
+│         execute_run, tick_once, validate_dag, log_job,
+│         _alert_check_executor, _papermill_executor,
+│         resolve_notebook_path) and ``scheduler_service.X``
+│         attribute access (_is_due, _execute_with_semaphores,
+│         _WEBHOOK_TIMEOUT_SECONDS, _sleep, _webhook_client_factory)
+│         keep working unchanged.
+│
+│       **Tests updated** for the test-hook re-location: 6 sites
+│       across ``tests/test_scheduler_dag.py`` (2 sites for
+│       ``_sleep``) and ``tests/test_metrics.py`` (4 sites for
+│       ``_webhook_client_factory``) now monkeypatch
+│       ``scheduler_service.runs._sleep`` /
+│       ``scheduler_service.runs._webhook_client_factory`` directly.
+│       The runs.py module reads them via local-name lookup, so
+│       monkeypatching the package-level re-export wouldn't take
+│       effect — the right structural fix is to patch where the
+│       symbol is used.
+│
+│       **Per-file pyright suppressions:** ``# pyright:
+│       reportPrivateUsage=false`` on ``__init__.py`` / ``loop.py``
+│       / ``registry.py`` / ``runs.py`` and ``# pyright:
+│       reportUnusedFunction=false`` on ``executors.py`` / ``dag.py``
+│       / ``runs.py``.  Cross-module access of underscore-prefixed
+│       names is legitimate within a single package; the public
+│       contract (``__all__``) keeps the test surface intact.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 15 pre-existing warnings, ``pydoclint`` 0
+│       violations, ``pytest tests/test_scheduler.py
+│       tests/test_scheduler_dag.py tests/test_metrics.py
+│       tests/test_alerts.py tests/test_scheduler_papermill.py``
+│       80/80 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

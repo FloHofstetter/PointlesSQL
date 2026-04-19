@@ -340,7 +340,7 @@ class TestRetryPolicy:
         async def _fake_sleep(delay: float) -> None:
             sleep_calls.append(delay)
 
-        monkeypatch.setattr(scheduler_service, "_sleep", _fake_sleep)
+        monkeypatch.setattr(scheduler_service.runs, "_sleep", _fake_sleep)
         registry = _RecordingRegistry()
         registry.fail_names_until_attempt["flaky"] = 3  # fail attempts 1,2; succeed on 3
 
@@ -379,7 +379,7 @@ class TestRetryPolicy:
         async def _fake_sleep(delay: float) -> None:
             del delay
 
-        monkeypatch.setattr(scheduler_service, "_sleep", _fake_sleep)
+        monkeypatch.setattr(scheduler_service.runs, "_sleep", _fake_sleep)
         registry = _RecordingRegistry()
         registry.fail_names.add("doomed")
 

@@ -248,7 +248,7 @@ class TestFailureWebhook:
             classmethod(lambda cls, s, p: MagicMock(spec=UnityCatalogClient)),
         )
         stub = _CapturingHTTPClient()
-        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
+        monkeypatch.setattr(scheduler_service.runs, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(
             metrics_factory,
@@ -297,7 +297,7 @@ class TestFailureWebhook:
             classmethod(lambda cls, s, p: MagicMock(spec=UnityCatalogClient)),
         )
         stub = _CapturingHTTPClient()
-        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
+        monkeypatch.setattr(scheduler_service.runs, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(metrics_factory, name="no-hook", on_failure_url=None)
         run = await execute_run(
@@ -321,7 +321,7 @@ class TestFailureWebhook:
             classmethod(lambda cls, s, p: MagicMock(spec=UnityCatalogClient)),
         )
         stub = _CapturingHTTPClient()
-        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
+        monkeypatch.setattr(scheduler_service.runs, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(
             metrics_factory,
@@ -344,7 +344,7 @@ class TestFailureWebhook:
         )
         stub = _CapturingHTTPClient()
         stub.raise_on_post = httpx.ConnectError("no listener")
-        monkeypatch.setattr(scheduler_service, "_webhook_client_factory", lambda: stub)
+        monkeypatch.setattr(scheduler_service.runs, "_webhook_client_factory", lambda: stub)
 
         job_id = _seed_job(
             metrics_factory,
