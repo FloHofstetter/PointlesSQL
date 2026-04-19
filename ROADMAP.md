@@ -2143,7 +2143,7 @@ PointlesSQL
 │       │   at ``notebook-editor.md`` as slot #7.
 │       └── **Phase 12.6 marked ✅** in this roadmap.
 │
-├── Phase 12.7 — Notebook editor UX overhaul              ⏳ open
+├── Phase 12.7 — Notebook editor UX overhaul              ✅ done
 │   │
 │   │   Lift the native editor from Sprint-58–64 mechanics-only to a
 │   │   Marimo / VSCode-Jupyter / Hex-grade UI as a series of small
@@ -2513,12 +2513,75 @@ PointlesSQL
 │   │   (file delete) and ``rename_path`` (file rename).  Caught
 │   │   at the N2 step on the first replay.
 │   │
-│   └── Sprint 74 — Theme + keymap overlay + phase close           ⏳
-│       Settings drawer (``vs-dark`` / ``vs-light`` / ``hc`` themes;
-│       font-size; autosave-debounce knob); ``Ctrl+/`` opens a
-│       keymap overlay listing every Sprint-62 + 65–73 command +
-│       binding; playbook update covering the new surface; phase
-│       close.
+│   └── Sprint 74 — Theme + keymap overlay + phase close           ✅ done
+│       Settings drawer (``vs-dark`` / ``vs`` / ``hc-black`` themes;
+│       font-size 10-22; autosave-debounce 200-2000 ms) + keymap
+│       overlay listing every editor command + phase-12.7 close.
+│       Two new ESM modules
+│       [frontend/js/notebook/settings_drawer.js](frontend/js/notebook/settings_drawer.js)
+│       and
+│       [frontend/js/notebook/keymap_overlay.js](frontend/js/notebook/keymap_overlay.js);
+│       both are lazy-mounted singletons attached to ``<body>``.
+│       Gear (⚙) and ``?`` toolbar buttons in
+│       [notebook_editor.html](frontend/templates/pages/notebook_editor.html)
+│       open them; Monaco's ``Ctrl+Alt+/`` keybind is the third
+│       entry into the keymap overlay (``Ctrl+/`` left bound to
+│       Monaco's default ``toggle-line-comment`` to avoid shadowing
+│       the editor convention).  Settings persist to localStorage
+│       under ``pql.nbedit.theme.v1`` / ``pql.nbedit.fontSize.v1``
+│       / ``pql.nbedit.autosave.debounceMs.v1`` (Sprint-67 / 68
+│       ``.v1`` suffix convention); changes broadcast via a
+│       ``pql:settings-changed`` ``CustomEvent`` on ``document``
+│       so every open tab's editor re-applies via
+│       ``monaco.editor.setTheme`` (page-global) +
+│       ``editor.updateOptions({fontSize})`` (per-instance) + a
+│       lifted ``_autosaveDebounceMs`` closure variable
+│       ``scheduleAutosave`` reads at flush-queue time.
+│       ``registerPaletteActions`` extended with four new palette
+│       commands (``pql.toggleOutline`` / ``pql.openHistory`` /
+│       ``pql.openSettings`` / ``pql.openKeymap``).
+│       [bootstrap.js](frontend/js/notebook/bootstrap.js) tab-scope
+│       stub gained ``outlineVisible`` / ``outline`` plus the four
+│       new method names so the pre-mount window no longer raises
+│       ``ReferenceError`` on Alpine ``x-show`` / ``@click``
+│       expressions (Sprint-72 console-noise tail fixed).  Playbook
+│       Part O added; replayed in Firefox via Playwright-MCP as
+│       the land gate.
+│       **No Alembic migration.** Trim-safe — Sprint 74 is the last
+│       sprint of Phase 12.7, no downstream sprints depend on it.
+│       **BUG-74-01 (replay-caught + fixed in same commit):**
+│       double-backticks inside an HTML template literal in
+│       ``buildModal`` (the GitHub-flavoured-markdown-style
+│       ``\`\`pql.*\`\``` text in the modal footer) terminated the
+│       backtick-quoted string early, raising a ``SyntaxError``
+│       inside ``buildModal`` the moment ``mountKeymapOverlay``
+│       called it.  Symptom: ``mount()`` caught the error generally
+│       at [main.js:317](frontend/js/notebook/main.js#L317);
+│       settings drawer mounted (earlier in the flow) but keymap
+│       overlay never materialised, and the per-cell affordances
+│       (mounted later) never rebuilt.  Fix: replaced the markdown
+│       backticks with plain ``pql.*`` text in the modal footer.
+│       Caught pre-gate via a cache-busted dynamic ``import()``
+│       that surfaced the real
+│       ``buildModal@keymap_overlay.js:137:18`` stack trace.
+│
+│   Phase 12.7 close-out.  Ten sprints (65-74) over the phase
+│   transformed the notebook editor from the Sprint-58 single-file
+│   monolith into a modular, multi-tab, multi-cell-type, audit-
+│   trailed surface.  Sprint hashes in chronological order:
+│   - Sprint 65 — module split + closure-refs + reactivity gate.
+│   - Sprint 66 — cell-type registry + per-cell affordances.
+│   - Sprint 67 — file-tree sidebar + notebook CRUD (d41a4eb).
+│   - Sprint 68 — multi-notebook tab bar (400670c).
+│   - Sprint 69 — markdown-it + KaTeX + pencil-pin (d3c7df7).
+│   - Sprint 70 — outline / TOC panel + cell jump (b6fe0e2).
+│   - Sprint 71 — SQL cell (DuckDB via PQL.sql) (e0043dc).
+│   - Sprint 72 — ipywidgets minimal placeholder (b8ef7dc).
+│   - Sprint 73 — per-cell run history + diff (Alembic 018) (dc530eb).
+│   - Sprint 74 — settings drawer + keymap overlay + phase close.
+│   Phase 13 (Agent workloads) is next on the roadmap with the
+│   EXPLAIN-agent loop sketched as the natural Phase-12 → Phase-13
+│   bridge.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

@@ -165,6 +165,13 @@
             lspStatus: 'connecting',
             variables: {},
             variablesVisible: false,
+            // Sprint 70 stubs (mirror keys main.js exposes after mount)
+            // so x-show / x-text on the toolbar buttons + outline aside
+            // do not raise during the pre-mount window.  Sprint 74
+            // added them after the original console-noise bug surfaced
+            // in the Sprint-72 replay.
+            outlineVisible: false,
+            outline: [],
             catalogInsertOpen: false,
             catalogInsertQuery: '',
             catalogTablesLoaded: false,
@@ -188,6 +195,11 @@
             addCellAbove() {},
             insertCellAfter() {},
             toggleVariables() {},
+            toggleOutline() {},
+            jumpToCell() {},
+            openSettings() {},
+            openKeymap() {},
+            openHistoryForCurrentCell() {},
             openCatalogInsert() {},
             pickCatalogTable() {},
             _refreshVariables() {},

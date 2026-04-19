@@ -4,6 +4,72 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 74) — Phase 12.7: Settings drawer + keymap overlay + phase close
+
+Tenth and final Phase 12.7 sprint.  Settings drawer (theme,
+font-size, autosave-debounce knob), ``Ctrl+Alt+/`` keymap overlay
+listing every editor command, four new ``pql.*`` palette actions,
+and the Phase-12.7 ROADMAP node flips ``⏳ open`` → ``✅ done``.
+
+- [frontend/js/notebook/settings_drawer.js](frontend/js/notebook/settings_drawer.js)
+  — new module.  Bootstrap offcanvas with ``Theme`` (``vs-dark`` /
+  ``vs`` / ``hc-black``), ``Font size`` (10-22 px), ``Autosave
+  debounce`` (200-2000 ms).  Persists to localStorage under
+  ``pql.nbedit.theme.v1`` / ``pql.nbedit.fontSize.v1`` /
+  ``pql.nbedit.autosave.debounceMs.v1``; broadcasts a
+  ``pql:settings-changed`` ``CustomEvent`` on ``document`` so
+  every open tab's editor re-applies via
+  ``monaco.editor.setTheme`` (page-global) +
+  ``editor.updateOptions({fontSize})`` (per-instance) + a
+  ``_autosaveDebounceMs`` closure mutation.
+- [frontend/js/notebook/keymap_overlay.js](frontend/js/notebook/keymap_overlay.js)
+  — new module.  Static 15-row commands array (Sprint 62 +
+  70 + 73 + 74 additions), Bootstrap modal renderer reachable via
+  the ``?`` toolbar button, the ``Ctrl+Alt+/`` keybind, and the
+  ``pql.openKeymap`` palette action.  ``Ctrl+/`` left bound to
+  Monaco's default ``toggle-line-comment`` to avoid shadowing the
+  editor convention.
+- [frontend/js/notebook/main.js](frontend/js/notebook/main.js)
+  — applies ``loadSettings()`` on Monaco create; lifts
+  ``_autosaveDebounceMs`` out of module scope so
+  ``scheduleAutosave`` reads it at flush-queue time;
+  ``registerPaletteActions`` extended with
+  ``pql.toggleOutline`` / ``pql.openHistory`` /
+  ``pql.openSettings`` / ``pql.openKeymap`` (last is also bound to
+  ``Ctrl+Alt+/``); new Alpine methods ``openSettings`` /
+  ``openKeymap`` / ``openHistoryForCurrentCell``.
+- [frontend/js/notebook/bootstrap.js](frontend/js/notebook/bootstrap.js)
+  — extended the tab-scope stub with ``outlineVisible`` /
+  ``outline`` and the four new method names so the pre-mount
+  window no longer raises ``ReferenceError`` on Alpine
+  ``x-show`` / ``@click`` expressions.  Cleaned up the
+  Sprint-72-era console-noise tail.
+- [frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html)
+  — gear (⚙) + ``?`` toolbar buttons; bootstrap.js script tag
+  bumped to ``?v=sprint74``.
+
+**BUG-74-01 (replay-caught + fixed in same commit):** double-
+backticks inside an HTML template literal in
+``buildModal`` (the GitHub-flavoured-markdown-style ``\`\`pql.*\`\```
+text in the modal footer) terminated the backtick-quoted string
+early, raising a ``SyntaxError`` inside ``buildModal`` the moment
+``mountKeymapOverlay`` called it.  Symptom: ``mount()`` caught the
+error generally; settings drawer mounted (earlier in the flow)
+but keymap overlay never materialised, and the per-cell
+affordances never rebuilt.  Fix: replaced the markdown backticks
+with plain ``pql.*`` text.  Caught pre-gate via a cache-busted
+dynamic ``import()`` that surfaced the real
+``buildModal@keymap_overlay.js:137:18`` stack trace.
+
+**Phase 12.7 closed.**  Ten sprints (65-74) transformed the
+notebook editor from the Sprint-58 single-file monolith into a
+modular, multi-tab, multi-cell-type, audit-trailed surface.
+Phase 13 (Agent workloads) is next on the roadmap with the
+EXPLAIN-agent loop sketched as the natural Phase-12 → Phase-13
+bridge.
+
+No Alembic migration.  Trim-safe.
+
 ### Added (Sprint 73) — Phase 12.7: Per-cell run history + diff (Alembic 018)
 
 Ninth Phase 12.7 sprint.  Adds an audit trail of every cell

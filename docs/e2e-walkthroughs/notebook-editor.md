@@ -1602,3 +1602,157 @@ still cascades on ``clear_cell`` because that table holds
 
 **Trim-safe.** Sprint 74 (theme + keymap + phase close) does not
 import the run-history module; revert is sprint-local.
+
+## Part O — Sprint 74: settings drawer + keymap overlay + phase close
+
+**Preconditions.**
+
+- ``scratch.py`` open in [/notebook/editor](../../) on a fresh
+  profile (localStorage empty so defaults apply).
+- Hard-reload the page if upgrading from a pre-sprint-74 deploy —
+  the bootstrap.js version was bumped to ``?v=sprint74``.
+
+**O1 — Toolbar buttons mount.**  Inspect the toolbar.  Assert: a
+gear icon button (``i.bi-gear``) and a question-mark icon
+(``i.bi-question-circle``) sit between the ``Outline`` toggle and
+the ``Run cell`` button.  Both have hover tooltips; clicking them
+opens the drawer / overlay singletons lazy-mounted to ``<body>``
+on first open.
+
+**O2 — Settings drawer opens + changes persist.**  Click the gear
+icon.  Assert: a right-side Bootstrap offcanvas
+(``.pql-nbedit-settings-drawer``) slides in with three controls —
+``Theme`` (select), ``Font size`` (number), ``Autosave
+debounce`` (number).  Defaults: ``vs-dark`` / ``13`` / ``1500``.
+Change theme to ``vs`` (light); assert Monaco's background flips
+from dark to ``rgb(255, 255, 254)`` within a tick (Monaco's
+``setTheme`` is page-global).  Change font-size to ``18``; assert
+``editor.getOptions().get(fontInfo).fontSize === 18`` and the
+line heights visibly grow.  Change debounce to ``500``; edit a
+cell; assert the ``Saved`` pill flips ~500 ms after last
+keystroke (down from 1500 ms).  All three persist to
+localStorage under
+``pql.nbedit.theme.v1`` / ``pql.nbedit.fontSize.v1`` /
+``pql.nbedit.autosave.debounceMs.v1``.
+
+**O3 — Reload preserves settings.**  Reload the page.  Assert:
+drawer re-initialises with the user's saved values; Monaco
+opens in the light theme with 18 px font; autosave fires after
+500 ms.  No ``ReferenceError`` on Alpine's x-show /
+x-bind expressions during the pre-mount window — bootstrap.js's
+tab-scope stub was extended with ``outlineVisible`` +
+``outline`` + the four new Sprint-74 methods so the toolbar
+template never evaluates an undefined symbol.
+
+**O4 — Ctrl+Alt+/ keymap overlay.**  Focus Monaco.  Press
+``Ctrl+Alt+/``.  Assert: a centred Bootstrap modal
+(``.pql-nbedit-keymap-overlay``) opens with a 15-row table
+listing every command — ``shiftEnter`` / ``ctrlEnter`` (direct
+keybinds), then 13 ``pql.*`` palette actions (Sprint 62 +
+70 + 73 + 74 additions).  Each row shows id / description /
+binding / added-in-sprint.  Close via the ``×`` button; press
+``Ctrl+Alt+/`` again → reopens.  (``Ctrl+/`` stays bound to
+Monaco's default ``toggle-line-comment`` — we deliberately do
+not shadow it.)
+
+**O5 — Palette actions work.**  Open Monaco's built-in command
+palette (``F1`` or ``Ctrl+Shift+P``).  Type ``pql.``.  Assert:
+all 13 ``pql.*`` actions from the overlay show up with the same
+id and label; firing any of them has the same effect as the
+corresponding toolbar button or keybinding (e.g.
+``pql.openSettings`` opens the drawer; ``pql.openHistory`` opens
+the run-history popover for the cell at the cursor;
+``pql.toggleOutline`` toggles the outline aside).
+
+**O6 — Multi-tab theme sharing.**  Open two notebook tabs via the
+Sprint-67 sidebar.  Change the theme in tab A; assert tab B's
+Monaco also flips — ``monaco.editor.setTheme`` is page-global
+(documented UX).  Font-size + debounce are per-instance, so
+changing them in tab A does NOT bleed into tab B without an
+explicit broadcast on that tab's editor too.  (Current
+implementation: both tabs subscribe to
+``document``-level ``pql:settings-changed`` events, so they DO
+stay in sync by design — confirmed at replay time.)
+
+**O7 — Phase 12.7 close state.**  Open
+[ROADMAP.md](../../ROADMAP.md); scroll to the Phase 12.7 node.
+Assert: header flipped ``⏳ open`` → ``✅ done`` with a close-out
+prose block summarising Sprints 65-74 and their commit hashes.
+CHANGELOG.md shows the Sprint 74 entry at the top of
+``[Unreleased]``.
+
+### Files changed (Sprint 74)
+
+- [frontend/js/notebook/settings_drawer.js](../../frontend/js/notebook/settings_drawer.js)
+  — new module.  Bootstrap offcanvas with theme / fontSize /
+  debounce controls; broadcasts ``pql:settings-changed``
+  CustomEvent on change; reads + persists via three localStorage
+  keys under the ``pql.nbedit.*.v1`` namespace (Sprint-67 /
+  Sprint-68 convention).
+- [frontend/js/notebook/keymap_overlay.js](../../frontend/js/notebook/keymap_overlay.js)
+  — new module.  Static 15-row commands array + Bootstrap modal
+  renderer.  Reachable via the toolbar ``?`` button, ``Ctrl+Alt+/``
+  keybind, and the ``pql.openKeymap`` palette action.
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — imports both new modules; applies loaded settings on Monaco
+  create (``theme`` / ``fontSize``); lifts ``_autosaveDebounceMs``
+  out of module scope so ``scheduleAutosave`` reads it at
+  flush-queue time; listens for ``pql:settings-changed`` and
+  re-applies via ``monaco.editor.setTheme`` +
+  ``editor.updateOptions({fontSize})`` + the debounce mutation;
+  ``registerPaletteActions`` extended with
+  ``pql.toggleOutline`` / ``pql.openHistory`` /
+  ``pql.openSettings`` / ``pql.openKeymap``; new Alpine methods
+  ``openSettings`` / ``openKeymap`` /
+  ``openHistoryForCurrentCell``.
+- [frontend/js/notebook/bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+  — extended the tab-scope stub with ``outlineVisible`` /
+  ``outline`` and the four new Sprint-74 Alpine methods so the
+  pre-mount window does not emit ``ReferenceError`` on
+  ``x-show`` / ``@click`` expressions.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — gear + ``?`` toolbar buttons; bootstrap.js script tag bumped
+  to ``?v=sprint74``.
+
+### What the replay caught
+
+**BUG-74-01 — double-backticks inside an HTML template literal
+terminated the string early, crashing the mount.**  The keymap
+overlay's ``buildModal`` included a footer explainer that used
+GitHub-flavoured markdown-style double backticks (``\`pql.*\```)
+inside the backtick-quoted ``.innerHTML`` template literal.
+JavaScript's template-literal grammar does not nest backticks —
+the first inner backtick closed the literal, and the rest of the
+HTML became a syntax error inside ``buildModal``, which threw
+the moment ``mountKeymapOverlay`` called it.  Symptom: Alpine's
+``mount()`` caught the error at [main.js:317](../../frontend/js/notebook/main.js#L317)
+with a ``Error @ http://…/main.js:317`` log; the settings drawer
+mounted fine (earlier in the mount flow), but the keymap overlay
+never materialised and the per-cell affordances never rebuilt.
+Fix in the same commit: replaced ``\`\`pql.*\`\``` with plain
+``pql.*`` text.  Caught pre-gate via
+``mod.createNotebookTabEditor({...}).mount()`` in a cache-busted
+import, which surfaced the real stack trace
+(``buildModal@keymap_overlay.js:137:18``) that the
+catch-and-log in mount hid.
+
+### Phase 12.7 close
+
+Sprint 74 is the final sprint of Phase 12.7.  The phase-12.7
+ROADMAP node flips ``⏳ open`` → ``✅ done``.  Summary of what
+landed across the phase:
+
+- **Sprint 65** — module split + closure-refs factory + BUG-64-02
+  reactivity-boundary grep gate.
+- **Sprint 66** — cell-type registry + per-cell affordances (run
+  button, status pill, exec-count pill, elapsed pill, inserter).
+- **Sprint 67** — file-tree sidebar + notebook CRUD endpoints.
+- **Sprint 68** — multi-notebook tab bar (N Monaco instances).
+- **Sprint 69** — markdown-it + KaTeX + pencil-pin toggle.
+- **Sprint 70** — outline / TOC panel + cell-jump.
+- **Sprint 71** — SQL cell type (DuckDB via PQL.sql,
+  ``result_var=``).
+- **Sprint 72** — ipywidgets minimal placeholder (``comm_*``
+  swallow + widget-view+json card).
+- **Sprint 73** — per-cell run history + diff (Alembic 018).
+- **Sprint 74** — settings drawer + keymap overlay + phase close.

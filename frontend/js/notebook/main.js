@@ -60,15 +60,26 @@ import { appendOutputFrame } from './output_renderer.js';
 import { createClosureRefs } from './closure_state.js';
 import { buildOutline } from './outline.js';
 import { openPopover as openRunHistoryPopover, closePopover as closeRunHistoryPopover } from './run_history.js';
+import { mountSettingsDrawer, openSettingsDrawer, loadSettings } from './settings_drawer.js';
+import { mountKeymapOverlay, openKeymapOverlay } from './keymap_overlay.js';
 
 function csrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.content : '';
 }
 
-// Databricks-style debounce: save 1500 ms after the user stops typing.
-// Explicit Save button still works as a force-flush.
+// Databricks-style debounce: save 1500 ms after the user stops typing
+// by default; Sprint 74 makes the value mutable per-tab via the
+// settings drawer (broadcast over ``pql:settings-changed``).  The
+// initial-load constant below is kept for the foreign-notebook UUID
+// upgrade flush only — that specific path wants a near-immediate
+// flush regardless of the user's debounce preference.
 const AUTOSAVE_DEBOUNCE_MS = 1500;
+// Sprint 74: per-tab mutable copy.  Set on mount from
+// ``loadSettings().debounceMs`` and updated on
+// ``pql:settings-changed`` broadcasts.  Accessor function so the
+// scheduler reads the current value at flush-queue time.
+let _autosaveDebounceMs = AUTOSAVE_DEBOUNCE_MS;
 // Brief delay on initial load before auto-flushing the UUID-upgrade
 // save for a foreign notebook.  Keeps the user-visible "Saving…" tag
 // from flashing during the render.
@@ -207,18 +218,44 @@ export function createNotebookTabEditor({
                 this.saveState = this.dirty ? 'pending' : 'saved';
                 emitStateChange({ dirty: this.dirty, saveState: this.saveState });
                 const monaco = await loadMonaco();
+                // Sprint 74: pull persisted theme + font-size + autosave
+                // debounce from localStorage (defaults vs-dark / 13 /
+                // 1500ms).  Theme is applied page-globally below;
+                // font-size is per-instance via editor options;
+                // debounce is read by the autosave scheduler each
+                // time it queues a flush.
+                const settings = loadSettings();
+                _autosaveDebounceMs = settings.debounceMs;
                 const joined = joinCells(cells);
                 const model = monaco.editor.createModel(joined.text, 'python');
                 refs.set('model', model);
                 const editor = monaco.editor.create(this.$refs.editor, {
                     model,
-                    theme: 'vs-dark',
+                    theme: settings.theme,
                     automaticLayout: true,
                     minimap: { enabled: false },
-                    fontSize: 13,
+                    fontSize: settings.fontSize,
                     scrollBeyondLastLine: false,
                 });
                 refs.set('editor', editor);
+                // Sprint 74: react to settings changes broadcast from
+                // the drawer.  Theme is global (Monaco's setTheme is
+                // process-wide); font-size is per-editor; debounce is
+                // per-tab.  The shell broadcasts the same event to
+                // every open tab so multi-tab stays consistent.
+                document.addEventListener('pql:settings-changed', (ev) => {
+                    const next = (ev && ev.detail) || {};
+                    if (next.theme) monaco.editor.setTheme(next.theme);
+                    if (next.fontSize) editor.updateOptions({ fontSize: next.fontSize });
+                    if (Number.isFinite(next.debounceMs)) {
+                        _autosaveDebounceMs = next.debounceMs;
+                    }
+                });
+                // Lazy-mount the settings drawer + keymap overlay
+                // singletons so the toolbar buttons and Ctrl+Alt+/ open
+                // them instantly without import latency on first click.
+                mountSettingsDrawer();
+                mountKeymapOverlay();
                 applyDecorations(monaco, joined.cellRanges);
                 model.onDidChangeContent(() => {
                     this.dirty = true;
@@ -446,6 +483,30 @@ export function createNotebookTabEditor({
             editor.focus();
         },
 
+        // Sprint 74: settings + keymap surface.  Both delegate to
+        // module-scoped factories that mount lazily on first open so
+        // the bootstrap stub doesn't import them eagerly.
+        openSettings() {
+            openSettingsDrawer();
+        },
+        openKeymap() {
+            openKeymapOverlay();
+        },
+        // Sprint 73 + 74: open the run-history popover for the cell
+        // at the cursor.  The toolbar's clock-icon button calls
+        // ``openHistoryPopover(cellId, anchorEl)`` directly; this is
+        // the palette-action counterpart that resolves the cell from
+        // the cursor and uses the run button as the anchor.
+        openHistoryForCurrentCell() {
+            const cell = currentCellAtCursor();
+            if (!cell) return;
+            const record = cellAffordances[cell.id];
+            const anchorEl = record && record.historyBtn
+                ? record.historyBtn
+                : (record && record.runBtn ? record.runBtn : document.body);
+            openHistoryPopover(cell.id, anchorEl);
+        },
+
         async openCatalogInsert() {
             this.catalogInsertOpen = true;
             this.catalogInsertQuery = '';
@@ -573,7 +634,10 @@ export function createNotebookTabEditor({
 
     function scheduleAutosave(callback) {
         if (saveTimerHandle) window.clearTimeout(saveTimerHandle);
-        saveTimerHandle = window.setTimeout(callback, AUTOSAVE_DEBOUNCE_MS);
+        // Sprint 74: read the current per-tab debounce so the next
+        // queued flush picks up the user's settings-drawer change
+        // without restarting the editor.
+        saveTimerHandle = window.setTimeout(callback, _autosaveDebounceMs);
     }
 
     // Sprint 70: recompute the outline and mirror it onto the reactive
@@ -1445,5 +1509,16 @@ export function createNotebookTabEditor({
             [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyI]);
         add('toggleVariables', 'PointlesSQL: Toggle variable explorer', () =>
             alpine.toggleVariables());
+        // Sprint 74: surface the post-Sprint-70 / -73 / -74 commands
+        // in Monaco's command palette with stable ``pql.*`` ids.
+        add('toggleOutline', 'PointlesSQL: Toggle outline / table of contents', () =>
+            alpine.toggleOutline());
+        add('openHistory', 'PointlesSQL: Show run history for current cell', () =>
+            alpine.openHistoryForCurrentCell());
+        add('openSettings', 'PointlesSQL: Open editor settings…', () =>
+            alpine.openSettings());
+        add('openKeymap', 'PointlesSQL: Show keymap overlay…', () =>
+            alpine.openKeymap(),
+            [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.Slash]);
     }
 }

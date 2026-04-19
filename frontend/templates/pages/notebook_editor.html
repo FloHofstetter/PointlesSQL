@@ -644,6 +644,23 @@
                                             title="Toggle outline / table of contents">
                                         <i class="bi bi-list-columns-reverse me-1"></i>Outline
                                     </button>
+                                    <!-- Sprint 74: settings drawer + keymap overlay
+                                         triggers.  Both delegate to the editor's
+                                         pql.openSettings / pql.openKeymap palette
+                                         actions; keymap overlay is also reachable
+                                         via Ctrl+Alt+/. -->
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="openSettings()"
+                                            title="Editor settings (theme, font size, autosave debounce)">
+                                        <i class="bi bi-gear"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="openKeymap()"
+                                            title="Show keymap overlay (Ctrl+Alt+/)">
+                                        <i class="bi bi-question-circle"></i>
+                                    </button>
                                     <button type="button"
                                             class="btn btn-sm btn-primary"
                                             @click="runCurrentCell()"
@@ -971,5 +988,5 @@
   (shell) and ``notebookTabEditor`` (per-tab) — both exported from
   the same bootstrap file.
 #}
-<script src="/static/js/notebook/bootstrap.js?v=sprint73"></script>
+<script src="/static/js/notebook/bootstrap.js?v=sprint74"></script>
 {% endblock %}
