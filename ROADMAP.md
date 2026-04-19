@@ -3227,7 +3227,7 @@ PointlesSQL
 │       ``pydoclint`` 0 violations.  ``pytest -k 'sql or query'
 │       --ignore=tests/test_jupyter.py`` 48/48 passed.
 │
-│   └── Sprint 86c — api/main.py queries + saved-queries extract  ✅ done (pending-commit)
+│   ├── Sprint 86c — api/main.py queries + saved-queries extract  ✅ done (51f6691)
 │       Fourth api/main.py decomposition slice — completes the
 │       original Sprint-86 plan.  The query-history read endpoints
 │       (``/api/queries`` list/get/chart-config), the ``/queries``
@@ -3261,6 +3261,38 @@ PointlesSQL
 │       ``pydoclint`` 0 violations.  ``pytest -k 'saved_quer or
 │       query_history or queries' --ignore=tests/test_jupyter.py``
 │       26/26 passed.
+│
+│   └── Sprint 87 — api/main.py alerts + feed routes extract      ✅ done (pending-commit)
+│       Fifth api/main.py decomposition slice.  The full alerts
+│       surface lifts out: ``/api/alerts`` CRUD (5 routes),
+│       destinations sub-resource (2 routes), per-user feed-token
+│       (2 routes), the two unauthenticated pull-feed endpoints
+│       (``/alerts/feed.atom`` + ``/alerts/feed.json``), and the
+│       two HTML pages (``/alerts`` list + ``/alerts/{slug}``
+│       detail).  main.py drops 5.256 → 4.717 LOC (-539).
+│
+│       - ``api/alerts_routes.py`` (585 LOC) — 13 routes total
+│         plus three module-level helpers (``base_url``,
+│         ``rotate_or_fetch_feed_token``, ``user_for_feed_token``).
+│         Underscores dropped from helpers; ``saved_queries_service``
+│         imported at module level for the alerts list page (which
+│         renders the dropdown of available saved-queries).
+│       - ``main.py`` mount: ``app.include_router(alerts_router)``.
+│         Unused ``saved_queries_service`` and ``JSONResponse``
+│         imports removed (the alerts routes were the only
+│         remaining callers).
+│
+│       **Feed-token auth preserved.** ``PUBLIC_PREFIXES`` in
+│       ``api/middleware.py`` already exempts
+│       ``/alerts/feed.atom`` + ``/alerts/feed.json`` from session
+│       auth so they reach the route handlers, which authenticate
+│       via the opaque ``?token=…`` query string and 401 on
+│       mismatch.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 67 warnings (unchanged),
+│       ``pydoclint`` 0 violations.  ``pytest -k alert
+│       --ignore=tests/test_jupyter.py`` 19/19 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

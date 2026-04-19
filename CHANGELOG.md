@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 87: api/main.py alerts + feed routes extract
+
+Fifth decomposition slice for ``api/main.py``. The full alerts
+surface lifts out: ``/api/alerts`` CRUD (5 routes), the destinations
+sub-resource (2 routes), per-user feed-token (2 routes), the two
+unauthenticated pull-feed endpoints (``/alerts/feed.atom`` +
+``/alerts/feed.json``), and the two HTML pages (``/alerts`` list +
+``/alerts/{slug}`` detail). main.py drops 5,256 → 4,717 LOC (-539).
+
+- **New module** [alerts_routes.py](pointlessql/api/alerts_routes.py)
+  (585 LOC). Owns 13 routes plus three module-level helpers
+  (``base_url``, ``rotate_or_fetch_feed_token``,
+  ``user_for_feed_token``). Underscore prefixes dropped from
+  helpers; ``saved_queries_service`` imported at module level for
+  the alerts list page (which renders the dropdown of available
+  saved-queries to attach an alert to).
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(alerts_router)``
+  next to the other four routers. Unused ``saved_queries_service``
+  + ``JSONResponse`` imports removed (the alerts routes were the
+  only remaining callers).
+
+- **Feed-token auth preserved.** ``PUBLIC_PREFIXES`` in
+  ``api/middleware.py`` already exempts ``/alerts/feed.atom`` +
+  ``/alerts/feed.json`` from session auth so the route handlers
+  can authenticate via the opaque ``?token=…`` query string and
+  401 on mismatch.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 67 warnings (unchanged), ``pydoclint`` 0 violations,
+  ``pytest -k alert --ignore=tests/test_jupyter.py`` 19/19
+  passed.
+
 ### Refactored — Phase 12.9 / Sprint 86c: api/main.py queries + saved-queries extract
 
 Fourth decomposition slice for ``api/main.py`` — completes the
