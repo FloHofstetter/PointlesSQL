@@ -2257,7 +2257,7 @@ PointlesSQL
 │   │   as the land gate per ``feedback_run_playbook_as_gate``.
 │   │   **No Alembic migration.**
 │   │
-│   ├── Sprint 68 — Multi-notebook tab bar                        ✅ done
+│   ├── Sprint 68 — Multi-notebook tab bar                        ✅ done (400670c)
 │   │   Tab bar above the editor; each tab is one Monaco instance
 │   │   over one file, sharing Sprint-65's modules.  Open-tabs list
 │   │   persists in ``localStorage['pql.nbedit.tabs.v1']``; the
