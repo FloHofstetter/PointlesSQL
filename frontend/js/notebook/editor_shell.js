@@ -22,6 +22,7 @@
 // each session (Monaco + kernel WSes are per-session anyway).
 
 import { createFileTreeSlice } from './file_tree.js';
+import { toast } from '../api.js';
 
 const STORAGE_KEY = 'pql.nbedit.tabs.v1';
 const MAX_TABS = 10;
@@ -222,12 +223,9 @@ export function createNotebookEditorShell({ initialPath, initialBundle }) {
                 return;
             }
             if (this.tabs.length >= MAX_TABS) {
-                if (window.pqlToast) {
-                    window.pqlToast.warning(
-                        'Tab limit reached (' + MAX_TABS
-                        + '). Close a tab before opening another.',
-                    );
-                }
+                toast('warning',
+                    'Tab limit reached (' + MAX_TABS
+                    + '). Close a tab before opening another.');
                 return;
             }
             const id = tabIdFor(path);

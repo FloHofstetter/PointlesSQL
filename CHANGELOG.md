@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 76: notebook/main.js → 4 sub-modules + toast helper
+
+Follow-up to Phase 12.8.  Four sibling modules carved out of
+notebook/main.js and a cross-cutting toast-guard cleanup across
+sql_editor.js, notebook/main.js, and notebook/editor_shell.js.  No
+behaviour change, no Alembic, no template-structure change; pure JS
+refactor.
+
+- **Notebook main.js split.**
+  [main.js](frontend/js/notebook/main.js) drops 1204 → 703 LOC
+  (-501).  Four new sibling modules:
+  [kernel_ws.js](frontend/js/notebook/kernel_ws.js) (211 LOC) owns
+  the ipykernel socket + frame routing;
+  [lsp_ws.js](frontend/js/notebook/lsp_ws.js) (133 LOC) owns the
+  pyright socket + didOpen + notifyDidChange;
+  [cell_scanner.js](frontend/js/notebook/cell_scanner.js) (41 LOC)
+  holds pure scanCellRanges + rangesToDecorations;
+  [cell_editor.js](frontend/js/notebook/cell_editor.js) (104 LOC)
+  holds insertCellAfter + addCellBelow + addCellAbove +
+  applyResultVarToMarker.  main.js now owns orchestration glue +
+  rebuildCellAffordances + save + catalog-insert only.
+
+- **Toast-guard cleanup (Tranche 7).**
+  [api.js](frontend/js/api.js) exports ``toast(variant, msg)`` and
+  ``csrfToken()`` as named exports.  14 ``if (window.pqlToast)
+  window.pqlToast.X(msg)`` guards in
+  [sql_editor.js](frontend/js/sql_editor.js),
+  [notebook/main.js](frontend/js/notebook/main.js), and
+  [notebook/editor_shell.js](frontend/js/notebook/editor_shell.js)
+  replaced with single-line ``toast('error', msg)`` calls.  The
+  helper no-ops when the singleton is missing, so call-sites read
+  top-down without branch noise.  Duplicate ``csrfToken()`` removed
+  from notebook/main.js.
+
+- **Cache-bust bumped** to ``?v=sprint76`` on the
+  [notebook_editor.html](frontend/templates/pages/notebook_editor.html)
+  bootstrap script tag so browsers pick up the new ESM import graph
+  without a hard reload.
+
+- **Deferred to a follow-up sprint:** ``mount_bootstrap.js`` split
+  (mount() is tightly coupled to ``this`` + the Alpine factory return
+  object; extracting it means refactoring the factory shape, not a
+  mechanical move).  Captured in the tranche plan at
+  ``~/.claude/plans/wir-haben-in-diesem-warm-dream.md``.
+
+- **Static gates (all green):** ``ruff``, ``pyright`` (0 errors),
+  ``pydoclint``,
+  [check-frontend-bootstrap-order.sh](scripts/check-frontend-bootstrap-order.sh),
+  [check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh),
+  ``node --check`` on every modified JS file, import-graph resolution
+  check, Jinja template parse.
+
 ### Refactored — Phase 12.8 / Sprint 75: Frontend cleanup (notebook carve-up + ESM-everywhere + CSS-split + CSRF + README)
 
 One-shot reorg sprint that clears the JS / CSS organisation debt

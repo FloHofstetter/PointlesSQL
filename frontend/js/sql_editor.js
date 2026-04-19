@@ -10,7 +10,14 @@
  * one page life, but a fresh factory per call is cleaner).  CodeMirror
  * 6 is ESM-only; we still lazy-load it via dynamic ``import()`` inside
  * ``init()`` so non-/sql pages don't pay the 200 kB+ download.
+ *
+ * Sprint 76: toast call-sites moved off the ``if (window.pqlToast) {…}``
+ * guard pattern onto the exported ``toast()`` helper in api.js.  The
+ * helper no-ops when the singleton is missing, so call-sites read top-
+ * down without branch noise.
  */
+
+import { toast } from './api.js';
 
 function flattenTree(tree) {
     const out = [];
@@ -420,9 +427,7 @@ export function sqlEditor() {
             loadSaved(row) {
                 if (!row || typeof row.sql_text !== 'string') return;
                 this.setSQL(row.sql_text);
-                if (window.pqlToast) {
-                    window.pqlToast.info(`Loaded "${row.title}"`);
-                }
+                toast('info', `Loaded "${row.title}"`);
             },
 
             async deleteSaved(row) {
@@ -433,12 +438,10 @@ export function sqlEditor() {
                     { method: 'DELETE', silent: true },
                 );
                 if (res.ok || res.status === 204) {
-                    if (window.pqlToast) {
-                        window.pqlToast.success(`Deleted "${row.title}"`);
-                    }
+                    toast('success', `Deleted "${row.title}"`);
                     await this.refreshSaved();
-                } else if (window.pqlToast) {
-                    window.pqlToast.error(res.error || `HTTP ${res.status}`);
+                } else {
+                    toast('error', res.error || `HTTP ${res.status}`);
                 }
             },
 
@@ -454,11 +457,11 @@ export function sqlEditor() {
                 const sqlText = this.getSQL().trim();
                 const title = (this.saveForm.title || '').trim();
                 if (!title) {
-                    if (window.pqlToast) window.pqlToast.error('Title is required.');
+                    toast('error', 'Title is required.');
                     return;
                 }
                 if (!sqlText) {
-                    if (window.pqlToast) window.pqlToast.error('Nothing to save — the editor is empty.');
+                    toast('error', 'Nothing to save — the editor is empty.');
                     return;
                 }
                 this.saving = true;
@@ -474,16 +477,14 @@ export function sqlEditor() {
                 });
                 this.saving = false;
                 if (res.ok && res.data) {
-                    if (window.pqlToast) {
-                        window.pqlToast.success(`Saved as "${res.data.title}"`);
-                    }
+                    toast('success', `Saved as "${res.data.title}"`);
                     const el = document.getElementById('pqlSaveQueryModal');
                     if (el && window.bootstrap) {
                         window.bootstrap.Modal.getOrCreateInstance(el).hide();
                     }
                     await this.refreshSaved();
-                } else if (window.pqlToast) {
-                    window.pqlToast.error(res.error || `HTTP ${res.status}`);
+                } else {
+                    toast('error', res.error || `HTTP ${res.status}`);
                 }
             },
 
@@ -597,10 +598,10 @@ export function sqlEditor() {
                     `/api/sql/execute/${encodeURIComponent(qid)}/cancel`,
                     { method: 'POST', silent: true },
                 );
-                if ((res.ok || res.status === 204) && window.pqlToast) {
-                    window.pqlToast.info('Cancel requested.');
-                } else if (window.pqlToast) {
-                    window.pqlToast.error(res.error || `Cancel failed (HTTP ${res.status})`);
+                if (res.ok || res.status === 204) {
+                    toast('info', 'Cancel requested.');
+                } else {
+                    toast('error', res.error || `Cancel failed (HTTP ${res.status})`);
                 }
             },
         };

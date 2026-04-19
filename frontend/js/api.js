@@ -134,3 +134,7 @@ export const pqlApi = {
     fetch: apiFetch,
     reloadWithToast: reloadWithToast,
 };
+
+// Sprint 76: exported so call-sites outside pqlApi can stop hand-rolling
+// ``if (window.pqlToast) window.pqlToast.X(msg)`` guards (14× pre-Sprint-76).
+export { toast, csrfToken };

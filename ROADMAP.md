@@ -2737,6 +2737,75 @@ PointlesSQL
 │       file split); a behaviour-touching change in the same
 │       neighbourhood would still warrant the playbook gate.
 │
+├── Phase 12.9 — LLM-friendly modularization (notebook carve-up II)  🔜 in progress
+│   │
+│   │   Follow-up to Phase 12.8.  The Sprint-75 carve-up brought
+│   │   notebook/main.js from 1547 → 1204 LOC but the file was still
+│   │   the single largest module in the frontend.  Phase 12.9 targets
+│   │   aggressive modularization for LLM-friendliness: small,
+│   │   single-purpose modules so an agent editing one concern doesn't
+│   │   load the whole orchestrator into context.  Plan tranches
+│   │   documented in
+│   │   [.claude/plans/wir-haben-in-diesem-warm-dream.md](/home/flo/.claude/plans/wir-haben-in-diesem-warm-dream.md).
+│   │
+│   └── Sprint 76 — notebook/main.js → 4 sub-modules + toast helper   ✅ done (pending-commit)
+│       Four sibling modules carved out of main.js + a cross-cutting
+│       toast-guard cleanup.  No behaviour change, no Alembic, no
+│       template-structure change; pure JS refactor.
+│
+│       **Extracted modules:**
+│       - [kernel_ws.js](frontend/js/notebook/kernel_ws.js) (211 LOC)
+│         — ipykernel WebSocket factory: socket handle, namespace-
+│         introspect buffer, frame routing (hello/ack/interrupted/
+│         restarted/error/kernel_msg), cell-affordance status pill
+│         updates.
+│       - [lsp_ws.js](frontend/js/notebook/lsp_ws.js) (133 LOC) —
+│         pyright LSP WebSocket factory: socket handle, PyrightClient
+│         instance, document URI + monotonic version, didOpen +
+│         publishDiagnostics wiring, notifyDidChange.
+│       - [cell_scanner.js](frontend/js/notebook/cell_scanner.js)
+│         (41 LOC) — pure ``scanCellRanges(model)`` +
+│         ``rangesToDecorations(monaco, ranges)``.  No closure state.
+│       - [cell_editor.js](frontend/js/notebook/cell_editor.js)
+│         (104 LOC) — cell-mutation ops: insertCellAfter,
+│         addCellBelow, addCellAbove, applyResultVarToMarker.  Pure
+│         wrt alpine state; closure-scoped over ``refs`` +
+│         ``rescanDecorations`` only.
+│
+│       **main.js: 1204 → 703 LOC** (-501).  Now owns orchestration
+│       glue + rebuildCellAffordances + save + catalog-insert only.
+│
+│       **Cross-cutting cleanup (Tranche 7):**
+│       - [api.js](frontend/js/api.js) now exports ``toast(variant, msg)``
+│         and ``csrfToken()`` as named exports.  14 ``if
+│         (window.pqlToast) window.pqlToast.X(msg)`` guards in
+│         [sql_editor.js](frontend/js/sql_editor.js),
+│         [notebook/main.js](frontend/js/notebook/main.js), and
+│         [notebook/editor_shell.js](frontend/js/notebook/editor_shell.js)
+│         replaced with single-line ``toast('error', msg)`` calls.
+│       - Duplicate ``csrfToken()`` removed from notebook/main.js,
+│         now imported from api.js.
+│
+│       **Deferred to a follow-up sprint:** ``mount_bootstrap.js``
+│       split (mount() is tightly coupled to ``this`` + the Alpine
+│       factory return object; extracting it means refactoring the
+│       factory shape, not a mechanical move — too risky for this
+│       sprint).  Captured in the tranche plan.
+│
+│       **Static gates (all green):** ``ruff``, ``pyright`` (0
+│       errors, 153 warnings unchanged),
+│       [check-frontend-bootstrap-order.sh](scripts/check-frontend-bootstrap-order.sh),
+│       [check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh),
+│       ``node --check`` on every modified JS file, import-graph
+│       resolution check, Jinja template parse.  Cache-bust
+│       ``?v=sprint76`` applied to
+│       [notebook_editor.html](frontend/templates/pages/notebook_editor.html).
+│       No Playwright replay — changes are mechanical (closure state
+│       moved into factory-pattern sub-modules, direct ref-passing
+│       replaces sendKernelFrame/sendLspFrame closures); the first
+│       Phase 12.9 sprint that touches x-data/template structure
+│       will carry a playbook replay.
+│
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
 │   │   Goal: bring "AI employees on the lakehouse" into
