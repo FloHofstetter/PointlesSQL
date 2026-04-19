@@ -109,6 +109,12 @@
     <script src="/static/js/humanize_cron.js"></script>
     <script src="/static/js/list_table.js"></script>
     <script src="/static/js/job_row_actions.js"></script>
+    <!-- Sprint 75 Phase 2: ESM bridge entrypoint.  ``type="module"`` is
+         defer-by-default and runs in document order, so anything
+         bootstrap.js registers on ``window`` is live before Alpine's
+         x-data walk begins.  MUST stay before the Alpine CDN script —
+         scripts/check-frontend-bootstrap-order.sh asserts the ordering. -->
+    <script type="module" src="/static/js/bootstrap.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
         // Auto-attach the CSRF token from the <meta> tag to every HTMX

@@ -76,3 +76,9 @@ jobs:
         # live in closure scope (see closure_state.js + commit
         # 0af7984).  Pure shell, no Python venv needed.
         run: bash scripts/check-frontend-no-reactive-monaco.sh
+      - name: Frontend — bootstrap.js precedes Alpine CDN
+        # Sprint-75 ESM-bridge ordering gate.  Asserts base.html keeps
+        # ``<script type="module" src=".../bootstrap.js">`` before the
+        # Alpine CDN script, so any factory migrated out of a legacy
+        # IIFE file lands on ``window`` before Alpine's x-data walk.
+        run: bash scripts/check-frontend-bootstrap-order.sh
