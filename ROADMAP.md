@@ -3931,7 +3931,7 @@ PointlesSQL
 │   │       ``pyright`` 0 errors, ``pydoclint --style=google`` 0
 │   │       violations, 20/20 tests pass.
 │   │
-│   └── Sprint 98 — Browser walkthrough + bug sprint            ✅ done (pending-commit)
+│   └── Sprint 98 — Browser walkthrough + bug sprint            ✅ done (a50df3a)
 │           Deterministic Playwright playbook landed at
 │           [docs/e2e-walkthroughs/notebook_full_walkthrough.md](docs/e2e-walkthroughs/notebook_full_walkthrough.md)
 │           walking 14 output scenarios (stdout, pandas
