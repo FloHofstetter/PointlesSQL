@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 88a: api/main.py notebook HTTP routes extract
+
+Eighth decomposition slice for ``api/main.py``. The HTTP half of the
+notebook surface lifts out: editor page, doc bundle (GET + POST),
+per-cell run history, the workspace tree + inspect endpoints, the
+upload/create/rename/delete CRUD, and the workspace HTML page.
+main.py drops 3,751 → 3,227 LOC (-524). The two WebSocket endpoints
+(``/ws/notebook/kernel`` + ``/ws/notebook/lsp``) and their shared
+``_resolve_sql_approved_tables`` helper stay in main.py for now —
+Sprint 88b will move them into a dedicated WS module.
+
+- **New module** [notebooks_routes.py](pointlessql/api/notebooks_routes.py)
+  (580 LOC). Owns 11 routes plus the ``build_notebook_doc_bundle``
+  helper shared between the HTML editor and the JSON bundle
+  endpoint. All existing admin gates preserved.
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(notebooks_router)``
+  next to the other seven routers. Now-unused ``UploadFile``,
+  ``File``, ``Form``, ``uuid4``, top-level ``json`` imports
+  auto-trimmed by ruff.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 44 warnings (-10 from Sprint 87c baseline because the
+  moved notebook code carried 10 partial-unknown warnings),
+  ``pydoclint`` 0 violations, ``pytest -k notebook
+  --ignore=tests/test_jupyter.py`` 34/34 passed.
+
 ### Refactored — Phase 12.9 / Sprint 87c: api/main.py governance routes extract
 
 Seventh decomposition slice for ``api/main.py``. The full governance

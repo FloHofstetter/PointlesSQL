@@ -3328,7 +3328,7 @@ PointlesSQL
 │       targeted ``tests/test_volume_convert_type_mapping.py``
 │       9/9 passed (re-export gate intact).
 │
-│   └── Sprint 87c — api/main.py governance routes extract        ✅ done (pending-commit)
+│   ├── Sprint 87c — api/main.py governance routes extract        ✅ done (c975f9e)
 │       Seventh api/main.py decomposition slice.  The full
 │       governance surface lifts out: table column statistics
 │       (Sprint 56), notebook-from-table scratch helper, catalog
@@ -3358,6 +3358,38 @@ PointlesSQL
 │       table_stats or tag or permission or lineage or
 │       open_in_notebook' --ignore=tests/test_jupyter.py`` 27/27
 │       passed.
+│
+│   └── Sprint 88a — api/main.py notebook HTTP routes extract     ✅ done (pending-commit)
+│       Eighth api/main.py decomposition slice — the HTTP half of
+│       the notebook surface lifts out: editor page, doc bundle
+│       (GET + POST), per-cell run history, the workspace tree
+│       + inspect endpoints, the upload/create/rename/delete CRUD,
+│       and the workspace HTML page.  main.py drops 3.751 → 3.227
+│       LOC (-524).  The two WebSocket endpoints (kernel + LSP)
+│       and their shared ``_resolve_sql_approved_tables`` helper
+│       remain in main.py for now — Sprint 88b carves them off
+│       into ``notebook_kernel_ws.py``.
+│
+│       - ``api/notebooks_routes.py`` (580 LOC) — 11 routes plus
+│         the ``build_notebook_doc_bundle`` helper shared between
+│         the HTML editor and the JSON bundle endpoint.  All
+│         existing admin gates preserved (cell-runs, inspect,
+│         tree, upload, create, rename, delete, workspace page).
+│       - ``main.py`` mount: ``app.include_router(notebooks_router)``.
+│         Now-unused ``UploadFile`` + ``File`` + ``Form`` + ``uuid4``
+│         + ``json`` (top-level) imports auto-trimmed by ruff.
+│
+│       **WS auth not touched.** The two WebSocket handlers stay
+│       intact in main.py (the ``WebSocket``-typed helper +
+│       ZMQ-coupled lifecycle is too coupled to bisect mid-sprint).
+│       Sprint 88b will move them.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 44 warnings (-10 from Sprint 87c
+│       baseline because the moved notebook code carried 10
+│       partial-unknown warnings), ``pydoclint`` 0 violations.
+│       ``pytest -k notebook --ignore=tests/test_jupyter.py``
+│       34/34 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
