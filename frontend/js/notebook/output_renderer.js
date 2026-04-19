@@ -115,8 +115,14 @@ export function appendOutputFrame(dom, msgType, content) {
             break;
         }
         case 'execute_input':
-            // Server echoes the submitted code — we already have the
-            // source in the editor buffer.
+        case 'execute_reply':
+            // Sprint 66: ``execute_input`` + ``execute_reply`` are
+            // intercepted upstream by ``renderKernelMsg`` in
+            // ``main.js`` to drive the per-cell execution-count +
+            // status pills, and never reach this switch under normal
+            // flow.  The cases are kept as explicit no-ops so a
+            // persisted replay or a stray frame does not fall into
+            // ``default`` and get silently ignored in an unclear way.
             break;
         default:
             break;

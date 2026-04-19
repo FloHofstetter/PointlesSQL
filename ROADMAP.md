@@ -2207,14 +2207,29 @@ PointlesSQL
 │   │       theme/keymap.  Each gets its own sprint against the
 │   │       new module structure.
 │   │
-│   ├── Sprint 66 — Cell-type registry + per-cell affordances     ⏳
-│   │   Replace hardcoded ``code | markdown`` with a registry; add
-│   │   per-cell run button, execution-count gutter, elapsed-time
-│   │   pill, status pill (running / ok / error), ``+`` inserter
-│   │   between cells.  Cell-type API is the seam Sprint 71's SQL
-│   │   cell will plug into.  Constraint: closure-state convention
-│   │   from Sprint 65 must hold for any new per-cell DOM refs.
-│   │   Playbook update + replay is a gate.
+│   ├── Sprint 66 — Cell-type registry + per-cell affordances     ✅ done
+│   │   Replaced hardcoded ``code | markdown`` with a registry
+│   │   ([frontend/js/notebook/cell_types.js](frontend/js/notebook/cell_types.js));
+│   │   added per-cell run button, execution-count pill,
+│   │   elapsed-time pill, status pill (idle / running / ok /
+│   │   error / cancelled), ``+ Code`` / ``+ Markdown`` inserter
+│   │   below every cell.  Wire data: existing
+│   │   ``execute_input.execution_count`` +
+│   │   ``execute_reply.status`` — no backend changes, no Alembic
+│   │   migration (columns in ``notebook_cell_runs`` stay unwritten
+│   │   until Sprint 73).  New module
+│   │   [frontend/js/notebook/cell_affordances.js](frontend/js/notebook/cell_affordances.js)
+│   │   owns toolbar + inserter view zones; all DOM/timer state
+│   │   closure-scoped (BUG-64-02 invariant preserved).  Registry
+│   │   is the seam Sprint 71's SQL cell plugs into — one
+│   │   descriptor registration, no parser / runner / decoration
+│   │   edits.  Widened ``CELL_MARKER_RE`` to ``(\s+\[\w+\])?`` so
+│   │   a future ``[sql]`` tag loaded by a pre-Sprint-71 client
+│   │   degrades to ``code`` instead of dropping the cell.
+│   │   Reactivity-boundary grep gate widened to also block
+│   │   ``this._cellAffordances``, ``this._statusWidgets``,
+│   │   ``this._cellWidgets``, ``this._reactiveRoot``.  Playbook
+│   │   Part G replayed in Firefox (MCP) as the land gate.
 │   │
 │   ├── Sprint 67 — File-tree sidebar inside the editor           ⏳ trim-point
 │   │   Mount the Sprint-27 workspace tree as a left sidebar in

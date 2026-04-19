@@ -4,6 +4,88 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 66) — Phase 12.7: cell-type registry + per-cell affordances
+
+Second Phase 12.7 sprint.  Converts the hardcoded ``code | markdown``
+fork spread across ``cell_parser.js`` + ``main.js`` into a single
+descriptor registry, and surfaces per-cell affordances (run button,
+execution-count pill, elapsed-time pill, status pill, ``+`` inserter)
+that the wire protocol already carried but the Sprint-58 UI ignored.
+No backend changes, no Alembic migration — the ``notebook_cell_runs``
+columns reserved by Sprint 60's Alembic 017 stay unwritten until
+Sprint 73 actually persists per-cell history.
+
+- **Cell-type registry** at [frontend/js/notebook/cell_types.js](frontend/js/notebook/cell_types.js).
+  One descriptor per type with ``id``, ``label``, ``markerTag``,
+  ``canExecute``, ``bandClass``.  ``getCellType(id)`` is the single
+  lookup point; unknown tags fall back to ``code`` so a Sprint-71
+  ``[sql]`` marker loaded by a pre-Sprint-71 client renders as plain
+  Python instead of dropping the cell.  ``CELL_MARKER_RE`` widened
+  from ``(\s+\[markdown\])?`` to ``(\s+\[\w+\])?``.
+- **Per-cell affordances** at [frontend/js/notebook/cell_affordances.js](frontend/js/notebook/cell_affordances.js).
+  Two view zones per cell — a 26px toolbar above the marker (run
+  button + ``[n]`` exec count + status pill + elapsed + type label)
+  and a 22px hover-revealed inserter below the cell body with
+  ``+ Code`` / ``+ Markdown`` buttons.  All DOM nodes, Monaco view-
+  zone handles, and ``setInterval`` timers live in a closure-scoped
+  ``cellAffordances`` map on the orchestrator — BUG-64-02
+  reactivity-boundary invariant preserved.
+- **WS wiring.**  ``renderKernelMsg`` in ``main.js`` now intercepts
+  ``execute_input`` (pulls ``execution_count`` into the pill) and
+  ``execute_reply`` (maps ``ok`` / ``error`` / ``aborted`` →
+  ``ok`` / ``error`` / ``cancelled``) before dispatching to the
+  existing ``appendOutputFrame`` path, so empty output zones no
+  longer leak from shell-channel replies.
+- **Status pills.**  Five states — ``idle``, ``running`` (yellow,
+  pulsing), ``ok`` (green), ``error`` (red), ``cancelled``
+  (muted).  Elapsed timer ticks every 100 ms during a run and
+  freezes on ``execute_reply``.  Kernel ``restart`` resets all
+  count pills to ``[ ]``, status pills to ``idle``, and clears
+  elapsed.
+- **Single execution seam.**  ``runCellById(cellId)`` is the one
+  method that fires an execute frame; ``runCurrentCell`` /
+  ``runAllCells`` / ``runCellsAbove`` / per-cell ``▶`` button all
+  route through it.  Registry's ``canExecute`` gate is checked once
+  at the seam instead of being duplicated per-call-site.
+- **``+`` inserter**.  Inserts a fresh cell (with UUID from
+  ``crypto.randomUUID``) one line below the anchor cell's body,
+  using ``getCellType(typeId).markerTag`` so the inserter does not
+  know about the specific tag strings.  ``rebuildCellAffordances``
+  is idempotent — it re-runs on every ``onDidChangeContent`` and
+  moves zones via ``removeZone`` + ``addZone`` to re-anchor after
+  boundary shifts.
+- **Reactivity-boundary gate widened.**  ``scripts/check-frontend-no-reactive-monaco.sh``
+  now also blocks ``this._cellAffordances``, ``this._statusWidgets``,
+  ``this._cellWidgets``, and ``this._reactiveRoot`` so the
+  Sprint-66 state surface cannot be smuggled back onto ``this._X``
+  under a different field name.
+- **Playbook Part G** added to [docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md)
+  covering the seven check-boxes: toolbar visible per cell, per-cell
+  run button, error status, interrupt → cancelled, ``+`` inserter
+  (code + markdown), kernel-restart reset, page-reload BUG-64-02
+  regression gate.  Replayed in Firefox via Playwright-MCP as the
+  land gate per ``feedback_run_playbook_as_gate``.
+- **Alpine-vs-ESM race fix** (caught by the replay).  Sprint-65's
+  ``<script type="module" src="bootstrap.js">`` + the two extra
+  Sprint-66 modules pushed the ESM graph resolution past Alpine's
+  deferred boot, leaving the reactive scope empty on first load.
+  Fixed by converting [bootstrap.js](frontend/js/notebook/bootstrap.js)
+  from a module to a classic IIFE that registers
+  ``window.notebookEditor`` synchronously during HTML parse and
+  dynamic-imports [main.js](frontend/js/notebook/main.js) inside
+  the factory's ``mount()``.  Same mitigation pattern as the
+  Sprint-41 SQL-editor fix (commit ``b830300``).  Script tag
+  carries ``?v=sprint66`` to bust Firefox's module cache for
+  consumers upgrading in-place.
+- **KeyboardInterrupt → ``cancelled``** (caught by the replay).
+  Jupyter surfaces a user-interrupted cell as
+  ``execute_reply.status='error'`` with ``ename='KeyboardInterrupt'``,
+  not ``status='aborted'``.  The reply handler in
+  [main.js](frontend/js/notebook/main.js) now maps both
+  ``aborted`` and ``error + ename='KeyboardInterrupt'`` to the
+  ``cancelled`` pill so the red error state is reserved for
+  genuine runtime errors.
+
 ### Added (Sprint 65) — Phase 12.7 opener: editor JS modularisation
 
 Phase 12.7 ("Notebook editor UX overhaul") opens with a structural

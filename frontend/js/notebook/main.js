@@ -21,6 +21,19 @@ import {
     CELL_MARKER_RE,
     NAMESPACE_INTROSPECT_CODE,
 } from './cell_parser.js';
+import { getCellType, parseMarkerTag } from './cell_types.js';
+import {
+    mountAffordances,
+    mountInserter,
+    moveToolbar,
+    moveInserter,
+    removeAffordances,
+    setStatus,
+    setExecutionCount,
+    startElapsed,
+    stopElapsed,
+    resetElapsed,
+} from './cell_affordances.js';
 import { renderMarkdown } from './markdown.js';
 import { loadMonaco } from './monaco_loader.js';
 import {
@@ -64,6 +77,16 @@ export function createNotebookEditor({ path, initial }) {
     let catalogTables = null;
     const outputZones = {};   // cellId → { zoneId, domNode }
     const markdownZones = {}; // cellId → { zoneId, domNode, sourceRange }
+    // Sprint 66: per-cell affordances (toolbar content widget +
+    // below-cell inserter view zone).  Closure-scoped so Monaco
+    // content-widget + DOM refs never reach Alpine's reactive proxy
+    // — same BUG-64-02 discipline as outputZones / markdownZones.
+    const cellAffordances = {}; // cellId → record (see cell_affordances.js)
+    // Sprint 66: captured at mount() so closure-scoped callbacks
+    // (per-cell run button, inserter) can re-enter the Alpine object
+    // without being bound at construction time.  Never assigned to
+    // ``this.X`` — the reactivity-boundary gate forbids it.
+    let reactiveRoot = null;
     const initialOutputs = initial.outputs || [];
 
     return {
@@ -95,6 +118,7 @@ export function createNotebookEditor({ path, initial }) {
         catalogTablesLoaded: false,
 
         async mount() {
+            reactiveRoot = this;
             try {
                 const monaco = await loadMonaco();
                 const joined = joinCells(cells);
@@ -138,10 +162,12 @@ export function createNotebookEditor({ path, initial }) {
                     );
                 }
                 replayPersistedOutputs();
+                rebuildCellAffordances();
                 rebuildMarkdownZones();
                 updateHiddenAreas();
                 editor.onDidChangeCursorPosition(() => updateHiddenAreas());
                 model.onDidChangeContent(() => {
+                    rebuildCellAffordances();
                     rebuildMarkdownZones();
                     updateHiddenAreas();
                     notifyLspDidChange();
@@ -168,11 +194,21 @@ export function createNotebookEditor({ path, initial }) {
         runCurrentCell() {
             const cell = currentCellAtCursor();
             if (!cell) return;
-            if (cell.cellType === 'markdown') return;
-            const source = cellSourceById(cell.id);
-            clearOutput(cell.id);
-            this.executingCells = { ...this.executingCells, [cell.id]: true };
-            sendKernelFrame({ type: 'execute', cell_id: cell.id, code: source });
+            this.runCellById(cell.id, cell.cellType);
+        },
+
+        // Sprint 66: single execution seam that both keybindings,
+        // toolbar, palette, and per-cell run buttons share.  The
+        // registry's ``canExecute`` gate is the only place we branch
+        // on cell type — Sprint 71's SQL cell will flip the gate on
+        // via the registry without touching this method.
+        runCellById(cellId, cellType) {
+            const typeId = cellType || cellTypeOf(cellId);
+            if (!getCellType(typeId).canExecute) return;
+            const source = cellSourceById(cellId);
+            clearOutput(cellId);
+            this.executingCells = { ...this.executingCells, [cellId]: true };
+            sendKernelFrame({ type: 'execute', cell_id: cellId, code: source });
         },
 
         interruptKernel() {
@@ -187,11 +223,10 @@ export function createNotebookEditor({ path, initial }) {
         runAllCells() {
             const allCells = splitCells(refs.get('model').getValue());
             for (const c of allCells) {
-                if (c.cell_type === 'code') {
-                    clearOutput(c.id);
-                    this.executingCells = { ...this.executingCells, [c.id]: true };
-                    sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
-                }
+                if (!getCellType(c.cell_type).canExecute) continue;
+                clearOutput(c.id);
+                this.executingCells = { ...this.executingCells, [c.id]: true };
+                sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
             }
         },
 
@@ -201,12 +236,38 @@ export function createNotebookEditor({ path, initial }) {
             const allCells = splitCells(refs.get('model').getValue());
             for (const c of allCells) {
                 if (c.id === cell.id) break;
-                if (c.cell_type === 'code') {
-                    clearOutput(c.id);
-                    this.executingCells = { ...this.executingCells, [c.id]: true };
-                    sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
-                }
+                if (!getCellType(c.cell_type).canExecute) continue;
+                clearOutput(c.id);
+                this.executingCells = { ...this.executingCells, [c.id]: true };
+                sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
             }
+        },
+
+        // Sprint 66: ``+ Code`` / ``+ Markdown`` inserter between
+        // cells.  Synthesises a fresh marker with the registry's
+        // ``markerTag`` and executes a Monaco edit just after the
+        // anchor cell's last body line.  UUID minting mirrors
+        // ``addCellBelow`` / ``addCellAbove``.
+        insertCellAfter(afterCellId, typeId) {
+            const model = refs.get('model');
+            const editor = refs.get('editor');
+            const monaco = window.monaco;
+            if (!model || !editor || !monaco) return;
+            const descriptor = getCellType(typeId);
+            const newId = (window.crypto && window.crypto.randomUUID)
+                ? window.crypto.randomUUID()
+                : 'cell-' + Date.now();
+            const marker = `\n# %%${descriptor.markerTag} pql_cell_id="${newId}"\n\n`;
+            const endLine = cellEndLine(afterCellId);
+            const anchorLine = endLine === null ? model.getLineCount() : endLine;
+            const anchorCol = model.getLineMaxColumn(anchorLine);
+            editor.executeEdits('pql-insert-after', [{
+                range: new monaco.Range(anchorLine, anchorCol, anchorLine, anchorCol),
+                text: marker,
+                forceMoveMarkers: true,
+            }]);
+            rescanDecorations();
+            editor.focus();
         },
 
         addCellBelow() {
@@ -216,7 +277,7 @@ export function createNotebookEditor({ path, initial }) {
             const newId = (window.crypto && window.crypto.randomUUID)
                 ? window.crypto.randomUUID()
                 : 'cell-' + Date.now();
-            const marker = `\n\n# %% pql_cell_id="${newId}"\n`;
+            const marker = `\n\n# %%${getCellType('code').markerTag} pql_cell_id="${newId}"\n`;
             const lastLine = model.getLineCount();
             const lastCol = model.getLineMaxColumn(lastLine);
             editor.executeEdits('add-cell', [{
@@ -233,7 +294,7 @@ export function createNotebookEditor({ path, initial }) {
             const editor = refs.get('editor');
             const newId = (window.crypto && window.crypto.randomUUID)
                 ? window.crypto.randomUUID() : 'cell-' + Date.now();
-            const tag = markdown ? ' [markdown]' : '';
+            const tag = markdown ? getCellType('markdown').markerTag : getCellType('code').markerTag;
             const marker = `# %%${tag} pql_cell_id="${newId}"\n\n`;
             const targetLine = cell ? findCellMarkerLine(cell.id) : 1;
             const insertAt = new monaco.Range(targetLine, 1, targetLine, 1);
@@ -384,9 +445,7 @@ export function createNotebookEditor({ path, initial }) {
             range: new monaco.Range(r.startLine, 1, r.endLine, 1),
             options: {
                 isWholeLine: true,
-                className: r.cellType === 'markdown'
-                    ? 'pql-nbedit-cell-band-markdown'
-                    : 'pql-nbedit-cell-band-code',
+                className: getCellType(r.cellType).bandClass,
             },
         }));
         decorationIds = editor.deltaDecorations(decorationIds, decos);
@@ -405,7 +464,7 @@ export function createNotebookEditor({ path, initial }) {
                 if (currentStart !== null) {
                     ranges.push({ startLine: currentStart, endLine: i, cellType: currentType });
                 }
-                currentType = m[1] ? 'markdown' : 'code';
+                currentType = parseMarkerTag(m[1]);
                 currentStart = i + 2;
             }
         }
@@ -414,6 +473,7 @@ export function createNotebookEditor({ path, initial }) {
         }
         applyDecorations(window.monaco, ranges);
         cells = newCells;
+        rebuildCellAffordances();
     }
 
     function currentCellAtCursor() {
@@ -428,9 +488,20 @@ export function createNotebookEditor({ path, initial }) {
         }).split('\n');
         for (let i = above.length - 1; i >= 0; i--) {
             const m = above[i].match(CELL_MARKER_RE);
-            if (m) return { id: m[2], cellType: m[1] ? 'markdown' : 'code' };
+            if (m) return { id: m[2], cellType: parseMarkerTag(m[1]) };
         }
         return null;
+    }
+
+    function cellTypeOf(cellId) {
+        const model = refs.get('model');
+        if (!model) return 'code';
+        const lines = model.getValue().split('\n');
+        for (const line of lines) {
+            const m = line.match(CELL_MARKER_RE);
+            if (m && m[2] === cellId) return parseMarkerTag(m[1]);
+        }
+        return 'code';
     }
 
     function cellSourceById(cellId) {
@@ -547,6 +618,95 @@ export function createNotebookEditor({ path, initial }) {
         }
     }
 
+    // ─────────── per-cell affordances (Sprint 66) ───────────
+    //
+    // Walks the current model, mounts a toolbar content widget +
+    // below-cell inserter view zone for every live cell, and
+    // disposes any that no longer exist.  Idempotent — callers
+    // invoke after every content change (rescanDecorations,
+    // markdown-zone rebuild).
+
+    function rebuildCellAffordances() {
+        const editor = refs.get('editor');
+        const model = refs.get('model');
+        const monaco = window.monaco;
+        if (!editor || !model || !monaco) return;
+        const lines = model.getValue().split('\n');
+        const cellList = [];
+        let current = null;
+        for (let i = 0; i < lines.length; i++) {
+            const m = lines[i].match(CELL_MARKER_RE);
+            if (m) {
+                if (current) {
+                    current.endLine = i;
+                    cellList.push(current);
+                }
+                current = {
+                    id: m[2],
+                    typeId: parseMarkerTag(m[1]),
+                    markerLine: i + 1,
+                    endLine: lines.length,
+                };
+            }
+        }
+        if (current) cellList.push(current);
+
+        const alive = new Set(cellList.map((c) => c.id));
+        for (const cellId of Object.keys(cellAffordances)) {
+            if (!alive.has(cellId)) {
+                removeAffordances(editor, cellAffordances[cellId]);
+                delete cellAffordances[cellId];
+            }
+        }
+
+        const handlers = {
+            onRun: (cellId) => {
+                // Reuse the same execution seam the toolbar uses — the
+                // returned object is the Alpine reactive root; grab
+                // it off the Monaco DOM parent so the closure does
+                // not need a bound ``this``.
+                const alpine = reactiveRoot;
+                if (!alpine) return;
+                alpine.runCellById(cellId);
+            },
+            onInsert: (cellId, typeId) => {
+                const alpine = reactiveRoot;
+                if (!alpine) return;
+                alpine.insertCellAfter(cellId, typeId);
+            },
+        };
+
+        for (const cell of cellList) {
+            let record = cellAffordances[cell.id];
+            if (!record) {
+                record = mountAffordances(
+                    editor,
+                    cell.id,
+                    cell.typeId,
+                    cell.markerLine,
+                    handlers,
+                );
+                cellAffordances[cell.id] = record;
+            } else {
+                moveToolbar(editor, record, cell.markerLine);
+            }
+            // Inserter sits right after the cell's last body line —
+            // endLine is the line index (0-based) of the next marker
+            // or the final line count.
+            const afterLine = cell.endLine;
+            if (!record.inserterZone) {
+                record.inserterZone = mountInserter(
+                    editor,
+                    cell.id,
+                    afterLine,
+                    handlers,
+                );
+            } else {
+                moveInserter(editor, record.inserterZone, afterLine);
+            }
+        }
+    }
+
     // ─────────── markdown preview zones + hidden-areas ───────────
 
     function rebuildMarkdownZones() {
@@ -563,7 +723,7 @@ export function createNotebookEditor({ path, initial }) {
                     current.endLine = i;
                     cellList.push(current);
                 }
-                current = m[1]
+                current = parseMarkerTag(m[1]) === 'markdown'
                     ? { id: m[2], markerLine: i + 1, sourceStart: i + 2, endLine: lines.length }
                     : null;
             }
@@ -704,6 +864,14 @@ export function createNotebookEditor({ path, initial }) {
                 clearAllOutputs();
                 alpine.executingCells = {};
                 alpine.kernelStatus = 'ready';
+                // Sprint 66: kernel was reset — counters and elapsed
+                // pills from the previous session are stale.
+                for (const cellId of Object.keys(cellAffordances)) {
+                    const rec = cellAffordances[cellId];
+                    setStatus(rec, 'idle');
+                    setExecutionCount(rec, null);
+                    resetElapsed(rec);
+                }
                 if (window.pqlToast) window.pqlToast.success('Kernel restarted');
                 break;
             case 'error':
@@ -739,10 +907,16 @@ export function createNotebookEditor({ path, initial }) {
         // the server annotate which execute it maps to.
         if (frame.msg_type === 'status') {
             if (frame.cell_id) {
+                const record = cellAffordances[frame.cell_id];
                 if (frame.content.execution_state === 'idle') {
                     const next = { ...alpine.executingCells };
                     delete next[frame.cell_id];
                     alpine.executingCells = next;
+                    // Sprint 66: stop the live elapsed tick but leave
+                    // the final status pill flip to the forthcoming
+                    // ``execute_reply`` — ok/error/aborted are only
+                    // known from the shell-channel reply.
+                    if (record) stopElapsed(record);
                     // Namespace has likely changed — refresh the
                     // Variable Explorer only when the user panel is
                     // open, so inactive tabs don't pay for the
@@ -754,11 +928,58 @@ export function createNotebookEditor({ path, initial }) {
                     alpine.executingCells = {
                         ...alpine.executingCells, [frame.cell_id]: true,
                     };
+                    if (record) {
+                        setStatus(record, 'running');
+                        setExecutionCount(record, '*');
+                        startElapsed(record);
+                    }
                 }
             }
             return;
         }
         if (!frame.cell_id) return;
+        // Sprint 66: ``execute_input`` carries the kernel's monotonic
+        // counter; surface it in the per-cell pill so users see
+        // ``[*]`` → ``[7]`` like every other notebook UI.  No output
+        // zone side-effect (the submitted code is already visible in
+        // Monaco).
+        if (frame.msg_type === 'execute_input') {
+            const record = cellAffordances[frame.cell_id];
+            if (record && frame.content && frame.content.execution_count != null) {
+                setExecutionCount(record, frame.content.execution_count);
+            }
+            return;
+        }
+        // Sprint 66: ``execute_reply`` is the final verdict — shell-
+        // channel reply with status ``ok`` / ``error`` / ``aborted``.
+        // Jupyter surfaces ``Interrupt`` as ``status='error'`` with
+        // ``ename='KeyboardInterrupt'`` (the cell's execute raised),
+        // not as ``status='aborted'`` (which is reserved for
+        // skipped-due-to-prior-error).  Remap KeyboardInterrupt to
+        // ``cancelled`` so the red error pill doesn't mislabel an
+        // intentional stop.
+        if (frame.msg_type === 'execute_reply') {
+            const record = cellAffordances[frame.cell_id];
+            if (record) {
+                stopElapsed(record);
+                const content = frame.content || {};
+                const replyStatus = content.status;
+                if (replyStatus === 'ok') {
+                    setStatus(record, 'ok');
+                } else if (replyStatus === 'aborted') {
+                    setStatus(record, 'cancelled');
+                } else if (replyStatus === 'error') {
+                    if (content.ename === 'KeyboardInterrupt') {
+                        setStatus(record, 'cancelled');
+                    } else {
+                        setStatus(record, 'error');
+                    }
+                } else {
+                    setStatus(record, 'idle');
+                }
+            }
+            return;
+        }
         appendOutput(frame.cell_id, frame.msg_type, frame.content);
     }
 

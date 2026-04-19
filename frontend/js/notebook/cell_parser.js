@@ -1,11 +1,16 @@
 // Phase 12.7 Sprint 65 — cell-marker parser + namespace introspect snippet.
 //
-// Extracted unchanged from the Sprint-58 IIFE.  The serialiser
-// (joinCells) and the parser (splitCells) are mirror operations; both
-// honour the canonical ``# %% pql_cell_id="<uuid>"`` marker grammar
-// the server's jupytext layer round-trips.  Foreign marker variants
-// (# ---, # COMMAND ----------, # In[N]:) are accepted on the server
-// load path but not re-emitted by the client.
+// Sprint 66 widened the marker regex to accept any bracket tag (e.g.
+// ``[markdown]``, ``[sql]``) and delegated tag→type resolution to
+// ``cell_types.js``'s ``parseMarkerTag`` / ``getCellType``.  The
+// serialiser (``joinCells``) and parser (``splitCells``) stay mirror
+// operations; both honour the canonical
+// ``# %% [tag?] pql_cell_id="<uuid>"`` grammar that soyuz-catalog's
+// jupytext layer round-trips.  Foreign marker variants (# ---,
+// # COMMAND ----------, # In[N]:) are accepted on the server load
+// path but not re-emitted by the client.
+
+import { getCellType, parseMarkerTag } from './cell_types.js';
 
 // 1-based inclusive line ranges for each cell's *source* (marker
 // line excluded so decorations colour only content).
@@ -14,15 +19,15 @@ export function joinCells(cells) {
     const ranges = [];
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
-        const markerTag = cell.cell_type === 'markdown' ? ' [markdown]' : '';
-        const marker = `# %%${markerTag} pql_cell_id="${cell.id}"`;
+        const descriptor = getCellType(cell.cell_type);
+        const marker = `# %%${descriptor.markerTag} pql_cell_id="${cell.id}"`;
         if (i > 0) lines.push('');
         lines.push(marker);
         const bodyStart = lines.length + 1;
         const src = cell.source.length > 0 ? cell.source.split('\n') : [''];
         for (const line of src) lines.push(line);
         const bodyEnd = lines.length;
-        ranges.push({ startLine: bodyStart, endLine: bodyEnd, cellType: cell.cell_type });
+        ranges.push({ startLine: bodyStart, endLine: bodyEnd, cellType: descriptor.id });
     }
     return { text: lines.join('\n'), cellRanges: ranges };
 }
@@ -47,7 +52,7 @@ export function splitCells(text) {
         if (m) {
             flush();
             currentId = m[2];
-            currentType = m[1] ? 'markdown' : 'code';
+            currentType = parseMarkerTag(m[1]);
             buffer = [];
         } else if (currentId !== null) {
             buffer.push(line);
@@ -60,7 +65,11 @@ export function splitCells(text) {
     return cells;
 }
 
-export const CELL_MARKER_RE = /^#\s*%%(\s+\[markdown\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"\s*$/;
+// Group 1 captures the full ``[tag]`` segment (with leading space);
+// group 2 captures the cell UUID.  ``parseMarkerTag`` in
+// ``cell_types.js`` resolves group 1 to a registry id and falls back
+// to ``code`` for unknown tags.
+export const CELL_MARKER_RE = /^#\s*%%(\s+\[\w+\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"\s*$/;
 
 // Sprint 62 namespace introspect.  Runs inside the user's kernel
 // under cell_id=__pql_namespace__; the persistence layer + the

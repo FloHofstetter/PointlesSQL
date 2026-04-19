@@ -3,7 +3,8 @@
 #
 # Fails when an Alpine x-data factory module under
 # frontend/js/notebook/ stores a Monaco editor / model, a Web Worker,
-# a raw WebSocket, or a save-debounce timer as `this._X = …`.
+# a raw WebSocket, a save-debounce timer, or a Sprint-66 per-cell
+# affordance DOM ref as `this._X = …`.
 # Background and rationale: Sprint-64 commit 0af7984; helper at
 # frontend/js/notebook/closure_state.js.
 #
@@ -12,11 +13,14 @@
 # proxies the same recursion would walk through.  `wsRaw`,
 # `lspWsRaw`, and `saveTimer` are reserved for future modules so that
 # new closures can't smuggle WS handles or timers back onto `this.X`
-# under a different name and reproduce the class of bug.
+# under a different name and reproduce the class of bug.  Sprint 66
+# adds `cellAffordances`, `statusWidgets`, `cellWidgets`, and
+# `reactiveRoot` so the toolbar content widget + inserter view zone
+# + captured Alpine root stay in closure scope only.
 
 set -euo pipefail
 
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer)\s*='
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then

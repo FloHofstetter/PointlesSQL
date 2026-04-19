@@ -73,6 +73,80 @@
     .pql-nbedit-catalog-modal { font-size: 13px; }
     .pql-nbedit-catalog-modal .list-group-item { cursor: pointer; padding: 0.35rem 0.6rem; }
     .pql-nbedit-catalog-modal .list-group-item:hover { background: rgba(13, 110, 253, 0.1); }
+
+    /* Sprint 66: per-cell affordances (toolbar + inserter) */
+    .pql-nbedit-cell-toolbar {
+        display: flex; align-items: center; gap: 0.5rem;
+        padding: 0 0.75rem; height: 26px;
+        font-size: 11.5px; font-family: var(--bs-font-monospace);
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid var(--bs-border-color);
+    }
+    .pql-nbedit-run-btn {
+        border: 1px solid var(--bs-border-color);
+        background: rgba(25, 135, 84, 0.15); color: var(--bs-success);
+        border-radius: 3px; padding: 0 0.5rem; line-height: 18px; font-size: 11px;
+        cursor: pointer;
+    }
+    .pql-nbedit-run-btn:hover {
+        background: rgba(25, 135, 84, 0.30); color: var(--bs-body-color);
+    }
+    .pql-nbedit-exec-count {
+        font-family: var(--bs-font-monospace); color: var(--bs-info);
+        min-width: 2.5em; text-align: center;
+    }
+    .pql-nbedit-status-pill {
+        padding: 1px 8px; border-radius: 10px; font-size: 10.5px;
+        letter-spacing: 0.02em; border: 1px solid transparent;
+    }
+    .pql-nbedit-status-idle {
+        color: var(--bs-secondary-color); background: rgba(108, 117, 125, 0.15);
+    }
+    .pql-nbedit-status-running {
+        color: var(--bs-warning); background: rgba(255, 193, 7, 0.18);
+        border-color: rgba(255, 193, 7, 0.35);
+        animation: pql-nbedit-pulse 1.2s ease-in-out infinite;
+    }
+    .pql-nbedit-status-ok {
+        color: var(--bs-success); background: rgba(25, 135, 84, 0.18);
+        border-color: rgba(25, 135, 84, 0.35);
+    }
+    .pql-nbedit-status-error {
+        color: var(--bs-danger); background: rgba(220, 53, 69, 0.18);
+        border-color: rgba(220, 53, 69, 0.35);
+    }
+    .pql-nbedit-status-cancelled {
+        color: var(--bs-secondary-color); background: rgba(108, 117, 125, 0.18);
+        border-color: rgba(108, 117, 125, 0.35);
+    }
+    @keyframes pql-nbedit-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.55; }
+    }
+    .pql-nbedit-elapsed {
+        color: var(--bs-secondary-color); font-size: 10.5px;
+    }
+    .pql-nbedit-cell-label {
+        margin-left: auto; color: var(--bs-secondary-color);
+        font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .pql-nbedit-inserter {
+        display: flex; justify-content: center; gap: 0.5rem;
+        height: 22px; align-items: center; opacity: 0;
+        transition: opacity 0.12s ease-in-out;
+    }
+    .pql-nbedit-inserter:hover { opacity: 1; }
+    .pql-nbedit-inserter-btn {
+        border: 1px dashed var(--bs-border-color);
+        background: transparent; color: var(--bs-secondary-color);
+        border-radius: 3px; padding: 0 0.6rem; line-height: 16px;
+        font-size: 11px; cursor: pointer;
+        font-family: var(--bs-font-sans-serif);
+    }
+    .pql-nbedit-inserter-btn:hover {
+        border-style: solid; color: var(--bs-info);
+        border-color: var(--bs-info); background: rgba(13, 110, 253, 0.08);
+    }
 </style>
 {% endblock %}
 
@@ -261,5 +335,12 @@
 
 {% block extra_js %}
 <script src="/static/js/vendor/monaco/vs/loader.js"></script>
-<script type="module" src="/static/js/notebook/bootstrap.js"></script>
+{#
+  Sprint 66: classic <script> (not type="module") so
+  ``window.notebookEditor`` is registered synchronously during parse.
+  The factory lazy-imports the eleven-module ESM graph inside
+  ``mount()`` via ``import()``.  Prior art: Sprint-41 commit
+  ``b830300`` fixed the same Alpine-vs-ESM race for sql_editor.
+#}
+<script src="/static/js/notebook/bootstrap.js?v=sprint66"></script>
 {% endblock %}

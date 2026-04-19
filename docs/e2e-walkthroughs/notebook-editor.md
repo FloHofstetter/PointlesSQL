@@ -340,3 +340,121 @@ upstream and explicitly scope ``reload_dirs``.
 - Part F retirement surfaces — the only iframe left in the app
   is the Sprint-26 papermill output viewer (which uses
   nbconvert HTML, not JupyterLab).
+
+## Part G — Sprint 66: per-cell affordances
+
+Phase 12.7 second sprint lifts the editor from a single Python
+buffer with global toolbar to a per-cell-affordance UI with a
+cell-type registry.  Every cell now has a toolbar row above its
+marker (execution count, status pill, elapsed timer, run button)
+and a hover-revealed ``+ Code`` / ``+ Markdown`` inserter below
+its body.
+
+Setup: open a notebook with at least one code cell and one
+markdown cell.
+
+1. **Cell toolbar visible** — each cell shows a ~26px toolbar row
+   above its ``# %%`` marker.  Code cells show ``▶ [ ] idle …
+   PYTHON``.  Markdown cells show ``markdown … MARKDOWN`` (no run
+   button, no ``[n]`` count).
+
+2. **Run a code cell via the per-cell button** — click the ``▶``
+   button.  Expect:
+   - Count pill flips ``[ ]`` → ``[*]`` on ``execute_input``.
+   - Status pill flips ``idle`` → ``running`` (yellow, pulsing)
+     on ``status: busy``.
+   - Elapsed pill ticks from ``0ms`` upward every 100 ms.
+   - On ``execute_reply.status = ok`` the status pill goes
+     ``ok`` (green) and the count pill settles on the kernel's
+     monotonic counter (``[1]``, ``[2]``, …).
+
+3. **Run a cell that raises** — type ``1 / 0``, run it.  Status
+   pill flips to ``error`` (red).  Traceback renders in the
+   existing output zone.  Count pill advances; elapsed pill
+   freezes at the run duration.
+
+4. **Interrupt a long run** — type ``import time; time.sleep(60)``,
+   click ``▶``, then press the toolbar ``Interrupt`` button
+   while the status pill is ``running``.  Expect the status pill
+   to transition to ``cancelled`` (not ``error``).  Elapsed pill
+   shows the time-until-interrupt.
+
+5. **``+`` inserter** — hover between two cells.  The 22px gap
+   below each cell reveals two buttons: ``+ Code`` and
+   ``+ Markdown``.
+   - Click ``+ Code``: a new code cell appears below the anchor
+     cell with its own toolbar and a fresh UUID marker.
+   - Click ``+ Markdown``: a new markdown cell appears with a
+     preview zone immediately below its marker (Sprint 58
+     markdown-zone machinery unchanged).
+
+6. **Kernel restart resets counters** — run two code cells so
+   their count pills show ``[1]`` and ``[2]``.  Click
+   ``Restart``.  Expect all count pills to reset to ``[ ]``, all
+   status pills to ``idle``, elapsed pills to clear.
+
+7. **Page reload sanity (BUG-64-02 regression gate)** — start a
+   long-running cell, reload the page before it finishes.  Expect
+   Monaco to re-hydrate, toolbars to rebuild on each cell, and no
+   ``Proxy → circular`` error in DevTools.  (The captured
+   ``reactiveRoot`` in the closure prevents per-cell click
+   handlers from re-entering a dead Alpine instance.)
+
+### What shipped for Sprint 66
+
+- [frontend/js/notebook/cell_types.js](../../frontend/js/notebook/cell_types.js) — registry.
+  One descriptor per type (``code``, ``markdown``).  Sprint 71
+  adds ``sql`` here without touching any other module.
+- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+  — factory for the toolbar and inserter view zones.  All DOM
+  and timer state lives closure-scoped; BUG-64-02 invariant
+  preserved.
+- [frontend/js/notebook/cell_parser.js](../../frontend/js/notebook/cell_parser.js)
+  — widened ``CELL_MARKER_RE`` to ``(\s+\[\w+\])?`` so forward-
+  compat tags round-trip cleanly.
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — ``renderKernelMsg`` now intercepts ``execute_input`` +
+  ``execute_reply``; ``runCellById`` is the single execution
+  seam; ``insertCellAfter`` drives the inserter.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — CSS additions for ``.pql-nbedit-cell-toolbar``,
+  ``.pql-nbedit-status-pill``, ``.pql-nbedit-inserter``.
+- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden list to cover ``this._cellAffordances``,
+  ``this._statusWidgets``, ``this._cellWidgets``,
+  ``this._reactiveRoot``.
+
+**No backend changes.**  The ``notebook_cell_runs`` schema from
+Alembic 017 already reserves the ``execution_count``,
+``started_at``, ``finished_at`` columns — Sprint 73 will be the
+sprint that actually writes them back from the server.
+
+### What the replay caught
+
+**Alpine-vs-ESM race regression.**  Sprint 65's
+``<script type="module" src="bootstrap.js">`` and Alpine's CDN
+``<script defer>`` are both deferred; Sprint 66 pushed the module
+graph from 9 to 11 modules and the extra two network round-trips
+were enough to let Alpine evaluate ``x-data="notebookEditor(...)"``
+before ``window.notebookEditor`` existed, leaving the reactive
+scope empty (every binding printed a
+``ReferenceError: <key> is not defined`` warning).
+
+Fix: converted [bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+from a module to a classic IIFE that registers the factory
+synchronously at parse time and dynamic-imports
+[main.js](../../frontend/js/notebook/main.js) inside the
+factory's ``mount()`` method.  Same shape as the Sprint-41 SQL-
+editor mitigation documented in commit ``b830300``.  The script
+tag also carries a ``?v=sprint66`` query to bust Firefox's
+module-cache entry for consumers upgrading from Sprint 65.
+
+**KeyboardInterrupt is not ``status=aborted``.**  Jupyter surfaces
+a user-interrupted cell as ``execute_reply.status='error'`` with
+``ename='KeyboardInterrupt'`` — ``status='aborted'`` is reserved
+for requests skipped because an earlier request in the same
+``execute_reply`` chain failed.  The initial Sprint-66 handler
+only remapped ``aborted`` → ``cancelled`` so interrupts showed up
+as red ``error`` pills.  Refined the reply handler in
+[main.js](../../frontend/js/notebook/main.js) to also map
+``ename==='KeyboardInterrupt'`` → ``cancelled``.
