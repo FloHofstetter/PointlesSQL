@@ -62,6 +62,13 @@ class User(Base):
             sqlite_where=text("oidc_provider IS NOT NULL"),
             postgresql_where=text("oidc_provider IS NOT NULL"),
         ),
+        Index(
+            "ix_users_feed_token",
+            "feed_token",
+            unique=True,
+            sqlite_where=text("feed_token IS NOT NULL"),
+            postgresql_where=text("feed_token IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
