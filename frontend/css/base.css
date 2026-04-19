@@ -1,0 +1,127 @@
+/* ---------------------------------------------------------------
+ * Design tokens — Sprint 29 foundation.
+ * Full reference in docs/design-tokens.md. Light-mode overrides
+ * live further down; no toggle is wired yet.
+ * ------------------------------------------------------------- */
+:root {
+    --pointless-accent: #76b900;
+    --pql-sidebar-width: 280px;
+    --pql-topbar-height: 56px;
+
+    /* Spacing — 4-px scale, eight steps cover every utility we use today */
+    --pql-space-1: 0.25rem;
+    --pql-space-2: 0.5rem;
+    --pql-space-3: 0.75rem;
+    --pql-space-4: 1rem;
+    --pql-space-5: 1.5rem;
+    --pql-space-6: 2rem;
+    --pql-space-7: 3rem;
+    --pql-space-8: 4rem;
+
+    /* Typography — ~1.125 modular ratio */
+    --pql-text-xs: 0.75rem;
+    --pql-text-sm: 0.875rem;
+    --pql-text-base: 1rem;
+    --pql-text-lg: 1.125rem;
+    --pql-text-xl: 1.25rem;
+    --pql-text-2xl: 1.5rem;
+    --pql-text-3xl: 2rem;
+
+    --pql-font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI',
+                     Roboto, 'Helvetica Neue', sans-serif;
+    --pql-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas,
+                     monospace;
+    --pql-weight-regular: 400;
+    --pql-weight-semibold: 600;
+
+    /* Radius */
+    --pql-radius-sm: 0.25rem;
+    --pql-radius-md: 0.5rem;
+    --pql-radius-lg: 0.75rem;
+    --pql-radius-pill: 9999px;
+
+    /* Elevation — tuned for the dark-mode default */
+    --pql-elev-0: none;
+    --pql-elev-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --pql-elev-2: 0 4px 12px rgba(0, 0, 0, 0.45);
+    --pql-elev-3: 0 10px 28px rgba(0, 0, 0, 0.55);
+
+    /* Motion */
+    --pql-duration-fast: 120ms;
+    --pql-duration-normal: 200ms;
+    --pql-duration-slow: 320ms;
+    --pql-ease: cubic-bezier(0.2, 0, 0, 1);
+
+    /* Breakpoints — reference values, cannot be consumed by @media().
+       Media-query rules below must repeat these literals; this block
+       is the canonical contract (see docs/design-tokens.md). */
+    --pql-breakpoint-sm: 640px;
+    --pql-breakpoint-md: 768px;
+    --pql-breakpoint-lg: 1024px;
+    --pql-breakpoint-xl: 1280px;
+
+    /* Semantic colours — dark-mode values */
+    --pql-color-accent: #76b900;
+    --pql-color-accent-fg: #0b1400;
+    --pql-color-success-bg: rgba(118, 185, 0, 0.18);
+    --pql-color-success-fg: #9fd554;
+    --pql-color-warning-bg: rgba(255, 170, 0, 0.18);
+    --pql-color-warning-fg: #ffc04d;
+    --pql-color-danger-bg: rgba(220, 53, 69, 0.20);
+    --pql-color-danger-fg: #ff7a88;
+    --pql-color-info-bg: rgba(13, 110, 253, 0.20);
+    --pql-color-info-fg: #7fb1ff;
+    --pql-color-neutral-bg: rgba(255, 255, 255, 0.08);
+    --pql-color-neutral-fg: var(--bs-body-color);
+}
+
+:root[data-bs-theme="light"] {
+    --pql-color-accent-fg: #ffffff;
+    --pql-color-success-bg: #e7f4d0;
+    --pql-color-success-fg: #3d6b00;
+    --pql-color-warning-bg: #fff1cc;
+    --pql-color-warning-fg: #8a5a00;
+    --pql-color-danger-bg: #fde2e5;
+    --pql-color-danger-fg: #a4222e;
+    --pql-color-info-bg: #dce8ff;
+    --pql-color-info-fg: #0a3a9a;
+    --pql-color-neutral-bg: rgba(0, 0, 0, 0.06);
+
+    --pql-elev-1: 0 1px 2px rgba(0, 0, 0, 0.08);
+    --pql-elev-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --pql-elev-3: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+/* ---------------------------------------------------------------
+ * Self-hosted Inter (OFL-1.1). Latin subset, woff2 only.
+ * See frontend/fonts/LICENSE.txt.
+ * ------------------------------------------------------------- */
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/inter-regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('/static/fonts/inter-semibold.woff2') format('woff2');
+}
+
+body {
+    font-family: var(--pql-font-sans);
+}
+
+/* Global keyboard-focus ring — Sprint 36. The Sprint-33 `.pql-sortable`
+   rule later in this file keeps its tighter outline-offset, but every
+   focusable element now gets a visible ring by default so tab-navigation
+   is legible without per-component CSS. */
+:focus-visible {
+    outline: 2px solid var(--pql-color-accent);
+    outline-offset: 2px;
+}
+

@@ -1,0 +1,157 @@
+/* ---------------------------------------------------------------
+ * Sprint 35 — mobile + responsive.
+ * Breakpoint literals mirror the --pql-breakpoint-* tokens block
+ * (see the top of this file). @media() cannot consume var(), so the
+ * values are duplicated here; the token block is canonical.
+ * ------------------------------------------------------------- */
+
+/* Sidebar drawer footer — navigation links collapse into here at
+ * <640 px so the top navbar stays lean. Reset the list styling so
+ * the included `<ul>` looks like a sidebar menu instead of the
+ * pill-shaped Bootstrap navbar nav. */
+.pql-sidebar-nav-footer .pql-sidebar-nav-list {
+    padding: 0.5rem 0;
+}
+.pql-sidebar-nav-footer .pql-sidebar-nav-list .nav-link {
+    padding: 0.65rem 1rem;
+    color: var(--bs-body-color);
+}
+.pql-sidebar-nav-footer .pql-sidebar-nav-list .nav-link.active {
+    color: var(--pql-color-accent);
+    background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
+}
+.pql-sidebar-nav-footer .pql-sidebar-nav-list .dropdown-menu {
+    position: static;
+    float: none;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+/* Mobile sort dropdown — companion to the Sprint-33 listTable()
+ * helper. Stays hidden at >=sm; the desktop sortable headers keep
+ * working above the breakpoint. */
+.pql-list-sort-mobile {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.pql-list-sort-mobile .form-label {
+    display: block;
+}
+
+/* List tables collapse to label / value card rows on <640 px. Every
+ * `<td>` needs a `data-label="…"` attribute; the `::before` renders
+ * the label as a key in a two-column row. Progressive enhancement
+ * — above the breakpoint the table stays a normal Bootstrap table. */
+@media (max-width: 639.98px) {
+    .pql-list-table,
+    .pql-list-table > thead,
+    .pql-list-table > tbody,
+    .pql-list-table > tbody > tr,
+    .pql-list-table > tbody > tr > td {
+        display: block;
+        width: 100%;
+    }
+    .pql-list-table > thead {
+        display: none;
+    }
+    .pql-list-table > tbody > tr {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--bs-border-color-translucent);
+    }
+    .pql-list-table > tbody > tr:last-child {
+        border-bottom: 0;
+    }
+    .pql-list-table > tbody > tr > td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.25rem 0;
+        border: 0;
+        text-align: left;
+    }
+    .pql-list-table > tbody > tr > td::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: var(--pql-text-xs);
+        font-weight: var(--pql-weight-semibold);
+        color: var(--bs-secondary-color);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .pql-list-table > tbody > tr > td:not([data-label])::before {
+        content: none;
+    }
+    /* Row-action cells pack multiple buttons — keep them on one line
+     * and right-aligned rather than collapsed to the label/value row
+     * split. */
+    .pql-list-table > tbody > tr > td.pql-row-actions {
+        justify-content: flex-end;
+    }
+    .pql-list-table > tbody > tr > td.pql-row-actions::before {
+        content: none;
+    }
+}
+
+/* Jupyter iframe — desktop-recommended notice slotted above the
+ * iframe on <768 px. The iframe itself stays mounted so workflow
+ * still functions, just with a heads-up. */
+.pql-notebook-mobile-notice {
+    padding: 0.75rem 1rem;
+    background: var(--pql-color-info-bg);
+    color: var(--pql-color-info-fg);
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    font-size: var(--pql-text-sm);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+.pql-notebook-mobile-notice i {
+    font-size: var(--pql-text-lg);
+    flex-shrink: 0;
+}
+.pql-notebook-mobile-notice p {
+    margin: 0;
+}
+
+/* Touch targets >= 44 px on touch-only devices. Scoped to
+ * `@media (hover: none)` so a mouse-driven laptop touchscreen that
+ * *does* support hover keeps the compact spacing it was designed
+ * for. `.pql-list-controls input` overrides Bootstrap's
+ * `.form-control-sm` which would otherwise win on specificity. */
+@media (hover: none) {
+    button, .btn, a.btn, [role="button"], .pql-chip,
+    .nav-link, .pql-sortable, .dropdown-item,
+    select, .form-select,
+    input[type="search"], input[type="text"], input[type="email"],
+    input[type="password"], input[type="number"] {
+        min-height: 44px;
+    }
+    .pql-list-controls input.form-control-sm,
+    .pql-list-sort-mobile select.form-select-sm {
+        min-height: 44px;
+    }
+}
+
+/* Reduced-motion respect — Sprint 36. Users who set
+   `prefers-reduced-motion: reduce` get every transition and animation
+   zeroed (including Bootstrap's toast fade, Alpine's x-transition, and
+   the sidebar offcanvas slide). The token reset below handles our own
+   Sprint-29 motion scale; the blanket `*` rule handles third-party CSS
+   that ships literal durations. */
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --pql-duration-fast: 0ms;
+        --pql-duration-normal: 0ms;
+        --pql-duration-slow: 0ms;
+    }
+    *, *::before, *::after {
+        animation-duration: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+}

@@ -1,0 +1,49 @@
+/* ---------------------------------------------------------------
+ * Primitives — replace scattered `d-flex gap-N` / `card mb-4`
+ * repetition. Dark-mode-first; light-mode overrides above.
+ * ------------------------------------------------------------- */
+.pql-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-space-4);
+}
+.pql-stack--tight { gap: var(--pql-space-2); }
+.pql-stack--loose { gap: var(--pql-space-6); }
+
+.pql-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pql-space-2);
+}
+
+.pql-card {
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--pql-radius-md);
+    padding: var(--pql-space-5);
+    box-shadow: var(--pql-elev-1);
+}
+.pql-card--flush { padding: 0; }
+.pql-card + .pql-card { margin-top: var(--pql-space-5); }
+
+.pql-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pql-space-1);
+    padding: 0 var(--pql-space-2);
+    min-height: 1.5rem;
+    border-radius: var(--pql-radius-pill);
+    font-size: var(--pql-text-xs);
+    font-weight: var(--pql-weight-semibold);
+    background: var(--pql-color-neutral-bg);
+    color: var(--pql-color-neutral-fg);
+}
+.pql-badge--success { background: var(--pql-color-success-bg); color: var(--pql-color-success-fg); }
+.pql-badge--warning { background: var(--pql-color-warning-bg); color: var(--pql-color-warning-fg); }
+.pql-badge--danger  { background: var(--pql-color-danger-bg);  color: var(--pql-color-danger-fg); }
+.pql-badge--info    { background: var(--pql-color-info-bg);    color: var(--pql-color-info-fg); }
+
+[x-cloak] { display: none !important; }
+
+.navbar-brand i { color: var(--pointless-accent); }

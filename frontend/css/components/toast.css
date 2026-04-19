@@ -1,0 +1,33 @@
+/* ---------------------------------------------------------------
+ * Toast system — Sprint 30. ``window.pqlToast.{success,error,info}``
+ * builds nodes with ``.pql-toast`` + a variant class; the variants
+ * map onto the Sprint-29 semantic colour tokens so light mode comes
+ * for free.
+ * ------------------------------------------------------------- */
+.pql-toast {
+    border: 0;
+    border-radius: var(--pql-radius-md);
+    box-shadow: var(--pql-elev-2);
+    background: var(--pql-color-neutral-bg);
+    color: var(--pql-color-neutral-fg);
+    min-width: 16rem;
+}
+.pql-toast__body {
+    display: flex;
+    align-items: center;
+    gap: var(--pql-space-2);
+    padding: var(--pql-space-3) var(--pql-space-4);
+    font-size: var(--pql-text-sm);
+}
+.pql-toast__icon {
+    flex: 0 0 auto;
+}
+.pql-toast__message {
+    flex: 1 1 auto;
+    min-width: 0;
+    word-wrap: break-word;
+}
+.pql-toast--success { background: var(--pql-color-success-bg); color: var(--pql-color-success-fg); }
+.pql-toast--error   { background: var(--pql-color-danger-bg);  color: var(--pql-color-danger-fg); }
+.pql-toast--info    { background: var(--pql-color-info-bg);    color: var(--pql-color-info-fg); }
+

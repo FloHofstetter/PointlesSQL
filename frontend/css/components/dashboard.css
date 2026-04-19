@@ -1,0 +1,175 @@
+/* ---------------------------------------------------------------
+ * Home dashboard — Sprint 32. Two flex columns at desktop (primary
+ * wide = sparkline + runs, secondary narrow = quick actions + recent
+ * catalogs + your dashboards), one stack on narrow viewports. Flex
+ * columns let each card hug its natural height — CSS Grid with
+ * ``align-items: stretch`` (the default) would dehn all cards in a
+ * row to match the tallest neighbour, which made the sparkline card
+ * look empty next to the denser Quick actions card.
+ * ------------------------------------------------------------- */
+.pql-home-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--pql-space-5);
+    align-items: start;
+}
+@media (min-width: 992px) {
+    .pql-home-grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+}
+.pql-home-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-space-5);
+    min-width: 0;
+}
+
+.pql-home-card > .pql-stack > header h2 {
+    font-weight: var(--pql-weight-semibold);
+}
+
+.pql-home-counters {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--pql-space-3);
+    margin: 0;
+}
+.pql-home-counter dt {
+    font-size: var(--pql-text-xs);
+    font-weight: var(--pql-weight-regular);
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.pql-home-counter dd {
+    font-size: var(--pql-text-2xl);
+    font-weight: var(--pql-weight-semibold);
+    margin: 0;
+    line-height: 1.1;
+}
+
+.pql-home-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-space-2);
+}
+.pql-home-list__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-space-1);
+    padding: var(--pql-space-2) var(--pql-space-3);
+    border-radius: var(--pql-radius-sm);
+    background: var(--pql-color-neutral-bg);
+}
+.pql-home-list__item a {
+    color: var(--bs-body-color);
+}
+
+.pql-home-runs th {
+    font-size: var(--pql-text-xs);
+    font-weight: var(--pql-weight-semibold);
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.pql-home-sparkline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--pql-space-5);
+}
+.pql-sparkline {
+    display: block;
+    color: var(--bs-body-color);
+}
+.pql-sparkline rect.pql-spark--ok    { fill: var(--pql-color-success-fg); }
+.pql-sparkline rect.pql-spark--warn  { fill: var(--pql-color-warning-fg); }
+.pql-sparkline rect.pql-spark--bad   { fill: var(--pql-color-danger-fg); }
+.pql-sparkline rect.pql-spark--empty { fill: var(--pql-color-neutral-bg); }
+
+.pql-home-sparkline__meta {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: var(--pql-space-1) var(--pql-space-3);
+    margin: 0;
+    font-size: var(--pql-text-xs);
+}
+.pql-home-sparkline__meta dt {
+    color: var(--bs-secondary-color);
+    font-weight: var(--pql-weight-regular);
+}
+.pql-home-sparkline__meta dd {
+    margin: 0;
+    font-family: var(--pql-font-mono);
+    color: var(--bs-body-color);
+}
+
+/* Status dot — one coloured circle keyed on the JobRun.status string.
+   Unknown statuses fall through to the neutral base style. */
+.pql-status-dot {
+    display: inline-block;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: var(--pql-radius-pill);
+    background: var(--pql-color-neutral-bg);
+    margin-right: var(--pql-space-2);
+    vertical-align: middle;
+}
+.pql-status-dot--succeeded { background: var(--pql-color-success-fg); }
+.pql-status-dot--failed    { background: var(--pql-color-danger-fg); }
+.pql-status-dot--running   { background: var(--pql-color-info-fg); }
+.pql-status-dot--pending   { background: var(--pql-color-warning-fg); }
+.pql-status-dot--skipped   { background: var(--pql-color-neutral-bg); border: 1px solid var(--bs-border-color); }
+
+/* Onboarding checklist — flat list of three numbered steps, sized
+   to fit comfortably on mobile and desktop without breaking into
+   columns. */
+.pql-home-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-space-4);
+}
+.pql-home-step {
+    display: flex;
+    gap: var(--pql-space-4);
+    align-items: flex-start;
+}
+.pql-home-step__num {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--pql-radius-pill);
+    background: var(--pql-color-accent);
+    color: var(--pql-color-accent-fg);
+    font-weight: var(--pql-weight-semibold);
+}
+.pql-home-step__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pql-space-2);
+    min-width: 0;
+}
+.pql-home-step__title {
+    font-size: var(--pql-text-lg);
+    font-weight: var(--pql-weight-semibold);
+    margin: 0;
+}
+.pql-home-step__meta {
+    font-size: var(--pql-text-sm);
+    color: var(--bs-secondary-color);
+    margin: 0;
+    max-width: 40rem;
+}
+

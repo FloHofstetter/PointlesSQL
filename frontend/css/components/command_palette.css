@@ -1,0 +1,213 @@
+/* ---------------------------------------------------------------
+ * Command palette — Sprint 31. Cmd+K opens, ↑↓ navigates, ↵ opens,
+ * esc closes. Shares the design-token foundation with toast (Sprint 30)
+ * and badge (Sprint 29) so light-mode comes for free.
+ * ------------------------------------------------------------- */
+[x-cloak] { display: none !important; }
+
+.pql-cmdk-trigger {
+    background: var(--pql-color-neutral-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--pql-radius-md);
+    padding: var(--pql-space-1) var(--pql-space-3);
+    font-size: var(--pql-text-sm);
+    color: var(--bs-body-color);
+    cursor: pointer;
+    min-width: 14rem;
+    transition: background var(--pql-duration-fast) var(--pql-ease),
+                border-color var(--pql-duration-fast) var(--pql-ease);
+}
+.pql-cmdk-trigger:hover {
+    background: var(--bs-tertiary-bg);
+    border-color: var(--pql-color-accent);
+}
+.pql-cmdk-trigger__label {
+    flex: 1 1 auto;
+    text-align: left;
+    color: var(--bs-secondary-color);
+}
+.pql-cmdk-trigger__kbd {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--pql-radius-sm);
+    padding: 0 var(--pql-space-2);
+    font-family: var(--pql-font-mono);
+    font-size: var(--pql-text-xs);
+    color: var(--bs-secondary-color);
+}
+
+.pql-cmdk-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 1090;
+}
+.pql-cmdk-dialog {
+    position: fixed;
+    top: 12vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(640px, 92vw);
+    max-height: 70vh;
+    z-index: 1091;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--pql-radius-md);
+    box-shadow: var(--pql-elev-3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.pql-cmdk-input {
+    display: flex;
+    align-items: center;
+    gap: var(--pql-space-3);
+    padding: var(--pql-space-3) var(--pql-space-4);
+    border-bottom: 1px solid var(--bs-border-color);
+    color: var(--bs-secondary-color);
+}
+.pql-cmdk-input input {
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--bs-body-color);
+    font-size: var(--pql-text-lg);
+    outline: none;
+}
+.pql-cmdk-spinner { color: var(--bs-secondary-color); }
+
+.pql-cmdk-list {
+    list-style: none;
+    margin: 0;
+    padding: var(--pql-space-2) 0;
+    overflow-y: auto;
+    flex: 1 1 auto;
+}
+.pql-cmdk-empty {
+    padding: var(--pql-space-3) var(--pql-space-4);
+    color: var(--bs-secondary-color);
+    font-size: var(--pql-text-sm);
+    font-style: italic;
+}
+.pql-cmdk-section {
+    padding: var(--pql-space-2) var(--pql-space-4);
+    color: var(--bs-secondary-color);
+    font-size: var(--pql-text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.pql-cmdk-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+    gap: var(--pql-space-3);
+    padding: var(--pql-space-2) var(--pql-space-4);
+    cursor: pointer;
+    color: var(--bs-body-color);
+}
+.pql-cmdk-item.is-selected {
+    background: var(--pql-color-accent);
+    color: var(--pql-color-accent-fg);
+}
+.pql-cmdk-item.is-selected .pql-cmdk-desc,
+.pql-cmdk-item.is-selected .pql-cmdk-type {
+    color: inherit;
+}
+.pql-cmdk-type {
+    font-size: var(--pql-text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 var(--pql-space-2);
+    border-radius: var(--pql-radius-pill);
+    background: var(--pql-color-neutral-bg);
+    color: var(--bs-secondary-color);
+    min-width: 5.5rem;
+    text-align: center;
+}
+.pql-cmdk-type--catalog,
+.pql-cmdk-type--schema,
+.pql-cmdk-type--table          { background: var(--pql-color-info-bg);    color: var(--pql-color-info-fg); }
+.pql-cmdk-type--connection,
+.pql-cmdk-type--credential,
+.pql-cmdk-type--external_location { background: var(--pql-color-warning-bg); color: var(--pql-color-warning-fg); }
+.pql-cmdk-type--job            { background: var(--pql-color-success-bg); color: var(--pql-color-success-fg); }
+.pql-cmdk-type--dashboard      { background: var(--pql-color-accent); color: var(--pql-color-accent-fg); }
+.pql-cmdk-type--notebook       { background: var(--pql-color-danger-bg);  color: var(--pql-color-danger-fg); }
+.pql-cmdk-label {
+    font-size: var(--pql-text-base);
+    word-break: break-all;
+}
+.pql-cmdk-desc {
+    font-size: var(--pql-text-xs);
+    color: var(--bs-secondary-color);
+    text-align: right;
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pql-cmdk-hints {
+    display: flex;
+    gap: var(--pql-space-4);
+    padding: var(--pql-space-2) var(--pql-space-4);
+    border-top: 1px solid var(--bs-border-color);
+    font-size: var(--pql-text-xs);
+    color: var(--bs-secondary-color);
+}
+.pql-cmdk-hints kbd {
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--pql-radius-sm);
+    padding: 0 var(--pql-space-1);
+    font-family: var(--pql-font-mono);
+    color: var(--bs-secondary-color);
+    margin-right: var(--pql-space-1);
+}
+
+.pql-cmdk-help {
+    padding: var(--pql-space-5);
+    gap: var(--pql-space-4);
+    max-height: none;
+}
+.pql-cmdk-shortcuts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--pql-space-2) var(--pql-space-4);
+    margin: 0;
+}
+.pql-cmdk-shortcuts dt {
+    font-weight: var(--pql-weight-regular);
+}
+.pql-cmdk-shortcuts dt kbd {
+    background: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--pql-radius-sm);
+    padding: 0 var(--pql-space-2);
+    font-family: var(--pql-font-mono);
+    font-size: var(--pql-text-sm);
+    color: var(--bs-body-color);
+}
+.pql-cmdk-shortcuts dd {
+    margin: 0;
+    color: var(--bs-secondary-color);
+}
+/* Each Alpine x-for iteration wraps its <dt>+<dd> in a .pql-cmdk-shortcut-row
+   so `display: contents` collapses that wrapper into the parent 2-column
+   grid. Sprint 36 promoted the shortcut list from hard-coded DOM to a
+   data-driven registry. */
+.pql-cmdk-shortcut-row {
+    display: contents;
+}
+.pql-cmdk-shortcut-sep {
+    color: var(--bs-secondary-color);
+    padding: 0 var(--pql-space-1);
+}
+
+@media (max-width: 640px) {
+    .pql-cmdk-dialog { top: 4vh; max-height: 88vh; }
+    .pql-cmdk-item { grid-template-columns: auto 1fr; }
+    .pql-cmdk-desc { display: none; }
+}
+

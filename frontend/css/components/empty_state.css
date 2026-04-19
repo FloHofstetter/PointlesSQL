@@ -1,0 +1,51 @@
+/* ---------------------------------------------------------------
+ * Empty-state component — Sprint 30. Reuses ``.pql-card`` padding
+ * so inline and full-page usages look consistent.
+ * ------------------------------------------------------------- */
+.pql-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--pql-space-2);
+    padding: var(--pql-space-6) var(--pql-space-4);
+}
+.pql-empty__icon {
+    font-size: var(--pql-text-3xl);
+    color: var(--bs-secondary-color);
+    opacity: 0.85;
+}
+.pql-empty--success .pql-empty__icon { color: var(--pql-color-success-fg); }
+.pql-empty--warning .pql-empty__icon { color: var(--pql-color-warning-fg); }
+.pql-empty--danger  .pql-empty__icon { color: var(--pql-color-danger-fg); }
+.pql-empty--info    .pql-empty__icon { color: var(--pql-color-info-fg); }
+.pql-empty__title {
+    font-size: var(--pql-text-lg);
+    font-weight: var(--pql-weight-semibold);
+    margin: 0;
+}
+.pql-empty__message,
+.pql-empty__meta {
+    color: var(--bs-secondary-color);
+    font-size: var(--pql-text-sm);
+    margin: 0;
+    max-width: 40rem;
+}
+.pql-empty__meta { font-size: var(--pql-text-xs); }
+.pql-empty__action {
+    margin-top: var(--pql-space-3);
+}
+
+/* Error pages use a focused centered shell (no sidebar is already set via
+   ``hide_sidebar=True`` on the handler side). */
+.pql-error-shell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--pql-space-7) var(--pql-space-4);
+}
+.pql-error-shell .pql-empty {
+    max-width: 32rem;
+    width: 100%;
+}
+
