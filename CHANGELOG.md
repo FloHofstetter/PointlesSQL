@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 86b: api/main.py SQL editor routes extract
+
+Third decomposition slice for ``api/main.py``. The four-route
+Phase-12 SQL editor surface (execute / cancel / download + the
+``/sql`` page) moved into a new module. Original Sprint-86 plan
+bundled SQL with ``/api/queries`` + ``/api/saved-queries``; this
+slice carved off the SQL pieces alone for a smaller blast radius.
+main.py drops 6,203 → 5,652 LOC (-551).
+
+- **New module** [sql_routes.py](pointlessql/api/sql_routes.py)
+  (597 LOC). Owns ``POST /api/sql/execute``,
+  ``POST /api/sql/execute/{query_id}/cancel``,
+  ``GET  /api/sql/execute/{history_id}/download``, and the
+  ``GET /sql`` HTML page, plus the four module-level helpers
+  (``short_sql_hash``, ``run_sql_sync``, ``live_queries``,
+  ``run_sql_export_sync``). Underscore prefixes dropped since the
+  helpers are now module-public within the new package.
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(sql_router)``
+  alongside the existing auth + catalog routers. Unused
+  ``record_query_async`` re-import dropped (the SQL routes were the
+  only main.py callers). ``_parse_since`` deliberately stays in
+  main.py because ``/api/queries`` (Sprint 86c) still depends on it.
+
+- **Authorization preserved.** Both execute and download still
+  re-run ``check_privilege(SELECT)`` per referenced 3-part table —
+  a stale ``query_history`` row is not a bypass. The cancel route
+  stays idempotent (204 on unknown ids).
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 74 pre-existing warnings, ``pydoclint`` 0 violations,
+  ``pytest -k 'sql or query' --ignore=tests/test_jupyter.py`` 48/48
+  passed.
+
 ### Refactored — Phase 12.9 / Sprint 86: api/main.py catalog tree routes extract
 
 Second decomposition slice for ``api/main.py``. Narrowed from the

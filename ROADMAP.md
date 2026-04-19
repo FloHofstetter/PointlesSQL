@@ -3153,7 +3153,7 @@ PointlesSQL
 │       0 errors / 74 pre-existing warnings, ``pytest tests/test_csrf.py
 │       tests/test_rate_limit.py tests/test_auth.py`` 52/52 passed.
 │
-│   └── Sprint 86 — api/main.py catalog tree routes extract       ✅ done (pending-commit)
+│   ├── Sprint 86 — api/main.py catalog tree routes extract       ✅ done (dbb3821)
 │       Second api/main.py decomposition slice — narrowed from the
 │       sketched ``catalog/sql/queries`` triple-extract to just the
 │       catalog tree routes, to establish the route-extraction
@@ -3191,6 +3191,41 @@ PointlesSQL
 │       tree or preview' --ignore=tests/test_jupyter.py`` 44/44
 │       passed (test_jupyter.py has a pre-existing import error
 │       unrelated to this sprint).
+│
+│   └── Sprint 86b — api/main.py SQL editor routes extract        ✅ done (pending-commit)
+│       Third api/main.py decomposition slice — the four-route
+│       Phase-12 SQL editor surface.  The original Sprint 86 plan
+│       bundled SQL with /api/queries + /api/saved-queries; this
+│       slice carved off the SQL pieces standalone (smaller blast
+│       radius, single coherent feature unit).  main.py drops
+│       6.203 → 5.652 LOC (-551).
+│
+│       - ``api/sql_routes.py`` (597 LOC) — owns the four endpoints
+│         backing the SQL editor (``POST /api/sql/execute``,
+│         ``POST /api/sql/execute/{query_id}/cancel``,
+│         ``GET  /api/sql/execute/{history_id}/download``,
+│         ``GET  /sql``) plus the four module-level helpers
+│         (``short_sql_hash``, ``run_sql_sync``, ``live_queries``,
+│         ``run_sql_export_sync``).  Underscores dropped from the
+│         helper names since they are now module-public within the
+│         new package.
+│       - ``main.py`` mount: ``app.include_router(sql_router)``
+│         next to the existing auth/catalog routers.  Unused
+│         ``record_query_async`` re-import dropped (the SQL
+│         routes were the only main.py callers).
+│       - ``_parse_since`` deliberately stays in main.py because
+│         ``/api/queries`` (next sprint) still depends on it.
+│
+│       **Authorization preserved.** Both execute and download
+│       still re-run ``check_privilege(SELECT)`` per referenced
+│       3-part table — a stale ``query_history`` row is not a
+│       bypass.  The cancel route stays idempotent (204 on
+│       unknown ids).
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 74 pre-existing warnings,
+│       ``pydoclint`` 0 violations.  ``pytest -k 'sql or query'
+│       --ignore=tests/test_jupyter.py`` 48/48 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
