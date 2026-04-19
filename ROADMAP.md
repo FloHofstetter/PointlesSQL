@@ -2420,7 +2420,7 @@ PointlesSQL
 │   │   isinstance(c, dict) else c for c in res.columns]`` before
 │   │   constructing the DataFrame.
 │   │
-│   ├── Sprint 72 — ipywidgets (minimal placeholder)               ✅ done
+│   ├── Sprint 72 — ipywidgets (minimal placeholder)               ✅ done (b8ef7dc)
 │   │   Scope deliberately trimmed to a placeholder layer; full
 │   │   bidirectional ``comm_msg`` round-trip + vendored widget-
 │   │   manager bundle deferred to a future sprint per the
