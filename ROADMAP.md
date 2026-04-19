@@ -3755,7 +3755,7 @@ PointlesSQL
 │       warnings), ``pydoclint`` 0 violations.  Eleven now-stale
 │       imports auto-trimmed by ruff.
 │
-├── Phase 12.10 — Notebook format hardening               🔜 in progress
+├── Phase 12.10 — Notebook format hardening               ✅ done
 │   │
 │   │   Driven by user feedback after Phase 12.7 closed: the
 │   │   jupytext-percent ``.py`` files still embedded a
@@ -3978,6 +3978,124 @@ PointlesSQL
 │           ``pql_cell_id`` tokens + zero UUID-shaped
 │           substrings — Sprint 96's goal reached in the
 │           browser, not just in the tests.
+│
+├── Phase 12.11 — Notebook visual polish                  🔜 in progress
+│   │
+│   │   Phase 12.10 closed the semantic side of the native
+│   │   notebook editor (marker grammar, content-hash identity,
+│   │   parser robustness).  The visible chrome lagged behind:
+│   │   Sprint-98 screenshots showed the status trio
+│   │   ("Saved / Kernel ready / Pyright ready") rendered as bare
+│   │   coloured text and the eleven toolbar buttons flowing as a
+│   │   single ungrouped strip, neither matching the Bootstrap
+│   │   vocabulary every other page in the app already uses
+│   │   (alerts, jobs, volumes, sql_editor).  Phase 12.11 polishes
+│   │   the notebook chrome to the house pattern across four
+│   │   sprints — toolbar, output zones, per-cell affordances,
+│   │   DataFrame + markdown rendering — without touching the
+│   │   one-editor-per-notebook Monaco architecture or the
+│   │   Sprint-96 marker-grammar invariants.  Plan lives at
+│   │   [.claude/plans/phase-12-11-notebook-unified-anchor.md](/home/flo/.claude/plans/phase-12-11-notebook-unified-anchor.md).
+│   │
+│   ├── Sprint 99 — Toolbar + status badges               🔜 in progress
+│   │       Editor toolbar moved to Bootstrap-native chrome.
+│   │       The audit walked back the original sketch's "9 bare
+│   │       buttons" framing — the buttons already carried
+│   │       ``btn btn-sm btn-outline-*`` variants and Bootstrap
+│   │       icons since earlier sprints.  The real visual debt was
+│   │       narrower:
+│   │
+│   │       - **Status pills.**  The ``saveState`` / ``kernelStatus``
+│   │         / ``lspStatus`` spans were bare ``text-success`` /
+│   │         ``text-warning`` / ``text-danger`` text living next
+│   │         to the toolbar.  Replaced with
+│   │         ``.badge .rounded-pill .text-bg-{success,warning,
+│   │         danger,secondary}`` mirroring the Jinja2 inline
+│   │         pattern from
+│   │         ``frontend/templates/components/sync_history_card.html``
+│   │         and ``pages/jobs.html``.  Strings stay verbatim so the
+│   │         deterministic playbook assertions
+│   │         ([notebook-editor.md:43-47](docs/e2e-walkthroughs/notebook-editor.md),
+│   │         [notebook_full_walkthrough.md:34](docs/e2e-walkthroughs/notebook_full_walkthrough.md))
+│   │         still match.  Five ``saveState`` / five
+│   │         ``kernelStatus`` / four ``lspStatus`` values each get
+│   │         their own variant — not just the three the sketch
+│   │         imagined.
+│   │
+│   │       - **Semantic ``btn-group``s.**  The eleven toolbar
+│   │         buttons were wrapped in four labelled groups
+│   │         (``aria-label="Cell ops"`` / ``"Kernel"`` /
+│   │         ``"Panels"`` / ``"Help"``) using the
+│   │         ``btn-group btn-group-sm role="group"`` pattern from
+│   │         ``frontend/templates/pages/sql_editor.html:202-220``.
+│   │         The "Run cell" CTA stays standalone with
+│   │         ``btn-primary ms-2`` — only primary action on the
+│   │         toolbar, matches the Run / Cancel split from
+│   │         sql_editor's query toolbar.  Catalog stays as an
+│   │         action button (it opens a picker modal, not a
+│   │         persistent side panel like Variables / Outline).
+│   │
+│   │       - **A11y for icon-only buttons.**  Settings (``bi-gear``)
+│   │         and Keymap (``bi-question-circle``) gained explicit
+│   │         ``aria-label="Editor settings"`` /
+│   │         ``"Keymap overlay"``.  ``title`` stays for hover
+│   │         tooltips; ``aria-label`` covers screen readers.
+│   │
+│   │       - **CSS cleanup.**  ``.pql-nbedit-dirty`` (relict from
+│   │         pre-Sprint-58 dirty-state flagging) and the unused
+│   │         ``.pql-nbedit-status`` class were removed.  The
+│   │         existing ``.pql-nbedit-status-pill`` per-cell
+│   │         styling was deliberately left untouched — it covers
+│   │         the per-cell run-status pill, not the toolbar.
+│   │
+│   │       Browser replay against Firefox via Playwright-MCP
+│   │       confirmed the static evaluations: three pills with the
+│   │       expected ``text-bg-*`` classes, four ``btn-group``s with
+│   │       3 / 2 / 3 / 2 buttons, ``runBtnIsStandalone=true``,
+│   │       both icon-only buttons expose ``aria-label``.
+│   │       Screenshots at
+│   │       ``docs/e2e-walkthroughs/screenshots/sprint-99/``.  No
+│   │       JS, Python, or marker-grammar code touched — Sprint-96
+│   │       invariants intact, ``tests/test_notebook_doc.py`` 20/20
+│   │       still green.
+│   │
+│   │       **Static gates:** ``ruff check`` flagged one preexisting
+│   │       I001 in ``tests/test_pg_sync.py:18`` (Sprint-82-era
+│   │       import-block ordering, untouched by Sprint 99 — out of
+│   │       scope per ``feedback_audit_first_narrow_scope``);
+│   │       ``pyright`` 0 errors / 155 preexisting warnings;
+│   │       ``pydoclint --style=google`` 🎉 no violations;
+│   │       ``pytest tests/test_notebook_doc.py`` 20/20 pass;
+│   │       ``node --check frontend/js/notebook/main.js`` clean
+│   │       (file unmodified).
+│   │
+│   ├── Sprint 100 — Output zones as ``.card``             ⏳ planned
+│   │       Output zones become real Bootstrap cards with a
+│   │       ``.card-header`` (execution-count badge + ms duration
+│   │       + status dot), ``.card-body`` for the rendered output,
+│   │       and a ``.card-footer`` for clear-output controls.
+│   │       Traceback paints as ``.alert-danger`` with a structured
+│   │       header; stderr gets a left-border accent; stdout sits
+│   │       in muted body text.  View-zone architecture stays —
+│   │       only the inner DOM Monaco wraps changes.
+│   │
+│   ├── Sprint 101 — Per-cell affordance toolbar           ⏳ planned
+│   │       The floating Monaco content widgets (▶ Run, ⋯ History,
+│   │       ✕ Clear, + Code / + Markdown / + SQL inserters,
+│   │       status-dot, elapsed-time) become Bootstrap
+│   │       ``btn-toolbar`` + ``btn-group``s with badge cascades.
+│   │       SQL ``result_var`` input becomes ``form-control-sm``.
+│   │       The "+ Cell below" zone-button becomes a hover-only
+│   │       dezent insertion control.
+│   │
+│   └── Sprint 102 — DataFrame + markdown polish           ⏳ planned
+│       pandas ``_repr_html_`` tables get
+│       ``.table .table-sm .table-striped .table-hover`` inside
+│       a ``.table-responsive`` wrapper with
+│       ``thead.table-dark``.  The Sprint-98 ``text/markdown``
+│       branch gets spacing + code-block + link styling polish.
+│       Sprint-96 Screenshot-03 (DataFrame benchmark) reproduced
+│       with the new chrome.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

@@ -4,6 +4,56 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — Phase 12.11 / Sprint 99: Notebook toolbar Bootstrap-native (badges + btn-groups + a11y)
+
+Editor toolbar polished to the Bootstrap vocabulary already in use
+across ``alerts.html``, ``jobs.html``, and ``sql_editor.html``.
+Three narrow fixes on ``frontend/templates/pages/notebook_editor.html``
+— no JS, Python, or marker-grammar code touched.
+
+- **Status pills** — the ``saveState`` / ``kernelStatus`` /
+  ``lspStatus`` spans switched from bare ``text-success`` /
+  ``text-warning`` / ``text-danger`` text to
+  ``.badge .rounded-pill .text-bg-{success,warning,danger,secondary}``.
+  Text strings kept verbatim so the
+  [notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md)
+  and [notebook_full_walkthrough.md](docs/e2e-walkthroughs/notebook_full_walkthrough.md)
+  deterministic playbook assertions still match.  Each of the five
+  ``saveState`` / five ``kernelStatus`` / four ``lspStatus`` values
+  maps to its own variant — the ``secondary`` variant covers the
+  ``disconnected`` / ``unavailable`` twilight states that bare
+  ``text-muted`` handled inconsistently before.
+
+- **Semantic button groups** — the eleven toolbar buttons are now
+  wrapped in four labelled ``btn-group btn-group-sm`` containers:
+  "Cell ops" (Add cell / Save / Clear cell), "Kernel"
+  (Interrupt / Restart), "Panels" (Catalog / Variables / Outline),
+  "Help" (Settings / Keymap).  The Run cell CTA stays standalone
+  ``btn-primary ms-2`` — only primary action on the toolbar,
+  mirroring the Run / Cancel split in ``sql_editor.html``'s query
+  toolbar.  Each group carries an ``aria-label`` for assistive
+  tech.
+
+- **A11y for icon-only controls** — Settings (``bi-gear``) and
+  Keymap (``bi-question-circle``) buttons gained explicit
+  ``aria-label="Editor settings"`` / ``"Keymap overlay"``.
+  ``title`` still drives hover tooltips; ``aria-label`` now covers
+  screen readers.
+
+CSS cleanup: ``.pql-nbedit-dirty`` (dead since Sprint 58) and the
+one-use ``.pql-nbedit-status`` class removed.  The existing
+``.pql-nbedit-status-pill`` CSS was deliberately left untouched —
+it styles per-cell run-status pills, not the toolbar.
+
+Verified in Playwright-MCP (Firefox): three pills with expected
+``text-bg-*`` variants, four ``btn-group``s with 3 / 2 / 3 / 2
+buttons, Run cell standalone, both icon-only buttons expose
+``aria-label``.  Pill state transitions (saved → pending → saving
+→ saved) reproduce the correct variant change.  Screenshots under
+``docs/e2e-walkthroughs/screenshots/sprint-99/``.  Sprint-96
+content-hash invariants and the 20 regression tests in
+``tests/test_notebook_doc.py`` unaffected.
+
 ### Fixed — Phase 12.10 / Sprint 98: Notebook browser walkthrough + two output-zone regressions
 
 Deterministic Playwright playbook landed at
