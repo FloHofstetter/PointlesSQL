@@ -5,6 +5,10 @@ Owns the ``NotebookOutput`` table — append-on-iopub, replay-on-open,
 and the cross-table ``clear_*`` / ``rename_path`` cleanup helpers
 that scrub output frames + cell-run lifecycle rows together when a
 notebook is re-executed, restarted, deleted, or renamed.
+
+Sprint 96 renamed the cell-identity column from ``cell_id`` (UUID)
+to ``content_hash`` (``sha256(source)[:16]``); all function
+signatures here follow that rename.
 """
 
 from __future__ import annotations
@@ -44,7 +48,7 @@ def append_output(
     factory: sessionmaker[Session],
     *,
     file_path: str,
-    cell_id: str,
+    content_hash: str,
     kernel_session_id: str,
     output_index: int,
     msg_type: str,
@@ -56,7 +60,7 @@ def append_output(
     Args:
         factory: SQLAlchemy session factory.
         file_path: Relative notebook path.
-        cell_id: Cell UUID.
+        content_hash: Cell identity — ``sha256(source)[:16]``.
         kernel_session_id: Current :class:`KernelSession`
             ``session_id``.
         output_index: 0-based position within the cell's outputs
@@ -71,7 +75,7 @@ def append_output(
     now = datetime.datetime.now(datetime.UTC)
     row = NotebookOutput(
         file_path=file_path,
-        cell_id=cell_id,
+        content_hash=content_hash,
         kernel_session_id=kernel_session_id,
         output_index=output_index,
         msg_type=msg_type,
@@ -101,8 +105,8 @@ def load_outputs_for_path(
 
     Returns:
         One dict per row, in
-        ``(cell_id, output_index, created_at)`` order. Each dict
-        carries the keys ``cell_id`` / ``kernel_session_id`` /
+        ``(content_hash, output_index, created_at)`` order. Each dict
+        carries the keys ``content_hash`` / ``kernel_session_id`` /
         ``output_index`` / ``msg_type`` / ``content`` / ``metadata``
         / ``created_at``. ``content`` and ``metadata`` are
         JSON-decoded back into Python dicts.
@@ -112,7 +116,7 @@ def load_outputs_for_path(
             select(NotebookOutput)
             .where(NotebookOutput.file_path == file_path)
             .order_by(
-                NotebookOutput.cell_id,
+                NotebookOutput.content_hash,
                 NotebookOutput.output_index,
                 NotebookOutput.created_at,
             )
@@ -122,7 +126,7 @@ def load_outputs_for_path(
     for r in rows:
         out.append(
             {
-                "cell_id": r.cell_id,
+                "content_hash": r.content_hash,
                 "kernel_session_id": r.kernel_session_id,
                 "output_index": r.output_index,
                 "msg_type": r.msg_type,
@@ -138,7 +142,7 @@ def clear_cell(
     factory: sessionmaker[Session],
     *,
     file_path: str,
-    cell_id: str,
+    content_hash: str,
 ) -> None:
     """Delete every persisted output for one cell, across sessions.
 
@@ -148,19 +152,19 @@ def clear_cell(
     Args:
         factory: SQLAlchemy session factory.
         file_path: Relative notebook path.
-        cell_id: Cell UUID.
+        content_hash: Cell identity.
     """
     with factory() as session:
         session.execute(
             delete(NotebookOutput).where(
                 NotebookOutput.file_path == file_path,
-                NotebookOutput.cell_id == cell_id,
+                NotebookOutput.content_hash == content_hash,
             )
         )
         session.execute(
             delete(NotebookCellRun).where(
                 NotebookCellRun.file_path == file_path,
-                NotebookCellRun.cell_id == cell_id,
+                NotebookCellRun.content_hash == content_hash,
             )
         )
         # Sprint 73: deliberately do NOT cascade into

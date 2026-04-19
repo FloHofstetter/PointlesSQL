@@ -18,20 +18,27 @@ class NotebookOutput(Base):
     notebook after kernel restart (or a page reload) replays the
     outputs without a 90-second ``pql.read_table()`` redo.
 
-    Keyed by ``(file_path, cell_id, kernel_session_id, output_index)``
+    Keyed by ``(file_path, content_hash, kernel_session_id, output_index)``
     per ADR 0001 — ``kernel_session_id`` lets us keep pre- and
     post-restart histories side by side for free (a future sprint
     can surface "previous session" as a toggle without a schema
     change).  The frontend renders by reading the whole
-    ``(file_path, cell_id)`` pair's rows for the latest session.
+    ``(file_path, content_hash)`` pair's rows for the latest session.
+
+    Sprint 96 renamed the identity column from ``cell_id`` to
+    ``content_hash``.  The new value is ``sha256(normalized_source)[:16]``
+    computed at load time, not an opaque UUID the marker carries.
+    That makes ``.py`` notebooks generically editable in VSCode /
+    Vim without a PointlesSQL-specific ID mechanism.
 
     Attributes:
         id: Auto-incremented primary key.
         file_path: Notebook path relative to the notebooks dir —
             the same string the editor's URL and the jupytext
             round-trip use.
-        cell_id: Cell UUID pulled from the jupytext
-            ``pql_cell_id`` marker metadata.
+        content_hash: 16-char hex prefix of the SHA-256 of the
+            cell's normalized source, stable across reloads and
+            unchanged by whitespace-only edits.
         kernel_session_id: UUID of the :class:`KernelSession` the
             message came from (bumps on restart).
         output_index: 0-based position within the cell's outputs
@@ -50,15 +57,15 @@ class NotebookOutput(Base):
     __tablename__ = "notebook_outputs"
     __table_args__ = (
         UniqueConstraint(
-            "file_path", "cell_id", "kernel_session_id", "output_index",
+            "file_path", "content_hash", "kernel_session_id", "output_index",
             name="uq_notebook_outputs_position",
         ),
-        Index("ix_notebook_outputs_lookup", "file_path", "cell_id"),
+        Index("ix_notebook_outputs_lookup", "file_path", "content_hash"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
-    cell_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     kernel_session_id: Mapped[str] = mapped_column(String(64), nullable=False)
     output_index: Mapped[int] = mapped_column(Integer, nullable=False)
     msg_type: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -79,14 +86,18 @@ class NotebookCellRun(Base):
     execution counter; future sprints can add elapsed-time pills
     without a schema change.
 
-    Primary key is the same ``(file_path, cell_id,
+    Primary key is the same ``(file_path, content_hash,
     kernel_session_id)`` triple as the outputs; a cell can be
     re-run within the same session but only the latest run's
     status is kept (re-execute == UPDATE).
 
+    Sprint 96: identity column renamed from ``cell_id`` (UUID) to
+    ``content_hash`` (``sha256(source)[:16]``) — see
+    :class:`NotebookOutput` for the rationale.
+
     Attributes:
         file_path: Notebook path relative to the notebooks dir.
-        cell_id: Cell UUID.
+        content_hash: Content-hash of the cell's normalized source.
         kernel_session_id: Session UUID (bumps on restart).
         execution_count: Jupyter's monotonic counter — ``None``
             while the cell is still running.
@@ -100,7 +111,7 @@ class NotebookCellRun(Base):
     __tablename__ = "notebook_cell_runs"
 
     file_path: Mapped[str] = mapped_column(String(1024), primary_key=True)
-    cell_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    content_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     kernel_session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     execution_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -116,7 +127,7 @@ class NotebookCellRunSource(Base):
     """One execute_request's source snapshot + lifecycle.
 
     Phase 12.7 Sprint 73.  Sibling to :class:`NotebookCellRun` —
-    that table upserts on ``(file_path, cell_id, kernel_session_id)``
+    that table upserts on ``(file_path, content_hash, kernel_session_id)``
     so a re-run within the same session overwrites the prior row.
     This table inserts a fresh row per execute, capturing the
     source the kernel actually saw + the lifecycle status /
@@ -129,10 +140,17 @@ class NotebookCellRunSource(Base):
     :mod:`pointlessql.services.notebook_outputs` (Sprint-67
     cascade-via-service pattern).
 
+    Sprint 96: identity column renamed from ``cell_id`` (UUID) to
+    ``content_hash`` (``sha256(source)[:16]``); history rows for a
+    given cell therefore survive whitespace-only edits and reordering
+    but split on meaningful source changes — intended per the
+    Sprint-96 plan.
+
     Attributes:
         id: Auto-incremented primary key.
         file_path: Notebook path relative to the notebooks dir.
-        cell_id: Cell UUID.
+        content_hash: Content-hash of the cell's normalized source
+            at the time of the run.
         kernel_session_id: Session UUID (bumps on kernel restart).
         execution_count: Jupyter's monotonic counter — ``None``
             while the cell is still running, set on execute_reply.
@@ -153,7 +171,7 @@ class NotebookCellRunSource(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
-    cell_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     kernel_session_id: Mapped[str] = mapped_column(String(64), nullable=False)
     execution_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(Text, nullable=False)
@@ -169,7 +187,7 @@ class NotebookCellRunSource(Base):
         Index(
             "ix_notebook_cell_run_sources_path_cell",
             "file_path",
-            "cell_id",
+            "content_hash",
             "started_at",
         ),
     )

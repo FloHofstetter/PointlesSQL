@@ -3755,6 +3755,157 @@ PointlesSQL
 │       warnings), ``pydoclint`` 0 violations.  Eleven now-stale
 │       imports auto-trimmed by ruff.
 │
+├── Phase 12.10 — Notebook format hardening               🔜 in progress
+│   │
+│   │   Driven by user feedback after Phase 12.7 closed: the
+│   │   jupytext-percent ``.py`` files still embedded a
+│   │   PointlesSQL-specific ``pql_cell_id="<uuid>"`` token in
+│   │   every cell marker, so the files were not generically
+│   │   editable in VSCode / Vim / Codium without risking a
+│   │   500 on reload if the user manually removed or reordered
+│   │   a UUID.  No other notebook IDE (VSCode Interactive,
+│   │   PyCharm, Spyder, Databricks ``.py`` export, JupyterLab
+│   │   + jupytext, Marimo) persists cell UUIDs in the ``.py``
+│   │   source — the UUID segment was a Phase 12.6 expedient
+│   │   that outlived its purpose.  Phase 12.10 rips it out,
+│   │   switches the persistence layer to a content-hash
+│   │   identity (``FNV-1a-64(normalized_source)``, 16 hex
+│   │   chars) that both Python and the browser compute
+│   │   byte-for-byte, and then runs a deterministic
+│   │   browser-walkthrough to sweep the Monaco output-rendering
+│   │   bugs the user reported during the same session.  Plan
+│   │   lives at
+│   │   [.claude/plans/ich-m-chte-dass-du-luminous-ullman.md](/home/flo/.claude/plans/ich-m-chte-dass-du-luminous-ullman.md).
+│   │
+│   ├── Sprint 96 — Cell-ID refactor: marker grammar + content-hash identity ✅ done (pending-commit)
+│   │       Merged the two sprints the plan originally sketched
+│   │       ("A: DB migration" + "B: marker grammar drop") into a
+│   │       single coherent commit because the pair is a
+│   │       semantically-atomic rename — intermediate landings
+│   │       would leave the DB column name mismatched with its
+│   │       value format.
+│   │
+│   │       On-disk grammar cleaned up to the IDE-agnostic shape
+│   │       VSCode / Spyder / PyCharm already recognise:
+│   │
+│   │           # %%                  — code cell
+│   │           # %% [markdown]       — markdown cell
+│   │           # %% [sql]            — SQL cell without a result variable
+│   │           # %% [sql] df         — SQL cell binding its DataFrame to `df`
+│   │
+│   │       No UUID, no ``pql_cell_id="…"``, no named
+│   │       ``result_var="…"`` segment.  Legacy files carrying
+│   │       the old grammar still load through a tolerant
+│   │       fallback regex; ``load_document`` sets ``dirty=True``
+│   │       so the editor prompts a one-time save that rewrites
+│   │       the file into the clean shape.  Zero byte churn on
+│   │       re-save of an already-clean file (``test_save_load_
+│   │       roundtrip_clean_grammar``).
+│   │
+│   │       Cell identity splits into two separate concepts:
+│   │
+│   │       * **Transient ordinal label** (``cell-0``, ``cell-1``,
+│   │         …) — minted by ``splitCells`` on every parse.  Used
+│   │         only as the Alpine ``x-for :key`` / DOM ref key
+│   │         inside one editor session.  Never persisted.
+│   │       * **Content-hash identity** (``FNV-1a-64`` of the
+│   │         whitespace-normalised source, 16 hex chars).  Used
+│   │         for every DB lookup + every WS frame that addresses
+│   │         a cell.  Stable across reordering + whitespace-only
+│   │         edits; naturally splits on meaningful source
+│   │         changes — analogous to how git gives a new commit
+│   │         a fresh SHA.
+│   │
+│   │       - **Alembic migration 019** renames ``cell_id`` →
+│   │         ``content_hash`` across ``notebook_outputs``,
+│   │         ``notebook_cell_runs``, ``notebook_cell_run_sources``.
+│   │         Pre-migration rows keep their UUID payload in the
+│   │         renamed column — they are orphans now (no new cell
+│   │         will compute to a UUID-shaped hash) but the natural
+│   │         ``clear_path`` cascade on next notebook-delete /
+│   │         rename reaps them.  SQLite + Postgres both round-
+│   │         trip cleanly (``alembic downgrade -1 && upgrade head``).
+│   │
+│   │       - **Python + JS mirror helpers.**  FNV-1a-64 was
+│   │         picked over SHA-256 because it has a trivial
+│   │         synchronous mirror via ``BigInt`` on the browser
+│   │         side — SubtleCrypto would have forced an async
+│   │         cascade through every ``splitCells`` caller.  The
+│   │         reference vector ``cbf29ce484222325`` (empty source)
+│   │         is pinned in ``test_notebook_doc.py`` to catch
+│   │         cross-language drift without a Playwright replay.
+│   │
+│   │       - **Server-side rewrites.**  ``notebook_doc.py``
+│   │         marker regex + parser + serialiser; the legacy
+│   │         regex stays as a read-only fallback for one-way
+│   │         migration.  ``notebook_outputs/outputs.py`` +
+│   │         ``cell_runs.py`` + ``kernel_session/session.py`` +
+│   │         ``messages.py`` + ``api/notebook_kernel_ws.py`` +
+│   │         ``api/notebooks_routes.py`` + ``api/governance_
+│   │         routes.py`` all rename ``cell_id`` → ``content_hash``
+│   │         in service signatures, WS frame keys, and SQLAlchemy
+│   │         queries.  ``KernelMessage`` carries a
+│   │         ``content_hash: str | None``.
+│   │
+│   │       - **Client-side rewrites.**  ``cell_parser.js`` picks
+│   │         up ``computeContentHash`` + the new + legacy marker
+│   │         regexes; ``cell_introspector.js`` switches from
+│   │         UUID-match to positional ordinal-label lookup;
+│   │         ``cell_editor.js`` emits clean markers on
+│   │         insert / addBelow / addAbove and rewrites SQL
+│   │         markers with the positional ``result_var`` shape;
+│   │         ``kernel_ws.js`` takes a ``resolveCellId`` closure
+│   │         so incoming kernel messages route back to the
+│   │         session-local label via the content-hash index
+│   │         ``main.js`` maintains alongside ``cellAffordances``;
+│   │         ``output_zone_manager.js`` takes the same resolver
+│   │         for ``replayPersistedOutputs`` so server-returned
+│   │         content-hashes map onto live cells (rows whose
+│   │         hash no longer matches any cell — i.e. the user
+│   │         edited the source — are silently dropped, matching
+│   │         the VSCode / Databricks orphan-output behaviour);
+│   │         ``run_history.js`` addresses the history endpoint
+│   │         by ``content_hash``.
+│   │
+│   │       - **Tests.**  New ``tests/test_notebook_doc.py``
+│   │         (11 cases) covers the FNV-1a reference vector,
+│   │         whitespace-tolerance, clean-grammar round-trip
+│   │         byte-stability, positional ``# %% [sql] df`` on
+│   │         disk, legacy-file ``dirty`` flag, and the one-way
+│   │         legacy → clean migration save.  Node reference
+│   │         vector produced identical hashes to Python for
+│   │         ``""`` / ``"print(1)"`` / ``"print(1)\n"`` /
+│   │         ``"# %%\nprint(1)\n"`` before commit.
+│   │
+│   │       **Static gates (all green):** ``ruff check`` 0
+│   │       errors; ``pyright`` 0 errors / 154 pre-existing
+│   │       warnings unchanged; ``pydoclint --style=google`` 0
+│   │       violations on every touched file; ``alembic upgrade
+│   │       head`` + ``downgrade -1`` + ``upgrade head`` idempotent
+│   │       round-trip on a fresh SQLite DB;
+│   │       ``pytest tests/test_notebook_doc.py`` 11/11 passing.
+│   │
+│   ├── Sprint 97 — Parser hardening against manual edits       ⏳ queued
+│   │       Defensive guards in ``notebook_doc.py`` +
+│   │       ``cell_parser.js`` for the scenarios a user can
+│   │       produce by editing the ``.py`` directly in VSCode /
+│   │       Vim: no markers at all, unknown tags, invalid SQL
+│   │       identifier after ``[sql]``, duplicate content-hashes
+│   │       (two identical cells), CRLF line endings, UTF-8 BOM,
+│   │       file ends mid-cell without trailing newline.  Each
+│   │       gets a test in ``tests/test_notebook_doc.py``.
+│   │
+│   └── Sprint 98 — Browser walkthrough + bug sprint            ⏳ queued
+│           Deterministic Playwright playbook
+│           ``docs/e2e-walkthroughs/notebook_full_walkthrough.md``
+│           walking the 14 output scenarios (pandas DataFrame,
+│           matplotlib, markdown, SQL, stderr, traceback,
+│           interrupt, large stdout, IPython HTML, post-reload
+│           replay, post-reorder history, external edit reload).
+│           Each gets a screenshot; bugs surface as
+│           ``BUG-96-NN`` tags with inline fixes when trivial
+│           and playbook-tail TODOs when substantial.
+│
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
 │   │   Goal: bring "AI employees on the lakehouse" into

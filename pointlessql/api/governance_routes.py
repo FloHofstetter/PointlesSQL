@@ -292,8 +292,6 @@ async def api_open_in_notebook(
     client navigates to with ``window.location.assign``.
     """
     import secrets
-    import uuid
-
     require_admin(request)
     settings: Settings = request.app.state.settings
     full_name = f"{catalog_name}.{schema_name}.{table_name}"
@@ -309,24 +307,33 @@ async def api_open_in_notebook(
         must_exist=False,
     )
 
+    # Sprint 96: the on-disk grammar no longer embeds a UUID per cell;
+    # :func:`save_document` ignores the in-memory ``id`` field when
+    # serialising, and :func:`load_document` will re-derive a fresh
+    # ordinal label + content-hash on the next open.  ``id`` /
+    # ``content_hash`` are supplied here only to satisfy the dataclass.
+    md_source = (
+        f"# Scratch: `{full_name}`\n\n"
+        "Generated from the PointlesSQL table detail page."
+    )
+    code_source = (
+        "from pointlessql import PQL\n\n"
+        "pql = PQL()\n"
+        f'df = pql.table("{full_name}")\n'
+        "df.head()"
+    )
     cells = [
         notebook_doc_service.NotebookCell(
-            id=str(uuid.uuid4()),
+            id="cell-0",
+            content_hash=notebook_doc_service.compute_content_hash(md_source),
             cell_type="markdown",
-            source=(
-                f"# Scratch: `{full_name}`\n\n"
-                "Generated from the PointlesSQL table detail page."
-            ),
+            source=md_source,
         ),
         notebook_doc_service.NotebookCell(
-            id=str(uuid.uuid4()),
+            id="cell-1",
+            content_hash=notebook_doc_service.compute_content_hash(code_source),
             cell_type="code",
-            source=(
-                "from pointlessql import PQL\n\n"
-                "pql = PQL()\n"
-                f'df = pql.table("{full_name}")\n'
-                "df.head()"
-            ),
+            source=code_source,
         ),
     ]
     notebook_doc_service.save_document(target, cells)

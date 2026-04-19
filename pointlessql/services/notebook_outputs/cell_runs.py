@@ -7,6 +7,10 @@ handler calls :func:`upsert_cell_run` on ``execute_request`` /
 ``execute_reply`` for the live status pill and
 :func:`record_cell_run_start` / :func:`record_cell_run_finish` to
 build the per-cell history popover that the Sprint-73 UI surfaces.
+
+Sprint 96 renamed the cell-identity column from ``cell_id`` (UUID)
+to ``content_hash`` (``sha256(source)[:16]``); all function
+signatures here follow that rename.
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ def upsert_cell_run(
     factory: sessionmaker[Session],
     *,
     file_path: str,
-    cell_id: str,
+    content_hash: str,
     kernel_session_id: str,
     status: str,
     execution_count: int | None = None,
@@ -38,13 +42,13 @@ def upsert_cell_run(
     Called on ``execute_request`` (status=``running``), on
     ``execute_reply`` (status=``ok``/``error``/``aborted`` +
     ``finished=True``), and on explicit "Clear" before re-execute.
-    The in-session run is unique on ``(file_path, cell_id,
+    The in-session run is unique on ``(file_path, content_hash,
     kernel_session_id)`` so we UPSERT via get-or-create.
 
     Args:
         factory: SQLAlchemy session factory.
         file_path: Relative notebook path.
-        cell_id: Cell UUID.
+        content_hash: Cell identity.
         kernel_session_id: Session UUID.
         status: Current lifecycle state.
         execution_count: Kernel's monotonic counter — present on
@@ -56,12 +60,12 @@ def upsert_cell_run(
     with factory() as session:
         row = session.get(
             NotebookCellRun,
-            (file_path, cell_id, kernel_session_id),
+            (file_path, content_hash, kernel_session_id),
         )
         if row is None:
             row = NotebookCellRun(
                 file_path=file_path,
-                cell_id=cell_id,
+                content_hash=content_hash,
                 kernel_session_id=kernel_session_id,
                 status=status,
                 execution_count=execution_count,
@@ -82,7 +86,7 @@ def record_cell_run_start(
     factory: sessionmaker[Session],
     *,
     file_path: str,
-    cell_id: str,
+    content_hash: str,
     kernel_session_id: str,
     source: str,
     started_at: datetime.datetime,
@@ -91,18 +95,19 @@ def record_cell_run_start(
 
     Sprint 73 — companion to :func:`upsert_cell_run`.  Where
     ``upsert_cell_run`` keeps "current state per session" (one row
-    per ``(file_path, cell_id, kernel_session_id)``), this function
-    inserts a brand-new row per execute_request so the per-cell
-    popover can show "last N runs" with diffs against current
-    Monaco source.  The returned ``id`` is stashed in the WS
+    per ``(file_path, content_hash, kernel_session_id)``), this
+    function inserts a brand-new row per execute_request so the
+    per-cell popover can show "last N runs" with diffs against
+    current Monaco source.  The returned ``id`` is stashed in the WS
     handler's ``pending_run_sources`` map keyed by
-    ``(cell_id, kernel_session_id)`` so the matching execute_reply
-    can stamp the finish + status via :func:`record_cell_run_finish`.
+    ``(content_hash, kernel_session_id)`` so the matching
+    execute_reply can stamp the finish + status via
+    :func:`record_cell_run_finish`.
 
     Args:
         factory: SQLAlchemy session factory.
         file_path: Relative notebook path.
-        cell_id: Cell UUID.
+        content_hash: Cell identity.
         kernel_session_id: Session UUID (bumps on kernel restart).
         source: Cell source the kernel will execute.  For SQL cells
             this is the wrapped ``__pql_sql_run(...)`` snippet, not
@@ -115,7 +120,7 @@ def record_cell_run_start(
     with factory() as session:
         row = NotebookCellRunSource(
             file_path=file_path,
-            cell_id=cell_id,
+            content_hash=content_hash,
             kernel_session_id=kernel_session_id,
             source=source,
             started_at=started_at,
@@ -170,7 +175,7 @@ def list_cell_run_sources(
     factory: sessionmaker[Session],
     *,
     file_path: str,
-    cell_id: str,
+    content_hash: str,
     limit: int = 20,
 ) -> list[dict[str, Any]]:
     """Return the last *limit* runs for a cell, newest-first.
@@ -183,7 +188,7 @@ def list_cell_run_sources(
     Args:
         factory: SQLAlchemy session factory.
         file_path: Relative notebook path.
-        cell_id: Cell UUID.
+        content_hash: Cell identity.
         limit: Maximum number of rows to return.
 
     Returns:
@@ -196,7 +201,7 @@ def list_cell_run_sources(
             select(NotebookCellRunSource)
             .where(
                 NotebookCellRunSource.file_path == file_path,
-                NotebookCellRunSource.cell_id == cell_id,
+                NotebookCellRunSource.content_hash == content_hash,
             )
             .order_by(NotebookCellRunSource.started_at.desc())
             .limit(limit)

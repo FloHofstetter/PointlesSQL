@@ -23,7 +23,19 @@ import {
 } from './cell_affordances.js';
 import { toast } from '../api.js';
 
-export function createKernelWs({ alpine, zoneManager, cellAffordances }) {
+// Sprint 96: ``resolveCellId`` maps an incoming content-hash back to
+// the transient per-session cell label (``cell-N``) that
+// ``cellAffordances`` / ``zoneManager`` / ``executingCells`` key on.
+// The caller (main.js) owns the content-hash ↔ cell-id mapping and
+// passes a closure so this module stays stateless wrt cell identity.
+// ``__pql_``-prefixed internal hashes (namespace introspect) are
+// handled below the resolver and never hit it.
+export function createKernelWs({
+    alpine,
+    zoneManager,
+    cellAffordances,
+    resolveCellId,
+}) {
     let ws = null;
     let namespaceBuffer = '';
 
@@ -68,7 +80,7 @@ export function createKernelWs({ alpine, zoneManager, cellAffordances }) {
         namespaceBuffer = '';
         return send({
             type: 'execute',
-            cell_id: '__pql_namespace__',
+            content_hash: '__pql_namespace__',
             code: NAMESPACE_INTROSPECT_CODE,
         });
     }
@@ -109,20 +121,29 @@ export function createKernelWs({ alpine, zoneManager, cellAffordances }) {
     }
 
     function renderMsg(frame) {
-        // Sprint 62: route ``__pql_`` cell_ids to the internal-introspect
+        // Sprint 62: route ``__pql_`` content-hash values to the internal-introspect
         // handler instead of the output renderer + persistence path.
-        if (frame.cell_id && frame.cell_id.startsWith('__pql_')) {
-            if (frame.cell_id === '__pql_namespace__') {
+        if (frame.content_hash && frame.content_hash.startsWith('__pql_')) {
+            if (frame.content_hash === '__pql_namespace__') {
                 handleNamespace(frame);
             }
             return;
         }
+        // Sprint 96: resolve the incoming content-hash to the current
+        // cell-id label; if the user edited the source between dispatch
+        // and reply (thereby changing the hash), ``cellId`` will be
+        // ``null`` and the frame is silently dropped — matching the
+        // Databricks / VSCode behaviour where mid-run edits orphan
+        // the output.
+        const cellId = frame.content_hash
+            ? resolveCellId(frame.content_hash)
+            : null;
         if (frame.msg_type === 'status') {
-            if (frame.cell_id) {
-                const record = cellAffordances[frame.cell_id];
+            if (cellId) {
+                const record = cellAffordances[cellId];
                 if (frame.content.execution_state === 'idle') {
                     const next = { ...alpine.executingCells };
-                    delete next[frame.cell_id];
+                    delete next[cellId];
                     alpine.executingCells = next;
                     // Sprint 66: stop the live elapsed tick but leave
                     // the final status pill flip to the forthcoming
@@ -134,7 +155,7 @@ export function createKernelWs({ alpine, zoneManager, cellAffordances }) {
                     }
                 } else if (frame.content.execution_state === 'busy') {
                     alpine.executingCells = {
-                        ...alpine.executingCells, [frame.cell_id]: true,
+                        ...alpine.executingCells, [cellId]: true,
                     };
                     if (record) {
                         setStatus(record, 'running');
@@ -145,9 +166,9 @@ export function createKernelWs({ alpine, zoneManager, cellAffordances }) {
             }
             return;
         }
-        if (!frame.cell_id) return;
+        if (!cellId) return;
         if (frame.msg_type === 'execute_input') {
-            const record = cellAffordances[frame.cell_id];
+            const record = cellAffordances[cellId];
             if (record && frame.content && frame.content.execution_count != null) {
                 setExecutionCount(record, frame.content.execution_count);
             }
@@ -161,7 +182,7 @@ export function createKernelWs({ alpine, zoneManager, cellAffordances }) {
             return;
         }
         if (frame.msg_type === 'execute_reply') {
-            const record = cellAffordances[frame.cell_id];
+            const record = cellAffordances[cellId];
             if (record) {
                 stopElapsed(record);
                 const content = frame.content || {};
@@ -182,7 +203,7 @@ export function createKernelWs({ alpine, zoneManager, cellAffordances }) {
             }
             return;
         }
-        zoneManager.appendOutput(frame.cell_id, frame.msg_type, frame.content);
+        zoneManager.appendOutput(cellId, frame.msg_type, frame.content);
     }
 
     function handleNamespace(frame) {

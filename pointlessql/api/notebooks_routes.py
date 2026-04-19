@@ -25,7 +25,6 @@ import asyncio
 import json
 import logging
 from typing import Any
-from uuid import uuid4
 
 from fastapi import APIRouter, Body, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
@@ -66,9 +65,14 @@ async def build_notebook_doc_bundle(
         path: Relative ``.py`` notebook path under the notebooks dir.
 
     Returns:
-        A dict with ``cells`` (list of ``{id, cell_type, source}``),
-        ``dirty`` (bool), and ``outputs`` (list of persisted outputs
-        replayed from ``notebook_outputs``).
+        A dict with ``cells`` (list of ``{id, content_hash, cell_type,
+        source, result_var}``), ``dirty`` (bool), and ``outputs`` (list
+        of persisted outputs replayed from ``notebook_outputs``).
+        Sprint 96: ``id`` is a transient per-load ordinal label
+        (``cell-0``, ``cell-1``, …) used only as the client's
+        ``x-for :key`` for DOM reconciliation; ``content_hash`` is the
+        stable identity the client sends in every WS frame and uses
+        to look up persisted outputs.
     """
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
@@ -81,6 +85,7 @@ async def build_notebook_doc_bundle(
             "cells": [
                 {
                     "id": cell.id,
+                    "content_hash": cell.content_hash,
                     "cell_type": cell.cell_type,
                     "source": cell.source,
                     # Sprint 71 BUG-71-02 fix: round-trip the SQL
@@ -94,9 +99,18 @@ async def build_notebook_doc_bundle(
             "dirty": document.dirty,
         }
     else:
+        empty_source = ""
         bundle = {
             "cells": [
-                {"id": str(uuid4()), "cell_type": "code", "source": ""},
+                {
+                    "id": "cell-0",
+                    "content_hash": notebook_doc_service.compute_content_hash(
+                        empty_source,
+                    ),
+                    "cell_type": "code",
+                    "source": empty_source,
+                    "result_var": None,
+                },
             ],
             "dirty": True,
         }
@@ -169,7 +183,7 @@ async def api_load_notebook_doc(
 
 @router.get("/api/notebook/cell-runs")
 async def api_list_cell_run_sources(
-    request: Request, path: str, cell_id: str, limit: int = 20,
+    request: Request, path: str, content_hash: str, limit: int = 20,
 ) -> dict[str, Any]:
     """Return the last *limit* per-execute history rows for a cell.
 
@@ -180,10 +194,14 @@ async def api_list_cell_run_sources(
     offers a one-click re-run that sends the historical source
     straight to the kernel without touching the Monaco buffer.
 
+    Sprint 96 renamed the ``cell_id`` query param to ``content_hash``
+    in lock-step with the DB rename and the marker-grammar cleanup.
+
     Args:
         request: Incoming FastAPI request.
         path: Relative ``.py`` notebook path under the notebooks dir.
-        cell_id: Cell UUID to filter on.
+        content_hash: Cell identity (``sha256(source)[:16]``) to
+            filter on.
         limit: Maximum number of rows to return (newest-first).
 
     Returns:
@@ -200,7 +218,7 @@ async def api_list_cell_run_sources(
         notebook_outputs_service.list_cell_run_sources,
         factory,
         file_path=path,
-        cell_id=cell_id,
+        content_hash=content_hash,
         limit=max(1, min(limit, 100)),
     )
     return {"runs": runs}
@@ -213,11 +231,18 @@ async def api_save_notebook_doc(
 ) -> dict[str, str]:
     """Persist a notebook document from the Sprint-58 editor to disk.
 
-    The request body is ``{"path": str, "cells": [{"id", "cell_type",
-    "source"}, …]}``. Cells are written in jupytext Percent format
-    via :func:`notebook_doc.save_document`; a missing parent directory
-    is a :class:`ValidationError` so the editor never silently creates
-    arbitrary nested folders.
+    The request body is ``{"path": str, "cells": [{"cell_type",
+    "source", "result_var?"}, …]}``. Cells are written in jupytext
+    Percent format via :func:`notebook_doc.save_document`; a missing
+    parent directory is a :class:`ValidationError` so the editor never
+    silently creates arbitrary nested folders.
+
+    Sprint 96 dropped the required ``id`` field on each cell. The
+    Percent-format grammar carries no per-cell UUID anymore, so the
+    server accepts cells with just ``cell_type`` + ``source`` (plus
+    the SQL-only ``result_var``) and computes the ``content_hash``
+    identity itself. Clients that still send a transient ``id`` label
+    have it ignored.
 
     Args:
         request: Incoming FastAPI request. The CSRF middleware already
@@ -240,15 +265,12 @@ async def api_save_notebook_doc(
     for idx, raw in enumerate(raw_cells):
         if not isinstance(raw, dict):
             raise ValidationError(f"cell {idx} must be an object")
-        cell_id = raw.get("id")
         cell_type = raw.get("cell_type")
         source = raw.get("source")
         # Sprint 71 BUG-71-02 fix: accept ``sql`` alongside ``code`` /
         # ``markdown`` and read the optional ``result_var`` field so
         # the post-jupytext rewrite can put the segment back on disk.
         result_var = raw.get("result_var")
-        if not isinstance(cell_id, str) or not cell_id:
-            raise ValidationError(f"cell {idx} missing 'id'")
         if cell_type not in ("code", "markdown", "sql"):
             raise ValidationError(f"cell {idx} has unsupported cell_type {cell_type!r}")
         if not isinstance(source, str):
@@ -259,7 +281,8 @@ async def api_save_notebook_doc(
             )
         cells.append(
             notebook_doc_service.NotebookCell(
-                id=cell_id,
+                id=f"cell-{idx}",
+                content_hash=notebook_doc_service.compute_content_hash(source),
                 cell_type=cell_type,
                 source=source,
                 result_var=result_var if cell_type == "sql" else None,

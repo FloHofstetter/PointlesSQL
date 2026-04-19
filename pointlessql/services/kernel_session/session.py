@@ -108,7 +108,7 @@ class KernelSession:
         self._km: AsyncKernelManager | None = None
         self._kc: AsyncKernelClient | None = None
         self.session_id: str = str(uuid.uuid4())
-        self._msg_to_cell: dict[str, str] = {}
+        self._msg_to_content_hash: dict[str, str] = {}
         self._subscribers: set[Subscription] = set()
         self._iopub_task: asyncio.Task[None] | None = None
         self._shell_task: asyncio.Task[None] | None = None
@@ -216,11 +216,13 @@ class KernelSession:
                 await asyncio.sleep(0.1)
                 continue
             parent_msg_id = raw.get("parent_header", {}).get("msg_id")
-            cell_id = (
-                self._msg_to_cell.get(parent_msg_id) if parent_msg_id else None
+            content_hash = (
+                self._msg_to_content_hash.get(parent_msg_id)
+                if parent_msg_id
+                else None
             )
             msg = KernelMessage(
-                cell_id=cell_id,
+                content_hash=content_hash,
                 channel=channel,
                 msg_type=raw.get("msg_type", "unknown"),
                 content=raw.get("content", {}) or {},
@@ -257,14 +259,18 @@ class KernelSession:
         """
         self._subscribers.discard(sub)
 
-    async def execute(self, code: str, cell_id: str) -> str:
+    async def execute(self, code: str, content_hash: str) -> str:
         """Send an ``execute_request`` to the kernel.
 
         Args:
             code: Python source to execute.
-            cell_id: The cell's UUID — stored so iopub replies
-                tagged with the matching ``parent_header.msg_id``
-                can be routed back to the right cell.
+            content_hash: The cell's content-hash identity — stored
+                so iopub replies tagged with the matching
+                ``parent_header.msg_id`` can be routed back to the
+                right cell. Sprint 96 replaced the pre-migration
+                UUID ``cell_id`` argument with this content-derived
+                identity so the editor can drop the marker UUID
+                without losing message-to-cell routing.
 
         Returns:
             The Jupyter message ID.
@@ -272,7 +278,7 @@ class KernelSession:
         assert self._kc is not None
         async with self._exec_lock:
             msg_id: str = self._kc.execute(code, silent=False, store_history=True)
-            self._msg_to_cell[msg_id] = cell_id
+            self._msg_to_content_hash[msg_id] = content_hash
             return msg_id
 
     async def interrupt(self) -> None:
@@ -287,8 +293,8 @@ class KernelSession:
         restart so SQL cells keep working post-restart without
         requiring the user to re-execute a setup cell.  Goes through
         the regular ``execute`` path (with a reserved ``__pql_``-
-        prefixed cell_id so persistence skips it) instead of reading
-        shell directly — the iopub / shell pump tasks are still alive
+        prefixed content_hash so persistence skips it) instead of
+        reading shell directly — the iopub / shell pump tasks are still alive
         across a restart and would otherwise consume the bootstrap
         reply before we could read it.  The kernel serialises
         execute_requests, so the next user SQL execute is guaranteed
@@ -297,7 +303,7 @@ class KernelSession:
         assert self._km is not None
         await self._km.restart_kernel()
         self.session_id = str(uuid.uuid4())
-        self._msg_to_cell.clear()
+        self._msg_to_content_hash.clear()
         await self.execute(_NOTEBOOK_BOOTSTRAP_CODE, "__pql_sql_bootstrap__")
         logger.info(
             "kernel restarted for %s notebook=%s new_session_id=%s",

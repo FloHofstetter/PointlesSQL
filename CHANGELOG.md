@@ -4,6 +4,64 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.10 / Sprint 96: Cell-ID refactor — marker grammar + content-hash identity
+
+Notebook ``.py`` files dropped their PointlesSQL-specific
+``pql_cell_id="<uuid>"`` marker segment.  The on-disk grammar is
+now the IDE-agnostic shape VSCode / Spyder / PyCharm already
+recognise (``# %%`` / ``# %% [markdown]`` / ``# %% [sql]`` /
+``# %% [sql] df``), and cell identity is derived at load time as
+the FNV-1a-64 hash of the normalised source (16 hex chars, same
+algorithm on both Python and the browser).  Notebooks are now
+generically editable in VSCode / Vim — reordering or removing a
+cell by hand can no longer break the file because there is no ID
+to go stale.
+
+- **Alembic migration 019** renames ``cell_id`` → ``content_hash``
+  across ``notebook_outputs``, ``notebook_cell_runs``,
+  ``notebook_cell_run_sources``.  Pre-migration rows keep their
+  UUID payload in the renamed column and are reaped naturally by
+  the existing ``clear_path`` cascade on notebook delete / rename.
+  SQLite + Postgres both round-trip cleanly.
+
+- **Legacy-file migration is one-shot.**  Pre-Sprint-96 files with
+  ``pql_cell_id="…"`` markers still load through a tolerant
+  fallback regex in ``notebook_doc.py`` + ``cell_parser.js`` and
+  cause ``load_document`` to return ``dirty=True`` so the editor
+  prompts a save that rewrites the file into the clean grammar.
+
+- **Cell identity splits into two concepts.**  ``NotebookCell``
+  now carries ``id`` (transient ``cell-N`` ordinal, minted per
+  load, used only as the Alpine ``x-for :key``) and
+  ``content_hash`` (stable, used for every DB + WS lookup).
+  ``main.js`` maintains the ``content_hash ↔ cell-id`` mapping
+  beside ``cellAffordances`` so incoming kernel messages route
+  back to the right DOM record even after a source edit bumps
+  the hash.  Rows whose hash no longer matches any live cell are
+  silently dropped — matching VSCode / Databricks orphan-output
+  behaviour.
+
+- **FNV-1a-64 instead of SHA-256** because it has a trivial
+  synchronous mirror via ``BigInt`` on the browser side; SHA-256
+  via SubtleCrypto would have forced an async cascade through
+  every ``splitCells`` caller.
+
+- **Tests.**  New [tests/test_notebook_doc.py](tests/test_notebook_doc.py)
+  (11 cases) pins the FNV-1a reference vector
+  ``cbf29ce484222325`` (empty-source basis), whitespace
+  tolerance, round-trip byte-stability, the positional
+  ``# %% [sql] df`` shape, and the one-way legacy-to-clean
+  migration save.  A Node replay of the JS
+  ``computeContentHash`` implementation produced identical
+  hashes to Python on four test vectors before commit.
+
+- **Static gates (all green):** ``ruff check`` 0 errors;
+  ``pyright`` 0 errors / 154 pre-existing warnings unchanged;
+  ``pydoclint --style=google`` 0 violations on every touched
+  file; ``alembic upgrade head`` + ``downgrade -1`` +
+  ``upgrade head`` idempotent round-trip on a fresh SQLite DB;
+  ``pytest tests/test_notebook_doc.py`` 11/11 passing.
+
 ### Refactored — Phase 12.9 / Sprint 95: CSS feinschliff + cache-busting parity
 
 Tranche-6 of the Sprint-76 frontend modularisation plan and the

@@ -20,10 +20,16 @@ the ``pql_session`` cookie manually and decode the JWT through
 invalid cookie and 4400 on a notebook path that fails the same
 traversal guard the HTTP save endpoint uses.
 
-Internal ``__pql_``-prefixed cell IDs are reserved for editor-
-driven introspects (Variable Explorer namespace scan, future
+Internal ``__pql_``-prefixed content-hash values are reserved for
+editor-driven introspects (Variable Explorer namespace scan, future
 autocomplete helpers); their kernel messages are routed back to
 the client but never persisted into ``notebook_outputs``.
+
+Sprint 96: the client sends ``content_hash`` as the cell identity
+in every frame (formerly ``cell_id``), and the server routes kernel
+messages by the same content-derived identity. See
+:mod:`pointlessql.services.notebook_doc.compute_content_hash` for
+the normalisation rules that keep the two sides in lock-step.
 """
 
 from __future__ import annotations
@@ -224,12 +230,12 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         },
     )
 
-    # Sprint 60: per-(cell_id, kernel_session_id) output counter.
+    # Sprint 60: per-(content_hash, kernel_session_id) output counter.
     # A new `execute` on a cell wipes the previous outputs (both in
     # memory and in the DB via ``clear_cell``) and resets its
     # counter to 0, so persisted rows always stay contiguous.
     output_counters: dict[tuple[str, str], int] = {}
-    # Sprint 73: pending run-source ids keyed by ``(cell_id,
+    # Sprint 73: pending run-source ids keyed by ``(content_hash,
     # kernel_session_id)``.  ``record_cell_run_start`` returns the
     # autoincrement id on execute; the matching execute_reply pops
     # the id and calls ``record_cell_run_finish`` to stamp status +
@@ -237,27 +243,27 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
     # so a dropped reply never leaks rows.
     pending_run_sources: dict[tuple[str, str], int] = {}
 
-    # Sprint 62: ``__pql_``-prefixed cell IDs are reserved for the
-    # editor's internal introspects (Variable Explorer namespace
-    # scan, future autocomplete helpers).  Skipping persistence on
-    # these keeps the ``notebook_outputs`` table free of silent-
-    # execute rows that never surface in the UI.
-    def _is_internal_cell(cell_id: str | None) -> bool:
-        return bool(cell_id) and cell_id.startswith("__pql_")
+    # Sprint 62: ``__pql_``-prefixed content-hash values are reserved
+    # for the editor's internal introspects (Variable Explorer
+    # namespace scan, future autocomplete helpers).  Skipping
+    # persistence on these keeps the ``notebook_outputs`` table free
+    # of silent-execute rows that never surface in the UI.
+    def _is_internal_content_hash(content_hash: str | None) -> bool:
+        return bool(content_hash) and content_hash.startswith("__pql_")
 
     async def _persist_kernel_msg(msg: kernel_session_service.KernelMessage) -> None:
-        if not msg.cell_id or _is_internal_cell(msg.cell_id):
+        if not msg.content_hash or _is_internal_content_hash(msg.content_hash):
             return
         if not notebook_outputs_service.is_persistable(msg.msg_type):
             return
-        key = (msg.cell_id, session.session_id)
+        key = (msg.content_hash, session.session_id)
         idx = output_counters.get(key, 0)
         output_counters[key] = idx + 1
         await asyncio.to_thread(
             notebook_outputs_service.append_output,
             factory,
             file_path=path,
-            cell_id=msg.cell_id,
+            content_hash=msg.content_hash,
             kernel_session_id=session.session_id,
             output_index=idx,
             msg_type=msg.msg_type,
@@ -268,9 +274,9 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
     async def _handle_shell_lifecycle(
         msg: kernel_session_service.KernelMessage,
     ) -> None:
-        if msg.msg_type != "execute_reply" or not msg.cell_id:
+        if msg.msg_type != "execute_reply" or not msg.content_hash:
             return
-        if _is_internal_cell(msg.cell_id):
+        if _is_internal_content_hash(msg.content_hash):
             return
         raw_status = msg.content.get("status", "ok")
         status: str = raw_status if isinstance(raw_status, str) else "ok"
@@ -280,20 +286,20 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
             notebook_outputs_service.upsert_cell_run,
             factory,
             file_path=path,
-            cell_id=msg.cell_id,
+            content_hash=msg.content_hash,
             kernel_session_id=session.session_id,
             status=status,
             execution_count=ec_int,
             finished=True,
         )
         # Sprint 73: stamp the per-execute history row this reply
-        # belongs to.  Lookup is by (cell_id, kernel_session_id) —
-        # the kernel serialises execute_requests so the queued
+        # belongs to.  Lookup is by (content_hash, kernel_session_id)
+        # — the kernel serialises execute_requests so the queued
         # reply matches the most recent start in flight for that
         # key.  Pop on success so a bug in the kernel that emits
         # two replies for one request does not double-stamp.
         source_id = pending_run_sources.pop(
-            (msg.cell_id, session.session_id), None,
+            (msg.content_hash, session.session_id), None,
         )
         if source_id is not None:
             await asyncio.to_thread(
@@ -317,7 +323,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                     "type": "kernel_msg",
                     "channel": msg.channel,
                     "msg_type": msg.msg_type,
-                    "cell_id": msg.cell_id,
+                    "content_hash": msg.content_hash,
                     "parent_msg_id": msg.parent_msg_id,
                     "content": jsonable_encoder(msg.content),
                     "metadata": jsonable_encoder(msg.metadata),
@@ -333,7 +339,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         asyncio.create_task(_forward("shell"), name="ws-kernel-shell"),
     ]
 
-    async def _wipe_cell_for_new_execute(cell_id: str, source: str) -> None:
+    async def _wipe_cell_for_new_execute(content_hash: str, source: str) -> None:
         """Reset persistence + counter state before a fresh execute.
 
         Sprint 71 factored out of the ``execute`` branch so the new
@@ -347,28 +353,28 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         no-op for them.
 
         Args:
-            cell_id: Cell UUID.
+            content_hash: Cell identity (``sha256(source)[:16]``).
             source: Source the kernel will execute (raw Python for
                 ``execute``, wrapped ``__pql_sql_run(...)`` snippet
                 for ``execute_sql``).  Stored verbatim in the
                 history row.
         """
-        if _is_internal_cell(cell_id):
+        if _is_internal_content_hash(content_hash):
             return
         await asyncio.to_thread(
             notebook_outputs_service.clear_cell,
-            factory, file_path=path, cell_id=cell_id,
+            factory, file_path=path, content_hash=content_hash,
         )
-        output_counters.pop((cell_id, session.session_id), None)
+        output_counters.pop((content_hash, session.session_id), None)
         # Drop any orphan from a dropped reply on the prior run for
         # this key so the new start doesn't double-stamp the wrong id
         # when the next reply arrives.
-        pending_run_sources.pop((cell_id, session.session_id), None)
+        pending_run_sources.pop((content_hash, session.session_id), None)
         await asyncio.to_thread(
             notebook_outputs_service.upsert_cell_run,
             factory,
             file_path=path,
-            cell_id=cell_id,
+            content_hash=content_hash,
             kernel_session_id=session.session_id,
             status="running",
         )
@@ -376,12 +382,12 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
             notebook_outputs_service.record_cell_run_start,
             factory,
             file_path=path,
-            cell_id=cell_id,
+            content_hash=content_hash,
             kernel_session_id=session.session_id,
             source=source,
             started_at=datetime.now(UTC),
         )
-        pending_run_sources[(cell_id, session.session_id)] = source_id
+        pending_run_sources[(content_hash, session.session_id)] = source_id
 
     try:
         while True:
@@ -389,16 +395,21 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
             ftype = frame.get("type")
             if ftype == "execute":
                 code = frame.get("code", "")
-                cell_id = frame.get("cell_id", "")
-                if not isinstance(code, str) or not isinstance(cell_id, str):
+                content_hash = frame.get("content_hash", "")
+                if not isinstance(code, str) or not isinstance(content_hash, str):
                     await websocket.send_json(
-                        {"type": "error", "message": "execute needs string code + cell_id"},
+                        {
+                            "type": "error",
+                            "message": (
+                                "execute needs string code + content_hash"
+                            ),
+                        },
                     )
                     continue
-                await _wipe_cell_for_new_execute(cell_id, code)
-                msg_id = await session.execute(code, cell_id)
+                await _wipe_cell_for_new_execute(content_hash, code)
+                msg_id = await session.execute(code, content_hash)
                 await websocket.send_json(
-                    {"type": "ack", "msg_id": msg_id, "cell_id": cell_id},
+                    {"type": "ack", "msg_id": msg_id, "content_hash": content_hash},
                 )
             elif ftype == "execute_sql":
                 # Sprint 71: SQL cell.  Parse + privilege-check the
@@ -410,17 +421,17 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                 # it, and ``display(df)`` so the existing rich-mime
                 # path renders the table inline.
                 source = frame.get("source", "")
-                cell_id = frame.get("cell_id", "")
+                content_hash = frame.get("content_hash", "")
                 result_var = frame.get("result_var")
                 if (
                     not isinstance(source, str)
-                    or not isinstance(cell_id, str)
+                    or not isinstance(content_hash, str)
                     or (result_var is not None and not isinstance(result_var, str))
                 ):
                     await websocket.send_json({
                         "type": "error",
                         "message": (
-                            "execute_sql needs string source + cell_id "
+                            "execute_sql needs string source + content_hash "
                             "(and optional string result_var)"
                         ),
                     })
@@ -430,7 +441,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         "type": "kernel_msg",
                         "channel": "iopub",
                         "msg_type": "error",
-                        "cell_id": cell_id,
+                        "content_hash": content_hash,
                         "parent_msg_id": None,
                         "content": {
                             "ename": "SQLDisabled",
@@ -448,7 +459,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         "type": "kernel_msg",
                         "channel": "iopub",
                         "msg_type": "error",
-                        "cell_id": cell_id,
+                        "content_hash": content_hash,
                         "parent_msg_id": None,
                         "content": err,
                         "metadata": {},
@@ -462,10 +473,10 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                     f"max_rows={int(settings.sql.max_rows)}"
                     ")"
                 )
-                await _wipe_cell_for_new_execute(cell_id, wrapped)
-                msg_id = await session.execute(wrapped, cell_id)
+                await _wipe_cell_for_new_execute(content_hash, wrapped)
+                msg_id = await session.execute(wrapped, content_hash)
                 await websocket.send_json(
-                    {"type": "ack", "msg_id": msg_id, "cell_id": cell_id},
+                    {"type": "ack", "msg_id": msg_id, "content_hash": content_hash},
                 )
             elif ftype == "interrupt":
                 await session.interrupt()
@@ -489,14 +500,16 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                     },
                 )
             elif ftype == "clear_cell":
-                cell_id = frame.get("cell_id", "")
-                if isinstance(cell_id, str) and cell_id:
+                content_hash = frame.get("content_hash", "")
+                if isinstance(content_hash, str) and content_hash:
                     await asyncio.to_thread(
                         notebook_outputs_service.clear_cell,
-                        factory, file_path=path, cell_id=cell_id,
+                        factory, file_path=path, content_hash=content_hash,
                     )
-                    output_counters.pop((cell_id, session.session_id), None)
-                await websocket.send_json({"type": "cell_cleared", "cell_id": cell_id})
+                    output_counters.pop((content_hash, session.session_id), None)
+                await websocket.send_json(
+                    {"type": "cell_cleared", "content_hash": content_hash},
+                )
             else:
                 await websocket.send_json(
                     {"type": "error", "message": f"unknown frame type {ftype!r}"},

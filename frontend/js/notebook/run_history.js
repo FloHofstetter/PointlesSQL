@@ -2,7 +2,7 @@
 //
 // One module-scoped popover at a time.  ``mountHistoryButton`` adds
 // a clock-icon ``History`` button to a cell's toolbar; click →
-// ``openPopover`` fetches /api/notebook/cell-runs?path=…&cell_id=…
+// ``openPopover`` fetches /api/notebook/cell-runs?path=…&content_hash=…
 // and renders the last N rows (newest-first) with status pills,
 // ``view diff`` toggles that render a jsdiff-based table comparing
 // the historical source to the current Monaco buffer, and a
@@ -217,7 +217,7 @@ export function closePopover() {
     }
 }
 
-export async function openPopover({ path, cellId, anchorEl, currentSource, onRerun }) {
+export async function openPopover({ path, contentHash, anchorEl, currentSource, onRerun }) {
     closePopover();
     _popoverAnchor = anchorEl;
     const el = ensurePopover();
@@ -241,7 +241,7 @@ export async function openPopover({ path, cellId, anchorEl, currentSource, onRer
     _inflightAbort = ctrl;
     try {
         const url = `/api/notebook/cell-runs?path=${encodeURIComponent(path)}`
-            + `&cell_id=${encodeURIComponent(cellId)}&limit=20`;
+            + `&content_hash=${encodeURIComponent(contentHash)}&limit=20`;
         const resp = await fetch(url, { signal: ctrl.signal, credentials: 'same-origin' });
         if (!resp.ok) {
             el.innerHTML = '';
@@ -253,7 +253,7 @@ export async function openPopover({ path, cellId, anchorEl, currentSource, onRer
         }
         const json = await resp.json();
         const runs = (json && Array.isArray(json.runs)) ? json.runs : [];
-        _historyCache.set(cellId, runs);
+        _historyCache.set(contentHash, runs);
         el.innerHTML = '';
         const header = document.createElement('div');
         header.className = 'pql-nbedit-history-header';
@@ -282,6 +282,6 @@ export async function openPopover({ path, cellId, anchorEl, currentSource, onRer
 }
 
 // Convenience: cache lookup for tests / future warm-start UX.
-export function cachedHistory(cellId) {
-    return _historyCache.get(cellId) || null;
+export function cachedHistory(contentHash) {
+    return _historyCache.get(contentHash) || null;
 }

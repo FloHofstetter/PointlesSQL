@@ -21,10 +21,12 @@ class KernelMessage:
     """A single iopub / shell message on its way from kernel to client.
 
     Attributes:
-        cell_id: Source cell's UUID when the kernel's parent message
-            originated from a tracked ``execute_request``. Kernel-
-            initiated messages (status heartbeats, display from
-            untracked code) carry ``None``.
+        content_hash: Source cell's content-hash identity
+            (``sha256(source)[:16]``) when the kernel's parent
+            message originated from a tracked ``execute_request``.
+            Kernel-initiated messages (status heartbeats, display
+            from untracked code) carry ``None``. Sprint 96 renamed
+            from the pre-migration ``cell_id`` / UUID field.
         channel: ``"iopub"`` or ``"shell"``.
         msg_type: Raw Jupyter msg type (``stream``,
             ``execute_result``, ``display_data``, ``error``,
@@ -36,7 +38,7 @@ class KernelMessage:
             to, when applicable.
     """
 
-    cell_id: str | None
+    content_hash: str | None
     channel: str
     msg_type: str
     content: dict[str, Any]

@@ -5,7 +5,8 @@
 //   - addCellBelow(): new code cell at end of document
 //   - addCellAbove(markdown): new cell just above the cursor's current cell
 //   - applyResultVarToMarker(cellId, name): rewrite a SQL cell's marker line
-//                                           to add / update / drop result_var=
+//                                           to add / update / drop the
+//                                           positional result_var identifier
 //
 // None of them touch ``this`` or Alpine state — they operate purely on
 // the Monaco editor/model behind ``refs`` plus ``window.monaco``.  The
@@ -13,20 +14,20 @@
 // cell-band gutter + affordances rebuild; the result-var op is a pure
 // marker-line edit that doesn't change cell boundaries, so it skips the
 // rescan.
+//
+// Sprint 96: marker grammar dropped the per-cell UUID.  The inserter
+// ops therefore emit clean ``# %%`` / ``# %% [markdown]`` / ``# %% [sql]``
+// markers with no ``pql_cell_id="…"`` segment; applyResultVarToMarker
+// switches from the named ``result_var="…"`` shape to the positional
+// ``# %% [sql] df`` shape the parser and server now round-trip.
 
-import { CELL_MARKER_RE } from './cell_parser.js';
+import { CELL_MARKER_RE, CELL_MARKER_LEGACY_RE } from './cell_parser.js';
 import { getCellType, parseMarkerTag } from './cell_types.js';
 import {
     cellEndLine as introspectCellEndLine,
     findCellMarkerLine as introspectFindCellMarkerLine,
     currentCellAtCursor as introspectCurrentCellAtCursor,
 } from './cell_introspector.js';
-
-function newCellId() {
-    return (window.crypto && window.crypto.randomUUID)
-        ? window.crypto.randomUUID()
-        : 'cell-' + Date.now();
-}
 
 export function createCellEditor({ refs, rescanDecorations }) {
     function insertCellAfter(afterCellId, typeId) {
@@ -35,8 +36,7 @@ export function createCellEditor({ refs, rescanDecorations }) {
         const monaco = window.monaco;
         if (!model || !editor || !monaco) return;
         const descriptor = getCellType(typeId);
-        const id = newCellId();
-        const marker = `\n# %%${descriptor.markerTag} pql_cell_id="${id}"\n\n`;
+        const marker = `\n# %%${descriptor.markerTag}\n\n`;
         const endLine = introspectCellEndLine(model, afterCellId);
         const anchorLine = endLine === null ? model.getLineCount() : endLine;
         const anchorCol = model.getLineMaxColumn(anchorLine);
@@ -53,8 +53,7 @@ export function createCellEditor({ refs, rescanDecorations }) {
         const model = refs.get('model');
         const editor = refs.get('editor');
         if (!model || !editor) return;
-        const id = newCellId();
-        const marker = `\n\n# %%${getCellType('code').markerTag} pql_cell_id="${id}"\n`;
+        const marker = `\n\n# %%${getCellType('code').markerTag}\n`;
         const lastLine = model.getLineCount();
         const lastCol = model.getLineMaxColumn(lastLine);
         editor.executeEdits('add-cell', [{
@@ -69,9 +68,8 @@ export function createCellEditor({ refs, rescanDecorations }) {
         const cell = introspectCurrentCellAtCursor(refs.get('editor'), refs.get('model'));
         const monaco = window.monaco;
         const editor = refs.get('editor');
-        const id = newCellId();
         const tag = markdown ? getCellType('markdown').markerTag : getCellType('code').markerTag;
-        const marker = `# %%${tag} pql_cell_id="${id}"\n\n`;
+        const marker = `# %%${tag}\n\n`;
         const targetLine = cell ? introspectFindCellMarkerLine(refs.get('model'), cell.id) : 1;
         const insertAt = new monaco.Range(targetLine, 1, targetLine, 1);
         editor.executeEdits('add-cell-above', [{
@@ -88,11 +86,12 @@ export function createCellEditor({ refs, rescanDecorations }) {
         if (!editor || !model || !monaco) return;
         const lineNumber = introspectFindCellMarkerLine(model, cellId);
         const lineText = model.getLineContent(lineNumber);
-        const m = lineText.match(CELL_MARKER_RE);
+        // Accept either grammar on read so a legacy-file edit doesn't
+        // no-op before its migration save.
+        const m = lineText.match(CELL_MARKER_RE) || lineText.match(CELL_MARKER_LEGACY_RE);
         if (!m || parseMarkerTag(m[1]) !== 'sql') return;
-        const tag = ' [sql]';
-        let newLine = `# %%${tag} pql_cell_id="${cellId}"`;
-        if (name) newLine += ` result_var="${name}"`;
+        let newLine = '# %% [sql]';
+        if (name) newLine += ` ${name}`;
         if (newLine === lineText) return;
         const range = new monaco.Range(
             lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber),

@@ -16,12 +16,23 @@
 // module is the bridge between cell ids, Monaco's zone API, and the
 // renderer.
 
-import { CELL_MARKER_RE } from './cell_parser.js';
-import { parseMarkerTag } from './cell_types.js';
+import { CELL_MARKER_RE, CELL_MARKER_LEGACY_RE, splitCells } from './cell_parser.js';
 import { renderMarkdown } from './markdown.js';
 import { appendOutputFrame } from './output_renderer.js';
 
-export function createOutputZoneManager({ getEditor, getModel, getCellEndLine }) {
+// Sprint 96: ``resolveCellId`` is an optional closure main.js hands
+// in so ``replayPersistedOutputs`` can translate the server-returned
+// ``content_hash`` on each persisted row back to the transient
+// session-local cell label the view-zone map keys on.  When the
+// resolver is unset the replay path is a no-op — a mount path that
+// forgets to wire it in fails loud rather than silently attaching
+// outputs to a garbage key.
+export function createOutputZoneManager({
+    getEditor,
+    getModel,
+    getCellEndLine,
+    resolveCellId = null,
+}) {
     const outputZones = {};
     const markdownZones = {};
 
@@ -87,6 +98,7 @@ export function createOutputZoneManager({ getEditor, getModel, getCellEndLine })
 
     function replayPersistedOutputs(initialOutputs) {
         if (!initialOutputs || initialOutputs.length === 0) return;
+        if (!resolveCellId) return;
         // Pick the latest kernel_session_id we see in the replay.  If
         // the current live WS session differs (hello arrives later) we
         // still paint the most recent persisted snapshot — the first
@@ -99,7 +111,14 @@ export function createOutputZoneManager({ getEditor, getModel, getCellEndLine })
         }
         for (const row of initialOutputs) {
             if (row.kernel_session_id !== latestSession) continue;
-            appendOutput(row.cell_id, row.msg_type, row.content);
+            // Sprint 96: server rows carry ``content_hash``; map back
+            // to the session-local cell label.  Rows whose hash no
+            // longer matches any live cell are silently dropped —
+            // expected behaviour for a notebook whose cells have been
+            // edited since the last run.
+            const cellId = resolveCellId(row.content_hash);
+            if (!cellId) continue;
+            appendOutput(cellId, row.msg_type, row.content);
         }
     }
 
@@ -109,22 +128,36 @@ export function createOutputZoneManager({ getEditor, getModel, getCellEndLine })
         const editor = getEditor();
         const model = getModel();
         if (!editor || !model) return;
-        const lines = model.getValue().split('\n');
-        const cellList = [];
-        let current = null;
+        // Sprint 96: derive the cell list via :func:`splitCells` (which
+        // mirrors the server-side jupytext parse and is legacy-marker
+        // tolerant) instead of a bespoke regex walk.  Marker line
+        // numbers are recovered by counting any ``# %%`` line in the
+        // raw text, matching the parser's ordinal cell labels.
+        const text = model.getValue();
+        const lines = text.split('\n');
+        const markerLineNumbers = [];
         for (let i = 0; i < lines.length; i++) {
-            const m = lines[i].match(CELL_MARKER_RE);
-            if (m) {
-                if (current) {
-                    current.endLine = i;
-                    cellList.push(current);
-                }
-                current = parseMarkerTag(m[1]) === 'markdown'
-                    ? { id: m[2], markerLine: i + 1, sourceStart: i + 2, endLine: lines.length }
-                    : null;
+            if (lines[i].match(CELL_MARKER_RE)
+                    || lines[i].match(CELL_MARKER_LEGACY_RE)) {
+                markerLineNumbers.push(i + 1);
             }
         }
-        if (current) cellList.push(current);
+        const parsedCells = splitCells(text);
+        const cellList = [];
+        for (let i = 0; i < parsedCells.length; i++) {
+            const c = parsedCells[i];
+            if (c.cell_type !== 'markdown') continue;
+            const markerLine = markerLineNumbers[i] || 1;
+            const endLine = markerLineNumbers[i + 1]
+                ? markerLineNumbers[i + 1] - 1
+                : lines.length;
+            cellList.push({
+                id: c.id,
+                markerLine,
+                sourceStart: markerLine + 1,
+                endLine,
+            });
+        }
 
         const alive = new Set(cellList.map((c) => c.id));
         for (const cellId of Object.keys(markdownZones)) {

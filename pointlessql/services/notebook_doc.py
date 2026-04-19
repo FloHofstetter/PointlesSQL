@@ -5,20 +5,26 @@ skeleton. This module is the single point of contact between the
 on-disk ``.py`` notebook source of truth and the HTTP layer that
 serves cells to Monaco on the client.
 
-Three invariants, all derived from ADR 0001:
+Three invariants, all derived from ADR 0001 as amended by Sprint 96:
 
 * **On-disk format is jupytext Percent.** Every cell boundary is a
   ``# %%`` marker (or one of the aliases jupytext parses: ``# ---``,
   ``# COMMAND ----------``, ``# In[N]:``). Write-path normalises to
   ``# %%`` unless the file header pins a different marker through a
   ``jupytext.cell_markers`` entry.
-* **Cell identity travels in the marker.** Every cell carries a UUID
-  written as ``# %% pql_cell_id="<uuid>"``; jupytext round-trips
-  arbitrary cell metadata through the percent-format marker when
-  the notebook-level ``jupytext.cell_metadata_filter`` allow-lists
-  the key. Foreign notebooks without IDs are assigned fresh UUIDs
-  on first load and the dirty state is reported back to the caller
-  (one-time save prompt in the UI).
+* **Cell identity is derived from source, not persisted in the
+  marker.** Sprint 96 dropped the ``pql_cell_id="<uuid>"`` sidecar
+  that earlier phases embedded in each ``# %%`` line. Cell identity
+  is now ``sha256(normalized_source)[:16]`` computed at load time,
+  and the on-disk grammar carries only what the user needs to see:
+  the optional ``[markdown]`` / ``[sql]`` tag and, for SQL cells,
+  a positional bare-identifier ``result_var`` segment
+  (``# %% [sql] df``). The ``.py`` file is therefore generically
+  editable in VSCode / Vim / Spyder — removing or reordering cells
+  manually cannot break the file because there is no ID to go
+  stale. Legacy files carrying the old ``pql_cell_id="…"`` markers
+  still load (tolerant regex) and are rewritten into the new
+  grammar on the next save via the ``dirty`` flow.
 * **No execution state lives here.** Outputs, execution counts, and
   kernel sessions belong to Sprint 60's ``notebook_outputs`` table.
   This module deals with source text and cell metadata only.
@@ -31,7 +37,6 @@ the ``.py`` sibling of :func:`notebook_workspace.resolve_upload_target`.
 from __future__ import annotations
 
 import re
-import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -42,30 +47,118 @@ import nbformat  # type: ignore[import-untyped]
 from pointlessql.exceptions import ValidationError
 
 _PY_NOTEBOOK_SUFFIX = ".py"
-_CELL_ID_KEY = "pql_cell_id"
-_CELL_METADATA_FILTER = f"{_CELL_ID_KEY},-all"
+# Sprint 96: jupytext's cell metadata never lands in marker lines
+# anymore — we manage the extension shape (``[sql]`` tag + positional
+# result_var) ourselves via the post-write rewrite below. The
+# ``"-all"`` filter tells jupytext to strip every metadata key before
+# serialisation so writes stay free of leftover ``title`` / ``tags``
+# / legacy ``pql_cell_id`` entries from round-trips of old files.
+_CELL_METADATA_FILTER = "-all"
 
-# Sprint 71 BUG-71-02 fix: jupytext only knows about ``[markdown]`` /
-# ``code`` cells; the ``[sql]`` tag and the optional ``result_var=``
-# segment are PointlesSQL extensions.  We post-parse the source file
-# after jupytext to recover both, and pre-rewrite the file after
-# jupytext.write to put them back.  The regex matches the same shape
-# that ``frontend/js/notebook/cell_parser.js`` parses on the client.
-_PQL_MARKER_RE = re.compile(
+# Sprint 96 marker grammar (new, UUID-free):
+#
+#   ``# %%``                 — code cell
+#   ``# %% [markdown]``      — markdown cell
+#   ``# %% [sql]``           — SQL cell without a result variable
+#   ``# %% [sql] df``        — SQL cell that binds its DataFrame to ``df``
+#
+# Group 1 captures the optional bracketed tag (``markdown`` / ``sql``
+# / unknown → fall back to ``code``). Group 2 captures the optional
+# positional Python identifier that SQL cells use as their
+# ``result_var``. ``cell_parser.js`` on the client must stay in
+# lock-step with this shape.
+_MARKER_RE = re.compile(
+    r"^#\s*%%"
+    r"(?:\s+\[(\w+)\])?"
+    r"(?:\s+([A-Za-z_][A-Za-z0-9_]*))?"
+    r"\s*$",
+    re.MULTILINE,
+)
+
+# Sprint 96 legacy grammar (Phases 12.6 / 12.7 pre-rewrite): every
+# cell carried a ``pql_cell_id="<uuid>"`` token and SQL cells pinned
+# ``result_var="<name>"`` via a named metadata segment. We still
+# parse these on load so migrating from pre-Sprint-96 notebooks
+# is a transparent one-time save — ``load_document`` sets
+# ``dirty=True`` whenever the tolerant legacy regex matches any line
+# so the UI prompts the user to re-save into the clean shape above.
+_LEGACY_MARKER_RE = re.compile(
     r'^#\s*%%(?:\s+\[(\w+)\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"'
     r'(?:\s+result_var="([A-Za-z_][A-Za-z0-9_]*)")?\s*$',
     re.MULTILINE,
 )
+
+# Cheap "is this line a cell marker of any shape?" test used by the
+# post-write rewrite that injects our SQL extension back into the
+# jupytext output.
+_ANY_MARKER_RE = re.compile(r"^#\s*%%")
+
+
+_FNV_OFFSET_64 = 0xCBF29CE484222325
+_FNV_PRIME_64 = 0x100000001B3
+_FNV_MASK_64 = 0xFFFFFFFFFFFFFFFF
+
+
+def compute_content_hash(source: str) -> str:
+    r"""Return the 16-char hex identity of a cell's normalized source.
+
+    Uses FNV-1a 64-bit because it has a trivial byte-for-byte mirror
+    in JavaScript via ``BigInt`` — the client-side
+    ``computeContentHash`` in ``frontend/js/notebook/cell_parser.js``
+    computes the exact same 16-hex string so WS frames can round-trip
+    a cell identity between Python and the browser without either
+    side needing async crypto.
+
+    The hash is stable against whitespace-only edits and cross-platform
+    line-ending churn: each line is right-stripped and ``\r\n`` is
+    collapsed to ``\n`` before hashing. 64 bits of entropy are
+    collision-safe within a single notebook (the query key is
+    ``(file_path, content_hash)`` so the birthday bound lives at
+    notebook granularity, not globally).
+
+    Args:
+        source: Cell source text as the editor / parser produced it.
+
+    Returns:
+        The 16-hex lower-case digest of ``FNV-1a-64(normalized)``,
+        suitable as the ``content_hash`` column value on
+        :class:`NotebookOutput` / :class:`NotebookCellRun` /
+        :class:`NotebookCellRunSource`.
+    """
+    normalized = "\n".join(
+        line.rstrip() for line in source.replace("\r\n", "\n").split("\n")
+    )
+    h = _FNV_OFFSET_64
+    for byte in normalized.encode("utf-8"):
+        h = ((h ^ byte) * _FNV_PRIME_64) & _FNV_MASK_64
+    return f"{h:016x}"
 
 
 @dataclass(frozen=True)
 class NotebookCell:
     """A single notebook cell as served to the editor.
 
+    Sprint 96 replaced the marker-embedded UUID ``id`` with two
+    separately-purposed fields:
+
+    * :attr:`id` is a **transient** ordinal label (``cell-0``,
+      ``cell-1``, …) minted fresh on every load. It is only used
+      as the Alpine.js ``x-for :key`` so the DOM reconciler stays
+      stable within one editor session. It is never persisted, never
+      sent to the DB, never shown to the user.
+    * :attr:`content_hash` is the **stable** identity used for all
+      DB lookups (``notebook_outputs``, ``notebook_cell_runs``,
+      ``notebook_cell_run_sources``) and all WS frames that address a
+      cell. It is ``sha256(normalized_source)[:16]`` so that run
+      history survives reordering and whitespace-only edits but
+      naturally splits when the cell's meaningful source changes —
+      analogous to how a new commit gets a fresh SHA.
+
     Attributes:
-        id: Stable UUID. Assigned on first save when a foreign ``.py``
-            lacks an ``id=`` marker; round-tripped through jupytext
-            cell metadata thereafter.
+        id: Transient ordinal label (``cell-<index>``). Never
+            persisted.
+        content_hash: 16-char hex prefix of ``sha256(source)``.
+            Stable across reloads and reorderings.
         cell_type: ``"code"`` / ``"markdown"`` / ``"sql"`` (Sprint 71).
             Raw cells are not supported in the editor — they're
             rewritten to markdown on load (one-way, acceptable for
@@ -76,10 +169,11 @@ class NotebookCell:
         result_var: Optional pandas-DataFrame name a SQL cell binds
             its result to in the kernel namespace (Sprint 71).
             ``None`` for non-SQL cells and SQL cells without a
-            ``result_var=`` marker segment.
+            positional identifier after the ``[sql]`` tag.
     """
 
     id: str
+    content_hash: str
     cell_type: str
     source: str
     result_var: str | None = None
@@ -92,10 +186,11 @@ class NotebookDocument:
     Attributes:
         path: Relative path under the notebooks directory.
         cells: Ordered list of cells.
-        dirty: ``True`` when at least one cell gained a freshly
-            generated UUID during load — the editor should prompt the
-            user to save so the IDs are persisted to disk. Subsequent
-            loads of the same file report ``False``.
+        dirty: ``True`` when the loaded file carries pre-Sprint-96
+            ``pql_cell_id="…"`` markers — the editor prompts the
+            user for a one-time save that rewrites the file into
+            the UUID-free grammar. Subsequent loads of a
+            post-migration file report ``False``.
     """
 
     path: str
@@ -161,14 +256,46 @@ def resolve_py_notebook_path(
     return resolved
 
 
-def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
-    """Load a ``.py`` notebook off disk and assign missing cell IDs.
+def _scan_marker_extensions(
+    raw_text: str,
+) -> list[tuple[str | None, str | None]]:
+    """Walk a ``.py`` notebook line-by-line, return ``(tag, result_var)`` per marker.
 
-    Uses :func:`jupytext.read` to parse the Percent format; any
-    marker variant jupytext recognises is accepted. Cells without an
-    ``id`` in their jupytext metadata receive a freshly generated
-    UUID and the document is flagged ``dirty`` so the caller can
-    prompt a save.
+    The list length equals the number of cells jupytext will produce,
+    in order. Accepts both the Sprint-96 UUID-free grammar and the
+    pre-Sprint-96 ``pql_cell_id="…"`` legacy grammar so mixed or
+    half-migrated files parse transparently.
+
+    Args:
+        raw_text: Full file content (UTF-8 decoded).
+
+    Returns:
+        One tuple per detected marker line, in file order. ``tag`` is
+        ``"markdown"`` / ``"sql"`` / ``None``; ``result_var`` is the
+        positional SQL identifier when present, ``None`` otherwise.
+    """
+    out: list[tuple[str | None, str | None]] = []
+    for line in raw_text.split("\n"):
+        m_legacy = _LEGACY_MARKER_RE.match(line)
+        if m_legacy:
+            out.append((m_legacy.group(1), m_legacy.group(3)))
+            continue
+        m_new = _MARKER_RE.match(line)
+        if m_new:
+            out.append((m_new.group(1), m_new.group(2)))
+    return out
+
+
+def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
+    """Load a ``.py`` notebook off disk and compute per-cell content hashes.
+
+    Uses :func:`jupytext.read` to parse the Percent format; any marker
+    variant jupytext recognises is accepted. The raw file is re-scanned
+    with :func:`_scan_marker_extensions` to recover PointlesSQL-specific
+    marker details (``[sql]`` tag + positional ``result_var``) that
+    jupytext drops on read. Legacy UUID-bearing markers are detected
+    and cause the returned document's ``dirty`` flag to be set so the
+    editor prompts a one-time save into the clean grammar.
 
     Args:
         absolute_path: Pre-resolved path produced by
@@ -177,47 +304,32 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
             stored on the returned document for the editor UI.
 
     Returns:
-        A :class:`NotebookDocument` with ordered cells and the
-        ``dirty`` flag set when at least one UUID was minted.
+        A :class:`NotebookDocument` with ordered cells; each cell
+        carries a transient ordinal ``id`` and a stable
+        ``content_hash``. The ``dirty`` flag is ``True`` iff the
+        loaded file still contains pre-Sprint-96 UUID markers.
     """
     notebook = jupytext.read(absolute_path, fmt="py:percent")
-    # Sprint 71 BUG-71-02: jupytext does not recognise the ``[sql]``
-    # tag — it parses ``# %% [sql] pql_cell_id="…"`` as a plain code
-    # cell with the ``[sql]`` text dropped from the marker.  Re-scan
-    # the raw file with our own regex (mirrors cell_parser.js) to
-    # recover the tag + the optional ``result_var`` segment, and
-    # override the type that jupytext returned.
     raw_text = absolute_path.read_text()
-    pql_overrides: dict[str, tuple[str | None, str | None]] = {}
-    for m in _PQL_MARKER_RE.finditer(raw_text):
-        tag, cid, rv = m.group(1), m.group(2), m.group(3)
-        pql_overrides[cid] = (tag, rv)
+    dirty = bool(_LEGACY_MARKER_RE.search(raw_text))
+    marker_exts = _scan_marker_extensions(raw_text)
     cells: list[NotebookCell] = []
-    dirty = False
-    for raw_cell in notebook.cells:
-        cell_metadata: dict[str, Any] = getattr(raw_cell, "metadata", {}) or {}
-        cell_id = cell_metadata.get(_CELL_ID_KEY)
-        if not isinstance(cell_id, str) or not cell_id:
-            cell_id = str(uuid.uuid4())
-            cell_metadata[_CELL_ID_KEY] = cell_id
-            raw_cell.metadata = cell_metadata
-            dirty = True
+    for index, raw_cell in enumerate(notebook.cells):
         raw_type = getattr(raw_cell, "cell_type", "code")
         cell_type = "markdown" if raw_type == "markdown" else "code"
         result_var: str | None = None
-        # Apply the post-parse override for cells whose marker carried
-        # a PointlesSQL-specific tag jupytext does not understand.
-        override = pql_overrides.get(cell_id)
-        if override is not None:
-            tag, rv = override
+        if index < len(marker_exts):
+            tag, rv = marker_exts[index]
             if tag == "sql":
                 cell_type = "sql"
                 result_var = rv
+        source = raw_cell.source or ""
         cells.append(
             NotebookCell(
-                id=cell_id,
+                id=f"cell-{index}",
+                content_hash=compute_content_hash(source),
                 cell_type=cell_type,
-                source=raw_cell.source or "",
+                source=source,
                 result_var=result_var,
             )
         )
@@ -227,67 +339,78 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
 def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:
     """Write cells back to disk in jupytext Percent format.
 
-    The default cell marker is ``# %%``; jupytext also honours any
-    per-file ``cell_markers`` pin in an existing frontmatter header.
-    Cell IDs are written as ``id=<uuid>`` in the marker line so the
-    round-trip is lossless.
+    Sprint 96 grammar — no ``pql_cell_id`` / ``result_var="…"``
+    segments in markers. Code cells emit ``# %%``, markdown cells
+    emit ``# %% [markdown]``, SQL cells emit ``# %% [sql]`` or
+    ``# %% [sql] <result_var>``. The SQL variants are injected via
+    :func:`_rewrite_sql_markers` after jupytext has written the file
+    because jupytext does not know about the ``[sql]`` tag.
 
-    Sprint 71 BUG-71-02: SQL cells are written by jupytext as plain
-    code cells (it does not know about the ``[sql]`` tag).  After
-    jupytext writes the file, we post-process the bytes to rewrite
-    ``# %% pql_cell_id="<sql_cell>"`` markers to
-    ``# %% [sql] pql_cell_id="<sql_cell>" result_var="<name>"`` so
-    the on-disk format stays the source of truth and the next
-    load_document round-trips losslessly.
+    Round-tripping a legacy (pre-Sprint-96) file through
+    :func:`load_document` + :func:`save_document` strips the old
+    UUID markers losslessly in terms of semantics — the cell order,
+    types, sources, and SQL ``result_var`` bindings are preserved;
+    only the on-disk representation changes from
+    ``# %% pql_cell_id="<uuid>"`` to the clean grammar.
 
     Args:
         absolute_path: Pre-resolved target path.
-        cells: Ordered cells to write. Each must already carry a
-            stable :attr:`NotebookCell.id` — fresh UUIDs are not
-            minted here; use :func:`load_document`'s dirty flow for
-            that.
+        cells: Ordered cells to write.
     """
     nb_cells: list[Any] = []
-    sql_overrides: dict[str, str | None] = {}
+    extensions: list[tuple[str | None, str | None]] = []
     for cell in cells:
         if cell.cell_type == "markdown":
             nb_cell = nbformat.v4.new_markdown_cell(cell.source)
         else:
             nb_cell = nbformat.v4.new_code_cell(cell.source)
-        nb_cell.metadata[_CELL_ID_KEY] = cell.id
         nb_cells.append(nb_cell)
         if cell.cell_type == "sql":
-            sql_overrides[cell.id] = cell.result_var
+            extensions.append(("sql", cell.result_var))
+        else:
+            extensions.append((None, None))
     notebook = nbformat.v4.new_notebook(cells=nb_cells)
-    notebook.metadata.setdefault("jupytext", {})["cell_metadata_filter"] = _CELL_METADATA_FILTER
+    notebook.metadata.setdefault("jupytext", {})[
+        "cell_metadata_filter"
+    ] = _CELL_METADATA_FILTER
     jupytext.write(notebook, absolute_path, fmt="py:percent")
-    if sql_overrides:
-        _rewrite_sql_markers(absolute_path, sql_overrides)
+    if any(tag == "sql" for tag, _ in extensions):
+        _rewrite_sql_markers(absolute_path, extensions)
 
 
 def _rewrite_sql_markers(
-    absolute_path: Path, sql_overrides: dict[str, str | None],
+    absolute_path: Path, extensions: list[tuple[str | None, str | None]],
 ) -> None:
-    """Rewrite ``# %% pql_cell_id="<id>"`` markers for SQL cells.
+    """Inject the ``[sql]`` tag + positional ``result_var`` into SQL markers.
 
-    Sprint 71 BUG-71-02 helper.  Reads the file jupytext just wrote,
-    locates each marker line whose UUID is in ``sql_overrides``, and
-    replaces it with the ``# %% [sql] pql_cell_id="…" result_var="…"``
-    canonical shape.  Idempotent — running twice produces the same
-    output.
+    Walks the file jupytext just wrote, counts each marker line, and
+    rewrites the SQL ones to the Sprint-96 canonical shape:
+
+    * ``# %% [sql]`` — SQL cell without a result variable
+    * ``# %% [sql] df`` — SQL cell binding its DataFrame to ``df``
+
+    Idempotent — running twice produces the same output.
+
+    Args:
+        absolute_path: File jupytext just wrote.
+        extensions: One ``(tag, result_var)`` tuple per cell in the
+            same order jupytext emitted them. Non-SQL cells pass
+            ``(None, None)`` and their marker line is left as-is.
     """
     text = absolute_path.read_text()
     lines = text.split("\n")
-    for i, line in enumerate(lines):
-        m = _PQL_MARKER_RE.match(line)
-        if m is None:
+    cell_index = -1
+    for line_index, line in enumerate(lines):
+        if not _ANY_MARKER_RE.match(line):
             continue
-        cid = m.group(2)
-        if cid not in sql_overrides:
+        cell_index += 1
+        if cell_index >= len(extensions):
             continue
-        rv = sql_overrides[cid]
-        new_line = f'# %% [sql] pql_cell_id="{cid}"'
-        if rv:
-            new_line += f' result_var="{rv}"'
-        lines[i] = new_line
+        tag, result_var = extensions[cell_index]
+        if tag != "sql":
+            continue
+        new_line = "# %% [sql]"
+        if result_var:
+            new_line += f" {result_var}"
+        lines[line_index] = new_line
     absolute_path.write_text("\n".join(lines))

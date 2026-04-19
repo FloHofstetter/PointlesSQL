@@ -33,9 +33,9 @@
 import {
     joinCells,
     splitCells,
-    CELL_MARKER_RE,
+    computeContentHash,
 } from './cell_parser.js';
-import { getCellType, parseMarkerTag } from './cell_types.js';
+import { getCellType } from './cell_types.js';
 import {
     mountAffordances,
     mountInserter,
@@ -94,6 +94,15 @@ export function createNotebookTabEditor({
     let cells = [];
     let catalogTables = null;
     const cellAffordances = {}; // cellId → record (see cell_affordances.js)
+    // Sprint 96: content-hash ↔ transient cell-id mapping maintained
+    // alongside cellAffordances.  Outgoing WS frames address cells by
+    // content-hash (stable identity, server-side DB key); incoming
+    // kernel messages carry a ``content_hash`` that must be mapped
+    // back to the transient ``cell-N`` label used as the DOM record
+    // key.  Both maps are rebuilt in ``rebuildCellAffordances`` so a
+    // source edit that changes the hash re-indexes atomically.
+    const contentHashByCellId = {};
+    const cellIdByContentHash = {};
     let reactiveRoot = null;
     let initialOutputs = [];
     let mounted = false;
@@ -116,6 +125,7 @@ export function createNotebookTabEditor({
         getEditor: () => refs.get('editor'),
         getModel: () => refs.get('model'),
         getCellEndLine: (cellId) => introspectCellEndLine(refs.get('model'), cellId),
+        resolveCellId: (hash) => cellIdByContentHash[hash] || null,
     });
     const outlineRecomputer = createOutlineRecomputer({
         getCells: () => {
@@ -243,7 +253,12 @@ export function createNotebookTabEditor({
                 // Sprint 76: kernel + LSP factories need ``this`` +
                 // zoneManager + cellAffordances; construct them now
                 // that mount has resolved those references.
-                kernelWs = createKernelWs({ alpine: this, zoneManager, cellAffordances });
+                kernelWs = createKernelWs({
+                    alpine: this,
+                    zoneManager,
+                    cellAffordances,
+                    resolveCellId: (hash) => cellIdByContentHash[hash] || null,
+                });
                 lspWs = createLspWs({ alpine: this, refs, monaco });
 
                 model.onDidChangeContent(() => {
@@ -264,8 +279,13 @@ export function createNotebookTabEditor({
                 if (this.dirty) {
                     autosaveScheduler.scheduleWith(() => this.save(), INITIAL_FLUSH_MS);
                 }
-                zoneManager.replayPersistedOutputs(initialOutputs);
+                // Sprint 96: populate the content-hash ↔ cell-id
+                // mapping before the initial replay so persisted rows
+                // key on the live cell labels; replaying first would
+                // drop every row because the resolver would find no
+                // match yet.
                 rebuildCellAffordances();
+                zoneManager.replayPersistedOutputs(initialOutputs);
                 zoneManager.rebuildMarkdownZones();
                 zoneManager.updateHiddenAreas();
                 editor.onDidChangeCursorPosition(() => zoneManager.updateHiddenAreas());
@@ -297,7 +317,10 @@ export function createNotebookTabEditor({
             const cell = introspectCurrentCellAtCursor(refs.get('editor'), refs.get('model'));
             if (!cell) return;
             zoneManager.clearOutput(cell.id);
-            if (kernelWs) kernelWs.send({ type: 'clear_cell', cell_id: cell.id });
+            const contentHash = contentHashByCellId[cell.id];
+            if (kernelWs && contentHash) {
+                kernelWs.send({ type: 'clear_cell', content_hash: contentHash });
+            }
         },
 
         runCurrentCell() {
@@ -317,18 +340,29 @@ export function createNotebookTabEditor({
             const typeId = cellType || introspectCellTypeOf(model, cellId);
             if (!getCellType(typeId).canExecute) return;
             const source = introspectCellSourceById(model, cellId);
+            const contentHash = computeContentHash(source);
+            // Re-pin the mapping so the matching kernel_msg routes back
+            // here even if the user immediately edits the cell (the
+            // edit would bump the hash; this keeps the just-dispatched
+            // execution addressable until the execute_reply lands).
+            contentHashByCellId[cellId] = contentHash;
+            cellIdByContentHash[contentHash] = cellId;
             zoneManager.clearOutput(cellId);
             this.executingCells = { ...this.executingCells, [cellId]: true };
             if (!kernelWs) return;
             if (typeId === 'sql') {
                 kernelWs.send({
                     type: 'execute_sql',
-                    cell_id: cellId,
+                    content_hash: contentHash,
                     source,
                     result_var: introspectCellResultVarById(model, cellId),
                 });
             } else {
-                kernelWs.send({ type: 'execute', cell_id: cellId, code: source });
+                kernelWs.send({
+                    type: 'execute',
+                    content_hash: contentHash,
+                    code: source,
+                });
             }
         },
 
@@ -556,17 +590,27 @@ export function createNotebookTabEditor({
     // Sprint 71: send the matching frame for a parsed cell.  Single
     // place that knows about the SQL → ``execute_sql`` branch so the
     // run-all / run-above paths stay symmetric with ``runCellById``.
+    // Sprint 96: WS frames address cells by ``content_hash`` — the
+    // parsed ``cell.content_hash`` is recomputed by ``splitCells`` so
+    // no hashing happens here; the transient ``cell.id`` is used only
+    // for the local ``executingCells`` / zone-manager routing.
     function sendCellFrame(cell) {
         if (!kernelWs) return;
+        contentHashByCellId[cell.id] = cell.content_hash;
+        cellIdByContentHash[cell.content_hash] = cell.id;
         if (cell.cell_type === 'sql') {
             kernelWs.send({
                 type: 'execute_sql',
-                cell_id: cell.id,
+                content_hash: cell.content_hash,
                 source: cell.source,
                 result_var: cell.resultVar || null,
             });
         } else {
-            kernelWs.send({ type: 'execute', cell_id: cell.id, code: cell.source });
+            kernelWs.send({
+                type: 'execute',
+                content_hash: cell.content_hash,
+                code: cell.source,
+            });
         }
     }
 
@@ -579,17 +623,21 @@ export function createNotebookTabEditor({
     // SQL the kernel saw originally without re-walking the route's
     // privilege check).
     function openHistoryPopover(cellId, anchorEl) {
+        const currentSource = introspectCellSourceById(refs.get('model'), cellId);
         openRunHistoryPopover({
             path,
-            cellId,
+            contentHash: contentHashByCellId[cellId] || computeContentHash(currentSource),
             anchorEl,
-            currentSource: introspectCellSourceById(refs.get('model'), cellId),
+            currentSource,
             onRerun: (historicalSource) => {
+                const historicalHash = computeContentHash(historicalSource);
+                contentHashByCellId[cellId] = historicalHash;
+                cellIdByContentHash[historicalHash] = cellId;
                 zoneManager.clearOutput(cellId);
                 if (kernelWs) {
                     kernelWs.send({
                         type: 'execute',
-                        cell_id: cellId,
+                        content_hash: historicalHash,
                         code: historicalSource,
                     });
                 }
@@ -609,25 +657,39 @@ export function createNotebookTabEditor({
         const model = refs.get('model');
         const monaco = window.monaco;
         if (!editor || !model || !monaco) return;
-        const lines = model.getValue().split('\n');
-        const cellList = [];
-        let current = null;
+        // Sprint 96: derive the cell list from :func:`splitCells` so
+        // we pick up its content-hash computation + legacy-marker
+        // tolerance without duplicating the regex walk here.  The
+        // marker line is re-located by scanning the raw text for the
+        // ordinal-th ``# %%`` line (cell-parser matches either
+        // grammar) so the toolbar content widget pins to the right
+        // row even on legacy notebooks mid-migration.
+        const text = model.getValue();
+        const parsedCells = splitCells(text);
+        const lines = text.split('\n');
+        const markerLineNumbers = [];
         for (let i = 0; i < lines.length; i++) {
-            const m = lines[i].match(CELL_MARKER_RE);
-            if (m) {
-                if (current) {
-                    current.endLine = i;
-                    cellList.push(current);
-                }
-                current = {
-                    id: m[2],
-                    typeId: parseMarkerTag(m[1]),
-                    markerLine: i + 1,
-                    endLine: lines.length,
-                };
-            }
+            if (/^#\s*%%/.test(lines[i])) markerLineNumbers.push(i + 1);
         }
-        if (current) cellList.push(current);
+        const cellList = parsedCells.map((c, i) => ({
+            id: c.id,
+            content_hash: c.content_hash,
+            typeId: c.cell_type,
+            markerLine: markerLineNumbers[i] || 1,
+            endLine: markerLineNumbers[i + 1]
+                ? markerLineNumbers[i + 1] - 1
+                : lines.length,
+        }));
+
+        // Rebuild the content-hash ↔ cell-id indices atomically so
+        // any frame arriving mid-rescan resolves against a consistent
+        // snapshot.
+        for (const key of Object.keys(contentHashByCellId)) delete contentHashByCellId[key];
+        for (const key of Object.keys(cellIdByContentHash)) delete cellIdByContentHash[key];
+        for (const cell of cellList) {
+            contentHashByCellId[cell.id] = cell.content_hash;
+            cellIdByContentHash[cell.content_hash] = cell.id;
+        }
 
         const alive = new Set(cellList.map((c) => c.id));
         for (const cellId of Object.keys(cellAffordances)) {
