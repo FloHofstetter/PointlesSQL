@@ -2881,7 +2881,7 @@ PointlesSQL
 │       violations, ``pytest tests/test_pql.py tests/test_alerts.py``
 │       51/51 passed.
 │
-│   └── Sprint 79 — services/notebook_outputs.py → 2-module package    ✅ done (pending-commit)
+│   ├── Sprint 79 — services/notebook_outputs.py → 2-module package    ✅ done (7802f30)
 │       Third backend split.  Two-bucket package divides the 480-LOC
 │       module along the natural concern boundary already implied by
 │       the underlying tables: output frames vs cell-run lifecycle.
@@ -2908,6 +2908,44 @@ PointlesSQL
 │       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
 │       0 errors / 0 warnings, ``pydoclint`` 0 violations, smoke
 │       import OK.  No tests directly import this module.
+│
+│   └── Sprint 80 — models.py → 8-module package                ✅ done (pending-commit)
+│       Fourth backend split — by far the highest-stakes mechanical
+│       refactor of the arc.  The 952-LOC ``models.py`` becomes the
+│       package ``pointlessql/models/`` with one module per domain.
+│       Alembic and 32 call sites continue to work unchanged via
+│       package-level re-exports.
+│
+│       **Package layout** (every module ends with the FK target's
+│       table already imported, so SQLAlchemy mapper-config resolves
+│       cross-module ``ForeignKey("table.col")`` strings cleanly):
+│       - ``base.py`` (~14 LOC) — ``Base = DeclarativeBase``.
+│       - ``auth.py`` (~70 LOC) — ``User`` (referenced by Job,
+│         Dashboard, SavedQuery, Alert).
+│       - ``audit.py`` (~50 LOC) — ``AuditLog``.
+│       - ``sync.py`` (~55 LOC) — ``SyncRun``.
+│       - ``scheduler.py`` (~225 LOC) — ``Job``, ``JobRun``,
+│         ``JobTask``, ``TaskRun``, ``JobLog``.
+│       - ``catalog.py`` (~270 LOC) — ``Dashboard``, ``QueryHistory``,
+│         ``QueryHistoryTable``, ``SavedQuery``, ``TableStats``,
+│         ``RateLimitEvent``.
+│       - ``alerts.py`` (~140 LOC) — ``Alert``, ``AlertDestination``,
+│         ``AlertEvent``.
+│       - ``notebook.py`` (~170 LOC) — ``NotebookOutput``,
+│         ``NotebookCellRun``, ``NotebookCellRunSource``.
+│       - ``__init__.py`` (~70 LOC) — re-exports all 20 model symbols
+│         + ``Base`` in topological order.
+│
+│       **Alembic compat verified.**
+│       [pointlessql/alembic/env.py:6](pointlessql/alembic/env.py#L6)
+│       still does ``from pointlessql.models import Base``.  Smoke
+│       import resolves all 20 tables on ``Base.metadata`` in the
+│       correct order.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 0 warnings, ``pydoclint`` 0 violations,
+│       ``pytest`` model-touching test suites all pass against the
+│       new package.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

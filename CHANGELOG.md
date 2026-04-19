@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 80: models.py → 8-module package
+
+Fourth backend split — by far the highest-stakes mechanical refactor
+of the arc. The 952-LOC ``models.py`` became the package
+``pointlessql/models/`` with one module per domain. Alembic and the
+32 known call sites continue to work unchanged via package-level
+re-exports. Pure structural refactor; no schema, no migration, no
+behaviour change.
+
+- **Package layout.** Module order is load-bearing: SQLAlchemy
+  resolves ``ForeignKey("table.col")`` strings at mapper-config time,
+  so referenced tables must register before referrers.
+  [base.py](pointlessql/models/base.py) (Base);
+  [auth.py](pointlessql/models/auth.py) (User);
+  [audit.py](pointlessql/models/audit.py) (AuditLog);
+  [sync.py](pointlessql/models/sync.py) (SyncRun);
+  [scheduler.py](pointlessql/models/scheduler.py) (Job, JobRun,
+  JobTask, TaskRun, JobLog);
+  [catalog.py](pointlessql/models/catalog.py) (Dashboard,
+  QueryHistory, QueryHistoryTable, SavedQuery, TableStats,
+  RateLimitEvent);
+  [alerts.py](pointlessql/models/alerts.py) (Alert, AlertDestination,
+  AlertEvent);
+  [notebook.py](pointlessql/models/notebook.py) (NotebookOutput,
+  NotebookCellRun, NotebookCellRunSource).
+
+- **Alembic compatibility.**
+  [pointlessql/alembic/env.py:6](pointlessql/alembic/env.py#L6) still
+  imports ``from pointlessql.models import Base`` and resolves to the
+  same metadata. Migration files reference table names (strings) not
+  Python classes, so they were untouched. Smoke import confirms all
+  20 tables register on ``Base.metadata`` after the split.
+
+- **Public surface preserved.**
+  [__init__.py](pointlessql/models/__init__.py) re-exports every
+  symbol previously importable from ``pointlessql.models``, so the
+  32 known call sites (services, API layer, tests, alembic) work
+  unchanged.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 0 warnings, ``pydoclint`` 0 violations, model-touching
+  test suites pass.
+
 ### Refactored — Phase 12.9 / Sprint 79: services/notebook_outputs.py → 2-module package
 
 Third backend split. The 480-LOC ``services/notebook_outputs.py``
