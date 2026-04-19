@@ -2231,7 +2231,7 @@ PointlesSQL
 │   │   ``this._cellWidgets``, ``this._reactiveRoot``.  Playbook
 │   │   Part G replayed in Firefox (MCP) as the land gate.
 │   │
-│   ├── Sprint 67 — File-tree sidebar inside the editor           ✅ done
+│   ├── Sprint 67 — File-tree sidebar inside the editor           ✅ done (d41a4eb)
 │   │   Mounts the Sprint-27 workspace tree as a 260px left sidebar
 │   │   in ``/notebook/editor`` with open / new / rename / delete
 │   │   actions.  Three new admin-only endpoints —
