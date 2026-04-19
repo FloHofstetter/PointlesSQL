@@ -39,7 +39,7 @@ from pointlessql.services.pg_sync import (
     SyncDiff,
     UcColumn,
     UcTable,
-    _effective_options,
+    effective_options,
     apply_diff,
     build_dsn,
     collect_uc_tables,
@@ -202,7 +202,7 @@ class TestDiffSnapshots:
 class TestEffectiveOptions:
     def test_no_credential_returns_options_unchanged(self) -> None:
         conn = {"options": {"host": "db.example.com", "database": "analytics"}}
-        assert _effective_options(conn, None) == {
+        assert effective_options(conn, None) == {
             "host": "db.example.com",
             "database": "analytics",
         }
@@ -216,7 +216,7 @@ class TestEffectiveOptions:
             }
         }
         cred = {"additional_properties": {"password": "from-credential"}}
-        merged = _effective_options(conn, cred)
+        merged = effective_options(conn, cred)
         assert merged["password"] == "from-credential"
         # Non-secret keys stay on the connection options.
         assert merged["host"] == "db.example.com"
@@ -230,7 +230,7 @@ class TestEffectiveOptions:
                 "private_key": "pk",
             }
         }
-        merged = _effective_options(conn, cred)
+        merged = effective_options(conn, cred)
         assert merged["password"] == "pw"
         assert merged["api_token"] == "tk"
         assert merged["private_key"] == "pk"
@@ -246,7 +246,7 @@ class TestEffectiveOptions:
                 "region": "us-east-1",  # not a secret
             }
         }
-        merged = _effective_options(conn, cred)
+        merged = effective_options(conn, cred)
         assert "region" not in merged
 
 

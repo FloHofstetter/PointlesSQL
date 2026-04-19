@@ -2947,7 +2947,7 @@ PointlesSQL
 │       ``pytest`` model-touching test suites all pass against the
 │       new package.
 │
-│   └── Sprint 81 — services/alerts.py → 4-module package       ✅ done (pending-commit)
+│   ├── Sprint 81 — services/alerts.py → 4-module package       ✅ done (b076333)
 │       Fifth backend split.  Carved 729-LOC ``alerts.py`` along
 │       the four concerns it already implied:
 │
@@ -2975,6 +2975,40 @@ PointlesSQL
 │       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
 │       0 errors / 0 warnings, ``pydoclint`` 0 violations,
 │       ``pytest tests/test_alerts.py`` 19/19 passed.
+│
+│   └── Sprint 82 — services/pg_sync.py → 5-module package      ✅ done (pending-commit)
+│       Sixth backend split.  Carved 778-LOC ``pg_sync.py`` along its
+│       pipeline boundaries (introspect → diff → apply → record):
+│
+│       - ``types.py`` (~250 LOC) — dataclasses (``PgColumn``,
+│         ``PgTable``, ``PostgresSnapshot``, ``UcColumn``,
+│         ``UcTable``, ``SyncDiff``), ``PG_TO_UC_TYPE`` map,
+│         ``map_pg_type_to_uc``, ``PostgresIntrospector`` Protocol,
+│         ``EXTERNAL_TABLE_TYPE`` + ``FOREIGN_DATA_SOURCE_FORMAT``
+│         constants (renamed from underscore-prefixed to make
+│         cross-module use explicit).
+│       - ``dsn.py`` (~80 LOC) — ``effective_options`` (renamed from
+│         ``_effective_options``) + ``build_dsn``.
+│       - ``snapshot.py`` (~95 LOC) — ``PsycopgIntrospector``.
+│       - ``diff.py`` (~210 LOC) — pure ``diff_snapshots`` +
+│         ``collect_uc_tables`` + ``apply_diff`` + ``_columns_payload``
+│         + ``_storage_location_stub`` (the latter two stay underscored
+│         because they remain internal to ``apply_diff``).
+│       - ``runs.py`` (~165 LOC) — ``run_sync`` orchestration +
+│         ``list_recent_runs`` + ``_start_run`` / ``_finish_run``.
+│       - ``__init__.py`` re-exports the full surface so existing
+│         ``from pointlessql.services import pg_sync`` (API + scheduler)
+│         and ``from pointlessql.services.pg_sync import X`` (15 names
+│         from tests/test_pg_sync.py) continue to resolve unchanged.
+│
+│       **Tests updated** for the
+│       ``_effective_options → effective_options`` rename — the only
+│       compensation needed for the split.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 8 warnings (all pre-existing dict-unpack patterns
+│       in ``collect_uc_tables``), ``pydoclint`` 0 violations,
+│       ``pytest tests/test_pg_sync.py`` 46/46 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

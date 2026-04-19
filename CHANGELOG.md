@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 82: services/pg_sync.py → 5-module package
+
+Sixth backend split. The 778-LOC ``services/pg_sync.py`` module became
+the package ``services/pg_sync/`` with five sibling modules carved
+along the pipeline boundaries (introspect → diff → apply → record).
+
+- [types.py](pointlessql/services/pg_sync/types.py) (~250 LOC) —
+  dataclasses (``PgColumn``, ``PgTable``, ``PostgresSnapshot``,
+  ``UcColumn``, ``UcTable``, ``SyncDiff``), the ``PG_TO_UC_TYPE`` map,
+  ``map_pg_type_to_uc``, the ``PostgresIntrospector`` Protocol, plus
+  the ``EXTERNAL_TABLE_TYPE`` / ``FOREIGN_DATA_SOURCE_FORMAT``
+  constants (renamed from underscore-prefixed since they now travel
+  cross-module).
+- [dsn.py](pointlessql/services/pg_sync/dsn.py) (~80 LOC) —
+  ``effective_options`` (renamed from ``_effective_options``) +
+  ``build_dsn``.
+- [snapshot.py](pointlessql/services/pg_sync/snapshot.py) (~95 LOC) —
+  ``PsycopgIntrospector`` (the live-Postgres concrete implementation).
+- [diff.py](pointlessql/services/pg_sync/diff.py) (~210 LOC) — pure
+  ``diff_snapshots`` + ``collect_uc_tables`` + ``apply_diff`` plus the
+  ``_columns_payload`` / ``_storage_location_stub`` helpers (still
+  underscored because they remain internal to ``apply_diff``).
+- [runs.py](pointlessql/services/pg_sync/runs.py) (~165 LOC) —
+  ``run_sync`` end-to-end orchestration + ``list_recent_runs`` +
+  ``_start_run`` / ``_finish_run`` bookkeeping.
+
+- **Public surface preserved.** The package
+  [__init__.py](pointlessql/services/pg_sync/__init__.py) re-exports
+  every name the API layer
+  ([pointlessql/api/main.py:51](pointlessql/api/main.py#L51)),
+  scheduler
+  ([pointlessql/services/scheduler.py:178](pointlessql/services/scheduler.py#L178)),
+  and tests
+  ([tests/test_pg_sync.py:33](tests/test_pg_sync.py#L33),
+  [tests/test_scheduler.py:314](tests/test_scheduler.py#L314)) need.
+
+- **One test rename.** ``_effective_options`` →
+  ``effective_options`` in ``tests/test_pg_sync.py`` is the only
+  compensation needed for the split — the production code's leading
+  underscore is misleading once the symbol is imported across modules
+  (same lesson the Sprint-77 kernel_session split made explicit).
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 8 warnings (all pre-existing dict-unpack patterns in
+  ``collect_uc_tables``), ``pydoclint`` 0 violations,
+  ``pytest tests/test_pg_sync.py`` 46/46 passed (1 deselected: live
+  integration test).
+
 ### Refactored — Phase 12.9 / Sprint 81: services/alerts.py → 4-module package
 
 Fifth backend split. The 729-LOC ``services/alerts.py`` module became
