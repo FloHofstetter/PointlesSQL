@@ -2367,7 +2367,7 @@ PointlesSQL
 │   │   sprints (71-74) import ``outline.js`` or read
 │   │   ``this.outline``; revert is O(1) sprint-local.
 │   │
-│   ├── Sprint 71 — SQL cell (DuckDB via PQL.sql)                  ✅ done
+│   ├── Sprint 71 — SQL cell (DuckDB via PQL.sql)                  ✅ done (e0043dc)
 │   │   First non-Python cell type, validates Sprint-66's registry.
 │   │   Marker grammar: ``# %% [sql] pql_cell_id="<uuid>"``ext, with
 │   │   an optional ``result_var="<ident>"`` segment (Databricks-
