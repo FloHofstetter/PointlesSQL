@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 87c: api/main.py governance routes extract
+
+Seventh decomposition slice for ``api/main.py``. The full governance
+surface lifts out: table column statistics (Sprint 56),
+notebook-from-table scratch helper, catalog create/sync/patch +
+schema patch, tags + permissions (get/patch + effective), and
+lineage. main.py drops 4,242 → 3,751 LOC (-491).
+
+- **New module** [governance_routes.py](pointlessql/api/governance_routes.py)
+  (549 LOC). Owns 14 routes plus ``split_full_name`` and
+  ``enforce_table_profile_access`` helpers (underscore prefixes
+  dropped).
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(governance_router)``
+  next to the other six routers. Module-level ``MODIFY`` import
+  dropped (only the moved routes used it).
+
+- **Authorization model preserved.** Profile + stats GET still
+  require SELECT (admin short-circuits); stats DELETE +
+  open-in-notebook + create-catalog + sync-catalog are still
+  admin-only; catalog/schema PATCH still need MODIFY; tag PATCH
+  MODIFY; permission PATCH MANAGE_GRANTS; lineage GET SELECT.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 54 warnings (-13 from Sprint 87b baseline because the
+  moved governance code carried 13 ``Type … partially unknown``
+  warnings), ``pydoclint`` 0 violations, ``pytest -k 'stats or
+  table_stats or tag or permission or lineage or open_in_notebook'
+  --ignore=tests/test_jupyter.py`` 27/27 passed.
+
 ### Refactored — Phase 12.9 / Sprint 87b: api/main.py UC volumes routes extract
 
 Sixth decomposition slice for ``api/main.py``. The full UC volumes

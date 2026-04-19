@@ -3294,7 +3294,7 @@ PointlesSQL
 │       ``pydoclint`` 0 violations.  ``pytest -k alert
 │       --ignore=tests/test_jupyter.py`` 19/19 passed.
 │
-│   └── Sprint 87b — api/main.py UC volumes routes extract        ✅ done (pending-commit)
+│   ├── Sprint 87b — api/main.py UC volumes routes extract        ✅ done (9047785)
 │       Sixth api/main.py decomposition slice.  The full UC
 │       volumes surface lifts out: 4 JSON endpoints (browse,
 │       upload, delete file + convert-to-Delta) + 2 HTML pages
@@ -3327,6 +3327,37 @@ PointlesSQL
 │       --ignore=tests/test_jupyter.py`` 15/15 passed; the
 │       targeted ``tests/test_volume_convert_type_mapping.py``
 │       9/9 passed (re-export gate intact).
+│
+│   └── Sprint 87c — api/main.py governance routes extract        ✅ done (pending-commit)
+│       Seventh api/main.py decomposition slice.  The full
+│       governance surface lifts out: table column statistics
+│       (Sprint 56), notebook-from-table scratch helper, catalog
+│       create/sync/patch + schema patch, tags + permissions
+│       (get/patch + effective), and lineage.  main.py drops
+│       4.242 → 3.751 LOC (-491).
+│
+│       - ``api/governance_routes.py`` (549 LOC) — 14 routes plus
+│         ``split_full_name`` and ``enforce_table_profile_access``
+│         helpers.  Underscores dropped from helper names.
+│       - ``main.py`` mount: ``app.include_router(governance_router)``.
+│         Module-level ``MODIFY`` import dropped (only the moved
+│         routes used it).
+│
+│       **Authorization model preserved.** Profile + stats GET
+│       still require SELECT (admin short-circuits); stats DELETE
+│       + open-in-notebook + create-catalog + sync-catalog are
+│       still admin-only; catalog/schema PATCH still need MODIFY;
+│       tag PATCH MODIFY; permission PATCH MANAGE_GRANTS;
+│       lineage GET SELECT.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 54 warnings (-13 from Sprint 87b
+│       baseline because the moved governance code carried 13
+│       ``Type … partially unknown`` warnings),
+│       ``pydoclint`` 0 violations.  ``pytest -k 'stats or
+│       table_stats or tag or permission or lineage or
+│       open_in_notebook' --ignore=tests/test_jupyter.py`` 27/27
+│       passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
