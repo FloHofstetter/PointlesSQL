@@ -3192,7 +3192,7 @@ PointlesSQL
 │       passed (test_jupyter.py has a pre-existing import error
 │       unrelated to this sprint).
 │
-│   └── Sprint 86b — api/main.py SQL editor routes extract        ✅ done (pending-commit)
+│   ├── Sprint 86b — api/main.py SQL editor routes extract        ✅ done (231b786)
 │       Third api/main.py decomposition slice — the four-route
 │       Phase-12 SQL editor surface.  The original Sprint 86 plan
 │       bundled SQL with /api/queries + /api/saved-queries; this
@@ -3226,6 +3226,41 @@ PointlesSQL
 │       ``pyright`` 0 errors / 74 pre-existing warnings,
 │       ``pydoclint`` 0 violations.  ``pytest -k 'sql or query'
 │       --ignore=tests/test_jupyter.py`` 48/48 passed.
+│
+│   └── Sprint 86c — api/main.py queries + saved-queries extract  ✅ done (pending-commit)
+│       Fourth api/main.py decomposition slice — completes the
+│       original Sprint-86 plan.  The query-history read endpoints
+│       (``/api/queries`` list/get/chart-config), the ``/queries``
+│       HTML page, and the full ``/api/saved-queries`` CRUD all
+│       move into ``api/queries_routes.py``.  main.py drops
+│       5.652 → 5.256 LOC (-396).
+│
+│       - ``api/queries_routes.py`` (444 LOC) — three
+│         query-history routes + the HTML page + five
+│         saved-queries routes (list/create + get/patch/delete by
+│         slug) + the ``parse_since`` window-string helper.
+│         Underscore prefix dropped from ``parse_since`` since it
+│         is now module-public within the new package.
+│       - ``main.py`` mount: ``app.include_router(queries_router)``
+│         next to the other three routers.  Module-level imports
+│         of ``query_history`` + ``saved_queries`` services dropped
+│         (the alerts route already function-locally re-imports
+│         ``saved_queries`` so nothing else regressed).
+│
+│       **Visibility model preserved.** Non-admin still sees only
+│       their own ``query_history`` rows (``user_id`` query param
+│       clamped server-side); saved queries still 404 on missing
+│       OR forbidden so private slugs are not discoverable; chart
+│       config + delete still owner+admin only.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 67 warnings (-7 from Sprint 86b
+│       baseline because the dropped ``query_history`` /
+│       ``saved_queries`` module-level imports were the source of
+│       seven ``Type … partially unknown`` warnings),
+│       ``pydoclint`` 0 violations.  ``pytest -k 'saved_quer or
+│       query_history or queries' --ignore=tests/test_jupyter.py``
+│       26/26 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

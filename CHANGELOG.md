@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 86c: api/main.py queries + saved-queries extract
+
+Fourth decomposition slice for ``api/main.py`` — completes the
+original Sprint-86 plan. The query-history read endpoints
+(``/api/queries`` list/get/chart-config), the ``/queries`` HTML page,
+and the full ``/api/saved-queries`` CRUD all move into a new
+``api/queries_routes.py``. main.py drops 5,652 → 5,256 LOC (-396).
+
+- **New module** [queries_routes.py](pointlessql/api/queries_routes.py)
+  (444 LOC). Owns three query-history routes + the ``/queries``
+  HTML page + five saved-queries routes (list/create + get/patch/
+  delete by slug) + the ``parse_since`` window-string helper.
+  Underscore prefix dropped from ``parse_since`` since it is now
+  module-public within the new package.
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(queries_router)``
+  next to the other three routers. Module-level imports of
+  ``query_history`` + ``saved_queries`` services dropped — the
+  alerts route already function-locally re-imports ``saved_queries``
+  so nothing else regressed.
+
+- **Visibility model preserved.** Non-admin still sees only their
+  own ``query_history`` rows (``user_id`` query param clamped
+  server-side); saved queries still 404 on missing OR forbidden so
+  private slugs are not discoverable; chart config + delete still
+  owner+admin only.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 67 warnings (-7 from Sprint 86b baseline because the
+  dropped ``query_history`` + ``saved_queries`` module-level
+  imports were the source of seven ``Type … partially unknown``
+  warnings), ``pydoclint`` 0 violations, ``pytest -k 'saved_quer
+  or query_history or queries' --ignore=tests/test_jupyter.py``
+  26/26 passed.
+
 ### Refactored — Phase 12.9 / Sprint 86b: api/main.py SQL editor routes extract
 
 Third decomposition slice for ``api/main.py``. The four-route
