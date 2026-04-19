@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Improved — Phase 12.10 / Sprint 97: Notebook parser hardening against manual edits
+
+``.py`` notebooks that a user has edited by hand in VSCode / Vim no
+longer crash the editor. Both sides of the parse — Python's
+``notebook_doc.py`` and the browser's ``cell_parser.js`` — now
+tolerate every shape a naïve text editor can produce.
+
+- **BOM + CRLF normalisation.** A leading UTF-8 BOM is stripped and
+  CRLF / CR line endings collapse to LF before the marker regex
+  walks. The Python side feeds the normalised string to
+  ``jupytext.reads`` rather than ``jupytext.read(path)`` so the
+  parse sees the same bytes our own scan does — otherwise a BOM
+  glued itself to the first cell's source as ``\ufeff`` noise.
+
+- **No-markers-at-all** → the whole file becomes a single synthetic
+  ``cell-0`` code cell the user can inspect + add markers from the
+  UI; next save materialises a ``# %%`` header.
+
+- **Unknown tag** (``# %% [foo]``) falls back to ``code`` +
+  ``result_var=None``; next save rewrites the marker to plain
+  ``# %%``.
+
+- **Bare ``# %% [sql]``** (no positional identifier) parses as an
+  SQL cell with ``result_var=None``; no crash.
+
+- **File ends mid-cell without trailing newline** → jupytext already
+  tolerates this and we pass through unchanged; a test pins the
+  behaviour so future parser work cannot regress it.
+
+- **Dirty-flag semantics** extended. The editor prompts a one-time
+  save not only on legacy ``pql_cell_id="…"`` markers but also on
+  BOM / CRLF normalisation + empty-file / markerless open, so the
+  next save normalises the on-disk bytes silently.
+
+20 unit tests in [tests/test_notebook_doc.py](tests/test_notebook_doc.py)
+(up from 11 at Sprint 96 close) — one per tolerance scenario.
+
+**Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+errors, ``pydoclint --style=google`` 0 violations, 20/20 tests
+pass.
+
 ### Refactored — Phase 12.10 / Sprint 96: Cell-ID refactor — marker grammar + content-hash identity
 
 Notebook ``.py`` files dropped their PointlesSQL-specific

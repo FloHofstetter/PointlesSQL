@@ -149,7 +149,8 @@ class NotebookCell:
     * :attr:`content_hash` is the **stable** identity used for all
       DB lookups (``notebook_outputs``, ``notebook_cell_runs``,
       ``notebook_cell_run_sources``) and all WS frames that address a
-      cell. It is ``sha256(normalized_source)[:16]`` so that run
+      cell. It is the 16-hex FNV-1a-64 digest of
+      :func:`compute_content_hash`'s normalised source so that run
       history survives reordering and whitespace-only edits but
       naturally splits when the cell's meaningful source changes —
       analogous to how a new commit gets a fresh SHA.
@@ -157,8 +158,9 @@ class NotebookCell:
     Attributes:
         id: Transient ordinal label (``cell-<index>``). Never
             persisted.
-        content_hash: 16-char hex prefix of ``sha256(source)``.
-            Stable across reloads and reorderings.
+        content_hash: 16-hex FNV-1a-64 digest of the cell's
+            normalised source. Stable across reloads and
+            reorderings.
         cell_type: ``"code"`` / ``"markdown"`` / ``"sql"`` (Sprint 71).
             Raw cells are not supported in the editor — they're
             rewritten to markdown on load (one-way, acceptable for
@@ -286,6 +288,33 @@ def _scan_marker_extensions(
     return out
 
 
+def _normalise_file_text(raw_bytes: bytes) -> str:
+    r"""Decode + normalise a ``.py`` notebook's on-disk bytes.
+
+    Sprint 97 hardening helper. Strips a leading UTF-8 BOM if present
+    (some Windows editors emit one for ``.py``) and collapses CRLF
+    line endings to LF so downstream regex / jupytext calls see a
+    single line-separator convention.  Falls back to ``latin-1``
+    decoding on an undecodable UTF-8 payload so the parser never
+    throws on a user-saved file — a corrupt notebook should render
+    as one giant code cell the user can inspect + fix, not a 500.
+
+    Args:
+        raw_bytes: The file bytes as read from disk.
+
+    Returns:
+        The file content decoded + normalised to LF-only UTF-8-safe
+        text.
+    """
+    if raw_bytes.startswith(b"\xef\xbb\xbf"):
+        raw_bytes = raw_bytes[3:]
+    try:
+        text = raw_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw_bytes.decode("latin-1")
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
     """Load a ``.py`` notebook off disk and compute per-cell content hashes.
 
@@ -297,6 +326,26 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
     and cause the returned document's ``dirty`` flag to be set so the
     editor prompts a one-time save into the clean grammar.
 
+    Sprint 97 hardening. The parser now tolerates every shape a user
+    can produce by editing the ``.py`` directly in VSCode / Vim:
+
+    * **No markers at all** — the whole file becomes a single
+      ``cell-0`` code cell so the user can still open + inspect + add
+      markers from the editor. ``dirty=True`` prompts a save that
+      materialises at least one ``# %%`` header on disk.
+    * **Unknown tag** (``# %% [foo]``) — falls back to ``code``. The
+      parser drops the tag silently; the next save rewrites the line
+      to a plain ``# %%`` marker.
+    * **Invalid SQL identifier** (``# %% [sql] 123abc``) — the tag
+      still resolves to ``sql`` but ``result_var`` is ``None``. The
+      next save emits ``# %% [sql]`` without the broken segment.
+    * **CRLF / UTF-8 BOM** — normalised to LF + stripped by
+      :func:`_normalise_file_text` before parsing.
+    * **Empty file** — returns a single empty code cell and sets
+      ``dirty=True`` so the first save writes a ``# %%`` header.
+    * **File ending mid-cell without trailing newline** — jupytext
+      already tolerates this; we pass through unchanged.
+
     Args:
         absolute_path: Pre-resolved path produced by
             :func:`resolve_py_notebook_path`.
@@ -306,13 +355,68 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
     Returns:
         A :class:`NotebookDocument` with ordered cells; each cell
         carries a transient ordinal ``id`` and a stable
-        ``content_hash``. The ``dirty`` flag is ``True`` iff the
-        loaded file still contains pre-Sprint-96 UUID markers.
+        ``content_hash``. The ``dirty`` flag is ``True`` when the
+        loaded file still contains pre-Sprint-96 UUID markers OR
+        needed a Sprint-97 tolerance recovery (BOM / CRLF / no
+        markers / empty) that the next save will normalise.
     """
-    notebook = jupytext.read(absolute_path, fmt="py:percent")
-    raw_text = absolute_path.read_text()
-    dirty = bool(_LEGACY_MARKER_RE.search(raw_text))
-    marker_exts = _scan_marker_extensions(raw_text)
+    raw_bytes = absolute_path.read_bytes()
+    normalised_raw = _normalise_file_text(raw_bytes)
+    original_raw = raw_bytes.decode("utf-8", errors="replace")
+    # Flag a save-on-next-open when the on-disk bytes carried a BOM
+    # or CRLF line endings — the rewrite path emits clean UTF-8 + LF.
+    sanitised = (original_raw != normalised_raw)
+    legacy = bool(_LEGACY_MARKER_RE.search(normalised_raw))
+    marker_exts = _scan_marker_extensions(normalised_raw)
+
+    # Sprint 97: when the file has no markers at all (user wrote a
+    # plain .py by hand or the file is empty), jupytext returns a
+    # single synthetic cell whose source is the whole file.  We still
+    # need to surface that content to the editor so the user can add
+    # markers from the UI; materialising a save on next edit writes
+    # an explicit ``# %%`` header.
+    has_any_marker = bool(marker_exts)
+
+    if not normalised_raw.strip():
+        empty = ""
+        return NotebookDocument(
+            path=relative_path,
+            cells=[
+                NotebookCell(
+                    id="cell-0",
+                    content_hash=compute_content_hash(empty),
+                    cell_type="code",
+                    source=empty,
+                    result_var=None,
+                ),
+            ],
+            dirty=True,
+        )
+
+    if not has_any_marker:
+        # Treat the whole file as a single code cell.  jupytext's own
+        # read would do the same (its markerless fallback emits one
+        # cell), but routing through our explicit path keeps the
+        # dirty-flag semantics legible.
+        return NotebookDocument(
+            path=relative_path,
+            cells=[
+                NotebookCell(
+                    id="cell-0",
+                    content_hash=compute_content_hash(normalised_raw),
+                    cell_type="code",
+                    source=normalised_raw,
+                    result_var=None,
+                ),
+            ],
+            dirty=True,
+        )
+
+    # Sprint 97: feed jupytext the already-normalised text rather than
+    # the raw path so its parse sees LF-only, BOM-free bytes; otherwise
+    # a BOM stays glued to the first cell's source and surfaces in the
+    # editor as ``\ufeff`` noise even though our own sanitisation ran.
+    notebook = jupytext.reads(normalised_raw, fmt="py:percent")
     cells: list[NotebookCell] = []
     for index, raw_cell in enumerate(notebook.cells):
         raw_type = getattr(raw_cell, "cell_type", "code")
@@ -322,7 +426,14 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
             tag, rv = marker_exts[index]
             if tag == "sql":
                 cell_type = "sql"
+                # rv may already be ``None`` for a ``# %% [sql]`` that
+                # omits the identifier; _MARKER_RE's own Python-
+                # identifier constraint on group 2 guarantees any
+                # returned rv is safe to pass straight through.
                 result_var = rv
+            # Unknown tags (``# %% [foo]``) fall through to ``code``
+            # with result_var=None — the next save rewrites the
+            # marker to plain ``# %%``.
         source = raw_cell.source or ""
         cells.append(
             NotebookCell(
@@ -333,7 +444,11 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
                 result_var=result_var,
             )
         )
-    return NotebookDocument(path=relative_path, cells=cells, dirty=dirty)
+    return NotebookDocument(
+        path=relative_path,
+        cells=cells,
+        dirty=legacy or sanitised,
+    )
 
 
 def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:

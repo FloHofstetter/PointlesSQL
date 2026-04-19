@@ -3885,15 +3885,51 @@ PointlesSQL
 │   │       round-trip on a fresh SQLite DB;
 │   │       ``pytest tests/test_notebook_doc.py`` 11/11 passing.
 │   │
-│   ├── Sprint 97 — Parser hardening against manual edits       ⏳ queued
+│   ├── Sprint 97 — Parser hardening against manual edits       ✅ done (pending-commit)
 │   │       Defensive guards in ``notebook_doc.py`` +
-│   │       ``cell_parser.js`` for the scenarios a user can
-│   │       produce by editing the ``.py`` directly in VSCode /
-│   │       Vim: no markers at all, unknown tags, invalid SQL
-│   │       identifier after ``[sql]``, duplicate content-hashes
-│   │       (two identical cells), CRLF line endings, UTF-8 BOM,
-│   │       file ends mid-cell without trailing newline.  Each
-│   │       gets a test in ``tests/test_notebook_doc.py``.
+│   │       ``cell_parser.js`` for every shape a user can produce
+│   │       by editing a ``.py`` directly in VSCode / Vim.  Both
+│   │       sides gained a ``_normalise_file_text`` / inline
+│   │       equivalent that strips UTF-8 BOM + collapses CRLF /
+│   │       CR to LF before the regex walk; jupytext is now fed
+│   │       the normalised string via ``jupytext.reads`` rather
+│   │       than the raw file path so a BOM never glues to the
+│   │       first cell's source as ``\ufeff`` noise.
+│   │
+│   │       Scenarios covered, each with a dedicated test in
+│   │       ``tests/test_notebook_doc.py`` (now 20 cases total,
+│   │       up from Sprint 96's 11):
+│   │
+│   │       - **Empty file** → single empty ``cell-0``, ``dirty=True``.
+│   │       - **Plain .py, no markers at all** → whole file becomes a
+│   │         single code cell the user can inspect + add markers
+│   │         from the UI; next save materialises a ``# %%`` header.
+│   │       - **Unknown tag** (``# %% [foo]``) → falls back to
+│   │         ``code``; next save rewrites to plain ``# %%``.
+│   │       - **SQL marker without identifier** (``# %% [sql]``) →
+│   │         ``cell_type="sql"`` + ``result_var=None``; no crash.
+│   │       - **CRLF line endings** → normalised to LF,
+│   │         ``dirty=True`` so the next save writes LF-only bytes.
+│   │       - **UTF-8 BOM** → stripped, ``dirty=True``; cell source
+│   │         no longer starts with ``\ufeff``.
+│   │       - **File ending mid-cell without trailing newline** →
+│   │         parser passes through; content survives verbatim.
+│   │       - **Duplicate cells (identical sources)** → both get the
+│   │         same content-hash; tie-breaking lives upstream in the
+│   │         WS run-history matcher (cellAffordances keys on the
+│   │         transient ``cell-N`` label, so DOM stays distinct).
+│   │       - **Cell reorder** → per-cell content-hash is
+│   │         reorder-invariant (``test_manual_cell_reorder_
+│   │         preserves_content_hash``).
+│   │
+│   │       Client-side mirror: ``cell_parser.js``'s ``splitCells``
+│   │       now strips CRLF + BOM and returns a single synthetic
+│   │       ``cell-0`` for markerless text, so the Monaco model
+│   │       sees the same shape the server saw on load.
+│   │
+│   │       **Static gates (all green):** ``ruff`` 0 errors,
+│   │       ``pyright`` 0 errors, ``pydoclint --style=google`` 0
+│   │       violations, 20/20 tests pass.
 │   │
 │   └── Sprint 98 — Browser walkthrough + bug sprint            ⏳ queued
 │           Deterministic Playwright playbook

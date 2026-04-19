@@ -76,7 +76,28 @@ export function computeContentHash(source) {
 }
 
 export function splitCells(text) {
-    const lines = text.split('\n');
+    // Sprint 97: tolerate the shapes a user can produce by editing the
+    // .py directly in VSCode / Vim. CRLF and a leading UTF-8 BOM are
+    // stripped so the regex walk sees LF-only content; a file without
+    // any marker lines returns a single synthetic ``cell-0`` code cell
+    // carrying the whole body so the editor can still open + fix it
+    // (the server-side ``load_document`` mirrors this behaviour + sets
+    // ``dirty=True``).
+    let normalised = (text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    if (normalised.charCodeAt(0) === 0xfeff) {
+        normalised = normalised.slice(1);
+    }
+    const hasAnyMarker = /^#\s*%%/m.test(normalised);
+    if (!hasAnyMarker) {
+        return [{
+            id: 'cell-0',
+            content_hash: computeContentHash(normalised),
+            cell_type: 'code',
+            source: normalised,
+            resultVar: null,
+        }];
+    }
+    const lines = normalised.split('\n');
     const cells = [];
     let seenMarker = false;
     let currentType = 'code';

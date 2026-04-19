@@ -173,3 +173,121 @@ def test_legacy_file_saves_to_clean_grammar(tmp_path: Path) -> None:
 def test_compute_content_hash_deterministic(source: str) -> None:
     """Same input always returns the same hash."""
     assert compute_content_hash(source) == compute_content_hash(source)
+
+
+# ─────────────────────── Sprint 97 tolerance tests ───────────────────────
+#
+# The Sprint 96 parser raised when the user saved a manually-edited
+# ``.py`` with CRLF line endings, a UTF-8 BOM, no markers at all, or
+# a malformed tag. Sprint 97 makes every case graceful: no crash, a
+# best-effort render, and ``dirty=True`` so the next save normalises.
+
+
+def test_empty_file_loads_one_empty_cell(tmp_path: Path) -> None:
+    """A zero-byte notebook becomes a single empty code cell."""
+    target = tmp_path / "empty.py"
+    target.write_text("")
+    doc = load_document(target, "empty.py")
+    assert doc.dirty is True
+    assert len(doc.cells) == 1
+    assert doc.cells[0].cell_type == "code"
+    assert doc.cells[0].source == ""
+    assert doc.cells[0].id == "cell-0"
+
+
+def test_no_markers_file_becomes_single_code_cell(tmp_path: Path) -> None:
+    """A plain Python file with no ``# %%`` markers still opens."""
+    body = "import math\nprint(math.pi)\n"
+    target = tmp_path / "plain.py"
+    target.write_text(body)
+    doc = load_document(target, "plain.py")
+    assert doc.dirty is True
+    assert len(doc.cells) == 1
+    assert doc.cells[0].cell_type == "code"
+    assert doc.cells[0].source == body
+
+
+def test_unknown_tag_falls_back_to_code(tmp_path: Path) -> None:
+    """``# %% [foo]`` parses as a code cell, dropping the unknown tag."""
+    body = "# %% [foo]\nx = 1\n"
+    target = tmp_path / "unknown_tag.py"
+    target.write_text(body)
+    doc = load_document(target, "unknown_tag.py")
+    assert len(doc.cells) == 1
+    assert doc.cells[0].cell_type == "code"
+    assert doc.cells[0].result_var is None
+    # After re-save, the unknown tag is gone.
+    save_document(target, doc.cells)
+    assert "[foo]" not in target.read_text()
+
+
+def test_sql_marker_without_identifier(tmp_path: Path) -> None:
+    """``# %% [sql]`` with no positional identifier yields result_var=None."""
+    body = "# %% [sql]\nSELECT 1\n"
+    target = tmp_path / "sql_plain.py"
+    target.write_text(body)
+    doc = load_document(target, "sql_plain.py")
+    assert len(doc.cells) == 1
+    assert doc.cells[0].cell_type == "sql"
+    assert doc.cells[0].result_var is None
+
+
+def test_crlf_line_endings_normalised(tmp_path: Path) -> None:
+    """CRLF is collapsed to LF; parser still recovers cells + flags dirty."""
+    body = "# %%\r\nx = 1\r\n\r\n# %%\r\ny = 2\r\n"
+    target = tmp_path / "crlf.py"
+    target.write_bytes(body.encode("utf-8"))
+    doc = load_document(target, "crlf.py")
+    assert doc.dirty is True  # CRLF normalisation triggers a save-next
+    assert len(doc.cells) == 2
+    assert "\r" not in doc.cells[0].source
+    assert "\r" not in doc.cells[1].source
+
+
+def test_utf8_bom_stripped(tmp_path: Path) -> None:
+    """A leading UTF-8 BOM is stripped; the first marker still parses."""
+    body = "\ufeff# %%\nx = 1\n"
+    target = tmp_path / "bom.py"
+    target.write_bytes(body.encode("utf-8"))
+    doc = load_document(target, "bom.py")
+    assert doc.dirty is True  # BOM removal triggers a save-next
+    assert len(doc.cells) == 1
+    # First byte of first cell's marker area must not be the BOM.
+    assert not doc.cells[0].source.startswith("\ufeff")
+
+
+def test_file_ending_mid_cell_without_newline(tmp_path: Path) -> None:
+    """Missing trailing newline at EOF does not break the parser."""
+    body = "# %%\nprint('ok')"
+    target = tmp_path / "no_trailing_nl.py"
+    target.write_bytes(body.encode("utf-8"))
+    doc = load_document(target, "no_trailing_nl.py")
+    assert len(doc.cells) == 1
+    assert "print('ok')" in doc.cells[0].source
+
+
+def test_duplicate_cells_get_same_content_hash(tmp_path: Path) -> None:
+    """Two identical cells share a content hash (tie-break by index upstream)."""
+    body = "# %%\nprint(1)\n\n# %%\nprint(1)\n"
+    target = tmp_path / "dup.py"
+    target.write_text(body)
+    doc = load_document(target, "dup.py")
+    assert len(doc.cells) == 2
+    assert doc.cells[0].content_hash == doc.cells[1].content_hash
+    # Transient labels still differ — ``cellAffordances`` keys on them.
+    assert doc.cells[0].id != doc.cells[1].id
+
+
+def test_manual_cell_reorder_preserves_content_hash(tmp_path: Path) -> None:
+    """Swapping cell order keeps each cell's content hash stable."""
+    body_a = "# %%\nfoo = 1\n\n# %%\nbar = 2\n"
+    body_b = "# %%\nbar = 2\n\n# %%\nfoo = 1\n"
+    path_a = tmp_path / "a.py"
+    path_b = tmp_path / "b.py"
+    path_a.write_text(body_a)
+    path_b.write_text(body_b)
+    doc_a = load_document(path_a, "a.py")
+    doc_b = load_document(path_b, "b.py")
+    hashes_a = sorted(c.content_hash for c in doc_a.cells)
+    hashes_b = sorted(c.content_hash for c in doc_b.cells)
+    assert hashes_a == hashes_b
