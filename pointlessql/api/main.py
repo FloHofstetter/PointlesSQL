@@ -3350,6 +3350,55 @@ async def table_detail(
     )
 
 
+async def _build_notebook_doc_bundle(
+    request: Request, path: str
+) -> dict[str, Any]:
+    """Assemble the ``{cells, dirty, outputs}`` bundle for a notebook.
+
+    Shared by the HTML editor route (which embeds the bundle into the
+    page template for first-paint hydration) and the Sprint-68 JSON
+    route (which hands the same bundle to the multi-tab editor shell
+    when it lazy-loads a second tab without a page reload).
+
+    Args:
+        request: Incoming FastAPI request; carries app-state settings
+            and session factory.
+        path: Relative ``.py`` notebook path under the notebooks dir.
+
+    Returns:
+        A dict with ``cells`` (list of ``{id, cell_type, source}``),
+        ``dirty`` (bool), and ``outputs`` (list of persisted outputs
+        replayed from ``notebook_outputs``).
+    """
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    resolved = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, path, must_exist=False
+    )
+    if resolved.is_file():
+        document = notebook_doc_service.load_document(resolved, path)
+        bundle: dict[str, Any] = {
+            "cells": [
+                {"id": cell.id, "cell_type": cell.cell_type, "source": cell.source}
+                for cell in document.cells
+            ],
+            "dirty": document.dirty,
+        }
+    else:
+        bundle = {
+            "cells": [
+                {"id": str(uuid4()), "cell_type": "code", "source": ""},
+            ],
+            "dirty": True,
+        }
+    bundle["outputs"] = await asyncio.to_thread(
+        notebook_outputs_service.load_outputs_for_path,
+        request.app.state.session_factory,
+        path,
+    )
+    return bundle
+
+
 @app.get("/notebook/editor", response_class=HTMLResponse)
 async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
     """Render the native Phase-12.6 notebook editor (preview).
@@ -3370,35 +3419,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
         Rendered HTML carrying the initial document as a JSON blob
         the Alpine component consumes synchronously on mount.
     """
-    settings: Settings = request.app.state.settings
-    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
-    resolved = notebook_doc_service.resolve_py_notebook_path(
-        notebooks_dir, path, must_exist=False
-    )
-    if resolved.is_file():
-        document = notebook_doc_service.load_document(resolved, path)
-        initial = {
-            "cells": [
-                {"id": cell.id, "cell_type": cell.cell_type, "source": cell.source}
-                for cell in document.cells
-            ],
-            "dirty": document.dirty,
-        }
-    else:
-        initial = {
-            "cells": [
-                {"id": str(uuid4()), "cell_type": "code", "source": ""},
-            ],
-            "dirty": True,
-        }
-    # Sprint 60: replay every persisted output for this notebook on
-    # mount.  The frontend filters to the latest kernel_session_id
-    # once the WS hello frame tells it which session is live.
-    initial["outputs"] = await asyncio.to_thread(
-        notebook_outputs_service.load_outputs_for_path,
-        request.app.state.session_factory,
-        path,
-    )
+    initial = await _build_notebook_doc_bundle(request, path)
     return _TEMPLATES.TemplateResponse(
         request,
         "pages/notebook_editor.html",
@@ -3411,6 +3432,30 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
             "active_table": None,
         },
     )
+
+
+@app.get("/api/notebook/doc")
+async def api_load_notebook_doc(
+    request: Request, path: str
+) -> dict[str, Any]:
+    """Return the notebook bundle as JSON for the multi-tab editor.
+
+    Sprint-68 companion of the HTML editor route: when the user opens a
+    second notebook in a new tab without a full page reload, the shell
+    fetches this endpoint to hydrate the tab's Monaco model + replay
+    its persisted outputs. Same shape as
+    :func:`notebook_editor_page`'s ``initial_document`` — a single
+    helper produces both — so the first-paint and lazy-load code paths
+    can never drift.
+
+    Args:
+        request: Incoming FastAPI request.
+        path: Relative ``.py`` notebook path under the notebooks dir.
+
+    Returns:
+        ``{"cells": [...], "dirty": bool, "outputs": [...]}``.
+    """
+    return await _build_notebook_doc_bundle(request, path)
 
 
 @app.post("/api/notebook/doc")

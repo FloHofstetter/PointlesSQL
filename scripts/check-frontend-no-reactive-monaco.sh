@@ -20,11 +20,16 @@
 # `treeFetchCtrl` / `treeAbort` so the sidebar's AbortController for
 # inflight `/api/notebooks/tree` fetches stays closure-scoped — an
 # AbortController wired into Alpine's proxy would trigger the same
-# deep-reactivity walk the Monaco refs did.
+# deep-reactivity walk the Monaco refs did.  Sprint 68 adds
+# `tabRefs` and `tabFactories` so the multi-tab editor shell's
+# per-tab closure-ref bags and tab-editor factory handles cannot be
+# aggregated onto the shell's Alpine proxy — N tabs would otherwise
+# reproduce BUG-64-02 at N× scale the moment the shell's reactive
+# deep-walk reached into any tab's Monaco state.
 
 set -euo pipefail
 
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort)\s*='
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then

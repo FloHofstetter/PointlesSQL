@@ -2257,15 +2257,49 @@ PointlesSQL
 │   │   as the land gate per ``feedback_run_playbook_as_gate``.
 │   │   **No Alembic migration.**
 │   │
-│   ├── Sprint 68 — Multi-notebook tab bar                        ⏳
+│   ├── Sprint 68 — Multi-notebook tab bar                        ✅ done
 │   │   Tab bar above the editor; each tab is one Monaco instance
 │   │   over one file, sharing Sprint-65's modules.  Open-tabs list
-│   │   persists in ``localStorage``; the Sprint-67 file-tree click
-│   │   opens a tab.  Kernel registry already keys by
-│   │   ``(user_id, path)`` so two tabs of the same file share one
-│   │   kernel.  No backend changes.  Sprint-65's
-│   │   ``createClosureRefs`` factory must scale to N instances per
-│   │   page — the grep gate keeps it honest.
+│   │   persists in ``localStorage['pql.nbedit.tabs.v1']``; the
+│   │   Sprint-67 file-tree click dispatches ``pql:open-tab`` and
+│   │   the shell activates / adds the matching tab without a page
+│   │   reload.  Kernel registry already keys by ``(user_id, path)``
+│   │   so two tabs of the same file share one kernel.  Sprint-65's
+│   │   ``createClosureRefs`` factory scales to N instances per
+│   │   page verbatim; the grep gate now also blocks
+│   │   ``this._tabRefs`` / ``this._tabFactories`` so the shell
+│   │   can't aggregate per-tab closure bags onto its reactive
+│   │   proxy and reproduce BUG-64-02 at N× scale.  Architecture:
+│   │   N Monaco instances rendered into tab panes, lazy-mounted
+│   │   via ``x-if="tab.mounted || tab.id === activeTabId"`` — the
+│   │   per-tab factory fires ``pql:tab-state-changed {mounted:true}``
+│   │   synchronously at ``mount()``'s entry so the shell's
+│   │   tab.mounted flag persists across the bootstrap stub → real
+│   │   scope swap (fix for the replay's first-tab-blanks-on-second-
+│   │   open bug).  Close-tab UX on dirty buffer: Bootstrap-modal
+│   │   confirm with Cancel / Discard & close / Save & close,
+│   │   reusing the Sprint-67 ``:class="{'d-block': flag}"`` pattern
+│   │   (BUG-67-01).  Soft-cap at 10 tabs — no kernel LRU yet so
+│   │   uncapped multi-tab would blow up per-user kernel counts;
+│   │   the eleventh open produces a toast.  **Roadmap deviation
+│   │   note:** the original entry claimed "No backend changes" —
+│   │   verified false.  One tiny endpoint landed
+│   │   (``GET /api/notebook/doc?path=…``) so non-initial tabs can
+│   │   lazy-fetch their content without a full HTML reload.  The
+│   │   endpoint reuses the existing Jinja-route helper via a
+│   │   factored ``_build_notebook_doc_bundle`` function — ≤30 LoC,
+│   │   no new service code.  New module
+│   │   [frontend/js/notebook/editor_shell.js](frontend/js/notebook/editor_shell.js)
+│   │   owns the tab bar + sidebar mount + close-confirm + event
+│   │   bus (``pql:open-tab`` / ``pql:file-renamed`` /
+│   │   ``pql:file-deleted`` / ``pql:tab-state-changed`` /
+│   │   ``pql:save-tab``).  Sidebar slice's API shifted from a
+│   │   static ``currentPath`` to ``getActivePath`` +
+│   │   ``isPathOpenInAnyTab`` callbacks so the trash-disable check
+│   │   covers any tab (not just the active one) holding the
+│   │   path.  Playbook Part I added; replayed in Firefox (MCP) as
+│   │   the land gate per ``feedback_run_playbook_as_gate``.
+│   │   **No Alembic migration.**
 │   │
 │   ├── Sprint 69 — Markdown polish + dual-mode + KaTeX            ⏳ trim-point
 │   │   Replace the regex markdown renderer with ``markdown-it``

@@ -7,13 +7,26 @@
 // pyright LSP WebSocket, and returns the reactive object Alpine binds
 // to via x-data.
 //
+// Sprint 68 split the factory's responsibilities.  What used to be
+// ``createNotebookEditor`` (single-tab page) is now
+// ``createNotebookTabEditor`` (one Monaco instance over one path,
+// N instances per page).  The file-tree sidebar + tab bar + tab
+// list + localStorage persistence live in ``editor_shell.js``.
+// The tab-editor factory takes an optional ``initial`` bundle; if
+// ``null``, a ``bundleLoader`` async function is invoked on first
+// mount to fetch ``/api/notebook/doc?path=…`` — this is how non-
+// initial tabs lazy-load their content without a page reload.
+//
 // BUG-64-02 boundary discipline (Sprint-64; see closure_state.js):
 // Monaco model / editor refs live in `refs` (createClosureRefs), not
 // on the returned object.  Other private state (timers, WebSocket
 // handles, DOM-node maps, accumulator buffers, parsed-cell cache)
 // also lives in closure-scoped `let` vars to keep the reactive
 // surface small and predictable.  The returned object carries
-// primitive UI state + bound methods only.
+// primitive UI state + bound methods only.  Sprint 68 adds
+// ``tabRefs`` and ``tabFactories`` to the grep-gate; a shell that
+// aggregates per-tab closure bags onto its Alpine-reactive ``this._``
+// would reproduce BUG-64-02 at N× scale.
 
 import {
     joinCells,
@@ -44,7 +57,6 @@ import {
 } from './pyright_client.js';
 import { appendOutputFrame } from './output_renderer.js';
 import { createClosureRefs } from './closure_state.js';
-import { createFileTreeSlice } from './file_tree.js';
 
 function csrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -59,13 +71,20 @@ const AUTOSAVE_DEBOUNCE_MS = 1500;
 // from flashing during the render.
 const INITIAL_FLUSH_MS = 400;
 
-export function createNotebookEditor({ path, initial }) {
+export function createNotebookTabEditor({
+    path,
+    tabId = null,
+    initial = null,
+    bundleLoader = null,
+}) {
     const refs = createClosureRefs(['editor', 'model']);
 
     // Closure-scoped private state.  Anything that does not need to
     // reactively re-render the DOM lives here, not as `this._X`.
     let decorationIds = [];
-    let cells = initial.cells.slice();
+    // Sprint 68: initial bundle may be null on lazy-loaded tabs; cells
+    // are populated inside mount() once the bundle resolves.
+    let cells = [];
     let saveTimerHandle = null;
     let saveInFlight = false;
     let saveQueued = false;
@@ -88,21 +107,27 @@ export function createNotebookEditor({ path, initial }) {
     // without being bound at construction time.  Never assigned to
     // ``this.X`` — the reactivity-boundary gate forbids it.
     let reactiveRoot = null;
-    const initialOutputs = initial.outputs || [];
+    let initialOutputs = [];
+    let mounted = false;
 
-    // Sprint 67 — file-tree sidebar slice.  Defined before the
-    // returned object so its keys can be spread in via
-    // Object.assign; its reactive state / methods land on the same
-    // Alpine proxy as the rest of the editor without the factory
-    // having to know about each individual key.
-    const fileTreeSlice = createFileTreeSlice({ currentPath: path });
+    // Sprint 68: notify the shell whenever dirty or save state
+    // transitions so the tab-bar chrome (filename + unsaved dot) stays
+    // in sync without the shell having to poll per-tab scopes.
+    function emitStateChange(extra) {
+        if (!tabId) return;
+        const detail = Object.assign({ tabId, path }, extra || {});
+        document.dispatchEvent(
+            new CustomEvent('pql:tab-state-changed', { detail }),
+        );
+    }
 
-    return Object.assign({}, fileTreeSlice, {
+    return Object.assign({}, {
         path,
-        dirty: initial.dirty === true,
+        tabId,
+        dirty: false,
         loading: false,
         // "idle" | "pending" | "saving" | "saved" | "error"
-        saveState: initial.dirty === true ? 'pending' : 'saved',
+        saveState: 'saved',
         // "connecting" | "ready" | "restarting" | "disconnected" | "error"
         kernelStatus: 'connecting',
         kernelSessionId: null,
@@ -124,14 +149,43 @@ export function createNotebookEditor({ path, initial }) {
         // / "No tables found" placeholder switch without exposing
         // the (non-reactive) array itself to Alpine.
         catalogTablesLoaded: false,
+        // Sprint 68: flipped true after the first ``mount()`` resolves.
+        // The shell reads it to decide whether a freshly-activated
+        // tab still needs lazy-loading; the per-tab template's
+        // ``x-init`` calls ``mount()`` only while this is false.
+        mounted: false,
 
         async mount() {
+            if (mounted) return; // Sprint 68: lazy-mount is fire-once.
+            mounted = true;
+            this.mounted = true;
             reactiveRoot = this;
-            // Fire-and-forget: sidebar fetch does not block Monaco
-            // bootstrap.  Errors bubble into ``treeError`` for the
-            // inline alert; nothing else on this page depends on it.
-            this.loadTreeInitial();
+            // Sprint 68: tell the shell "this tab is now mounted" so
+            // the shell's tab.mounted flag flips to true *before*
+            // any async work (Monaco/kernel/LSP bootstrapping).  That
+            // flag is what keeps the x-if wrapper evaluating true
+            // when the user switches to a different tab — without
+            // this event, Alpine's tab.mounted lookup would miss the
+            // stub→real scope swap and the pane would unmount on
+            // first tab-switch-away, losing Monaco + kernel state.
+            emitStateChange({ mounted: true });
             try {
+                // Sprint 68: resolve the initial bundle.  First-tab
+                // opens carry it eagerly (server-rendered into the
+                // page template); lazy tabs defer to the bundleLoader
+                // closure, which hits GET /api/notebook/doc.
+                let bundle = initial;
+                if (!bundle && bundleLoader) {
+                    bundle = await bundleLoader();
+                }
+                if (!bundle) {
+                    bundle = { cells: [], dirty: true, outputs: [] };
+                }
+                cells = (bundle.cells || []).slice();
+                initialOutputs = bundle.outputs || [];
+                this.dirty = bundle.dirty === true;
+                this.saveState = this.dirty ? 'pending' : 'saved';
+                emitStateChange({ dirty: this.dirty, saveState: this.saveState });
                 const monaco = await loadMonaco();
                 const joined = joinCells(cells);
                 const model = monaco.editor.createModel(joined.text, 'python');
@@ -149,6 +203,7 @@ export function createNotebookEditor({ path, initial }) {
                 model.onDidChangeContent(() => {
                     this.dirty = true;
                     this.saveState = 'pending';
+                    emitStateChange({ dirty: true, saveState: 'pending' });
                     scheduleAutosave(() => this.save());
                 });
                 // Shift+Enter / Ctrl+Enter bind to the editor instance
@@ -188,6 +243,19 @@ export function createNotebookEditor({ path, initial }) {
                 openKernelWS(this);
                 openLSP(monaco, this).catch((err) =>
                     console.error('[notebook-editor] lsp open failed', err));
+                // Sprint 68: the shell's close-confirm "Save &
+                // close" path fires this event; each tab scope
+                // filters by its own tabId so exactly one factory
+                // handles each request.  The shell awaits the
+                // next ``pql:tab-state-changed`` emission from
+                // ``save()`` to know the outcome.
+                if (tabId) {
+                    document.addEventListener('pql:save-tab', (ev) => {
+                        const detail = ev && ev.detail;
+                        if (!detail || detail.tabId !== tabId) return;
+                        this.save();
+                    });
+                }
             } catch (err) {
                 console.error('[notebook-editor] mount failed', err);
                 if (window.pqlToast) {
@@ -424,9 +492,11 @@ export function createNotebookEditor({ path, initial }) {
                 cells = newCells;
                 this.dirty = false;
                 this.saveState = 'saved';
+                emitStateChange({ dirty: false, saveState: 'saved' });
             } catch (err) {
                 console.error('[notebook-editor] save failed', err);
                 this.saveState = 'error';
+                emitStateChange({ dirty: this.dirty, saveState: 'error' });
                 if (window.pqlToast) window.pqlToast.error('Save failed: ' + err.message);
             } finally {
                 this.loading = false;

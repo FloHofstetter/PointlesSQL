@@ -4,6 +4,97 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 68) — Phase 12.7: multi-notebook tab bar
+
+Fourth Phase 12.7 sprint.  Adds a tab bar above the editor so the
+user can keep several notebooks open in one page and switch
+between them without a reload.  Each tab hosts its own Monaco
+editor + kernel WS + LSP WS; the Sprint-65 closure-ref factory is
+already N-instance-safe and the Sprint-66 affordance machinery is
+editor-scoped, so tab switches are a CSS ``display`` flip rather
+than a Monaco teardown.
+
+- **Tab bar** ([frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html)).
+  New ``.pql-nbedit-tabbar`` above the layout; each tab shows the
+  file basename, a dirty dot (``•``) when the buffer is unsaved,
+  and a close button.  Horizontal-scroll overflow; no dropdown
+  overflow menu.  Soft-cap at 10 tabs — the eleventh open toasts
+  ``Tab limit reached``.  The Files-sidebar toggle moved from the
+  per-tab toolbar to the tab-bar's right side (the sidebar is
+  shell-scoped, not tab-scoped).
+- **Editor shell factory** ([frontend/js/notebook/editor_shell.js](frontend/js/notebook/editor_shell.js)
+  — new module).  Alpine factory ``createNotebookEditorShell``
+  owns tabs + activeTabId + the close-confirm modal + the file-
+  tree sidebar slice + localStorage persistence (``pql.nbedit.
+  tabs.v1``).  Listens on ``document`` for ``pql:open-tab`` /
+  ``pql:file-renamed`` / ``pql:file-deleted`` /
+  ``pql:tab-state-changed`` — the sidebar and the per-tab scopes
+  talk to the shell through this bus rather than via cross-scope
+  reference walking.
+- **Per-tab factory split** ([frontend/js/notebook/main.js](frontend/js/notebook/main.js)).
+  Renamed ``createNotebookEditor`` → ``createNotebookTabEditor``;
+  added optional ``tabId`` / ``initial`` / ``bundleLoader`` args.
+  Cell + output initialisation moved inside ``mount()`` so lazy
+  tabs defer network + Monaco work until first activation.  The
+  factory dispatches ``pql:tab-state-changed`` for ``mounted`` /
+  ``dirty`` / ``saveState`` transitions so the tab chrome stays
+  in sync without reaching into the child proxy.
+- **GET /api/notebook/doc** ([pointlessql/api/main.py](pointlessql/api/main.py)).
+  The only backend change — a small read-only endpoint returning
+  the same ``{cells, dirty, outputs}`` bundle the HTML editor
+  route embeds.  Shared helper ``_build_notebook_doc_bundle``
+  wraps ``notebook_doc_service.load_document`` +
+  ``notebook_outputs_service.load_outputs_for_path``; the HTML
+  route and the new JSON route call it identically, so first-
+  paint and lazy-load can never drift.  (Roadmap line originally
+  said "No backend changes"; amended with this deviation note.)
+- **Sidebar API reshape** ([frontend/js/notebook/file_tree.js](frontend/js/notebook/file_tree.js)).
+  ``createFileTreeSlice`` now takes ``getActivePath`` +
+  ``isPathOpenInAnyTab`` callbacks instead of a static
+  ``currentPath``.  Row-click / create / rename / delete dispatch
+  CustomEvents on ``document`` instead of calling
+  ``window.location.assign`` — the shell orchestrates tab state.
+  Trash-disable now covers *any* open tab, not just the active
+  one.
+- **Reactivity-boundary gate widened** ([scripts/check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh))
+  to block ``this._tabRefs`` and ``this._tabFactories``.  A
+  shell that aggregates per-tab closure bags onto its Alpine-
+  reactive ``this._`` would reproduce BUG-64-02 at N× scale.
+- **Close-tab-with-unsaved-changes modal**.  Bootstrap dialog
+  with Cancel / Discard & close / Save & close; reuses the
+  Sprint-67 ``:class="{'d-block': flag}"`` pattern (BUG-67-01).
+  Save & close dispatches ``pql:save-tab`` and waits for the
+  child factory's next ``saveState`` emission before closing;
+  if the save errors, the modal stays open and surfaces via the
+  per-tab save toast.
+- **Playbook Part I** ([docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md))
+  — eleven-step multi-tab walkthrough (first open, row-click
+  opens second tab lazily, cross-tab state preservation, dirty
+  dot, close-clean / close-dirty / confirm-modal, reload
+  persistence + lazy hydration, kernel sharing, rename updates
+  chrome in place, delete closes tab silently, ten-tab cap
+  toast).
+
+### Fixed (Sprint 68 replay catch)
+
+- **Tab-mounted flag lost during stub→real scope swap.**  The
+  bootstrap stub seeded ``tabs = [seedTab]`` synchronously with
+  ``mounted: false``; the template's ``x-init="tab.mounted = true;
+  mount()"`` set the flag on the seed, but the async import of
+  ``editor_shell.js`` + ``_hydrateTabs()`` replaced the tabs array
+  wholesale — the flag was dropped on the floor.  Alpine's
+  ``:key="tab.id"`` diff reused the DOM element so x-init did not
+  re-fire, leaving ``tab.mounted: false`` on the live tab.  Net
+  effect: opening a second tab made the first tab's ``x-if``
+  (``tab.mounted || active``) evaluate false, Alpine unmounted
+  the pane, Monaco + kernel were torn down mid-session.  Fixed
+  by having the per-tab factory fire
+  ``pql:tab-state-changed { mounted: true }`` **synchronously**
+  at the top of ``mount()``, before any async Monaco / kernel /
+  LSP work; the shell's listener updates ``tab.mounted`` in the
+  tabs array so the x-if lazy-mount wrapper stays true through
+  subsequent tab switches.
+
 ### Added (Sprint 67) — Phase 12.7: file-tree sidebar inside the editor
 
 Third Phase 12.7 sprint.  Mounts the Sprint-27 workspace tree as a

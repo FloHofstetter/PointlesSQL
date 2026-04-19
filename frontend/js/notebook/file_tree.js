@@ -1,11 +1,13 @@
 // Phase 12.7 Sprint 67 — file-tree sidebar for the notebook editor.
 //
 // Exports a factory ``createFileTreeSlice`` that returns a mixin Alpine
-// sub-object plugged into ``main.js``'s ``createNotebookEditor``
-// factory.  The sidebar renders ``/api/notebooks/tree`` on the left of
-// the editor, with per-leaf open / rename / delete and a "New…" button
-// in the header; multi-tab handoff is Sprint 68's business, so "open"
-// here is a hard navigation.
+// sub-object mixed into the editor-shell scope (``editor_shell.js``,
+// Sprint 68).  The sidebar renders ``/api/notebooks/tree`` on the
+// left of the editor, with per-leaf open / rename / delete and a
+// "New…" button in the header.  Sprint 68 replaced the Sprint-67
+// hard-navigation handoff with DOM CustomEvents (``pql:open-tab``,
+// ``pql:file-renamed``, ``pql:file-deleted``) so the shell can
+// activate / add / rename / close tabs without a page reload.
 //
 // Deliberately does **not** share code with the full-screen
 // ``/notebooks/workspace`` page's inline Alpine factory — that factory
@@ -72,11 +74,33 @@ async function parseBodyError(res) {
 
 /**
  * Build the Alpine sub-object that owns the sidebar's reactive state
- * and CRUD methods.  ``currentPath`` is the path the editor is
- * currently displaying — the trash button is disabled on that row
- * and rename-in-place triggers a reload at the new URL.
+ * and CRUD methods.
+ *
+ * Sprint 68 reshaped the Sprint-67 API.  The sidebar no longer knows
+ * one canonical "current path" — in a multi-tab editor the active
+ * tab's path is dynamic and several tabs can be open at once.  The
+ * caller supplies two lookups:
+ *
+ * - ``getActivePath()`` — the path rendered by the active tab, or
+ *   ``null`` when no tab is open.  Drives the ``pql-nbedit-file-current``
+ *   row highlight and "already open" no-op short-circuit in
+ *   ``openNotebook``.
+ * - ``isPathOpenInAnyTab(path)`` — whether any tab (active or hidden)
+ *   currently holds ``path``.  Disables the trash button so the
+ *   deletion flow cannot orphan a tab whose backing file no longer
+ *   exists on disk.
+ *
+ * The sidebar itself does no navigation.  Each user action dispatches
+ * a CustomEvent on ``document`` so the shell can route state changes
+ * through its tabs model (open a tab, rename an open tab, close
+ * deleted tabs).  Events: ``pql:open-tab`` (detail ``{ path }``),
+ * ``pql:file-renamed`` (detail ``{ oldPath, newPath }``),
+ * ``pql:file-deleted`` (detail ``{ path }``).
  */
-export function createFileTreeSlice({ currentPath }) {
+export function createFileTreeSlice({
+    getActivePath = () => null,
+    isPathOpenInAnyTab = () => false,
+} = {}) {
     // Closure-scoped; never reaches Alpine's reactive proxy.  If a
     // second fetch fires before the first resolves, the older one is
     // aborted so a late response cannot overwrite fresher tree state.
@@ -194,11 +218,23 @@ export function createFileTreeSlice({ currentPath }) {
         // ─── actions ───
 
         openNotebook(path) {
-            if (path === currentPath) return;
-            window.location.assign('/notebook/editor?path=' + encodeURIComponent(path));
+            // Sprint 68: the shell owns navigation.  Emit an event,
+            // let it decide whether to activate an existing tab or
+            // open a new one.  No-op if already active (shell checks
+            // too, but the short-circuit here keeps a redundant
+            // event off the bus).
+            if (path === getActivePath()) return;
+            document.dispatchEvent(new CustomEvent('pql:open-tab', {
+                detail: { path },
+            }));
         },
 
-        isCurrentPath(path) { return path === currentPath; },
+        isCurrentPath(path) { return path === getActivePath(); },
+
+        // Sprint 68: exposed to the template so the trash button can
+        // show a clearer ``:title`` ("Close this notebook in every
+        // tab first") than the Sprint-67 "close this notebook first".
+        isPathOpen(path) { return !!isPathOpenInAnyTab(path); },
 
         // New ─────────────────────────────────────────────────────────
 
@@ -238,7 +274,15 @@ export function createFileTreeSlice({ currentPath }) {
                     return;
                 }
                 this.newFileOpen = false;
-                window.location.assign('/notebook/editor?path=' + encodeURIComponent(path));
+                // Sprint 68: a fresh create should surface as a new
+                // tab immediately.  Reload the tree first so the
+                // sidebar picks up the new row, then hand off to the
+                // shell via the same ``pql:open-tab`` contract the
+                // row-click path uses.
+                await this.reloadTree();
+                document.dispatchEvent(new CustomEvent('pql:open-tab', {
+                    detail: { path },
+                }));
             } catch (e) {
                 this.newFileError = 'Create failed: ' + (e.message || e);
             } finally {
@@ -286,14 +330,15 @@ export function createFileTreeSlice({ currentPath }) {
                     return;
                 }
                 this.renameFileOpen = false;
-                if (oldPath === currentPath) {
-                    // Editor's ``path`` prop, kernel session key, and
-                    // autosave target all derive from the URL at page
-                    // load; hard-reload keeps them in sync without
-                    // reinventing redirect-while-connected plumbing.
-                    window.location.assign('/notebook/editor?path=' + encodeURIComponent(newPath));
-                    return;
-                }
+                // Sprint 68: fire the event *before* reloadTree so
+                // the shell rebinds open tabs to the new path first;
+                // the kernel registry keys by ``(user_id, path)`` so
+                // the shell updates its internal label + URL, no
+                // server-side rename hop is needed beyond the one
+                // just performed.
+                document.dispatchEvent(new CustomEvent('pql:file-renamed', {
+                    detail: { oldPath, newPath },
+                }));
                 await this.reloadTree();
             } catch (e) {
                 this.renameFileError = 'Rename failed: ' + (e.message || e);
@@ -305,7 +350,11 @@ export function createFileTreeSlice({ currentPath }) {
         // Delete ──────────────────────────────────────────────────────
 
         beginDeleteNotebook(path) {
-            if (path === currentPath) return; // Trash stays disabled for the open file.
+            // Sprint 68: trash is disabled while the path is open in
+            // any tab.  Silently no-op guards against a race where the
+            // user clicks the button in the moment between a tab
+            // closing and the tree refreshing.
+            if (isPathOpenInAnyTab(path)) return;
             this.deleteFilePath = path;
             this.deleteFileError = null;
             this.deleteFileBusy = false;
@@ -336,6 +385,9 @@ export function createFileTreeSlice({ currentPath }) {
                     return;
                 }
                 this.deleteFileOpen = false;
+                document.dispatchEvent(new CustomEvent('pql:file-deleted', {
+                    detail: { path },
+                }));
                 await this.reloadTree();
             } catch (e) {
                 this.deleteFileError = 'Delete failed: ' + (e.message || e);

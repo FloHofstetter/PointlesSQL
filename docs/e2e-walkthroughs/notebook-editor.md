@@ -616,3 +616,229 @@ Replayed Parts A–H in Firefox after the fix — all four modals
 six Sprint-67 sidebar flows (render, toggle, open, new, rename-
 current-file-hard-reload, delete-other-file-tree-refresh) all
 pass.
+
+## Part I — Sprint 68: multi-notebook tab bar
+
+Phase 12.7 fourth sprint adds a tab bar above the editor so the
+user can keep several notebooks open in one page and switch
+between them without a reload.  Each tab hosts its own Monaco
+editor + kernel WS + LSP WS — the Sprint-65 closure-ref factory
+is already N-instance-safe, and the Sprint-66 affordance machinery
+is editor-scoped (not model-scoped), so swapping tabs is a CSS
+``display`` flip, not a Monaco teardown.
+
+Setup: start with two ``.py`` notebooks in the workspace
+(e.g. ``scratch.py`` and ``scratch/tab-b.py``).  Clear
+``localStorage['pql.nbedit.tabs.v1']`` before each replay so tab
+hydration starts from a known state.
+
+1. **Tab bar on first open** — navigate to
+   ``/notebook/editor?path=scratch.py``.  Expect:
+   - A horizontal tab strip directly below the nav bar with one
+     tab labelled ``scratch.py`` (the basename of the URL path).
+   - The tab has the "active" visual treatment (filled
+     background + a thin bottom border in the Bootstrap primary
+     colour).
+   - An ``×`` close button appears on hover of the tab.
+   - No dirty dot (the file was just saved / just materialised).
+   - The Files sidebar toggle lives in the tab-bar's right-side
+     area, **not** in the per-tab toolbar (the sidebar is
+     shell-scoped, not tab-scoped).
+
+2. **Open a second tab from the sidebar** — with the Files
+   sidebar visible, click ``scratch/tab-b.py``.  Expect:
+   - No full page reload (the URL in the address bar stays on
+     ``?path=scratch.py``, and the network log shows exactly one
+     extra request: ``GET /api/notebook/doc?path=scratch/tab-b.py``).
+   - A second tab slides in to the right; it becomes active.
+   - The first tab's chrome loses the "active" styling but the
+     tab itself stays in the strip.
+   - The first tab's Monaco editor + kernel WS + LSP WS are
+     preserved (confirm: ``monaco.editor.getEditors().length ===
+     2`` in the console; ``monaco.editor.getModels().length === 2``;
+     neither editor is disposed).
+
+3. **Switch back and forth preserves state** — type
+   ``x = 1`` in ``tab-b.py``'s editor, switch to ``scratch.py``,
+   type ``y = 2``, switch back to ``tab-b.py``.  Expect:
+   - Each tab's cursor position + buffer content is intact.
+   - Each tab's toolbar shows its own kernel status + Pyright
+     status (both independently ``ready``).
+   - The Variable Explorer in each tab is populated from that
+     tab's own kernel (``x`` in one tab's panel, ``y`` in the
+     other).
+
+4. **Dirty dot on the tab chrome** — type into ``scratch.py``'s
+   editor and assert the dirty dot (a small ``•`` in the tab)
+   appears within one frame.  Wait 1.5 s for autosave; the dot
+   disappears once ``saveState`` flips to ``saved``.  The dot
+   reflects the tab's own dirty state, not the active tab's —
+   switching away does not hide it.
+
+5. **Close a clean tab** — click the ``×`` on ``scratch/tab-b.py``.
+   Expect:
+   - No confirmation prompt (the tab is clean).
+   - The tab disappears from the strip.
+   - The active tab becomes the left neighbour
+     (``scratch.py``).
+   - ``localStorage['pql.nbedit.tabs.v1']`` now lists only
+     ``scratch.py``.
+   - The Monaco editor + kernel WS for ``tab-b.py`` are torn
+     down (``monaco.editor.getEditors().length === 1``).
+
+6. **Close a dirty tab — confirm modal** — open ``tab-b.py``
+   again, type a character to flip it dirty, then click its
+   ``×`` before autosave fires.  Expect:
+   - A Bootstrap modal opens titled "Unsaved changes" with three
+     buttons: Cancel, Discard & close, Save & close.
+   - The modal uses the Sprint-67 ``:class="{ 'd-block': flag }"``
+     pattern (BUG-67-01); on off→on→off transitions the modal
+     stays visible (``x-show`` strips the inline ``display:block``
+     and Bootstrap's ``.modal { display: none }`` cascades).
+   - ``Cancel`` dismisses the modal and leaves the tab in place.
+   - ``Discard & close`` closes the tab without saving.
+   - ``Save & close`` flushes ``POST /api/notebook/doc`` first,
+     waits for the save to resolve, then closes.  If the save
+     errors, the modal stays open and the error toast surfaces
+     via the per-tab ``save()`` handler.
+
+7. **localStorage persistence across reload** — with two tabs
+   open (``scratch.py`` active, ``tab-b.py`` lazy), reload the
+   page.  Expect:
+   - Both tabs rehydrate from ``localStorage['pql.nbedit.tabs.v1']``
+     + the URL's ``?path=…`` overrides the stored ``active``.
+   - The URL-matching tab is mounted eagerly (Monaco + kernel
+     up within ~2 s).
+   - The non-active tab is present in the strip but **lazy** —
+     its inner ``x-if`` stays false, no second Monaco is created,
+     no second kernel WS opens.  Verify via
+     ``monaco.editor.getEditors().length === 1`` immediately
+     post-reload.
+   - Click the lazy tab: within ~1.5 s, a second Monaco is
+     created, ``GET /api/notebook/doc?path=…`` fires, and the
+     tab's kernel/Pyright handshake begins.  Subsequent switches
+     back to the eager tab are free (no re-mount).
+
+8. **Kernel sharing for two tabs of the same file** — click
+   ``scratch.py`` in the sidebar while ``scratch.py`` is already
+   open as a tab.  Expect:
+   - ``openTab('scratch.py')`` short-circuits (the path is
+     already open) → the existing tab becomes active, no second
+     tab added.
+   - No extra kernel WS opens because the shell detected the
+     duplicate path.
+   - This is the frontend counterpart of the kernel registry's
+     ``(user_id, path)`` keying (Sprint 63): even if the
+     frontend *had* opened a second tab for the same path, the
+     server would hand both WS subscribers the same
+     ``KernelSession``.  We verify this server-side invariant is
+     preserved end-to-end by instrumenting
+     ``kernel_registry._sessions`` and asserting exactly one
+     ``KernelSession`` exists for a given ``(user_id,
+     'scratch.py')`` key across the lifetime of the test.
+
+9. **Rename an open notebook updates the tab chrome** — with
+   ``scratch/tab-b.py`` open in a tab, hover its row in the
+   sidebar → pencil icon → rename to ``scratch/tab-b-renamed.py``.
+   Expect:
+   - The sidebar's ``PATCH /api/notebooks/rename`` returns 200.
+   - The tab chrome updates in place: label flips to
+     ``tab-b-renamed.py``; its DOM tab id stays stable
+     (``tab:scratch/tab-b.py`` → ``tab:scratch/tab-b-renamed.py``?
+     No — the shell *updates* the tab's ``path`` + ``label``
+     but the ``id`` stays the Sprint-68-stable-per-session
+     value to keep Monaco + kernel WS alive across the rename).
+   - No full-page reload — the Sprint-67 rename-current-file
+     hard-reload is replaced by an in-place event (``pql:file-
+     renamed``) so Monaco + kernel survive.
+   - ``localStorage`` now lists the new path.
+
+10. **Delete an open notebook closes the tab silently** — in the
+    sidebar, hover a non-active open tab's row (e.g. the other
+    open ``.py``) → the trash icon is **disabled** (tooltip:
+    ``Close this notebook in every tab first``).  Click the
+    matching tab's ``×`` to close it, then click the row's
+    trash.  Confirm delete.  Expect:
+    - ``DELETE /api/notebooks?path=…`` returns 200.
+    - The sidebar row disappears (tree refresh).
+    - If the file had still been open in any tab at the moment
+      the sidebar emits ``pql:file-deleted``, the shell silently
+      closes the matching tab (no confirm, no toast — the file
+      is gone on disk, preserving an orphan tab confuses the
+      user).
+
+11. **Tab cap / overflow** — open tabs until the ten-tab cap is
+    reached; the eleventh call produces a toast
+    ``Tab limit reached (10). Close a tab before opening
+    another.`` and the new tab is not added.  With many tabs
+    open, the tab strip overflows horizontally with
+    ``overflow-x: auto`` — no dropdown overflow menu.
+
+### What shipped for Sprint 68
+
+- [pointlessql/api/main.py](../../pointlessql/api/main.py) —
+  new ``GET /api/notebook/doc`` endpoint returning the same
+  ``{cells, dirty, outputs}`` bundle the HTML route embeds
+  (via shared ``_build_notebook_doc_bundle`` helper).  The
+  only backend change in this otherwise frontend-only sprint.
+- [frontend/js/notebook/editor_shell.js](../../frontend/js/notebook/editor_shell.js)
+  — **new** module: Alpine factory ``createNotebookEditorShell``
+  owning the tabs model, activeTabId, close-confirm modal,
+  localStorage persistence, and the cross-scope event bus
+  (``pql:open-tab`` / ``pql:file-renamed`` / ``pql:file-
+  deleted`` / ``pql:tab-state-changed`` / ``pql:save-tab``).
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — renamed ``createNotebookEditor`` → ``createNotebookTabEditor``;
+  added ``tabId`` + optional ``initial`` + optional
+  ``bundleLoader`` args; moved cell/output initialisation into
+  ``mount()`` so lazy tabs bootstrap on first activation; emits
+  ``pql:tab-state-changed`` for ``mounted`` / ``dirty`` /
+  ``saveState`` transitions so the shell can keep tab chrome
+  in sync without polling a proxy.
+- [frontend/js/notebook/bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+  — two factories registered on ``window``:
+  ``notebookEditorShell`` (outer scope) and
+  ``notebookTabEditor`` (per-tab scope).  Each has its own pre-
+  mount stub scope to avoid the BUG-64-02 class of
+  pre-mount-warning spam.
+- [frontend/js/notebook/file_tree.js](../../frontend/js/notebook/file_tree.js)
+  — API reshaped to accept ``getActivePath`` + ``isPathOpenInAnyTab``
+  callbacks instead of a static ``currentPath``; navigation-like
+  methods (``openNotebook``, ``submitCreateNotebook``,
+  ``submitRenameNotebook``, ``submitDeleteNotebook``) dispatch
+  CustomEvents on ``document`` instead of calling
+  ``window.location.assign``.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — outer ``x-data="notebookEditorShell(...)"`` wrapper; new
+  ``.pql-nbedit-tabbar`` above the layout; tab panes via
+  ``<template x-for="tab in tabs">`` with inner
+  ``x-data="notebookTabEditor(...)"`` scopes and lazy-mount
+  ``x-if="tab.mounted || tab.id === activeTabId"``; new
+  close-confirm modal (``:class`` gated per BUG-67-01).  Files
+  toggle moved from per-tab toolbar to shell-level tab-bar.
+- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden list to cover ``this._tabRefs`` and
+  ``this._tabFactories`` so a future temptation to aggregate
+  per-tab closure bags onto the shell's Alpine proxy trips CI.
+
+### What the replay caught
+
+**Tab-mounted flag lost during stub→real scope swap.**  The
+bootstrap stub seeds ``tabs = [seedTab]`` synchronously with
+``mounted: false``.  The template's pre-mount ``x-init="tab.mounted
+= true; mount()"`` sets the flag on the seed object, but the
+subsequent ``editor_shell.js`` import + ``_hydrateTabs()`` replaces
+the tabs array wholesale — the flag is dropped on the floor.
+Alpine's ``:key="tab.id"`` diff reuses the DOM element so x-init
+does **not** re-fire, leaving ``tab.mounted: false`` on the live
+tab.  Net effect: opening a second tab makes the first tab's
+``x-if`` (``tab.mounted || active``) evaluate false, Alpine
+unmounts the pane, Monaco + kernel are torn down mid-session.
+
+Fix: the per-tab factory fires ``pql:tab-state-changed { mounted:
+true }`` **synchronously** at the top of ``mount()``, before any
+async Monaco/kernel/LSP work.  The shell's listener updates
+``tab.mounted`` in the tabs array.  Discovered during Part I
+step 2 replay when a second-tab-open visibly blanked the first
+tab — the fix landed in the same sprint before the walkthrough
+went green.

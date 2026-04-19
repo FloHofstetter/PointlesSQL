@@ -52,6 +52,9 @@
     .pql-nbedit-md-preview a { color: var(--bs-info); }
     .pql-nbedit-layout { display: flex; flex: 1 1 auto; min-height: 0; }
     .pql-nbedit-editor-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+    .pql-nbedit-panes { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    .pql-nbedit-pane { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+    .pql-nbedit-pane-inner { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
     .pql-nbedit-vars { width: 320px; border-left: 1px solid var(--bs-border-color);
                        overflow-y: auto; background: var(--bs-body-bg); padding: 0.5rem 0.75rem; }
     /* Sprint 67 — file-tree sidebar, mirror of the Variables panel on the left. */
@@ -177,120 +180,113 @@
         border-style: solid; color: var(--bs-info);
         border-color: var(--bs-info); background: rgba(13, 110, 253, 0.08);
     }
+
+    /* Sprint 68: multi-notebook tab bar */
+    .pql-nbedit-tabbar {
+        display: flex; align-items: stretch;
+        gap: 2px; padding: 0 0.5rem;
+        border-bottom: 1px solid var(--bs-border-color);
+        background: var(--bs-tertiary-bg, rgba(255, 255, 255, 0.02));
+        overflow-x: auto; overflow-y: hidden;
+        min-height: 34px;
+    }
+    .pql-nbedit-tab {
+        display: flex; align-items: center; gap: 0.35rem;
+        padding: 0 0.5rem 0 0.75rem;
+        border-right: 1px solid var(--bs-border-color);
+        font-size: 12.5px; cursor: pointer;
+        color: var(--bs-secondary-color);
+        background: transparent;
+        max-width: 220px; min-width: 100px;
+        white-space: nowrap;
+        transition: background-color 0.08s ease-in-out;
+    }
+    .pql-nbedit-tab:hover { background: rgba(255, 255, 255, 0.04); }
+    .pql-nbedit-tab-active {
+        background: var(--bs-body-bg); color: var(--bs-body-color);
+        box-shadow: inset 0 -2px 0 var(--bs-primary);
+    }
+    .pql-nbedit-tab-name {
+        font-family: var(--bs-font-monospace);
+        overflow: hidden; text-overflow: ellipsis;
+        flex: 1 1 auto; min-width: 0;
+    }
+    .pql-nbedit-tab-dot {
+        color: var(--bs-warning); font-size: 16px; line-height: 1;
+        flex: 0 0 auto;
+    }
+    .pql-nbedit-tab-close {
+        border: 0; background: transparent;
+        color: var(--bs-secondary-color);
+        font-size: 16px; line-height: 1;
+        padding: 0 4px; border-radius: 3px;
+        flex: 0 0 auto; cursor: pointer;
+    }
+    .pql-nbedit-tab-close:hover {
+        background: rgba(220, 53, 69, 0.2); color: var(--bs-danger);
+    }
+    .pql-nbedit-tab-empty {
+        color: var(--bs-secondary-color); font-size: 12.5px;
+        padding: 0.5rem 1rem; font-style: italic;
+    }
+    .pql-nbedit-tabbar-right {
+        margin-left: auto; display: flex; align-items: center; gap: 0.25rem;
+        padding: 0 0.25rem;
+    }
+    .pql-nbedit-tabbar-btn {
+        border: 0; background: transparent;
+        color: var(--bs-secondary-color);
+        padding: 4px 8px; border-radius: 3px;
+        font-size: 13px; line-height: 1; cursor: pointer;
+    }
+    .pql-nbedit-tabbar-btn:hover { background: rgba(13, 110, 253, 0.08); color: var(--bs-info); }
+    .pql-nbedit-tabbar-btn.active { background: rgba(13, 110, 253, 0.14); color: var(--bs-primary); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="pql-nbedit-root"
-     x-data='notebookEditor({
-         path: {{ notebook_path|tojson }},
-         initial: {{ initial_document|tojson }}
+     x-data='notebookEditorShell({
+         initialPath: {{ notebook_path|tojson }},
+         initialBundle: {{ initial_document|tojson }}
      })'
      x-init="mount()">
-    <div class="pql-nbedit-toolbar">
-        <span class="pql-nbedit-path" x-text="path"></span>
-        <span class="pql-nbedit-status small"
-              x-text="{
-                  'saved': 'Saved',
-                  'saving': 'Saving…',
-                  'pending': 'Unsaved changes',
-                  'error': 'Save failed',
-                  'idle': '',
-              }[saveState]"
-              :class="{
-                  'text-success': saveState === 'saved',
-                  'text-warning': saveState === 'pending' || saveState === 'saving',
-                  'text-danger': saveState === 'error',
-              }"></span>
-        <span class="small"
-              x-text="{
-                  'connecting': 'Connecting kernel…',
-                  'ready': 'Kernel ready',
-                  'restarting': 'Restarting…',
-                  'disconnected': 'Kernel disconnected',
-                  'error': 'Kernel error',
-              }[kernelStatus]"
-              :class="{
-                  'text-success': kernelStatus === 'ready',
-                  'text-warning': kernelStatus === 'connecting' || kernelStatus === 'restarting',
-                  'text-danger': kernelStatus === 'disconnected' || kernelStatus === 'error',
-              }"></span>
-        <span class="small"
-              x-text="{
-                  'connecting': 'Loading Pyright…',
-                  'ready': 'Pyright ready',
-                  'error': 'Pyright error',
-                  'unavailable': 'Pyright unavailable',
-              }[lspStatus]"
-              :class="{
-                  'text-success': lspStatus === 'ready',
-                  'text-warning': lspStatus === 'connecting',
-                  'text-danger': lspStatus === 'error',
-                  'text-muted': lspStatus === 'unavailable',
-              }"></span>
-        <div class="ms-auto d-flex align-items-center gap-2">
+
+    <!-- Sprint 68: tab bar + left-sidebar toggle live in the shell scope.
+         The per-tab toolbar (save, run, interrupt, catalog, variables, etc.)
+         moves inside the tab pane so it binds cleanly to the active tab's
+         Alpine scope. -->
+    <div class="pql-nbedit-tabbar">
+        <template x-for="tab in tabs" :key="tab.id">
+            <div class="pql-nbedit-tab"
+                 :class="{
+                     'pql-nbedit-tab-active': tab.id === activeTabId,
+                     'pql-nbedit-tab-dirty': tab.dirty,
+                 }"
+                 :title="tab.path"
+                 @click="activateTab(tab.id)">
+                <span class="pql-nbedit-tab-name" x-text="tab.label"></span>
+                <span class="pql-nbedit-tab-dot" x-show="tab.dirty" x-cloak>&bull;</span>
+                <button type="button"
+                        class="pql-nbedit-tab-close"
+                        @click.stop="requestCloseTab(tab.id)"
+                        title="Close tab">&times;</button>
+            </div>
+        </template>
+        <span class="pql-nbedit-tab-empty" x-show="tabs.length === 0" x-cloak>
+            No notebooks open. Use the file tree to open one.
+        </span>
+        <div class="pql-nbedit-tabbar-right">
             <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @click="addCellBelow()"
-                    :disabled="loading">
-                <i class="bi bi-plus-lg me-1"></i>Add cell
-            </button>
-            <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @click="save()"
-                    :disabled="loading"
-                    title="Force-flush (autosave normally handles this)">
-                <i class="bi bi-save me-1"></i>Save
-            </button>
-            <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @click="clearCurrentCellOutputs()"
-                    title="Clear outputs of the cell at the cursor (Sprint 60: also purges persisted rows)">
-                <i class="bi bi-eraser me-1"></i>Clear cell
-            </button>
-            <button type="button"
-                    class="btn btn-sm btn-outline-warning"
-                    @click="interruptKernel()"
-                    :disabled="kernelStatus !== 'ready'"
-                    title="Send SIGINT — raises KeyboardInterrupt in the kernel">
-                <i class="bi bi-stop-fill me-1"></i>Interrupt
-            </button>
-            <button type="button"
-                    class="btn btn-sm btn-outline-danger"
-                    @click="restartKernel()"
-                    :disabled="kernelStatus !== 'ready' && kernelStatus !== 'error' && kernelStatus !== 'disconnected'"
-                    title="Restart the kernel and clear all outputs">
-                <i class="bi bi-arrow-clockwise me-1"></i>Restart
-            </button>
-            <button type="button"
-                    class="btn btn-sm btn-outline-secondary"
-                    @click="openCatalogInsert()"
-                    title="Insert from catalog (Ctrl+Shift+I)">
-                <i class="bi bi-database-add me-1"></i>Catalog
-            </button>
-            <button type="button"
-                    class="btn btn-sm"
-                    :class="filesVisible ? 'btn-primary' : 'btn-outline-secondary'"
+                    class="pql-nbedit-tabbar-btn"
+                    :class="{ active: filesVisible }"
                     @click="toggleFilesSidebar()"
                     title="Toggle file-tree sidebar">
-                <i class="bi bi-folder2 me-1"></i>Files
-            </button>
-            <button type="button"
-                    class="btn btn-sm"
-                    :class="variablesVisible ? 'btn-primary' : 'btn-outline-secondary'"
-                    @click="toggleVariables()"
-                    title="Toggle variable explorer">
-                <i class="bi bi-braces-asterisk me-1"></i>Variables
-            </button>
-            <button type="button"
-                    class="btn btn-sm btn-primary"
-                    @click="runCurrentCell()"
-                    :disabled="kernelStatus !== 'ready'"
-                    title="Run cell at cursor (Shift+Enter)">
-                <i class="bi bi-play-fill me-1"></i>Run cell
+                <i class="bi bi-folder2"></i>
             </button>
         </div>
     </div>
+
     <div class="pql-nbedit-layout">
         <aside class="pql-nbedit-files" x-show="filesVisible" x-cloak>
             <div class="d-flex justify-content-between align-items-center">
@@ -379,8 +375,8 @@
                                     <button type="button"
                                             class="pql-nbedit-file-action pql-nbedit-file-trash"
                                             @click="beginDeleteNotebook(row.path)"
-                                            :disabled="isCurrentPath(row.path)"
-                                            :title="isCurrentPath(row.path) ? 'Close this notebook first' : 'Delete'">
+                                            :disabled="isPathOpen(row.path)"
+                                            :title="isPathOpen(row.path) ? 'Close this notebook in every tab first' : 'Delete'">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </span>
@@ -390,90 +386,216 @@
                 </template>
             </ul>
         </aside>
-        <div class="pql-nbedit-editor-wrap">
-            <div class="pql-nbedit-editor" x-ref="editor"></div>
-        </div>
-        <aside class="pql-nbedit-vars" x-show="variablesVisible" x-cloak>
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="m-0">Variables</h6>
-                <button type="button" class="btn btn-sm btn-link p-0"
-                        @click="_refreshVariables()"
-                        :disabled="kernelStatus !== 'ready'"
-                        title="Refresh">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-            </div>
-            <div class="text-muted small mt-1"
-                 x-show="Object.keys(variables).length === 0">
-                No user variables yet. Run a cell that defines one.
-            </div>
-            <template x-for="[name, info] in Object.entries(variables)" :key="name">
-                <div class="pql-var">
-                    <div class="pql-var-head">
-                        <span class="pql-var-name" x-text="name"></span>
-                        <span class="pql-var-type" x-text="info.type"></span>
-                    </div>
-                    <div class="pql-var-shape" x-show="info.shape"
-                         x-text="info.shape ? 'shape: ' + JSON.stringify(info.shape) : ''"></div>
-                    <div class="pql-var-repr" x-show="info.repr && !info.preview_html"
-                         x-text="info.repr"></div>
-                    <div x-show="info.preview_html" x-html="info.preview_html"></div>
+
+        <!-- Sprint 68: tab panes.  Each pane holds its own Alpine
+             ``notebookTabEditor`` scope with its own Monaco + kernel
+             WS + LSP + toolbar + variables panel.  Lazy-mount trick:
+             the inner ``x-if`` keeps the element unmounted until the
+             tab is first activated; on first activation the template
+             sets ``tab.mounted = true`` in the shell scope so x-if
+             stays true forever after — Monaco + kernel survive
+             subsequent tab switches (only CSS display flips). -->
+        <div class="pql-nbedit-panes">
+            <template x-for="tab in tabs" :key="tab.id">
+                <div class="pql-nbedit-pane"
+                     x-show="tab.id === activeTabId"
+                     x-cloak>
+                    <template x-if="tab.mounted || tab.id === activeTabId">
+                        <div class="pql-nbedit-pane-inner"
+                             x-data='notebookTabEditor({
+                                 path: tab.path,
+                                 tabId: tab.id,
+                                 initial: tab.bundle,
+                                 bundleLoader: bundleLoaderFor(tab.path)
+                             })'
+                             x-init="tab.mounted = true; mount()">
+                            <div class="pql-nbedit-toolbar">
+                                <span class="pql-nbedit-path" x-text="path"></span>
+                                <span class="pql-nbedit-status small"
+                                      x-text="{
+                                          'saved': 'Saved',
+                                          'saving': 'Saving…',
+                                          'pending': 'Unsaved changes',
+                                          'error': 'Save failed',
+                                          'idle': '',
+                                      }[saveState]"
+                                      :class="{
+                                          'text-success': saveState === 'saved',
+                                          'text-warning': saveState === 'pending' || saveState === 'saving',
+                                          'text-danger': saveState === 'error',
+                                      }"></span>
+                                <span class="small"
+                                      x-text="{
+                                          'connecting': 'Connecting kernel…',
+                                          'ready': 'Kernel ready',
+                                          'restarting': 'Restarting…',
+                                          'disconnected': 'Kernel disconnected',
+                                          'error': 'Kernel error',
+                                      }[kernelStatus]"
+                                      :class="{
+                                          'text-success': kernelStatus === 'ready',
+                                          'text-warning': kernelStatus === 'connecting' || kernelStatus === 'restarting',
+                                          'text-danger': kernelStatus === 'disconnected' || kernelStatus === 'error',
+                                      }"></span>
+                                <span class="small"
+                                      x-text="{
+                                          'connecting': 'Loading Pyright…',
+                                          'ready': 'Pyright ready',
+                                          'error': 'Pyright error',
+                                          'unavailable': 'Pyright unavailable',
+                                      }[lspStatus]"
+                                      :class="{
+                                          'text-success': lspStatus === 'ready',
+                                          'text-warning': lspStatus === 'connecting',
+                                          'text-danger': lspStatus === 'error',
+                                          'text-muted': lspStatus === 'unavailable',
+                                      }"></span>
+                                <div class="ms-auto d-flex align-items-center gap-2">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="addCellBelow()"
+                                            :disabled="loading">
+                                        <i class="bi bi-plus-lg me-1"></i>Add cell
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="save()"
+                                            :disabled="loading"
+                                            title="Force-flush (autosave normally handles this)">
+                                        <i class="bi bi-save me-1"></i>Save
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="clearCurrentCellOutputs()"
+                                            title="Clear outputs of the cell at the cursor (Sprint 60: also purges persisted rows)">
+                                        <i class="bi bi-eraser me-1"></i>Clear cell
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-warning"
+                                            @click="interruptKernel()"
+                                            :disabled="kernelStatus !== 'ready'"
+                                            title="Send SIGINT — raises KeyboardInterrupt in the kernel">
+                                        <i class="bi bi-stop-fill me-1"></i>Interrupt
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger"
+                                            @click="restartKernel()"
+                                            :disabled="kernelStatus !== 'ready' && kernelStatus !== 'error' && kernelStatus !== 'disconnected'"
+                                            title="Restart the kernel and clear all outputs">
+                                        <i class="bi bi-arrow-clockwise me-1"></i>Restart
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            @click="openCatalogInsert()"
+                                            title="Insert from catalog (Ctrl+Shift+I)">
+                                        <i class="bi bi-database-add me-1"></i>Catalog
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm"
+                                            :class="variablesVisible ? 'btn-primary' : 'btn-outline-secondary'"
+                                            @click="toggleVariables()"
+                                            title="Toggle variable explorer">
+                                        <i class="bi bi-braces-asterisk me-1"></i>Variables
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-primary"
+                                            @click="runCurrentCell()"
+                                            :disabled="kernelStatus !== 'ready'"
+                                            title="Run cell at cursor (Shift+Enter)">
+                                        <i class="bi bi-play-fill me-1"></i>Run cell
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="pql-nbedit-editor-wrap">
+                                <div class="pql-nbedit-editor" x-ref="editor"></div>
+                            </div>
+                            <aside class="pql-nbedit-vars" x-show="variablesVisible" x-cloak>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0">Variables</h6>
+                                    <button type="button" class="btn btn-sm btn-link p-0"
+                                            @click="_refreshVariables()"
+                                            :disabled="kernelStatus !== 'ready'"
+                                            title="Refresh">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </button>
+                                </div>
+                                <div class="text-muted small mt-1"
+                                     x-show="Object.keys(variables).length === 0">
+                                    No user variables yet. Run a cell that defines one.
+                                </div>
+                                <template x-for="[name, info] in Object.entries(variables)" :key="name">
+                                    <div class="pql-var">
+                                        <div class="pql-var-head">
+                                            <span class="pql-var-name" x-text="name"></span>
+                                            <span class="pql-var-type" x-text="info.type"></span>
+                                        </div>
+                                        <div class="pql-var-shape" x-show="info.shape"
+                                             x-text="info.shape ? 'shape: ' + JSON.stringify(info.shape) : ''"></div>
+                                        <div class="pql-var-repr" x-show="info.repr && !info.preview_html"
+                                             x-text="info.repr"></div>
+                                        <div x-show="info.preview_html" x-html="info.preview_html"></div>
+                                    </div>
+                                </template>
+                            </aside>
+
+                            <!-- Sprint 67: Catalog-insert modal stays inside
+                                 the tab scope because it inserts text into
+                                 the tab's Monaco instance.  BUG-67-01 fix:
+                                 ``:class`` gates ``.d-block`` instead of
+                                 x-show on ``.modal``. -->
+                            <div class="modal fade show pql-nbedit-catalog-modal"
+                                 :class="{ 'd-block': catalogInsertOpen }"
+                                 x-cloak
+                                 style="background: rgba(0,0,0,0.55);"
+                                 tabindex="-1"
+                                 @keydown.escape.window="catalogInsertOpen = false">
+                                <div class="modal-dialog modal-dialog-scrollable">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Insert from catalog</h5>
+                                            <button type="button" class="btn-close" @click="catalogInsertOpen = false"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <input type="text" class="form-control form-control-sm mb-2"
+                                                   placeholder="Filter tables (cat.schema.tbl)"
+                                                   x-model="catalogInsertQuery"
+                                                   x-effect="catalogInsertOpen && $el.focus()">
+                                            <div class="text-muted small mb-1"
+                                                 x-show="!catalogTablesLoaded">
+                                                Loading catalog tree…
+                                            </div>
+                                            <div class="text-muted small mb-1"
+                                                 x-show="catalogTablesEmpty">
+                                                No tables found.
+                                            </div>
+                                            <div class="list-group list-group-flush">
+                                                <template x-for="tbl in filteredCatalogTables" :key="tbl.full">
+                                                    <a href="#"
+                                                       class="list-group-item list-group-item-action bg-body"
+                                                       @click.prevent="pickCatalogTable(tbl)">
+                                                        <code x-text="tbl.full"></code>
+                                                    </a>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button class="btn btn-secondary btn-sm" @click="catalogInsertOpen = false">Cancel</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </template>
-        </aside>
-    </div>
-
-    <!-- Insert-from-Catalog modal (Ctrl+Shift+I) -->
-    <!-- Sprint 67: `:class="{ 'd-block': ... }"` instead of x-show
-         so Bootstrap's ``.d-block`` utility (``display: block
-         !important``) beats its own ``.modal { display: none }``
-         rule.  Alpine 3.14's x-show strips the inline display:block
-         on true→false→true transitions, leaving the modal hidden
-         behind the CSS default — same class of bug x-show has
-         against ``.modal`` across Alpine versions. -->
-    <div class="modal fade show pql-nbedit-catalog-modal"
-         :class="{ 'd-block': catalogInsertOpen }"
-         x-cloak
-         style="background: rgba(0,0,0,0.55);"
-         tabindex="-1"
-         @keydown.escape.window="catalogInsertOpen = false">
-        <div class="modal-dialog modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Insert from catalog</h5>
-                    <button type="button" class="btn-close" @click="catalogInsertOpen = false"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="text" class="form-control form-control-sm mb-2"
-                           placeholder="Filter tables (cat.schema.tbl)"
-                           x-model="catalogInsertQuery"
-                           x-effect="catalogInsertOpen && $el.focus()">
-                    <div class="text-muted small mb-1"
-                         x-show="!catalogTablesLoaded">
-                        Loading catalog tree…
-                    </div>
-                    <div class="text-muted small mb-1"
-                         x-show="catalogTablesEmpty">
-                        No tables found.
-                    </div>
-                    <div class="list-group list-group-flush">
-                        <template x-for="tbl in filteredCatalogTables" :key="tbl.full">
-                            <a href="#"
-                               class="list-group-item list-group-item-action bg-body"
-                               @click.prevent="pickCatalogTable(tbl)">
-                                <code x-text="tbl.full"></code>
-                            </a>
-                        </template>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary btn-sm" @click="catalogInsertOpen = false">Cancel</button>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Sprint 67: New notebook modal -->
+    <!-- Sprint 67: file-tree modals (New / Rename / Delete) live at
+         shell scope because the tree is shell-scoped.  Sprint 68:
+         added Close-confirm modal below them. -->
+
+    <!-- New notebook modal -->
     <div class="modal fade show"
          :class="{ 'd-block': newFileOpen }"
          x-cloak
@@ -516,7 +638,7 @@
         </div>
     </div>
 
-    <!-- Sprint 67: Rename notebook modal -->
+    <!-- Rename notebook modal -->
     <div class="modal fade show"
          :class="{ 'd-block': renameFileOpen }"
          x-cloak
@@ -560,7 +682,7 @@
         </div>
     </div>
 
-    <!-- Sprint 67: Delete confirmation modal -->
+    <!-- Delete confirmation modal -->
     <div class="modal fade show"
          :class="{ 'd-block': deleteFileOpen }"
          x-cloak
@@ -601,17 +723,60 @@
             </div>
         </div>
     </div>
+
+    <!-- Sprint 68: Close-tab-with-unsaved-changes confirmation modal -->
+    <div class="modal fade show"
+         :class="{ 'd-block': closeConfirmOpen }"
+         x-cloak
+         style="background: rgba(0,0,0,0.55);"
+         tabindex="-1"
+         @keydown.escape.window="cancelCloseConfirm()">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Unsaved changes</h5>
+                    <button type="button" class="btn-close" @click="cancelCloseConfirm()"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">This tab has unsaved changes. Close anyway?</p>
+                    <div class="font-monospace small text-muted"
+                         x-text="(tabs.find(t => t.id === closeConfirmTabId) || {}).path || ''"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm"
+                            @click="cancelCloseConfirm()"
+                            :disabled="closeConfirmBusy">Cancel</button>
+                    <button class="btn btn-outline-danger btn-sm"
+                            @click="confirmCloseTabDiscard()"
+                            :disabled="closeConfirmBusy">
+                        <i class="bi bi-trash me-1"></i>Discard &amp; close
+                    </button>
+                    <button class="btn btn-primary btn-sm"
+                            @click="confirmCloseTabSave()"
+                            :disabled="closeConfirmBusy">
+                        <template x-if="!closeConfirmBusy">
+                            <span><i class="bi bi-save me-1"></i>Save &amp; close</span>
+                        </template>
+                        <template x-if="closeConfirmBusy">
+                            <span><span class="spinner-border spinner-border-sm me-1"></span>Saving…</span>
+                        </template>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="/static/js/vendor/monaco/vs/loader.js"></script>
 {#
-  Sprint 66: classic <script> (not type="module") so
-  ``window.notebookEditor`` is registered synchronously during parse.
-  The factory lazy-imports the eleven-module ESM graph inside
-  ``mount()`` via ``import()``.  Prior art: Sprint-41 commit
-  ``b830300`` fixed the same Alpine-vs-ESM race for sql_editor.
+  Sprint 66: classic <script> (not type="module") so the factories
+  register synchronously during parse.  The factories lazy-import
+  the twelve-module ESM graph inside ``mount()`` via ``import()``.
+  Sprint 68 split the factory in two — ``notebookEditorShell``
+  (shell) and ``notebookTabEditor`` (per-tab) — both exported from
+  the same bootstrap file.
 #}
-<script src="/static/js/notebook/bootstrap.js?v=sprint67"></script>
+<script src="/static/js/notebook/bootstrap.js?v=sprint68"></script>
 {% endblock %}
