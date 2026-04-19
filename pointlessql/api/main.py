@@ -33,6 +33,7 @@ from pointlessql.api._audit_helpers import (
     record_query_async as _record_query_async,
 )
 from pointlessql.api.auth_routes import router as auth_router
+from pointlessql.api.catalog_routes import router as catalog_router
 from pointlessql.api.dependencies import (
     get_uc_client as _get_uc_client,
 )
@@ -74,7 +75,7 @@ from pointlessql.services.authorization import (
     check_privilege_from_effective,
     has_privilege,
 )
-from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
+from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
@@ -223,6 +224,7 @@ from pointlessql.api.error_handlers import register_error_handlers  # noqa: E402
 register_error_handlers(app)
 
 app.include_router(auth_router)
+app.include_router(catalog_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),
@@ -255,154 +257,8 @@ async def metrics(request: Request) -> Response:
 
 # -- JSON API routes --
 # Exceptions propagate to the centralized handler in error_handlers.py.
-
-
-@app.get("/api/tree")
-async def api_tree(request: Request) -> list[dict[str, object]]:
-    """Return the full catalog/schema/table tree for the sidebar."""
-    client = _get_uc_client(request)
-    return await client.get_tree()
-
-
-@app.get("/api/catalogs")
-async def api_catalogs(request: Request) -> list[dict[str, object]]:
-    """Return all catalogs as JSON."""
-    client = _get_uc_client(request)
-    return await client.list_catalogs()
-
-
-@app.get("/api/catalogs/{catalog_name}/schemas")
-async def api_schemas(request: Request, catalog_name: str) -> list[dict[str, object]]:
-    """Return schemas inside a catalog as JSON."""
-    client = _get_uc_client(request)
-    user = _get_user(request)
-    await check_privilege(
-        client,
-        user.get("email", ""),
-        user.get("is_admin", False),
-        "catalog",
-        catalog_name,
-        USE_CATALOG,
-    )
-    return await client.list_schemas(catalog_name)
-
-
-@app.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables")
-async def api_tables(
-    request: Request, catalog_name: str, schema_name: str
-) -> list[dict[str, object]]:
-    """Return tables inside a schema as JSON."""
-    client = _get_uc_client(request)
-    user = _get_user(request)
-    await check_privilege(
-        client,
-        user.get("email", ""),
-        user.get("is_admin", False),
-        "schema",
-        f"{catalog_name}.{schema_name}",
-        USE_SCHEMA,
-    )
-    return await client.list_tables(catalog_name, schema_name)
-
-
-_PREVIEW_ROW_LIMIT = 10
-
-
-def _preview_head(frame: Any, n: int) -> Any:
-    """Return at most *n* rows of *frame* as a pandas DataFrame.
-
-    Engine-aware: DuckDB relations expose ``limit``; polars frames
-    expose ``to_pandas``; pandas stays untouched. Keeps DuckDB lazy
-    instead of materialising the whole relation.
-
-    Args:
-        frame: Whatever :meth:`pointlessql.pql.pql.PQL.table` returned —
-            a pandas/polars frame or a DuckDB relation.
-        n: Maximum number of rows to return.
-
-    Returns:
-        A pandas DataFrame holding at most *n* rows.
-    """
-    import pandas as pd
-
-    if hasattr(frame, "limit") and hasattr(frame, "df"):
-        return frame.limit(n).df()
-    if hasattr(frame, "head"):
-        head = frame.head(n)
-        if hasattr(head, "to_pandas"):
-            return head.to_pandas()
-        return head
-    return pd.DataFrame(frame).head(n)
-
-
-def _run_table_preview(settings: Settings, principal: str, full_name: str) -> dict[str, Any]:
-    """Read up to 10 rows of a Delta table and serialise them.
-
-    Runs inside :func:`asyncio.to_thread` so the sync :class:`PQL`
-    helper does not block the event loop. Degrades gracefully on any
-    failure: a broken table must fail this card, not the page.
-
-    Args:
-        settings: Application settings (for soyuz URL + engine).
-        principal: User email forwarded as ``X-Principal``. Empty
-            string falls back to the anonymous client.
-        full_name: Three-part table name ``catalog.schema.table``.
-
-    Returns:
-        Either ``{"columns": [...], "rows": [...], "truncated": bool}``
-        on success, or ``{"error": "preview_unavailable", "detail":
-        str}`` on failure.
-    """
-    from pointlessql.pql.pql import PQL
-
-    try:
-        client = (
-            make_principal_client(settings, principal) if principal else make_soyuz_client(settings)
-        )
-        pql = PQL(client=client, settings=settings)
-        frame = pql.table(full_name)
-        df = _preview_head(frame, _PREVIEW_ROW_LIMIT + 1)
-    except Exception as exc:  # noqa: BLE001 — degrade preview card
-        logger.warning("table preview failed for %s: %s", full_name, exc)
-        return {"error": "preview_unavailable", "detail": str(exc)}
-    truncated = len(df) > _PREVIEW_ROW_LIMIT
-    df = df.head(_PREVIEW_ROW_LIMIT)
-    columns = [str(c) for c in df.columns]
-    rows = df.values.tolist()
-    return jsonable_encoder({"columns": columns, "rows": rows, "truncated": truncated})
-
-
-@app.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/preview")
-async def api_table_preview(
-    request: Request,
-    catalog_name: str,
-    schema_name: str,
-    table_name: str,
-) -> Response:
-    """Return up to 10 rows from a Delta table as JSON.
-
-    The row limit is fixed at 10 server-side — no client-tunable
-    query param, to keep one fewer attack surface. Response carries
-    ``Cache-Control: no-store`` so row data does not sit in the
-    browser disk cache after a permission revocation.
-    """
-    client = _get_uc_client(request)
-    user = _get_user(request)
-    full_name = f"{catalog_name}.{schema_name}.{table_name}"
-    effective = await client.get_effective_permissions("table", full_name)
-    check_privilege_from_effective(
-        effective,
-        user.get("email", ""),
-        user.get("is_admin", False),
-        "table",
-        full_name,
-        SELECT,
-    )
-    settings: Settings = request.app.state.settings
-    payload = await asyncio.to_thread(
-        _run_table_preview, settings, user.get("email", ""), full_name
-    )
-    return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})
+# Catalog tree routes (/api/tree, /api/catalogs, /api/catalogs/.../schemas,
+# .../tables, .../preview) live in api/catalog_routes.py since Sprint 86.
 
 
 def _short_sql_hash(sql: str) -> str:

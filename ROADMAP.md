@@ -3118,7 +3118,7 @@ PointlesSQL
 │       tests/test_alerts.py tests/test_scheduler_papermill.py``
 │       80/80 passed.
 │
-│   └── Sprint 85 — api/main.py middleware + helpers extract     ✅ done (pending-commit)
+│   ├── Sprint 85 — api/main.py middleware + helpers extract     ✅ done (7ddac5a)
 │       First api/main.py decomposition slice — lowest risk,
 │       no route logic moved.  Three new modules carved out;
 │       main.py drops 6.599 → 6.341 LOC (-258).
@@ -3152,6 +3152,45 @@ PointlesSQL
 │       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
 │       0 errors / 74 pre-existing warnings, ``pytest tests/test_csrf.py
 │       tests/test_rate_limit.py tests/test_auth.py`` 52/52 passed.
+│
+│   └── Sprint 86 — api/main.py catalog tree routes extract       ✅ done (pending-commit)
+│       Second api/main.py decomposition slice — narrowed from the
+│       sketched ``catalog/sql/queries`` triple-extract to just the
+│       catalog tree routes, to establish the route-extraction
+│       pattern cleanly before tackling the much larger SQL +
+│       queries surfaces in Sprint 86b/87.  main.py drops
+│       6.347 → 6.203 LOC (-144).
+│
+│       - ``api/catalog_routes.py`` (186 LOC) — ``APIRouter``
+│         module owning the five sidebar-driving JSON endpoints:
+│         ``/api/tree``, ``/api/catalogs``,
+│         ``/api/catalogs/{c}/schemas``,
+│         ``/api/catalogs/{c}/schemas/{s}/tables``,
+│         ``/api/catalogs/{c}/schemas/{s}/tables/{t}/preview``.
+│         Two helpers (``preview_head`` engine-aware row truncation,
+│         ``run_table_preview`` thread-pool worker) + the
+│         ``PREVIEW_ROW_LIMIT = 10`` constant moved over verbatim
+│         (just dropped underscore prefixes since they are now
+│         module-public within the new package).
+│       - ``main.py`` mount point: ``app.include_router(catalog_router)``
+│         next to the existing ``auth_router`` line.  Unused
+│         ``make_principal_client`` import dropped (only the moved
+│         preview code referenced it).
+│
+│       **Authorization preserved.** Schemas + tables endpoints
+│       still call hierarchical ``check_privilege`` (USE_CATALOG /
+│       USE_SCHEMA), preview still resolves
+│       ``effective_permissions`` once and feeds
+│       ``check_privilege_from_effective(SELECT)``.  Preview
+│       responses keep ``Cache-Control: no-store`` so revoked
+│       grants do not leak through the browser disk cache.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 74 pre-existing warnings,
+│       ``pydoclint`` 0 violations.  ``pytest -k 'catalog or
+│       tree or preview' --ignore=tests/test_jupyter.py`` 44/44
+│       passed (test_jupyter.py has a pre-existing import error
+│       unrelated to this sprint).
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

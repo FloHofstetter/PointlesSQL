@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 86: api/main.py catalog tree routes extract
+
+Second decomposition slice for ``api/main.py``. Narrowed from the
+sketched ``catalog/sql/queries`` triple-extract down to just the five
+catalog tree routes — the lowest-risk surface in the route set, used
+to validate the ``APIRouter`` extraction pattern before the much
+larger SQL execute + queries-page extracts in the next sprint.
+main.py drops 6,347 → 6,203 LOC (-144).
+
+- **New module** [catalog_routes.py](pointlessql/api/catalog_routes.py)
+  (186 LOC). Owns the five sidebar/breadcrumb endpoints
+  (``/api/tree``, ``/api/catalogs``,
+  ``/api/catalogs/{c}/schemas``,
+  ``/api/catalogs/{c}/schemas/{s}/tables``,
+  ``/api/catalogs/{c}/schemas/{s}/tables/{t}/preview``) plus the two
+  preview helpers (``preview_head`` engine-aware row truncation,
+  ``run_table_preview`` thread-pool worker) and the
+  ``PREVIEW_ROW_LIMIT = 10`` constant. Underscores dropped from the
+  helper names since they are now module-public within the new package.
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(catalog_router)``
+  added next to the existing ``auth_router`` line. Unused
+  ``make_principal_client`` import removed (only the moved preview
+  code referenced it).
+
+- **Authorization preserved.** Schemas + tables endpoints still call
+  hierarchical ``check_privilege`` (USE_CATALOG / USE_SCHEMA),
+  preview still resolves ``effective_permissions`` once and feeds
+  ``check_privilege_from_effective(SELECT)``. Preview responses keep
+  ``Cache-Control: no-store`` so revoked grants do not leak through
+  the browser disk cache.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 74 pre-existing warnings, ``pydoclint`` 0 violations,
+  ``pytest -k 'catalog or tree or preview'
+  --ignore=tests/test_jupyter.py`` 44/44 passed (test_jupyter.py has a
+  pre-existing import error unrelated to this sprint).
+
 ### Refactored — Phase 12.9 / Sprint 85: api/main.py middleware + helpers extract
 
 First decomposition slice for the 6,599-LOC ``api/main.py``. The
