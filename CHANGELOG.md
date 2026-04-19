@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 81: services/alerts.py → 4-module package
+
+Fifth backend split. The 729-LOC ``services/alerts.py`` module became
+the package ``services/alerts/`` with four sibling modules + an
+``__init__.py`` re-export shim. Pure structural refactor; no
+schema, no migration, no behaviour change.
+
+- **Four-bucket split** along the concern boundaries the file already
+  implied:
+  [crud.py](pointlessql/services/alerts/crud.py) (~340 LOC) — slug /
+  serialisation / authorisation helpers, backing-Job lifecycle
+  (``_sync_backing_job``), CRUD (``create_alert``, ``list_visible``,
+  ``get_by_slug``, ``update_by_slug``, ``delete_by_slug``).
+  [destinations.py](pointlessql/services/alerts/destinations.py)
+  (~100 LOC) — ``add_destination`` + ``delete_destination``.
+  [events.py](pointlessql/services/alerts/events.py) (~165 LOC) —
+  ``record_event`` + ``set_event_outcome`` +
+  ``list_events_for_alert`` + ``list_events_for_owner`` +
+  ``prune_events_older_than``.
+  [conditions.py](pointlessql/services/alerts/conditions.py) (~85 LOC)
+  — pure ``evaluate_condition`` + ``build_cloudevent``.
+
+- **Cross-module helpers de-underscored.** Renamed ``_serialize`` →
+  ``serialize``, ``_serialize_destination`` → ``serialize_destination``,
+  ``_can_mutate`` → ``can_mutate``: the leading underscore conveyed
+  file-private scope, which is no longer accurate now that
+  ``destinations.py`` imports them across modules. Same lesson the
+  Sprint-77 kernel_session split made explicit. ``_sync_backing_job``
+  stays underscored because it's truly internal to ``crud.py``.
+
+- **Public surface preserved.** Existing ``from pointlessql.services
+  import alerts as alerts_service`` callers (API layer line 1693,
+  scheduler line 543, tests/test_alerts.py line 19) keep working
+  through the package's ``__init__.py`` re-exports.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 0 warnings, ``pydoclint`` 0 violations,
+  ``pytest tests/test_alerts.py`` 19/19 passed.
+
 ### Refactored — Phase 12.9 / Sprint 80: models.py → 8-module package
 
 Fourth backend split — by far the highest-stakes mechanical refactor

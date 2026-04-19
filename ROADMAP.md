@@ -2909,7 +2909,7 @@ PointlesSQL
 │       0 errors / 0 warnings, ``pydoclint`` 0 violations, smoke
 │       import OK.  No tests directly import this module.
 │
-│   └── Sprint 80 — models.py → 8-module package                ✅ done (pending-commit)
+│   ├── Sprint 80 — models.py → 8-module package                ✅ done (804b4aa)
 │       Fourth backend split — by far the highest-stakes mechanical
 │       refactor of the arc.  The 952-LOC ``models.py`` becomes the
 │       package ``pointlessql/models/`` with one module per domain.
@@ -2946,6 +2946,35 @@ PointlesSQL
 │       0 errors / 0 warnings, ``pydoclint`` 0 violations,
 │       ``pytest`` model-touching test suites all pass against the
 │       new package.
+│
+│   └── Sprint 81 — services/alerts.py → 4-module package       ✅ done (pending-commit)
+│       Fifth backend split.  Carved 729-LOC ``alerts.py`` along
+│       the four concerns it already implied:
+│
+│       - ``crud.py`` (~340 LOC) — slug / serialisation / can_mutate
+│         helpers, backing-Job lifecycle (`_sync_backing_job`),
+│         ``create_alert`` / ``list_visible`` / ``get_by_slug`` /
+│         ``update_by_slug`` / ``delete_by_slug``.  Renamed
+│         ``_serialize`` → ``serialize`` and
+│         ``_serialize_destination`` → ``serialize_destination`` and
+│         ``_can_mutate`` → ``can_mutate`` so the destinations
+│         sub-module can import them without the
+│         ``reportPrivateUsage`` flag the kernel_session split first
+│         hit (Sprint 77).
+│       - ``destinations.py`` (~100 LOC) — ``add_destination`` +
+│         ``delete_destination`` (depend on ``crud`` helpers).
+│       - ``events.py`` (~165 LOC) — ``record_event`` +
+│         ``set_event_outcome`` + ``list_events_for_alert`` +
+│         ``list_events_for_owner`` + ``prune_events_older_than``.
+│       - ``conditions.py`` (~85 LOC) — pure ``evaluate_condition``
+│         + ``build_cloudevent``.
+│       - ``__init__.py`` re-exports the full surface so ``from
+│         pointlessql.services import alerts as alerts_service`` in
+│         API + scheduler + tests resolves unchanged.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 0 warnings, ``pydoclint`` 0 violations,
+│       ``pytest tests/test_alerts.py`` 19/19 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
