@@ -3529,7 +3529,7 @@ PointlesSQL
 │
 │   ├── Sprint 91 — frontend sql_editor.js → 4-module split        ✅ done (0d5700d)
 │
-│   ├── Sprint 92 — frontend federation.js + command_palette       ✅ done (pending-commit)
+│   ├── Sprint 92 — frontend federation.js + command_palette       ✅ done (47cfdad)
 │       Tranche-3 of the Sprint-76 frontend modularisation plan.
 │       Two unrelated splits in one sprint because both stood at
 │       the awkward 200-LOC inline-script + multi-export shape:
