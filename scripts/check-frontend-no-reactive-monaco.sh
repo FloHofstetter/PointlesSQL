@@ -16,11 +16,15 @@
 # under a different name and reproduce the class of bug.  Sprint 66
 # adds `cellAffordances`, `statusWidgets`, `cellWidgets`, and
 # `reactiveRoot` so the toolbar content widget + inserter view zone
-# + captured Alpine root stay in closure scope only.
+# + captured Alpine root stay in closure scope only.  Sprint 67 adds
+# `treeFetchCtrl` / `treeAbort` so the sidebar's AbortController for
+# inflight `/api/notebooks/tree` fetches stays closure-scoped — an
+# AbortController wired into Alpine's proxy would trigger the same
+# deep-reactivity walk the Monaco refs did.
 
 set -euo pipefail
 
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot)\s*='
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then

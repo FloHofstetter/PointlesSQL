@@ -21,7 +21,7 @@ import json
 import logging
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models import NotebookCellRun, NotebookOutput
@@ -216,8 +216,12 @@ def clear_path(
 ) -> None:
     """Delete every persisted row for a notebook (e.g. on file delete).
 
-    Not yet wired — placeholder for Sprint 63's workspace-tree
-    delete action.
+    Wired from the Sprint 67 ``DELETE /api/notebooks`` route so that
+    removing a file from the workspace also drops every output frame
+    and per-cell run row for that path. The cascade is intentional:
+    those rows are a replay cache keyed by ``file_path``, so leaving
+    them orphaned would surface confusingly in a future notebook
+    reusing the same name.
 
     Args:
         factory: SQLAlchemy session factory.
@@ -229,6 +233,38 @@ def clear_path(
         )
         session.execute(
             delete(NotebookCellRun).where(NotebookCellRun.file_path == file_path)
+        )
+        session.commit()
+
+
+def rename_path(
+    factory: sessionmaker[Session],
+    old_path: str,
+    new_path: str,
+) -> None:
+    """Re-key every output / run row from ``old_path`` to ``new_path``.
+
+    Sprint 67 sidebar rename action. Rather than throw the replay
+    cache away on rename (which would surprise a user whose only
+    intent was to change the filename), we ``UPDATE`` the
+    ``file_path`` column on both output and run tables so the next
+    editor open at the new path replays the prior session verbatim.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        old_path: Relative path the rows are currently keyed under.
+        new_path: New relative path to re-key onto.
+    """
+    with factory() as session:
+        session.execute(
+            update(NotebookOutput)
+            .where(NotebookOutput.file_path == old_path)
+            .values(file_path=new_path)
+        )
+        session.execute(
+            update(NotebookCellRun)
+            .where(NotebookCellRun.file_path == old_path)
+            .values(file_path=new_path)
         )
         session.commit()
 

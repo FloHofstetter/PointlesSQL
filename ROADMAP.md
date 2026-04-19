@@ -2231,14 +2231,31 @@ PointlesSQL
 │   │   ``this._cellWidgets``, ``this._reactiveRoot``.  Playbook
 │   │   Part G replayed in Firefox (MCP) as the land gate.
 │   │
-│   ├── Sprint 67 — File-tree sidebar inside the editor           ⏳ trim-point
-│   │   Mount the Sprint-27 workspace tree as a left sidebar in
-│   │   ``/notebook/editor``; add open / new / rename / delete
-│   │   actions (delete cascades into ``notebook_outputs`` via the
-│   │   ``clear_path`` stub already wired in
-│   │   ``services/notebook_outputs.py``).  ``/notebooks/workspace``
-│   │   stays as a dedicated full-screen view; the editor sidebar is
-│   │   a slim mirror.
+│   ├── Sprint 67 — File-tree sidebar inside the editor           ✅ done
+│   │   Mounts the Sprint-27 workspace tree as a 260px left sidebar
+│   │   in ``/notebook/editor`` with open / new / rename / delete
+│   │   actions.  Three new admin-only endpoints —
+│   │   ``POST /api/notebooks/create`` (writes zero-byte ``.py``;
+│   │   editor's open handler materialises cell markers on first
+│   │   save), ``PATCH /api/notebooks/rename`` (atomic ``os.replace``
+│   │   + ``rename_path`` UPDATE on the replay cache so prior
+│   │   outputs survive), ``DELETE /api/notebooks?path=…``
+│   │   (cascades into ``notebook_outputs`` + ``notebook_cell_runs``
+│   │   via the ``clear_path`` stub Sprint 63 had pre-wired).  New
+│   │   ESM module [frontend/js/notebook/file_tree.js](frontend/js/notebook/file_tree.js)
+│   │   owns the sidebar's reactive slice; its AbortController for
+│   │   inflight tree fetches stays closure-scoped, with the
+│   │   reactivity-boundary grep gate widened to block
+│   │   ``this._treeFetchCtrl`` / ``this._treeAbort``.  Three
+│   │   Bootstrap modals (new / rename / delete) reuse the Catalog-
+│   │   Insert ``x-show`` + Escape-close pattern.  Trash disabled on
+│   │   the currently-open file; renaming the open file triggers a
+│   │   hard reload at the new URL so kernel + autosave paths
+│   │   resync cleanly.  ``/notebooks/workspace`` stays as the full-
+│   │   screen view — the sidebar is a slim mirror (no upload, no
+│   │   schedule).  Playbook Part H added; replayed in Firefox (MCP)
+│   │   as the land gate per ``feedback_run_playbook_as_gate``.
+│   │   **No Alembic migration.**
 │   │
 │   ├── Sprint 68 — Multi-notebook tab bar                        ⏳
 │   │   Tab bar above the editor; each tab is one Monaco instance

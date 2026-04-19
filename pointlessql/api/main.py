@@ -3946,6 +3946,131 @@ async def api_upload_notebook(
     }
 
 
+@app.post("/api/notebooks/create")
+async def api_create_notebook(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, str]:
+    """Create an empty ``.py`` notebook in the workspace (admin-only).
+
+    Sprint 67 sidebar "New…" action. Writes a zero-byte file at
+    ``body["path"]`` — the editor's open handler at
+    :func:`notebook_editor_page` already renders an empty cell and
+    materialises cell markers on first save when it encounters a
+    zero-byte file, so there is no template content to maintain here.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        body: JSON body with a required ``path`` key naming the
+            relative ``.py`` path to create.
+
+    Returns:
+        ``{"path": "...", "status": "created"}``.
+
+    Raises:
+        ValidationError: On traversal, wrong suffix, missing parent
+            directory, or when a file already exists at ``path``.
+    """
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+    raw = body.get("path")
+    if not isinstance(raw, str):
+        raise ValidationError("create request requires a 'path' string")
+    notebook_workspace_service.create_empty_notebook(
+        settings.jupyter.notebooks_dir.resolve(), raw
+    )
+    await _audit(request, action="notebook.create", target=raw)
+    logger.info("notebook created at %s", raw)
+    return {"path": raw, "status": "created"}
+
+
+@app.patch("/api/notebooks/rename")
+async def api_rename_notebook(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, str]:
+    """Rename an existing notebook and re-key its replay cache.
+
+    Sprint 67 sidebar rename action. The filesystem move goes through
+    :func:`notebook_workspace.rename_notebook`; the replay cache in
+    ``notebook_outputs`` + ``notebook_cell_runs`` is re-keyed by
+    :func:`notebook_outputs.rename_path` so prior run artefacts
+    survive the rename — a UX property a user expects when the only
+    thing they changed was the file's name.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        body: JSON body with required ``old_path`` and ``new_path``
+            keys, both relative to the notebooks directory.
+
+    Returns:
+        ``{"old_path": "...", "new_path": "...", "status": "renamed"}``.
+
+    Raises:
+        ValidationError: On traversal / suffix violations, when the
+            source is missing, or when the destination already
+            exists.
+    """
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+    old_raw = body.get("old_path")
+    new_raw = body.get("new_path")
+    if not isinstance(old_raw, str) or not isinstance(new_raw, str):
+        raise ValidationError("rename request requires 'old_path' and 'new_path' strings")
+    notebook_workspace_service.rename_notebook(
+        settings.jupyter.notebooks_dir.resolve(), old_raw, new_raw
+    )
+    await asyncio.to_thread(
+        notebook_outputs_service.rename_path,
+        request.app.state.session_factory,
+        old_raw,
+        new_raw,
+    )
+    await _audit(
+        request,
+        action="notebook.rename",
+        target=old_raw,
+        detail=f"new_path={new_raw}",
+    )
+    logger.info("notebook renamed from %s to %s", old_raw, new_raw)
+    return {"old_path": old_raw, "new_path": new_raw, "status": "renamed"}
+
+
+@app.delete("/api/notebooks")
+async def api_delete_notebook(request: Request, path: str) -> dict[str, str]:
+    """Delete a notebook and cascade its replay cache (admin-only).
+
+    Sprint 67 sidebar delete action. ``path`` is taken as a query
+    parameter rather than a ``{path:path}`` URL segment to sidestep
+    the regex-vs-slash ambiguity that nested notebook paths
+    (``sub/dir/foo.py``) introduce. The filesystem ``unlink`` happens
+    first; the replay-cache cascade via :func:`clear_path` happens
+    after and can tolerate "no rows matched" for a notebook that was
+    never executed.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        path: Relative notebook path to delete.
+
+    Returns:
+        ``{"path": "...", "status": "deleted"}``.  The ``ValidationError``
+        contract of :func:`notebook_workspace.delete_notebook` applies
+        — traversal / suffix violations and already-missing files
+        raise.
+    """
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+    notebook_workspace_service.delete_notebook(
+        settings.jupyter.notebooks_dir.resolve(), path
+    )
+    await asyncio.to_thread(
+        notebook_outputs_service.clear_path,
+        request.app.state.session_factory,
+        path,
+    )
+    await _audit(request, action="notebook.delete", target=path)
+    logger.info("notebook deleted at %s", path)
+    return {"path": path, "status": "deleted"}
+
+
 @app.get("/notebooks/workspace", response_class=HTMLResponse)
 async def notebooks_workspace_page(request: Request) -> HTMLResponse:
     """Render the Sprint 27 workspace file browser (admin-only).

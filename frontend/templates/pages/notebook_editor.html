@@ -54,6 +54,36 @@
     .pql-nbedit-editor-wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
     .pql-nbedit-vars { width: 320px; border-left: 1px solid var(--bs-border-color);
                        overflow-y: auto; background: var(--bs-body-bg); padding: 0.5rem 0.75rem; }
+    /* Sprint 67 — file-tree sidebar, mirror of the Variables panel on the left. */
+    .pql-nbedit-files { width: 260px; border-right: 1px solid var(--bs-border-color);
+                         overflow-y: auto; background: var(--bs-body-bg); padding: 0.5rem 0.5rem; }
+    .pql-nbedit-files h6 { font-size: 0.78rem; text-transform: uppercase; color: var(--bs-secondary-color);
+                            margin: 0.25rem 0 0.35rem 0; letter-spacing: 0.05em; }
+    .pql-nbedit-files .pql-nbedit-file-row { display: flex; align-items: center; gap: 0.25rem;
+                                              padding: 2px 4px; border-radius: 3px; font-size: 12.5px;
+                                              line-height: 1.4; cursor: default; }
+    .pql-nbedit-files .pql-nbedit-file-row:hover { background: rgba(255, 255, 255, 0.04); }
+    .pql-nbedit-files .pql-nbedit-file-current { background: rgba(13, 110, 253, 0.14); }
+    .pql-nbedit-files .pql-nbedit-file-chevron { width: 1rem; flex: 0 0 1rem; border: 0;
+                                                   background: transparent; color: var(--bs-secondary-color);
+                                                   cursor: pointer; padding: 0; line-height: 1; }
+    .pql-nbedit-files .pql-nbedit-file-label { display: flex; align-items: center; gap: 0.3rem;
+                                                 flex: 1 1 auto; min-width: 0; }
+    .pql-nbedit-files .pql-nbedit-file-name { font-family: var(--bs-font-monospace);
+                                                white-space: nowrap; text-overflow: ellipsis;
+                                                overflow: hidden; cursor: pointer; }
+    .pql-nbedit-files .pql-nbedit-file-name:hover { color: var(--bs-info); }
+    .pql-nbedit-files .pql-nbedit-file-actions { display: flex; gap: 0.15rem; opacity: 0;
+                                                   transition: opacity 0.1s ease-in-out; }
+    .pql-nbedit-files .pql-nbedit-file-row:hover .pql-nbedit-file-actions { opacity: 1; }
+    .pql-nbedit-files .pql-nbedit-file-action { border: 0; background: transparent;
+                                                  color: var(--bs-secondary-color); padding: 1px 4px;
+                                                  border-radius: 3px; font-size: 11px; line-height: 1; cursor: pointer; }
+    .pql-nbedit-files .pql-nbedit-file-action:hover:not(:disabled) { color: var(--bs-info);
+                                                                       background: rgba(13, 110, 253, 0.08); }
+    .pql-nbedit-files .pql-nbedit-file-action:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pql-nbedit-files .pql-nbedit-file-trash:hover:not(:disabled) { color: var(--bs-danger);
+                                                                      background: rgba(220, 53, 69, 0.1); }
     .pql-nbedit-vars h6 { font-size: 0.78rem; text-transform: uppercase; color: var(--bs-secondary-color);
                           margin: 0.5rem 0 0.35rem 0; letter-spacing: 0.05em; }
     .pql-nbedit-vars .pql-var { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--bs-border-color);
@@ -240,6 +270,13 @@
             </button>
             <button type="button"
                     class="btn btn-sm"
+                    :class="filesVisible ? 'btn-primary' : 'btn-outline-secondary'"
+                    @click="toggleFilesSidebar()"
+                    title="Toggle file-tree sidebar">
+                <i class="bi bi-folder2 me-1"></i>Files
+            </button>
+            <button type="button"
+                    class="btn btn-sm"
                     :class="variablesVisible ? 'btn-primary' : 'btn-outline-secondary'"
                     @click="toggleVariables()"
                     title="Toggle variable explorer">
@@ -255,6 +292,104 @@
         </div>
     </div>
     <div class="pql-nbedit-layout">
+        <aside class="pql-nbedit-files" x-show="filesVisible" x-cloak>
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="m-0">Notebooks</h6>
+                <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted"
+                            @click="reloadTree()"
+                            :disabled="treeLoading"
+                            title="Refresh tree">
+                        <i class="bi bi-arrow-clockwise" :class="treeLoading ? 'pql-spin' : ''"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-muted"
+                            @click="beginCreateNotebook()"
+                            title="New notebook">
+                        <i class="bi bi-file-earmark-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <template x-if="treeError">
+                <div class="alert alert-danger small py-1 px-2 my-1" x-text="treeError"></div>
+            </template>
+            <template x-if="!tree && !treeError">
+                <div class="text-muted small mt-2">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+                </div>
+            </template>
+            <template x-if="tree && flatTreeRows().length === 0 && !treeError">
+                <div class="text-muted small mt-2">
+                    Workspace is empty. Use the + button above to create a notebook.
+                </div>
+            </template>
+            <ul class="list-unstyled mb-0 mt-1" x-show="tree && flatTreeRows().length > 0" x-cloak>
+                <template x-for="row in flatTreeRows()" :key="row.path">
+                    <li>
+                        <div class="pql-nbedit-file-row"
+                             :class="row.kind === 'notebook' && isCurrentPath(row.path) ? 'pql-nbedit-file-current' : ''"
+                             :style="'padding-left: ' + (row.depth * 0.75) + 'rem;'">
+                            <template x-if="row.kind === 'dir'">
+                                <button class="pql-nbedit-file-chevron"
+                                        @click="toggleDir('d:' + row.path)"
+                                        :aria-expanded="isDirOpen('d:' + row.path)">
+                                    <i class="bi"
+                                       :class="isDirOpen('d:' + row.path) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+                                </button>
+                            </template>
+                            <template x-if="row.kind === 'notebook'">
+                                <span class="pql-nbedit-file-chevron"></span>
+                            </template>
+                            <span class="pql-nbedit-file-label">
+                                <template x-if="row.kind === 'dir'">
+                                    <i class="bi bi-folder2 text-muted"></i>
+                                </template>
+                                <template x-if="row.kind === 'notebook' && row.format === 'py'">
+                                    <i class="bi bi-journal-code text-info"
+                                       title=".py notebook (jupytext Percent)"></i>
+                                </template>
+                                <template x-if="row.kind === 'notebook' && row.format !== 'py'">
+                                    <i class="bi bi-journal-code text-muted"
+                                       title=".ipynb notebook (open in workspace view)"></i>
+                                </template>
+                                <template x-if="row.kind === 'dir'">
+                                    <span class="pql-nbedit-file-name"
+                                          @click="toggleDir('d:' + row.path)"
+                                          x-text="row.name"></span>
+                                </template>
+                                <template x-if="row.kind === 'notebook' && row.format === 'py'">
+                                    <span class="pql-nbedit-file-name"
+                                          @click="openNotebook(row.path)"
+                                          x-text="row.name"
+                                          :title="row.path"></span>
+                                </template>
+                                <template x-if="row.kind === 'notebook' && row.format !== 'py'">
+                                    <span class="pql-nbedit-file-name text-muted"
+                                          x-text="row.name"
+                                          :title="row.path + ' (open on /notebooks/workspace)'"></span>
+                                </template>
+                            </span>
+                            <template x-if="row.kind === 'notebook'">
+                                <span class="pql-nbedit-file-actions">
+                                    <button type="button"
+                                            class="pql-nbedit-file-action"
+                                            @click="beginRenameNotebook(row.path)"
+                                            title="Rename">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="pql-nbedit-file-action pql-nbedit-file-trash"
+                                            @click="beginDeleteNotebook(row.path)"
+                                            :disabled="isCurrentPath(row.path)"
+                                            :title="isCurrentPath(row.path) ? 'Close this notebook first' : 'Delete'">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
+                    </li>
+                </template>
+            </ul>
+        </aside>
         <div class="pql-nbedit-editor-wrap">
             <div class="pql-nbedit-editor" x-ref="editor"></div>
         </div>
@@ -289,10 +424,17 @@
     </div>
 
     <!-- Insert-from-Catalog modal (Ctrl+Shift+I) -->
+    <!-- Sprint 67: `:class="{ 'd-block': ... }"` instead of x-show
+         so Bootstrap's ``.d-block`` utility (``display: block
+         !important``) beats its own ``.modal { display: none }``
+         rule.  Alpine 3.14's x-show strips the inline display:block
+         on true→false→true transitions, leaving the modal hidden
+         behind the CSS default — same class of bug x-show has
+         against ``.modal`` across Alpine versions. -->
     <div class="modal fade show pql-nbedit-catalog-modal"
-         x-show="catalogInsertOpen"
+         :class="{ 'd-block': catalogInsertOpen }"
          x-cloak
-         style="display:block; background: rgba(0,0,0,0.55);"
+         style="background: rgba(0,0,0,0.55);"
          tabindex="-1"
          @keydown.escape.window="catalogInsertOpen = false">
         <div class="modal-dialog modal-dialog-scrollable">
@@ -330,6 +472,135 @@
             </div>
         </div>
     </div>
+
+    <!-- Sprint 67: New notebook modal -->
+    <div class="modal fade show"
+         :class="{ 'd-block': newFileOpen }"
+         x-cloak
+         style="background: rgba(0,0,0,0.55);"
+         tabindex="-1"
+         @keydown.escape.window="cancelCreateNotebook()">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New notebook</h5>
+                    <button type="button" class="btn-close" @click="cancelCreateNotebook()"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label small text-muted">Relative path (must end in <code>.py</code>)</label>
+                    <input type="text" class="form-control form-control-sm font-monospace"
+                           placeholder="scratch/my-notebook.py"
+                           x-model="newFilePath"
+                           x-effect="newFileOpen && $el.focus()"
+                           @keydown.enter.prevent="submitCreateNotebook()">
+                    <template x-if="newFileError">
+                        <div class="alert alert-danger small py-1 px-2 mt-2 mb-0" x-text="newFileError"></div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm"
+                            @click="cancelCreateNotebook()"
+                            :disabled="newFileBusy">Cancel</button>
+                    <button class="btn btn-primary btn-sm"
+                            @click="submitCreateNotebook()"
+                            :disabled="newFileBusy">
+                        <template x-if="!newFileBusy">
+                            <span><i class="bi bi-file-earmark-plus me-1"></i>Create</span>
+                        </template>
+                        <template x-if="newFileBusy">
+                            <span><span class="spinner-border spinner-border-sm me-1"></span>Creating…</span>
+                        </template>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sprint 67: Rename notebook modal -->
+    <div class="modal fade show"
+         :class="{ 'd-block': renameFileOpen }"
+         x-cloak
+         style="background: rgba(0,0,0,0.55);"
+         tabindex="-1"
+         @keydown.escape.window="cancelRenameNotebook()">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rename notebook</h5>
+                    <button type="button" class="btn-close" @click="cancelRenameNotebook()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="small text-muted mb-1">From</div>
+                    <div class="font-monospace small mb-2" x-text="renameFileFrom"></div>
+                    <label class="form-label small text-muted">New relative path</label>
+                    <input type="text" class="form-control form-control-sm font-monospace"
+                           x-model="renameFileTo"
+                           x-effect="renameFileOpen && $el.focus()"
+                           @keydown.enter.prevent="submitRenameNotebook()">
+                    <template x-if="renameFileError">
+                        <div class="alert alert-danger small py-1 px-2 mt-2 mb-0" x-text="renameFileError"></div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm"
+                            @click="cancelRenameNotebook()"
+                            :disabled="renameFileBusy">Cancel</button>
+                    <button class="btn btn-primary btn-sm"
+                            @click="submitRenameNotebook()"
+                            :disabled="renameFileBusy">
+                        <template x-if="!renameFileBusy">
+                            <span><i class="bi bi-pencil me-1"></i>Rename</span>
+                        </template>
+                        <template x-if="renameFileBusy">
+                            <span><span class="spinner-border spinner-border-sm me-1"></span>Renaming…</span>
+                        </template>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sprint 67: Delete confirmation modal -->
+    <div class="modal fade show"
+         :class="{ 'd-block': deleteFileOpen }"
+         x-cloak
+         style="background: rgba(0,0,0,0.55);"
+         tabindex="-1"
+         @keydown.escape.window="cancelDeleteNotebook()">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete notebook</h5>
+                    <button type="button" class="btn-close" @click="cancelDeleteNotebook()"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2">Delete this notebook? This cannot be undone.</p>
+                    <div class="font-monospace small mb-2" x-text="deleteFilePath"></div>
+                    <p class="text-muted small mb-0">
+                        Persisted outputs and per-cell run history for this path will also be removed.
+                    </p>
+                    <template x-if="deleteFileError">
+                        <div class="alert alert-danger small py-1 px-2 mt-2 mb-0" x-text="deleteFileError"></div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm"
+                            @click="cancelDeleteNotebook()"
+                            :disabled="deleteFileBusy">Cancel</button>
+                    <button class="btn btn-danger btn-sm"
+                            @click="submitDeleteNotebook()"
+                            :disabled="deleteFileBusy">
+                        <template x-if="!deleteFileBusy">
+                            <span><i class="bi bi-trash me-1"></i>Delete</span>
+                        </template>
+                        <template x-if="deleteFileBusy">
+                            <span><span class="spinner-border spinner-border-sm me-1"></span>Deleting…</span>
+                        </template>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -342,5 +613,5 @@
   ``mount()`` via ``import()``.  Prior art: Sprint-41 commit
   ``b830300`` fixed the same Alpine-vs-ESM race for sql_editor.
 #}
-<script src="/static/js/notebook/bootstrap.js?v=sprint66"></script>
+<script src="/static/js/notebook/bootstrap.js?v=sprint67"></script>
 {% endblock %}

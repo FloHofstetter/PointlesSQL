@@ -4,6 +4,69 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 67) — Phase 12.7: file-tree sidebar inside the editor
+
+Third Phase 12.7 sprint.  Mounts the Sprint-27 workspace tree as a
+slim left sidebar in ``/notebook/editor`` and closes the long-
+deferred notebook create / rename / delete actions from Sprint 27.
+The full-screen ``/notebooks/workspace`` page stays as-is.
+
+- **File-tree sidebar** ([frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html),
+  [frontend/js/notebook/file_tree.js](frontend/js/notebook/file_tree.js)).
+  260px left panel listing directories + ``.py`` + ``.ipynb`` leaves
+  from ``/api/notebooks/tree``.  Hover pencil / trash; click names
+  to navigate.  Currently-open row is highlighted and its trash is
+  disabled to keep the editor out of a dangling state after delete.
+  Toggle state persists in ``localStorage['pql.nbedit.filesVisible']``;
+  sidebar defaults visible on first load.
+- **Three CRUD endpoints** ([pointlessql/api/main.py](pointlessql/api/main.py)):
+  ``POST /api/notebooks/create`` writes a zero-byte ``.py`` file
+  (the editor's open handler already materialises cell markers on
+  first save), ``PATCH /api/notebooks/rename`` atomically moves a
+  file and re-keys its replay cache, ``DELETE /api/notebooks?path=…``
+  removes the file and cascades into ``notebook_outputs`` +
+  ``notebook_cell_runs``.  All admin-only, all audit-logged.
+- **Shared resolver** ([pointlessql/services/notebook_workspace.py](pointlessql/services/notebook_workspace.py)):
+  new ``resolve_notebook_target`` owns the traversal + parent-
+  directory guard for every mutation helper; the pre-existing
+  ``resolve_upload_target`` now delegates to it.  Added
+  ``create_empty_notebook`` / ``rename_notebook`` /
+  ``delete_notebook`` helpers.
+- **Replay cache re-keying** ([pointlessql/services/notebook_outputs.py](pointlessql/services/notebook_outputs.py)):
+  new ``rename_path`` ``UPDATE``s ``file_path`` on ``NotebookOutput``
+  + ``NotebookCellRun`` so rename preserves per-cell outputs + run
+  history.  Paired with the existing ``clear_path`` which is now
+  wired from the delete endpoint.
+- **Three Bootstrap modals** on the editor page — new / rename /
+  delete — reusing the Catalog-Insert modal's ``x-show`` +
+  ``@keydown.escape.window`` pattern.
+- **Reactivity-boundary gate widened** ([scripts/check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh))
+  to block ``this._treeFetchCtrl`` and ``this._treeAbort`` —
+  sidebar's AbortController for inflight tree fetches stays in
+  closure scope.
+- **Playbook Part H** ([docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md))
+  covers the six sidebar flows: render, toggle, open, new,
+  rename-open-file (hard-reload), delete-other-file (tree refresh).
+
+### Fixed (Sprint 67 replay catch)
+
+- **BUG-67-01** — Alpine 3.14.1's ``x-show`` sets inline
+  ``display = ''`` on ``false → true``, letting Bootstrap 5's
+  ``.modal { display: none }`` CSS rule win: every editor modal
+  stayed invisible on its first open even though Alpine thought
+  it was visible.  The pre-existing Catalog-Insert modal (Sprint
+  62-ish) had the same latent bug.  Fixed by replacing ``x-show``
+  with ``:class="{ 'd-block': flag }"`` on all four editor modals
+  (Catalog, New, Rename, Delete) — Bootstrap's ``.d-block``
+  utility is ``display: block !important`` which beats both the
+  cascade and Alpine's inline manipulation.  Caught by replaying
+  Part H of the editor playbook in Firefox per
+  ``feedback_run_playbook_as_gate``.
+
+**No Alembic migration** — rename is a plain ``UPDATE``, delete
+reuses the ``clear_path`` stub Sprint 63 had already wired in
+anticipation of this sprint.
+
 ### Added (Sprint 66) — Phase 12.7: cell-type registry + per-cell affordances
 
 Second Phase 12.7 sprint.  Converts the hardcoded ``code | markdown``

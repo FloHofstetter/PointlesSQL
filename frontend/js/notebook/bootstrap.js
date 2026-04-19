@@ -29,6 +29,15 @@
     function initialScope(args) {
         const initial = (args && args.initial) || {};
         const dirty = initial.dirty === true;
+        // Sprint 67 sidebar-visible default — read localStorage here
+        // so the pre-mount ``x-show`` decision matches the value
+        // ``createFileTreeSlice`` will pick on mount.  Missing key
+        // ⇒ default visible (the sidebar is the headline feature).
+        let filesVisible = true;
+        try {
+            const raw = window.localStorage.getItem('pql.nbedit.filesVisible');
+            if (raw !== null) filesVisible = raw === '1';
+        } catch {}
         return {
             path: args && args.path,
             dirty,
@@ -43,6 +52,29 @@
             catalogInsertOpen: false,
             catalogInsertQuery: '',
             catalogTablesLoaded: false,
+            // Sprint 67 file-tree sidebar.  Every key Alpine touches
+            // via x-show / x-text / x-model / @click in the sidebar
+            // and modals must exist during the pre-mount window;
+            // ``main.js``'s ``createFileTreeSlice`` swaps real values
+            // in during ``mount()``.
+            tree: null,
+            open: {},
+            treeLoading: false,
+            treeError: null,
+            filesVisible,
+            newFileOpen: false,
+            newFilePath: '',
+            newFileError: null,
+            newFileBusy: false,
+            renameFileOpen: false,
+            renameFileFrom: '',
+            renameFileTo: '',
+            renameFileError: null,
+            renameFileBusy: false,
+            deleteFileOpen: false,
+            deleteFilePath: '',
+            deleteFileError: null,
+            deleteFileBusy: false,
         };
     }
 
@@ -74,6 +106,26 @@
             pickCatalogTable() {},
             _refreshVariables() {},
             async save() {},
+
+            // Sprint 67 sidebar stubs — no-ops until mount() swaps
+            // the real implementations in from createFileTreeSlice.
+            flatTreeRows() { return []; },
+            isDirOpen() { return false; },
+            toggleDir() {},
+            toggleFilesSidebar() {},
+            isCurrentPath() { return false; },
+            async loadTreeInitial() {},
+            async reloadTree() {},
+            openNotebook() {},
+            beginCreateNotebook() {},
+            cancelCreateNotebook() {},
+            async submitCreateNotebook() {},
+            beginRenameNotebook() {},
+            cancelRenameNotebook() {},
+            async submitRenameNotebook() {},
+            beginDeleteNotebook() {},
+            cancelDeleteNotebook() {},
+            async submitDeleteNotebook() {},
 
             // Real entry point.  Dynamically imports the orchestrator
             // + ten sibling modules, constructs the real factory, and

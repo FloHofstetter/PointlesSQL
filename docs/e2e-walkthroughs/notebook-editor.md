@@ -458,3 +458,161 @@ only remapped ``aborted`` → ``cancelled`` so interrupts showed up
 as red ``error`` pills.  Refined the reply handler in
 [main.js](../../frontend/js/notebook/main.js) to also map
 ``ename==='KeyboardInterrupt'`` → ``cancelled``.
+
+## Part H — Sprint 67: file-tree sidebar + notebook CRUD
+
+Phase 12.7 third sprint lands a left-side file-tree sidebar inside
+the editor so the user can browse, create, rename, and delete
+notebooks without leaving Monaco.  The full-screen
+``/notebooks/workspace`` page stays as-is; this sidebar is the
+slim mirror.
+
+Setup: start with at least two ``.py`` notebooks in the workspace
+directory (e.g. ``scratch/one.py`` and ``scratch/two.py``).
+
+1. **Sidebar renders on first open** — navigate to
+   ``/notebook/editor?path=scratch/one.py``.  Expect a 260px left
+   panel titled ``NOTEBOOKS`` listing every directory + ``.py``
+   file under the notebooks root.  The currently-open row
+   (``one.py``) has a faint blue tint.  ``.ipynb`` leaves render
+   muted — they're listed so the tree stays faithful, but the
+   name is not click-to-open from here (the native editor only
+   handles ``.py``; open those on ``/notebooks/workspace``
+   instead).
+
+2. **Toggle persists** — click ``Files`` in the toolbar.  Sidebar
+   collapses.  Reload — sidebar stays collapsed (state written to
+   ``localStorage['pql.nbedit.filesVisible']``).  Click again to
+   restore; reload again; sidebar stays open.
+
+3. **Open another notebook** — click ``two.py`` in the sidebar.
+   Expect a hard navigation to ``/notebook/editor?path=scratch/
+   two.py``.  Monaco re-mounts against the new buffer; kernel
+   reconnects against the new ``(user_id, path)`` key; the
+   sidebar's current-row highlight moves to ``two.py``.
+
+4. **New notebook** — click the ``+`` icon in the sidebar header.
+   A Bootstrap modal opens with a path input.  Type
+   ``scratch/sprint67-playbook.py`` and hit Enter (or click
+   ``Create``).  Expect:
+   - ``POST /api/notebooks/create`` returns 200
+     ``{"path": "scratch/sprint67-playbook.py", "status": "created"}``.
+   - Modal closes, page navigates to the new path.
+   - Editor shows one empty code cell.
+   - Type ``x = 1`` and wait 1.5 s for autosave.  Refresh the
+     sidebar — the new file is now listed.
+
+   Error case: re-open the modal, type the same path again,
+   ``Create``.  Expect an inline red alert ``notebook already
+   exists at 'scratch/sprint67-playbook.py'`` and the modal
+   stays open.
+
+5. **Rename notebook** — hover over ``sprint67-playbook.py`` in
+   the sidebar → a pencil icon appears → click it.  Rename modal
+   opens with the current path pre-filled.  Change to
+   ``scratch/sprint67-playbook-renamed.py`` and click ``Rename``.
+   Expect:
+   - ``PATCH /api/notebooks/rename`` succeeds.
+   - Because the renamed file is the *currently open* one, the
+     page hard-reloads at the new URL.
+   - Any outputs or run rows from step 4 survive the rename
+     (verify: run ``x = 42`` before renaming, then check
+     Variable Explorer after reload — ``x`` should still be
+     defined server-side after the kernel reconnects, and the
+     persisted output row re-plays on the new path because of
+     the ``rename_path`` UPDATE in ``notebook_outputs.py``).
+
+   Now rename a *different* file (pencil on ``two.py``) to
+   ``two-renamed.py``.  Expect the modal to close and the sidebar
+   to refresh in place — no full-page reload, because the
+   currently-open notebook was untouched.
+
+6. **Delete notebook** — hover over ``one.py`` → trash icon
+   appears → click.  Confirmation modal opens showing the full
+   path and the cascade warning.  Click ``Delete``.  Expect:
+   - ``DELETE /api/notebooks?path=scratch/one.py`` returns 200.
+   - Modal closes; sidebar row disappears.
+   - File is gone from disk (verify: ``ls notebooks/scratch/`` has
+     no ``one.py``).
+   - Any ``notebook_outputs`` rows keyed to that path are purged
+     (verify:
+     ``sqlite3 pointlessql.db "select count(*) from notebook_outputs where file_path='scratch/one.py'"``
+     prints ``0``).
+
+   Try to delete the currently-open file (trash icon on
+   ``sprint67-playbook-renamed.py`` after step 5's redirect).
+   Expect the icon to be disabled with tooltip ``Close this
+   notebook first`` — deleting the open file from underneath the
+   editor is a dangling-state hazard we refuse at the UI layer.
+
+### What shipped for Sprint 67
+
+- [pointlessql/services/notebook_workspace.py](../../pointlessql/services/notebook_workspace.py)
+  — added ``resolve_notebook_target``, ``create_empty_notebook``,
+  ``rename_notebook``, ``delete_notebook``; ``resolve_upload_target``
+  now delegates to the shared resolver.
+- [pointlessql/services/notebook_outputs.py](../../pointlessql/services/notebook_outputs.py)
+  — added ``rename_path`` next to ``clear_path`` so rename
+  preserves the replay cache.
+- [pointlessql/api/main.py](../../pointlessql/api/main.py)
+  — ``POST /api/notebooks/create``, ``PATCH /api/notebooks/rename``,
+  ``DELETE /api/notebooks?path=…``; all admin-only, all audit-logged.
+- [frontend/js/notebook/file_tree.js](../../frontend/js/notebook/file_tree.js)
+  — new ESM module exporting ``createFileTreeSlice`` (Alpine
+  sub-object) and ``flattenTree`` (pure).  AbortController lives in
+  closure scope.
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — spreads the file-tree slice into the returned reactive root;
+  ``mount()`` fires ``loadTreeInitial()`` alongside the kernel /
+  LSP opens.
+- [frontend/js/notebook/bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+  — added matching pre-mount keys + method stubs so Alpine's
+  ``x-show`` / ``x-text`` expressions survive the pre-mount window.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — ``<aside class="pql-nbedit-files">`` + Files toggle in the
+  toolbar + three Bootstrap modals (new / rename / delete).  CSS
+  added for ``.pql-nbedit-files`` and its per-row affordances.
+- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden list to cover ``this._treeFetchCtrl`` /
+  ``this._treeAbort``.
+
+**No Alembic migration** — the ``notebook_outputs`` and
+``notebook_cell_runs`` schemas from earlier sprints already have
+``file_path`` as a plain column, so the rename is a straight
+``UPDATE`` and the delete cascade is a straight ``DELETE``.
+
+### What the replay caught
+
+**BUG-67-01 — Alpine x-show vs Bootstrap's ``.modal`` CSS.**  Alpine
+3.14.1's ``x-show`` sets ``style.display = ''`` on "show" (empty
+string, not the captured inline ``'block'``).  Bootstrap 5's CSS
+has ``.modal { display: none }`` with no override for ``.modal.show``
+on the container itself (``.show`` only styles ``.modal-dialog``
+transforms).  Net effect: the first-time ``false → true``
+transition on any ``.modal[x-show="…"]`` in the editor *removes*
+the inline ``display: block`` we authored in the template → CSS
+cascade kicks in → ``display: none`` from ``.modal`` wins → modal
+stays invisible even while Alpine thinks ``newFileOpen=true``.
+
+The pre-existing Catalog-Insert modal (Sprint 62-ish) has the same
+latent bug — Ctrl+Shift+I rendered the dimmed overlay but no
+modal content.  Not noticed because the Catalog flow was
+typically exercised via Playwright-MCP clicks in prior replays,
+which fired ``data.catalogInsertOpen = true`` programmatically in
+a state where the ``display:block`` was still in place — a red
+herring pathway that masked the latent bug until Sprint 67's
+replay touched a cold modal.
+
+Fix (applied to all four editor modals in this sprint): replace
+``x-show`` with ``:class="{ 'd-block': flag }"``.  Bootstrap's
+``.d-block`` utility is ``display: block !important``, which
+beats both Alpine's inline manipulation and the ``.modal {
+display: none }`` CSS default.  The inline ``style`` attribute
+keeps just the backdrop ``background`` colour.  ``x-cloak`` stays
+so Alpine-reactive children don't flash on first paint.
+
+Replayed Parts A–H in Firefox after the fix — all four modals
+(Catalog, New, Rename, Delete) render and dismiss cleanly; the
+six Sprint-67 sidebar flows (render, toggle, open, new, rename-
+current-file-hard-reload, delete-other-file-tree-refresh) all
+pass.

@@ -44,6 +44,7 @@ import {
 } from './pyright_client.js';
 import { appendOutputFrame } from './output_renderer.js';
 import { createClosureRefs } from './closure_state.js';
+import { createFileTreeSlice } from './file_tree.js';
 
 function csrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -89,7 +90,14 @@ export function createNotebookEditor({ path, initial }) {
     let reactiveRoot = null;
     const initialOutputs = initial.outputs || [];
 
-    return {
+    // Sprint 67 — file-tree sidebar slice.  Defined before the
+    // returned object so its keys can be spread in via
+    // Object.assign; its reactive state / methods land on the same
+    // Alpine proxy as the rest of the editor without the factory
+    // having to know about each individual key.
+    const fileTreeSlice = createFileTreeSlice({ currentPath: path });
+
+    return Object.assign({}, fileTreeSlice, {
         path,
         dirty: initial.dirty === true,
         loading: false,
@@ -119,6 +127,10 @@ export function createNotebookEditor({ path, initial }) {
 
         async mount() {
             reactiveRoot = this;
+            // Fire-and-forget: sidebar fetch does not block Monaco
+            // bootstrap.  Errors bubble into ``treeError`` for the
+            // inline alert; nothing else on this page depends on it.
+            this.loadTreeInitial();
             try {
                 const monaco = await loadMonaco();
                 const joined = joinCells(cells);
@@ -425,7 +437,7 @@ export function createNotebookEditor({ path, initial }) {
                 }
             }
         },
-    };
+    });
 
     // ─────────────────── closure-scoped helpers ───────────────────
     //
