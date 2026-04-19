@@ -1,4 +1,7 @@
-window.editable = function ({ patchUrl, field, initial, placeholder }) {
+// Generic single-field inline editor.  Sprint 75 Phase 3 migrates this
+// from window-IIFE to a native ES module; bootstrap.js re-attaches the
+// factory to ``window.editable`` for Alpine x-data lookup.
+export function editable({ patchUrl, field, initial, placeholder }) {
     return {
         current: initial || '',
         placeholder: placeholder || '',
@@ -39,4 +42,4 @@ window.editable = function ({ patchUrl, field, initial, placeholder }) {
             this.saving = false;
         },
     };
-};
+}

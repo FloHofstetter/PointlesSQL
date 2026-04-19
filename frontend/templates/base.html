@@ -100,10 +100,11 @@
          Alpine-race replay fix (commit b830300) burned us on exactly
          this category of bug. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
-    <script src="/static/js/editable.js"></script>
-    <script src="/static/js/properties_editor.js"></script>
-    <script src="/static/js/tags_editor.js"></script>
-    <script src="/static/js/permissions_editor.js"></script>
+    <!-- Sprint 75 Phase 3: editable / properties_editor / tags_editor /
+         permissions_editor migrated to native ES modules; bootstrap.js
+         imports + re-attaches them to ``window`` for x-data lookup.
+         Phase 4 will fold federation / list_table / relative_time /
+         humanize_cron / job_row_actions into the same bridge. -->
     <script src="/static/js/federation.js"></script>
     <script src="/static/js/relative_time.js"></script>
     <script src="/static/js/humanize_cron.js"></script>

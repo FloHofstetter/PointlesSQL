@@ -1,4 +1,8 @@
-window.tagsEditor = function ({ tagsUrl, initial }) {
+// Sprint 75 Phase 3: ES-module shape; window registration via
+// bootstrap.js.  Uses validateRequired from editor_base.
+import { validateRequired } from './editor_base.js';
+
+export function tagsEditor({ tagsUrl, initial }) {
     return {
         tags: initial || [],
         newKey: '',
@@ -8,8 +12,9 @@ window.tagsEditor = function ({ tagsUrl, initial }) {
 
         async addTag() {
             const key = (this.newKey || '').trim();
-            if (!key) {
-                this.error = 'Tag key is required.';
+            const validationErr = validateRequired(key, 'Tag key');
+            if (validationErr) {
+                this.error = validationErr;
                 return;
             }
             this.saving = true;
@@ -43,4 +48,4 @@ window.tagsEditor = function ({ tagsUrl, initial }) {
             this.saving = false;
         },
     };
-};
+}

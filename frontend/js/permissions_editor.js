@@ -1,13 +1,17 @@
-window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, effectiveInitial, canManage, currentUserEmail }) {
-    const PRIVILEGES = [
-        'SELECT', 'MODIFY', 'CREATE TABLE', 'CREATE SCHEMA', 'CREATE CATALOG',
-        'CREATE FUNCTION', 'CREATE MODEL', 'CREATE VOLUME',
-        'CREATE EXTERNAL LOCATION', 'CREATE EXTERNAL TABLE', 'CREATE EXTERNAL VOLUME',
-        'CREATE MANAGED STORAGE', 'CREATE STORAGE CREDENTIAL',
-        'EXECUTE', 'READ FILES', 'READ VOLUME', 'WRITE FILES',
-        'USE CATALOG', 'USE SCHEMA',
-    ];
+// Sprint 75 Phase 3: ES-module shape; window registration via
+// bootstrap.js.  Uses validateRequired from editor_base.
+import { validateRequired } from './editor_base.js';
 
+const PRIVILEGES = [
+    'SELECT', 'MODIFY', 'CREATE TABLE', 'CREATE SCHEMA', 'CREATE CATALOG',
+    'CREATE FUNCTION', 'CREATE MODEL', 'CREATE VOLUME',
+    'CREATE EXTERNAL LOCATION', 'CREATE EXTERNAL TABLE', 'CREATE EXTERNAL VOLUME',
+    'CREATE MANAGED STORAGE', 'CREATE STORAGE CREDENTIAL',
+    'EXECUTE', 'READ FILES', 'READ VOLUME', 'WRITE FILES',
+    'USE CATALOG', 'USE SCHEMA',
+];
+
+export function permissionsEditor({ permissionsUrl, effectiveUrl, initial, effectiveInitial, canManage, currentUserEmail }) {
     return {
         tab: 'assigned',
         assignments: initial || [],
@@ -23,8 +27,9 @@ window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, ef
         async grant() {
             if (!this.canManage) return;
             const principal = (this.grantPrincipal || '').trim();
-            if (!principal) {
-                this.error = 'Principal is required.';
+            const validationErr = validateRequired(principal, 'Principal');
+            if (validationErr) {
+                this.error = validationErr;
                 return;
             }
             this.saving = true;
@@ -76,4 +81,4 @@ window.permissionsEditor = function ({ permissionsUrl, effectiveUrl, initial, ef
             if (res.ok && Array.isArray(res.data)) this.effective = res.data;
         },
     };
-};
+}
