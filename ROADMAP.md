@@ -3448,7 +3448,7 @@ PointlesSQL
 │       federation or external' --ignore=tests/test_jupyter.py``
 │       34/34 passed.
 │
-│   └── Sprint 89b — api/main.py jobs + scheduler routes extract  ✅ done (pending-commit)
+│   ├── Sprint 89b — api/main.py jobs + scheduler routes extract  ✅ done (ecd5702)
 │       Eleventh api/main.py decomposition slice — second cut of
 │       Sprint 89.  The full job-scheduler surface lifts out: 5
 │       JSON CRUD routes, 3 run/task introspection routes, 3
@@ -3488,6 +3488,42 @@ PointlesSQL
 │       ``pyright`` 0 errors / 25 warnings (unchanged),
 │       ``pydoclint`` 0 violations.  ``pytest -k 'job or
 │       scheduler' --ignore=tests/test_jupyter.py`` 54/54 passed.
+│
+│   └── Sprint 89c — api/main.py dashboards routes extract        ✅ done (pending-commit)
+│       Twelfth api/main.py decomposition slice — closes Sprint
+│       89's federation+jobs+dashboards triple.  The Sprint-28
+│       dashboards publishing surface lifts out: 4 JSON CRUD +
+│       refresh, plus 3 HTML pages (list, detail, output).
+│       main.py drops 1.674 → 1.296 LOC (-378).
+│
+│       - ``api/dashboards_routes.py`` (410 LOC) — 7 routes plus 3
+│         module-level helpers (``serialize_dashboard``,
+│         ``load_dashboard_or_404``, ``latest_succeeded_run_id``)
+│         plus the ``SLUG_PATTERN`` regex.  Refresh endpoint
+│         imports ``JOB_REGISTRY`` + ``serialize_run`` from
+│         ``api.jobs_routes`` directly (the cross-router
+│         coupling that previously routed through the dashboard's
+│         re-exports in main.py).
+│       - ``main.py`` mount: ``app.include_router(dashboards_router)``.
+│         Now-stale ``ValidationError``, ``notebook_render``,
+│         ``_JOB_REGISTRY`` + ``_serialize_run`` re-exports, plus
+│         ``re`` module import all auto-trimmed by ruff.
+│
+│       **Visibility model preserved.** Dashboards are visible to
+│       every logged-in user (consumer-facing publishing
+│       surface); mutations + refresh require admin; the
+│       ``/dashboards/{slug}/output`` iframe uses a single
+│       internal check that the run belongs to the bound job
+│       (admin-or-job-owner is intentionally bypassed because
+│       dashboards publish output by design).
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 16 warnings (-9 because the moved
+│       dashboard code carried 9 partial-unknown warnings),
+│       ``pydoclint`` 0 violations.  No dedicated dashboard
+│       pytest module today (covered by the
+│       ``docs/e2e-walkthroughs/dashboards.md`` playbook); other
+│       suites unaffected.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

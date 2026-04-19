@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 89c: api/main.py dashboards routes extract
+
+Twelfth decomposition slice for ``api/main.py`` — closes Sprint 89's
+federation+jobs+dashboards triple. The Sprint-28 dashboards
+publishing surface moves out: 4 JSON CRUD + refresh, plus 3 HTML
+pages (list, detail, output). main.py drops 1,674 → 1,296 LOC
+(-378).
+
+- **New module** [dashboards_routes.py](pointlessql/api/dashboards_routes.py)
+  (410 LOC). 7 routes plus 3 module-level helpers
+  (``serialize_dashboard``, ``load_dashboard_or_404``,
+  ``latest_succeeded_run_id``) plus the ``SLUG_PATTERN`` regex.
+  Refresh endpoint imports ``JOB_REGISTRY`` + ``serialize_run``
+  from ``api.jobs_routes`` directly (the cross-router coupling
+  that previously routed through main.py re-exports).
+
+- **Mount point** in
+  [main.py](pointlessql/api/main.py): ``app.include_router(dashboards_router)``
+  next to the other eleven routers. Now-stale
+  ``ValidationError``, ``notebook_render``, ``_JOB_REGISTRY`` +
+  ``_serialize_run`` re-exports, plus the ``re`` module import,
+  auto-trimmed by ruff.
+
+- **Visibility model preserved.** Dashboards are visible to every
+  logged-in user (consumer-facing publishing surface); mutations
+  + refresh require admin; the ``/dashboards/{slug}/output``
+  iframe uses a single internal check that the run belongs to the
+  bound job (admin-or-job-owner is intentionally bypassed because
+  dashboards publish output by design).
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 16 warnings (-9 because the moved dashboard code
+  carried 9 partial-unknown warnings), ``pydoclint`` 0
+  violations. No dedicated dashboard pytest module today (covered
+  by the ``docs/e2e-walkthroughs/dashboards.md`` playbook); other
+  suites unaffected.
+
 ### Refactored — Phase 12.9 / Sprint 89b: api/main.py jobs + scheduler routes extract
 
 Eleventh decomposition slice for ``api/main.py`` — second cut of
