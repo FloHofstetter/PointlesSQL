@@ -60,6 +60,18 @@ async function parseBody(res) {
     }
 }
 
+// Sprint 75 Phase 5: pull the CSRF token from <meta name="csrf-token">
+// on every call.  Caching the value at module-load time would race with
+// HTMX boost navigations that swap the meta tag.  ``meta?.content``
+// returns ``undefined`` when the tag is missing (anonymous smoke test
+// pages, error pages); we guard the header injection on a truthy value.
+function csrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
 async function apiFetch(url, init) {
     const opts = Object.assign({}, init || {});
     const silent = opts.silent === true;
@@ -72,6 +84,24 @@ async function apiFetch(url, init) {
             opts.headers || {},
         );
         opts.body = JSON.stringify(opts.body);
+    }
+
+    // Sprint 75 Phase 5: auto-attach the CSRF token for non-safe verbs.
+    // The server-side middleware accepts either this header or a hidden
+    // form field (the form-field path was the only thing keeping pqlApi
+    // mutations alive before this header injection).  Mirrors what
+    // base.html's HTMX htmx:configRequest hook + notebook/main.js,
+    // editor_shell.js, file_tree.js already do by hand.  Idempotent
+    // for callers that pre-set the header (caller wins).
+    const verb = (opts.method || 'GET').toUpperCase();
+    if (!SAFE_METHODS.has(verb)) {
+        const token = csrfToken();
+        if (token) {
+            opts.headers = Object.assign({}, opts.headers || {});
+            if (!opts.headers['X-CSRF-Token']) {
+                opts.headers['X-CSRF-Token'] = token;
+            }
+        }
     }
 
     let res;
