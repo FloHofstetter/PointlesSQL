@@ -1444,3 +1444,161 @@ scope here.
 **No Alembic migration.** Trim-safe — the placeholder branch is
 the upgrade seam a future sprint will replace with a real
 widget-manager.
+
+## Part N — Sprint 73: per-cell run history + diff
+
+**Preconditions.**
+
+- Alembic 018 applied (``uv run alembic upgrade head`` after pull;
+  verify with ``uv run alembic check``).
+- ``scripts/vendor-diff-lib.sh`` has been run so
+  ``frontend/js/vendor/jsdiff/diff.min.js`` exists (the script tag
+  in [notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  references it as a vendored UMD bundle).
+- ``scratch.py`` open in [/notebook/editor](../../).
+
+**N1 — History button mounts on every executable cell.**  Hover any
+code cell's toolbar.  Assert: a clock-icon
+``.pql-nbedit-history-btn`` appears next to the run button on every
+``code`` and ``sql`` (Sprint 71) cell — and **not** on markdown
+cells (markdown is ``canExecute: false``, so no run-history row
+ever lands for it).
+
+**N2 — Two runs of the same cell stack into the popover.**  Pick
+a code cell, run it (status pill ``ok``), edit the body to a
+different value, run again (status pill ``ok`` with a higher
+``execution_count`` pill).  Click the History button.  Assert:
+popover header reads ``Last 2 runs``; both rows show timestamp
++ duration + status pill + ``[N]`` execution-count pill, both
+carry a ``view diff`` button + a ``re-run`` button.  Newest-first
+ordering — the first row's stamp is later than the second's.
+
+**N3 — Diff renders source-vs-current.**  Edit the cell again so
+the live Monaco buffer differs from both historical snapshots.
+Open the popover, click ``view diff`` on the first (newest) row.
+Assert: an inline jsdiff-rendered ``.pql-nbedit-diff`` table
+appears under the row header with three classes of rows —
+``.pql-nbedit-diff-ctx`` (unchanged context lines, sign ``" "``),
+``.pql-nbedit-diff-del`` (lines only in the historical source,
+sign ``"-"``), ``.pql-nbedit-diff-add`` (lines only in the live
+buffer, sign ``"+"``).  Click ``hide diff`` (button text flips):
+the table collapses; click again, it re-renders.
+
+**N4 — Re-run replays the historical source without touching
+Monaco.**  In the popover, click the ``re-run`` button on the
+older row.  Assert: popover closes; cell's status pill flips to
+``running`` then back to ``ok``; **the Monaco buffer is unchanged**
+(your N3 edits remain on screen); a fresh history row lands at
+the TOP of the popover on the next open with the historical
+source as its ``source`` column.  Variable Explorer reflects the
+historical version's side effects (e.g. ``x`` = the old value).
+
+**N5 — Identical-source diff message.**  Edit the cell back to
+match a historical source verbatim.  Open popover, click ``view
+diff`` on the matching row.  Assert: ``(sources are identical)``
+text instead of an empty table.
+
+**N6 — File-delete cascades into the history table.**  Sidebar
+``Delete`` action on a notebook → assert ``notebook_cell_run_sources``
+rows for that file_path are gone (cascade-via-service in
+``clear_path``).  File-rename: rows re-key onto the new path
+(cascade-via-service in ``rename_path``); pre-rename runs
+survive in the popover after reload.
+
+**N7 — Persistence across kernel restart.**  Note the popover row
+count.  Restart the kernel.  Open the popover again.  Assert:
+**all prior runs are still visible** — the history table is the
+audit trail and explicitly survives kernel restarts (only file-
+level operations cascade).  ``clear_session`` does NOT touch the
+history table.
+
+**N8 — Per-cell clear-outputs preserves history.**  Run a cell,
+clear its outputs (``Clear`` palette command), open popover.
+Assert: history rows still listed — ``clear_cell`` deletes
+``notebook_outputs`` + the ``notebook_cell_runs`` upsert row, but
+explicitly does NOT touch ``notebook_cell_run_sources`` (the
+audit trail is what we want to PRESERVE across re-runs).
+
+### What the replay caught
+
+**BUG-73-01 — ``clear_cell`` cascade was wiping history on every
+re-run.**  The first version of the
+[notebook_outputs.py](../../pointlessql/services/notebook_outputs.py)
+service threaded ``NotebookCellRunSource`` deletes through the
+``clear_cell`` cascade alongside ``NotebookOutput`` and
+``NotebookCellRun``.  But ``clear_cell`` is called from
+``_wipe_cell_for_new_execute`` at the top of every execute_request
+to wipe the previous run's outputs from the persistence cache —
+threading the history table into that path meant every re-run
+deleted the prior run's row before the new ``record_cell_run_start``
+inserted its own.  Result: only the most-recent run ever existed
+in the table; popover header always read ``Last 1 run``.  Caught
+at the N2 step on the first replay (DB query showed exactly one
+row even after three runs).  Fix in the same commit: removed the
+``NotebookCellRunSource`` delete from ``clear_cell`` AND
+``clear_session``; cascade now lives only in ``clear_path`` (file
+delete) and ``rename_path`` (file rename).  ``notebook_cell_runs``
+still cascades on ``clear_cell`` because that table holds
+"current state per session", not history.
+
+### Files changed (Sprint 73)
+
+- [pointlessql/alembic/versions/018_notebook_cell_run_sources.py](../../pointlessql/alembic/versions/018_notebook_cell_run_sources.py)
+  — new migration creating ``notebook_cell_run_sources`` with
+  autoincrement id PK, ``ix_notebook_cell_run_sources_path_cell``
+  on ``(file_path, cell_id, started_at)``.  No FK to
+  ``notebook_cell_runs`` — link is logical, cascade via service.
+- [pointlessql/models.py](../../pointlessql/models.py)
+  — new ``NotebookCellRunSource`` ORM model mirroring the migration.
+- [pointlessql/services/notebook_outputs.py](../../pointlessql/services/notebook_outputs.py)
+  — ``record_cell_run_start`` (insert + return id),
+  ``record_cell_run_finish`` (stamp status + finish + execution
+  count by id), ``list_cell_run_sources`` (newest-first read with
+  ISO timestamps).  ``clear_path`` + ``rename_path`` extended;
+  ``clear_cell`` + ``clear_session`` deliberately NOT extended
+  (BUG-73-01 fix).
+- [pointlessql/api/main.py](../../pointlessql/api/main.py)
+  — ``pending_run_sources`` map keyed by ``(cell_id,
+  kernel_session_id)``; ``_wipe_cell_for_new_execute`` calls
+  ``record_cell_run_start`` and stashes the returned id;
+  ``_handle_shell_lifecycle`` pops the id on ``execute_reply`` and
+  calls ``record_cell_run_finish``.  New
+  ``GET /api/notebook/cell-runs?path=…&cell_id=…&limit=…`` admin-
+  gated route.  ``pending_run_sources`` cleared on kernel restart
+  + on dropped reply on a fresh start for the same key.
+- [frontend/js/notebook/run_history.js](../../frontend/js/notebook/run_history.js)
+  — new module.  Closure-scoped ``_historyCache``, ``_popoverEl``,
+  ``_inflightAbort``.  ``openPopover`` fetches
+  ``/api/notebook/cell-runs``, renders newest-first with
+  ``view diff`` (jsdiff-based ``.pql-nbedit-diff`` table, cap at
+  10000 input lines) + ``re-run`` (sends historical source via
+  ``execute`` WS frame, does NOT touch Monaco).
+- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+  — clock-icon ``.pql-nbedit-history-btn`` mounted on every
+  ``canExecute`` cell; ``handlers.onShowHistory(cellId, anchorEl)``
+  callback plumbed through ``mountAffordances``.
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — ``openHistoryPopover(cellId, anchorEl)`` reads current source
+  via ``cellSourceById`` for diffing, threads ``onRerun`` →
+  ``sendKernelFrame({type:'execute', ...})`` (NOT
+  ``execute_sql``, since SQL history rows hold the wrapped
+  ``__pql_sql_run(...)`` snippet — re-running it executes the
+  same SQL the kernel saw without re-walking privilege checks).
+- [scripts/vendor-diff-lib.sh](../../scripts/vendor-diff-lib.sh)
+  — new vendoring script for jsdiff 5.2.0 (npm ``diff``, MIT,
+  ~10 KB UMD ``window.Diff``).  Mirrors
+  ``vendor-markdown-libs.sh`` shape.
+- [.gitignore](../../.gitignore)
+  — added ``frontend/js/vendor/jsdiff/`` (mirrors the markdown-it
+  / KaTeX gitignore entries).
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — ``<script src="/static/js/vendor/jsdiff/diff.min.js?v=sprint73">``
+  tag; bootstrap.js bumped to ``?v=sprint73``;
+  ``.pql-nbedit-history-btn`` /
+  ``.pql-nbedit-history-popover`` / ``.pql-nbedit-diff`` styles.
+- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden pattern to cover ``this._historyCache`` /
+  ``this._historyPopover`` / ``this._historyAbort``.
+
+**Trim-safe.** Sprint 74 (theme + keymap + phase close) does not
+import the run-history module; revert is sprint-local.

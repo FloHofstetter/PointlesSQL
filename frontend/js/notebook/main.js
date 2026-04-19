@@ -59,6 +59,7 @@ import {
 import { appendOutputFrame } from './output_renderer.js';
 import { createClosureRefs } from './closure_state.js';
 import { buildOutline } from './outline.js';
+import { openPopover as openRunHistoryPopover, closePopover as closeRunHistoryPopover } from './run_history.js';
 
 function csrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -741,6 +742,31 @@ export function createNotebookTabEditor({
         return 1;
     }
 
+    // Sprint 73: open the per-cell run-history popover.  Resolves
+    // the current Monaco source for diffing against historical
+    // snapshots; ``onRerun`` ships the historical source straight to
+    // the kernel via the existing ``execute`` WS frame (NOT
+    // ``execute_sql``, since the history rows for SQL cells already
+    // hold the wrapped ``__pql_sql_run(...)`` snippet — re-running
+    // it executes the same SQL the kernel saw originally without
+    // re-walking the route's privilege check).
+    function openHistoryPopover(cellId, anchorEl) {
+        openRunHistoryPopover({
+            path,
+            cellId,
+            anchorEl,
+            currentSource: cellSourceById(cellId),
+            onRerun: (historicalSource) => {
+                clearOutput(cellId);
+                sendKernelFrame({
+                    type: 'execute',
+                    cell_id: cellId,
+                    code: historicalSource,
+                });
+            },
+        });
+    }
+
     // Sprint 71: rewrite a SQL cell's marker line in place to add /
     // update / drop the ``result_var="<name>"`` segment.  Mirrors the
     // ``joinCells`` rule so a save → reload round-trip is byte-stable
@@ -914,6 +940,15 @@ export function createNotebookTabEditor({
             // store).  Pass ``null`` to drop the segment.
             onResultVarChange: (cellId, name) => {
                 applyResultVarToMarker(cellId, name);
+            },
+            // Sprint 73: per-cell run-history popover.  The button
+            // trigger lives on the toolbar; the popover, jsdiff
+            // rendering, and ``re-run`` action all live in
+            // ``run_history.js``.  Re-run sends the historical source
+            // straight to the kernel WITHOUT touching Monaco — "what
+            // did the old version produce?" UX, not "revert to this".
+            onShowHistory: (cellId, anchorEl) => {
+                openHistoryPopover(cellId, anchorEl);
             },
         };
 

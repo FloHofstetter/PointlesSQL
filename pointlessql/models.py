@@ -887,3 +887,66 @@ class NotebookCellRun(Base):
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+class NotebookCellRunSource(Base):
+    """One execute_request's source snapshot + lifecycle.
+
+    Phase 12.7 Sprint 73.  Sibling to :class:`NotebookCellRun` —
+    that table upserts on ``(file_path, cell_id, kernel_session_id)``
+    so a re-run within the same session overwrites the prior row.
+    This table inserts a fresh row per execute, capturing the
+    source the kernel actually saw + the lifecycle status /
+    timestamps + ``execution_count``, so the editor's per-cell run-
+    history popover can show "last N runs" with diffs and a re-run
+    button.
+
+    No FK to ``notebook_cell_runs`` — the link is logical via the
+    indexed columns.  Cascade-on-delete lives in
+    :mod:`pointlessql.services.notebook_outputs` (Sprint-67
+    cascade-via-service pattern).
+
+    Attributes:
+        id: Auto-incremented primary key.
+        file_path: Notebook path relative to the notebooks dir.
+        cell_id: Cell UUID.
+        kernel_session_id: Session UUID (bumps on kernel restart).
+        execution_count: Jupyter's monotonic counter — ``None``
+            while the cell is still running, set on execute_reply.
+        source: Verbatim cell source the kernel saw.  For SQL
+            cells (Sprint 71) this is the wrapped
+            ``__pql_sql_run(...)`` snippet, not the raw SELECT;
+            history is what was executed, not what was typed.
+        started_at: When the ``execute_request`` landed.
+        finished_at: When ``execute_reply`` arrived, or ``None``
+            while still running.
+        status: ``"running"`` | ``"ok"`` | ``"error"`` |
+            ``"aborted"`` (interrupted) — denormalised from
+            :class:`NotebookCellRun` to spare the popover query a
+            join.
+    """
+
+    __tablename__ = "notebook_cell_run_sources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    cell_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    kernel_session_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    execution_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="running")
+
+    __table_args__ = (
+        Index(
+            "ix_notebook_cell_run_sources_path_cell",
+            "file_path",
+            "cell_id",
+            "started_at",
+        ),
+    )

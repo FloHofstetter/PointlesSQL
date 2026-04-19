@@ -46,7 +46,15 @@
 
 set -euo pipefail
 
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers|outlineEntries|outlineTimer|outlineDebounce|resultVarTimers|sqlBootstrap)\s*='
+# Sprint 73 adds `historyCache`, `historyPopover`, and `historyAbort`
+# so the per-cell run-history popover's module-scoped state — the
+# `Map<cellId, runs>` cache, the singleton popover DOM node, and the
+# in-flight AbortController for the `/api/notebook/cell-runs` fetch —
+# never leak onto Alpine's proxy.  An AbortController on the proxy
+# would let the reactive deep-walk reach into the WHATWG fetch
+# stream's deep registry state, the same class as markdown-it's
+# rule registries (BUG-69-01) and the BUG-64-02 footgun.
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers|outlineEntries|outlineTimer|outlineDebounce|resultVarTimers|sqlBootstrap|historyCache|historyPopover|historyAbort)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then

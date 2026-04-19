@@ -4,6 +4,92 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 73) — Phase 12.7: Per-cell run history + diff (Alembic 018)
+
+Ninth Phase 12.7 sprint.  Adds an audit trail of every cell
+execute_request — source snapshot + lifecycle status + timestamps
++ ``execution_count`` — and a per-cell history popover with
+``view diff`` against current Monaco source and a ``re-run``
+button that replays the historical source through the kernel
+without modifying the Monaco buffer ("what did the old version
+produce?" UX, not "revert to this").
+
+**Schema (Alembic 018).** New ``notebook_cell_run_sources`` table
+with autoincrement id PK; sibling to the Sprint-60
+``notebook_cell_runs`` upsert (which keeps "current state per
+session" and would otherwise clobber the prior run on every
+re-execute).  No FK to ``notebook_cell_runs`` — link is logical
+via the indexed columns; cascade lives in
+``notebook_outputs.py`` service (Sprint-67 cascade-via-service
+pattern) on file delete + rename only.  ``clear_cell`` and
+``clear_session`` deliberately do NOT touch the history table —
+the audit trail explicitly survives both per-cell clear-outputs
+and kernel restarts.
+
+- [pointlessql/alembic/versions/018_notebook_cell_run_sources.py](pointlessql/alembic/versions/018_notebook_cell_run_sources.py)
+  — new migration; ``ix_notebook_cell_run_sources_path_cell`` on
+  ``(file_path, cell_id, started_at)``.
+- [pointlessql/models.py](pointlessql/models.py) — new
+  ``NotebookCellRunSource`` ORM model.
+- [pointlessql/services/notebook_outputs.py](pointlessql/services/notebook_outputs.py)
+  — ``record_cell_run_start`` (insert + return id),
+  ``record_cell_run_finish`` (stamp by id),
+  ``list_cell_run_sources`` (newest-first JSON-ready dicts).
+- [pointlessql/api/main.py](pointlessql/api/main.py)
+  — ``pending_run_sources`` map keyed by ``(cell_id,
+  kernel_session_id)``; ``_wipe_cell_for_new_execute`` calls
+  ``record_cell_run_start`` and stashes the returned id;
+  ``_handle_shell_lifecycle`` pops the id on ``execute_reply`` and
+  calls ``record_cell_run_finish``.  New admin-gated
+  ``GET /api/notebook/cell-runs?path=…&cell_id=…&limit=…``.
+- [frontend/js/notebook/run_history.js](frontend/js/notebook/run_history.js)
+  — new module.  Closure-scoped popover + cache + AbortController.
+  Re-run sends the historical source via the existing ``execute``
+  WS frame (NOT ``execute_sql``, since SQL history rows already
+  hold the wrapped ``__pql_sql_run(...)`` snippet — re-running
+  executes the same SQL without re-walking the route's privilege
+  check).  Does NOT touch Monaco.
+- [frontend/js/notebook/cell_affordances.js](frontend/js/notebook/cell_affordances.js)
+  — clock-icon ``.pql-nbedit-history-btn`` mounted on every
+  ``canExecute`` cell; ``handlers.onShowHistory(cellId, anchorEl)``
+  threaded through ``mountAffordances``.
+- [frontend/js/notebook/main.js](frontend/js/notebook/main.js)
+  — ``openHistoryPopover(cellId, anchorEl)`` reads current source
+  via ``cellSourceById`` for diffing.
+- [scripts/vendor-diff-lib.sh](scripts/vendor-diff-lib.sh)
+  — new vendoring script for jsdiff 5.2.0 (npm ``diff``, MIT,
+  ~10 KB UMD ``window.Diff``).
+- [.gitignore](.gitignore) — added
+  ``frontend/js/vendor/jsdiff/``.
+- [frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html)
+  — ``<script src="/static/js/vendor/jsdiff/diff.min.js?v=sprint73">``
+  tag; bootstrap.js bumped to ``?v=sprint73``;
+  ``.pql-nbedit-history-btn`` / ``.pql-nbedit-history-popover`` /
+  ``.pql-nbedit-diff`` styles.
+- [scripts/check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden pattern to cover ``this._historyCache`` /
+  ``this._historyPopover`` / ``this._historyAbort``.
+- [docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md)
+  — Playbook **Part N** added; replayed in Firefox via
+  Playwright-MCP as the land gate.
+
+**BUG-73-01 (replay-caught + fixed in same commit):** the first
+version of the service threaded ``NotebookCellRunSource`` deletes
+through the ``clear_cell`` cascade alongside ``NotebookOutput``
+and ``NotebookCellRun``.  But ``clear_cell`` is called from
+``_wipe_cell_for_new_execute`` at the top of every execute_request,
+so the cascade meant every re-run deleted the prior run's row
+before ``record_cell_run_start`` inserted its own — only the
+most-recent run ever existed in the history table.  Fix: removed
+the ``NotebookCellRunSource`` delete from ``clear_cell`` AND
+``clear_session``; cascade now lives only in ``clear_path`` (file
+delete) and ``rename_path`` (file rename).  Caught at the N2 step
+on the first replay (DB query showed exactly one row even after
+three runs).
+
+Trim-safe — Sprint 74 (theme + keymap + phase close) does not
+import the run-history module; revert is sprint-local.
+
 ### Added (Sprint 72) — Phase 12.7: ipywidgets minimal placeholder
 
 Eighth Phase 12.7 sprint.  Scope deliberately trimmed to a

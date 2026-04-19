@@ -3458,6 +3458,45 @@ async def api_load_notebook_doc(
     return await _build_notebook_doc_bundle(request, path)
 
 
+@app.get("/api/notebook/cell-runs")
+async def api_list_cell_run_sources(
+    request: Request, path: str, cell_id: str, limit: int = 20,
+) -> dict[str, Any]:
+    """Return the last *limit* per-execute history rows for a cell.
+
+    Sprint 73 — backs the per-cell run-history popover in the editor.
+    Each row carries the source the kernel actually saw, the
+    lifecycle status, and the start / finish timestamps; the popover
+    renders a diff between consecutive ``source`` snapshots and
+    offers a one-click re-run that sends the historical source
+    straight to the kernel without touching the Monaco buffer.
+
+    Args:
+        request: Incoming FastAPI request.
+        path: Relative ``.py`` notebook path under the notebooks dir.
+        cell_id: Cell UUID to filter on.
+        limit: Maximum number of rows to return (newest-first).
+
+    Returns:
+        ``{"runs": [{"id", "execution_count", "source", "started_at",
+        "finished_at", "status", "kernel_session_id"}, ...]}``
+    """
+    _require_admin(request)
+    settings: Settings = request.app.state.settings
+    notebook_doc_service.resolve_py_notebook_path(
+        settings.jupyter.notebooks_dir.resolve(), path, must_exist=False,
+    )
+    factory = request.app.state.session_factory
+    runs = await asyncio.to_thread(
+        notebook_outputs_service.list_cell_run_sources,
+        factory,
+        file_path=path,
+        cell_id=cell_id,
+        limit=max(1, min(limit, 100)),
+    )
+    return {"runs": runs}
+
+
 @app.post("/api/notebook/doc")
 async def api_save_notebook_doc(
     request: Request,
@@ -3687,6 +3726,13 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
     # memory and in the DB via ``clear_cell``) and resets its
     # counter to 0, so persisted rows always stay contiguous.
     output_counters: dict[tuple[str, str], int] = {}
+    # Sprint 73: pending run-source ids keyed by ``(cell_id,
+    # kernel_session_id)``.  ``record_cell_run_start`` returns the
+    # autoincrement id on execute; the matching execute_reply pops
+    # the id and calls ``record_cell_run_finish`` to stamp status +
+    # finish + execution_count.  Cleared on WS disconnect / restart
+    # so a dropped reply never leaks rows.
+    pending_run_sources: dict[tuple[str, str], int] = {}
 
     # Sprint 62: ``__pql_``-prefixed cell IDs are reserved for the
     # editor's internal introspects (Variable Explorer namespace
@@ -3726,6 +3772,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         raw_status = msg.content.get("status", "ok")
         status: str = raw_status if isinstance(raw_status, str) else "ok"
         execution_count = msg.content.get("execution_count")
+        ec_int = execution_count if isinstance(execution_count, int) else None
         await asyncio.to_thread(
             notebook_outputs_service.upsert_cell_run,
             factory,
@@ -3733,9 +3780,27 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
             cell_id=msg.cell_id,
             kernel_session_id=session.session_id,
             status=status,
-            execution_count=execution_count if isinstance(execution_count, int) else None,
+            execution_count=ec_int,
             finished=True,
         )
+        # Sprint 73: stamp the per-execute history row this reply
+        # belongs to.  Lookup is by (cell_id, kernel_session_id) —
+        # the kernel serialises execute_requests so the queued
+        # reply matches the most recent start in flight for that
+        # key.  Pop on success so a bug in the kernel that emits
+        # two replies for one request does not double-stamp.
+        source_id = pending_run_sources.pop(
+            (msg.cell_id, session.session_id), None,
+        )
+        if source_id is not None:
+            await asyncio.to_thread(
+                notebook_outputs_service.record_cell_run_finish,
+                factory,
+                source_id=source_id,
+                status=status,
+                execution_count=ec_int,
+                finished_at=datetime.now(UTC),
+            )
 
     async def _forward(channel: str) -> None:
         queue = subscription.iopub if channel == "iopub" else subscription.shell
@@ -3765,14 +3830,25 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         asyncio.create_task(_forward("shell"), name="ws-kernel-shell"),
     ]
 
-    async def _wipe_cell_for_new_execute(cell_id: str) -> None:
+    async def _wipe_cell_for_new_execute(cell_id: str, source: str) -> None:
         """Reset persistence + counter state before a fresh execute.
 
         Sprint 71 factored out of the ``execute`` branch so the new
         ``execute_sql`` branch can share the same prelude (clear
         previous outputs, drop the per-cell index, mark the run as
-        ``running``).  Internal ``__pql_``-prefixed cells stay
-        unpersisted, so this is a no-op for them.
+        ``running``).  Sprint 73 extends it to also insert a per-
+        execute history row via ``record_cell_run_start`` and stash
+        the returned id in ``pending_run_sources`` so the matching
+        execute_reply can stamp the finish.  Internal
+        ``__pql_``-prefixed cells stay unpersisted, so this is a
+        no-op for them.
+
+        Args:
+            cell_id: Cell UUID.
+            source: Source the kernel will execute (raw Python for
+                ``execute``, wrapped ``__pql_sql_run(...)`` snippet
+                for ``execute_sql``).  Stored verbatim in the
+                history row.
         """
         if _is_internal_cell(cell_id):
             return
@@ -3781,6 +3857,10 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
             factory, file_path=path, cell_id=cell_id,
         )
         output_counters.pop((cell_id, session.session_id), None)
+        # Drop any orphan from a dropped reply on the prior run for
+        # this key so the new start doesn't double-stamp the wrong id
+        # when the next reply arrives.
+        pending_run_sources.pop((cell_id, session.session_id), None)
         await asyncio.to_thread(
             notebook_outputs_service.upsert_cell_run,
             factory,
@@ -3789,6 +3869,16 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
             kernel_session_id=session.session_id,
             status="running",
         )
+        source_id = await asyncio.to_thread(
+            notebook_outputs_service.record_cell_run_start,
+            factory,
+            file_path=path,
+            cell_id=cell_id,
+            kernel_session_id=session.session_id,
+            source=source,
+            started_at=datetime.now(UTC),
+        )
+        pending_run_sources[(cell_id, session.session_id)] = source_id
 
     try:
         while True:
@@ -3802,7 +3892,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         {"type": "error", "message": "execute needs string code + cell_id"}
                     )
                     continue
-                await _wipe_cell_for_new_execute(cell_id)
+                await _wipe_cell_for_new_execute(cell_id, code)
                 msg_id = await session.execute(code, cell_id)
                 await websocket.send_json(
                     {"type": "ack", "msg_id": msg_id, "cell_id": cell_id}
@@ -3861,7 +3951,6 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         "metadata": {},
                     })
                     continue
-                await _wipe_cell_for_new_execute(cell_id)
                 wrapped = (
                     "__pql_sql_run("
                     f"{json.dumps(source)}, "
@@ -3870,6 +3959,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                     f"max_rows={int(settings.sql.max_rows)}"
                     ")"
                 )
+                await _wipe_cell_for_new_execute(cell_id, wrapped)
                 msg_id = await session.execute(wrapped, cell_id)
                 await websocket.send_json(
                     {"type": "ack", "msg_id": msg_id, "cell_id": cell_id}
@@ -3887,6 +3977,7 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                     kernel_session_id=session.session_id,
                 )
                 output_counters.clear()
+                pending_run_sources.clear()
                 await session.restart()
                 await websocket.send_json(
                     {

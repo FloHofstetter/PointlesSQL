@@ -38,7 +38,7 @@ function formatElapsed(ms) {
     return `${mins}m${rem.toString().padStart(2, '0')}s`;
 }
 
-function makeToolbarDom(cellId, typeId, onRun, onTogglePin, onResultVarChange, initialResultVar) {
+function makeToolbarDom(cellId, typeId, onRun, onTogglePin, onResultVarChange, initialResultVar, onShowHistory) {
     const root = document.createElement('div');
     root.className = 'pql-nbedit-cell-toolbar';
     root.dataset.cellId = cellId;
@@ -62,6 +62,26 @@ function makeToolbarDom(cellId, typeId, onRun, onTogglePin, onResultVarChange, i
         // button before the click fires.
         runBtn.addEventListener('mousedown', (ev) => ev.stopPropagation());
         root.appendChild(runBtn);
+    }
+
+    // Sprint 73: per-cell run-history popover trigger.  Only mounts
+    // for executable cell types (markdown has no run history); the
+    // popover module fetches /api/notebook/cell-runs and renders
+    // diffs against the current Monaco source.
+    let historyBtn = null;
+    if (descriptor.canExecute && typeof onShowHistory === 'function') {
+        historyBtn = document.createElement('button');
+        historyBtn.type = 'button';
+        historyBtn.className = 'pql-nbedit-history-btn';
+        historyBtn.title = 'Show run history for this cell';
+        historyBtn.innerHTML = '<i class="bi bi-clock-history"></i>';
+        historyBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onShowHistory(historyBtn);
+        });
+        historyBtn.addEventListener('mousedown', (ev) => ev.stopPropagation());
+        root.appendChild(historyBtn);
     }
 
     const countEl = document.createElement('span');
@@ -156,7 +176,7 @@ function makeToolbarDom(cellId, typeId, onRun, onTogglePin, onResultVarChange, i
         root.appendChild(resultVarInput);
     }
 
-    return { root, runBtn, statusEl, countEl, elapsedEl, pinBtn, resultVarInput, resultVarDebounceRef: () => resultVarDebounce, clearResultVarDebounce: () => {
+    return { root, runBtn, statusEl, countEl, elapsedEl, pinBtn, resultVarInput, historyBtn, resultVarDebounceRef: () => resultVarDebounce, clearResultVarDebounce: () => {
         if (resultVarDebounce !== null) {
             window.clearTimeout(resultVarDebounce);
             resultVarDebounce = null;
@@ -189,13 +209,14 @@ function makeInserterDom(cellId, onInsert) {
 }
 
 export function mountAffordances(editor, cellId, typeId, markerLine, handlers, initialResultVar) {
-    const { root, runBtn, statusEl, countEl, elapsedEl, pinBtn, resultVarInput, clearResultVarDebounce } = makeToolbarDom(
+    const { root, runBtn, statusEl, countEl, elapsedEl, pinBtn, resultVarInput, historyBtn, clearResultVarDebounce } = makeToolbarDom(
         cellId,
         typeId,
         () => handlers.onRun(cellId),
         () => handlers.onTogglePin && handlers.onTogglePin(cellId),
         handlers.onResultVarChange,
         initialResultVar,
+        handlers.onShowHistory ? (anchorEl) => handlers.onShowHistory(cellId, anchorEl) : null,
     );
     // Toolbar sits on the line immediately above the marker.
     // ``afterLineNumber: 0`` is valid and places the zone above
@@ -216,6 +237,7 @@ export function mountAffordances(editor, cellId, typeId, markerLine, handlers, i
         runBtn,
         pinBtn,
         resultVarInput,
+        historyBtn,
         clearResultVarDebounce,
         rootEl: root,
         statusEl,

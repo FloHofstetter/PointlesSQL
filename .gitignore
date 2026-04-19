@@ -59,3 +59,6 @@ frontend/js/vendor/monaco/
 frontend/js/vendor/markdown-it/
 frontend/js/vendor/markdown-it-texmath/
 frontend/js/vendor/katex/
+# Phase 12.7 Sprint 73 — jsdiff bundle for the per-cell run-history
+# popover.  Vendored by scripts/vendor-diff-lib.sh.
+frontend/js/vendor/jsdiff/

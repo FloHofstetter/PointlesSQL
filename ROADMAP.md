@@ -2459,12 +2459,59 @@ PointlesSQL
 │   │   version stamp threaded into every dynamic import URL) is
 │   │   out of scope here and noted as a follow-on.
 │   │
-│   ├── Sprint 73 — Per-cell run history + diff                    ⏳
-│   │   ``notebook_cell_runs`` (Alembic 017) already records every
-│   │   run's status / execution_count / timestamps; extend the
-│   │   schema with the cell source snapshot (Alembic 018) and add
-│   │   a per-cell history popover (last N runs, diff against
-│   │   current source, re-run button).
+│   ├── Sprint 73 — Per-cell run history + diff (Alembic 018)      ✅ done
+│   │   New ``notebook_cell_run_sources`` table — sibling to the
+│   │   Sprint-60 ``notebook_cell_runs`` upsert (which keeps
+│   │   "current state per session" and would otherwise clobber the
+│   │   prior run on every re-execute).  Each row carries the
+│   │   source the kernel actually saw + the lifecycle status /
+│   │   timestamps + ``execution_count`` ; rows are inserted by the
+│   │   WS handler on every ``execute_request`` (via
+│   │   ``record_cell_run_start`` returning an autoincrement id),
+│   │   stamped on ``execute_reply`` (via ``record_cell_run_finish``
+│   │   keyed off the id stashed in ``pending_run_sources``).  No
+│   │   FK to ``notebook_cell_runs`` — link is logical via the
+│   │   indexed columns; cascade lives in ``notebook_outputs.py``
+│   │   (Sprint-67 cascade-via-service pattern) on file delete +
+│   │   rename only.  ``clear_cell`` and ``clear_session`` do
+│   │   **NOT** touch the history table — the audit trail
+│   │   explicitly survives both per-cell clear-outputs and kernel
+│   │   restarts.  New admin-gated endpoint
+│   │   ``GET /api/notebook/cell-runs?path=…&cell_id=…&limit=…``
+│   │   returns newest-first.  Frontend module
+│   │   [frontend/js/notebook/run_history.js](frontend/js/notebook/run_history.js)
+│   │   owns the singleton popover + jsdiff-based source diff +
+│   │   re-run button; clock-icon ``.pql-nbedit-history-btn``
+│   │   mounts on every ``canExecute`` cell via
+│   │   ``cell_affordances``.  Re-run sends the historical source
+│   │   via the existing ``execute`` WS frame (NOT ``execute_sql``,
+│   │   since SQL history rows already hold the wrapped
+│   │   ``__pql_sql_run(...)`` snippet — re-running executes the
+│   │   same SQL the kernel saw without re-walking the route's
+│   │   privilege check) and does **NOT** modify the Monaco buffer
+│   │   ("what did the old version produce?" UX, not "revert to
+│   │   this").  jsdiff 5.2.0 vendored via new
+│   │   [scripts/vendor-diff-lib.sh](scripts/vendor-diff-lib.sh)
+│   │   mirroring ``vendor-markdown-libs.sh``; cap at 10000 input
+│   │   lines so O(N²) cost stays bounded.  Reactivity-boundary
+│   │   grep gate widened to block ``this._historyCache`` /
+│   │   ``this._historyPopover`` / ``this._historyAbort`` — an
+│   │   AbortController on Alpine's proxy would let the reactive
+│   │   walk reach into the WHATWG fetch stream's deep registry
+│   │   state, the same class as BUG-69-01 / BUG-64-02.  Playbook
+│   │   Part N added; replayed in Firefox via Playwright-MCP as
+│   │   the land gate.
+│   │   **BUG-73-01 (replay-caught + fixed in same commit):**
+│   │   ``clear_cell`` cascade was wiping
+│   │   ``notebook_cell_run_sources`` on every re-execute (since
+│   │   ``_wipe_cell_for_new_execute`` calls ``clear_cell`` to
+│   │   reset the previous run's outputs).  Result: only the
+│   │   most-recent run ever existed in the history table; popover
+│   │   header always read ``Last 1 run``.  Fix: removed the
+│   │   ``NotebookCellRunSource`` delete from ``clear_cell`` AND
+│   │   ``clear_session``; cascade now lives only in ``clear_path``
+│   │   (file delete) and ``rename_path`` (file rename).  Caught
+│   │   at the N2 step on the first replay.
 │   │
 │   └── Sprint 74 — Theme + keymap overlay + phase close           ⏳
 │       Settings drawer (``vs-dark`` / ``vs-light`` / ``hc`` themes;
