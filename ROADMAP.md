@@ -3528,6 +3528,37 @@ PointlesSQL
 │   └── Sprint 90 — api/main.py admin/home/catalog-html + endgame ✅ done (9c8e997)
 │
 │   ├── Sprint 91 — frontend sql_editor.js → 4-module split        ✅ done (0d5700d)
+│
+│   ├── Sprint 92 — frontend federation.js + command_palette       ✅ done (pending-commit)
+│       Tranche-3 of the Sprint-76 frontend modularisation plan.
+│       Two unrelated splits in one sprint because both stood at
+│       the awkward 200-LOC inline-script + multi-export shape:
+│
+│       - **federation.js (195 LOC) → 3 sibling modules.**
+│         ``federation_connections.js`` (44 LOC),
+│         ``federation_credentials.js`` (94 LOC, both
+│         credential + external-location forms because
+│         external-locations bind a credential),
+│         ``federation_catalogs.js`` (94 LOC, foreign-catalog
+│         form + the generic ``deleteConfirm`` factory used by
+│         every detail page).  ``bootstrap.js`` updated to import
+│         from each new module directly; the ``window.*`` names
+│         are unchanged so no template edit needed.
+│       - **command_palette.html inline script → ESM module.**
+│         The 256-line inline ``<script>`` block at the bottom
+│         of the partial moves into
+│         ``frontend/js/components/command_palette.js``
+│         (274 LOC).  ``commandPalette()`` is wired through
+│         ``bootstrap.js``; the partial drops to 102 HTML-only
+│         LOC.
+│
+│       **Static gates (all green):** ``node --check`` passes for
+│       all four new modules + bootstrap.js,
+│       ``check-frontend-bootstrap-order.sh`` still green.
+│       Playbook replay deferred — pure move so behaviour is
+│       byte-identical (the partial's
+│       ``x-data="commandPalette()"`` resolves to the same factory
+│       through bootstrap.js's ``window.commandPalette =`` line).
 │       Tranche-2 of the Sprint-76 frontend modularisation plan.
 │       The 608-LOC ``frontend/js/sql_editor.js`` factory splits
 │       into a 86-LOC façade + four sibling ESM modules under the

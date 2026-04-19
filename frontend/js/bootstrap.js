@@ -48,14 +48,19 @@ window.tagsEditor = tagsEditor;
 window.propertiesEditor = propertiesEditor;
 window.optionsEditor = optionsEditor;
 
-// Federation create-forms + delete-confirm (Phase 4).
+// Federation create-forms + delete-confirm (Phase 4).  Sprint 92
+// split federation.js into three sibling modules; bootstrap.js
+// imports from each directly so the window-name surface stays
+// identical without an extra façade layer.
+import { createConnectionForm } from './federation_connections.js';
 import {
-    createConnectionForm,
-    createExternalLocationForm,
     createCredentialForm,
+    createExternalLocationForm,
+} from './federation_credentials.js';
+import {
     createForeignCatalogForm,
     deleteConfirm,
-} from './federation.js';
+} from './federation_catalogs.js';
 
 window.createConnectionForm = createConnectionForm;
 window.createExternalLocationForm = createExternalLocationForm;
@@ -71,3 +76,11 @@ import { sqlEditor } from './sql_editor.js';
 window.listTable = listTable;
 window.jobRowActions = jobRowActions;
 window.sqlEditor = sqlEditor;
+
+// Cmd+K command palette (Sprint 92 lifted out of the partial's
+// inline <script>; bootstrap.js re-attaches the factory under
+// the same window name so the partial's x-data="commandPalette()"
+// keeps working unchanged).
+import { commandPalette } from './components/command_palette.js';
+
+window.commandPalette = commandPalette;
