@@ -2603,6 +2603,140 @@ PointlesSQL
 │   EXPLAIN-agent loop sketched as the natural Phase-12 → Phase-13
 │   bridge.
 │
+├── Phase 12.8 — Frontend cleanup                         ✅ done
+│   │
+│   │   One-shot reorg sprint: the JS layer was carrying a Sprint-22
+│   │   shape (everything as window-IIFE Alpine factories) under a
+│   │   Sprint-65+ notebook subsystem (already native ESM); five
+│   │   small editors copy-pasted the same fetch / error pattern;
+│   │   ``pqlApi.fetch`` did not inject the CSRF header (relied on
+│   │   the server's form-field fallback alone); ``style.css`` was a
+│   │   single 32 KB file; ``notebook/main.js`` had grown to 1547
+│   │   LOC.  No new feature — pure code-organisation work to clear
+│   │   the surface before Phase 13.  Six commits, six phases, one
+│   │   sprint.  Hard constraint: no build step, no bundler, no
+│   │   ``package.json`` (CLAUDE.md rule).
+│   │
+│   └── Sprint 75 — Frontend cleanup (notebook carve-up + ESM-everywhere + CSS-split + CSRF + README)  ✅ done (e0ae139)
+│       Six-phase sprint shipped as six commits on main; no Alembic
+│       migration; no behaviour change beyond the latent CSRF fix.
+│
+│       **Phase 1 — notebook/main.js carve-up** (247e271).
+│       Split the 1547-LOC orchestrator into the factory shell + five
+│       sibling modules: new
+│       [output_zone_manager.js](frontend/js/notebook/output_zone_manager.js)
+│       (Monaco view-zone lifecycle for outputs + markdown previews +
+│       hidden-area updates),
+│       [cell_introspector.js](frontend/js/notebook/cell_introspector.js)
+│       (stateless cursor/model lookups),
+│       [autosave_scheduler.js](frontend/js/notebook/autosave_scheduler.js)
+│       (debounce + in-flight queue),
+│       [commands.js](frontend/js/notebook/commands.js) (Monaco
+│       command-palette registrations); plus a new
+│       ``createOutlineRecomputer`` factory in
+│       [outline.js](frontend/js/notebook/outline.js) that folds the
+│       150 ms recompute-debounce out of main.js.  main.js drops
+│       1547 → 1204 LOC and now owns orchestration glue only (mount,
+│       kernel WS, LSP WS, cell affordances, save).  Grep gate
+│       [check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh)
+│       extended with autosaveScheduler / autosaveTimer / zoneManager
+│       / outputZones / markdownZones / outlineRecomputer so the
+│       BUG-64-02 closure-state discipline cannot be undone by a
+│       future submodule that parks the new factories' return objects
+│       on Alpine's proxy.
+│
+│       **Phase 2 — ESM bridge entrypoint** (87f03a7).  New
+│       [frontend/js/bootstrap.js](frontend/js/bootstrap.js) loaded
+│       as ``<script type="module">`` from
+│       [base.html](frontend/templates/base.html) before the Alpine
+│       CDN script.  ``type="module"`` is defer-by-default and runs
+│       in document order, so anything bootstrap.js registers on
+│       ``window`` is live before Alpine's x-data walk begins.  New
+│       gate
+│       [check-frontend-bootstrap-order.sh](scripts/check-frontend-bootstrap-order.sh)
+│       wired into CI asserts the script-tag ordering.
+│
+│       **Phase 3 — editor_base + small editors to ESM** (410f144).
+│       New [editor_base.js](frontend/js/editor_base.js) exports
+│       ``validateRequired`` (tags / permissions / federation share
+│       the trim+null-check) and ``createDictEditor`` (promoted out
+│       of properties_editor.js's pre-Sprint-75 private
+│       ``_makeDictEditor`` helper).  Migrated to ES modules:
+│       [editable.js](frontend/js/editable.js),
+│       [permissions_editor.js](frontend/js/permissions_editor.js),
+│       [tags_editor.js](frontend/js/tags_editor.js),
+│       [properties_editor.js](frontend/js/properties_editor.js)
+│       (shrunk 73 → 14 LOC).  Resisted extracting a generic
+│       ``runApiAction`` mega-factory — every consumer's onSuccess
+│       body is unique and a wrapper would cost more in
+│       reader-overhead than the ~3 lines per site it would save.
+│
+│       **Phase 4 — federation / list_table / sql_editor / helpers
+│       to ESM** (2d9e1e2).  Last legacy files migrated:
+│       [api.js](frontend/js/api.js) (window.pqlApi),
+│       [toast.js](frontend/js/toast.js) (window.pqlToast),
+│       [relative_time.js](frontend/js/relative_time.js),
+│       [humanize_cron.js](frontend/js/humanize_cron.js),
+│       [job_row_actions.js](frontend/js/job_row_actions.js),
+│       [federation.js](frontend/js/federation.js) (5 form factories
+│       now consume validateRequired),
+│       [list_table.js](frontend/js/list_table.js),
+│       [sql_editor.js](frontend/js/sql_editor.js) (module-level
+│       ``cmView`` and ``catalogCompletions`` moved into the factory
+│       closure — ESM makes module-singleton state more dangerous on
+│       revisit than the pre-Sprint-75 IIFE shape).  Removed all 11
+│       individual ``<script src="/static/js/X.js">`` tags from
+│       base.html + sql_editor.html; only bootstrap.js + Alpine +
+│       vendor CDN scripts load via raw ``<script>`` now.
+│
+│       **Phase 5 — CSRF in pqlApi + frontend README** (a5a7a20).
+│       ``pqlApi.fetch`` now injects ``X-CSRF-Token`` from
+│       ``<meta name="csrf-token">`` for every non-GET/HEAD/OPTIONS
+│       request.  Mirrors what ``notebook/main.js`` /
+│       ``editor_shell.js`` / ``file_tree.js`` already do by hand
+│       and what the ``htmx:configRequest`` hook in base.html does
+│       for HTMX mutations.  Form-field fallback stays as
+│       belt-and-suspenders.  New
+│       [frontend/js/README.md](frontend/js/README.md) documents the
+│       post-Sprint-75 conventions: window-naming rules, the
+│       editor_base helper surface, the simplify-skill rationale for
+│       NOT extracting a generic wrapper, the script-load order, the
+│       BUG-64-02 reactivity boundary discipline + how to extend the
+│       grep gate, vendor-library handling.
+│
+│       **Phase 6 — style.css split** (e0ae139).  Carved the
+│       1066-line single-file
+│       [style.css](frontend/css/style.css) into ten purpose-scoped
+│       sheets: base.css, primitives.css, layout.css, responsive.css,
+│       and components/{breadcrumbs,empty_state,toast,command_palette,
+│       dashboard,list_table}.css.  style.css is now 30 LOC of
+│       cascade-ordered ``@import`` statements.  No CSS rule moved
+│       between sections — every selector landed in the file matching
+│       its pre-Sprint-75 section header; cascade order preserved by
+│       the @import order.  Why @import (not concatenation): no build
+│       step, no bundler.  CSS @import resolves natively in every
+│       supported browser; HTTP/2 multiplexing makes the extra
+│       requests harmless on localhost.
+│
+│       **Out of scope (deferred):** full ESM migration of the
+│       ``vendor/`` UMD bundles (Monaco / markdown-it / KaTeX /
+│       jsdiff stay as plain ``<script>`` loads); JS unit-test
+│       framework (no recurring regression bucket yet); CSS
+│       cache-busting via hashed filenames (would require a build
+│       step); per-page templates' inline ``<script>`` blocks (a
+│       separate audit).  All deferrals documented in
+│       [frontend/js/README.md](frontend/js/README.md) so a future
+│       sprint picking up the work has the rationale.
+│
+│       **Static gates (run after every phase):** ``ruff``,
+│       ``pyright`` (0 errors, warnings unchanged), ``alembic``,
+│       ``node --check`` on every modified JS file, both grep gates
+│       (reactive-monaco + bootstrap-order).  No Playwright-MCP
+│       replay this sprint — every change is mechanical
+│       (file-shape migration, function moves, header-tag injection,
+│       file split); a behaviour-touching change in the same
+│       neighbourhood would still warrant the playbook gate.
+│
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
 │   │   Goal: bring "AI employees on the lakehouse" into

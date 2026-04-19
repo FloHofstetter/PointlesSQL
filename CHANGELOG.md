@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.8 / Sprint 75: Frontend cleanup (notebook carve-up + ESM-everywhere + CSS-split + CSRF + README)
+
+One-shot reorg sprint that clears the JS / CSS organisation debt
+before Phase 13 starts.  No new feature; no behaviour change beyond
+the latent CSRF fix.  Six commits, one per phase, all on main.
+
+- **Phase 1 — notebook/main.js carve-up** (247e271).
+  [main.js](frontend/js/notebook/main.js) drops 1547 → 1204 LOC.
+  Five new sibling modules:
+  [output_zone_manager.js](frontend/js/notebook/output_zone_manager.js),
+  [cell_introspector.js](frontend/js/notebook/cell_introspector.js),
+  [autosave_scheduler.js](frontend/js/notebook/autosave_scheduler.js),
+  [commands.js](frontend/js/notebook/commands.js); plus
+  ``createOutlineRecomputer`` factory in
+  [outline.js](frontend/js/notebook/outline.js).  Grep gate
+  [check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh)
+  extended with the new closure-state slot names.
+
+- **Phase 2 — ESM bridge entrypoint** (87f03a7).  New
+  [frontend/js/bootstrap.js](frontend/js/bootstrap.js) loaded as
+  ``<script type="module">`` from
+  [base.html](frontend/templates/base.html) before the Alpine CDN
+  script.  New CI gate
+  [check-frontend-bootstrap-order.sh](scripts/check-frontend-bootstrap-order.sh)
+  asserts the script-tag ordering.
+
+- **Phase 3 — editor_base + small editors to ESM** (410f144).  New
+  [editor_base.js](frontend/js/editor_base.js) exports
+  ``validateRequired`` and ``createDictEditor``; four inline editors
+  migrated to native ES modules.
+
+- **Phase 4 — federation / list_table / sql_editor / helpers to ESM**
+  (2d9e1e2).  Last legacy files migrated.  Removed all 11 individual
+  ``<script src="/static/js/X.js">`` tags from base.html +
+  sql_editor.html — only bootstrap.js + Alpine + vendor CDN scripts
+  load via raw ``<script>`` now.
+
+- **Phase 5 — CSRF in pqlApi + frontend README** (a5a7a20).
+  ``pqlApi.fetch`` now injects ``X-CSRF-Token`` for non-safe verbs.
+  New [frontend/js/README.md](frontend/js/README.md) documents the
+  post-Sprint-75 conventions.
+
+- **Phase 6 — style.css split** (e0ae139).  1066-line single file
+  carved into ten purpose-scoped sheets that the master
+  [style.css](frontend/css/style.css) ``@import``s in cascade order:
+  base / primitives / layout / responsive plus six under
+  components/.
+
+Hard constraints honoured: no build step, no bundler, no
+``package.json``.  Static gates green: ruff, pyright, alembic,
+``node --check`` on every modified file, both frontend grep gates.
+
 ### Fixed — Phase 12.7 tail: BUG-71-02 + BUG-72-01 root fix + replay completion
 
 Closing audit pass on the Phase-12.7 sprints surfaced two bugs
