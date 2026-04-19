@@ -2367,17 +2367,58 @@ PointlesSQL
 │   │   sprints (71-74) import ``outline.js`` or read
 │   │   ``this.outline``; revert is O(1) sprint-local.
 │   │
-│   ├── Sprint 71 — SQL cell (DuckDB via PQL.sql)                  ⏳ trim-point
+│   ├── Sprint 71 — SQL cell (DuckDB via PQL.sql)                  ✅ done
 │   │   First non-Python cell type, validates Sprint-66's registry.
-│   │   Marker grammar: ``# %% [sql] pql_cell_id="<uuid>"``.  Source
-│   │   sent to ``PQL.sql()`` (already used by ``/sql`` page,
-│   │   Sprint 49–53).  Result table renders inline as the same
-│   │   rich-mime path Sprint 60 built; result available as a
-│   │   pandas DataFrame in the kernel namespace under
-│   │   ``_pql_sql_<short-uuid>`` so Variable Explorer surfaces it
-│   │   and Python cells can chain on it.  Engine-themes (DuckDB
-│   │   tuning, Spark routing) stay Phase 13 — this sprint is
-│   │   syntactic-sugar over the Phase-12 SQL execute path.
+│   │   Marker grammar: ``# %% [sql] pql_cell_id="<uuid>"``ext, with
+│   │   an optional ``result_var="<ident>"`` segment (Databricks-
+│   │   style — picked over the originally-sketched auto-generated
+│   │   ``_pql_sql_<short>`` name to keep chained-cell readability).
+│   │   ``runCellById`` branches on the registry's new ``sql``
+│   │   descriptor and emits ``execute_sql`` over the WS instead of
+│   │   ``execute``.  The route handler parses + privilege-checks
+│   │   the query against soyuz-catalog (mirrors the
+│   │   ``/api/sql/execute`` SELECT loop via the new shared
+│   │   ``_resolve_sql_approved_tables`` helper) before wrapping the
+│   │   SQL into a ``__pql_sql_run(...)`` snippet that runs in the
+│   │   kernel.  The kernel-side helper, defined once at start time
+│   │   via ``_NOTEBOOK_BOOTSTRAP_CODE`` (silent execute_request
+│   │   gated on ``_run_bootstrap`` awaiting its execute_reply
+│   │   before the iopub / shell pump tasks start so SQL runs cannot
+│   │   race the helper definition), calls ``PQL.sql`` for real,
+│   │   materialises the result as a pandas DataFrame, optionally
+│   │   binds it to the user-named ``result_var`` in ``globals()``
+│   │   for Variable Explorer to surface, and ``display(df)`` for
+│   │   the rich-mime path Sprint 60 built to render the table
+│   │   inline.  Restart re-queues the bootstrap via the existing
+│   │   execute path under reserved cell_id ``__pql_sql_bootstrap__``
+│   │   so ``_is_internal_cell`` skips persistence and the kernel
+│   │   serialises the bootstrap before any user execute.  ``+ SQL``
+│   │   inserter button slots in next to ``+ Code`` / ``+ Markdown``;
+│   │   per-cell ``result_var`` text input lives on the SQL toolbar
+│   │   with a 300 ms debounce that writes back to the marker line
+│   │   via ``editor.executeEdits`` (no parallel JS-side cell
+│   │   metadata store — the marker is the source of truth).
+│   │   Reactivity-boundary grep gate widened to block
+│   │   ``this._resultVarTimers`` / ``this._sqlBootstrap`` — the
+│   │   debounce handle stays inside the toolbar's closure record
+│   │   (cleared on cell teardown via ``clearResultVarDebounce``).
+│   │   Playbook Part L added; replayed in Firefox (MCP) as the
+│   │   land gate per ``feedback_run_playbook_as_gate``.
+│   │   **No Alembic migration.** Engine-themes (DuckDB tuning,
+│   │   Spark routing) stay Phase 13.  Trim-safe — Sprints 72-74 do
+│   │   not import the SQL cell.
+│   │   **BUG-71-01 (replay-caught + fixed in the same commit):**
+│   │   ``__pql_sql_run`` first passed ``SQLResult.columns``
+│   │   (``list[dict[str, str]]``) straight to ``pd.DataFrame(...)``;
+│   │   the constructor accepted it but ``DataFrame.__repr__`` raised
+│   │   ``TypeError`` when ``display(df)`` triggered the text/plain
+│   │   fallback — the cell emitted both an ``html`` mime that
+│   │   rendered fine and an ``error`` mime that painted the cell
+│   │   red, while the status pill stayed ``ok`` because
+│   │   ``execute_reply.status`` only watches the top-level result.
+│   │   Fix: extract the bare column names via ``[c.get("name") if
+│   │   isinstance(c, dict) else c for c in res.columns]`` before
+│   │   constructing the DataFrame.
 │   │
 │   ├── Sprint 72 — ipywidgets (``comm_msg`` round-trip)           ⏳ trim-point
 │   │   Was deferred from Phase 12.6 explicitly.  Wires the comm

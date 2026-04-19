@@ -3514,6 +3514,101 @@ async def api_save_notebook_doc(
     return {"path": path, "status": "saved"}
 
 
+async def _resolve_sql_approved_tables(
+    websocket: WebSocket,
+    settings: Settings,
+    user: UserInfo,
+    query: str,
+) -> tuple[dict[str, str], dict[str, Any] | None]:
+    """Parse a SQL string and return ``(approved_tables, error_or_none)``.
+
+    Sprint 71 — shared shape with ``POST /api/sql/execute``: parse via
+    :func:`prepare_sql`, look up every referenced 3-part name in
+    soyuz-catalog, and run :func:`check_privilege` for ``SELECT`` so
+    the kernel never sees a query the caller does not have rights to
+    run.  Returns the ``approved_tables`` map on success, or an
+    ``error`` content dict shaped like an iopub ``error`` message
+    (``ename`` / ``evalue`` / ``traceback``) on any failure so the WS
+    handler can ship a synthetic kernel_msg straight to the cell's
+    output zone.
+
+    Args:
+        websocket: WebSocket whose ``app.state`` holds settings.
+        settings: Application settings (needed for ``sql.enabled``).
+        user: Authenticated user from the JWT cookie.
+        query: SQL source as typed in the cell.
+
+    Returns:
+        ``(approved_tables, None)`` on success — the dict maps every
+        ``catalog.schema.table`` reference to its Delta storage
+        location.  ``({}, error_dict)`` on failure (parse error,
+        unknown table, missing storage location, denied privilege).
+    """
+    from pointlessql.exceptions import (
+        AuthorizationError,
+        CatalogNotFoundError,
+        SQLExecutionError,
+    )
+    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+
+    try:
+        prepared = prepare_sql(query)
+    except SQLParseError as exc:
+        return {}, {
+            "ename": "SQLParseError",
+            "evalue": str(exc),
+            "traceback": [],
+        }
+
+    client = UnityCatalogClient.for_principal(settings, user["email"])
+    email = user["email"]
+    is_admin = bool(user.get("is_admin", False))
+    approved: dict[str, str] = {}
+    try:
+        for full_name in prepared.refs:
+            parts = full_name.split(".")
+            if len(parts) != 3:
+                return {}, {
+                    "ename": "SQLExecutionError",
+                    "evalue": f"Internal error: expected 3-part name, got {full_name!r}.",
+                    "traceback": [],
+                }
+            table_info = await client.get_table(parts[0], parts[1], parts[2])
+            if not table_info:
+                return {}, {
+                    "ename": "CatalogNotFoundError",
+                    "evalue": f"Table not found: {full_name!r}",
+                    "traceback": [],
+                }
+            storage_location = table_info.get("storage_location")
+            if not isinstance(storage_location, str) or not storage_location:
+                return {}, {
+                    "ename": "CatalogNotFoundError",
+                    "evalue": (
+                        f"Table {full_name!r} has no storage_location on soyuz-catalog."
+                    ),
+                    "traceback": [],
+                }
+            await check_privilege(client, email, is_admin, "table", full_name, SELECT)
+            approved[full_name] = storage_location
+    except AuthorizationError as exc:
+        return {}, {
+            "ename": "AuthorizationError",
+            "evalue": str(exc),
+            "traceback": [],
+        }
+    except (CatalogNotFoundError, SQLExecutionError) as exc:
+        return {}, {
+            "ename": type(exc).__name__,
+            "evalue": str(exc),
+            "traceback": [],
+        }
+    finally:
+        await client.aclose()
+
+    return approved, None
+
+
 @app.websocket("/ws/notebook/kernel")
 async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
     """Bidirectional ZMQ↔WS proxy for the native-editor kernel.
@@ -3670,6 +3765,31 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
         asyncio.create_task(_forward("shell"), name="ws-kernel-shell"),
     ]
 
+    async def _wipe_cell_for_new_execute(cell_id: str) -> None:
+        """Reset persistence + counter state before a fresh execute.
+
+        Sprint 71 factored out of the ``execute`` branch so the new
+        ``execute_sql`` branch can share the same prelude (clear
+        previous outputs, drop the per-cell index, mark the run as
+        ``running``).  Internal ``__pql_``-prefixed cells stay
+        unpersisted, so this is a no-op for them.
+        """
+        if _is_internal_cell(cell_id):
+            return
+        await asyncio.to_thread(
+            notebook_outputs_service.clear_cell,
+            factory, file_path=path, cell_id=cell_id,
+        )
+        output_counters.pop((cell_id, session.session_id), None)
+        await asyncio.to_thread(
+            notebook_outputs_service.upsert_cell_run,
+            factory,
+            file_path=path,
+            cell_id=cell_id,
+            kernel_session_id=session.session_id,
+            status="running",
+        )
+
     try:
         while True:
             frame = await websocket.receive_json()
@@ -3682,27 +3802,75 @@ async def ws_notebook_kernel(websocket: WebSocket, path: str) -> None:
                         {"type": "error", "message": "execute needs string code + cell_id"}
                     )
                     continue
-                if not _is_internal_cell(cell_id):
-                    # Wipe the previous output slice for this cell
-                    # before the new execute emits anything — both
-                    # in the DB and in our local counter so new
-                    # rows start at 0.  Internal introspects skip
-                    # this so they never touch the persistence
-                    # layer.
-                    await asyncio.to_thread(
-                        notebook_outputs_service.clear_cell,
-                        factory, file_path=path, cell_id=cell_id,
-                    )
-                    output_counters.pop((cell_id, session.session_id), None)
-                    await asyncio.to_thread(
-                        notebook_outputs_service.upsert_cell_run,
-                        factory,
-                        file_path=path,
-                        cell_id=cell_id,
-                        kernel_session_id=session.session_id,
-                        status="running",
-                    )
+                await _wipe_cell_for_new_execute(cell_id)
                 msg_id = await session.execute(code, cell_id)
+                await websocket.send_json(
+                    {"type": "ack", "msg_id": msg_id, "cell_id": cell_id}
+                )
+            elif ftype == "execute_sql":
+                # Sprint 71: SQL cell.  Parse + privilege-check the
+                # query route-side (mirrors ``/api/sql/execute``), then
+                # send a wrapped ``__pql_sql_run(...)`` snippet to the
+                # kernel for execution.  The kernel-side helper builds
+                # a pandas DataFrame from the result, optionally binds
+                # it under ``result_var`` so Variable Explorer surfaces
+                # it, and ``display(df)`` so the existing rich-mime
+                # path renders the table inline.
+                source = frame.get("source", "")
+                cell_id = frame.get("cell_id", "")
+                result_var = frame.get("result_var")
+                if (
+                    not isinstance(source, str)
+                    or not isinstance(cell_id, str)
+                    or (result_var is not None and not isinstance(result_var, str))
+                ):
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": (
+                            "execute_sql needs string source + cell_id "
+                            "(and optional string result_var)"
+                        ),
+                    })
+                    continue
+                if not settings.sql.enabled:
+                    await websocket.send_json({
+                        "type": "kernel_msg",
+                        "channel": "iopub",
+                        "msg_type": "error",
+                        "cell_id": cell_id,
+                        "parent_msg_id": None,
+                        "content": {
+                            "ename": "SQLDisabled",
+                            "evalue": "The SQL editor is disabled on this deployment.",
+                            "traceback": [],
+                        },
+                        "metadata": {},
+                    })
+                    continue
+                approved, err = await _resolve_sql_approved_tables(
+                    websocket, settings, user, source,
+                )
+                if err is not None:
+                    await websocket.send_json({
+                        "type": "kernel_msg",
+                        "channel": "iopub",
+                        "msg_type": "error",
+                        "cell_id": cell_id,
+                        "parent_msg_id": None,
+                        "content": err,
+                        "metadata": {},
+                    })
+                    continue
+                await _wipe_cell_for_new_execute(cell_id)
+                wrapped = (
+                    "__pql_sql_run("
+                    f"{json.dumps(source)}, "
+                    f"approved_tables={json.dumps(approved)}, "
+                    f"result_var={json.dumps(result_var) if result_var else 'None'}, "
+                    f"max_rows={int(settings.sql.max_rows)}"
+                    ")"
+                )
+                msg_id = await session.execute(wrapped, cell_id)
                 await websocket.send_json(
                     {"type": "ack", "msg_id": msg_id, "cell_id": cell_id}
                 )

@@ -37,11 +37,16 @@
 # reactive deep-walk reach into the timer's captured closure
 # (which holds the live `cells` array) on every re-render,
 # reproducing the BUG-64-02 class the next time Monaco state grew
-# a cycle.
+# a cycle.  Sprint 71 adds `resultVarTimers` and `sqlBootstrap` as
+# belt-and-suspenders against future submodules — the SQL cell's
+# 300ms result_var write-back debounce stays inside the toolbar's
+# closure record (cleared on cell teardown via clearResultVarDebounce),
+# but a future subsystem must not aggregate per-cell timer handles
+# onto Alpine's proxy and rebuild the BUG-64-02 footgun.
 
 set -euo pipefail
 
-PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers|outlineEntries|outlineTimer|outlineDebounce)\s*='
+PATTERN='this\._(editor|model|monaco|worker|wsRaw|lspWsRaw|saveTimer|cellAffordances|statusWidgets|cellWidgets|reactiveRoot|treeFetchCtrl|treeAbort|tabRefs|tabFactories|mdSingleton|mdPinState|pinHandlers|outlineEntries|outlineTimer|outlineDebounce|resultVarTimers|sqlBootstrap)\s*='
 SCAN_ROOT="${1:-frontend/js/notebook/}"
 
 if [ ! -d "$SCAN_ROOT" ]; then

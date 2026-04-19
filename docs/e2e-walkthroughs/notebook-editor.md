@@ -1185,3 +1185,141 @@ in the same commit: removed the client-side strip from
   — widened forbidden pattern to cover
   ``this._outlineEntries``, ``this._outlineTimer``,
   ``this._outlineDebounce``.
+
+## Part L — Sprint 71: SQL cell (DuckDB via PQL.sql)
+
+**Preconditions.**
+
+- A seeded 3-part table the test admin can ``SELECT`` from.
+  In a fresh dev stack ``main.default.demo`` is the canonical
+  fixture; if absent, register one via the SQL editor or the
+  ``/admin`` seeders before running the playbook.
+- ``scratch.py`` open in [/notebook/editor](../../) — a Code
+  cell at top is fine; the SQL cell goes below.
+
+**L1 — ``+ SQL`` inserter shows up.**  Hover the cell-bottom
+inserter zone and assert a ``+ SQL`` button appears next to
+``+ Code`` and ``+ Markdown``.  ``mcp__playwright__browser_click``
+on it.  A new cell with ``pql-nbedit-cell-band-sql`` band class,
+toolbar label ``SQL``, ``▶`` run button, and a
+``pql-nbedit-result-var`` input mounts.  Marker line on disk
+should read ``# %% [sql] pql_cell_id="<uuid>"`` with no
+``result_var=`` segment yet.
+
+**L2 — Type SELECT.**  ``mcp__playwright__browser_type`` into
+the cell:
+
+```
+SELECT * FROM main.default.demo LIMIT 5
+```
+
+Saved pill cycles ``Unsaved`` → ``Saved`` after the autosave
+debounce.
+
+**L3 — Set ``result_var``.**  Click the ``pql-nbedit-result-var``
+input, ``mcp__playwright__browser_type`` ``demo_df``.  Wait at
+least 400 ms for the 300 ms debounce + the autosave debounce.
+Read the raw file: marker line should now read
+``# %% [sql] pql_cell_id="<uuid>" result_var="demo_df"``.
+Fields with non-identifier characters (e.g. ``df!``) flip the
+input's border to ``--bs-danger`` via
+``pql-nbedit-result-var-error`` and do **not** mutate the marker
+until the user fixes the input.
+
+**L4 — Run SQL cell.**  Click the ``▶`` button or press
+``Shift+Enter``.  Status pill flips ``idle`` → ``running``
+within ~50 ms; flips to ``ok`` within ~3 s.  Output zone
+contains a pandas-styled HTML table with the LIMIT-5 rows
+(``pql-nbedit-output-html`` wrapper).
+
+**L5 — Reference ``result_var`` from a Python cell.**  Insert a
+``+ Code`` cell below the SQL cell, type ``demo_df.shape``, run
+with ``Shift+Enter``.  Output zone shows ``(5, N)`` where N is
+the column count of ``main.default.demo``.
+
+**L6 — Variable Explorer.**  Toggle the right-side Variables
+panel.  ``demo_df`` appears with type ``pandas.DataFrame``,
+shape ``[5, N]``, ``head()``-rendered preview HTML.
+
+**L7 — Round-trip stability.**  Hard-reload the editor
+(``mcp__playwright__browser_navigate`` to the same URL).  SQL
+cell + ``result_var`` input + output zone all restore from the
+on-disk file + ``notebook_outputs`` replay.  ``demo_df`` is
+**not** in the kernel namespace until the cell runs again — the
+DataFrame lives in the kernel process which restarts on browser
+reload's WS reconnect (kernel session is kept across reloads,
+but globals only persist within a kernel session).
+
+**L8 — Drop ``result_var`` segment.**  Clear the
+``pql-nbedit-result-var`` input.  Wait the debounce.  Marker
+line drops the ``result_var="..."`` segment and reads
+``# %% [sql] pql_cell_id="<uuid>"`` again.  Re-run the SQL cell
+— output still renders inline; Variables panel does **not**
+display ``demo_df`` (no binding).
+
+**L9 — Privilege denial path.**  As a non-admin user (or with
+``SELECT`` revoked on ``main.default.demo``), run an L4-style
+SQL cell against the table.  Expected: the output zone shows an
+``error`` mime with ``ename=AuthorizationError`` and the
+soyuz-catalog denial message — the kernel never executes the
+query, so no ``[*]`` running indicator and no DataFrame binding.
+
+### Files changed (Sprint 71)
+
+- [frontend/js/notebook/cell_types.js](../../frontend/js/notebook/cell_types.js)
+  — registered ``sql`` descriptor with ``markerTag: ' [sql]'``,
+  ``canExecute: true``, ``bandClass: 'pql-nbedit-cell-band-sql'``,
+  ``affordances: ['result_var']``.
+- [frontend/js/notebook/cell_parser.js](../../frontend/js/notebook/cell_parser.js)
+  — widened ``CELL_MARKER_RE`` to capture optional
+  ``result_var="<ident>"`` (group 3); ``splitCells`` /
+  ``joinCells`` round-trip the field; ``RESULT_VAR_RE`` exported
+  for the affordance validator.
+- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+  — ``result_var`` input + 300 ms debounce + ``RESULT_VAR_RE``
+  validator with ``pql-nbedit-result-var-error`` CSS class;
+  ``+ SQL`` inserter button next to ``+ Code`` / ``+ Markdown``;
+  ``removeAffordances`` clears the debounce on cell teardown.
+- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+  — ``runCellById`` branches on ``typeId === 'sql'`` and emits
+  the ``execute_sql`` WS frame; ``runAllCells`` / ``runCellsAbove``
+  share the new ``sendCellFrame`` helper; ``cellResultVarById``
+  reads the marker; ``applyResultVarToMarker`` writes back via
+  ``editor.executeEdits`` so on-disk text stays the source of
+  truth.
+- [pointlessql/api/main.py](../../pointlessql/api/main.py)
+  — new ``execute_sql`` WS branch that re-uses the
+  ``/api/sql/execute`` parse + privilege-check loop via the
+  shared ``_resolve_sql_approved_tables`` helper; refactored
+  ``_wipe_cell_for_new_execute`` so ``execute`` and
+  ``execute_sql`` share the persistence prelude.
+- [pointlessql/services/kernel_session.py](../../pointlessql/services/kernel_session.py)
+  — ``_NOTEBOOK_BOOTSTRAP_CODE`` defines ``__pql_sql_run`` in
+  the kernel; ``_run_bootstrap`` runs it silently between
+  ``wait_for_ready`` and the pump tasks (with a
+  ``_BOOTSTRAP_TIMEOUT`` safety net); ``restart`` re-queues the
+  bootstrap via the regular execute path under reserved cell_id
+  ``__pql_sql_bootstrap__`` so ``_is_internal_cell`` skips
+  persistence.
+
+### What the replay caught
+
+**BUG-71-01 — pandas got the column-spec dicts as the column index.**
+The first ``__pql_sql_run`` definition passed ``res.columns``
+straight to ``pd.DataFrame(...)``, but ``SQLResult.columns`` is
+``list[dict[str, str]]`` (each entry has ``name`` + ``type``).  The
+DataFrame still constructed, but ``DataFrame.__repr__`` raised
+``TypeError`` when ``display(df)`` triggered the text/plain fallback
+— the cell emitted both an ``html`` mime (which rendered fine) and
+an ``error`` mime (which painted the cell red).  Status pill read
+``ok`` because ``execute_reply.status`` only watches the cell's top-
+level result, not displays mid-flight.  Fix in the same commit:
+extract the bare names via ``[c.get("name") if isinstance(c, dict)
+else c for c in res.columns]`` before constructing the DataFrame.
+Caught at the L4 step on the first replay.
+- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  — ``.pql-nbedit-cell-band-sql`` band hue + ``.pql-nbedit-result-var``
+  input styling.
+- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden pattern to cover ``this._resultVarTimers``
+  / ``this._sqlBootstrap``.

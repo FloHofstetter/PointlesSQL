@@ -4,6 +4,86 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Sprint 71) — Phase 12.7: SQL cell (DuckDB via PQL.sql)
+
+Seventh Phase 12.7 sprint.  Adds the first non-Python cell type and
+validates Sprint 66's cell-type registry as the right seam for new
+languages.  Marker grammar widens to
+``# %% [sql] pql_cell_id="<uuid>" result_var="<ident>"``; the
+``result_var`` segment is optional (Databricks-style — picked over
+the originally-sketched ``_pql_sql_<short-uuid>`` auto-generator
+to keep chained-cell readability).  ``runCellById`` branches on the
+new ``sql`` descriptor and emits an ``execute_sql`` WS frame; the
+route handler parses + privilege-checks every 3-part reference
+against soyuz-catalog (mirrors ``/api/sql/execute``'s SELECT loop
+via the new shared ``_resolve_sql_approved_tables`` helper) before
+wrapping the source into a ``__pql_sql_run(...)`` snippet that runs
+in the kernel.  The kernel-side helper, defined once at start time
+via ``_NOTEBOOK_BOOTSTRAP_CODE`` (silent execute_request awaited
+before the iopub / shell pump tasks start so SQL runs cannot race
+the helper definition), calls ``PQL.sql`` for real, materialises
+the result as a pandas DataFrame, optionally binds it to the user-
+named ``result_var`` in ``globals()`` for Variable Explorer to
+surface, and ``display(df)`` so the Sprint-60 rich-mime path
+renders the table inline.  Restart re-queues the bootstrap via the
+existing execute path under reserved cell_id
+``__pql_sql_bootstrap__`` so ``_is_internal_cell`` skips
+persistence.
+
+- [frontend/js/notebook/cell_types.js](frontend/js/notebook/cell_types.js)
+  — registered ``sql`` descriptor (``markerTag: ' [sql]'``,
+  ``canExecute: true``, ``bandClass: 'pql-nbedit-cell-band-sql'``,
+  ``affordances: ['result_var']``).
+- [frontend/js/notebook/cell_parser.js](frontend/js/notebook/cell_parser.js)
+  — widened ``CELL_MARKER_RE`` to capture optional
+  ``result_var="<ident>"`` (group 3); ``splitCells`` /
+  ``joinCells`` round-trip the field; ``RESULT_VAR_RE`` exported
+  for the affordance validator.
+- [frontend/js/notebook/cell_affordances.js](frontend/js/notebook/cell_affordances.js)
+  — per-cell ``result_var`` text input (300 ms debounce write-back,
+  CSS error class on invalid identifiers); ``+ SQL`` inserter
+  button alongside ``+ Code`` / ``+ Markdown``;
+  ``removeAffordances`` clears the debounce on cell teardown.
+- [frontend/js/notebook/main.js](frontend/js/notebook/main.js)
+  — ``runCellById`` branches on ``typeId === 'sql'`` and emits
+  ``execute_sql``; ``runAllCells`` / ``runCellsAbove`` share the
+  new ``sendCellFrame`` helper; ``cellResultVarById`` reads the
+  marker; ``applyResultVarToMarker`` writes back via
+  ``editor.executeEdits`` so on-disk text stays the source of
+  truth.
+- [pointlessql/api/main.py](pointlessql/api/main.py)
+  — new ``execute_sql`` WS branch; shared
+  ``_resolve_sql_approved_tables`` helper that returns either
+  ``(approved, None)`` or ``({}, error_dict)`` so the WS handler
+  can ship a synthetic kernel_msg straight to the cell's output
+  zone on parse / catalog / privilege failures; refactored
+  ``_wipe_cell_for_new_execute`` to share the persistence prelude
+  with the existing ``execute`` branch.
+- [pointlessql/services/kernel_session.py](pointlessql/services/kernel_session.py)
+  — ``_NOTEBOOK_BOOTSTRAP_CODE`` defines ``__pql_sql_run`` in the
+  kernel; ``_run_bootstrap`` runs it silently with a
+  ``_BOOTSTRAP_TIMEOUT`` safety net; ``restart`` re-queues the
+  bootstrap via the regular execute path under reserved cell_id
+  ``__pql_sql_bootstrap__``.
+- [frontend/templates/pages/notebook_editor.html](frontend/templates/pages/notebook_editor.html)
+  — ``.pql-nbedit-cell-band-sql`` band hue + ``.pql-nbedit-result-var``
+  input styling.
+- [scripts/check-frontend-no-reactive-monaco.sh](scripts/check-frontend-no-reactive-monaco.sh)
+  — widened forbidden pattern to cover ``this._resultVarTimers``
+  / ``this._sqlBootstrap``.
+- [docs/e2e-walkthroughs/notebook-editor.md](docs/e2e-walkthroughs/notebook-editor.md)
+  — Playbook **Part L** added; replayed in Firefox via
+  Playwright-MCP as the land gate per
+  ``feedback_run_playbook_as_gate``.  Replay caught BUG-71-01:
+  pandas's ``DataFrame.__repr__`` raised ``TypeError`` because
+  ``SQLResult.columns`` is ``list[dict[str, str]]``, not bare
+  names; fix in the same commit extracts the names with
+  ``[c.get("name") if isinstance(c, dict) else c for c in
+  res.columns]`` before constructing the DataFrame.
+
+No Alembic migration.  Trim-safe — Sprints 72-74 do not import the
+SQL cell.
+
 ### Added (Sprint 70) — Phase 12.7: Outline / TOC panel + cell jump
 
 Sixth Phase 12.7 sprint.  Adds a right-side Outline panel that peers

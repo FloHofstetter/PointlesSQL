@@ -28,6 +28,19 @@ export const cellTypeRegistry = {
         // the cell into source view independently of cursor position.
         affordances: ['pin'],
     },
+    // Sprint 71: SQL cell.  Source flows through ``PQL.sql()`` server-
+    // side; a ``result_var=`` segment in the marker line names a
+    // pandas DataFrame the kernel binds in its globals so Variable
+    // Explorer surfaces it and Python cells can chain on it.  The
+    // ``result_var`` affordance renders the input above the cell.
+    sql: {
+        id: 'sql',
+        label: 'SQL',
+        markerTag: ' [sql]',
+        canExecute: true,
+        bandClass: 'pql-nbedit-cell-band-sql',
+        affordances: ['result_var'],
+    },
 };
 
 // Fall back to ``code`` on unknown ids so forward-compat tags

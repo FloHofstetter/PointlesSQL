@@ -22,8 +22,10 @@
 // the orchestrator.
 
 import { getCellType } from './cell_types.js';
+import { RESULT_VAR_RE } from './cell_parser.js';
 
 const ELAPSED_TICK_MS = 100;
+const RESULT_VAR_DEBOUNCE_MS = 300;
 
 function formatElapsed(ms) {
     if (!Number.isFinite(ms) || ms < 0) return '';
@@ -36,7 +38,7 @@ function formatElapsed(ms) {
     return `${mins}m${rem.toString().padStart(2, '0')}s`;
 }
 
-function makeToolbarDom(cellId, typeId, onRun, onTogglePin) {
+function makeToolbarDom(cellId, typeId, onRun, onTogglePin, onResultVarChange, initialResultVar) {
     const root = document.createElement('div');
     root.className = 'pql-nbedit-cell-toolbar';
     root.dataset.cellId = cellId;
@@ -104,7 +106,62 @@ function makeToolbarDom(cellId, typeId, onRun, onTogglePin) {
         root.appendChild(pinBtn);
     }
 
-    return { root, runBtn, statusEl, countEl, elapsedEl, pinBtn };
+    // Sprint 71: per-cell ``result_var`` input for SQL cells.  The
+    // marker line is the source of truth — keystrokes write back via
+    // ``onResultVarChange`` after a 300ms debounce so the Monaco edit
+    // is one coalesced executeEdits call per pause.  The debounce
+    // handle lives on the returned record so ``removeAffordances``
+    // can clear it on cell teardown.
+    let resultVarInput = null;
+    let resultVarDebounce = null;
+    if (Array.isArray(descriptor.affordances)
+            && descriptor.affordances.includes('result_var')
+            && typeof onResultVarChange === 'function') {
+        resultVarInput = document.createElement('input');
+        resultVarInput.type = 'text';
+        resultVarInput.className = 'pql-nbedit-result-var';
+        resultVarInput.placeholder = 'result_var';
+        resultVarInput.title = 'Bind the SQL result as a pandas DataFrame in the kernel namespace';
+        resultVarInput.value = typeof initialResultVar === 'string' ? initialResultVar : '';
+        const updateValidity = () => {
+            const v = resultVarInput.value;
+            const ok = v === '' || RESULT_VAR_RE.test(v);
+            resultVarInput.classList.toggle('pql-nbedit-result-var-error', !ok);
+        };
+        updateValidity();
+        resultVarInput.addEventListener('input', () => {
+            updateValidity();
+            if (resultVarDebounce !== null) {
+                window.clearTimeout(resultVarDebounce);
+            }
+            const v = resultVarInput.value;
+            resultVarDebounce = window.setTimeout(() => {
+                resultVarDebounce = null;
+                // Empty input → drop the segment (null); valid ident →
+                // emit it; invalid input → leave the marker untouched
+                // until the user fixes it (the CSS error class flags
+                // the issue but we never silently drop bad data).
+                if (v === '') {
+                    onResultVarChange(cellId, null);
+                } else if (RESULT_VAR_RE.test(v)) {
+                    onResultVarChange(cellId, v);
+                }
+            }, RESULT_VAR_DEBOUNCE_MS);
+        });
+        resultVarInput.addEventListener('mousedown', (ev) => ev.stopPropagation());
+        // Sprint 70: jumping focus into the input must not lose
+        // Monaco's selection / cursor.  Stop propagation; Monaco
+        // re-acquires focus on the next click in its surface.
+        resultVarInput.addEventListener('focus', (ev) => ev.stopPropagation());
+        root.appendChild(resultVarInput);
+    }
+
+    return { root, runBtn, statusEl, countEl, elapsedEl, pinBtn, resultVarInput, resultVarDebounceRef: () => resultVarDebounce, clearResultVarDebounce: () => {
+        if (resultVarDebounce !== null) {
+            window.clearTimeout(resultVarDebounce);
+            resultVarDebounce = null;
+        }
+    } };
 }
 
 function makeInserterDom(cellId, onInsert) {
@@ -127,15 +184,18 @@ function makeInserterDom(cellId, onInsert) {
     };
     root.appendChild(mkBtn('+ Code', 'code'));
     root.appendChild(mkBtn('+ Markdown', 'markdown'));
+    root.appendChild(mkBtn('+ SQL', 'sql'));
     return root;
 }
 
-export function mountAffordances(editor, cellId, typeId, markerLine, handlers) {
-    const { root, runBtn, statusEl, countEl, elapsedEl, pinBtn } = makeToolbarDom(
+export function mountAffordances(editor, cellId, typeId, markerLine, handlers, initialResultVar) {
+    const { root, runBtn, statusEl, countEl, elapsedEl, pinBtn, resultVarInput, clearResultVarDebounce } = makeToolbarDom(
         cellId,
         typeId,
         () => handlers.onRun(cellId),
         () => handlers.onTogglePin && handlers.onTogglePin(cellId),
+        handlers.onResultVarChange,
+        initialResultVar,
     );
     // Toolbar sits on the line immediately above the marker.
     // ``afterLineNumber: 0`` is valid and places the zone above
@@ -155,6 +215,8 @@ export function mountAffordances(editor, cellId, typeId, markerLine, handlers) {
         inserterZone: null,
         runBtn,
         pinBtn,
+        resultVarInput,
+        clearResultVarDebounce,
         rootEl: root,
         statusEl,
         countEl,
@@ -220,6 +282,9 @@ export function moveInserter(editor, inserter, afterLineNumber) {
 export function removeAffordances(editor, record) {
     if (!record) return;
     stopElapsed(record);
+    if (typeof record.clearResultVarDebounce === 'function') {
+        record.clearResultVarDebounce();
+    }
     if (record.toolbarZone) {
         try {
             editor.changeViewZones((accessor) => {

@@ -18,6 +18,18 @@
     .pql-nbedit-editor { flex: 1 1 auto; min-height: 400px; }
     .pql-nbedit-cell-band-code { background: rgba(108, 117, 125, 0.08); }
     .pql-nbedit-cell-band-markdown { background: rgba(13, 110, 253, 0.07); }
+    /* Sprint 71: SQL cell band — distinct hue so the user spots it
+       at a glance without having to read the marker line. */
+    .pql-nbedit-cell-band-sql { background: rgba(255, 193, 7, 0.07); }
+    .pql-nbedit-result-var { width: 12rem; padding: 1px 6px; margin-left: 0.5rem;
+                              border: 1px solid var(--bs-border-color);
+                              background: var(--bs-body-bg); color: var(--bs-body-color);
+                              font-family: var(--bs-font-monospace); font-size: 11.5px;
+                              border-radius: 3px; line-height: 1.4; height: 22px; }
+    .pql-nbedit-result-var:focus { outline: none; border-color: var(--bs-info);
+                                    box-shadow: 0 0 0 2px rgba(13, 202, 240, 0.18); }
+    .pql-nbedit-result-var-error { border-color: var(--bs-danger);
+                                    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.15); }
     .pql-nbedit-cell-marker { color: var(--bs-info); font-weight: 600; }
     .pql-nbedit-output { padding: 0.5rem 1rem; background: rgba(0, 0, 0, 0.18);
                         border-left: 3px solid var(--bs-secondary); font-family: var(--bs-font-monospace);

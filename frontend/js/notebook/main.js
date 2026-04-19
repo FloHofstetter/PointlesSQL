@@ -299,16 +299,26 @@ export function createNotebookTabEditor({
 
         // Sprint 66: single execution seam that both keybindings,
         // toolbar, palette, and per-cell run buttons share.  The
-        // registry's ``canExecute`` gate is the only place we branch
-        // on cell type — Sprint 71's SQL cell will flip the gate on
-        // via the registry without touching this method.
+        // registry's ``canExecute`` gate decides which cells run.
+        // Sprint 71: SQL cells take a different WS frame so the
+        // server-side route can parse + privilege-check before the
+        // kernel ever sees the wrapped Python helper call.
         runCellById(cellId, cellType) {
             const typeId = cellType || cellTypeOf(cellId);
             if (!getCellType(typeId).canExecute) return;
             const source = cellSourceById(cellId);
             clearOutput(cellId);
             this.executingCells = { ...this.executingCells, [cellId]: true };
-            sendKernelFrame({ type: 'execute', cell_id: cellId, code: source });
+            if (typeId === 'sql') {
+                sendKernelFrame({
+                    type: 'execute_sql',
+                    cell_id: cellId,
+                    source,
+                    result_var: cellResultVarById(cellId),
+                });
+            } else {
+                sendKernelFrame({ type: 'execute', cell_id: cellId, code: source });
+            }
         },
 
         interruptKernel() {
@@ -326,7 +336,7 @@ export function createNotebookTabEditor({
                 if (!getCellType(c.cell_type).canExecute) continue;
                 clearOutput(c.id);
                 this.executingCells = { ...this.executingCells, [c.id]: true };
-                sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
+                sendCellFrame(c);
             }
         },
 
@@ -339,7 +349,7 @@ export function createNotebookTabEditor({
                 if (!getCellType(c.cell_type).canExecute) continue;
                 clearOutput(c.id);
                 this.executingCells = { ...this.executingCells, [c.id]: true };
-                sendKernelFrame({ type: 'execute', cell_id: c.id, code: c.source });
+                sendCellFrame(c);
             }
         },
 
@@ -676,6 +686,39 @@ export function createNotebookTabEditor({
         return out.join('\n');
     }
 
+    // Sprint 71: read the ``result_var`` segment from the marker line
+    // for SQL cells.  Returns ``null`` for any cell type other than
+    // SQL or for SQL cells with no segment / an invalid identifier.
+    function cellResultVarById(cellId) {
+        const model = refs.get('model');
+        if (!model) return null;
+        const lines = model.getValue().split('\n');
+        for (const line of lines) {
+            const m = line.match(CELL_MARKER_RE);
+            if (m && m[2] === cellId) {
+                if (parseMarkerTag(m[1]) !== 'sql') return null;
+                return m[3] || null;
+            }
+        }
+        return null;
+    }
+
+    // Sprint 71: send the matching frame for a parsed cell.  Single
+    // place that knows about the SQL → ``execute_sql`` branch so the
+    // run-all / run-above paths stay symmetric with ``runCellById``.
+    function sendCellFrame(cell) {
+        if (cell.cell_type === 'sql') {
+            sendKernelFrame({
+                type: 'execute_sql',
+                cell_id: cell.id,
+                source: cell.source,
+                result_var: cell.resultVar || null,
+            });
+        } else {
+            sendKernelFrame({ type: 'execute', cell_id: cell.id, code: cell.source });
+        }
+    }
+
     function cellEndLine(cellId) {
         const lines = refs.get('model').getValue().split('\n');
         let start = null;
@@ -696,6 +739,30 @@ export function createNotebookTabEditor({
             if (m && m[2] === cellId) return i + 1;
         }
         return 1;
+    }
+
+    // Sprint 71: rewrite a SQL cell's marker line in place to add /
+    // update / drop the ``result_var="<name>"`` segment.  Mirrors the
+    // ``joinCells`` rule so a save → reload round-trip is byte-stable
+    // with what the parser would produce.  No-op if the cell is not a
+    // SQL cell or the marker is missing.
+    function applyResultVarToMarker(cellId, name) {
+        const editor = refs.get('editor');
+        const model = refs.get('model');
+        const monaco = window.monaco;
+        if (!editor || !model || !monaco) return;
+        const lineNumber = findCellMarkerLine(cellId);
+        const lineText = model.getLineContent(lineNumber);
+        const m = lineText.match(CELL_MARKER_RE);
+        if (!m || parseMarkerTag(m[1]) !== 'sql') return;
+        const tag = ' [sql]';
+        let newLine = `# %%${tag} pql_cell_id="${cellId}"`;
+        if (name) newLine += ` result_var="${name}"`;
+        if (newLine === lineText) return;
+        const range = new monaco.Range(
+            lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber),
+        );
+        editor.executeEdits('result-var-edit', [{ range, text: newLine, forceMoveMarkers: true }]);
     }
 
     function ensureOutputZone(cellId, afterLineNumber) {
@@ -841,6 +908,13 @@ export function createNotebookTabEditor({
                 if (record) setPinState(record, zone.editModePinned);
                 updateHiddenAreas();
             },
+            // Sprint 71: persist the result_var input back into the
+            // marker line via a Monaco edit op so on-disk state stays
+            // the source of truth (no parallel JS-side cell metadata
+            // store).  Pass ``null`` to drop the segment.
+            onResultVarChange: (cellId, name) => {
+                applyResultVarToMarker(cellId, name);
+            },
         };
 
         for (const cell of cellList) {
@@ -852,6 +926,7 @@ export function createNotebookTabEditor({
                     cell.typeId,
                     cell.markerLine,
                     handlers,
+                    cell.typeId === 'sql' ? cellResultVarById(cell.id) : null,
                 );
                 cellAffordances[cell.id] = record;
                 // Sprint 69: a freshly mounted markdown toolbar must

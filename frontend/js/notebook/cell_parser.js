@@ -20,7 +20,16 @@ export function joinCells(cells) {
     for (let i = 0; i < cells.length; i++) {
         const cell = cells[i];
         const descriptor = getCellType(cell.cell_type);
-        const marker = `# %%${descriptor.markerTag} pql_cell_id="${cell.id}"`;
+        let marker = `# %%${descriptor.markerTag} pql_cell_id="${cell.id}"`;
+        // Sprint 71: SQL cells optionally carry a ``result_var``
+        // segment.  Round-trips stay byte-stable when the field is
+        // missing — the segment is only emitted for SQL cells whose
+        // ``resultVar`` is a non-empty Python identifier.
+        if (descriptor.id === 'sql'
+                && typeof cell.resultVar === 'string'
+                && RESULT_VAR_RE.test(cell.resultVar)) {
+            marker += ` result_var="${cell.resultVar}"`;
+        }
         if (i > 0) lines.push('');
         lines.push(marker);
         const bodyStart = lines.length + 1;
@@ -37,6 +46,7 @@ export function splitCells(text) {
     const cells = [];
     let currentId = null;
     let currentType = 'code';
+    let currentResultVar = null;
     let buffer = [];
     const flush = () => {
         if (currentId === null) return;
@@ -45,7 +55,12 @@ export function splitCells(text) {
         if (buffer.length > 0 && buffer[buffer.length - 1] === '') {
             buffer.pop();
         }
-        cells.push({ id: currentId, cell_type: currentType, source: buffer.join('\n') });
+        cells.push({
+            id: currentId,
+            cell_type: currentType,
+            source: buffer.join('\n'),
+            resultVar: currentResultVar,
+        });
     };
     for (const line of lines) {
         const m = line.match(CELL_MARKER_RE);
@@ -53,6 +68,10 @@ export function splitCells(text) {
             flush();
             currentId = m[2];
             currentType = parseMarkerTag(m[1]);
+            // Sprint 71: ``result_var`` belongs to SQL cells; keep it
+            // null on every other type so the per-cell shape stays
+            // predictable for outline.js / cell_affordances.js.
+            currentResultVar = currentType === 'sql' && m[3] ? m[3] : null;
             buffer = [];
         } else if (currentId !== null) {
             buffer.push(line);
@@ -68,8 +87,16 @@ export function splitCells(text) {
 // Group 1 captures the full ``[tag]`` segment (with leading space);
 // group 2 captures the cell UUID.  ``parseMarkerTag`` in
 // ``cell_types.js`` resolves group 1 to a registry id and falls back
-// to ``code`` for unknown tags.
-export const CELL_MARKER_RE = /^#\s*%%(\s+\[\w+\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"\s*$/;
+// to ``code`` for unknown tags.  Sprint 71 widens the regex with an
+// optional ``result_var="<ident>"`` segment (group 3); the
+// constraint matches a Python identifier so the kernel can bind it
+// directly into ``globals()`` without further validation.
+export const CELL_MARKER_RE = /^#\s*%%(\s+\[\w+\])?\s+pql_cell_id="([0-9a-fA-F-]{36})"(?:\s+result_var="([A-Za-z_][A-Za-z0-9_]*)")?\s*$/;
+
+// Sprint 71: client-side validator for the result_var input shown on
+// SQL cells.  Mirrors the regex group above; centralised so the
+// affordance and the serialiser agree on the rule.
+export const RESULT_VAR_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 // Sprint 62 namespace introspect.  Runs inside the user's kernel
 // under cell_id=__pql_namespace__; the persistence layer + the

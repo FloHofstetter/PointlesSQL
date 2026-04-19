@@ -44,6 +44,33 @@ logger = logging.getLogger(__name__)
 _KERNEL_READY_TIMEOUT = 30.0
 _SHUTDOWN_TIMEOUT = 5.0
 _SUBSCRIBER_QUEUE_MAXSIZE = 1024
+_BOOTSTRAP_TIMEOUT = 10.0
+
+
+# Sprint 71 — kernel-side helper that turns the WS ``execute_sql``
+# wrapper into a rich-mime DataFrame display + optional namespace
+# binding.  The route already enforced privileges and resolved the
+# ``approved_tables`` map to Delta storage locations; the kernel only
+# has to register the views, run the query, materialise as pandas, and
+# call ``display`` so the existing iopub → output_renderer.js path
+# renders the table inline.  Errors raise normally so the kernel emits
+# a standard ``error`` iopub message the toolbar already paints in red.
+_NOTEBOOK_BOOTSTRAP_CODE = """\
+def __pql_sql_run(query, *, approved_tables, result_var, max_rows):
+    import pandas as pd
+    from IPython.display import display
+    from pointlessql.pql.pql import PQL
+
+    res = PQL.sql(query, approved_tables=approved_tables, max_rows=max_rows)
+    # SQLResult.columns is list[dict[str, str]] with ``name`` / ``type``
+    # entries — pandas needs the bare names as the column index.
+    column_names = [c.get("name") if isinstance(c, dict) else c for c in res.columns]
+    df = pd.DataFrame(list(res.rows), columns=column_names)
+    if result_var:
+        globals()[result_var] = df
+    display(df)
+    return None
+"""
 
 
 @dataclass
@@ -145,7 +172,15 @@ class KernelSession:
         self._exec_lock = asyncio.Lock()
 
     async def start(self) -> None:
-        """Launch the kernel subprocess and start the pump tasks."""
+        """Launch the kernel subprocess and start the pump tasks.
+
+        Sprint 71 inserted a one-shot bootstrap execute (silent, no
+        history) between ``wait_for_ready`` and the pump tasks so the
+        ``__pql_sql_run`` helper is defined before any user execute
+        can race a SQL cell run.  Bootstrap failure is logged but
+        does NOT abort the session — Python cells still work; SQL
+        cells will surface the missing-name error themselves.
+        """
         env = os.environ.copy()
         env["POINTLESSQL_PRINCIPAL"] = self._user_email
         km = AsyncKernelManager()
@@ -155,6 +190,7 @@ class KernelSession:
         await kc.wait_for_ready(timeout=_KERNEL_READY_TIMEOUT)
         self._km = km
         self._kc = kc
+        await self._run_bootstrap(kc)
         self._iopub_task = asyncio.create_task(
             self._pump("iopub"),
             name=f"kernel-iopub-{self.session_id[:8]}",
@@ -169,6 +205,53 @@ class KernelSession:
             self._notebook_path,
             self.session_id,
         )
+
+    async def _run_bootstrap(self, kc: AsyncKernelClient) -> None:
+        """Define ``__pql_sql_run`` in the kernel before pumps start.
+
+        Runs a single ``silent=True`` ``execute_request`` and drains
+        shell messages until the matching ``execute_reply`` arrives.
+        The pump tasks are NOT yet running, so we read shell directly.
+        Iopub messages produced during bootstrap are ignored by the
+        client (no subscribers yet) — exactly what we want for a
+        helper definition.
+        """
+        msg_id: str = kc.execute(
+            _NOTEBOOK_BOOTSTRAP_CODE, silent=True, store_history=False,
+        )
+        deadline = asyncio.get_running_loop().time() + _BOOTSTRAP_TIMEOUT
+        while True:
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                logger.warning(
+                    "kernel bootstrap timed out for %s notebook=%s",
+                    self._user_email,
+                    self._notebook_path,
+                )
+                return
+            try:
+                raw = await asyncio.wait_for(kc.get_shell_msg(), timeout=remaining)
+            except TimeoutError:
+                logger.warning(
+                    "kernel bootstrap timed out for %s notebook=%s",
+                    self._user_email,
+                    self._notebook_path,
+                )
+                return
+            except Exception:  # noqa: BLE001 — jupyter_client raises varied exceptions
+                logger.exception("kernel bootstrap shell read failed")
+                return
+            if raw.get("parent_header", {}).get("msg_id") != msg_id:
+                continue
+            status = raw.get("content", {}).get("status")
+            if status != "ok":
+                logger.warning(
+                    "kernel bootstrap reply status=%s for %s notebook=%s",
+                    status,
+                    self._user_email,
+                    self._notebook_path,
+                )
+            return
 
     async def _pump(self, channel: str) -> None:
         """Drain one ZMQ channel into every subscriber's queue.
@@ -255,11 +338,24 @@ class KernelSession:
         await self._km.interrupt_kernel()
 
     async def restart(self) -> None:
-        """Restart the kernel in place. Bumps :attr:`session_id`."""
+        """Restart the kernel in place. Bumps :attr:`session_id`.
+
+        Sprint 71 re-queues the ``__pql_sql_run`` bootstrap after the
+        restart so SQL cells keep working post-restart without
+        requiring the user to re-execute a setup cell.  Goes through
+        the regular ``execute`` path (with a reserved ``__pql_``-
+        prefixed cell_id so persistence skips it) instead of reading
+        shell directly — the iopub / shell pump tasks are still alive
+        across a restart and would otherwise consume the bootstrap
+        reply before we could read it.  The kernel serialises
+        execute_requests, so the next user SQL execute is guaranteed
+        to see the helper defined.
+        """
         assert self._km is not None
         await self._km.restart_kernel()
         self.session_id = str(uuid.uuid4())
         self._msg_to_cell.clear()
+        await self.execute(_NOTEBOOK_BOOTSTRAP_CODE, "__pql_sql_bootstrap__")
         logger.info(
             "kernel restarted for %s notebook=%s new_session_id=%s",
             self._user_email,
