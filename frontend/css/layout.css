@@ -145,3 +145,29 @@
     display: block;
 }
 
+/* Sprint 95: sidebar drawer footer (moved here from responsive.css —
+ * it is layout chrome, not a media-query, so it belongs next to the
+ * other sidebar styling).  Navigation links collapse into here at
+ * <640 px so the top navbar stays lean.  Reset the list styling so
+ * the included `<ul>` looks like a sidebar menu instead of the
+ * pill-shaped Bootstrap navbar nav. */
+.pql-sidebar-nav-footer .pql-sidebar-nav-list {
+    padding: 0.5rem 0;
+}
+.pql-sidebar-nav-footer .pql-sidebar-nav-list .nav-link {
+    padding: 0.65rem 1rem;
+    color: var(--bs-body-color);
+}
+.pql-sidebar-nav-footer .pql-sidebar-nav-list .nav-link.active {
+    color: var(--pql-color-accent);
+    background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
+}
+.pql-sidebar-nav-footer .pql-sidebar-nav-list .dropdown-menu {
+    position: static;
+    float: none;
+    width: 100%;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}

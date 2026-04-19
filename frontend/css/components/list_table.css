@@ -100,3 +100,72 @@ tr:focus-within .pql-row-actions {
     padding: 0.5rem 0.75rem;
     border-radius: 0.25rem;
 }
+
+/* Mobile sort dropdown (Sprint 95: moved here from responsive.css —
+ * it is logically a list-table affordance even though the breakpoint
+ * lives in CSS).  Stays hidden at >=sm; the desktop sortable headers
+ * keep working above the breakpoint. */
+.pql-list-sort-mobile {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+}
+.pql-list-sort-mobile .form-label {
+    display: block;
+}
+
+/* List tables collapse to label / value card rows on <640 px.
+ * Sprint 95: moved here from responsive.css so the mobile collapse
+ * lives next to the desktop list-table styling.  Every `<td>` needs
+ * a `data-label="…"` attribute; the `::before` renders the label
+ * as a key in a two-column row.  Progressive enhancement — above
+ * the breakpoint the table stays a normal Bootstrap table. */
+@media (max-width: 639.98px) {
+    .pql-list-table,
+    .pql-list-table > thead,
+    .pql-list-table > tbody,
+    .pql-list-table > tbody > tr,
+    .pql-list-table > tbody > tr > td {
+        display: block;
+        width: 100%;
+    }
+    .pql-list-table > thead {
+        display: none;
+    }
+    .pql-list-table > tbody > tr {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--bs-border-color-translucent);
+    }
+    .pql-list-table > tbody > tr:last-child {
+        border-bottom: 0;
+    }
+    .pql-list-table > tbody > tr > td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.25rem 0;
+        border: 0;
+        text-align: left;
+    }
+    .pql-list-table > tbody > tr > td::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: var(--pql-text-xs);
+        font-weight: var(--pql-weight-semibold);
+        color: var(--bs-secondary-color);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .pql-list-table > tbody > tr > td:not([data-label])::before {
+        content: none;
+    }
+    /* Row-action cells pack multiple buttons — keep them on one line
+     * and right-aligned rather than collapsed to the label/value row
+     * split. */
+    .pql-list-table > tbody > tr > td.pql-row-actions {
+        justify-content: flex-end;
+    }
+    .pql-list-table > tbody > tr > td.pql-row-actions::before {
+        content: none;
+    }
+}

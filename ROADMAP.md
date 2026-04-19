@@ -3534,6 +3534,50 @@ PointlesSQL
 │   ├── Sprint 93 — notebook_editor.html modals → partial          ✅ done (d14f4e7)
 │
 │   ├── Sprint 94 — page templates → ESM (4 of 7 pilots)            ✅ done (33a0a6c)
+│
+│   └── Sprint 95 — CSS feinschliff + cache-busting parity          ✅ done (pending-commit)
+│       Tranche-6 of the Sprint-76 frontend modularisation plan
+│       and the closing sprint of the Sprint-77-95 effort.
+│
+│       - **CSS splits.** ``responsive.css`` 157 → 74 LOC.  The
+│         ``.pql-list-table`` mobile-collapse block + the
+│         ``.pql-list-sort-mobile`` dropdown moved to
+│         ``components/list_table.css`` (now 171 LOC) so the
+│         mobile breakpoint sits next to the desktop list-table
+│         styling.  The ``.pql-sidebar-nav-footer`` chrome moved to
+│         ``layout.css`` (now 173 LOC) so the sidebar layout rules
+│         are co-located.  ``responsive.css`` keeps the Jupyter
+│         iframe mobile notice + the touch-target + reduced-motion
+│         media queries — the cross-cutting accessibility rules
+│         that don't slot under a single component.
+│       - **Cache-busting parity.** ``base.html``'s
+│         ``<script type="module" src="/static/js/bootstrap.js">``
+│         picks up ``?v=sprint95`` so the Sprint 91-94 JS surgery
+│         actually reaches every browser without a hard reload.
+│       - **Tranche-7 leftover** (csrfToken duplicate in
+│         notebook/main.js): inspected; Sprint 75 already
+│         migrated the call site to ``import { csrfToken } from
+│         '../api.js'`` (line 69 + line 508 use the imported
+│         symbol).  No work required.
+│
+│       **Static gates (all green):** all 11 CSS files still
+│       referenced by ``style.css`` master @import chain;
+│       ``check-frontend-bootstrap-order.sh`` still green.
+│       Pure-rule moves between CSS files; rule selectors and
+│       cascade order unchanged.
+│
+│       **Endgame summary** (Sprints 77-95, 19 sprints total):
+│       - 8 backend service splits (kernel_session, pql, notebook_outputs,
+│         models, alerts, pg_sync, unitycatalog, scheduler).
+│       - 14 api/main.py route extracts (the original 6,599-LOC
+│         monolith → 280 LOC, -95.8%, 14 router modules).
+│       - 5 frontend tranches (sql_editor 4-module split,
+│         federation 3-module split + command_palette ESM,
+│         notebook_editor modals partial, 4 of 7 page templates
+│         ESM, CSS feinschliff).
+│       Net: ~16 000 LOC of monolithic Python + JS spread across
+│       ~80 focused files, all <600 LOC, median <200 LOC.  Zero
+│       behaviour change; every gate stayed green.
 │       Tranche-5 of the Sprint-76 frontend modularisation plan.
 │       Four of the seven sketched page-template inline scripts
 │       lift into ``frontend/js/pages/*.js`` ESM modules.  Each
