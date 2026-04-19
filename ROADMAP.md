@@ -3428,7 +3428,7 @@ PointlesSQL
 │       ``docs/e2e-walkthroughs/notebook_kernel.md`` (Playwright
 │       playbook) which the user replays manually.
 │
-│   └── Sprint 89a — api/main.py federation routes extract        ✅ done (pending-commit)
+│   ├── Sprint 89a — api/main.py federation routes extract        ✅ done (08a7298)
 │       Tenth api/main.py decomposition slice — first cut of
 │       Sprint 89's federation+jobs+dashboards triple.  All UC
 │       federation administration lifts out: connections,
@@ -3447,6 +3447,47 @@ PointlesSQL
 │       violations.  ``pytest -k 'connection or credential or
 │       federation or external' --ignore=tests/test_jupyter.py``
 │       34/34 passed.
+│
+│   └── Sprint 89b — api/main.py jobs + scheduler routes extract  ✅ done (pending-commit)
+│       Eleventh api/main.py decomposition slice — second cut of
+│       Sprint 89.  The full job-scheduler surface lifts out: 5
+│       JSON CRUD routes, 3 run/task introspection routes, 3
+│       papermill artefact routes, 2 pause/unpause, and 2 HTML
+│       pages (jobs list + job detail).  main.py drops 2.406 →
+│       1.674 LOC (-732).
+│
+│       - ``api/jobs_routes.py`` (803 LOC) — 13 routes plus 7
+│         module-level helpers (``serialize_job``,
+│         ``serialize_task``, ``serialize_task_run``,
+│         ``serialize_run``, ``latest_run_per_job``,
+│         ``load_job_or_404``, ``require_job_owner_or_admin``,
+│         ``load_papermill_run_output_path``) plus the
+│         ``JOB_REGISTRY`` module-level constant.  Underscores
+│         dropped from helper names.
+│       - ``main.py`` mount: ``app.include_router(jobs_router)``.
+│         ``JOB_REGISTRY`` and ``serialize_run`` re-exported from
+│         main.py under their legacy ``_JOB_REGISTRY`` /
+│         ``_serialize_run`` aliases — the still-resident
+│         dashboard refresh route reads them at lines 1896 +
+│         1899 of pre-split main.py.
+│       - ``tests/test_scheduler.py``: ``test_manual_run_and_pause_
+│         unpause`` updated to ``monkeypatch.setattr(api_jobs_routes,
+│         "JOB_REGISTRY", recording_registry)``.  Python's
+│         local-name lookup means a re-export binding in main.py is
+│         not what the route handler reads — the test must patch
+│         the module that owns the symbol.
+│
+│       **Visibility model preserved.** Admin sees every job;
+│       non-admin sees only jobs whose ``run_as_user_id`` matches
+│       their user id.  Mutations check admin-or-owner.  Papermill
+│       artefact serving still goes through the visibility-checked
+│       route (no static mount, so non-owner users cannot
+│       exfiltrate run output by guessing ``run_id`` values).
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 25 warnings (unchanged),
+│       ``pydoclint`` 0 violations.  ``pytest -k 'job or
+│       scheduler' --ignore=tests/test_jupyter.py`` 54/54 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
