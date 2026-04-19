@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
 from pointlessql.services.jupyter import managed_jupyter
+
 from pointlessql.settings import Settings
 
 # ------------------------------------------------------------------
