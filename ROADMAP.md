@@ -2301,12 +2301,36 @@ PointlesSQL
 │   │   the land gate per ``feedback_run_playbook_as_gate``.
 │   │   **No Alembic migration.**
 │   │
-│   ├── Sprint 69 — Markdown polish + dual-mode + KaTeX            ⏳ trim-point
-│   │   Replace the regex markdown renderer with ``markdown-it``
-│   │   (vendored next to Monaco); add KaTeX for ``$…$`` /
-│   │   ``$$…$$`` blocks; add a per-cell pencil toggle so the user
-│   │   can pin a markdown cell into edit-mode without moving the
-│   │   cursor.  KaTeX is independently droppable.
+│   ├── Sprint 69 — Markdown polish + dual-mode + KaTeX            ✅ done (d3c7df7)
+│   │   Replaces the Sprint-65 regex preview with ``markdown-it``
+│   │   14.1.0 (CommonMark — tables, nested lists, autolinking),
+│   │   layered KaTeX 0.16.11 via ``markdown-it-texmath`` 1.0.0
+│   │   for ``$…$`` / ``$$…$$`` math; per-cell pencil-pin toggle
+│   │   keeps a markdown cell in source view independent of
+│   │   cursor position.  All three libs vendored under
+│   │   [frontend/js/vendor/](frontend/js/vendor/) via
+│   │   [scripts/vendor-markdown-libs.sh](scripts/vendor-markdown-libs.sh)
+│   │   (mirrors ``vendor-monaco.sh``).  Pin state lives on
+│   │   ``markdownZones[cellId].editModePinned`` (closure-scoped,
+│   │   session-only — jupytext marker grammar + ADR 0001
+│   │   untouched).  Cell-type registry gains optional
+│   │   ``affordances: ['pin']`` field as the seam future
+│   │   cell-type-specific buttons plug into.  Reactivity-boundary
+│   │   grep gate widened to block ``this._mdSingleton`` /
+│   │   ``_mdPinState`` / ``_pinHandlers`` (markdown-it's deep
+│   │   rule registries are exactly the BUG-64-02 footgun shape).
+│   │   Vendor bundles MUST load before ``monaco/vs/loader.js`` —
+│   │   their UMD wrappers detect Monaco's AMD ``window.define``
+│   │   and register as anonymous AMD modules, colliding with
+│   │   Monaco's "one anonymous define per script" contract
+│   │   (BUG-69-01, replay-caught + fixed in same commit).
+│   │   Playbook Part J added; replayed in Firefox (MCP) as the
+│   │   land gate per ``feedback_run_playbook_as_gate``.
+│   │   **No Alembic migration.** KaTeX layer is independently
+│   │   droppable: removing the ``.use(window.texmath, …)`` line
+│   │   in ``markdown.js`` plus the matching template ``<script>``
+│   │   / ``<link>`` tags reverts to plain markdown-it without
+│   │   breaking anything else.
 │   │
 │   ├── Sprint 70 — Outline / TOC panel + cell jump                ⏳ trim-point
 │   │   Right-side panel (peer of Variable Explorer) listing
