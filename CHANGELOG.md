@@ -4,6 +4,55 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 78: pql/pql.py → 5 sibling helpers
+
+Second backend split. The 461-LOC ``PQL`` module is now a 192-LOC
+public-class façade plus five per-concern sibling modules.
+:class:`PQL`'s methods are thin wrappers that delegate to module-level
+helper functions; the orchestration shape (init → method dispatch) is
+readable in one file while the per-concern logic — Delta read, DuckDB
+SQL execution, Delta write + table-creation, list helpers — lives
+next door.
+
+- **New helpers** under ``pointlessql/pql/``:
+  [_types.py](pointlessql/pql/_types.py) (44 LOC) carries
+  ``SQLResult``;
+  [_read.py](pointlessql/pql/_read.py) (64 LOC) is ``read_table()``
+  (the body of ``PQL.table``);
+  [_sql.py](pointlessql/pql/_sql.py) (124 LOC) is ``run_sql()`` (the
+  body of ``PQL.sql`` — DuckDB connect + view registration + execute
+  + row cap);
+  [_write.py](pointlessql/pql/_write.py) (132 LOC) is
+  ``write_table()`` + ``derive_storage_location()`` (the body of
+  ``PQL.write_table``);
+  [_list.py](pointlessql/pql/_list.py) (80 LOC) is ``list_catalogs``
+  / ``list_schemas`` / ``list_tables``.
+
+- **Public surface preserved.** :class:`PQL` keeps every method
+  signature it had; ``SQLResult`` is re-exported from
+  [pql.py](pointlessql/pql/pql.py) so existing
+  ``from pointlessql.pql.pql import SQLResult`` callers (notably
+  [tests/test_alerts.py:417](tests/test_alerts.py#L417)) resolve
+  unchanged.
+
+- **Tests updated, not the production code.** Added ``_READ`` /
+  ``_WRITE`` / ``_LIST`` constants alongside the existing ``_MOD``
+  in [tests/test_pql.py](tests/test_pql.py) and re-pointed every
+  ``@patch`` to the module that now owns the symbol (e.g.
+  ``_get_table`` is monkeypatched on
+  ``pointlessql.pql._read`` for read tests and on
+  ``pointlessql.pql._write`` for write tests). Internal mocks
+  must follow the implementation when the implementation is
+  intentionally split — the alternative (re-importing soyuz-client
+  internals back into ``pql.py`` purely for the test surface) would
+  defeat the split.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+  0 errors / 32 warnings (all pre-existing
+  ``engine.py`` polars/pyarrow untyped-arg warnings), ``pydoclint``
+  0 violations, ``pytest tests/test_pql.py tests/test_alerts.py``
+  51/51 passed.
+
 ### Refactored — Phase 12.9 / Sprint 77: services/kernel_session.py → package
 
 Pilot of the backend modularization arc (Sprints 77-90). The single

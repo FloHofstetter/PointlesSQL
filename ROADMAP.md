@@ -2809,7 +2809,7 @@ PointlesSQL
 │       Phase 12.9 sprint that touches x-data/template structure
 │       will carry a playbook replay.
 │
-│   └── Sprint 77 — services/kernel_session.py → 3 sub-modules    ✅ done (pending-commit)
+│   ├── Sprint 77 — services/kernel_session.py → 3 sub-modules    ✅ done (54a6436)
 │       Pilot of the backend modularization arc (Sprints 77-90).
 │       Smallest isolated split (471 LOC, one external caller) —
 │       validates the package + ``__init__.py`` re-export recipe
@@ -2843,6 +2843,43 @@ PointlesSQL
 │       ``python -c "from pointlessql.services import kernel_session"``.
 │       No tests directly import this module; no Alembic, no
 │       template, no JS touched.
+│
+│   └── Sprint 78 — pql/pql.py → 5 sibling helpers              ✅ done (pending-commit)
+│       Second backend split.  Façade pattern: :class:`PQL` stays in
+│       ``pql.py`` as the public class; method bodies delegate to
+│       per-concern helper modules so the orchestration shape is
+│       readable in one file while the per-concern logic lives
+│       next door.
+│
+│       **Sibling helpers** under ``pointlessql/pql/``:
+│       - ``_types.py`` (44 LOC) — :class:`SQLResult`.
+│       - ``_read.py`` (64 LOC) — ``read_table()`` (PQL.table body).
+│       - ``_sql.py`` (124 LOC) — ``run_sql()`` (PQL.sql body, the
+│         DuckDB execution path).
+│       - ``_write.py`` (132 LOC) — ``write_table()`` +
+│         ``derive_storage_location()`` (PQL.write_table body).
+│       - ``_list.py`` (80 LOC) — ``list_catalogs/_schemas/_tables``.
+│
+│       **``pql.py``: 461 → 192 LOC** (-269).  Re-exports
+│       ``SQLResult`` so existing
+│       ``from pointlessql.pql.pql import SQLResult`` (e.g.
+│       [tests/test_alerts.py:417](tests/test_alerts.py#L417))
+│       continues to resolve.
+│
+│       **Tests updated.**
+│       [tests/test_pql.py](tests/test_pql.py) added ``_READ`` /
+│       ``_WRITE`` / ``_LIST`` constants alongside the existing
+│       ``_MOD`` and re-pointed every ``@patch`` to the module that
+│       now owns the symbol.  This is the right structural fix:
+│       internal mocks must follow the implementation when the
+│       implementation is intentionally split.  No production code
+│       had to compensate for the test surface.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors, ``pyright``
+│       0 errors / 32 warnings (all pre-existing engine.py
+│       polars/pyarrow untyped-arg warnings), ``pydoclint`` 0
+│       violations, ``pytest tests/test_pql.py tests/test_alerts.py``
+│       51/51 passed.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │

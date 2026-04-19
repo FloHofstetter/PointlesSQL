@@ -113,6 +113,9 @@ class TestColumnsFromDataframe:
 # ------------------------------------------------------------------
 
 _MOD = "pointlessql.pql.pql"
+_READ = "pointlessql.pql._read"
+_WRITE = "pointlessql.pql._write"
+_LIST = "pointlessql.pql._list"
 
 
 class TestPQLConstructor:
@@ -166,7 +169,7 @@ class TestPQLConstructor:
 
 
 class TestPQLTable:
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_READ}._get_table")
     def test_reads_via_engine(self, mock_get: MagicMock) -> None:
         expected_df = pd.DataFrame({"a": [1, 2]})
         mock_engine = MagicMock(spec=Engine)
@@ -181,14 +184,14 @@ class TestPQLTable:
         mock_engine.read.assert_called_once_with("/tmp/delta/tbl")
         pd.testing.assert_frame_equal(result, expected_df)
 
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_READ}._get_table")
     def test_not_found_raises(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = None
         pql = PQL(client=MagicMock())
         with pytest.raises(CatalogNotFoundError, match="not found"):
             pql.table("cat.sch.tbl")
 
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_READ}._get_table")
     def test_no_storage_location_raises(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = TableInfo(name="tbl")
         pql = PQL(client=MagicMock())
@@ -207,7 +210,7 @@ class TestPQLTable:
 
 
 class TestPQLWriteTable:
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_WRITE}._get_table")
     def test_existing_table_writes_only(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = TableInfo(
             storage_location="/data/cat/sch/tbl",
@@ -216,15 +219,15 @@ class TestPQLWriteTable:
         mock_engine = MagicMock(spec=Engine)
         df = pd.DataFrame({"x": [1]})
 
-        with patch(f"{_MOD}._create_table") as mock_create:
+        with patch(f"{_WRITE}._create_table") as mock_create:
             pql = PQL(client=MagicMock(), engine=mock_engine)
             pql.write_table(df, "cat.sch.tbl")
             mock_engine.write.assert_called_once_with(df, "/data/cat/sch/tbl", "overwrite")
             mock_create.sync.assert_not_called()
 
-    @patch(f"{_MOD}._create_table")
-    @patch(f"{_MOD}._get_schema")
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_WRITE}._create_table")
+    @patch(f"{_WRITE}._get_schema")
+    @patch(f"{_WRITE}._get_table")
     def test_new_table_creates_metadata(
         self,
         mock_get_table: MagicMock,
@@ -261,8 +264,8 @@ class TestPQLWriteTable:
         assert body.storage_location == "/data/warehouse/cat/sch/tbl"
         assert len(body.columns) == 2
 
-    @patch(f"{_MOD}._get_schema")
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_WRITE}._get_schema")
+    @patch(f"{_WRITE}._get_table")
     def test_new_table_no_schema_storage_raises(
         self, mock_get_table: MagicMock, mock_get_schema: MagicMock
     ) -> None:
@@ -274,7 +277,7 @@ class TestPQLWriteTable:
         with pytest.raises(CatalogNotFoundError, match="storage_root"):
             pql.write_table(df, "cat.sch.tbl")
 
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_WRITE}._get_table")
     def test_mode_forwarded(self, mock_get: MagicMock) -> None:
         mock_get.sync.return_value = TableInfo(storage_location="/data/tbl", name="tbl")
         mock_engine = MagicMock(spec=Engine)
@@ -290,7 +293,7 @@ class TestPQLWriteTable:
 
 
 class TestPQLListMethods:
-    @patch(f"{_MOD}._list_catalogs")
+    @patch(f"{_LIST}._list_catalogs")
     def test_list_catalogs(self, mock_list: MagicMock) -> None:
         cat = MagicMock()
         cat.to_dict.return_value = {"name": "my_cat"}
@@ -299,7 +302,7 @@ class TestPQLListMethods:
         result = pql.list_catalogs()
         assert result == [{"name": "my_cat"}]
 
-    @patch(f"{_MOD}._list_schemas")
+    @patch(f"{_LIST}._list_schemas")
     def test_list_schemas(self, mock_list: MagicMock) -> None:
         sch = MagicMock()
         sch.to_dict.return_value = {"name": "my_sch", "catalog_name": "cat"}
@@ -309,7 +312,7 @@ class TestPQLListMethods:
         mock_list.sync.assert_called_once_with(client=pql._client, catalog_name="cat")
         assert result == [{"name": "my_sch", "catalog_name": "cat"}]
 
-    @patch(f"{_MOD}._list_tables")
+    @patch(f"{_LIST}._list_tables")
     def test_list_tables(self, mock_list: MagicMock) -> None:
         tbl = MagicMock()
         tbl.to_dict.return_value = {"name": "t1"}
@@ -331,7 +334,7 @@ class TestPQLListMethods:
 
 
 class TestPQLConnectionError:
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_READ}._get_table")
     def test_table_raises_catalog_unavailable(self, mock_get: MagicMock) -> None:
         import httpx
 
@@ -342,7 +345,7 @@ class TestPQLConnectionError:
         with pytest.raises(CatalogUnavailableError, match="Cannot reach soyuz-catalog"):
             pql.table("cat.sch.tbl")
 
-    @patch(f"{_MOD}._get_table")
+    @patch(f"{_WRITE}._get_table")
     def test_write_table_raises_catalog_unavailable(self, mock_get: MagicMock) -> None:
         import httpx
 
