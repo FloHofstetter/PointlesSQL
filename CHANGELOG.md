@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Refactored — Phase 12.9 / Sprint 90: api/main.py admin/home/catalog-html + endgame
+
+Final decomposition slice for ``api/main.py``. Three new modules
+lift out everything left, taking main.py from 1,296 LOC to 280 LOC
+and closing out the 6,599 → 280 LOC (-95.8%) Sprint 85-90 effort.
+
+- **New module** [admin_routes.py](pointlessql/api/admin_routes.py)
+  (259 LOC). The ``/admin/audit`` viewer + ``/admin/audit/export``
+  (CSV / JSON). Both admin-gated, both reading the Sprint-7
+  ``audit_log`` table append-only.
+
+- **New module** [home_routes.py](pointlessql/api/home_routes.py)
+  (573 LOC). The home dashboard (``GET /``), the JSON twin
+  (``GET /api/home/summary``), and the Cmd+K command palette
+  (``GET /api/search``). ``build_home_summary`` + ``score_match``
+  + ``epoch_seconds`` helpers move along.
+
+- **New module** [catalog_html_routes.py](pointlessql/api/catalog_html_routes.py)
+  (254 LOC). The three catalog-browser HTML pages (catalog
+  detail / schema detail / table detail) that drive the sidebar
+  navigation. Their JSON twins remain in ``api/catalog_routes.py``
+  from Sprint 86.
+
+- **main.py endgame.** What remains: app construction +
+  ``register_middleware`` + the 14 ``include_router()`` calls +
+  lifespan + audit-retention loop + ``/healthz`` + ``/metrics``
+  + ``cli()``. Every route handler now lives in a focused
+  ``api/<area>_routes.py`` module.
+
+- **Static gates (all green):** ``ruff`` 0 errors, ``pyright`` 0
+  errors / 0 warnings on main.py (-16 because the moved code
+  carried the remaining partial-unknown warnings), ``pydoclint``
+  0 violations. Eleven now-stale imports auto-trimmed by ruff.
+
 ### Refactored — Phase 12.9 / Sprint 89c: api/main.py dashboards routes extract
 
 Twelfth decomposition slice for ``api/main.py`` — closes Sprint 89's

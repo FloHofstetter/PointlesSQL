@@ -3489,7 +3489,7 @@ PointlesSQL
 │       ``pydoclint`` 0 violations.  ``pytest -k 'job or
 │       scheduler' --ignore=tests/test_jupyter.py`` 54/54 passed.
 │
-│   └── Sprint 89c — api/main.py dashboards routes extract        ✅ done (pending-commit)
+│   ├── Sprint 89c — api/main.py dashboards routes extract        ✅ done (f501c4e)
 │       Twelfth api/main.py decomposition slice — closes Sprint
 │       89's federation+jobs+dashboards triple.  The Sprint-28
 │       dashboards publishing surface lifts out: 4 JSON CRUD +
@@ -3524,6 +3524,40 @@ PointlesSQL
 │       pytest module today (covered by the
 │       ``docs/e2e-walkthroughs/dashboards.md`` playbook); other
 │       suites unaffected.
+│
+│   └── Sprint 90 — api/main.py admin/home/catalog-html + endgame ✅ done (pending-commit)
+│       Final api/main.py decomposition slice.  Three new modules
+│       lift out everything left:
+│
+│       - ``api/admin_routes.py`` (259 LOC) — the ``/admin/audit``
+│         viewer + ``/admin/audit/export`` (CSV / JSON).  Both
+│         admin-gated, both reading the Sprint-7 ``audit_log``
+│         table append-only.
+│       - ``api/home_routes.py`` (573 LOC) — the home dashboard
+│         (``GET /``), the JSON twin
+│         (``GET /api/home/summary``), and the Cmd+K command
+│         palette (``GET /api/search``).  ``build_home_summary``
+│         + ``score_match`` + ``epoch_seconds`` helpers move
+│         along.
+│       - ``api/catalog_html_routes.py`` (254 LOC) — the three
+│         catalog-browser HTML pages (catalog detail / schema
+│         detail / table detail) that drive the sidebar
+│         navigation.  Their JSON twins remain in
+│         ``api/catalog_routes.py`` from Sprint 86.
+│
+│       **main.py endgame: 6,599 → 280 LOC (-95.8% over Sprints
+│       85-90).** What remains: app construction +
+│       ``register_middleware`` + the 14 ``include_router()``
+│       calls + lifespan + audit-retention loop +
+│       ``/healthz`` + ``/metrics`` + ``cli()``.  Every route
+│       handler now lives in a focused
+│       ``api/<area>_routes.py`` module.
+│
+│       **Static gates (all green):** ``ruff`` 0 errors,
+│       ``pyright`` 0 errors / 0 warnings on main.py (-16 because
+│       the moved code carried the remaining partial-unknown
+│       warnings), ``pydoclint`` 0 violations.  Eleven now-stale
+│       imports auto-trimmed by ruff.
 │
 ├── Phase 13 — Agent workloads                            ⏳ sketch
 │   │
