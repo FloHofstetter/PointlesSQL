@@ -26,7 +26,7 @@ from sqlalchemy import select
 
 from pointlessql.api.agent_runs_routes import serialize_agent_run
 from pointlessql.exceptions import CatalogNotFoundError
-from pointlessql.models import NotebookCellRun, NotebookOutput
+from pointlessql.models import AuditLog, NotebookCellRun, NotebookOutput
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services import notebook_doc as notebook_doc_service
 from pointlessql.services import output_rendering as output_rendering_service
@@ -121,6 +121,47 @@ def _load_outputs_for_run(
             frame = output_rendering_service.render_output_frame(row.msg_type, content)
             grouped[row.content_hash].append(frame)
     return dict(grouped)
+
+
+def _load_audit_entries_for_run(
+    request: Request, run_id: str, *, limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Return the audit-log rows whose ``target`` references this run.
+
+    Sprint 13.4 surfaces the audit trail next to the run metadata so
+    the operator can see who created / approved / denied the run
+    without leaving the detail page.  The Sprint-13.2 routes write
+    rows with ``target = "agent_run:{run_id}"``; the Sprint-13.4
+    Approve / Deny buttons follow the same convention.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string of the owning run.
+        limit: Hard cap on rows returned; the sidebar is small.
+
+    Returns:
+        List of dicts in newest-first order.
+    """
+    factory = request.app.state.session_factory
+    target_str = f"agent_run:{run_id}"
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(AuditLog)
+            .where(AuditLog.target == target_str)
+            .order_by(AuditLog.created_at.desc())
+            .limit(limit)
+        )
+        for row in session.scalars(stmt).all():
+            out.append({
+                "id": row.id,
+                "action": row.action,
+                "actor_email": row.user_email,
+                "actor_role": row.actor_role,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "detail": row.detail,
+            })
+    return out
 
 
 def _load_cell_runs_for_run(
@@ -239,6 +280,7 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             "cells": cells,
             "cell_outputs": _load_outputs_for_run(request, run_id),
             "cell_runs": _load_cell_runs_for_run(request, run_id),
+            "audit_entries": _load_audit_entries_for_run(request, run_id),
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,
             "active_page": "runs",

@@ -100,9 +100,76 @@
             <dt class="col-3 col-md-2">Cost estimate</dt>
             <dd class="col-9 col-md-10">{{ run.cost_est }}</dd>
             {% endif %}
+            {% if run.tables_touched %}
+            <dt class="col-3 col-md-2">Tables touched</dt>
+            <dd class="col-9 col-md-10">
+                {% for full_name in run.tables_touched %}
+                <a href="/catalogs/{{ full_name.split('.')[0] }}/{{ full_name.split('.')[1] }}/{{ full_name.split('.')[2] }}"
+                   class="badge bg-secondary text-decoration-none font-monospace me-1 mb-1">{{ full_name }}</a>
+                {% endfor %}
+            </dd>
+            {% endif %}
+            {% if run.approved_by %}
+            <dt class="col-3 col-md-2">Approved by</dt>
+            <dd class="col-9 col-md-10 font-monospace">{{ run.approved_by }} <span class="text-muted">at {{ run.approved_at }}</span></dd>
+            {% endif %}
+            {% if run.denied_reason %}
+            <dt class="col-3 col-md-2">Denied reason</dt>
+            <dd class="col-9 col-md-10">{{ run.denied_reason }}</dd>
+            {% endif %}
         </dl>
     </div>
 </div>
+
+{% if run.status == 'needs_approval' and current_user and current_user.is_admin %}
+<div class="card mb-4 border-warning"
+     x-data="{
+        denyReason: '',
+        busy: false,
+        error: null,
+        async approve() {
+            this.busy = true; this.error = null;
+            try {
+                const r = await fetch('/api/agent-runs/{{ run.id }}/approve', {method: 'POST'});
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                window.location.reload();
+            } catch (e) { this.error = String(e); this.busy = false; }
+        },
+        async deny() {
+            this.busy = true; this.error = null;
+            try {
+                const r = await fetch('/api/agent-runs/{{ run.id }}/deny', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({reason: this.denyReason})
+                });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                window.location.reload();
+            } catch (e) { this.error = String(e); this.busy = false; }
+        }
+     }">
+    <div class="card-header bg-warning-subtle">
+        <i class="bi bi-shield-exclamation me-1"></i>This run is awaiting admin approval
+    </div>
+    <div class="card-body small">
+        <div class="mb-3">
+            <label class="form-label small text-muted">Optional denial reason</label>
+            <textarea class="form-control form-control-sm" rows="2" x-model="denyReason"
+                      placeholder="Why are you rejecting this run?"></textarea>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success btn-sm" :disabled="busy" @click="approve">
+                <i class="bi bi-check-circle me-1"></i>Approve
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm" :disabled="busy" @click="deny">
+                <i class="bi bi-x-circle me-1"></i>Deny
+            </button>
+            <span x-show="busy" class="text-muted small align-self-center">working…</span>
+            <span x-show="error" x-text="error" class="text-danger small align-self-center"></span>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endif %}
 
 {% for cell in cells %}
@@ -159,4 +226,32 @@
     Notebook is empty — no cells to display.
 </div>
 {% endfor %}
+
+{% if audit_entries is defined and audit_entries %}
+<div class="card mt-4">
+    <div class="card-header"><i class="bi bi-journal-text me-1"></i>Audit log <span class="text-muted small">({{ audit_entries | length }} entries)</span></div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0 small">
+            <thead>
+                <tr>
+                    <th>When</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in audit_entries %}
+                <tr>
+                    <td class="font-monospace text-muted">{{ entry.created_at or "—" }}</td>
+                    <td class="font-monospace">{{ entry.actor_email or "—" }} <span class="text-muted">({{ entry.actor_role or "?" }})</span></td>
+                    <td><span class="badge bg-secondary">{{ entry.action }}</span></td>
+                    <td class="font-monospace small text-muted">{{ entry.detail or "—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

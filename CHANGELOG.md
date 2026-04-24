@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.4: ``/runs`` filter bar + approval panel
+
+The supervision list is now filterable, sortable, and gated.
+External runtimes still POST runs in via Sprint 13.2's registry;
+Sprint 13.4 makes the page actually usable for an operator with
+many runs.
+
+- **Filter bar** on
+  [frontend/templates/pages/runs_list.html](frontend/templates/pages/runs_list.html)
+  via the existing Alpine ``listTable`` component (search box +
+  six status chips: queued, running, needs_approval, succeeded,
+  failed, denied).  Sortable headers (id / principal / agent /
+  status / cost / started_at).  Adds a Cost-est and a
+  Tables-touched column.  Client-side filtering by design — 200
+  rows is well within client-side cost and the page render stays
+  cacheable.
+- **Approval panel** on
+  [frontend/templates/pages/run_view.html](frontend/templates/pages/run_view.html)
+  appears only when ``run.status == 'needs_approval'`` AND
+  ``current_user.is_admin``.  Two Alpine-backed buttons (Approve,
+  Deny with optional reason textarea) POST to the existing
+  Sprint-13.2 ``/api/agent-runs/{id}/approve`` + ``/deny``
+  endpoints and reload on success.  Non-admins see a clean
+  metadata view with no buttons.
+- **Tables-touched** rendered as catalog-link badges on the
+  detail view.
+- **Audit-log sidebar** at the bottom of the detail view,
+  filtered by ``target = "agent_run:{id}"`` so the
+  create / approve / deny trail is on one screen with the run.
+- **No backend schema change**; new helper
+  ``_load_audit_entries_for_run`` joins existing AuditLog rows
+  by target.
+- **Browser-replay note**: a dedicated ``/runs`` playbook does
+  not yet exist — the Sprint-13.5 Drift-Monitor walkthrough will
+  exercise this surface end-to-end in Firefox.  Template-render
+  smoke verifies admin / non-admin branching + Alpine attribute
+  syntax in the meantime.
+
 ### Added — Phase 13.5 / Sprint 13.5.3: ``pql.autoload()`` primitive
 
 The third Phase-13.5 building block: lifts files from a Volume

@@ -1,14 +1,15 @@
 {% extends "base.html" %}
 {#
-   Phase 12.12.2 stub — empty supervision list. Sprint 13.4 promotes
-   this into a sortable / filterable ``listTable``-backed page with
-   Principal / Agent / Status / Approval / Time-range filters, wired
-   to the ``agent_runs`` Alembic table from Sprint 13.2. Until then
-   the page only exists so the nav entry has a destination and the
-   end-to-end pivot check can assert a 200 here instead of a 404.
+   Sprint 13.4 — supervision list with Alpine ``listTable`` filter bar.
 
    Expected context:
-     * ``runs`` (list[dict]) — agent-run rows; always ``[]`` today.
+     * ``runs`` (list[dict]) — agent-run rows from
+       ``serialize_agent_run`` (newest-first, capped at 200).
+
+   Filtering is client-side via the existing ``listTable`` component
+   (search box + status chips).  Server-side query params remain a
+   non-goal: 200 rows is well within client-side filter cost, and the
+   page render stays cacheable / progressive-enhancement-safe.
 #}
 {% block title %}Runs · PointlesSQL{% endblock %}
 
@@ -26,30 +27,79 @@
 </div>
 
 {% if runs %}
-<div class="card">
-    <div class="card-body p-0">
-        <table class="table table-hover table-sm mb-0">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Principal</th>
-                    <th>Agent</th>
-                    <th>Status</th>
-                    <th>Started</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for run in runs %}
-                <tr>
-                    <td><a href="/runs/{{ run.id }}" class="text-decoration-none font-monospace">{{ run.id }}</a></td>
-                    <td class="font-monospace small">{{ run.principal or "—" }}</td>
-                    <td class="font-monospace small">{{ run.agent_id or "—" }}</td>
-                    <td><span class="badge bg-secondary">{{ run.status }}</span></td>
-                    <td class="font-monospace small text-muted">{{ run.started_at or "—" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div x-data="listTable({
+        searchPlaceholder: 'Filter principal / agent / id / status / table…',
+        chips: [
+            { id: 'needs_approval', label: 'Needs approval', match: (tr) => tr.dataset.status === 'needs_approval' },
+            { id: 'running', label: 'Running', match: (tr) => tr.dataset.status === 'running' },
+            { id: 'queued', label: 'Queued', match: (tr) => tr.dataset.status === 'queued' },
+            { id: 'succeeded', label: 'Succeeded', match: (tr) => tr.dataset.status === 'succeeded' },
+            { id: 'failed', label: 'Failed', match: (tr) => tr.dataset.status === 'failed' },
+            { id: 'denied', label: 'Denied', match: (tr) => tr.dataset.status === 'denied' }
+        ],
+        initialSort: { key: 'started_at', dir: 'desc' },
+        emptyMessage: 'No runs match the current filter.'
+    })">
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover table-sm mb-0 pql-list-table">
+                <thead>
+                    <tr>
+                        <th data-sort-key="id">ID</th>
+                        <th data-sort-key="principal">Principal</th>
+                        <th data-sort-key="agent">Agent</th>
+                        <th data-sort-key="status">Status</th>
+                        <th data-sort-key="cost">Cost est.</th>
+                        <th data-sort-key="started_at">Started</th>
+                        <th>Tables touched</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in runs %}
+                    <tr
+                        data-search="{{ run.id }} {{ run.principal or '' }} {{ run.agent_id or '' }} {{ run.status }} {{ (run.tables_touched or []) | join(' ') }}"
+                        data-status="{{ run.status }}"
+                        data-principal="{{ run.principal or '' }}"
+                        data-agent="{{ run.agent_id or '' }}"
+                        data-sort-id="{{ run.id }}"
+                        data-sort-principal="{{ run.principal or '' }}"
+                        data-sort-agent="{{ run.agent_id or '' }}"
+                        data-sort-status="{{ run.status }}"
+                        data-sort-cost="{{ run.cost_est or 0 }}"
+                        data-sort-started_at="{{ run.started_at or '' }}"
+                    >
+                        <td><a href="/runs/{{ run.id }}" class="text-decoration-none font-monospace small">{{ run.id }}</a></td>
+                        <td class="font-monospace small">{{ run.principal or "—" }}</td>
+                        <td class="font-monospace small">{{ run.agent_id or "—" }}</td>
+                        <td>
+                            {% if run.status == 'succeeded' %}
+                            <span class="badge bg-success">{{ run.status }}</span>
+                            {% elif run.status == 'failed' %}
+                            <span class="badge bg-danger">{{ run.status }}</span>
+                            {% elif run.status == 'denied' %}
+                            <span class="badge bg-secondary">{{ run.status }}</span>
+                            {% elif run.status == 'needs_approval' %}
+                            <span class="badge bg-warning text-dark">{{ run.status }}</span>
+                            {% else %}
+                            <span class="badge bg-info text-dark">{{ run.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-monospace small text-muted">
+                            {% if run.cost_est is not none %}{{ run.cost_est }}{% else %}—{% endif %}
+                        </td>
+                        <td class="font-monospace small text-muted">{{ run.started_at or "—" }}</td>
+                        <td class="font-monospace small text-muted">
+                            {% if run.tables_touched %}
+                                {{ run.tables_touched | join(', ') }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% else %}
@@ -59,9 +109,10 @@
             <i class="bi bi-activity pql-empty__icon" aria-hidden="true"></i>
             <p class="pql-empty__title">No agent runs yet</p>
             <p class="pql-empty__message">
-                Once the <code>agent_run</code> scheduler kind ships in Sprint 13.2,
-                supervised agent executions will appear here — one row per run, with
-                principal, cost estimate, status, and a drill-down detail view.
+                Once an external runtime (Hermes, OpenShell, a curl'd cron job)
+                POSTs to <code>/api/agent-runs</code>, supervised executions will
+                appear here — one row per run, with principal, status, cost
+                estimate, and a drill-down detail view.
             </p>
         </div>
     </div>
