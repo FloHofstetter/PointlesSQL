@@ -1,0 +1,9 @@
+{# Output partial: ``stream`` iopub frame (stdout/stderr).
+
+   Phase 12.12.1 additive prep. ``output`` is a
+   :class:`pointlessql.services.output_rendering.RenderedOutput` with
+   ``kind == "stream"``; ``output.variant`` is ``"stdout"`` or
+   ``"stderr"``. Body is ANSI-rendered + HTML-escaped in the helper,
+   so ``| safe`` is load-bearing but pre-sanitised.
+#}
+<pre class="pql-run-output pql-run-output--stream pql-run-output--{{ output.variant }} mb-2"{% if output.variant == 'stderr' %} data-stream="stderr"{% endif %}>{{ output.html | safe }}</pre>

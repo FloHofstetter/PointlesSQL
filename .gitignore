@@ -47,18 +47,8 @@ notebooks/bad_papermill.ipynb
 notebooks/scratch*
 notebooks/playbook_upload.ipynb
 
-# Monaco editor (Phase 12.6 Sprint 58). The ~14 MB AMD distribution
-# lives under frontend/js/vendor/monaco/ and is fetched by
-# scripts/vendor-monaco.sh on first checkout and on MONACO_VERSION
-# bumps. Never committed to keep the repo small.
-frontend/js/vendor/monaco/
-
-# Phase 12.7 Sprint 69 — markdown-it + KaTeX + markdown-it-texmath.
-# Same pattern as Monaco: pre-built UMD bundles fetched on first
-# checkout by scripts/vendor-markdown-libs.sh and on version bumps.
-frontend/js/vendor/markdown-it/
-frontend/js/vendor/markdown-it-texmath/
-frontend/js/vendor/katex/
-# Phase 12.7 Sprint 73 — jsdiff bundle for the per-cell run-history
-# popover.  Vendored by scripts/vendor-diff-lib.sh.
-frontend/js/vendor/jsdiff/
+# Phase 12.12 — the notebook browser editor and its entire vendored
+# JS stack (Monaco / KaTeX / markdown-it / markdown-it-texmath /
+# jsdiff) were removed in favour of a server-side Jinja run-detail
+# view. The ``frontend/js/vendor/`` directory no longer exists and
+# the corresponding ``scripts/vendor-*.sh`` fetchers were deleted.

@@ -49,6 +49,15 @@ wheels = [
 ]
 
 [[package]]
+name = "ansi2html"
+version = "1.9.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/d5/e3546dcd5e4a9566f4ed8708df5853e83ca627461a5b048a861c6f8e7a26/ansi2html-1.9.2.tar.gz", hash = "sha256:3453bf87535d37b827b05245faaa756dbab4ec3d69925e352b6319c3c955c0a5", size = 44300, upload-time = "2024-06-22T17:33:23.964Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/71/aee71b836e9ee2741d5694b80d74bfc7c8cd5dbdf7a9f3035fcf80d792b1/ansi2html-1.9.2-py3-none-any.whl", hash = "sha256:dccb75aa95fb018e5d299be2b45f802952377abfdce0504c17a6ee6ef0a420c5", size = 17614, upload-time = "2024-06-22T17:33:21.852Z" },
+]
+
+[[package]]
 name = "anyio"
 version = "4.13.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1553,6 +1562,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
+    { name = "ansi2html" },
     { name = "croniter" },
     { name = "deltalake" },
     { name = "duckdb" },
@@ -1563,6 +1573,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "jupyter-client" },
     { name = "jupytext" },
+    { name = "markdown-it-py" },
     { name = "nbconvert" },
     { name = "pandas" },
     { name = "papermill" },
@@ -1572,6 +1583,7 @@ dependencies = [
     { name = "pwdlib", extra = ["bcrypt"] },
     { name = "pyarrow" },
     { name = "pydantic-settings" },
+    { name = "pygments" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "pyright" },
     { name = "python-multipart" },
@@ -1610,6 +1622,7 @@ docs = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "alembic", specifier = ">=1.15" },
+    { name = "ansi2html", specifier = ">=1.9" },
     { name = "croniter", specifier = ">=6.2.2" },
     { name = "deltalake", specifier = ">=0.24" },
     { name = "duckdb", specifier = ">=1.0" },
@@ -1620,6 +1633,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
     { name = "jupyter-client", specifier = ">=8.6" },
     { name = "jupytext", specifier = ">=1.16" },
+    { name = "markdown-it-py", specifier = ">=3.0" },
     { name = "nbconvert", specifier = ">=7.0" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "papermill", specifier = ">=2.6" },
@@ -1629,6 +1643,7 @@ requires-dist = [
     { name = "pwdlib", extras = ["bcrypt"], specifier = ">=0.2" },
     { name = "pyarrow", specifier = ">=17.0" },
     { name = "pydantic-settings", specifier = ">=2.0" },
+    { name = "pygments", specifier = ">=2.18" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.9" },
     { name = "pyright", specifier = ">=1.1" },
     { name = "python-multipart", specifier = ">=0.0.26" },

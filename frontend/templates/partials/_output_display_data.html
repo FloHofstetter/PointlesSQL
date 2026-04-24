@@ -1,0 +1,18 @@
+{# Output partial: ``display_data`` / ``execute_result`` mime bundle.
+
+   Phase 12.12.1 additive prep. ``output`` is a
+   :class:`pointlessql.services.output_rendering.RenderedOutput` with
+   ``kind == "display_data"``; ``output.variant`` identifies which
+   mime branch was picked (``html`` / ``svg`` / ``png`` / ``jpeg`` /
+   ``json`` / ``plain`` / ``widget`` / ``empty``).
+
+   The body is kernel-trusted HTML (mime-bundle payloads from
+   ``_repr_html_``, SVG, base64 images, …); the kernel already
+   executes arbitrary user code, so a client-side sanitiser here
+   would not reduce the attack surface.
+#}
+{% if output.html %}
+<div class="pql-run-output pql-run-output--display pql-run-output--{{ output.variant }} mb-2">
+    {{ output.html | safe }}
+</div>
+{% endif %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{#
+   Phase 12.12.1 additive prep — static, server-rendered supervision
+   view for one notebook run. Replaces the browser Monaco editor.
+
+   Expected template context:
+     * ``notebook_path`` (str) — relative path under the notebooks
+       dir, shown in the breadcrumb + page header.
+     * ``cells`` (list of :class:`pointlessql.services.notebook_doc.NotebookCell`) —
+       ordered cells parsed from the ``.py`` source.
+     * ``cell_outputs`` (dict[str, list[RenderedOutput]]) — keyed by
+       ``content_hash``. Each value is the ordered list of frames
+       produced by :func:`pointlessql.services.output_rendering.render_output_frame`.
+     * ``cell_runs`` (dict[str, dict | None]) — keyed by
+       ``content_hash``. Each value, when present, carries
+       ``execution_count``, ``duration_ms``, ``status`` for the most
+       recent run of that cell. ``None`` / missing when the cell has
+       not been executed in the associated kernel session yet.
+     * ``run`` (dict | None) — optional agent-run metadata (Sprint
+       13.2+). When ``None`` (e.g. viewing a notebook pre-agent-
+       executor), the run header collapses to just the notebook
+       path.
+#}
+{% block title %}Run · {{ notebook_path }} · PointlesSQL{% endblock %}
+{% block content_class %}pql-content--run-view{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Sprint 12.12.1 run-detail view. Kept inline because this is the
+       only page using these classes; next sprint (13.4) promotes
+       them into the main stylesheet. */
+    .pql-run-cell { scroll-margin-top: 72px; }
+    .pql-run-cell-source { background: var(--bs-body-bg); margin: 0;
+                            padding: 0.75rem 1rem; font-size: 0.875rem;
+                            line-height: 1.5; overflow-x: auto; }
+    .pql-run-cell-source code { white-space: pre; font-family: var(--bs-font-monospace); }
+    .pql-run-output { margin: 0; padding: 0.5rem 0.75rem; font-size: 0.875rem;
+                      line-height: 1.45; background: rgba(0,0,0,0.02);
+                      border-left: 2px solid var(--bs-border-color);
+                      overflow-x: auto; }
+    .pql-run-output--stderr { border-left-color: var(--bs-danger); color: var(--bs-danger); }
+    .pql-run-output--error { border-left-color: var(--bs-danger);
+                              background: rgba(var(--bs-danger-rgb), 0.05);
+                              color: var(--bs-body-color); }
+    .pql-run-output--display { padding: 0.75rem; }
+    .pql-run-output-image { max-width: 100%; height: auto; }
+    .pql-run-widget-placeholder { padding: 0.75rem 1rem; border: 1px dashed var(--bs-border-color);
+                                    border-radius: 0.375rem; background: rgba(0,0,0,0.02); }
+    .pql-run-cell-type-sql .card-header { background: rgba(255, 193, 7, 0.08); }
+    .pql-run-cell-type-markdown .card-header { background: rgba(13, 110, 253, 0.06); }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    {% if run %}
+    <li class="breadcrumb-item"><a href="/runs" class="text-decoration-none">Runs</a></li>
+    <li class="breadcrumb-item active">#{{ run.id }}</li>
+    {% else %}
+    <li class="breadcrumb-item"><a href="/notebooks" class="text-decoration-none">Notebooks</a></li>
+    <li class="breadcrumb-item active font-monospace">{{ notebook_path }}</li>
+    {% endif %}
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-file-earmark-code fs-3"></i>
+        <h1 class="h4 mb-0 font-monospace">{{ notebook_path }}</h1>
+        {% if run %}
+        {% if run.status == 'succeeded' %}
+        <span class="badge bg-success">{{ run.status }}</span>
+        {% elif run.status == 'failed' %}
+        <span class="badge bg-danger">{{ run.status }}</span>
+        {% elif run.status == 'needs_approval' %}
+        <span class="badge bg-warning text-dark">{{ run.status }}</span>
+        {% else %}
+        <span class="badge bg-info text-dark">{{ run.status }}</span>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if run %}
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-info-circle me-1"></i>Run metadata</div>
+    <div class="card-body small">
+        <dl class="row mb-0">
+            <dt class="col-3 col-md-2">Principal</dt>
+            <dd class="col-9 col-md-10 font-monospace">{{ run.principal or "—" }}</dd>
+            <dt class="col-3 col-md-2">Agent</dt>
+            <dd class="col-9 col-md-10 font-monospace">{{ run.agent_id or "—" }}</dd>
+            <dt class="col-3 col-md-2">Started</dt>
+            <dd class="col-9 col-md-10 font-monospace">{{ run.started_at or "—" }}</dd>
+            <dt class="col-3 col-md-2">Finished</dt>
+            <dd class="col-9 col-md-10 font-monospace">{{ run.finished_at or "—" }}</dd>
+            {% if run.cost_est is not none %}
+            <dt class="col-3 col-md-2">Cost estimate</dt>
+            <dd class="col-9 col-md-10">{{ run.cost_est }}</dd>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+{% endif %}
+
+{% for cell in cells %}
+{% set cell_run = cell_runs.get(cell.content_hash) if cell_runs else None %}
+{% set outputs = cell_outputs.get(cell.content_hash, []) if cell_outputs else [] %}
+<div class="card mb-3 pql-run-cell pql-run-cell-type-{{ cell.cell_type }}" id="{{ cell.id }}">
+    <div class="card-header d-flex align-items-center gap-2 small">
+        <span class="badge bg-secondary text-uppercase">{{ cell.cell_type }}</span>
+        {% if cell_run and cell_run.execution_count is not none %}
+        <span class="font-monospace text-muted">[{{ cell_run.execution_count }}]</span>
+        {% else %}
+        <span class="font-monospace text-muted">[&nbsp;]</span>
+        {% endif %}
+        {% if cell.cell_type == 'sql' and cell.result_var %}
+        <span class="font-monospace text-muted">→ {{ cell.result_var }}</span>
+        {% endif %}
+        <span class="ms-auto text-muted">
+            {% if cell_run and cell_run.duration_ms is not none %}
+            {{ cell_run.duration_ms }} ms
+            {% endif %}
+        </span>
+        {% if cell_run and cell_run.status == 'ok' %}
+        <span class="badge bg-success-subtle text-success-emphasis">ok</span>
+        {% elif cell_run and cell_run.status == 'error' %}
+        <span class="badge bg-danger-subtle text-danger-emphasis">error</span>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if cell.cell_type == 'markdown' %}
+        <div class="p-3 pql-run-cell-markdown">{{ render_markdown(cell.source) | safe }}</div>
+        {% else %}
+        <pre class="pql-run-cell-source"><code class="language-{{ 'sql' if cell.cell_type == 'sql' else 'python' }}">{{ cell.source }}</code></pre>
+        {% endif %}
+        {% if outputs %}
+        <div class="border-top">
+            {% for output in outputs %}
+            {% if output.kind == 'stream' %}
+                {% include "partials/_output_stream.html" %}
+            {% elif output.kind == 'error' %}
+                {% include "partials/_output_error.html" %}
+            {% elif output.kind == 'markdown' %}
+                {% include "partials/_output_markdown.html" %}
+            {% else %}
+                {% include "partials/_output_display_data.html" %}
+            {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    Notebook is empty — no cells to display.
+</div>
+{% endfor %}
+{% endblock %}

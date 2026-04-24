@@ -1,0 +1,10 @@
+{# Output partial: ``error`` iopub frame (exception traceback).
+
+   Phase 12.12.1 additive prep. ``output`` is a
+   :class:`pointlessql.services.output_rendering.RenderedOutput` with
+   ``kind == "error"``. The body is the ANSI-rendered traceback (or
+   ``ename: evalue`` fallback) emitted by the helper. Traceback ANSI
+   is converted to inline-styled ``<span>`` elements, so ``| safe``
+   is safe against traceback content.
+#}
+<pre class="pql-run-output pql-run-output--error mb-2" role="alert">{{ output.html | safe }}</pre>
