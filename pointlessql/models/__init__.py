@@ -19,6 +19,8 @@ referrers are imported.  The sequence below
   — no model FKs; the ``agent_run_id`` column is logical-link only)
 * ``agent_runs`` (AgentRun — Sprint 13.2; logical link to notebook
   tables via ``agent_run_id``)
+* ``autoload`` (AutoloadCheckpoint — Sprint 13.5.3; no model FKs,
+  scoped per target_table)
 
 honours every cross-module FK without resorting to circular imports.
 The Alembic env.py keeps doing ``from pointlessql.models import Base``
@@ -33,6 +35,7 @@ from pointlessql.models.agent_runs import AgentRun
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
 from pointlessql.models.audit import AuditLog
 from pointlessql.models.auth import User
+from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.models.base import Base
 from pointlessql.models.catalog import (
     Dashboard,
@@ -62,6 +65,7 @@ __all__ = [
     "AlertDestination",
     "AlertEvent",
     "AuditLog",
+    "AutoloadCheckpoint",
     "Base",
     "Dashboard",
     "Job",

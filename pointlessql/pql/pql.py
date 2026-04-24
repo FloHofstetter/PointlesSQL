@@ -18,6 +18,7 @@ from typing import Any, Literal
 
 from soyuz_catalog_client import Client
 
+from pointlessql.pql._autoload import AutoloadFormat, autoload_files
 from pointlessql.pql._list import list_catalogs, list_schemas, list_tables
 from pointlessql.pql._merge import MergeStrategy, merge_table
 from pointlessql.pql._read import read_table
@@ -199,6 +200,59 @@ class PQL:
             target=target,
             on=on,
             strategy=strategy,
+            unreachable_msg=self._unreachable_msg(),
+        )
+
+    def autoload(
+        self,
+        source_path: str,
+        target: str,
+        *,
+        source_system: str = "",
+        file_format: AutoloadFormat = "auto",
+    ) -> dict[str, Any]:
+        """Lift files from a Volume directory into a bronze Delta table.
+
+        Sprint 13.5.3.  DuckDB type-infers each file
+        (``read_parquet`` / ``read_csv_auto`` / ``read_json_auto``),
+        the audit columns from
+        :func:`pointlessql.conventions.load_conventions` are
+        injected on every row, and the result appends to the target
+        Delta table.  File-level exactly-once: a SHA-256 of the file
+        bytes is recorded in ``autoload_checkpoints`` after a
+        successful append, so re-running the autoload over the same
+        directory is a no-op for previously-ingested files.
+
+        Args:
+            source_path: Local filesystem directory (recursive walk)
+                or glob pattern.  Volumes-as-managed-directories —
+                HTTP-fetched-Volume support is a follow-up sprint.
+            target: UC ``"catalog.schema.table"`` string.  When the
+                target doesn't exist it is created on the first
+                successful append, using the parent schema's
+                ``storage_root``.
+            source_system: Free-form upstream-system identifier
+                written into the ``_source_system`` audit column.
+                Empty default for dev / smoke; production callers
+                should pass a real value.
+            file_format: ``"auto"`` (per-file extension), or one of
+                ``"parquet"`` / ``"csv"`` / ``"json"`` to force.
+
+        Returns:
+            ``{"target", "files_scanned", "files_ingested",
+            "files_skipped", "rows_ingested"}``.
+        """
+        from pointlessql.db import get_session_factory
+
+        return autoload_files(
+            client=self._client,
+            engine=self._engine,
+            session_factory=get_session_factory(),
+            source_path=source_path,
+            target=target,
+            source_system=source_system,
+            file_format=file_format,
+            conventions=None,
             unreachable_msg=self._unreachable_msg(),
         )
 

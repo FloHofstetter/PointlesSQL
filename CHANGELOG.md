@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13.5 / Sprint 13.5.3: ``pql.autoload()`` primitive
+
+The third Phase-13.5 building block: lifts files from a Volume
+directory into a bronze Delta target with audit columns and
+file-level exactly-once.  Closes the autoload → bronze leg of the
+Hermes-Medallion demo (Sprint 13.5.5).
+
+- **Alembic 021** at
+  [pointlessql/alembic/versions/021_autoload_checkpoints.py](pointlessql/alembic/versions/021_autoload_checkpoints.py)
+  creates ``autoload_checkpoints`` (id, source_path, file_sha,
+  target_table, ingested_at, rows_ingested) with a unique
+  constraint on ``(target_table, file_sha)`` backing the
+  "have-I-done-this?" dedup probe and an index on
+  ``(target_table, source_path)`` for control-room listing.
+- **ORM model** at
+  [pointlessql/models/autoload.py](pointlessql/models/autoload.py)
+  re-exported from ``pointlessql.models`` alongside ``AgentRun``.
+- **New** :meth:`pointlessql.pql.PQL.autoload` with signature
+  ``autoload(source_path, target, *, source_system="",
+  file_format="auto"|"parquet"|"csv"|"json")``.  ``source_path``
+  is a local filesystem directory (recursive walk) or glob
+  pattern — Volumes-as-managed-directories.  HTTP-fetched-Volume
+  support stays a follow-up sprint.
+- **DuckDB** does the type inference (``read_parquet`` /
+  ``read_csv_auto`` / ``read_json_auto``); ``deltalake`` does the
+  append (creates the table on first call).  When the target
+  doesn't exist in soyuz-catalog yet, the first successful
+  append registers it via the same ``CreateTable`` path that
+  :func:`pointlessql.pql._write.write_table` uses.
+- **Audit columns** (``_ingested_at`` / ``_source_file`` /
+  ``_source_system``) are pulled from
+  :func:`pointlessql.conventions.load_conventions` so the column
+  names track the Sprint-13.5.1 contract.  Operators who strip
+  audit columns via ``pointlessql.yaml`` get a clean schema (no
+  audit injection).
+- **MVP scope**: file-level exactly-once via SHA-256 of file
+  bytes.  Per-row dedup + schema-drift handling are deferred to
+  Sprint 13.5.3b (the ROADMAP's split-allowed flag).
+- **No new top-level deps**; SHA-256 is stdlib ``hashlib``.
+
 ### Added — Phase 13.5 / Sprint 13.5.2: ``pql.merge()`` primitive
 
 The second of three Phase-13.5 building blocks for agent-authored
