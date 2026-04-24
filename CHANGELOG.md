@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.3: CloudEvents ``agent_run`` envelope
+
+The Sprint-13.2 registry now fans the agent-run lifecycle out to
+external subscribers: every ``POST /api/agent-runs`` and every
+terminal ``POST /api/agent-runs/{id}/finish`` fires a CloudEvents
+1.0 envelope.  External listeners (the future
+``hermes-plugin-pointlessql``, Paperclip, an ops dashboard) learn
+about runs without polling.
+
+- **New envelope vocabulary** at
+  [pointlessql/services/agent_runs/events.py](pointlessql/services/agent_runs/events.py):
+  ``pointlessql.agent_run.started`` (on create),
+  ``pointlessql.agent_run.completed`` (terminal status
+  ``succeeded``), ``pointlessql.agent_run.failed`` (terminal
+  status ``failed``).  ``denied`` is intentionally silent —
+  Sprint 13.3's vocabulary covers execution outcomes, not human
+  approval decisions.  ``cell_completed`` (the ROADMAP's fourth
+  type) lands when the per-cell POST route does, in a future
+  sprint.
+- **Webhook delivery** reuses the Sprint-55
+  ``dispatch_webhook`` (HMAC-SHA256 ``X-PointlesSQL-Signature``,
+  ``Content-Type: application/cloudevents+json``, 5s connect /
+  10s read, two retries with exponential backoff, 4xx-vs-5xx
+  semantics).  The destination is a single URL pulled from the
+  new :class:`pointlessql.settings.AgentRunsSettings` —
+  ``POINTLESSQL_AGENT_RUNS_WEBHOOK_URL`` +
+  ``POINTLESSQL_AGENT_RUNS_WEBHOOK_HMAC_SECRET``.  The richer
+  per-destination subscription model (multiple URLs,
+  per-event-type filters) lands with Sprint 13.4 when the
+  control-room UI surfaces it.
+- **Failure mode**: emitter logs and never raises into the route
+  — a flaky webhook must not prevent the run row from being
+  recorded.  When no URL is configured the emitter is a debug-
+  level no-op, so dev and tests don't have to mock anything.
+- **No new top-level deps**; no schema change.
+
 ### Added — Phase 13.5 / Sprint 13.5.1: Medallion conventions + ADR 0002-duckdb-first
 
 First sprint of Phase 13.5.  Ships the *opinionated primitives*

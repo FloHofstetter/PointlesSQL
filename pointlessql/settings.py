@@ -292,6 +292,28 @@ class SQLSettings(BaseSettings):
     query_timeout_seconds: int = 60
 
 
+class AgentRunsSettings(BaseSettings):
+    """Phase-13 agent-run lifecycle webhook configuration.
+
+    Reads ``POINTLESSQL_AGENT_RUNS_*`` environment variables.  When
+    ``webhook_url`` is set, the Sprint 13.3 emitter POSTs a
+    CloudEvents envelope (``pointlessql.agent_run.started`` /
+    ``.completed`` / ``.failed``) to it on every lifecycle
+    transition.  Optional ``webhook_hmac_secret`` reuses the
+    Sprint-55 ``X-PointlesSQL-Signature: sha256=<hex>`` header.
+
+    The single-URL shape is deliberately small for 13.3 — the
+    richer per-destination subscription model (multiple URLs,
+    per-event-type filters) lands with Sprint 13.4 when the
+    control-room UI surfaces it.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AGENT_RUNS_")
+
+    webhook_url: str | None = None
+    webhook_hmac_secret: str | None = None
+
+
 class ConventionsSettings(BaseSettings):
     """Phase-13.5 Medallion conventions config-file pointer.
 
@@ -336,4 +358,5 @@ class Settings(BaseSettings):
     audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
+    agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)

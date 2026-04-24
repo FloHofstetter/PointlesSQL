@@ -34,6 +34,11 @@ from pointlessql.models.agent_runs import (
     VALID_STATUSES,
     AgentRun,
 )
+from pointlessql.services.agent_runs import (
+    EVENT_TYPE_STARTED,
+    emit_agent_run_event,
+    event_type_for_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +247,9 @@ async def api_create_agent_run(
         f"agent_run:{run_id}",
         {"notebook_path": notebook_path, "agent_id": agent_id, "status": status_raw},
     )
-    return serialize_agent_run(row)
+    payload = serialize_agent_run(row)
+    await emit_agent_run_event(EVENT_TYPE_STARTED, payload)
+    return payload
 
 
 @router.post("/api/agent-runs/{run_id}/finish")
@@ -339,7 +346,11 @@ async def api_finish_agent_run(
         f"agent_run:{run_id}",
         {"status": status_raw, "exit_code": exit_code},
     )
-    return serialize_agent_run(row)
+    payload = serialize_agent_run(row)
+    terminal_event = event_type_for_status(status_raw)
+    if terminal_event is not None:
+        await emit_agent_run_event(terminal_event, payload)
+    return payload
 
 
 @router.get("/api/agent-runs")
