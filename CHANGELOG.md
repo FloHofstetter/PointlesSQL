@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.5: Drift-Monitor demo agent + walkthrough
+
+Closes the Phase-13 autonomous run with the first end-to-end
+demo that exercises every Sprint-13.x primitive in a single
+flow.  Hermes (or any plug-compatible runtime) registers a run,
+fires the notebook, terminates the run; PointlesSQL records,
+audits, conformance-checks, and CloudEvents-emits along the
+way.
+
+- **New** [notebooks/agent_drift_monitor.py](notebooks/agent_drift_monitor.py)
+  — a jupytext-percent-format `.py` notebook that reads a
+  bronze table via :class:`pointlessql.pql.PQL`, computes
+  freshness (newest ``_ingested_at``), null-rate per non-audit
+  column, and (TODO) value-drift against Sprint-54 column
+  stats.  Appends one row per check to
+  ``main.ops.quality_history``.  Emits a Sprint-13.3
+  ``pointlessql.agent_run.failed`` CloudEvent on threshold
+  breach (env-driven thresholds; default 20% null-rate / 24h
+  freshness).
+- **New** [docs/e2e-walkthroughs/agent_drift_monitor.md](docs/e2e-walkthroughs/agent_drift_monitor.md)
+  — replayable Markdown playbook for human or Playwright-MCP
+  reproduction.  Covers register → run → terminate → control-
+  room verification → conformance card → audit log → CloudEvent
+  payload, all attributed to ``X-Principal: drift-monitor@ops.local``
+  (Sprint 13.6).
+- **README** entry under "Agent supervision" so the new
+  playbook is discoverable next to the Sprint-22/23/40 ones.
+- **Ruff config**: ``notebooks/**`` joins ``tests/**`` in the
+  per-file ignore list for D-rules — module-level docstrings
+  would duplicate the percent-format's first markdown cell.
+
 ### Added — Phase 13 / Sprint 13.6: ``X-Principal`` forwarded into PQL session + audit
 
 The Sprint-13.2 registry already accepted the ``X-Principal``

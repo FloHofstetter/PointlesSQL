@@ -109,6 +109,11 @@ pydocstyle.convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+# Notebooks use jupytext percent format with markdown cells carrying
+# the prose — module-level Python docstrings would duplicate the
+# first markdown cell.  Sprint 13.5's agent_drift_monitor.py is the
+# first tracked notebook; this ignore generalises the policy.
+"notebooks/**" = ["D"]
 
 [tool.pyright]
 pythonVersion = "3.14"

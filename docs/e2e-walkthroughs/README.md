@@ -78,6 +78,21 @@ at all. Runs on its own, no dependency on the harness above:
     `build:` → `image:`, `docker compose pull && up`, home page
     renders, OCI labels verified on the pulled images.
 
+**Agent supervision** (Phase 13). Exercises the registry +
+CloudEvents + control-room surface end-to-end through an
+external runtime that pretends to be Hermes:
+
+12. [`agent_drift_monitor.md`](agent_drift_monitor.md) —
+    Sprint 13.5 demo.  Registers an agent run via
+    `POST /api/agent-runs`, runs the
+    [`notebooks/agent_drift_monitor.py`](../../notebooks/agent_drift_monitor.py)
+    notebook (freshness + null-rate + value-drift checks),
+    appends results to `ops.quality_history`, fires a
+    CloudEvent on threshold breach, drills into `/runs/{id}`
+    in Firefox to verify the conformance card + audit log +
+    tables-touched chips, all attributed to the
+    `X-Principal`-forwarded identity (Sprint 13.6).
+
 ## Stack start
 
 ```bash
