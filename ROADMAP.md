@@ -4197,17 +4197,21 @@ PointlesSQL
 │   │   Hermes is the one to name publicly for distribution
 │   │   reach.
 │   │
-│   ├── Sprint 13.1 — EXPLAIN gate + cost estimator         🔜
+│   ├── Sprint 13.1 — EXPLAIN gate + cost estimator         ✅ done (a9e34f4)
 │   │       ``GET /api/sql/explain?sql=...`` returns DuckDB's
 │   │       ``EXPLAIN (FORMAT JSON)`` with the existing UC-SELECT
 │   │       enforcement on referenced tables.  New
 │   │       ``services/sql/cost_estimator.py`` parses the plan,
-│   │       heuristic ``row_count × join_depth``; above the
-│   │       ``COST_GATE_THRESHOLD_ROWS`` setting (default 1e6)
-│   │       the endpoint flags ``needs_approval``.  No UI yet —
-│   │       consumers are the Hermes plugin (Sprint 13.7) and
-│   │       the run-detail view (Sprint 13.4).  Design captured
-│   │       in ``project_phase13_explain_agent_loop.md``.
+│   │       heuristic ``max_cardinality × (1 + join_depth)``; above
+│   │       the ``cost_gate_threshold_rows`` SQLSettings field
+│   │       (default 1e6, env ``POINTLESSQL_SQL_COST_GATE_THRESHOLD_ROWS``)
+│   │       the endpoint flags ``needs_approval``.  Estimator handles
+│   │       both the synthetic ``estimated_cardinality`` shape and
+│   │       DuckDB 1.x's nested
+│   │       ``extra_info["Estimated Cardinality"]`` (string).  No UI
+│   │       yet — consumers are the Hermes plugin (Sprint 13.7) and
+│   │       the run-detail view (Sprint 13.4).  Design captured in
+│   │       ``project_phase13_explain_agent_loop.md``.
 │   │
 │   ├── Sprint 13.2 — ``agent_runs`` table + HTTP registry  ✅
 │   │       Alembic 020 adds ``agent_runs`` (id UUID string,
