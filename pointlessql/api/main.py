@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.admin_routes import router as admin_router
+from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.api.catalog_html_routes import router as catalog_html_router
@@ -203,6 +204,7 @@ app.include_router(volumes_router)
 app.include_router(governance_router)
 app.include_router(notebooks_router)
 app.include_router(runs_router)
+app.include_router(agent_runs_router)
 app.include_router(federation_router)
 app.include_router(jobs_router)
 app.include_router(dashboards_router)

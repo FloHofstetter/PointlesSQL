@@ -4,6 +4,71 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.2: ``agent_runs`` Alembic table + HTTP registry
+
+First implementation sprint of Phase 13 (revised).  PointlesSQL
+becomes the *registry + store* for agent runs — external runtimes
+(Hermes, OpenShell, curl'd cron jobs) POST lifecycle transitions in,
+the control-room shows them, and no executor ships in this repo.
+
+- **Alembic 020** creates ``agent_runs`` (UUIDv4 string id,
+  ``principal``, ``agent_id``, ``notebook_path``,
+  ``source_snapshot_sha``, ``status`` ∈ {``queued``, ``running``,
+  ``needs_approval``, ``approved``, ``denied``, ``succeeded``,
+  ``failed``}, ``cost_est`` NUMERIC(18,4), ``tables_touched`` JSON-
+  encoded, ``started_at`` / ``finished_at``, ``exit_code``,
+  ``approved_by`` / ``approved_at`` / ``denied_reason``).  Three
+  ``ix_agent_runs_{started_at, principal, status}`` indexes back the
+  control-room's newest-first + per-principal + per-status filters
+  that Sprint 13.4 will add.  Adds nullable ``agent_run_id VARCHAR(36)``
+  columns + indexes to ``notebook_outputs`` and ``notebook_cell_runs``
+  so per-cell writes from the runtime join back to their owning run
+  without a ``kernel_session_id`` heuristic.
+
+- **SQLAlchemy model** at
+  [pointlessql/models/agent_runs.py](pointlessql/models/agent_runs.py),
+  re-exported from ``pointlessql.models`` alongside the existing
+  ``AlertDestination`` / ``JobRun`` family; status-machine constants
+  (``VALID_STATUSES`` / ``TERMINAL_STATUSES``) ship next to the
+  model so the routes never hard-code the set.  The notebook models
+  gain the matching ``agent_run_id`` column + docstring entry.
+
+- **HTTP registry** at
+  [pointlessql/api/agent_runs_routes.py](pointlessql/api/agent_runs_routes.py):
+  ``POST /api/agent-runs`` (create; ``X-Principal`` header wins over
+  any body ``principal`` so the HTTP hop is authoritative from day
+  one — prepares Sprint 13.6); ``POST /api/agent-runs/{id}/finish``
+  (terminal-state transition; refuses re-finishing so supervision
+  history is immutable); ``GET /api/agent-runs`` (JSON list, newest
+  first, capped at 500); ``POST /api/agent-runs/{id}/approve`` +
+  ``/deny`` (admin-gated via the existing ``require_admin``
+  dependency, ready for the Sprint 13.4 control-room buttons).
+
+- **Control-room pages** —
+  [pointlessql/api/runs_routes.py](pointlessql/api/runs_routes.py)
+  drops the Sprint 12.12.2 empty-list stub.  ``GET /runs`` queries
+  the 200 most recent rows and hands them to the existing
+  ``runs_list.html`` template; ``GET /runs/{id}`` loads the row,
+  parses the underlying ``.py`` via
+  ``services/notebook_doc.load_document``, joins per-cell outputs +
+  cell runs on ``agent_run_id``, and renders the Sprint 12.12.1
+  ``run_view.html`` card deck with live data.  Missing notebook
+  files degrade to a metadata-only view instead of 500-ing — the
+  supervision record is authoritative even if the source has been
+  moved or deleted.
+
+- **Audit trail** — every create / finish / approve / deny call
+  goes through the existing ``_audit_helpers.audit`` pipe so
+  ``/admin/audit`` shows the agent-run lifecycle next to human
+  actions.
+
+Verification: ``ruff check`` + ``pyright`` + ``pydoclint --style=google``
+clean on all changed files; SQLite smoke-run applies the migration
+to head and ``agent_runs`` / ``notebook_outputs.agent_run_id`` /
+``notebook_cell_runs.agent_run_id`` all land.  Per
+[feedback_skip_pytest.md](~/.claude/projects/-home-flo-git-PointlesSQL/memory/feedback_skip_pytest.md),
+pytest is intentionally skipped for sprint orchestrations.
+
 ### Changed — Phase 12.12 / Sprint 12.12.2: Agent-first pivot — backend cleanup + ``/runs`` supervision stub
 
 Second sprint of the agent-first pivot.  Sprint 12.12.1 deleted the

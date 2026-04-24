@@ -52,6 +52,11 @@ class NotebookOutput(Base):
             Jupyter convention.
         output_metadata: Optional JSON-encoded ``metadata`` dict.
         created_at: When the message was forwarded.
+        agent_run_id: Sprint 13.2 — UUID string of the owning
+            :class:`pointlessql.models.agent_runs.AgentRun` when the
+            output belongs to a Hermes-authored run; ``None`` for
+            legacy editor sessions from before the Phase 12.12
+            pivot.
     """
 
     __tablename__ = "notebook_outputs"
@@ -74,6 +79,7 @@ class NotebookOutput(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    agent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
 class NotebookCellRun(Base):
@@ -106,6 +112,11 @@ class NotebookCellRun(Base):
         started_at: When the ``execute_request`` landed.
         finished_at: When the kernel transitioned back to idle
             for this cell, or ``None`` while still busy.
+        agent_run_id: Sprint 13.2 — UUID string of the owning
+            :class:`pointlessql.models.agent_runs.AgentRun` when the
+            run belongs to a Hermes-authored execution; ``None``
+            for legacy editor sessions from before the Phase 12.12
+            pivot.
     """
 
     __tablename__ = "notebook_cell_runs"
@@ -121,6 +132,7 @@ class NotebookCellRun(Base):
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    agent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
 class NotebookCellRunSource(Base):

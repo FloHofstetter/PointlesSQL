@@ -4209,21 +4209,25 @@ PointlesSQL
 │   │       the run-detail view (Sprint 13.4).  Design captured
 │   │       in ``project_phase13_explain_agent_loop.md``.
 │   │
-│   ├── Sprint 13.2 — ``agent_runs`` table + HTTP registry  🔜
-│   │       Alembic 020 adds ``agent_runs`` (id UUID, principal,
-│   │       agent_id, notebook_path, source_snapshot_sha,
-│   │       status, cost_est, tables_touched JSON, started_at,
+│   ├── Sprint 13.2 — ``agent_runs`` table + HTTP registry  ✅
+│   │       Alembic 020 adds ``agent_runs`` (id UUID string,
+│   │       principal, agent_id, notebook_path, source_snapshot_sha,
+│   │       status, cost_est NUMERIC, tables_touched JSON, started_at,
 │   │       finished_at, exit_code, approved_by, approved_at,
-│   │       denied_reason) and FK column ``agent_run_id`` on
-│   │       ``notebook_cell_runs`` + ``notebook_outputs``.  New
+│   │       denied_reason) and nullable FK column ``agent_run_id``
+│   │       on ``notebook_cell_runs`` + ``notebook_outputs``.  New
 │   │       routes ``POST /api/agent-runs`` (create),
 │   │       ``POST /api/agent-runs/{id}/finish`` (terminate),
-│   │       ``GET /runs`` (populate the stub from 12.12.2),
-│   │       ``GET /runs/{id}`` (detail view with the per-cell
-│   │       Bootstrap ``.card``-s already skeletonised in
-│   │       12.12.1).  ``X-Principal`` header respected from day
-│   │       one (prepares Sprint 13.6).  **No executor code —
-│   │       Hermes or any other runtime POSTs runs in.**
+│   │       ``GET /api/agent-runs`` (JSON list),
+│   │       ``POST /api/agent-runs/{id}/approve`` +
+│   │       ``/deny`` (admin gates ready for Sprint 13.4 buttons),
+│   │       ``GET /runs`` (newest-first table replacing the 12.12.2
+│   │       stub), ``GET /runs/{id}`` (detail view joining outputs +
+│   │       cell runs via ``agent_run_id``, reusing the per-cell
+│   │       Bootstrap ``.card``-s from 12.12.1).  ``X-Principal``
+│   │       header respected from day one (prepares Sprint 13.6).
+│   │       **No executor code — Hermes or any other runtime POSTs
+│   │       runs in.**
 │   │
 │   ├── Sprint 13.3 — CloudEvents ``agent_run`` envelope    🔜
 │   │       Extends the Sprint-55 CloudEvents envelope with
