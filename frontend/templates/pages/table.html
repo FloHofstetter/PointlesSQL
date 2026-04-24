@@ -56,26 +56,10 @@
     </div>
 </div>
 
-<div class="card mb-4" x-data="{ copied: false, opening: false }">
+<div class="card mb-4" x-data="{ copied: false }">
     <div class="card-header d-flex align-items-center justify-content-between">
         <span>PQL Snippet</span>
         <div class="d-flex gap-2">
-            {% if is_admin %}
-            <button class="btn btn-sm btn-outline-primary"
-                    :disabled="opening"
-                    @click="opening = true;
-                            fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/open-in-notebook', {method: 'POST'})
-                              .then(r => r.ok ? r.json() : Promise.reject(r))
-                              .then(data => window.location.assign(data.editor_url))
-                              .catch(async err => {
-                                opening = false;
-                                const msg = err && err.json ? (await err.json().catch(() => null))?.error?.message : null;
-                                window.pqlToast && window.pqlToast.error(msg || 'Could not create scratch notebook');
-                              })">
-                <i class="bi" :class="opening ? 'bi-hourglass-split' : 'bi-journal-plus'"></i>
-                <span x-text="opening ? 'Opening…' : 'Open in notebook'" class="ms-1"></span>
-            </button>
-            {% endif %}
             <button class="btn btn-sm btn-outline-secondary"
                     @click="navigator.clipboard.writeText($refs.snippet.textContent); copied = true; setTimeout(() => copied = false, 1500)"
                     :title="copied ? 'Copied!' : 'Copy to clipboard'">

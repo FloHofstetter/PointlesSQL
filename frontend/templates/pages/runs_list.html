@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{#
+   Phase 12.12.2 stub — empty supervision list. Sprint 13.4 promotes
+   this into a sortable / filterable ``listTable``-backed page with
+   Principal / Agent / Status / Approval / Time-range filters, wired
+   to the ``agent_runs`` Alembic table from Sprint 13.2. Until then
+   the page only exists so the nav entry has a destination and the
+   end-to-end pivot check can assert a 200 here instead of a 404.
+
+   Expected context:
+     * ``runs`` (list[dict]) — agent-run rows; always ``[]`` today.
+#}
+{% block title %}Runs · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item active">Runs</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-activity fs-3"></i>
+    <h1 class="h3 mb-0">Agent runs</h1>
+</div>
+
+{% if runs %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Principal</th>
+                    <th>Agent</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs %}
+                <tr>
+                    <td><a href="/runs/{{ run.id }}" class="text-decoration-none font-monospace">{{ run.id }}</a></td>
+                    <td class="font-monospace small">{{ run.principal or "—" }}</td>
+                    <td class="font-monospace small">{{ run.agent_id or "—" }}</td>
+                    <td><span class="badge bg-secondary">{{ run.status }}</span></td>
+                    <td class="font-monospace small text-muted">{{ run.started_at or "—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <div class="pql-empty">
+            <i class="bi bi-activity pql-empty__icon" aria-hidden="true"></i>
+            <p class="pql-empty__title">No agent runs yet</p>
+            <p class="pql-empty__message">
+                Once the <code>agent_run</code> scheduler kind ships in Sprint 13.2,
+                supervised agent executions will appear here — one row per run, with
+                principal, cost estimate, status, and a drill-down detail view.
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,15 +1,16 @@
 /**
  * Notebooks workspace page Alpine factory.
  *
- * Sprint 94 lifted the inline ``<script>`` block from
- * ``pages/notebooks_workspace.html`` into this ESM module.
+ * Phase 12.12.2 trimmed this module to the read-only surface:
+ * fetch the nested tree from ``/api/notebooks/tree`` (with
+ * sessionStorage caching), flatten it for rendering, and offer a
+ * "Schedule…" button per notebook leaf that hands off to the
+ * ``/jobs`` create-modal via prefill query params. The upload +
+ * open-in-editor affordances were removed with the browser editor.
+ *
  * ``bootstrap.js`` re-attaches the factory to
  * ``window.notebookWorkspace`` so the template's
  * ``x-data="notebookWorkspace()"`` resolves unchanged.
- *
- * Owns the workspace tree fetch + sessionStorage cache, the
- * dir-open toggle map, the upload form, and the "Schedule…"
- * button that prefills the create-job modal.
  */
 
 const STORAGE_KEY = 'pql.notebooks';
@@ -50,11 +51,6 @@ export function notebookWorkspace() {
         loading: false,
         error: null,
         open: {},
-        targetPath: '',
-        overwrite: false,
-        uploading: false,
-        uploadError: null,
-        uploadStatus: null,
 
         isOpen(key) { return !!this.open[key]; },
 
@@ -108,45 +104,6 @@ export function notebookWorkspace() {
                 prefill_notebook_path: path,
             });
             window.location.href = '/jobs?' + qs.toString();
-        },
-
-        async upload() {
-            this.uploadError = null;
-            this.uploadStatus = null;
-            const files = this.$refs.file.files;
-            if (!files || files.length === 0) {
-                this.uploadError = 'pick a notebook file to upload';
-                return;
-            }
-            if (!this.targetPath) {
-                this.uploadError = 'target path is required';
-                return;
-            }
-            this.uploading = true;
-            try {
-                const form = new FormData();
-                form.append('file', files[0]);
-                form.append('target_path', this.targetPath);
-                form.append('overwrite', this.overwrite ? 'true' : 'false');
-                const res = await fetch('/api/notebooks/upload', {
-                    method: 'POST',
-                    body: form,
-                });
-                const body = await res.json().catch(() => null);
-                if (!res.ok) {
-                    this.uploadError = body?.error?.message || ('HTTP ' + res.status);
-                    return;
-                }
-                this.uploadStatus = 'Uploaded ' + body.path + ' (' + body.status + ').';
-                this.$refs.uploadForm.reset();
-                this.targetPath = '';
-                this.overwrite = false;
-                await this.reload();
-            } catch (e) {
-                this.uploadError = String(e);
-            } finally {
-                this.uploading = false;
-            }
         },
     };
 }

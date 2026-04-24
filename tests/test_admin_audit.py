@@ -87,7 +87,7 @@ def _seed_rows(factory, now):
                 AuditLog(
                     user_id=2,
                     user_email="user@pql.test",
-                    action="open_in_notebook",
+                    action="create_connection",
                     target="table:demo.sales.orders",
                     detail=None,
                     created_at=now - datetime.timedelta(days=10),
@@ -162,7 +162,7 @@ class TestAdminAuditContent:
         assert _badge("update_catalog") in body
         assert _badge("sync_catalog") in body
         # Older row filtered out by default 7d window.
-        assert _badge("open_in_notebook") not in body
+        assert _badge("create_connection") not in body
         # Newest row appears before the older one in the DOM.
         assert body.index(_badge("update_catalog")) < body.index(_badge("sync_catalog"))
 
@@ -181,7 +181,7 @@ class TestAdminAuditContent:
             resp = await client.get("/admin/audit?since=all")
         assert resp.status_code == 200
         body = resp.text
-        assert "open_in_notebook" in body
+        assert "create_connection" in body
         # Row with a non-JSON detail must still render (not crash
         # the page).
         assert "not even json" in body

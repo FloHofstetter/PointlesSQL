@@ -5,8 +5,6 @@ endpoints that govern UC metadata + access control:
 
 * Table column statistics (``/api/tables/.../profile`` POST,
   ``/api/tables/.../stats`` GET/DELETE — Sprint 56).
-* Notebook scratch-from-table helper
-  (``POST .../tables/.../open-in-notebook``).
 * Catalog mutations (``POST /api/catalogs``, ``POST .../sync``,
   ``PATCH /api/catalogs/{cat}``, ``PATCH …/schemas/{schema}``).
 * Tags + permissions (``/api/tags`` + ``/api/permissions`` +
@@ -16,8 +14,7 @@ endpoints that govern UC metadata + access control:
 Authorization model is unchanged from the pre-split shape:
 
 * Profile + stats GET require SELECT (admin short-circuits).
-* Stats DELETE + open-in-notebook + create-catalog + sync-catalog
-  are admin-only.
+* Stats DELETE + create-catalog + sync-catalog are admin-only.
 * Catalog/schema PATCH need MODIFY on the target.
 * Tag PATCH needs MODIFY; permission PATCH needs MANAGE_GRANTS.
 * Lineage GET needs SELECT on the table.
@@ -28,7 +25,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -38,7 +34,6 @@ from fastapi.responses import Response
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_uc_client, get_user, require_admin
 from pointlessql.exceptions import AuthorizationError, ValidationError
-from pointlessql.services import notebook_doc as notebook_doc_service
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services.authorization import (
     MANAGE_GRANTS,
@@ -46,7 +41,6 @@ from pointlessql.services.authorization import (
     SELECT,
     check_privilege,
 )
-from pointlessql.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -271,77 +265,6 @@ async def api_delete_table_stats(
         {"rows_removed": removed},
     )
     return Response(status_code=204)
-
-
-@router.post(
-    "/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}/open-in-notebook",
-)
-async def api_open_in_notebook(
-    request: Request,
-    catalog_name: str,
-    schema_name: str,
-    table_name: str,
-) -> dict[str, Any]:
-    """Create a scratch ``.py`` notebook pre-filled with ``pql.table(...)``.
-
-    Admin-only to keep the workspace clean. Sprint 63 writes a
-    jupytext Percent-format ``.py`` under
-    ``{notebooks_dir}/scratch/`` (one markdown cell + one code cell
-    with UUID markers so the native editor picks it up on mount).
-    Returns the on-disk path plus a ``/notebook/editor`` URL the
-    client navigates to with ``window.location.assign``.
-    """
-    import secrets
-    require_admin(request)
-    settings: Settings = request.app.state.settings
-    full_name = f"{catalog_name}.{schema_name}.{table_name}"
-
-    sanitiser = re.compile(r"[^A-Za-z0-9_-]")
-    stem = "_".join(sanitiser.sub("_", part) for part in (catalog_name, schema_name, table_name))
-    filename = f"{stem}_{secrets.token_hex(3)}.py"
-    scratch_dir = settings.jupyter.notebooks_dir / "scratch"
-    scratch_dir.mkdir(parents=True, exist_ok=True)
-    target = notebook_doc_service.resolve_py_notebook_path(
-        settings.jupyter.notebooks_dir.resolve(),
-        f"scratch/{filename}",
-        must_exist=False,
-    )
-
-    # Sprint 96: the on-disk grammar no longer embeds a UUID per cell;
-    # :func:`save_document` ignores the in-memory ``id`` field when
-    # serialising, and :func:`load_document` will re-derive a fresh
-    # ordinal label + content-hash on the next open.  ``id`` /
-    # ``content_hash`` are supplied here only to satisfy the dataclass.
-    md_source = (
-        f"# Scratch: `{full_name}`\n\n"
-        "Generated from the PointlesSQL table detail page."
-    )
-    code_source = (
-        "from pointlessql import PQL\n\n"
-        "pql = PQL()\n"
-        f'df = pql.table("{full_name}")\n'
-        "df.head()"
-    )
-    cells = [
-        notebook_doc_service.NotebookCell(
-            id="cell-0",
-            content_hash=notebook_doc_service.compute_content_hash(md_source),
-            cell_type="markdown",
-            source=md_source,
-        ),
-        notebook_doc_service.NotebookCell(
-            id="cell-1",
-            content_hash=notebook_doc_service.compute_content_hash(code_source),
-            cell_type="code",
-            source=code_source,
-        ),
-    ]
-    notebook_doc_service.save_document(target, cells)
-
-    await audit(request, "open_in_notebook", f"table:{full_name}", f"scratch/{filename}")
-    relative = f"scratch/{filename}"
-    editor_url = f"/notebook/editor?path={relative}"
-    return {"path": relative, "editor_url": editor_url}
 
 
 @router.post("/api/catalogs")

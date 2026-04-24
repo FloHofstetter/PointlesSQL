@@ -34,9 +34,9 @@ from pointlessql.api.jobs_routes import (
     router as jobs_router,
 )
 from pointlessql.api.middleware import register_middleware
-from pointlessql.api.notebook_kernel_ws import router as notebook_ws_router
 from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.queries_routes import router as queries_router
+from pointlessql.api.runs_routes import router as runs_router
 from pointlessql.api.sql_routes import router as sql_router
 from pointlessql.api.volumes_routes import (
     DELTA_PRIMITIVE_TO_UC as _DELTA_PRIMITIVE_TO_UC,  # noqa: F401  # pyright: ignore[reportUnusedImport]
@@ -50,7 +50,6 @@ from pointlessql.api.volumes_routes import (
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.logging_config import configure_logging
 from pointlessql.services import audit as audit_service
-from pointlessql.services import kernel_session as kernel_session_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.soyuz_client import make_soyuz_client
@@ -107,7 +106,7 @@ _TEMPLATES.TemplateResponse = _template_response_with_user  # type: ignore[assig
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Create shared services and manage the Jupyter subprocess."""
+    """Build shared app state and run the scheduler + audit retention loop."""
     settings = Settings()
     logger.info(
         "PointlesSQL starting on %s:%d (engine=%s, log_format=%s)",
@@ -140,15 +139,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         name="audit-retention",
     )
 
-    kernel_registry = kernel_session_service.KernelRegistry(
-        settings.jupyter.notebooks_dir.resolve()
-    )
-    app.state.kernel_registry = kernel_registry
-
-    # Sprint 63: the embedded JupyterLab subprocess is retired.  The
-    # native Phase-12.6 editor + per-notebook ipykernel registry
-    # (Sprint 59) serve every notebook-facing use case; papermill
-    # spawns its own kernel per run.  Nothing else to start here.
+    # Phase 12.12.2 pivot: the browser notebook editor was retired;
+    # Sprint 13.2 will re-introduce a :class:`KernelRegistry` on
+    # ``app.state`` as the execution backend for the ``agent_run``
+    # scheduler kind. Nothing else to start here yet.
     try:
         yield
     finally:
@@ -157,7 +151,6 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             await audit_task
         if scheduler is not None:
             await scheduler.stop()
-        await kernel_registry.shutdown_all()
         await app.state.uc_client.aclose()
 
 
@@ -209,7 +202,7 @@ app.include_router(alerts_router)
 app.include_router(volumes_router)
 app.include_router(governance_router)
 app.include_router(notebooks_router)
-app.include_router(notebook_ws_router)
+app.include_router(runs_router)
 app.include_router(federation_router)
 app.include_router(jobs_router)
 app.include_router(dashboards_router)

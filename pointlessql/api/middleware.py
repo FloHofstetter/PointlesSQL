@@ -1,17 +1,16 @@
 """HTTP middleware registration for the FastAPI app.
 
-Sprint 85 split out of ``api/main.py``.  Centralises the five
+Sprint 85 split out of ``api/main.py``.  Centralises the four
 middleware the app stacks on every request — auth, rate-limit, CSRF,
-static-cache revalidation, request-id — into one
-:func:`register_middleware` call so callers cannot accidentally
-re-order them.
+request-id — into one :func:`register_middleware` call so callers
+cannot accidentally re-order them.
 
 Order is **load-bearing**.  Starlette stacks middleware LIFO:
 last-added runs first (outermost) on the incoming request.  This
 function adds in the following order so the execution chain on an
 incoming request becomes::
 
-    request_id → static_revalidate → csrf → rate_limit → auth → handler
+    request_id → csrf → rate_limit → auth → handler
 
 * ``auth`` resolves the user from the JWT cookie before any handler.
 * ``rate_limit`` runs INSIDE csrf (a CSRF-failed flood must not burn
@@ -19,11 +18,13 @@ incoming request becomes::
   payload before being throttled).  Sprint 43.
 * ``csrf`` runs OUTSIDE auth so a CSRF failure short-circuits before
   bcrypt + JWT-decode.  Sprint 42.
-* ``static_module_revalidate`` only mutates response headers for
-  ``/static/js/notebook/`` paths so the editor's ESM imports always
-  conditional-revalidate.  Phase 12.7 BUG-72-01.
 * ``request_id`` is the outermost so the X-Request-ID echo + the
   contextvar reach into every other middleware's log lines.
+
+Phase 12.12.2 removed the ``static_module_revalidate`` layer with
+the browser notebook editor; the editor's vendored ESM modules no
+longer exist, so the ``/static/js/notebook/`` no-cache hook has no
+consumer.
 """
 
 from __future__ import annotations
@@ -92,33 +93,6 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     return RedirectResponse(url="/auth/login", status_code=303)
 
 
-async def static_module_revalidate_middleware(
-    request: Request, call_next: Any,
-) -> Response:
-    """Force conditional revalidation for the notebook editor's ES modules.
-
-    Phase 12.7 BUG-72-01 fix.  The notebook editor's ``bootstrap.js``
-    carries a ``?v=sprintNN`` script-tag query so its own ``<script>``
-    invalidates on a sprint bump, but the eleven ESM modules it
-    dynamically imports do **not** carry a version param — and ES
-    module URLs are cached by the browser in the regular HTTP cache
-    keyed by their URL.  Without a Cache-Control header, browsers
-    apply heuristic freshness based on Last-Modified, which can keep
-    a stale ``output_renderer.js`` (or ``main.js`` etc.) bytes alive
-    across deploys until the user hard-reloads.  This middleware
-    stamps ``Cache-Control: no-cache`` on every ``/static/js/notebook/``
-    response so the browser MUST issue a conditional ``If-Modified-
-    Since`` request next time — Starlette's StaticFiles already
-    answers 304 when unchanged, so the network cost stays minimal,
-    but a sprint-fresh module is delivered immediately on the next
-    page load.
-    """
-    response = await call_next(request)
-    if request.url.path.startswith("/static/js/notebook/"):
-        response.headers["Cache-Control"] = "no-cache, must-revalidate"
-    return response
-
-
 async def request_id_middleware(request: Request, call_next: Any) -> Response:
     """Attach a unique request ID to every request and echo it in the response.
 
@@ -140,12 +114,12 @@ async def request_id_middleware(request: Request, call_next: Any) -> Response:
 
 
 def register_middleware(app: FastAPI) -> None:
-    """Stack all five middleware on *app* in the canonical order.
+    """Stack all four middleware on *app* in the canonical order.
 
     See module docstring for the LIFO reasoning behind the call
     sequence below.  Calling this once during app construction
-    replaces the five scattered ``@app.middleware("http")``
-    decorators that previously lived in ``api/main.py``.
+    replaces the scattered ``@app.middleware("http")`` decorators
+    that previously lived in ``api/main.py``.
 
     Args:
         app: The FastAPI app to attach middleware to.
@@ -153,5 +127,4 @@ def register_middleware(app: FastAPI) -> None:
     app.middleware("http")(auth_middleware)
     app.middleware("http")(_rate_limit_middleware)
     app.middleware("http")(_csrf_middleware)
-    app.middleware("http")(static_module_revalidate_middleware)
     app.middleware("http")(request_id_middleware)

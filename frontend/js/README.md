@@ -1,18 +1,11 @@
 # `frontend/js/` — module conventions
 
-Last reorganised in Sprint 75 (Phase 12.7 cleanup).  This directory
-holds two parallel ecosystems:
-
-1. **Notebook editor** under `notebook/`: native ES modules with an
-   in-tree bootstrap-stub pattern that handles heavy lazy-loaded deps
-   (Monaco, Pyright, markdown-it, KaTeX).  See `notebook/bootstrap.js`
-   header for the BUG-64-02 history.
-
-2. **Everything else** at this level: small Alpine x-data factories +
-   a few utility singletons.  All native ES modules; `bootstrap.js`
-   imports them and re-attaches each export to `window.<same-name>`
-   so existing template `x-data="editable({...})"` lookups keep
-   resolving without HTML edits.
+Last reorganised in Phase 12.12 (agent-first pivot).  The browser
+notebook editor + its Monaco/Pyright stack were removed; what remains
+is small Alpine x-data factories + a few utility singletons, all
+native ES modules.  `bootstrap.js` imports them and re-attaches each
+export to `window.<same-name>` so existing template
+`x-data="editable({...})"` lookups keep resolving without HTML edits.
 
 ## How a new factory module lands here
 
@@ -80,38 +73,3 @@ x-data walk begins.  This ordering is asserted by
 server-side form-field fallback alone).  Callers may still set the
 header explicitly; their value wins.  HTMX requests get the header
 via the `htmx:configRequest` hook in `base.html`.
-
-The notebook editor + its sub-modules (`notebook/main.js`,
-`notebook/editor_shell.js`, `notebook/file_tree.js`) currently set the
-header by hand inside their save / mutation paths — those predate
-the `pqlApi.fetch` fix and could be migrated in a future sprint.
-
-## BUG-64-02 reactivity boundary (notebook only)
-
-Inside `notebook/`, Monaco editor / model refs, Web Worker handles,
-raw WebSocket handles, save-debounce timers, and per-cell view-zone
-DOM-node maps MUST live in factory closures (or in
-`createClosureRefs(['editor', 'model'])`), never on `this._X` of the
-returned Alpine reactive object.  Alpine's deep-reactive proxy walks
-those refs and hangs Monaco's `editor.create({model})` indefinitely.
-See `notebook/closure_state.js` header and commit `0af7984`.
-
-When you add a new closure-scoped slot to a notebook module
-(timer handle, DOM-node map, fetch AbortController, etc.):
-
-1. Add the slot name to the `PATTERN` regex in
-   `scripts/check-frontend-no-reactive-monaco.sh`.
-2. Add a paragraph to that script's preamble explaining what the
-   slot holds and why it can't escape to `this._X`.
-
-This belt-and-suspenders approach has caught BUG-64-02 family
-regressions in every sprint that touched the notebook editor.
-
-## Vendor libraries
-
-`vendor/` holds tarball-extracted UMD bundles for Monaco, markdown-it,
-KaTeX, jsdiff (download via the `scripts/vendor-*.sh` helpers; the
-directory is `.gitignore`d).  These load via plain `<script>` tags or
-Monaco's internal AMD loader — they are NOT importable from
-`bootstrap.js`.  CodeMirror 6 lives behind an importmap on
-`sql_editor.html` and is fetched from esm.sh on demand.

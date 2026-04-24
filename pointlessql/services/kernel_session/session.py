@@ -315,8 +315,7 @@ class KernelSession:
     async def shutdown(self) -> None:
         """Tear the kernel subprocess down gracefully.
 
-        Mirrors :func:`pointlessql.services.jupyter._shutdown`:
-        graceful shutdown with a 5 s timeout, then hard kill.
+        Graceful shutdown with a 5 s timeout, then hard kill.
         """
         for task in (self._iopub_task, self._shell_task):
             if task is not None and not task.done():

@@ -4,6 +4,82 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — Phase 12.12 / Sprint 12.12.2: Agent-first pivot — backend cleanup + ``/runs`` supervision stub
+
+Second sprint of the agent-first pivot.  Sprint 12.12.1 deleted the
+browser notebook editor's frontend (25 JS modules, ~16 MB vendored
+libs, editor + modal templates) and added the server-side
+run-detail skeleton.  Sprint 12.12.2 removes the editor's backend
+surface and lights up the supervision landing page.
+
+- **HTTP routes deleted** from
+  [pointlessql/api/notebooks_routes.py](pointlessql/api/notebooks_routes.py):
+  ``GET /notebook/editor``, ``GET`` / ``POST /api/notebook/doc``,
+  ``GET /api/notebook/cell-runs``, ``POST /api/notebooks/upload``,
+  ``POST /api/notebooks/create``,
+  ``PATCH /api/notebooks/rename``, ``DELETE /api/notebooks``.
+  The page + two read endpoints that survive
+  (``GET /notebooks/workspace``, ``GET /api/notebooks/tree``,
+  ``GET /api/notebooks/inspect``) are the read-only discovery
+  surface the Papermill create-job modal leans on.
+
+- **WebSocket routes deleted** — both ``/ws/notebook/kernel`` and
+  ``/ws/notebook/lsp`` are gone, along with the entire
+  ``pointlessql/api/notebook_kernel_ws.py`` module and the
+  editor-only ``pointlessql/services/pyright_bridge.py``.
+  ``services/kernel_session/`` stays as a library — Sprint 13.2
+  will re-wire it as the ``agent_run`` execution backend without
+  the WS proxy layer.
+
+- **Governance helper deleted** — the table-detail
+  *Open in notebook* button and the backing
+  ``POST .../open-in-notebook`` route are removed: there is no
+  editor to open a scratch notebook into.  The *Copy PQL snippet*
+  button on the same card is the remaining affordance for pasting
+  ``pql.table(...)`` into whatever agent is running.
+
+- **Middleware trimmed** — ``static_module_revalidate_middleware``
+  dropped with the notebook ESM-import tree; the registration list
+  goes from five layers to four (auth / rate-limit / csrf /
+  request-id).
+
+- **Navigation** — the *Notebook* link pointing at
+  ``/notebook/editor?path=scratch.py`` is replaced with *Runs*
+  pointing at the new ``/runs`` stub page (empty list today, backed
+  by Sprint 13.2's ``agent_runs`` Alembic table in the next
+  phase).  The Workspace page keeps its tree listing + the
+  *Schedule…* row action; the editor-era *Open* row link and the
+  Upload form card were removed.
+
+- **Stale tests** — ``tests/test_jupyter.py`` was orphaned in
+  Sprint 63 when the JupyterLab subprocess was retired.  Deleted.
+  ``tests/test_admin_audit.py`` swapped an ``open_in_notebook``
+  fixture row for ``create_connection`` so the 7-day window
+  assertion still exercises a real audit action.
+
+- **Lifespan** — ``app.state.kernel_registry`` + its startup /
+  shutdown no longer run: no live consumer until Sprint 13.2.
+
+End-to-end pivot check: all eight removed route paths absent from
+``app.routes``, ``/runs`` GET present, ``ruff check pointlessql/``
+clean, ``pyright pointlessql/`` 0 errors, ``pydoclint --style=google
+pointlessql/`` 🎉 no violations.  The single lingering
+``tests/test_pg_sync.py`` I001 is Sprint-82 technical debt,
+untouched by this sprint.
+
+### Changed — Phase 12.12 / Sprint 12.12.1: Agent-first pivot — delete editor, add run-view skeleton
+
+Browser notebook editor (25 modules under ``frontend/js/notebook/``,
+~16 MB vendored Monaco + KaTeX + markdown-it + markdown-it-texmath
++ jsdiff) deleted outright.  Added
+[pointlessql/services/output_rendering.py](pointlessql/services/output_rendering.py)
+as the server-side mime-bundle renderer plus a Bootstrap-``.card``
+[pages/run_view.html](frontend/templates/pages/run_view.html)
+template and four output partials.  Three new runtime deps —
+``markdown-it-py>=3.0``, ``ansi2html>=1.9``, ``Pygments>=2.18`` —
+for server-side Markdown / ANSI / code rendering.  Commit
+``bc2ad07``; full sprint notes in the Phase 12.12 ROADMAP block.
+
 ### Changed — Phase 12.11 / Sprint 99: Notebook toolbar Bootstrap-native (badges + btn-groups + a11y)
 
 Editor toolbar polished to the Bootstrap vocabulary already in use

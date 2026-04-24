@@ -3979,22 +3979,21 @@ PointlesSQL
 │           substrings — Sprint 96's goal reached in the
 │           browser, not just in the tests.
 │
-├── Phase 12.11 — Notebook visual polish                  🔜 in progress
+├── Phase 12.11 — Notebook visual polish                  ✅ closed (scope cut after S99)
 │   │
 │   │   Phase 12.10 closed the semantic side of the native
 │   │   notebook editor (marker grammar, content-hash identity,
-│   │   parser robustness).  The visible chrome lagged behind:
-│   │   Sprint-98 screenshots showed the status trio
-│   │   ("Saved / Kernel ready / Pyright ready") rendered as bare
-│   │   coloured text and the eleven toolbar buttons flowing as a
-│   │   single ungrouped strip, neither matching the Bootstrap
-│   │   vocabulary every other page in the app already uses
-│   │   (alerts, jobs, volumes, sql_editor).  Phase 12.11 polishes
-│   │   the notebook chrome to the house pattern across four
-│   │   sprints — toolbar, output zones, per-cell affordances,
-│   │   DataFrame + markdown rendering — without touching the
-│   │   one-editor-per-notebook Monaco architecture or the
-│   │   Sprint-96 marker-grammar invariants.  Plan lives at
+│   │   parser robustness).  The visible chrome lagged behind and
+│   │   Phase 12.11 was planned as a four-sprint polish run.
+│   │   Sprint 99 (toolbar + badges) landed.  Sprints 100-102
+│   │   were **cancelled** when the agent-first pivot
+│   │   (Phase 12.12) landed: polishing authoring-chrome for a
+│   │   surface that was about to be deleted would have been
+│   │   throwaway work.  The output-zone ``.card`` idea from
+│   │   Sprint 100 was re-homed into the server-side run-detail
+│   │   view (``frontend/templates/pages/run_view.html``) during
+│   │   Sprint 12.12.1, so the visual design intent lives on.
+│   │   Plan stub at
 │   │   [.claude/plans/phase-12-11-notebook-unified-anchor.md](/home/flo/.claude/plans/phase-12-11-notebook-unified-anchor.md).
 │   │
 │   ├── Sprint 99 — Toolbar + status badges               ✅ done (529aa57)
@@ -4069,35 +4068,83 @@ PointlesSQL
 │   │       ``node --check frontend/js/notebook/main.js`` clean
 │   │       (file unmodified).
 │   │
-│   ├── Sprint 100 — Output zones as ``.card``             ⏳ planned
-│   │       Output zones become real Bootstrap cards with a
-│   │       ``.card-header`` (execution-count badge + ms duration
-│   │       + status dot), ``.card-body`` for the rendered output,
-│   │       and a ``.card-footer`` for clear-output controls.
-│   │       Traceback paints as ``.alert-danger`` with a structured
-│   │       header; stderr gets a left-border accent; stdout sits
-│   │       in muted body text.  View-zone architecture stays —
-│   │       only the inner DOM Monaco wraps changes.
-│   │
-│   ├── Sprint 101 — Per-cell affordance toolbar           ⏳ planned
-│   │       The floating Monaco content widgets (▶ Run, ⋯ History,
-│   │       ✕ Clear, + Code / + Markdown / + SQL inserters,
-│   │       status-dot, elapsed-time) become Bootstrap
-│   │       ``btn-toolbar`` + ``btn-group``s with badge cascades.
-│   │       SQL ``result_var`` input becomes ``form-control-sm``.
-│   │       The "+ Cell below" zone-button becomes a hover-only
-│   │       dezent insertion control.
-│   │
-│   └── Sprint 102 — DataFrame + markdown polish           ⏳ planned
-│       pandas ``_repr_html_`` tables get
-│       ``.table .table-sm .table-striped .table-hover`` inside
-│       a ``.table-responsive`` wrapper with
-│       ``thead.table-dark``.  The Sprint-98 ``text/markdown``
-│       branch gets spacing + code-block + link styling polish.
-│       Sprint-96 Screenshot-03 (DataFrame benchmark) reproduced
-│       with the new chrome.
+│   └── Sprints 100-102 — ❌ cancelled (agent-first pivot).
+│           Output-zone ``.card`` polish re-homed into the
+│           server-side ``run_view.html`` in Sprint 12.12.1.
+│           Per-cell affordance toolbar + DataFrame polish have
+│           no surface post-pivot (no browser editor) — the
+│           equivalent chrome lives in the supervision
+│           run-detail view, slated for Sprint 13.4 polish.
 │
-├── Phase 13 — Agent workloads                            ⏳ sketch
+├── Phase 12.12 — Agent-first pivot: delete editor, build run-view  ✅ done
+│   │
+│   │   Decision (2026-04-24): humans no longer author notebooks
+│   │   in the browser.  Agents drop ``.py`` jupytext-Percent
+│   │   files into ``notebooks/`` (or a UC Volume), the scheduler
+│   │   executes them, and the human surface is a supervision
+│   │   page at ``/runs`` plus a per-run detail view.  The native
+│   │   notebook editor (25 JS modules, Monaco + Pyright LSP +
+│   │   kernel WS, ~16 MB vendored libs, 600+ LOC of WS routes)
+│   │   was deleted outright.  Server-side Jinja ``run_view.html``
+│   │   replaces the browser editor as the read-only surface for
+│   │   one notebook + its persisted outputs; ``/runs`` replaces
+│   │   the Notebook nav entry.  Plan:
+│   │   [.claude/plans/siehst-du-mein-repo-zany-horizon.md](/home/flo/.claude/plans/siehst-du-mein-repo-zany-horizon.md).
+│   │
+│   ├── Sprint 12.12.1 — JS / CSS / template deletion + server-render skeleton  ✅ done (bc2ad07)
+│   │       Deleted all 25 modules under
+│   │       ``frontend/js/notebook/``, all five vendored JS libs
+│   │       under ``frontend/js/vendor/`` (~16 MB: Monaco, KaTeX,
+│   │       markdown-it, markdown-it-texmath, jsdiff), their
+│   │       fetcher scripts, the editor-shell + modal templates,
+│   │       and the corresponding .gitignore entries.  Added the
+│   │       server-side renderer
+│   │       ``pointlessql/services/output_rendering.py`` (mime
+│   │       priority ``markdown`` → ``html`` → ``svg`` → ``png``
+│   │       → ``jpeg`` → ``json`` → ``plain``, ANSI via
+│   │       ``ansi2html``, Markdown via ``markdown-it-py``) plus
+│   │       four Jinja partials
+│   │       (``_output_stream`` / ``_output_error`` /
+│   │       ``_output_markdown`` / ``_output_display_data``) and
+│   │       the Bootstrap ``.card``-per-cell ``run_view.html``
+│   │       skeleton.  Three new runtime deps:
+│   │       ``markdown-it-py>=3.0``, ``ansi2html>=1.9``,
+│   │       ``Pygments>=2.18``.  Static gates green; route audit
+│   │       clean.  Known interim state to be fixed in 12.12.2:
+│   │       ``/notebook/editor`` still registered (returns a 500
+│   │       ``TemplateNotFound``), the Nav still points at it.
+│   │
+│   └── Sprint 12.12.2 — Backend routes cleanup + runs stub  ✅ done
+│           Deleted the Notebook-Editor HTTP routes
+│           (``GET /notebook/editor``, ``GET`` / ``POST /api/notebook/doc``,
+│           ``GET /api/notebook/cell-runs``), the workspace CRUD
+│           (``POST /api/notebooks/upload``, ``/create``,
+│           ``PATCH /api/notebooks/rename``, ``DELETE /api/notebooks``),
+│           both WebSocket routes
+│           (``/ws/notebook/kernel`` + ``/ws/notebook/lsp``),
+│           the governance ``open-in-notebook`` helper + its
+│           table-detail button, the editor-only
+│           ``pyright_bridge`` service, the
+│           ``static_module_revalidate_middleware`` layer, and
+│           the stale ``tests/test_jupyter.py`` (``services/jupyter``
+│           was already gone since Sprint 63).  Kept
+│           ``services/kernel_session/`` as a library — Sprint
+│           13.2 re-uses it as the ``agent_run`` execution
+│           backend.  Kept ``services/notebook_outputs/`` +
+│           ``services/notebook_doc.py`` — the writer-side and
+│           the cell parser both feed the run-detail view.
+│           Added ``/runs`` stub route + empty-state template so
+│           the nav has a landing page; Nav flipped *Notebook* →
+│           *Runs*; Workspace page trimmed to read-only listing
+│           + *Schedule…* button (Papermill pre-fill).  End-to-
+│           end pivot check: all eight removed routes absent
+│           from ``app.routes``, ``/runs`` present, 120 total
+│           routes (was 130 before 12.12.1).  Ruff / pyright /
+│           pydoclint green against ``pointlessql/``; the lone
+│           ``tests/test_pg_sync.py`` I001 is pre-existing from
+│           Sprint 82.
+│
+├── Phase 13 — Agent workloads                            🔜 active
 │   │
 │   │   Goal: bring "AI employees on the lakehouse" into
 │   │   production — but as an integration with first-party

@@ -10,163 +10,103 @@
     <h1 class="h3 mb-0">Notebook workspace</h1>
 </div>
 
-<div class="row g-3" x-data="notebookWorkspace()" x-init="load()">
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between py-2">
-                <span class="text-uppercase small fw-semibold text-muted">Notebooks</span>
-                <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
-                    <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
-                </button>
-            </div>
-            <div class="card-body p-2">
-                <template x-if="error">
-                    <div class="alert alert-danger m-1 small" x-text="error"></div>
-                </template>
+<p class="text-muted small mb-3">
+    Read-only listing of notebooks under the workspace directory. Authoring
+    happens outside PointlesSQL — agents drop
+    <code>.py</code> jupytext-Percent files into the notebooks directory,
+    the scheduler executes them, and runs surface under
+    <a href="/runs">Runs</a>. Use <strong>Schedule…</strong> to wire a
+    notebook into a Papermill job.
+</p>
 
-                <template x-if="!tree && !error">
-                    <div class="text-muted small p-2">
-                        <span class="spinner-border spinner-border-sm me-1"></span>Loading…
-                    </div>
-                </template>
+<div x-data="notebookWorkspace()" x-init="load()">
+    <div class="card">
+        <div class="card-header d-flex align-items-center justify-content-between py-2">
+            <span class="text-uppercase small fw-semibold text-muted">Notebooks</span>
+            <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
+                <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
+            </button>
+        </div>
+        <div class="card-body p-2">
+            <template x-if="error">
+                <div class="alert alert-danger m-1 small" x-text="error"></div>
+            </template>
 
-                <template x-if="tree && flatRows().length === 0 && !error">
-                    <div class="pql-empty">
-                        <i class="bi bi-folder2-open pql-empty__icon" aria-hidden="true"></i>
-                        <p class="pql-empty__title">No notebooks yet</p>
-                        <p class="pql-empty__message">Upload one using the form on the right to get started.</p>
-                    </div>
-                </template>
+            <template x-if="!tree && !error">
+                <div class="text-muted small p-2">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+                </div>
+            </template>
 
-                <ul class="list-unstyled mb-0" x-show="tree && flatRows().length > 0" x-cloak>
-                    <template x-for="row in flatRows()" :key="row.path">
-                        <li>
-                            <div class="pql-tree-item"
-                                 :style="'padding-left: ' + (row.depth * 1) + 'rem;'">
+            <template x-if="tree && flatRows().length === 0 && !error">
+                <div class="pql-empty">
+                    <i class="bi bi-folder2-open pql-empty__icon" aria-hidden="true"></i>
+                    <p class="pql-empty__title">No notebooks yet</p>
+                    <p class="pql-empty__message">
+                        Drop a <code>.py</code> or <code>.ipynb</code> file into the
+                        notebooks directory on disk (or via a UC Volume) and refresh.
+                    </p>
+                </div>
+            </template>
+
+            <ul class="list-unstyled mb-0" x-show="tree && flatRows().length > 0" x-cloak>
+                <template x-for="row in flatRows()" :key="row.path">
+                    <li>
+                        <div class="pql-tree-item"
+                             :style="'padding-left: ' + (row.depth * 1) + 'rem;'">
+                            <template x-if="row.kind === 'dir'">
+                                <button class="pql-tree-chevron"
+                                        @click="toggle('d:' + row.path)"
+                                        :aria-expanded="isOpen('d:' + row.path)">
+                                    <i class="bi"
+                                       :class="isOpen('d:' + row.path) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+                                </button>
+                            </template>
+                            <template x-if="row.kind === 'notebook'">
+                                <span class="pql-tree-chevron"></span>
+                            </template>
+
+                            <span class="pql-tree-label">
                                 <template x-if="row.kind === 'dir'">
-                                    <button class="pql-tree-chevron"
-                                            @click="toggle('d:' + row.path)"
-                                            :aria-expanded="isOpen('d:' + row.path)">
-                                        <i class="bi"
-                                           :class="isOpen('d:' + row.path) ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
-                                    </button>
+                                    <i class="bi bi-folder2"></i>
                                 </template>
-                                <template x-if="row.kind === 'notebook'">
-                                    <span class="pql-tree-chevron"></span>
+                                <template x-if="row.kind === 'notebook' && row.format === 'py'">
+                                    <i class="bi bi-journal-code text-info"
+                                       title=".py notebook (jupytext Percent)"></i>
                                 </template>
-
-                                <span class="pql-tree-label">
-                                    <template x-if="row.kind === 'dir'">
-                                        <i class="bi bi-folder2"></i>
-                                    </template>
-                                    <template x-if="row.kind === 'notebook' && row.format === 'py'">
-                                        <i class="bi bi-journal-code text-info"
-                                           title=".py notebook (jupytext Percent)"></i>
-                                    </template>
-                                    <template x-if="row.kind === 'notebook' && row.format !== 'py'">
-                                        <i class="bi bi-journal-code"
-                                           title=".ipynb notebook"></i>
-                                    </template>
-                                    <span class="text-truncate font-monospace" x-text="row.name"></span>
-                                    <template x-if="row.kind === 'notebook' && row.parameters_tagged">
-                                        <span class="badge bg-success ms-1"
-                                              style="font-size: 0.6rem;"
-                                              title="Notebook declares Papermill parameters">
-                                            PARAMS
-                                        </span>
-                                    </template>
-                                </span>
-
-                                <template x-if="row.kind === 'notebook'">
-                                    <span class="ms-auto d-flex gap-1">
-                                        <template x-if="row.format === 'py'">
-                                            <a :href="'/notebook/editor?path=' + encodeURIComponent(row.path)"
-                                               class="btn btn-sm btn-outline-secondary py-0 px-2"
-                                               style="font-size: 0.75rem;"
-                                               @click.stop>
-                                                <i class="bi bi-pencil-square"></i> Open
-                                            </a>
-                                        </template>
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-primary py-0 px-2"
-                                                style="font-size: 0.75rem;"
-                                                @click="schedule(row.path)">
-                                            <i class="bi bi-calendar-plus"></i> Schedule…
-                                        </button>
+                                <template x-if="row.kind === 'notebook' && row.format !== 'py'">
+                                    <i class="bi bi-journal-code"
+                                       title=".ipynb notebook"></i>
+                                </template>
+                                <span class="text-truncate font-monospace" x-text="row.name"></span>
+                                <template x-if="row.kind === 'notebook' && row.parameters_tagged">
+                                    <span class="badge bg-success ms-1"
+                                          style="font-size: 0.6rem;"
+                                          title="Notebook declares Papermill parameters">
+                                        PARAMS
                                     </span>
                                 </template>
-                            </div>
-                        </li>
-                    </template>
-                </ul>
-            </div>
-        </div>
-    </div>
+                            </span>
 
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header py-2">
-                <span class="text-uppercase small fw-semibold text-muted">Upload notebook</span>
-            </div>
-            <div class="card-body">
-                <form @submit.prevent="upload()" x-ref="uploadForm">
-                    <div class="mb-3">
-                        <label class="form-label small" for="wsTargetPath">Target path</label>
-                        <input type="text"
-                               id="wsTargetPath"
-                               class="form-control form-control-sm font-monospace"
-                               x-model="targetPath"
-                               placeholder="pipelines/my_notebook.ipynb"
-                               required>
-                        <div class="form-text small">
-                            Relative to the notebooks directory. Must end in
-                            <code>.ipynb</code> (upload endpoint stays
-                            <code>.ipynb</code>-only for Papermill compatibility;
-                            author new notebooks via the <strong>Notebook</strong>
-                            editor to get <code>.py</code> jupytext format).
+                            <template x-if="row.kind === 'notebook'">
+                                <span class="ms-auto d-flex gap-1">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary py-0 px-2"
+                                            style="font-size: 0.75rem;"
+                                            @click="schedule(row.path)">
+                                        <i class="bi bi-calendar-plus"></i> Schedule…
+                                    </button>
+                                </span>
+                            </template>
                         </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small" for="wsFile">File</label>
-                        <input type="file"
-                               id="wsFile"
-                               class="form-control form-control-sm"
-                               accept=".ipynb,application/json"
-                               x-ref="file"
-                               required>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input type="checkbox"
-                               id="wsOverwrite"
-                               class="form-check-input"
-                               x-model="overwrite">
-                        <label for="wsOverwrite" class="form-check-label small">
-                            Overwrite if a file already exists at the target path
-                        </label>
-                    </div>
-                    <div class="alert alert-danger py-1 px-2 small"
-                         x-show="uploadError"
-                         x-text="uploadError"
-                         x-cloak></div>
-                    <div class="alert alert-success py-1 px-2 small"
-                         x-show="uploadStatus"
-                         x-text="uploadStatus"
-                         x-cloak></div>
-                    <button type="submit"
-                            class="btn btn-primary btn-sm"
-                            x-bind:disabled="uploading">
-                        <span x-show="!uploading">Upload</span>
-                        <span x-show="uploading" x-cloak>
-                            <span class="spinner-border spinner-border-sm me-1"></span>Uploading…
-                        </span>
-                    </button>
-                </form>
-            </div>
+                    </li>
+                </template>
+            </ul>
         </div>
     </div>
 </div>
 
-{# Sprint 94: notebookWorkspace() factory lives in
+{# notebookWorkspace() factory lives in
    frontend/js/pages/notebooks_workspace.js; bootstrap.js attaches it
    to window.notebookWorkspace. #}
 {% endblock %}
