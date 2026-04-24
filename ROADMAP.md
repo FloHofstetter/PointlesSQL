@@ -4114,7 +4114,7 @@ PointlesSQL
 │   │       ``/notebook/editor`` still registered (returns a 500
 │   │       ``TemplateNotFound``), the Nav still points at it.
 │   │
-│   └── Sprint 12.12.2 — Backend routes cleanup + runs stub  ✅ done
+│   └── Sprint 12.12.2 — Backend routes cleanup + runs stub  ✅ done (ac5207e)
 │           Deleted the Notebook-Editor HTTP routes
 │           (``GET /notebook/editor``, ``GET`` / ``POST /api/notebook/doc``,
 │           ``GET /api/notebook/cell-runs``), the workspace CRUD
