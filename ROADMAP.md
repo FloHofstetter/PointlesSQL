@@ -4229,13 +4229,17 @@ PointlesSQL
 │   │       **No executor code — Hermes or any other runtime POSTs
 │   │       runs in.**
 │   │
-│   ├── Sprint 13.3 — CloudEvents ``agent_run`` envelope    🔜
+│   ├── Sprint 13.3 — CloudEvents ``agent_run`` envelope    ✅ done (e4b2a01)
 │   │       Extends the Sprint-55 CloudEvents envelope with
-│   │       ``pointlessql.agent_run.started`` /
-│   │       ``.cell_completed`` / ``.completed`` / ``.failed``
-│   │       types.  Webhook dispatch reuses
-│   │       ``services/alerts/destinations.py``.  This is the
-│   │       integration seam for ``hermes-plugin-pointlessql``,
+│   │       ``pointlessql.agent_run.started`` / ``.completed`` /
+│   │       ``.failed`` types (``denied`` intentionally silent —
+│   │       execution-outcome vocabulary, not approval decisions;
+│   │       ``cell_completed`` waits for the per-cell POST route).
+│   │       Webhook dispatch reuses the Sprint-55
+│   │       ``dispatch_webhook`` helper for HMAC + retry semantics;
+│   │       single-URL config via the new ``AgentRunsSettings`` —
+│   │       per-destination filter model lands with Sprint 13.4.
+│   │       Integration seam for ``hermes-plugin-pointlessql``,
 │   │       Paperclip tickets, and any future subscriber.
 │   │
 │   ├── Sprint 13.4 — Control-room ``/runs`` + detail       🔜
