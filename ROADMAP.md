@@ -4264,21 +4264,21 @@ PointlesSQL
 │   │       Drift-Monitor walkthrough — no dedicated /runs
 │   │       playbook exists today.
 │   │
-│   ├── Sprint 13.5 — Drift-Monitor demo agent              🔜
+│   ├── Sprint 13.5 — Drift-Monitor demo agent              ✅ done (0447ec1)
 │   │       *(pivoted from Postgres→Bronze; more direct fit with
 │   │       shipped primitives.)*  Demo asset: a ``.py`` notebook
 │   │       that reads a published bronze table, computes
-│   │       freshness + null-rate + value-drift against the
-│   │       Sprint-54 column stats, appends the result to
-│   │       ``ops.quality_history``, and emits a CloudEvent when
-│   │       a threshold breaks.  Hermes cron fires it hourly.
-│   │       New playbook
+│   │       freshness + null-rate (value-drift against Sprint-54
+│   │       column stats deferred), appends per-check rows to
+│   │       ``main.ops.quality_history``, and emits a Sprint-13.3
+│   │       ``.failed`` CloudEvent on threshold breach.  Env-
+│   │       driven thresholds.  New playbook
 │   │       ``docs/e2e-walkthroughs/agent_drift_monitor.md``
-│   │       replays the full flow in Firefox: run appears in
-│   │       ``/runs``, detail view shows code + output +
-│   │       lineage + CloudEvent dispatch.  No new connector
-│   │       code in PointlesSQL; the notebook itself is the
-│   │       deliverable.
+│   │       replays the full flow: register → run → terminate
+│   │       → ``/runs`` → detail (conformance + audit + tables-
+│   │       touched chips), all attributed to ``X-Principal``.
+│   │       No new connector code; the notebook + playbook are
+│   │       the deliverable.
 │   │
 │   ├── Sprint 13.6 — ``X-Principal`` forwarding            ✅ done (c1c9d4e)
 │   │       New ``dependencies.effective_principal()`` reads
