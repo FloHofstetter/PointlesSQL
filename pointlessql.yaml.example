@@ -1,0 +1,41 @@
+# pointlessql.yaml — Medallion conventions overrides (Phase 13.5)
+#
+# Copy this file to `pointlessql.yaml` (or anywhere you like) and
+# point `POINTLESSQL_CONVENTIONS_PATH` at it to override the built-
+# in Medallion conventions.  Top-level fields shallow-merge over
+# the defaults — anything you omit keeps the default value.
+#
+# Run with: POINTLESSQL_CONVENTIONS_PATH=./pointlessql.yaml uv run pointlessql
+#
+# Prose contract: docs/data-layers.md
+# Compute opinion: docs/adr/0002-duckdb-first.md
+
+# UC tag key under which a table declares its layer.
+# Example default: a table tagged `layer=bronze` is a bronze layer.
+# Override only if your catalog already uses a different tag key.
+layer_tag_key: layer
+
+# Ordered list of Medallion layers — bronze → silver → gold.  If you
+# override `layers` you replace the entire list (no per-layer merge),
+# so keep all three even when you only want to tweak one.
+layers:
+  - name: bronze
+    description: >-
+      Raw fidelity from the source, append-only, every row carries
+      audit columns so provenance is recoverable months later.
+    required_audit_columns:
+      - _ingested_at
+      - _source_file
+      - _source_system
+
+  - name: silver
+    description: >-
+      Deduplicated, typed, conformed keys — the cleanest representation
+      of the source domain after the bronze noise has been removed.
+    required_audit_columns: []
+
+  - name: gold
+    description: >-
+      Business facts, aggregated and star-schema-ready — the layer
+      downstream BI tools and ML features read from.
+    required_audit_columns: []

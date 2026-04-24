@@ -292,6 +292,25 @@ class SQLSettings(BaseSettings):
     query_timeout_seconds: int = 60
 
 
+class ConventionsSettings(BaseSettings):
+    """Phase-13.5 Medallion conventions config-file pointer.
+
+    Reads ``POINTLESSQL_CONVENTIONS_*`` environment variables.  When
+    ``path`` is ``None`` (the default) the loader returns the built-
+    in Medallion defaults from
+    :mod:`pointlessql.conventions._defaults`; when set it points at
+    a ``pointlessql.yaml`` whose top-level fields shallow-merge over
+    those defaults.  See
+    [`docs/data-layers.md`](../../docs/data-layers.md) for the prose
+    contract and ADR ``0002-duckdb-first`` for the compute opinion
+    this phase codifies.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_CONVENTIONS_")
+
+    path: Path | None = None
+
+
 class Settings(BaseSettings):
     """Root settings aggregating every sub-model.
 
@@ -317,3 +336,4 @@ class Settings(BaseSettings):
     audit: AuditSettings = Field(default_factory=AuditSettings)
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
+    conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)

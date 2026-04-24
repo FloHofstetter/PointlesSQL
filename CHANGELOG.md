@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13.5 / Sprint 13.5.1: Medallion conventions + ADR 0002-duckdb-first
+
+First sprint of Phase 13.5.  Ships the *opinionated primitives*
+that turn an agent-authored Delta write into a real Medallion
+lakehouse.  No runtime code — the data + parser only; the
+Sprint-13.7 Hermes plugin will surface
+:func:`pointlessql.conventions.load_conventions` as a
+``pql_conventions()`` tool.
+
+- **New package** ``pointlessql/conventions/`` exposes
+  :func:`load_conventions`, :data:`DEFAULT_CONVENTIONS`,
+  :class:`ConventionsConfig`, and :class:`LayerConvention`.  The
+  built-in defaults encode bronze (with audit columns
+  ``_ingested_at`` / ``_source_file`` / ``_source_system``) →
+  silver (deduped/typed/conformed) → gold (business facts +
+  star-schema-ready), tagged via UC tag key ``layer``.
+- **YAML override** parser (``pointlessql.yaml``) with shallow
+  merge over the defaults; ``POINTLESSQL_CONVENTIONS_PATH`` env
+  var resolves the file (loud ``FileNotFoundError`` on typos so
+  silent fallthrough doesn't mask config bugs).  Annotated
+  example at [pointlessql.yaml.example](pointlessql.yaml.example).
+- **Settings** gain a nested
+  :class:`pointlessql.settings.ConventionsSettings` with a single
+  ``path: Path | None`` field, slotted alongside the existing
+  ``delta`` / ``sql`` sub-models.
+- **Prose contract** at [docs/data-layers.md](docs/data-layers.md)
+  describes the three layers, the audit-column requirement on
+  bronze, and the ``layer`` UC tag.
+- **ADR 0002** at
+  [docs/adr/0002-duckdb-first.md](docs/adr/0002-duckdb-first.md)
+  documents the compute-engine decision: DuckDB owns compute
+  (SQL editor, EXPLAIN gate, column stats, the new merge /
+  autoload primitives), ``deltalake`` Python owns writes,
+  storage / catalog / runtime stay pluggable.
+
 ### Added — Phase 13 / Sprint 13.2: ``agent_runs`` Alembic table + HTTP registry
 
 First implementation sprint of Phase 13 (revised).  PointlesSQL
