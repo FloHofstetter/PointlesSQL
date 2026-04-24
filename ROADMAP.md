@@ -4409,6 +4409,36 @@ PointlesSQL
 │           13.5.1-13.5.4, Sprint 13.3 (CloudEvents), and Sprint
 │           13.7 (Hermes plugin).
 │
+│   Critical path to the "Hermes builds Medallion" demo
+│   (cross-phase synthesis, 6 sprints minimum):
+│
+│   1. **Sprint 13.5.1** — Conventions YAML + ADR 0002-duckdb-first
+│      + ``pql_conventions()`` tool.  Sets the direction and is
+│      cheap — no runtime code.
+│   2. **Sprint 13.5.2** — ``pql.merge()`` primitive.  Unblocks
+│      bronze → silver transitions.
+│   3. **Sprint 13.5.3** — ``pql.autoload()`` primitive.  Unblocks
+│      raw → bronze ingestion; the biggest single piece of work
+│      in the path.
+│   4. **Sprint 13.3** — CloudEvents ``agent_run`` envelope.
+│      Without it ``/runs`` sees the lifecycle but no external
+│      subscriber (Paperclip, shoreguard, ops dashboard) does.
+│   5. **Sprint 13.7** — ``hermes-plugin-pointlessql`` (external
+|      repo).  Registers ``pql_conventions`` / ``pql_autoload`` /
+│      ``pql_merge`` / ``pql_sql`` / ``pql_emit_cloudevent`` as
+│      Hermes tools so an agent can actually reach the primitives.
+│   6. **Sprint 13.5.5** — Hermes-medallion walkthrough, the
+│      reproducible "done" moment.
+│
+│   Non-blocking for the demo (nice-to-have, land when convenient):
+│   Sprint 13.1 (EXPLAIN gate — agents run without cost gating),
+│   Sprint 13.4 (``/runs`` filter bar — list works without
+│   filters), Sprint 13.5.4 (conformance check — passive surface,
+│   demo works without it), Sprint 13.5 inside Phase 13
+│   (Drift-Monitor — a second demo, not the Medallion flow itself),
+│   Sprint 13.6 (``X-Principal`` PQL-session forwarding — header
+│   hop to the registry already works today).
+│
 │   Non-goals for Phase 13.5:
 │
 │   - **Structured streaming ingest** — Hermes cron pulling files
