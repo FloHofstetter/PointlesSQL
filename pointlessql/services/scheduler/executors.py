@@ -258,8 +258,8 @@ async def _papermill_executor(
 
     ``notebook_path`` is resolved relative to ``settings.jupyter.notebooks_dir``
     and must not escape it. The executed output lands at
-    ``{notebooks_dir}/runs/{job_run_id}.ipynb`` so the embedded
-    JupyterLab can serve it at ``/lab/tree/runs/{job_run_id}.ipynb``
+    ``{runs_dir}/{job_run_id}.ipynb`` (where ``runs_dir`` defaults to
+    ``{notebooks_dir}/runs`` for backward compatibility).
     (the job-detail page links straight to that URL). ``timeout_seconds``
     is forwarded to papermill's per-cell ``execution_timeout`` and also
     backstopped by an ``asyncio.wait_for`` around the blocking call.
@@ -311,7 +311,7 @@ async def _papermill_executor(
 
     notebooks_dir = Path(settings.jupyter.notebooks_dir).resolve()
     input_path = resolve_notebook_path(notebooks_dir, notebook_path)
-    runs_dir = notebooks_dir / "runs"
+    runs_dir = Path(settings.jupyter.runs_dir).resolve()
     runs_dir.mkdir(parents=True, exist_ok=True)
     output_path = runs_dir / f"{job_run_id}.ipynb"
 

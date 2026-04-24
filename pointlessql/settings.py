@@ -198,19 +198,20 @@ class JupyterSettings(BaseSettings):
     enabled: bool = True
     port: int = 8888
     notebooks_dir: Path = Path("notebooks")
+    runs_dir: Path = Path("notebooks/runs")
     execute_timeout_seconds: int = 300
 
-    @field_validator("notebooks_dir", mode="after")
+    @field_validator("notebooks_dir", "runs_dir", mode="after")
     @classmethod
-    def _resolve_notebooks_dir(cls, value: Path) -> Path:
-        """Anchor ``notebooks_dir`` to the process startup CWD.
+    def _resolve_jupyter_paths(cls, value: Path) -> Path:
+        """Anchor Jupyter paths to the process startup CWD.
 
         Papermill invokes ``os.chdir`` (process-wide, not thread-local)
         when its ``cwd=`` argument is set, so concurrent papermill runs
         race with any code that computes ``Path("notebooks").resolve()``
         later — the observer ends up with
         ``/app/notebooks/notebooks`` because CWD flipped to the
-        notebooks dir mid-run. Anchoring a relative ``notebooks_dir``
+        notebooks dir mid-run. Anchoring a relative path
         to :data:`_STARTUP_CWD` (captured at module import, before any
         papermill tick can run) pins the absolute path at a value
         that's invariant across concurrent ``Settings()`` constructions
@@ -219,7 +220,7 @@ class JupyterSettings(BaseSettings):
         is deterministic.
 
         Args:
-            value: The raw ``notebooks_dir`` value from env or default.
+            value: The raw path value from env or default.
 
         Returns:
             Path: Absolute path anchored to startup CWD.

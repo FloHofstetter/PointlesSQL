@@ -405,6 +405,6 @@ async def dashboard_output(request: Request, slug: str) -> HTMLResponse:
             raise CatalogNotFoundError(f"Dashboard {slug!r} bound job is not a papermill job")
 
     settings: Settings = request.app.state.settings
-    runs_dir = settings.jupyter.notebooks_dir.resolve() / "runs"
+    runs_dir = settings.jupyter.runs_dir.resolve()
     html = notebook_render_service.render_run_notebook(runs_dir, latest_run_id, exclude_input=True)
     return HTMLResponse(html)

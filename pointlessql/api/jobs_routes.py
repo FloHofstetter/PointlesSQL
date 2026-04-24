@@ -278,7 +278,7 @@ def load_papermill_run_output_path(request: Request, job_id: int, run_id: int) -
         if run is None or run.job_id != job_id:
             raise CatalogNotFoundError(f"Run {run_id} not found for job {job_id}")
     settings: Settings = request.app.state.settings
-    return settings.jupyter.notebooks_dir.resolve() / "runs"
+    return settings.jupyter.runs_dir.resolve()
 
 
 # -- Routes --------------------------------------------------------------
