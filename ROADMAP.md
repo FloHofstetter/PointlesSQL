@@ -4384,20 +4384,21 @@ PointlesSQL
 │   │       key match — pre-filter source for churn-free history.
 │   │       Hermes plugin picks it up as ``pql_merge``.
 │   │
-│   ├── Sprint 13.5.3 — ``pql.autoload()`` primitive              ⏳
-│   │       The biggest sprint of the phase.  Alembic 021 adds
-│   │       ``autoload_checkpoints`` (source_path, file_sha,
-│   │       target_table, ingested_at, rows_ingested).  DuckDB
-│   │       scans Volume files via ``read_parquet`` /
-│   │       ``read_csv_auto`` / ``read_json_auto``, type-infers,
-│   │       injects audit columns, filters already-ingested files
-│   │       by SHA, appends via ``deltalake.write_deltalake(mode=
-│   │       "append")``.  The MVP is file-level exactly-once
-│   │       (Structured Streaming is a non-goal — Hermes cron
-│   │       drives the pull).  Hermes plugin picks it up as
-│   │       ``pql_autoload``.  May split into 13.5.3a (schema
-│   │       inference + checkpoints) and 13.5.3b (schema-drift
-│   │       handling + first-class error rows) if scope grows.
+│   ├── Sprint 13.5.3 — ``pql.autoload()`` primitive              ✅ done (7b974d0)
+│   │       Alembic 021 adds ``autoload_checkpoints`` (source_path,
+│   │       file_sha, target_table, ingested_at, rows_ingested) with
+│   │       a unique constraint on ``(target_table, file_sha)``.
+│   │       DuckDB scans local Volume directories via
+│   │       ``read_parquet`` / ``read_csv_auto`` / ``read_json_auto``,
+│   │       type-infers, injects audit columns from the Sprint-13.5.1
+│   │       conventions, filters already-ingested files by SHA-256,
+│   │       appends via ``deltalake.write_deltalake(mode="append")``.
+│   │       Auto-registers the target in soyuz-catalog on first
+│   │       successful append.  MVP scope: file-level exactly-once
+│   │       (per-row dedup + schema-drift deferred to Sprint 13.5.3b).
+│   │       HTTP-fetched-Volume support deferred — Volumes treated
+│   │       as managed-directories on local FS.  Hermes plugin picks
+│   │       it up as ``pql_autoload``.
 │   │
 │   ├── Sprint 13.5.4 — Conformance check in ``/runs/{id}``       ⏳
 │   │       Passive surface — the run-detail view flags writes to
