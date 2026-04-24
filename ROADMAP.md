@@ -4280,12 +4280,16 @@ PointlesSQL
 │   │       code in PointlesSQL; the notebook itself is the
 │   │       deliverable.
 │   │
-│   ├── Sprint 13.6 — ``X-Principal`` forwarding            🔜
-│   │       Wires ``X-Principal`` from the caller (Hermes plugin
-│   │       or manual ``curl``) through to the UC identity used
-│   │       for SELECT / MODIFY enforcement.  The 13.2 endpoints
-│   │       already accept the header; 13.6 propagates it into
-│   │       the PQL session + the query-history audit row.
+│   ├── Sprint 13.6 — ``X-Principal`` forwarding            ✅ done (c1c9d4e)
+│   │       New ``dependencies.effective_principal()`` reads
+│   │       ``X-Principal`` first, falls back to the cookie email.
+│   │       ``get_uc_client`` honours it for SELECT enforcement;
+│   │       audit + query-history rows attribute the email to the
+│   │       header value.  PQL constructor gains an explicit
+│   │       ``principal=`` kwarg (resolution: client > principal
+│   │       arg > ``POINTLESSQL_PRINCIPAL`` env > unforwarded) so
+│   │       Hermes plugins can pass principal without mutating
+│   │       process env.
 │   │
 │   └── Sprint 13.7 — Companion ``hermes-plugin-pointlessql`` 🔜
 │           Separate repo, analogous to
