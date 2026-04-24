@@ -4370,14 +4370,19 @@ PointlesSQL
 │   │       docs as system-prompt context.  Small sprint — no
 │   │       runtime code.
 │   │
-│   ├── Sprint 13.5.2 — ``pql.merge()`` primitive                 ⏳
-│   │       Thin facade over ``deltalake.DeltaTable.merge()`` +
-│   │       DuckDB for the source-side query.  Signature:
-│   │       ``pql.merge(source, target, on=[...], strategy=
-│   │       "upsert"|"scd2")``.  SCD-2 path adds ``_valid_from`` /
-│   │       ``_valid_to`` / ``_is_current`` on the target.  No
-│   │       state table — MERGE is stateless per call.  One-sprint
-│   │       scope; Hermes plugin picks it up as ``pql_merge``.
+│   ├── Sprint 13.5.2 — ``pql.merge()`` primitive                 ✅ done (29dda17)
+│   │       Thin facade over ``deltalake.DeltaTable.merge()``.
+│   │       Signature: ``pql.merge(source, target, *, on=[...],
+│   │       strategy="upsert"|"scd2")``.  Source: pandas DF,
+│   │       PyArrow Table, or UC reference (resolved via
+│   │       :meth:`PQL.table`).  Target: must already exist — no
+│   │       bootstrap (autoload's job in 13.5.3).  Upsert uses
+│   │       ``when_matched_update_all`` + ``when_not_matched_insert_all``;
+│   │       SCD-2 is two-phase (close current + append new versions
+│   │       with ``_valid_from`` / ``_valid_to`` / ``_is_current``).
+│   │       MVP caveat: SCD-2 closes + reopens for every source
+│   │       key match — pre-filter source for churn-free history.
+│   │       Hermes plugin picks it up as ``pql_merge``.
 │   │
 │   ├── Sprint 13.5.3 — ``pql.autoload()`` primitive              ⏳
 │   │       The biggest sprint of the phase.  Alembic 021 adds
