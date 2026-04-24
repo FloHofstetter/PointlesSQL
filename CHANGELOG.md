@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.6: ``X-Principal`` forwarded into PQL session + audit
+
+The Sprint-13.2 registry already accepted the ``X-Principal``
+header; Sprint 13.6 propagates it through every downstream
+attribution surface so a Hermes-driven query is checked + audited
+under the agent's principal, not the (probably-empty)
+session-cookie user on the agent side.
+
+- **New** :func:`pointlessql.api.dependencies.effective_principal`:
+  reads ``X-Principal`` header, falls back to the session-cookie
+  user's email, returns ``None`` for anonymous.
+- **Updated** :func:`get_uc_client` to use the effective principal
+  — UC SELECT enforcement (in ``/api/sql/execute`` and
+  ``/api/sql/explain``) now runs as the header value when set.
+- **Updated** :func:`pointlessql.api._audit_helpers.audit` and
+  :func:`record_query_async` to attribute the audit log /
+  query-history rows to the effective principal email.  ``user_id``
+  stays the cookie user's id — that's the actor whose session
+  signed the request, even when they're acting on someone else's
+  behalf.
+- **PQL constructor** now accepts an explicit
+  ``principal: str | None = None`` keyword argument so a Hermes
+  plugin (or any other process spawning PQL programmatically) can
+  pass the agent's principal without mutating the process env.
+  Resolution order: explicit ``client`` > explicit ``principal``
+  arg > ``POINTLESSQL_PRINCIPAL`` env > unforwarded client.
+- **No backend schema change**.
+
 ### Added — Phase 13.5 / Sprint 13.5.4: Conformance check on ``/runs/{id}``
 
 Passive surface — the run-detail view flags Medallion contract

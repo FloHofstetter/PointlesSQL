@@ -17,20 +17,55 @@ from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
 
 
-def get_uc_client(request: Request) -> UnityCatalogClient:
-    """Return a per-request UC facade with the current user's principal.
+def effective_principal(request: Request) -> str | None:
+    """Return the effective principal for SELECT enforcement + audit.
+
+    Sprint 13.6.  The ``X-Principal`` header takes precedence so an
+    external runtime (Hermes, an ops curl) can act on behalf of an
+    end user without that user holding a session cookie on
+    PointlesSQL.  When the header is absent or empty we fall back
+    to the session-cookie user's email.  When neither is set the
+    request is anonymous and the function returns ``None`` —
+    callers decide whether to short-circuit or continue with the
+    default UC client.
+
+    The header is the same one the Sprint-13.2 agent-runs registry
+    already accepts; Sprint 13.6 propagates it through to the SQL
+    routes and the query-history audit row.
 
     Args:
         request: Incoming FastAPI request.
 
     Returns:
-        A :class:`UnityCatalogClient` configured with the current
-        user's ``X-Principal``, or the app-state default client when
-        no user is bound to the request.
+        The effective principal email, or ``None`` for anonymous.
     """
+    header = request.headers.get("x-principal")
+    if header and header.strip():
+        return header.strip()
     user = getattr(request.state, "user", None)
-    if user is not None:
-        return UnityCatalogClient.for_principal(request.app.state.settings, user["email"])
+    if user is not None and user.get("email"):
+        return str(user["email"])
+    return None
+
+
+def get_uc_client(request: Request) -> UnityCatalogClient:
+    """Return a per-request UC facade with the effective principal.
+
+    Sprint 13.6: prefers :func:`effective_principal` so an
+    ``X-Principal`` header overrides the cookie user (Hermes plugin
+    + curl ops both depend on this hop).
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        A :class:`UnityCatalogClient` configured with the effective
+        principal, or the app-state default client when no
+        principal is bound to the request.
+    """
+    principal = effective_principal(request)
+    if principal:
+        return UnityCatalogClient.for_principal(request.app.state.settings, principal)
     return request.app.state.uc_client
 
 

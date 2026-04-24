@@ -19,7 +19,7 @@ from typing import Any
 
 from fastapi import Request
 
-from pointlessql.api.dependencies import client_ip, get_user
+from pointlessql.api.dependencies import client_ip, effective_principal, get_user
 from pointlessql.services import audit as audit_service
 from pointlessql.services import query_history as query_history_service
 
@@ -69,12 +69,16 @@ async def record_query_async(
     if factory is None:
         return None
     request_id = getattr(request.state, "request_id", None)
+    # Sprint 13.6: prefer X-Principal header over cookie user so a
+    # Hermes-driven query is attributed to the agent's principal, not
+    # the (probably-empty) session-cookie user on the agent side.
+    attributed_email = effective_principal(request) or user["email"]
     try:
         return await asyncio.to_thread(
             query_history_service.record_query,
             factory,
             user_id=user["id"],
-            user_email=user["email"],
+            user_email=attributed_email,
             sql_text=sql_text,
             started_at=started_at,
             finished_at=finished_at,
@@ -116,11 +120,17 @@ async def audit(
     if factory is None or not user["id"]:
         return
     role = "admin" if user.get("is_admin") else "user"
+    # Sprint 13.6: ``X-Principal`` overrides the cookie email so the
+    # audit trail points at the agent's principal when Hermes is
+    # making the call.  ``user_id`` stays the cookie user's id —
+    # that is the actor whose session signed the request, even when
+    # they're acting on someone else's behalf.
+    attributed_email = effective_principal(request) or user["email"]
     await asyncio.to_thread(
         audit_service.log_action,
         factory,
         user["id"],
-        user["email"],
+        attributed_email,
         action,
         target,
         detail,

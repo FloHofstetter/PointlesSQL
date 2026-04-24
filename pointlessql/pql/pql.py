@@ -47,17 +47,26 @@ class PQL:
     ``PQL()`` inherit the job's run-as user without any extra wiring —
     regular interactive use is unaffected.
 
+    Sprint 13.6 added an explicit ``principal`` argument so a Hermes
+    plugin (or any other process spawning PQL programmatically) can
+    pass the agent's principal without mutating the process env.
+    Resolution order: explicit ``client`` wins; otherwise an explicit
+    ``principal`` argument; otherwise the ``POINTLESSQL_PRINCIPAL``
+    env var; otherwise an unforwarded client.
+
     Args:
         client: An existing ``soyuz_catalog_client.Client`` instance.
             When ``None``, one is built via ``make_soyuz_client()`` (or
-            ``make_principal_client()`` if ``POINTLESSQL_PRINCIPAL`` is
-            set).
+            ``make_principal_client()`` if a principal is found).
         settings: Optional ``Settings`` override.  Used for both
             client creation and engine selection when not provided
             explicitly.
         engine: Engine instance, engine name string, or ``None``.
             When ``None``, auto-selects from ``settings.delta.engine``
             (default ``"pandas"``).
+        principal: Explicit X-Principal value forwarded on every UC
+            call.  Wins over ``POINTLESSQL_PRINCIPAL``.  ``None``
+            falls back to the env var.
     """
 
     def __init__(
@@ -65,14 +74,16 @@ class PQL:
         client: Client | None = None,
         settings: Settings | None = None,
         engine: Engine | str | None = None,
+        *,
+        principal: str | None = None,
     ) -> None:
         resolved = settings or Settings()
         if client is not None:
             self._client = client
         else:
-            principal = os.environ.get("POINTLESSQL_PRINCIPAL")
-            if principal:
-                self._client = make_principal_client(resolved, principal)
+            effective = principal or os.environ.get("POINTLESSQL_PRINCIPAL")
+            if effective:
+                self._client = make_principal_client(resolved, effective)
             else:
                 self._client = make_soyuz_client(resolved)
         if engine is None:
