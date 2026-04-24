@@ -4408,15 +4408,17 @@ PointlesSQL
 │   │       as managed-directories on local FS.  Hermes plugin picks
 │   │       it up as ``pql_autoload``.
 │   │
-│   ├── Sprint 13.5.4 — Conformance check in ``/runs/{id}``       ⏳
-│   │       Passive surface — the run-detail view flags writes to
-│   │       ``bronze.x`` / ``silver.x`` / ``gold.x`` that violate
-│   │       the layer contract (missing audit columns on bronze,
-│   │       missing dedup on silver, aggregate-width on gold).
-│   │       No enforcement, only visibility; Phase 15+ can
-│   │       convert selected checks into shoreguard policies if
-│   │       the demand materialises.  Depends on 13.4 filter bar
-│   │       being in place (reuses the layout shell).
+│   ├── Sprint 13.5.4 — Conformance check in ``/runs/{id}``       ✅ done (7a6b2c9)
+│   │       Passive surface — for each ``tables_touched`` entry the
+│   │       run-detail view infers the Medallion layer from the
+│   │       schema name and applies the layer-specific contract:
+│   │       bronze missing audit columns is ``error``, silver
+│   │       without SCD-2 / id-key is ``info``, gold > 50 columns
+│   │       is ``info``.  No enforcement; catalog hiccups + missing
+│   │       tables silently skipped (passive principle).
+│   │       Phase 15+ can convert selected checks into shoreguard
+│   │       policies if real demand surfaces.  ``layer_tag_key``
+│   │       UC-tag override stays a future hook.
 │   │
 │   └── Sprint 13.5.5 — Hermes-medallion walkthrough              ⏳
 │           ``docs/e2e-walkthroughs/hermes_medallion.md`` — a real
