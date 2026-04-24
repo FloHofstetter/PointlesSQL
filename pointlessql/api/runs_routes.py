@@ -25,11 +25,18 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from pointlessql.api.agent_runs_routes import serialize_agent_run
+from pointlessql.api.dependencies import get_uc_client
+from pointlessql.conventions import load_conventions
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import AuditLog, NotebookCellRun, NotebookOutput
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services import notebook_doc as notebook_doc_service
 from pointlessql.services import output_rendering as output_rendering_service
+from pointlessql.services.conformance import (
+    ConformanceFinding,
+    check_table_against_layer,
+    infer_layer_from_full_name,
+)
 from pointlessql.settings import Settings
 
 router = APIRouter(tags=["runs"])
@@ -237,6 +244,67 @@ async def runs_list_api(request: Request) -> dict[str, Any]:
     return {"runs": _load_runs(request)}
 
 
+async def _conformance_findings_for_run(
+    request: Request, tables_touched: list[str]
+) -> list[ConformanceFinding]:
+    """Run the Sprint-13.5.4 conformance checks for each touched table.
+
+    Loads the conventions once, then walks ``tables_touched`` in
+    order.  Each table is fetched via the soyuz UC client; missing
+    tables (typo, race with a drop, transient catalog hiccup) are
+    silently skipped — the conformance check is a passive surface,
+    so noise from the check itself defeats the purpose.
+
+    Args:
+        request: Incoming FastAPI request — provides the
+            principal-scoped UC client.
+        tables_touched: Three-part UC names from the agent-run
+            ``tables_touched`` JSON.
+
+    Returns:
+        Flat list of findings across all touched tables.  Empty
+        when no tables are listed or none have detectable
+        violations.
+    """
+    if not tables_touched:
+        return []
+
+    conventions = load_conventions()
+    client = get_uc_client(request)
+    findings: list[ConformanceFinding] = []
+
+    for full_name in tables_touched:
+        layer = infer_layer_from_full_name(full_name, conventions)
+        if layer is None:
+            continue
+        parts = full_name.split(".")
+        if len(parts) != 3:
+            continue
+        try:
+            table_info = await client.get_table(parts[0], parts[1], parts[2])
+        except Exception:  # noqa: BLE001 — passive surface, never raise into the route
+            continue
+        if not table_info:
+            continue
+        columns_raw = table_info.get("columns") or []
+        column_names: list[str] = []
+        for col in columns_raw:
+            if isinstance(col, dict):
+                name = col.get("name")
+                if isinstance(name, str):
+                    column_names.append(name)
+        findings.extend(
+            check_table_against_layer(
+                table_full_name=full_name,
+                layer=layer,
+                column_names=column_names,
+                conventions=conventions,
+            )
+        )
+
+    return findings
+
+
 @router.get("/runs/{run_id}", response_class=HTMLResponse)
 async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
     """Render the per-run supervision view.
@@ -281,6 +349,18 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             "cell_outputs": _load_outputs_for_run(request, run_id),
             "cell_runs": _load_cell_runs_for_run(request, run_id),
             "audit_entries": _load_audit_entries_for_run(request, run_id),
+            "conformance_findings": [
+                {
+                    "table_full_name": f.table_full_name,
+                    "layer": f.layer,
+                    "severity": f.severity,
+                    "code": f.code,
+                    "message": f.message,
+                }
+                for f in await _conformance_findings_for_run(
+                    request, list(serialize_agent_run(run_row).get("tables_touched", []))
+                )
+            ],
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,
             "active_page": "runs",

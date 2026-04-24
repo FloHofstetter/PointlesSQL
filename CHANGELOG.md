@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13.5 / Sprint 13.5.4: Conformance check on ``/runs/{id}``
+
+Passive surface — the run-detail view flags Medallion contract
+violations on each ``tables_touched`` entry.  Visibility, not
+enforcement; Phase 15+ may convert selected checks into shoreguard
+policies if real demand surfaces.
+
+- **Layer inference** by schema-name match against the
+  Sprint-13.5.1 conventions (``main.bronze.x`` → bronze, etc.).
+  Tables outside the convention are silently passed.  The
+  ``layer_tag_key`` UC-tag hook stays a future override path
+  when the soyuz client surfaces tags.
+- **Bronze** check: every ``required_audit_columns`` entry
+  must be present.  Missing audit columns are ``error`` severity
+  — provenance is broken for new appends.
+- **Silver** hint (info): no SCD-2 columns AND no ``id`` /
+  ``key``-suffixed column → "confirm dedup is happening upstream".
+- **Gold** hint (info): more than 50 columns → "consider whether
+  dimensions should split".
+- **Findings render** as a coloured table card on the detail
+  view, between metadata and the approval panel.  Failures of
+  the conformance check itself (catalog hiccup, table dropped
+  mid-render) are silently skipped — passive principle.
+
 ### Added — Phase 13 / Sprint 13.4: ``/runs`` filter bar + approval panel
 
 The supervision list is now filterable, sortable, and gated.
