@@ -4246,15 +4246,23 @@ PointlesSQL
 │   │       Integration seam for ``hermes-plugin-pointlessql``,
 │   │       Paperclip tickets, and any future subscriber.
 │   │
-│   ├── Sprint 13.4 — Control-room ``/runs`` + detail       🔜
-│   │       Fleshes out the stubs from 13.2: filter bar
-│   │       (principal / agent_id / status / time window /
-│   │       tables-touched / cost range), reuses the
-│   │       ``listTable`` Alpine component + ``pql-list-*`` CSS.
-│   │       Detail view gains the audit-log sidebar, lineage
-│   │       sub-graph, approval-state panel with Admin-only
-│   │       ``Approve`` / ``Deny`` buttons when status is
-│   │       ``needs_approval``.
+│   ├── Sprint 13.4 — Control-room ``/runs`` + detail       ✅ done (9e3a496)
+│   │       Filter bar via the existing Alpine ``listTable``
+│   │       (search + six status chips + sortable headers,
+│   │       client-side because 200 rows is well within client
+│   │       cost).  Adds Cost-est and Tables-touched columns to
+│   │       the list.  Detail view gains an approval panel
+│   │       (Alpine, only when ``status == needs_approval`` AND
+│   │       ``current_user.is_admin``) that POSTs to the
+│   │       Sprint-13.2 ``/approve`` and ``/deny`` endpoints, an
+│   │       audit-log sidebar joining ``AuditLog`` rows by
+│   │       ``target = "agent_run:{id}"``, and a tables-touched
+│   │       chip-list with catalog-detail links.  Lineage
+│   │       sub-graph stays a static list (real graph deferred
+│   │       until a concrete consumer asks).
+│   │       Browser-replay deferred to Sprint 13.5's
+│   │       Drift-Monitor walkthrough — no dedicated /runs
+│   │       playbook exists today.
 │   │
 │   ├── Sprint 13.5 — Drift-Monitor demo agent              🔜
 │   │       *(pivoted from Postgres→Bronze; more direct fit with
