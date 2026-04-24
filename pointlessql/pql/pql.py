@@ -19,6 +19,7 @@ from typing import Any, Literal
 from soyuz_catalog_client import Client
 
 from pointlessql.pql._list import list_catalogs, list_schemas, list_tables
+from pointlessql.pql._merge import MergeStrategy, merge_table
 from pointlessql.pql._read import read_table
 from pointlessql.pql._sql import run_sql
 from pointlessql.pql._types import SQLResult
@@ -152,6 +153,52 @@ class PQL:
             df=df,
             full_name=full_name,
             mode=mode,
+            unreachable_msg=self._unreachable_msg(),
+        )
+
+    def merge(
+        self,
+        source: Any,
+        target: str,
+        *,
+        on: list[str],
+        strategy: MergeStrategy = "upsert",
+    ) -> dict[str, Any]:
+        """Merge *source* into the existing Delta table at *target*.
+
+        Sprint 13.5.2.  Two strategies:
+
+        * ``"upsert"`` — match on *on* keys, update all non-key
+          columns from source on match, insert new rows otherwise.
+        * ``"scd2"`` — append-only history: source rows gain
+          ``_valid_from`` / ``_valid_to`` / ``_is_current`` columns;
+          a key match closes the current target row and appends the
+          new version.  See
+          :mod:`pointlessql.pql._merge` for the no-change-detection
+          caveat (the MVP closes + reopens for every key match).
+
+        Args:
+            source: A pandas DataFrame, PyArrow Table, or UC
+                ``"catalog.schema.table"`` reference (resolved
+                through :meth:`table` when a string).
+            target: UC ``"catalog.schema.table"`` reference.  Must
+                already exist — use :meth:`write_table` (or, when
+                Sprint 13.5.3 lands, :meth:`autoload`) to bootstrap.
+            on: Non-empty list of merge-key column names.
+            strategy: ``"upsert"`` (default) or ``"scd2"``.
+
+        Returns:
+            A dict carrying ``strategy`` and the deltalake merge
+            stats.  SCD-2 also reports ``rows_appended`` and the
+            close-phase stats.
+        """
+        return merge_table(
+            client=self._client,
+            engine=self._engine,
+            source=source,
+            target=target,
+            on=on,
+            strategy=strategy,
             unreachable_msg=self._unreachable_msg(),
         )
 

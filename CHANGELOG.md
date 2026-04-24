@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13.5 / Sprint 13.5.2: ``pql.merge()`` primitive
+
+The second of three Phase-13.5 building blocks for agent-authored
+Medallion lakehouses (autoload → bronze in 13.5.3, merge →
+silver here, SQL aggregation → gold in user code).  Thin facade
+over ``deltalake.DeltaTable.merge()``.
+
+- **New** :meth:`pointlessql.pql.PQL.merge` with signature
+  ``merge(source, target, *, on=[...], strategy="upsert"|"scd2")``.
+  ``source`` accepts a pandas DataFrame, a PyArrow Table, or a
+  UC ``"catalog.schema.table"`` reference (resolved through the
+  existing :meth:`PQL.table` read path).  ``target`` is a UC
+  reference that **must already exist** — ``merge()`` does not
+  bootstrap; that's autoload's job in 13.5.3.
+- **Upsert** path uses ``when_matched_update_all`` +
+  ``when_not_matched_insert_all``; non-key columns are taken
+  from source on match.
+- **SCD-2** path is two-phase: a MERGE that closes any
+  currently-open target row whose key matches source
+  (``_valid_to = now``, ``_is_current = false``), then a
+  ``write_deltalake(mode="append")`` that adds every source row
+  as a new current version with ``_valid_from = now``,
+  ``_valid_to = null``, ``_is_current = true``.  Documented MVP
+  caveat: closes + reopens for *every* source key match, even
+  when values are unchanged — pre-filter the source if you need
+  churn-free history.  Change detection deferred to a follow-up.
+- The SCD-2 column names (``_valid_from`` / ``_valid_to`` /
+  ``_is_current``) are hardcoded in the primitive — they're
+  silver-layer specific (audit columns in
+  :mod:`pointlessql.conventions` are bronze-specific).  Future
+  sprint can promote them to a configurable
+  :class:`LayerConvention` field if a real override case
+  appears.
+- **No new top-level deps** (deltalake + pyarrow already pinned),
+  no schema change.
+
 ### Added — Phase 13 / Sprint 13.1: ``GET /api/sql/explain`` + cost estimator
 
 The Sprint 13.7 Hermes plugin and the Sprint 13.4 run-detail
