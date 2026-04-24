@@ -4316,6 +4316,113 @@ PointlesSQL
 │     OSINT-capable substrate. Worth writing up as a pattern
 │     playbook once the underlying phases stabilise
 │
+├── Phase 13.5 — Medallion core + DuckDB-first opinion     ⏳ sketch
+│   │
+│   │   Phase 13 gives PointlesSQL the *supervision* surface for
+│   │   agent-authored work; Phase 13.5 gives it the *opinionated
+│   │   primitives* that turn a run into a real Medallion lakehouse
+│   │   instead of three ad-hoc Delta tables.  Without this phase
+│   │   every agent re-invents bronze/silver/gold semantics and the
+│   │   "persistent analytical memory" pitch collapses — agents
+│   │   remember *where* they wrote, not *what the layer means*.
+│   │
+│   │   Strong opinions this phase codifies:
+│   │
+│   │   * **Medallion as default convention**: bronze = raw fidelity
+│   │     + audit columns (``_ingested_at``, ``_source_file``,
+│   │     ``_source_system``) + append-only; silver = deduped +
+│   │     typed + conformed keys; gold = business facts +
+│   │     star-schema-ready + aggregated.  UC tags
+│   │     ``layer=bronze|silver|gold`` carry the contract to every
+│   │     consumer that reads the catalog.
+│   │   * **DuckDB-first for compute**: SQL editor, EXPLAIN gate
+│   │     (Sprint 13.1), column stats (Sprint 54), the new merge /
+│   │     autoload primitives all run on DuckDB.  ``deltalake``
+│   │     Python owns writes (schema evolution, protocol upgrades,
+│   │     VACUUM); DuckDB owns compute and read.  Storage stays
+│   │     Delta-portable, catalog stays UC-portable, runtime stays
+│   │     Hermes/OpenShell/Claude-Code-pluggable — the opinion is
+│   │     only at the compute layer, where abstraction costs most
+│   │     and benefits a second engine least (no second-engine
+│   │     user exists today, per
+│   │     ``project_catalog_strategy.md``).
+│   │   * **Convention is configurable, not hard-coded**: a repo-
+│   │     level ``pointlessql.yaml`` can override layer names,
+│   │     audit columns, tag schema — defaults are Medallion
+│   │     because that matches Delta naturally and the
+│   │     HN/walkthrough demo needs a concrete story.
+│   │
+│   ├── Sprint 13.5.1 — Conventions YAML + ``pql_conventions()``  ⏳
+│   │       New ``pointlessql.yaml`` parser, layer-semantics
+│   │       constants module, ``docs/data-layers.md`` as the
+│   │       canonical prose contract, and ADR ``0002-duckdb-first``
+│   │       documenting the compute-engine decision.  Exposed to
+│   │       agents via the Sprint 13.7 Hermes plugin as a
+│   │       ``pql_conventions()`` tool that surfaces the YAML +
+│   │       docs as system-prompt context.  Small sprint — no
+│   │       runtime code.
+│   │
+│   ├── Sprint 13.5.2 — ``pql.merge()`` primitive                 ⏳
+│   │       Thin facade over ``deltalake.DeltaTable.merge()`` +
+│   │       DuckDB for the source-side query.  Signature:
+│   │       ``pql.merge(source, target, on=[...], strategy=
+│   │       "upsert"|"scd2")``.  SCD-2 path adds ``_valid_from`` /
+│   │       ``_valid_to`` / ``_is_current`` on the target.  No
+│   │       state table — MERGE is stateless per call.  One-sprint
+│   │       scope; Hermes plugin picks it up as ``pql_merge``.
+│   │
+│   ├── Sprint 13.5.3 — ``pql.autoload()`` primitive              ⏳
+│   │       The biggest sprint of the phase.  Alembic 021 adds
+│   │       ``autoload_checkpoints`` (source_path, file_sha,
+│   │       target_table, ingested_at, rows_ingested).  DuckDB
+│   │       scans Volume files via ``read_parquet`` /
+│   │       ``read_csv_auto`` / ``read_json_auto``, type-infers,
+│   │       injects audit columns, filters already-ingested files
+│   │       by SHA, appends via ``deltalake.write_deltalake(mode=
+│   │       "append")``.  The MVP is file-level exactly-once
+│   │       (Structured Streaming is a non-goal — Hermes cron
+│   │       drives the pull).  Hermes plugin picks it up as
+│   │       ``pql_autoload``.  May split into 13.5.3a (schema
+│   │       inference + checkpoints) and 13.5.3b (schema-drift
+│   │       handling + first-class error rows) if scope grows.
+│   │
+│   ├── Sprint 13.5.4 — Conformance check in ``/runs/{id}``       ⏳
+│   │       Passive surface — the run-detail view flags writes to
+│   │       ``bronze.x`` / ``silver.x`` / ``gold.x`` that violate
+│   │       the layer contract (missing audit columns on bronze,
+│   │       missing dedup on silver, aggregate-width on gold).
+│   │       No enforcement, only visibility; Phase 15+ can
+│   │       convert selected checks into shoreguard policies if
+│   │       the demand materialises.  Depends on 13.4 filter bar
+│   │       being in place (reuses the layout shell).
+│   │
+│   └── Sprint 13.5.5 — Hermes-medallion walkthrough              ⏳
+│           ``docs/e2e-walkthroughs/hermes_medallion.md`` — a real
+│           Hermes process reads a CSV from a UC volume, calls
+│           ``pql_autoload`` to build bronze, ``pql_merge`` to
+│           build silver, a ``pql_sql`` aggregation to build gold,
+│           emits per-cell CloudEvents, and the three layers show
+│           up in ``/runs/{id}`` with column stats + conformance
+│           check.  This is the "done" moment — the first
+│           reproducible end-to-end flow where an agent, not a
+│           human, authors a Medallion lakehouse.  Depends on
+│           13.5.1-13.5.4, Sprint 13.3 (CloudEvents), and Sprint
+│           13.7 (Hermes plugin).
+│
+│   Non-goals for Phase 13.5:
+│
+│   - **Structured streaming ingest** — Hermes cron pulling files
+│     is the MVP; real streaming (Kafka, CDC-from-Postgres,
+│     Kinesis) is a separate future phase.
+│   - **Schema-registry integration** — JSON / Avro / Protobuf
+│     registries come with their own governance story; bronze
+│     schema is whatever DuckDB infers from the file.
+│   - **Cross-engine abstraction** — ``pql.merge`` / ``pql.autoload``
+│     are DuckDB-based by contract.  Polars / Daft / Spark
+│     back-ends wait for a concrete second-engine user
+│     (``project_catalog_strategy.md`` principle applied to
+│     compute).
+│
 ├── Phase 14 — Public launch + external distribution      ⏳ queued (last)
 │   │
 │   │   Deliberately queued for the end. Phase 10's retrospective
