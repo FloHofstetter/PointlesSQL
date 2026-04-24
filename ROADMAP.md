@@ -4352,7 +4352,7 @@ PointlesSQL
 │   │     because that matches Delta naturally and the
 │   │     HN/walkthrough demo needs a concrete story.
 │   │
-│   ├── Sprint 13.5.1 — Conventions YAML + ``pql_conventions()``  ⏳
+│   ├── Sprint 13.5.1 — Conventions YAML + ``pql_conventions()``  ✅ done (03726fe)
 │   │       New ``pointlessql.yaml`` parser, layer-semantics
 │   │       constants module, ``docs/data-layers.md`` as the
 │   │       canonical prose contract, and ADR ``0002-duckdb-first``
