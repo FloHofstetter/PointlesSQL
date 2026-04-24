@@ -27,9 +27,11 @@ surface and lights up the supervision landing page.
   ``/ws/notebook/lsp`` are gone, along with the entire
   ``pointlessql/api/notebook_kernel_ws.py`` module and the
   editor-only ``pointlessql/services/pyright_bridge.py``.
-  ``services/kernel_session/`` stays as a library — Sprint 13.2
-  will re-wire it as the ``agent_run`` execution backend without
-  the WS proxy layer.
+  ``services/kernel_session/`` stays as a library for a possible
+  future local-executor fallback, but the revised Phase 13 plan
+  treats PointlesSQL as a registry + store for agent runs
+  (Hermes or another runtime owns execution), so the module has
+  no in-repo caller today.
 
 - **Governance helper deleted** — the table-detail
   *Open in notebook* button and the backing
@@ -45,11 +47,12 @@ surface and lights up the supervision landing page.
 
 - **Navigation** — the *Notebook* link pointing at
   ``/notebook/editor?path=scratch.py`` is replaced with *Runs*
-  pointing at the new ``/runs`` stub page (empty list today, backed
-  by Sprint 13.2's ``agent_runs`` Alembic table in the next
-  phase).  The Workspace page keeps its tree listing + the
-  *Schedule…* row action; the editor-era *Open* row link and the
-  Upload form card were removed.
+  pointing at the new ``/runs`` stub page (empty list today;
+  Sprint 13.2 introduces the ``agent_runs`` Alembic table +
+  HTTP registry endpoints that populate it).  The Workspace
+  page keeps its tree listing + the *Schedule…* row action; the
+  editor-era *Open* row link and the Upload form card were
+  removed.
 
 - **Stale tests** — ``tests/test_jupyter.py`` was orphaned in
   Sprint 63 when the JupyterLab subprocess was retired.  Deleted.
@@ -58,7 +61,8 @@ surface and lights up the supervision landing page.
   assertion still exercises a real audit action.
 
 - **Lifespan** — ``app.state.kernel_registry`` + its startup /
-  shutdown no longer run: no live consumer until Sprint 13.2.
+  shutdown no longer run: no live consumer under the revised
+  Phase 13 plan (PointlesSQL no longer executes agent runs).
 
 End-to-end pivot check: all eight removed route paths absent from
 ``app.routes``, ``/runs`` GET present, ``ruff check pointlessql/``

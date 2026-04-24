@@ -4128,9 +4128,11 @@ PointlesSQL
 │           ``static_module_revalidate_middleware`` layer, and
 │           the stale ``tests/test_jupyter.py`` (``services/jupyter``
 │           was already gone since Sprint 63).  Kept
-│           ``services/kernel_session/`` as a library — Sprint
-│           13.2 re-uses it as the ``agent_run`` execution
-│           backend.  Kept ``services/notebook_outputs/`` +
+│           ``services/kernel_session/`` as a library — left in
+│           place for a future local-executor fallback, but
+│           Phase 13 (revised) treats PointlesSQL as a registry
+│           + store, not an executor, so it has no in-repo
+│           caller today.  Kept ``services/notebook_outputs/`` +
 │           ``services/notebook_doc.py`` — the writer-side and
 │           the cell parser both feed the run-detail view.
 │           Added ``/runs`` stub route + empty-state template so
@@ -4144,70 +4146,156 @@ PointlesSQL
 │           ``tests/test_pg_sync.py`` I001 is pre-existing from
 │           Sprint 82.
 │
-├── Phase 13 — Agent workloads                            🔜 active
+├── Phase 13 — Agent-run supervision + analytical memory  🔜 active
 │   │
-│   │   Goal: bring "AI employees on the lakehouse" into
-│   │   production — but as an integration with first-party
-│   │   tooling, not as a new agent stack inside PointlesSQL.
-│   │   The ecosystem already exists around this project:
-│   │   shoreguard-fresh (policy / control plane),
-│   │   NVIDIA OpenShell (sandbox runtime), and Paperclip
-│   │   (org / budget / approval layer above agent frameworks).
-│   │   Phase 13 wires those pieces together with PointlesSQL
-│   │   staying focused on being the data surface. Three-layer
-│   │   governance falls out naturally: UC permissions (what
-│   │   data the agent can touch), OpenShell policy (what
-│   │   filesystem / network / processes), Paperclip approvals
-│   │   (which actions require a human).
+│   │   Positioning (2026-04-24 pivot): PointlesSQL is the
+│   │   **persistent analytical memory for agents** — not a
+│   │   lakehouse competitor, not a query engine, not a runtime.
+│   │   Agents already have conversational memory (Hermes alone
+│   │   bundles honcho, mem0, supermemory, byterover, hindsight,
+│   │   holographic, openviking, retaindb — eight providers).
+│   │   None persist Delta tables, UC metadata, column stats,
+│   │   lineage graphs, or run history across months.  PointlesSQL
+│   │   fills that empty slot.  One-liner: *"Mem0 is what your
+│   │   agent remembers you said; PointlesSQL is what your agent
+│   │   knows about the data."*
 │   │
-│   │   Scope sketch (many open design questions — only worth
-│   │   firming up once Phase 12 is landing):
+│   │   Communication chain for roadmap pitches:
 │   │
-│   ├── New companion repo `paperclip-adapter-pointlessql`
-│   │   exposing PointlesSQL's REST API + PQL snippets as tools
-│   │   Paperclip agents can call; sits next to the existing
-│   │   `paperclip-plugin-shoreguard`
-│   ├── New job kind `agent_run` in the Sprint-19 DAG engine so
-│   │   scheduled agent workloads inherit scheduling, run
-│   │   history, and dashboards without reinvention
-│   ├── `X-Principal` forwarded into the Paperclip-managed
-│   │   sandbox as the agent's UC identity, so Phase-3 SELECT /
-│   │   MODIFY enforcement applies to every agent query without
-│   │   new plumbing
-│   ├── Read-only `/agents` discovery page in PointlesSQL;
-│   │   authoring UI stays in Paperclip — PointlesSQL doesn't
-│   │   compete with it
-│   ├── Open decisions to settle: OIDC federation vs API-key
-│   │   for PointlesSQL ↔ shoreguard authentication; ownership
-│   │   of the `pql`-preinstalled sandbox image; streaming agent
-│   │   logs into PointlesSQL's UI; Paperclip budget metrics
-│   │   propagating into the job-run dashboards
-│   ├── **EXPLAIN-agent query optimiser loop** (Phase-12 bridge):
-│   │   expose ``GET /api/sql/explain?sql=...`` that returns
-│   │   DuckDB's ``EXPLAIN (FORMAT JSON)`` output, then let
-│   │   agents read the plan JSON before execute. Two concrete
-│   │   wins: (a) pre-flight cost estimator — plans above a
-│   │   threshold (rough-row-count × join-depth heuristic) route
-│   │   to Paperclip for human approval instead of running blind;
-│   │   (b) rewrite loop — agent analyses slow operators
-│   │   (cardinality mismatch, CARTESIAN_JOIN on >1M rows), pro-
-│   │   poses a rewrite, re-explains, iterates. Market rationale:
-│   │   Databricks' DBU pricing punishes unoptimised queries
-│   │   linearly, and most analytics teams lack a pre-execute
-│   │   cost-feedback loop — Query Profile UI is ex-post only, so
-│   │   the bill arrives at month-end with no per-query
-│   │   drilldown. PointlesSQL already owns the execute surface
-│   │   (Phase 12) and the audit + history trail (Sprint 50); an
-│   │   EXPLAIN gate turns the stack from "lets agents run SQL"
-│   │   into "forces every SQL — agent or human — through a
-│   │   cost-review". See
-│   │   ``~/.claude/projects/-home-flo-git-PointlesSQL/memory/project_phase13_explain_agent_loop.md``
-│   │   for the session-captured design angle.
-│   └── Optional sidequest `openclaw-plugin-pointlessql` —
-│       chat interface to catalog / SQL / jobs / dashboards via
-│       OpenClaw messaging integrations. Not a sprint inside
-│       the phase, just ecosystem work worth doing in the same
-│       window
+│   │       Data primitives (PointlesSQL + soyuz)
+│   │         → Agent runtime (Hermes — first concrete consumer)
+│   │           → Work orchestration (Paperclip — upstream)
+│   │
+│   │   ``shoreguard-fresh`` remains the orthogonal policy gate
+│   │   at every edge — approval quora, Z3 verification, OCSF
+│   │   audit.  It is not a link in the chain.
+│   │
+│   │   Scope cut from the original sketch (see
+│   │   ``feedback_audit_first_narrow_scope.md`` — scope drift
+│   │   is expected and correct):
+│   │
+│   │   * **PointlesSQL does NOT execute agent runs.**  Hermes
+│   │     (or any plug-compatible runtime) spawns the process in
+│   │     its own sandbox.  PointlesSQL receives lifecycle POSTs
+│   │     + per-cell output writes over HTTP, becoming the
+│   │     registry + store + supervision surface.  Eliminates
+│   │     the ipykernel-subprocess executor from the original
+│   │     Sprint 13.2 scope and removes the runtime competition
+│   │     with Hermes's own cron + code-execution tool.
+│   │   * **Demo pivot**: Sprint 13.5 Postgres→Bronze spike is
+│   │     replaced by a Drift-Monitor agent — exercises three
+│   │     shipped primitives (column stats Sprint 54, alerts +
+│   │     CloudEvents Sprint 55, Delta-backed history) in a
+│   │     single flow, with no new source connector required.
+│   │
+│   │   First concrete runtime is Hermes (NousResearch/hermes-
+│   │   agent, 114k ⭐, Teknium-stabilised plugin surface since
+│   │   May 2026, Paperclip adapter already exists upstream so
+│   │   every run auto-surfaces in the Paperclip control room
+│   │   once CloudEvents emit).  Runtime stays pluggable —
+│   │   OpenShell / OpenClaw / Claude Code remain valid — but
+│   │   Hermes is the one to name publicly for distribution
+│   │   reach.
+│   │
+│   ├── Sprint 13.1 — EXPLAIN gate + cost estimator         🔜
+│   │       ``GET /api/sql/explain?sql=...`` returns DuckDB's
+│   │       ``EXPLAIN (FORMAT JSON)`` with the existing UC-SELECT
+│   │       enforcement on referenced tables.  New
+│   │       ``services/sql/cost_estimator.py`` parses the plan,
+│   │       heuristic ``row_count × join_depth``; above the
+│   │       ``COST_GATE_THRESHOLD_ROWS`` setting (default 1e6)
+│   │       the endpoint flags ``needs_approval``.  No UI yet —
+│   │       consumers are the Hermes plugin (Sprint 13.7) and
+│   │       the run-detail view (Sprint 13.4).  Design captured
+│   │       in ``project_phase13_explain_agent_loop.md``.
+│   │
+│   ├── Sprint 13.2 — ``agent_runs`` table + HTTP registry  🔜
+│   │       Alembic 020 adds ``agent_runs`` (id UUID, principal,
+│   │       agent_id, notebook_path, source_snapshot_sha,
+│   │       status, cost_est, tables_touched JSON, started_at,
+│   │       finished_at, exit_code, approved_by, approved_at,
+│   │       denied_reason) and FK column ``agent_run_id`` on
+│   │       ``notebook_cell_runs`` + ``notebook_outputs``.  New
+│   │       routes ``POST /api/agent-runs`` (create),
+│   │       ``POST /api/agent-runs/{id}/finish`` (terminate),
+│   │       ``GET /runs`` (populate the stub from 12.12.2),
+│   │       ``GET /runs/{id}`` (detail view with the per-cell
+│   │       Bootstrap ``.card``-s already skeletonised in
+│   │       12.12.1).  ``X-Principal`` header respected from day
+│   │       one (prepares Sprint 13.6).  **No executor code —
+│   │       Hermes or any other runtime POSTs runs in.**
+│   │
+│   ├── Sprint 13.3 — CloudEvents ``agent_run`` envelope    🔜
+│   │       Extends the Sprint-55 CloudEvents envelope with
+│   │       ``pointlessql.agent_run.started`` /
+│   │       ``.cell_completed`` / ``.completed`` / ``.failed``
+│   │       types.  Webhook dispatch reuses
+│   │       ``services/alerts/destinations.py``.  This is the
+│   │       integration seam for ``hermes-plugin-pointlessql``,
+│   │       Paperclip tickets, and any future subscriber.
+│   │
+│   ├── Sprint 13.4 — Control-room ``/runs`` + detail       🔜
+│   │       Fleshes out the stubs from 13.2: filter bar
+│   │       (principal / agent_id / status / time window /
+│   │       tables-touched / cost range), reuses the
+│   │       ``listTable`` Alpine component + ``pql-list-*`` CSS.
+│   │       Detail view gains the audit-log sidebar, lineage
+│   │       sub-graph, approval-state panel with Admin-only
+│   │       ``Approve`` / ``Deny`` buttons when status is
+│   │       ``needs_approval``.
+│   │
+│   ├── Sprint 13.5 — Drift-Monitor demo agent              🔜
+│   │       *(pivoted from Postgres→Bronze; more direct fit with
+│   │       shipped primitives.)*  Demo asset: a ``.py`` notebook
+│   │       that reads a published bronze table, computes
+│   │       freshness + null-rate + value-drift against the
+│   │       Sprint-54 column stats, appends the result to
+│   │       ``ops.quality_history``, and emits a CloudEvent when
+│   │       a threshold breaks.  Hermes cron fires it hourly.
+│   │       New playbook
+│   │       ``docs/e2e-walkthroughs/agent_drift_monitor.md``
+│   │       replays the full flow in Firefox: run appears in
+│   │       ``/runs``, detail view shows code + output +
+│   │       lineage + CloudEvent dispatch.  No new connector
+│   │       code in PointlesSQL; the notebook itself is the
+│   │       deliverable.
+│   │
+│   ├── Sprint 13.6 — ``X-Principal`` forwarding            🔜
+│   │       Wires ``X-Principal`` from the caller (Hermes plugin
+│   │       or manual ``curl``) through to the UC identity used
+│   │       for SELECT / MODIFY enforcement.  The 13.2 endpoints
+│   │       already accept the header; 13.6 propagates it into
+│   │       the PQL session + the query-history audit row.
+│   │
+│   └── Sprint 13.7 — Companion ``hermes-plugin-pointlessql`` 🔜
+│           Separate repo, analogous to
+│           ``NousResearch/hermes-paperclip-adapter``.
+│           Registers Hermes tools ``pql_list_tables``,
+│           ``pql_query``, ``pql_explain``, ``pql_read_delta``,
+│           ``pql_write_delta``, ``pql_run_notebook``.
+│           Lifecycle hook ``post_tool_call`` emits the
+│           Sprint-13.3 CloudEvents.  Hermes-cron jobs register
+│           an ``agent_run`` with PointlesSQL before firing.
+│           Lands *after* 13.5 because it needs the full seam;
+│           development happens outside this repo.
+│
+│   Non-goals for Phase 13 (pushed to later phases):
+│
+│   - **Own executor / sandbox runtime** — Hermes, OpenShell,
+│     and Claude Code already solve this.  PointlesSQL shipping
+│     its own would duplicate mature infrastructure and lock
+│     agents to a single runtime.
+│   - **`paperclip-adapter-pointlessql`** — Paperclip already
+│     adapts Hermes upstream, so agent runs land in Paperclip
+│     via Hermes once ``hermes-plugin-pointlessql`` is in place.
+│     A direct adapter is only worth building once the indirect
+│     path is proven insufficient.
+│   - **`openclaw-plugin-pointlessql`** — same reasoning; any
+│     agent runtime that grows a Hermes-compatible bridge
+│     inherits PointlesSQL access for free.
+│   - **OIDC vs API-key decision for shoreguard auth** — defers
+│     to the day PointlesSQL has a second multi-tenant consumer.
+│     For now ``X-Principal`` + session cookies are sufficient.
 │
 │   Exploratory follow-ons (not yet committed phases):
 │
