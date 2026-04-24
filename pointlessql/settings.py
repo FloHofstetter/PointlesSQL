@@ -290,6 +290,7 @@ class SQLSettings(BaseSettings):
     enabled: bool = True
     max_rows: int = 10_000
     query_timeout_seconds: int = 60
+    cost_gate_threshold_rows: int = 1_000_000
 
 
 class AgentRunsSettings(BaseSettings):

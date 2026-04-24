@@ -580,6 +580,119 @@ async def api_sql_download(
     )
 
 
+@router.get("/api/sql/explain")
+async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
+    """Return a DuckDB EXPLAIN plan + heuristic cost for *sql*.
+
+    Sprint 13.1 cost gate.  Mirrors the parse + UC-SELECT-enforce
+    front-half of :func:`api_sql_execute` so the caller cannot
+    EXPLAIN a query whose tables they don't have permission to
+    read — that would leak schema information through the plan
+    even without row materialisation.
+
+    Above ``settings.sql.cost_gate_threshold_rows`` the response
+    flips ``needs_approval`` to ``True``.  No enforcement happens
+    here — the agent or run-detail UI decides what to do with the
+    flag.
+
+    Args:
+        request: Incoming FastAPI request.  Reads
+            ``request.state.user`` (auth middleware) and
+            ``request.app.state.settings``.
+        sql: The SELECT statement to analyse (passed as a query-
+            string parameter for convenient ``curl`` usage).
+
+    Returns:
+        Plain dict with ``plan`` (the parsed JSON tree DuckDB
+        emitted), ``cost`` (heuristic dict with
+        ``max_cardinality`` / ``join_depth`` / ``cost`` /
+        ``explanation``), ``needs_approval`` (bool against the
+        configured threshold), ``threshold`` (the threshold echoed
+        for client reasoning), and ``referenced_tables`` (the
+        enforcement list).
+
+    Raises:
+        SQLExecutionError: SQL editor disabled, malformed SQL, or
+            DuckDB rejected the EXPLAIN.
+        AuthorizationError: User lacks ``SELECT`` on a referenced
+            table (raised by :func:`check_privilege`).
+        CatalogNotFoundError: Referenced table unknown to
+            soyuz-catalog or has no ``storage_location``.
+    """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
+    from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
+    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.services.sql import run_explain
+
+    settings: Settings = request.app.state.settings
+    if not settings.sql.enabled:
+        raise SQLExecutionError("The SQL editor is disabled on this deployment.")
+
+    query = (sql or "").strip()
+    if not query:
+        raise SQLExecutionError("The 'sql' query parameter must be a non-empty string.")
+
+    try:
+        prepared = prepare_sql(query)
+    except SQLParseError as exc:
+        raise SQLExecutionError(str(exc)) from exc
+
+    client = get_uc_client(request)
+    user = get_user(request)
+    email = user.get("email", "")
+    is_admin = user.get("is_admin", False)
+
+    approved: dict[str, str] = {}
+    for full_name in prepared.refs:
+        parts = full_name.split(".")
+        if len(parts) != 3:
+            raise SQLExecutionError(
+                f"Internal error: expected 3-part name, got {full_name!r}.",
+            )
+        table_info = await client.get_table(parts[0], parts[1], parts[2])
+        if not table_info:
+            raise CatalogNotFoundError(f"Table not found: {full_name!r}")
+        storage_location = table_info.get("storage_location")
+        if not isinstance(storage_location, str) or not storage_location:
+            raise CatalogNotFoundError(
+                f"Table {full_name!r} has no storage_location on soyuz-catalog.",
+            )
+        await check_privilege(client, email, is_admin, "table", full_name, SELECT)
+        approved[full_name] = storage_location
+
+    try:
+        result = await asyncio.to_thread(
+            run_explain, prepared.rewritten_sql, approved
+        )
+    except ValueError as exc:
+        raise SQLExecutionError(str(exc)) from exc
+
+    threshold = max(0, int(settings.sql.cost_gate_threshold_rows))
+    needs_approval = threshold > 0 and result.cost.cost > threshold
+
+    await audit(
+        request,
+        "query.explained",
+        f"query:{short_sql_hash(query)}",
+        {
+            "tables": result.referenced_tables,
+            "cost": result.cost.cost,
+            "needs_approval": needs_approval,
+        },
+    )
+    return {
+        "plan": result.plan,
+        "cost": {
+            "max_cardinality": result.cost.max_cardinality,
+            "join_depth": result.cost.join_depth,
+            "cost": result.cost.cost,
+            "explanation": result.cost.explanation,
+        },
+        "needs_approval": needs_approval,
+        "threshold": threshold,
+        "referenced_tables": result.referenced_tables,
+    }
+
+
 @router.get("/sql", response_class=HTMLResponse)
 async def sql_editor_page(request: Request) -> HTMLResponse:
     """Render the Phase-12 SQL editor page."""

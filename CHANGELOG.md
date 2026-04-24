@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.1: ``GET /api/sql/explain`` + cost estimator
+
+The Sprint 13.7 Hermes plugin and the Sprint 13.4 run-detail
+view now have a cheap ahead-of-execution cost gate: parse, run
+DuckDB ``EXPLAIN (FORMAT JSON)``, walk the plan, return a
+``cost`` heuristic with ``needs_approval`` set above the
+configured threshold.
+
+- **New endpoint** ``GET /api/sql/explain?sql=...`` at
+  [pointlessql/api/sql_routes.py](pointlessql/api/sql_routes.py).
+  Same parse + UC-SELECT-enforce front-half as the existing
+  ``/api/sql/execute`` (a caller cannot EXPLAIN a query whose
+  tables they cannot read — that would leak schema through the
+  plan).  Audit action: ``query.explained``.
+- **Estimator** in
+  [pointlessql/services/sql/cost_estimator.py](pointlessql/services/sql/cost_estimator.py)
+  walks the plan tree, picks up ``estimated_cardinality`` /
+  ``cardinality`` / ``rows`` at the node root *and* DuckDB 1.x's
+  nested ``extra_info["Estimated Cardinality"]`` (string-encoded).
+  Counts join nodes by name substring.  Cost =
+  ``max_cardinality × (1 + join_depth)``; deliberately simple,
+  with a ``CostEstimate.explanation`` one-liner the agent can
+  paraphrase back to its human reviewer.
+- **Runner** in
+  [pointlessql/services/sql/explain.py](pointlessql/services/sql/explain.py)
+  registers Delta tables on a fresh in-process DuckDB connection
+  via the existing ``register_delta_view`` helper, runs
+  ``EXPLAIN (FORMAT JSON)``, parses the JSON cell, hands the
+  result to the estimator.  No row materialisation, no
+  cancellation registry — EXPLAIN is plan-only.
+- **Settings**: ``cost_gate_threshold_rows: int = 1_000_000``
+  added to ``SQLSettings`` (env var
+  ``POINTLESSQL_SQL_COST_GATE_THRESHOLD_ROWS``).  Above the
+  threshold the response carries ``needs_approval: true``; no
+  enforcement happens here — the agent or run-detail UI decides
+  what to do with the flag.
+- **No new top-level deps**; no schema change.
+
 ### Added — Phase 13 / Sprint 13.3: CloudEvents ``agent_run`` envelope
 
 The Sprint-13.2 registry now fans the agent-run lifecycle out to
