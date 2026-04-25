@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 13.11 walkthrough playbook
+
+- **Added** [`docs/e2e-walkthroughs/sprint_13_11_reflexive_tools.md`](docs/e2e-walkthroughs/sprint_13_11_reflexive_tools.md)
+  — API-centric replay with embedded Playwright-MCP-Befehle.
+  Live-replayed 2026-04-26: all five Family-A routes return the
+  expected payload, `pql_target_state(missing.table)` returns
+  `exists=false` (the bug-2 catch), supervisor scope correctly
+  returns `403` for the normal-key path on `/summary`, and
+  `cost_gate_threshold` is **not** present in the
+  supervisor-key response (anti-gaming guard verified).  The
+  `/runs/{id}` UI surfaced the new tool-call-tab badge populated
+  by the simulated `post_tool_call` POSTs.
+
 ### Added — Phase 13 / Sprint 13.11.4b: Detailed op-by-op + tool-call diff
 
 Extends `GET /api/agent-runs/diff` with two optional parameters
