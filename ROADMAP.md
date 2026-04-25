@@ -4417,7 +4417,7 @@ PointlesSQL
 │   │       Smaller follow-up to 13.8; could ship before, but
 │   │       the per-op trace is the higher-value half.
 │   │
-│   ├── Sprint 13.10 — Hermes-Medallion live-replay fixups    ✅ done (pending-commit)
+│   ├── Sprint 13.10 — Hermes-Medallion live-replay fixups    ✅ done (47a7018)
 │   │       Closed the four findings from the 2026-04-25 manual
 │   │       walkthrough replay.  The Sprint-13.5.5 playbook now
 │   │       runs end-to-end without manual workarounds.
