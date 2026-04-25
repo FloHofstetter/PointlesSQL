@@ -93,6 +93,18 @@ external runtime that pretends to be Hermes:
     tables-touched chips, all attributed to the
     `X-Principal`-forwarded identity (Sprint 13.6).
 
+13. [`hermes_medallion.md`](hermes_medallion.md) —
+    Sprint 13.5.5 — the Phase-13 **done moment**.  A real
+    Hermes session (with `hermes-plugin-pointlessql` loaded)
+    autoloads
+    [`notebooks/hermes_medallion_data/orders.csv`](../../notebooks/hermes_medallion_data/orders.csv)
+    into `main.bronze.orders_raw`, upserts into
+    `main.silver.orders`, aggregates into
+    `main.gold.orders_summary`, and the run-detail view shows
+    Source + Operations + Tool calls + Queries + Conformance
+    tabs all populated.  Agent-authored Medallion lakehouse
+    in one playbook.
+
 ## Stack start
 
 ```bash
