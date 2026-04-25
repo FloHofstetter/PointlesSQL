@@ -182,6 +182,29 @@ class PQLWriteError(EngineError):
     error_code: str = "pql_write_error"
 
 
+class AuditUnavailableError(PointlessSQLError):
+    """Raised when the Sprint-13.8 forced audit trail cannot be persisted.
+
+    PQL primitives (``autoload`` / ``merge`` / ``write_table`` /
+    ``sql``) write an ``agent_run_operations`` row before touching
+    DuckDB or deltalake when ``POINTLESSQL_AGENT_RUN_ID`` is set.
+    If the trail insert fails (DB down, FK miss because the run id
+    is unknown to the registry, table missing) the primitive
+    refuses to run — a write without a trail breaks the audit
+    guarantee Sprint 13.8 promises.
+
+    Attributes:
+        status_code: Always 503 — the registry is part of the
+            request path; without it the operation cannot be
+            served safely, so a transient infrastructure problem
+            is the most accurate framing.
+        error_code: Always ``"audit_unavailable"``.
+    """
+
+    status_code: int = 503
+    error_code: str = "audit_unavailable"
+
+
 class SQLExecutionError(PointlessSQLError):
     """Raised when Phase 12's DuckDB execution path rejects a query.
 

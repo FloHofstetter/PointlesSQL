@@ -1,0 +1,192 @@
+"""Sprint 13.8 — forced audit-trail ORM models.
+
+Three tables back the supervision guarantee:
+
+* :class:`AgentRunSource` stores the verbatim ``.py`` bytes the
+  runtime declared at registration so a post-run file edit cannot
+  erase the trail.  One row per run, enforced by the unique
+  ``agent_run_id`` constraint.
+* :class:`AgentRunOperation` records every PQL primitive call with
+  input hash, target table, Delta version pre/post, and row count.
+  Ordinal is monotonic per run (enforced by the composite uniqueness
+  on ``(agent_run_id, ordinal)``); error rows stay in the trail with
+  ``error_message`` populated and ``finished_at`` set.
+* :class:`AgentRunEvent` mirrors :class:`AlertEvent` so CloudEvents
+  lifecycle survives webhook outages — a row is inserted *before*
+  webhook dispatch and the dispatcher updates ``outcome`` afterward.
+"""
+
+from __future__ import annotations
+
+import datetime
+
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from pointlessql.models.base import Base
+
+
+class AgentRunSource(Base):
+    """Captured ``.py`` source bytes for a single agent run.
+
+    Inserted in the same transaction as the owning :class:`AgentRun`
+    by ``POST /api/agent-runs`` so the registry can never hold a run
+    record without the matching source.  The ``source_sha`` is
+    re-computed server-side over the UTF-8 bytes; if the runtime
+    sends a ``source_snapshot_sha`` field on :class:`AgentRun` and
+    it disagrees, registration fails with 422 (tamper-detection).
+
+    Attributes:
+        id: Auto-incremented primary key.
+        agent_run_id: FK to :class:`AgentRun.id`.  Unique — one
+            source per run.
+        source_bytes: UTF-8 encoded notebook source verbatim.  No
+            normalisation, no comment-stripping — what the agent
+            ran is what gets stored.
+        source_sha: Lowercase hex SHA-256 of ``source_bytes``.
+        captured_at: Wall-clock instant the source was captured
+            (typically the run's ``started_at``).
+    """
+
+    __tablename__ = "agent_run_sources"
+    __table_args__ = (Index("ix_agent_run_sources_sha", "source_sha"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agent_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("agent_runs.id"), nullable=False, unique=True
+    )
+    source_bytes: Mapped[str] = mapped_column(Text, nullable=False)
+    source_sha: Mapped[str] = mapped_column(String(64), nullable=False)
+    captured_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class AgentRunOperation(Base):
+    """One PQL primitive call inside an agent run.
+
+    Operations are emitted by the PQL layer when the
+    ``POINTLESSQL_AGENT_RUN_ID`` env var (or an explicit
+    ``agent_run_id`` constructor kwarg) is present.  Strict mode:
+    if the insert fails (DB down, FK miss because the run was not
+    registered) the primitive raises
+    :class:`pointlessql.exceptions.AuditUnavailableError` *before*
+    touching DuckDB or deltalake — a write without a trail must
+    not happen.
+
+    Failure path: when the underlying primitive raises, the
+    operation row is still committed with ``finished_at = now()``
+    and ``error_message = repr(exc)`` before re-raising, so the
+    trail always shows the attempt.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        agent_run_id: FK to :class:`AgentRun.id`.
+        ordinal: Monotonic per-run sequence number (1-indexed).
+        op_name: One of ``"autoload"`` / ``"merge"`` /
+            ``"write_table"`` / ``"sql"``.  CHECK-constrained.
+        params_json: JSON-encoded primitive arguments.  Excludes
+            DataFrame contents — only call shape and stats.
+        target_table: ``"catalog.schema.table"`` for writes; ``None``
+            for ``sql`` (no single target).
+        input_sha: SHA-256 of the canonical Arrow IPC bytes for
+            writes / merges, ``None`` for SQL reads.  For autoload
+            it's the SHA-256 of the concatenated per-file SHAs so
+            the file-level provenance from
+            :class:`AutoloadCheckpoint` survives in one digest.
+        rows_affected: Row count produced by the operation, or
+            ``None`` when the primitive doesn't expose one.
+        delta_version_before: ``DeltaTable.version()`` immediately
+            before the write.  ``None`` when the table didn't exist
+            yet or for read-only operations.
+        delta_version_after: ``DeltaTable.version()`` immediately
+            after the write.  Together with the ``before`` field
+            this lets a reviewer time-travel-recover the exact
+            state the run produced.
+        started_at: Wall-clock instant the primitive entered.
+        finished_at: Wall-clock instant the primitive exited
+            (success or failure).  ``None`` only when the row
+            represents a still-in-flight call (process killed
+            mid-op).
+        error_message: ``repr(exc)`` when the primitive raised.
+            ``None`` on success.
+    """
+
+    __tablename__ = "agent_run_operations"
+    __table_args__ = (
+        UniqueConstraint(
+            "agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"
+        ),
+        Index("ix_agent_run_operations_run", "agent_run_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agent_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("agent_runs.id"), nullable=False
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    op_name: Mapped[str] = mapped_column(String(32), nullable=False)
+    params_json: Mapped[str] = mapped_column(Text, nullable=False)
+    target_table: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    input_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rows_affected: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    delta_version_before: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    delta_version_after: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class AgentRunEvent(Base):
+    """One CloudEvents lifecycle envelope for an agent run.
+
+    Sprint 13.3 emitted CloudEvents fire-and-forget; Sprint 13.8
+    persists every envelope so a webhook outage can't lose the
+    trail.  The row is inserted with ``outcome = "pending"`` *before*
+    the dispatch call; the dispatcher updates the column to
+    ``"delivered"`` / ``"delivery_failed"`` / ``"no_destination"``.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        agent_run_id: FK to :class:`AgentRun.id`.
+        event_id: CloudEvents ``id`` field (uuid4 hex), unique
+            so receivers can dedup across retries.
+        event_type: One of ``pointlessql.agent_run.{started,
+            completed, failed}`` — see
+            :data:`pointlessql.services.agent_runs.events.AGENT_RUN_EVENT_TYPES`.
+        fired_at: When :func:`emit_agent_run_event` built the envelope.
+        outcome: ``pending`` | ``delivered`` | ``delivery_failed`` |
+            ``no_destination``.  CHECK-constrained.
+        payload_json: Full CloudEvents 1.0 envelope as JSON text,
+            for replay and debug without reconstruction.
+    """
+
+    __tablename__ = "agent_run_events"
+    __table_args__ = (
+        Index("ix_agent_run_events_fired", "agent_run_id", "fired_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agent_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("agent_runs.id"), nullable=False
+    )
+    event_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    fired_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)

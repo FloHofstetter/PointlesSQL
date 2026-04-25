@@ -67,6 +67,11 @@ class PQL:
         principal: Explicit X-Principal value forwarded on every UC
             call.  Wins over ``POINTLESSQL_PRINCIPAL``.  ``None``
             falls back to the env var.
+        agent_run_id: Sprint 13.8 — explicit run UUID; every PQL
+            primitive call writes one ``agent_run_operations`` row
+            for forced-audit purposes.  Wins over
+            ``POINTLESSQL_AGENT_RUN_ID``; ``None`` keeps the
+            interactive path silent.
     """
 
     def __init__(
@@ -76,6 +81,7 @@ class PQL:
         engine: Engine | str | None = None,
         *,
         principal: str | None = None,
+        agent_run_id: str | None = None,
     ) -> None:
         resolved = settings or Settings()
         if client is not None:
@@ -92,6 +98,12 @@ class PQL:
             self._engine = make_engine(engine)
         else:
             self._engine = engine
+        # Sprint 13.8: agent-run-id resolution mirrors `principal`.
+        # Explicit kwarg wins; otherwise the runtime sets the env var
+        # before exec'ing the agent's `.py`.  ``None`` keeps the
+        # interactive PQL path agnostic — no operation rows are
+        # emitted.
+        self._current_run_id = agent_run_id or os.environ.get("POINTLESSQL_AGENT_RUN_ID")
 
     def table(self, full_name: str) -> Any:
         """Read a Delta table registered in Unity Catalog.
@@ -166,6 +178,7 @@ class PQL:
             full_name=full_name,
             mode=mode,
             unreachable_msg=self._unreachable_msg(),
+            agent_run_id=self._current_run_id,
         )
 
     def merge(
@@ -212,6 +225,7 @@ class PQL:
             on=on,
             strategy=strategy,
             unreachable_msg=self._unreachable_msg(),
+            agent_run_id=self._current_run_id,
         )
 
     def autoload(
@@ -265,6 +279,7 @@ class PQL:
             file_format=file_format,
             conventions=None,
             unreachable_msg=self._unreachable_msg(),
+            agent_run_id=self._current_run_id,
         )
 
     def list_catalogs(self) -> list[dict[str, Any]]:

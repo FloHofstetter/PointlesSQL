@@ -89,6 +89,12 @@ class AgentRun(Base):
         denied_reason: Free-form denial text.  Mutually exclusive
             with ``approved_by``; the state machine enforces the
             pairing.
+        runtime_versions: Sprint 13.8 — JSON-encoded mapping of
+            runtime-side dependency versions (Python, ``pql``,
+            ``deltalake``, ``duckdb``, ...).  Required by
+            ``POST /api/agent-runs`` from Sprint 13.8 onward; the
+            column is nullable so legacy rows from Sprint 13.2-13.7
+            stay queryable.
     """
 
     __tablename__ = "agent_runs"
@@ -119,3 +125,4 @@ class AgentRun(Base):
         DateTime(timezone=True), nullable=True
     )
     denied_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    runtime_versions: Mapped[str | None] = mapped_column(Text, nullable=True)

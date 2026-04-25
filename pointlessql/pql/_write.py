@@ -26,8 +26,10 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
 )
 from pointlessql.pql._columns import columns_from_tuples
+from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine
+from pointlessql.services.agent_runs import operation_context
 
 
 def write_table(
@@ -38,6 +40,7 @@ def write_table(
     full_name: str,
     mode: Literal["error", "append", "overwrite", "ignore"],
     unreachable_msg: str,
+    agent_run_id: str | None = None,
 ) -> None:
     """Write a frame to a Delta table and register it in the catalog.
 
@@ -48,53 +51,124 @@ def write_table(
         full_name: Three-part name ``"catalog.schema.table"``.
         mode: Write mode passed to the engine.
         unreachable_msg: Pre-rendered "cannot reach catalog" message.
+        agent_run_id: Sprint 13.8 — when set, the call emits one
+            ``agent_run_operations`` row.  ``None`` keeps the
+            interactive path silent.
 
     Raises:
         ValidationError: If *full_name* does not have exactly three parts.
         CatalogNotFoundError: If the parent schema has no storage root
             and the table does not already exist.
         CatalogUnavailableError: If soyuz-catalog is unreachable.
+        AuditUnavailableError: If *agent_run_id* is set and the
+            ``agent_run_operations`` row cannot be persisted.
     """  # noqa: DOC503
     catalog, schema, table = parse_full_name(full_name)
 
-    table_exists = False
-    location: str | None = None
+    from pointlessql.db import get_session_factory
 
+    factory = get_session_factory() if agent_run_id else None
+
+    with operation_context(
+        factory,
+        agent_run_id=agent_run_id,
+        op_name="write_table",
+        params={"full_name": full_name, "mode": mode},
+        target_table=full_name,
+    ) as recorder:
+        table_exists = False
+        location: str | None = None
+
+        try:
+            response = _get_table.sync(client=client, full_name=full_name)
+            if isinstance(response, TableInfo):
+                loc = response.storage_location
+                if not isinstance(loc, Unset) and loc:
+                    location = loc
+                    table_exists = True
+        except httpx.ConnectError as exc:
+            raise CatalogUnavailableError(unreachable_msg) from exc
+        except UnexpectedStatus as exc:
+            if exc.status_code != 404:
+                raise
+
+        if agent_run_id is not None and table_exists and location is not None:
+            recorder.delta_version_before = safe_delta_version(location)
+        if agent_run_id is not None:
+            try:
+                recorder.input_sha = arrow_ipc_sha256(df)
+            except TypeError:
+                recorder.input_sha = None
+            recorder.rows_affected = _frame_row_count(df)
+
+        try:
+            if not table_exists:
+                location = derive_storage_location(client, catalog, schema, table)
+
+            assert location is not None  # noqa: S101 — guarded above
+
+            engine.write(df, location, mode)
+
+            if agent_run_id is not None:
+                recorder.delta_version_after = safe_delta_version(location)
+
+            if not table_exists:
+                columns = columns_from_tuples(engine.columns_info(df))
+                body = CreateTable(
+                    catalog_name=catalog,
+                    schema_name=schema,
+                    name=table,
+                    table_type="MANAGED",
+                    data_source_format="DELTA",
+                    columns=columns,
+                    storage_location=location,
+                )
+                _create_table.sync(client=client, body=body)
+        except httpx.ConnectError as exc:
+            raise CatalogUnavailableError(unreachable_msg) from exc
+
+
+def safe_delta_version(location: str) -> int | None:
+    """Read ``DeltaTable.version()`` without raising into the audit path.
+
+    Used by Sprint-13.8 operation rows to capture pre/post versions.
+    A read failure (table missing, corrupt log) is logged-and-skipped
+    so a cosmetic Delta-side hiccup cannot block the underlying
+    write — the write is the audit-relevant action.
+
+    Args:
+        location: Delta-table storage URI.
+
+    Returns:
+        The version integer, or ``None`` when reading failed.
+    """
     try:
-        response = _get_table.sync(client=client, full_name=full_name)
-        if isinstance(response, TableInfo):
-            loc = response.storage_location
-            if not isinstance(loc, Unset) and loc:
-                location = loc
-                table_exists = True
-    except httpx.ConnectError as exc:
-        raise CatalogUnavailableError(unreachable_msg) from exc
-    except UnexpectedStatus as exc:
-        if exc.status_code != 404:
-            raise
+        import deltalake
 
+        return int(deltalake.DeltaTable(location).version())
+    except Exception:  # noqa: BLE001 — version reads are best-effort
+        return None
+
+
+def _frame_row_count(frame: Any) -> int | None:
+    """Best-effort row count for the engine's native frame types.
+
+    Args:
+        frame: Source frame.
+
+    Returns:
+        Number of rows or ``None`` when unavailable.
+    """
     try:
-        if not table_exists:
-            location = derive_storage_location(client, catalog, schema, table)
-
-        assert location is not None  # noqa: S101 — guarded above
-
-        engine.write(df, location, mode)
-
-        if not table_exists:
-            columns = columns_from_tuples(engine.columns_info(df))
-            body = CreateTable(
-                catalog_name=catalog,
-                schema_name=schema,
-                name=table,
-                table_type="MANAGED",
-                data_source_format="DELTA",
-                columns=columns,
-                storage_location=location,
-            )
-            _create_table.sync(client=client, body=body)
-    except httpx.ConnectError as exc:
-        raise CatalogUnavailableError(unreachable_msg) from exc
+        if hasattr(frame, "num_rows"):
+            return int(frame.num_rows)  # type: ignore[arg-type]
+        if hasattr(frame, "shape"):
+            return int(frame.shape[0])  # type: ignore[arg-type]
+        if hasattr(frame, "count") and callable(frame.count):
+            return int(frame.count())  # type: ignore[arg-type]
+        return len(frame)
+    except (TypeError, ValueError, AttributeError):
+        return None
 
 
 def derive_storage_location(

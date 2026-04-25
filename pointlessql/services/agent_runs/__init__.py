@@ -25,13 +25,21 @@ from pointlessql.services.agent_runs.events import (
     emit_agent_run_event,
     event_type_for_status,
 )
+from pointlessql.services.agent_runs.operations import (
+    OperationRecorder,
+    operation_context,
+    record_operation,
+)
 
 __all__ = [
     "AGENT_RUN_EVENT_TYPES",
     "EVENT_TYPE_COMPLETED",
     "EVENT_TYPE_FAILED",
     "EVENT_TYPE_STARTED",
+    "OperationRecorder",
     "build_agent_run_cloudevent",
     "emit_agent_run_event",
     "event_type_for_status",
+    "operation_context",
+    "record_operation",
 ]

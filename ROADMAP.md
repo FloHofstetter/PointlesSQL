@@ -4303,7 +4303,7 @@ PointlesSQL
 │   │       Lands *after* 13.5 because it needs the full seam;
 │   │       development happens outside this repo.
 │   │
-│   ├── Sprint 13.8 — Forced audit trail                     ⏳
+│   ├── Sprint 13.8 — Forced audit trail                     ✅
 │   │       *(Surfaced 2026-04-24 during the live raw→gold demo —
 │   │       see ``project_phase13_audit_gaps.md``.)*  Today
 │   │       ``agent_runs.notebook_path`` points at a file the agent

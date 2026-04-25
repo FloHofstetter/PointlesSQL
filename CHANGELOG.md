@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.8: Forced audit trail
+
+Closes the four supervision gaps surfaced during the 2026-04-24
+Drift-Monitor live demo: post-run source mutability, missing
+per-operation trace, ephemeral CloudEvents, and unenforced
+runtime-version capture.  Every PQL primitive now emits a
+forensically-defensible row before touching DuckDB or deltalake,
+and the run-detail view surfaces the new dimensions through a
+five-tab layout.
+
+- **New** Alembic [022_agent_run_audit_trail.py](pointlessql/alembic/versions/022_agent_run_audit_trail.py)
+  — three tables (``agent_run_sources`` UNIQUE per run,
+  ``agent_run_operations`` with ordinal + delta version pre/post +
+  input SHA + row count, ``agent_run_events`` mirroring Sprint-55
+  ``alert_events``), plus a ``runtime_versions`` JSON column on
+  ``agent_runs``.
+- **New** [pointlessql/models/agent_run_audit.py](pointlessql/models/agent_run_audit.py)
+  — :class:`AgentRunSource`, :class:`AgentRunOperation`, and
+  :class:`AgentRunEvent` ORM mappings.
+- **Strict** ``POST /api/agent-runs`` now requires both ``source``
+  (UTF-8 ``.py`` text) and ``runtime_versions``
+  (non-empty ``{name: version}``) and 422s without them.  Server
+  hashes the source server-side and 422s on
+  ``source_snapshot_sha`` mismatch (tamper-detection).  The
+  source bytes land in ``agent_run_sources`` inside the same
+  transaction as the new ``agent_runs`` row.
+- **New** [pointlessql/exceptions.py](pointlessql/exceptions.py)
+  ``AuditUnavailableError`` (503) — raised by the new
+  :func:`pointlessql.services.agent_runs.record_operation` /
+  :func:`operation_context` helpers when the trail row cannot be
+  persisted, so PQL primitives refuse to execute without a trail.
+- **PQL hooks** — :class:`pointlessql.pql.PQL` gained an
+  ``agent_run_id`` constructor kwarg paralleling ``principal``;
+  resolution falls back to ``POINTLESSQL_AGENT_RUN_ID``.  Each of
+  ``write_table`` / ``merge`` / ``autoload`` / ``sql`` wraps its
+  work in :func:`operation_context` and writes one
+  ``agent_run_operations`` row, capturing input Arrow-IPC SHA
+  ([_hashing.py](pointlessql/pql/_hashing.py)) and Delta version
+  pre/post via the new public :func:`safe_delta_version` helper.
+- **CloudEvents persistence** — every envelope is INSERTed into
+  ``agent_run_events`` with ``outcome="pending"`` *before*
+  dispatch; the dispatcher result flips it to ``"delivered"`` /
+  ``"delivery_failed"`` / ``"no_destination"``.  Webhook outages
+  no longer lose lifecycle events.
+- **Run-detail-view** — Bootstrap-5 nav-tabs replace the linear
+  card stack: Cells / Operations / Source / Events / Audit log.
+  Cells stays the default tab so existing muscle memory keeps
+  working; the new tabs surface the strict audit dimensions.
+- **Tests** — [tests/test_agent_run_audit.py](tests/test_agent_run_audit.py)
+  covers the strict 422 paths, source/SHA persistence, ordinal
+  allocation, failure-row recording, audit re-raise, event
+  outcome transitions, and the new tab markup.
+
 ### Added — Phase 13 / Sprint 13.5: Drift-Monitor demo agent + walkthrough
 
 Closes the Phase-13 autonomous run with the first end-to-end

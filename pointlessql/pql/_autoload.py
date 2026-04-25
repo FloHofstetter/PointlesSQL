@@ -59,9 +59,11 @@ from pointlessql.exceptions import (
 )
 from pointlessql.models import AutoloadCheckpoint
 from pointlessql.pql._columns import columns_from_tuples
+from pointlessql.pql._hashing import concat_sha256
 from pointlessql.pql._parsing import parse_full_name
-from pointlessql.pql._write import derive_storage_location
+from pointlessql.pql._write import derive_storage_location, safe_delta_version
 from pointlessql.pql.engine import Engine
+from pointlessql.services.agent_runs import operation_context
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,7 @@ def autoload_files(
     file_format: AutoloadFormat,
     conventions: ConventionsConfig | None,
     unreachable_msg: str,
+    agent_run_id: str | None = None,
 ) -> dict[str, Any]:
     """Ingest matching files under *source_path* into the target Delta table.
 
@@ -102,7 +105,8 @@ def autoload_files(
             first-time table registration in soyuz-catalog.
         session_factory: SQLAlchemy session factory backing the
             ``autoload_checkpoints`` table.  Caller is responsible
-            for ``init_db`` having been called.
+            for ``init_db`` having been called.  Sprint 13.8 reuses
+            this same factory for the ``agent_run_operations`` row.
         source_path: Local filesystem directory (recursive walk) or
             a glob pattern (``*`` / ``?`` / ``[``-class).
         target: UC ``"catalog.schema.table"`` string.
@@ -115,6 +119,9 @@ def autoload_files(
             :func:`load_conventions` when ``None``.  The bronze
             layer's ``required_audit_columns`` drive the injection.
         unreachable_msg: Pre-rendered "cannot reach catalog" message.
+        agent_run_id: Sprint 13.8 — when set, emits one
+            ``agent_run_operations`` row capturing pre/post Delta
+            versions, file SHA digest, and ingest counts.
 
     Returns:
         ``{"target", "files_scanned", "files_ingested", "files_skipped",
@@ -126,6 +133,8 @@ def autoload_files(
         CatalogNotFoundError: When *target*'s parent schema has no
             storage root and the table doesn't exist yet.
         CatalogUnavailableError: When soyuz-catalog is unreachable.
+        AuditUnavailableError: If *agent_run_id* is set and the
+            ``agent_run_operations`` row cannot be persisted.
     """  # noqa: DOC502,DOC503 — every Raises entry propagates from helpers
     catalog, schema, table = parse_full_name(target)
     resolved_conventions = conventions or load_conventions()
@@ -137,53 +146,84 @@ def autoload_files(
         client, catalog, schema, table, target, unreachable_msg
     )
 
-    files_ingested = 0
-    files_skipped = 0
-    rows_total = 0
-    bootstrap_done = target_exists
+    audit_factory = session_factory if agent_run_id else None
 
-    for file_path in files:
-        sha = _sha256_file(file_path)
-        if _checkpoint_exists(session_factory, target, sha):
-            files_skipped += 1
-            continue
+    with operation_context(
+        audit_factory,
+        agent_run_id=agent_run_id,
+        op_name="autoload",
+        params={
+            "source_path": str(source_path),
+            "target": target,
+            "source_system": source_system,
+            "file_format": file_format,
+        },
+        target_table=target,
+    ) as recorder:
+        if agent_run_id is not None and target_exists:
+            recorder.delta_version_before = safe_delta_version(target_location)
 
-        per_file_format = _resolve_file_format(file_path, file_format)
-        arrow_table = _read_file_via_duckdb(file_path, per_file_format)
-        ingested_at = datetime.datetime.now(datetime.UTC)
-        augmented = _inject_audit_columns(
-            arrow_table,
-            audit_columns,
-            file_path=file_path,
-            source_system=source_system,
-            ingested_at=ingested_at,
-        )
+        files_ingested = 0
+        files_skipped = 0
+        rows_total = 0
+        bootstrap_done = target_exists
+        ingested_shas: list[str] = []
 
-        _append_to_delta(target_location, augmented)
+        for file_path in files:
+            sha = _sha256_file(file_path)
+            if _checkpoint_exists(session_factory, target, sha):
+                files_skipped += 1
+                continue
 
-        if not bootstrap_done:
-            _register_target_in_uc(
-                client=client,
-                engine=engine,
-                catalog=catalog,
-                schema=schema,
-                table=table,
-                location=target_location,
-                arrow_for_columns=augmented,
-                unreachable_msg=unreachable_msg,
+            per_file_format = _resolve_file_format(file_path, file_format)
+            arrow_table = _read_file_via_duckdb(file_path, per_file_format)
+            ingested_at = datetime.datetime.now(datetime.UTC)
+            augmented = _inject_audit_columns(
+                arrow_table,
+                audit_columns,
+                file_path=file_path,
+                source_system=source_system,
+                ingested_at=ingested_at,
             )
-            bootstrap_done = True
 
-        rows_total += augmented.num_rows
-        _record_checkpoint(
-            session_factory,
-            source_path=file_path,
-            file_sha=sha,
-            target_table=target,
-            ingested_at=ingested_at,
-            rows_ingested=augmented.num_rows,
-        )
-        files_ingested += 1
+            _append_to_delta(target_location, augmented)
+
+            if not bootstrap_done:
+                _register_target_in_uc(
+                    client=client,
+                    engine=engine,
+                    catalog=catalog,
+                    schema=schema,
+                    table=table,
+                    location=target_location,
+                    arrow_for_columns=augmented,
+                    unreachable_msg=unreachable_msg,
+                )
+                bootstrap_done = True
+
+            rows_total += augmented.num_rows
+            _record_checkpoint(
+                session_factory,
+                source_path=file_path,
+                file_sha=sha,
+                target_table=target,
+                ingested_at=ingested_at,
+                rows_ingested=augmented.num_rows,
+            )
+            files_ingested += 1
+            ingested_shas.append(sha)
+
+        if agent_run_id is not None:
+            recorder.delta_version_after = safe_delta_version(target_location)
+            recorder.rows_affected = rows_total
+            recorder.input_sha = (
+                concat_sha256(ingested_shas) if ingested_shas else None
+            )
+            recorder.extra_params = {
+                "files_scanned": len(files),
+                "files_ingested": files_ingested,
+                "files_skipped": files_skipped,
+            }
 
     return {
         "target": target,

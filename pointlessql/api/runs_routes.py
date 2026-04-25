@@ -28,7 +28,14 @@ from pointlessql.api.agent_runs_routes import serialize_agent_run
 from pointlessql.api.dependencies import get_uc_client
 from pointlessql.conventions import load_conventions
 from pointlessql.exceptions import CatalogNotFoundError
-from pointlessql.models import AuditLog, NotebookCellRun, NotebookOutput
+from pointlessql.models import (
+    AgentRunEvent,
+    AgentRunOperation,
+    AgentRunSource,
+    AuditLog,
+    NotebookCellRun,
+    NotebookOutput,
+)
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services import notebook_doc as notebook_doc_service
 from pointlessql.services import output_rendering as output_rendering_service
@@ -168,6 +175,125 @@ def _load_audit_entries_for_run(
                 "created_at": row.created_at.isoformat() if row.created_at else None,
                 "detail": row.detail,
             })
+    return out
+
+
+def _load_operations_for_run(
+    request: Request, run_id: str,
+) -> list[dict[str, Any]]:
+    """Return all ``agent_run_operations`` rows for *run_id* in ordinal order.
+
+    Sprint 13.8 — the per-operation trail emitted by the PQL
+    primitives.  Ordered by ``ordinal ASC`` so the run-detail
+    Operations tab reads top-to-bottom in execution order.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string of the owning run.
+
+    Returns:
+        List of dicts ready to feed into the Jinja template.
+    """
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(AgentRunOperation)
+            .where(AgentRunOperation.agent_run_id == run_id)
+            .order_by(AgentRunOperation.ordinal)
+        )
+        for row in session.scalars(stmt).all():
+            duration_ms: int | None = None
+            if row.finished_at is not None and row.started_at is not None:
+                duration_ms = int(
+                    (row.finished_at - row.started_at).total_seconds() * 1000
+                )
+            try:
+                params = json.loads(row.params_json)
+            except json.JSONDecodeError:
+                params = {}
+            out.append(
+                {
+                    "id": row.id,
+                    "ordinal": row.ordinal,
+                    "op_name": row.op_name,
+                    "params": params,
+                    "target_table": row.target_table,
+                    "input_sha": row.input_sha,
+                    "rows_affected": row.rows_affected,
+                    "delta_version_before": row.delta_version_before,
+                    "delta_version_after": row.delta_version_after,
+                    "started_at": row.started_at.isoformat() if row.started_at else None,
+                    "finished_at": (
+                        row.finished_at.isoformat() if row.finished_at else None
+                    ),
+                    "duration_ms": duration_ms,
+                    "error_message": row.error_message,
+                    "status": "error" if row.error_message else "ok",
+                }
+            )
+    return out
+
+
+def _load_source_for_run(
+    request: Request, run_id: str,
+) -> dict[str, Any] | None:
+    """Return the captured ``.py`` source row for *run_id* or ``None``.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string of the owning run.
+
+    Returns:
+        ``{"source_bytes", "source_sha", "captured_at"}`` or ``None``
+        when no source was captured (legacy pre-Sprint-13.8 run).
+    """
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = session.scalar(
+            select(AgentRunSource).where(AgentRunSource.agent_run_id == run_id)
+        )
+        if row is None:
+            return None
+        return {
+            "source_bytes": row.source_bytes,
+            "source_sha": row.source_sha,
+            "captured_at": row.captured_at.isoformat() if row.captured_at else None,
+        }
+
+
+def _load_events_for_run(
+    request: Request, run_id: str,
+) -> list[dict[str, Any]]:
+    """Return all CloudEvents lifecycle rows for *run_id*, oldest first.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string of the owning run.
+
+    Returns:
+        List of dicts with ``event_type``, ``fired_at``, ``outcome``,
+        ``event_id``.  Empty list when no events were persisted
+        (legacy pre-Sprint-13.8 run).
+    """
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(AgentRunEvent)
+            .where(AgentRunEvent.agent_run_id == run_id)
+            .order_by(AgentRunEvent.fired_at)
+        )
+        for row in session.scalars(stmt).all():
+            out.append(
+                {
+                    "id": row.id,
+                    "event_id": row.event_id,
+                    "event_type": row.event_type,
+                    "fired_at": row.fired_at.isoformat() if row.fired_at else None,
+                    "outcome": row.outcome,
+                }
+            )
     return out
 
 
@@ -349,6 +475,9 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             "cell_outputs": _load_outputs_for_run(request, run_id),
             "cell_runs": _load_cell_runs_for_run(request, run_id),
             "audit_entries": _load_audit_entries_for_run(request, run_id),
+            "operations": _load_operations_for_run(request, run_id),
+            "source": _load_source_for_run(request, run_id),
+            "events": _load_events_for_run(request, run_id),
             "conformance_findings": [
                 {
                     "table_full_name": f.table_full_name,

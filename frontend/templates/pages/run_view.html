@@ -208,86 +208,270 @@
 {% endif %}
 {% endif %}
 
-{% for cell in cells %}
-{% set cell_run = cell_runs.get(cell.content_hash) if cell_runs else None %}
-{% set outputs = cell_outputs.get(cell.content_hash, []) if cell_outputs else [] %}
-<div class="card mb-3 pql-run-cell pql-run-cell-type-{{ cell.cell_type }}" id="{{ cell.id }}">
-    <div class="card-header d-flex align-items-center gap-2 small">
-        <span class="badge bg-secondary text-uppercase">{{ cell.cell_type }}</span>
-        {% if cell_run and cell_run.execution_count is not none %}
-        <span class="font-monospace text-muted">[{{ cell_run.execution_count }}]</span>
+{# Sprint 13.8 — Run-detail tabs.  Cells stays the default tab so
+   pre-13.8 muscle memory keeps working; Operations / Source /
+   Events surface the new forced-audit data behind the same URL. #}
+<ul class="nav nav-tabs mb-3" id="runDetailTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-cells-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-cells" type="button" role="tab"
+                aria-controls="tab-cells" aria-selected="true">
+            <i class="bi bi-code-slash me-1"></i>Cells
+            {% if cells %}<span class="badge bg-secondary ms-1">{{ cells | length }}</span>{% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-ops-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-ops" type="button" role="tab"
+                aria-controls="tab-ops" aria-selected="false">
+            <i class="bi bi-list-ol me-1"></i>Operations
+            {% if operations %}<span class="badge bg-secondary ms-1">{{ operations | length }}</span>{% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-source-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-source" type="button" role="tab"
+                aria-controls="tab-source" aria-selected="false">
+            <i class="bi bi-file-earmark-text me-1"></i>Source
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-events-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-events" type="button" role="tab"
+                aria-controls="tab-events" aria-selected="false">
+            <i class="bi bi-broadcast me-1"></i>Events
+            {% if events %}<span class="badge bg-secondary ms-1">{{ events | length }}</span>{% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-audit-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-audit" type="button" role="tab"
+                aria-controls="tab-audit" aria-selected="false">
+            <i class="bi bi-journal-text me-1"></i>Audit log
+            {% if audit_entries %}<span class="badge bg-secondary ms-1">{{ audit_entries | length }}</span>{% endif %}
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="runDetailTabContent">
+    <div class="tab-pane fade show active" id="tab-cells" role="tabpanel" aria-labelledby="tab-cells-btn">
+        {% for cell in cells %}
+        {% set cell_run = cell_runs.get(cell.content_hash) if cell_runs else None %}
+        {% set outputs = cell_outputs.get(cell.content_hash, []) if cell_outputs else [] %}
+        <div class="card mb-3 pql-run-cell pql-run-cell-type-{{ cell.cell_type }}" id="{{ cell.id }}">
+            <div class="card-header d-flex align-items-center gap-2 small">
+                <span class="badge bg-secondary text-uppercase">{{ cell.cell_type }}</span>
+                {% if cell_run and cell_run.execution_count is not none %}
+                <span class="font-monospace text-muted">[{{ cell_run.execution_count }}]</span>
+                {% else %}
+                <span class="font-monospace text-muted">[&nbsp;]</span>
+                {% endif %}
+                {% if cell.cell_type == 'sql' and cell.result_var %}
+                <span class="font-monospace text-muted">→ {{ cell.result_var }}</span>
+                {% endif %}
+                <span class="ms-auto text-muted">
+                    {% if cell_run and cell_run.duration_ms is not none %}
+                    {{ cell_run.duration_ms }} ms
+                    {% endif %}
+                </span>
+                {% if cell_run and cell_run.status == 'ok' %}
+                <span class="badge bg-success-subtle text-success-emphasis">ok</span>
+                {% elif cell_run and cell_run.status == 'error' %}
+                <span class="badge bg-danger-subtle text-danger-emphasis">error</span>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                {% if cell.cell_type == 'markdown' %}
+                <div class="p-3 pql-run-cell-markdown">{{ render_markdown(cell.source) | safe }}</div>
+                {% else %}
+                <pre class="pql-run-cell-source"><code class="language-{{ 'sql' if cell.cell_type == 'sql' else 'python' }}">{{ cell.source }}</code></pre>
+                {% endif %}
+                {% if outputs %}
+                <div class="border-top">
+                    {% for output in outputs %}
+                    {% if output.kind == 'stream' %}
+                        {% include "partials/_output_stream.html" %}
+                    {% elif output.kind == 'error' %}
+                        {% include "partials/_output_error.html" %}
+                    {% elif output.kind == 'markdown' %}
+                        {% include "partials/_output_markdown.html" %}
+                    {% else %}
+                        {% include "partials/_output_display_data.html" %}
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
         {% else %}
-        <span class="font-monospace text-muted">[&nbsp;]</span>
-        {% endif %}
-        {% if cell.cell_type == 'sql' and cell.result_var %}
-        <span class="font-monospace text-muted">→ {{ cell.result_var }}</span>
-        {% endif %}
-        <span class="ms-auto text-muted">
-            {% if cell_run and cell_run.duration_ms is not none %}
-            {{ cell_run.duration_ms }} ms
-            {% endif %}
-        </span>
-        {% if cell_run and cell_run.status == 'ok' %}
-        <span class="badge bg-success-subtle text-success-emphasis">ok</span>
-        {% elif cell_run and cell_run.status == 'error' %}
-        <span class="badge bg-danger-subtle text-danger-emphasis">error</span>
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-1"></i>
+            Notebook has no cells &mdash; agent-authored runs may emit pure-Python source without cell markers.
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="tab-pane fade" id="tab-ops" role="tabpanel" aria-labelledby="tab-ops-btn">
+        {% if operations %}
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 small align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Op</th>
+                            <th>Target</th>
+                            <th>Rows</th>
+                            <th>Δ version</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for op in operations %}
+                        <tr {% if op.status == 'error' %}class="table-danger"{% endif %}>
+                            <td class="font-monospace text-muted">{{ op.ordinal }}</td>
+                            <td><span class="badge bg-secondary text-uppercase">{{ op.op_name }}</span></td>
+                            <td class="font-monospace">{{ op.target_table or "&mdash;" | safe }}</td>
+                            <td class="font-monospace">{{ op.rows_affected if op.rows_affected is not none else "&mdash;" | safe }}</td>
+                            <td class="font-monospace text-muted">
+                                {% if op.delta_version_before is not none or op.delta_version_after is not none %}
+                                {{ op.delta_version_before if op.delta_version_before is not none else "&minus;" | safe }}
+                                &rarr;
+                                {{ op.delta_version_after if op.delta_version_after is not none else "&minus;" | safe }}
+                                {% else %}
+                                &mdash;
+                                {% endif %}
+                            </td>
+                            <td class="font-monospace text-muted">{{ op.duration_ms ~ ' ms' if op.duration_ms is not none else "&mdash;" | safe }}</td>
+                            <td>
+                                {% if op.status == 'error' %}
+                                <span class="badge bg-danger" title="{{ op.error_message or '' }}">error</span>
+                                {% else %}
+                                <span class="badge bg-success-subtle text-success-emphasis">ok</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if op.input_sha or op.params %}
+                        <tr {% if op.status == 'error' %}class="table-danger"{% endif %}>
+                            <td></td>
+                            <td colspan="6" class="small text-muted font-monospace">
+                                {% if op.input_sha %}<span class="me-3">input_sha: {{ op.input_sha[:12] }}…</span>{% endif %}
+                                {% if op.params %}params: {{ op.params | tojson }}{% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            No operations recorded for this run.  Operations are emitted by
+            <code>pql.autoload</code>, <code>pql.merge</code>,
+            <code>pql.write_table</code>, and <code>pql.sql</code> when
+            the agent runtime sets <code>POINTLESSQL_AGENT_RUN_ID</code>.
+        </div>
         {% endif %}
     </div>
-    <div class="card-body p-0">
-        {% if cell.cell_type == 'markdown' %}
-        <div class="p-3 pql-run-cell-markdown">{{ render_markdown(cell.source) | safe }}</div>
+
+    <div class="tab-pane fade" id="tab-source" role="tabpanel" aria-labelledby="tab-source-btn">
+        {% if source %}
+        <div class="card">
+            <div class="card-header small text-muted">
+                <span class="me-3 font-monospace">SHA-256: {{ source.source_sha }}</span>
+                <span class="font-monospace">captured: {{ source.captured_at or "&mdash;" }}</span>
+            </div>
+            <div class="card-body p-0">
+                <pre class="pql-run-cell-source mb-0"><code class="language-python">{{ source.source_bytes }}</code></pre>
+            </div>
+        </div>
         {% else %}
-        <pre class="pql-run-cell-source"><code class="language-{{ 'sql' if cell.cell_type == 'sql' else 'python' }}">{{ cell.source }}</code></pre>
+        <div class="alert alert-warning mb-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            No source captured.  This run was registered before Sprint 13.8 made <code>source</code> a required POST field.
+        </div>
         {% endif %}
-        {% if outputs %}
-        <div class="border-top">
-            {% for output in outputs %}
-            {% if output.kind == 'stream' %}
-                {% include "partials/_output_stream.html" %}
-            {% elif output.kind == 'error' %}
-                {% include "partials/_output_error.html" %}
-            {% elif output.kind == 'markdown' %}
-                {% include "partials/_output_markdown.html" %}
-            {% else %}
-                {% include "partials/_output_display_data.html" %}
-            {% endif %}
-            {% endfor %}
+    </div>
+
+    <div class="tab-pane fade" id="tab-events" role="tabpanel" aria-labelledby="tab-events-btn">
+        {% if events %}
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 small">
+                    <thead>
+                        <tr>
+                            <th>Fired</th>
+                            <th>Type</th>
+                            <th>Outcome</th>
+                            <th>Event ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ev in events %}
+                        <tr>
+                            <td class="font-monospace text-muted">{{ ev.fired_at or "&mdash;" | safe }}</td>
+                            <td><span class="badge bg-secondary">{{ ev.event_type }}</span></td>
+                            <td>
+                                {% if ev.outcome == 'delivered' %}
+                                <span class="badge bg-success-subtle text-success-emphasis">delivered</span>
+                                {% elif ev.outcome == 'pending' %}
+                                <span class="badge bg-info-subtle text-info-emphasis">pending</span>
+                                {% elif ev.outcome == 'no_destination' %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis">no destination</span>
+                                {% else %}
+                                <span class="badge bg-danger-subtle text-danger-emphasis">{{ ev.outcome }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-monospace small text-muted">{{ ev.event_id }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            No CloudEvents persisted for this run.  Events are recorded from Sprint 13.8 onward.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="tab-audit" role="tabpanel" aria-labelledby="tab-audit-btn">
+        {% if audit_entries %}
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 small">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Actor</th>
+                            <th>Action</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in audit_entries %}
+                        <tr>
+                            <td class="font-monospace text-muted">{{ entry.created_at or "&mdash;" | safe }}</td>
+                            <td class="font-monospace">{{ entry.actor_email or "&mdash;" | safe }} <span class="text-muted">({{ entry.actor_role or "?" }})</span></td>
+                            <td><span class="badge bg-secondary">{{ entry.action }}</span></td>
+                            <td class="font-monospace small text-muted">{{ entry.detail or "&mdash;" | safe }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            No audit-log entries scoped to this run.
         </div>
         {% endif %}
     </div>
 </div>
-{% else %}
-<div class="alert alert-info">
-    <i class="bi bi-info-circle me-1"></i>
-    Notebook is empty — no cells to display.
-</div>
-{% endfor %}
-
-{% if audit_entries is defined and audit_entries %}
-<div class="card mt-4">
-    <div class="card-header"><i class="bi bi-journal-text me-1"></i>Audit log <span class="text-muted small">({{ audit_entries | length }} entries)</span></div>
-    <div class="card-body p-0">
-        <table class="table table-sm mb-0 small">
-            <thead>
-                <tr>
-                    <th>When</th>
-                    <th>Actor</th>
-                    <th>Action</th>
-                    <th>Detail</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in audit_entries %}
-                <tr>
-                    <td class="font-monospace text-muted">{{ entry.created_at or "—" }}</td>
-                    <td class="font-monospace">{{ entry.actor_email or "—" }} <span class="text-muted">({{ entry.actor_role or "?" }})</span></td>
-                    <td><span class="badge bg-secondary">{{ entry.action }}</span></td>
-                    <td class="font-monospace small text-muted">{{ entry.detail or "—" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

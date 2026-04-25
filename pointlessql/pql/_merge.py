@@ -50,9 +50,11 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
 )
+from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._read import read_table
 from pointlessql.pql.engine import Engine
+from pointlessql.services.agent_runs import operation_context
 
 MergeStrategy = Literal["upsert", "scd2"]
 
@@ -70,6 +72,7 @@ def merge_table(
     on: list[str],
     strategy: MergeStrategy,
     unreachable_msg: str,
+    agent_run_id: str | None = None,
 ) -> dict[str, Any]:
     """Merge *source* into the existing Delta table at *target*.
 
@@ -91,6 +94,9 @@ def merge_table(
         strategy: ``"upsert"`` or ``"scd2"``.
         unreachable_msg: Pre-rendered "cannot reach catalog"
             message — same hop the read/write helpers take.
+        agent_run_id: Sprint 13.8 — when set, emits one
+            ``agent_run_operations`` row capturing input SHA, Delta
+            version pre/post, and merge stats.
 
     Returns:
         A dict carrying ``strategy`` and the deltalake merge stats
@@ -102,6 +108,8 @@ def merge_table(
         CatalogNotFoundError: When *target* is unknown to
             soyuz-catalog or has no ``storage_location``.
         CatalogUnavailableError: When soyuz-catalog is unreachable.
+        AuditUnavailableError: If *agent_run_id* is set and the
+            ``agent_run_operations`` row cannot be persisted.
     """  # noqa: DOC503 — Catalog* errors propagate from helpers below
     if not on:
         raise ValidationError("merge requires at least one column in 'on'")
@@ -123,9 +131,89 @@ def merge_table(
             f"({arrow_source.schema.names!r})"
         )
 
-    if strategy == "upsert":
-        return _do_upsert(target_location, arrow_source, on)
-    return _do_scd2(target_location, arrow_source, on)
+    from pointlessql.db import get_session_factory
+    from pointlessql.pql._write import safe_delta_version
+
+    factory = get_session_factory() if agent_run_id else None
+
+    with operation_context(
+        factory,
+        agent_run_id=agent_run_id,
+        op_name="merge",
+        params={"target": target, "on": list(on), "strategy": strategy},
+        target_table=target,
+    ) as recorder:
+        if agent_run_id is not None:
+            recorder.delta_version_before = safe_delta_version(target_location)
+            try:
+                recorder.input_sha = arrow_ipc_sha256(arrow_source)
+            except TypeError:
+                recorder.input_sha = None
+
+        if strategy == "upsert":
+            stats = _do_upsert(target_location, arrow_source, on)
+        else:
+            stats = _do_scd2(target_location, arrow_source, on)
+
+        if agent_run_id is not None:
+            recorder.delta_version_after = safe_delta_version(target_location)
+            recorder.rows_affected = _merge_rows_affected(stats)
+            recorder.extra_params = {"stats": _stats_for_audit(stats)}
+
+        return stats
+
+
+def _merge_rows_affected(stats: dict[str, Any]) -> int | None:
+    """Best-effort total row count from the deltalake merge stats.
+
+    Args:
+        stats: Return value from :func:`_do_upsert` or :func:`_do_scd2`.
+
+    Returns:
+        Sum of inserted + updated for upsert; appended + closed for
+        SCD-2; ``None`` when the keys cannot be located.
+    """
+    try:
+        if stats.get("strategy") == "upsert":
+            inserted = int(stats.get("num_target_rows_inserted", 0) or 0)
+            updated = int(stats.get("num_target_rows_updated", 0) or 0)
+            return inserted + updated
+        if stats.get("strategy") == "scd2":
+            appended = int(stats.get("rows_appended", 0) or 0)
+            closed = 0
+            close_stats = stats.get("close_stats") or {}
+            if isinstance(close_stats, dict):
+                closed = int(close_stats.get("num_target_rows_updated", 0) or 0)
+            return appended + closed
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
+def _stats_for_audit(stats: dict[str, Any]) -> dict[str, Any]:
+    """Strip non-JSON-serialisable bits from the merge stats payload.
+
+    Args:
+        stats: Return value from :func:`_do_upsert` or :func:`_do_scd2`.
+
+    Returns:
+        A dict whose values are JSON-encodable (numbers, strings,
+        nested dicts, lists).  Anything else gets stringified.
+    """
+    out: dict[str, Any] = {}
+    for key, value in stats.items():
+        if isinstance(value, (int, float, str, bool, type(None))):
+            out[key] = value
+        elif isinstance(value, dict):
+            out[key] = _stats_for_audit(value)  # type: ignore[arg-type]
+        elif isinstance(value, list):
+            out[key] = [
+                v if isinstance(v, (int, float, str, bool, type(None))) else str(v)
+                for v in value  # pyright: ignore[reportUnknownVariableType]
+            ]
+        else:
+            out[key] = str(value)
+    return out
 
 
 def _resolve_target_location(

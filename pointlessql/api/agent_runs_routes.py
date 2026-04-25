@@ -15,6 +15,7 @@ the PQL session).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import uuid
@@ -28,6 +29,7 @@ from sqlalchemy import select
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+from pointlessql.models import AgentRunSource
 from pointlessql.models.agent_runs import (
     STATUS_QUEUED,
     TERMINAL_STATUSES,
@@ -70,6 +72,14 @@ def serialize_agent_run(row: AgentRun) -> dict[str, Any]:
                 str(item)  # pyright: ignore[reportUnknownArgumentType]
                 for item in parsed  # pyright: ignore[reportUnknownVariableType]
             ]
+    runtime_versions: dict[str, Any] = {}
+    if row.runtime_versions:
+        try:
+            decoded: Any = json.loads(row.runtime_versions)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, dict):
+            runtime_versions = decoded  # pyright: ignore[reportUnknownVariableType]
     return {
         "id": row.id,
         "principal": row.principal,
@@ -85,6 +95,7 @@ def serialize_agent_run(row: AgentRun) -> dict[str, Any]:
         "approved_by": row.approved_by,
         "approved_at": row.approved_at.isoformat() if row.approved_at else None,
         "denied_reason": row.denied_reason,
+        "runtime_versions": runtime_versions,
     }
 
 
@@ -142,19 +153,24 @@ async def api_create_agent_run(
 ) -> dict[str, Any]:
     """Register a new agent run from an external runtime.
 
-    The caller supplies the run id (UUIDv4 string) so lifecycle POSTs
-    from the same runtime can address the row without a lookup
-    round-trip.  When the id is omitted we mint one; either way the
-    response echoes it.  The ``notebook_path`` is required because
-    the run-detail view needs it to render the cell card deck even
-    if no per-cell data has been written yet.
+    Sprint 13.8 hardened the contract: ``source`` and
+    ``runtime_versions`` are required.  The server hashes the source
+    bytes server-side and persists them in ``agent_run_sources``
+    inside the same transaction as the new ``agent_runs`` row, so a
+    post-run edit of the on-disk ``.py`` cannot silently rewrite
+    history.  When the runtime supplies a
+    ``source_snapshot_sha`` and it disagrees with the computed
+    digest, registration fails with 422 (tamper-detection).
 
     Args:
         request: Incoming FastAPI request.
-        body: JSON payload with optional ``id``, ``agent_id``,
-            required ``notebook_path``, optional
-            ``source_snapshot_sha`` / ``status`` / ``cost_est`` /
-            ``tables_touched`` / ``started_at``.
+        body: JSON payload.  Required: ``notebook_path``,
+            ``source`` (UTF-8 ``.py`` text), ``runtime_versions``
+            (``{name: version}`` mapping with at least one entry).
+            Optional: ``id``, ``agent_id``, ``principal``,
+            ``source_snapshot_sha`` (validated against the computed
+            digest), ``status``, ``cost_est``, ``tables_touched``,
+            ``started_at``.
         x_principal: ``X-Principal`` header value.  Overrides any
             ``principal`` body field so the HTTP hop is authoritative.
 
@@ -162,13 +178,36 @@ async def api_create_agent_run(
         The serialized :class:`AgentRun` row.
 
     Raises:
-        ValidationError: When ``notebook_path`` is missing, ``status``
-            is unknown, or any typed field is malformed.
+        ValidationError: When any required field is missing,
+            ``status`` is unknown, ``source_snapshot_sha`` mismatches
+            the computed digest, or any typed field is malformed.
     """
     notebook_path_raw = body.get("notebook_path")
     if not isinstance(notebook_path_raw, str) or not notebook_path_raw.strip():
         raise ValidationError("notebook_path must be a non-empty string")
     notebook_path = notebook_path_raw.strip()
+
+    source_raw = body.get("source")
+    if not isinstance(source_raw, str) or not source_raw:
+        raise ValidationError("source must be a non-empty string")
+    source_bytes = source_raw
+    computed_sha = hashlib.sha256(source_bytes.encode("utf-8")).hexdigest()
+
+    runtime_versions_raw = body.get("runtime_versions")
+    if not isinstance(runtime_versions_raw, dict) or not runtime_versions_raw:
+        raise ValidationError(
+            "runtime_versions must be a non-empty mapping of "
+            "{component: version_string}"
+        )
+    runtime_versions: dict[str, str] = {}
+    for key, value in runtime_versions_raw.items():  # type: ignore[union-attr]
+        if not isinstance(key, str) or not key:
+            raise ValidationError("runtime_versions keys must be non-empty strings")
+        if not isinstance(value, str):
+            raise ValidationError(
+                f"runtime_versions[{key!r}] must be a string version"
+            )
+        runtime_versions[key] = value
 
     run_id_raw = body.get("id")
     if run_id_raw in (None, ""):
@@ -190,11 +229,14 @@ async def api_create_agent_run(
     )
 
     snapshot_raw = body.get("source_snapshot_sha")
-    source_snapshot_sha = (
-        str(snapshot_raw).strip()
-        if isinstance(snapshot_raw, str) and snapshot_raw.strip()
-        else None
-    )
+    declared_sha: str | None = None
+    if isinstance(snapshot_raw, str) and snapshot_raw.strip():
+        declared_sha = snapshot_raw.strip().lower()
+        if declared_sha != computed_sha:
+            raise ValidationError(
+                f"source_snapshot_sha mismatch: declared {declared_sha!r} "
+                f"but computed {computed_sha!r} from the supplied source"
+            )
 
     principal: str | None
     if x_principal and x_principal.strip():
@@ -231,13 +273,21 @@ async def api_create_agent_run(
             principal=principal,
             agent_id=agent_id,
             notebook_path=notebook_path,
-            source_snapshot_sha=source_snapshot_sha,
+            source_snapshot_sha=computed_sha,
             status=status_raw,
             cost_est=cost_est,
             tables_touched=tables_touched,
             started_at=started_at,
+            runtime_versions=json.dumps(runtime_versions, sort_keys=True),
         )
         session.add(row)
+        source_row = AgentRunSource(
+            agent_run_id=run_id,
+            source_bytes=source_bytes,
+            source_sha=computed_sha,
+            captured_at=started_at,
+        )
+        session.add(source_row)
         session.commit()
         session.refresh(row)
         session.expunge(row)
@@ -248,7 +298,9 @@ async def api_create_agent_run(
         {"notebook_path": notebook_path, "agent_id": agent_id, "status": status_raw},
     )
     payload = serialize_agent_run(row)
-    await emit_agent_run_event(EVENT_TYPE_STARTED, payload)
+    await emit_agent_run_event(
+        EVENT_TYPE_STARTED, payload, session_factory=factory
+    )
     return payload
 
 
@@ -349,7 +401,9 @@ async def api_finish_agent_run(
     payload = serialize_agent_run(row)
     terminal_event = event_type_for_status(status_raw)
     if terminal_event is not None:
-        await emit_agent_run_event(terminal_event, payload)
+        await emit_agent_run_event(
+            terminal_event, payload, session_factory=factory
+        )
     return payload
 
 

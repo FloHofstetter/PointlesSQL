@@ -19,6 +19,8 @@ referrers are imported.  The sequence below
   — no model FKs; the ``agent_run_id`` column is logical-link only)
 * ``agent_runs`` (AgentRun — Sprint 13.2; logical link to notebook
   tables via ``agent_run_id``)
+* ``agent_run_audit`` (AgentRunSource, AgentRunOperation,
+  AgentRunEvent — Sprint 13.8; FK to AgentRun)
 * ``autoload`` (AutoloadCheckpoint — Sprint 13.5.3; no model FKs,
   scoped per target_table)
 
@@ -31,6 +33,11 @@ below.
 
 from __future__ import annotations
 
+from pointlessql.models.agent_run_audit import (
+    AgentRunEvent,
+    AgentRunOperation,
+    AgentRunSource,
+)
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
 from pointlessql.models.audit import AuditLog
@@ -61,6 +68,9 @@ from pointlessql.models.sync import SyncRun
 
 __all__ = [
     "AgentRun",
+    "AgentRunEvent",
+    "AgentRunOperation",
+    "AgentRunSource",
     "Alert",
     "AlertDestination",
     "AlertEvent",
