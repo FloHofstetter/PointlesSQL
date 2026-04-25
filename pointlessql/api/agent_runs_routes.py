@@ -281,6 +281,10 @@ async def api_create_agent_run(
             runtime_versions=json.dumps(runtime_versions, sort_keys=True),
         )
         session.add(row)
+        # Flush before adding the FK-dependent child row so SQLite's
+        # immediate FK enforcement (PRAGMA foreign_keys=ON, set in
+        # pointlessql.db) sees the parent in the same transaction.
+        session.flush()
         source_row = AgentRunSource(
             agent_run_id=run_id,
             source_bytes=source_bytes,
