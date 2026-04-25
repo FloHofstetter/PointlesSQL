@@ -4150,7 +4150,7 @@ PointlesSQL
 │           ``tests/test_pg_sync.py`` I001 is pre-existing from
 │           Sprint 82.
 │
-├── Phase 13 — Agent-run supervision + analytical memory  🔜 active
+├── Phase 13 — Agent-run supervision + analytical memory  ✅ done
 │   │
 │   │   Positioning (2026-04-24 pivot): PointlesSQL is the
 │   │   **persistent analytical memory for agents** — not a
@@ -4452,55 +4452,128 @@ PointlesSQL
 │   │         precondition 2 is now an explicit ``curl`` loop
 │   │         that sets ``storage_root`` on ``POST /schemas``.
 │   │
-│   └── Sprint 13.11 — Reflexive supervision tools            ⏳ queued
-│           Lets working + supervisor agents READ the audit
-│           trail / lineage / Delta-history they currently
-│           only WRITE to.  ROI proven live: three bugs in the
-│           Sprint 13.5.5 walkthrough were avoidable by check-
-│           state-before-acting.  Full design in
-│           ``project_reflexive_supervision_tools.md``.
+│   ├── Sprint 13.11.1 — pql_describe_primitive + pql_my_run    ✅ done (722eaa0)
+│   │       New ``pointlessql/api/pql_introspect_routes.py``
+│   │       hosts ``GET /api/pql/primitives`` returning
+│   │       ``{primitives: {<name>: {signature, doc}}}`` for the
+│   │       five public PQL methods (``table`` / ``sql`` /
+│   │       ``write_table`` / ``merge`` / ``autoload``).  Snapshot
+│   │       built once via ``inspect.signature`` + ``inspect.getdoc``.
+│   │       New aggregator route ``GET /api/agent-runs/{id}/full``
+│   │       lives in ``runs_routes.py`` so it can reuse the
+│   │       ``_load_*_for_run`` helpers without a circular import
+│   │       back into ``agent_runs_routes``.  Hermes plugin lands
+│   │       ``pql_describe_primitive`` + ``pql_my_run`` (commit
+│   │       ``hermes-plugin-pointlessql 132d108``).
+│   │
+│   ├── Sprint 13.11.2 — pql_target_state + pql_recent_failures ✅ done (75ea87e)
+│   │       Two highest-ROI tools from the bug analysis.
+│   │       ``GET /api/pql/target-state?table=…`` fuses the UC
+│   │       ``get_table`` lookup with the Sprint-13.8
+│   │       ``agent_run_operations`` history (last-5-writes).
+│   │       ``CatalogNotFoundError`` from soyuz maps to
+│   │       ``exists=False`` — the ``pql.merge``-on-missing-target
+│   │       walkthrough bug becomes a one-call check.
+│   │       ``GET /api/agent-runs/operations?target=&errored=&since=``
+│   │       backs ``pql_recent_failures`` for "did this fail
+│   │       elsewhere?" lookups.  Plugin commit
+│   │       ``hermes-plugin-pointlessql 4da60ff``.
+│   │
+│   ├── Sprint 13.11.3 — pql_lineage                           ✅ done (9fd7a4c)
+│   │       ``GET /api/pql/lineage?table=…&depth=N`` wraps
+│   │       ``LineageMixin.get_lineage`` which already fans out
+│   │       to soyuz's upstream + downstream JSON endpoints
+│   │       concurrently.  Depth capped at 5 via FastAPI's
+│   │       ``Query(le=5)`` so out-of-range values 422 before
+│   │       the soyuz call runs.  Memo-original soyuz cross-repo
+│   │       work was dropped — the JSON endpoints already
+│   │       existed.  Plugin commit
+│   │       ``hermes-plugin-pointlessql de417b8``.
+│   │
+│   ├── Sprint 13.11.4a — DB-backed API keys + Family-B + summary diff ✅ done (c3b1af8)
+│   │       Promoted the Sprint-13.7.0.5 env-var API-key parser
+│   │       into a real DB-backed store and landed the Family-B
+│   │       Sprint-13.11.4 supervisor routes on top.
+│   │
+│   │       * **Alembic 025** — ``api_keys`` table with
+│   │         ``(name unique, secret_hash indexed, secret_prefix,
+│   │         supervisor bool, revoked_at, last_used_at)``.
+│   │         SHA-256-hex hashing — API keys are high-entropy so
+│   │         a fast hash is enough.
+│   │       * ``services.api_keys`` rewritten — ``verify_bearer``
+│   │         is DB-backed with a 60s in-memory TTL cache;
+│   │         ``bootstrap_from_env`` idempotently spills legacy
+│   │         ``POINTLESSQL_API_KEYS`` pairs (now with optional
+│   │         ``:supervisor`` third token) into the table at
+│   │         startup; admin primitives ``create_api_key``,
+│   │         ``revoke_api_key``, ``list_api_keys``,
+│   │         ``invalidate_cache``, ``is_supervisor``.
+│   │       * Admin CRUD at ``GET/POST /api/admin/api-keys`` +
+│   │         revoke route.  Plaintext secret returned exactly
+│   │         once at creation; ``audit()`` rows on every
+│   │         lifecycle event.
+│   │       * ``require_supervisor`` dependency in
+│   │         ``api/dependencies.py``: passes for cookie-admins
+│   │         and Bearer keys with ``supervisor=True``.  Cookie
+│   │         admin > supervisor > working agent.
+│   │       * Family-B routes in ``agent_runs_routes.py``: filter
+│   │         expansion on ``GET /api/agent-runs``
+│   │         (``principal``, ``agent_id``, ``status``,
+│   │         ``since``); ``GET /api/agent-runs/{id}/summary``
+│   │         (rows touched, errored ops count, Delta-version
+│   │         range, tables touched — **no cost_gate_threshold**
+│   │         per the anti-gaming memo);
+│   │         ``GET /api/agent-runs/diff?a=&b=`` with summary
+│   │         differences.
+│   │       * ``docs/auth.md`` rewritten for the DB-backed
+│   │         primary + env-var bootstrap fallback.
+│   │
+│   │       Plugin commit ``hermes-plugin-pointlessql ff847e5``
+│   │       adds ``PluginConfig.supervisor_mode`` + four new
+│   │       Family-B tools registered conditionally via
+│   │       ``register_supervisor_tools``.
+│   │
+│   ├── Sprint 13.11.4b — Detailed op-by-op + tool-call diff   ✅ done (90eefaa)
+│   │       Layered the memo-original detail-diff onto the
+│   │       Sprint-13.11.4a summary route via two new query
+│   │       parameters: ``detail=true`` and ``align=ordinal|content``.
+│   │
+│   │       * **New** ``pointlessql/services/run_diff.py`` —
+│   │         pure-Python alignment + per-pair diff service.
+│   │         ``"ordinal"`` mode zips by index (deterministic,
+│   │         sensitive to insertions); ``"content"`` mode
+│   │         greedy-matches on ``(op_name, target_table)`` /
+│   │         ``tool_name`` with minimum ordinal-distance tie
+│   │         break.  Per-pair output emits ``op_name_diff`` /
+│   │         ``target_table_diff`` / ``rows_affected_diff`` /
+│   │         ``delta_version_after_diff`` / ``error_diff`` /
+│   │         ``params_diff`` only when those fields actually
+│   │         differ.  Tool-call diffs walk top-level
+│   │         ``args_json`` keys.  500-slot cap with a
+│   │         ``truncated`` marker.
+│   │       * Diff route accepts ``detail`` + ``align``; bad
+│   │         ``align`` values 422 via ``Query(pattern=…)``.
+│   │       * Plugin commit ``hermes-plugin-pointlessql 1184fc5``
+│   │         adds ``detail`` + ``align`` to ``pql_diff_runs``.
 │
-│           Two orthogonal tool families:
+│   Phase 13 close-out — Sprint 13.11 closed the read-loop the
+│   2026-04-25 walkthrough proved high-leverage.  Three bugs in
+│   that demo all shared the same root cause (no tool to *check
+│   state* before *acting*); Sprint 13.11.1-13.11.3 ship the
+│   five Family-A working-agent tools and 13.11.4a-b the four
+│   Family-B supervisor tools that walk cross-run history.  The
+│   ``api_keys`` table promotion (25th Alembic migration) was
+│   the load-bearing supporting refactor — supervisor scope
+│   needed somewhere durable to live.  Phase 13 is the bridge
+│   to Phase 15 (signed Provenance Log): the agent now *reads*
+│   the same trail it *writes*, and shoreguard policies can
+│   reference both halves.
 │
-│           * **Family A (working-agent self-introspection)**
-│             — ``pql_my_run``, ``pql_target_state(table)``,
-│             ``pql_lineage(table, depth)``,
-│             ``pql_recent_failures(table, days)``,
-│             ``pql_describe_primitive(name)``.  Read-only,
-│             gated by existing Bearer/cookie middleware.
-│           * **Family B (supervisor-agent cross-run search)** —
-│             ``pql_runs_by_principal``, ``pql_runs_by_agent``,
-│             ``pql_diff_runs(a, b)``, ``pql_run_summary(id)``.
-│             Requires a ``supervisor`` flag on the API key
-│             (new column on Sprint-13.7.0.5 store).  Don't
-│             conflate with Family A — would let any agent
-│             walk all run history.
-│
-│           Sprint shape (~3-4 sub-sprints):
-│           - 13.11.1: ``pql_describe_primitive`` +
-│             ``pql_my_run`` (smallest, prove the pattern)
-│           - 13.11.2: ``pql_target_state`` +
-│             ``pql_recent_failures`` (highest-ROI from today)
-│           - 13.11.3: ``pql_lineage`` + soyuz
-│             ``GET /lineage/{full_name}`` JSON endpoint
-│             (cross-repo)
-│           - 13.11.4: Supervisor tools (Family B) +
-│             ``supervisor`` API-key flag + plugin
-│             "supervisor mode"
-│
-│           Strategic position: the bridge between Phase 13
-│           (forced trace) and Phase 15 (signed Provenance
-│           Log).  Without read access the Provenance Log is
-│           a write-only artefact for humans; with it the
-│           agent participates in the trail's value loop and
-│           shoreguard policies can reference the trail.
-│
-│           Risk to design around: agents could learn to
-│           **game supervision** (chunk writes to stay under
-│           cost-gate thresholds).  Don't expose
-│           ``cost_gate_threshold`` etc. as tool outputs —
-│           that's a Phase-15+ shoreguard policy concern, not
-│           a 13.11 blocker.
+│   Risk recorded for Phase 15+: agents could learn to **game
+│   supervision** (chunk writes to stay under cost-gate
+│   thresholds).  The summary route deliberately omits
+│   ``cost_gate_threshold`` to avoid surfacing what the agent
+│   could be tuned against.
 │
 │   Cells-vs-operations design opinion (recorded 2026-04-24):
 │   agent-authored runs should be **plain ``.py``**; per-step
@@ -4546,7 +4619,7 @@ PointlesSQL
 │     OSINT-capable substrate. Worth writing up as a pattern
 │     playbook once the underlying phases stabilise
 │
-├── Phase 13.5 — Medallion core + DuckDB-first opinion     ⏳ sketch
+├── Phase 13.5 — Medallion core + DuckDB-first opinion     ✅ done
 │   │
 │   │   Phase 13 gives PointlesSQL the *supervision* surface for
 │   │   agent-authored work; Phase 13.5 gives it the *opinionated
