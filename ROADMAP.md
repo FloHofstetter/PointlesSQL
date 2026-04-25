@@ -4291,17 +4291,88 @@ PointlesSQL
 │   │       Hermes plugins can pass principal without mutating
 │   │       process env.
 │   │
-│   └── Sprint 13.7 — Companion ``hermes-plugin-pointlessql`` 🔜
-│           Separate repo, analogous to
-│           ``NousResearch/hermes-paperclip-adapter``.
-│           Registers Hermes tools ``pql_list_tables``,
-│           ``pql_query``, ``pql_explain``, ``pql_read_delta``,
-│           ``pql_write_delta``, ``pql_run_notebook``.
-│           Lifecycle hook ``post_tool_call`` emits the
-│           Sprint-13.3 CloudEvents.  Hermes-cron jobs register
-│           an ``agent_run`` with PointlesSQL before firing.
-│           Lands *after* 13.5 because it needs the full seam;
-│           development happens outside this repo.
+│   ├── Sprint 13.7 — Companion ``hermes-plugin-pointlessql`` 🔜
+│   │       Separate repo, analogous to
+│   │       ``NousResearch/hermes-paperclip-adapter``.
+│   │       Registers Hermes tools ``pql_list_tables``,
+│   │       ``pql_query``, ``pql_explain``, ``pql_read_delta``,
+│   │       ``pql_write_delta``, ``pql_run_notebook``.
+│   │       Lifecycle hook ``post_tool_call`` emits the
+│   │       Sprint-13.3 CloudEvents.  Hermes-cron jobs register
+│   │       an ``agent_run`` with PointlesSQL before firing.
+│   │       Lands *after* 13.5 because it needs the full seam;
+│   │       development happens outside this repo.
+│   │
+│   ├── Sprint 13.8 — Forced audit trail                     ⏳
+│   │       *(Surfaced 2026-04-24 during the live raw→gold demo —
+│   │       see ``project_phase13_audit_gaps.md``.)*  Today
+│   │       ``agent_runs.notebook_path`` points at a file the agent
+│   │       could edit/delete post-run; ``source_snapshot_sha`` is
+│   │       declared but unenforced; PQL primitive calls leave no
+│   │       per-operation trace; CloudEvents are fire-and-forget
+│   │       (no persistence).  Sprint 13.8 closes all four:
+│   │
+│   │       * **Alembic 022** adds ``agent_run_sources``
+│   │         (id, agent_run_id, source_bytes, source_sha,
+│   │         captured_at), ``agent_run_operations`` (id,
+│   │         agent_run_id, ordinal, op_name, params_json,
+│   │         target_table, input_sha, rows_affected,
+│   │         delta_version_before, delta_version_after,
+│   │         started_at, finished_at), ``agent_run_events``
+│   │         (mirror of Sprint-55 ``alert_events``), plus
+│   │         ``runtime_versions JSON`` column on ``agent_runs``.
+│   │       * ``POST /api/agent-runs`` becomes strict: **422**
+│   │         without ``source`` field AND ``runtime_versions``
+│   │         field.  Agent code cannot opt out of the trail.
+│   │       * Every PQL primitive (``autoload``, ``merge``,
+│   │         ``write_table``, ``sql``) auto-emits an
+│   │         ``agent_run_operations`` row when
+│   │         ``POINTLESSQL_AGENT_RUN_ID`` env is set.  PQL reads
+│   │         ``DeltaTable.version()`` before/after every write
+│   │         and hashes the input frame (Arrow-canonical) for
+│   │         the ``input_sha`` column.
+│   │       * Sprint-13.3 emitter writes to ``agent_run_events``
+│   │         **before** ``dispatch_webhook``; dispatcher updates
+│   │         ``outcome`` on completion / 4xx / retry-exhausted.
+│   │       * Run-detail-view (Sprint 13.4) gains an "Operations"
+│   │         section between Metadata and Cells; "Source" tab
+│   │         shows the captured ``.py`` verbatim with the SHA.
+│   │
+│   │       This is the EU-AI-Act-Art.-12-aligned trail; pairs
+│   │       naturally with the Phase-15+ Shoreguard Provenance
+│   │       Log (``project_shoreguard_provenance_log.md``) which
+│   │       layers cryptographic signing on top.
+│   │
+│   └── Sprint 13.9 — Run-scoped query history               ⏳
+│           Today ``query_history`` (Sprint 50) captures every
+│           ``/api/sql/execute`` row with sql_text +
+│           referenced_tables + duration + Sprint-13.6 principal
+│           attribution — but the rows are NOT linked to an
+│           ``agent_run_id``.  Result: on ``/runs/{id}`` you
+│           can't answer "which queries did this run execute?".
+│
+│           * **Alembic 023** adds nullable ``agent_run_id
+│             VARCHAR(36)`` column to ``query_history`` + index.
+│           * ``/api/sql/execute`` reads
+│             ``POINTLESSQL_AGENT_RUN_ID`` env or new
+│             ``X-Agent-Run-Id`` header, tags the row.
+│           * Run-detail-view gains a "Queries" tab listing the
+│             matching rows.  ``/queries`` page accepts an
+│             optional ``?agent_run_id=`` filter.
+│
+│           Smaller follow-up to 13.8; could ship before, but
+│           the per-op trace is the higher-value half.
+│
+│   Cells-vs-operations design opinion (recorded 2026-04-24):
+│   agent-authored runs should be **plain ``.py``**; per-step
+│   supervision granularity comes from Sprint-13.8
+│   ``agent_run_operations``, **not** from jupytext ``# %%`` cell
+│   markers.  Cells stay for human-authored Workspace notebooks
+│   only — there they solve the interactive-exploration problem
+│   they were designed for.  Sprint-13.5 Drift-Monitor's
+│   markdown cells are OK because the playbook is for
+│   human-replay.  See
+│   ``feedback_cells_vs_operations_for_agents.md``.
 │
 │   Non-goals for Phase 13 (pushed to later phases):
 │
