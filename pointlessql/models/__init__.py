@@ -41,6 +41,7 @@ from pointlessql.models.agent_run_audit import (
 )
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
+from pointlessql.models.api_keys import ApiKey
 from pointlessql.models.audit import AuditLog
 from pointlessql.models.auth import User
 from pointlessql.models.autoload import AutoloadCheckpoint
@@ -76,6 +77,7 @@ __all__ = [
     "Alert",
     "AlertDestination",
     "AlertEvent",
+    "ApiKey",
     "AuditLog",
     "AutoloadCheckpoint",
     "Base",

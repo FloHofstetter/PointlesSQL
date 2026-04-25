@@ -64,16 +64,17 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
 async def auth_middleware(request: Request, call_next: Any) -> Response:
     """Resolve a principal from cookie OR Bearer key; gate protected paths.
 
-    Sprint 13.7.0.5 added the Bearer-token branch: if
-    ``app.state.api_keys`` carries any configured ``name:secret``
-    pairs (parsed from ``POINTLESSQL_API_KEYS`` at startup), the
-    middleware honours an ``Authorization: Bearer <secret>``
-    header.  On match a synthetic :class:`UserInfo` is attached
-    so downstream routes (which only ever read ``request.state
-    .user``) need no awareness of the alternate auth path; the
-    matched key name lands on ``request.state.api_key_name`` so
-    the audit helper can record ``api_key:<name>`` instead of an
-    anonymous ``user_id=0``.
+    Sprint 13.7.0.5 added the Bearer-token branch.  Sprint 13.11.4a
+    moved the credential store from a process-wide env-parsed dict
+    into the ``api_keys`` DB table — verification now goes through
+    :func:`pointlessql.services.api_keys.verify_bearer` which
+    consults the DB (with a 60s in-memory TTL cache).  On match a
+    synthetic :class:`UserInfo` is attached so downstream routes
+    (which only ever read ``request.state.user``) need no awareness
+    of the alternate auth path; ``request.state.api_key_name``
+    keeps the audit attribution and
+    ``request.state.api_key_supervisor`` exposes the Sprint-13.11.4a
+    scope flag for ``require_supervisor``.
 
     Cookie auth still wins when both are present so a human in a
     browser keeps their identity even if a misconfigured proxy
@@ -97,21 +98,25 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
             if user is not None:
                 request.state.user = user
 
-    # Sprint 13.7.0.5: fall back to API-key bearer token when no
-    # cookie user resolved.  Empty ``api_keys`` mapping = gate
-    # disabled, so the lookup short-circuits in :func:`verify_bearer`.
+    # Sprint 13.7.0.5 + 13.11.4a: fall back to API-key bearer token
+    # when no cookie user resolved.  The store is now DB-backed
+    # (Alembic 025); the env-var path remains valid as a bootstrap
+    # spilled in by :func:`api_keys_service.bootstrap_from_env` at
+    # startup.  Cache TTL inside :func:`verify_bearer` keeps the
+    # hot path off the DB except on miss.
     if getattr(request.state, "user", None) is None:
-        api_keys = getattr(request.app.state, "api_keys", {})
-        key_name = api_keys_service.verify_bearer(
+        factory = getattr(request.app.state, "session_factory", None)
+        entry = api_keys_service.verify_bearer(
             request.headers.get("authorization"),
-            api_keys,
+            factory,
         )
-        if key_name is not None:
-            request.state.api_key_name = key_name
+        if entry is not None:
+            request.state.api_key_name = entry.name
+            request.state.api_key_supervisor = entry.supervisor
             request.state.user = UserInfo(
                 id=0,
-                email=f"api_key:{key_name}",
-                display_name=key_name,
+                email=f"api_key:{entry.name}",
+                display_name=entry.name,
                 is_admin=False,
             )
 

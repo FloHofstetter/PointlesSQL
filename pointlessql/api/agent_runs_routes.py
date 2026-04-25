@@ -27,9 +27,14 @@ from fastapi import APIRouter, Body, Header, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.api.dependencies import get_user, require_admin, require_supervisor
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
-from pointlessql.models import AgentRunOperation, AgentRunSource, AgentRunToolCall
+from pointlessql.models import (
+    AgentRunOperation,
+    AgentRunSource,
+    AgentRunToolCall,
+    QueryHistory,
+)
 from pointlessql.models.agent_runs import (
     STATUS_QUEUED,
     TERMINAL_STATUSES,
@@ -505,29 +510,261 @@ async def api_list_agent_run_operations(
 
 
 @router.get("/api/agent-runs")
-async def api_list_agent_runs(request: Request, limit: int = 100) -> dict[str, Any]:
-    """List recent agent runs as JSON.
+async def api_list_agent_runs(
+    request: Request,
+    limit: int = Query(default=100, ge=1, le=500),
+    principal: str | None = Query(default=None),
+    agent_id: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    since: str | None = Query(default=None, description="ISO-8601 lower bound on started_at"),
+) -> dict[str, Any]:
+    """List recent agent runs as JSON, optionally filtered.
 
-    A thin companion to ``GET /runs`` for machine consumers (the
+    A companion to ``GET /runs`` for machine consumers (the
     Sprint 13.7 Hermes plugin, curl probes, dashboards).  Ordered
-    newest-first by ``started_at``.  No filtering yet — the richer
-    filter bar lands with Sprint 13.4.
+    newest-first by ``started_at``.
+
+    Sprint 13.11.4a — added optional ``principal`` / ``agent_id`` /
+    ``status`` / ``since`` filters so the Family-B
+    ``pql_runs_by_principal`` and ``pql_runs_by_agent`` tools have
+    a single backing route.  Filters are AND-ed; missing filters
+    fall through to "match all".
 
     Args:
         request: Incoming FastAPI request.
-        limit: Maximum number of rows to return.  Clamped to 500.
+        limit: Maximum number of rows to return (1-500).
+        principal: Exact-match filter on
+            ``agent_runs.principal``.
+        agent_id: Exact-match filter on ``agent_runs.agent_id``.
+        status: Exact-match filter on ``agent_runs.status``.
+        since: ISO-8601 lower bound on ``started_at``.
 
     Returns:
         ``{"runs": [...]}`` with each entry shaped by
         :func:`serialize_agent_run`.
+
+    Raises:
+        ValidationError: ``since`` is provided but not parseable as
+            ISO-8601.
     """
-    effective_limit = max(1, min(int(limit), 500))
+    since_dt: datetime | None = None
+    if since is not None and since.strip():
+        try:
+            since_dt = datetime.fromisoformat(since)
+        except ValueError as exc:
+            raise ValidationError("since must be ISO-8601") from exc
+        if since_dt.tzinfo is None:
+            since_dt = since_dt.replace(tzinfo=UTC)
+
     factory = request.app.state.session_factory
     with factory() as session:
-        stmt = select(AgentRun).order_by(AgentRun.started_at.desc()).limit(effective_limit)
+        stmt = select(AgentRun).order_by(AgentRun.started_at.desc()).limit(limit)
+        if principal is not None and principal.strip():
+            stmt = stmt.where(AgentRun.principal == principal.strip())
+        if agent_id is not None and agent_id.strip():
+            stmt = stmt.where(AgentRun.agent_id == agent_id.strip())
+        if status is not None and status.strip():
+            stmt = stmt.where(AgentRun.status == status.strip())
+        if since_dt is not None:
+            stmt = stmt.where(AgentRun.started_at >= since_dt)
         rows = list(session.scalars(stmt).all())
         payload = [serialize_agent_run(r) for r in rows]
     return {"runs": payload}
+
+
+def _summarize_run(
+    run_row: AgentRun,
+    operations: list[AgentRunOperation],
+    tool_calls: list[AgentRunToolCall],
+    queries: list[QueryHistory],
+) -> dict[str, Any]:
+    """Produce the Family-B risk-summary payload for one run.
+
+    Pure helper — takes already-loaded ORM rows so the diff route
+    can summarise both sides in one DB transaction.
+
+    Args:
+        run_row: The ``agent_runs`` row.
+        operations: Per-run operation rows.
+        tool_calls: Per-run LLM tool-call rows.
+        queries: Per-run ``query_history`` rows.
+
+    Returns:
+        ``{rows_touched, delta_version_range, errored_ops_count,
+        queries_count, tables_touched, status, has_denied_reason}``.
+        Deliberately omits ``cost_gate_threshold`` (Anti-gaming —
+        agents shouldn't read the threshold they could be tuned to
+        stay under).
+    """
+    tables_touched: list[str] = []
+    if run_row.tables_touched:
+        try:
+            decoded: Any = json.loads(run_row.tables_touched)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, list):
+            tables_touched = [
+                str(item)  # pyright: ignore[reportUnknownArgumentType]
+                for item in decoded  # pyright: ignore[reportUnknownVariableType]
+            ]
+    rows_touched = sum((op.rows_affected or 0) for op in operations)
+    errored_ops_count = sum(1 for op in operations if op.error_message)
+    delta_version_range: dict[str, list[int | None]] = {}
+    for op in operations:
+        if op.target_table is None:
+            continue
+        bounds = delta_version_range.setdefault(
+            op.target_table, [op.delta_version_before, op.delta_version_after]
+        )
+        if op.delta_version_before is not None:
+            current_lo = bounds[0]
+            if current_lo is None or op.delta_version_before < current_lo:
+                bounds[0] = op.delta_version_before
+        if op.delta_version_after is not None:
+            current_hi = bounds[1]
+            if current_hi is None or op.delta_version_after > current_hi:
+                bounds[1] = op.delta_version_after
+    return {
+        "id": run_row.id,
+        "status": run_row.status,
+        "principal": run_row.principal,
+        "agent_id": run_row.agent_id,
+        "rows_touched": rows_touched,
+        "errored_ops_count": errored_ops_count,
+        "operations_count": len(operations),
+        "tool_calls_count": len(tool_calls),
+        "queries_count": len(queries),
+        "tables_touched": tables_touched,
+        "delta_version_range": delta_version_range,
+        "has_denied_reason": bool(run_row.denied_reason),
+        "started_at": run_row.started_at.isoformat() if run_row.started_at else None,
+        "finished_at": (
+            run_row.finished_at.isoformat() if run_row.finished_at else None
+        ),
+    }
+
+
+def _load_run_summary_bundle(
+    factory: Any, run_id: str
+) -> tuple[AgentRun, list[AgentRunOperation], list[AgentRunToolCall], list[QueryHistory]]:
+    """Load run + every per-run sibling needed for ``_summarize_run``.
+
+    Args:
+        factory: Sessionmaker callable from ``app.state``.
+        run_id: UUID of the run to load.
+
+    Returns:
+        Tuple of detached ORM rows: run, operations, tool calls,
+        query-history.
+
+    Raises:
+        CatalogNotFoundError: No agent run with that id.
+    """
+    with factory() as session:
+        run_row = session.scalar(
+            select(AgentRun).where(AgentRun.id == run_id)
+        )
+        if run_row is None:
+            raise CatalogNotFoundError(f"agent run {run_id!r} not found")
+        operations = list(
+            session.scalars(
+                select(AgentRunOperation)
+                .where(AgentRunOperation.agent_run_id == run_id)
+                .order_by(AgentRunOperation.ordinal)
+            ).all()
+        )
+        tool_calls = list(
+            session.scalars(
+                select(AgentRunToolCall)
+                .where(AgentRunToolCall.agent_run_id == run_id)
+                .order_by(AgentRunToolCall.called_at)
+            ).all()
+        )
+        queries = list(
+            session.scalars(
+                select(QueryHistory)
+                .where(QueryHistory.agent_run_id == run_id)
+                .order_by(QueryHistory.started_at.desc())
+            ).all()
+        )
+        for entity in (run_row, *operations, *tool_calls, *queries):
+            session.expunge(entity)
+    return run_row, operations, tool_calls, queries
+
+
+@router.get("/api/agent-runs/{run_id}/summary")
+async def api_agent_run_summary(request: Request, run_id: str) -> dict[str, Any]:
+    """Risk-summary JSON for one run.  Supervisor scope required.
+
+    Sprint 13.11.4a.  Backs the ``pql_run_summary`` Hermes tool +
+    is the per-side payload of the diff route below.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string from the URL.
+
+    Returns:
+        Dict shaped by :func:`_summarize_run`.
+        :func:`require_supervisor` raises :class:`AuthorizationError`
+        when the caller lacks the ``supervisor`` scope, and
+        :func:`_load_run_summary_bundle` raises
+        :class:`CatalogNotFoundError` when the run id is unknown.
+    """
+    require_supervisor(request)
+    factory = request.app.state.session_factory
+    run_row, operations, tool_calls, queries = _load_run_summary_bundle(
+        factory, run_id
+    )
+    return _summarize_run(run_row, operations, tool_calls, queries)
+
+
+@router.get("/api/agent-runs/diff")
+async def api_agent_runs_diff(
+    request: Request,
+    a: str = Query(..., description="UUID of run A"),
+    b: str = Query(..., description="UUID of run B"),
+) -> dict[str, Any]:
+    """Summary-level diff between two runs.  Supervisor scope required.
+
+    Sprint 13.11.4a.  Backs the ``pql_diff_runs`` Hermes tool's v1
+    surface — Sprint 13.11.4b layers ``detail=true`` op-by-op +
+    tool-call-by-tool-call diff on top of the same route.
+
+    Args:
+        request: Incoming FastAPI request.
+        a: Run UUID for the left side of the comparison.
+        b: Run UUID for the right side.
+
+    Returns:
+        ``{a_summary, b_summary, ops_count_diff, tool_calls_count_diff,
+        queries_count_diff, rows_touched_diff, tables_only_in_a,
+        tables_only_in_b, tables_in_both, status_diff}``.
+        :func:`require_supervisor` raises :class:`AuthorizationError`
+        when the caller lacks the ``supervisor`` scope;
+        :func:`_load_run_summary_bundle` raises
+        :class:`CatalogNotFoundError` when either run id is unknown.
+    """
+    require_supervisor(request)
+    factory = request.app.state.session_factory
+    run_a, ops_a, tcs_a, qs_a = _load_run_summary_bundle(factory, a)
+    run_b, ops_b, tcs_b, qs_b = _load_run_summary_bundle(factory, b)
+    summary_a = _summarize_run(run_a, ops_a, tcs_a, qs_a)
+    summary_b = _summarize_run(run_b, ops_b, tcs_b, qs_b)
+    tables_a = set(summary_a["tables_touched"])
+    tables_b = set(summary_b["tables_touched"])
+    return {
+        "a_summary": summary_a,
+        "b_summary": summary_b,
+        "ops_count_diff": summary_b["operations_count"] - summary_a["operations_count"],
+        "tool_calls_count_diff": summary_b["tool_calls_count"] - summary_a["tool_calls_count"],
+        "queries_count_diff": summary_b["queries_count"] - summary_a["queries_count"],
+        "rows_touched_diff": summary_b["rows_touched"] - summary_a["rows_touched"],
+        "errored_ops_diff": summary_b["errored_ops_count"] - summary_a["errored_ops_count"],
+        "tables_only_in_a": sorted(tables_a - tables_b),
+        "tables_only_in_b": sorted(tables_b - tables_a),
+        "tables_in_both": sorted(tables_a & tables_b),
+        "status_diff": {"a": summary_a["status"], "b": summary_b["status"]},
+    }
 
 
 @router.post("/api/agent-runs/{run_id}/approve")

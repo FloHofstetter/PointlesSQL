@@ -105,6 +105,38 @@ def require_admin(request: Request) -> None:
         )
 
 
+def require_supervisor(request: Request) -> None:
+    """Raise :class:`AuthorizationError` if the caller lacks supervisor scope.
+
+    Sprint 13.11.4a.  Family-B routes (run summary, run diff,
+    runs-by-principal, runs-by-agent) are restricted to API keys
+    flagged ``supervisor=True`` — supervision telemetry shouldn't
+    be walkable by every working agent.  Cookie-authenticated
+    admins also pass: the admin role is strictly stronger than
+    supervisor (admin can revoke any key) so the "admin can do
+    everything" mental model holds.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Raises:
+        AuthorizationError: When the caller is neither an admin
+            nor authenticated via a Bearer key with the supervisor
+            flag set.
+    """
+    if getattr(request.state, "api_key_supervisor", False):
+        return
+    user = get_user(request)
+    if user.get("is_admin"):
+        return
+    raise AuthorizationError(
+        principal=user.get("email", ""),
+        privilege="supervisor",
+        securable_type="system",
+        full_name="agent_runs",
+    )
+
+
 def client_ip(request: Request) -> str | None:
     """Best-effort extraction of the client IP for audit rows.
 

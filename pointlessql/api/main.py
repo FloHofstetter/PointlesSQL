@@ -18,6 +18,7 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
 from pointlessql.api.admin_routes import router as admin_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
@@ -123,19 +124,22 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.uc_client = UnityCatalogClient(soyuz)
     app.state.settings = settings
     app.state.templates = _TEMPLATES
-    # Sprint 13.7.0.5: parse POINTLESSQL_API_KEYS once at startup so
-    # the per-request middleware avoids re-reading the env on every hop.
-    # Empty mapping = gate disabled (preserves single-user dev flow).
-    app.state.api_keys = api_keys_service.load_from_env()
-    if app.state.api_keys:
-        logger.info(
-            "API-key gate enabled with %d configured key(s): %s",
-            len(app.state.api_keys),
-            ", ".join(sorted(app.state.api_keys.keys())),
-        )
-
     init_db(settings.db.url)
     app.state.session_factory = get_session_factory()
+
+    # Sprint 13.7.0.5 → Sprint 13.11.4a: API keys are now persisted
+    # in the ``api_keys`` table.  The env var
+    # ``POINTLESSQL_API_KEYS`` stays valid as a *bootstrap* path so
+    # clean-machine docker-compose deployments without an admin UI
+    # mounted still work — the helper below idempotently spills any
+    # declared ``name:secret[:supervisor]`` pairs into the DB on
+    # startup.  Existing rows are left untouched (DB is the single
+    # source of truth once the table is populated).
+    inserted = api_keys_service.bootstrap_from_env(app.state.session_factory)
+    if inserted:
+        logger.info(
+            "Bootstrapped %d API key(s) from POINTLESSQL_API_KEYS", inserted
+        )
 
     scheduler: scheduler_service.Scheduler | None = None
     if settings.scheduler.enabled:
@@ -225,6 +229,7 @@ app.include_router(jobs_router)
 app.include_router(dashboards_router)
 app.include_router(home_router)
 app.include_router(admin_router)
+app.include_router(admin_api_keys_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),

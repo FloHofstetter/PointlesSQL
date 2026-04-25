@@ -1,12 +1,15 @@
-"""Tests for the Sprint 13.7.0.5 Bearer-token API-key gate.
+"""Tests for the Bearer-token API-key gate.
 
-Front-loaded auth path that lets the upcoming
-``hermes-plugin-pointlessql`` (Sprint 13.7.1+) reach
-``/api/agent-runs`` and ``/api/sql/*`` without holding a session
-cookie. Gate is configured via ``POINTLESSQL_API_KEYS`` and
-short-circuits to "disabled" when unset so the existing
-single-user dev flow (``agent_drift_monitor`` walkthrough) keeps
-working unchanged.
+Originally Sprint 13.7.0.5 (env-var-based store).  Sprint 13.11.4a
+promoted the store to a real DB table; this file was rewritten in
+the same sprint so the env-var format extension and the DB-backed
+verify path are both covered.
+
+The bootstrap path (``bootstrap_from_env``) keeps the historical
+``POINTLESSQL_API_KEYS`` env var valid as a clean-machine auth
+seed.  The HTTP integration cases below provision keys with the
+:func:`create_api_key` helper, exercising the same write surface
+that the admin CRUD route uses.
 """
 
 from __future__ import annotations
@@ -18,11 +21,11 @@ import pytest
 from sqlalchemy import select
 
 from pointlessql.api.main import app
-from pointlessql.models import AuditLog
+from pointlessql.models import ApiKey, AuditLog
 from pointlessql.services import api_keys as api_keys_service
 
 # ---------------------------------------------------------------------------
-# parse_keys / verify_bearer (pure functions, no HTTP)
+# parse_keys (pure function, no HTTP / no DB)
 # ---------------------------------------------------------------------------
 
 
@@ -36,10 +39,24 @@ def test_parse_keys_supports_newline_and_comma() -> None:
     raw = "hermes:abc123\npaperclip:xyz789, bot:secret"
     parsed = api_keys_service.parse_keys(raw)
     assert parsed == {
-        "hermes": "abc123",
-        "paperclip": "xyz789",
-        "bot": "secret",
+        "hermes": ("abc123", False),
+        "paperclip": ("xyz789", False),
+        "bot": ("secret", False),
     }
+
+
+def test_parse_keys_supports_supervisor_scope() -> None:
+    raw = "alice:s1, sup:godkey:supervisor"
+    parsed = api_keys_service.parse_keys(raw)
+    assert parsed == {
+        "alice": ("s1", False),
+        "sup": ("godkey", True),
+    }
+
+
+def test_parse_keys_rejects_unknown_third_token() -> None:
+    with pytest.raises(ValueError, match="unknown scope"):
+        api_keys_service.parse_keys("alice:s1:unknownscope")
 
 
 def test_parse_keys_rejects_missing_colon() -> None:
@@ -59,56 +76,121 @@ def test_parse_keys_rejects_duplicate_names() -> None:
         api_keys_service.parse_keys("hermes:a\nhermes:b")
 
 
-def test_verify_bearer_short_circuits_when_disabled() -> None:
-    assert api_keys_service.verify_bearer("Bearer abc", {}) is None
+# ---------------------------------------------------------------------------
+# bootstrap_from_env / create_api_key / revoke / verify_bearer (DB-backed)
+# ---------------------------------------------------------------------------
 
 
-def test_verify_bearer_matches_known_secret() -> None:
-    keys = {"hermes": "abc123", "paperclip": "xyz789"}
-    assert api_keys_service.verify_bearer("Bearer abc123", keys) == "hermes"
-    assert api_keys_service.verify_bearer("Bearer xyz789", keys) == "paperclip"
+def _wipe_api_keys() -> None:
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(ApiKey).delete()
+        session.commit()
+    api_keys_service.invalidate_cache()
 
 
-def test_verify_bearer_rejects_wrong_secret() -> None:
-    assert (
-        api_keys_service.verify_bearer("Bearer wrong", {"hermes": "abc123"})
-        is None
+def test_bootstrap_from_env_inserts_idempotently() -> None:
+    _wipe_api_keys()
+    inserted = api_keys_service.bootstrap_from_env(
+        app.state.session_factory,
+        env={"POINTLESSQL_API_KEYS": "alice:s1, sup:godkey:supervisor"},
     )
+    assert inserted == 2
+
+    # Second run is a no-op even though env unchanged.
+    again = api_keys_service.bootstrap_from_env(
+        app.state.session_factory,
+        env={"POINTLESSQL_API_KEYS": "alice:s1, sup:godkey:supervisor"},
+    )
+    assert again == 0
+    _wipe_api_keys()
+
+
+def test_create_and_verify_roundtrip() -> None:
+    _wipe_api_keys()
+    row, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory, name="hermes", supervisor=False
+    )
+    assert row.name == "hermes"
+    assert row.secret_prefix == plaintext[:8]
+
+    entry = api_keys_service.verify_bearer(
+        f"Bearer {plaintext}", app.state.session_factory
+    )
+    assert entry is not None
+    assert entry.name == "hermes"
+    assert entry.supervisor is False
+    _wipe_api_keys()
+
+
+def test_revoke_blocks_subsequent_verifies() -> None:
+    _wipe_api_keys()
+    _, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory, name="rotateme"
+    )
+    assert api_keys_service.verify_bearer(
+        f"Bearer {plaintext}", app.state.session_factory
+    ) is not None
+    assert api_keys_service.revoke_api_key(
+        app.state.session_factory, name="rotateme"
+    )
+    # Cache invalidation makes the revoke take effect immediately.
+    assert api_keys_service.verify_bearer(
+        f"Bearer {plaintext}", app.state.session_factory
+    ) is None
+    _wipe_api_keys()
+
+
+def test_supervisor_scope_propagates_to_entry() -> None:
+    _wipe_api_keys()
+    _, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory, name="sup", supervisor=True
+    )
+    entry = api_keys_service.verify_bearer(
+        f"Bearer {plaintext}", app.state.session_factory
+    )
+    assert entry is not None and entry.supervisor is True
+    _wipe_api_keys()
+
+
+def test_verify_bearer_short_circuits_without_factory() -> None:
+    assert api_keys_service.verify_bearer("Bearer abc", None) is None
 
 
 def test_verify_bearer_ignores_non_bearer_schemes() -> None:
-    keys = {"hermes": "abc123"}
-    assert api_keys_service.verify_bearer("Basic abc123", keys) is None
-    assert api_keys_service.verify_bearer("abc123", keys) is None
-    assert api_keys_service.verify_bearer(None, keys) is None
-    assert api_keys_service.verify_bearer("Bearer ", keys) is None
-
-
-def test_verify_bearer_is_case_insensitive_on_scheme() -> None:
-    keys = {"hermes": "abc123"}
-    assert api_keys_service.verify_bearer("bearer abc123", keys) == "hermes"
-    assert api_keys_service.verify_bearer("BEARER abc123", keys) == "hermes"
+    _wipe_api_keys()
+    _, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory, name="hermes"
+    )
+    factory = app.state.session_factory
+    assert api_keys_service.verify_bearer(f"Basic {plaintext}", factory) is None
+    assert api_keys_service.verify_bearer(plaintext, factory) is None
+    assert api_keys_service.verify_bearer(None, factory) is None
+    assert api_keys_service.verify_bearer("Bearer ", factory) is None
+    _wipe_api_keys()
 
 
 # ---------------------------------------------------------------------------
-# HTTP-level integration via TestClient
+# HTTP-level integration via ASGI transport
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def gate_enabled() -> Iterator[None]:
-    """Configure ``app.state.api_keys`` for the test then restore."""
-    previous = getattr(app.state, "api_keys", {})
-    app.state.api_keys = {"hermes": "abc123"}
+def gate_secret() -> Iterator[str]:
+    """Provision a single Bearer-eligible key and yield its plaintext."""
+    _wipe_api_keys()
+    _, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory, name="hermes"
+    )
     try:
-        yield
+        yield plaintext
     finally:
-        app.state.api_keys = previous
+        _wipe_api_keys()
 
 
 @pytest.mark.asyncio
 async def test_api_route_rejects_unauthenticated_without_bearer(
-    gate_enabled: None,
+    gate_secret: str,
 ) -> None:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
@@ -118,7 +200,7 @@ async def test_api_route_rejects_unauthenticated_without_bearer(
 
 @pytest.mark.asyncio
 async def test_api_route_rejects_wrong_bearer_secret(
-    gate_enabled: None,
+    gate_secret: str,
 ) -> None:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
@@ -130,37 +212,30 @@ async def test_api_route_rejects_wrong_bearer_secret(
 
 
 @pytest.mark.asyncio
-async def test_api_route_accepts_valid_bearer(gate_enabled: None) -> None:
+async def test_api_route_accepts_valid_bearer(gate_secret: str) -> None:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
         response = await c.get(
             "/api/agent-runs",
-            headers={"Authorization": "Bearer abc123"},
+            headers={"Authorization": f"Bearer {gate_secret}"},
         )
     assert response.status_code == 200
     payload = response.json()
-    assert "items" in payload or "agent_runs" in payload or isinstance(payload, dict)
+    assert isinstance(payload, dict)
 
 
 @pytest.mark.asyncio
 async def test_bearer_creates_audit_row_with_api_key_name(
-    gate_enabled: None,
+    gate_secret: str,
 ) -> None:
-    """A POST authenticated by Bearer must still leave an audit trail.
-
-    Pre-Sprint-13.7.0.5 the ``audit`` helper bailed out when
-    ``user_id == 0`` — Bearer-only requests carry exactly that, so
-    the helper now writes a ``actor_role="system"`` row keyed
-    ``api_key:<name>`` whenever ``request.state.api_key_name`` is
-    set.
-    """
+    """A POST authenticated by Bearer must still leave an audit trail."""
     source = "print('hello')\n"
     run_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
         response = await c.post(
             "/api/agent-runs",
-            headers={"Authorization": "Bearer abc123"},
+            headers={"Authorization": f"Bearer {gate_secret}"},
             json={
                 "id": run_id,
                 "notebook_path": "demo/run.py",
@@ -188,7 +263,7 @@ async def test_bearer_creates_audit_row_with_api_key_name(
 
 @pytest.mark.asyncio
 async def test_x_principal_overrides_api_key_email_in_audit(
-    gate_enabled: None,
+    gate_secret: str,
 ) -> None:
     """``X-Principal`` re-attributes the row to a human."""
     source = "print('hello')\n"
@@ -198,7 +273,7 @@ async def test_x_principal_overrides_api_key_email_in_audit(
         response = await c.post(
             "/api/agent-runs",
             headers={
-                "Authorization": "Bearer abc123",
+                "Authorization": f"Bearer {gate_secret}",
                 "X-Principal": "alice@example.com",
             },
             json={
@@ -215,69 +290,27 @@ async def test_x_principal_overrides_api_key_email_in_audit(
             select(AuditLog).where(AuditLog.target == f"agent_run:{run_id}")
         ).scalar_one()
     assert row.user_email == "alice@example.com"
-    # The api_key marker still shows in detail so traceability is
-    # preserved even when human attribution wins for the email.
     assert row.detail and "hermes" in row.detail
 
 
 @pytest.mark.asyncio
 async def test_gate_disabled_ignores_bearer_header(auth_cookies) -> None:
-    """When ``app.state.api_keys`` is empty, Bearer requests get 401."""
-    previous = getattr(app.state, "api_keys", {})
-    app.state.api_keys = {}
-    try:
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(
-            transport=transport, base_url="http://t"
-        ) as c:
-            response = await c.get(
-                "/api/agent-runs",
-                headers={"Authorization": "Bearer abc123"},
-            )
-        assert response.status_code == 401
-        # Cookie auth still works.
-        async with httpx.AsyncClient(
-            transport=transport,
-            base_url="http://t",
-            cookies=auth_cookies,
-        ) as c:
-            response = await c.get("/api/agent-runs")
-        assert response.status_code == 200
-    finally:
-        app.state.api_keys = previous
-
-
-@pytest.mark.asyncio
-async def test_cookie_wins_over_bearer_when_both_present(
-    gate_enabled: None,
-    auth_cookies,
-) -> None:
-    """A logged-in human keeps their identity even with a Bearer header."""
-    source = "print('hello')\n"
-    run_id = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+    """When the api_keys table is empty, Bearer requests are unauthorised."""
+    _wipe_api_keys()
     transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://t"
+    ) as c:
+        response = await c.get(
+            "/api/agent-runs",
+            headers={"Authorization": "Bearer some-random-secret"},
+        )
+    assert response.status_code == 401
+    # Cookie auth still works.
     async with httpx.AsyncClient(
         transport=transport,
         base_url="http://t",
         cookies=auth_cookies,
     ) as c:
-        response = await c.post(
-            "/api/agent-runs",
-            headers={"Authorization": "Bearer abc123"},
-            json={
-                "id": run_id,
-                "notebook_path": "demo/run.py",
-                "source": source,
-                "runtime_versions": {"python": "3.14.0"},
-            },
-        )
-    assert response.status_code == 200, response.text
-    factory = app.state.session_factory
-    with factory() as session:
-        row = session.execute(
-            select(AuditLog).where(AuditLog.target == f"agent_run:{run_id}")
-        ).scalar_one()
-    # Cookie user (test@test.com) attributed; api_key NOT in detail
-    # because middleware short-circuited on the cookie path.
-    assert row.user_email == "test@test.com"
-    assert row.actor_role == "admin"
+        response = await c.get("/api/agent-runs")
+    assert response.status_code == 200

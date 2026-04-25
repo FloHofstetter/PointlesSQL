@@ -4,6 +4,61 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.11.4a: DB-backed API keys + Family-B supervisor scope
+
+API-key store promoted to a real DB table; new `supervisor` scope
+gates the Sprint-13.11.4 supervisor-only routes.
+
+- **Added** Alembic 025
+  [`pointlessql/alembic/versions/025_api_keys_table.py`](pointlessql/alembic/versions/025_api_keys_table.py)
+  — `api_keys` table with `(id, name, secret_hash, secret_prefix,
+  supervisor, created_at, created_by_user_id, revoked_at,
+  last_used_at)`. SHA-256-hex secret hashing; index on
+  `secret_hash` for the hot-path verify.
+- **Added** [`pointlessql/models/api_keys.py`](pointlessql/models/api_keys.py)
+  ORM model + `ApiKey` re-export from `pointlessql.models`.
+- **Refactored** [`pointlessql/services/api_keys.py`](pointlessql/services/api_keys.py)
+  — `parse_keys` now returns `dict[str, tuple[str, bool]]` to
+  carry the supervisor flag from the env-var format extension
+  (`name:secret:supervisor`). `verify_bearer(authorization, factory)`
+  is DB-backed with a 60s in-memory cache; `bootstrap_from_env`
+  idempotently spills env-declared pairs into the table at
+  startup; `create_api_key` / `revoke_api_key` / `list_api_keys`
+  / `is_supervisor` / `invalidate_cache` are the new admin
+  primitives.
+- **Refactored** [`pointlessql/api/middleware.py`](pointlessql/api/middleware.py)
+  — Bearer branch reads `request.app.state.session_factory` and
+  attaches `request.state.api_key_supervisor` for the new gate.
+- **Added** `require_supervisor(request)` in
+  [`pointlessql/api/dependencies.py`](pointlessql/api/dependencies.py)
+  — passes for cookie-admins and Bearer keys with
+  `supervisor=True`; 403s otherwise.
+- **Added** [`pointlessql/api/admin_api_keys_routes.py`](pointlessql/api/admin_api_keys_routes.py)
+  with `GET/POST /api/admin/api-keys` and
+  `POST /api/admin/api-keys/{name}/revoke`. Plaintext secret is
+  returned exactly once at creation; rotations land via
+  `audit()` rows.
+- **Added** filter expansion on `GET /api/agent-runs`
+  (`principal` / `agent_id` / `status` / `since`) +
+  `GET /api/agent-runs/{id}/summary` +
+  `GET /api/agent-runs/diff?a=&b=` in
+  [`pointlessql/api/agent_runs_routes.py`](pointlessql/api/agent_runs_routes.py).
+  The summary deliberately omits `cost_gate_threshold`
+  (anti-gaming).
+- **Updated** [`docs/auth.md`](docs/auth.md) — DB-backed store as
+  primary; env-var as bootstrap; admin-CRUD examples; supervisor
+  scope explained.
+- **Tests**:
+  [`tests/test_api_key_gate.py`](tests/test_api_key_gate.py) —
+  rewritten for the new shape; covers parse_keys format
+  extension, create/revoke/verify roundtrip, gate-disabled
+  behaviour, cache invalidation, audit-row attribution.
+  [`tests/test_admin_api_keys_routes.py`](tests/test_admin_api_keys_routes.py)
+  — admin CRUD happy + non-admin 403.
+  [`tests/test_supervisor_routes.py`](tests/test_supervisor_routes.py)
+  — supervisor-key vs normal-key gating, summary payload shape,
+  diff with tables_only_in_a/b.
+
 ### Added — Phase 13 / Sprint 13.11.3: Reflexive supervision tools (lineage)
 
 - **Added** `GET /api/pql/lineage?table=…&depth=N` in
