@@ -142,6 +142,13 @@ async def audit(
     HTTP request handler never blocks on the DB round-trip —
     this is the shoreguard-fresh pattern ported in Sprint 48.
 
+    Sprint 13.7.0.5 extended the helper to also record requests
+    authenticated via ``Authorization: Bearer`` — those carry
+    ``user_id == 0`` (no cookie user) but expose
+    ``request.state.api_key_name``; the row is written with
+    ``actor_role="system"`` and ``user_email=api_key:<name>``
+    when no ``X-Principal`` header re-attributes to a human.
+
     Args:
         request: The incoming HTTP request.
         action: Short verb describing the action (e.g.
@@ -153,15 +160,33 @@ async def audit(
     """
     user = get_user(request)
     factory = getattr(request.app.state, "session_factory", None)
-    if factory is None or not user["id"]:
+    if factory is None:
         return
-    role = "admin" if user.get("is_admin") else "user"
+    api_key_name: str | None = getattr(request.state, "api_key_name", None)
+    if not user["id"] and api_key_name is None:
+        return
+    if api_key_name is not None:
+        role = "system"
+    else:
+        role = "admin" if user.get("is_admin") else "user"
     # Sprint 13.6: ``X-Principal`` overrides the cookie email so the
     # audit trail points at the agent's principal when Hermes is
     # making the call.  ``user_id`` stays the cookie user's id —
     # that is the actor whose session signed the request, even when
     # they're acting on someone else's behalf.
-    attributed_email = effective_principal(request) or user["email"]
+    attributed_email = (
+        effective_principal(request)
+        or user["email"]
+        or (f"api_key:{api_key_name}" if api_key_name else "")
+    )
+    detail_payload: str | dict[str, Any] | None = detail
+    if api_key_name is not None:
+        merged: dict[str, Any] = {"api_key": api_key_name}
+        if isinstance(detail, dict):
+            merged.update(detail)
+        elif isinstance(detail, str) and detail:
+            merged["note"] = detail
+        detail_payload = merged
     await asyncio.to_thread(
         audit_service.log_action,
         factory,
@@ -169,7 +194,7 @@ async def audit(
         attributed_email,
         action,
         target,
-        detail,
+        detail_payload,
         actor_role=role,
         client_ip=client_ip(request),
     )

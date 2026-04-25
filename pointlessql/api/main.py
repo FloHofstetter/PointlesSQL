@@ -24,6 +24,7 @@ from pointlessql.api.alerts_routes import router as alerts_router
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.api.catalog_html_routes import router as catalog_html_router
 from pointlessql.api.catalog_routes import router as catalog_router
+from pointlessql.api.conventions_routes import router as conventions_router
 from pointlessql.api.dashboards_routes import router as dashboards_router
 from pointlessql.api.dependencies import (
     require_admin as _require_admin,
@@ -50,6 +51,7 @@ from pointlessql.api.volumes_routes import (
 )
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.logging_config import configure_logging
+from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import audit as audit_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import scheduler as scheduler_service
@@ -120,6 +122,16 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.uc_client = UnityCatalogClient(soyuz)
     app.state.settings = settings
     app.state.templates = _TEMPLATES
+    # Sprint 13.7.0.5: parse POINTLESSQL_API_KEYS once at startup so
+    # the per-request middleware avoids re-reading the env on every hop.
+    # Empty mapping = gate disabled (preserves single-user dev flow).
+    app.state.api_keys = api_keys_service.load_from_env()
+    if app.state.api_keys:
+        logger.info(
+            "API-key gate enabled with %d configured key(s): %s",
+            len(app.state.api_keys),
+            ", ".join(sorted(app.state.api_keys.keys())),
+        )
 
     init_db(settings.db.url)
     app.state.session_factory = get_session_factory()
@@ -197,6 +209,7 @@ register_error_handlers(app)
 app.include_router(auth_router)
 app.include_router(catalog_router)
 app.include_router(catalog_html_router)
+app.include_router(conventions_router)
 app.include_router(sql_router)
 app.include_router(queries_router)
 app.include_router(alerts_router)

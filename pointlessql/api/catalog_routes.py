@@ -89,6 +89,47 @@ async def api_tables(
     return await client.list_tables(catalog_name, schema_name)
 
 
+@router.get(
+    "/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}"
+)
+async def api_get_table(
+    request: Request,
+    catalog_name: str,
+    schema_name: str,
+    table_name: str,
+) -> dict[str, object]:
+    """Return one table's full metadata (columns + tags) as JSON.
+
+    Sprint 13.7.3 added this endpoint so the
+    ``hermes-plugin-pointlessql`` ``pql_get_table`` tool can pull
+    column types + UC tags + comment without scraping the HTML
+    catalog browser. The shape is whatever soyuz-catalog returns
+    for ``GET /tables/{full_name}``; the gate matches the schema-
+    list route (USE_SCHEMA on the parent schema) since visibility
+    of an individual table follows visibility of its schema.
+
+    Args:
+        request: Incoming FastAPI request.
+        catalog_name: First part of the three-part name.
+        schema_name: Second part.
+        table_name: Third part.
+
+    Returns:
+        Soyuz-shaped table info dict.
+    """
+    client = get_uc_client(request)
+    user = get_user(request)
+    await check_privilege(
+        client,
+        user.get("email", ""),
+        user.get("is_admin", False),
+        "schema",
+        f"{catalog_name}.{schema_name}",
+        USE_SCHEMA,
+    )
+    return await client.get_table(catalog_name, schema_name, table_name)
+
+
 def preview_head(frame: Any, n: int) -> Any:
     """Return at most *n* rows of *frame* as a pandas DataFrame.
 

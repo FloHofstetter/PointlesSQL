@@ -41,7 +41,9 @@ from pointlessql.api.rate_limit_middleware import (
     rate_limit_middleware as _rate_limit_middleware,
 )
 from pointlessql.logging_config import request_id_var
+from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth as auth_service
+from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,23 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
 
 
 async def auth_middleware(request: Request, call_next: Any) -> Response:
-    """Extract user from JWT cookie; redirect to login if unauthenticated."""
+    """Resolve a principal from cookie OR Bearer key; gate protected paths.
+
+    Sprint 13.7.0.5 added the Bearer-token branch: if
+    ``app.state.api_keys`` carries any configured ``name:secret``
+    pairs (parsed from ``POINTLESSQL_API_KEYS`` at startup), the
+    middleware honours an ``Authorization: Bearer <secret>``
+    header.  On match a synthetic :class:`UserInfo` is attached
+    so downstream routes (which only ever read ``request.state
+    .user``) need no awareness of the alternate auth path; the
+    matched key name lands on ``request.state.api_key_name`` so
+    the audit helper can record ``api_key:<name>`` instead of an
+    anonymous ``user_id=0``.
+
+    Cookie auth still wins when both are present so a human in a
+    browser keeps their identity even if a misconfigured proxy
+    forwards a Bearer header.
+    """
     path = request.url.path
 
     # Always try to resolve user from cookie (even on public paths,
@@ -78,6 +96,24 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
             )
             if user is not None:
                 request.state.user = user
+
+    # Sprint 13.7.0.5: fall back to API-key bearer token when no
+    # cookie user resolved.  Empty ``api_keys`` mapping = gate
+    # disabled, so the lookup short-circuits in :func:`verify_bearer`.
+    if getattr(request.state, "user", None) is None:
+        api_keys = getattr(request.app.state, "api_keys", {})
+        key_name = api_keys_service.verify_bearer(
+            request.headers.get("authorization"),
+            api_keys,
+        )
+        if key_name is not None:
+            request.state.api_key_name = key_name
+            request.state.user = UserInfo(
+                id=0,
+                email=f"api_key:{key_name}",
+                display_name=key_name,
+                is_admin=False,
+            )
 
     # Public paths pass through regardless of auth.
     if any(path.startswith(p) for p in PUBLIC_PREFIXES):
