@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.11.1: Reflexive supervision tools (Family A pair 1)
+
+First slice of the Sprint-13.11 read-loop close-out: agents can now
+introspect *what* the PQL primitives are and *what they themselves*
+have already written.
+
+- **Added** [`pointlessql/api/pql_introspect_routes.py`](pointlessql/api/pql_introspect_routes.py)
+  — new router with `GET /api/pql/primitives` returning
+  `{primitives: {<name>: {signature, doc, ...}}}` for the public
+  PQL surface (`table`, `sql`, `write_table`, `merge`, `autoload`).
+  Snapshot built once at import via `inspect.signature` +
+  `inspect.getdoc`; static for the process lifetime.
+- **Added** `GET /api/agent-runs/{run_id}/full` in
+  [`pointlessql/api/runs_routes.py`](pointlessql/api/runs_routes.py)
+  — joins the serialised run row with `_load_source_for_run`,
+  `_load_operations_for_run`, `_load_tool_calls_for_run`,
+  `_load_events_for_run`, `_load_queries_for_run` so a Hermes
+  plugin tool can fetch the full supervision payload in one
+  round-trip.
+- **Added** tests
+  [`tests/test_pql_introspect_routes.py`](tests/test_pql_introspect_routes.py)
+  and [`tests/test_agent_run_full.py`](tests/test_agent_run_full.py)
+  — covers the regression-shaped check that `autoload`'s signature
+  carries `source_path` (the 2026-04-25 walkthrough bug), 404
+  behaviour for unknown run ids, and the round-trip after a
+  `tool-call` POST.
+
 ### Fixed — Phase 13 / Sprint 13.10: Hermes-Medallion live-replay fixups
 
 Closes the four findings from the 2026-04-25 manual walkthrough

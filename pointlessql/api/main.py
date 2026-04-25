@@ -37,6 +37,7 @@ from pointlessql.api.jobs_routes import (
 )
 from pointlessql.api.middleware import register_middleware
 from pointlessql.api.notebooks_routes import router as notebooks_router
+from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
 from pointlessql.api.queries_routes import router as queries_router
 from pointlessql.api.runs_routes import router as runs_router
 from pointlessql.api.sql_routes import router as sql_router
@@ -218,6 +219,7 @@ app.include_router(governance_router)
 app.include_router(notebooks_router)
 app.include_router(runs_router)
 app.include_router(agent_runs_router)
+app.include_router(pql_introspect_router)
 app.include_router(federation_router)
 app.include_router(jobs_router)
 app.include_router(dashboards_router)

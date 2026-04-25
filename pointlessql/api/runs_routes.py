@@ -462,6 +462,45 @@ async def runs_list_api(request: Request) -> dict[str, Any]:
     return {"runs": _load_runs(request)}
 
 
+@router.get("/api/agent-runs/{run_id}/full")
+async def api_agent_run_full(request: Request, run_id: str) -> dict[str, Any]:
+    """Return the full supervision payload for *run_id* in one round-trip.
+
+    Sprint 13.11.1 — backs the ``pql_my_run`` Hermes tool.  Joins the
+    serialised :class:`AgentRun` row with every per-run sibling table
+    the supervision view already aggregates: source bytes,
+    operations, tool-call trail, lifecycle events, attributed query
+    history.  Lives next to the ``_load_*`` helpers it reuses to
+    avoid a circular import back into ``agent_runs_routes``.
+
+    The route is read-only and gated only by the standard auth
+    middleware — any working-agent that already knows its own
+    ``run_id`` (because PointlesSQL gave it that id at registration
+    time) can ask the supervisor record for the full picture before
+    deciding what to write next.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string from the URL.
+
+    Returns:
+        ``{"run": {...}, "source": {...}|None, "operations": [...],
+        "tool_calls": [...], "events": [...], "queries": [...]}``.
+        :func:`_load_run` raises :class:`CatalogNotFoundError` when
+        no row with that id exists; FastAPI's exception handlers
+        translate that into a 404 response.
+    """
+    run_row = _load_run(request, run_id)
+    return {
+        "run": serialize_agent_run(run_row),
+        "source": _load_source_for_run(request, run_id),
+        "operations": _load_operations_for_run(request, run_id),
+        "tool_calls": _load_tool_calls_for_run(request, run_id),
+        "events": _load_events_for_run(request, run_id),
+        "queries": _load_queries_for_run(request, run_id),
+    }
+
+
 async def _conformance_findings_for_run(
     request: Request, tables_touched: list[str]
 ) -> list[ConformanceFinding]:
