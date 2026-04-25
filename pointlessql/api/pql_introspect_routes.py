@@ -246,4 +246,51 @@ async def api_pql_target_state(
     }
 
 
+_LINEAGE_MAX_DEPTH = 5
+
+
+@router.get("/api/pql/lineage")
+async def api_pql_lineage(
+    request: Request,
+    table: str = Query(..., description="catalog.schema.table"),
+    depth: int = Query(default=2, ge=1, le=_LINEAGE_MAX_DEPTH),
+) -> dict[str, Any]:
+    """Return upstream + downstream lineage for a table in one response.
+
+    Sprint 13.11.3.  Backs the ``pql_lineage`` Hermes tool.  Wraps
+    :meth:`pointlessql.services.unitycatalog._lineage.LineageMixin.get_lineage`,
+    which already fans out concurrently to soyuz's
+    ``GET /lineage/upstream/{full_name}`` and
+    ``GET /lineage/downstream/{full_name}`` JSON endpoints — so this
+    sprint is pure PointlesSQL plumbing, no cross-repo work.
+
+    The depth is capped at ``_LINEAGE_MAX_DEPTH`` (5) to keep the
+    payload bounded for an LLM transcript even though soyuz tolerates
+    up to 10 hops.
+
+    Args:
+        request: Incoming FastAPI request — supplies the
+            principal-scoped UC client.
+        table: Three-part UC identifier.
+        depth: Hop count (1-5, default 2).
+
+    Returns:
+        ``{"table", "depth", "upstream": {...}, "downstream": {...}}``.
+        Each direction carries the ``LineageGraphResponse`` shape from
+        soyuz: ``{root, direction, nodes: [...], edges: [...]}``.
+        Empty dicts when no lineage data exists for the table.
+    """
+    # Validate the three-part shape eagerly so the caller gets a 422
+    # before the soyuz call runs.
+    _split_three_part(table)
+    client = get_uc_client(request)
+    graph = await client.get_lineage(table, depth=depth)
+    return {
+        "table": table,
+        "depth": depth,
+        "upstream": graph.get("upstream", {}),
+        "downstream": graph.get("downstream", {}),
+    }
+
+
 __all__ = ["router"]

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.11.3: Reflexive supervision tools (lineage)
+
+- **Added** `GET /api/pql/lineage?table=…&depth=N` in
+  [`pointlessql/api/pql_introspect_routes.py`](pointlessql/api/pql_introspect_routes.py)
+  — wraps the existing `LineageMixin.get_lineage` async helper which
+  fans out to soyuz's upstream + downstream JSON endpoints
+  concurrently.  Depth capped at 5 via FastAPI `Query(le=5)` so
+  invalid values are rejected before the soyuz call runs.
+  No cross-repo work (the soyuz endpoints already exist).
+- **Added** test
+  [`tests/test_lineage_route.py`](tests/test_lineage_route.py)
+  — covers combined-graph passthrough, three-part-name validation,
+  and depth-out-of-range rejection.
+
 ### Added — Phase 13 / Sprint 13.11.2: Reflexive supervision tools (Family A pair 2)
 
 Highest-ROI tools from the walkthrough bug analysis: agents can now
