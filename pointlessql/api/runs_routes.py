@@ -32,6 +32,7 @@ from pointlessql.models import (
     AgentRunEvent,
     AgentRunOperation,
     AgentRunSource,
+    AgentRunToolCall,
     AuditLog,
     NotebookCellRun,
     NotebookOutput,
@@ -341,6 +342,53 @@ def _load_queries_for_run(
     return out
 
 
+def _load_tool_calls_for_run(
+    request: Request, run_id: str,
+) -> list[dict[str, Any]]:
+    """Return all ``agent_run_tool_calls`` rows for *run_id*, oldest first.
+
+    Sprint 13.10 — surfaces the LLM reasoning trace persisted by the
+    Sprint-13.7.4 ``POST /api/agent-runs/{id}/tool-call`` route.  Tool
+    calls are a fourth orthogonal level alongside cells / operations /
+    queries: cells = source layout, operations = PQL primitive writes,
+    queries = ad-hoc SQL, tool calls = which LLM tool the agent
+    invoked (``pql_conventions``, ``pql_query``, …).  Ordered by
+    ``called_at ASC`` so the tab reads top-to-bottom in invocation
+    order.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string of the owning run.
+
+    Returns:
+        List of dicts ready to feed into the Jinja template.
+        ``args_json`` and ``result_summary`` are passed through
+        verbatim — the template handles the truncation for display.
+    """
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(AgentRunToolCall)
+            .where(AgentRunToolCall.agent_run_id == run_id)
+            .order_by(AgentRunToolCall.called_at)
+        )
+        for row in session.scalars(stmt).all():
+            out.append(
+                {
+                    "id": row.id,
+                    "tool_name": row.tool_name,
+                    "args_json": row.args_json,
+                    "result_summary": row.result_summary,
+                    "duration_ms": row.duration_ms,
+                    "called_at": (
+                        row.called_at.isoformat() if row.called_at else None
+                    ),
+                }
+            )
+    return out
+
+
 def _load_cell_runs_for_run(
     request: Request, run_id: str,
 ) -> dict[str, dict[str, Any]]:
@@ -494,8 +542,8 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
 
     Returns:
         ``pages/run_view.html`` with ``run``, ``cells``,
-        ``cell_outputs``, ``cell_runs``, and the ``render_markdown``
-        helper in context.
+        ``cell_outputs``, ``cell_runs``, ``tool_calls`` (Sprint
+        13.10), and the ``render_markdown`` helper in context.
     """
     run_row = _load_run(request, run_id)
     settings: Settings = request.app.state.settings
@@ -523,6 +571,7 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             "source": _load_source_for_run(request, run_id),
             "events": _load_events_for_run(request, run_id),
             "queries": _load_queries_for_run(request, run_id),
+            "tool_calls": _load_tool_calls_for_run(request, run_id),
             "conformance_findings": [
                 {
                     "table_full_name": f.table_full_name,

@@ -1446,7 +1446,11 @@ PointlesSQL
 │   │   in-app audit viewer. The public-visibility / external-
 │   │   distribution work that was briefly mooted here has moved
 │   │   to Phase 14 (queued last, on purpose). Sequence from here:
-│   │   hardening (11) → features (12, 13) → public launch (14).
+│   │   hardening (11) → features (12, 13) → public launch (14) →
+│   │   audit-completeness (14.x) → Provenance Log (15) →
+│   │   Branching + Rollback (16). Phases 14.x / 15 / 16 are the
+│   │   "fully autonomous data analysis" critical path captured
+│   │   in `project_full_autonomous_audit_critical_path.md`.
 │   │
 │   ├── Sprint 41 — Admin audit-log viewer                ✅ done (2b25b89)
 │   │   ├── `GET /admin/audit` gated by `_require_admin`; reuses
@@ -4393,25 +4397,110 @@ PointlesSQL
 │   │       Log (``project_shoreguard_provenance_log.md``) which
 │   │       layers cryptographic signing on top.
 │   │
-│   └── Sprint 13.9 — Run-scoped query history               ✅ done (237890d)
-│           Today ``query_history`` (Sprint 50) captures every
-│           ``/api/sql/execute`` row with sql_text +
-│           referenced_tables + duration + Sprint-13.6 principal
-│           attribution — but the rows are NOT linked to an
-│           ``agent_run_id``.  Result: on ``/runs/{id}`` you
-│           can't answer "which queries did this run execute?".
+│   ├── Sprint 13.9 — Run-scoped query history               ✅ done (237890d)
+│   │       Today ``query_history`` (Sprint 50) captures every
+│   │       ``/api/sql/execute`` row with sql_text +
+│   │       referenced_tables + duration + Sprint-13.6 principal
+│   │       attribution — but the rows are NOT linked to an
+│   │       ``agent_run_id``.  Result: on ``/runs/{id}`` you
+│   │       can't answer "which queries did this run execute?".
+│   │
+│   │       * **Alembic 023** adds nullable ``agent_run_id
+│   │         VARCHAR(36)`` column to ``query_history`` + index.
+│   │       * ``/api/sql/execute`` reads
+│   │         ``POINTLESSQL_AGENT_RUN_ID`` env or new
+│   │         ``X-Agent-Run-Id`` header, tags the row.
+│   │       * Run-detail-view gains a "Queries" tab listing the
+│   │         matching rows.  ``/queries`` page accepts an
+│   │         optional ``?agent_run_id=`` filter.
+│   │
+│   │       Smaller follow-up to 13.8; could ship before, but
+│   │       the per-op trace is the higher-value half.
+│   │
+│   ├── Sprint 13.10 — Hermes-Medallion live-replay fixups    ✅ done (pending-commit)
+│   │       Closed the four findings from the 2026-04-25 manual
+│   │       walkthrough replay.  The Sprint-13.5.5 playbook now
+│   │       runs end-to-end without manual workarounds.
+│   │
+│   │       * ``notebooks/hermes_medallion.py`` — committed the
+│   │         live patches verbatim (``source_path=``, dict
+│   │         result access, ``pql.table`` → pandas → ``pql.write_table``
+│   │         for the gold step) plus a ``pql.merge`` first-run
+│   │         bootstrap fallback to ``pql.write_table``.  A
+│   │         ``pql.merge(create=True)`` flag is the right
+│   │         long-term shape but stays out of scope here.
+│   │       * **Lazy metadata-DB init** in ``PQL.__init__`` —
+│   │         picked option (b) over the explicit notebook-side
+│   │         ``init_db()``.  When a run id is resolved and the
+│   │         session factory is unbound, the constructor calls
+│   │         ``pointlessql.db.init_db(settings.db.url)``
+│   │         (idempotent: Alembic head is a no-op).  Cleaner
+│   │         contract for any future agent-authored notebook;
+│   │         the interactive PQL path stays untouched.
+│   │       * **Tool calls** tab landed in
+│   │         ``frontend/templates/pages/run_view.html`` between
+│   │         Operations and Queries.  Backend (Alembic 024 +
+│   │         POST route + CloudEvent type) shipped in 13.7.4;
+│   │         this sprint added ``_load_tool_calls_for_run`` in
+│   │         ``api/runs_routes.py`` and the template tab body.
+│   │       * **soyuz schema PATCH** — picked option (b)
+│   │         doc-only.  ``UpdateSchema`` already rejects
+│   │         ``storage_root`` via ``extra="forbid"``; soyuz
+│   │         ``docs/reference/api.md`` now carries an explicit
+│   │         "set-on-create" admonition next to ``PATCH
+│   │         /schemas/{full_name}``.  The medallion walkthrough
+│   │         precondition 2 is now an explicit ``curl`` loop
+│   │         that sets ``storage_root`` on ``POST /schemas``.
+│   │
+│   └── Sprint 13.11 — Reflexive supervision tools            ⏳ queued
+│           Lets working + supervisor agents READ the audit
+│           trail / lineage / Delta-history they currently
+│           only WRITE to.  ROI proven live: three bugs in the
+│           Sprint 13.5.5 walkthrough were avoidable by check-
+│           state-before-acting.  Full design in
+│           ``project_reflexive_supervision_tools.md``.
 │
-│           * **Alembic 023** adds nullable ``agent_run_id
-│             VARCHAR(36)`` column to ``query_history`` + index.
-│           * ``/api/sql/execute`` reads
-│             ``POINTLESSQL_AGENT_RUN_ID`` env or new
-│             ``X-Agent-Run-Id`` header, tags the row.
-│           * Run-detail-view gains a "Queries" tab listing the
-│             matching rows.  ``/queries`` page accepts an
-│             optional ``?agent_run_id=`` filter.
+│           Two orthogonal tool families:
 │
-│           Smaller follow-up to 13.8; could ship before, but
-│           the per-op trace is the higher-value half.
+│           * **Family A (working-agent self-introspection)**
+│             — ``pql_my_run``, ``pql_target_state(table)``,
+│             ``pql_lineage(table, depth)``,
+│             ``pql_recent_failures(table, days)``,
+│             ``pql_describe_primitive(name)``.  Read-only,
+│             gated by existing Bearer/cookie middleware.
+│           * **Family B (supervisor-agent cross-run search)** —
+│             ``pql_runs_by_principal``, ``pql_runs_by_agent``,
+│             ``pql_diff_runs(a, b)``, ``pql_run_summary(id)``.
+│             Requires a ``supervisor`` flag on the API key
+│             (new column on Sprint-13.7.0.5 store).  Don't
+│             conflate with Family A — would let any agent
+│             walk all run history.
+│
+│           Sprint shape (~3-4 sub-sprints):
+│           - 13.11.1: ``pql_describe_primitive`` +
+│             ``pql_my_run`` (smallest, prove the pattern)
+│           - 13.11.2: ``pql_target_state`` +
+│             ``pql_recent_failures`` (highest-ROI from today)
+│           - 13.11.3: ``pql_lineage`` + soyuz
+│             ``GET /lineage/{full_name}`` JSON endpoint
+│             (cross-repo)
+│           - 13.11.4: Supervisor tools (Family B) +
+│             ``supervisor`` API-key flag + plugin
+│             "supervisor mode"
+│
+│           Strategic position: the bridge between Phase 13
+│           (forced trace) and Phase 15 (signed Provenance
+│           Log).  Without read access the Provenance Log is
+│           a write-only artefact for humans; with it the
+│           agent participates in the trail's value loop and
+│           shoreguard policies can reference the trail.
+│
+│           Risk to design around: agents could learn to
+│           **game supervision** (chunk writes to stay under
+│           cost-gate thresholds).  Don't expose
+│           ``cost_gate_threshold`` etc. as tool outputs —
+│           that's a Phase-15+ shoreguard policy concern, not
+│           a 13.11 blocker.
 │
 │   Cells-vs-operations design opinion (recorded 2026-04-24):
 │   agent-authored runs should be **plain ``.py``**; per-step
@@ -4643,6 +4732,127 @@ PointlesSQL
 │       is the default-obvious choice — UC-compatible, no
 │       ethical-use clauses worth the drama; revisit only if
 │       something has changed)
+│
+├── Phase 14.x — Audit-trail completeness pass             ⏳ queued
+│   │
+│   │   Closes the three Tier-3 gaps captured in
+│   │   ``project_phase13_audit_gaps.md`` plus the external-write
+│   │   blind spot surfaced by the 2026-04-25 live walkthrough
+│   │   (see ``project_full_autonomous_audit_critical_path.md``).
+│   │   Bundleable with Phase 14 launch readiness — these are
+│   │   operational-hygiene items, not greenfield features.
+│   │
+│   ├── soyuz UC mutation cross-reference into ``/runs/{id}``
+│   │   ├── join soyuz audit_log on ``agent_run_id`` (forwarded via
+│   │   │   X-Agent-Run-Id) so set_tag / create_table / set_owner
+│   │   │   calls show up in the run-detail audit log alongside
+│   │   │   PointlesSQL's own audit rows
+│   │   └── needs soyuz-side `X-Agent-Run-Id` header propagation
+│   │       and a small UI section in the existing Audit-log tab
+│   ├── Read-audit for `pql.table()` and engine-direct reads
+│   │   ├── DSGVO "wer hat meine Daten gelesen?" gap — today only
+│   │   │   `/api/sql/execute` is logged, direct Delta reads via
+│   │   │   `pql.table(...)` bypass `query_history` entirely
+│   │   ├── extend `query_history` schema with `read_kind` enum
+│   │   │   (`api`, `pql_table`, `engine_direct`) or add a
+│   │   │   sibling `read_history` table — decide on first design
+│   │   │   pass
+│   │   └── PQL primitive instrumentation point: `_client.get_table`
+│   │       in `pointlessql/pql/_write.py` is the choke
+│   ├── Cost-gate EXPLAIN-snapshot in `agent_runs.denied_reason`
+│   │   └── when Sprint-13.1 cost gate denies, store the full
+│   │       EXPLAIN-FORMAT-JSON output as a JSON column so the
+│   │       reviewer can see WHY without re-running the query
+│   ├── External-write detection ("unattributed writes")
+│   │   ├── poll `_delta_log/*.json` for new commits whose
+│   │   │   CommitInfo doesn't match an `agent_run_operations`
+│   │   │   row in the same Delta-version range
+│   │   ├── flag in run-detail UI as "external/unattributed write
+│   │   │   between version N and N+1" with timestamp + commit
+│   │   │   metadata
+│   │   └── Detection-only — does NOT block external writers.
+│   │       Hard-block via storage permissions stays Phase 16+ if
+│   │       a real customer ever asks
+│   └── Run-detail "Tool calls" UI tab (carried over from
+│       Sprint 13.10 if not landed by then) — backend exists
+│       since Sprint 13.7.4 (Alembic 024), template tab between
+│       Operations and Queries was never added.  Tool calls show
+│       up only via Events + Audit log today
+│
+├── Phase 15 — Provenance Log (data + LLM signed audit)    ⏳ queued
+│   │
+│   │   The compliance-driven moat.  Two complementary
+│   │   cryptographically-signed logs that together answer
+│   │   "AI-Act-Art.-12-grade autonomous data analysis":
+│   │
+│   │   - **Data-provenance log** — per-row lineage:
+│   │     "output row 47 in main.silver.orders came from input
+│   │     row 12 in bronze.csv".  See
+│   │     ``project_full_autonomous_audit_critical_path.md`` for
+│   │     the design space (per-row lineage column vs. shadow
+│   │     lineage tables).  Today operation+source lineage is
+│   │     captured; row-level is greenfield.
+│   │
+│   │   - **LLM-provenance log** — full signed token-trail
+│   │     (system prompt, conversation, model output incl.
+│   │     reasoning, tool-call args+response, sampling params,
+│   │     correlation IDs to sandbox / approval / agent_run_id).
+│   │     Lives in shoreguard, not PointlesSQL — see
+│   │     ``project_shoreguard_provenance_log.md`` for the full
+│   │     design + storage tradeoffs.
+│   │
+│   │   Bundling both under one phase because they answer the
+│   │   same compliance question from two angles ("why did the
+│   │   agent decide?" vs "which input row produced this row?")
+│   │   and a serious enterprise buyer wants both.  Don't ship
+│   │   one without the other.
+│   │
+│   │   Out-of-scope: model-deprecation replay (storage tier
+│   │   tradeoff) ships as a Phase-15 follow-up.
+│   │
+│   ├── Per-row lineage spike (~3 sprints) — pick column-vs-
+│   │   shadow-table approach via prototype on `pql.merge`,
+│   │   benchmark storage cost on the medallion fixture
+│   ├── Shoreguard Provenance Log MVP (~7 sprints, see memory) —
+│   │   L7 proxy interception, OCSF + token-trail schema,
+│   │   PII-redaction, cross-plane correlation, Merkle-tree
+│   │   signing, forensic replay UI, retention tiering
+│   └── Cross-plane query: "show me everything that happened
+│       around incident X" surfaces both signed logs joined on
+│       agent_run_id + sandbox_id + approval_id
+│
+├── Phase 16 — Delta-Branching + first-class Rollback      ⏳ queued
+│   │
+│   │   The agent-trust UX.  Two patterns:
+│   │
+│   │   - **Branching** is proactive: every agent run gets a
+│   │     zero-copy branch, promote-to-main is a shoreguard-
+│   │     gated approval, discard is free.  Full design in
+│   │     ``project_delta_branching_idea.md``.
+│   │   - **Rollback** is reactive: a run already hit main and
+│   │     a human at 09:00 wants ONE button to undo it.  Today
+│   │     Delta time-travel exists but no first-class primitive
+│   │     and no UI.
+│   │
+│   │   Both are needed.  Don't conflate.  Cascade-aware so a
+│   │   silver-table rollback warns when downstream gold tables
+│   │   were computed from it.
+│   │
+│   ├── `pql.rollback(target, before_run=run_id)` primitive —
+│   │   resolves Delta version via
+│   │   ``agent_run_operations.delta_version_before``, emits its
+│   │   own `agent_run_operations` row (rollback IS an operation)
+│   ├── `/runs/{id}` "Rollback this run" button (admin-gated,
+│   │   shoreguard-approval-required) with cascade preview
+│   ├── `pql.branch("name")` API — creates UC schema branch via
+│   │   Delta `SHALLOW CLONE`, soyuz metadata extension for
+│   │   parent + creation time, automatic cleanup of idle
+│   │   branches after N days
+│   ├── Promote/discard workflow via shoreguard approval flow —
+│   │   "promote experiment-X to main" is a shoreguard policy
+│   │   target indistinguishable from any other write approval
+│   └── Control-Room UI: list active branches, owners, compute
+│       cost, promote/discard per branch
 │
 ├── Icebox — enterprise-audit follow-ups                  🧊 on ice
 │   │

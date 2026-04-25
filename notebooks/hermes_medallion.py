@@ -49,6 +49,12 @@ from pathlib import Path
 
 from pointlessql.pql import PQL
 
+# Sprint 13.10: PQL lazy-inits the metadata DB when a run id is
+# resolved (env or kwarg), so subprocess-spawned notebooks like
+# this one no longer need an explicit ``init_db`` boilerplate —
+# the FastAPI-lifespan-or-bust constraint is gone for the
+# Hermes terminal-tool spawn path.
+
 CATALOG = os.environ.get("MEDALLION_CATALOG", "main")
 VOLUME_PATH = Path(
     os.environ.get(
@@ -80,11 +86,11 @@ print(
 
 # %% pql_cell_id="dddddddd-dddd-4ddd-8ddd-dddddddddddd"
 bronze_result = pql.autoload(
-    source=str(VOLUME_PATH),
+    source_path=str(VOLUME_PATH),
     target=BRONZE_TABLE,
 )
-print(f"Bronze: {bronze_result.rows_ingested} rows added across "
-      f"{bronze_result.files_ingested} file(s)")
+print(f"Bronze: {bronze_result['rows_ingested']} rows added across "
+      f"{bronze_result['files_ingested']} file(s)")
 
 # %% [markdown] pql_cell_id="eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
 # ## Silver — dedup + type via ``pql.merge``
@@ -108,13 +114,26 @@ silver_source = (
         placed_at=lambda d: pd.to_datetime(d["placed_at"], utc=True),
     )
 )
-silver_result = pql.merge(
-    source=silver_source,
-    target=SILVER_TABLE,
-    on=["order_id"],
-    strategy="upsert",
-)
-print(f"Silver: {silver_result.rows_affected} row(s) merged")
+# ``pql.merge`` requires the target to exist (Sprint 13.5.2 contract);
+# on the very first run we fall back to ``write_table`` to bootstrap
+# silver, then subsequent runs follow the upsert path.  A future
+# ``pql.merge(..., create=True)`` flag would collapse this into one
+# call but it is not in scope for Sprint 13.10.
+try:
+    silver_result = pql.merge(
+        source=silver_source,
+        target=SILVER_TABLE,
+        on=["order_id"],
+        strategy="upsert",
+    )
+    print(f"Silver: {silver_result.get('num_target_rows_inserted', 0)} inserted, "
+          f"{silver_result.get('num_target_rows_updated', 0)} updated")
+except Exception as exc:  # noqa: BLE001 — bootstrap path; see comment above
+    if "does not exist" not in str(exc):
+        raise
+    print(f"Silver: bootstrap (target missing) — {exc.__class__.__name__}")
+    pql.write_table(silver_source, SILVER_TABLE, mode="overwrite")
+    print(f"Silver: bootstrapped {len(silver_source)} row(s)")
 
 # %% [markdown] pql_cell_id="11111111-1111-4111-8111-aaaaaaaaaaaa"
 # ## Gold — aggregation via ``pql.sql``
@@ -124,19 +143,17 @@ print(f"Silver: {silver_result.rows_affected} row(s) merged")
 # without manual cleanup.
 
 # %% pql_cell_id="22222222-2222-4222-8222-bbbbbbbbbbbb"
-gold_sql = f"""
-CREATE OR REPLACE TABLE {GOLD_TABLE} AS
-SELECT
-    DATE_TRUNC('day', placed_at) AS placed_day,
-    product,
-    SUM(qty)               AS units_sold,
-    ROUND(SUM(qty * unit_price), 2) AS revenue
-FROM {SILVER_TABLE}
-GROUP BY 1, 2
-ORDER BY 1, 2
-"""
-pql.sql(gold_sql)
-print(f"Gold: {GOLD_TABLE} refreshed")
+# pql.sql is SELECT-only.  Read silver, aggregate in pandas, then
+# materialise gold via write_table (mode='overwrite' = CREATE OR REPLACE).
+silver_df = pql.table(SILVER_TABLE)
+silver_df["placed_day"] = silver_df["placed_at"].dt.floor("D")
+silver_df["line_revenue"] = silver_df["qty"] * silver_df["unit_price"]
+gold_df = silver_df.groupby(["placed_day", "product"], as_index=False).agg(
+    units_sold=("qty", "sum"),
+    revenue=("line_revenue", lambda s: round(s.sum(), 2)),
+)
+pql.write_table(gold_df, GOLD_TABLE, mode="overwrite")
+print(f"Gold: {GOLD_TABLE} refreshed with {len(gold_df)} aggregate row(s)")
 
 # %% [markdown] pql_cell_id="33333333-3333-4333-8333-cccccccccccc"
 # ## Done

@@ -54,6 +54,18 @@ class PQL:
     ``principal`` argument; otherwise the ``POINTLESSQL_PRINCIPAL``
     env var; otherwise an unforwarded client.
 
+    Sprint 13.10 added lazy metadata-DB initialisation.  When the
+    agent runtime spawns the ``.py`` as a subprocess the FastAPI
+    lifespan never runs, so the audit-trail writes from
+    :meth:`autoload` / :meth:`merge` / :meth:`write_table` raise
+    ``RuntimeError("Database not initialised — call init_db() first")``.
+    If a run id is resolved (explicit ``agent_run_id`` or env) and
+    the session factory is unbound, ``__init__`` lazy-calls
+    :func:`pointlessql.db.init_db` against ``settings.db.url`` so
+    agent-authored notebooks need no DB-init boilerplate.  The
+    interactive path stays untouched because it is gated on
+    ``self._current_run_id``.
+
     Args:
         client: An existing ``soyuz_catalog_client.Client`` instance.
             When ``None``, one is built via ``make_soyuz_client()`` (or
@@ -104,6 +116,20 @@ class PQL:
         # interactive PQL path agnostic — no operation rows are
         # emitted.
         self._current_run_id = agent_run_id or os.environ.get("POINTLESSQL_AGENT_RUN_ID")
+        # Sprint 13.10: subprocess-spawned agent notebooks bypass the
+        # FastAPI lifespan, so ``get_session_factory()`` would raise
+        # on the first ``agent_run_operations`` write.  Lazy-init the
+        # metadata DB when a run id was resolved and no factory is
+        # bound yet.  ``init_db`` is idempotent under repeated
+        # invocations on the same URL — alembic upgrade-to-head is a
+        # no-op once head is reached.
+        if self._current_run_id:
+            from pointlessql.db import get_session_factory, init_db
+
+            try:
+                get_session_factory()
+            except RuntimeError:
+                init_db(resolved.db.url)
 
     def table(self, full_name: str) -> Any:
         """Read a Delta table registered in Unity Catalog.

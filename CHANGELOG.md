@@ -4,6 +4,52 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — Phase 13 / Sprint 13.10: Hermes-Medallion live-replay fixups
+
+Closes the four findings from the 2026-04-25 manual walkthrough
+replay so the Sprint-13.5.5 playbook is reproducible end-to-end
+without manual workarounds.
+
+- **Fixed** [`notebooks/hermes_medallion.py`](notebooks/hermes_medallion.py)
+  — three API-shape bugs that hit on the first cell:
+  `pql.autoload(source=…)` → `source_path=…`, dict result-access
+  for `bronze_result["rows_ingested"]` (autoload returns a
+  dict, not a dataclass), and `pql.sql("CREATE OR REPLACE TABLE…")`
+  rewritten as `pql.table` → pandas aggregate → `pql.write_table`
+  (`pql.sql` is SELECT-only with an explicit approved-tables
+  guard).  Silver step keeps a try/except bootstrap to
+  `pql.write_table` on first-ever run because `pql.merge`
+  requires the target to exist (Sprint 13.5.2 contract; a
+  future `pql.merge(create=True)` flag is out of scope here).
+- **Added** lazy metadata-DB init in [`PQL.__init__`](pointlessql/pql/pql.py).
+  When the resolver finds an `agent_run_id` (explicit kwarg or
+  `POINTLESSQL_AGENT_RUN_ID` env) and the session factory is
+  unbound, the constructor calls
+  [`pointlessql.db.init_db`](pointlessql/db.py) against
+  `settings.db.url`.  Subprocess-spawned agent notebooks that
+  bypass the FastAPI lifespan no longer need a manual
+  `init_db()` boilerplate; the interactive PQL path stays
+  untouched because the branch is gated on a truthy run id.
+  Idempotent — Alembic upgrade-to-head is a no-op once head
+  is reached.
+- **Added** "Tool calls" tab to
+  [`pages/run_view.html`](frontend/templates/pages/run_view.html)
+  between Operations and Queries, plus a new
+  `_load_tool_calls_for_run` helper in
+  [`api/runs_routes.py`](pointlessql/api/runs_routes.py).
+  Backend (Alembic 024 + `POST /api/agent-runs/{id}/tool-call`
+  + `pointlessql.agent_run.tool_call` CloudEvent) shipped in
+  Sprint 13.7.4; the template tab was deferred until now.
+  Lists each `agent_run_tool_calls` row with truncated
+  `args_json` + `result_summary` and the wall-clock duration.
+- **Updated** [`docs/e2e-walkthroughs/hermes_medallion.md`](docs/e2e-walkthroughs/hermes_medallion.md)
+  precondition 2 — schema bootstrap is now an explicit `curl`
+  loop that sets `storage_root` on `POST /schemas`.  Cross-
+  references the soyuz `docs/reference/api.md` note that
+  `UpdateSchema` deliberately rejects `storage_root` (UC
+  semantics: set-on-create, mutating it would orphan managed
+  Delta files).
+
 ### Added — Phase 13.5 / Sprint 13.5.5: Hermes-Medallion walkthrough
 
 The reproducible **done moment** for Phase 13 + 13.5: an

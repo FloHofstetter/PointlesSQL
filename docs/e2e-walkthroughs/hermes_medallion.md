@@ -33,7 +33,22 @@ shipped in one run:
    `POINTLESSQL_SOYUZ_CATALOG_URL` (default
    `http://127.0.0.1:8080`).  The Medallion schemas
    (`main.bronze`, `main.silver`, `main.gold`) must already
-   exist — create them in the catalog browser if needed.
+   exist with their `storage_root` set — UC semantics make
+   `storage_root` set-on-create only, so a schema that was
+   created without one cannot be patched later (Sprint 13.10
+   doc-fix in soyuz `docs/reference/api.md`).  Either create
+   them in the catalog browser with the storage-root field
+   filled in, or shell-script it:
+   ```bash
+   for layer in bronze silver gold; do
+     curl -fsS -X POST "$POINTLESSQL_SOYUZ_CATALOG_URL/api/2.1/unity-catalog/schemas" \
+       -H 'Content-Type: application/json' \
+       -d "{\"name\": \"$layer\", \"catalog_name\": \"main\",
+            \"storage_root\": \"file:///tmp/pql_demo_warehouse/$layer\"}"
+   done
+   ```
+   If a schema already exists without `storage_root`,
+   `DELETE` it first (PATCH is rejected by design).
 3. **Hermes** installed (`~/git/hermes-agent` clone) with the
    `hermes-plugin-pointlessql` symlinked under
    `${HERMES_HOME:-$HOME/.hermes}/plugins/pointlessql/`:

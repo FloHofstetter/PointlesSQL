@@ -210,7 +210,10 @@
 
 {# Sprint 13.8 — Run-detail tabs.  Cells stays the default tab so
    pre-13.8 muscle memory keeps working; Operations / Source /
-   Events surface the new forced-audit data behind the same URL. #}
+   Events surface the new forced-audit data behind the same URL.
+   Sprint 13.10 added the "Tool calls" tab between Operations and
+   Queries — backend (Alembic 024 + POST route + CloudEvent type)
+   shipped in Sprint 13.7.4 but the tab was deferred. #}
 <ul class="nav nav-tabs mb-3" id="runDetailTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" id="tab-cells-btn" data-bs-toggle="tab"
@@ -226,6 +229,14 @@
                 aria-controls="tab-ops" aria-selected="false">
             <i class="bi bi-list-ol me-1"></i>Operations
             {% if operations %}<span class="badge bg-secondary ms-1">{{ operations | length }}</span>{% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-tool-calls-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-tool-calls" type="button" role="tab"
+                aria-controls="tab-tool-calls" aria-selected="false">
+            <i class="bi bi-tools me-1"></i>Tool calls
+            {% if tool_calls %}<span class="badge bg-secondary ms-1">{{ tool_calls | length }}</span>{% endif %}
         </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -381,6 +392,52 @@
             <code>pql.autoload</code>, <code>pql.merge</code>,
             <code>pql.write_table</code>, and <code>pql.sql</code> when
             the agent runtime sets <code>POINTLESSQL_AGENT_RUN_ID</code>.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="tab-tool-calls" role="tabpanel" aria-labelledby="tab-tool-calls-btn">
+        {% if tool_calls %}
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 small align-middle">
+                    <thead>
+                        <tr>
+                            <th>Called</th>
+                            <th>Tool</th>
+                            <th>Args</th>
+                            <th>Result summary</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tc in tool_calls %}
+                        <tr>
+                            <td class="font-monospace text-muted">{{ tc.called_at or "&mdash;" | safe }}</td>
+                            <td><span class="badge bg-secondary text-uppercase">{{ tc.tool_name }}</span></td>
+                            <td class="font-monospace small">
+                                <code title="{{ tc.args_json }}">{{ tc.args_json[:120] }}{% if tc.args_json | length > 120 %}…{% endif %}</code>
+                            </td>
+                            <td class="font-monospace small">
+                                {% if tc.result_summary %}
+                                <code title="{{ tc.result_summary }}">{{ tc.result_summary[:120] }}{% if tc.result_summary | length > 120 %}…{% endif %}</code>
+                                {% else %}
+                                <span class="text-muted">&mdash;</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-monospace text-muted">{{ tc.duration_ms ~ ' ms' if tc.duration_ms is not none else "&mdash;" | safe }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            No tool calls recorded for this run.  Tool calls are persisted by the
+            <code>hermes-plugin-pointlessql</code> <code>post_tool_call</code> hook for any tool
+            whose name starts with <code>pql_</code> (Sprint 13.7.4).
         </div>
         {% endif %}
     </div>
