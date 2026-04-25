@@ -80,6 +80,7 @@ async def api_list_queries(
     user_id: int | None = None,
     status: str | None = None,
     since: str | None = None,
+    agent_run_id: str | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
     """Return recent query-history rows as JSON.
@@ -95,6 +96,7 @@ async def api_list_queries(
         user_id: Optional user-ID filter (admin only).
         status: Optional status filter.
         since: Window string (``24h`` / ``7d`` / ``30d`` / ``all``).
+        agent_run_id: Sprint 13.9 — optional run-UUID filter.
         limit: Hard row cap (default 200).
 
     Returns:
@@ -108,12 +110,16 @@ async def api_list_queries(
     if not user.get("is_admin"):
         user_id = user["id"]
     effective_limit = max(1, min(int(limit), 1000))
+    cleaned_run_id = (
+        agent_run_id.strip() if isinstance(agent_run_id, str) and agent_run_id.strip() else None
+    )
     return await asyncio.to_thread(
         query_history_service.list_queries,
         factory,
         user_id=user_id,
         status=status,
         since=parse_since(since),
+        agent_run_id=cleaned_run_id,
         limit=effective_limit,
     )
 
@@ -217,22 +223,42 @@ async def api_update_query_chart_config(
 
 
 @router.get("/queries", response_class=HTMLResponse)
-async def queries_page(request: Request) -> HTMLResponse:
+async def queries_page(
+    request: Request, agent_run_id: str | None = None,
+) -> HTMLResponse:
     """Render the Phase-12 query history page.
 
     Pre-loads the initial history slice server-side so the page
     paints without waiting on a second round-trip; the list-table
     Alpine component then takes over for chip filtering and sort.
+
+    Sprint 13.9 — when an ``agent_run_id`` query param is present
+    the pre-loaded slice scopes to that run only and the page
+    surfaces a dismissable filter pill so users see they're
+    inside a sub-view.
+
+    Args:
+        request: The incoming FastAPI request.
+        agent_run_id: Optional run-UUID filter via the URL query
+            string (typically arrived from a Sprint-13.8
+            run-detail "Queries" tab link).
+
+    Returns:
+        The rendered HTML page.
     """
     factory = getattr(request.app.state, "session_factory", None)
     user = get_user(request)
     entries: list[dict[str, Any]] = []
+    cleaned_run_id = (
+        agent_run_id.strip() if isinstance(agent_run_id, str) and agent_run_id.strip() else None
+    )
     if factory is not None:
         user_filter: int | None = None if user.get("is_admin") else user["id"]
         entries = await asyncio.to_thread(
             query_history_service.list_queries,
             factory,
             user_id=user_filter,
+            agent_run_id=cleaned_run_id,
             limit=200,
         )
     return _templates(request).TemplateResponse(
@@ -240,6 +266,7 @@ async def queries_page(request: Request) -> HTMLResponse:
         "pages/queries.html",
         {
             "entries": entries,
+            "agent_run_filter": cleaned_run_id,
             "active_page": "queries",
             "active_catalog": None,
             "active_schema": None,

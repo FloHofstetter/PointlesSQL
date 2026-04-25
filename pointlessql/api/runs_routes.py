@@ -35,6 +35,7 @@ from pointlessql.models import (
     AuditLog,
     NotebookCellRun,
     NotebookOutput,
+    QueryHistory,
 )
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services import notebook_doc as notebook_doc_service
@@ -297,6 +298,49 @@ def _load_events_for_run(
     return out
 
 
+def _load_queries_for_run(
+    request: Request, run_id: str,
+) -> list[dict[str, Any]]:
+    """Return all ``query_history`` rows attributed to *run_id*.
+
+    Sprint 13.9 — the run-detail view's Queries tab.  Ordered by
+    ``started_at DESC`` so the most recent execution sits at the
+    top, mirroring the standalone ``/queries`` page.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string of the owning run.
+
+    Returns:
+        List of dicts with ``id``, ``sql_text``, ``status``,
+        ``row_count``, ``duration_ms``, ``started_at``, and
+        ``error_message``.
+    """
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(QueryHistory)
+            .where(QueryHistory.agent_run_id == run_id)
+            .order_by(QueryHistory.started_at.desc())
+        )
+        for row in session.scalars(stmt).all():
+            out.append(
+                {
+                    "id": row.id,
+                    "sql_text": row.sql_text,
+                    "status": row.status,
+                    "row_count": row.row_count,
+                    "duration_ms": row.duration_ms,
+                    "started_at": (
+                        row.started_at.isoformat() if row.started_at else None
+                    ),
+                    "error_message": row.error_message,
+                }
+            )
+    return out
+
+
 def _load_cell_runs_for_run(
     request: Request, run_id: str,
 ) -> dict[str, dict[str, Any]]:
@@ -478,6 +522,7 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             "operations": _load_operations_for_run(request, run_id),
             "source": _load_source_for_run(request, run_id),
             "events": _load_events_for_run(request, run_id),
+            "queries": _load_queries_for_run(request, run_id),
             "conformance_findings": [
                 {
                     "table_full_name": f.table_full_name,

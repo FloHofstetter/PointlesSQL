@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.9: Run-scoped query history
+
+Smaller follow-up to 13.8: every ``query_history`` row can now
+carry the owning ``agent_run_id`` so the run-detail view can
+answer "which queries did this run execute?" and the standalone
+``/queries`` page accepts a sub-view filter.
+
+- **New** Alembic [023_query_history_agent_run.py](pointlessql/alembic/versions/023_query_history_agent_run.py)
+  — adds nullable ``agent_run_id String(36)`` column to
+  ``query_history`` plus a partial index (``IS NOT NULL``).  No
+  FK by design so query history outlives a deleted run.
+- **New** :func:`pointlessql.api._audit_helpers.effective_agent_run_id`
+  — resolves the active run UUID from ``X-Agent-Run-Id`` header
+  (HTTP wins) → ``POINTLESSQL_AGENT_RUN_ID`` env var.
+- ``record_query_async`` and the underlying
+  :func:`pointlessql.services.query_history.record_query` accept
+  an ``agent_run_id`` kwarg; non-UUID-shaped values are dropped
+  with a warning so query history stays tolerant.
+- ``GET /queries`` and ``GET /api/queries`` accept a
+  ``?agent_run_id=`` query parameter; the HTML page surfaces a
+  dismissable filter pill linking back to ``/queries``.
+- Run-detail-view gained a **Queries** tab between *Operations*
+  and *Source* listing the matching ``query_history`` rows with
+  a deep-link to the filtered ``/queries`` page.
+- **Tests** — [tests/test_query_history_run_scope.py](tests/test_query_history_run_scope.py)
+  covers persistence, garbage drop, filter, header→history
+  attribution, the page-level filter pill, and the new tab.
+
 ### Added — Phase 13 / Sprint 13.8: Forced audit trail
 
 Closes the four supervision gaps surfaced during the 2026-04-24

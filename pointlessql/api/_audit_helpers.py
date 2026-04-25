@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from datetime import datetime
 from typing import Any
 
@@ -24,6 +25,31 @@ from pointlessql.services import audit as audit_service
 from pointlessql.services import query_history as query_history_service
 
 logger = logging.getLogger(__name__)
+
+
+def effective_agent_run_id(request: Request) -> str | None:
+    """Resolve the active ``agent_run_id`` for the current request.
+
+    Sprint 13.9 — mirrors the X-Principal precedence:
+    ``X-Agent-Run-Id`` HTTP header wins over the
+    ``POINTLESSQL_AGENT_RUN_ID`` env var, both are case-insensitive
+    on the env-var side.  Returned value is whitespace-stripped;
+    empty / missing collapses to ``None``.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The resolved run-UUID string, or ``None`` when no run is
+        in scope.
+    """
+    header = request.headers.get("X-Agent-Run-Id")
+    if isinstance(header, str) and header.strip():
+        return header.strip()
+    env = os.environ.get("POINTLESSQL_AGENT_RUN_ID")
+    if env and env.strip():
+        return env.strip()
+    return None
 
 
 async def record_query_async(
@@ -37,6 +63,7 @@ async def record_query_async(
     duration_ms: int | None,
     referenced_tables: list[str],
     error_message: str | None = None,
+    agent_run_id: str | None = None,
 ) -> int | None:
     """Persist a Phase-12 query-history row without blocking the loop.
 
@@ -59,6 +86,10 @@ async def record_query_async(
             May be empty if the SQL did not parse.
         error_message: Exception detail for failures; ``None`` on
             success.
+        agent_run_id: Sprint 13.9 explicit run-UUID override.  When
+            ``None`` the resolution falls back to
+            :func:`effective_agent_run_id` so callers in the route
+            layer don't need to thread the header through.
 
     Returns:
         The new ``query_history.id`` on success; ``None`` if no
@@ -73,6 +104,10 @@ async def record_query_async(
     # Hermes-driven query is attributed to the agent's principal, not
     # the (probably-empty) session-cookie user on the agent side.
     attributed_email = effective_principal(request) or user["email"]
+    # Sprint 13.9: explicit kwarg wins over header/env so internal
+    # callers (e.g. PQL primitives via Sprint 13.8 trail) can pass
+    # the run id without depending on request headers.
+    resolved_run_id = agent_run_id or effective_agent_run_id(request)
     try:
         return await asyncio.to_thread(
             query_history_service.record_query,
@@ -88,6 +123,7 @@ async def record_query_async(
             referenced_tables=referenced_tables,
             error_message=error_message,
             request_id=request_id,
+            agent_run_id=resolved_run_id,
         )
     except Exception as exc:  # noqa: BLE001 — never mask the query response
         logger.warning("failed to record query_history row: %s", exc)

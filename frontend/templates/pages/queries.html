@@ -18,6 +18,19 @@
     </span>
 </div>
 
+{% if agent_run_filter %}
+<div class="alert alert-info d-flex align-items-center justify-content-between py-2 mb-3" role="status">
+    <div>
+        <i class="bi bi-funnel me-1"></i>
+        Filtered to agent run
+        <a href="/runs/{{ agent_run_filter }}" class="font-monospace">{{ agent_run_filter }}</a>
+    </div>
+    <a href="/queries" class="btn btn-sm btn-outline-secondary" aria-label="Clear filter">
+        <i class="bi bi-x-lg"></i> Clear
+    </a>
+</div>
+{% endif %}
+
 {% if not entries %}
 <div class="card">
     <div class="card-body text-center text-muted py-5">

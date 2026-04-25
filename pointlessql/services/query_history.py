@@ -34,6 +34,39 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+_RUN_ID_LENGTH = 36
+
+
+def _sanitise_run_id(value: str | None) -> str | None:
+    """Drop garbage values before they hit the indexed column.
+
+    A UUIDv4 string is exactly 36 characters (32 hex + 4 dashes).
+    Anything else is logged and dropped — the column is best-effort
+    metadata, never a security gate, so being tolerant of malformed
+    callers keeps query history landing.
+
+    Args:
+        value: Raw caller-supplied run-id or ``None``.
+
+    Returns:
+        The trimmed 36-char run-id, or ``None`` when ``value`` is
+        falsy / wrong-shaped.
+    """
+    if value is None:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    if len(cleaned) != _RUN_ID_LENGTH:
+        logger.warning(
+            "query_history: dropping non-UUID agent_run_id %r (len=%d)",
+            cleaned,
+            len(cleaned),
+        )
+        return None
+    return cleaned
+
+
 def record_query(
     factory: sessionmaker[Session],
     *,
@@ -48,6 +81,7 @@ def record_query(
     referenced_tables: list[str],
     error_message: str | None = None,
     request_id: str | None = None,
+    agent_run_id: str | None = None,
 ) -> int:
     """Insert a :class:`QueryHistory` row plus its table-reference rows.
 
@@ -73,11 +107,19 @@ def record_query(
         request_id: Correlates with the Sprint-16 request-id log
             field.  ``None`` when called from contexts that do not
             have a request scope.
+        agent_run_id: Sprint 13.9 — owning ``AgentRun.id`` when the
+            query came from a registered run (resolved by the route
+            from the ``X-Agent-Run-Id`` header or the
+            ``POINTLESSQL_AGENT_RUN_ID`` env var).  Garbage-shaped
+            values are dropped silently (UUID-like 36-char check
+            only) so query history stays tolerant of malformed
+            inputs.
 
     Returns:
         The auto-assigned ``QueryHistory.id`` of the new row (so
         the caller can surface it in an export deep-link etc.).
     """
+    sanitised_run_id = _sanitise_run_id(agent_run_id)
     with factory() as session:
         entry = QueryHistory(
             user_id=user_id,
@@ -90,6 +132,7 @@ def record_query(
             duration_ms=duration_ms,
             error_message=error_message,
             request_id=request_id,
+            agent_run_id=sanitised_run_id,
         )
         session.add(entry)
         session.flush()  # assigns entry.id for the FK below
@@ -118,6 +161,7 @@ def list_queries(
     user_id: int | None = None,
     status: str | None = None,
     since: datetime.datetime | None = None,
+    agent_run_id: str | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
     """Return recent query-history rows as plain dicts.
@@ -128,6 +172,8 @@ def list_queries(
             all users (admin-only caller).
         status: Filter to a single status string.  ``None`` returns all.
         since: Filter to ``started_at >= since``.  ``None`` returns all.
+        agent_run_id: Sprint 13.9 — filter to rows whose
+            ``agent_run_id`` matches.  ``None`` returns all.
         limit: Hard row cap.  Also enforces ORDER BY ``started_at DESC``
             so the most recent activity is at the top.
 
@@ -143,6 +189,8 @@ def list_queries(
         stmt = stmt.where(QueryHistory.status == status)
     if since is not None:
         stmt = stmt.where(QueryHistory.started_at >= since)
+    if agent_run_id is not None:
+        stmt = stmt.where(QueryHistory.agent_run_id == agent_run_id)
 
     with factory() as session:
         rows = session.scalars(stmt).all()
@@ -171,6 +219,7 @@ def list_queries(
                 "request_id": r.request_id,
                 "tables": tables_by_id.get(r.id, []),
                 "chart_config": r.chart_config,
+                "agent_run_id": r.agent_run_id,
             }
             for r in rows
         ]
@@ -222,6 +271,7 @@ def get_by_id(
             "request_id": row.request_id,
             "tables": [t.full_name for t in tables],
             "chart_config": row.chart_config,
+            "agent_run_id": row.agent_run_id,
         }
 
 
@@ -276,6 +326,7 @@ def update_chart_config(
             "request_id": row.request_id,
             "tables": [t.full_name for t in tables],
             "chart_config": row.chart_config,
+            "agent_run_id": row.agent_run_id,
         }
 
 

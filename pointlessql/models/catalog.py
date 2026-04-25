@@ -138,6 +138,11 @@ class QueryHistory(Base):
             user's chart selection (type, X column, Y column) so
             re-runs from ``/queries`` replay the same visualisation.
             ``None`` means "show the table view".
+        agent_run_id: Sprint 13.9 — owning :class:`AgentRun` UUID
+            when the query came from a registered run.  ``None``
+            for plain interactive editor traffic.  No FK by
+            design so deleting a run does not cascade-erase its
+            query history.
     """
 
     __tablename__ = "query_history"
@@ -161,6 +166,7 @@ class QueryHistory(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     chart_config: Mapped[str | None] = mapped_column(Text, nullable=True)
+    agent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 
 class QueryHistoryTable(Base):
