@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.11.2: Reflexive supervision tools (Family A pair 2)
+
+Highest-ROI tools from the walkthrough bug analysis: agents can now
+ask "does this target exist?" and "did similar writes fail
+recently?" before acting.
+
+- **Added** `GET /api/pql/target-state?table=catalog.schema.table` in
+  [`pointlessql/api/pql_introspect_routes.py`](pointlessql/api/pql_introspect_routes.py)
+  — fuses the principal-scoped UC `get_table` lookup with the
+  Sprint-13.8 `agent_run_operations` history (last 5 writes) into
+  one response. `CatalogNotFoundError` from the soyuz client maps
+  to `exists=False`.
+- **Added** `GET /api/agent-runs/operations` in
+  [`pointlessql/api/agent_runs_routes.py`](pointlessql/api/agent_runs_routes.py)
+  — filterable list of operation rows (`target`, `errored`,
+  `since`, `limit`). Bad ISO-8601 in `since` raises a 422
+  ValidationError so callers see the parse failure.
+- **Added** test
+  [`tests/test_target_state_route.py`](tests/test_target_state_route.py)
+  — covers existence boolean, schema projection, three-part-name
+  rejection, errored-only filtering, and ISO-parse failure.
+
 ### Added — Phase 13 / Sprint 13.11.1: Reflexive supervision tools (Family A pair 1)
 
 First slice of the Sprint-13.11 read-loop close-out: agents can now

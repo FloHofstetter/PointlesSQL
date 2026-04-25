@@ -9,9 +9,9 @@ This module hosts every ``GET /api/pql/...`` route that lets a
 working-agent (Family A) check state mid-run.  Sprint 13.11.1 ships
 ``GET /api/pql/primitives``: introspection over the :class:`PQL`
 public methods so an agent that gets a ``TypeError`` from
-``pql.autoload(source=...)`` can ask for the real signature.
-Subsequent sub-sprints layer ``target-state`` (13.11.2),
-``recent-failures`` (13.11.2), and ``lineage`` (13.11.3) on top.
+``pql.autoload(source=...)`` can ask for the real signature.  Sprint
+13.11.2 layers ``target-state`` on top.  Sprint 13.11.3 will land
+``lineage``.
 """
 
 from __future__ import annotations
@@ -19,8 +19,12 @@ from __future__ import annotations
 import inspect
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, Request
+from sqlalchemy import select
 
+from pointlessql.api.dependencies import get_uc_client
+from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+from pointlessql.models import AgentRunOperation
 from pointlessql.pql.pql import PQL
 
 router = APIRouter(tags=["pql-introspect"])
@@ -86,6 +90,160 @@ async def api_pql_primitives() -> dict[str, Any]:
         and ``doc`` (the Google-style docstring verbatim).
     """
     return {"primitives": _PRIMITIVE_SPECS}
+
+
+def _split_three_part(full_name: str) -> tuple[str, str, str]:
+    """Validate and split a ``catalog.schema.table`` UC reference.
+
+    Args:
+        full_name: Three-part dot-separated identifier.
+
+    Returns:
+        ``(catalog, schema, table)``.
+
+    Raises:
+        ValidationError: When the identifier is empty or has fewer
+            than three non-empty parts.
+    """
+    parts = [p.strip() for p in full_name.split(".")]
+    if len(parts) != 3 or not all(parts):
+        raise ValidationError(
+            "table must be a three-part UC name 'catalog.schema.table'"
+        )
+    return parts[0], parts[1], parts[2]
+
+
+def _serialize_columns(columns_raw: Any) -> list[dict[str, Any]]:
+    """Project the soyuz column payload to a tool-friendly subset.
+
+    Soyuz returns rich column metadata; the agent only needs name +
+    type to decide on join keys, so we trim aggressively to keep the
+    LLM transcript small.
+
+    Args:
+        columns_raw: ``columns`` field from
+            ``UnityCatalogClient.get_table``.
+
+    Returns:
+        List of ``{name, type_text, nullable, comment}`` dicts.
+        Empty when the input is missing or malformed.
+    """
+    if not isinstance(columns_raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for col in columns_raw:  # pyright: ignore[reportUnknownVariableType]
+        if not isinstance(col, dict):
+            continue
+        col_dict: dict[str, Any] = {
+            str(k): v  # type: ignore[reportUnknownArgumentType]
+            for k, v in col.items()  # type: ignore[reportUnknownVariableType]
+        }
+        out.append(
+            {
+                "name": col_dict.get("name"),
+                "type_text": col_dict.get("type_text"),
+                "nullable": col_dict.get("nullable"),
+                "comment": col_dict.get("comment"),
+            }
+        )
+    return out
+
+
+def _last_writes_for_target(
+    request: Request, full_name: str, *, limit: int = 5
+) -> list[dict[str, Any]]:
+    """Return the most recent ``agent_run_operations`` rows for *full_name*.
+
+    Args:
+        request: Incoming FastAPI request.
+        full_name: Three-part UC identifier the operation targeted.
+        limit: Hard cap on the rows returned (default 5).
+
+    Returns:
+        Newest-first list of compact dicts shaped for the
+        ``target-state`` payload.  Operations without a
+        ``finished_at`` timestamp (in-flight or crashed mid-run) sort
+        last because ``finished_at DESC NULLS LAST`` is the SQL
+        standard ordering.
+    """
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(AgentRunOperation)
+            .where(AgentRunOperation.target_table == full_name)
+            .order_by(AgentRunOperation.finished_at.desc())
+            .limit(limit)
+        )
+        for row in session.scalars(stmt).all():
+            out.append(
+                {
+                    "ordinal": row.ordinal,
+                    "op_name": row.op_name,
+                    "agent_run_id": row.agent_run_id,
+                    "rows_affected": row.rows_affected,
+                    "delta_version_before": row.delta_version_before,
+                    "delta_version_after": row.delta_version_after,
+                    "finished_at": (
+                        row.finished_at.isoformat() if row.finished_at else None
+                    ),
+                    "error_message": row.error_message,
+                }
+            )
+    return out
+
+
+@router.get("/api/pql/target-state")
+async def api_pql_target_state(
+    request: Request, table: str = Query(..., description="catalog.schema.table"),
+) -> dict[str, Any]:
+    """Return the current state + recent-write history for one target table.
+
+    Sprint 13.11.2.  Backs the ``pql_target_state`` Hermes tool.
+    The 2026-04-25 walkthrough's ``pql.merge`` failure (target
+    didn't exist yet) would have been avoidable with one call to
+    this route: an ``exists=False`` response tells the agent to
+    pick ``write_table`` as the bootstrap path instead.
+
+    The route fuses two reads into one response so the agent doesn't
+    need to chain ``pql_get_table`` + a hypothetical operations-
+    history call.  ``schema`` is ``None`` when the table doesn't
+    exist; ``last_5_writes`` is empty when no agent run has touched
+    the table yet (or when the catalog is older than Sprint 13.8).
+
+    Args:
+        request: Incoming FastAPI request — supplies the
+            principal-scoped UC client.
+        table: Three-part UC identifier.
+
+    Returns:
+        ``{"table", "exists", "schema", "last_5_writes"}``.
+        :func:`_split_three_part` raises :class:`ValidationError`
+        when ``table`` lacks three non-empty parts; FastAPI's
+        exception handlers translate that into a 400.
+    """
+    catalog, schema_name, table_name = _split_three_part(table)
+    client = get_uc_client(request)
+    exists = True
+    columns: list[dict[str, Any]] = []
+    try:
+        info = await client.get_table(catalog, schema_name, table_name)
+    except CatalogNotFoundError:
+        exists = False
+        info = {}
+    if exists and info:
+        columns = _serialize_columns(info.get("columns"))
+    elif exists and not info:
+        # UC returned an empty dict for an existing-but-unparseable
+        # row — surface the table as existing but with no schema so
+        # the agent doesn't reason from a fake "exists=False".
+        columns = []
+    return {
+        "table": table,
+        "exists": exists,
+        "schema": columns if exists else None,
+        "last_5_writes": _last_writes_for_target(request, table),
+    }
 
 
 __all__ = ["router"]

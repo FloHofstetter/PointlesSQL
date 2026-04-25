@@ -23,13 +23,13 @@ from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from fastapi import APIRouter, Body, Header, Request
+from fastapi import APIRouter, Body, Header, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
-from pointlessql.models import AgentRunSource, AgentRunToolCall
+from pointlessql.models import AgentRunOperation, AgentRunSource, AgentRunToolCall
 from pointlessql.models.agent_runs import (
     STATUS_QUEUED,
     TERMINAL_STATUSES,
@@ -410,6 +410,98 @@ async def api_finish_agent_run(
             terminal_event, payload, session_factory=factory
         )
     return payload
+
+
+@router.get("/api/agent-runs/operations")
+async def api_list_agent_run_operations(
+    request: Request,
+    target: str | None = Query(default=None, description="catalog.schema.table"),
+    errored: bool = Query(default=False, description="Only return rows with error_message"),
+    since: str | None = Query(default=None, description="ISO-8601 lower bound on started_at"),
+    limit: int = Query(default=50, ge=1, le=500),
+) -> dict[str, Any]:
+    """Filterable list of ``agent_run_operations`` rows.
+
+    Sprint 13.11.2.  Backs the ``pql_recent_failures`` Hermes tool —
+    when an agent is about to retry a write, asking "did this exact
+    target fail recently for someone else?" should be one HTTP call
+    instead of a join through ``/runs``.
+
+    All three filters are optional and AND-ed together.  Rows are
+    returned newest-first by ``started_at`` so the freshest failure
+    is at the top.
+
+    Args:
+        request: Incoming FastAPI request.
+        target: Three-part UC identifier to scope to.  ``None``
+            returns rows across every target.
+        errored: When ``True`` (or any truthy query value), only
+            rows with a non-null ``error_message`` are returned.
+        since: ISO-8601 timestamp (UTC); rows with
+            ``started_at >= since`` are kept.  ``None`` keeps all.
+        limit: Hard cap (default 50, max 500).
+
+    Returns:
+        ``{"operations": [...]}`` with each entry shaped like the
+        per-run operations payload from ``runs_routes._load_operations_for_run``
+        plus an ``agent_run_id`` so the caller can drill back into
+        ``/runs/{id}``.
+
+    Raises:
+        ValidationError: ``since`` is provided but not parseable as
+            ISO-8601.
+    """
+    since_dt: datetime | None = None
+    if since is not None and since.strip():
+        try:
+            since_dt = datetime.fromisoformat(since)
+        except ValueError as exc:
+            raise ValidationError("since must be ISO-8601") from exc
+        if since_dt.tzinfo is None:
+            since_dt = since_dt.replace(tzinfo=UTC)
+
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = select(AgentRunOperation).order_by(AgentRunOperation.started_at.desc())
+        if target is not None and target.strip():
+            stmt = stmt.where(AgentRunOperation.target_table == target.strip())
+        if errored:
+            stmt = stmt.where(AgentRunOperation.error_message.is_not(None))
+        if since_dt is not None:
+            stmt = stmt.where(AgentRunOperation.started_at >= since_dt)
+        stmt = stmt.limit(limit)
+        for row in session.scalars(stmt).all():
+            duration_ms: int | None = None
+            if row.finished_at is not None and row.started_at is not None:
+                duration_ms = int(
+                    (row.finished_at - row.started_at).total_seconds() * 1000
+                )
+            try:
+                params = json.loads(row.params_json)
+            except json.JSONDecodeError:
+                params = {}
+            out.append(
+                {
+                    "id": row.id,
+                    "agent_run_id": row.agent_run_id,
+                    "ordinal": row.ordinal,
+                    "op_name": row.op_name,
+                    "params": params,
+                    "target_table": row.target_table,
+                    "rows_affected": row.rows_affected,
+                    "delta_version_before": row.delta_version_before,
+                    "delta_version_after": row.delta_version_after,
+                    "started_at": row.started_at.isoformat() if row.started_at else None,
+                    "finished_at": (
+                        row.finished_at.isoformat() if row.finished_at else None
+                    ),
+                    "duration_ms": duration_ms,
+                    "error_message": row.error_message,
+                    "status": "error" if row.error_message else "ok",
+                }
+            )
+    return {"operations": out}
 
 
 @router.get("/api/agent-runs")
