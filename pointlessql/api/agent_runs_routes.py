@@ -47,6 +47,7 @@ from pointlessql.services.agent_runs import (
     emit_agent_run_event,
     event_type_for_status,
 )
+from pointlessql.services.run_diff import AlignmentMode, build_detail_diff
 
 logger = logging.getLogger(__name__)
 
@@ -723,22 +724,34 @@ async def api_agent_runs_diff(
     request: Request,
     a: str = Query(..., description="UUID of run A"),
     b: str = Query(..., description="UUID of run B"),
+    detail: bool = Query(default=False),
+    align: str = Query(default="ordinal", pattern="^(ordinal|content)$"),
 ) -> dict[str, Any]:
-    """Summary-level diff between two runs.  Supervisor scope required.
+    """Diff between two runs.  Supervisor scope required.
 
-    Sprint 13.11.4a.  Backs the ``pql_diff_runs`` Hermes tool's v1
-    surface — Sprint 13.11.4b layers ``detail=true`` op-by-op +
-    tool-call-by-tool-call diff on top of the same route.
+    Sprint 13.11.4a shipped the summary surface; Sprint 13.11.4b
+    extends it with the ``detail=true`` op-by-op + tool-call-by-
+    tool-call diff (see
+    :func:`pointlessql.services.run_diff.build_detail_diff` for
+    the alignment strategies).
 
     Args:
         request: Incoming FastAPI request.
         a: Run UUID for the left side of the comparison.
         b: Run UUID for the right side.
+        detail: When ``True``, the response also carries
+            ``operations_diff`` + ``tool_calls_diff``.
+        align: ``"ordinal"`` (default — pair by index) or
+            ``"content"`` (greedy match on op_name/target_table).
 
     Returns:
-        ``{a_summary, b_summary, ops_count_diff, tool_calls_count_diff,
-        queries_count_diff, rows_touched_diff, tables_only_in_a,
-        tables_only_in_b, tables_in_both, status_diff}``.
+        Always ``{a_summary, b_summary, ops_count_diff,
+        tool_calls_count_diff, queries_count_diff, rows_touched_diff,
+        errored_ops_diff, tables_only_in_a, tables_only_in_b,
+        tables_in_both, status_diff}``.  When ``detail=True`` adds
+        ``operations_diff``, ``tool_calls_diff``, ``align``,
+        ``truncated``.
+
         :func:`require_supervisor` raises :class:`AuthorizationError`
         when the caller lacks the ``supervisor`` scope;
         :func:`_load_run_summary_bundle` raises
@@ -752,7 +765,7 @@ async def api_agent_runs_diff(
     summary_b = _summarize_run(run_b, ops_b, tcs_b, qs_b)
     tables_a = set(summary_a["tables_touched"])
     tables_b = set(summary_b["tables_touched"])
-    return {
+    payload: dict[str, Any] = {
         "a_summary": summary_a,
         "b_summary": summary_b,
         "ops_count_diff": summary_b["operations_count"] - summary_a["operations_count"],
@@ -765,6 +778,20 @@ async def api_agent_runs_diff(
         "tables_in_both": sorted(tables_a & tables_b),
         "status_diff": {"a": summary_a["status"], "b": summary_b["status"]},
     }
+    if detail:
+        # FastAPI Query(pattern=…) already constrains align; cast
+        # to the typed alias for the service signature.
+        align_mode: AlignmentMode = "content" if align == "content" else "ordinal"
+        payload.update(
+            build_detail_diff(
+                ops_a=ops_a,
+                ops_b=ops_b,
+                tool_calls_a=tcs_a,
+                tool_calls_b=tcs_b,
+                align=align_mode,
+            )
+        )
+    return payload
 
 
 @router.post("/api/agent-runs/{run_id}/approve")

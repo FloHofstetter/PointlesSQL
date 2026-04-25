@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13 / Sprint 13.11.4b: Detailed op-by-op + tool-call diff
+
+Extends `GET /api/agent-runs/diff` with two optional parameters
+(`detail=true` and `align=ordinal|content`) that surface the
+op-by-op + tool-call-by-tool-call diff alongside the
+Sprint-13.11.4a summary fields.
+
+- **Added** [`pointlessql/services/run_diff.py`](pointlessql/services/run_diff.py)
+  — pure-Python diff service.  Two alignment strategies:
+  `"ordinal"` zips by index, `"content"` greedy-matches on
+  `(op_name, target_table)` for operations and `tool_name` for
+  tool calls.  Per-pair output emits `op_name_diff` /
+  `target_table_diff` / `rows_affected_diff` /
+  `delta_version_after_diff` / `error_diff` / `params_diff` only
+  when those fields actually differ — keeps the LLM transcript
+  small.  Tool-call diffs walk top-level keys of `args_json`.
+  Combined slot count capped at 500 with a `truncated` marker.
+- **Extended** `GET /api/agent-runs/diff` in
+  [`pointlessql/api/agent_runs_routes.py`](pointlessql/api/agent_runs_routes.py)
+  — accepts `detail: bool` + `align: ordinal|content`.  Bad
+  `align` values are rejected by the FastAPI `Query(pattern=…)`
+  validator with a 422.
+- **Added** tests
+  [`tests/test_run_diff_service.py`](tests/test_run_diff_service.py)
+  (pure-unit alignment + diff coverage) and
+  [`tests/test_diff_runs_route.py`](tests/test_diff_runs_route.py)
+  (integration through the supervisor-Bearer auth path).
+
 ### Added — Phase 13 / Sprint 13.11.4a: DB-backed API keys + Family-B supervisor scope
 
 API-key store promoted to a real DB table; new `supervisor` scope
