@@ -44,6 +44,43 @@ _STATUS_TITLES: dict[int, str] = {
 }
 
 
+def _json_safe(value: Any) -> Any:
+    """Coerce a validation-error field value into a JSON-encodable shape.
+
+    Sprint 13.11.5.  ``RequestValidationError.errors()`` can carry
+    raw ``bytes`` in the ``input`` slot when a client posts a body
+    without a JSON ``Content-Type`` (FastAPI then surfaces the
+    payload verbatim).  ``json.dumps`` doesn't know how to handle
+    ``bytes`` and the response body itself would 500 — keep this
+    helper close to the trigger so the failure stays self-evident
+    if anyone touches it later.
+
+    Args:
+        value: Any field value harvested from
+            :meth:`RequestValidationError.errors`.
+
+    Returns:
+        The value unchanged when JSON-encodable; otherwise a short
+        ``repr`` (truncated to 200 chars) so the operator can still
+        see what tripped the validator.
+    """
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8", errors="replace")[:500]
+        except Exception:  # noqa: BLE001 — fall through to repr
+            pass
+    if isinstance(value, dict):
+        return {
+            str(k): _json_safe(v)  # pyright: ignore[reportUnknownArgumentType]
+            for k, v in value.items()  # pyright: ignore[reportUnknownVariableType]
+        }
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
+    return repr(value)[:200]
+
+
 def _title_for_status(status_code: int) -> str:
     """Return a short human-readable title for ``status_code``.
 
@@ -373,7 +410,16 @@ def register_error_handlers(app: FastAPI) -> None:
         # FastAPI's per-field details are useful for API clients but
         # noisy in a browser toast; we forward them as a problem-body
         # extension member and let the toast show a single sentence.
-        errors = [{k: v for k, v in err.items() if k != "ctx"} for err in exc.errors()]
+        # The ``input`` field can be raw ``bytes`` when a request
+        # arrives without a JSON Content-Type — coerce non-JSON-
+        # safe values to a short ``repr`` so the response body
+        # itself doesn't 500 (Sprint 13.11.5 hotfix; first surfaced
+        # by the live Hermes ``hermes chat`` smoke run when the
+        # plugin's POST forgot the Content-Type header).
+        errors = [
+            {k: _json_safe(v) for k, v in err.items() if k != "ctx"}
+            for err in exc.errors()
+        ]
         return _dispatch(
             request,
             status_code=422,

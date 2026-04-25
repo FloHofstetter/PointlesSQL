@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — Sprint 13.11.5: live-Hermes hotfix
+
+First real `hermes chat` smoke run after the Phase-13 close-out
+exposed two latent bugs the unit tests couldn't catch — one
+PointlesSQL-side, two on the plugin side.
+
+- **Fixed** [`pointlessql/api/error_handlers.py`](pointlessql/api/error_handlers.py)
+  `_handle_request_validation_error` — added a new `_json_safe`
+  coercion helper that walks dicts/lists and decodes raw `bytes`
+  to UTF-8 before returning the 422 body.  Without it a request
+  posted with a JSON body but missing `Content-Type` made
+  FastAPI surface the payload verbatim in the validation
+  error's `input` field, and `json.dumps` then raised
+  `TypeError: Object of type bytes is not JSON serializable` —
+  flipping the 422 into an opaque 500.  New tests in
+  [`tests/test_error_handler_json_safe.py`](tests/test_error_handler_json_safe.py)
+  cover scalar pass-through, byte decoding (incl. invalid
+  UTF-8 → replacement chars), nested structures, and the
+  contract test that `json.dumps` round-trips cleanly.
+
+The two plugin-side bugs (discovery shim + `Content-Type`
+default + `finish_run` status default) ship in
+`hermes-plugin-pointlessql 5676301`.
+
 ### Added — Sprint 13.11 walkthrough playbook
 
 - **Added** [`docs/e2e-walkthroughs/sprint_13_11_reflexive_tools.md`](docs/e2e-walkthroughs/sprint_13_11_reflexive_tools.md)
