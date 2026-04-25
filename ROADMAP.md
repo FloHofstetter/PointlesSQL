@@ -4343,7 +4343,7 @@ PointlesSQL
 │   │       Log (``project_shoreguard_provenance_log.md``) which
 │   │       layers cryptographic signing on top.
 │   │
-│   └── Sprint 13.9 — Run-scoped query history               ✅
+│   └── Sprint 13.9 — Run-scoped query history               ✅ done (237890d)
 │           Today ``query_history`` (Sprint 50) captures every
 │           ``/api/sql/execute`` row with sql_text +
 │           referenced_tables + duration + Sprint-13.6 principal
