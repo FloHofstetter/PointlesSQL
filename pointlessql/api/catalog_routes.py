@@ -23,7 +23,11 @@ from fastapi import APIRouter, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 
-from pointlessql.api.dependencies import get_uc_client, get_user
+from pointlessql.api.dependencies import (
+    effective_principal,
+    get_uc_client,
+    get_user,
+)
 from pointlessql.services.authorization import (
     SELECT,
     USE_CATALOG,
@@ -60,9 +64,14 @@ async def api_schemas(request: Request, catalog_name: str) -> list[dict[str, obj
     """Return schemas inside a catalog as JSON."""
     client = get_uc_client(request)
     user = get_user(request)
+    # Sprint 13.11.10: align the privilege check with get_uc_client —
+    # both must respect ``X-Principal`` so a Hermes plugin call on
+    # behalf of a real user is gated against that user's UC grants
+    # instead of the api_key:<name> synthetic principal.
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         "catalog",
         catalog_name,
@@ -73,14 +82,17 @@ async def api_schemas(request: Request, catalog_name: str) -> list[dict[str, obj
 
 @router.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables")
 async def api_tables(
-    request: Request, catalog_name: str, schema_name: str,
+    request: Request,
+    catalog_name: str,
+    schema_name: str,
 ) -> list[dict[str, object]]:
     """Return tables inside a schema as JSON."""
     client = get_uc_client(request)
     user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         "schema",
         f"{catalog_name}.{schema_name}",
@@ -89,9 +101,7 @@ async def api_tables(
     return await client.list_tables(catalog_name, schema_name)
 
 
-@router.get(
-    "/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}"
-)
+@router.get("/api/catalogs/{catalog_name}/schemas/{schema_name}/tables/{table_name}")
 async def api_get_table(
     request: Request,
     catalog_name: str,
@@ -119,9 +129,10 @@ async def api_get_table(
     """
     client = get_uc_client(request)
     user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         "schema",
         f"{catalog_name}.{schema_name}",
@@ -211,10 +222,11 @@ async def api_table_preview(
     client = get_uc_client(request)
     user = get_user(request)
     full_name = f"{catalog_name}.{schema_name}.{table_name}"
+    principal = effective_principal(request) or user.get("email", "")
     effective = await client.get_effective_permissions("table", full_name)
     check_privilege_from_effective(
         effective,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         "table",
         full_name,
@@ -222,6 +234,9 @@ async def api_table_preview(
     )
     settings: Settings = request.app.state.settings
     payload = await asyncio.to_thread(
-        run_table_preview, settings, user.get("email", ""), full_name,
+        run_table_preview,
+        settings,
+        principal,
+        full_name,
     )
     return JSONResponse(content=payload, headers={"Cache-Control": "no-store"})

@@ -32,7 +32,12 @@ from fastapi import APIRouter, Body, Request
 from fastapi.responses import Response
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_uc_client, get_user, require_admin
+from pointlessql.api.dependencies import (
+    effective_principal,
+    get_uc_client,
+    get_user,
+    require_admin,
+)
 from pointlessql.exceptions import AuthorizationError, ValidationError
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services.authorization import (
@@ -69,7 +74,8 @@ def split_full_name(full_name: str) -> tuple[str, str, str]:
 
 
 async def enforce_table_profile_access(
-    request: Request, full_name: str,
+    request: Request,
+    full_name: str,
 ) -> dict[str, Any]:
     """Resolve table info and check that the caller may profile it.
 
@@ -92,7 +98,7 @@ async def enforce_table_profile_access(
 
     client = get_uc_client(request)
     user = get_user(request)
-    email = user.get("email", "")
+    email = effective_principal(request) or user.get("email", "")
     is_admin = bool(user.get("is_admin", False))
     catalog, schema, table = split_full_name(full_name)
     table_info = await client.get_table(catalog, schema, table)
@@ -109,7 +115,8 @@ async def enforce_table_profile_access(
 
 @router.post("/api/tables/{full_name:path}/profile")
 async def api_profile_table(
-    request: Request, full_name: str,
+    request: Request,
+    full_name: str,
 ) -> dict[str, Any]:
     """Compute + cache per-column statistics for the Delta table.
 
@@ -143,16 +150,20 @@ async def api_profile_table(
     # Short-circuit: if the current version is already cached we
     # still surface it but do not recompute.
     current_version = await asyncio.to_thread(
-        ts_service.read_delta_log_version, storage_location,
+        ts_service.read_delta_log_version,
+        storage_location,
     )
     if factory is not None:
         cached = await asyncio.to_thread(
             ts_service.read_cached,
-            factory, full_name=full_name, delta_log_version=current_version,
+            factory,
+            full_name=full_name,
+            delta_log_version=current_version,
         )
         if cached is not None:
             await audit(
-                request, "table.profile_cache_hit",
+                request,
+                "table.profile_cache_hit",
                 f"table:{full_name}",
                 {"delta_log_version": current_version},
             )
@@ -164,16 +175,23 @@ async def api_profile_table(
             }
 
     stats = await asyncio.to_thread(
-        ts_service.compute_stats, full_name, storage_location, columns,
+        ts_service.compute_stats,
+        full_name,
+        storage_location,
+        columns,
     )
     if factory is not None:
         await asyncio.to_thread(
             ts_service.write_cached,
-            factory, full_name=full_name,
-            delta_log_version=current_version, stats=stats,
+            factory,
+            full_name=full_name,
+            delta_log_version=current_version,
+            stats=stats,
         )
     await audit(
-        request, "table.profiled", f"table:{full_name}",
+        request,
+        "table.profiled",
+        f"table:{full_name}",
         {
             "delta_log_version": current_version,
             "column_count": len(stats),
@@ -198,7 +216,9 @@ async def api_profile_table(
 
 @router.get("/api/tables/{full_name:path}/stats")
 async def api_get_table_stats(
-    request: Request, full_name: str, version: int | None = None,
+    request: Request,
+    full_name: str,
+    version: int | None = None,
 ) -> dict[str, Any]:
     """Return cached stats for a UC table, optionally pinned to a version.
 
@@ -224,7 +244,9 @@ async def api_get_table_stats(
         return {"full_name": full_name, "delta_log_version": None, "columns": []}
     cached = await asyncio.to_thread(
         ts_service.read_cached,
-        factory, full_name=full_name, delta_log_version=version,
+        factory,
+        full_name=full_name,
+        delta_log_version=version,
     )
     if cached is None:
         return {"full_name": full_name, "delta_log_version": version, "columns": []}
@@ -237,10 +259,12 @@ async def api_get_table_stats(
 
 
 @router.delete(
-    "/api/tables/{full_name:path}/stats", status_code=204,
+    "/api/tables/{full_name:path}/stats",
+    status_code=204,
 )
 async def api_delete_table_stats(
-    request: Request, full_name: str,
+    request: Request,
+    full_name: str,
 ) -> Response:
     """Evict every cached statistics row for *full_name* (admin only).
 
@@ -258,10 +282,14 @@ async def api_delete_table_stats(
     if factory is None:
         return Response(status_code=204)
     removed = await asyncio.to_thread(
-        ts_service.delete_cached, factory, full_name,
+        ts_service.delete_cached,
+        factory,
+        full_name,
     )
     await audit(
-        request, "table.stats_cleared", f"table:{full_name}",
+        request,
+        "table.stats_cleared",
+        f"table:{full_name}",
         {"rows_removed": removed},
     )
     return Response(status_code=204)
@@ -269,7 +297,8 @@ async def api_delete_table_stats(
 
 @router.post("/api/catalogs")
 async def api_create_catalog(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, object]:
     """Create a new catalog.
 
@@ -343,9 +372,10 @@ async def api_update_catalog(
     """Apply a partial update to a catalog."""
     client = get_uc_client(request)
     user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         "catalog",
         catalog_name,
@@ -367,9 +397,10 @@ async def api_update_schema(
     client = get_uc_client(request)
     user = get_user(request)
     full_name = f"{catalog_name}.{schema_name}"
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         "schema",
         full_name,
@@ -382,7 +413,9 @@ async def api_update_schema(
 
 @router.get("/api/tags/{securable_type}/{full_name:path}")
 async def api_get_tags(
-    request: Request, securable_type: str, full_name: str,
+    request: Request,
+    securable_type: str,
+    full_name: str,
 ) -> list[dict[str, object]]:
     """Return tags for a securable."""
     client = get_uc_client(request)
@@ -399,9 +432,10 @@ async def api_update_tags(
     """Update tags for a securable. Body: {"changes": [...]}."""
     client = get_uc_client(request)
     user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         securable_type,
         full_name,
@@ -419,7 +453,9 @@ async def api_update_tags(
 
 @router.get("/api/permissions/{securable_type}/{full_name:path}")
 async def api_get_permissions(
-    request: Request, securable_type: str, full_name: str,
+    request: Request,
+    securable_type: str,
+    full_name: str,
 ) -> list[dict[str, object]]:
     """Return privilege assignments for a securable."""
     client = get_uc_client(request)
@@ -436,9 +472,10 @@ async def api_update_permissions(
     """Update permissions for a securable. Body: {"changes": [...]}."""
     client = get_uc_client(request)
     user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         securable_type,
         full_name,
@@ -456,7 +493,9 @@ async def api_update_permissions(
 
 @router.get("/api/effective-permissions/{securable_type}/{full_name:path}")
 async def api_get_effective_permissions(
-    request: Request, securable_type: str, full_name: str,
+    request: Request,
+    securable_type: str,
+    full_name: str,
 ) -> list[dict[str, object]]:
     """Return effective (inherited) permissions for a securable."""
     client = get_uc_client(request)
@@ -468,9 +507,10 @@ async def api_lineage(request: Request, full_name: str, depth: int = 3) -> dict[
     """Return combined upstream/downstream lineage for a table."""
     client = get_uc_client(request)
     user = get_user(request)
+    principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
-        user.get("email", ""),
+        principal,
         user.get("is_admin", False),
         "table",
         full_name,

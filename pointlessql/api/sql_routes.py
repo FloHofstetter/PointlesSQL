@@ -32,7 +32,11 @@ from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit, record_query_async
-from pointlessql.api.dependencies import get_uc_client, get_user
+from pointlessql.api.dependencies import (
+    effective_principal,
+    get_uc_client,
+    get_user,
+)
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.settings import Settings
 
@@ -130,7 +134,9 @@ def live_queries(request: Request) -> dict[str, Any]:
         The mutable registry dict (live for the app's lifetime).
     """
     registry: dict[str, Any] | None = getattr(
-        request.app.state, "_live_queries", None,
+        request.app.state,
+        "_live_queries",
+        None,
     )
     if registry is None:
         registry = {}
@@ -269,7 +275,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
 
         client = get_uc_client(request)
         user = get_user(request)
-        email = user.get("email", "")
+        email = effective_principal(request) or user.get("email", "")
         is_admin = user.get("is_admin", False)
 
         approved: dict[str, str] = {}
@@ -512,7 +518,7 @@ async def api_sql_download(
         raise SQLExecutionError(str(exc)) from exc
 
     client = get_uc_client(request)
-    email = user.get("email", "")
+    email = effective_principal(request) or user.get("email", "")
     approved: dict[str, str] = {}
     for full_name in prepared.refs:
         parts = full_name.split(".")
@@ -638,7 +644,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
 
     client = get_uc_client(request)
     user = get_user(request)
-    email = user.get("email", "")
+    email = effective_principal(request) or user.get("email", "")
     is_admin = user.get("is_admin", False)
 
     approved: dict[str, str] = {}
@@ -660,9 +666,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
         approved[full_name] = storage_location
 
     try:
-        result = await asyncio.to_thread(
-            run_explain, prepared.rewritten_sql, approved
-        )
+        result = await asyncio.to_thread(run_explain, prepared.rewritten_sql, approved)
     except ValueError as exc:
         raise SQLExecutionError(str(exc)) from exc
 
