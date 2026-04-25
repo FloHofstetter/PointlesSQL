@@ -21,6 +21,7 @@
 import os
 
 from pointlessql.db import init_db
+
 init_db("sqlite:////tmp/pql_demo/db/pointlessql.db")
 from pointlessql.pql import PQL  # noqa: E402
 

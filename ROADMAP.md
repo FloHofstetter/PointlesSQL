@@ -4291,17 +4291,67 @@ PointlesSQL
 │   │       Hermes plugins can pass principal without mutating
 │   │       process env.
 │   │
-│   ├── Sprint 13.7 — Companion ``hermes-plugin-pointlessql`` 🔜
-│   │       Separate repo, analogous to
-│   │       ``NousResearch/hermes-paperclip-adapter``.
-│   │       Registers Hermes tools ``pql_list_tables``,
-│   │       ``pql_query``, ``pql_explain``, ``pql_read_delta``,
-│   │       ``pql_write_delta``, ``pql_run_notebook``.
-│   │       Lifecycle hook ``post_tool_call`` emits the
-│   │       Sprint-13.3 CloudEvents.  Hermes-cron jobs register
-│   │       an ``agent_run`` with PointlesSQL before firing.
-│   │       Lands *after* 13.5 because it needs the full seam;
-│   │       development happens outside this repo.
+│   ├── Sprint 13.7.0.5 — API-key gate (front-loaded)        ✅ done (a0922bf)
+│   │       New ``services/api_keys.py`` parses
+│   │       ``POINTLESSQL_API_KEYS`` (newline- or comma-separated
+│   │       ``name:secret`` pairs) and constant-time matches the
+│   │       ``Authorization: Bearer …`` header.  Auth middleware
+│   │       extended to attach a synthetic ``UserInfo`` +
+│   │       ``request.state.api_key_name`` on match.  Audit
+│   │       helper now writes rows for Bearer-only requests
+│   │       (``actor_role="system"``, ``user_email="api_key:<n>"``,
+│   │       ``detail.api_key`` marker) so the trail survives the
+│   │       cookie-less path.  Cookie wins when both are present.
+│   │       New ``docs/auth.md`` carries env format + rotation
+│   │       flow + the OIDC-vs-Bearer rationale.  Closes the
+│   │       Tier-3 multi-tenant gap from
+│   │       ``project_phase13_audit_gaps.md`` ahead of Phase 14.
+│   │
+│   ├── Sprint 13.7 — Companion ``hermes-plugin-pointlessql`` ✅ done (8a18375 + plugin repo)
+│   │       Separate repo at ``~/git/hermes-plugin-pointlessql``,
+│   │       analogous to ``NousResearch/hermes-paperclip-adapter``.
+│   │       Bearer-token client uses ``POINTLESSQL_API_KEY``
+│   │       against the Sprint-13.7.0.5 gate.  Lands as five
+│   │       sub-sprints, each shipping one verifiable slice:
+│   │
+│   │       * **13.7.1 skeleton** — ``hermes_plugin_pointlessql/``
+│   │         package with ``register(ctx)`` entry, ``plugin.yaml``,
+│   │         ``PointlessClient`` (httpx wrapper),
+│   │         ``on_session_start`` / ``on_session_end`` hooks
+│   │         POSTing strict ``/api/agent-runs`` lifecycle.  Run
+│   │         id is set into ``os.environ`` so subprocess spawns
+│   │         inherit it (the Sprint-13.8 audit-trail handoff).
+│   │       * **13.7.2 ``pql_query``** — first LLM tool, proves
+│   │         ``X-Agent-Run-Id`` (Sprint 13.9) + ``X-Principal``
+│   │         (Sprint 13.6) header forwarding through a real
+│   │         tool dispatch path.  Result rows trim at
+│   │         ``max_rows`` for the LLM transcript.
+│   │       * **13.7.3 read-tools batch** — ``pql_list_tables``,
+│   │         ``pql_get_table``, ``pql_explain``,
+│   │         ``pql_conventions``.  PointlesSQL gains
+│   │         ``GET /api/conventions`` (yaml + prose contract)
+│   │         and ``GET /api/catalogs/{c}/schemas/{s}/tables/{t}``
+│   │         (full UC metadata) so the plugin's tools wrap one
+│   │         HTTP endpoint each.
+│   │       * **13.7.4 ``post_tool_call`` hook** — fires for any
+│   │         ``pql_*`` tool, POSTs to the new
+│   │         ``POST /api/agent-runs/{run_id}/tool-call`` route
+│   │         which persists into ``agent_run_tool_calls``
+│   │         (Alembic 024) and emits a Sprint-13.3 CloudEvent
+│   │         ``pointlessql.agent_run.tool_call``.  Tool calls
+│   │         are a fourth orthogonal level alongside cells /
+│   │         operations / queries — distinct table, distinct
+│   │         vocabulary.
+│   │       * **13.7.5 env-injection proof** — pytest spawns a
+│   │         real Python subprocess with ``subprocess.run`` to
+│   │         confirm ``POINTLESSQL_AGENT_RUN_ID`` propagates by
+│   │         default (no explicit ``env=`` override, matching
+│   │         the Hermes ``terminal_tool`` spawn path).
+│   │
+│   │       Plugin repo gates green: ruff + pyright (strict) +
+│   │       pydoclint clean; 35 unit tests pass.  Cross-repo
+│   │       permissions wired via the project-local
+│   │       ``.claude/settings.local.json`` (Sprint 13.7.0).
 │   │
 │   ├── Sprint 13.8 — Forced audit trail                     ✅ done (3f19c3d)
 │   │       *(Surfaced 2026-04-24 during the live raw→gold demo —
@@ -4495,18 +4545,24 @@ PointlesSQL
 │   │       policies if real demand surfaces.  ``layer_tag_key``
 │   │       UC-tag override stays a future hook.
 │   │
-│   └── Sprint 13.5.5 — Hermes-medallion walkthrough              ⏳
+│   └── Sprint 13.5.5 — Hermes-medallion walkthrough              ✅ done (ba54476)
 │           ``docs/e2e-walkthroughs/hermes_medallion.md`` — a real
-│           Hermes process reads a CSV from a UC volume, calls
-│           ``pql_autoload`` to build bronze, ``pql_merge`` to
-│           build silver, a ``pql_sql`` aggregation to build gold,
-│           emits per-cell CloudEvents, and the three layers show
-│           up in ``/runs/{id}`` with column stats + conformance
-│           check.  This is the "done" moment — the first
+│           Hermes process (with the Sprint-13.7 plugin loaded)
+│           reads
+│           ``notebooks/hermes_medallion_data/orders.csv``,
+│           runs ``pql.autoload`` to build
+│           ``main.bronze.orders_raw``, ``pql.merge`` (upsert
+│           strategy) to build ``main.silver.orders``, and a
+│           ``pql.sql`` aggregation for
+│           ``main.gold.orders_summary``.  The run-detail view
+│           shows Source + Operations + Tool calls + Queries +
+│           Conformance tabs all populated — the first
 │           reproducible end-to-end flow where an agent, not a
 │           human, authors a Medallion lakehouse.  Depends on
-│           13.5.1-13.5.4, Sprint 13.3 (CloudEvents), and Sprint
-│           13.7 (Hermes plugin).
+│           13.5.1-13.5.4, Sprint 13.3 (CloudEvents), and
+│           Sprint 13.7 (Hermes plugin).  Playwright-MCP replay
+│           commands embedded in the playbook per
+│           ``feedback_run_playbook_as_gate.md``.
 │
 │   Critical path to the "Hermes builds Medallion" demo
 │   (cross-phase synthesis, 6 sprints minimum):

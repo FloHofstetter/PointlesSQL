@@ -4,6 +4,129 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 13.5 / Sprint 13.5.5: Hermes-Medallion walkthrough
+
+The reproducible **done moment** for Phase 13 + 13.5: an
+end-to-end demo where a real Hermes agent (with
+`hermes-plugin-pointlessql` loaded) builds a three-layer
+Medallion lakehouse from a CSV in a UC Volume.  The supervision
+trail in `/runs/{id}` shows Source + Operations + Tool calls +
+Queries + Conformance — every primitive Phase 13 + 13.5 + 13.7
+shipped exercises in one flow.
+
+- **New** [`notebooks/hermes_medallion.py`](notebooks/hermes_medallion.py)
+  — agent-authored task notebook (jupytext percent format with
+  cells for human replay).  Calls
+  [`pql.autoload`](pointlessql/pql/_autoload.py) to build
+  bronze, [`pql.merge`](pointlessql/pql/_merge.py) (upsert
+  strategy) to build silver, and
+  [`pql.sql`](pointlessql/pql/_sql.py) (`CREATE OR REPLACE
+  TABLE`) for the gold daily-revenue aggregation.  Each
+  primitive auto-emits an `agent_run_operations` row through
+  the Sprint-13.8 `operation_context` because
+  `POINTLESSQL_AGENT_RUN_ID` is set by the plugin's
+  `on_session_start` hook.
+- **New** [`notebooks/hermes_medallion_data/orders.csv`](notebooks/hermes_medallion_data/orders.csv)
+  — 50-row deterministic fixture so the playbook is replayable
+  without any external download.
+- **New** [`docs/e2e-walkthroughs/hermes_medallion.md`](docs/e2e-walkthroughs/hermes_medallion.md)
+  — step-by-step playbook covering Hermes session start →
+  notebook execution → run-detail tabs → CloudEvents
+  verification → cleanup, with explicit Playwright-MCP commands
+  for the browser-side replay per
+  `feedback_run_playbook_as_gate.md`.
+- **Updated** [`docs/e2e-walkthroughs/README.md`](docs/e2e-walkthroughs/README.md)
+  — adds entry 13 alongside the existing Drift-Monitor demo
+  (entry 12).
+
+### Added — Phase 13 / Sprint 13.7.4: Tool-call audit + post_tool_call hook
+
+Fourth orthogonal level of the run trail (alongside cells /
+operations / queries): the LLM's tool-invocation record. The
+``hermes-plugin-pointlessql`` ``post_tool_call`` hook posts every
+``pql_*`` invocation here so a human reading ``/runs/{id}`` can
+reconstruct the LLM's reasoning trace.
+
+- **New** Alembic [024_agent_run_tool_calls.py](pointlessql/alembic/versions/024_agent_run_tool_calls.py)
+  — creates ``agent_run_tool_calls(id, agent_run_id, tool_name,
+  args_json, result_summary, duration_ms, called_at)`` with FK
+  to ``agent_runs.id`` and a composite ``(agent_run_id,
+  called_at)`` index for the run-detail tab. Round-tripped
+  upgrade/downgrade clean against the disposable DB harness.
+- **New** :class:`pointlessql.models.AgentRunToolCall` ORM model
+  in [pointlessql/models/agent_run_audit.py](pointlessql/models/agent_run_audit.py).
+- **New** ``POST /api/agent-runs/{run_id}/tool-call`` route in
+  [pointlessql/api/agent_runs_routes.py](pointlessql/api/agent_runs_routes.py).
+  Lenient on optional fields (``args_json`` accepts dict OR
+  string; ``called_at`` defaults to wall-clock; ``result_summary``
+  truncates at 2000 chars). Audit row + Sprint-13.3 CloudEvent
+  ``pointlessql.agent_run.tool_call`` fire after persistence.
+- **New** ``EVENT_TYPE_TOOL_CALL`` constant added to
+  :data:`AGENT_RUN_EVENT_TYPES`.
+- **New** [`tests/test_agent_run_tool_calls.py`](tests/test_agent_run_tool_calls.py)
+  — 7 cases covering happy path + validation 422 + 404 + dict
+  args + truncation + parent-run integrity.
+
+### Added — Phase 13 / Sprint 13.7 (in progress): Hermes plugin enablers
+
+Sprint 13.7 ships in slices because the plugin lives in a
+sibling repo (`~/git/hermes-plugin-pointlessql`) and the
+PointlesSQL deltas are kept minimal. This entry tracks the
+PointlesSQL-side changes Sprints 13.7.1 – 13.7.3 needed:
+
+- **New** [`pointlessql/api/conventions_routes.py`](pointlessql/api/conventions_routes.py)
+  — `GET /api/conventions` returns the resolved Medallion
+  conventions (`yaml`) plus the prose contract excerpt from
+  [`docs/data-layers.md`](docs/data-layers.md). Read-only,
+  authenticated, intended for the plugin's `pql_conventions`
+  tool.
+- **New** route in
+  [`pointlessql/api/catalog_routes.py`](pointlessql/api/catalog_routes.py)
+  — `GET /api/catalogs/{c}/schemas/{s}/tables/{t}` exposes one
+  table's full UC metadata (columns + tags + comment) as JSON
+  so the plugin's `pql_get_table` tool does not have to scrape
+  the HTML browser. Gated on USE_SCHEMA on the parent schema.
+- **New** [`tests/test_conventions_route.py`](tests/test_conventions_route.py)
+  covering the conventions endpoint shape + the auth-required
+  401 path.
+
+### Added — Phase 13 / Sprint 13.7.0.5: Front-loaded API-key gate
+
+Bearer-token auth path so the upcoming
+``hermes-plugin-pointlessql`` (Sprint 13.7.1+) can reach
+``/api/agent-runs`` and ``/api/sql/*`` without holding a session
+cookie. Closes the multi-tenant auth gap recorded as Tier-3 in
+``project_phase13_audit_gaps.md`` ahead of the Phase-14 visibility
+flip — instead of shipping the plugin against localhost-trust and
+migrating later.
+
+- **New** [`pointlessql/services/api_keys.py`](pointlessql/services/api_keys.py)
+  — parses ``POINTLESSQL_API_KEYS`` (newline- or comma-separated
+  ``name:secret`` pairs), constant-time matches Bearer headers,
+  short-circuits when the env var is empty so the local-dev
+  flow keeps working unchanged.
+- **Extended** :func:`pointlessql.api.middleware.auth_middleware`
+  — falls back to Bearer-token verification when no cookie user
+  resolved.  On match attaches a synthetic
+  :class:`~pointlessql.types.UserInfo` (``id=0``,
+  ``email="api_key:<name>"``) plus ``request.state.api_key_name``
+  so downstream routes need no awareness.  Cookie auth always
+  wins when both are present.
+- **Extended** :func:`pointlessql.api._audit_helpers.audit` —
+  Bearer-only requests (``user_id == 0``) now leave audit rows
+  with ``actor_role="system"``, ``user_email="api_key:<name>"``
+  (or the ``X-Principal`` value when set), and a
+  ``detail.api_key`` marker.  The pre-Sprint-13.7.0.5 early-
+  return on ``user_id == 0`` would have dropped these rows.
+- **New** [`docs/auth.md`](docs/auth.md) — env-var format,
+  rotation flow, audit-attribution table, and the rationale for
+  picking Bearer over OIDC client-credentials for the first
+  external runtime.
+- **New** tests in [`tests/test_api_key_gate.py`](tests/test_api_key_gate.py)
+  — 17 cases covering parser edge cases, constant-time
+  verification, gate-disabled passthrough, cookie-wins precedence,
+  and end-to-end ``X-Principal``-overrides-attribution.
+
 ### Added — Phase 13 / Sprint 13.9: Run-scoped query history
 
 Smaller follow-up to 13.8: every ``query_history`` row can now
