@@ -37,6 +37,7 @@ from pointlessql.models.agent_run_audit import (
     AgentRunEvent,
     AgentRunOperation,
     AgentRunSource,
+    AgentRunToolCall,
 )
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
@@ -71,6 +72,7 @@ __all__ = [
     "AgentRunEvent",
     "AgentRunOperation",
     "AgentRunSource",
+    "AgentRunToolCall",
     "Alert",
     "AlertDestination",
     "AlertEvent",

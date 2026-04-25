@@ -190,3 +190,52 @@ class AgentRunEvent(Base):
     )
     outcome: Mapped[str] = mapped_column(String(20), nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class AgentRunToolCall(Base):
+    """One LLM tool invocation inside an agent run (Sprint 13.7.4).
+
+    Distinct from :class:`AgentRunOperation` (PQL primitive writes)
+    and :class:`AgentRunEvent` (CloudEvent dispatch outcome).  Tool
+    calls are the LLM's *reasoning trace*: which tool the model
+    chose, what args it passed, and a short summary of the result.
+    The Hermes plugin's ``post_tool_call`` hook posts here for any
+    tool whose name starts with ``pql_``.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        agent_run_id: FK to :class:`AgentRun.id`.
+        tool_name: Hermes tool name, e.g. ``pql_query`` or
+            ``pql_get_table``.
+        args_json: JSON-encoded args passed to the tool.  Trimmed
+            to a sensible cap by the plugin if huge.
+        result_summary: Short summary of the tool's return value
+            (first ~500 chars after the LLM-friendly truncation).
+            ``None`` for fire-and-forget calls.
+        duration_ms: Wall-clock duration of the tool call from the
+            plugin's perspective.  ``None`` when the plugin could
+            not measure it.
+        called_at: Wall-clock instant the tool finished (the hook
+            fires post-call).
+    """
+
+    __tablename__ = "agent_run_tool_calls"
+    __table_args__ = (
+        Index(
+            "ix_agent_run_tool_calls_run",
+            "agent_run_id",
+            "called_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agent_run_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("agent_runs.id"), nullable=False
+    )
+    tool_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    args_json: Mapped[str] = mapped_column(Text, nullable=False)
+    result_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    called_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

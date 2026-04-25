@@ -44,11 +44,13 @@ logger = logging.getLogger(__name__)
 EVENT_TYPE_STARTED = "pointlessql.agent_run.started"
 EVENT_TYPE_COMPLETED = "pointlessql.agent_run.completed"
 EVENT_TYPE_FAILED = "pointlessql.agent_run.failed"
+EVENT_TYPE_TOOL_CALL = "pointlessql.agent_run.tool_call"
 
 AGENT_RUN_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_STARTED,
     EVENT_TYPE_COMPLETED,
     EVENT_TYPE_FAILED,
+    EVENT_TYPE_TOOL_CALL,
 )
 
 
