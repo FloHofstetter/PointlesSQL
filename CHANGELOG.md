@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — Sprint 14.4 follow-up: soyuz pin bumped to v0.2.0rc3 (2026-04-26)
+
+- **Updated** `pyproject.toml` `[tool.uv.sources]` pin from
+  `v0.2.0rc2` → `v0.2.0rc3` and refreshed `uv.lock`.  The new
+  soyuz tag carries the audit-log infrastructure
+  (table + middleware + `/audit-log` endpoint + six instrumented
+  mutation routes) plus the regenerated client with the typed
+  `audit` API module.
+- The Sprint 14.4 PointlesSQL service `soyuz_audit.fetch_for_run`
+  still uses raw httpx; switching to the typed
+  `list_audit_log_audit_log_get.asyncio(...)` method is a follow-
+  up cosmetic when another callsite needs the typed surface.
+
 ### Added — Sprint 14.4: soyuz UC-mutation cross-reference (2026-04-26)
 
 Closes the fourth and final Phase-14 audit-trail gap.  PointlesSQL
