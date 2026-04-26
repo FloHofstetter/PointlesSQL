@@ -20,7 +20,7 @@ from pointlessql.exceptions import (
 )
 from pointlessql.pql._types import SQLResult
 from pointlessql.pql.engine import register_delta_view
-from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+from pointlessql.pql.sql_parser import SQLParseError, extract_column_lineage, prepare_sql
 from pointlessql.services.agent_runs import operation_context
 
 
@@ -139,6 +139,12 @@ def run_sql(
 
             if effective_run_id is not None:
                 recorder.rows_affected = len(rows)
+                schema_dict = _build_schema_dict(prepared.refs, conn)
+                recorder.pending_column_edges = extract_column_lineage(
+                    sql=query,
+                    schema=schema_dict,
+                    output_columns=col_names,
+                )
 
             return SQLResult(
                 columns=columns,
@@ -153,3 +159,46 @@ def run_sql(
         finally:
             if owns_conn:
                 conn.close()
+
+
+def _build_schema_dict(
+    refs: list[str], conn: Any
+) -> dict[str, dict[str, dict[str, dict[str, str]]]]:
+    """Return a nested ``{catalog: {schema: {table: {column: type}}}}`` schema.
+
+    Sprint 15.6.3 — fed to :func:`sqlglot.lineage.lineage` so it can
+    qualify unqualified column references back to their owning
+    table.  We use DuckDB introspection on the already-registered
+    Delta views (each ref was registered by
+    :func:`register_delta_view` earlier in the run) rather than
+    making a soyuz round-trip — the views always exist by the time
+    we get here, and the type strings are only used by sqlglot for
+    type propagation that we ignore.
+
+    Args:
+        refs: Three-part UC names referenced by the query.
+        conn: Live DuckDB connection with each ref registered as a
+            Delta view at its dotted-name identifier.
+
+    Returns:
+        A nested dict suitable to pass as the ``schema`` kwarg of
+        :func:`sqlglot.lineage.lineage`.  Empty when introspection
+        fails — the caller treats this as "no lineage extractable".
+    """
+    schema: dict[str, dict[str, dict[str, dict[str, str]]]] = {}
+    for ref in refs:
+        parts = ref.split(".")
+        if len(parts) != 3:
+            continue
+        catalog_name, schema_name, table_name = parts
+        try:
+            cols = conn.execute(f'DESCRIBE "{ref}"').fetchall()
+        except Exception:  # noqa: BLE001 — best-effort introspection
+            continue
+        cat = schema.setdefault(catalog_name, {})
+        sch = cat.setdefault(schema_name, {})
+        tbl = sch.setdefault(table_name, {})
+        for row in cols:
+            col_name, col_type = (row[0], row[1]) if len(row) >= 2 else (row[0], "")
+            tbl[str(col_name)] = str(col_type)
+    return schema
