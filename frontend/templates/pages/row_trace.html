@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Row trace · {{ table_name }}{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Catalogs", "href": "/catalogs"},
+    {"label": catalog_name, "href": "/catalogs/" ~ catalog_name},
+    {"label": schema_name, "href": "/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema_name},
+    {"label": table_name, "href": "/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema_name ~ "/tables/" ~ table_name},
+    {"label": "Row trace"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-diagram-3 fs-3"></i>
+    <h1 class="h4 mb-0">Row trace</h1>
+    <span class="text-muted">·</span>
+    <span class="font-monospace small">{{ full_name }}</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-fingerprint me-1"></i>Input row</div>
+    <div class="card-body small">
+        <dl class="row mb-0">
+            <dt class="col-3 col-md-2">Table</dt>
+            <dd class="col-9 col-md-10 font-monospace">{{ full_name }}</dd>
+            <dt class="col-3 col-md-2"><code>_lineage_row_id</code></dt>
+            <dd class="col-9 col-md-10 font-monospace text-break">{{ row_id }}</dd>
+            <dt class="col-3 col-md-2">Walkback depth</dt>
+            <dd class="col-9 col-md-10">
+                {% if steps %}
+                {{ steps|length }} step{{ 's' if steps|length != 1 else '' }}
+                {% if steps|length == 1 %}
+                <span class="badge bg-warning text-dark ms-2" title="No predecessor edge in lineage_row_edges">lineage break</span>
+                {% endif %}
+                {% else %}
+                <span class="badge bg-secondary">no edges recorded</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+</div>
+
+{% if steps %}
+<div class="card">
+    <div class="card-header"><i class="bi bi-arrow-down me-1"></i>Walk back</div>
+    <ol class="list-group list-group-flush list-group-numbered">
+        {% for step in steps %}
+        <li class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+                <div class="ms-2 me-auto">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-secondary">depth {{ step.depth }}</span>
+                        {% set parts = step.table.split('.') %}
+                        {% if parts|length == 3 %}
+                        <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}" class="font-monospace text-decoration-none">{{ step.table }}</a>
+                        {% else %}
+                        <span class="font-monospace">{{ step.table }}</span>
+                        {% endif %}
+                        {% if step.op_name %}
+                        <span class="badge bg-info text-dark" title="op_id={{ step.op_id }}">{{ step.op_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted font-monospace text-break"><code>_lineage_row_id</code> = {{ step.row_id }}</div>
+                    {% if step.source_file %}
+                    <div class="small mt-1">
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        <strong>Source file:</strong> <span class="font-monospace">{{ step.source_file }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="text-end small">
+                    {% if step.run_id %}
+                    <a href="/runs/{{ step.run_id }}" class="text-decoration-none font-monospace">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                        run #{{ step.run_id[:8] }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">input row</span>
+                    {% endif %}
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ol>
+</div>
+{% else %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    No <code>lineage_row_edges</code> rows reference this
+    <code>_lineage_row_id</code>.  Either the row was written without
+    declaring an upstream UC source (no <code>source_table_fqn</code>
+    on the merge / write call), or the row predates Sprint 15.3.
+    Operation-level lineage may still be available on
+    <a href="/runs">the runs page</a>.
+</div>
+{% endif %}
+{% endblock %}

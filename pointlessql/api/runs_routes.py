@@ -183,6 +183,70 @@ def _load_audit_entries_for_run(
     return out
 
 
+def _load_lineage_summary_for_run(
+    request: Request,
+    run_id: str,
+) -> dict[str, Any]:
+    """Aggregate Sprint-15.3 ``lineage_row_edges`` per operation.
+
+    Joins ``lineage_row_edges`` against ``agent_run_operations`` so
+    the run-detail Lineage tab can render one row per op with
+    source/target FQNs, op name, and edge count.  Operations with no
+    recorded edges are excluded (the empty-state alert covers that).
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: Owning ``AgentRun.id``.
+
+    Returns:
+        Dict shaped ``{"total_edges": int, "rows": [{
+        "ordinal": int, "op_name": str, "source_table": str,
+        "target_table": str, "edge_count": int}, ...]}`` ready to
+        feed the run-detail Lineage tab.
+    """
+    from sqlalchemy import func
+
+    from pointlessql.models import LineageRowEdge
+
+    factory = request.app.state.session_factory
+    rows: list[dict[str, Any]] = []
+    total = 0
+    with factory() as session:
+        stmt = (
+            select(
+                AgentRunOperation.id,
+                AgentRunOperation.ordinal,
+                AgentRunOperation.op_name,
+                AgentRunOperation.target_table,
+                LineageRowEdge.source_table,
+                func.count(LineageRowEdge.id).label("edge_count"),
+            )
+            .join(LineageRowEdge, LineageRowEdge.op_id == AgentRunOperation.id)
+            .where(AgentRunOperation.agent_run_id == run_id)
+            .group_by(
+                AgentRunOperation.id,
+                AgentRunOperation.ordinal,
+                AgentRunOperation.op_name,
+                AgentRunOperation.target_table,
+                LineageRowEdge.source_table,
+            )
+            .order_by(AgentRunOperation.ordinal)
+        )
+        for row in session.execute(stmt).all():
+            edge_count = int(row[5])
+            total += edge_count
+            rows.append(
+                {
+                    "ordinal": int(row[1]),
+                    "op_name": row[2],
+                    "target_table": row[3],
+                    "source_table": row[4],
+                    "edge_count": edge_count,
+                }
+            )
+    return {"total_edges": total, "rows": rows}
+
+
 async def _load_uc_mutations_for_run(
     request: Request,
     run_id: str,
@@ -703,6 +767,7 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
                 tables_touched=list(serialize_agent_run(run_row).get("tables_touched", [])),
             ),
             "uc_mutations": await _load_uc_mutations_for_run(request, run_id),
+            "lineage_summary": _load_lineage_summary_for_run(request, run_id),
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,
             "active_page": "runs",

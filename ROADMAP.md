@@ -4874,7 +4874,7 @@ PointlesSQL
 │           soyuz audit rows attributed to the run.  Pin bump to
 │           ``v0.2.0rc3`` pending a push of the soyuz tag
 │
-├── Phase 15 — Lineage completeness                       🚧 in progress
+├── Phase 15 — Lineage completeness                       ✅ done (2026-04-26)
 │   │
 │   │   Closes two lineage gaps that make Phase 14's operation-
 │   │   level audit forensically usable:
@@ -4953,16 +4953,25 @@ PointlesSQL
 │   │       a CTAS path appears.  Storage in PointlesSQL metadata
 │   │       DB; sibling Delta tables remain the Phase-17+ scaling
 │   │       option if a single run ever exceeds ~1M edges.
-│   ├── Sprint 15.4 — Row-trace UI                              ⏳ queued
-│   │   └── ``GET /api/lineage/row-trace?table=&row_id=`` walks
-│   │       backwards through ``lineage_row_edges`` to the bronze
-│   │       root (capped at 20 hops).  New
-│   │       ``/tables/{fqn}/rows/{row_id}/trace`` page renders the
-│   │       walkback as a Bootstrap list-group, with the bronze
-│   │       step exposing ``_source_file``.  Lineage-card on
-│   │       ``table.html`` surfaces a "per-row lineage available"
-│   │       hint when ``_lineage_row_id`` exists.  Run-detail
-│   │       gains a "Lineage" tab listing edge counts per op.
+│   ├── Sprint 15.4 — Row-trace UI                              ✅ done
+│   │   └── New ``api/lineage_routes.py`` exposes
+│   │       ``GET /api/lineage/row-trace?table=&row_id=`` (JSON
+│   │       walkback capped at 20 hops, with the bronze step
+│   │       enriched via DuckDB-over-deltalake to surface
+│   │       ``_source_file``) and the matching HTML page
+│   │       ``/catalogs/{cat}/schemas/{sch}/tables/{tbl}/rows/{row_id}/trace``.
+│   │       The lineage_card component gained a "per-row lineage
+│   │       available" hint that fires when ``_lineage_row_id`` is on
+│   │       the table; the table preview turns the
+│   │       ``_lineage_row_id`` cell into a deep-link to the trace
+│   │       page (Alpine x-template branches keep the Sprint-13.5
+│   │       preview otherwise unchanged).  ``run_view.html`` gained
+│   │       a "Lineage" tab between "UC mutations" and "Queries"
+│   │       that lists per-op edge counts and links into each
+│   │       output table's lineage card.  Router registered before
+│   │       ``governance_router`` so the new exact-match route
+│   │       beats the existing ``/api/lineage/{full_name:path}``
+│   │       catch-all.
 │   │
 │   └── Out-of-scope (explicit, ships in later phases or never):
 │       ├── **Shoreguard Provenance Log** (LLM-side signed

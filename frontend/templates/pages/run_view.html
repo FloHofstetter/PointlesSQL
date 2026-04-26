@@ -276,6 +276,14 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-lineage" type="button" role="tab"
+                aria-controls="tab-lineage" aria-selected="false">
+            <i class="bi bi-diagram-3 me-1"></i>Lineage
+            {% if lineage_summary and lineage_summary.total_edges %}<span class="badge bg-secondary ms-1">{{ lineage_summary.total_edges }}</span>{% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-queries-btn" data-bs-toggle="tab"
                 data-bs-target="#tab-queries" type="button" role="tab"
                 aria-controls="tab-queries" aria-selected="false">
@@ -546,6 +554,66 @@
             forwards <code>X-Agent-Run-Id: {{ run.id }}</code> outbound.
             Empty also means the running soyuz is older than
             <code>v0.2.0rc3</code> and lacks the audit-log endpoint.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="tab-lineage" role="tabpanel" aria-labelledby="tab-lineage-btn">
+        {% if lineage_summary and lineage_summary.rows %}
+        <div class="card">
+            <div class="card-header small text-muted">
+                {{ lineage_summary.total_edges }} per-row lineage edge{% if lineage_summary.total_edges != 1 %}s{% endif %}
+                across {{ lineage_summary.rows | length }} operation{% if lineage_summary.rows | length != 1 %}s{% endif %}
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 small align-middle">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Op</th>
+                            <th>Source</th>
+                            <th>Target</th>
+                            <th class="text-end">Edges</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in lineage_summary.rows %}
+                        <tr>
+                            <td>{{ row.ordinal }}</td>
+                            <td><span class="badge bg-info text-dark">{{ row.op_name }}</span></td>
+                            <td class="font-monospace">
+                                {% if row.source_table %}{{ row.source_table }}{% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <td class="font-monospace">{{ row.target_table or "—" }}</td>
+                            <td class="text-end">{{ row.edge_count }}</td>
+                            <td class="text-end">
+                                {% if row.target_table and "." in row.target_table %}
+                                {% set parts = row.target_table.split(".") %}
+                                {% if parts|length == 3 %}
+                                <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}#lineage"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   title="Open the lineage card for {{ row.target_table }}">
+                                    <i class="bi bi-diagram-3"></i>
+                                </a>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            No per-row lineage edges recorded for this run.  Edges are
+            written by <code>pql.merge</code> (and <code>pql.write_table</code>)
+            when the source frame carries a <code>_lineage_row_id</code>
+            column AND the call declares <code>source_table_fqn</code>.
+            Bronze autoloads inject the column for free; downstream
+            merges propagate it through Sprint 15.3's chain.
         </div>
         {% endif %}
     </div>

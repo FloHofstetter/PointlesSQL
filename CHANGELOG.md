@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 15.4: Row-trace UI + run-detail Lineage tab (2026-04-26)
+
+Closes Phase 15.  The lineage chain built by Sprints 15.1-15.3 is
+now navigable in the browser: an agent or reviewer can take any
+silver row, click its `_lineage_row_id`, and walk the edges back to
+the originating bronze cell with the source filename attached.
+
+- **Added** [`pointlessql/api/lineage_routes.py`](pointlessql/api/lineage_routes.py)
+  with two endpoints:
+  - `GET /api/lineage/row-trace?table=&row_id=` — JSON walkback via
+    `services.lineage_edges.walk_back` (capped at 20 hops).  When
+    the deepest step lands on a bronze table, opens the Delta table
+    via deltalake + DuckDB and looks up the `_source_file` cell so
+    the trace can label "this row came from `orders.csv`".
+  - `GET /catalogs/{cat}/schemas/{sch}/tables/{tbl}/rows/{row_id}/trace`
+    — HTML page rendering the same walkback as a Bootstrap
+    list-group (one card per step with depth badge, table FQN,
+    op-name badge, and a link to the originating run).
+- **Updated** [`pointlessql/api/main.py`](pointlessql/api/main.py)
+  registers `lineage_router` **before** `governance_router` so the
+  exact-match `/api/lineage/row-trace` route wins over the existing
+  `/api/lineage/{full_name:path}` catch-all (which would otherwise
+  greedy-capture `"row-trace"` as a UC full name).
+- **Added** [`frontend/templates/pages/row_trace.html`](frontend/templates/pages/row_trace.html)
+  rendering the input row metadata, the walkback steps, and an
+  "lineage break" badge when the chain stops at depth 0 (no
+  predecessor edges recorded).
+- **Updated** [`frontend/templates/components/lineage_card.html`](frontend/templates/components/lineage_card.html)
+  the card now accepts an optional `table_columns` context list and
+  renders a card-footer hint when `_lineage_row_id` is present;
+  also drops an `<a id="lineage">` anchor so the run-detail
+  "View lineage graph" deep-link from Sprint 15.1 lands at the card.
+- **Updated** [`frontend/templates/pages/table.html`](frontend/templates/pages/table.html)
+  passes the table's column names to `lineage_card`; the Alpine
+  preview now renders `_lineage_row_id` cells as deep-links to the
+  row-trace page (truncated display, full UUID in the URL).
+- **Updated** [`frontend/templates/pages/run_view.html`](frontend/templates/pages/run_view.html)
+  new "Lineage" tab between "UC mutations" and "Queries" lists each
+  op that produced edges with source/target FQNs and edge count;
+  links into the target's lineage card via the new `#lineage`
+  anchor.
+- **Added** [`pointlessql/api/runs_routes.py`](pointlessql/api/runs_routes.py)
+  `_load_lineage_summary_for_run()` joins `lineage_row_edges`
+  against `agent_run_operations` for the run-detail Lineage tab,
+  returning `{total_edges, rows: [{ordinal, op_name, source_table,
+  target_table, edge_count}]}`.
+
 ### Added — Sprint 15.3: `lineage_row_edges` shadow table + merge instrumentation (2026-04-26)
 
 Third Phase-15 sprint.  Per-row provenance now closes the loop: a

@@ -113,9 +113,18 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
                         <template x-for="(row, i) in rows" :key="i">
                             <tr>
                                 <template x-for="(cell, j) in row" :key="j">
-                                    <td class="small"
-                                        :data-label="columns[j]"
-                                        x-text="cell === null ? '—' : String(cell)"></td>
+                                    <td class="small" :data-label="columns[j]">
+                                        <template x-if="columns[j] === '_lineage_row_id' && cell">
+                                            <a :href="`/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/rows/${encodeURIComponent(cell)}/trace`"
+                                               class="font-monospace small text-decoration-none"
+                                               title="Walk this row's lineage back to the bronze cell that produced it">
+                                                <i class="bi bi-arrow-up-right-square me-1"></i><span x-text="String(cell).slice(0, 12) + '…'"></span>
+                                            </a>
+                                        </template>
+                                        <template x-if="!(columns[j] === '_lineage_row_id' && cell)">
+                                            <span x-text="cell === null ? '—' : String(cell)"></span>
+                                        </template>
+                                    </td>
                                 </template>
                             </tr>
                         </template>
@@ -249,7 +258,8 @@ function tablePreview() {
     </div>
 </div>
 
-{% with lineage=lineage %}
+{% set _column_names = (table.columns | map(attribute="name") | list) if table and table.columns else [] %}
+{% with lineage=lineage, table_columns=_column_names %}
     {% include "components/lineage_card.html" %}
 {% endwith %}
 

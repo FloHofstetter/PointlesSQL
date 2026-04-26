@@ -2,8 +2,12 @@
   Lineage card showing upstream and downstream dependencies, grouped by depth.
 
   Params:
-    lineage — dict with "upstream" and "downstream" keys, each containing
-              "nodes" (list) and "edges" (list) from the lineage API
+    lineage         — dict with "upstream" and "downstream" keys, each
+                      containing "nodes" (list) and "edges" (list) from the
+                      lineage API
+    table_columns   — optional list of column names on the rendered table.
+                      When ``_lineage_row_id`` is present, the card shows a
+                      Sprint-15.4 hint linking to the row-trace UI.
 #}
 {% set upstream = (lineage or {}).get("upstream", {}) %}
 {% set downstream = (lineage or {}).get("downstream", {}) %}
@@ -92,4 +96,13 @@
 
         {% endif %}
     </div>
+    {% if table_columns and "_lineage_row_id" in table_columns %}
+    <div class="card-footer small text-muted">
+        <i class="bi bi-fingerprint me-1"></i>
+        Per-row lineage available — every row carries a stable
+        <code>_lineage_row_id</code>.  Click a row in the preview to walk
+        its trace back to the originating bronze cell.
+    </div>
+    {% endif %}
 </div>
+<a id="lineage"></a>

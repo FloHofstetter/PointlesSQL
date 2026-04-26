@@ -37,6 +37,7 @@ from pointlessql.api.home_routes import router as home_router
 from pointlessql.api.jobs_routes import (
     router as jobs_router,
 )
+from pointlessql.api.lineage_routes import router as lineage_router
 from pointlessql.api.middleware import register_middleware
 from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
@@ -274,6 +275,7 @@ app.include_router(sql_router)
 app.include_router(queries_router)
 app.include_router(alerts_router)
 app.include_router(volumes_router)
+app.include_router(lineage_router)
 app.include_router(governance_router)
 app.include_router(notebooks_router)
 app.include_router(runs_router)
