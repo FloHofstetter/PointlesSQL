@@ -513,7 +513,7 @@
                                 {% endif %}
                             </td>
                             <td class="small text-muted">{{ r.detail or '—' }}</td>
-                            <td class="pe-3 small text-muted">{{ r.created_at | format_datetime }}</td>
+                            <td class="pe-3 small text-muted font-monospace">{{ r.created_at }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

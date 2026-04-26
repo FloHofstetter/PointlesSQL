@@ -119,12 +119,18 @@ silver_source = (
 # silver, then subsequent runs follow the upsert path.  A future
 # ``pql.merge(..., create=True)`` flag would collapse this into one
 # call but it is not in scope for Sprint 13.10.
+#
+# Sprint 15.5.3: ``track_rejects=True`` records source rows that won't
+# land (NULL on-key, duplicate within source) into ``lineage_row_rejects``
+# so the run-detail Reject tab can explain dropped rows.
 try:
     silver_result = pql.merge(
         source=silver_source,
         target=SILVER_TABLE,
         on=["order_id"],
         strategy="upsert",
+        source_table_fqn=BRONZE_TABLE,
+        track_rejects=True,
     )
     print(f"Silver: {silver_result.get('num_target_rows_inserted', 0)} inserted, "
           f"{silver_result.get('num_target_rows_updated', 0)} updated")
@@ -132,28 +138,37 @@ except Exception as exc:  # noqa: BLE001 — bootstrap path; see comment above
     if "does not exist" not in str(exc):
         raise
     print(f"Silver: bootstrap (target missing) — {exc.__class__.__name__}")
-    pql.write_table(silver_source, SILVER_TABLE, mode="overwrite")
+    pql.write_table(silver_source, SILVER_TABLE, mode="overwrite", source_table_fqn=BRONZE_TABLE)
     print(f"Silver: bootstrapped {len(silver_source)} row(s)")
 
 # %% [markdown] pql_cell_id="11111111-1111-4111-8111-aaaaaaaaaaaa"
-# ## Gold — aggregation via ``pql.sql``
+# ## Gold — fan-in aggregation via ``pql.aggregate``
 #
-# Daily revenue per product, materialised as a ``CREATE OR
-# REPLACE TABLE`` so a re-run produces a fresh gold snapshot
-# without manual cleanup.
+# Daily revenue per product, materialised through Sprint-15.5.1's
+# ``pql.aggregate`` primitive so each gold row carries deterministic
+# ``_lineage_row_id`` AND records N→1 fan-in edges back to silver in
+# ``lineage_row_edges``.  Sprint 15.5.2's row-trace UI surfaces those
+# fan-in edges as collapsible "Aggregated from N rows" blocks.
 
 # %% pql_cell_id="22222222-2222-4222-8222-bbbbbbbbbbbb"
-# pql.sql is SELECT-only.  Read silver, aggregate in pandas, then
-# materialise gold via write_table (mode='overwrite' = CREATE OR REPLACE).
 silver_df = pql.table(SILVER_TABLE)
-silver_df["placed_day"] = silver_df["placed_at"].dt.floor("D")
-silver_df["line_revenue"] = silver_df["qty"] * silver_df["unit_price"]
-gold_df = silver_df.groupby(["placed_day", "product"], as_index=False).agg(
-    units_sold=("qty", "sum"),
-    revenue=("line_revenue", lambda s: round(s.sum(), 2)),
+gold_result = pql.aggregate(
+    source_df=silver_df.assign(
+        placed_day=silver_df["placed_at"].dt.floor("D"),
+        line_revenue=silver_df["qty"] * silver_df["unit_price"],
+    ),
+    target=GOLD_TABLE,
+    group_by=["placed_day", "product"],
+    aggs={
+        "units_sold": ("qty", "sum"),
+        "revenue": ("line_revenue", "sum"),
+    },
+    source_table_fqn=SILVER_TABLE,
 )
-pql.write_table(gold_df, GOLD_TABLE, mode="overwrite")
-print(f"Gold: {GOLD_TABLE} refreshed with {len(gold_df)} aggregate row(s)")
+print(
+    f"Gold: {GOLD_TABLE} refreshed with {gold_result['rows_written']} aggregate "
+    f"row(s); {gold_result['edges_emitted']} fan-in edge(s) recorded"
+)
 
 # %% [markdown] pql_cell_id="33333333-3333-4333-8333-cccccccccccc"
 # ## Done
