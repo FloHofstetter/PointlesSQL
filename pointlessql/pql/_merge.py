@@ -33,7 +33,7 @@ override case appears.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import httpx
 import pyarrow as pa
@@ -76,6 +76,7 @@ def merge_table(
     unreachable_msg: str,
     agent_run_id: str | None = None,
     source_table_fqn: str | None = None,
+    track_rejects: bool = False,
 ) -> dict[str, Any]:
     """Merge *source* into the existing Delta table at *target*.
 
@@ -106,6 +107,16 @@ def merge_table(
             in the lineage graph (Sprint 15.1).  ``None`` when the
             source is an in-memory frame with no UC origin — the
             audit row is still written but no lineage edge appears.
+        track_rejects: When ``True``, scan the source frame for
+            rows that won't land in the target (NULL ``on`` keys,
+            duplicate keys within the source) and bulk-insert one
+            ``lineage_row_rejects`` row per rejected source row
+            (Sprint 15.5.3).  ``False`` (default) skips the scan —
+            performance-conservative; production callers that need
+            reject visibility flip it on explicitly.  Effective
+            only when the source carries ``_lineage_row_id`` and
+            ``source_table_fqn`` is declared (no source identity =
+            no useful reject row).
 
     Returns:
         A dict carrying ``strategy`` and the deltalake merge stats
@@ -143,6 +154,10 @@ def merge_table(
 
     factory = get_session_factory() if agent_run_id else None
 
+    rejects: list[tuple[str, str, str | None]] = []
+    if track_rejects and source_table_fqn:
+        arrow_source, rejects = _detect_rejects(arrow_source, on)
+
     source_row_ids, target_row_ids, arrow_source = _prepare_lineage(arrow_source, target)
 
     with operation_context(
@@ -177,8 +192,103 @@ def merge_table(
                     "source_row_ids": source_row_ids,
                     "target_row_ids": target_row_ids,
                 }
+            if rejects and source_table_fqn:
+                recorder.pending_rejects = {
+                    "source_table": source_table_fqn,
+                    "rejects": rejects,
+                }
 
         return stats
+
+
+def _detect_rejects(
+    arrow_source: pa.Table, on: list[str]
+) -> tuple[pa.Table, list[tuple[str, str, str | None]]]:
+    """Identify pre-merge reject rows and return the cleaned source.
+
+    Sprint 15.5.3 — opt-in via ``track_rejects=True``.  Only two
+    reject reasons are detectable pre-merge without inspecting the
+    target Delta state:
+
+    * ``on_key_null`` — any row whose ``on`` columns contain NULL.
+      The Delta-merge predicate evaluates NULL = NULL as false, so
+      these rows always insert; usually this is unintended.
+    * ``duplicate_in_source`` — rows that share the same ``on``
+      values within the source.  A merge with such a source is
+      undefined behaviour in deltalake — last-write-wins semantics
+      depend on partitioning order.  We keep the first occurrence
+      and reject the rest.
+
+    Schema-mismatch and merge-predicate-excluded reasons need
+    target-side context that the helper deliberately does not
+    pull in here; callers that need them surface the rejects via
+    ``pending_rejects`` with reason ``"other"`` from their own
+    error-handling paths.
+
+    Args:
+        arrow_source: Source PyArrow Table.  When it has no
+            ``_lineage_row_id`` column, no rejects can be tied to a
+            source row, so the function returns the table unchanged
+            with an empty rejects list.
+        on: Merge-key column names.
+
+    Returns:
+        ``(cleaned_source, rejects)``.  ``cleaned_source`` has the
+        rejected rows removed; the merge proceeds with this
+        narrower table.  ``rejects`` is a list of
+        ``(source_row_id, reason, detail)`` tuples in source order.
+        Empty list when the source had no rejects.
+    """
+    if LINEAGE_ROW_ID_COLUMN not in arrow_source.schema.names:
+        return arrow_source, []
+
+    try:
+        import pandas as pd
+    except ImportError:  # pragma: no cover — pandas is a hard dep
+        return arrow_source, []
+
+    df: pd.DataFrame = arrow_source.to_pandas()
+    rejects: list[tuple[str, str, str | None]] = []
+    keep_mask = pd.Series([True] * len(df), index=df.index)
+
+    null_key_mask = pd.Series([False] * len(df), index=df.index)
+    for col in on:
+        if col in df.columns:
+            null_key_mask = null_key_mask | df[col].isna()
+
+    for idx in df.index[null_key_mask]:
+        row_id = df.at[idx, LINEAGE_ROW_ID_COLUMN]
+        first_null = next(
+            (col for col in on if col in df.columns and pd.isna(df.at[idx, col])),
+            None,
+        )
+        rejects.append(
+            (
+                str(row_id) if row_id is not None else "",
+                "on_key_null",
+                f"NULL in on-key column {first_null!r}" if first_null else None,
+            )
+        )
+    keep_mask = keep_mask & ~null_key_mask
+
+    surviving = cast("pd.DataFrame", df[keep_mask])
+    dup_mask = surviving.duplicated(subset=on, keep="first")
+    for idx in surviving.index[dup_mask]:
+        row_id = surviving.at[idx, LINEAGE_ROW_ID_COLUMN]
+        key_repr = ", ".join(f"{c}={surviving.at[idx, c]!r}" for c in on if c in surviving.columns)
+        rejects.append(
+            (
+                str(row_id) if row_id is not None else "",
+                "duplicate_in_source",
+                f"second occurrence of merge key ({key_repr})",
+            )
+        )
+
+    final_mask = keep_mask.copy()
+    final_mask.loc[surviving.index[dup_mask]] = False
+    cleaned_df = df[final_mask].reset_index(drop=True)
+
+    return pa.Table.from_pandas(cleaned_df, preserve_index=False), rejects
 
 
 def _prepare_lineage(arrow_source: pa.Table, target: str) -> tuple[list[str], list[str], pa.Table]:

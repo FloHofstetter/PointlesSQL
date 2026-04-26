@@ -226,6 +226,7 @@ class PQL:
         on: list[str],
         strategy: MergeStrategy = "upsert",
         source_table_fqn: str | None = None,
+        track_rejects: bool = False,
     ) -> dict[str, Any]:
         """Merge *source* into the existing Delta table at *target*.
 
@@ -255,6 +256,12 @@ class PQL:
                 ``source_table_fqn → target`` shows up on the lineage
                 card.  When *source* is itself a UC string the helper
                 derives this automatically below.
+            track_rejects: When ``True``, scan the source pre-merge
+                for rows that won't land (NULL ``on`` key, duplicate
+                key in source) and record them on
+                ``lineage_row_rejects`` so the run-detail UI can
+                explain dropped rows (Sprint 15.5.3).  Default
+                ``False`` keeps the cost off the hot path.
 
         Returns:
             A dict carrying ``strategy`` and the deltalake merge
@@ -272,6 +279,7 @@ class PQL:
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
             source_table_fqn=derived_source_fqn,
+            track_rejects=track_rejects,
         )
 
     def aggregate(

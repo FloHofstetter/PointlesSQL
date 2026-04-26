@@ -80,6 +80,13 @@ class OperationRecorder:
             "target_row_ids": list[str]}`` here.  The post-commit
             hook reads it (after ``op_id`` is known) and bulk-inserts
             into ``lineage_row_edges`` best-effort.
+        pending_rejects: Sprint-15.5.3 hook — when a primitive ran
+            with ``track_rejects=True`` and identified source rows
+            that won't land in the target, it stashes
+            ``{"source_table": str,
+            "rejects": list[tuple[source_row_id, reason, detail]]}``
+            here.  The post-commit hook bulk-inserts into
+            ``lineage_row_rejects`` best-effort.
     """
 
     input_sha: str | None = None
@@ -89,6 +96,7 @@ class OperationRecorder:
     target_table: str | None = None
     extra_params: dict[str, Any] = field(default_factory=dict)
     pending_lineage_edges: dict[str, Any] | None = None
+    pending_rejects: dict[str, Any] | None = None
 
 
 def record_operation(
@@ -293,6 +301,12 @@ def operation_context(
         target_table=final_target,
         pending=recorder.pending_lineage_edges,
     )
+    _record_rejects_after_commit(
+        session_factory,
+        op_id=op_id,
+        agent_run_id=agent_run_id,
+        pending=recorder.pending_rejects,
+    )
 
 
 def _emit_lineage_after_commit(
@@ -408,6 +422,49 @@ def _record_row_edges_after_commit(
     if failure is None:
         return
     _stamp_audit_marker(session_factory, op_id=op_id, marker=f"[lineage_edges_partial] {failure!r}")
+
+
+def _record_rejects_after_commit(
+    session_factory: sessionmaker[Session],
+    *,
+    op_id: int,
+    agent_run_id: str,
+    pending: dict[str, Any] | None,
+) -> None:
+    """Persist Sprint-15.5.3 reject markers in a best-effort pass.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        op_id: Just-committed ``agent_run_operations.id``.
+        agent_run_id: PointlesSQL run UUID.
+        pending: ``OperationRecorder.pending_rejects`` payload —
+            ``{"source_table": str, "rejects": list[tuple[str, str,
+            str | None]]}`` where each tuple is
+            ``(source_row_id, reason, detail)``.  ``None`` when the
+            primitive did not run with ``track_rejects=True`` or had
+            no rows to drop.
+    """
+    if not pending:
+        return
+    source_table = pending.get("source_table")
+    rejects = pending.get("rejects")
+    if not isinstance(source_table, str) or not isinstance(rejects, list) or not rejects:
+        return
+
+    from pointlessql.services.lineage_edges import record_rejects
+
+    failure = record_rejects(
+        session_factory,
+        run_id=agent_run_id,
+        op_id=op_id,
+        source_table=source_table,
+        rejects=rejects,
+    )
+    if failure is None:
+        return
+    _stamp_audit_marker(
+        session_factory, op_id=op_id, marker=f"[lineage_rejects_partial] {failure!r}"
+    )
 
 
 def _stamp_audit_marker(session_factory: sessionmaker[Session], *, op_id: int, marker: str) -> None:

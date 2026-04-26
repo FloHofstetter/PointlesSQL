@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import insert, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from pointlessql.models import LineageRowEdge
+from pointlessql.models import LineageRowEdge, LineageRowReject
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
@@ -169,6 +169,68 @@ def record_edges(
             run_id,
             op_id,
             n,
+            exc,
+        )
+        return exc
+
+
+def record_rejects(
+    session_factory: sessionmaker[Session],
+    *,
+    run_id: str,
+    op_id: int,
+    source_table: str,
+    rejects: Sequence[tuple[str, str, str | None]],
+) -> Exception | None:
+    """Bulk-insert rejected-row markers into ``lineage_row_rejects``.
+
+    Sprint 15.5.3 — populated by ``pql.merge(track_rejects=True)``
+    when a pre-merge set-diff identifies source rows that won't land.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        run_id: PointlesSQL ``agent_run_id``.
+        op_id: ``agent_run_operations.id`` of the merge call.
+        source_table: Fully-qualified UC name the rejects came from.
+        rejects: ``[(source_row_id, reason, detail), ...]`` —
+            ``reason`` must be one of
+            :data:`pointlessql.models.lineage.REJECT_REASONS`;
+            ``detail`` is optional free-form context.  Empty input is
+            a no-op.
+
+    Returns:
+        ``None`` on success or empty input.  The underlying
+        ``Exception`` when the insert failed so the caller can stamp
+        a marker on the audit row.
+    """
+    if not rejects:
+        return None
+
+    now = datetime.datetime.now(datetime.UTC)
+    rows = [
+        {
+            "run_id": run_id,
+            "op_id": op_id,
+            "source_table": source_table,
+            "source_row_id": source_row_id,
+            "reason": reason,
+            "detail": detail,
+            "created_at": now,
+        }
+        for source_row_id, reason, detail in rejects
+    ]
+
+    try:
+        with session_factory() as session:
+            session.execute(insert(LineageRowReject), rows)
+            session.commit()
+        return None
+    except SQLAlchemyError as exc:
+        logger.info(
+            "lineage_row_rejects insert failed for run=%s op=%s n=%s: %s",
+            run_id,
+            op_id,
+            len(rows),
             exc,
         )
         return exc

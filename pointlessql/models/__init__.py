@@ -55,7 +55,7 @@ from pointlessql.models.catalog import (
     TableStats,
 )
 from pointlessql.models.external_writes import UnattributedWrite
-from pointlessql.models.lineage import LineageRowEdge
+from pointlessql.models.lineage import REJECT_REASONS, LineageRowEdge, LineageRowReject
 from pointlessql.models.notebook import (
     NotebookCellRun,
     NotebookCellRunSource,
@@ -89,6 +89,8 @@ __all__ = [
     "JobRun",
     "JobTask",
     "LineageRowEdge",
+    "LineageRowReject",
+    "REJECT_REASONS",
     "NotebookCellRun",
     "NotebookCellRunSource",
     "NotebookOutput",
