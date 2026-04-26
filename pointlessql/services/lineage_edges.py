@@ -29,6 +29,34 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class PredecessorRef:
+    """One source-side edge feeding a :class:`LineageStep`.
+
+    Sprint 15.5.2 — surfaces aggregate fan-in (and the occasional
+    re-run history) on the row-trace UI.  Multiple predecessors per
+    step mean either:
+
+    * the row was produced by an aggregate operation that grouped
+      several source rows into this output, or
+    * the same merge ran more than once and stamped overlapping
+      edges (audit history; deterministic re-runs reuse the target
+      row id).
+
+    Attributes:
+        table: Fully-qualified UC name of the source row.
+        row_id: ``_lineage_row_id`` value on the source row.
+        op_id: ``agent_run_operations.id`` that produced this edge.
+        run_id: PointlesSQL run UUID associated with the edge, or
+            ``None`` when the join row is missing.
+    """
+
+    table: str
+    row_id: str
+    op_id: int
+    run_id: str | None
+
+
+@dataclass(frozen=True)
 class LineageStep:
     """One node in a row-trace walkback."""
 
@@ -38,6 +66,7 @@ class LineageStep:
     op_id: int | None
     run_id: str | None
     source_file: str | None = None
+    predecessors: tuple[PredecessorRef, ...] = ()
 
 
 def synth_target_row_id(source_row_id: str, target_table: str) -> str:
@@ -244,13 +273,20 @@ def walk_back(
 ) -> list[LineageStep]:
     """Walk the lineage graph backward from one row to its bronze root.
 
-    Each step picks the **oldest** predecessor edge for the current
-    ``(table, row_id)`` pair (deterministic — re-runs that produced
-    multiple edges still resolve to the same chain).  The walk stops
-    when no predecessor exists (we're at the bronze root or at a
-    table that lost its lineage column) or when ``max_hops`` is
-    reached (defensive guard against accidental cycles, which the
-    deterministic ID synthesis should make impossible).
+    Each step records **every** predecessor edge that feeds the
+    current ``(table, row_id)`` pair via :class:`PredecessorRef`
+    entries on :attr:`LineageStep.predecessors`, so the row-trace UI
+    can surface aggregate fan-in (one target produced by N source
+    rows in a single ``pql.aggregate`` op) and re-run history (the
+    same merge ran twice and stamped overlapping edges).  The
+    chain-recursion still picks the **oldest** predecessor at each
+    step so the walk remains deterministic.
+
+    The walk stops when no predecessor exists (we're at the bronze
+    root or at a table that lost its lineage column) or when
+    ``max_hops`` is reached (defensive guard against accidental
+    cycles, which the deterministic ID synthesis should make
+    impossible).
 
     Args:
         session_factory: SQLAlchemy session factory.
@@ -261,10 +297,11 @@ def walk_back(
     Returns:
         A list of :class:`LineageStep`, depth-0 being the input row
         itself and the last step being the deepest reachable
-        ancestor.  An empty list when the input row is unknown to
-        the lineage graph (no edges land on it) — the caller can
-        still render the input row as a single step using its own
-        metadata.
+        ancestor.  Each step's :attr:`predecessors` lists the edges
+        that fed it (length ≥ 1 when an incoming edge exists; length
+        > 1 means fan-in).  An empty list is **never** returned —
+        depth-0 is always present, possibly with empty
+        ``predecessors`` when no edge lands on the input row.
     """
     steps: list[LineageStep] = []
     seen: set[tuple[str, str]] = set()
@@ -273,34 +310,59 @@ def walk_back(
     current_row = row_id
     depth = 0
 
-    steps.append(
-        LineageStep(depth=depth, table=current_table, row_id=current_row, op_id=None, run_id=None)
-    )
     seen.add((current_table, current_row))
+    pending_step = LineageStep(
+        depth=depth,
+        table=current_table,
+        row_id=current_row,
+        op_id=None,
+        run_id=None,
+    )
 
-    while depth < max_hops:
+    while True:
         predecessors = fetch_target_row_predecessors(
             session_factory, target_table=current_table, target_row_id=current_row
         )
-        if not predecessors:
-            break
-        edge = predecessors[0]
-        next_key = (edge.source_table, edge.source_row_id)
-        if next_key in seen:
-            break
-        depth += 1
-        steps.append(
-            LineageStep(
-                depth=depth,
+        pred_refs = tuple(
+            PredecessorRef(
                 table=edge.source_table,
                 row_id=edge.source_row_id,
                 op_id=edge.op_id,
                 run_id=edge.run_id,
             )
+            for edge in predecessors
         )
+        steps.append(
+            LineageStep(
+                depth=pending_step.depth,
+                table=pending_step.table,
+                row_id=pending_step.row_id,
+                op_id=pending_step.op_id,
+                run_id=pending_step.run_id,
+                source_file=pending_step.source_file,
+                predecessors=pred_refs,
+            )
+        )
+
+        if not predecessors or depth >= max_hops:
+            break
+
+        edge = predecessors[0]
+        next_key = (edge.source_table, edge.source_row_id)
+        if next_key in seen:
+            break
+
+        depth += 1
         seen.add(next_key)
         current_table = edge.source_table
         current_row = edge.source_row_id
+        pending_step = LineageStep(
+            depth=depth,
+            table=current_table,
+            row_id=current_row,
+            op_id=edge.op_id,
+            run_id=edge.run_id,
+        )
 
     return steps
 

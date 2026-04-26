@@ -40,6 +40,7 @@ from pointlessql.models import AgentRunOperation
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.services.lineage_edges import (
     LineageStep,
+    PredecessorRef,
     lookup_bronze_source_file,
     walk_back,
 )
@@ -88,18 +89,46 @@ async def _enforce_select(request: Request, full_name: str) -> None:
     )
 
 
+def _predecessor_to_dict(
+    pred: PredecessorRef, op_meta: dict[int, dict[str, Any]]
+) -> dict[str, Any]:
+    """Project a :class:`PredecessorRef` into the JSON payload shape.
+
+    Args:
+        pred: One predecessor edge feeding a step.
+        op_meta: Joined op metadata; see :func:`_step_to_dict`.
+
+    Returns:
+        Dict with ``table`` / ``row_id`` / ``op_id`` / ``op_name`` /
+        ``run_id`` keys.  ``op_name`` is ``None`` when the join row
+        is missing (deleted run, FK orphan).
+    """
+    meta = op_meta.get(pred.op_id)
+    return {
+        "table": pred.table,
+        "row_id": pred.row_id,
+        "op_id": pred.op_id,
+        "op_name": meta.get("op_name") if meta else None,
+        "run_id": pred.run_id,
+    }
+
+
 def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict[str, Any]:
     """Project a :class:`LineageStep` into the JSON payload shape.
 
     Args:
         step: One walkback step.
-        op_meta: ``{op_id: {"op_name": str, "principal": str | None}}``
-            joined off ``agent_run_operations`` for every distinct
-            ``op_id`` referenced by the steps.
+        op_meta: ``{op_id: {"op_name": str, "agent_run_id": str |
+            None}}`` joined off ``agent_run_operations`` for every
+            distinct ``op_id`` referenced by the steps **or** by
+            their predecessors.
 
     Returns:
         Dict with ``depth`` / ``table`` / ``row_id`` / ``op_id`` /
-        ``op_name`` / ``run_id`` / ``source_file`` keys.
+        ``op_name`` / ``run_id`` / ``source_file`` /
+        ``predecessors`` keys.  ``predecessors`` is the full list of
+        edges feeding this row — length > 1 indicates fan-in
+        (aggregate op or repeated re-runs).
     """
     meta = op_meta.get(step.op_id) if step.op_id is not None else None
     return {
@@ -110,6 +139,7 @@ def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict
         "op_name": meta.get("op_name") if meta else None,
         "run_id": step.run_id,
         "source_file": step.source_file,
+        "predecessors": [_predecessor_to_dict(p, op_meta) for p in step.predecessors],
     }
 
 
@@ -170,8 +200,29 @@ async def _enrich_with_source_file(request: Request, steps: list[LineageStep]) -
         op_id=deepest.op_id,
         run_id=deepest.run_id,
         source_file=source_file,
+        predecessors=deepest.predecessors,
     )
     return [*steps[:-1], enriched]
+
+
+def _collect_op_ids(steps: list[LineageStep]) -> set[int]:
+    """Collect every ``op_id`` referenced by *steps* or their predecessors.
+
+    Args:
+        steps: Walkback result from
+            :func:`pointlessql.services.lineage_edges.walk_back`.
+
+    Returns:
+        Set of op IDs to look up in ``agent_run_operations`` so the
+        JSON / HTML response can label every edge with its op_name.
+    """
+    ids: set[int] = set()
+    for step in steps:
+        if step.op_id is not None:
+            ids.add(step.op_id)
+        for pred in step.predecessors:
+            ids.add(pred.op_id)
+    return ids
 
 
 def _load_op_metadata(op_ids: set[int]) -> dict[int, dict[str, Any]]:
@@ -232,7 +283,7 @@ async def api_row_trace(
     steps = walk_back(factory, table=table, row_id=row_id, max_hops=_MAX_HOPS)
     steps = await _enrich_with_source_file(request, steps)
 
-    op_meta = _load_op_metadata({s.op_id for s in steps if s.op_id is not None})
+    op_meta = _load_op_metadata(_collect_op_ids(steps))
     return {
         "table": table,
         "row_id": row_id,
@@ -271,7 +322,7 @@ async def html_row_trace(
     factory = _get_session_factory()
     steps = walk_back(factory, table=full_name, row_id=row_id, max_hops=_MAX_HOPS)
     steps = await _enrich_with_source_file(request, steps)
-    op_meta = _load_op_metadata({s.op_id for s in steps if s.op_id is not None})
+    op_meta = _load_op_metadata(_collect_op_ids(steps))
 
     return _templates(request).TemplateResponse(
         request,

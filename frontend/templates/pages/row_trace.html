@@ -42,14 +42,14 @@
     </div>
 </div>
 
-{% if steps %}
+{% if steps and steps|selectattr("predecessors")|list %}
 <div class="card">
     <div class="card-header"><i class="bi bi-arrow-down me-1"></i>Walk back</div>
     <ol class="list-group list-group-flush list-group-numbered">
         {% for step in steps %}
         <li class="list-group-item">
             <div class="d-flex justify-content-between align-items-start gap-3">
-                <div class="ms-2 me-auto">
+                <div class="ms-2 me-auto flex-grow-1">
                     <div class="d-flex align-items-center gap-2 mb-1">
                         <span class="badge bg-secondary">depth {{ step.depth }}</span>
                         {% set parts = step.table.split('.') %}
@@ -61,6 +61,11 @@
                         {% if step.op_name %}
                         <span class="badge bg-info text-dark" title="op_id={{ step.op_id }}">{{ step.op_name }}</span>
                         {% endif %}
+                        {% if step.predecessors|length > 1 %}
+                        <span class="badge bg-warning text-dark" title="Sprint 15.5.2 fan-in — multiple source rows fed this output">
+                            <i class="bi bi-diagram-2 me-1"></i>fan-in × {{ step.predecessors|length }}
+                        </span>
+                        {% endif %}
                     </div>
                     <div class="small text-muted font-monospace text-break"><code>_lineage_row_id</code> = {{ step.row_id }}</div>
                     {% if step.source_file %}
@@ -68,6 +73,33 @@
                         <i class="bi bi-file-earmark-text me-1"></i>
                         <strong>Source file:</strong> <span class="font-monospace">{{ step.source_file }}</span>
                     </div>
+                    {% endif %}
+                    {% if step.predecessors|length > 1 %}
+                    <details class="mt-2 small">
+                        <summary class="text-muted">
+                            Aggregated from {{ step.predecessors|length }} source rows
+                        </summary>
+                        <ul class="list-unstyled mt-2 mb-0 ms-3">
+                            {% for pred in step.predecessors %}
+                            {% set pred_parts = pred.table.split('.') %}
+                            <li class="mb-1">
+                                {% if pred_parts|length == 3 %}
+                                <a href="/catalogs/{{ pred_parts[0] }}/schemas/{{ pred_parts[1] }}/tables/{{ pred_parts[2] }}/rows/{{ pred.row_id }}/trace"
+                                   class="text-decoration-none font-monospace text-break">
+                                    <i class="bi bi-arrow-90deg-left me-1"></i>{{ pred.row_id[:16] }}…
+                                </a>
+                                <span class="text-muted">in</span>
+                                <span class="font-monospace">{{ pred.table }}</span>
+                                {% else %}
+                                <span class="font-monospace">{{ pred.table }} / {{ pred.row_id[:16] }}…</span>
+                                {% endif %}
+                                {% if pred.op_name and pred.op_id != step.op_id %}
+                                <span class="badge bg-light text-dark border">{{ pred.op_name }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
                     {% endif %}
                 </div>
                 <div class="text-end small">

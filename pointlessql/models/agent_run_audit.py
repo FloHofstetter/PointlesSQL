@@ -92,7 +92,8 @@ class AgentRunOperation(Base):
         agent_run_id: FK to :class:`AgentRun.id`.
         ordinal: Monotonic per-run sequence number (1-indexed).
         op_name: One of ``"autoload"`` / ``"merge"`` /
-            ``"write_table"`` / ``"sql"``.  CHECK-constrained.
+            ``"write_table"`` / ``"sql"`` / ``"aggregate"``.
+            CHECK-constrained.
         params_json: JSON-encoded primitive arguments.  Excludes
             DataFrame contents — only call shape and stats.
         target_table: ``"catalog.schema.table"`` for writes; ``None``
@@ -125,7 +126,7 @@ class AgentRunOperation(Base):
         UniqueConstraint("agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"),
         Index("ix_agent_run_operations_run", "agent_run_id"),
         CheckConstraint(
-            "op_name IN ('autoload','merge','write_table','sql')",
+            "op_name IN ('autoload','merge','write_table','sql','aggregate')",
             name="ck_agent_run_operations_op_name",
         ),
     )
