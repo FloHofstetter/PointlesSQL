@@ -233,6 +233,14 @@ def autoload_files(
                 extras["source_volume_fqn"] = source_volume_fqn
             recorder.extra_params = extras
 
+            if files_ingested > 0:
+                recorder.pending_column_edges = _build_autoload_column_edges(
+                    target_location=target_location,
+                    target=target,
+                    audit_columns=audit_columns,
+                    source_volume_fqn=source_volume_fqn,
+                )
+
     return {
         "target": target,
         "files_scanned": len(files),
@@ -240,6 +248,71 @@ def autoload_files(
         "files_skipped": files_skipped,
         "rows_ingested": rows_total,
     }
+
+
+def _build_autoload_column_edges(
+    *,
+    target_location: str,
+    target: str,
+    audit_columns: tuple[str, ...],
+    source_volume_fqn: str | None,
+) -> list:  # type: ignore[type-arg]
+    """Construct ``ColumnEdgeSpec`` entries for an autoload op.
+
+    Reads the target Delta schema (post-append) so the edges
+    cover whatever columns actually landed.  Each non-audit column
+    gets an ``unknown_origin`` edge with
+    ``transform_detail="<file>"`` (or ``"file"`` when no Volume FQN
+    was declared) — autoload sources are file URIs, not UC tables,
+    so we deliberately avoid claiming a ``source_table_fqn``.
+
+    Args:
+        target_location: Delta storage location for the target.
+        target: Fully-qualified UC name of the target.
+        audit_columns: The audit-column names autoload injected.
+        source_volume_fqn: Optional UC FQN of the upstream Volume.
+
+    Returns:
+        A list of :class:`ColumnEdgeSpec` ready for the recorder.
+        Empty when the target schema can't be read.
+    """
+    from pointlessql.services.lineage_edges import ColumnEdgeSpec
+
+    try:
+        import deltalake
+
+        schema = deltalake.DeltaTable(target_location).schema()
+        delta_columns = [field.name for field in schema.fields]
+    except Exception:  # noqa: BLE001 — best-effort metadata read
+        return []
+
+    audit_set = set(audit_columns)
+    edges: list[ColumnEdgeSpec] = []
+    detail = source_volume_fqn or "file"
+    for col in delta_columns:
+        if col in audit_set:
+            edges.append(
+                ColumnEdgeSpec(
+                    source_table=None,
+                    source_column=None,
+                    target_table=target,
+                    target_column=col,
+                    transform_kind="unknown_origin",
+                    transform_detail="audit",
+                )
+            )
+        else:
+            edges.append(
+                ColumnEdgeSpec(
+                    source_table=None,
+                    source_column=None,
+                    target_table=target,
+                    target_column=col,
+                    transform_kind="unknown_origin",
+                    transform_detail=detail,
+                )
+            )
+    return edges
 
 
 def _resolve_audit_columns(conventions: ConventionsConfig) -> tuple[str, ...]:

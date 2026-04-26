@@ -32,6 +32,7 @@ override case appears.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Literal, cast
 
@@ -54,7 +55,7 @@ from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._read import read_table
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
-from pointlessql.services.lineage_edges import synth_target_row_id
+from pointlessql.services.lineage_edges import ColumnEdgeSpec, synth_target_row_id
 
 LINEAGE_ROW_ID_COLUMN = "_lineage_row_id"
 
@@ -77,6 +78,7 @@ def merge_table(
     agent_run_id: str | None = None,
     source_table_fqn: str | None = None,
     track_rejects: bool = False,
+    derivations: Mapping[str, Sequence[str]] | None = None,
 ) -> dict[str, Any]:
     """Merge *source* into the existing Delta table at *target*.
 
@@ -117,6 +119,12 @@ def merge_table(
             only when the source carries ``_lineage_row_id`` and
             ``source_table_fqn`` is declared (no source identity =
             no useful reject row).
+        derivations: Optional declarative mapping of derived target
+            columns to their *true* source-column names (Sprint
+            15.6.2).  Populates ``derived`` rows in
+            ``lineage_column_map`` so the column-trace UI can
+            answer "where did this column come from?" even when the
+            primitive only saw the already-derived column.
 
     Returns:
         A dict carrying ``strategy`` and the deltalake merge stats
@@ -197,6 +205,39 @@ def merge_table(
                     "source_table": source_table_fqn,
                     "rejects": rejects,
                 }
+
+            if source_table_fqn:
+                from pointlessql.services.column_lineage_diff import infer_column_edges
+
+                target_columns = list(arrow_source.schema.names)
+                edges = infer_column_edges(
+                    source_columns=target_columns,
+                    target_columns=target_columns,
+                    source_table=source_table_fqn,
+                    target_table=target,
+                    derivations=derivations,
+                )
+                if "_lineage_row_id" in target_columns:
+                    edges = [
+                        e
+                        for e in edges
+                        if not (
+                            e.target_column == "_lineage_row_id"
+                            and e.transform_kind == "identity"
+                        )
+                    ]
+                    edges.append(
+                        ColumnEdgeSpec(
+                            source_table=source_table_fqn,
+                            source_column="_lineage_row_id",
+                            target_table=target,
+                            target_column="_lineage_row_id",
+                            transform_kind="derived",
+                            transform_detail="synth_target_row_id",
+                        )
+                    )
+                if edges:
+                    recorder.pending_column_edges = edges
 
         return stats
 

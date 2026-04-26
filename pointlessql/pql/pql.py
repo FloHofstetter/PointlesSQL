@@ -14,6 +14,7 @@ test suite) continue to resolve unchanged.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 from soyuz_catalog_client import Client
@@ -194,6 +195,7 @@ class PQL:
         *,
         mode: Literal["error", "append", "overwrite", "ignore"] = "overwrite",
         source_table_fqn: str | None = None,
+        derivations: Mapping[str, Sequence[str]] | None = None,
     ) -> None:
         """Write a frame to a Delta table and register it in the catalog.
 
@@ -206,6 +208,10 @@ class PQL:
                 that produced *df*.  When set, drives the OpenLineage
                 event so the resulting edge ``source_table_fqn →
                 full_name`` shows up on the lineage card.
+            derivations: Optional declarative mapping of derived
+                target columns to their *true* source-column names
+                (Sprint 15.6.2).  Effective only when
+                ``source_table_fqn`` is also set.
         """
         write_table(
             client=self._client,
@@ -216,6 +222,7 @@ class PQL:
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
             source_table_fqn=source_table_fqn,
+            derivations=derivations,
         )
 
     def merge(
@@ -227,6 +234,7 @@ class PQL:
         strategy: MergeStrategy = "upsert",
         source_table_fqn: str | None = None,
         track_rejects: bool = False,
+        derivations: Mapping[str, Sequence[str]] | None = None,
     ) -> dict[str, Any]:
         """Merge *source* into the existing Delta table at *target*.
 
@@ -262,6 +270,10 @@ class PQL:
                 ``lineage_row_rejects`` so the run-detail UI can
                 explain dropped rows (Sprint 15.5.3).  Default
                 ``False`` keeps the cost off the hot path.
+            derivations: Optional declarative mapping of derived
+                target columns to their *true* source-column names
+                (Sprint 15.6.2).  Lets the column-trace UI surface
+                upstream-of-merge ``.assign(...)`` derivations.
 
         Returns:
             A dict carrying ``strategy`` and the deltalake merge
@@ -280,6 +292,7 @@ class PQL:
             agent_run_id=self._current_run_id,
             source_table_fqn=derived_source_fqn,
             track_rejects=track_rejects,
+            derivations=derivations,
         )
 
     def aggregate(
@@ -291,6 +304,7 @@ class PQL:
         aggs: dict[str, AggSpec],
         source_table_fqn: str,
         mode: AggregateMode = "overwrite",
+        derivations: Mapping[str, Sequence[str]] | None = None,
     ) -> dict[str, Any]:
         """Group-aggregate *source_df* into *target* with fan-in lineage.
 
@@ -323,6 +337,15 @@ class PQL:
             source_table_fqn: Required UC FQN of the upstream table
                 that produced *source_df*.
             mode: ``"overwrite"`` (default) or ``"append"``.
+            derivations: Optional declarative mapping of derived
+                target columns (those produced by upstream
+                ``.assign(...)``, arithmetic, or other DataFrame
+                ops before this call) to their *true* source-column
+                names.  Sprint 15.6.2 — populates ``derived`` rows
+                in ``lineage_column_map`` so the column-trace UI
+                can answer "where did ``placed_day`` come from?"
+                even though the primitive itself only saw the
+                already-derived column.
 
         Returns:
             ``{"target", "rows_written", "groups", "edges_emitted"}``.
@@ -337,6 +360,7 @@ class PQL:
             source_table_fqn=source_table_fqn,
             mode=mode,
             unreachable_msg=self._unreachable_msg(),
+            derivations=derivations,
             agent_run_id=self._current_run_id,
         )
 

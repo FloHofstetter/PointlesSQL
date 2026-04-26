@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 import httpx
@@ -45,6 +46,7 @@ def write_table(
     unreachable_msg: str,
     agent_run_id: str | None = None,
     source_table_fqn: str | None = None,
+    derivations: Mapping[str, Sequence[str]] | None = None,
 ) -> None:
     """Write a frame to a Delta table and register it in the catalog.
 
@@ -64,6 +66,10 @@ def write_table(
             in the lineage graph (Sprint 15.1).  ``None`` keeps
             ``write_table`` generic for in-memory frames with no UC
             origin.
+        derivations: Optional declarative mapping of derived target
+            columns to their *true* source-column names (Sprint
+            15.6.2).  Effective only when ``source_table_fqn`` is
+            also set (a derivation needs a source to point at).
 
     Raises:
         ValidationError: If *full_name* does not have exactly three parts.
@@ -122,6 +128,40 @@ def write_table(
                         "source_row_ids": source_ids,
                         "target_row_ids": target_ids,
                     }
+
+                column_names = _frame_column_names(df)
+                if column_names:
+                    from pointlessql.services.column_lineage_diff import infer_column_edges
+                    from pointlessql.services.lineage_edges import ColumnEdgeSpec
+
+                    edges = infer_column_edges(
+                        source_columns=column_names,
+                        target_columns=column_names,
+                        source_table=source_table_fqn,
+                        target_table=full_name,
+                        derivations=derivations,
+                    )
+                    if LINEAGE_ROW_ID_COLUMN in column_names:
+                        edges = [
+                            e
+                            for e in edges
+                            if not (
+                                e.target_column == LINEAGE_ROW_ID_COLUMN
+                                and e.transform_kind == "identity"
+                            )
+                        ]
+                        edges.append(
+                            ColumnEdgeSpec(
+                                source_table=source_table_fqn,
+                                source_column=LINEAGE_ROW_ID_COLUMN,
+                                target_table=full_name,
+                                target_column=LINEAGE_ROW_ID_COLUMN,
+                                transform_kind="derived",
+                                transform_detail="synth_target_row_id",
+                            )
+                        )
+                    if edges:
+                        recorder.pending_column_edges = edges
 
         try:
             if not table_exists:
@@ -223,6 +263,36 @@ def safe_delta_version(location: str) -> int | None:
         return int(deltalake.DeltaTable(location).version())
     except Exception:  # noqa: BLE001 — version reads are best-effort
         return None
+
+
+def _frame_column_names(frame: Any) -> list[str]:
+    """Best-effort column-name extraction for the engine's native frame types.
+
+    Args:
+        frame: Source frame.
+
+    Returns:
+        List of column names, or an empty list when the frame shape
+        is unrecognised.
+    """
+    try:
+        import pandas as pd
+    except ImportError:  # pragma: no cover — pandas is a hard dep
+        pd = None  # type: ignore[assignment]
+    if pd is not None and isinstance(frame, pd.DataFrame):
+        return [str(c) for c in frame.columns]
+    try:
+        import pyarrow as pa
+    except ImportError:  # pragma: no cover — pyarrow is a hard dep
+        pa = None  # type: ignore[assignment]
+    if pa is not None and isinstance(frame, pa.Table):
+        return list(frame.schema.names)
+    if hasattr(frame, "columns"):
+        try:
+            return [str(c) for c in frame.columns]
+        except (TypeError, ValueError):
+            return []
+    return []
 
 
 def _frame_row_count(frame: Any) -> int | None:

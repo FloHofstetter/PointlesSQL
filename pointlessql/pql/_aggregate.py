@@ -54,10 +54,13 @@ from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._write import derive_storage_location, safe_delta_version
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
-from pointlessql.services.lineage_edges import synth_aggregate_target_row_id
+from pointlessql.services.lineage_edges import (
+    ColumnEdgeSpec,
+    synth_aggregate_target_row_id,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping, Sequence
 
     import pandas as pd
 
@@ -78,6 +81,7 @@ def aggregate_table(
     source_table_fqn: str,
     mode: AggregateMode = "overwrite",
     unreachable_msg: str,
+    derivations: Mapping[str, Sequence[str]] | None = None,
     agent_run_id: str | None = None,
 ) -> dict[str, Any]:
     """Group-aggregate *source_df* into *target* and emit fan-in edges.
@@ -112,6 +116,14 @@ def aggregate_table(
             :func:`pointlessql.pql._write.write_table` semantics.
         unreachable_msg: Pre-rendered "cannot reach catalog"
             message — same hop other primitives take.
+        derivations: Optional declarative mapping of derived target
+            columns (those produced by upstream ``.assign(...)`` /
+            arithmetic / etc. before the aggregate call) to their
+            source-column names.  Sprint 15.6.2 — populates
+            ``derived`` rows in ``lineage_column_map`` so the
+            column-trace UI can answer "where did ``placed_day``
+            come from?" even when the primitive itself only saw the
+            already-derived column.
         agent_run_id: Run UUID for forced-audit emission.  ``None``
             keeps the interactive path silent.
 
@@ -212,6 +224,15 @@ def aggregate_table(
                     "source_row_ids": flat_source_ids,
                     "target_row_ids": flat_target_ids,
                 }
+
+            recorder.pending_column_edges = _build_aggregate_column_edges(
+                source_df=source_df,
+                source_table_fqn=source_table_fqn,
+                target=target,
+                group_by=group_by,
+                aggs=aggs,
+                derivations=derivations,
+            )
 
         try:
             engine.write(grouped_df, location, mode)
@@ -358,6 +379,176 @@ def _resolve_or_plan_target(
 
     assert location is not None  # noqa: S101 — guarded above
     return location, table_exists
+
+
+def _build_aggregate_column_edges(
+    *,
+    source_df: pd.DataFrame,
+    source_table_fqn: str,
+    target: str,
+    group_by: list[str],
+    aggs: dict[str, AggSpec],
+    derivations: Mapping[str, Sequence[str]] | None,
+) -> list[ColumnEdgeSpec]:
+    """Translate aggregate signals into ``lineage_column_map`` edges.
+
+    ``pql.aggregate`` is the most expressive of the PQL primitives
+    column-wise: ``aggs`` already encodes the source→target mapping
+    explicitly, and ``group_by`` columns carry through as identity
+    edges.  ``derivations`` covers the Pre-aggregate ``.assign(...)``
+    pattern.  Every edge gets ``source_table_fqn`` since aggregate
+    requires it (we fail-fast above when missing).
+
+    Args:
+        source_df: Source DataFrame the aggregation ran against.
+        source_table_fqn: Fully-qualified UC name of the source.
+        target: Fully-qualified UC name of the target.
+        group_by: Group-by column names.
+        aggs: ``{output_col: (source_col, agg_fn)}`` mapping.
+        derivations: Optional ``{target_col: [source_col, ...]}``
+            mapping for upstream-of-aggregate column derivations.
+
+    Returns:
+        Specs describing every (source_column, target_column) edge:
+        identity edges for group-by columns, ``aggregate`` edges
+        with ``transform_detail=agg_fn_name`` for ``aggs`` outputs,
+        ``derived`` edges for declared derivations, plus a single
+        ``derived`` edge for the synthesised ``_lineage_row_id``
+        column with ``transform_detail="synth_target_row_id"``.
+    """
+    src_columns: set[str] = set(source_df.columns)
+    edges: list[ColumnEdgeSpec] = []
+
+    # Group-by columns: identity edges.  Override with derivations
+    # when the caller declared one (e.g. placed_day derived from
+    # placed_at, used as a group-by key).
+    derivations = derivations or {}
+    for col in group_by:
+        if col in derivations:
+            for src_col in derivations[col]:
+                if src_col in src_columns:
+                    edges.append(
+                        ColumnEdgeSpec(
+                            source_table=source_table_fqn,
+                            source_column=src_col,
+                            target_table=target,
+                            target_column=col,
+                            transform_kind="derived",
+                            transform_detail=None,
+                        )
+                    )
+                else:
+                    edges.append(
+                        ColumnEdgeSpec(
+                            source_table=None,
+                            source_column=None,
+                            target_table=target,
+                            target_column=col,
+                            transform_kind="unknown_origin",
+                            transform_detail=(
+                                f"derivation references {src_col!r} "
+                                f"which is not on source"
+                            ),
+                        )
+                    )
+            continue
+        if col in src_columns:
+            edges.append(
+                ColumnEdgeSpec(
+                    source_table=source_table_fqn,
+                    source_column=col,
+                    target_table=target,
+                    target_column=col,
+                    transform_kind="identity",
+                    transform_detail=None,
+                )
+            )
+        else:
+            edges.append(
+                ColumnEdgeSpec(
+                    source_table=None,
+                    source_column=None,
+                    target_table=target,
+                    target_column=col,
+                    transform_kind="unknown_origin",
+                    transform_detail=None,
+                )
+            )
+
+    # Aggregation outputs: aggregate edges; pre-aggregate derivations
+    # extend the chain with derived edges from the *real* source.
+    for out_col, (src_col, agg_fn) in aggs.items():
+        agg_label = _agg_repr(agg_fn)
+        if src_col in derivations:
+            for upstream in derivations[src_col]:
+                if upstream in src_columns:
+                    edges.append(
+                        ColumnEdgeSpec(
+                            source_table=source_table_fqn,
+                            source_column=upstream,
+                            target_table=target,
+                            target_column=out_col,
+                            transform_kind="derived",
+                            transform_detail=(
+                                f"via {src_col!r} → "
+                                f"{agg_label}({src_col!r})"
+                            ),
+                        )
+                    )
+                else:
+                    edges.append(
+                        ColumnEdgeSpec(
+                            source_table=None,
+                            source_column=None,
+                            target_table=target,
+                            target_column=out_col,
+                            transform_kind="unknown_origin",
+                            transform_detail=(
+                                f"derivation references {upstream!r} "
+                                f"which is not on source"
+                            ),
+                        )
+                    )
+            continue
+        if src_col in src_columns:
+            edges.append(
+                ColumnEdgeSpec(
+                    source_table=source_table_fqn,
+                    source_column=src_col,
+                    target_table=target,
+                    target_column=out_col,
+                    transform_kind="aggregate",
+                    transform_detail=agg_label,
+                )
+            )
+        else:
+            edges.append(
+                ColumnEdgeSpec(
+                    source_table=None,
+                    source_column=None,
+                    target_table=target,
+                    target_column=out_col,
+                    transform_kind="unknown_origin",
+                    transform_detail=f"aggregate {agg_label} on missing column {src_col!r}",
+                )
+            )
+
+    # Synthesised _lineage_row_id is "derived" from the source's
+    # row ID column (when present) — let agents trace where a
+    # gold row id ultimately comes from.
+    if LINEAGE_ROW_ID_COLUMN in src_columns:
+        edges.append(
+            ColumnEdgeSpec(
+                source_table=source_table_fqn,
+                source_column=LINEAGE_ROW_ID_COLUMN,
+                target_table=target,
+                target_column=LINEAGE_ROW_ID_COLUMN,
+                transform_kind="derived",
+                transform_detail="synth_target_row_id",
+            )
+        )
+
+    return edges
 
 
 def _agg_repr(agg_fn: str | Callable[[Any], Any]) -> str:
