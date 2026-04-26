@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 13.11.11: PQL write endpoints (2026-04-26)
+
+Closed the read-only gap on the agent's tool surface that the
+2026-04-26 walkthrough surfaced — `gpt-5-mini` correctly noted
+that `pql.autoload` was unreachable from the chat adapter.
+
+- **Added** [`pointlessql/api/pql_write_routes.py`](pointlessql/api/pql_write_routes.py) —
+  four `POST /api/pql/*` endpoints behind `check_privilege` +
+  Sprint-13.8 forced audit trail:
+  - `/autoload` — mirrors `PQL.autoload` (file → bronze).
+  - `/write_table` — runs SELECT, materialises pandas, writes.
+  - `/merge` — runs SELECT, upsert / SCD-2 into existing target.
+  - `/drop_table` — admin-only soyuz delete passthrough.
+- `write_table` + `merge` reuse `prepare_sql` +
+  `register_delta_view` so SELECT-side parsing/enforcement
+  stays consistent with `/api/sql/execute`.
+- 9 route-level tests in
+  [`tests/test_pql_write_routes.py`](tests/test_pql_write_routes.py)
+  (admin happy-path, validation reject, non-admin denial per
+  endpoint).
+
+Plugin commit `hermes-plugin-pointlessql fa31742` adds the
+matching four tools (`pql_autoload` / `pql_write_table` /
+`pql_merge` / `pql_drop_table`) — 14 new tool tests, 80/80
+pass.  Plugin tool surface now sits at 20 tools (16 + 4).
+
 ### Fixed — Sprint 13.11.5: live-Hermes hotfix
 
 First real `hermes chat` smoke run after the Phase-13 close-out

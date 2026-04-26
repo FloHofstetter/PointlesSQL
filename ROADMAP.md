@@ -4555,6 +4555,36 @@ PointlesSQL
 │   │         ``align`` values 422 via ``Query(pattern=…)``.
 │   │       * Plugin commit ``hermes-plugin-pointlessql 1184fc5``
 │   │         adds ``detail`` + ``align`` to ``pql_diff_runs``.
+│   │
+│   ├── Sprint 13.11.11 — Plugin write tools                    ✅ done (155cdc8)
+│   │       Closed the read-only gap on the agent's tool surface.
+│   │       Until this sprint the plugin had ``pql_query`` (read SQL)
+│   │       plus the Family-A introspection set, but no way to
+│   │       drive a Bronze → Silver → Gold pipeline through Hermes
+│   │       — every write needed a side-channel script.  The
+│   │       2026-04-26 walkthrough surfaced this when ``gpt-5-mini``
+│   │       correctly identified that ``pql.autoload`` was
+│   │       unreachable from the chat adapter.
+│   │
+│   │       Added four ``POST /api/pql/*`` endpoints behind the
+│   │       principal-aware ``check_privilege`` gate plus the
+│   │       Sprint-13.8 forced audit trail:
+│   │
+│   │       * ``/autoload`` — file-bytes-to-bronze (mirrors PQL.autoload)
+│   │       * ``/write_table`` — runs SELECT, materialises pandas, writes
+│   │       * ``/merge`` — runs SELECT, upsert/SCD-2 into existing
+│   │       * ``/drop_table`` — admin-only soyuz delete passthrough
+│   │
+│   │       ``write_table`` + ``merge`` reuse the SQL editor's
+│   │       ``prepare_sql`` + UC SELECT enforcement so the SELECT
+│   │       side stays consistent with ``/api/sql/execute``.
+│   │
+│   │       Plugin commit ``hermes-plugin-pointlessql fa31742``
+│   │       adds the matching four tools (``pql_autoload`` /
+│   │       ``pql_write_table`` / ``pql_merge`` / ``pql_drop_table``)
+│   │       with arg_error envelopes, Args/Example descriptions,
+│   │       and sibling-tool contrast notes.  16 + 4 = 20 plugin
+│   │       tools total.
 │
 │   Phase 13 close-out — Sprint 13.11 closed the read-loop the
 │   2026-04-25 walkthrough proved high-leverage.  Three bugs in
