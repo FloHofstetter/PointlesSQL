@@ -231,6 +231,7 @@ async def table_detail(
         user.get("is_admin", False),
         MANAGE_GRANTS,
     )
+    lineage_columns = _columns_with_lineage(full_name)
     return _templates(request).TemplateResponse(
         request,
         "pages/table.html",
@@ -243,6 +244,7 @@ async def table_detail(
             "permissions": permissions,
             "effective": effective,
             "lineage": lineage,
+            "lineage_columns": lineage_columns,
             "can_manage": can_manage,
             "is_admin": user.get("is_admin", False),
             "error": error,
@@ -251,3 +253,34 @@ async def table_detail(
             "active_table": table_name,
         },
     )
+
+
+def _columns_with_lineage(full_name: str) -> set[str]:
+    """Return the set of column names in *full_name* that have a column-edge row.
+
+    Sprint 15.6.4 — drives the table-detail page's "lineage" link
+    per column.  Best-effort: a missing metadata DB or schema drift
+    yields an empty set so the link silently disappears rather than
+    raising.
+
+    Args:
+        full_name: Three-part UC name of the table.
+
+    Returns:
+        Set of distinct ``target_column`` values from
+        ``lineage_column_map`` for this table.
+    """
+    try:
+        from sqlalchemy import select as _select
+
+        from pointlessql.db import get_session_factory
+        from pointlessql.models import LineageColumnMap
+
+        factory = get_session_factory()
+        with factory() as session:
+            stmt = _select(LineageColumnMap.target_column).where(
+                LineageColumnMap.target_table == full_name
+            ).distinct()
+            return {str(row[0]) for row in session.execute(stmt).all()}
+    except Exception:  # noqa: BLE001 — best-effort badge population
+        return set()

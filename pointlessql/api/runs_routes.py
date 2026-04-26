@@ -388,32 +388,45 @@ def _load_operations_for_run(
             .where(AgentRunOperation.agent_run_id == run_id)
             .order_by(AgentRunOperation.ordinal)
         )
-        for row in session.scalars(stmt).all():
-            duration_ms: int | None = None
-            if row.finished_at is not None and row.started_at is not None:
-                duration_ms = int((row.finished_at - row.started_at).total_seconds() * 1000)
-            try:
-                params = json.loads(row.params_json)
-            except json.JSONDecodeError:
-                params = {}
-            out.append(
-                {
-                    "id": row.id,
-                    "ordinal": row.ordinal,
-                    "op_name": row.op_name,
-                    "params": params,
-                    "target_table": row.target_table,
-                    "input_sha": row.input_sha,
-                    "rows_affected": row.rows_affected,
-                    "delta_version_before": row.delta_version_before,
-                    "delta_version_after": row.delta_version_after,
-                    "started_at": row.started_at.isoformat() if row.started_at else None,
-                    "finished_at": (row.finished_at.isoformat() if row.finished_at else None),
-                    "duration_ms": duration_ms,
-                    "error_message": row.error_message,
-                    "status": "error" if row.error_message else "ok",
-                }
-            )
+        rows = list(session.scalars(stmt).all())
+
+    op_ids = [row.id for row in rows]
+    column_edge_counts: dict[int, int] = {}
+    if op_ids:
+        try:
+            from pointlessql.services.lineage_edges import count_column_edges_for_op
+
+            column_edge_counts = count_column_edges_for_op(factory, op_ids)
+        except Exception:  # noqa: BLE001 — best-effort badge population
+            column_edge_counts = {}
+
+    for row in rows:
+        duration_ms: int | None = None
+        if row.finished_at is not None and row.started_at is not None:
+            duration_ms = int((row.finished_at - row.started_at).total_seconds() * 1000)
+        try:
+            params = json.loads(row.params_json)
+        except json.JSONDecodeError:
+            params = {}
+        out.append(
+            {
+                "id": row.id,
+                "ordinal": row.ordinal,
+                "op_name": row.op_name,
+                "params": params,
+                "target_table": row.target_table,
+                "input_sha": row.input_sha,
+                "rows_affected": row.rows_affected,
+                "delta_version_before": row.delta_version_before,
+                "delta_version_after": row.delta_version_after,
+                "started_at": row.started_at.isoformat() if row.started_at else None,
+                "finished_at": (row.finished_at.isoformat() if row.finished_at else None),
+                "duration_ms": duration_ms,
+                "error_message": row.error_message,
+                "status": "error" if row.error_message else "ok",
+                "column_edges_count": column_edge_counts.get(row.id, 0),
+            }
+        )
     return out
 
 

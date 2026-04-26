@@ -240,6 +240,13 @@ function tablePreview() {
                                 <i class="bi bi-diagram-3"></i> Part
                             </span>
                             {% endif %}
+                            {% if lineage_columns and col.name in lineage_columns %}
+                            <a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/columns/{{ col.name }}/trace"
+                               class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1 text-decoration-none"
+                               title="Column-level lineage trace (Sprint 15.6)">
+                                <i class="bi bi-bezier2"></i> lineage
+                            </a>
+                            {% endif %}
                         </td>
                         <td class="font-monospace small text-info" data-label="Type">{{ col.type_text }}</td>
                         <td data-label="Nullable">

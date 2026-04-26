@@ -443,6 +443,12 @@
                                 {% else %}
                                 <span class="badge bg-success-subtle text-success-emphasis">ok</span>
                                 {% endif %}
+                                {% if op.column_edges_count and op.column_edges_count > 0 %}
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1"
+                                      title="Sprint 15.6 — column-level lineage edges produced by this op">
+                                    <i class="bi bi-bezier2"></i> column edges: {{ op.column_edges_count }}
+                                </span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% if op.input_sha or op.params %}
