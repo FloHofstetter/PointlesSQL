@@ -392,6 +392,7 @@ def _load_operations_for_run(
 
     op_ids = [row.id for row in rows]
     column_edge_counts: dict[int, int] = {}
+    value_change_counts: dict[int, int] = {}
     if op_ids:
         try:
             from pointlessql.services.lineage_edges import count_column_edges_for_op
@@ -399,6 +400,12 @@ def _load_operations_for_run(
             column_edge_counts = count_column_edges_for_op(factory, op_ids)
         except Exception:  # noqa: BLE001 — best-effort badge population
             column_edge_counts = {}
+        try:
+            from pointlessql.services.lineage_edges import count_value_changes_for_op
+
+            value_change_counts = count_value_changes_for_op(factory, op_ids)
+        except Exception:  # noqa: BLE001 — best-effort badge population
+            value_change_counts = {}
 
     for row in rows:
         duration_ms: int | None = None
@@ -425,6 +432,7 @@ def _load_operations_for_run(
                 "error_message": row.error_message,
                 "status": "error" if row.error_message else "ok",
                 "column_edges_count": column_edge_counts.get(row.id, 0),
+                "value_changes_count": value_change_counts.get(row.id, 0),
             }
         )
     return out

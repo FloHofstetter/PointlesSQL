@@ -449,6 +449,12 @@
                                     <i class="bi bi-bezier2"></i> column edges: {{ op.column_edges_count }}
                                 </span>
                                 {% endif %}
+                                {% if op.value_changes_count and op.value_changes_count > 0 %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1"
+                                      title="Sprint 15.7 — per-cell value changes captured from Delta CDF">
+                                    <i class="bi bi-pencil-square"></i> value changes: {{ op.value_changes_count }}
+                                </span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% if op.input_sha or op.params %}

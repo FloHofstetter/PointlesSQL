@@ -43,6 +43,7 @@ from pointlessql.services.lineage_edges import (
     ColumnTraceStep,
     LineageStep,
     PredecessorRef,
+    fetch_value_changes_for_row,
     lookup_bronze_source_file,
     walk_back,
     walk_back_columns,
@@ -129,9 +130,13 @@ def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict
     Returns:
         Dict with ``depth`` / ``table`` / ``row_id`` / ``op_id`` /
         ``op_name`` / ``run_id`` / ``source_file`` /
-        ``predecessors`` keys.  ``predecessors`` is the full list of
-        edges feeding this row — length > 1 indicates fan-in
-        (aggregate op or repeated re-runs).
+        ``predecessors`` / ``value_changes`` keys.  ``predecessors``
+        is the full list of edges feeding this row — length > 1
+        indicates fan-in (aggregate op or repeated re-runs).
+        ``value_changes`` is the per-cell preimage/postimage list
+        for this step's ``(table, row_id)`` pair (Sprint 15.7.4),
+        empty when no merge with ``track_value_changes=True`` has
+        touched this row.
     """
     meta = op_meta.get(step.op_id) if step.op_id is not None else None
     return {
@@ -143,7 +148,49 @@ def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict
         "run_id": step.run_id,
         "source_file": step.source_file,
         "predecessors": [_predecessor_to_dict(p, op_meta) for p in step.predecessors],
+        "value_changes": [],
     }
+
+
+def _attach_value_changes(
+    factory: Any, step_dicts: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Populate the ``value_changes`` key on each step from the metadata DB.
+
+    Sprint 15.7.4 — best-effort lookup that runs once per row-trace
+    render.  Each step probe is one indexed query on
+    ``(target_table, target_row_id)``; max-hops is 20, so the call
+    is bounded to ≤20 lightweight reads.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        step_dicts: Already-projected step dicts (output of
+            :func:`_step_to_dict`).
+
+    Returns:
+        The same list, mutated in place — each step's
+        ``value_changes`` list is replaced with the ``[{column,
+        old_value, new_value, run_id, op_id, created_at}]`` entries
+        for its ``(table, row_id)``.
+    """
+    for step in step_dicts:
+        rows = fetch_value_changes_for_row(
+            factory,
+            target_table=step["table"],
+            target_row_id=step["row_id"],
+        )
+        step["value_changes"] = [
+            {
+                "target_column": r.target_column,
+                "old_value": r.old_value,
+                "new_value": r.new_value,
+                "run_id": r.run_id,
+                "op_id": r.op_id,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+    return step_dicts
 
 
 async def _enrich_with_source_file(request: Request, steps: list[LineageStep]) -> list[LineageStep]:
@@ -287,10 +334,12 @@ async def api_row_trace(
     steps = await _enrich_with_source_file(request, steps)
 
     op_meta = _load_op_metadata(_collect_op_ids(steps))
+    step_dicts = [_step_to_dict(s, op_meta) for s in steps]
+    step_dicts = _attach_value_changes(factory, step_dicts)
     return {
         "table": table,
         "row_id": row_id,
-        "steps": [_step_to_dict(s, op_meta) for s in steps],
+        "steps": step_dicts,
     }
 
 
@@ -326,6 +375,8 @@ async def html_row_trace(
     steps = walk_back(factory, table=full_name, row_id=row_id, max_hops=_MAX_HOPS)
     steps = await _enrich_with_source_file(request, steps)
     op_meta = _load_op_metadata(_collect_op_ids(steps))
+    step_dicts = [_step_to_dict(s, op_meta) for s in steps]
+    step_dicts = _attach_value_changes(factory, step_dicts)
 
     return _templates(request).TemplateResponse(
         request,
@@ -336,7 +387,7 @@ async def html_row_trace(
             "table_name": table_name,
             "full_name": full_name,
             "row_id": row_id,
-            "steps": [_step_to_dict(s, op_meta) for s in steps],
+            "steps": step_dicts,
             "active_catalog": catalog_name,
             "active_schema": schema_name,
             "active_table": table_name,
@@ -499,3 +550,61 @@ async def html_column_trace(
             "active_table": table_name,
         },
     )
+
+
+@router.get("/api/lineage/value-changes")
+async def api_value_changes(
+    request: Request,
+    table: str = Query(..., description="Three-part UC name"),
+    row_id: str = Query(..., description="_lineage_row_id of the target row"),
+    column: str | None = Query(None, description="Optional column-name filter"),
+) -> dict[str, Any]:
+    """Return per-cell preimage/postimage history for one target row.
+
+    Sprint 15.7.4 — value-level analog of the row-trace and
+    column-trace endpoints.  Returns every ``lineage_value_changes``
+    row that lands on ``(table, row_id)``, optionally narrowed to one
+    column.  Same SELECT-privilege enforcement as ``row-trace`` /
+    ``column-trace``.
+
+    Args:
+        request: FastAPI request.
+        table: Three-part UC name of the row's table.
+        row_id: ``_lineage_row_id`` of the target row.
+        column: Optional column name filter.
+
+    Returns:
+        ``{"table", "row_id", "column", "changes": [{"run_id",
+        "op_id", "target_column", "old_value", "new_value",
+        "created_at"}, ...]}`` ordered by ``created_at`` ascending.
+
+    Raises:
+        HTTPException: 400 when ``row_id`` is empty.
+    """
+    if not row_id:
+        raise HTTPException(status_code=400, detail="row_id is required")
+    await _enforce_select(request, table)
+
+    factory = _get_session_factory()
+    rows = fetch_value_changes_for_row(
+        factory,
+        target_table=table,
+        target_row_id=row_id,
+        column=column,
+    )
+    return {
+        "table": table,
+        "row_id": row_id,
+        "column": column,
+        "changes": [
+            {
+                "run_id": r.run_id,
+                "op_id": r.op_id,
+                "target_column": r.target_column,
+                "old_value": r.old_value,
+                "new_value": r.new_value,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ],
+    }
