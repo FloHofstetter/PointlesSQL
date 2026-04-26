@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Phase 15.6 — Column-Level Lineage (in progress)
+
+Orthogonal column dimension to the row-lineage Phase 15 / 15.5
+already shipped: every PQL primitive populates a new
+`lineage_column_map` table that answers *"if I rename `unit_price`
+in silver, which gold columns break?"*.  PointlesSQL-only storage
+(soyuz columnLineage facet ingest stays out of scope).
+`sqlglot.optimizer.lineage` drives the AST walk for `pql.sql`;
+`derivations={...}` opt-in kwarg captures pre-call `.assign(...)`
+mappings on aggregate / merge / write_table.  Volume bounded by
+schema breadth (~26 column edges for the canonical Hermes-
+Medallion run vs the 102 row edges we already accept).  Sprints in
+flight; details land per sprint as they close.
+
 ### Added — Phase 15.5: Aggregate Lineage + Reject Visibility (2026-04-26)
 
 Closes the two row-lineage gaps the Phase-15 live replay surfaced.
