@@ -247,6 +247,44 @@ def _load_lineage_summary_for_run(
     return {"total_edges": total, "rows": rows}
 
 
+def _load_rejects_for_run(request: Request, run_id: str) -> list[dict[str, Any]]:
+    """Return Sprint-15.5.3 ``lineage_row_rejects`` for the run-detail tab.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: Owning ``AgentRun.id``.
+
+    Returns:
+        List of dicts shaped ``{"op_id", "source_table",
+        "source_row_id", "reason", "detail", "created_at"}`` in
+        insertion order.  Empty list when no rejects were recorded
+        (default — ``track_rejects=True`` not set on any merge call
+        in the run).
+    """
+    from pointlessql.models import LineageRowReject
+
+    factory = request.app.state.session_factory
+    rows: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(LineageRowReject)
+            .where(LineageRowReject.run_id == run_id)
+            .order_by(LineageRowReject.id)
+        )
+        for r in session.scalars(stmt):
+            rows.append(
+                {
+                    "op_id": r.op_id,
+                    "source_table": r.source_table,
+                    "source_row_id": r.source_row_id,
+                    "reason": r.reason,
+                    "detail": r.detail,
+                    "created_at": r.created_at,
+                }
+            )
+    return rows
+
+
 async def _load_uc_mutations_for_run(
     request: Request,
     run_id: str,
@@ -768,6 +806,7 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             ),
             "uc_mutations": await _load_uc_mutations_for_run(request, run_id),
             "lineage_summary": _load_lineage_summary_for_run(request, run_id),
+            "rejects": _load_rejects_for_run(request, run_id),
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,
             "active_page": "runs",
