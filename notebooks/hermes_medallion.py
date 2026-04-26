@@ -152,6 +152,11 @@ except Exception as exc:  # noqa: BLE001 — bootstrap path; see comment above
 
 # %% pql_cell_id="22222222-2222-4222-8222-bbbbbbbbbbbb"
 silver_df = pql.table(SILVER_TABLE)
+# Sprint 15.6.2: ``derivations={...}`` declares pre-aggregate
+# ``.assign(...)`` mappings so the column-trace UI can walk
+# ``revenue → line_revenue → (qty, unit_price)`` and
+# ``placed_day → placed_at`` even though ``pql.aggregate`` itself
+# only sees the already-derived columns.
 gold_result = pql.aggregate(
     source_df=silver_df.assign(
         placed_day=silver_df["placed_at"].dt.floor("D"),
@@ -164,6 +169,10 @@ gold_result = pql.aggregate(
         "revenue": ("line_revenue", "sum"),
     },
     source_table_fqn=SILVER_TABLE,
+    derivations={
+        "placed_day": ["placed_at"],
+        "line_revenue": ["qty", "unit_price"],
+    },
 )
 print(
     f"Gold: {GOLD_TABLE} refreshed with {gold_result['rows_written']} aggregate "
