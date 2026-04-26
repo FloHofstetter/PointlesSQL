@@ -71,9 +71,7 @@ def upgrade() -> None:
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("error_message", sa.Text, nullable=True),
-        sa.UniqueConstraint(
-            "agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"
-        ),
+        sa.UniqueConstraint("agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"),
         sa.CheckConstraint(
             "op_name IN ('autoload','merge','write_table','sql')",
             name="ck_agent_run_operations_op_name",
@@ -94,9 +92,7 @@ def upgrade() -> None:
             sa.ForeignKey("agent_runs.id"),
             nullable=False,
         ),
-        sa.Column(
-            "event_id", sa.String(length=64), nullable=False, unique=True
-        ),
+        sa.Column("event_id", sa.String(length=64), nullable=False, unique=True),
         sa.Column("event_type", sa.String(length=64), nullable=False),
         sa.Column("fired_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("outcome", sa.String(length=20), nullable=False),
@@ -124,9 +120,7 @@ def downgrade() -> None:
     op.drop_index("ix_agent_run_events_fired", table_name="agent_run_events")
     op.drop_table("agent_run_events")
 
-    op.drop_index(
-        "ix_agent_run_operations_run", table_name="agent_run_operations"
-    )
+    op.drop_index("ix_agent_run_operations_run", table_name="agent_run_operations")
     op.drop_table("agent_run_operations")
 
     op.drop_index("ix_agent_run_sources_sha", table_name="agent_run_sources")

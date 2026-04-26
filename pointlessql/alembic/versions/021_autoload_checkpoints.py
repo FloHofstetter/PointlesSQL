@@ -44,9 +44,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("rows_ingested", sa.Integer, nullable=False),
-        sa.UniqueConstraint(
-            "target_table", "file_sha", name="uq_autoload_target_sha"
-        ),
+        sa.UniqueConstraint("target_table", "file_sha", name="uq_autoload_target_sha"),
     )
     op.create_index(
         "ix_autoload_checkpoints_target_path",

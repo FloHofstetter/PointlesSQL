@@ -37,7 +37,10 @@ def upgrade() -> None:
         sa.Column("output_metadata", sa.Text, nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint(
-            "file_path", "cell_id", "kernel_session_id", "output_index",
+            "file_path",
+            "cell_id",
+            "kernel_session_id",
+            "output_index",
             name="uq_notebook_outputs_position",
         ),
     )
@@ -56,7 +59,9 @@ def upgrade() -> None:
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint(
-            "file_path", "cell_id", "kernel_session_id",
+            "file_path",
+            "cell_id",
+            "kernel_session_id",
             name="pk_notebook_cell_runs",
         ),
     )

@@ -48,9 +48,7 @@ def upgrade() -> None:
         sa.Column("cron_expr", sa.String(length=120), nullable=False),
         sa.Column("condition_op", sa.String(length=8), nullable=False),
         sa.Column("threshold", sa.Integer, nullable=False),
-        sa.Column(
-            "is_active", sa.Boolean, nullable=False, server_default=sa.true()
-        ),
+        sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.true()),
         sa.Column(
             "backing_job_id",
             sa.Integer,
@@ -78,21 +76,15 @@ def upgrade() -> None:
         sa.Column("kind", sa.String(length=16), nullable=False),
         sa.Column("webhook_url", sa.String(length=2000), nullable=True),
         sa.Column("hmac_secret", sa.String(length=256), nullable=True),
-        sa.Column(
-            "is_active", sa.Boolean, nullable=False, server_default=sa.true()
-        ),
+        sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.true()),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.CheckConstraint(
             "kind IN ('webhook','feed')",
             name="ck_alert_destinations_kind",
         ),
     )
-    op.create_index(
-        "ix_alert_destinations_alert", "alert_destinations", ["alert_id"]
-    )
-    op.create_index(
-        "ix_alert_destinations_kind", "alert_destinations", ["kind"]
-    )
+    op.create_index("ix_alert_destinations_alert", "alert_destinations", ["alert_id"])
+    op.create_index("ix_alert_destinations_kind", "alert_destinations", ["kind"])
 
     op.create_table(
         "alert_events",
@@ -103,9 +95,7 @@ def upgrade() -> None:
             sa.ForeignKey("alerts.id"),
             nullable=False,
         ),
-        sa.Column(
-            "event_id", sa.String(length=64), nullable=False, unique=True
-        ),
+        sa.Column("event_id", sa.String(length=64), nullable=False, unique=True),
         sa.Column("fired_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("row_count", sa.Integer, nullable=True),
         sa.Column("outcome", sa.String(length=20), nullable=False),
@@ -115,9 +105,7 @@ def upgrade() -> None:
             name="ck_alert_events_outcome",
         ),
     )
-    op.create_index(
-        "ix_alert_events_fired", "alert_events", ["alert_id", "fired_at"]
-    )
+    op.create_index("ix_alert_events_fired", "alert_events", ["alert_id", "fired_at"])
 
     op.add_column(
         "users",
@@ -139,12 +127,8 @@ def downgrade() -> None:
     op.drop_column("users", "feed_token")
     op.drop_index("ix_alert_events_fired", table_name="alert_events")
     op.drop_table("alert_events")
-    op.drop_index(
-        "ix_alert_destinations_kind", table_name="alert_destinations"
-    )
-    op.drop_index(
-        "ix_alert_destinations_alert", table_name="alert_destinations"
-    )
+    op.drop_index("ix_alert_destinations_kind", table_name="alert_destinations")
+    op.drop_index("ix_alert_destinations_alert", table_name="alert_destinations")
     op.drop_table("alert_destinations")
     op.drop_index("ix_alerts_owner", table_name="alerts")
     op.drop_table("alerts")

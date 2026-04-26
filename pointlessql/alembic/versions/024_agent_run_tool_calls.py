@@ -49,7 +49,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop the table + its index."""
-    op.drop_index(
-        "ix_agent_run_tool_calls_run", table_name="agent_run_tool_calls"
-    )
+    op.drop_index("ix_agent_run_tool_calls_run", table_name="agent_run_tool_calls")
     op.drop_table("agent_run_tool_calls")

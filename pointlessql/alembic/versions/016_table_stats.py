@@ -32,11 +32,11 @@ def upgrade() -> None:
         sa.Column("delta_log_version", sa.BigInteger, nullable=False),
         sa.Column("column_name", sa.String(length=255), nullable=False),
         sa.Column("stats_json", sa.Text, nullable=False),
-        sa.Column(
-            "computed_at", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("computed_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint(
-            "full_name", "delta_log_version", "column_name",
+            "full_name",
+            "delta_log_version",
+            "column_name",
             name="uq_table_stats_col_version",
         ),
     )

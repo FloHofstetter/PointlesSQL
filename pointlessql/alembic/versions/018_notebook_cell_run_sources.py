@@ -49,7 +49,10 @@ def upgrade() -> None:
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
-            "status", sa.String(length=16), nullable=False, server_default="running",
+            "status",
+            sa.String(length=16),
+            nullable=False,
+            server_default="running",
         ),
     )
     op.create_index(
