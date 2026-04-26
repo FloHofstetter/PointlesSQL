@@ -192,6 +192,7 @@ class PQL:
         full_name: str,
         *,
         mode: Literal["error", "append", "overwrite", "ignore"] = "overwrite",
+        source_table_fqn: str | None = None,
     ) -> None:
         """Write a frame to a Delta table and register it in the catalog.
 
@@ -200,6 +201,10 @@ class PQL:
             full_name: Three-part name ``"catalog.schema.table"``.
             mode: Write mode passed to the engine.  Defaults to
                 ``"overwrite"``.
+            source_table_fqn: Optional UC FQN of the upstream table
+                that produced *df*.  When set, drives the OpenLineage
+                event so the resulting edge ``source_table_fqn →
+                full_name`` shows up on the lineage card.
         """
         write_table(
             client=self._client,
@@ -209,6 +214,7 @@ class PQL:
             mode=mode,
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
+            source_table_fqn=source_table_fqn,
         )
 
     def merge(
@@ -218,6 +224,7 @@ class PQL:
         *,
         on: list[str],
         strategy: MergeStrategy = "upsert",
+        source_table_fqn: str | None = None,
     ) -> dict[str, Any]:
         """Merge *source* into the existing Delta table at *target*.
 
@@ -241,12 +248,19 @@ class PQL:
                 :meth:`autoload` to bootstrap.
             on: Non-empty list of merge-key column names.
             strategy: ``"upsert"`` (default) or ``"scd2"``.
+            source_table_fqn: Optional UC FQN of the upstream table
+                that produced *source*.  When set, drives the
+                OpenLineage event so the resulting edge
+                ``source_table_fqn → target`` shows up on the lineage
+                card.  When *source* is itself a UC string the helper
+                derives this automatically below.
 
         Returns:
             A dict carrying ``strategy`` and the deltalake merge
             stats.  SCD-2 also reports ``rows_appended`` and the
             close-phase stats.
         """
+        derived_source_fqn = source_table_fqn or (source if isinstance(source, str) else None)
         return merge_table(
             client=self._client,
             engine=self._engine,
@@ -256,6 +270,7 @@ class PQL:
             strategy=strategy,
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
+            source_table_fqn=derived_source_fqn,
         )
 
     def autoload(
@@ -265,6 +280,7 @@ class PQL:
         *,
         source_system: str = "",
         file_format: AutoloadFormat = "auto",
+        source_volume_fqn: str | None = None,
     ) -> dict[str, Any]:
         """Lift files from a Volume directory into a bronze Delta table.
 
@@ -292,6 +308,10 @@ class PQL:
                 should pass a real value.
             file_format: ``"auto"`` (per-file extension), or one of
                 ``"parquet"`` / ``"csv"`` / ``"json"`` to force.
+            source_volume_fqn: Optional UC FQN of the upstream
+                Volume backing *source_path*.  Stashed on the audit
+                row today; future Volume-tracking work will surface
+                it as an OpenLineage input.
 
         Returns:
             ``{"target", "files_scanned", "files_ingested",
@@ -310,6 +330,7 @@ class PQL:
             conventions=None,
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
+            source_volume_fqn=source_volume_fqn,
         )
 
     def list_catalogs(self) -> list[dict[str, Any]]:

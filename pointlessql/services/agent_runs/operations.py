@@ -35,6 +35,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from pointlessql.exceptions import AuditUnavailableError
 from pointlessql.models import AgentRun, AgentRunOperation
 
+_LINEAGE_FAILED_MARKER = "[lineage_emit_failed]"
+
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
@@ -252,12 +254,13 @@ def operation_context(
 
     finished_at = datetime.datetime.now(datetime.UTC)
     merged_params = {**params, **recorder.extra_params}
-    record_operation(
+    final_target = recorder.target_table or target_table
+    op_id = record_operation(
         session_factory,
         agent_run_id=agent_run_id,
         op_name=op_name,
         params=merged_params,
-        target_table=recorder.target_table or target_table,
+        target_table=final_target,
         input_sha=recorder.input_sha,
         rows_affected=recorder.rows_affected,
         delta_version_before=recorder.delta_version_before,
@@ -266,3 +269,87 @@ def operation_context(
         finished_at=finished_at,
         error_message=None,
     )
+    _emit_lineage_after_commit(
+        session_factory,
+        op_id=op_id,
+        agent_run_id=agent_run_id,
+        op_name=op_name,
+        target_table=final_target,
+        params=merged_params,
+        extra_params=recorder.extra_params,
+    )
+
+
+def _emit_lineage_after_commit(
+    session_factory: sessionmaker[Session],
+    *,
+    op_id: int,
+    agent_run_id: str,
+    op_name: str,
+    target_table: str | None,
+    params: dict[str, Any],
+    extra_params: dict[str, Any],
+) -> None:
+    """Fire the soyuz OpenLineage event for a freshly-committed op row.
+
+    Best-effort. A failure stamps a ``[lineage_emit_failed]`` marker
+    onto the row's ``error_message`` field so the audit trail records
+    that the side-effect was attempted but didn't reach soyuz; the
+    underlying PQL write is never blocked.
+
+    Args:
+        session_factory: SQLAlchemy session factory used both to
+            update the marker on failure and (transitively) by the
+            soyuz client factory.
+        op_id: Auto-assigned primary key of the just-committed
+            ``agent_run_operations`` row.
+        agent_run_id: PointlesSQL run UUID; used as the OpenLineage
+            ``runId``.
+        op_name: PQL primitive name.
+        target_table: Output table FQN or ``None`` for read-only ops.
+        params: Merged params dict (initial + recorder extras) used
+            to derive ``referenced_tables`` for SQL ops.
+        extra_params: Recorder extras alone — checked for
+            ``source_table_fqn`` / ``source_volume_fqn`` declared by
+            merge / write_table / autoload callers.
+    """
+    inputs: list[str] = []
+    outputs: list[str] = []
+    if target_table:
+        outputs = [target_table]
+    if op_name == "sql":
+        refs = params.get("referenced_tables")
+        if isinstance(refs, list):
+            inputs = [str(r) for r in refs if isinstance(r, str)]
+    else:
+        src = extra_params.get("source_table_fqn")
+        if isinstance(src, str) and src:
+            inputs = [src]
+
+    if not inputs and not outputs:
+        return
+
+    from pointlessql.services.soyuz_lineage import emit_event_sync
+
+    failure = emit_event_sync(
+        run_id=agent_run_id,
+        op_name=op_name,
+        inputs=inputs,
+        outputs=outputs,
+    )
+    if failure is None:
+        return
+
+    marker = f"{_LINEAGE_FAILED_MARKER} {failure!r}"
+    try:
+        with session_factory() as session:
+            row = session.get(AgentRunOperation, op_id)
+            if row is None:
+                return
+            row.error_message = marker
+            session.commit()
+    except SQLAlchemyError:
+        logger.exception(
+            "operation_context: failed to stamp lineage_emit_failed marker on op_id=%s",
+            op_id,
+        )

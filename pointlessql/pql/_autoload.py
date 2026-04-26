@@ -95,6 +95,7 @@ def autoload_files(
     conventions: ConventionsConfig | None,
     unreachable_msg: str,
     agent_run_id: str | None = None,
+    source_volume_fqn: str | None = None,
 ) -> dict[str, Any]:
     """Ingest matching files under *source_path* into the target Delta table.
 
@@ -121,6 +122,12 @@ def autoload_files(
         agent_run_id: When set, emits one ``agent_run_operations``
             row capturing pre/post Delta versions, file SHA digest,
             and ingest counts.
+        source_volume_fqn: When set, recorded on the audit row so
+            future Volume-tracking work can declare the upstream UC
+            Volume on the OpenLineage event.  Today the value is
+            stashed but the lineage emission still uses no inputs
+            (autoload sources are filesystem paths, not UC
+            securables); see Sprint 15.1 for context.
 
     Returns:
         ``{"target", "files_scanned", "files_ingested", "files_skipped",
@@ -216,11 +223,14 @@ def autoload_files(
             recorder.delta_version_after = safe_delta_version(target_location)
             recorder.rows_affected = rows_total
             recorder.input_sha = concat_sha256(ingested_shas) if ingested_shas else None
-            recorder.extra_params = {
+            extras: dict[str, Any] = {
                 "files_scanned": len(files),
                 "files_ingested": files_ingested,
                 "files_skipped": files_skipped,
             }
+            if source_volume_fqn:
+                extras["source_volume_fqn"] = source_volume_fqn
+            recorder.extra_params = extras
 
     return {
         "target": target,

@@ -41,6 +41,7 @@ def write_table(
     mode: Literal["error", "append", "overwrite", "ignore"],
     unreachable_msg: str,
     agent_run_id: str | None = None,
+    source_table_fqn: str | None = None,
 ) -> None:
     """Write a frame to a Delta table and register it in the catalog.
 
@@ -54,6 +55,12 @@ def write_table(
         agent_run_id: When set, the call emits one
             ``agent_run_operations`` row.  ``None`` keeps the
             interactive path silent.
+        source_table_fqn: When set, declared as the upstream UC
+            input on the OpenLineage event emitted to soyuz so the
+            cross-table edge ``source_table_fqn → full_name`` appears
+            in the lineage graph (Sprint 15.1).  ``None`` keeps
+            ``write_table`` generic for in-memory frames with no UC
+            origin.
 
     Raises:
         ValidationError: If *full_name* does not have exactly three parts.
@@ -100,6 +107,11 @@ def write_table(
             except TypeError:
                 recorder.input_sha = None
             recorder.rows_affected = _frame_row_count(df)
+            if source_table_fqn:
+                recorder.extra_params = {
+                    **recorder.extra_params,
+                    "source_table_fqn": source_table_fqn,
+                }
 
         try:
             if not table_exists:

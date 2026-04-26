@@ -72,6 +72,7 @@ def merge_table(
     strategy: MergeStrategy,
     unreachable_msg: str,
     agent_run_id: str | None = None,
+    source_table_fqn: str | None = None,
 ) -> dict[str, Any]:
     """Merge *source* into the existing Delta table at *target*.
 
@@ -96,6 +97,12 @@ def merge_table(
         agent_run_id: When set, emits one ``agent_run_operations``
             row capturing input SHA, Delta version pre/post, and
             merge stats.
+        source_table_fqn: When set, declared as the upstream UC
+            input on the OpenLineage event emitted to soyuz so the
+            cross-table edge ``source_table_fqn → target`` appears
+            in the lineage graph (Sprint 15.1).  ``None`` when the
+            source is an in-memory frame with no UC origin — the
+            audit row is still written but no lineage edge appears.
 
     Returns:
         A dict carrying ``strategy`` and the deltalake merge stats
@@ -155,7 +162,10 @@ def merge_table(
         if agent_run_id is not None:
             recorder.delta_version_after = safe_delta_version(target_location)
             recorder.rows_affected = _merge_rows_affected(stats)
-            recorder.extra_params = {"stats": _stats_for_audit(stats)}
+            extras: dict[str, Any] = {"stats": _stats_for_audit(stats)}
+            if source_table_fqn:
+                extras["source_table_fqn"] = source_table_fqn
+            recorder.extra_params = extras
 
         return stats
 

@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 15.1: PQL → soyuz OpenLineage emission (2026-04-26)
+
+First Phase-15 sprint.  Every successful PQL primitive call inside an
+agent run now emits one OpenLineage `RunEvent` to soyuz so the
+table-level lineage graph (`lineage_runs` + `lineage_edges`) auto-
+populates without the operator having to wire OpenLineage producers
+manually.
+
+- **Added** [`pointlessql/services/soyuz_lineage.py`](pointlessql/services/soyuz_lineage.py)
+  `emit_event_sync(run_id, op_name, inputs, outputs, event_type)`
+  builds an `OpenLineageEvent` (using the typed soyuz client's
+  generated models) and POSTs it through the existing
+  `make_soyuz_client(agent_run_id=...)` factory.  The PointlesSQL
+  `agent_run_id` is reused verbatim as the OpenLineage `runId` —
+  soyuz strips hyphens to derive `LineageRun.id`, so cross-
+  referencing agent runs ↔ lineage runs needs no extra mapping
+  table.  The helper is **best-effort**: any underlying exception
+  (connection refused, 5xx, timeout) is returned to the caller
+  rather than raised, so the write that already committed is never
+  rolled back by a downstream lineage hiccup.
+- **Added** [`pointlessql/services/agent_runs/operations.py`](pointlessql/services/agent_runs/operations.py)
+  `_emit_lineage_after_commit()` is invoked from `operation_context`
+  after the success-path `record_operation()` returns.  Inputs are
+  derived per-op:
+  - `autoload` — empty (filesystem source, no UC securable)
+  - `merge` / `write_table` — `extra_params["source_table_fqn"]`
+    when the caller declared one, otherwise empty
+  - `sql` — `params_json["referenced_tables"]` from the SQL parser
+  Outputs default to `recorder.target_table` (or empty for read-only
+  SELECTs).  When both lists are empty the emission is skipped.
+  Failures stamp `[lineage_emit_failed] <repr(exc)>` onto the just-
+  inserted row's `error_message`.
+- **Added** `source_table_fqn` kwarg to
+  [`pointlessql/pql/_merge.py`](pointlessql/pql/_merge.py) /
+  [`pointlessql/pql/_write.py`](pointlessql/pql/_write.py) and a
+  `source_volume_fqn` kwarg to
+  [`pointlessql/pql/_autoload.py`](pointlessql/pql/_autoload.py) so
+  callers can declare upstream UC inputs.  Threaded through the
+  public `PQL.merge()` / `PQL.write_table()` / `PQL.autoload()`
+  facades on [`pointlessql/pql/pql.py`](pointlessql/pql/pql.py);
+  `PQL.merge()` further auto-derives `source_table_fqn` when *source*
+  is itself a UC `"catalog.schema.table"` string.
+- **Updated** [`frontend/templates/pages/run_view.html`](frontend/templates/pages/run_view.html)
+  the run-detail header gains a "View lineage graph" button that
+  jumps to the lineage card on the first touched table's catalog
+  page (deep-link via `#lineage`).
+
 ### Changed — Sprint 15.0: Phase 15 reframed as lineage completeness (2026-04-26)
 
 - **Updated** [`ROADMAP.md`](ROADMAP.md) Phase-15 block: title

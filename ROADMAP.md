@@ -4907,17 +4907,19 @@ PointlesSQL
 │   │   ref via ``agent_run_id`` is already in place; shoreguard
 │   │   builds its log against that anchor when it gets there.
 │   │
-│   ├── Sprint 15.1 — PQL → soyuz OpenLineage emission          ⏳ queued
-│   │   └── New ``services/soyuz_lineage.emit_event`` helper,
+│   ├── Sprint 15.1 — PQL → soyuz OpenLineage emission          ✅ done
+│   │   └── New ``services/soyuz_lineage.emit_event_sync`` helper,
 │   │       hooked into ``operation_context()`` after recorder
 │   │       commit.  Best-effort — connection-refused / 5xx are
-│   │       swallowed and stamped onto
-│   │       ``agent_run_operations.error_message`` so the
-│   │       underlying write never gets blocked by a lineage-
-│   │       emit failure.  PQL primitives gain optional
-│   │       ``source_table_fqn`` / ``source_volume_fqn`` kwargs so
-│   │       merges/writes can declare upstream UC inputs.  Run-
-│   │       detail header gains a "View lineage graph" link.
+│   │       swallowed and stamped as a ``[lineage_emit_failed]``
+│   │       marker onto ``agent_run_operations.error_message`` so
+│   │       the underlying write never gets blocked by a lineage-
+│   │       emit failure.  ``pql.merge`` / ``pql.write_table`` /
+│   │       ``pql.autoload`` gain optional ``source_table_fqn`` /
+│   │       ``source_volume_fqn`` kwargs so callers can declare
+│   │       upstream UC inputs (``pql.merge`` derives this
+│   │       automatically when *source* is itself a UC string).
+│   │       Run-detail header gains a "View lineage graph" link.
 │   ├── Sprint 15.2 — Bronze ``_lineage_row_id`` column          ⏳ queued
 │   │   └── ``LayerConvention`` for ``bronze`` gains a fourth
 │   │       audit column ``_lineage_row_id`` =
