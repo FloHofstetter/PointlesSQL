@@ -234,6 +234,7 @@ class PQL:
         strategy: MergeStrategy = "upsert",
         source_table_fqn: str | None = None,
         track_rejects: bool = False,
+        track_value_changes: bool = False,
         derivations: Mapping[str, Sequence[str]] | None = None,
     ) -> dict[str, Any]:
         """Merge *source* into the existing Delta table at *target*.
@@ -270,6 +271,14 @@ class PQL:
                 ``lineage_row_rejects`` so the run-detail UI can
                 explain dropped rows (Sprint 15.5.3).  Default
                 ``False`` keeps the cost off the hot path.
+            track_value_changes: When ``True`` and
+                ``strategy="upsert"``, read the Delta Change Data
+                Feed for the merge's commit range and record one
+                ``lineage_value_changes`` row per actually-different
+                cell on a matched-and-updated target row (Sprint
+                15.7.3).  Silently ignored on ``strategy="scd2"``.
+                Default ``False`` keeps the CDF read off the hot
+                path.
             derivations: Optional declarative mapping of derived
                 target columns to their *true* source-column names
                 (Sprint 15.6.2).  Lets the column-trace UI surface
@@ -292,6 +301,7 @@ class PQL:
             agent_run_id=self._current_run_id,
             source_table_fqn=derived_source_fqn,
             track_rejects=track_rejects,
+            track_value_changes=track_value_changes,
             derivations=derivations,
         )
 

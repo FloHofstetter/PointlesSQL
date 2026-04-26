@@ -32,6 +32,7 @@ override case appears.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Literal, cast
@@ -57,6 +58,8 @@ from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.lineage_edges import ColumnEdgeSpec, synth_target_row_id
 
+logger = logging.getLogger(__name__)
+
 LINEAGE_ROW_ID_COLUMN = "_lineage_row_id"
 
 MergeStrategy = Literal["upsert", "scd2"]
@@ -78,6 +81,7 @@ def merge_table(
     agent_run_id: str | None = None,
     source_table_fqn: str | None = None,
     track_rejects: bool = False,
+    track_value_changes: bool = False,
     derivations: Mapping[str, Sequence[str]] | None = None,
 ) -> dict[str, Any]:
     """Merge *source* into the existing Delta table at *target*.
@@ -119,6 +123,17 @@ def merge_table(
             only when the source carries ``_lineage_row_id`` and
             ``source_table_fqn`` is declared (no source identity =
             no useful reject row).
+        track_value_changes: When ``True`` and ``strategy="upsert"``,
+            read the Delta Change Data Feed for the merge's commit
+            range and record one ``lineage_value_changes`` row per
+            actually-different cell on a matched-and-updated target
+            row (Sprint 15.7.3).  Requires ``_lineage_row_id`` on
+            both source and target rows so preimage/postimage events
+            can be paired.  Silently ignored on ``strategy="scd2"``
+            because SCD-2 already encodes value history in the
+            ``_valid_from`` / ``_valid_to`` / ``_is_current`` triple.
+            ``False`` (default) skips the CDF read — production
+            callers that want the audit trail flip it on explicitly.
         derivations: Optional declarative mapping of derived target
             columns to their *true* source-column names (Sprint
             15.6.2).  Populates ``derived`` rows in
@@ -239,7 +254,88 @@ def merge_table(
                 if edges:
                     recorder.pending_column_edges = edges
 
+            if track_value_changes:
+                if strategy != "upsert":
+                    logger.info(
+                        "track_value_changes ignored for strategy=%s "
+                        "(value history is in the SCD-2 columns)",
+                        strategy,
+                    )
+                else:
+                    recorder.pending_value_changes = _capture_value_changes(
+                        target_location=target_location,
+                        target=target,
+                        version_before=recorder.delta_version_before,
+                        version_after=recorder.delta_version_after,
+                    )
+
         return stats
+
+
+def _capture_value_changes(
+    *,
+    target_location: str,
+    target: str,
+    version_before: int | None,
+    version_after: int | None,
+) -> list[Any] | None:
+    """Best-effort capture of per-cell value changes from Delta CDF.
+
+    Sprint 15.7.3 — runs after ``_do_upsert`` returns and the audit
+    row has its delta_version_before / delta_version_after stamped.
+    Any failure (CDF disabled, deltalake error, missing
+    ``_lineage_row_id``) is logged at INFO and returns ``None`` so
+    the merge that already committed never rolls back.
+
+    Args:
+        target_location: Delta table URI.
+        target: Fully-qualified UC name to stamp on each spec.
+        version_before: Recorder-side Delta version pre-merge, or
+            ``None`` when the audit hook didn't fire.
+        version_after: Recorder-side Delta version post-merge, or
+            ``None``.
+
+    Returns:
+        A list of
+        :class:`~pointlessql.services.lineage_edges.ValueChangeSpec`
+        entries, or ``None`` when capture was impossible / yielded
+        nothing.
+    """
+    if version_before is None or version_after is None:
+        return None
+    if version_after <= version_before:
+        return None
+
+    from pointlessql.pql._cdf import ensure_cdf_enabled
+
+    if not ensure_cdf_enabled(target_location):
+        logger.info(
+            "value-change capture skipped: ensure_cdf_enabled returned False for %s",
+            target_location,
+        )
+        return None
+
+    try:
+        import deltalake
+
+        from pointlessql.services.value_change_capture import extract_value_changes
+
+        dt = deltalake.DeltaTable(target_location)
+        cdf_reader = dt.load_cdf(
+            starting_version=version_before + 1,
+            ending_version=version_after,
+        )
+        cdf_arrow = pa.table(cdf_reader.read_all())
+    except Exception as exc:  # noqa: BLE001 — best-effort
+        logger.info(
+            "value-change capture: load_cdf failed for %s: %s",
+            target_location,
+            exc,
+        )
+        return None
+
+    specs = extract_value_changes(cdf_table=cdf_arrow, target_table=target)
+    return specs or None
 
 
 def _detect_rejects(
