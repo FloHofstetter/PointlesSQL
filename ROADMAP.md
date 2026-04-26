@@ -4802,7 +4802,7 @@ PointlesSQL
 │     (``project_catalog_strategy.md`` principle applied to
 │     compute).
 │
-├── Phase 14 — Audit-trail completeness pass               ⏳ queued
+├── Phase 14 — Audit-trail completeness pass               ✅ done (2026-04-26)
 │   │
 │   │   Closes the three Tier-3 gaps captured in
 │   │   ``project_phase13_audit_gaps.md`` plus the external-write
