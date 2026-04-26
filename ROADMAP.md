@@ -4986,7 +4986,7 @@ PointlesSQL
 │           (input column → output column).  Separate phase if
 │           a user ever asks (now scheduled as Phase 15.6).
 │
-├── Phase 15.5 — Aggregate Lineage + Reject Visibility    🔜 next
+├── Phase 15.5 — Aggregate Lineage + Reject Visibility    ✅ done (2026-04-26)
 │   │
 │   │   Sub-phase of Phase 15.  Closes two row-lineage gaps that
 │   │   the live E2E replay (2026-04-26) made visible:
@@ -5017,7 +5017,7 @@ PointlesSQL
 │   │       Reinforces the "live replay as gate" memo: ruff /
 │   │       pyright / pydoclint cannot catch SQLite-PK quirks or
 │   │       URL string templates.
-│   ├── Sprint 15.5.1 — ``pql.aggregate()`` + fan-in edges  ⏳ next
+│   ├── Sprint 15.5.1 — ``pql.aggregate()`` + fan-in edges  ✅ done (9ed099f)
 │   │   └── New ``pointlessql/pql/_aggregate.py`` analog to
 │   │       ``_merge.py``.  Required ``source_table_fqn`` kwarg (no
 │   │       optional fan-in lineage), deterministic
@@ -5025,7 +5025,7 @@ PointlesSQL
 │   │       SHA-256(target_table || ":" || sorted(group_values))``.
 │   │       Emits N→1 edges (one per source row in the aggregated
 │   │       group).  ``op_name`` enum extended by ``"aggregate"``.
-│   ├── Sprint 15.5.2 — walk_back tree + row-trace fan-in   ⏳ planned
+│   ├── Sprint 15.5.2 — walk_back tree + row-trace fan-in   ✅ done (f4992bc)
 │   │   └── Refactor ``services/lineage_edges.walk_back`` to return
 │   │       ``TraceStep`` with ``predecessors: list`` instead of a
 │   │       single edge.  Aggregate steps return the full source
@@ -5033,7 +5033,7 @@ PointlesSQL
 │   │       single-predecessor walk.  Template renders fan-in as
 │   │       collapsible "Aggregated from N rows" block with
 │   │       click-through to each source row.
-│   ├── Sprint 15.5.3 — ``lineage_row_rejects`` + capture    ⏳ planned
+│   ├── Sprint 15.5.3 — ``lineage_row_rejects`` + capture    ✅ done (0908f84)
 │   │   └── New Alembic migration parented at ``d4e5f6a7b8c9``
 │   │       creates ``lineage_row_rejects(run_id, op_id,
 │   │       source_table, source_row_id, reason, detail,
@@ -5044,14 +5044,14 @@ PointlesSQL
 │   │       ``duplicate_in_source`` / ``schema_mismatch`` /
 │   │       ``merge_predicate_excluded`` / ``other``).  Default
 │   │       off — performance-conservative.
-│   ├── Sprint 15.5.4 — Reject tab on run-detail            ⏳ planned
+│   ├── Sprint 15.5.4 — Reject tab on run-detail            ✅ done (89c67d2)
 │   │   └── New ``tab-rejects`` between Operations and Tool calls
 │   │       on ``frontend/templates/pages/run_view.html``.
 │   │       Counter in the tab label; per-row table with
 │   │       click-through to ``/.../rows/{id}/trace``.
 │   │       Empty-state "No rows rejected in this run.
 │   │       (``track_rejects=True`` not set on any merge call)".
-│   └── Sprint 15.5.5 — Notebook update + live E2E replay   ⏳ planned
+│   └── Sprint 15.5.5 — Notebook update + live E2E replay   ✅ done (7d44415)
 │       └── ``notebooks/hermes_medallion.py`` gold-block migrated
 │           from ``groupby`` + ``write_table`` to
 │           ``pql.aggregate``.  ``pql.merge`` call gains

@@ -4,6 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 15.5: Aggregate Lineage + Reject Visibility (2026-04-26)
+
+Closes the two row-lineage gaps the Phase-15 live replay surfaced.
+Five sprints landed in one autonomous session, all with green
+linters + unit tests + a headful Firefox walkthrough that exercised
+every UI surface end-to-end.
+
+- **Sprint 15.5.1** — new `pql.aggregate()` primitive with fan-in
+  lineage emission.  Records one edge per (source row, target group)
+  pair so gold tables become trace-able back to their silver
+  sources.  `source_table_fqn` is required (fail-fast).
+  `_lineage_row_id` synth via SHA-256(target || group_values) so
+  re-runs reuse target IDs deterministically.  See the new
+  `pointlessql/pql/_aggregate.py` module and the matching
+  Alembic migration `e5f6a7b8c9d0` extending the
+  `agent_run_operations.op_name` CHECK by `'aggregate'`.
+- **Sprint 15.5.2** — `walk_back` returns predecessors per step.
+  The row-trace UI surfaces fan-in as a collapsible
+  "Aggregated from N source rows" block with click-through to each
+  source row's own trace page.  Chain recursion still picks oldest
+  for determinism.
+- **Sprint 15.5.3** — opt-in `pql.merge(track_rejects=True)` records
+  source rows that won't land in the target into a new
+  `lineage_row_rejects` table (Alembic `f6a7b8c9d0e1`).  Reasons:
+  `on_key_null` / `duplicate_in_source` (auto-detected pre-merge),
+  `schema_mismatch` / `merge_predicate_excluded` / `other` (enum
+  reserved for callers).
+- **Sprint 15.5.4** — new "Rejects" tab on the run-detail page
+  between Operations and Tool calls.  Counter badge in the tab
+  label, reason badges per row (color-coded), click-throughs from
+  rejected source-row IDs to the row-trace page.  Empty state
+  explains "track_rejects=True not set on any merge call".
+- **Sprint 15.5.5** — notebook + fixture migrated; live E2E replay
+  produced 102 lineage edges across 2 ops + 2 rejects + a 24-source
+  fan-in on a gold row, verified in headful Firefox with 0 console
+  errors.  Caught and fixed a Jinja-filter bug
+  (`format_datetime` doesn't exist) that linters never had a chance
+  to flag — the replay-as-gate memo proves itself again.
+
 ### Fixed — Sprint 15.5.0: Phase-15 bugfix landing (2026-04-26)
 
 Two bugs surfaced in the Phase-15 live E2E replay (headful Firefox
