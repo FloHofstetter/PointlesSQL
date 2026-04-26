@@ -201,6 +201,7 @@ button.
 ## Development
 
 ```bash
+uv run pre-commit install    # one-time: arm git hook
 uv run pytest                # unit tests
 uv run pytest -m integration # integration tests (needs live soyuz)
 uv run ruff check            # lint

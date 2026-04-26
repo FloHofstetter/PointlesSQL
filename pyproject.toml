@@ -150,6 +150,10 @@ source = ["pointlessql"]
 
 [tool.coverage.report]
 show_missing = true
+# Local pytest --cov runs do not enforce a floor — the floor lives in
+# the CI workflow (`--cov-fail-under=55`) so contributors can iterate
+# locally without coverage rejection while CI still gates merges.
+skip_covered = false
 
 [tool.uv.sources]
 soyuz-catalog-client = { git = "https://github.com/FloHofstetter/soyuz-catalog", tag = "v0.2.0rc2", subdirectory = "soyuz-catalog-client" }

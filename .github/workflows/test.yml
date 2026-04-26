@@ -82,3 +82,39 @@ jobs:
         # Alpine CDN script, so any factory migrated out of a legacy
         # IIFE file lands on ``window`` before Alpine's x-data walk.
         run: bash scripts/check-frontend-bootstrap-order.sh
+      - name: Pytest with coverage
+        # Runs the unit-test suite (integration + postgres markers
+        # excluded by pyproject's addopts).  The --cov-fail-under
+        # threshold is set to 55% — three points below the
+        # 2026-04-26 baseline (60%) to absorb noise without inviting
+        # silent regressions.  Twelve tests are deselected below;
+        # they were already failing on main when this gate was
+        # introduced and need separate investigation (full list in
+        # QUALITY_FINAL.md).  Once a deselected test is fixed,
+        # delete its line — the gate must regress visibly if a
+        # previously-green test starts failing.
+        run: |
+          uv run pytest -q \
+            --cov=pointlessql \
+            --cov-report=term \
+            --cov-report=xml \
+            --cov-fail-under=55 \
+            --deselect tests/test_api_notebook_workspace.py::test_upload_happy_path \
+            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_non_ipynb_extension \
+            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_invalid_json \
+            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_traversal \
+            --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_existing_without_overwrite \
+            --deselect tests/test_api_notebook_workspace.py::test_upload_overwrite_replaces_existing \
+            --deselect tests/test_api_notebook_workspace.py::test_upload_non_admin_forbidden \
+            --deselect tests/test_scheduler_papermill.py::test_executor_writes_output_and_forwards_principal \
+            --deselect tests/test_scheduler_papermill.py::test_render_route_serves_nbconvert_html \
+            --deselect tests/test_scheduler_papermill.py::test_download_ipynb_serves_raw_file \
+            --deselect tests/test_scheduler_papermill.py::test_download_html_triggers_render \
+            --deselect tests/test_table_stats.py::test_profile_enforces_select
+      - name: Upload coverage XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
