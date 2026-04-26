@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 15.7: Value-Level Lineage (in progress)
+
+Fourth lineage axis after row (Phase 15), reject (15.5),
+column (15.6).  Answers *"this gold row's `revenue` is $1234 —
+what was it last week, and which run changed it?"*.  Surface
+scope is `pql.merge(strategy="upsert")` only — the only PQL
+primitive that mutates rows in place.
+
+Capture mechanic: every new Delta write enables Change Data Feed
+(`delta.enableChangeDataFeed=true`).  When the caller opts in via
+`pql.merge(track_value_changes=True)`, post-merge
+`DeltaTable.load_cdf()` yields native preimage/postimage pairs;
+we diff per-cell on `_lineage_row_id` and persist into a new
+`lineage_value_changes` table.  PointlesSQL-only storage; opt-in
+default-off; `MAX_VALUE_CHANGES_PER_OP = 100_000` cap with
+`[lineage_value_partial]` audit-row marker.
+
+Sub-sprints (15.7.0 housekeeping → 15.7.5 live replay) tracked
+in [ROADMAP.md](ROADMAP.md).
+
 ### Added — Phase 15.6: Column-Level Lineage (2026-04-26)
 
 Orthogonal column dimension to the row-lineage Phase 15 / 15.5

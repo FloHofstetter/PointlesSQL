@@ -5129,6 +5129,89 @@ PointlesSQL
 │           (≤100); table-detail link + column-trace fan-in;
 │           run-view counter.
 │
+├── Phase 15.7 — Value-Level Lineage                       ⏳ in progress
+│   │
+│   │   The fourth lineage axis: not *where* a value came from
+│   │   (15 / 15.5 / 15.6 already cover that) but *what it was
+│   │   before*.  Answers "this gold row's ``revenue`` is $1234 —
+│   │   what was it last week, and which run changed it?".
+│   │   Surface scope is ``pql.merge(strategy="upsert")`` only —
+│   │   the only PQL primitive that mutates rows in place.
+│   │
+│   │   Plan in
+│   │   ``.claude/plans/plane-phase-14-komplett-floofy-nest.md``.
+│   │   Volume note: ``lineage_value_changes`` is bounded by
+│   │   *matched-and-actually-different* cells, not by row count.
+│   │   Re-running the same merge over identical input produces
+│   │   zero rows (postimage == preimage → skip).  Demo replay
+│   │   tweaks ONE ``unit_price`` cell → exactly 1 value-change
+│   │   row.  Hard cap of 100k per op gates the pathological
+│   │   100k-row × all-columns daily-upsert case.
+│   │
+│   │   Decisions (AskUserQuestion 2026-04-26):
+│   │
+│   │   - Capture: **CDF bootstrap** —
+│   │     ``delta.enableChangeDataFeed=true`` on every new Delta
+│   │     write (autoload + write_table create-paths).
+│   │     ``DeltaTable.load_cdf()`` post-merge yields native
+│   │     preimage/postimage pairs; we diff per-cell on
+│   │     ``_lineage_row_id``.
+│   │   - Cap: ``MAX_VALUE_CHANGES_PER_OP = 100_000``;
+│   │     ``[lineage_value_partial]`` marker on cap-hit.
+│   │   - Storage: ``Text`` columns for ``old_value`` /
+│   │     ``new_value`` (PG TEXT / SQLite TEXT both unbounded).
+│   │   - Strategy scope: only ``upsert``.  SCD-2 silently
+│   │     ignores the flag (history is in ``_valid_from`` /
+│   │     ``_valid_to`` / ``_is_current`` already).
+│   │   - PointlesSQL-only.  Cross-tool valueChange facet ingest
+│   │     in soyuz is a hypothetical Phase 15.8+ topic.
+│   │
+│   ├── Sprint 15.7.0 — open Phase 15.7 in ROADMAP / CHANGELOG ⏳
+│   │   └── Housekeeping commit only — no migration, no code.
+│   ├── Sprint 15.7.1 — ``lineage_value_changes`` + helpers    ⏳
+│   │   └── New Alembic migration parented on ``g7b8c9d0e1f2``
+│   │       (lineage_column_map).  ``LineageValueChange`` ORM
+│   │       model with ``Text`` old/new value columns.
+│   │       ``record_value_changes`` +
+│   │       ``count_value_changes_for_op`` +
+│   │       ``fetch_value_changes_for_row`` helpers (mirror 15.6
+│   │       ``record_column_edges`` shape).
+│   │       ``OperationRecorder.pending_value_changes``
+│   │       post-commit hook with ``[lineage_value_partial]``
+│   │       marker on cap-hit.
+│   ├── Sprint 15.7.2 — CDF bootstrap on new Delta writes      ⏳
+│   │   └── New ``pointlessql/pql/_cdf.py`` exposing
+│   │       ``cdf_creation_config()`` +
+│   │       ``ensure_cdf_enabled(target_location)``.
+│   │       ``pql.write_table`` (create-path) and ``pql.autoload``
+│   │       (first-write) pass
+│   │       ``configuration={"delta.enableChangeDataFeed":
+│   │       "true"}`` to ``deltalake.write_deltalake``.
+│   ├── Sprint 15.7.3 — ``pql.merge(track_value_changes=True)`` ⏳
+│   │   └── New ``services/value_change_capture.extract_value_changes``
+│   │       pure-function diff helper consuming a CDF PyArrow
+│   │       Table.  ``track_value_changes`` kwarg on
+│   │       ``pql.merge`` (default ``False``) opts in.  Honoured
+│   │       only on ``strategy="upsert"`` (SCD-2 logs warning +
+│   │       skips).  Best-effort
+│   │       ``ensure_cdf_enabled(target_location)`` before
+│   │       ``dt.load_cdf()``; pairs ``update_preimage`` /
+│   │       ``update_postimage`` on ``_lineage_row_id`` and emits
+│   │       one ``ValueChangeSpec`` per changed cell.
+│   ├── Sprint 15.7.4 — value-change API + UI surface          ⏳
+│   │   └── ``GET /api/lineage/value-changes?table=&row_id=
+│   │       &column=`` (JSON).  Row-trace page gains
+│   │       collapsible "Value changes (N)" per step listing
+│   │       ``column · old → new · created_at``.  Run-detail
+│   │       Operations tab gains a ``value changes: N`` counter.
+│   └── Sprint 15.7.5 — notebook + headful Firefox replay      ⏳
+│       └── ``notebooks/hermes_medallion.py`` silver
+│           ``pql.merge`` gets ``track_value_changes=True``.
+│           Second cell tweaks one ``unit_price`` and re-runs
+│           the merge.  Live replay: API smoke; DB row-count
+│           canary (=1); row-trace "Value changes" collapsible;
+│           run-view counter.
+│
 ├── Phase 16 — Delta-Branching + first-class Rollback      ⏳ queued
 │   │
 │   │   The agent-trust UX.  Two patterns:
