@@ -1,7 +1,7 @@
 # pyright: reportUnusedFunction=false, reportPrivateUsage=false
 """Job + task run lifecycle, structured logging, and failure-webhook telemetry.
 
-Sprint 84 split out of ``scheduler.py``.  Owns:
+Owns:
 
 * DB helpers for the scheduler and loop modules
   (``_load_job_by_id``, ``_count_running_runs``, ``_last_run_started``,
@@ -576,10 +576,11 @@ async def _execute_run_core(
     1. Loads the job + run-as user.
     2. Inserts a ``running`` :class:`JobRun`, setting
        :data:`~pointlessql.logging_config.job_run_id_var` and (for
-       Sprint 19 compatibility) :data:`~pointlessql.logging_config.request_id_var`
-       for the duration so downstream log lines carry correlation ids.
+       backwards compatibility with the single-task scheduler era)
+       :data:`~pointlessql.logging_config.request_id_var` for the
+       duration so downstream log lines carry correlation ids.
     3. If :class:`JobTask` rows exist, walks the DAG via :func:`_run_dag`.
-       Otherwise falls back to the Sprint 19 single-task shortcut.
+       Otherwise falls back to the single-task shortcut.
     4. Updates the run with a terminal status.
 
     Args:

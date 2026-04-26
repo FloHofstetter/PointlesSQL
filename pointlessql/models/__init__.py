@@ -1,10 +1,10 @@
 """SQLAlchemy ORM models for PointlesSQL's own metadata database.
 
-Sprint 80 split the monolithic 952-LOC ``models.py`` into per-domain
-sub-modules.  Import order in this file is **load-bearing**: SQLAlchemy
-resolves ``ForeignKey("table.col")`` strings at mapper-configuration
-time, so referenced tables must already be registered when the
-referrers are imported.  The sequence below
+The ORM is split into per-domain sub-modules.  Import order in this
+file is **load-bearing**: SQLAlchemy resolves ``ForeignKey("table.col")``
+strings at mapper-configuration time, so referenced tables must
+already be registered when the referrers are imported.  The sequence
+below
 
 * ``base`` (Base class)
 * ``auth`` (User — referenced by Job, Dashboard, SavedQuery, Alert)
@@ -17,12 +17,12 @@ referrers are imported.  The sequence below
   + AlertEvent FK Alert)
 * ``notebook`` (NotebookOutput, NotebookCellRun, NotebookCellRunSource
   — no model FKs; the ``agent_run_id`` column is logical-link only)
-* ``agent_runs`` (AgentRun — Sprint 13.2; logical link to notebook
-  tables via ``agent_run_id``)
+* ``agent_runs`` (AgentRun — logical link to notebook tables via
+  ``agent_run_id``)
 * ``agent_run_audit`` (AgentRunSource, AgentRunOperation,
-  AgentRunEvent — Sprint 13.8; FK to AgentRun)
-* ``autoload`` (AutoloadCheckpoint — Sprint 13.5.3; no model FKs,
-  scoped per target_table)
+  AgentRunEvent — FK to AgentRun)
+* ``autoload`` (AutoloadCheckpoint — no model FKs, scoped per
+  target_table)
 
 honours every cross-module FK without resorting to circular imports.
 The Alembic env.py keeps doing ``from pointlessql.models import Base``

@@ -1,16 +1,14 @@
 # pyright: reportUnusedFunction=false
 """Built-in job executors (pg_sync, python, papermill, alert_check).
 
-Sprint 84 split out of ``scheduler.py``.  Every executor matches the
+Every executor matches the
 :data:`pointlessql.services.scheduler.registry.JobExecutor` signature
 and is referenced from
 :func:`pointlessql.services.scheduler.registry.build_default_registry`.
 
 All cross-module imports inside executor bodies stay function-local
-(``pg_sync``, ``alerts``, ``pql.pql``, ``authorization``) — the
-pre-Sprint-84 code did the same to dodge a circular import chain
-through ``pointlessql.db`` and ``models``; preserving that pattern
-keeps the import graph identical.
+(``pg_sync``, ``alerts``, ``pql.pql``, ``authorization``) to dodge a
+circular import chain through ``pointlessql.db`` and ``models``.
 """
 
 from __future__ import annotations
@@ -41,7 +39,7 @@ async def _pg_sync_executor(
     config: dict[str, Any],
     uc_client: UnityCatalogClient,
 ) -> None:
-    """Execute the ``pg_sync`` kind by calling Sprint 18's ``run_sync``.
+    """Execute the ``pg_sync`` kind by calling ``pg_sync.run_sync``.
 
     Resolves the catalog's connection and (optional) credential through
     the principal-forwarded ``uc_client`` so the scheduler inherits the
@@ -49,7 +47,7 @@ async def _pg_sync_executor(
 
     Args:
         job_run_id: Current run id (unused here but part of the
-            :data:`JobExecutor` signature for symmetry with Sprint 20).
+            :data:`JobExecutor` signature).
         user_info: The run-as user's :class:`UserInfo`.
         config: Must carry ``catalog_name``.
         uc_client: Principal-forwarded facade.
@@ -58,7 +56,7 @@ async def _pg_sync_executor(
         ValidationError: When ``catalog_name`` is missing from config
             or the catalog is not a foreign catalog.
     """
-    del job_run_id, user_info  # reserved for Sprint 20
+    del job_run_id, user_info  # unused but part of executor signature
 
     catalog_name = config.get("catalog_name")
     if not catalog_name:
@@ -151,9 +149,9 @@ _PAPERMILL_INPUT_SUFFIXES = frozenset({".ipynb", ".py"})
 def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
     """Resolve *notebook_path* under *notebooks_dir*, rejecting traversal.
 
-    Sprint 63 accepts both ``.ipynb`` and ``.py`` (jupytext percent
-    format) inputs — the :func:`_papermill_executor` converts ``.py``
-    to a temporary ``.ipynb`` before papermill runs it, so callers
+    Accepts both ``.ipynb`` and ``.py`` (jupytext percent format)
+    inputs — the :func:`_papermill_executor` converts ``.py`` to a
+    temporary ``.ipynb`` before papermill runs it, so callers
     upstream can pass either format transparently.
 
     Args:
@@ -315,9 +313,9 @@ async def _papermill_executor(
     runs_dir.mkdir(parents=True, exist_ok=True)
     output_path = runs_dir / f"{job_run_id}.ipynb"
 
-    # Sprint 63: if the user scheduled a ``.py`` notebook (Phase-12.6
-    # Percent format), convert it to a sibling ``.ipynb`` inside the
-    # runs dir before papermill sees it.  Papermill itself stays
+    # If the user scheduled a ``.py`` notebook (jupytext percent
+    # format), convert it to a sibling ``.ipynb`` inside the runs
+    # dir before papermill sees it.  Papermill itself stays
     # ``.ipynb``-only; the convert step is a cheap jupytext call.
     papermill_input = input_path
     converted_temp: Path | None = None
@@ -326,8 +324,9 @@ async def _papermill_executor(
         await asyncio.to_thread(_jupytext_py_to_ipynb, input_path, converted_temp)
         papermill_input = converted_temp
         logger.info(
-            "papermill: converted %s → %s before execute (Sprint 63)",
-            input_path, converted_temp,
+            "papermill: converted %s → %s before execute",
+            input_path,
+            converted_temp,
         )
 
     principal = user_info["email"]
@@ -388,7 +387,7 @@ async def _alert_check_executor(
     config: dict[str, Any],
     uc_client: UnityCatalogClient,
 ) -> None:
-    """Evaluate a Sprint-55 query alert's condition and dispatch events.
+    """Evaluate a query alert's condition and dispatch events.
 
     Config shape:
 
@@ -415,12 +414,10 @@ async def _alert_check_executor(
     Raises:
         ValidationError: When ``alert_id`` is missing from config.
     """
-    del job_run_id  # reserved for cross-correlation in Phase 13
+    del job_run_id  # unused; the AlertEvent row carries the history
     alert_id = config.get("alert_id")
     if not isinstance(alert_id, int):
-        raise ValidationError(
-            "alert_check job config missing integer 'alert_id'"
-        )
+        raise ValidationError("alert_check job config missing integer 'alert_id'")
 
     from uuid import uuid4
 
@@ -458,29 +455,31 @@ async def _alert_check_executor(
     for full_name in prepared.refs:
         parts = full_name.split(".")
         if len(parts) != 3:
-            logger.warning(
-                "alert %s: unexpected ref shape %r", alert_slug, full_name
-            )
+            logger.warning("alert %s: unexpected ref shape %r", alert_slug, full_name)
             return
         table_info = await uc_client.get_table(parts[0], parts[1], parts[2])
         if not table_info:
             logger.warning(
                 "alert %s: referenced table %s not found",
-                alert_slug, full_name,
+                alert_slug,
+                full_name,
             )
             return
         storage_location = table_info.get("storage_location")
         if not isinstance(storage_location, str) or not storage_location:
             logger.warning(
                 "alert %s: table %s has no storage_location",
-                alert_slug, full_name,
+                alert_slug,
+                full_name,
             )
             return
         await check_privilege(
             uc_client,
             user_info["email"],
             bool(user_info["is_admin"]),
-            "table", full_name, SELECT,
+            "table",
+            full_name,
+            SELECT,
         )
         approved[full_name] = storage_location
 
@@ -500,9 +499,7 @@ async def _alert_check_executor(
         except Exception as exc:  # noqa: BLE001 — diagnostic only
             logger.debug("alert %s: conn.close raised: %s", alert_slug, exc)
 
-    if not alerts_service.evaluate_condition(
-        result.row_count, condition_op, threshold
-    ):
+    if not alerts_service.evaluate_condition(result.row_count, condition_op, threshold):
         return
 
     now = datetime.datetime.now(datetime.UTC)
@@ -550,6 +547,4 @@ async def _alert_check_executor(
         if not ok:
             delivery_failed = True
     if delivery_failed:
-        alerts_service.set_event_outcome(
-            factory, envelope["id"], "delivery_failed"
-        )
+        alerts_service.set_event_outcome(factory, envelope["id"], "delivery_failed")

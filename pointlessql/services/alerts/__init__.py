@@ -1,4 +1,4 @@
-"""CRUD + lifecycle helpers for the Sprint-55 query alerts surface.
+"""CRUD + lifecycle helpers for the query alerts surface.
 
 Visibility + mutation rules mirror :mod:`pointlessql.services.saved_queries`:
 owner + admin see every row; anyone else gets 404 via the API layer.
@@ -7,8 +7,7 @@ The scheduler drives alert firing through a hidden backing
 when an alert is first activated and deleted when the alert is
 removed — see :func:`pointlessql.services.alerts.crud._sync_backing_job`.
 
-Sprint 81 split the original 729-LOC ``alerts.py`` module into four
-sibling files:
+The package is composed of four sibling modules:
 
 * :mod:`.crud` — slug / serialisation helpers, backing-Job lifecycle,
   CRUD (``create_alert``, ``list_visible``, ``get_by_slug``,

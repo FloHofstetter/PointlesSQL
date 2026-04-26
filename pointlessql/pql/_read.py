@@ -1,4 +1,4 @@
-"""Module-level helper for :meth:`PQL.table` (Sprint-78 split)."""
+"""Module-level helper for :meth:`PQL.table`."""
 
 from __future__ import annotations
 

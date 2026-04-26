@@ -1,14 +1,12 @@
 """Persist + replay native-editor notebook output frames.
 
-Sprint 79 split out of the monolithic ``notebook_outputs.py``.
 Owns the ``NotebookOutput`` table — append-on-iopub, replay-on-open,
 and the cross-table ``clear_*`` / ``rename_path`` cleanup helpers
 that scrub output frames + cell-run lifecycle rows together when a
 notebook is re-executed, restarted, deleted, or renamed.
 
-Sprint 96 renamed the cell-identity column from ``cell_id`` (UUID)
-to ``content_hash`` (``sha256(source)[:16]``); all function
-signatures here follow that rename.
+The cell-identity column is ``content_hash``
+(``sha256(source)[:16]``); all function signatures follow that name.
 """
 
 from __future__ import annotations
@@ -22,9 +20,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models import NotebookCellRun, NotebookCellRunSource, NotebookOutput
 
-_PERSISTED_MSG_TYPES = frozenset(
-    {"stream", "execute_result", "display_data", "error"}
-)
+_PERSISTED_MSG_TYPES = frozenset({"stream", "execute_result", "display_data", "error"})
 
 
 def is_persistable(msg_type: str) -> bool:
@@ -94,10 +90,10 @@ def load_outputs_for_path(
 ) -> list[dict[str, Any]]:
     """Return every persisted output for a notebook, newest session first.
 
-    Sprint-60 editor mount reads the latest session's outputs off
-    this call and injects them into the initial Alpine payload.
-    Multi-session UI is a future-sprint concern; this function
-    returns ALL rows and leaves session filtering to the caller.
+    The editor mount reads the latest session's outputs off this
+    call and injects them into the initial Alpine payload.
+    Multi-session UI is left to the caller; this function returns
+    ALL rows and leaves session filtering to the consumer.
 
     Args:
         factory: SQLAlchemy session factory.
@@ -167,11 +163,11 @@ def clear_cell(
                 NotebookCellRun.content_hash == content_hash,
             )
         )
-        # Sprint 73: deliberately do NOT cascade into
-        # NotebookCellRunSource here — clear_cell is called on every
-        # re-execute, and the per-execute history table is the audit
-        # trail we want to PRESERVE across re-runs.  Cascade only
-        # lives in clear_path + rename_path (file-level operations).
+        # Deliberately do NOT cascade into NotebookCellRunSource
+        # here — clear_cell is called on every re-execute, and the
+        # per-execute history table is the audit trail we want to
+        # PRESERVE across re-runs.  Cascade only lives in clear_path
+        # + rename_path (file-level operations).
         session.commit()
 
 
@@ -205,10 +201,10 @@ def clear_session(
                 NotebookCellRun.kernel_session_id == kernel_session_id,
             )
         )
-        # Sprint 73: deliberately do NOT cascade into
-        # NotebookCellRunSource on kernel restart — the history
-        # table survives restarts so users can compare before-vs-
-        # after-restart runs.  Cascade only on file delete / rename.
+        # Deliberately do NOT cascade into NotebookCellRunSource on
+        # kernel restart — the history table survives restarts so
+        # users can compare before-vs-after-restart runs.  Cascade
+        # only on file delete / rename.
         session.commit()
 
 
@@ -218,9 +214,9 @@ def clear_path(
 ) -> None:
     """Delete every persisted row for a notebook (e.g. on file delete).
 
-    Wired from the Sprint 67 ``DELETE /api/notebooks`` route so that
-    removing a file from the workspace also drops every output frame
-    and per-cell run row for that path. The cascade is intentional:
+    Wired from the ``DELETE /api/notebooks`` route so that removing
+    a file from the workspace also drops every output frame and
+    per-cell run row for that path. The cascade is intentional:
     those rows are a replay cache keyed by ``file_path``, so leaving
     them orphaned would surface confusingly in a future notebook
     reusing the same name.
@@ -230,16 +226,10 @@ def clear_path(
         file_path: Relative notebook path.
     """
     with factory() as session:
+        session.execute(delete(NotebookOutput).where(NotebookOutput.file_path == file_path))
+        session.execute(delete(NotebookCellRun).where(NotebookCellRun.file_path == file_path))
         session.execute(
-            delete(NotebookOutput).where(NotebookOutput.file_path == file_path)
-        )
-        session.execute(
-            delete(NotebookCellRun).where(NotebookCellRun.file_path == file_path)
-        )
-        session.execute(
-            delete(NotebookCellRunSource).where(
-                NotebookCellRunSource.file_path == file_path
-            )
+            delete(NotebookCellRunSource).where(NotebookCellRunSource.file_path == file_path)
         )
         session.commit()
 
@@ -251,7 +241,7 @@ def rename_path(
 ) -> None:
     """Re-key every output / run row from ``old_path`` to ``new_path``.
 
-    Sprint 67 sidebar rename action. Rather than throw the replay
+    Backs the sidebar rename action. Rather than throw the replay
     cache away on rename (which would surprise a user whose only
     intent was to change the filename), we ``UPDATE`` the
     ``file_path`` column on both output and run tables so the next

@@ -52,9 +52,7 @@ def record_event(
         return ev.id
 
 
-def set_event_outcome(
-    factory: sessionmaker[Session], event_id: str, outcome: str
-) -> None:
+def set_event_outcome(factory: sessionmaker[Session], event_id: str, outcome: str) -> None:
     """Patch the ``outcome`` of a previously-recorded event.
 
     Args:
@@ -63,9 +61,7 @@ def set_event_outcome(
         outcome: New outcome value.
     """
     with factory() as session:
-        ev = session.scalar(
-            select(AlertEvent).where(AlertEvent.event_id == event_id)
-        )
+        ev = session.scalar(select(AlertEvent).where(AlertEvent.event_id == event_id))
         if ev is not None:
             ev.outcome = outcome
             session.commit()
@@ -158,9 +154,7 @@ def list_events_for_owner(
         ]
 
 
-def prune_events_older_than(
-    factory: sessionmaker[Session], cutoff: datetime.datetime
-) -> int:
+def prune_events_older_than(factory: sessionmaker[Session], cutoff: datetime.datetime) -> int:
     """Delete ``alert_events`` rows with ``fired_at`` older than *cutoff*.
 
     Args:
@@ -171,8 +165,6 @@ def prune_events_older_than(
         The number of deleted rows.
     """
     with factory() as session:
-        result = session.execute(
-            delete(AlertEvent).where(AlertEvent.fired_at < cutoff)
-        )
+        result = session.execute(delete(AlertEvent).where(AlertEvent.fired_at < cutoff))
         session.commit()
         return int(getattr(result, "rowcount", 0) or 0)

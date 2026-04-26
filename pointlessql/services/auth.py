@@ -97,10 +97,9 @@ def verify_jwt(
 
     Tries the primary ``secret_key`` first.  If that rejects the
     token and ``previous_key`` is set, retries once with the old
-    key — this is the Sprint-46 mid-flight grace window that lets
-    operators rotate the signing key without terminating every live
-    session.  Corrupt, expired, or tampered tokens still fail under
-    both keys.
+    key — this mid-flight grace window lets operators rotate the
+    signing key without terminating every live session.  Corrupt,
+    expired, or tampered tokens still fail under both keys.
 
     Args:
         token: The JWT token string to verify.
@@ -241,8 +240,8 @@ def get_current_user(
         factory: SQLAlchemy session factory.
         token: JWT token string.
         secret_key: Primary signing key for verification.
-        previous_key: Optional prior key for the Sprint-46 rotation
-            grace window (see :func:`verify_jwt`).
+        previous_key: Optional prior key for the rotation grace
+            window (see :func:`verify_jwt`).
 
     Returns:
         UserInfo | None: User info dict or ``None`` if invalid.

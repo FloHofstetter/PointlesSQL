@@ -23,8 +23,8 @@ class LayerConvention(BaseModel):
     A layer has a stable ``name`` (used as the catalog-side schema
     prefix and as the UC-tag value), a one-line ``description`` for
     surfacing in agent system prompts, and a ``required_audit_columns``
-    list that the conformance check (Sprint 13.5.4) and the
-    autoload primitive (Sprint 13.5.3) both consult.
+    list that the conformance check and the autoload primitive both
+    consult.
 
     The list ordering on bronze (``_ingested_at``, ``_source_file``,
     ``_source_system``) is meaningful — autoload appends the columns
@@ -34,9 +34,9 @@ class LayerConvention(BaseModel):
     ``name`` is the layer identifier (used both as the UC tag value
     and as a schema-name prefix convention); ``description`` is the
     one-sentence prose contract surfaced verbatim to agents via the
-    Sprint-13.7 ``pql_conventions()`` tool; ``required_audit_columns``
-    is the (possibly empty) set of audit columns the layer must
-    carry.  Empty means no audit-column contract — the default for
+    ``pql_conventions()`` tool; ``required_audit_columns`` is the
+    (possibly empty) set of audit columns the layer must carry.
+    Empty means no audit-column contract — the default for
     silver/gold.
     """
 

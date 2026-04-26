@@ -1,4 +1,4 @@
-"""Persistence helpers for the Phase-12 query history.
+"""Persistence helpers for the SQL editor's query history.
 
 :func:`record_query` is the synchronous INSERT path; the HTTP
 wrapper in :mod:`pointlessql.api.main` dispatches it through
@@ -11,7 +11,7 @@ Query `status` values:
 - ``"succeeded"`` — DuckDB returned a result set.
 - ``"failed"`` — parse, enforcement, or runtime error.  The
   ``error_message`` column carries the human-readable detail.
-- ``"cancelled"`` — reserved for Sprint 52's cancel path.
+- ``"cancelled"`` — user-requested cancel (currently unused).
 
 Non-admin users see only their own rows; admin sees every row.
 Enforcement is the list route's job (see
@@ -104,12 +104,12 @@ def record_query(
             written per entry, with ``access_type="read"``.
         error_message: Exception detail for failures; ``None`` on
             success.
-        request_id: Correlates with the Sprint-16 request-id log
-            field.  ``None`` when called from contexts that do not
-            have a request scope.
-        agent_run_id: Sprint 13.9 — owning ``AgentRun.id`` when the
-            query came from a registered run (resolved by the route
-            from the ``X-Agent-Run-Id`` header or the
+        request_id: Correlates with the request-id log field.
+            ``None`` when called from contexts that do not have a
+            request scope.
+        agent_run_id: Owning ``AgentRun.id`` when the query came
+            from a registered run (resolved by the route from the
+            ``X-Agent-Run-Id`` header or the
             ``POINTLESSQL_AGENT_RUN_ID`` env var).  Garbage-shaped
             values are dropped silently (UUID-like 36-char check
             only) so query history stays tolerant of malformed
@@ -172,8 +172,8 @@ def list_queries(
             all users (admin-only caller).
         status: Filter to a single status string.  ``None`` returns all.
         since: Filter to ``started_at >= since``.  ``None`` returns all.
-        agent_run_id: Sprint 13.9 — filter to rows whose
-            ``agent_run_id`` matches.  ``None`` returns all.
+        agent_run_id: Filter to rows whose ``agent_run_id`` matches.
+            ``None`` returns all.
         limit: Hard row cap.  Also enforces ORDER BY ``started_at DESC``
             so the most recent activity is at the top.
 
@@ -253,9 +253,7 @@ def get_by_id(
         if not is_admin and row.user_id != user_id:
             return None
         tables = session.scalars(
-            select(QueryHistoryTable).where(
-                QueryHistoryTable.query_history_id == row.id
-            )
+            select(QueryHistoryTable).where(QueryHistoryTable.query_history_id == row.id)
         ).all()
         return {
             "id": row.id,
@@ -308,9 +306,7 @@ def update_chart_config(
         session.commit()
         session.refresh(row)
         tables = session.scalars(
-            select(QueryHistoryTable).where(
-                QueryHistoryTable.query_history_id == row.id
-            )
+            select(QueryHistoryTable).where(QueryHistoryTable.query_history_id == row.id)
         ).all()
         return {
             "id": row.id,

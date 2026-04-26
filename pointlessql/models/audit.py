@@ -19,14 +19,13 @@ class AuditLog(Base):
             entries survive user deletion).
         user_email: Email snapshot at time of action.
         actor_role: Role of the actor at time of action
-            (``admin`` / ``user`` / ``system``). Sprint 48 addition.
+            (``admin`` / ``user`` / ``system``).
         action: Short verb describing the action (e.g. ``update_catalog``).
         target: Identifier of the affected resource (e.g. ``catalog:my_cat``).
         client_ip: IPv4/IPv6 address of the requesting client, or
-            ``None`` for system-generated rows. Sprint 48 addition.
-        detail: Optional JSON-encoded context (stored as ``Text`` to
-            allow arbitrarily-sized structured payloads — Sprint 48
-            widened this from ``String(2000)``).
+            ``None`` for system-generated rows.
+        detail: Optional JSON-encoded context (stored as ``Text`` so
+            arbitrarily-sized structured payloads fit).
         created_at: Timestamp when the action occurred.
     """
 

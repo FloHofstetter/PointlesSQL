@@ -1,4 +1,4 @@
-"""Op-by-op + tool-call-by-tool-call diff service (Sprint 13.11.4b).
+"""Op-by-op + tool-call-by-tool-call diff service.
 
 Pure-Python helpers that align two runs' ``agent_run_operations``
 and ``agent_run_tool_calls`` row sets, then emit a per-slot diff
@@ -98,9 +98,7 @@ def _params_diff(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _diff_op_pair(
-    op_a: AgentRunOperation | None, op_b: AgentRunOperation | None
-) -> dict[str, Any]:
+def _diff_op_pair(op_a: AgentRunOperation | None, op_b: AgentRunOperation | None) -> dict[str, Any]:
     """Per-slot diff between aligned operation rows."""
     a_dict = _serialize_op(op_a) if op_a is not None else None
     b_dict = _serialize_op(op_b) if op_b is not None else None
@@ -110,13 +108,9 @@ def _diff_op_pair(
     if a_dict["op_name"] != b_dict["op_name"]:
         diff["op_name_diff"] = {"a": a_dict["op_name"], "b": b_dict["op_name"]}
     if a_dict["target_table"] != b_dict["target_table"]:
-        diff["target_table_diff"] = {
-            "a": a_dict["target_table"], "b": b_dict["target_table"]
-        }
+        diff["target_table_diff"] = {"a": a_dict["target_table"], "b": b_dict["target_table"]}
     if (a_dict["rows_affected"] or 0) != (b_dict["rows_affected"] or 0):
-        diff["rows_affected_diff"] = (
-            (b_dict["rows_affected"] or 0) - (a_dict["rows_affected"] or 0)
-        )
+        diff["rows_affected_diff"] = (b_dict["rows_affected"] or 0) - (a_dict["rows_affected"] or 0)
     if a_dict["delta_version_after"] != b_dict["delta_version_after"]:
         diff["delta_version_after_diff"] = {
             "a": a_dict["delta_version_after"],
@@ -143,9 +137,7 @@ def _diff_tool_call_pair(
     if a_dict is None or b_dict is None:
         return diff
     if a_dict["tool_name"] != b_dict["tool_name"]:
-        diff["tool_name_diff"] = {
-            "a": a_dict["tool_name"], "b": b_dict["tool_name"]
-        }
+        diff["tool_name_diff"] = {"a": a_dict["tool_name"], "b": b_dict["tool_name"]}
     if a_dict["args_json"] != b_dict["args_json"]:
         try:
             a_args = json.loads(a_dict["args_json"])
@@ -168,8 +160,10 @@ def _diff_tool_call_pair(
             if arg_diff:
                 diff["args_diff"] = arg_diff
         else:
-            diff["args_diff"] = {"a_len": len(a_dict["args_json"]),
-                                 "b_len": len(b_dict["args_json"])}
+            diff["args_diff"] = {
+                "a_len": len(a_dict["args_json"]),
+                "b_len": len(b_dict["args_json"]),
+            }
     if (a_dict["result_summary"] or "") != (b_dict["result_summary"] or ""):
         diff["result_summary_diff"] = {
             "a_len": len(a_dict["result_summary"] or ""),
@@ -220,9 +214,7 @@ def _content_align_ops(
         if not candidates:
             pairs.append((op_a, None))
             continue
-        idx, match = min(
-            candidates, key=lambda pair: abs(pair[1].ordinal - op_a.ordinal)
-        )
+        idx, match = min(candidates, key=lambda pair: abs(pair[1].ordinal - op_a.ordinal))
         used_b.add(idx)
         pairs.append((op_a, match))
     for i, op_b in enumerate(ops_b):

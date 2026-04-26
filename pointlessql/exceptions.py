@@ -1,8 +1,8 @@
 """Domain exception hierarchy for PointlesSQL.
 
 Every custom exception inherits from :class:`PointlessSQLError` so that
-centralized error handlers (Sprint 14) can catch the entire family with
-a single clause.  Each exception carries structured attributes that the
+the centralized error handlers can catch the entire family with a
+single clause.  Each exception carries structured attributes that the
 error handler serializes into a consistent JSON envelope.
 """
 
@@ -183,7 +183,7 @@ class PQLWriteError(EngineError):
 
 
 class AuditUnavailableError(PointlessSQLError):
-    """Raised when the Sprint-13.8 forced audit trail cannot be persisted.
+    """Raised when the forced audit trail cannot be persisted.
 
     PQL primitives (``autoload`` / ``merge`` / ``write_table`` /
     ``sql``) write an ``agent_run_operations`` row before touching
@@ -191,7 +191,7 @@ class AuditUnavailableError(PointlessSQLError):
     If the trail insert fails (DB down, FK miss because the run id
     is unknown to the registry, table missing) the primitive
     refuses to run — a write without a trail breaks the audit
-    guarantee Sprint 13.8 promises.
+    guarantee the forced-trail contract promises.
 
     Attributes:
         status_code: Always 503 — the registry is part of the
@@ -206,7 +206,7 @@ class AuditUnavailableError(PointlessSQLError):
 
 
 class SQLExecutionError(PointlessSQLError):
-    """Raised when Phase 12's DuckDB execution path rejects a query.
+    """Raised when the DuckDB execution path rejects a query.
 
     Covers both the parse / scope guard (``SELECT`` only, single
     statement, 3-part refs only) and DuckDB's own runtime errors

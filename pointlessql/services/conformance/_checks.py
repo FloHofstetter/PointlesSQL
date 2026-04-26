@@ -1,4 +1,4 @@
-"""Per-layer conformance checks against the Sprint-13.5.1 conventions.
+"""Per-layer conformance checks against the Medallion conventions.
 
 Findings are shaped for direct rendering — the run-detail view
 groups them by table and shows the ``severity`` as a colored
@@ -46,9 +46,7 @@ class ConformanceFinding:
     message: str
 
 
-def infer_layer_from_full_name(
-    full_name: str, conventions: ConventionsConfig
-) -> str | None:
+def infer_layer_from_full_name(full_name: str, conventions: ConventionsConfig) -> str | None:
     """Return the Medallion layer name a table belongs to, or ``None``.
 
     The MVP heuristic matches on the schema-name (middle component
@@ -59,8 +57,8 @@ def infer_layer_from_full_name(
 
     Operators who use different schema names today can land on
     the convention by either (a) renaming their schemas, or (b)
-    waiting for the Sprint-13.5.1 ``layer_tag_key`` UC-tag hook
-    to be wired through the soyuz client (currently MVP-deferred).
+    waiting for the ``layer_tag_key`` UC-tag hook to be wired
+    through the soyuz client (currently MVP-deferred).
 
     Args:
         full_name: Three-part UC name ``catalog.schema.table``.
@@ -145,12 +143,9 @@ def check_table_against_layer(
         return findings
 
     if layer == "silver":
-        scd2_present = any(
-            c in column_set for c in ("_valid_from", "_valid_to", "_is_current")
-        )
+        scd2_present = any(c in column_set for c in ("_valid_from", "_valid_to", "_is_current"))
         key_present = any(
-            c.endswith("_id") or c == "id" or c.endswith("_key") or c == "key"
-            for c in column_names
+            c.endswith("_id") or c == "id" or c.endswith("_key") or c == "key" for c in column_names
         )
         if not (scd2_present or key_present):
             findings.append(

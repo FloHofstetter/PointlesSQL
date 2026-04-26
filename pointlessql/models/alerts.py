@@ -1,4 +1,4 @@
-"""Alert + alert-event + alert-destination models (Sprint 55)."""
+"""Alert, alert-event, and alert-destination ORM models."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from pointlessql.models.base import Base
 
 
 class Alert(Base):
-    """A scheduled condition check against a saved query (Sprint 55).
+    """A scheduled condition check against a saved query.
 
     An alert fires when ``row_count`` of its saved query, evaluated on
     the configured cron, satisfies ``condition_op threshold``.  Each
@@ -58,9 +58,7 @@ class Alert(Base):
     saved_query_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("saved_queries.id"), nullable=False
     )
-    owner_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=False
-    )
+    owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     cron_expr: Mapped[str] = mapped_column(String(120), nullable=False)
     condition_op: Mapped[str] = mapped_column(String(8), nullable=False)
     threshold: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -68,12 +66,8 @@ class Alert(Base):
     backing_job_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("jobs.id"), nullable=True
     )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class AlertDestination(Base):
@@ -104,16 +98,12 @@ class AlertDestination(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    alert_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("alerts.id"), nullable=False
-    )
+    alert_id: Mapped[int] = mapped_column(Integer, ForeignKey("alerts.id"), nullable=False)
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     webhook_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     hmac_secret: Mapped[str | None] = mapped_column(String(256), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class AlertEvent(Base):
@@ -142,13 +132,9 @@ class AlertEvent(Base):
     __table_args__ = (Index("ix_alert_events_fired", "alert_id", "fired_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    alert_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("alerts.id"), nullable=False
-    )
+    alert_id: Mapped[int] = mapped_column(Integer, ForeignKey("alerts.id"), nullable=False)
     event_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
-    fired_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    fired_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     outcome: Mapped[str] = mapped_column(String(20), nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)

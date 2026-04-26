@@ -1,10 +1,10 @@
 """Generated soyuz-catalog client function imports + error decorator.
 
-Sprint 83 split.  Single import surface for every typed function the
-mixins call.  Re-exported from :mod:`pointlessql.services.unitycatalog`
-so existing tests that monkeypatch
+Single import surface for every typed function the mixins call.
+Re-exported from :mod:`pointlessql.services.unitycatalog` so existing
+tests that monkeypatch
 ``pointlessql.services.unitycatalog._get_tags.asyncio`` keep finding
-the same module object after the package split.
+the same module object.
 
 The :func:`_wrap_catalog_errors` decorator lives here (rather than on
 each mixin) so its mapping of ``UnexpectedStatus`` /
@@ -177,7 +177,7 @@ def wrap_catalog_errors[T](
 ) -> Callable[..., Coroutine[Any, Any, T]]:
     """Wrap an async method so transport + client errors become domain exceptions.
 
-    Mapping (Sprint 22, BUG-22-01 + BUG-22-02):
+    Mapping (BUG-22-01 + BUG-22-02):
 
     - soyuz 4xx responses surface as ``ValidationError`` (422) or
       ``CatalogNotFoundError`` (404) depending on the exact status,

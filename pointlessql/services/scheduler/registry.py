@@ -1,10 +1,9 @@
 # pyright: reportPrivateUsage=false
 """Executor registry + ``JobExecutor`` type alias.
 
-Sprint 84 split out of ``scheduler.py``.  Owns the
-:class:`KindRegistry` map of ``kind`` identifier → executor coroutine
-plus the :func:`build_default_registry` factory that wires the four
-built-in executors (``pg_sync``, ``python``, ``papermill``,
+Owns the :class:`KindRegistry` map of ``kind`` identifier → executor
+coroutine plus the :func:`build_default_registry` factory that wires
+the four built-in executors (``pg_sync``, ``python``, ``papermill``,
 ``alert_check``) on a fresh registry.
 
 Built-in executor implementations live in :mod:`.executors` so this

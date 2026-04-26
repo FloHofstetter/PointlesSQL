@@ -1,12 +1,12 @@
 """Query history + saved queries routes.
 
-Sprint 86c split out of ``api/main.py``.  Owns the query-history
-read endpoints (``/api/queries``, ``/api/queries/{id}``,
-``/api/queries/{id}/chart-config``) plus the full saved-queries CRUD
-(``/api/saved-queries`` GET/POST + ``/{slug}`` GET/PATCH/DELETE) and
-the ``/queries`` HTML page that lists them.
+Owns the query-history read endpoints (``/api/queries``,
+``/api/queries/{id}``, ``/api/queries/{id}/chart-config``) plus
+the full saved-queries CRUD (``/api/saved-queries`` GET/POST +
+``/{slug}`` GET/PATCH/DELETE) and the ``/queries`` HTML page that
+lists them.
 
-Visibility model is unchanged from the pre-split shape:
+Visibility model:
 
 * ``query_history`` rows: non-admin sees only their own; admin sees
   every row.  ``user_id=`` query param is clamped to caller for
@@ -87,16 +87,16 @@ async def api_list_queries(
 
     Non-admin callers see only their own rows — the ``user_id``
     query param is clamped to the caller's ID regardless of what
-    was requested (Sprint-50 parity with ``/api/jobs`` from Sprint
-    33).  Admin can pass ``user_id=123`` to scope or ``None`` to
-    see everyone.
+    was requested, mirroring the visibility rule applied on
+    ``/api/jobs``.  Admin can pass ``user_id=123`` to scope or
+    ``None`` to see everyone.
 
     Args:
         request: Incoming request (for the current user).
         user_id: Optional user-ID filter (admin only).
         status: Optional status filter.
         since: Window string (``24h`` / ``7d`` / ``30d`` / ``all``).
-        agent_run_id: Sprint 13.9 — optional run-UUID filter.
+        agent_run_id: Optional run-UUID filter.
         limit: Hard row cap (default 200).
 
     Returns:
@@ -128,10 +128,10 @@ async def api_list_queries(
 async def api_get_query(request: Request, history_id: int) -> dict[str, Any]:
     """Return a single ``query_history`` row as JSON.
 
-    Used by the Sprint-54 chart-replay flow: the editor fetches a
-    row by id to seed its chart config when the user opens a deep
-    link.  404 collapses ``missing`` and ``forbidden`` so an
-    unprivileged caller cannot probe IDs.
+    Used by the chart-replay flow: the editor fetches a row by id
+    to seed its chart config when the user opens a deep link.  404
+    collapses ``missing`` and ``forbidden`` so an unprivileged
+    caller cannot probe IDs.
 
     Args:
         request: Incoming request (for the current user).
@@ -224,24 +224,24 @@ async def api_update_query_chart_config(
 
 @router.get("/queries", response_class=HTMLResponse)
 async def queries_page(
-    request: Request, agent_run_id: str | None = None,
+    request: Request,
+    agent_run_id: str | None = None,
 ) -> HTMLResponse:
-    """Render the Phase-12 query history page.
+    """Render the query history page.
 
     Pre-loads the initial history slice server-side so the page
     paints without waiting on a second round-trip; the list-table
     Alpine component then takes over for chip filtering and sort.
 
-    Sprint 13.9 — when an ``agent_run_id`` query param is present
-    the pre-loaded slice scopes to that run only and the page
-    surfaces a dismissable filter pill so users see they're
-    inside a sub-view.
+    When an ``agent_run_id`` query param is present the pre-loaded
+    slice scopes to that run only and the page surfaces a
+    dismissable filter pill so users see they're inside a sub-view.
 
     Args:
         request: The incoming FastAPI request.
         agent_run_id: Optional run-UUID filter via the URL query
-            string (typically arrived from a Sprint-13.8
-            run-detail "Queries" tab link).
+            string (typically arrived from a run-detail "Queries"
+            tab link).
 
     Returns:
         The rendered HTML page.
@@ -276,7 +276,7 @@ async def queries_page(
     )
 
 
-# -- Phase 12 saved queries (Sprint 51) ------------------------------------
+# -- saved queries ---------------------------------------------------------
 
 
 @router.get("/api/saved-queries")
@@ -301,7 +301,8 @@ async def api_list_saved_queries(request: Request) -> list[dict[str, Any]]:
 
 @router.post("/api/saved-queries")
 async def api_create_saved_query(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Create a new saved query owned by the current user.
 
@@ -376,7 +377,9 @@ async def api_get_saved_query(request: Request, slug: str) -> dict[str, Any]:
 
 @router.patch("/api/saved-queries/{slug}")
 async def api_update_saved_query(
-    request: Request, slug: str, body: dict[str, Any] = Body(...),
+    request: Request,
+    slug: str,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Update a saved query.  Only owner + admin may mutate.
 
@@ -423,9 +426,7 @@ async def api_update_saved_query(
         sql_text=payload.get("sql_text")
         if isinstance(payload.get("sql_text"), str)
         else (payload.get("sql") if isinstance(payload.get("sql"), str) else None),
-        is_shared=bool(payload.get("is_shared"))
-        if "is_shared" in payload
-        else None,
+        is_shared=bool(payload.get("is_shared")) if "is_shared" in payload else None,
     )
     if row is None:
         raise CatalogNotFoundError(f"Saved query {slug!r} not found.")

@@ -1,9 +1,8 @@
 """Catalog tree API routes — /api/tree, /api/catalogs, schemas, tables, preview.
 
-Sprint 86 split out of ``api/main.py``.  Owns the five JSON endpoints
-the sidebar + breadcrumb navigation hits to walk the
-catalog → schema → table tree, plus the row-preview endpoint that
-backs the table-detail card.
+Owns the five JSON endpoints the sidebar + breadcrumb navigation hits
+to walk the catalog → schema → table tree, plus the row-preview
+endpoint that backs the table-detail card.
 
 Authorization model is the same as before: schema/table list use the
 hierarchical ``check_privilege`` (USE_CATALOG, USE_SCHEMA), and the
@@ -64,10 +63,10 @@ async def api_schemas(request: Request, catalog_name: str) -> list[dict[str, obj
     """Return schemas inside a catalog as JSON."""
     client = get_uc_client(request)
     user = get_user(request)
-    # Sprint 13.11.10: align the privilege check with get_uc_client —
-    # both must respect ``X-Principal`` so a Hermes plugin call on
-    # behalf of a real user is gated against that user's UC grants
-    # instead of the api_key:<name> synthetic principal.
+    # Align the privilege check with get_uc_client — both must
+    # respect ``X-Principal`` so a Hermes plugin call on behalf of
+    # a real user is gated against that user's UC grants instead
+    # of the api_key:<name> synthetic principal.
     principal = effective_principal(request) or user.get("email", "")
     await check_privilege(
         client,
@@ -110,13 +109,13 @@ async def api_get_table(
 ) -> dict[str, object]:
     """Return one table's full metadata (columns + tags) as JSON.
 
-    Sprint 13.7.3 added this endpoint so the
-    ``hermes-plugin-pointlessql`` ``pql_get_table`` tool can pull
-    column types + UC tags + comment without scraping the HTML
-    catalog browser. The shape is whatever soyuz-catalog returns
-    for ``GET /tables/{full_name}``; the gate matches the schema-
-    list route (USE_SCHEMA on the parent schema) since visibility
-    of an individual table follows visibility of its schema.
+    The ``hermes-plugin-pointlessql`` ``pql_get_table`` tool calls
+    this endpoint to pull column types + UC tags + comment without
+    scraping the HTML catalog browser. The shape is whatever
+    soyuz-catalog returns for ``GET /tables/{full_name}``; the gate
+    matches the schema-list route (USE_SCHEMA on the parent schema)
+    since visibility of an individual table follows visibility of
+    its schema.
 
     Args:
         request: Incoming FastAPI request.

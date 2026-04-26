@@ -1,11 +1,10 @@
-"""``pql.merge()`` — Sprint 13.5.2 thin facade over Delta MERGE.
+"""``pql.merge()`` — thin facade over Delta MERGE.
 
-The merge primitive is one of the three Phase-13.5 building blocks
-that turn an agent run into a Medallion lakehouse: ``autoload`` lifts
+The merge primitive is one of the Medallion building blocks that
+turn an agent run into a Medallion lakehouse: ``autoload`` lifts
 files into bronze, ``merge`` consolidates bronze → silver, and a SQL
-aggregation produces gold.  Sprint 13.5.2 ships ``merge`` because
-silver is where the upsert semantics matter — gold writes are
-typically full-overwrite or append-truncate.
+aggregation produces gold.  Silver is where upsert semantics matter
+— gold writes are typically full-overwrite or append-truncate.
 
 Two strategies in scope:
 
@@ -26,7 +25,7 @@ Two strategies in scope:
 The audit column names are hardcoded here rather than read from
 :mod:`pointlessql.conventions` because they are silver-layer
 specific (audit columns in conventions are bronze-specific).  A
-follow-up sprint may promote them to a configurable field on
+later iteration may promote them to a configurable field on
 :class:`pointlessql.conventions.LayerConvention` if a real
 override case appears.
 """
@@ -94,9 +93,9 @@ def merge_table(
         strategy: ``"upsert"`` or ``"scd2"``.
         unreachable_msg: Pre-rendered "cannot reach catalog"
             message — same hop the read/write helpers take.
-        agent_run_id: Sprint 13.8 — when set, emits one
-            ``agent_run_operations`` row capturing input SHA, Delta
-            version pre/post, and merge stats.
+        agent_run_id: When set, emits one ``agent_run_operations``
+            row capturing input SHA, Delta version pre/post, and
+            merge stats.
 
     Returns:
         A dict carrying ``strategy`` and the deltalake merge stats
@@ -114,9 +113,7 @@ def merge_table(
     if not on:
         raise ValidationError("merge requires at least one column in 'on'")
     if strategy not in ("upsert", "scd2"):
-        raise ValidationError(
-            f"strategy must be 'upsert' or 'scd2', got {strategy!r}"
-        )
+        raise ValidationError(f"strategy must be 'upsert' or 'scd2', got {strategy!r}")
 
     parse_full_name(target)
     target_location = _resolve_target_location(client, target, unreachable_msg)
@@ -185,7 +182,7 @@ def _merge_rows_affected(stats: dict[str, Any]) -> int | None:
             if isinstance(close_stats, dict):
                 closed = int(close_stats.get("num_target_rows_updated", 0) or 0)
             return appended + closed
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return None
 
@@ -216,9 +213,7 @@ def _stats_for_audit(stats: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _resolve_target_location(
-    client: Client, full_name: str, unreachable_msg: str
-) -> str:
+def _resolve_target_location(client: Client, full_name: str, unreachable_msg: str) -> str:
     """Look up *full_name* in soyuz-catalog and return its storage_location.
 
     Args:
@@ -244,15 +239,11 @@ def _resolve_target_location(
         )
     location = response.storage_location
     if isinstance(location, Unset) or not location:
-        raise CatalogNotFoundError(
-            f"merge target {full_name!r} has no storage_location"
-        )
+        raise CatalogNotFoundError(f"merge target {full_name!r} has no storage_location")
     return location
 
 
-def _resolve_source_frame(
-    client: Client, engine: Engine, source: Any, unreachable_msg: str
-) -> Any:
+def _resolve_source_frame(client: Client, engine: Engine, source: Any, unreachable_msg: str) -> Any:
     """Return *source* as a frame, resolving UC references through the engine.
 
     Args:
@@ -309,9 +300,7 @@ def _frame_to_arrow(frame: Any) -> pa.Table:
         ) from exc
 
 
-def _do_upsert(
-    target_location: str, arrow_source: pa.Table, on: list[str]
-) -> dict[str, Any]:
+def _do_upsert(target_location: str, arrow_source: pa.Table, on: list[str]) -> dict[str, Any]:
     """Run an upsert MERGE against the Delta table at *target_location*.
 
     Args:
@@ -340,9 +329,7 @@ def _do_upsert(
     return {"strategy": "upsert", **stats}
 
 
-def _do_scd2(
-    target_location: str, arrow_source: pa.Table, on: list[str]
-) -> dict[str, Any]:
+def _do_scd2(target_location: str, arrow_source: pa.Table, on: list[str]) -> dict[str, Any]:
     """Run an SCD-2 close-and-append against the Delta table.
 
     Two-phase: the merge step closes any currently-open target row

@@ -1,8 +1,8 @@
 """Database-backed fixed-window rate limiter.
 
-Sprint 43 hardens the ``/auth/*`` surface against credential-stuffing
-and registration spam. The mechanism is a fixed-window counter over
-the :class:`~pointlessql.models.RateLimitEvent` table: each allowed
+Hardens the ``/auth/*`` surface against credential-stuffing and
+registration spam. The mechanism is a fixed-window counter over the
+:class:`~pointlessql.models.RateLimitEvent` table: each allowed
 request inserts one row, and a subsequent check counts rows for the
 same ``bucket`` within the configured window. Opportunistic cleanup
 runs inside the same check so the table stays bounded without a

@@ -1,11 +1,11 @@
 """Heuristic cost estimator for DuckDB ``EXPLAIN (FORMAT JSON)`` plans.
 
-The estimator is intentionally simple — Sprint 13.1's job is to
-say "this query will scan a lot of rows, ask a human" before an
-agent fires off a multi-hour join.  A precise cost model is the
-wrong investment; a defensible cardinality × join-depth heuristic
-is enough to gate the obvious blow-ups while staying explainable
-to the agent (which can read the same plan and decide whether to
+The estimator is intentionally simple — its job is to say "this
+query will scan a lot of rows, ask a human" before an agent fires
+off a multi-hour join.  A precise cost model is the wrong
+investment; a defensible cardinality × join-depth heuristic is
+enough to gate the obvious blow-ups while staying explainable to
+the agent (which can read the same plan and decide whether to
 rewrite).
 
 The walker is defensive: DuckDB's plan JSON shape has shifted
@@ -128,7 +128,7 @@ def estimate_cost(plan_json: Any) -> CostEstimate:
                 continue
             try:
                 node_cardinality = int(raw)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             break
 
@@ -141,7 +141,7 @@ def estimate_cost(plan_json: Any) -> CostEstimate:
                         continue
                     try:
                         node_cardinality = int(str(raw_extra).strip())
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         continue
                     break
 

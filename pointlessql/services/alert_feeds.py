@@ -1,4 +1,4 @@
-"""Atom 1.0 + JSON Feed 1.1 rendering for the Sprint-55 pull feeds.
+"""Atom 1.0 + JSON Feed 1.1 rendering for the alert pull feeds.
 
 The admin UI surfaces a per-user opaque token; any RSS/Atom reader
 (Miniflux, FreshRSS, Reeder, NetNewsWire, Thunderbird, Feedly) can
@@ -97,12 +97,11 @@ def render_atom(
 
     for event in events:
         entry = ET.SubElement(feed, "entry")
-        ET.SubElement(entry, "id").text = (
-            f"urn:pointlessql:alert:{event.get('event_id') or event.get('id')}"
-        )
+        ET.SubElement(
+            entry, "id"
+        ).text = f"urn:pointlessql:alert:{event.get('event_id') or event.get('id')}"
         ET.SubElement(entry, "title").text = (
-            f"{event.get('alert_title') or event.get('alert_slug') or 'alert'}"
-            f" — {_summary(event)}"
+            f"{event.get('alert_title') or event.get('alert_slug') or 'alert'} — {_summary(event)}"
         )
         entry_fired = _dt_parse(event.get("fired_at"))
         ET.SubElement(entry, "updated").text = entry_fired.isoformat()
@@ -146,14 +145,12 @@ def render_json_feed(
         event_id = event.get("event_id") or str(event.get("id"))
         alert_slug = event.get("alert_slug") or ""
         summary = _summary(event)
-        title = (
-            f"{event.get('alert_title') or alert_slug or 'alert'} — {summary}"
-        )
+        title = f"{event.get('alert_title') or alert_slug or 'alert'} — {summary}"
         content_text = event.get("payload_json") or ""
         try:
             parsed = json.loads(content_text)
             content_payload: Any = parsed
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             content_payload = content_text
         items.append(
             {
@@ -161,9 +158,7 @@ def render_json_feed(
                 "url": f"{base_url}/alerts/{alert_slug}",
                 "title": title,
                 "content_text": summary,
-                "content_html": (
-                    f"<pre>{html.escape(content_text)}</pre>"
-                ),
+                "content_html": (f"<pre>{html.escape(content_text)}</pre>"),
                 "date_published": event.get("fired_at"),
                 "_pointlessql_cloudevent": content_payload,
                 "authors": [{"name": user_email}],

@@ -1,9 +1,9 @@
 """Built-in Medallion conventions.
 
-The defaults match the Phase 13.5 ROADMAP narrative verbatim so
-the prose contract in ``docs/data-layers.md``, the YAML example
-file at the repo root, and the agent-facing tool surface from
-Sprint 13.7 all reference one source of truth.
+The defaults match the project's prose Medallion narrative
+verbatim so the contract in ``docs/data-layers.md``, the YAML
+example file at the repo root, and the agent-facing tool
+surface all reference one source of truth.
 
 Bronze carries the audit-column contract because that is where
 provenance lives — silver and gold inherit it by lineage.  The

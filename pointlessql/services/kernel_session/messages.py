@@ -2,9 +2,9 @@
 
 The pump tasks on :class:`KernelSession` translate raw Jupyter wire
 messages into :class:`KernelMessage` dataclasses and fan them out to
-every :class:`_Subscription` registered on the session. Pulled into
-its own module in Sprint 77 so the message shape can evolve without
-touching the larger session lifecycle code.
+every :class:`_Subscription` registered on the session. Kept as a
+standalone module so the message shape can evolve without touching
+the larger session lifecycle code.
 """
 
 from __future__ import annotations
@@ -25,8 +25,8 @@ class KernelMessage:
             (``sha256(source)[:16]``) when the kernel's parent
             message originated from a tracked ``execute_request``.
             Kernel-initiated messages (status heartbeats, display
-            from untracked code) carry ``None``. Sprint 96 renamed
-            from the pre-migration ``cell_id`` / UUID field.
+            from untracked code) carry ``None``. Replaces an earlier
+            UUID-based ``cell_id`` field.
         channel: ``"iopub"`` or ``"shell"``.
         msg_type: Raw Jupyter msg type (``stream``,
             ``execute_result``, ``display_data``, ``error``,

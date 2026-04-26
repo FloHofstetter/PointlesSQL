@@ -1,10 +1,9 @@
-"""API-key store — DB-backed Bearer-token gate (Sprint 13.11.4a).
+"""API-key store — DB-backed Bearer-token gate.
 
-Promotes the env-var ``POINTLESSQL_API_KEYS`` parser from
-Sprint 13.7.0.5 to a real table so admins can rotate keys without a
-process restart, and so the new ``supervisor`` scope (gating the
-Family-B Sprint-13.11.4 routes) lives next to the secret it
-authorises.
+Replaces the earlier env-var ``POINTLESSQL_API_KEYS`` parser with
+a real table so admins can rotate keys without a process restart,
+and so the ``supervisor`` scope (gating the supervisor routes)
+lives next to the secret it authorises.
 """
 
 from __future__ import annotations
@@ -34,8 +33,8 @@ class ApiKey(Base):
             would only buy resistance against brute-force on weak
             secrets, and we control the secrets here.
         secret_prefix: First 8 plaintext characters for UI display.
-        supervisor: When ``True``, the key may invoke the Family-B
-            Sprint-13.11.4 supervisor routes.
+        supervisor: When ``True``, the key may invoke the supervisor
+            routes.
         created_at: Timestamp the key was created.
         created_by_user_id: Admin who created the key, or ``None``
             for env-var-bootstrapped keys + CLI-provisioned keys.
@@ -51,22 +50,14 @@ class ApiKey(Base):
 
     __tablename__ = "api_keys"
 
-    __table_args__ = (
-        Index("ix_api_keys_secret_hash", "secret_hash"),
-    )
+    __table_args__ = (Index("ix_api_keys_secret_hash", "secret_hash"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True
-    )
+    name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     secret_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     secret_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
-    supervisor: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    supervisor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )

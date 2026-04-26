@@ -54,7 +54,7 @@ class CatalogsMixin:
     async def create_catalog(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create a new catalog (managed or foreign).
 
-        Foreign catalogs are the Sprint 28 variant in soyuz-catalog: pass
+        Foreign catalogs are a soyuz-catalog variant: pass
         ``type="FOREIGN"`` together with ``connection_name`` and optional
         per-connector ``options``. Managed catalogs default to
         ``type="MANAGED"``; passing a ``storage_root`` is optional.

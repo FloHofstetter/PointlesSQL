@@ -1,4 +1,4 @@
-"""Sprint 13.8 — strict per-operation trail for agent runs.
+"""Strict per-operation trail for agent runs.
 
 Every PQL primitive call inside an agent run emits one row into the
 ``agent_run_operations`` table.  This module provides the helper
@@ -8,14 +8,14 @@ Every PQL primitive call inside an agent run emits one row into the
 The mode is **strict**: if the trail row cannot be persisted (DB
 down, FK miss because the run id is unknown to the registry), the
 primitive raises :class:`pointlessql.exceptions.AuditUnavailableError`
-*before* touching DuckDB or deltalake.  The Sprint 13.8 guarantee
-is "no write without a trail"; best-effort would defeat the
-forced-audit framing of the sprint title.
+*before* touching DuckDB or deltalake.  The contract is "no write
+without a trail"; best-effort would defeat the forced-audit
+guarantee.
 
 Ordinal allocation is a SELECT-MAX-then-INSERT inside one
 transaction.  SQLite's default WAL + serialised writers make this
-race-safe enough for one-runtime-per-run; if a future sprint allows
-parallel writers within the same run, switch to a server-side
+race-safe enough for one-runtime-per-run; for parallel writers
+within the same run, switch to a server-side
 ``COALESCE(MAX(ordinal), 0) + 1`` UPDATE/INSERT pattern.
 """
 
@@ -124,24 +124,20 @@ def record_operation(
             this and refuse to do its work.
     """
     if op_name not in VALID_OP_NAMES:
-        raise AuditUnavailableError(
-            f"agent_run_operations: unknown op_name {op_name!r}"
-        )
+        raise AuditUnavailableError(f"agent_run_operations: unknown op_name {op_name!r}")
 
     try:
         with session_factory() as session:
-            run_exists = session.scalar(
-                select(AgentRun.id).where(AgentRun.id == agent_run_id)
-            )
+            run_exists = session.scalar(select(AgentRun.id).where(AgentRun.id == agent_run_id))
             if run_exists is None:
                 raise AuditUnavailableError(
-                    f"agent_run_operations: agent_run_id {agent_run_id!r} "
-                    "is not registered"
+                    f"agent_run_operations: agent_run_id {agent_run_id!r} is not registered"
                 )
             next_ordinal = (
                 session.scalar(
-                    select(func.coalesce(func.max(AgentRunOperation.ordinal), 0))
-                    .where(AgentRunOperation.agent_run_id == agent_run_id)
+                    select(func.coalesce(func.max(AgentRunOperation.ordinal), 0)).where(
+                        AgentRunOperation.agent_run_id == agent_run_id
+                    )
                 )
                 or 0
             ) + 1
@@ -167,8 +163,7 @@ def record_operation(
         raise
     except SQLAlchemyError as exc:
         raise AuditUnavailableError(
-            f"agent_run_operations: insert failed for run "
-            f"{agent_run_id!r}: {exc}"
+            f"agent_run_operations: insert failed for run {agent_run_id!r}: {exc}"
         ) from exc
 
 
@@ -220,8 +215,7 @@ def operation_context(
 
     if session_factory is None:
         raise AuditUnavailableError(
-            f"operation_context: session_factory is None for run "
-            f"{agent_run_id!r}"
+            f"operation_context: session_factory is None for run {agent_run_id!r}"
         )
 
     started_at = datetime.datetime.now(datetime.UTC)

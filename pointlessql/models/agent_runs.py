@@ -1,11 +1,10 @@
-"""Agent-run registry — Sprint 13.2 supervision primitive.
+"""Agent-run registry — supervision primitive for external runtimes.
 
-Phase 13 (revised 2026-04-24) treats PointlesSQL as the *registry +
-store* for agent workloads; the actual execution happens in Hermes
-(or any other runtime) which POSTs lifecycle transitions here.  One
-row per run carries every piece of supervision state the
-control-room (Sprint 13.4), CloudEvents emitter (Sprint 13.3) and
-run-detail view need, without hiding fields inside a JSON blob.
+PointlesSQL is the *registry + store* for agent workloads; the
+actual execution happens in Hermes (or any other runtime) which
+POSTs lifecycle transitions here.  One row per run carries every
+piece of supervision state the control-room, CloudEvents emitter,
+and run-detail view need, without hiding fields inside a JSON blob.
 """
 
 from __future__ import annotations
@@ -26,21 +25,25 @@ STATUS_DENIED = "denied"
 STATUS_SUCCEEDED = "succeeded"
 STATUS_FAILED = "failed"
 
-VALID_STATUSES: frozenset[str] = frozenset({
-    STATUS_QUEUED,
-    STATUS_RUNNING,
-    STATUS_NEEDS_APPROVAL,
-    STATUS_APPROVED,
-    STATUS_DENIED,
-    STATUS_SUCCEEDED,
-    STATUS_FAILED,
-})
+VALID_STATUSES: frozenset[str] = frozenset(
+    {
+        STATUS_QUEUED,
+        STATUS_RUNNING,
+        STATUS_NEEDS_APPROVAL,
+        STATUS_APPROVED,
+        STATUS_DENIED,
+        STATUS_SUCCEEDED,
+        STATUS_FAILED,
+    }
+)
 
-TERMINAL_STATUSES: frozenset[str] = frozenset({
-    STATUS_SUCCEEDED,
-    STATUS_FAILED,
-    STATUS_DENIED,
-})
+TERMINAL_STATUSES: frozenset[str] = frozenset(
+    {
+        STATUS_SUCCEEDED,
+        STATUS_FAILED,
+        STATUS_DENIED,
+    }
+)
 
 
 class AgentRun(Base):
@@ -71,30 +74,27 @@ class AgentRun(Base):
         status: One of :data:`VALID_STATUSES`.  External runtime
             transitions the state machine; server refuses
             transitions out of :data:`TERMINAL_STATUSES`.
-        cost_est: Optional EXPLAIN-gate estimate (Sprint 13.1 fills
-            it in once the endpoint lands).  ``Decimal`` keeps the
-            value monetarily-exact across drivers.
+        cost_est: Optional EXPLAIN-gate estimate.  ``Decimal`` keeps
+            the value monetarily-exact across drivers.
         tables_touched: JSON-encoded list of UC table names the run
             reads or writes; populated by the runtime via the
-            ``pql_*`` tool surface (Sprint 13.7).
+            ``pql_*`` tool surface.
         started_at: Wall-clock run-creation timestamp.
         finished_at: Set on terminal transition; ``None`` while the
             run is still active.
         exit_code: Optional integer surfaced from the runtime's
             process wrapper.
         approved_by: Email of the admin who clicked "Approve" in the
-            control-room (Sprint 13.4 button); ``None`` until
-            approval happens.
+            control-room; ``None`` until approval happens.
         approved_at: Timestamp of the approval.
         denied_reason: Free-form denial text.  Mutually exclusive
             with ``approved_by``; the state machine enforces the
             pairing.
-        runtime_versions: Sprint 13.8 — JSON-encoded mapping of
-            runtime-side dependency versions (Python, ``pql``,
-            ``deltalake``, ``duckdb``, ...).  Required by
-            ``POST /api/agent-runs`` from Sprint 13.8 onward; the
-            column is nullable so legacy rows from Sprint 13.2-13.7
-            stay queryable.
+        runtime_versions: JSON-encoded mapping of runtime-side
+            dependency versions (Python, ``pql``, ``deltalake``,
+            ``duckdb``, ...).  Required by ``POST /api/agent-runs``;
+            the column is nullable so legacy rows from before the
+            requirement landed stay queryable.
     """
 
     __tablename__ = "agent_runs"
@@ -113,9 +113,7 @@ class AgentRun(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     cost_est: Mapped[Decimal | None] = mapped_column(Numeric(18, 4), nullable=True)
     tables_touched: Mapped[str | None] = mapped_column(Text, nullable=True)
-    started_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

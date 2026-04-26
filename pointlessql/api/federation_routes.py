@@ -1,8 +1,8 @@
 """UC federation routes — connections + external locations + credentials.
 
-Sprint 89a split out of ``api/main.py``.  Owns the three CRUD groups
-that back Lakehouse Federation administration plus the six HTML
-pages (one list + one detail page per resource family).
+Owns the three CRUD groups that back Lakehouse Federation
+administration plus the six HTML pages (one list + one detail
+page per resource family).
 
 * Connections (5 routes + 2 pages)
 * External locations (5 routes + 2 pages)
@@ -50,7 +50,8 @@ async def api_list_connections(request: Request) -> list[dict[str, object]]:
 
 @router.post("/api/connections")
 async def api_create_connection(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, object]:
     """Create a new connection (admin-only)."""
     require_admin(request)
@@ -70,7 +71,9 @@ async def api_get_connection(request: Request, name: str) -> dict[str, object]:
 
 @router.patch("/api/connections/{name}")
 async def api_update_connection(
-    request: Request, name: str, body: dict[str, Any] = Body(...),
+    request: Request,
+    name: str,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, object]:
     """Update a connection (admin-only)."""
     require_admin(request)
@@ -103,7 +106,8 @@ async def api_list_external_locations(request: Request) -> list[dict[str, object
 
 @router.post("/api/external-locations")
 async def api_create_external_location(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, object]:
     """Create a new external location (admin-only)."""
     require_admin(request)
@@ -123,7 +127,9 @@ async def api_get_external_location(request: Request, name: str) -> dict[str, ob
 
 @router.patch("/api/external-locations/{name}")
 async def api_update_external_location(
-    request: Request, name: str, body: dict[str, Any] = Body(...),
+    request: Request,
+    name: str,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, object]:
     """Update an external location (admin-only)."""
     require_admin(request)
@@ -156,7 +162,8 @@ async def api_list_credentials(request: Request) -> list[dict[str, object]]:
 
 @router.post("/api/credentials")
 async def api_create_credential(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, object]:
     """Create a new credential (admin-only)."""
     require_admin(request)
@@ -176,7 +183,9 @@ async def api_get_credential(request: Request, name: str) -> dict[str, object]:
 
 @router.patch("/api/credentials/{name}")
 async def api_update_credential(
-    request: Request, name: str, body: dict[str, Any] = Body(...),
+    request: Request,
+    name: str,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, object]:
     """Update a credential (admin-only)."""
     require_admin(request)

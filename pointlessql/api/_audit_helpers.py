@@ -1,13 +1,12 @@
 """Async audit + query-history record helpers used by the route layer.
 
-Sprint 85 split out of ``api/main.py``.  Every mutation route calls
-:func:`audit` after the underlying service committed; every SQL
-execute / cancel / export call goes through :func:`record_query_async`
-so the ``/queries`` page sees every attempt.
+Every mutation route calls :func:`audit` after the underlying
+service committed; every SQL execute / cancel / export call goes
+through :func:`record_query_async` so the ``/queries`` page sees
+every attempt.
 
 Both functions dispatch their write to :func:`asyncio.to_thread` so
-the request handler never blocks on the DB round-trip — the
-shoreguard-fresh pattern ported in Sprint 48.
+the request handler never blocks on the DB round-trip.
 """
 
 from __future__ import annotations
@@ -30,11 +29,10 @@ logger = logging.getLogger(__name__)
 def effective_agent_run_id(request: Request) -> str | None:
     """Resolve the active ``agent_run_id`` for the current request.
 
-    Sprint 13.9 — mirrors the X-Principal precedence:
-    ``X-Agent-Run-Id`` HTTP header wins over the
-    ``POINTLESSQL_AGENT_RUN_ID`` env var, both are case-insensitive
-    on the env-var side.  Returned value is whitespace-stripped;
-    empty / missing collapses to ``None``.
+    Mirrors the X-Principal precedence: the ``X-Agent-Run-Id`` HTTP
+    header wins over the ``POINTLESSQL_AGENT_RUN_ID`` env var, both
+    are case-insensitive on the env-var side.  Returned value is
+    whitespace-stripped; empty / missing collapses to ``None``.
 
     Args:
         request: Incoming FastAPI request.
@@ -65,14 +63,13 @@ async def record_query_async(
     error_message: str | None = None,
     agent_run_id: str | None = None,
 ) -> int | None:
-    """Persist a Phase-12 query-history row without blocking the loop.
+    """Persist a query-history row without blocking the loop.
 
-    Mirrors :func:`audit` for the dedicated ``query_history`` surface
-    landed in Sprint 50.  The INSERT happens inside
-    :func:`asyncio.to_thread` so the request handler continues
-    serving other requests during the write.  Swallows DB errors
-    after logging — a lost history row must never mask a successful
-    (or failing) query response.
+    Mirrors :func:`audit` for the dedicated ``query_history``
+    surface.  The INSERT happens inside :func:`asyncio.to_thread`
+    so the request handler continues serving other requests during
+    the write.  Swallows DB errors after logging — a lost history
+    row must never mask a successful (or failing) query response.
 
     Args:
         request: The incoming FastAPI request.
@@ -86,10 +83,10 @@ async def record_query_async(
             May be empty if the SQL did not parse.
         error_message: Exception detail for failures; ``None`` on
             success.
-        agent_run_id: Sprint 13.9 explicit run-UUID override.  When
-            ``None`` the resolution falls back to
-            :func:`effective_agent_run_id` so callers in the route
-            layer don't need to thread the header through.
+        agent_run_id: Explicit run-UUID override.  When ``None`` the
+            resolution falls back to :func:`effective_agent_run_id`
+            so callers in the route layer don't need to thread the
+            header through.
 
     Returns:
         The new ``query_history.id`` on success; ``None`` if no
@@ -100,13 +97,13 @@ async def record_query_async(
     if factory is None:
         return None
     request_id = getattr(request.state, "request_id", None)
-    # Sprint 13.6: prefer X-Principal header over cookie user so a
-    # Hermes-driven query is attributed to the agent's principal, not
-    # the (probably-empty) session-cookie user on the agent side.
+    # Prefer X-Principal header over cookie user so a Hermes-driven
+    # query is attributed to the agent's principal, not the
+    # (probably-empty) session-cookie user on the agent side.
     attributed_email = effective_principal(request) or user["email"]
-    # Sprint 13.9: explicit kwarg wins over header/env so internal
-    # callers (e.g. PQL primitives via Sprint 13.8 trail) can pass
-    # the run id without depending on request headers.
+    # Explicit kwarg wins over header/env so internal callers (e.g.
+    # PQL primitives via the forced audit trail) can pass the run
+    # id without depending on request headers.
     resolved_run_id = agent_run_id or effective_agent_run_id(request)
     try:
         return await asyncio.to_thread(
@@ -139,15 +136,13 @@ async def audit(
     """Write an audit log entry for the current user.
 
     The insert is dispatched to :func:`asyncio.to_thread` so the
-    HTTP request handler never blocks on the DB round-trip —
-    this is the shoreguard-fresh pattern ported in Sprint 48.
+    HTTP request handler never blocks on the DB round-trip.
 
-    Sprint 13.7.0.5 extended the helper to also record requests
-    authenticated via ``Authorization: Bearer`` — those carry
-    ``user_id == 0`` (no cookie user) but expose
-    ``request.state.api_key_name``; the row is written with
-    ``actor_role="system"`` and ``user_email=api_key:<name>``
-    when no ``X-Principal`` header re-attributes to a human.
+    Bearer-authenticated requests carry ``user_id == 0`` (no cookie
+    user) but expose ``request.state.api_key_name``; the row is
+    written with ``actor_role="system"`` and
+    ``user_email=api_key:<name>`` when no ``X-Principal`` header
+    re-attributes to a human.
 
     Args:
         request: The incoming HTTP request.
@@ -169,11 +164,11 @@ async def audit(
         role = "system"
     else:
         role = "admin" if user.get("is_admin") else "user"
-    # Sprint 13.6: ``X-Principal`` overrides the cookie email so the
-    # audit trail points at the agent's principal when Hermes is
-    # making the call.  ``user_id`` stays the cookie user's id —
-    # that is the actor whose session signed the request, even when
-    # they're acting on someone else's behalf.
+    # ``X-Principal`` overrides the cookie email so the audit trail
+    # points at the agent's principal when Hermes is making the
+    # call.  ``user_id`` stays the cookie user's id — that is the
+    # actor whose session signed the request, even when they're
+    # acting on someone else's behalf.
     attributed_email = (
         effective_principal(request)
         or user["email"]

@@ -1,4 +1,4 @@
-"""Agent-run registry endpoints — Sprint 13.2.
+"""Agent-run registry endpoints.
 
 External runtimes (Hermes, OpenShell, a curl'd cron job) POST here to
 register a run they are about to execute and again when it
@@ -6,11 +6,12 @@ terminates.  PointlesSQL stores the row, links to any ``notebook_outputs``
 / ``notebook_cell_runs`` rows the runtime later writes, and exposes
 the result via :mod:`pointlessql.api.runs_routes` for humans.
 
-No executor in this sprint — the runtime owns process lifecycle; we
+No executor lives here — the runtime owns process lifecycle; we
 only own the supervision record.  The ``X-Principal`` header is read
 on ``POST /api/agent-runs`` so the registration is attributed to the
-agent's human principal from day one (Sprint 13.6 extends it through
-the PQL session).
+agent's human principal, and the same header is propagated through
+the PQL session so downstream UC checks resolve against the same
+identity.
 """
 
 from __future__ import annotations
@@ -125,7 +126,8 @@ def _coerce_tables_touched(value: Any) -> str | None:
     if value is None:
         return None
     if not isinstance(value, list) or not all(
-        isinstance(item, str) for item in value  # pyright: ignore[reportUnknownVariableType]
+        isinstance(item, str)
+        for item in value  # pyright: ignore[reportUnknownVariableType]
     ):
         raise ValidationError("tables_touched must be a list of strings")
     return json.dumps(value)
@@ -160,12 +162,11 @@ async def api_create_agent_run(
 ) -> dict[str, Any]:
     """Register a new agent run from an external runtime.
 
-    Sprint 13.8 hardened the contract: ``source`` and
-    ``runtime_versions`` are required.  The server hashes the source
-    bytes server-side and persists them in ``agent_run_sources``
-    inside the same transaction as the new ``agent_runs`` row, so a
-    post-run edit of the on-disk ``.py`` cannot silently rewrite
-    history.  When the runtime supplies a
+    Contract: ``source`` and ``runtime_versions`` are required.  The
+    server hashes the source bytes server-side and persists them in
+    ``agent_run_sources`` inside the same transaction as the new
+    ``agent_runs`` row, so a post-run edit of the on-disk ``.py``
+    cannot silently rewrite history.  When the runtime supplies a
     ``source_snapshot_sha`` and it disagrees with the computed
     digest, registration fails with 422 (tamper-detection).
 
@@ -203,17 +204,14 @@ async def api_create_agent_run(
     runtime_versions_raw = body.get("runtime_versions")
     if not isinstance(runtime_versions_raw, dict) or not runtime_versions_raw:
         raise ValidationError(
-            "runtime_versions must be a non-empty mapping of "
-            "{component: version_string}"
+            "runtime_versions must be a non-empty mapping of {component: version_string}"
         )
     runtime_versions: dict[str, str] = {}
     for key, value in runtime_versions_raw.items():  # type: ignore[union-attr]
         if not isinstance(key, str) or not key:
             raise ValidationError("runtime_versions keys must be non-empty strings")
         if not isinstance(value, str):
-            raise ValidationError(
-                f"runtime_versions[{key!r}] must be a string version"
-            )
+            raise ValidationError(f"runtime_versions[{key!r}] must be a string version")
         runtime_versions[key] = value
 
     run_id_raw = body.get("id")
@@ -309,9 +307,7 @@ async def api_create_agent_run(
         {"notebook_path": notebook_path, "agent_id": agent_id, "status": status_raw},
     )
     payload = serialize_agent_run(row)
-    await emit_agent_run_event(
-        EVENT_TYPE_STARTED, payload, session_factory=factory
-    )
+    await emit_agent_run_event(EVENT_TYPE_STARTED, payload, session_factory=factory)
     return payload
 
 
@@ -346,9 +342,7 @@ async def api_finish_agent_run(
     """
     status_raw = body.get("status")
     if status_raw not in TERMINAL_STATUSES:
-        raise ValidationError(
-            f"status must be one of {sorted(TERMINAL_STATUSES)} to finish a run"
-        )
+        raise ValidationError(f"status must be one of {sorted(TERMINAL_STATUSES)} to finish a run")
 
     exit_code_raw = body.get("exit_code")
     exit_code: int | None = None
@@ -412,9 +406,7 @@ async def api_finish_agent_run(
     payload = serialize_agent_run(row)
     terminal_event = event_type_for_status(status_raw)
     if terminal_event is not None:
-        await emit_agent_run_event(
-            terminal_event, payload, session_factory=factory
-        )
+        await emit_agent_run_event(terminal_event, payload, session_factory=factory)
     return payload
 
 
@@ -428,10 +420,10 @@ async def api_list_agent_run_operations(
 ) -> dict[str, Any]:
     """Filterable list of ``agent_run_operations`` rows.
 
-    Sprint 13.11.2.  Backs the ``pql_recent_failures`` Hermes tool —
-    when an agent is about to retry a write, asking "did this exact
-    target fail recently for someone else?" should be one HTTP call
-    instead of a join through ``/runs``.
+    Backs the ``pql_recent_failures`` Hermes tool — when an agent is
+    about to retry a write, asking "did this exact target fail
+    recently for someone else?" should be one HTTP call instead of a
+    join through ``/runs``.
 
     All three filters are optional and AND-ed together.  Rows are
     returned newest-first by ``started_at`` so the freshest failure
@@ -480,9 +472,7 @@ async def api_list_agent_run_operations(
         for row in session.scalars(stmt).all():
             duration_ms: int | None = None
             if row.finished_at is not None and row.started_at is not None:
-                duration_ms = int(
-                    (row.finished_at - row.started_at).total_seconds() * 1000
-                )
+                duration_ms = int((row.finished_at - row.started_at).total_seconds() * 1000)
             try:
                 params = json.loads(row.params_json)
             except json.JSONDecodeError:
@@ -499,9 +489,7 @@ async def api_list_agent_run_operations(
                     "delta_version_before": row.delta_version_before,
                     "delta_version_after": row.delta_version_after,
                     "started_at": row.started_at.isoformat() if row.started_at else None,
-                    "finished_at": (
-                        row.finished_at.isoformat() if row.finished_at else None
-                    ),
+                    "finished_at": (row.finished_at.isoformat() if row.finished_at else None),
                     "duration_ms": duration_ms,
                     "error_message": row.error_message,
                     "status": "error" if row.error_message else "ok",
@@ -521,15 +509,14 @@ async def api_list_agent_runs(
 ) -> dict[str, Any]:
     """List recent agent runs as JSON, optionally filtered.
 
-    A companion to ``GET /runs`` for machine consumers (the
-    Sprint 13.7 Hermes plugin, curl probes, dashboards).  Ordered
-    newest-first by ``started_at``.
+    A companion to ``GET /runs`` for machine consumers (the Hermes
+    plugin, curl probes, dashboards).  Ordered newest-first by
+    ``started_at``.
 
-    Sprint 13.11.4a — added optional ``principal`` / ``agent_id`` /
-    ``status`` / ``since`` filters so the Family-B
-    ``pql_runs_by_principal`` and ``pql_runs_by_agent`` tools have
-    a single backing route.  Filters are AND-ed; missing filters
-    fall through to "match all".
+    Optional ``principal`` / ``agent_id`` / ``status`` / ``since``
+    filters back the Family-B ``pql_runs_by_principal`` and
+    ``pql_runs_by_agent`` tools through a single backing route.
+    Filters are AND-ed; missing filters fall through to "match all".
 
     Args:
         request: Incoming FastAPI request.
@@ -639,9 +626,7 @@ def _summarize_run(
         "delta_version_range": delta_version_range,
         "has_denied_reason": bool(run_row.denied_reason),
         "started_at": run_row.started_at.isoformat() if run_row.started_at else None,
-        "finished_at": (
-            run_row.finished_at.isoformat() if run_row.finished_at else None
-        ),
+        "finished_at": (run_row.finished_at.isoformat() if run_row.finished_at else None),
     }
 
 
@@ -662,9 +647,7 @@ def _load_run_summary_bundle(
         CatalogNotFoundError: No agent run with that id.
     """
     with factory() as session:
-        run_row = session.scalar(
-            select(AgentRun).where(AgentRun.id == run_id)
-        )
+        run_row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
         if run_row is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
         operations = list(
@@ -697,8 +680,8 @@ def _load_run_summary_bundle(
 async def api_agent_run_summary(request: Request, run_id: str) -> dict[str, Any]:
     """Risk-summary JSON for one run.  Supervisor scope required.
 
-    Sprint 13.11.4a.  Backs the ``pql_run_summary`` Hermes tool +
-    is the per-side payload of the diff route below.
+    Backs the ``pql_run_summary`` Hermes tool and is the per-side
+    payload of the diff route below.
 
     Args:
         request: Incoming FastAPI request.
@@ -713,9 +696,7 @@ async def api_agent_run_summary(request: Request, run_id: str) -> dict[str, Any]
     """
     require_supervisor(request)
     factory = request.app.state.session_factory
-    run_row, operations, tool_calls, queries = _load_run_summary_bundle(
-        factory, run_id
-    )
+    run_row, operations, tool_calls, queries = _load_run_summary_bundle(factory, run_id)
     return _summarize_run(run_row, operations, tool_calls, queries)
 
 
@@ -729,8 +710,8 @@ async def api_agent_runs_diff(
 ) -> dict[str, Any]:
     """Diff between two runs.  Supervisor scope required.
 
-    Sprint 13.11.4a shipped the summary surface; Sprint 13.11.4b
-    extends it with the ``detail=true`` op-by-op + tool-call-by-
+    The base response is a side-by-side summary diff; passing
+    ``detail=true`` extends it with an op-by-op + tool-call-by-
     tool-call diff (see
     :func:`pointlessql.services.run_diff.build_detail_diff` for
     the alignment strategies).
@@ -796,13 +777,14 @@ async def api_agent_runs_diff(
 
 @router.post("/api/agent-runs/{run_id}/approve")
 async def api_approve_agent_run(
-    request: Request, run_id: str,
+    request: Request,
+    run_id: str,
 ) -> dict[str, Any]:
     """Admin-only approval for a run pending ``needs_approval``.
 
-    Sprint 13.2 lands the endpoint so Sprint 13.4 can surface the
-    button without a second backend change.  Transitions the row to
-    ``approved`` and records the approving admin + timestamp.
+    Transitions the row to ``approved`` and records the approving
+    admin + timestamp.  The HTML supervision UI surfaces this as an
+    Approve button on the run-detail page.
 
     Args:
         request: Incoming FastAPI request.
@@ -823,9 +805,7 @@ async def api_approve_agent_run(
         if row is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
         if row.status != "needs_approval":
-            raise ValidationError(
-                f"agent run {run_id!r} is {row.status!r}, cannot approve"
-            )
+            raise ValidationError(f"agent run {run_id!r} is {row.status!r}, cannot approve")
         row.status = "approved"
         row.approved_by = user["email"]
         row.approved_at = datetime.now(UTC)
@@ -838,7 +818,9 @@ async def api_approve_agent_run(
 
 @router.post("/api/agent-runs/{run_id}/deny")
 async def api_deny_agent_run(
-    request: Request, run_id: str, body: dict[str, Any] = Body(default={}),
+    request: Request,
+    run_id: str,
+    body: dict[str, Any] = Body(default={}),
 ) -> dict[str, Any]:
     """Admin-only denial for a run pending ``needs_approval``.
 
@@ -860,20 +842,14 @@ async def api_deny_agent_run(
     """
     require_admin(request)
     reason_raw = body.get("reason")
-    reason = (
-        str(reason_raw).strip()
-        if isinstance(reason_raw, str) and reason_raw.strip()
-        else None
-    )
+    reason = str(reason_raw).strip() if isinstance(reason_raw, str) and reason_raw.strip() else None
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
         if row is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
         if row.status != "needs_approval":
-            raise ValidationError(
-                f"agent run {run_id!r} is {row.status!r}, cannot deny"
-            )
+            raise ValidationError(f"agent run {run_id!r} is {row.status!r}, cannot deny")
         row.status = "denied"
         row.denied_reason = reason
         row.finished_at = datetime.now(UTC)
@@ -895,11 +871,11 @@ async def api_record_tool_call(
     run_id: str,
     body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
-    """Record one LLM tool invocation against an agent run (Sprint 13.7.4).
+    """Record one LLM tool invocation against an agent run.
 
     The Hermes plugin's ``post_tool_call`` hook posts here for any
     tool whose name starts with ``pql_``.  Persists the row in
-    ``agent_run_tool_calls`` and emits a Sprint-13.3-style
+    ``agent_run_tool_calls`` and emits a
     ``pointlessql.agent_run.tool_call`` CloudEvent so external
     subscribers can rebuild the agent's reasoning trace from the
     event stream.
@@ -950,9 +926,7 @@ async def api_record_tool_call(
         try:
             called_at = datetime.fromisoformat(called_at_raw)
         except ValueError as exc:
-            raise ValidationError(
-                "called_at must be ISO-8601 when provided"
-            ) from exc
+            raise ValidationError("called_at must be ISO-8601 when provided") from exc
         if called_at.tzinfo is None:
             called_at = called_at.replace(tzinfo=UTC)
     else:
@@ -960,9 +934,7 @@ async def api_record_tool_call(
 
     factory = request.app.state.session_factory
     with factory() as session:
-        run_row = session.scalar(
-            select(AgentRun).where(AgentRun.id == run_id)
-        )
+        run_row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
         if run_row is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
         tool_row = AgentRunToolCall(
@@ -996,9 +968,7 @@ async def api_record_tool_call(
         f"agent_run:{run_id}",
         {"tool_name": tool_name},
     )
-    await emit_agent_run_event(
-        EVENT_TYPE_TOOL_CALL, payload, session_factory=factory
-    )
+    await emit_agent_run_event(EVENT_TYPE_TOOL_CALL, payload, session_factory=factory)
     return payload
 
 

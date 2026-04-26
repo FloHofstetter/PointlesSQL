@@ -1,25 +1,22 @@
 """CloudEvents envelope + emitter for agent-run lifecycle.
 
-Sprint 13.3 — extends the Sprint-55 alert envelope vocabulary with
-``pointlessql.agent_run.started`` / ``.completed`` / ``.failed``.
-The fourth type listed in the ROADMAP, ``.cell_completed``, will
-land alongside the per-cell POST route in a later sprint; emitting
-it from a route that doesn't exist yet would be misleading.
+Extends the alert-event vocabulary with
+``pointlessql.agent_run.started`` / ``.completed`` / ``.failed``
+plus ``.tool_call``.
 
-Webhook delivery is the existing Sprint-55 dispatcher
+Webhook delivery reuses the alert dispatcher
 (:func:`pointlessql.services.alert_dispatcher.dispatch_webhook`)
 — we just hand it the new envelope and an env-var-resolved URL.
-This deliberately keeps the schema flat: no ``agent_run_destinations``
-table in 13.3, no per-event-type filtering yet.  Sprint 13.4 owns
-the richer destination model when the control-room UI lands.
+The schema is intentionally flat: no ``agent_run_destinations``
+table, no per-event-type filtering — that richer destination model
+would belong on top of this layer.
 
-Sprint 13.8 added persistence: every envelope is INSERTed into
-``agent_run_events`` *before* dispatch with ``outcome="pending"``;
-the dispatcher result updates the column to ``"delivered"`` /
-``"delivery_failed"`` / ``"no_destination"``.  Webhook failures
-still don't raise — but a DB-side failure on the persistence step
-*does*, because the registry's durability is the audit guarantee
-Sprint 13.8 promises.
+Every envelope is INSERTed into ``agent_run_events`` *before*
+dispatch with ``outcome="pending"``; the dispatcher result updates
+the column to ``"delivered"`` / ``"delivery_failed"`` /
+``"no_destination"``.  Webhook failures still don't raise — but a
+DB-side failure on the persistence step *does*, because the
+registry's durability is the audit guarantee.
 """
 
 from __future__ import annotations
@@ -58,8 +55,8 @@ def event_type_for_status(status: str) -> str | None:
     """Map a terminal :class:`AgentRun` status to the matching event type.
 
     ``succeeded`` → ``.completed``, ``failed`` → ``.failed``.  The
-    ``denied`` terminal status returns ``None`` because Sprint 13.3's
-    event vocabulary covers execution outcomes, not human approval
+    ``denied`` terminal status returns ``None`` because the event
+    vocabulary covers execution outcomes, not human approval
     decisions; surfacing those would mis-signal that the runtime
     actually executed something.
 
@@ -87,7 +84,7 @@ def build_agent_run_cloudevent(
 ) -> dict[str, Any]:
     """Build a CloudEvents 1.0 envelope for an agent-run lifecycle event.
 
-    The envelope shape mirrors the Sprint-55 alert event so existing
+    The envelope shape mirrors the alert-event envelope so existing
     subscribers can decode both with the same parser — only the
     ``type`` and ``data`` payload differ.  ``source`` includes the
     agent-run id so receivers can correlate by URL prefix without
@@ -166,7 +163,8 @@ def _persist_event(
     except Exception:  # noqa: BLE001 — never raise into the route
         logger.exception(
             "agent_run_events persist failed for run=%s type=%s",
-            agent_run_id, event_type,
+            agent_run_id,
+            event_type,
         )
         return None
 
@@ -186,17 +184,13 @@ def _update_event_outcome(
     """
     try:
         with session_factory() as session:
-            row = session.scalar(
-                select(AgentRunEvent).where(AgentRunEvent.id == row_id)
-            )
+            row = session.scalar(select(AgentRunEvent).where(AgentRunEvent.id == row_id))
             if row is None:
                 return
             row.outcome = outcome
             session.commit()
     except Exception:  # noqa: BLE001 — outcome update is cosmetic
-        logger.exception(
-            "agent_run_events outcome update failed for id=%s", row_id
-        )
+        logger.exception("agent_run_events outcome update failed for id=%s", row_id)
 
 
 async def emit_agent_run_event(
@@ -215,8 +209,8 @@ async def emit_agent_run_event(
     the row is still persisted with ``outcome = "no_destination"``
     so the trail is complete.
 
-    Sprint 13.8: when ``session_factory`` is provided the envelope
-    is INSERTed into ``agent_run_events`` *before* dispatch with
+    When ``session_factory`` is provided the envelope is INSERTed
+    into ``agent_run_events`` *before* dispatch with
     ``outcome = "pending"``; the post-dispatch update flips it to
     ``"delivered"`` or ``"delivery_failed"``.  ``session_factory``
     stays optional so unit tests that drive this function in
@@ -275,8 +269,7 @@ async def emit_agent_run_event(
 
     if not url:
         logger.debug(
-            "emit_agent_run_event: no agent-runs webhook configured, "
-            "skipping %s for run=%s",
+            "emit_agent_run_event: no agent-runs webhook configured, skipping %s for run=%s",
             event_type,
             agent_run_data.get("id"),
         )

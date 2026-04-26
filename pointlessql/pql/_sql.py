@@ -1,6 +1,6 @@
-"""DuckDB execution helper for :meth:`PQL.sql` (Sprint-78 split).
+"""DuckDB execution helper for :meth:`PQL.sql`.
 
-Phase 12 — single SELECT against DuckDB with UC-backed views. The
+Runs a single SELECT against DuckDB with UC-backed views.  The
 caller is responsible for resolving each 3-part reference to its
 Delta storage location and passing the full mapping in
 ``approved_tables``; this module refuses to execute when a
@@ -51,21 +51,21 @@ def run_sql(
             the rewritten SQL so DuckDB returns the physical
             plan instead of the actual result.  The plan rows
             come back as regular columns — the caller can join
-            them into a single ``<pre>`` block.  Sprint 53.
-        agent_run_id: Sprint 13.8 — when set (or when the
+            them into a single ``<pre>`` block.
+        agent_run_id: When set (or when the
             ``POINTLESSQL_AGENT_RUN_ID`` env var is set on a
             ``pql.sql`` call from agent-authored ``.py``) emits
             one ``agent_run_operations`` row.  The query text is
             truncated to 1024 chars in ``params_json``; the full
-            text lives on the Sprint-13.9 query-history row.
+            text lives on the query-history row.
 
     Returns:
         A :class:`SQLResult` with columns, rows, and metrics.
 
     Raises:
         SQLExecutionError: If *query* fails to parse, falls
-            outside Phase-12's SELECT-only scope, or DuckDB
-            rejects it at execution time.
+            outside the SELECT-only scope, or DuckDB rejects it
+            at execution time.
         ValidationError: If a referenced table is not present in
             *approved_tables* (defence-in-depth against a route
             that forgot to enforce).
@@ -113,9 +113,7 @@ def run_sql(
                 register_delta_view(conn, ref, approved_tables[ref])
 
             final_sql = (
-                f"EXPLAIN ANALYZE {prepared.rewritten_sql}"
-                if explain
-                else prepared.rewritten_sql
+                f"EXPLAIN ANALYZE {prepared.rewritten_sql}" if explain else prepared.rewritten_sql
             )
             start = time.perf_counter()
             try:

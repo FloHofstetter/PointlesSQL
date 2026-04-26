@@ -1,8 +1,8 @@
-"""DuckDB ``EXPLAIN (FORMAT JSON)`` runner for the Sprint-13.1 gate.
+"""DuckDB ``EXPLAIN (FORMAT JSON)`` runner for the cost gate.
 
-The runner mirrors the read path the Phase-12 SQL editor takes —
-fresh in-process DuckDB connection, Delta tables registered as
-views at their UC dotted name — but stops after EXPLAIN.  No row
+The runner mirrors the read path the SQL editor takes — fresh
+in-process DuckDB connection, Delta tables registered as views at
+their UC dotted name — but stops after EXPLAIN.  No row
 materialisation, no result streaming, no cancellation registry.
 The EXPLAIN call itself is sub-100ms even for complex plans, which
 is what makes it cheap enough to gate every agent query without
@@ -103,9 +103,7 @@ def run_explain(
             break
 
     if plan_text is None:
-        raise ValueError(
-            "DuckDB returned EXPLAIN rows but no JSON-shaped cell was found."
-        )
+        raise ValueError("DuckDB returned EXPLAIN rows but no JSON-shaped cell was found.")
 
     try:
         plan = json.loads(plan_text)

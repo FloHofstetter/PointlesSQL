@@ -1,9 +1,9 @@
 # pyright: reportUnusedFunction=false
 """DAG primitives: cycle detection + topological order.
 
-Sprint 84 split out of ``scheduler.py``.  Pure graph algorithms
-operating on :class:`~pointlessql.models.JobTask` rows.  No DB
-access, no HTTP, no async — testable end-to-end without fixtures.
+Pure graph algorithms operating on
+:class:`~pointlessql.models.JobTask` rows.  No DB access, no HTTP,
+no async — testable end-to-end without fixtures.
 """
 
 from __future__ import annotations

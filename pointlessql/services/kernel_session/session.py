@@ -1,13 +1,11 @@
 """One ipykernel subprocess wrapped as :class:`KernelSession`.
 
-Phase 12.6 Sprint 59 — second layer of the native notebook story.
 One ipykernel subprocess runs per ``(user_id, notebook_path)`` pair
 (ADR 0001 "kernel identity" decision: VSCode-style, not Jupyter-
 classic-style-per-tab). Two browser tabs of the same ``.py`` share
 one kernel, one namespace, one ``kernel_session_id``.
 
-Sprint 77 split this off from the original ``kernel_session.py``:
-this module owns the lifecycle + ZMQ pump tasks; the registry
+This module owns the lifecycle + ZMQ pump tasks; the registry
 that maps ``(user_id, path) → KernelSession`` lives in
 ``registry.py``; message dataclasses live in ``messages.py``.
 """
@@ -35,9 +33,9 @@ _SHUTDOWN_TIMEOUT = 5.0
 _BOOTSTRAP_TIMEOUT = 10.0
 
 
-# Sprint 71 — kernel-side helper that turns the WS ``execute_sql``
-# wrapper into a rich-mime DataFrame display + optional namespace
-# binding.  The route already enforced privileges and resolved the
+# Kernel-side helper that turns the WS ``execute_sql`` wrapper into
+# a rich-mime DataFrame display + optional namespace binding.  The
+# route already enforced privileges and resolved the
 # ``approved_tables`` map to Delta storage locations; the kernel only
 # has to register the views, run the query, materialise as pandas, and
 # call ``display`` so the existing iopub → output_renderer.js path
@@ -79,15 +77,15 @@ class KernelSession:
        :func:`jupyter._shutdown`).
 
     ``session_id`` is a stable UUID for the kernel instance; it
-    bumps on :meth:`restart` so Sprint-60's ``notebook_outputs``
-    table can key the pre- and post-restart rows apart without
-    relying on Jupyter's internal ``self._kc.session.session``
-    (which also changes on restart but is not as explicit).
+    bumps on :meth:`restart` so the ``notebook_outputs`` table can
+    key the pre- and post-restart rows apart without relying on
+    Jupyter's internal ``self._kc.session.session`` (which also
+    changes on restart but is not as explicit).
 
     Args:
         user_email: Exported to the kernel subprocess as
             ``POINTLESSQL_PRINCIPAL`` so ``pql``-driven UC calls
-            inside the notebook inherit the Phase-3 identity.
+            inside the notebook inherit the calling user's identity.
         notebook_path: Relative path the session is bound to —
             carried for log context only; the registry does the
             lookup keyed by ``(user_id, path)``.
@@ -117,8 +115,8 @@ class KernelSession:
     async def start(self) -> None:
         """Launch the kernel subprocess and start the pump tasks.
 
-        Sprint 71 inserted a one-shot bootstrap execute (silent, no
-        history) between ``wait_for_ready`` and the pump tasks so the
+        A one-shot bootstrap execute (silent, no history) runs
+        between ``wait_for_ready`` and the pump tasks so the
         ``__pql_sql_run`` helper is defined before any user execute
         can race a SQL cell run.  Bootstrap failure is logged but
         does NOT abort the session — Python cells still work; SQL
@@ -160,7 +158,9 @@ class KernelSession:
         helper definition.
         """
         msg_id: str = kc.execute(
-            _NOTEBOOK_BOOTSTRAP_CODE, silent=True, store_history=False,
+            _NOTEBOOK_BOOTSTRAP_CODE,
+            silent=True,
+            store_history=False,
         )
         deadline = asyncio.get_running_loop().time() + _BOOTSTRAP_TIMEOUT
         while True:
@@ -203,9 +203,7 @@ class KernelSession:
             channel: ``"iopub"`` or ``"shell"``.
         """
         assert self._kc is not None
-        get_msg = (
-            self._kc.get_iopub_msg if channel == "iopub" else self._kc.get_shell_msg
-        )
+        get_msg = self._kc.get_iopub_msg if channel == "iopub" else self._kc.get_shell_msg
         while True:
             try:
                 raw = await get_msg()
@@ -216,11 +214,7 @@ class KernelSession:
                 await asyncio.sleep(0.1)
                 continue
             parent_msg_id = raw.get("parent_header", {}).get("msg_id")
-            content_hash = (
-                self._msg_to_content_hash.get(parent_msg_id)
-                if parent_msg_id
-                else None
-            )
+            content_hash = self._msg_to_content_hash.get(parent_msg_id) if parent_msg_id else None
             msg = KernelMessage(
                 content_hash=content_hash,
                 channel=channel,
@@ -235,9 +229,7 @@ class KernelSession:
                 try:
                     queue.put_nowait(msg)
                 except asyncio.QueueFull:
-                    logger.warning(
-                        "subscriber queue full on %s — dropping message", channel
-                    )
+                    logger.warning("subscriber queue full on %s — dropping message", channel)
 
     def subscribe(self) -> Subscription:
         """Register a new subscriber for iopub + shell streams.
@@ -267,10 +259,10 @@ class KernelSession:
             content_hash: The cell's content-hash identity — stored
                 so iopub replies tagged with the matching
                 ``parent_header.msg_id`` can be routed back to the
-                right cell. Sprint 96 replaced the pre-migration
-                UUID ``cell_id`` argument with this content-derived
-                identity so the editor can drop the marker UUID
-                without losing message-to-cell routing.
+                right cell. The content-derived identity replaces an
+                earlier UUID ``cell_id`` argument so the editor can
+                drop the marker UUID without losing message-to-cell
+                routing.
 
         Returns:
             The Jupyter message ID.
@@ -289,16 +281,16 @@ class KernelSession:
     async def restart(self) -> None:
         """Restart the kernel in place. Bumps :attr:`session_id`.
 
-        Sprint 71 re-queues the ``__pql_sql_run`` bootstrap after the
-        restart so SQL cells keep working post-restart without
-        requiring the user to re-execute a setup cell.  Goes through
-        the regular ``execute`` path (with a reserved ``__pql_``-
-        prefixed content_hash so persistence skips it) instead of
-        reading shell directly — the iopub / shell pump tasks are still alive
-        across a restart and would otherwise consume the bootstrap
-        reply before we could read it.  The kernel serialises
-        execute_requests, so the next user SQL execute is guaranteed
-        to see the helper defined.
+        Re-queues the ``__pql_sql_run`` bootstrap after the restart
+        so SQL cells keep working post-restart without requiring the
+        user to re-execute a setup cell.  Goes through the regular
+        ``execute`` path (with a reserved ``__pql_``-prefixed
+        content_hash so persistence skips it) instead of reading
+        shell directly — the iopub / shell pump tasks are still
+        alive across a restart and would otherwise consume the
+        bootstrap reply before we could read it.  The kernel
+        serialises execute_requests, so the next user SQL execute is
+        guaranteed to see the helper defined.
         """
         assert self._km is not None
         await self._km.restart_kernel()

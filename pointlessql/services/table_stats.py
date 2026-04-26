@@ -1,4 +1,4 @@
-"""Per-column profiling for UC tables (Sprint 56).
+"""Per-column profiling for UC tables.
 
 Runs a single DuckDB pass over each column: ``count``, ``null_count``,
 ``distinct_count`` (via ``approx_count_distinct``), ``min``, ``max``,
@@ -27,16 +27,26 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Columns with more than this many distinct values skip ``top_5``
-# because the GROUP BY pass itself becomes the slow part.  The 10k
-# ceiling is the design default from the Sprint 56 plan; tests
-# override it via the ``top_k_ceiling`` kwarg on
+# because the GROUP BY pass itself becomes the slow part.  Tests
+# override the 10k default via the ``top_k_ceiling`` kwarg on
 # :func:`compute_stats`.
 TOP_K_DISTINCT_CEILING = 10_000
 
 _NUMERIC_TYPES = {
-    "INTEGER", "BIGINT", "SMALLINT", "TINYINT",
-    "DOUBLE", "FLOAT", "REAL", "DECIMAL", "NUMERIC",
-    "HUGEINT", "UINTEGER", "UBIGINT", "USMALLINT", "UTINYINT",
+    "INTEGER",
+    "BIGINT",
+    "SMALLINT",
+    "TINYINT",
+    "DOUBLE",
+    "FLOAT",
+    "REAL",
+    "DECIMAL",
+    "NUMERIC",
+    "HUGEINT",
+    "UINTEGER",
+    "UBIGINT",
+    "USMALLINT",
+    "UTINYINT",
 }
 
 
@@ -68,8 +78,12 @@ def _is_numeric(column_type: str) -> bool:
 
 
 def _stats_for_column(
-    conn: Any, view: str, column_name: str, column_type: str,
-    *, top_k_ceiling: int = TOP_K_DISTINCT_CEILING,
+    conn: Any,
+    view: str,
+    column_name: str,
+    column_type: str,
+    *,
+    top_k_ceiling: int = TOP_K_DISTINCT_CEILING,
 ) -> dict[str, Any]:
     """Compute stats for a single column via two small DuckDB queries.
 
@@ -175,13 +189,18 @@ def compute_stats(
             type_text = column.get("type", "")
             try:
                 result[name] = _stats_for_column(
-                    conn, full_name, name, type_text,
+                    conn,
+                    full_name,
+                    name,
+                    type_text,
                     top_k_ceiling=top_k_ceiling,
                 )
             except Exception as exc:  # noqa: BLE001 — per-column isolation
                 logger.warning(
                     "table_stats: column %s.%s profile failed: %s",
-                    full_name, name, exc,
+                    full_name,
+                    name,
+                    exc,
                 )
                 result[name] = {
                     "column_name": name,
@@ -272,9 +291,7 @@ def read_cached(
         stmt = select(TableStats).where(TableStats.full_name == full_name)
         if delta_log_version is not None:
             stmt = stmt.where(TableStats.delta_log_version == delta_log_version)
-        stmt = stmt.order_by(
-            TableStats.delta_log_version, TableStats.column_name
-        )
+        stmt = stmt.order_by(TableStats.delta_log_version, TableStats.column_name)
         rows = list(session.scalars(stmt).all())
         if not rows:
             return None
@@ -289,9 +306,7 @@ def read_cached(
         ]
 
 
-def delete_cached(
-    factory: sessionmaker[Session], full_name: str
-) -> int:
+def delete_cached(factory: sessionmaker[Session], full_name: str) -> int:
     """Drop every cached row for *full_name*.
 
     Args:
@@ -302,8 +317,6 @@ def delete_cached(
         Number of rows deleted.
     """
     with factory() as session:
-        result = session.execute(
-            delete(TableStats).where(TableStats.full_name == full_name)
-        )
+        result = session.execute(delete(TableStats).where(TableStats.full_name == full_name))
         session.commit()
         return int(getattr(result, "rowcount", 0) or 0)

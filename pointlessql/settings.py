@@ -1,21 +1,11 @@
 """Application settings loaded from environment variables.
 
-Sprint 45 migrated the single flat :class:`Settings` into nested
-sub-models with per-sub-model ``env_prefix``.  The shoreguard-fresh
-pattern is copied 1:1: each sub-model owns its own ``BaseSettings``
-namespace and the root :class:`Settings` composes them via
+The root :class:`Settings` is split into nested sub-models with
+per-sub-model ``env_prefix``.  Each sub-model owns its own
+``BaseSettings`` namespace and the root composes them via
 ``Field(default_factory=…)`` so every ``Settings()`` instantiation
 reads the env fresh (important for papermill workers that spawn with
 a CWD snapshot).
-
-Most environment variables are unchanged because the old flat prefix
-already overlapped the new sub-model prefixes (``POINTLESSQL_RATE_LIMIT_*``,
-``POINTLESSQL_SCHEDULER_*``, ``POINTLESSQL_OIDC_*``, ``POINTLESSQL_JUPYTER_*``,
-``POINTLESSQL_SOYUZ_CATALOG_URL``, ``POINTLESSQL_LOG_LEVEL``,
-``POINTLESSQL_LOG_FORMAT`` all still work).  The breaking subset
-(``POINTLESSQL_HOST``, ``POINTLESSQL_DATABASE_URL``,
-``POINTLESSQL_SECRET_KEY``, ``POINTLESSQL_NOTEBOOKS_DIR`` and a few
-others) is documented in ``CHANGELOG.md`` with a full mapping.
 """
 
 from __future__ import annotations
@@ -84,7 +74,7 @@ class AuthSettings(BaseSettings):
     MUST be overridden in production.  ``jwt_expiry_hours`` defaults
     to 168 (seven days).
 
-    ``secret_key_previous`` (Sprint 46) is an optional grace-period
+    ``secret_key_previous`` is an optional grace-period
     key: when rotating the primary key operators set
     ``POINTLESSQL_AUTH_SECRET_KEY_PREVIOUS`` to the *old* value before
     changing ``POINTLESSQL_AUTH_SECRET_KEY`` to the new one, wait for
@@ -118,6 +108,7 @@ class OIDCSettings(BaseSettings):
     discovery_url: str | None = None
     client_id: str | None = None
     client_secret: str | None = None
+    http_timeout_seconds: float = 10.0
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -129,7 +120,7 @@ class OIDCSettings(BaseSettings):
         count as "not configured" — truthy check catches both ``None``
         and ``""`` so the SSO button stays hidden and ``/auth/sso``
         does not attempt a discovery call with an empty URL
-        (Sprint 23 BUG-23-01).
+        (BUG-23-01).
 
         Returns:
             bool: ``True`` iff both ``discovery_url`` and ``client_id``
@@ -154,7 +145,7 @@ class LoggingSettings(BaseSettings):
 
 
 class RateLimitSettings(BaseSettings):
-    """Sprint-43 rate limits on ``/auth/*``.
+    """Rate limits on ``/auth/*``.
 
     Reads ``POINTLESSQL_RATE_LIMIT_*`` environment variables.  Fixed-
     window counters in ``rate_limit_events``; defaults are tuned for a
@@ -248,12 +239,12 @@ class SchedulerSettings(BaseSettings):
 
 
 class AuditSettings(BaseSettings):
-    """Audit-log retention and cleanup configuration (Sprint 48).
+    """Audit-log retention and cleanup configuration.
 
     Reads ``POINTLESSQL_AUDIT_*`` environment variables. Rows older
     than ``retention_days`` are deleted by the scheduler's periodic
     audit-cleanup tick.  Set ``retention_days=0`` to keep every
-    audit row forever (the pre-Sprint-48 behaviour).
+    audit row forever (disables retention entirely).
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AUDIT_")
@@ -276,13 +267,13 @@ class DeltaSettings(BaseSettings):
 
 
 class SQLSettings(BaseSettings):
-    """Phase-12 ad-hoc SQL editor configuration.
+    """Ad-hoc SQL editor configuration.
 
     Reads ``POINTLESSQL_SQL_*`` environment variables.  ``enabled``
     hides ``/sql`` and rejects ``/api/sql/*`` at the route layer when
     ``False``.  ``max_rows`` caps the LIMIT DuckDB applies to every
-    query; ``query_timeout_seconds`` is wired in Sprint 52 but the
-    knob is declared here so operators can set it once and forget.
+    query; ``query_timeout_seconds`` aborts a long-running query so
+    operators can set it once and forget.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_SQL_")
@@ -294,19 +285,19 @@ class SQLSettings(BaseSettings):
 
 
 class AgentRunsSettings(BaseSettings):
-    """Phase-13 agent-run lifecycle webhook configuration.
+    """Agent-run lifecycle webhook configuration.
 
     Reads ``POINTLESSQL_AGENT_RUNS_*`` environment variables.  When
-    ``webhook_url`` is set, the Sprint 13.3 emitter POSTs a
+    ``webhook_url`` is set, the lifecycle emitter POSTs a
     CloudEvents envelope (``pointlessql.agent_run.started`` /
     ``.completed`` / ``.failed``) to it on every lifecycle
-    transition.  Optional ``webhook_hmac_secret`` reuses the
-    Sprint-55 ``X-PointlesSQL-Signature: sha256=<hex>`` header.
+    transition.  Optional ``webhook_hmac_secret`` populates the
+    ``X-PointlesSQL-Signature: sha256=<hex>`` header so the receiver
+    can verify the payload.
 
-    The single-URL shape is deliberately small for 13.3 — the
-    richer per-destination subscription model (multiple URLs,
-    per-event-type filters) lands with Sprint 13.4 when the
-    control-room UI surfaces it.
+    The single-URL shape is deliberately small — a richer
+    per-destination subscription model (multiple URLs, per-event-type
+    filters) is a future extension once the control-room UI surfaces it.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AGENT_RUNS_")
@@ -316,7 +307,7 @@ class AgentRunsSettings(BaseSettings):
 
 
 class ConventionsSettings(BaseSettings):
-    """Phase-13.5 Medallion conventions config-file pointer.
+    """Medallion conventions config-file pointer.
 
     Reads ``POINTLESSQL_CONVENTIONS_*`` environment variables.  When
     ``path`` is ``None`` (the default) the loader returns the built-
@@ -326,7 +317,7 @@ class ConventionsSettings(BaseSettings):
     those defaults.  See
     [`docs/data-layers.md`](../../docs/data-layers.md) for the prose
     contract and ADR ``0002-duckdb-first`` for the compute opinion
-    this phase codifies.
+    this codifies.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_CONVENTIONS_")
@@ -340,9 +331,7 @@ class Settings(BaseSettings):
     Each nested model is constructed via ``default_factory`` so that
     environment variables are read at instantiation time, not at class
     definition / import time.  The sub-models own their own
-    ``env_prefix`` and can be instantiated independently in tests — see
-    the BREAKING env-var mapping in ``CHANGELOG.md`` for the handful of
-    variable names that had to change in Sprint 45.
+    ``env_prefix`` and can be instantiated independently in tests.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_")

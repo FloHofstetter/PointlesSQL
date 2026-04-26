@@ -11,9 +11,8 @@ overrides ``layers`` they replace the entire list (so a partial
 override doesn't accidentally leave a stale default in the
 middle).  Top-level scalars like ``layer_tag_key`` are merged
 field-by-field because they have no internal structure to worry
-about.  The behaviour matches the principle in the Phase-13.5
-ROADMAP entry: "convention is configurable, not hard-coded" but
-the configuration model stays predictable.
+about.  The principle is "convention is configurable, not
+hard-coded" while the configuration model stays predictable.
 """
 
 from __future__ import annotations
@@ -41,11 +40,10 @@ def load_conventions(
     2. ``settings.conventions.path`` when ``path`` is ``None``.
     3. Fall back to :data:`DEFAULT_CONVENTIONS` when neither is set.
 
-    The returned config is the agent-facing source of truth:
-    Sprint-13.7's ``pql_conventions()`` tool serialises it into the
-    system prompt, the conformance check (Sprint 13.5.4) consults it
-    when grading writes, and the autoload primitive
-    (Sprint 13.5.3) pulls audit-column names from it.
+    The returned config is the agent-facing source of truth: the
+    ``pql_conventions()`` tool serialises it into the system
+    prompt, the conformance check consults it when grading writes,
+    and the autoload primitive pulls audit-column names from it.
 
     Args:
         path: Optional explicit path to a ``pointlessql.yaml`` file.

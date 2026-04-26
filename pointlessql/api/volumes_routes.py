@@ -1,9 +1,8 @@
 """UC volumes routes — files CRUD + convert-to-Delta + HTML pages.
 
-Sprint 87b split out of ``api/main.py``.  Owns the four JSON
-endpoints (browse / upload / delete a single file +
-convert-to-Delta) and the two HTML pages (volumes list + per-volume
-detail with the upload + browse surface).
+Owns the four JSON endpoints (browse / upload / delete a single
+file + convert-to-Delta) and the two HTML pages (volumes list +
+per-volume detail with the upload + browse surface).
 
 The convert-to-Delta endpoint also owns the Delta → UC type mapping
 (``DELTA_PRIMITIVE_TO_UC`` + ``delta_field_to_uc``) — the only
@@ -11,8 +10,7 @@ non-route-shaped logic in the file.  ``api/main.py`` re-exports the
 mapping under the legacy ``_DELTA_PRIMITIVE_TO_UC`` /
 ``_delta_field_to_uc`` names so
 ``tests/test_volume_convert_type_mapping.py`` keeps importing them
-from ``pointlessql.api.main`` (Invariant 8 of the
-modularisation plan).
+from ``pointlessql.api.main``.
 """
 
 from __future__ import annotations
@@ -78,7 +76,8 @@ async def volume_full_name_split(full_name: str) -> tuple[str, str, str]:
 
 @router.get("/api/volumes/{full_name:path}/files")
 async def api_browse_volume(
-    request: Request, full_name: str,
+    request: Request,
+    full_name: str,
 ) -> dict[str, list[dict[str, Any]]]:
     """List every file stored on *full_name*.
 
@@ -95,7 +94,9 @@ async def api_browse_volume(
     user = get_user(request)
     async with httpx.AsyncClient() as client:
         files = await vol_service.browse_files(
-            client, soyuz_base_url(request), full_name,
+            client,
+            soyuz_base_url(request),
+            full_name,
             principal=user.get("email"),
         )
     return {"files": files}
@@ -136,7 +137,9 @@ async def api_upload_volume_file(
             content_type=upload.content_type or "application/octet-stream",
         )
     await audit(
-        request, "volume.file_uploaded", f"volume:{full_name}",
+        request,
+        "volume.file_uploaded",
+        f"volume:{full_name}",
         {"path": path, "bytes": len(data)},
     )
     return body
@@ -144,7 +147,9 @@ async def api_upload_volume_file(
 
 @router.delete("/api/volumes/{full_name}/files/{path:path}", status_code=204)
 async def api_delete_volume_file(
-    request: Request, full_name: str, path: str,
+    request: Request,
+    full_name: str,
+    path: str,
 ) -> Response:
     """Remove a single file from a volume.
 
@@ -162,11 +167,16 @@ async def api_delete_volume_file(
     user = get_user(request)
     async with httpx.AsyncClient() as client:
         await vol_service.delete_file(
-            client, soyuz_base_url(request), full_name, path,
+            client,
+            soyuz_base_url(request),
+            full_name,
+            path,
             principal=user.get("email"),
         )
     await audit(
-        request, "volume.file_deleted", f"volume:{full_name}",
+        request,
+        "volume.file_deleted",
+        f"volume:{full_name}",
         {"path": path},
     )
     return Response(status_code=204)
@@ -250,8 +260,9 @@ def delta_field_to_uc(field: Any) -> tuple[str, str]:
     compound type) whose ``type`` attribute is a lowercase Delta type
     code — ``"long"`` / ``"double"`` / ``"string"`` and so on.  Compound
     types (structs, arrays, maps) stringify to a JSON-like repr and
-    fall back to ``("STRING", "string")`` for now; Phase-13 can map
-    them properly when the agent workloads actually care.
+    fall back to ``("STRING", "string")`` for now — they can be mapped
+    properly when an agent workload actually depends on the
+    distinction.
 
     Args:
         field: A ``deltalake.Field``-shaped object with ``.type``.
@@ -325,8 +336,7 @@ async def api_convert_volume_file_to_delta(
     storage_location = volume_info.get("storage_location") or ""
     if not storage_location.startswith("file://"):
         raise ValidationError(
-            "Convert-to-Delta currently supports only file:// volumes; "
-            f"got {storage_location!r}.",
+            f"Convert-to-Delta currently supports only file:// volumes; got {storage_location!r}.",
         )
 
     # Download the source file out of soyuz into a temp dir, convert
@@ -345,15 +355,18 @@ async def api_convert_volume_file_to_delta(
         target_path = Path(tempfile.mkstemp(suffix=f".{ext}")[1])
         try:
             async for chunk in vol_service.download_file(
-                http_client, soyuz_base_url(request),
-                full_name, rel_path, principal=user.get("email"),
+                http_client,
+                soyuz_base_url(request),
+                full_name,
+                rel_path,
+                principal=user.get("email"),
             ):
                 with target_path.open("ab") as fh:
                     fh.write(chunk)
             # Convert path: resolve a Delta target under the volume's
             # file:// root so the bytes stay inside the volume the
             # user already has rights on.
-            volume_root = storage_location[len("file://"):]
+            volume_root = storage_location[len("file://") :]
             delta_dir = Path(volume_root) / f"_delta_{table_name}"
             delta_dir.parent.mkdir(parents=True, exist_ok=True)
             await asyncio.to_thread(
@@ -398,7 +411,9 @@ async def api_convert_volume_file_to_delta(
     }
     created = await client.create_table(register_payload)
     await audit(
-        request, "volume.converted_to_delta", f"volume:{full_name}",
+        request,
+        "volume.converted_to_delta",
+        f"volume:{full_name}",
         {"path": rel_path, "table": table_name, "columns": len(columns)},
     )
     _ = (catalog_name, schema_name, volume_name)  # silence unused
@@ -435,7 +450,8 @@ async def volumes_page(request: Request) -> HTMLResponse:
             except Exception as exc:  # noqa: BLE001
                 logger.debug(
                     "volumes page: list_schemas %s failed: %s",
-                    cat.get("name"), exc,
+                    cat.get("name"),
+                    exc,
                 )
                 continue
             for sch in schemas or []:
@@ -510,7 +526,9 @@ async def volume_detail_page(request: Request, full_name: str) -> HTMLResponse:
         meta.raise_for_status()
         volume = meta.json()
         files = await vol_service.browse_files(
-            client, soyuz_base_url(request), full_name,
+            client,
+            soyuz_base_url(request),
+            full_name,
             principal=user.get("email"),
         )
     return _templates(request).TemplateResponse(

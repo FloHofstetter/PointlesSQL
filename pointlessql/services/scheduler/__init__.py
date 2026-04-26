@@ -1,13 +1,9 @@
 # pyright: reportPrivateUsage=false
 """In-process cron-style scheduler with multi-task DAG execution.
 
-Sprint 19 shipped the minimum viable scheduler — one task per job,
-launched when the cron expression fired. Sprint 20 extended it with
-multi-task DAGs, per-task retries, structured logging, and concurrency
-caps.
-
-Sprint 84 split the original 1,776-LOC ``scheduler.py`` into the
-following sibling modules:
+Supports multi-task DAGs, per-task retries, structured logging, and
+concurrency caps.  The package is split across the following sibling
+modules:
 
 * :mod:`.registry` — :class:`KindRegistry`, :data:`JobExecutor` type
   alias, :func:`build_default_registry`.

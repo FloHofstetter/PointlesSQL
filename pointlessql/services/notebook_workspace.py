@@ -1,10 +1,10 @@
-"""Filesystem-facing helpers for the Sprint 27 workspace browser.
+"""Filesystem-facing helpers for the workspace browser.
 
 The Papermill executor already owns
 :func:`pointlessql.services.scheduler.resolve_notebook_path`, which
 resolves a relative path under ``Settings.notebooks_dir`` and rejects
 traversal. This module is the complementary surface for *browsing*,
-*uploading*, and (Sprint 67) *mutating* notebooks in the workspace:
+*uploading*, and *mutating* notebooks in the workspace:
 
 * :func:`list_workspace_tree` walks the notebooks directory and
   returns a nested tree the frontend renders as a sidebar. Each
@@ -109,19 +109,18 @@ def _walk(directory: Path, notebooks_root: Path) -> list[dict[str, Any]]:
                 }
             )
         elif (
-            entry.is_file() and entry.suffix in _NOTEBOOK_SUFFIXES
+            entry.is_file()
+            and entry.suffix in _NOTEBOOK_SUFFIXES
             and not entry.name.startswith(".")
         ):
-            # Sprint 63: .py jupytext notebooks are first-class
-            # citizens in the workspace tree; the frontend routes
-            # "Open in editor" clicks based on the ``format`` marker.
+            # ``.py`` jupytext notebooks are first-class citizens in
+            # the workspace tree; the frontend routes "Open in
+            # editor" clicks based on the ``format`` marker.
             # ``parameters_tagged`` remains .ipynb-only because
             # papermill's inspect_notebook can't read .py directly —
-            # Sprint 63's jupytext-convert step handles the .py path
-            # at execute time, not at inspect time.
-            notebook_format = (
-                "py" if entry.suffix == _PY_NOTEBOOK_SUFFIX else "ipynb"
-            )
+            # the jupytext-convert step handles the .py path at
+            # execute time, not at inspect time.
+            notebook_format = "py" if entry.suffix == _PY_NOTEBOOK_SUFFIX else "ipynb"
             notebooks.append(
                 {
                     "name": entry.name,
@@ -141,7 +140,7 @@ def list_workspace_tree(notebooks_dir: Path) -> list[dict[str, Any]]:
     """Return a nested directory listing of ``notebooks_dir``.
 
     Top-level ``runs/`` (Papermill executor output) and ``scratch/``
-    (Sprint-34 Open-in-notebook output) are skipped because they hold
+    (Open-in-notebook output) are skipped because they hold
     machine-generated notebooks, not user-authored ones.
 
     Args:
@@ -195,8 +194,7 @@ def resolve_notebook_target(
     candidate = Path(relative_path)
     if candidate.is_absolute():
         raise ValidationError(
-            f"notebook path must be relative to the notebooks directory: "
-            f"{relative_path!r}"
+            f"notebook path must be relative to the notebooks directory: {relative_path!r}"
         )
     if candidate.suffix not in allowed_suffixes:
         allowed = ", ".join(sorted(allowed_suffixes))
@@ -212,9 +210,7 @@ def resolve_notebook_target(
         ) from exc
     parent = resolved.parent
     if not parent.is_dir():
-        raise ValidationError(
-            f"notebook path parent directory does not exist: {relative_path!r}"
-        )
+        raise ValidationError(f"notebook path parent directory does not exist: {relative_path!r}")
     return resolved
 
 
@@ -224,9 +220,9 @@ def resolve_upload_target(notebooks_dir: Path, relative_path: str) -> Path:
     Mirrors :func:`pointlessql.services.scheduler.resolve_notebook_path`
     but relaxes the "file must exist" constraint — the target file is
     about to be written, so pre-existence is the *opposite* of what we
-    want. Keeps the ``.ipynb``-only suffix guard the original Sprint 27
-    upload contract committed to; Sprint 67's create/rename/delete
-    helpers use the relaxed :func:`resolve_notebook_target`.
+    want. Keeps the ``.ipynb``-only suffix guard the original upload
+    contract committed to; the create/rename/delete helpers use the
+    relaxed :func:`resolve_notebook_target`.
 
     Args:
         notebooks_dir: Absolute root directory the target must live
@@ -251,7 +247,7 @@ def resolve_upload_target(notebooks_dir: Path, relative_path: str) -> Path:
 def create_empty_notebook(notebooks_dir: Path, relative_path: str) -> Path:
     """Write an empty ``.py`` jupytext notebook atomically.
 
-    Sprint 67 sidebar "New…" action. An empty file on disk is enough —
+    Backs the sidebar "New…" action. An empty file on disk is enough —
     the editor's open path already renders one empty cell and
     materialises cell markers on the first save when it encounters a
     zero-byte notebook. We still write the file eagerly so the tree
@@ -276,9 +272,7 @@ def create_empty_notebook(notebooks_dir: Path, relative_path: str) -> Path:
         allowed_suffixes=frozenset({_PY_NOTEBOOK_SUFFIX}),
     )
     if resolved.exists():
-        raise ValidationError(
-            f"notebook already exists at {relative_path!r}"
-        )
+        raise ValidationError(f"notebook already exists at {relative_path!r}")
     tmp_path = resolved.with_suffix(resolved.suffix + ".tmp")
     tmp_path.write_bytes(b"")
     os.replace(tmp_path, resolved)
@@ -292,7 +286,7 @@ def rename_notebook(
 ) -> tuple[Path, Path]:
     """Atomically move an existing notebook to a new relative path.
 
-    Sprint 67 sidebar rename action. Both paths must live under
+    Backs the sidebar rename action. Both paths must live under
     ``notebooks_dir``; the source must exist, the destination must
     not. The suffix is unrestricted (``.py`` ↔ ``.py`` and
     ``.ipynb`` ↔ ``.ipynb`` are the realistic cases; cross-suffix
@@ -317,13 +311,9 @@ def rename_notebook(
     old_resolved = resolve_notebook_target(notebooks_dir, old_relative)
     new_resolved = resolve_notebook_target(notebooks_dir, new_relative)
     if not old_resolved.is_file():
-        raise ValidationError(
-            f"notebook to rename does not exist: {old_relative!r}"
-        )
+        raise ValidationError(f"notebook to rename does not exist: {old_relative!r}")
     if new_resolved.exists():
-        raise ValidationError(
-            f"rename target already exists: {new_relative!r}"
-        )
+        raise ValidationError(f"rename target already exists: {new_relative!r}")
     os.replace(old_resolved, new_resolved)
     return old_resolved, new_resolved
 
@@ -331,7 +321,7 @@ def rename_notebook(
 def delete_notebook(notebooks_dir: Path, relative_path: str) -> Path:
     """Delete a notebook file from the workspace.
 
-    Sprint 67 sidebar delete action. The output-row cascade is the
+    Backs the sidebar delete action. The output-row cascade is the
     caller's responsibility — the API route calls
     :func:`pointlessql.services.notebook_outputs.clear_path` right
     after ``delete_notebook`` returns so the two side effects stay
@@ -351,8 +341,6 @@ def delete_notebook(notebooks_dir: Path, relative_path: str) -> Path:
     """
     resolved = resolve_notebook_target(notebooks_dir, relative_path)
     if not resolved.is_file():
-        raise ValidationError(
-            f"notebook to delete does not exist: {relative_path!r}"
-        )
+        raise ValidationError(f"notebook to delete does not exist: {relative_path!r}")
     resolved.unlink()
     return resolved

@@ -9,8 +9,9 @@ machine-readable ``code``, the human ``detail``, and the ``request_id``
 stay identical across surfaces.
 
 The problem envelope follows RFC 9457 (``type``/``title``/``status``/
-``detail``/``code``/``request_id``); Sprint 44 migrated from a
-nested ``{"error": {"code", "message", "request_id"}}`` shape.
+``detail``/``code``/``request_id``); the legacy nested
+``{"error": {"code", "message", "request_id"}}`` shape is no longer
+emitted.
 """
 
 from __future__ import annotations
@@ -47,13 +48,13 @@ _STATUS_TITLES: dict[int, str] = {
 def _json_safe(value: Any) -> Any:
     """Coerce a validation-error field value into a JSON-encodable shape.
 
-    Sprint 13.11.5.  ``RequestValidationError.errors()`` can carry
-    raw ``bytes`` in the ``input`` slot when a client posts a body
-    without a JSON ``Content-Type`` (FastAPI then surfaces the
-    payload verbatim).  ``json.dumps`` doesn't know how to handle
-    ``bytes`` and the response body itself would 500 — keep this
-    helper close to the trigger so the failure stays self-evident
-    if anyone touches it later.
+    ``RequestValidationError.errors()`` can carry raw ``bytes`` in
+    the ``input`` slot when a client posts a body without a JSON
+    ``Content-Type`` (FastAPI then surfaces the payload verbatim).
+    ``json.dumps`` doesn't know how to handle ``bytes`` and the
+    response body itself would 500 — keep this helper close to the
+    trigger so the failure stays self-evident if anyone touches it
+    later.
 
     Args:
         value: Any field value harvested from
@@ -413,13 +414,10 @@ def register_error_handlers(app: FastAPI) -> None:
         # The ``input`` field can be raw ``bytes`` when a request
         # arrives without a JSON Content-Type — coerce non-JSON-
         # safe values to a short ``repr`` so the response body
-        # itself doesn't 500 (Sprint 13.11.5 hotfix; first surfaced
-        # by the live Hermes ``hermes chat`` smoke run when the
-        # plugin's POST forgot the Content-Type header).
-        errors = [
-            {k: _json_safe(v) for k, v in err.items() if k != "ctx"}
-            for err in exc.errors()
-        ]
+        # itself doesn't 500 (first surfaced by the live Hermes
+        # ``hermes chat`` smoke run when the plugin's POST forgot
+        # the Content-Type header).
+        errors = [{k: _json_safe(v) for k, v in err.items() if k != "ctx"} for err in exc.errors()]
         return _dispatch(
             request,
             status_code=422,

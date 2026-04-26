@@ -1,16 +1,14 @@
 """Per-cell-run lifecycle + history tracking.
 
-Sprint 79 split out of the monolithic ``notebook_outputs.py``. Owns
-the ``NotebookCellRun`` (current state per session) and
+Owns the ``NotebookCellRun`` (current state per session) and
 ``NotebookCellRunSource`` (per-execute history) tables. The WS
 handler calls :func:`upsert_cell_run` on ``execute_request`` /
 ``execute_reply`` for the live status pill and
 :func:`record_cell_run_start` / :func:`record_cell_run_finish` to
-build the per-cell history popover that the Sprint-73 UI surfaces.
+build the per-cell history popover the UI surfaces.
 
-Sprint 96 renamed the cell-identity column from ``cell_id`` (UUID)
-to ``content_hash`` (``sha256(source)[:16]``); all function
-signatures here follow that rename.
+The cell-identity column is ``content_hash``
+(``sha256(source)[:16]``); all function signatures follow that name.
 """
 
 from __future__ import annotations
@@ -93,7 +91,7 @@ def record_cell_run_start(
 ) -> int:
     """Insert a fresh history row for an execute_request and return its id.
 
-    Sprint 73 — companion to :func:`upsert_cell_run`.  Where
+    Companion to :func:`upsert_cell_run`.  Where
     ``upsert_cell_run`` keeps "current state per session" (one row
     per ``(file_path, content_hash, kernel_session_id)``), this
     function inserts a brand-new row per execute_request so the
@@ -143,11 +141,11 @@ def record_cell_run_finish(
 ) -> None:
     """Stamp the finish columns on a previously-started run-source row.
 
-    Sprint 73 — called from the WS handler when ``execute_reply``
-    arrives for a tracked execute.  No-op (with a debug log) when
-    the id is unknown — for example when the kernel emits an
-    execute_reply for a request we did not record (bootstrap, future
-    silent introspects).
+    Called from the WS handler when ``execute_reply`` arrives for a
+    tracked execute.  No-op (with a debug log) when the id is
+    unknown — for example when the kernel emits an execute_reply
+    for a request we did not record (bootstrap, future silent
+    introspects).
 
     Args:
         factory: SQLAlchemy session factory.
@@ -161,7 +159,8 @@ def record_cell_run_finish(
         row = session.get(NotebookCellRunSource, source_id)
         if row is None:
             logger.debug(
-                "record_cell_run_finish: source_id=%s not found", source_id,
+                "record_cell_run_finish: source_id=%s not found",
+                source_id,
             )
             return
         row.status = status
@@ -180,10 +179,9 @@ def list_cell_run_sources(
 ) -> list[dict[str, Any]]:
     """Return the last *limit* runs for a cell, newest-first.
 
-    Sprint 73 — backs ``GET /api/notebook/cell-runs``.  Returns
-    JSON-ready dicts with ISO-formatted timestamps so the route
-    handler can pass the list to ``JSONResponse`` without further
-    massaging.
+    Backs ``GET /api/notebook/cell-runs``.  Returns JSON-ready dicts
+    with ISO-formatted timestamps so the route handler can pass the
+    list to ``JSONResponse`` without further massaging.
 
     Args:
         factory: SQLAlchemy session factory.
@@ -197,15 +195,19 @@ def list_cell_run_sources(
         ``finished_at`` / ``status`` / ``kernel_session_id``.
     """
     with factory() as session:
-        rows = session.execute(
-            select(NotebookCellRunSource)
-            .where(
-                NotebookCellRunSource.file_path == file_path,
-                NotebookCellRunSource.content_hash == content_hash,
+        rows = (
+            session.execute(
+                select(NotebookCellRunSource)
+                .where(
+                    NotebookCellRunSource.file_path == file_path,
+                    NotebookCellRunSource.content_hash == content_hash,
+                )
+                .order_by(NotebookCellRunSource.started_at.desc())
+                .limit(limit)
             )
-            .order_by(NotebookCellRunSource.started_at.desc())
-            .limit(limit)
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [
             {
                 "id": r.id,

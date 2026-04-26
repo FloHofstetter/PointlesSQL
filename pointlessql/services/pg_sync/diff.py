@@ -23,9 +23,7 @@ from pointlessql.services.pg_sync.types import (
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 
-def diff_snapshots(
-    pg: PostgresSnapshot, uc_tables: Iterable[UcTable]
-) -> SyncDiff:
+def diff_snapshots(pg: PostgresSnapshot, uc_tables: Iterable[UcTable]) -> SyncDiff:
     """Return the diff between a live Postgres snapshot and UC state.
 
     The function is pure — given identical inputs it always returns an

@@ -1,6 +1,6 @@
-"""Parse SQL and prepare it for Phase 12's DuckDB execution path.
+"""Parse SQL and prepare it for the DuckDB execution path.
 
-The Phase 12 SQL editor needs two things before DuckDB sees a query:
+The SQL editor needs two things before DuckDB sees a query:
 (a) the set of ``catalog.schema.table`` references so the route can
 enforce ``SELECT`` per table, and (b) a rewrite that collapses each
 three-part reference into a single quoted identifier matching a
@@ -10,9 +10,9 @@ registers each Delta table at its fully-dotted quoted name (e.g.
 ``"main.sales.orders"``) and this module rewrites the SQL to point
 at those view identifiers.
 
-Sprint 49 single-statement-only scope: anything that is not a
-single :class:`sqlglot.expressions.Select` (or its immediate
-``WITH`` wrapper) raises :class:`SQLParseError`.
+Single-statement-only scope: anything that is not a single
+:class:`sqlglot.expressions.Select` (or its immediate ``WITH``
+wrapper) raises :class:`SQLParseError`.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from sqlglot.expressions.core import Expression
 
 
 class SQLParseError(ValueError):
-    """Raised when the SQL cannot be parsed or is out-of-scope for Phase 12.
+    """Raised when the SQL cannot be parsed or is out-of-scope.
 
     Distinguished from :class:`pointlessql.exceptions.ValidationError`
     so the route handler can map it specifically to HTTP 400 without
@@ -67,11 +67,7 @@ def prepare_sql(sql: str) -> PreparedSQL:
             reference.
     """
     root = _parse_root(sql)
-    cte_aliases = {
-        cte.alias_or_name
-        for cte in root.find_all(exp.CTE)
-        if cte.alias_or_name
-    }
+    cte_aliases = {cte.alias_or_name for cte in root.find_all(exp.CTE) if cte.alias_or_name}
     refs: list[str] = []
     seen: set[str] = set()
     for table in root.find_all(exp.Table):
@@ -83,7 +79,7 @@ def prepare_sql(sql: str) -> PreparedSQL:
         if catalog is None or schema is None or name is None:
             raise SQLParseError(
                 f"Table reference {table.sql(dialect='duckdb')!r} is not "
-                f"fully qualified; Phase 12 requires catalog.schema.table.",
+                f"fully qualified; the editor requires catalog.schema.table.",
             )
         full = f"{catalog.name}.{schema.name}.{name.name}"
         alias = table.args.get("alias")
@@ -120,7 +116,7 @@ def extract_table_refs(sql: str) -> list[str]:
 
 
 def _parse_root(sql: str) -> Expression:
-    """Parse *sql* as a single statement and validate Phase-49 scope.
+    """Parse *sql* as a single statement and validate the editor scope.
 
     sqlglot's :func:`sqlglot.parse` returns ``list[Expr | None]``;
     every real AST node is an :class:`exp.Expression` subclass at
@@ -159,6 +155,5 @@ def _parse_root(sql: str) -> Expression:
     if isinstance(root, exp.With) and isinstance(root.this, exp.Select):
         return root
     raise SQLParseError(
-        f"Only SELECT statements are supported in Phase 12 "
-        f"(got {type(root).__name__}).",
+        f"Only SELECT statements are supported (got {type(root).__name__}).",
     )

@@ -1,7 +1,7 @@
 """Result dataclasses returned by :mod:`pointlessql.pql.pql`.
 
-Split out in Sprint 78 so the public :class:`SQLResult` shape can be
-re-imported by helpers (Phase-12 SQL execution path) without dragging
+Lives in its own module so the public :class:`SQLResult` shape can
+be re-imported by helpers (the SQL execution path) without dragging
 the full :class:`PQL` class import graph along.
 """
 
@@ -13,7 +13,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class SQLResult:
-    """The outcome of a Phase-12 :meth:`PQL.sql` execution.
+    """The outcome of a :meth:`PQL.sql` execution.
 
     All fields are JSON-encodable so the route handler can serialise
     the result straight into a ``JSONResponse`` body.

@@ -27,9 +27,8 @@ class User(Base):
         created_at: Timestamp when the user was created.
         oidc_provider: OIDC discovery URL that authenticated this user.
         oidc_subject: The ``sub`` claim from the OIDC provider.
-        feed_token: Opaque token authenticating pull-feed requests
-            (Sprint 55); ``None`` until the user first hits the
-            feed-token endpoint.
+        feed_token: Opaque token authenticating pull-feed requests;
+            ``None`` until the user first hits the feed-token endpoint.
     """
 
     __tablename__ = "users"
@@ -66,7 +65,7 @@ class User(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     oidc_provider: Mapped[str | None] = mapped_column(String(500), nullable=True)
     oidc_subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # Sprint 55: opaque token used to authenticate pull-feed requests
+    # Opaque token used to authenticate pull-feed requests
     # (Atom + JSON Feed).  Materialised lazily on first feed GET via
     # ``secrets.token_urlsafe``; stays ``NULL`` for users who never
     # access the feed.

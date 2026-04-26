@@ -1,6 +1,6 @@
-"""Persistence + visibility helpers for the Phase-12 saved queries.
+"""Persistence + visibility helpers for saved queries.
 
-Visibility rules (Sprint 51 design):
+Visibility rules:
 
 - Owner + admin see every saved-query row the owner created,
   shared or private.

@@ -128,12 +128,11 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     init_db(settings.db.url)
     app.state.session_factory = get_session_factory()
 
-    # Sprint 13.7.0.5 → Sprint 13.11.4a: API keys are now persisted
-    # in the ``api_keys`` table.  The env var
-    # ``POINTLESSQL_API_KEYS`` stays valid as a *bootstrap* path so
-    # clean-machine docker-compose deployments without an admin UI
-    # mounted still work — the helper below idempotently spills any
-    # declared ``name:secret[:supervisor]`` pairs into the DB on
+    # API keys are persisted in the ``api_keys`` table.  The env
+    # var ``POINTLESSQL_API_KEYS`` stays valid as a *bootstrap* path
+    # so clean-machine docker-compose deployments without an admin
+    # UI mounted still work — the helper below idempotently spills
+    # any declared ``name:secret[:supervisor]`` pairs into the DB on
     # startup.  Existing rows are left untouched (DB is the single
     # source of truth once the table is populated).
     inserted = api_keys_service.bootstrap_from_env(app.state.session_factory)
@@ -146,20 +145,20 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         scheduler.start()
     app.state.scheduler = scheduler
 
-    # Sprint 48: periodic audit-log retention sweep. Runs on its own
-    # tick cadence (``audit.cleanup_interval_seconds``) so it does
-    # not compete with the job scheduler; swallows its own errors
-    # via ``cleanup_old_entries`` so a transient DB hiccup never
-    # takes the lifespan down.
+    # Periodic audit-log retention sweep. Runs on its own tick
+    # cadence (``audit.cleanup_interval_seconds``) so it does not
+    # compete with the job scheduler; swallows its own errors via
+    # ``cleanup_old_entries`` so a transient DB hiccup never takes
+    # the lifespan down.
     audit_task = asyncio.create_task(
         _audit_retention_loop(app.state.session_factory, settings),
         name="audit-retention",
     )
 
-    # Phase 12.12.2 pivot: the browser notebook editor was retired;
-    # Sprint 13.2 will re-introduce a :class:`KernelRegistry` on
-    # ``app.state`` as the execution backend for the ``agent_run``
-    # scheduler kind. Nothing else to start here yet.
+    # The browser notebook editor was retired; a future
+    # :class:`KernelRegistry` on ``app.state`` will serve as the
+    # execution backend for the ``agent_run`` scheduler kind.
+    # Nothing else to start here yet.
     try:
         yield
     finally:
@@ -262,9 +261,8 @@ async def metrics(request: Request) -> Response:
 #
 # Every JSON + HTML route the app serves now lives in a dedicated
 # ``api/<area>_routes.py`` module attached above via
-# ``include_router()``.  The Sprint 85-90 modularisation
-# effort split the original 6,599-LOC monolith into 14 focused
-# routers (auth, catalog tree + HTML, sql, queries, alerts,
+# ``include_router()``.  The original monolith was split into 14
+# focused routers (auth, catalog tree + HTML, sql, queries, alerts,
 # volumes, governance, notebooks HTTP + WS, federation, jobs,
 # dashboards, home, admin).  Exceptions raised inside any handler
 # propagate to the centralised handler in
@@ -279,8 +277,8 @@ def cli() -> None:
     # Why: uvicorn's reload watcher defaults to the whole working directory.
     # That includes ``notebooks/``, so the editor's autosave triggers a server
     # reload — kernel + Pyright WebSockets get torn down mid-typing
-    # (Sprint 64 BUG-64-03). Pinning reload_dirs to the source trees keeps
-    # autosave invisible to the watcher; SQLite files (.db) and Delta tables
+    # (BUG-64-03). Pinning reload_dirs to the source trees keeps autosave
+    # invisible to the watcher; SQLite files (.db) and Delta tables
     # (notebooks/, /tmp) stay outside scope.
     project_root = Path(__file__).resolve().parent.parent
     uvicorn.run(

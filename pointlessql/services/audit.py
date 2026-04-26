@@ -1,6 +1,6 @@
 """Audit log service — append-only record of user actions.
 
-Sprint 48 ported three shoreguard-fresh patterns:
+Three shoreguard-fresh patterns underpin the implementation:
 
 1. **Append-only ORM guards.** SQLAlchemy ``before_update`` and
    ``before_delete`` event listeners on :class:`AuditLog` raise
@@ -58,9 +58,7 @@ class AuditIntegrityError(Exception):
     """
 
 
-_audit_mutation_allowed: ContextVar[bool] = ContextVar(
-    "_audit_mutation_allowed", default=False
-)
+_audit_mutation_allowed: ContextVar[bool] = ContextVar("_audit_mutation_allowed", default=False)
 
 
 @contextlib.contextmanager
@@ -94,9 +92,7 @@ def _block_audit_update(  # pyright: ignore[reportUnusedFunction]
     Raises:
         AuditIntegrityError: Always.
     """
-    raise AuditIntegrityError(
-        "AuditLog is append-only — UPDATE is not allowed"
-    )
+    raise AuditIntegrityError("AuditLog is append-only — UPDATE is not allowed")
 
 
 @event.listens_for(AuditLog, "before_delete", propagate=True)
@@ -116,8 +112,7 @@ def _block_audit_delete(  # pyright: ignore[reportUnusedFunction]
     """
     if not _audit_mutation_allowed.get():
         raise AuditIntegrityError(
-            "AuditLog is append-only — DELETE only allowed via "
-            "cleanup_old_entries()"
+            "AuditLog is append-only — DELETE only allowed via cleanup_old_entries()"
         )
 
 
@@ -126,7 +121,7 @@ def _encode_detail(detail: str | dict[str, Any] | None) -> str | None:
 
     Args:
         detail: ``None``, a plain string (legacy call sites), or a
-            JSON-encodable dict (Sprint 48 shape).
+            JSON-encodable dict.
 
     Returns:
         str | None: JSON-encoded string for dict input, the raw
@@ -214,16 +209,12 @@ def cleanup_old_entries(
     """
     if retention_days <= 0:
         # ``0`` or negative disables retention entirely — keep every
-        # row forever. Matches the pre-Sprint-48 behaviour.
+        # row forever.
         return 0
-    cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-        days=retention_days
-    )
+    cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=retention_days)
     try:
         with factory() as session, _allow_audit_mutation():
-            stale = session.scalars(
-                select(AuditLog).where(AuditLog.created_at < cutoff)
-            ).all()
+            stale = session.scalars(select(AuditLog).where(AuditLog.created_at < cutoff)).all()
             count = len(stale)
             for entry in stale:
                 session.delete(entry)

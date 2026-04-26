@@ -1,12 +1,11 @@
 """Per-notebook ipykernel subprocess manager for the native editor.
 
-Phase 12.6 Sprint 59 — second layer of the native notebook story.
 One ipykernel subprocess runs per ``(user_id, notebook_path)`` pair
 (ADR 0001 "kernel identity" decision: VSCode-style, not Jupyter-
 classic-style-per-tab). Two browser tabs of the same ``.py`` share
 one kernel, one namespace, one ``kernel_session_id``.
 
-Sprint 77 split the original 472-LOC ``kernel_session.py`` into:
+The package is composed of three sibling modules:
 
 * :mod:`.messages` — :class:`KernelMessage`, :class:`_Subscription`.
 * :mod:`.session` — :class:`KernelSession` lifecycle + ZMQ pump.

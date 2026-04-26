@@ -1,9 +1,9 @@
-"""HTTP helpers for the soyuz-catalog Volumes surface (Sprint 57).
+"""HTTP helpers for the soyuz-catalog Volumes surface.
 
 The generated ``soyuz-catalog-client`` now ships stubs for the four
-Sprint-57 file endpoints (browse / download / delete / upload) as
-of soyuz's post-f8ef973 regen, but this module deliberately keeps
-calling the endpoints directly via ``httpx``.  Rationale:
+file endpoints (browse / download / delete / upload), but this
+module deliberately keeps calling the endpoints directly via
+``httpx``.  Rationale:
 
 * The generated ``BodyUploadVolumeFileApi21…Post`` models the
   ``upload`` field as ``str`` — openapi-python-client cannot express

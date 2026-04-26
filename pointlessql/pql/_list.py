@@ -1,4 +1,4 @@
-"""Convenience listing helpers for :class:`PQL` (Sprint-78 split)."""
+"""Convenience listing helpers for :class:`PQL`."""
 
 from __future__ import annotations
 

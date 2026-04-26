@@ -1,7 +1,7 @@
 """Postgres → Unity Catalog sync worker.
 
-Sprint 18 bridge between a live Postgres database (referenced by a
-soyuz-catalog Connection) and a foreign UC catalog. Pipeline:
+Bridges a live Postgres database (referenced by a soyuz-catalog
+Connection) to a foreign UC catalog. Pipeline:
 
 1. :class:`PsycopgIntrospector` reads ``information_schema`` and
    returns a normalised :class:`PostgresSnapshot`.  Pure SQL, no UC
@@ -19,16 +19,16 @@ The diff intentionally stays at the "which tables exist and what are
 their columns" level — we do not try to migrate data, reconcile
 primary keys, or propagate tag/comment edits back to Postgres.
 
-Sprint 82 split the original 778-LOC ``pg_sync.py`` module into
-five sibling files: ``types`` (dataclasses + ``PG_TO_UC_TYPE`` +
-``map_pg_type_to_uc`` + ``PostgresIntrospector`` Protocol), ``dsn``
-(secret-aware options merging + DSN building), ``snapshot``
-(``PsycopgIntrospector``), ``diff`` (pure ``diff_snapshots`` +
-``apply_diff`` + UC walking), ``runs`` (``run_sync`` orchestration +
-``list_recent_runs``).  The package re-exports the full public surface
-so existing ``from pointlessql.services import pg_sync`` and
-``from pointlessql.services.pg_sync import X`` callers (API, scheduler,
-tests) continue to resolve unchanged.
+The package is composed of five sibling modules: ``types``
+(dataclasses + ``PG_TO_UC_TYPE`` + ``map_pg_type_to_uc`` +
+``PostgresIntrospector`` Protocol), ``dsn`` (secret-aware options
+merging + DSN building), ``snapshot`` (``PsycopgIntrospector``),
+``diff`` (pure ``diff_snapshots`` + ``apply_diff`` + UC walking),
+``runs`` (``run_sync`` orchestration + ``list_recent_runs``).  The
+package re-exports the full public surface so existing
+``from pointlessql.services import pg_sync`` and
+``from pointlessql.services.pg_sync import X`` callers (API,
+scheduler, tests) continue to resolve unchanged.
 
 Renamed ``_effective_options`` → ``effective_options``: the leading
 underscore conveyed file-private scope, which is no longer accurate

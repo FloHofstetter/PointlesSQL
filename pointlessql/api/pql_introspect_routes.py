@@ -1,17 +1,19 @@
-"""PQL introspection endpoints — Sprint 13.11.
+"""PQL introspection endpoints.
 
-Sprint 13.11 closes Phase 13's read-loop: the agent already writes
-into ``agent_run_operations`` / ``agent_run_tool_calls`` / Delta logs,
-but had no tool to *read state* before *acting*.  Three live-walkthrough
-bugs (2026-04-25) all shared that root cause.
+Closes the agent read-loop: agents already write into
+``agent_run_operations`` / ``agent_run_tool_calls`` / Delta logs,
+but they also need tools to *read state* before *acting*.
 
 This module hosts every ``GET /api/pql/...`` route that lets a
-working-agent (Family A) check state mid-run.  Sprint 13.11.1 ships
-``GET /api/pql/primitives``: introspection over the :class:`PQL`
-public methods so an agent that gets a ``TypeError`` from
-``pql.autoload(source=...)`` can ask for the real signature.  Sprint
-13.11.2 layers ``target-state`` on top.  Sprint 13.11.3 will land
-``lineage``.
+working agent (Family A) check state mid-run:
+
+* ``GET /api/pql/primitives`` — introspection over the :class:`PQL`
+  public methods so an agent that gets a ``TypeError`` from
+  ``pql.autoload(source=...)`` can ask for the real signature.
+* ``GET /api/pql/target-state`` — table existence, columns, and
+  recent-write history fused into one response.
+* ``GET /api/pql/lineage`` — upstream + downstream lineage in one
+  response.
 """
 
 from __future__ import annotations
@@ -75,8 +77,8 @@ _PRIMITIVE_SPECS: dict[str, dict[str, Any]] = _build_primitive_specs()
 async def api_pql_primitives() -> dict[str, Any]:
     """Return the introspected signature + docstring for every PQL primitive.
 
-    Designed for the Sprint-13.11.1 ``pql_describe_primitive`` Hermes
-    tool.  The plugin filters the response client-side so the LLM
+    Designed for the ``pql_describe_primitive`` Hermes tool.  The
+    plugin filters the response client-side so the LLM
     only sees one primitive at a time, but the server returns the
     full set in one round-trip — five entries fit comfortably in a
     single response and avoid a per-name HTTP hop when an agent
@@ -107,9 +109,7 @@ def _split_three_part(full_name: str) -> tuple[str, str, str]:
     """
     parts = [p.strip() for p in full_name.split(".")]
     if len(parts) != 3 or not all(parts):
-        raise ValidationError(
-            "table must be a three-part UC name 'catalog.schema.table'"
-        )
+        raise ValidationError("table must be a three-part UC name 'catalog.schema.table'")
     return parts[0], parts[1], parts[2]
 
 
@@ -184,9 +184,7 @@ def _last_writes_for_target(
                     "rows_affected": row.rows_affected,
                     "delta_version_before": row.delta_version_before,
                     "delta_version_after": row.delta_version_after,
-                    "finished_at": (
-                        row.finished_at.isoformat() if row.finished_at else None
-                    ),
+                    "finished_at": (row.finished_at.isoformat() if row.finished_at else None),
                     "error_message": row.error_message,
                 }
             )
@@ -195,21 +193,23 @@ def _last_writes_for_target(
 
 @router.get("/api/pql/target-state")
 async def api_pql_target_state(
-    request: Request, table: str = Query(..., description="catalog.schema.table"),
+    request: Request,
+    table: str = Query(..., description="catalog.schema.table"),
 ) -> dict[str, Any]:
     """Return the current state + recent-write history for one target table.
 
-    Sprint 13.11.2.  Backs the ``pql_target_state`` Hermes tool.
-    The 2026-04-25 walkthrough's ``pql.merge`` failure (target
-    didn't exist yet) would have been avoidable with one call to
-    this route: an ``exists=False`` response tells the agent to
-    pick ``write_table`` as the bootstrap path instead.
+    Backs the ``pql_target_state`` Hermes tool.  An agent about to
+    call ``pql.merge`` against a non-existent target can avoid a
+    crash with one call to this route: an ``exists=False`` response
+    tells the agent to pick ``write_table`` as the bootstrap path
+    instead.
 
     The route fuses two reads into one response so the agent doesn't
     need to chain ``pql_get_table`` + a hypothetical operations-
     history call.  ``schema`` is ``None`` when the table doesn't
     exist; ``last_5_writes`` is empty when no agent run has touched
-    the table yet (or when the catalog is older than Sprint 13.8).
+    the table yet (or when the catalog predates the forced
+    audit-trail schema).
 
     Args:
         request: Incoming FastAPI request — supplies the
@@ -257,12 +257,12 @@ async def api_pql_lineage(
 ) -> dict[str, Any]:
     """Return upstream + downstream lineage for a table in one response.
 
-    Sprint 13.11.3.  Backs the ``pql_lineage`` Hermes tool.  Wraps
+    Backs the ``pql_lineage`` Hermes tool.  Wraps
     :meth:`pointlessql.services.unitycatalog._lineage.LineageMixin.get_lineage`,
     which already fans out concurrently to soyuz's
     ``GET /lineage/upstream/{full_name}`` and
-    ``GET /lineage/downstream/{full_name}`` JSON endpoints — so this
-    sprint is pure PointlesSQL plumbing, no cross-repo work.
+    ``GET /lineage/downstream/{full_name}`` JSON endpoints — pure
+    PointlesSQL plumbing on top of an existing soyuz contract.
 
     The depth is capped at ``_LINEAGE_MAX_DEPTH`` (5) to keep the
     payload bounded for an LLM transcript even though soyuz tolerates

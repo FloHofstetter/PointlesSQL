@@ -1,9 +1,8 @@
 """Public read-only ``/api/conventions`` route.
 
-Sprint 13.7.3 added this surface so the
-``hermes-plugin-pointlessql`` ``pql_conventions`` tool can drop
+Lets the ``hermes-plugin-pointlessql`` ``pql_conventions`` tool drop
 PointlesSQL's Medallion contract straight into an LLM's system
-prompt without bundling a copy. The endpoint serves whatever
+prompt without bundling a copy.  The endpoint serves whatever
 :func:`pointlessql.conventions.load_conventions` resolves —
 defaults plus any ``pointlessql.yaml`` overrides — alongside an
 excerpt of ``docs/data-layers.md`` so the agent has both the

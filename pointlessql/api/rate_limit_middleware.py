@@ -1,10 +1,10 @@
 """Fixed-window rate-limit middleware for the ``/auth/*`` surface.
 
-Sprint 43 closes the credential-stuffing and registration-spam
-avenues on the auth surface. Buckets live in PointlesSQL's own
-Alembic DB (:class:`pointlessql.models.RateLimitEvent`) so the
-limiter needs no new runtime dependency — a direct fit for the
-single-node €15/month-vServer deployment target.
+Closes the credential-stuffing and registration-spam avenues on
+the auth surface.  Buckets live in PointlesSQL's own Alembic DB
+(:class:`pointlessql.models.RateLimitEvent`) so the limiter needs
+no new runtime dependency — a direct fit for the single-node
+deployment target.
 
 The middleware sits between :mod:`csrf_middleware` (outer) and
 :mod:`auth_middleware` (inner) in the Starlette stack so:
@@ -15,8 +15,8 @@ The middleware sits between :mod:`csrf_middleware` (outer) and
   runs the bcrypt/JWT-decode path on every request.
 
 Each rejection also emits an ``audit_log`` row
-(``action="rate_limit.blocked"``) so Sprint 41's ``/admin/audit``
-viewer surfaces the feature without a second dashboard.
+(``action="rate_limit.blocked"``) so the ``/admin/audit`` viewer
+surfaces the feature without a second dashboard.
 """
 
 from __future__ import annotations
@@ -143,7 +143,7 @@ def _resolve_dimensions(rule: _Rule, settings: Any) -> list[_Dimension]:
 def _render_429(retry_after: int) -> HTMLResponse:
     """Return the 429 HTML response used for every reject.
 
-    Matches Sprint 42's CSRF-reject shape (bare ``HTMLResponse``, no
+    Matches the CSRF-reject shape (bare ``HTMLResponse``, no
     templating) so operators see a consistent error surface across
     hardening layers.
     """
@@ -226,8 +226,8 @@ async def rate_limit_middleware(request: Request, call_next: Any) -> Response:
             # attacker maps to a real account. The identifying detail
             # lives in ``target`` (the bucket string) which the admin
             # viewer already renders verbatim.
-            # Async write (Sprint 48) — the reject path is hot and
-            # we do not want the audit INSERT to block the 429.
+            # Async write — the reject path is hot and we do not
+            # want the audit INSERT to block the 429.
             await asyncio.to_thread(
                 audit_service.log_action,
                 factory,

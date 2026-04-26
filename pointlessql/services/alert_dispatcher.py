@@ -1,4 +1,4 @@
-"""Webhook dispatch for fired Sprint-55 alerts.
+"""Webhook dispatch for fired alerts.
 
 Pure async helper: the scheduler's ``_alert_check_executor`` builds
 the CloudEvents envelope, inserts an :class:`AlertEvent` row, and
@@ -45,9 +45,7 @@ def canonicalise_envelope(envelope: dict[str, Any]) -> bytes:
     Returns:
         UTF-8 encoded JSON bytes.
     """
-    return json.dumps(
-        envelope, separators=(",", ":"), sort_keys=True
-    ).encode("utf-8")
+    return json.dumps(envelope, separators=(",", ":"), sort_keys=True).encode("utf-8")
 
 
 def sign_body(body: bytes, secret: str) -> str:
@@ -60,9 +58,7 @@ def sign_body(body: bytes, secret: str) -> str:
     Returns:
         Hex digest, suitable for the ``sha256=<hex>`` header value.
     """
-    return hmac.new(
-        secret.encode("utf-8"), body, hashlib.sha256
-    ).hexdigest()
+    return hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
 
 
 async def dispatch_webhook(
@@ -80,8 +76,9 @@ async def dispatch_webhook(
         hmac_secret: Optional secret; when set, sign the canonical body
             and attach ``X-PointlesSQL-Signature: sha256=<hex>``.
         client: Optional pre-configured client.  When ``None`` a
-            transient client with the Sprint-55 timeouts is created
-            and closed within this call.
+            transient client with the standard 5s connect / 10s
+            read+write+pool timeouts is created and closed within
+            this call.
 
     Returns:
         ``True`` when a 2xx response arrived within the retry budget.
@@ -106,14 +103,17 @@ async def dispatch_webhook(
                 last_error = exc
                 logger.warning(
                     "alert webhook transport error attempt=%d url=%s: %s",
-                    attempt + 1, url, exc,
+                    attempt + 1,
+                    url,
+                    exc,
                 )
             else:
                 if 200 <= response.status_code < 300:
                     return True
                 logger.warning(
                     "alert webhook %s returned HTTP %d",
-                    url, response.status_code,
+                    url,
+                    response.status_code,
                 )
                 if response.status_code < 500:
                     # 4xx is a permanent failure; don't retry.
@@ -122,9 +122,7 @@ async def dispatch_webhook(
                 await _sleep(delay)
                 delay *= 2
         if last_error is not None:
-            logger.error(
-                "alert webhook %s exhausted retries: %s", url, last_error
-            )
+            logger.error("alert webhook %s exhausted retries: %s", url, last_error)
         return False
     finally:
         if should_close:

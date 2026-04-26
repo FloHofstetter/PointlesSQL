@@ -21,11 +21,11 @@ from pointlessql.models.base import Base
 class Job(Base):
     """A scheduled unit of work executed by the in-process scheduler.
 
-    Sprint 19 introduced single-task jobs. Sprint 20 grows this into
-    multi-task DAGs: ``job.kind`` and ``job.config`` still work as a
-    single-task shortcut (when no :class:`JobTask` rows exist), but for
-    multi-task DAGs the :class:`JobTask` children drive execution and
-    the top-level ``config`` is largely ignored by the executor.
+    A job can either be a single-task shortcut (``job.kind`` /
+    ``job.config`` describe the work and no :class:`JobTask` rows
+    exist) or a multi-task DAG (the :class:`JobTask` children drive
+    execution and the top-level ``config`` is largely ignored by the
+    executor).
 
     ``config`` is stored as a JSON-encoded string in the ``Text`` column
     (SQLite's ``JSON`` affinity is identical to ``TEXT``, and using
@@ -48,8 +48,8 @@ class Job(Base):
         is_paused: When ``True`` the scheduler skips this job.
         max_parallel_runs: Upper bound on concurrent :class:`JobRun`
             rows in ``running`` status for this job. Default ``1``
-            preserves Sprint 19's "one at a time" behaviour; the global
-            ceiling in :class:`~pointlessql.settings.Settings`
+            preserves "one at a time" behaviour; the global ceiling
+            in :class:`~pointlessql.settings.Settings`
             (``scheduler_max_concurrent_runs``) clamps this further.
         on_failure_url: Optional HTTPS URL that the scheduler POSTs a
             minimal JSON payload to whenever a :class:`JobRun` finishes
@@ -117,12 +117,12 @@ class JobRun(Base):
 class JobTask(Base):
     """One node in a :class:`Job` DAG.
 
-    The Sprint 20 scheduler builds a graph from these rows: each task
-    names the tasks it depends on (via ``depends_on`` — a JSON-encoded
+    The scheduler builds a graph from these rows: each task names
+    the tasks it depends on (via ``depends_on`` — a JSON-encoded
     list of ``job_tasks.id`` integers rooted at the *same* parent job)
     and carries its own kind + config + retry policy. A job with zero
-    :class:`JobTask` rows falls back to the Sprint 19 single-task
-    shortcut that reads ``job.kind`` / ``job.config``.
+    :class:`JobTask` rows falls back to the single-task shortcut that
+    reads ``job.kind`` / ``job.config``.
 
     Attributes:
         id: Auto-incremented primary key.
@@ -206,11 +206,12 @@ class TaskRun(Base):
 class JobLog(Base):
     """One structured log line written during a :class:`JobRun`.
 
-    Sprint 20 makes this the real writer: every task transition
-    (``pending`` → ``running`` → terminal) produces a row via
-    :func:`pointlessql.services.scheduler.log_job`, and the job detail
-    page's expandable log panel reads them back with an optional
-    ``task_id`` filter so the user can scope the view to one DAG node.
+    Every task transition (``pending`` → ``running`` → terminal)
+    produces a row via
+    :func:`pointlessql.services.scheduler.log_job`, and the job
+    detail page's expandable log panel reads them back with an
+    optional ``task_id`` filter so the user can scope the view to
+    one DAG node.
 
     Attributes:
         id: Auto-incremented primary key.

@@ -1,7 +1,7 @@
 """SQL editor routes — execute, cancel, download, and the editor page.
 
-Sprint 86b split out of ``api/main.py``.  Owns the four endpoints
-that back the Phase-12 SQL editor + the HTML page that loads it:
+Owns the four endpoints that back the SQL editor + the HTML page
+that loads it:
 
 * ``POST /api/sql/execute`` — parse → enforce → DuckDB → audit
   pipeline for a single SELECT.
@@ -13,10 +13,9 @@ that back the Phase-12 SQL editor + the HTML page that loads it:
   as CSV or Parquet.
 * ``GET  /sql`` — the Jinja2 page.
 
-Authorization is unchanged from the pre-Sprint-86b shape: every
-referenced 3-part table goes through ``check_privilege(SELECT)``
-on every execute *and* every download — a stale history row is not
-a bypass.
+Authorization model: every referenced 3-part table goes through
+``check_privilege(SELECT)`` on every execute *and* every download —
+a stale history row is not a bypass.
 """
 
 from __future__ import annotations
@@ -56,8 +55,8 @@ def short_sql_hash(sql: str) -> str:
     The audit-log ``target`` field is a single human-readable identifier
     (``catalog:foo``, ``query:abc123``…); a full SQL string would blow
     past the reasonable column width.  A 12-char truncated SHA-256 is
-    enough to correlate with the ``query_history`` row landing in
-    Sprint 50 and to tell apart identical-looking queries.
+    enough to correlate with the corresponding ``query_history`` row
+    and to tell apart identical-looking queries.
 
     Args:
         sql: The SQL string to hash.
@@ -124,8 +123,8 @@ def live_queries(request: Request) -> dict[str, Any]:
     handles.  The execute route registers on entry and pops on exit;
     the cancel route calls ``.interrupt()`` on whatever it finds.
     Multi-worker deployments don't share this map across processes —
-    Sprint 52 accepts single-worker correctness; multi-worker cancel
-    is a Phase-14 concern.
+    cancel currently relies on single-worker correctness; multi-worker
+    cancel is a future concern.
 
     Args:
         request: The incoming request (for ``request.app.state``).
@@ -198,7 +197,7 @@ def run_sql_export_sync(
 async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Parse, enforce, execute a single SELECT against the UC lakehouse.
 
-    Flow (Sprint 49 scope):
+    Flow:
 
     1. Parse via :func:`~pointlessql.pql.sql_parser.prepare_sql` to
        extract the 3-part table references and a DuckDB-safe rewrite
@@ -209,13 +208,10 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     3. Dispatch :meth:`PQL.sql` via :func:`asyncio.to_thread` so the
        event loop keeps serving other requests during the DuckDB
        call.
-    4. Audit the execution with the Phase-12 ``query.executed``
-       action string (per ROADMAP settled decision).
+    4. Audit the execution with the ``query.executed`` action string.
 
-    Sprint 49 explicit non-goals: history (50), save (51), export
-    (52), EXPLAIN / autocomplete / cancel (52, 53).  Errors raised
-    inside the parse / enforce / execute stages map to RFC 9457
-    problem+json via the centralised handler.
+    Errors raised inside the parse / enforce / execute stages map to
+    RFC 9457 problem+json via the centralised handler.
 
     Args:
         request: The incoming FastAPI request.  Needs ``request.state.user``
@@ -247,17 +243,16 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     if not isinstance(query, str):
         raise SQLExecutionError("The 'sql' field must be a string.")
 
-    # Sprint 52: client supplies an opaque query_id the cancel
-    # endpoint uses to reach the live DuckDB conn.  Empty / non-str
-    # → generate one server-side so old clients keep working.
+    # Client supplies an opaque query_id the cancel endpoint uses to
+    # reach the live DuckDB conn.  Empty / non-str → generate one
+    # server-side so old clients keep working.
     raw_qid = (body or {}).get("query_id")
     query_id = raw_qid if isinstance(raw_qid, str) and raw_qid else uuid4().hex
 
-    # Sprint 53: optional EXPLAIN ANALYZE mode.  The server parses
-    # + enforces the raw SELECT as usual, then wraps the final
-    # statement with ``EXPLAIN ANALYZE``.  Diagnostic runs skip
-    # history recording + audit to keep the operator-facing
-    # surfaces clean.
+    # Optional EXPLAIN ANALYZE mode.  The server parses + enforces
+    # the raw SELECT as usual, then wraps the final statement with
+    # ``EXPLAIN ANALYZE``.  Diagnostic runs skip history recording
+    # + audit to keep the operator-facing surfaces clean.
     explain = bool((body or {}).get("explain", False))
 
     started_at = datetime.now(UTC)
@@ -296,9 +291,9 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
             await check_privilege(client, email, is_admin, "table", full_name, SELECT)
             approved[full_name] = storage_location
 
-        # Sprint 52: open the connection here and hand it to the
-        # thread so the cancel endpoint can reach ``.interrupt()``
-        # via the live-queries registry.
+        # Open the connection here and hand it to the thread so the
+        # cancel endpoint can reach ``.interrupt()`` via the
+        # live-queries registry.
         conn = duckdb.connect()
         registry[query_id] = conn
         timeout_s = max(1, int(settings.sql.query_timeout_seconds))
@@ -590,11 +585,11 @@ async def api_sql_download(
 async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     """Return a DuckDB EXPLAIN plan + heuristic cost for *sql*.
 
-    Sprint 13.1 cost gate.  Mirrors the parse + UC-SELECT-enforce
-    front-half of :func:`api_sql_execute` so the caller cannot
-    EXPLAIN a query whose tables they don't have permission to
-    read — that would leak schema information through the plan
-    even without row materialisation.
+    Cost gate.  Mirrors the parse + UC-SELECT-enforce front-half of
+    :func:`api_sql_execute` so the caller cannot EXPLAIN a query
+    whose tables they don't have permission to read — that would
+    leak schema information through the plan even without row
+    materialisation.
 
     Above ``settings.sql.cost_gate_threshold_rows`` the response
     flips ``needs_approval`` to ``True``.  No enforcement happens
@@ -699,7 +694,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
 
 @router.get("/sql", response_class=HTMLResponse)
 async def sql_editor_page(request: Request) -> HTMLResponse:
-    """Render the Phase-12 SQL editor page."""
+    """Render the SQL editor page."""
     settings: Settings = request.app.state.settings
     return _templates(request).TemplateResponse(
         request,

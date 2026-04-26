@@ -1,11 +1,10 @@
 """Per-request dependency-injection helpers for the API layer.
 
-Sprint 85 split out of ``api/main.py``.  Every route in the FastAPI
-app reaches for one of these to recover the principal-forwarded
-:class:`UnityCatalogClient` (``get_uc_client``), the authenticated
-:class:`UserInfo` (``get_user``), the admin gate
-(``require_admin``), or the client IP for audit rows
-(``client_ip``).
+Every route in the FastAPI app reaches for one of these to recover
+the principal-forwarded :class:`UnityCatalogClient`
+(``get_uc_client``), the authenticated :class:`UserInfo`
+(``get_user``), the admin gate (``require_admin``), or the client
+IP for audit rows (``client_ip``).
 """
 
 from __future__ import annotations
@@ -20,18 +19,17 @@ from pointlessql.types import UserInfo
 def effective_principal(request: Request) -> str | None:
     """Return the effective principal for SELECT enforcement + audit.
 
-    Sprint 13.6.  The ``X-Principal`` header takes precedence so an
-    external runtime (Hermes, an ops curl) can act on behalf of an
-    end user without that user holding a session cookie on
-    PointlesSQL.  When the header is absent or empty we fall back
-    to the session-cookie user's email.  When neither is set the
-    request is anonymous and the function returns ``None`` —
-    callers decide whether to short-circuit or continue with the
-    default UC client.
+    The ``X-Principal`` header takes precedence so an external
+    runtime (Hermes, an ops curl) can act on behalf of an end user
+    without that user holding a session cookie on PointlesSQL.
+    When the header is absent or empty we fall back to the
+    session-cookie user's email.  When neither is set the request
+    is anonymous and the function returns ``None`` — callers decide
+    whether to short-circuit or continue with the default UC client.
 
-    The header is the same one the Sprint-13.2 agent-runs registry
-    already accepts; Sprint 13.6 propagates it through to the SQL
-    routes and the query-history audit row.
+    The header is the same one the agent-runs registry accepts and
+    is also propagated through to the SQL routes and the query-
+    history audit row so attribution stays consistent across hops.
 
     Args:
         request: Incoming FastAPI request.
@@ -51,9 +49,9 @@ def effective_principal(request: Request) -> str | None:
 def get_uc_client(request: Request) -> UnityCatalogClient:
     """Return a per-request UC facade with the effective principal.
 
-    Sprint 13.6: prefers :func:`effective_principal` so an
-    ``X-Principal`` header overrides the cookie user (Hermes plugin
-    + curl ops both depend on this hop).
+    Prefers :func:`effective_principal` so an ``X-Principal``
+    header overrides the cookie user (Hermes plugin + curl ops both
+    depend on this hop).
 
     Args:
         request: Incoming FastAPI request.
@@ -108,13 +106,13 @@ def require_admin(request: Request) -> None:
 def require_supervisor(request: Request) -> None:
     """Raise :class:`AuthorizationError` if the caller lacks supervisor scope.
 
-    Sprint 13.11.4a.  Family-B routes (run summary, run diff,
-    runs-by-principal, runs-by-agent) are restricted to API keys
-    flagged ``supervisor=True`` — supervision telemetry shouldn't
-    be walkable by every working agent.  Cookie-authenticated
-    admins also pass: the admin role is strictly stronger than
-    supervisor (admin can revoke any key) so the "admin can do
-    everything" mental model holds.
+    Family-B routes (run summary, run diff, runs-by-principal,
+    runs-by-agent) are restricted to API keys flagged
+    ``supervisor=True`` — supervision telemetry shouldn't be
+    walkable by every working agent.  Cookie-authenticated admins
+    also pass: the admin role is strictly stronger than supervisor
+    (admin can revoke any key) so the "admin can do everything"
+    mental model holds.
 
     Args:
         request: Incoming FastAPI request.
@@ -143,10 +141,10 @@ def client_ip(request: Request) -> str | None:
     ASGI's ``request.client`` returns ``None`` for ASGI transports
     without a remote peer (unit tests hit this path). Behind a
     trusted reverse proxy the operator should configure Starlette's
-    ``ProxyHeadersMiddleware`` upstream of this call; Sprint 48
-    deliberately does not honour ``X-Forwarded-For`` here because
-    the audit surface has no separate "trusted-proxy" opt-in like
-    Sprint 43's rate limiter does.
+    ``ProxyHeadersMiddleware`` upstream of this call; the audit
+    surface deliberately does not honour ``X-Forwarded-For`` here
+    because it has no separate "trusted-proxy" opt-in like the
+    rate limiter does.
 
     Args:
         request: The incoming HTTP request.

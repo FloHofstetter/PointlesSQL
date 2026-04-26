@@ -1,6 +1,6 @@
 """Alert CRUD + serialisation + backing-Job lifecycle.
 
-Sprint 81 split out of ``services/alerts.py``. Owns:
+Owns:
 
 * the slug / authorisation / serialisation helpers shared with the
   destinations and events sub-modules;
@@ -85,9 +85,7 @@ def serialize_destination(dest: AlertDestination) -> dict[str, Any]:
     }
 
 
-def serialize(
-    row: Alert, destinations: list[AlertDestination] | None = None
-) -> dict[str, Any]:
+def serialize(row: Alert, destinations: list[AlertDestination] | None = None) -> dict[str, Any]:
     """Convert an :class:`Alert` and its destinations to a JSON-friendly dict.
 
     Args:
@@ -110,9 +108,7 @@ def serialize(
         "backing_job_id": row.backing_job_id,
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-        "destinations": [
-            serialize_destination(d) for d in destinations or []
-        ],
+        "destinations": [serialize_destination(d) for d in destinations or []],
     }
 
 
@@ -282,9 +278,7 @@ def get_by_slug(
             return None
         dests = list(
             session.scalars(
-                select(AlertDestination).where(
-                    AlertDestination.alert_id == row.id
-                )
+                select(AlertDestination).where(AlertDestination.alert_id == row.id)
             ).all()
         )
         return serialize(row, dests)
@@ -338,9 +332,7 @@ def update_by_slug(
             row.cron_expr = clean_cron[:120]
         if condition_op is not None:
             if condition_op not in VALID_OPS:
-                raise ValidationError(
-                    f"condition_op must be one of {sorted(VALID_OPS)}."
-                )
+                raise ValidationError(f"condition_op must be one of {sorted(VALID_OPS)}.")
             row.condition_op = condition_op
         if threshold is not None:
             row.threshold = int(threshold)
@@ -352,9 +344,7 @@ def update_by_slug(
         session.refresh(row)
         dests = list(
             session.scalars(
-                select(AlertDestination).where(
-                    AlertDestination.alert_id == row.id
-                )
+                select(AlertDestination).where(AlertDestination.alert_id == row.id)
             ).all()
         )
         return serialize(row, dests)
@@ -382,14 +372,8 @@ def delete_by_slug(
         row = session.scalar(select(Alert).where(Alert.slug == slug))
         if row is None or not can_mutate(row, user_id, is_admin):
             return False
-        session.execute(
-            delete(AlertDestination).where(
-                AlertDestination.alert_id == row.id
-            )
-        )
-        session.execute(
-            delete(AlertEvent).where(AlertEvent.alert_id == row.id)
-        )
+        session.execute(delete(AlertDestination).where(AlertDestination.alert_id == row.id))
+        session.execute(delete(AlertEvent).where(AlertEvent.alert_id == row.id))
         backing_id = row.backing_job_id
         session.delete(row)
         if backing_id is not None:

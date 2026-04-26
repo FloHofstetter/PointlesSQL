@@ -1,4 +1,4 @@
-"""Helpers for :meth:`PQL.write_table` (Sprint-78 split)."""
+"""Helpers for :meth:`PQL.write_table`."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def write_table(
         full_name: Three-part name ``"catalog.schema.table"``.
         mode: Write mode passed to the engine.
         unreachable_msg: Pre-rendered "cannot reach catalog" message.
-        agent_run_id: Sprint 13.8 — when set, the call emits one
+        agent_run_id: When set, the call emits one
             ``agent_run_operations`` row.  ``None`` keeps the
             interactive path silent.
 
@@ -131,9 +131,9 @@ def write_table(
 def safe_delta_version(location: str) -> int | None:
     """Read ``DeltaTable.version()`` without raising into the audit path.
 
-    Used by Sprint-13.8 operation rows to capture pre/post versions.
-    A read failure (table missing, corrupt log) is logged-and-skipped
-    so a cosmetic Delta-side hiccup cannot block the underlying
+    Used by operation rows to capture pre/post versions.  A read
+    failure (table missing, corrupt log) is logged-and-skipped so
+    a cosmetic Delta-side hiccup cannot block the underlying
     write — the write is the audit-relevant action.
 
     Args:
@@ -167,13 +167,11 @@ def _frame_row_count(frame: Any) -> int | None:
         if hasattr(frame, "count") and callable(frame.count):
             return int(frame.count())  # type: ignore[arg-type]
         return len(frame)
-    except (TypeError, ValueError, AttributeError):
+    except TypeError, ValueError, AttributeError:
         return None
 
 
-def derive_storage_location(
-    client: Client, catalog: str, schema: str, table: str
-) -> str:
+def derive_storage_location(client: Client, catalog: str, schema: str, table: str) -> str:
     """Compute a storage location for a new table from its parent schema.
 
     Args:

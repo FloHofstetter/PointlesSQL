@@ -1,9 +1,9 @@
 """HTTP middleware registration for the FastAPI app.
 
-Sprint 85 split out of ``api/main.py``.  Centralises the four
-middleware the app stacks on every request — auth, rate-limit, CSRF,
-request-id — into one :func:`register_middleware` call so callers
-cannot accidentally re-order them.
+Centralises the four middleware the app stacks on every request —
+auth, rate-limit, CSRF, request-id — into one
+:func:`register_middleware` call so callers cannot accidentally
+re-order them.
 
 Order is **load-bearing**.  Starlette stacks middleware LIFO:
 last-added runs first (outermost) on the incoming request.  This
@@ -15,16 +15,11 @@ incoming request becomes::
 * ``auth`` resolves the user from the JWT cookie before any handler.
 * ``rate_limit`` runs INSIDE csrf (a CSRF-failed flood must not burn
   bucket slots) and OUTSIDE auth (a flood must not bcrypt-hash the
-  payload before being throttled).  Sprint 43.
+  payload before being throttled).
 * ``csrf`` runs OUTSIDE auth so a CSRF failure short-circuits before
-  bcrypt + JWT-decode.  Sprint 42.
+  bcrypt + JWT-decode.
 * ``request_id`` is the outermost so the X-Request-ID echo + the
   contextvar reach into every other middleware's log lines.
-
-Phase 12.12.2 removed the ``static_module_revalidate`` layer with
-the browser notebook editor; the editor's vendored ESM modules no
-longer exist, so the ``/static/js/notebook/`` no-cache hook has no
-consumer.
 """
 
 from __future__ import annotations
@@ -49,31 +44,32 @@ logger = logging.getLogger(__name__)
 
 
 # Paths that do not require authentication.
-# Sprint 55: ``/alerts/feed.atom`` + ``/alerts/feed.json`` authenticate
-# via the opaque ``?token=…`` query-string, not the session cookie —
-# feed readers (Miniflux, FreshRSS, …) do not have a browser session.
+# ``/alerts/feed.atom`` + ``/alerts/feed.json`` authenticate via the
+# opaque ``?token=…`` query-string, not the session cookie — feed
+# readers (Miniflux, FreshRSS, …) do not have a browser session.
 # They are listed here so the session auth_middleware does not
 # redirect them to ``/auth/login``; the route handlers themselves
 # reject unknown tokens with 401.
 PUBLIC_PREFIXES: tuple[str, ...] = (
-    "/auth/", "/static/", "/healthz",
-    "/alerts/feed.atom", "/alerts/feed.json",
+    "/auth/",
+    "/static/",
+    "/healthz",
+    "/alerts/feed.atom",
+    "/alerts/feed.json",
 )
 
 
 async def auth_middleware(request: Request, call_next: Any) -> Response:
     """Resolve a principal from cookie OR Bearer key; gate protected paths.
 
-    Sprint 13.7.0.5 added the Bearer-token branch.  Sprint 13.11.4a
-    moved the credential store from a process-wide env-parsed dict
-    into the ``api_keys`` DB table — verification now goes through
-    :func:`pointlessql.services.api_keys.verify_bearer` which
-    consults the DB (with a 60s in-memory TTL cache).  On match a
-    synthetic :class:`UserInfo` is attached so downstream routes
-    (which only ever read ``request.state.user``) need no awareness
-    of the alternate auth path; ``request.state.api_key_name``
-    keeps the audit attribution and
-    ``request.state.api_key_supervisor`` exposes the Sprint-13.11.4a
+    Bearer-token verification goes through
+    :func:`pointlessql.services.api_keys.verify_bearer`, which
+    consults the ``api_keys`` DB table (with a 60s in-memory TTL
+    cache).  On match a synthetic :class:`UserInfo` is attached so
+    downstream routes (which only ever read ``request.state.user``)
+    need no awareness of the alternate auth path;
+    ``request.state.api_key_name`` keeps the audit attribution and
+    ``request.state.api_key_supervisor`` exposes the supervisor
     scope flag for ``require_supervisor``.
 
     Cookie auth still wins when both are present so a human in a
@@ -98,12 +94,12 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
             if user is not None:
                 request.state.user = user
 
-    # Sprint 13.7.0.5 + 13.11.4a: fall back to API-key bearer token
-    # when no cookie user resolved.  The store is now DB-backed
-    # (Alembic 025); the env-var path remains valid as a bootstrap
-    # spilled in by :func:`api_keys_service.bootstrap_from_env` at
-    # startup.  Cache TTL inside :func:`verify_bearer` keeps the
-    # hot path off the DB except on miss.
+    # Fall back to API-key bearer token when no cookie user resolved.
+    # The store is DB-backed (``api_keys`` table); the env-var path
+    # remains valid as a bootstrap spilled in by
+    # :func:`api_keys_service.bootstrap_from_env` at startup.  Cache
+    # TTL inside :func:`verify_bearer` keeps the hot path off the DB
+    # except on miss.
     if getattr(request.state, "user", None) is None:
         factory = getattr(request.app.state, "session_factory", None)
         entry = api_keys_service.verify_bearer(

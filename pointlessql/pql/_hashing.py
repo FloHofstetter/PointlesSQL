@@ -1,4 +1,4 @@
-"""Sprint 13.8 — input-frame hashing for the agent-run audit trail.
+"""Input-frame hashing for the agent-run audit trail.
 
 PQL primitives writing into Delta need a stable digest of the data
 they appended so a later reviewer can confirm "this run wrote
@@ -58,17 +58,14 @@ def arrow_ipc_sha256(frame: Any) -> str:
     elif hasattr(frame, "to_arrow") and callable(frame.to_arrow):
         candidate = frame.to_arrow()  # pyright: ignore[reportUnknownMemberType]
         table = (
-            candidate
-            if isinstance(candidate, pa.Table)
-            else pa.Table.from_pandas(candidate)  # pyright: ignore[reportUnknownArgumentType]
+            candidate if isinstance(candidate, pa.Table) else pa.Table.from_pandas(candidate)  # pyright: ignore[reportUnknownArgumentType]
         )
     else:
         try:
             table = pa.Table.from_pandas(frame)
         except (TypeError, ValueError) as exc:
             raise TypeError(
-                f"arrow_ipc_sha256: cannot convert {type(frame).__name__} to "
-                "pyarrow.Table"
+                f"arrow_ipc_sha256: cannot convert {type(frame).__name__} to pyarrow.Table"
             ) from exc
 
     sink = io.BytesIO()
@@ -81,7 +78,7 @@ def concat_sha256(parts: list[str]) -> str:
     """SHA-256 over the joined hex strings of *parts*.
 
     Used by ``pql.autoload`` to record one provenance digest per
-    primitive call instead of one per file: the Sprint 13.5.3
+    primitive call instead of one per file: the
     ``autoload_checkpoints`` table already keeps file-level SHAs,
     so the operation row's ``input_sha`` only needs to be a
     deterministic summary.

@@ -23,7 +23,7 @@ from pointlessql.models.base import Base
 class Dashboard(Base):
     """A named, publishable view of a notebook job's latest output.
 
-    Dashboards differ from the Sprint 26 run viewer in two ways: they
+    Dashboards differ from the per-run viewer in two ways: they
     live at a stable slug-based URL (so they can be shared or bookmarked
     across run id churn), and they render via nbconvert with
     ``exclude_input=True`` so consumers see only outputs — code cells
@@ -66,7 +66,7 @@ class Dashboard(Base):
 
 
 class RateLimitEvent(Base):
-    """One recorded hit against an auth-surface rate limiter (Sprint 43).
+    """One recorded hit against an auth-surface rate limiter.
 
     The :mod:`pointlessql.api.rate_limit_middleware` middleware inserts
     one row per incoming request that matches a configured rule (e.g.
@@ -89,9 +89,7 @@ class RateLimitEvent(Base):
 
     __tablename__ = "rate_limit_events"
 
-    __table_args__ = (
-        Index("ix_rate_limit_events_bucket_created", "bucket", "created_at"),
-    )
+    __table_args__ = (Index("ix_rate_limit_events_bucket_created", "bucket", "created_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     bucket: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -99,21 +97,20 @@ class RateLimitEvent(Base):
 
 
 class QueryHistory(Base):
-    """One execution of an ad-hoc SQL query from the Phase-12 editor.
+    """One execution of an ad-hoc SQL query from the editor.
 
     Written on every ``POST /api/sql/execute`` call — including
     failures — so the ``/queries`` page can render the full stream of
     activity without "phantom" gaps for errors.  Non-admin users see
     only their own rows; admin sees everyone's.
 
-    Retention of successful + failed rows is currently unbounded;
-    Phase 12 deliberately does not ship a cleanup job because the
-    per-row volume is tiny compared to the audit log.  If retention
-    becomes a concern it can reuse the Sprint-48 audit-cleanup task
-    pattern.
+    Retention of successful + failed rows is currently unbounded; no
+    cleanup job ships because the per-row volume is tiny compared to
+    the audit log.  If retention becomes a concern it can reuse the
+    audit-cleanup task pattern.
 
     ``request_id`` lets ops cross-reference a history row with the
-    Sprint-16 request-id-tagged log line for the same execution.
+    request-id-tagged log line for the same execution.
 
     Attributes:
         id: Auto-incremented primary key.
@@ -126,23 +123,20 @@ class QueryHistory(Base):
         finished_at: Timestamp when the DuckDB call returned (or the
             route raised on enforcement / parse).
         status: ``"succeeded"`` / ``"failed"`` / ``"cancelled"``.
-            Cancellation is Sprint 52; Sprint 50 only writes
-            succeeded / failed.
         row_count: Result row count after :meth:`PQL.sql` row-cap
             slicing, or ``None`` on failure.
         duration_ms: DuckDB wall-clock time in milliseconds, or
             ``None`` on failure.
         error_message: Exception detail on failure, else ``None``.
         request_id: Correlates with structured log lines.
-        chart_config: Sprint-54 JSON-as-text payload capturing the
-            user's chart selection (type, X column, Y column) so
-            re-runs from ``/queries`` replay the same visualisation.
+        chart_config: JSON-as-text payload capturing the user's
+            chart selection (type, X column, Y column) so re-runs
+            from ``/queries`` replay the same visualisation.
             ``None`` means "show the table view".
-        agent_run_id: Sprint 13.9 — owning :class:`AgentRun` UUID
-            when the query came from a registered run.  ``None``
-            for plain interactive editor traffic.  No FK by
-            design so deleting a run does not cascade-erase its
-            query history.
+        agent_run_id: Owning :class:`AgentRun` UUID when the query
+            came from a registered run.  ``None`` for plain
+            interactive editor traffic.  No FK by design so deleting
+            a run does not cascade-erase its query history.
     """
 
     __tablename__ = "query_history"
@@ -174,23 +168,21 @@ class QueryHistoryTable(Base):
 
     Populated from the sqlglot parse of ``sql_text``.  Exists as a
     separate relation so "who queried table X" is a fast reverse
-    lookup via ``full_name``.  ``access_type`` is always ``"read"``
-    in Phase 12 (the editor only permits SELECT); reserved so
-    Phase 13's agent-workload write paths can distinguish read vs.
-    write access for the same history surface.
+    lookup via ``full_name``.  ``access_type`` is ``"read"`` for the
+    SELECT-only editor surface; reserved so agent-workload write
+    paths can distinguish read vs. write access for the same
+    history surface.
 
     Attributes:
         id: Auto-incremented primary key.
         query_history_id: FK to ``query_history.id``.
         full_name: Dotted UC identifier (``catalog.schema.table``).
-        access_type: ``"read"`` (Phase 12) or ``"write"`` (reserved).
+        access_type: ``"read"`` or ``"write"``.
     """
 
     __tablename__ = "query_history_tables"
 
-    __table_args__ = (
-        Index("ix_query_history_tables_full_name", "full_name", "query_history_id"),
-    )
+    __table_args__ = (Index("ix_query_history_tables_full_name", "full_name", "query_history_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     query_history_id: Mapped[int] = mapped_column(
@@ -205,9 +197,8 @@ class QueryHistoryTable(Base):
 class SavedQuery(Base):
     """A named, slug-addressable snippet of SQL the user saved.
 
-    Sprint 51 landed the "save current query" flow so operators can
-    park frequently-run analyses and re-open them from the editor's
-    sidebar drawer.
+    The "save current query" flow lets operators park frequently-run
+    analyses and re-open them from the editor's sidebar drawer.
 
     Visibility model: the ``owner_id`` user and all admins always
     see the row; every other logged-in user sees it only when
@@ -236,9 +227,7 @@ class SavedQuery(Base):
 
     __tablename__ = "saved_queries"
 
-    __table_args__ = (
-        Index("ix_saved_queries_owner_updated", "owner_id", "updated_at"),
-    )
+    __table_args__ = (Index("ix_saved_queries_owner_updated", "owner_id", "updated_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     slug: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
@@ -254,10 +243,10 @@ class SavedQuery(Base):
 class TableStats(Base):
     """Cached per-column statistics for a UC table at a Delta version.
 
-    Sprint 56 profile button computes count / null_count /
-    distinct_count / min / max / mean / top_5 for every column of a
-    Delta table; each column lands as its own row so the cache
-    survives partial failures.  Results are keyed by
+    The profile button computes count / null_count / distinct_count
+    / min / max / mean / top_5 for every column of a Delta table;
+    each column lands as its own row so the cache survives partial
+    failures.  Results are keyed by
     ``(full_name, delta_log_version, column_name)`` — re-profiling
     the same version is a single index seek.
 
@@ -273,7 +262,9 @@ class TableStats(Base):
     __tablename__ = "table_stats"
     __table_args__ = (
         UniqueConstraint(
-            "full_name", "delta_log_version", "column_name",
+            "full_name",
+            "delta_log_version",
+            "column_name",
             name="uq_table_stats_col_version",
         ),
         Index("ix_table_stats_lookup", "full_name", "delta_log_version"),
@@ -284,6 +275,4 @@ class TableStats(Base):
     delta_log_version: Mapped[int] = mapped_column(BigInteger, nullable=False)
     column_name: Mapped[str] = mapped_column(String(255), nullable=False)
     stats_json: Mapped[str] = mapped_column(Text, nullable=False)
-    computed_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    computed_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

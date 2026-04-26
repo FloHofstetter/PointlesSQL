@@ -5,8 +5,8 @@ Delegates every HTTP call to the typed functions shipped with
 to plain dicts so that FastAPI routes and Jinja2 templates can consume
 them without changes.
 
-Sprint 83 split the original 783-LOC ``unitycatalog.py`` module into
-six sibling files under ``services/unitycatalog/``:
+The package is composed of six sibling modules under
+``services/unitycatalog/``:
 
 * :mod:`._api` — every typed soyuz function imported as
   ``_get_X`` / ``_create_X`` / ``_update_X`` / ``_delete_X`` /
@@ -91,9 +91,7 @@ class UnityCatalogClient(
     """Async facade over the generated soyuz-catalog client.
 
     Composes per-securable mixins (catalogs, metadata, permissions,
-    lineage, federation) into a single client surface.  Behaviour is
-    unchanged from the pre-Sprint-83 monolithic class — every method
-    name, signature, and error-mapping is preserved.
+    lineage, federation) into a single client surface.
 
     Args:
         client: A configured ``soyuz_catalog_client.Client`` instance,

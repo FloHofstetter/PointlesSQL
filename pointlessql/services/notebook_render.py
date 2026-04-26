@@ -1,13 +1,13 @@
 """Render executed Papermill output notebooks as inline HTML.
 
-Sprint 24 lands executed notebooks at ``{notebooks_dir}/runs/{job_run_id}.ipynb``.
-Sprint 26 surfaces those outputs on the job-detail page through an
-iframe pointed at :func:`render_run_notebook`. nbconvert's ``lab``
-template produces near-identical styling to the JupyterLab alternative
-view, so the toggle between ``Rendered`` and ``JupyterLab`` modes is
-purely a question of who serves the bytes.
+Executed notebooks land at ``{notebooks_dir}/runs/{job_run_id}.ipynb``
+and are surfaced on the job-detail page through an iframe pointed at
+:func:`render_run_notebook`. nbconvert's ``lab`` template produces
+near-identical styling to the JupyterLab alternative view, so the
+toggle between ``Rendered`` and ``JupyterLab`` modes is purely a
+question of who serves the bytes.
 
-Sprint 28 adds an ``exclude_input=True`` variant for dashboards: the
+An ``exclude_input=True`` variant is also offered for dashboards: the
 same executed notebook rendered with code cells hidden so consumers
 see only outputs. The two variants cache to sibling sidecars
 (``{run_id}.html`` and ``{run_id}.dashboard.html``) so switching modes
@@ -46,8 +46,8 @@ def render_run_notebook(runs_dir: Path, run_id: int, *, exclude_input: bool = Fa
         run_id: The :class:`~pointlessql.models.JobRun` id whose output
             notebook should be rendered.
         exclude_input: When true, render with ``exclude_input=True`` so
-            code cells are hidden. Used by the Sprint 28 dashboards
-            surface to publish output-only views.
+            code cells are hidden. Used by the dashboards surface to
+            publish output-only views.
 
     Returns:
         The nbconvert-rendered HTML body as a string.
@@ -75,9 +75,7 @@ def render_run_notebook(runs_dir: Path, run_id: int, *, exclude_input: bool = Fa
         body, _resources = exporter.from_filename(str(ipynb_path))  # type: ignore[no-untyped-call]
     except Exception as exc:  # noqa: BLE001 — nbconvert surfaces Jinja/template errors as bare Exception
         logger.exception("nbconvert failed rendering run %d", run_id)
-        raise NotebookRenderError(
-            f"Failed to render run {run_id} notebook: {exc}"
-        ) from exc
+        raise NotebookRenderError(f"Failed to render run {run_id} notebook: {exc}") from exc
 
     body_str: str = body if isinstance(body, str) else str(body)
     tmp_path = html_path.parent / f"{html_path.name}.tmp"

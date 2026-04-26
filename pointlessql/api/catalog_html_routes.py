@@ -1,7 +1,6 @@
 """Catalog browser HTML pages — catalog detail + schema detail + table detail.
 
-Sprint 90 split out of ``api/main.py``.  Three pages drive the
-sidebar navigation: clicking a catalog opens
+Three pages drive the sidebar navigation: clicking a catalog opens
 ``/catalogs/{cat}``, clicking a schema opens ``/catalogs/{cat}/
 schemas/{sch}``, clicking a table opens ``/catalogs/{cat}/schemas/
 {sch}/tables/{tab}``.  Each page fetches metadata + tags +
@@ -11,8 +10,8 @@ hierarchical privilege checks gate the render
 
 The corresponding JSON endpoints
 (``/api/catalogs/{cat}/schemas`` etc.) live in
-``api/catalog_routes.py`` since Sprint 86.  These HTML routes are
-the user-facing twin: same enforcement, different output.
+``api/catalog_routes.py``.  These HTML routes are the user-facing
+twin: same enforcement, different output.
 """
 
 from __future__ import annotations

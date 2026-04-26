@@ -33,8 +33,21 @@ from sqlalchemy.orm import Session, sessionmaker
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import User
 from pointlessql.services.auth import is_first_user
+from pointlessql.settings import Settings
 
 logger = logging.getLogger(__name__)
+
+
+def _http_timeout() -> float:
+    """Return the configured OIDC HTTP timeout in seconds.
+
+    Instantiated per call so test overrides of
+    ``POINTLESSQL_OIDC_HTTP_TIMEOUT_SECONDS`` take effect without
+    re-importing the module — matches the per-request settings
+    pattern used elsewhere in the codebase.
+    """
+    return Settings().oidc.http_timeout_seconds
+
 
 # ---------------------------------------------------------------------------
 # Exceptions
@@ -149,7 +162,7 @@ async def fetch_discovery(
         return cached[1]
 
     try:
-        resp = await client.get(discovery_url, timeout=10)
+        resp = await client.get(discovery_url, timeout=_http_timeout())
         resp.raise_for_status()
         doc = resp.json()
     except httpx.HTTPError as exc:
@@ -244,7 +257,7 @@ async def exchange_code(
         resp = await client.post(
             discovery["token_endpoint"],
             data=data,
-            timeout=10,
+            timeout=_http_timeout(),
         )
         resp.raise_for_status()
         return resp.json()
@@ -279,7 +292,7 @@ async def fetch_userinfo(
         resp = await client.get(
             discovery["userinfo_endpoint"],
             headers={"Authorization": f"Bearer {access_token}"},
-            timeout=10,
+            timeout=_http_timeout(),
         )
         resp.raise_for_status()
         info = resp.json()

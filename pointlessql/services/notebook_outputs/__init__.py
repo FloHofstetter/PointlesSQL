@@ -1,12 +1,11 @@
 """Persist + replay native-editor notebook outputs and per-cell runs.
 
-Phase 12.6 Sprint 60 — the third layer of the native notebook story.
-Sprint 59 streams kernel iopub messages to the client ephemerally;
-this package mirrors every such message into SQLite so reopening a
-notebook after kernel restart (or a page reload) paints the previous
-session's outputs without re-running any code.
+Kernel iopub messages stream to the client ephemerally; this package
+mirrors every such message into SQLite so reopening a notebook after
+kernel restart (or a page reload) paints the previous session's
+outputs without re-running any code.
 
-Sprint 79 split the original 480-LOC ``notebook_outputs.py`` into:
+Composed of two sibling modules:
 
 * :mod:`.outputs` — append / load / clear / rename for the
   ``NotebookOutput`` table (with cross-table cleanup of

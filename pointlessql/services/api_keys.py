@@ -1,17 +1,15 @@
-"""DB-backed Bearer-token API-key store (Sprint 13.11.4a).
+"""DB-backed Bearer-token API-key store.
 
-Sprint 13.7.0.5 shipped this as a pure env-var parser
-(``POINTLESSQL_API_KEYS=name:secret,…``). Sprint 13.11.4a promotes
-it to a real DB table (``api_keys``) so admins can rotate keys
-without a process restart and so the new ``supervisor`` scope
-gating Family-B Sprint-13.11.4 routes lives next to the secret it
+API keys are persisted in the ``api_keys`` table so admins can
+rotate them without a process restart and so the ``supervisor``
+scope gating supervisor-only routes lives next to the secret it
 authorises.
 
-The env-var stays valid as a *bootstrap* path: every server start
-spills declared ``name:secret[:supervisor]`` pairs into the table
-idempotently via :func:`bootstrap_from_env`, so clean-machine
-``docker-compose`` deployments without an admin UI mounted still
-work.
+The legacy ``POINTLESSQL_API_KEYS`` env var stays valid as a
+*bootstrap* path: every server start spills declared
+``name:secret[:supervisor]`` pairs into the table idempotently via
+:func:`bootstrap_from_env`, so clean-machine ``docker-compose``
+deployments without an admin UI mounted still work.
 
 Token verification uses :func:`hashlib.sha256` on the presented
 secret and compares against the indexed ``secret_hash`` column.
@@ -87,16 +85,16 @@ def invalidate_cache() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Env-var bootstrap (back-compat with Sprint 13.7.0.5)
+# Env-var bootstrap (back-compat with the legacy env-var-only mode)
 # ---------------------------------------------------------------------------
 
 
 def parse_keys(raw: str | None) -> dict[str, tuple[str, bool]]:
     """Parse ``POINTLESSQL_API_KEYS`` env value into ``{name: (secret, supervisor)}``.
 
-    Format extension introduced for the Sprint-13.11.4a bootstrap
-    flow: ``name:secret`` keeps the legacy shape (``supervisor=False``);
-    ``name:secret:supervisor`` opts into the supervisor scope.
+    Format: ``name:secret`` keeps the legacy shape
+    (``supervisor=False``); ``name:secret:supervisor`` opts into the
+    supervisor scope.
     Anything else as the third token raises so a typo can't silently
     grant supervisor access.
 
@@ -128,10 +126,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool]]:
         name = parts[0].strip()
         secret = parts[1].strip()
         if not name or not secret:
-            raise ValueError(
-                f"POINTLESSQL_API_KEYS entry {pair!r} has an empty "
-                f"name or secret"
-            )
+            raise ValueError(f"POINTLESSQL_API_KEYS entry {pair!r} has an empty name or secret")
         supervisor = False
         if len(parts) == 3:
             scope = parts[2].strip().lower()
@@ -142,16 +137,12 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool]]:
                 )
             supervisor = True
         if name in out:
-            raise ValueError(
-                f"POINTLESSQL_API_KEYS entry name {name!r} is duplicated"
-            )
+            raise ValueError(f"POINTLESSQL_API_KEYS entry name {name!r} is duplicated")
         out[name] = (secret, supervisor)
     return out
 
 
-def bootstrap_from_env(
-    session_factory: _SessionFactory, env: dict[str, str] | None = None
-) -> int:
+def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | None = None) -> int:
     """Idempotently spill ``POINTLESSQL_API_KEYS`` pairs into the DB.
 
     Called once at server startup.  For each parsed pair, if no row
@@ -179,9 +170,7 @@ def bootstrap_from_env(
         return 0
     inserted = 0
     with session_factory() as session:
-        existing_names = {
-            n for (n,) in session.execute(select(ApiKey.name)).all()
-        }
+        existing_names = {n for (n,) in session.execute(select(ApiKey.name)).all()}
         for name, (secret, supervisor) in parsed.items():
             if name in existing_names:
                 continue
@@ -199,9 +188,7 @@ def bootstrap_from_env(
             session.commit()
     if inserted:
         invalidate_cache()
-        logger.info(
-            "Bootstrapped %d API keys from POINTLESSQL_API_KEYS", inserted
-        )
+        logger.info("Bootstrapped %d API keys from POINTLESSQL_API_KEYS", inserted)
     return inserted
 
 
@@ -226,8 +213,8 @@ def create_api_key(
     Args:
         session_factory: Sessionmaker callable.
         name: Unique label (max 64 chars).
-        supervisor: When ``True``, the key may invoke Family-B
-            Sprint-13.11.4 supervisor routes.
+        supervisor: When ``True``, the key may invoke supervisor-scope
+            routes.
         created_by_user_id: Admin who created the key.  ``None`` for
             CLI-provisioned or env-var-bootstrapped keys.
 
@@ -241,9 +228,7 @@ def create_api_key(
     """
     cleaned = name.strip()
     if not cleaned or len(cleaned) > 64:
-        raise ValueError(
-            "API key name must be a non-empty string up to 64 chars"
-        )
+        raise ValueError("API key name must be a non-empty string up to 64 chars")
     plaintext = secrets.token_urlsafe(32)
     with session_factory() as session:
         row = ApiKey(
@@ -262,9 +247,7 @@ def create_api_key(
     return row, plaintext
 
 
-def revoke_api_key(
-    session_factory: _SessionFactory, *, name: str
-) -> bool:
+def revoke_api_key(session_factory: _SessionFactory, *, name: str) -> bool:
     """Mark *name* as revoked.  Returns ``True`` when a row was updated."""
     with session_factory() as session:
         row = session.scalar(select(ApiKey).where(ApiKey.name == name))
@@ -346,9 +329,7 @@ def verify_bearer(
 
     with session_factory() as session:
         row = session.scalar(
-            select(ApiKey).where(
-                ApiKey.secret_hash == digest, ApiKey.revoked_at.is_(None)
-            )
+            select(ApiKey).where(ApiKey.secret_hash == digest, ApiKey.revoked_at.is_(None))
         )
         if row is None:
             return None
@@ -360,9 +341,7 @@ def verify_bearer(
         # Best-effort last-used update — failures don't affect auth.
         try:
             session.execute(
-                update(ApiKey)
-                .where(ApiKey.id == row.id)
-                .values(last_used_at=datetime.now(UTC))
+                update(ApiKey).where(ApiKey.id == row.id).values(last_used_at=datetime.now(UTC))
             )
             session.commit()
         except Exception:  # noqa: BLE001 — auditing is non-critical
@@ -373,9 +352,7 @@ def verify_bearer(
     return entry
 
 
-def is_supervisor(
-    session_factory: _SessionFactory, *, name: str
-) -> bool:
+def is_supervisor(session_factory: _SessionFactory, *, name: str) -> bool:
     """Return ``True`` when the named key carries the supervisor scope.
 
     Used by :func:`pointlessql.api.dependencies.require_supervisor`
@@ -391,9 +368,5 @@ def is_supervisor(
         ``supervisor=True``.
     """
     with session_factory() as session:
-        row = session.scalar(
-            select(ApiKey).where(
-                ApiKey.name == name, ApiKey.revoked_at.is_(None)
-            )
-        )
+        row = session.scalar(select(ApiKey).where(ApiKey.name == name, ApiKey.revoked_at.is_(None)))
         return bool(row and row.supervisor)

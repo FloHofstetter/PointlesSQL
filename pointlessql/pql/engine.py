@@ -69,8 +69,7 @@ class Engine(Protocol):
 class PandasEngine:
     """Engine that reads Delta tables as pandas DataFrames.
 
-    This is the default engine, preserving backward compatibility
-    with the pre-Sprint-11 behavior.
+    This is the default engine.
     """
 
     def read(self, storage_location: str) -> pd.DataFrame:
@@ -94,11 +93,11 @@ class PandasEngine:
         replaces the prior table contents *and* its schema.  Without
         ``schema_mode="overwrite"`` deltalake refuses any column-set
         change with ``SchemaMismatchError("Cannot cast schema, number
-        of fields does not match")`` — which surprised the
-        Sprint-13.11.11 live demo when the agent rebuilt a silver
-        table with a slightly different projection.  Append-mode keeps
-        the merge-with-existing semantics; the schema must still match
-        on append, that's the point of append.
+        of fields does not match")``, which breaks the common pattern
+        of an agent rebuilding a silver table with a slightly
+        different projection.  Append-mode keeps the merge-with-
+        existing semantics; the schema must still match on append,
+        that's the point of append.
 
         Args:
             frame: The DataFrame to write.

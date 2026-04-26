@@ -1,4 +1,4 @@
-"""Admin CRUD for the Sprint-13.11.4a ``api_keys`` table.
+"""Admin CRUD for the ``api_keys`` table.
 
 Three JSON endpoints, all gated by :func:`require_admin`.  Plaintext
 secrets are returned exactly once — at create time — and never
@@ -42,9 +42,7 @@ def _serialize(row: Any) -> dict[str, Any]:
         "supervisor": bool(row.supervisor),
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
-        "last_used_at": (
-            row.last_used_at.isoformat() if row.last_used_at else None
-        ),
+        "last_used_at": (row.last_used_at.isoformat() if row.last_used_at else None),
     }
 
 
@@ -70,7 +68,8 @@ async def api_admin_list_api_keys(
 
 @router.post("/api/admin/api-keys")
 async def api_admin_create_api_key(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Create a new API key and return the plaintext secret once.
 
@@ -116,9 +115,7 @@ async def api_admin_create_api_key(
 
 
 @router.post("/api/admin/api-keys/{name}/revoke")
-async def api_admin_revoke_api_key(
-    request: Request, name: str
-) -> dict[str, Any]:
+async def api_admin_revoke_api_key(request: Request, name: str) -> dict[str, Any]:
     """Mark *name* as revoked.
 
     Args:
@@ -132,9 +129,7 @@ async def api_admin_revoke_api_key(
         CatalogNotFoundError: No active key with that name.
     """
     require_admin(request)
-    revoked = api_keys_service.revoke_api_key(
-        request.app.state.session_factory, name=name
-    )
+    revoked = api_keys_service.revoke_api_key(request.app.state.session_factory, name=name)
     if not revoked:
         raise CatalogNotFoundError(f"api_key {name!r} not found or already revoked")
     await audit(request, "api_key.revoked", f"api_key:{name}")

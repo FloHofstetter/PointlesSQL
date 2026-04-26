@@ -1,6 +1,6 @@
-"""``pql.autoload()`` — Sprint 13.5.3 file → bronze ingestion.
+"""``pql.autoload()`` — file → bronze ingestion.
 
-The third Phase-13.5 building block: lifts files from a Volume
+One of the Medallion building blocks: lifts files from a Volume
 directory (or any local filesystem path) into a Delta target table
 with audit columns, file-level exactly-once via SHA-256 checkpoints.
 DuckDB does the type inference; ``deltalake`` does the write.
@@ -8,19 +8,18 @@ DuckDB does the type inference; ``deltalake`` does the write.
 Design choices (deliberately small for the MVP):
 
 * **Local filesystem paths** are the source — Volumes-as-managed-
-  directories.  HTTP-fetched-Volume support stays a follow-up
-  sprint; the demo runs against locally-mounted Volume roots.
+  directories.  HTTP-fetched-Volume support stays a follow-up;
+  the demo runs against locally-mounted Volume roots.
 * **File-level exactly-once** via the ``autoload_checkpoints``
   table, keyed on ``(target_table, file_sha)``.  A re-run over
   the same directory skips already-ingested files; a content
   edit produces a new SHA and re-ingests.  Per-row dedup +
-  schema-drift handling are explicitly deferred (would inflate
-  this sprint past the "file-level MVP" mandate; can land as
-  Sprint 13.5.3b).
+  schema-drift handling are explicitly deferred (out of MVP
+  scope).
 * **Audit columns** (``_ingested_at`` / ``_source_file`` /
   ``_source_system``) are pulled from
   :func:`pointlessql.conventions.load_conventions` so the column
-  names track the Sprint-13.5.1 contract.
+  names track the configured contract.
 * **Target bootstrap** — the first autoload into a non-existent
   target uses ``deltalake.write_deltalake`` (which is happy to
   create) and registers the resulting Delta path in soyuz-catalog
@@ -105,8 +104,8 @@ def autoload_files(
             first-time table registration in soyuz-catalog.
         session_factory: SQLAlchemy session factory backing the
             ``autoload_checkpoints`` table.  Caller is responsible
-            for ``init_db`` having been called.  Sprint 13.8 reuses
-            this same factory for the ``agent_run_operations`` row.
+            for ``init_db`` having been called.  The same factory
+            also backs the ``agent_run_operations`` row.
         source_path: Local filesystem directory (recursive walk) or
             a glob pattern (``*`` / ``?`` / ``[``-class).
         target: UC ``"catalog.schema.table"`` string.
@@ -119,9 +118,9 @@ def autoload_files(
             :func:`load_conventions` when ``None``.  The bronze
             layer's ``required_audit_columns`` drive the injection.
         unreachable_msg: Pre-rendered "cannot reach catalog" message.
-        agent_run_id: Sprint 13.8 — when set, emits one
-            ``agent_run_operations`` row capturing pre/post Delta
-            versions, file SHA digest, and ingest counts.
+        agent_run_id: When set, emits one ``agent_run_operations``
+            row capturing pre/post Delta versions, file SHA digest,
+            and ingest counts.
 
     Returns:
         ``{"target", "files_scanned", "files_ingested", "files_skipped",
@@ -216,9 +215,7 @@ def autoload_files(
         if agent_run_id is not None:
             recorder.delta_version_after = safe_delta_version(target_location)
             recorder.rows_affected = rows_total
-            recorder.input_sha = (
-                concat_sha256(ingested_shas) if ingested_shas else None
-            )
+            recorder.input_sha = concat_sha256(ingested_shas) if ingested_shas else None
             recorder.extra_params = {
                 "files_scanned": len(files),
                 "files_ingested": files_ingested,
@@ -251,9 +248,7 @@ def _resolve_audit_columns(conventions: ConventionsConfig) -> tuple[str, ...]:
     return bronze.required_audit_columns
 
 
-def _list_source_files(
-    source_path: str | Path, file_format: AutoloadFormat
-) -> list[str]:
+def _list_source_files(source_path: str | Path, file_format: AutoloadFormat) -> list[str]:
     """List files under *source_path* matching the requested format.
 
     A path containing glob characters is treated as a glob; otherwise
@@ -282,9 +277,7 @@ def _list_source_files(
             candidates = []
 
     if file_format == "auto":
-        return [
-            p for p in candidates if Path(p).suffix.lower() in _FORMAT_BY_EXTENSION
-        ]
+        return [p for p in candidates if Path(p).suffix.lower() in _FORMAT_BY_EXTENSION]
 
     target_ext = {ext for ext, fmt in _FORMAT_BY_EXTENSION.items() if fmt == file_format}
     return [p for p in candidates if Path(p).suffix.lower() in target_ext]
@@ -377,9 +370,7 @@ def _inject_audit_columns(
     n = arrow_table.num_rows
     base_name = Path(file_path).name
     column_values: dict[str, pa.Array] = {
-        "_ingested_at": pa.array(
-            [ingested_at] * n, type=pa.timestamp("us", tz="UTC")
-        ),
+        "_ingested_at": pa.array([ingested_at] * n, type=pa.timestamp("us", tz="UTC")),
         "_source_file": pa.array([base_name] * n, type=pa.string()),
         "_source_system": pa.array([source_system] * n, type=pa.string()),
     }
@@ -415,9 +406,7 @@ def _sha256_file(file_path: str) -> str:
     return hasher.hexdigest()
 
 
-def _checkpoint_exists(
-    session_factory: sessionmaker[Session], target: str, sha: str
-) -> bool:
+def _checkpoint_exists(session_factory: sessionmaker[Session], target: str, sha: str) -> bool:
     """Return whether ``(target, sha)`` is already recorded.
 
     Args:
@@ -519,8 +508,7 @@ def _append_to_delta(target_location: str, arrow_table: pa.Table) -> None:
     Uses ``deltalake.write_deltalake(mode="append")`` which creates
     the table on the first call.  No schema-evolution flags — the
     MVP requires the second-and-subsequent files to match the
-    bootstrap schema.  Schema-drift handling is the deferred
-    Sprint 13.5.3b scope.
+    bootstrap schema.  Schema-drift handling is deferred.
 
     Args:
         target_location: Delta table storage URI.

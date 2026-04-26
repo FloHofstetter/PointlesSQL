@@ -1,7 +1,6 @@
 """Jobs + scheduler routes — CRUD, runs, tasks, logs, papermill artefacts.
 
-Sprint 89b split out of ``api/main.py``.  Owns the full job-scheduler
-surface in one module:
+Owns the full job-scheduler surface in one module:
 
 * JSON CRUD: ``GET /api/jobs``, ``POST /api/jobs``,
   ``POST /api/jobs/{id}/run``, ``POST /api/jobs/{id}/pause``,
@@ -315,10 +314,10 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
 
     Two shapes are accepted:
 
-    * Single-task (Sprint 19 compatibility):
+    * Single-task (legacy shape):
       ``{name, cron_expr, kind, config, ...}`` — the scheduler walks
       ``job.kind`` / ``job.config`` directly.
-    * DAG (Sprint 20):
+    * DAG:
       ``{name, cron_expr, tasks: [{name, kind, config, depends_on?,
       max_retries?, retry_backoff_seconds?}, ...], max_parallel_runs?}``.
       ``depends_on`` inside the payload references *task names* because
@@ -350,7 +349,7 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
     if tasks_payload is not None and not isinstance(tasks_payload, list):
         raise _VE("tasks must be a JSON array when provided")
 
-    # Single-task shortcut: validate kind + config just like Sprint 19.
+    # Single-task shortcut: validate kind + config inline.
     if not tasks_payload:
         kind = body.get("kind")
         if not kind:
@@ -413,7 +412,7 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
         session.add(job)
         # Flush-only, not commit: if DAG validation below fails, the
         # ``with factory() as session:`` context closes without commit
-        # and the job row never lands in the DB (Sprint 23 BUG-23-02).
+        # and the job row never lands in the DB (BUG-23-02).
         session.flush()
 
         if tasks_payload:
@@ -568,12 +567,14 @@ async def job_run_notebook(
 
     When ``exclude_input=true`` is passed as a query param, the render
     hides code cells and caches to a sibling ``{run_id}.dashboard.html``
-    sidecar — used by the Sprint 28 dashboard iframe to publish
-    output-only views of the latest succeeded run.
+    sidecar — used by the dashboard iframe to publish output-only
+    views of the latest succeeded run.
     """
     runs_dir = load_papermill_run_output_path(request, job_id, run_id)
     html = notebook_render_service.render_run_notebook(
-        runs_dir, run_id, exclude_input=exclude_input,
+        runs_dir,
+        run_id,
+        exclude_input=exclude_input,
     )
     return HTMLResponse(html)
 
@@ -587,9 +588,9 @@ async def job_run_notebook_download(
 ) -> FileResponse:
     """Download the raw ipynb or cached-HTML sidecar for a run.
 
-    Sprint 26 chose a visibility-checked route over a StaticFiles mount
+    A visibility-checked route is preferred over a StaticFiles mount
     so non-owner logged-in users cannot guess ``run_id`` values and
-    exfiltrate another user's job output. ``format=html`` triggers a
+    exfiltrate another user's job output.  ``format=html`` triggers a
     render if the sidecar is not yet present.
     """
     from pointlessql.exceptions import CatalogNotFoundError
@@ -623,9 +624,9 @@ async def job_run_compare(
 
     Both runs must belong to ``job_id`` — this prevents leaking a peek
     at a different job's output by smuggling a foreign ``to=`` run id
-    through the query string. The page itself embeds two Sprint 26
+    through the query string.  The page itself embeds two
     ``/jobs/{id}/runs/{rid}/notebook`` iframes; no cell-level diffing
-    (stub — that is a future sprint if demand emerges).
+    yet (a future enhancement if demand emerges).
     """
     from pointlessql.exceptions import CatalogNotFoundError
     from pointlessql.models import JobRun as JobRunModel

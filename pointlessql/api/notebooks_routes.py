@@ -1,21 +1,15 @@
-"""Notebook workspace HTTP routes (read-only post-pivot).
+"""Notebook workspace HTTP routes (read-only).
 
-Phase 12.12.2 trimmed this module to the supervision-only surface:
-the workspace HTML page plus the two read endpoints the page and the
-jobs-create-modal lean on
+Supervision-only surface: the workspace HTML page plus the two read
+endpoints the page and the jobs-create-modal lean on
 (``GET /api/notebooks/tree``, ``GET /api/notebooks/inspect``).
 
-Everything else — the browser editor shell
-(``GET /notebook/editor``), the load / save / cell-run endpoints
-(``GET`` / ``POST /api/notebook/doc`` and
-``GET /api/notebook/cell-runs``), and the workspace CRUD
-(``POST /api/notebooks/upload``, ``POST /api/notebooks/create``,
-``PATCH /api/notebooks/rename``, ``DELETE /api/notebooks``) — was
-removed in the agent-first pivot: humans no longer author notebooks
-in the UI, agents drop ``.py`` jupytext-Percent files into
-``notebooks/`` and the scheduler executes them. Human surface is
-``/runs`` (supervision) + this page (read-only discovery + "schedule
-this for Papermill" affordance).
+The browser editor shell, the load / save / cell-run endpoints,
+and the workspace CRUD have all been removed: humans no longer
+author notebooks in the UI; agents drop ``.py`` jupytext-Percent
+files into ``notebooks/`` and the scheduler executes them.  Human
+surface is ``/runs`` (supervision) + this page (read-only
+discovery + "schedule this for Papermill" affordance).
 """
 
 from __future__ import annotations
@@ -67,7 +61,8 @@ async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, An
     require_admin(request)
     settings: Settings = request.app.state.settings
     resolved = scheduler_service.resolve_notebook_path(
-        settings.jupyter.notebooks_dir.resolve(), path,
+        settings.jupyter.notebooks_dir.resolve(),
+        path,
     )
     raw = papermill.inspect_notebook(str(resolved))
     out: list[dict[str, Any]] = []

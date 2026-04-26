@@ -1,13 +1,10 @@
-"""PQL write-side endpoints — Sprint 13.11.11.
+"""PQL write-side endpoints.
 
-Closes the read-only gap in the agent's tool surface.  Until this
-sprint, ``hermes-plugin-pointlessql`` exposed ``pql_query`` (read SQL)
-plus the Family-A introspection set (Sprint 13.11.1-3), but the agent
-had **no way** to drive a Bronze → Silver → Gold pipeline through
-Hermes — every write needed a side-channel script.  The 2026-04-26
-walkthrough surfaced this when ``gpt-5-mini`` correctly identified that
-``pql.autoload`` was unreachable from the chat adapter (see
-``project_plugin_write_tools_gap.md``).
+Closes the read-only gap in the agent's tool surface.  The
+``hermes-plugin-pointlessql`` package exposes ``pql_query`` (read SQL)
+plus the Family-A introspection set, but without these write routes the
+agent has no way to drive a Bronze → Silver → Gold pipeline through
+Hermes — every write would need a side-channel script.
 
 This module hosts every ``POST /api/pql/...`` write route:
 
@@ -23,9 +20,9 @@ This module hosts every ``POST /api/pql/...`` write route:
 
 All four sit behind the principal-aware
 :func:`pointlessql.services.authorization.check_privilege` enforcement
-plus the Sprint-13.8 forced audit trail: rows of
-``agent_run_operations`` are emitted by the underlying primitives, so a
-write that errors halfway still leaves a correct trace.
+plus the forced audit trail: rows of ``agent_run_operations`` are
+emitted by the underlying primitives, so a write that errors halfway
+still leaves a correct trace.
 
 The write routes deliberately do not duplicate the SQL editor's parse
 + enforce code path verbatim — instead, ``write_table`` and ``merge``
@@ -248,8 +245,7 @@ def _build_pql(request: Request, *, principal: str, agent_run_id: str | None) ->
         principal: The effective principal forwarded as ``X-Principal``
             on every soyuz call PQL makes.
         agent_run_id: Optional run id; when present every PQL primitive
-            writes one ``agent_run_operations`` row (Sprint 13.8 forced
-            trail).
+            writes one ``agent_run_operations`` row (forced audit trail).
 
     Returns:
         A configured :class:`PQL` instance ready for sync dispatch

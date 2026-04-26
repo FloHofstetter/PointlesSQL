@@ -15,9 +15,9 @@ class SyncRun(Base):
 
     Written by :mod:`pointlessql.services.pg_sync` when a Postgres
     sync worker runs against a foreign catalog — either through the
-    manual "Sync now" button (Sprint 18) or later on a schedule
-    (Sprint 19).  Entries are append-only and double as the source
-    for the history card on the catalog detail page.
+    manual "Sync now" button or on a schedule.  Entries are
+    append-only and double as the source for the history card on
+    the catalog detail page.
 
     ``status`` cycles through ``running`` → ``succeeded`` | ``failed``.
     ``finished_at`` stays ``NULL`` while the run is in flight, which
@@ -40,9 +40,7 @@ class SyncRun(Base):
 
     __tablename__ = "sync_run"
 
-    __table_args__ = (
-        Index("ix_sync_run_catalog_started", "catalog_name", "started_at"),
-    )
+    __table_args__ = (Index("ix_sync_run_catalog_started", "catalog_name", "started_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     catalog_name: Mapped[str] = mapped_column(String(500), nullable=False)

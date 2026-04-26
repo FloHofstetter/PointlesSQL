@@ -1,4 +1,4 @@
-"""Autoload checkpoints — Sprint 13.5.3 file-level exactly-once.
+"""Autoload checkpoints — file-level exactly-once for ingestion.
 
 The ``pql.autoload`` primitive consults this table before reading
 a Volume file and records a row after a successful append, so a
@@ -49,9 +49,7 @@ class AutoloadCheckpoint(Base):
     __tablename__ = "autoload_checkpoints"
 
     __table_args__ = (
-        UniqueConstraint(
-            "target_table", "file_sha", name="uq_autoload_target_sha"
-        ),
+        UniqueConstraint("target_table", "file_sha", name="uq_autoload_target_sha"),
         Index(
             "ix_autoload_checkpoints_target_path",
             "target_table",
@@ -63,7 +61,5 @@ class AutoloadCheckpoint(Base):
     source_path: Mapped[str] = mapped_column(String(2048), nullable=False)
     file_sha: Mapped[str] = mapped_column(String(64), nullable=False)
     target_table: Mapped[str] = mapped_column(String(512), nullable=False)
-    ingested_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    ingested_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     rows_ingested: Mapped[int] = mapped_column(Integer, nullable=False)

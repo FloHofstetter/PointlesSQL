@@ -1,10 +1,10 @@
 """Sync bridge between Unity Catalog metadata and Delta Lake DataFrames.
 
-Sprint 78 — split into ``_types`` (SQLResult), ``_read``, ``_sql``,
-``_write``, ``_list`` siblings. The :class:`PQL` class stays here as
-the public façade; method bodies delegate to the sibling helpers so
-the orchestration shape (init → method dispatch) is readable in one
-file while the per-concern logic lives next door.
+The package is split into ``_types`` (SQLResult), ``_read``,
+``_sql``, ``_write``, ``_list`` siblings.  The :class:`PQL` class
+stays here as the public façade; method bodies delegate to the
+sibling helpers so the orchestration shape (init → method dispatch)
+is readable in one file while the per-concern logic lives next door.
 
 ``SQLResult`` is re-exported from this module so existing
 ``from pointlessql.pql.pql import SQLResult`` callers (notably the
@@ -39,25 +39,26 @@ class PQL:
     are synchronous — the web UI's async wrapper
     (``pointlessql.services.unitycatalog``) is a separate concern.
 
-    When the ``POINTLESSQL_PRINCIPAL`` environment variable is set and no
-    explicit ``client`` is passed, the constructor builds a
-    principal-forwarded client via ``make_principal_client()`` so every
-    catalog call carries an ``X-Principal`` header. The Sprint 24
-    Papermill executor uses this to make notebook code that instantiates
-    ``PQL()`` inherit the job's run-as user without any extra wiring —
-    regular interactive use is unaffected.
+    When the ``POINTLESSQL_PRINCIPAL`` environment variable is set
+    and no explicit ``client`` is passed, the constructor builds a
+    principal-forwarded client via ``make_principal_client()`` so
+    every catalog call carries an ``X-Principal`` header.  The
+    Papermill executor uses this to make notebook code that
+    instantiates ``PQL()`` inherit the job's run-as user without
+    any extra wiring — regular interactive use is unaffected.
 
-    Sprint 13.6 added an explicit ``principal`` argument so a Hermes
-    plugin (or any other process spawning PQL programmatically) can
-    pass the agent's principal without mutating the process env.
-    Resolution order: explicit ``client`` wins; otherwise an explicit
-    ``principal`` argument; otherwise the ``POINTLESSQL_PRINCIPAL``
-    env var; otherwise an unforwarded client.
+    The constructor also accepts an explicit ``principal`` argument
+    so a Hermes plugin (or any other process spawning PQL
+    programmatically) can pass the agent's principal without
+    mutating the process env.  Resolution order: explicit ``client``
+    wins; otherwise an explicit ``principal`` argument; otherwise
+    the ``POINTLESSQL_PRINCIPAL`` env var; otherwise an unforwarded
+    client.
 
-    Sprint 13.10 added lazy metadata-DB initialisation.  When the
-    agent runtime spawns the ``.py`` as a subprocess the FastAPI
-    lifespan never runs, so the audit-trail writes from
-    :meth:`autoload` / :meth:`merge` / :meth:`write_table` raise
+    Lazy metadata-DB initialisation: when the agent runtime spawns
+    the ``.py`` as a subprocess the FastAPI lifespan never runs, so
+    the audit-trail writes from :meth:`autoload` / :meth:`merge` /
+    :meth:`write_table` would raise
     ``RuntimeError("Database not initialised — call init_db() first")``.
     If a run id is resolved (explicit ``agent_run_id`` or env) and
     the session factory is unbound, ``__init__`` lazy-calls
@@ -79,11 +80,10 @@ class PQL:
         principal: Explicit X-Principal value forwarded on every UC
             call.  Wins over ``POINTLESSQL_PRINCIPAL``.  ``None``
             falls back to the env var.
-        agent_run_id: Sprint 13.8 — explicit run UUID; every PQL
-            primitive call writes one ``agent_run_operations`` row
-            for forced-audit purposes.  Wins over
-            ``POINTLESSQL_AGENT_RUN_ID``; ``None`` keeps the
-            interactive path silent.
+        agent_run_id: Explicit run UUID; every PQL primitive call
+            writes one ``agent_run_operations`` row for forced-audit
+            purposes.  Wins over ``POINTLESSQL_AGENT_RUN_ID``;
+            ``None`` keeps the interactive path silent.
     """
 
     def __init__(
@@ -110,15 +110,14 @@ class PQL:
             self._engine = make_engine(engine)
         else:
             self._engine = engine
-        # Sprint 13.8: agent-run-id resolution mirrors `principal`.
-        # Explicit kwarg wins; otherwise the runtime sets the env var
-        # before exec'ing the agent's `.py`.  ``None`` keeps the
-        # interactive PQL path agnostic — no operation rows are
-        # emitted.
+        # Agent-run-id resolution mirrors `principal`.  Explicit
+        # kwarg wins; otherwise the runtime sets the env var before
+        # exec'ing the agent's `.py`.  ``None`` keeps the interactive
+        # PQL path agnostic — no operation rows are emitted.
         self._current_run_id = agent_run_id or os.environ.get("POINTLESSQL_AGENT_RUN_ID")
-        # Sprint 13.10: subprocess-spawned agent notebooks bypass the
-        # FastAPI lifespan, so ``get_session_factory()`` would raise
-        # on the first ``agent_run_operations`` write.  Lazy-init the
+        # Subprocess-spawned agent notebooks bypass the FastAPI
+        # lifespan, so ``get_session_factory()`` would raise on the
+        # first ``agent_run_operations`` write.  Lazy-init the
         # metadata DB when a run id was resolved and no factory is
         # bound yet.  ``init_db`` is idempotent under repeated
         # invocations on the same URL — alembic upgrade-to-head is a
@@ -217,7 +216,7 @@ class PQL:
     ) -> dict[str, Any]:
         """Merge *source* into the existing Delta table at *target*.
 
-        Sprint 13.5.2.  Two strategies:
+        Two strategies:
 
         * ``"upsert"`` — match on *on* keys, update all non-key
           columns from source on match, insert new rows otherwise.
@@ -233,8 +232,8 @@ class PQL:
                 ``"catalog.schema.table"`` reference (resolved
                 through :meth:`table` when a string).
             target: UC ``"catalog.schema.table"`` reference.  Must
-                already exist — use :meth:`write_table` (or, when
-                Sprint 13.5.3 lands, :meth:`autoload`) to bootstrap.
+                already exist — use :meth:`write_table` or
+                :meth:`autoload` to bootstrap.
             on: Non-empty list of merge-key column names.
             strategy: ``"upsert"`` (default) or ``"scd2"``.
 
@@ -264,7 +263,7 @@ class PQL:
     ) -> dict[str, Any]:
         """Lift files from a Volume directory into a bronze Delta table.
 
-        Sprint 13.5.3.  DuckDB type-infers each file
+        DuckDB type-infers each file
         (``read_parquet`` / ``read_csv_auto`` / ``read_json_auto``),
         the audit columns from
         :func:`pointlessql.conventions.load_conventions` are
@@ -276,8 +275,8 @@ class PQL:
 
         Args:
             source_path: Local filesystem directory (recursive walk)
-                or glob pattern.  Volumes-as-managed-directories —
-                HTTP-fetched-Volume support is a follow-up sprint.
+                or glob pattern.  Volumes-as-managed-directories;
+                HTTP-fetched-Volume support is a follow-up.
             target: UC ``"catalog.schema.table"`` string.  When the
                 target doesn't exist it is created on the first
                 successful append, using the parent schema's

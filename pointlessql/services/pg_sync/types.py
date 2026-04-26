@@ -1,9 +1,8 @@
 """Shared dataclasses + Postgres → UC type mapping.
 
-Sprint 82 split out of the monolithic ``pg_sync.py``.  Hosts the data
-shapes consumed by both halves of the sync pipeline (``snapshot``
-introspection produces them; ``diff`` consumes them) so neither side
-imports the other's module.
+Hosts the data shapes consumed by both halves of the sync pipeline
+(``snapshot`` introspection produces them; ``diff`` consumes them)
+so neither side imports the other's module.
 """
 
 from __future__ import annotations

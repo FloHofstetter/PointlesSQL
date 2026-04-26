@@ -1,4 +1,4 @@
-"""Sprint 13.8 — forced audit-trail ORM models.
+"""Forced audit-trail ORM models for agent runs.
 
 Three tables back the supervision guarantee:
 
@@ -66,9 +66,7 @@ class AgentRunSource(Base):
     )
     source_bytes: Mapped[str] = mapped_column(Text, nullable=False)
     source_sha: Mapped[str] = mapped_column(String(64), nullable=False)
-    captured_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    captured_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class AgentRunOperation(Base):
@@ -123,9 +121,7 @@ class AgentRunOperation(Base):
 
     __tablename__ = "agent_run_operations"
     __table_args__ = (
-        UniqueConstraint(
-            "agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"
-        ),
+        UniqueConstraint("agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"),
         Index("ix_agent_run_operations_run", "agent_run_id"),
     )
 
@@ -141,9 +137,7 @@ class AgentRunOperation(Base):
     rows_affected: Mapped[int | None] = mapped_column(Integer, nullable=True)
     delta_version_before: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     delta_version_after: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    started_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -153,11 +147,11 @@ class AgentRunOperation(Base):
 class AgentRunEvent(Base):
     """One CloudEvents lifecycle envelope for an agent run.
 
-    Sprint 13.3 emitted CloudEvents fire-and-forget; Sprint 13.8
-    persists every envelope so a webhook outage can't lose the
-    trail.  The row is inserted with ``outcome = "pending"`` *before*
-    the dispatch call; the dispatcher updates the column to
-    ``"delivered"`` / ``"delivery_failed"`` / ``"no_destination"``.
+    Every CloudEvents envelope is persisted so a webhook outage
+    can't lose the trail.  The row is inserted with
+    ``outcome = "pending"`` *before* the dispatch call; the
+    dispatcher updates the column to ``"delivered"`` /
+    ``"delivery_failed"`` / ``"no_destination"``.
 
     Attributes:
         id: Auto-incremented primary key.
@@ -175,9 +169,7 @@ class AgentRunEvent(Base):
     """
 
     __tablename__ = "agent_run_events"
-    __table_args__ = (
-        Index("ix_agent_run_events_fired", "agent_run_id", "fired_at"),
-    )
+    __table_args__ = (Index("ix_agent_run_events_fired", "agent_run_id", "fired_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     agent_run_id: Mapped[str] = mapped_column(
@@ -185,15 +177,13 @@ class AgentRunEvent(Base):
     )
     event_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
-    fired_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    fired_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     outcome: Mapped[str] = mapped_column(String(20), nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class AgentRunToolCall(Base):
-    """One LLM tool invocation inside an agent run (Sprint 13.7.4).
+    """One LLM tool invocation inside an agent run.
 
     Distinct from :class:`AgentRunOperation` (PQL primitive writes)
     and :class:`AgentRunEvent` (CloudEvent dispatch outcome).  Tool
@@ -236,6 +226,4 @@ class AgentRunToolCall(Base):
     args_json: Mapped[str] = mapped_column(Text, nullable=False)
     result_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    called_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    called_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

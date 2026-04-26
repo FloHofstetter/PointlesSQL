@@ -1,7 +1,7 @@
 """Admin audit-log viewer + export.
 
-Sprint 90 split out of ``api/main.py``.  Owns the two admin-gated
-routes that surface the Sprint-7 ``audit_log`` table:
+Owns the two admin-gated routes that surface the ``audit_log``
+table:
 
 * ``GET /admin/audit`` (HTML) — filterable list view with a
   1000-row newest-first cap and the same chip-filter Alpine
@@ -60,8 +60,8 @@ async def admin_audit_index(
 ) -> HTMLResponse:
     """Render the admin audit-log viewer.
 
-    Reads from the Sprint-7 ``audit_log`` table (written append-only
-    by every admin state-change via :func:`audit`) and shows the
+    Reads from the ``audit_log`` table (written append-only by
+    every admin state-change via :func:`audit`) and shows the
     newest :data:`ADMIN_AUDIT_LIMIT` rows matching the requested
     filters. Admin-gated because the log carries cross-user activity
     that a non-admin principal must not see. Re-uses the ``/jobs``
@@ -226,9 +226,7 @@ async def admin_audit_export(
             content=body,
             media_type="application/json",
             headers={
-                "Content-Disposition": (
-                    f'attachment; filename="pql-audit-{timestamp}.json"'
-                ),
+                "Content-Disposition": (f'attachment; filename="pql-audit-{timestamp}.json"'),
             },
         )
 
@@ -252,8 +250,6 @@ async def admin_audit_export(
         content=buf.getvalue(),
         media_type="text/csv",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="pql-audit-{timestamp}.csv"'
-            ),
+            "Content-Disposition": (f'attachment; filename="pql-audit-{timestamp}.csv"'),
         },
     )

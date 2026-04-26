@@ -1,10 +1,9 @@
 """Server-side renderer for persisted notebook output frames.
 
-The Phase 12.12 pivot removes the browser notebook editor in favour of
-a static supervision view: ``/runs/{id}`` renders the ``.py`` source +
-per-cell outputs as plain Jinja HTML instead of live WebSocket frames
-into a Monaco view-zone. This module is the server-side port of the
-mime-bundle priority logic that used to live in
+The supervision view at ``/runs/{id}`` renders the ``.py`` source +
+per-cell outputs as plain Jinja HTML rather than streaming WebSocket
+frames into a browser editor. This module is the server-side port of
+the mime-bundle priority logic that used to live in
 ``frontend/js/notebook/output_renderer.js``.
 
 Each iopub message persisted by
@@ -182,12 +181,12 @@ def _render_error(content: dict[str, Any]) -> RenderedOutput:
 def _render_mime_bundle(data: dict[str, Any]) -> RenderedOutput:
     """Pick the richest representation from a mime bundle.
 
-    Priority mirrors the Sprint-65 browser renderer:
-    ``text/markdown`` (Sprint 98 BUG-98-02) → ``text/html`` →
+    Priority mirrors the historical browser renderer:
+    ``text/markdown`` (BUG-98-02) → ``text/html`` →
     ``image/svg+xml`` → ``image/png`` → ``image/jpeg`` →
     ``application/json`` → ``text/plain``. ``ipywidgets`` placeholder
-    is rendered as a notice card — live widget rendering is a future
-    sprint.
+    is rendered as a notice card — live widget rendering is not
+    supported here.
 
     Args:
         data: The ``content.data`` dict from a ``display_data`` or
@@ -206,9 +205,9 @@ def _render_mime_bundle(data: dict[str, Any]) -> RenderedOutput:
         spec = data["application/vnd.jupyter.widget-view+json"] or {}
         model_id = html.escape(str(spec.get("model_id", "")))[:8] if isinstance(spec, dict) else ""
         body = (
-            "<div class=\"pql-run-widget-placeholder\">"
-            f"<code class=\"small text-muted\">widget model_id: {model_id}…</code>"
-            "<p class=\"small mb-0 mt-1\">Interactive widgets are not rendered in the "
+            '<div class="pql-run-widget-placeholder">'
+            f'<code class="small text-muted">widget model_id: {model_id}…</code>'
+            '<p class="small mb-0 mt-1">Interactive widgets are not rendered in the '
             "run-detail view. Open the notebook in a live kernel to see updates.</p>"
             "</div>"
         )
@@ -217,7 +216,9 @@ def _render_mime_bundle(data: dict[str, Any]) -> RenderedOutput:
     if "text/markdown" in data:
         source = _coerce_str(data["text/markdown"])
         return RenderedOutput(
-            kind="markdown", html=_render_markdown(source), variant="markdown",
+            kind="markdown",
+            html=_render_markdown(source),
+            variant="markdown",
         )
 
     if "text/html" in data:
@@ -242,7 +243,9 @@ def _render_mime_bundle(data: dict[str, Any]) -> RenderedOutput:
             src = f"data:{mime};base64,{html.escape(str(payload))}"
             body = f'<img class="pql-run-output-image" src="{src}" alt="output image">'
             return RenderedOutput(
-                kind="display_data", html=body, variant=mime.split("/", 1)[1],
+                kind="display_data",
+                html=body,
+                variant=mime.split("/", 1)[1],
             )
 
     if "application/json" in data:

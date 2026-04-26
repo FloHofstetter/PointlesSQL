@@ -1,10 +1,10 @@
 # pyright: reportPrivateUsage=false
 """Scheduler loop: ``tick_once`` + the :class:`Scheduler` driver class.
 
-Sprint 84 split out of ``scheduler.py``.  Owns the periodic
-ticker that polls every :class:`~pointlessql.models.Job`, decides
-whether it is due, claims a slot in the global + per-job semaphores,
-and dispatches into :func:`pointlessql.services.scheduler.runs.execute_run`.
+Owns the periodic ticker that polls every
+:class:`~pointlessql.models.Job`, decides whether it is due, claims
+a slot in the global + per-job semaphores, and dispatches into
+:func:`pointlessql.services.scheduler.runs.execute_run`.
 """
 
 from __future__ import annotations

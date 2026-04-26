@@ -1,6 +1,6 @@
-"""Alerts API + feed routes (Phase 12.5 / Sprint 55).
+"""Alerts API + feed routes.
 
-Sprint 87 split out of ``api/main.py``.  Owns:
+Owns:
 
 * The ``/api/alerts`` CRUD (list / create / get / patch / delete).
 * The destinations sub-resource (``POST/DELETE /api/alerts/{slug}/
@@ -61,7 +61,9 @@ def base_url(request: Request) -> str:
 
 
 def rotate_or_fetch_feed_token(
-    factory: Any, user_id: int, rotate: bool = False,
+    factory: Any,
+    user_id: int,
+    rotate: bool = False,
 ) -> str:
     """Return the caller's feed token, materialising one on first access.
 
@@ -143,7 +145,8 @@ async def api_list_alerts(request: Request) -> list[dict[str, Any]]:
 
 @router.post("/api/alerts")
 async def api_create_alert(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Create a new alert owned by the caller.
 
@@ -209,7 +212,8 @@ async def api_get_alert(request: Request, slug: str) -> dict[str, Any]:
     user = get_user(request)
     row = await asyncio.to_thread(
         alerts_service.get_by_slug,
-        factory, slug,
+        factory,
+        slug,
         user_id=user["id"],
         is_admin=bool(user.get("is_admin", False)),
     )
@@ -220,7 +224,9 @@ async def api_get_alert(request: Request, slug: str) -> dict[str, Any]:
 
 @router.patch("/api/alerts/{slug}")
 async def api_update_alert(
-    request: Request, slug: str, body: dict[str, Any] = Body(...),
+    request: Request,
+    slug: str,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Partially update an alert.  Only owner + admin may mutate.
 
@@ -245,23 +251,24 @@ async def api_update_alert(
     payload = body or {}
     row = await asyncio.to_thread(
         alerts_service.update_by_slug,
-        factory, slug,
+        factory,
+        slug,
         user_id=user["id"],
         is_admin=bool(user.get("is_admin", False)),
         title=payload.get("title") if isinstance(payload.get("title"), str) else None,
-        cron_expr=payload.get("cron_expr")
-        if isinstance(payload.get("cron_expr"), str) else None,
+        cron_expr=payload.get("cron_expr") if isinstance(payload.get("cron_expr"), str) else None,
         condition_op=payload.get("condition_op")
-        if isinstance(payload.get("condition_op"), str) else None,
-        threshold=int(payload["threshold"])
-        if isinstance(payload.get("threshold"), int) else None,
-        is_active=bool(payload["is_active"])
-        if "is_active" in payload else None,
+        if isinstance(payload.get("condition_op"), str)
+        else None,
+        threshold=int(payload["threshold"]) if isinstance(payload.get("threshold"), int) else None,
+        is_active=bool(payload["is_active"]) if "is_active" in payload else None,
     )
     if row is None:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     await audit(
-        request, "alert.updated", f"alert:{slug}",
+        request,
+        "alert.updated",
+        f"alert:{slug}",
         {"is_active": row["is_active"]},
     )
     return row
@@ -290,7 +297,8 @@ async def api_delete_alert(request: Request, slug: str) -> Response:
     user = get_user(request)
     ok = await asyncio.to_thread(
         alerts_service.delete_by_slug,
-        factory, slug,
+        factory,
+        slug,
         user_id=user["id"],
         is_admin=bool(user.get("is_admin", False)),
     )
@@ -302,7 +310,9 @@ async def api_delete_alert(request: Request, slug: str) -> Response:
 
 @router.post("/api/alerts/{slug}/destinations")
 async def api_add_alert_destination(
-    request: Request, slug: str, body: dict[str, Any] = Body(...),
+    request: Request,
+    slug: str,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Add a webhook or feed destination to an alert.
 
@@ -328,29 +338,37 @@ async def api_add_alert_destination(
     payload = body or {}
     dest = await asyncio.to_thread(
         alerts_service.add_destination,
-        factory, slug,
+        factory,
+        slug,
         user_id=user["id"],
         is_admin=bool(user.get("is_admin", False)),
         kind=str(payload.get("kind", "webhook")),
         webhook_url=payload.get("webhook_url")
-        if isinstance(payload.get("webhook_url"), str) else None,
+        if isinstance(payload.get("webhook_url"), str)
+        else None,
         hmac_secret=payload.get("hmac_secret")
-        if isinstance(payload.get("hmac_secret"), str) else None,
+        if isinstance(payload.get("hmac_secret"), str)
+        else None,
     )
     if dest is None:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     await audit(
-        request, "alert.destination_added", f"alert:{slug}",
+        request,
+        "alert.destination_added",
+        f"alert:{slug}",
         {"kind": dest["kind"], "has_hmac": dest["has_hmac"]},
     )
     return dest
 
 
 @router.delete(
-    "/api/alerts/{slug}/destinations/{destination_id}", status_code=204,
+    "/api/alerts/{slug}/destinations/{destination_id}",
+    status_code=204,
 )
 async def api_delete_alert_destination(
-    request: Request, slug: str, destination_id: int,
+    request: Request,
+    slug: str,
+    destination_id: int,
 ) -> Response:
     """Remove a destination from an alert.
 
@@ -374,15 +392,19 @@ async def api_delete_alert_destination(
     user = get_user(request)
     ok = await asyncio.to_thread(
         alerts_service.delete_destination,
-        factory, slug, destination_id,
+        factory,
+        slug,
+        destination_id,
         user_id=user["id"],
         is_admin=bool(user.get("is_admin", False)),
     )
     if not ok:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     await audit(
-        request, "alert.destination_removed",
-        f"alert:{slug}/destination:{destination_id}", None,
+        request,
+        "alert.destination_removed",
+        f"alert:{slug}/destination:{destination_id}",
+        None,
     )
     return Response(status_code=204)
 
@@ -402,7 +424,10 @@ async def api_get_feed_token(request: Request) -> dict[str, str]:
         return {"token": ""}
     user = get_user(request)
     token = await asyncio.to_thread(
-        rotate_or_fetch_feed_token, factory, user["id"], False,
+        rotate_or_fetch_feed_token,
+        factory,
+        user["id"],
+        False,
     )
     return {"token": token}
 
@@ -422,7 +447,10 @@ async def api_rotate_feed_token(request: Request) -> dict[str, str]:
         return {"token": ""}
     user = get_user(request)
     token = await asyncio.to_thread(
-        rotate_or_fetch_feed_token, factory, user["id"], True,
+        rotate_or_fetch_feed_token,
+        factory,
+        user["id"],
+        True,
     )
     await audit(request, "alert.feed_token_rotated", f"user:{user['id']}", None)
     return {"token": token}
@@ -451,10 +479,15 @@ async def feed_atom(request: Request, token: str = "") -> Response:
     cutoff = datetime.now(UTC) - timedelta(days=30)
     events = await asyncio.to_thread(
         alerts_service.list_events_for_owner,
-        factory, user.id, since=cutoff, limit=200,
+        factory,
+        user.id,
+        since=cutoff,
+        limit=200,
     )
     body = alert_feeds.render_atom(
-        events, user_email=user.email, base_url=base_url(request),
+        events,
+        user_email=user.email,
+        base_url=base_url(request),
     )
     return Response(
         content=body,
@@ -485,10 +518,15 @@ async def feed_json(request: Request, token: str = "") -> Response:
     cutoff = datetime.now(UTC) - timedelta(days=30)
     events = await asyncio.to_thread(
         alerts_service.list_events_for_owner,
-        factory, user.id, since=cutoff, limit=200,
+        factory,
+        user.id,
+        since=cutoff,
+        limit=200,
     )
     body = alert_feeds.render_json_feed(
-        events, user_email=user.email, base_url=base_url(request),
+        events,
+        user_email=user.email,
+        base_url=base_url(request),
     )
     return JSONResponse(content=body, media_type="application/feed+json")
 
@@ -561,7 +599,8 @@ async def alert_detail_page(request: Request, slug: str) -> HTMLResponse:
     user = get_user(request)
     alert_row = await asyncio.to_thread(
         alerts_service.get_by_slug,
-        factory, slug,
+        factory,
+        slug,
         user_id=user["id"],
         is_admin=bool(user.get("is_admin", False)),
     )
@@ -569,7 +608,9 @@ async def alert_detail_page(request: Request, slug: str) -> HTMLResponse:
         raise CatalogNotFoundError(f"Alert {slug!r} not found.")
     events = await asyncio.to_thread(
         alerts_service.list_events_for_alert,
-        factory, alert_row["id"], limit=50,
+        factory,
+        alert_row["id"],
+        limit=50,
     )
     return _templates(request).TemplateResponse(
         request,

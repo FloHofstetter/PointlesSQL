@@ -1,21 +1,21 @@
 """Medallion layer conventions and ``pointlessql.yaml`` loader.
 
-Sprint 13.5.1 — the *opinionated primitives* that turn an agent-
-authored Delta write into a real Medallion lakehouse instead of
-three ad-hoc tables.  The defaults encode the bronze (raw +
-audit-columns + append-only) / silver (deduped + typed +
-conformed-keys) / gold (business facts + star-schema-ready)
-contract; a repo-level ``pointlessql.yaml`` can override layer
-names, audit-column names, or UC tag-key without code changes.
+The *opinionated primitives* that turn an agent-authored Delta
+write into a real Medallion lakehouse instead of three ad-hoc
+tables.  The defaults encode the bronze (raw + audit-columns +
+append-only) / silver (deduped + typed + conformed-keys) / gold
+(business facts + star-schema-ready) contract; a repo-level
+``pointlessql.yaml`` can override layer names, audit-column
+names, or UC tag-key without code changes.
 
-This package ships the data + parser only.  The Sprint 13.7
-``hermes-plugin-pointlessql`` will surface
-:func:`load_conventions` to agents as a ``pql_conventions()``
-tool that drops the parsed config + the prose contract from
-``docs/data-layers.md`` into the system prompt.
+This package ships the data + parser only.  The
+``hermes-plugin-pointlessql`` surfaces :func:`load_conventions`
+to agents as a ``pql_conventions()`` tool that drops the parsed
+config + the prose contract from ``docs/data-layers.md`` into
+the system prompt.
 
-The decision behind the DuckDB-first compute opinion this phase
-codifies lives in ``docs/adr/0002-duckdb-first.md``.
+The decision behind the DuckDB-first compute opinion this
+package codifies lives in ``docs/adr/0002-duckdb-first.md``.
 """
 
 from __future__ import annotations

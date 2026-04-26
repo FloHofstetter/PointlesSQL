@@ -1,15 +1,15 @@
-"""Dashboards routes — Sprint 28 publishing surface for notebook job output.
+"""Dashboards routes — publishing surface for notebook job output.
 
-Sprint 89c split out of ``api/main.py``.  A dashboard is a stable
-slug-addressable view of a notebook job's latest succeeded run,
-rendered with ``exclude_input=True`` so consumers see outputs only.
-The ``job_id`` FK is nullable so a dashboard can outlive its bound
-job (FK uses ``ON DELETE SET NULL``); when no job is bound or no
-successful run exists, the detail page renders an empty state.
+A dashboard is a stable slug-addressable view of a notebook job's
+latest succeeded run, rendered with ``exclude_input=True`` so
+consumers see outputs only.  The ``job_id`` FK is nullable so a
+dashboard can outlive its bound job (FK uses ``ON DELETE SET
+NULL``); when no job is bound or no successful run exists, the
+detail page renders an empty state.
 
-Visibility model is unchanged from the pre-split shape: dashboards
-are visible to every logged-in user (consumer-facing publishing
-surface).  Mutations + Refresh require admin.
+Visibility model: dashboards are visible to every logged-in user
+(consumer-facing publishing surface).  Mutations + Refresh require
+admin.
 """
 
 from __future__ import annotations
@@ -45,7 +45,9 @@ def _templates(request: Request) -> Jinja2Templates:
 
 
 def serialize_dashboard(
-    dashboard: Any, *, latest_run_id: int | None = None,
+    dashboard: Any,
+    *,
+    latest_run_id: int | None = None,
 ) -> dict[str, Any]:
     """Render a :class:`Dashboard` ORM row for JSON + template responses."""
     return {
@@ -125,17 +127,18 @@ async def api_list_dashboards(request: Request) -> list[dict[str, Any]]:
 async def api_dashboards_tree(request: Request) -> list[dict[str, Any]]:
     """Return a flat list shaped for the dashboards sidebar component.
 
-    The shape mirrors the Sprint 27 workspace tree enough that the
-    Alpine component is a straightforward copy. ``/api/dashboards``
-    already returns the same rows — the dedicated tree endpoint keeps
-    the Alpine fetch call symmetrical with the catalog tree.
+    The shape mirrors the workspace tree enough that the Alpine
+    component is a straightforward copy.  ``/api/dashboards``
+    already returns the same rows — the dedicated tree endpoint
+    keeps the Alpine fetch call symmetrical with the catalog tree.
     """
     return await api_list_dashboards(request)
 
 
 @router.post("/api/dashboards")
 async def api_create_dashboard(
-    request: Request, body: dict[str, Any] = Body(...),
+    request: Request,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Create a new dashboard (admin-only)."""
     from pointlessql.models import Dashboard as DashboardModel
@@ -196,7 +199,9 @@ async def api_create_dashboard(
 
 @router.patch("/api/dashboards/{slug}")
 async def api_update_dashboard(
-    request: Request, slug: str, body: dict[str, Any] = Body(...),
+    request: Request,
+    slug: str,
+    body: dict[str, Any] = Body(...),
 ) -> dict[str, Any]:
     """Update mutable dashboard fields (admin-only).
 
@@ -285,7 +290,11 @@ async def api_refresh_dashboard(request: Request, slug: str) -> dict[str, Any]:
     settings: Settings = request.app.state.settings
     factory = request.app.state.session_factory
     run = await scheduler_service.execute_run(
-        factory, settings, JOB_REGISTRY, dashboard.job_id, "manual",
+        factory,
+        settings,
+        JOB_REGISTRY,
+        dashboard.job_id,
+        "manual",
     )
     await audit(request, "refresh_dashboard", f"dashboard:{slug}")
     return serialize_run(run)

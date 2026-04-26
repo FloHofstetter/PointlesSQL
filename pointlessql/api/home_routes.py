@@ -1,7 +1,6 @@
 """Home dashboard + global search routes.
 
-Sprint 90 split out of ``api/main.py``.  Owns three routes that
-make up the user's landing surface:
+Owns three routes that make up the user's landing surface:
 
 * ``GET /`` (HTML) — the home dashboard rendered from
   :func:`build_home_summary` so first-paint matches the JSON
@@ -209,9 +208,9 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
             # ``<template x-for>`` inside ``<svg>`` doesn't work —
             # ``<template>.content`` is HTML-namespaced so inner
             # ``<rect>`` elements get parsed as unknown HTML, leaving
-            # the bars unbound (BUG-32-01 found during the Phase 9
-            # playbook replay). Moving the branch here keeps the
-            # template a plain Jinja ``{% for %}`` loop.
+            # the bars unbound (BUG-32-01 found during a playbook
+            # replay). Moving the branch here keeps the template a
+            # plain Jinja ``{% for %}`` loop.
             for bucket in days:
                 rate = bucket["rate"]
                 if rate is None:
@@ -522,7 +521,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
         return out
 
     def _local_notebooks() -> list[dict[str, Any]]:
-        # Matches the Sprint-27 admin boundary on /api/notebooks/tree.
+        # Matches the admin boundary on /api/notebooks/tree.
         if not user.get("is_admin"):
             return []
         settings_obj: Settings = request.app.state.settings

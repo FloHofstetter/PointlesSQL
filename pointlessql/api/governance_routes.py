@@ -1,10 +1,10 @@
 """Governance routes — table stats, tags, permissions, lineage, catalog mutations.
 
-Sprint 87c split out of ``api/main.py``.  Owns the cluster of
-endpoints that govern UC metadata + access control:
+Owns the cluster of endpoints that govern UC metadata + access
+control:
 
 * Table column statistics (``/api/tables/.../profile`` POST,
-  ``/api/tables/.../stats`` GET/DELETE — Sprint 56).
+  ``/api/tables/.../stats`` GET/DELETE).
 * Catalog mutations (``POST /api/catalogs``, ``POST .../sync``,
   ``PATCH /api/catalogs/{cat}``, ``PATCH …/schemas/{schema}``).
 * Tags + permissions (``/api/tags`` + ``/api/permissions`` +
@@ -320,8 +320,8 @@ async def api_sync_catalog(request: Request, catalog_name: str) -> dict[str, obj
 
     Reads the catalog's bound Connection, resolves a Credential by the
     optional ``credential_name`` key in its options, and runs the
-    Sprint 18 sync worker. Returns the :class:`SyncRun` snapshot so
-    the UI can render the new history card entry immediately.
+    sync worker. Returns the :class:`SyncRun` snapshot so the UI can
+    render the new history card entry immediately.
     """
     require_admin(request)
     client = get_uc_client(request)

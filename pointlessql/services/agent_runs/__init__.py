@@ -1,17 +1,15 @@
-"""Agent-run lifecycle services — Sprint 13 (registry + events).
+"""Agent-run lifecycle services — registry + events.
 
-The Sprint-13.2 registry routes own ORM persistence; this package
-holds the side-effects layered on top — Sprint 13.3 ships the
-CloudEvents emitter that fires on lifecycle transitions so external
-subscribers (the future ``hermes-plugin-pointlessql``,
-Paperclip, an ops dashboard) learn about runs without polling
-``GET /api/agent-runs``.
+The registry routes own ORM persistence; this package holds the
+side-effects layered on top — a CloudEvents emitter that fires on
+lifecycle transitions so external subscribers
+(``hermes-plugin-pointlessql``, Paperclip, an ops dashboard) learn
+about runs without polling ``GET /api/agent-runs``.
 
-Webhook destination management stays minimal in 13.3: a single
+Webhook destination management is intentionally minimal: a single
 URL + optional HMAC secret pulled from
-:class:`pointlessql.settings.AgentRunsSettings`.  The richer
-per-destination subscription model lands with the Sprint 13.4
-control-room work.
+:class:`pointlessql.settings.AgentRunsSettings`.  Richer
+per-destination subscription would belong on top of this layer.
 """
 
 from __future__ import annotations
