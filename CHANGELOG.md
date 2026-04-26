@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 14.2: read-audit for `pql.table()` (2026-04-26)
+
+Closes the second of four Phase-14 audit-trail gaps — the DSGVO
+"wer hat meine Daten gelesen?" question for direct-Delta read paths
+that bypassed `/api/sql/execute` entirely.
+
+- **Added** Alembic `b27e6ad14ead` — `query_history.read_kind`
+  TEXT NOT NULL DEFAULT `sql_execute` (down-revision:
+  `a1c051a7e1ab`).  Enum validation lives in
+  `record_query` against `VALID_READ_KINDS = {sql_execute,
+  pql_table, engine_direct}` to match the existing
+  application-level validation pattern (no DB CHECK).
+- **Added** [`pointlessql/services/read_audit.py`](pointlessql/services/read_audit.py)
+  `record_read()` — synthesises a `SELECT * FROM <fqn>` row so the
+  existing `/queries` UI keeps working without per-`read_kind`
+  branches.  Best-effort: silent passthrough when the session
+  factory is unbound, swallows insert errors so audit can never
+  break the read path.
+- **Added** [`pointlessql/pql/_read.py`](pointlessql/pql/_read.py)
+  instruments `read_table()` with a `record_read` call gated on
+  `POINTLESSQL_AGENT_RUN_ID` being set, mirroring how `_sql.py`
+  resolves run context.
+- **Added** [`pointlessql/api/queries_routes.py`](pointlessql/api/queries_routes.py)
+  `?read_kind=` filter on both `/queries` (HTML) and `/api/queries`
+  (JSON); unknown values silently fall back to "no filter".
+- **Added** Filter dropdown on `/queries`; "Kind" column with
+  badge on both `/queries` and the run-detail Queries tab; empty-
+  state copy mentions `pql.table()` reads explicitly.
+
 ### Added — Sprint 14.1: cost-gate EXPLAIN snapshot (2026-04-26)
 
 Closes the first of four Phase-14 audit-trail gaps.  When the

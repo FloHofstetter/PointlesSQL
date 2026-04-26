@@ -138,6 +138,15 @@ class QueryHistory(Base):
             came from a registered run.  ``None`` for plain
             interactive editor traffic.  No FK by design so deleting
             a run does not cascade-erase its query history.
+        read_kind: Discriminator across the read paths that converge
+            on ``query_history`` — ``"sql_execute"`` for ``/api/sql/
+            execute`` traffic (the default and the only writer
+            before Sprint 14.2), ``"pql_table"`` for direct
+            ``pql.table()`` reads recorded via
+            :func:`pointlessql.services.read_audit.record_read`,
+            and ``"engine_direct"`` for raw engine reads instrumented
+            by the same helper.  Validation lives in
+            :func:`pointlessql.services.query_history.record_query`.
     """
 
     __tablename__ = "query_history"
@@ -172,6 +181,7 @@ class QueryHistory(Base):
     request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     chart_config: Mapped[str | None] = mapped_column(Text, nullable=True)
     agent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    read_kind: Mapped[str] = mapped_column(String(20), nullable=False, server_default="sql_execute")
 
 
 class QueryHistoryTable(Base):

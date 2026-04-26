@@ -81,6 +81,7 @@ async def api_list_queries(
     status: str | None = None,
     since: str | None = None,
     agent_run_id: str | None = None,
+    read_kind: str | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
     """Return recent query-history rows as JSON.
@@ -97,6 +98,10 @@ async def api_list_queries(
         status: Optional status filter.
         since: Window string (``24h`` / ``7d`` / ``30d`` / ``all``).
         agent_run_id: Optional run-UUID filter.
+        read_kind: Optional read-kind filter (``sql_execute`` /
+            ``pql_table`` / ``engine_direct``).  Unknown values are
+            dropped silently — see
+            :func:`pointlessql.services.query_history.list_queries`.
         limit: Hard row cap (default 200).
 
     Returns:
@@ -113,6 +118,9 @@ async def api_list_queries(
     cleaned_run_id = (
         agent_run_id.strip() if isinstance(agent_run_id, str) and agent_run_id.strip() else None
     )
+    cleaned_read_kind = (
+        read_kind.strip() if isinstance(read_kind, str) and read_kind.strip() else None
+    )
     return await asyncio.to_thread(
         query_history_service.list_queries,
         factory,
@@ -120,6 +128,7 @@ async def api_list_queries(
         status=status,
         since=parse_since(since),
         agent_run_id=cleaned_run_id,
+        read_kind=cleaned_read_kind,
         limit=effective_limit,
     )
 
@@ -226,6 +235,7 @@ async def api_update_query_chart_config(
 async def queries_page(
     request: Request,
     agent_run_id: str | None = None,
+    read_kind: str | None = None,
 ) -> HTMLResponse:
     """Render the query history page.
 
@@ -236,12 +246,17 @@ async def queries_page(
     When an ``agent_run_id`` query param is present the pre-loaded
     slice scopes to that run only and the page surfaces a
     dismissable filter pill so users see they're inside a sub-view.
+    The ``read_kind`` param applies the analogous filter for the
+    SQL-execute / pql-table / engine-direct discriminator.
 
     Args:
         request: The incoming FastAPI request.
         agent_run_id: Optional run-UUID filter via the URL query
             string (typically arrived from a run-detail "Queries"
             tab link).
+        read_kind: Optional read-kind filter (``sql_execute`` /
+            ``pql_table`` / ``engine_direct``); unknown values are
+            dropped silently by the service layer.
 
     Returns:
         The rendered HTML page.
@@ -252,6 +267,9 @@ async def queries_page(
     cleaned_run_id = (
         agent_run_id.strip() if isinstance(agent_run_id, str) and agent_run_id.strip() else None
     )
+    cleaned_read_kind = (
+        read_kind.strip() if isinstance(read_kind, str) and read_kind.strip() else None
+    )
     if factory is not None:
         user_filter: int | None = None if user.get("is_admin") else user["id"]
         entries = await asyncio.to_thread(
@@ -259,6 +277,7 @@ async def queries_page(
             factory,
             user_id=user_filter,
             agent_run_id=cleaned_run_id,
+            read_kind=cleaned_read_kind,
             limit=200,
         )
     return _templates(request).TemplateResponse(
@@ -267,6 +286,7 @@ async def queries_page(
         {
             "entries": entries,
             "agent_run_filter": cleaned_run_id,
+            "read_kind_filter": cleaned_read_kind,
             "active_page": "queries",
             "active_catalog": None,
             "active_schema": None,

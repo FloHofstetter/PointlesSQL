@@ -25,11 +25,31 @@
         Filtered to agent run
         <a href="/runs/{{ agent_run_filter }}" class="font-monospace">{{ agent_run_filter }}</a>
     </div>
-    <a href="/queries" class="btn btn-sm btn-outline-secondary" aria-label="Clear filter">
+    <a href="/queries{% if read_kind_filter %}?read_kind={{ read_kind_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary" aria-label="Clear filter">
         <i class="bi bi-x-lg"></i> Clear
     </a>
 </div>
 {% endif %}
+
+<form method="get" action="/queries" class="d-flex align-items-center gap-2 mb-3">
+    {% if agent_run_filter %}
+    <input type="hidden" name="agent_run_id" value="{{ agent_run_filter }}">
+    {% endif %}
+    <label for="read-kind-filter" class="form-label mb-0 small text-muted">Read kind</label>
+    <select id="read-kind-filter" name="read_kind" class="form-select form-select-sm w-auto"
+            onchange="this.form.submit()">
+        <option value="" {% if not read_kind_filter %}selected{% endif %}>All</option>
+        <option value="sql_execute" {% if read_kind_filter == 'sql_execute' %}selected{% endif %}>SQL execute</option>
+        <option value="pql_table" {% if read_kind_filter == 'pql_table' %}selected{% endif %}>PQL table read</option>
+        <option value="engine_direct" {% if read_kind_filter == 'engine_direct' %}selected{% endif %}>Engine direct</option>
+    </select>
+    {% if read_kind_filter %}
+    <a href="/queries{% if agent_run_filter %}?agent_run_id={{ agent_run_filter }}{% endif %}"
+       class="btn btn-sm btn-outline-secondary" aria-label="Clear read-kind filter">
+        <i class="bi bi-x-lg"></i> Clear kind
+    </a>
+    {% endif %}
+</form>
 
 {% if not entries %}
 <div class="card">
@@ -83,6 +103,7 @@
                         <tr>
                             <th class="ps-3" data-sort-key="started-at">Started</th>
                             <th data-sort-key="status">Status</th>
+                            <th data-sort-key="read-kind">Kind</th>
                             <th data-sort-key="user-email">User</th>
                             <th data-sort-key="duration-ms">Duration</th>
                             <th data-sort-key="row-count">Rows</th>
@@ -94,9 +115,10 @@
                     <tbody>
                         {% for entry in entries %}
                         {% set sql_snip = (entry.sql_text or '')[:120] %}
-                        <tr data-search="{{ (entry.sql_text or '')|lower }} {{ entry.user_email|lower }} {{ (entry.tables or [])|join(' ')|lower }}"
+                        <tr data-search="{{ (entry.sql_text or '')|lower }} {{ entry.user_email|lower }} {{ (entry.tables or [])|join(' ')|lower }} {{ entry.read_kind or '' }}"
                             data-sort-started-at="{{ entry.started_at or '' }}"
                             data-sort-status="{{ entry.status or '' }}"
+                            data-sort-read-kind="{{ entry.read_kind or '' }}"
                             data-sort-user-email="{{ entry.user_email|lower }}"
                             data-sort-duration-ms="{{ entry.duration_ms if entry.duration_ms is not none else -1 }}"
                             data-sort-row-count="{{ entry.row_count if entry.row_count is not none else -1 }}"
@@ -117,6 +139,15 @@
                                 <span class="badge bg-warning text-dark">cancelled</span>
                                 {% else %}
                                 <span class="badge bg-secondary">{{ entry.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Kind">
+                                {% if entry.read_kind == 'pql_table' %}
+                                <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
+                                {% elif entry.read_kind == 'engine_direct' %}
+                                <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
                                 {% endif %}
                             </td>
                             <td data-label="User" class="small">{{ entry.user_email }}</td>

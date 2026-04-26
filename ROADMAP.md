@@ -4832,18 +4832,17 @@ PointlesSQL
 │   │       it to ``/api/agent-runs/{id}/finish`` and the run-
 │   │       detail metadata card renders a collapsible EXPLAIN
 │   │       block
-│   ├── Sprint 14.2 — Read-audit for ``pql.table()`` + engine-direct
-│   │   ├── DSGVO "wer hat meine Daten gelesen?" gap — today only
-│   │   │   ``/api/sql/execute`` is logged, direct Delta reads via
-│   │   │   ``pql.table(...)`` bypass ``query_history`` entirely
-│   │   ├── extend ``query_history`` with a ``read_kind`` enum
-│   │   │   (``sql_execute`` / ``pql_table`` / ``engine_direct``);
-│   │   │   sibling table rejected — keeps unified UI + filter +
-│   │   │   ``agent_run_id`` join in one place
-│   │   └── PQL primitive instrumentation point: ``read_table()``
-│   │       in ``pointlessql/pql/_read.py`` (memory pre-squash
-│   │       referenced ``_write.py`` — corrected by 2026-04-26
-│   │       ground-truth pass)
+│   ├── Sprint 14.2 — Read-audit for ``pql.table()`` + engine-direct ✅ done
+│   │   └── Alembic ``b27e6ad14ead`` extended ``query_history``
+│   │       with a ``read_kind`` discriminator
+│   │       (``sql_execute`` / ``pql_table`` / ``engine_direct``);
+│   │       new ``services/read_audit.py`` synthesises
+│   │       ``SELECT * FROM <fqn>`` rows so the existing
+│   │       ``/queries`` UI keeps working;
+│   │       ``pointlessql/pql/_read.py`` instruments ``pql.table()``
+│   │       gated on ``POINTLESSQL_AGENT_RUN_ID``; ``/queries``
+│   │       gains a Kind dropdown + column, run-detail Queries tab
+│   │       gains the same column.
 │   ├── Sprint 14.3 — External-write detection ("unattributed writes")
 │   │   ├── walk ``deltalake.DeltaTable(table_path).history()``
 │   │   │   per UC table; flag commits whose Delta version isn't

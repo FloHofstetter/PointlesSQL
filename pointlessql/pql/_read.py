@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import datetime
+import os
+import time
 from typing import Any
 
 import httpx
@@ -18,6 +21,7 @@ from pointlessql.exceptions import (
 )
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine
+from pointlessql.services.read_audit import record_read
 
 
 def read_table(
@@ -28,6 +32,13 @@ def read_table(
     unreachable_msg: str,
 ) -> Any:
     """Read a Delta table registered in Unity Catalog.
+
+    On success a ``query_history`` row with ``read_kind="pql_table"``
+    is written via :func:`pointlessql.services.read_audit.record_read`
+    so the DSGVO read-audit gap (Sprint 14.2) is closed for this
+    bypass path.  The audit insert is best-effort — it runs only
+    when a session factory is available and never raises into the
+    read path.
 
     Args:
         client: A configured ``soyuz_catalog_client.Client`` instance.
@@ -61,4 +72,71 @@ def read_table(
         msg = f"Table {full_name!r} has no storage_location"
         raise CatalogNotFoundError(msg)
 
-    return engine.read(location)
+    started_at = datetime.datetime.now(datetime.UTC)
+    perf_start = time.perf_counter()
+    try:
+        result = engine.read(location)
+    except Exception as exc:
+        finished_at = datetime.datetime.now(datetime.UTC)
+        duration_ms = int((time.perf_counter() - perf_start) * 1000)
+        _record(
+            full_name=full_name,
+            started_at=started_at,
+            finished_at=finished_at,
+            status="failed",
+            row_count=None,
+            duration_ms=duration_ms,
+            error_message=repr(exc),
+        )
+        raise
+    finished_at = datetime.datetime.now(datetime.UTC)
+    duration_ms = int((time.perf_counter() - perf_start) * 1000)
+    _record(
+        full_name=full_name,
+        started_at=started_at,
+        finished_at=finished_at,
+        status="succeeded",
+        row_count=None,
+        duration_ms=duration_ms,
+        error_message=None,
+    )
+    return result
+
+
+def _record(
+    *,
+    full_name: str,
+    started_at: datetime.datetime,
+    finished_at: datetime.datetime,
+    status: str,
+    row_count: int | None,
+    duration_ms: int | None,
+    error_message: str | None,
+) -> None:
+    """Look up the session factory lazily and forward to :func:`record_read`.
+
+    Lazy import + try/except keeps :func:`read_table` decoupled from
+    the metadata-DB lifecycle.  When the factory is unbound (pure
+    interactive PQL with no FastAPI lifespan and no run-id env), the
+    audit row is silently skipped — see
+    :mod:`pointlessql.services.read_audit` for the contract.
+    """
+    if not os.environ.get("POINTLESSQL_AGENT_RUN_ID"):
+        return
+    try:
+        from pointlessql.db import get_session_factory
+
+        factory = get_session_factory()
+    except Exception:  # noqa: BLE001 — DB might not be initialised
+        factory = None
+    record_read(
+        factory,
+        table_fqn=full_name,
+        read_kind="pql_table",
+        started_at=started_at,
+        finished_at=finished_at,
+        status=status,
+        row_count=row_count,
+        duration_ms=duration_ms,
+        error_message=error_message,
+    )

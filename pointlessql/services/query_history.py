@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 
 _RUN_ID_LENGTH = 36
 
+VALID_READ_KINDS: frozenset[str] = frozenset({"sql_execute", "pql_table", "engine_direct"})
+
 
 def _sanitise_run_id(value: str | None) -> str | None:
     """Drop garbage values before they hit the indexed column.
@@ -82,6 +84,7 @@ def record_query(
     error_message: str | None = None,
     request_id: str | None = None,
     agent_run_id: str | None = None,
+    read_kind: str = "sql_execute",
 ) -> int:
     """Insert a :class:`QueryHistory` row plus its table-reference rows.
 
@@ -114,11 +117,22 @@ def record_query(
             values are dropped silently (UUID-like 36-char check
             only) so query history stays tolerant of malformed
             inputs.
+        read_kind: Discriminator for the read path that produced this
+            row.  Defaults to ``"sql_execute"`` for the historical
+            ``/api/sql/execute`` writer; Sprint 14.2's read-audit
+            helper passes ``"pql_table"`` / ``"engine_direct"``.
+            Validated against :data:`VALID_READ_KINDS` so a typo
+            cannot land an unknown value the UI cannot filter on.
 
     Returns:
         The auto-assigned ``QueryHistory.id`` of the new row (so
         the caller can surface it in an export deep-link etc.).
+
+    Raises:
+        ValueError: If ``read_kind`` is not in :data:`VALID_READ_KINDS`.
     """
+    if read_kind not in VALID_READ_KINDS:
+        raise ValueError(f"read_kind must be one of {sorted(VALID_READ_KINDS)}, got {read_kind!r}")
     sanitised_run_id = _sanitise_run_id(agent_run_id)
     with factory() as session:
         entry = QueryHistory(
@@ -133,6 +147,7 @@ def record_query(
             error_message=error_message,
             request_id=request_id,
             agent_run_id=sanitised_run_id,
+            read_kind=read_kind,
         )
         session.add(entry)
         session.flush()  # assigns entry.id for the FK below
@@ -162,6 +177,7 @@ def list_queries(
     status: str | None = None,
     since: datetime.datetime | None = None,
     agent_run_id: str | None = None,
+    read_kind: str | None = None,
     limit: int = 200,
 ) -> list[dict[str, Any]]:
     """Return recent query-history rows as plain dicts.
@@ -174,6 +190,11 @@ def list_queries(
         since: Filter to ``started_at >= since``.  ``None`` returns all.
         agent_run_id: Filter to rows whose ``agent_run_id`` matches.
             ``None`` returns all.
+        read_kind: Filter to rows whose ``read_kind`` matches one of
+            :data:`VALID_READ_KINDS`.  Unknown values are dropped
+            silently so a typo in a ``?read_kind=`` query string
+            falls back to "no filter" instead of raising.  ``None``
+            returns all.
         limit: Hard row cap.  Also enforces ORDER BY ``started_at DESC``
             so the most recent activity is at the top.
 
@@ -191,6 +212,8 @@ def list_queries(
         stmt = stmt.where(QueryHistory.started_at >= since)
     if agent_run_id is not None:
         stmt = stmt.where(QueryHistory.agent_run_id == agent_run_id)
+    if read_kind is not None and read_kind in VALID_READ_KINDS:
+        stmt = stmt.where(QueryHistory.read_kind == read_kind)
 
     with factory() as session:
         rows = session.scalars(stmt).all()
@@ -220,6 +243,7 @@ def list_queries(
                 "tables": tables_by_id.get(r.id, []),
                 "chart_config": r.chart_config,
                 "agent_run_id": r.agent_run_id,
+                "read_kind": r.read_kind,
             }
             for r in rows
         ]
@@ -270,6 +294,7 @@ def get_by_id(
             "tables": [t.full_name for t in tables],
             "chart_config": row.chart_config,
             "agent_run_id": row.agent_run_id,
+            "read_kind": row.read_kind,
         }
 
 
@@ -323,6 +348,7 @@ def update_chart_config(
             "tables": [t.full_name for t in tables],
             "chart_config": row.chart_config,
             "agent_run_id": row.agent_run_id,
+            "read_kind": row.read_kind,
         }
 
 
