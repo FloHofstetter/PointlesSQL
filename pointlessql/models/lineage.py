@@ -43,6 +43,17 @@ REJECT_REASONS = (
     "other",
 )
 
+TRANSFORM_KINDS = (
+    "identity",
+    "rename",
+    "derived",
+    "aggregate",
+    "unknown_origin",
+    "sql_select",
+    "sql_function",
+    "sql_unknown",
+)
+
 
 class LineageRowEdge(Base):
     """One source-row → target-row map produced by a PQL merge / write.
@@ -137,4 +148,72 @@ class LineageRowReject(Base):
     source_row_id: Mapped[str] = mapped_column(String(64), nullable=False)
     reason: Mapped[str] = mapped_column(String(64), nullable=False)
     detail: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class LineageColumnMap(Base):
+    """One source-column → target-column mapping produced by a PQL op.
+
+    Sprint 15.6.1 — sibling to :class:`LineageRowEdge` covering the
+    orthogonal column dimension.  Each row says "for op *op_id*,
+    target column *target_table.target_column* was fed by source
+    column *source_table.source_column* via *transform_kind*".
+
+    Volume-wise this table is bounded by **schema breadth** (number
+    of output columns × sources per column), not by row count, so a
+    Medallion run that produces 100k row edges typically adds only a
+    few dozen column-map rows.  Best-effort writes mirror
+    :class:`LineageRowEdge` — a DB hiccup never rolls back the Delta
+    write, and a per-op cap (1000 edges) prevents pathological
+    ``pql.sql`` queries from blowing the table up.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        run_id: FK to :class:`AgentRun.id` — the run that produced
+            this edge.
+        op_id: FK to :class:`AgentRunOperation.id` — the specific
+            primitive call.
+        source_table: Fully-qualified UC name of the source table,
+            or ``NULL`` when ``transform_kind == "unknown_origin"``
+            (audit columns, undeclared derived columns).
+        source_column: Source column name; ``NULL`` for
+            ``unknown_origin``.
+        target_table: Fully-qualified UC name the column lives in.
+        target_column: Target column name.
+        transform_kind: How the source feeds the target — one of
+            :data:`TRANSFORM_KINDS`.  CHECK-constrained.
+        transform_detail: Optional free-form context.  Stores the
+            aggregation function name for ``aggregate`` edges, the
+            rendered subexpression for ``sql_function`` edges, the
+            string ``"audit"`` for ``unknown_origin`` audit columns,
+            and the string ``"synth_target_row_id"`` for the synthesised
+            ``_lineage_row_id`` cross-stage edge.
+        created_at: Wall-clock timestamp the row was inserted.
+    """
+
+    __tablename__ = "lineage_column_map"
+
+    __table_args__ = (
+        Index("ix_lineage_column_map_run", "run_id"),
+        Index("ix_lineage_column_map_op", "op_id"),
+        Index("ix_lineage_column_map_target", "target_table", "target_column"),
+        Index("ix_lineage_column_map_source", "source_table", "source_column"),
+        CheckConstraint(
+            "transform_kind IN ('identity','rename','derived','aggregate',"
+            "'unknown_origin','sql_select','sql_function','sql_unknown')",
+            name="ck_lineage_column_map_transform_kind",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
+    op_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("agent_run_operations.id"), nullable=False
+    )
+    source_table: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source_column: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target_table: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_column: Mapped[str] = mapped_column(String(255), nullable=False)
+    transform_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    transform_detail: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

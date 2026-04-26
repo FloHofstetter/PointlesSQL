@@ -87,6 +87,15 @@ class OperationRecorder:
             "rejects": list[tuple[source_row_id, reason, detail]]}``
             here.  The post-commit hook bulk-inserts into
             ``lineage_row_rejects`` best-effort.
+        pending_column_edges: Sprint-15.6.1 hook — every PQL
+            primitive populates this with a list of
+            :class:`~pointlessql.services.lineage_edges.ColumnEdgeSpec`
+            entries describing the source-column → target-column
+            mappings discovered at op time.  The post-commit hook
+            bulk-inserts into ``lineage_column_map`` best-effort.
+            ``None`` (the default) means the primitive had no
+            mappings to record (e.g. read-only ops, or a write that
+            ran without ``source_table_fqn``).
     """
 
     input_sha: str | None = None
@@ -97,6 +106,7 @@ class OperationRecorder:
     extra_params: dict[str, Any] = field(default_factory=dict)
     pending_lineage_edges: dict[str, Any] | None = None
     pending_rejects: dict[str, Any] | None = None
+    pending_column_edges: list[Any] | None = None
 
 
 def record_operation(
@@ -307,6 +317,12 @@ def operation_context(
         agent_run_id=agent_run_id,
         pending=recorder.pending_rejects,
     )
+    _record_column_edges_after_commit(
+        session_factory,
+        op_id=op_id,
+        agent_run_id=agent_run_id,
+        pending=recorder.pending_column_edges,
+    )
 
 
 def _emit_lineage_after_commit(
@@ -464,6 +480,43 @@ def _record_rejects_after_commit(
         return
     _stamp_audit_marker(
         session_factory, op_id=op_id, marker=f"[lineage_rejects_partial] {failure!r}"
+    )
+
+
+def _record_column_edges_after_commit(
+    session_factory: sessionmaker[Session],
+    *,
+    op_id: int,
+    agent_run_id: str,
+    pending: list[Any] | None,
+) -> None:
+    """Persist Sprint-15.6.1 column-level lineage edges in a best-effort pass.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        op_id: Just-committed ``agent_run_operations.id``.
+        agent_run_id: PointlesSQL run UUID.
+        pending: ``OperationRecorder.pending_column_edges`` payload —
+            a list of
+            :class:`~pointlessql.services.lineage_edges.ColumnEdgeSpec`
+            entries.  ``None`` or empty when the primitive had no
+            mappings to record.
+    """
+    if not pending:
+        return
+
+    from pointlessql.services.lineage_edges import record_column_edges
+
+    failure = record_column_edges(
+        session_factory,
+        run_id=agent_run_id,
+        op_id=op_id,
+        edges=pending,
+    )
+    if failure is None:
+        return
+    _stamp_audit_marker(
+        session_factory, op_id=op_id, marker=f"[lineage_column_partial] {failure!r}"
     )
 
 
