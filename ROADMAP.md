@@ -4823,12 +4823,15 @@ PointlesSQL
 │   │   sync point. Plan in
 │   │   ``.claude/plans/plane-phase-14-komplett-floofy-nest.md``.
 │   │
-│   ├── Sprint 14.1 — Cost-gate EXPLAIN-snapshot on ``agent_runs``
-│   │   └── when Sprint-13.1 cost gate denies, store the full
-│   │       EXPLAIN-FORMAT-JSON output plus threshold + estimated
-│   │       cost + engine in a new ``cost_gate_trigger JSON``
-│   │       column so the reviewer can see WHY without re-running
-│   │       the query
+│   ├── Sprint 14.1 — Cost-gate EXPLAIN-snapshot on ``agent_runs`` ✅ done (c625e9f)
+│   │   └── Alembic ``a1c051a7e1ab`` added nullable
+│   │       ``agent_runs.cost_gate_trigger`` Text column;
+│   │       ``/api/sql/explain`` returns the snapshot
+│   │       (``{explain, estimated_cost, threshold, engine}``)
+│   │       when ``needs_approval`` is true; the runtime forwards
+│   │       it to ``/api/agent-runs/{id}/finish`` and the run-
+│   │       detail metadata card renders a collapsible EXPLAIN
+│   │       block
 │   ├── Sprint 14.2 — Read-audit for ``pql.table()`` + engine-direct
 │   │   ├── DSGVO "wer hat meine Daten gelesen?" gap — today only
 │   │   │   ``/api/sql/execute`` is logged, direct Delta reads via
