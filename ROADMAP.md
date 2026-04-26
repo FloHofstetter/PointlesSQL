@@ -4874,47 +4874,93 @@ PointlesSQL
 │           soyuz audit rows attributed to the run.  Pin bump to
 │           ``v0.2.0rc3`` pending a push of the soyuz tag
 │
-├── Phase 15 — Provenance Log (data + LLM signed audit)    ⏳ queued
+├── Phase 15 — Lineage completeness                       🚧 in progress
 │   │
-│   │   The compliance-driven moat.  Two complementary
-│   │   cryptographically-signed logs that together answer
-│   │   "AI-Act-Art.-12-grade autonomous data analysis":
+│   │   Closes two lineage gaps that make Phase 14's operation-
+│   │   level audit forensically usable:
 │   │
-│   │   - **Data-provenance log** — per-row lineage:
-│   │     "output row 47 in main.silver.orders came from input
-│   │     row 12 in bronze.csv".  See
-│   │     ``project_full_autonomous_audit_critical_path.md`` for
-│   │     the design space (per-row lineage column vs. shadow
-│   │     lineage tables).  Today operation+source lineage is
-│   │     captured; row-level is greenfield.
+│   │   1. **PQL writes don't appear in the soyuz lineage graph.**
+│   │      The ``lineage_runs`` + ``lineage_edges`` infra (soyuz
+│   │      Sprint 22, ``POST /lineage/v1/events``) exists, but
+│   │      PointlesSQL emits nothing — the lineage card on
+│   │      ``table.html`` renders only externally seeded edges
+│   │      (in practice: none).  Sprint 15.1 closes this by
+│   │      auto-emitting OpenLineage events from every
+│   │      ``operation_context()`` exit.
 │   │
-│   │   - **LLM-provenance log** — full signed token-trail
-│   │     (system prompt, conversation, model output incl.
-│   │     reasoning, tool-call args+response, sampling params,
-│   │     correlation IDs to sandbox / approval / agent_run_id).
-│   │     Lives in shoreguard, not PointlesSQL — see
-│   │     ``project_shoreguard_provenance_log.md`` for the full
-│   │     design + storage tradeoffs.
+│   │   2. **No per-row provenance.** ``agent_run_operations``
+│   │      knows "op X produced N rows in Delta version V" but
+│   │      not "silver row 47 came from bronze row 12 in
+│   │      orders.csv at offset 11".  Sprints 15.2 + 15.3 add a
+│   │      stable ``_lineage_row_id`` audit column on bronze and
+│   │      a ``lineage_row_edges`` shadow table populated by
+│   │      ``pql.merge``.  Sprint 15.4 surfaces the trail in the
+│   │      UI.
 │   │
-│   │   Bundling both under one phase because they answer the
-│   │   same compliance question from two angles ("why did the
-│   │   agent decide?" vs "which input row produced this row?")
-│   │   and a serious enterprise buyer wants both.  Don't ship
-│   │   one without the other.
+│   │   PointlesSQL-only — soyuz already has everything we need.
+│   │   Plan in ``.claude/plans/plane-phase-14-komplett-floofy-nest.md``.
 │   │
-│   │   Out-of-scope: model-deprecation replay (storage tier
-│   │   tradeoff) ships as a Phase-15 follow-up.
+│   │   The **LLM-side provenance log** (signed token trail of
+│   │   every LLM iteration) is **out of scope** for Phase 15 —
+│   │   it lives in shoreguard, not PointlesSQL, per
+│   │   ``project_pointlessql_vs_shoreguard_boundary.md``.  Cross-
+│   │   ref via ``agent_run_id`` is already in place; shoreguard
+│   │   builds its log against that anchor when it gets there.
 │   │
-│   ├── Per-row lineage spike (~3 sprints) — pick column-vs-
-│   │   shadow-table approach via prototype on `pql.merge`,
-│   │   benchmark storage cost on the medallion fixture
-│   ├── Shoreguard Provenance Log MVP (~7 sprints, see memory) —
-│   │   L7 proxy interception, OCSF + token-trail schema,
-│   │   PII-redaction, cross-plane correlation, Merkle-tree
-│   │   signing, forensic replay UI, retention tiering
-│   └── Cross-plane query: "show me everything that happened
-│       around incident X" surfaces both signed logs joined on
-│       agent_run_id + sandbox_id + approval_id
+│   ├── Sprint 15.1 — PQL → soyuz OpenLineage emission          ⏳ queued
+│   │   └── New ``services/soyuz_lineage.emit_event`` helper,
+│   │       hooked into ``operation_context()`` after recorder
+│   │       commit.  Best-effort — connection-refused / 5xx are
+│   │       swallowed and stamped onto
+│   │       ``agent_run_operations.error_message`` so the
+│   │       underlying write never gets blocked by a lineage-
+│   │       emit failure.  PQL primitives gain optional
+│   │       ``source_table_fqn`` / ``source_volume_fqn`` kwargs so
+│   │       merges/writes can declare upstream UC inputs.  Run-
+│   │       detail header gains a "View lineage graph" link.
+│   ├── Sprint 15.2 — Bronze ``_lineage_row_id`` column          ⏳ queued
+│   │   └── ``LayerConvention`` for ``bronze`` gains a fourth
+│   │       audit column ``_lineage_row_id`` =
+│   │       ``SHA-256(file_sha || ":" || row_offset)``.
+│   │       Deterministic + idempotent — same row in same file
+│   │       always gets the same ID.  Injected by
+│   │       ``_inject_audit_columns`` alongside the existing
+│   │       three audit columns.  No migration — it's a
+│   │       convention; the column appears on the next autoload.
+│   ├── Sprint 15.3 — ``lineage_row_edges`` shadow table         ⏳ queued
+│   │   └── New Alembic migration creates ``lineage_row_edges``
+│   │       (``run_id``, ``op_id``, ``source_table``,
+│   │       ``source_row_id``, ``target_table``, ``target_row_id``,
+│   │       ``created_at``).  ``pql.merge`` synthesises a stable
+│   │       ``target_lineage_id`` for each input row, writes it as
+│   │       the target's ``_lineage_row_id``, and batch-inserts
+│   │       one edge per source row.  Storage in PointlesSQL
+│   │       metadata DB — sibling Delta tables would be the
+│   │       Phase-17+ scaling answer if a single run ever exceeds
+│   │       ~1M edges.
+│   ├── Sprint 15.4 — Row-trace UI                              ⏳ queued
+│   │   └── ``GET /api/lineage/row-trace?table=&row_id=`` walks
+│   │       backwards through ``lineage_row_edges`` to the bronze
+│   │       root (capped at 20 hops).  New
+│   │       ``/tables/{fqn}/rows/{row_id}/trace`` page renders the
+│   │       walkback as a Bootstrap list-group, with the bronze
+│   │       step exposing ``_source_file``.  Lineage-card on
+│   │       ``table.html`` surfaces a "per-row lineage available"
+│   │       hint when ``_lineage_row_id`` exists.  Run-detail
+│   │       gains a "Lineage" tab listing edge counts per op.
+│   │
+│   └── Out-of-scope (explicit, ships in later phases or never):
+│       ├── **Shoreguard Provenance Log** (LLM-side signed
+│       │   token-trail) — lives in shoreguard-fresh, see
+│       │   ``project_shoreguard_provenance_log.md`` and
+│       │   ``project_pointlessql_vs_shoreguard_boundary.md``
+│       ├── **SQL row-lineage** — arbitrary joins/aggregates
+│       │   have no clean preimage.  SQL ops mark the chain
+│       │   ``lineage_break: true`` and the UI surfaces the
+│       │   discontinuity transparently
+│       └── **Column-level lineage** — orthogonal dimension
+│           (input column → output column).  Separate phase if
+│           a user ever asks
 │
 ├── Phase 16 — Delta-Branching + first-class Rollback      ⏳ queued
 │   │

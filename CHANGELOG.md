@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — Sprint 15.0: Phase 15 reframed as lineage completeness (2026-04-26)
+
+- **Updated** [`ROADMAP.md`](ROADMAP.md) Phase-15 block: title
+  shortened from "Provenance Log (data + LLM signed audit)" to
+  "Lineage completeness", marker flipped ⏳ → 🚧, sub-tree
+  expanded with the four sprint placeholders (15.1 OpenLineage
+  emission, 15.2 bronze `_lineage_row_id`, 15.3
+  `lineage_row_edges`, 15.4 row-trace UI), and an explicit Out-
+  of-scope block for the Shoreguard token-trail log (lives in
+  shoreguard-fresh per the boundary memo), arbitrary-SQL row
+  lineage, and column-level lineage.
+
 ### Changed — Sprint 14.4 follow-up: soyuz pin bumped to v0.2.0rc3 (2026-04-26)
 
 - **Updated** `pyproject.toml` `[tool.uv.sources]` pin from
