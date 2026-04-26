@@ -90,6 +90,16 @@ class PandasEngine:
     def write(self, frame: pd.DataFrame, storage_location: str, mode: WriteMode) -> None:
         """Write a pandas DataFrame to a Delta table.
 
+        ``mode="overwrite"`` is interpreted strictly: the new frame
+        replaces the prior table contents *and* its schema.  Without
+        ``schema_mode="overwrite"`` deltalake refuses any column-set
+        change with ``SchemaMismatchError("Cannot cast schema, number
+        of fields does not match")`` — which surprised the
+        Sprint-13.11.11 live demo when the agent rebuilt a silver
+        table with a slightly different projection.  Append-mode keeps
+        the merge-with-existing semantics; the schema must still match
+        on append, that's the point of append.
+
         Args:
             frame: The DataFrame to write.
             storage_location: Filesystem path or URI of the Delta table.
@@ -97,7 +107,10 @@ class PandasEngine:
         """
         import deltalake
 
-        deltalake.write_deltalake(storage_location, frame, mode=mode)
+        if mode == "overwrite":
+            deltalake.write_deltalake(storage_location, frame, mode=mode, schema_mode="overwrite")
+        else:
+            deltalake.write_deltalake(storage_location, frame, mode=mode)
 
     def columns_info(self, frame: pd.DataFrame) -> list[tuple[str, str, str, bool]]:
         """Extract column metadata from a pandas DataFrame.
@@ -218,7 +231,12 @@ class DuckDBEngine:
         import deltalake
 
         arrow_table = frame.arrow()
-        deltalake.write_deltalake(storage_location, arrow_table, mode=mode)
+        if mode == "overwrite":
+            deltalake.write_deltalake(
+                storage_location, arrow_table, mode=mode, schema_mode="overwrite"
+            )
+        else:
+            deltalake.write_deltalake(storage_location, arrow_table, mode=mode)
 
     def columns_info(self, frame: duckdb.DuckDBPyRelation) -> list[tuple[str, str, str, bool]]:
         """Extract column metadata from a DuckDB relation.
@@ -309,7 +327,12 @@ class PolarsEngine:
         """
         import deltalake
 
-        deltalake.write_deltalake(storage_location, frame.to_arrow(), mode=mode)
+        if mode == "overwrite":
+            deltalake.write_deltalake(
+                storage_location, frame.to_arrow(), mode=mode, schema_mode="overwrite"
+            )
+        else:
+            deltalake.write_deltalake(storage_location, frame.to_arrow(), mode=mode)
 
     def columns_info(self, frame: pl.DataFrame) -> list[tuple[str, str, str, bool]]:
         """Extract column metadata from a Polars DataFrame.
