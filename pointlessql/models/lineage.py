@@ -30,6 +30,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -216,4 +217,62 @@ class LineageColumnMap(Base):
     target_column: Mapped[str] = mapped_column(String(255), nullable=False)
     transform_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     transform_detail: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class LineageValueChange(Base):
+    """One per-cell before/after pair produced by an upsert merge.
+
+    Sprint 15.7.1 — fourth lineage axis after row (15), reject (15.5),
+    column (15.6).  Populated only when the caller opts in via
+    ``pql.merge(strategy="upsert", track_value_changes=True)``.
+
+    Capture mechanic: every new Delta write turns on Change Data Feed
+    (``delta.enableChangeDataFeed=true``).  Post-merge,
+    :meth:`deltalake.DeltaTable.load_cdf` yields ``update_preimage`` /
+    ``update_postimage`` records that the diff helper pairs on
+    ``_lineage_row_id`` and emits one row per actually-different cell.
+    Inserts (``_change_type='insert'``) are skipped because the
+    "old value" is undefined; deletes are skipped because upsert never
+    deletes.
+
+    Volume bound: O(matched_rows × changed_cols).  A re-run over
+    identical input produces zero rows.  Cap at
+    ``MAX_VALUE_CHANGES_PER_OP = 100_000`` with the
+    ``[lineage_value_partial]`` audit marker on cap hit.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        run_id: FK to :class:`AgentRun.id` — the run that produced
+            this change.
+        op_id: FK to :class:`AgentRunOperation.id` — the merge op.
+        target_table: Fully-qualified UC name the row lives in.
+        target_row_id: ``_lineage_row_id`` of the changed target row.
+        target_column: Column name whose value changed.
+        old_value: Stringified preimage value, or SQL ``NULL`` when
+            the cell was actually NULL.  ``Text`` (unbounded) so
+            JSON / map / large-string columns survive intact.
+        new_value: Stringified postimage value, or SQL ``NULL``.
+        created_at: Wall-clock timestamp the row was inserted.
+    """
+
+    __tablename__ = "lineage_value_changes"
+
+    __table_args__ = (
+        Index("ix_lineage_value_changes_run", "run_id"),
+        Index("ix_lineage_value_changes_op", "op_id"),
+        Index("ix_lineage_value_changes_target_row", "target_table", "target_row_id"),
+        Index("ix_lineage_value_changes_target_col", "target_table", "target_column"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
+    op_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("agent_run_operations.id"), nullable=False
+    )
+    target_table: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_row_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_column: Mapped[str] = mapped_column(String(255), nullable=False)
+    old_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    new_value: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -96,6 +96,15 @@ class OperationRecorder:
             ``None`` (the default) means the primitive had no
             mappings to record (e.g. read-only ops, or a write that
             ran without ``source_table_fqn``).
+        pending_value_changes: Sprint-15.7.1 hook — when
+            ``pql.merge(strategy="upsert", track_value_changes=True)``
+            captured per-cell preimage/postimage pairs from the Delta
+            CDF stream, it stashes the resulting list of
+            :class:`~pointlessql.services.lineage_edges.ValueChangeSpec`
+            entries here.  The post-commit hook bulk-inserts into
+            ``lineage_value_changes`` best-effort.  ``None`` (the
+            default) means the merge ran without opt-in or had no
+            actual value differences.
     """
 
     input_sha: str | None = None
@@ -107,6 +116,7 @@ class OperationRecorder:
     pending_lineage_edges: dict[str, Any] | None = None
     pending_rejects: dict[str, Any] | None = None
     pending_column_edges: list[Any] | None = None
+    pending_value_changes: list[Any] | None = None
 
 
 def record_operation(
@@ -323,6 +333,12 @@ def operation_context(
         agent_run_id=agent_run_id,
         pending=recorder.pending_column_edges,
     )
+    _record_value_changes_after_commit(
+        session_factory,
+        op_id=op_id,
+        agent_run_id=agent_run_id,
+        pending=recorder.pending_value_changes,
+    )
 
 
 def _emit_lineage_after_commit(
@@ -517,6 +533,43 @@ def _record_column_edges_after_commit(
         return
     _stamp_audit_marker(
         session_factory, op_id=op_id, marker=f"[lineage_column_partial] {failure!r}"
+    )
+
+
+def _record_value_changes_after_commit(
+    session_factory: sessionmaker[Session],
+    *,
+    op_id: int,
+    agent_run_id: str,
+    pending: list[Any] | None,
+) -> None:
+    """Persist Sprint-15.7.1 per-cell value changes in a best-effort pass.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        op_id: Just-committed ``agent_run_operations.id``.
+        agent_run_id: PointlesSQL run UUID.
+        pending: ``OperationRecorder.pending_value_changes`` payload —
+            a list of
+            :class:`~pointlessql.services.lineage_edges.ValueChangeSpec`
+            entries.  ``None`` or empty when the merge ran without
+            opt-in or had no actual value differences.
+    """
+    if not pending:
+        return
+
+    from pointlessql.services.lineage_edges import record_value_changes
+
+    failure = record_value_changes(
+        session_factory,
+        run_id=agent_run_id,
+        op_id=op_id,
+        changes=pending,
+    )
+    if failure is None:
+        return
+    _stamp_audit_marker(
+        session_factory, op_id=op_id, marker=f"[lineage_value_partial] {failure!r}"
     )
 
 

@@ -61,6 +61,7 @@ from pointlessql.models.lineage import (
     LineageColumnMap,
     LineageRowEdge,
     LineageRowReject,
+    LineageValueChange,
 )
 from pointlessql.models.notebook import (
     NotebookCellRun,
@@ -97,6 +98,7 @@ __all__ = [
     "LineageColumnMap",
     "LineageRowEdge",
     "LineageRowReject",
+    "LineageValueChange",
     "REJECT_REASONS",
     "TRANSFORM_KINDS",
     "NotebookCellRun",
