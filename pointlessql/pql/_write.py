@@ -171,6 +171,11 @@ def write_table(
 
             engine.write(df, location, mode)
 
+            if not table_exists:
+                from pointlessql.pql._cdf import ensure_cdf_enabled
+
+                ensure_cdf_enabled(location)
+
             if agent_run_id is not None:
                 recorder.delta_version_after = safe_delta_version(location)
 

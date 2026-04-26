@@ -220,6 +220,11 @@ def autoload_files(
             files_ingested += 1
             ingested_shas.append(sha)
 
+        if not target_exists and files_ingested > 0:
+            from pointlessql.pql._cdf import ensure_cdf_enabled
+
+            ensure_cdf_enabled(target_location)
+
         if agent_run_id is not None:
             recorder.delta_version_after = safe_delta_version(target_location)
             recorder.rows_affected = rows_total
