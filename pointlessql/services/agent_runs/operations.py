@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-VALID_OP_NAMES = frozenset({"autoload", "merge", "write_table", "sql"})
+VALID_OP_NAMES = frozenset({"autoload", "merge", "write_table", "sql", "aggregate"})
 
 
 @dataclass

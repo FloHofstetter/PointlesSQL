@@ -56,6 +56,30 @@ def synth_target_row_id(source_row_id: str, target_table: str) -> str:
     return hashlib.sha256(f"{source_row_id}:{target_table}".encode()).hexdigest()
 
 
+def synth_aggregate_target_row_id(target_table: str, group_values: Sequence[Any]) -> str:
+    """Mint a deterministic ``_lineage_row_id`` for an aggregate output row.
+
+    The aggregate variant cannot reuse :func:`synth_target_row_id`
+    because aggregations have N source IDs per target — using any
+    single source would make the target ID depend on group ordering.
+    Hashing the *group-by values* instead keeps the target ID stable
+    across re-runs (same group keys → same target ID) while still
+    being unique per group.  Source IDs go into the edges payload.
+
+    Args:
+        target_table: Fully-qualified UC name of the target.
+        group_values: Values of the group-by columns for this output
+            row, in the order the caller declared them.  Each value
+            is stringified via ``str()`` for the digest input.
+
+    Returns:
+        64-character lowercase hex digest stable across re-runs of
+        the same aggregation against the same target.
+    """
+    payload = target_table + ":" + "|".join(str(v) for v in group_values)
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
 def record_edges(
     session_factory: sessionmaker[Session],
     *,
