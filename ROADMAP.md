@@ -4984,7 +4984,103 @@ PointlesSQL
 │       │   discontinuity transparently
 │       └── **Column-level lineage** — orthogonal dimension
 │           (input column → output column).  Separate phase if
-│           a user ever asks
+│           a user ever asks (now scheduled as Phase 15.6).
+│
+├── Phase 15.5 — Aggregate Lineage + Reject Visibility    🔜 next
+│   │
+│   │   Sub-phase of Phase 15.  Closes two row-lineage gaps that
+│   │   the live E2E replay (2026-04-26) made visible:
+│   │
+│   │   1. **Aggregate fan-in is missing.**  Gold tables built via
+│   │      ``pandas.groupby`` + ``pql.write_table(mode="overwrite")``
+│   │      produce zero edges — ``_lineage_row_id`` identity from
+│   │      silver is silently lost in the groupby.  A gold anomaly
+│   │      cannot be traced back to its silver sources.
+│   │   2. **Reject visibility is missing.**  ``pql.merge`` can drop
+│   │      rows silently (NULL ``on``-key, schema mismatch, dedup
+│   │      conflict); only the aggregate counter
+│   │      (``num_target_rows_inserted``) leaks the fact.  Agents
+│   │      cannot answer "why did only 47 of 50 source rows land?"
+│   │
+│   │   Plan in ``.claude/plans/plane-phase-14-komplett-floofy-nest.md``.
+│   │   Phase 15.6 (Column-Level Lineage) follows directly after.
+│   │   Existing Phase 16 (Delta-Branching + Rollback) stays queued
+│   │   and unchanged.
+│   │
+│   ├── Sprint 15.5.0 — Phase-15 bugfix + housekeeping     ✅ done (749ed49)
+│   │   └── ``BigInteger PK`` → ``Integer PK`` on
+│   │       ``lineage_row_edges`` (SQLite autoincrement quirk that
+│   │       silently failed every per-row edge insert during the
+│   │       Phase-15 replay) plus run-detail header URL fix
+│   │       (``/catalogs/{cat}/{schema}/{table}`` →
+│   │       ``/catalogs/{cat}/schemas/{schema}/tables/{table}``).
+│   │       Reinforces the "live replay as gate" memo: ruff /
+│   │       pyright / pydoclint cannot catch SQLite-PK quirks or
+│   │       URL string templates.
+│   ├── Sprint 15.5.1 — ``pql.aggregate()`` + fan-in edges  ⏳ next
+│   │   └── New ``pointlessql/pql/_aggregate.py`` analog to
+│   │       ``_merge.py``.  Required ``source_table_fqn`` kwarg (no
+│   │       optional fan-in lineage), deterministic
+│   │       ``synth_target_row_id =
+│   │       SHA-256(target_table || ":" || sorted(group_values))``.
+│   │       Emits N→1 edges (one per source row in the aggregated
+│   │       group).  ``op_name`` enum extended by ``"aggregate"``.
+│   ├── Sprint 15.5.2 — walk_back tree + row-trace fan-in   ⏳ planned
+│   │   └── Refactor ``services/lineage_edges.walk_back`` to return
+│   │       ``TraceStep`` with ``predecessors: list`` instead of a
+│   │       single edge.  Aggregate steps return the full source
+│   │       set; merge / write_table steps keep the deterministic
+│   │       single-predecessor walk.  Template renders fan-in as
+│   │       collapsible "Aggregated from N rows" block with
+│   │       click-through to each source row.
+│   ├── Sprint 15.5.3 — ``lineage_row_rejects`` + capture    ⏳ planned
+│   │   └── New Alembic migration parented at ``d4e5f6a7b8c9``
+│   │       creates ``lineage_row_rejects(run_id, op_id,
+│   │       source_table, source_row_id, reason, detail,
+│   │       created_at)``.  ``pql.merge`` gains opt-in
+│   │       ``track_rejects=True`` kwarg; pre-merge set-diff between
+│   │       source and merged rows captures dropped row IDs with
+│   │       enum reason (``on_key_null`` /
+│   │       ``duplicate_in_source`` / ``schema_mismatch`` /
+│   │       ``merge_predicate_excluded`` / ``other``).  Default
+│   │       off — performance-conservative.
+│   ├── Sprint 15.5.4 — Reject tab on run-detail            ⏳ planned
+│   │   └── New ``tab-rejects`` between Operations and Tool calls
+│   │       on ``frontend/templates/pages/run_view.html``.
+│   │       Counter in the tab label; per-row table with
+│   │       click-through to ``/.../rows/{id}/trace``.
+│   │       Empty-state "No rows rejected in this run.
+│   │       (``track_rejects=True`` not set on any merge call)".
+│   └── Sprint 15.5.5 — Notebook update + live E2E replay   ⏳ planned
+│       └── ``notebooks/hermes_medallion.py`` gold-block migrated
+│           from ``groupby`` + ``write_table`` to
+│           ``pql.aggregate``.  ``pql.merge`` call gains
+│           ``track_rejects=True``.  Headful Firefox replay
+│           (analog to the Phase-15 replay): row-trace on a
+│           gold row shows fan-in, run-detail shows rejects tab.
+│
+├── Phase 15.6 — Column-Level Lineage                      ⏳ queued
+│   │
+│   │   Orthogonal dimension to row-lineage: which input column
+│   │   feeds which output column, with a transform_kind label
+│   │   (``identity`` / ``rename`` / ``derived`` / ``aggregate`` /
+│   │   ``dropped``).  Lets agents answer "if I rename
+│   │   ``unit_price`` in silver, which gold columns break?".
+│   │
+│   │   Sketch only — promoted to a real plan once Phase 15.5
+│   │   closes.  Likely shape:
+│   │
+│   ├── New ``lineage_column_map(op_id, source_table,
+│   │   source_column, target_table, target_column,
+│   │   transform_kind)`` table populated automatically from
+│   │   ``pql.merge`` schema diff.  Derived columns declared via a
+│   │   ``derivations={"target_col": ["source_col_a", ...]}``
+│   │   kwarg.
+│   ├── Optional ``lineage_value_changes(op_id, source_row_id,
+│   │   column, before, after)`` for value-level change-tracking
+│   │   (opt-in via ``track_value_changes=True``)
+│   └── ``/catalogs/.../columns/{name}/trace`` UI analog to the
+│       row-trace page; column lineage card on the table page
 │
 ├── Phase 16 — Delta-Branching + first-class Rollback      ⏳ queued
 │   │

@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed — Sprint 15.5.0: Phase-15 bugfix landing (2026-04-26)
+
+Two bugs surfaced in the Phase-15 live E2E replay (headful Firefox
+walkthrough of the medallion notebook).  Neither could be caught by
+ruff / pyright / pydoclint — they required running the full ETL +
+clicking through the UI.  Reinforces the "live replay as gate" memo.
+
+- **Fixed** [`pointlessql/models/lineage.py`](pointlessql/models/lineage.py)
+  + [`pointlessql/alembic/versions/d4e5f6a7b8c9_lineage_row_edges.py`](pointlessql/alembic/versions/d4e5f6a7b8c9_lineage_row_edges.py)
+  — `lineage_row_edges.id` switched from `BigInteger` to `Integer`
+  primary key.  Only `INTEGER PRIMARY KEY` autoincrements in SQLite;
+  `BIGINT PRIMARY KEY` does not.  Symptom: every `pql.merge` stamped
+  `[lineage_edges_partial] IntegrityError("NOT NULL constraint failed:
+  lineage_row_edges.id")` on `agent_run_operations.error_message` and
+  produced zero per-row edges.
+- **Fixed** [`frontend/templates/pages/run_view.html`](frontend/templates/pages/run_view.html)
+  — header link "View lineage graph" URL aligned with the rest of the
+  codebase: `/catalogs/{cat}/{schema}/{table}` →
+  `/catalogs/{cat}/schemas/{schema}/tables/{table}`.  Line 594 of the
+  same template was already correct; line 87 was a copy-paste miss.
+
 ### Added — Sprint 15.4: Row-trace UI + run-detail Lineage tab (2026-04-26)
 
 Closes Phase 15.  The lineage chain built by Sprints 15.1-15.3 is
