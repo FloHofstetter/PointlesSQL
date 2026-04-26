@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}External writes · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin"},
+    {"label": "External writes"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle fs-3"></i>
+        <h1 class="h3 mb-0">External writes</h1>
+        {% if unacknowledged_total %}
+        <span class="badge bg-warning text-dark">{{ unacknowledged_total }} unacknowledged</span>
+        {% else %}
+        <span class="badge bg-success">queue empty</span>
+        {% endif %}
+    </div>
+    <span class="text-muted small">
+        {{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }} shown
+    </span>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle me-1"></i>
+    Detection-only.  Lists Delta-table commits whose version is
+    <em>not</em> referenced by any <code>agent_run_operations</code>
+    row — i.e. writes that bypassed every PQL primitive (raw
+    <code>deltalake.write_deltalake()</code>, Spark, <code>cp</code>
+    of parquet, foreign tools).  See
+    <code>POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS</code>
+    for the periodic-loop opt-in; the button below works regardless.
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" action="/admin/external-writes">
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-6 col-md-5">
+                    <label class="form-label small mb-1" for="f-table">Table FQN contains</label>
+                    <input id="f-table" name="table_fqn_like" type="text"
+                           class="form-control form-control-sm"
+                           value="{{ table_fqn_like }}" placeholder="main.silver.…">
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" name="only_unacknowledged"
+                               id="f-only-unack" value="true"
+                               {% if only_unacknowledged %}checked{% endif %}>
+                        <label class="form-check-label small" for="f-only-unack">Unacknowledged only</label>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-4 text-end">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-funnel me-1"></i>Apply
+                    </button>
+                    <a href="/admin/external-writes" class="btn btn-outline-secondary btn-sm">Reset</a>
+                </div>
+            </div>
+        </form>
+        <hr class="my-3">
+        <form method="post" action="/api/admin/external-writes/scan" hx-boost="false"
+              onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerText='Scanning…';">
+            <button type="submit" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-arrow-clockwise me-1"></i>Run scan now
+            </button>
+            <span class="text-muted small ms-2">Walks every UC table; idempotent thanks to (table, version) UNIQUE.</span>
+        </form>
+    </div>
+</div>
+
+{% if not entries %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-shield-check display-4 d-block mb-2"></i>
+        <p class="mb-2">No unattributed writes detected.</p>
+        <p class="small mb-0">Every Delta commit on the scanned tables is claimed by a PQL operation.</p>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Detected</th>
+                        <th>Table</th>
+                        <th>Delta v</th>
+                        <th>Commit ts</th>
+                        <th>Commit info</th>
+                        <th>Acknowledged</th>
+                        <th class="pe-3 text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in entries %}
+                    <tr {% if w.acknowledged_at %}class="text-muted"{% endif %}>
+                        <td class="ps-3 small font-monospace">{{ w.detected_at }}</td>
+                        <td class="font-monospace small">{{ w.table_fqn }}</td>
+                        <td class="font-monospace">{{ w.delta_version }}</td>
+                        <td class="small font-monospace">{{ w.commit_timestamp or "—" }}</td>
+                        <td class="small font-monospace" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis;">
+                            <code title="{{ w.commit_info or '' }}">
+                                {{ (w.commit_info or '')[:120] }}{% if (w.commit_info or '')|length > 120 %}…{% endif %}
+                            </code>
+                        </td>
+                        <td class="small">
+                            {% if w.acknowledged_at %}
+                            <span class="badge bg-secondary">{{ w.acknowledged_by }}</span>
+                            <span class="text-muted">{{ w.acknowledged_at }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 text-end">
+                            {% if not w.acknowledged_at %}
+                            <form method="post" action="/api/admin/external-writes/{{ w.id }}/acknowledge"
+                                  hx-boost="false" class="d-inline">
+                                <button type="submit" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-check2"></i> Acknowledge
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

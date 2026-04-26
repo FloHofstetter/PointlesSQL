@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 14.3: external-write detection (2026-04-26)
+
+Closes the third of four Phase-14 audit-trail gaps.  Delta commits
+that bypassed every PQL primitive (raw `deltalake.write_deltalake()`,
+Spark, `cp` of parquet, foreign tools) now surface in a dedicated
+`unattributed_writes` table with a triage queue UI.  Detection-only
+by design — see `project_full_autonomous_audit_critical_path.md`.
+
+- **Added** Alembic `c3d4f5a6b7e8` — `unattributed_writes` table
+  (`table_fqn` + `delta_version` UNIQUE, plus `acknowledged_at` /
+  `detected_at` indexes).  Down-revision: `b27e6ad14ead`.
+- **Added** [`pointlessql/services/external_write_scanner.py`](pointlessql/services/external_write_scanner.py) —
+  `scan_table()` walks `DeltaTable(path).history(limit=N)` and
+  diffs against `agent_run_operations.delta_version_after`;
+  `scan_all()` enumerates every UC table via the async UC client;
+  `list_unattributed()` / `acknowledge()` / `count_unacknowledged()`
+  back the admin UI.  Reuses the
+  `services/table_stats.read_delta_log_version` deltalake pattern;
+  no raw `_delta_log/` JSON parsing.
+- **Added** [`pointlessql/api/admin_external_writes_routes.py`](pointlessql/api/admin_external_writes_routes.py) —
+  four admin-gated routes: GET HTML page, GET JSON list, POST scan
+  trigger, POST acknowledge.
+- **Added** Lifespan loop in [`pointlessql/api/main.py`](pointlessql/api/main.py)
+  gated by `POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS`
+  (default `0` = disabled — single-node vServer keeps the
+  `DeltaTable.history()` cost off the critical path until an admin
+  opts in).
+- **Added** New `ExternalWritesSettings` sub-model
+  (`scan_interval_seconds`, `history_limit`).
+- **Added** Run-detail Operations tab gains a warning banner with
+  the first 5 unattributed writes on tables this run touched
+  (acknowledged-status filter), linking to `/admin/external-writes`.
+
 ### Added — Sprint 14.2: read-audit for `pql.table()` (2026-04-26)
 
 Closes the second of four Phase-14 audit-trail gaps — the DSGVO

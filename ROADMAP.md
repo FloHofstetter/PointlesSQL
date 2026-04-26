@@ -4843,16 +4843,20 @@ PointlesSQL
 │   │       gated on ``POINTLESSQL_AGENT_RUN_ID``; ``/queries``
 │   │       gains a Kind dropdown + column, run-detail Queries tab
 │   │       gains the same column.
-│   ├── Sprint 14.3 — External-write detection ("unattributed writes")
-│   │   ├── walk ``deltalake.DeltaTable(table_path).history()``
-│   │   │   per UC table; flag commits whose Delta version isn't
-│   │   │   referenced by any ``agent_run_operations.delta_version_after``
-│   │   ├── new ``unattributed_writes`` table (acknowledged_at /
-│   │   │   acknowledged_by); ``/admin/external-writes`` page +
-│   │   │   sidebar badge + run-detail gap-marker
-│   │   └── Detection-only — does NOT block external writers.
-│   │       Hard-block via storage permissions stays Phase 16+ if
-│   │       a real customer ever asks
+│   ├── Sprint 14.3 — External-write detection ("unattributed writes") ✅ done
+│   │   └── Alembic ``c3d4f5a6b7e8`` adds the
+│   │       ``unattributed_writes`` table; new
+│   │       ``services/external_write_scanner.py`` walks
+│   │       ``DeltaTable.history()`` per UC table and diffs against
+│   │       ``agent_run_operations.delta_version_after``;
+│   │       ``/admin/external-writes`` page + JSON API +
+│   │       on-demand scan trigger + acknowledge route; lifespan
+│   │       loop opt-in via
+│   │       ``POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS``;
+│   │       run-detail Operations tab surfaces first 5 unattributed
+│   │       writes on touched tables.  Detection-only — hard-block
+│   │       via storage permissions stays Phase 16+ if a real
+│   │       customer ever asks
 │   └── Sprint 14.4 — soyuz UC mutation cross-reference into ``/runs/{id}``
 │       ├── soyuz side: middleware reads ``X-Agent-Run-Id``
 │       │   header → ContextVar → nullable ``audit_log.agent_run_id``

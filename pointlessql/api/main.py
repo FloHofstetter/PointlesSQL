@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
+from pointlessql.api.admin_external_writes_routes import router as admin_external_writes_router
 from pointlessql.api.admin_routes import router as admin_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
@@ -155,6 +156,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         name="audit-retention",
     )
 
+    # Periodic external-write scanner.  Disabled by default
+    # (``scan_interval_seconds == 0``); admins opt in via
+    # ``POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS``.  The
+    # admin page's "Run scan now" button works regardless.
+    external_writes_task: asyncio.Task[None] | None = None
+    if settings.external_writes.scan_interval_seconds > 0:
+        external_writes_task = asyncio.create_task(
+            _external_writes_loop(app.state.session_factory, app.state.uc_client, settings),
+            name="external-writes-scan",
+        )
+
     # The browser notebook editor was retired; a future
     # :class:`KernelRegistry` on ``app.state`` will serve as the
     # execution backend for the ``agent_run`` scheduler kind.
@@ -165,6 +177,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         audit_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await audit_task
+        if external_writes_task is not None:
+            external_writes_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await external_writes_task
         if scheduler is not None:
             await scheduler.stop()
         await app.state.uc_client.aclose()
@@ -201,6 +217,49 @@ async def _audit_retention_loop(
             return
 
 
+async def _external_writes_loop(
+    factory: Any,
+    uc: Any,
+    settings: Settings,
+) -> None:
+    """Periodic scan for unattributed Delta commits.
+
+    Active only when
+    ``POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS`` is
+    explicitly non-zero — the default keeps the loop dormant on
+    single-node vServer deployments where per-table
+    ``DeltaTable.history()`` cost adds up.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the rest
+            of the app.
+        uc: ``UnityCatalogClient`` used to enumerate tables.
+        settings: Snapshotted :class:`Settings` — only
+            ``external_writes.scan_interval_seconds`` and
+            ``external_writes.history_limit`` are read.
+    """
+    from pointlessql.services import external_write_scanner
+
+    interval = max(60, settings.external_writes.scan_interval_seconds)
+    history_limit = settings.external_writes.history_limit
+    while True:
+        try:
+            inserted = await external_write_scanner.scan_all(
+                factory, uc, history_limit=history_limit
+            )
+            if inserted:
+                logger.info(
+                    "external_writes: scan tick recorded %d unattributed commit(s)",
+                    inserted,
+                )
+        except Exception:  # noqa: BLE001 — scanner loop must survive everything
+            logger.exception("external_writes: scan tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
 app = FastAPI(title="PointlesSQL", version="0.1.0", lifespan=_lifespan)
 
 from pointlessql.api.error_handlers import register_error_handlers  # noqa: E402
@@ -227,6 +286,7 @@ app.include_router(dashboards_router)
 app.include_router(home_router)
 app.include_router(admin_router)
 app.include_router(admin_api_keys_router)
+app.include_router(admin_external_writes_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),

@@ -183,6 +183,57 @@ def _load_audit_entries_for_run(
     return out
 
 
+def _load_unattributed_for_run(
+    request: Request,
+    *,
+    tables_touched: list[str],
+) -> list[dict[str, Any]]:
+    """Return ``unattributed_writes`` rows on tables this run touched.
+
+    Filters to rows with ``acknowledged_at IS NULL`` so the
+    run-detail surface highlights only the queue admins still need
+    to triage.  Empty list when ``tables_touched`` is empty (no
+    join surface) or no unacknowledged writes exist.
+
+    Args:
+        request: Incoming FastAPI request.
+        tables_touched: Three-part UC names from the run's
+            ``tables_touched`` JSON.
+
+    Returns:
+        List of dicts shaped like the admin page's entries.
+    """
+    if not tables_touched:
+        return []
+    from pointlessql.models import UnattributedWrite
+
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(UnattributedWrite)
+            .where(
+                UnattributedWrite.table_fqn.in_(tables_touched),
+                UnattributedWrite.acknowledged_at.is_(None),
+            )
+            .order_by(UnattributedWrite.detected_at.desc())
+            .limit(50)
+        )
+        for row in session.scalars(stmt).all():
+            out.append(
+                {
+                    "id": row.id,
+                    "table_fqn": row.table_fqn,
+                    "delta_version": row.delta_version,
+                    "commit_timestamp": (
+                        row.commit_timestamp.isoformat() if row.commit_timestamp else None
+                    ),
+                    "detected_at": row.detected_at.isoformat(),
+                }
+            )
+    return out
+
+
 def _load_operations_for_run(
     request: Request,
     run_id: str,
@@ -620,6 +671,10 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
                     request, list(serialize_agent_run(run_row).get("tables_touched", []))
                 )
             ],
+            "unattributed_writes": _load_unattributed_for_run(
+                request,
+                tables_touched=list(serialize_agent_run(run_row).get("tables_touched", [])),
+            ),
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,
             "active_page": "runs",

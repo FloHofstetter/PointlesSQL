@@ -54,6 +54,7 @@ from pointlessql.models.catalog import (
     SavedQuery,
     TableStats,
 )
+from pointlessql.models.external_writes import UnattributedWrite
 from pointlessql.models.notebook import (
     NotebookCellRun,
     NotebookCellRunSource,
@@ -96,5 +97,6 @@ __all__ = [
     "SyncRun",
     "TableStats",
     "TaskRun",
+    "UnattributedWrite",
     "User",
 ]

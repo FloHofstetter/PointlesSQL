@@ -306,6 +306,26 @@ class AgentRunsSettings(BaseSettings):
     webhook_hmac_secret: str | None = None
 
 
+class ExternalWritesSettings(BaseSettings):
+    """External-write detection scanner configuration.
+
+    Reads ``POINTLESSQL_EXTERNAL_WRITES_*`` environment variables.
+    The Sprint 14.3 scanner walks ``DeltaTable.history()`` per UC
+    table and INSERT-OR-IGNOREs into ``unattributed_writes`` for
+    every commit not matched by an ``agent_run_operations`` row.
+
+    ``scan_interval_seconds`` defaults to ``0`` (disabled) because
+    on a single-node vServer the per-table ``DeltaTable.history()``
+    cost adds up; admins enable it deliberately.  The on-demand
+    ``POST /api/admin/external-writes/scan`` route works regardless.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_EXTERNAL_WRITES_")
+
+    scan_interval_seconds: int = 0
+    history_limit: int = 200
+
+
 class ConventionsSettings(BaseSettings):
     """Medallion conventions config-file pointer.
 
@@ -349,4 +369,5 @@ class Settings(BaseSettings):
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
     agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)
+    external_writes: ExternalWritesSettings = Field(default_factory=ExternalWritesSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)

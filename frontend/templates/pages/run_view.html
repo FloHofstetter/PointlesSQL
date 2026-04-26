@@ -349,6 +349,28 @@
     </div>
 
     <div class="tab-pane fade" id="tab-ops" role="tabpanel" aria-labelledby="tab-ops-btn">
+        {% if unattributed_writes %}
+        <div class="alert alert-warning d-flex align-items-start justify-content-between mb-3" role="status">
+            <div class="small">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <strong>{{ unattributed_writes | length }}</strong> unattributed Delta commit{% if unattributed_writes | length != 1 %}s{% endif %}
+                detected on table{% if unattributed_writes | length != 1 %}s{% endif %} this run touched —
+                writes that bypassed every PQL primitive.
+                {% set _shown = unattributed_writes[:5] %}
+                <ul class="mb-0 mt-1 small font-monospace">
+                    {% for w in _shown %}
+                    <li>{{ w.table_fqn }} @ v{{ w.delta_version }} ({{ w.commit_timestamp or w.detected_at }})</li>
+                    {% endfor %}
+                    {% if unattributed_writes | length > 5 %}
+                    <li class="text-muted">… {{ unattributed_writes | length - 5 }} more</li>
+                    {% endif %}
+                </ul>
+            </div>
+            <a href="/admin/external-writes" class="btn btn-sm btn-outline-warning ms-3 flex-shrink-0">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Review
+            </a>
+        </div>
+        {% endif %}
         {% if operations %}
         <div class="card">
             <div class="card-body p-0">
