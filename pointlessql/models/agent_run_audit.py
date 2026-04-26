@@ -22,6 +22,7 @@ import datetime
 
 from sqlalchemy import (
     BigInteger,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -123,6 +124,10 @@ class AgentRunOperation(Base):
     __table_args__ = (
         UniqueConstraint("agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"),
         Index("ix_agent_run_operations_run", "agent_run_id"),
+        CheckConstraint(
+            "op_name IN ('autoload','merge','write_table','sql')",
+            name="ck_agent_run_operations_op_name",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -169,7 +174,13 @@ class AgentRunEvent(Base):
     """
 
     __tablename__ = "agent_run_events"
-    __table_args__ = (Index("ix_agent_run_events_fired", "agent_run_id", "fired_at"),)
+    __table_args__ = (
+        Index("ix_agent_run_events_fired", "agent_run_id", "fired_at"),
+        CheckConstraint(
+            "outcome IN ('pending','delivered','delivery_failed','no_destination')",
+            name="ck_agent_run_events_outcome",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     agent_run_id: Mapped[str] = mapped_column(

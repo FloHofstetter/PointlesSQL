@@ -12,6 +12,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -69,9 +70,11 @@ class Job(Base):
     cron_expr: Mapped[str] = mapped_column(String(120), nullable=False)
     run_as_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     kind: Mapped[str] = mapped_column(String(50), nullable=False)
-    config: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    config: Mapped[str] = mapped_column(Text, nullable=False, default="{}", server_default="{}")
     is_paused: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    max_parallel_runs: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    max_parallel_runs: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
     on_failure_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -101,7 +104,10 @@ class JobRun(Base):
     """
 
     __tablename__ = "job_runs"
-    __table_args__ = (Index("ix_job_runs_job_started", "job_id", "started_at"),)
+    # ``started_at DESC`` so the run-list view's "newest first" sort is
+    # an index-only scan; without DESC SQLite would still use the
+    # index but pay a reverse-traversal cost on every page load.
+    __table_args__ = (Index("ix_job_runs_job_started", "job_id", text("started_at DESC")),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     job_id: Mapped[int] = mapped_column(Integer, ForeignKey("jobs.id"), nullable=False)
@@ -153,12 +159,16 @@ class JobTask(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     job_id: Mapped[int] = mapped_column(Integer, ForeignKey("jobs.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    kind: Mapped[str] = mapped_column(String(50), nullable=False, default="python")
-    config: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
-    depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
-    max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    retry_backoff_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    kind: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="python", server_default="python"
+    )
+    config: Mapped[str] = mapped_column(Text, nullable=False, default="{}", server_default="{}")
+    depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]", server_default="[]")
+    max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    retry_backoff_seconds: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
 
 
 class TaskRun(Base):
@@ -199,7 +209,7 @@ class TaskRun(Base):
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
@@ -227,7 +237,9 @@ class JobLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     job_run_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_runs.id"), nullable=False)
-    task_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("job_tasks.id"), nullable=True)
+    task_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("job_tasks.id", name="fk_job_logs_task_id"), nullable=True
+    )
     ts: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     level: Mapped[str] = mapped_column(String(20), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)

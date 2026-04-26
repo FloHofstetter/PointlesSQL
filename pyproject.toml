@@ -114,6 +114,12 @@ pydocstyle.convention = "google"
 # first markdown cell.  Sprint 13.5's agent_drift_monitor.py is the
 # first tracked notebook; this ignore generalises the policy.
 "notebooks/**" = ["D"]
+# Alembic migration files are scaffolded by ``alembic revision
+# --autogenerate``; the resulting docstring header and per-function
+# layout do not match Google-style policy and the create_index calls
+# routinely exceed 100 chars.  Lint compliance there gives us no
+# real signal — the migrations are mechanical schema deltas.
+"pointlessql/alembic/versions/**" = ["D", "E501"]
 
 [tool.pyright]
 pythonVersion = "3.14"

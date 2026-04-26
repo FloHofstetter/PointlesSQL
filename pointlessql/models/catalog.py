@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -141,9 +142,19 @@ class QueryHistory(Base):
 
     __tablename__ = "query_history"
 
+    # ``ix_query_history_agent_run_id`` is a partial index — only rows
+    # whose ``agent_run_id`` is non-NULL are indexed, so the run-detail
+    # view's filter is index-backed without bloating writes from the
+    # plain interactive-editor traffic that has no run attached.
     __table_args__ = (
         Index("ix_query_history_user_started", "user_id", "started_at"),
         Index("ix_query_history_started", "started_at"),
+        Index(
+            "ix_query_history_agent_run_id",
+            "agent_run_id",
+            sqlite_where=text("agent_run_id IS NOT NULL"),
+            postgresql_where=text("agent_run_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

@@ -100,7 +100,9 @@ def render_atom(
         ET.SubElement(
             entry, "id"
         ).text = f"urn:pointlessql:alert:{event.get('event_id') or event.get('id')}"
-        ET.SubElement(entry, "title").text = (
+        ET.SubElement(
+            entry, "title"
+        ).text = (
             f"{event.get('alert_title') or event.get('alert_slug') or 'alert'} — {_summary(event)}"
         )
         entry_fired = _dt_parse(event.get("fired_at"))

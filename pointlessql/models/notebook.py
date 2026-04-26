@@ -69,6 +69,7 @@ class NotebookOutput(Base):
             name="uq_notebook_outputs_position",
         ),
         Index("ix_notebook_outputs_lookup", "file_path", "content_hash"),
+        Index("ix_notebook_outputs_agent_run", "agent_run_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -119,6 +120,7 @@ class NotebookCellRun(Base):
     """
 
     __tablename__ = "notebook_cell_runs"
+    __table_args__ = (Index("ix_notebook_cell_runs_agent_run", "agent_run_id"),)
 
     file_path: Mapped[str] = mapped_column(String(1024), primary_key=True)
     content_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -187,7 +189,9 @@ class NotebookCellRunSource(Base):
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="running")
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="running", server_default="running"
+    )
 
     __table_args__ = (
         Index(

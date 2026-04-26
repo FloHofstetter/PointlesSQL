@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text
+from sqlalchemy import DateTime, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -40,7 +40,11 @@ class SyncRun(Base):
 
     __tablename__ = "sync_run"
 
-    __table_args__ = (Index("ix_sync_run_catalog_started", "catalog_name", "started_at"),)
+    # ``started_at DESC`` so the catalog detail page's "newest sync
+    # first" view scans the index forward instead of reversing.
+    __table_args__ = (
+        Index("ix_sync_run_catalog_started", "catalog_name", text("started_at DESC")),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     catalog_name: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -49,7 +53,11 @@ class SyncRun(Base):
         DateTime(timezone=True), nullable=True
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False)
-    added_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    changed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    dropped_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    added_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    changed_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    dropped_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     error: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -6,6 +6,7 @@ import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -50,7 +51,13 @@ class Alert(Base):
     """
 
     __tablename__ = "alerts"
-    __table_args__ = (Index("ix_alerts_owner", "owner_id"),)
+    __table_args__ = (
+        Index("ix_alerts_owner", "owner_id"),
+        CheckConstraint(
+            "condition_op IN ('gt','lt','eq','ne')",
+            name="ck_alerts_condition_op",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     slug: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
@@ -95,6 +102,10 @@ class AlertDestination(Base):
     __table_args__ = (
         Index("ix_alert_destinations_alert", "alert_id"),
         Index("ix_alert_destinations_kind", "kind"),
+        CheckConstraint(
+            "kind IN ('webhook','feed')",
+            name="ck_alert_destinations_kind",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -129,7 +140,13 @@ class AlertEvent(Base):
     """
 
     __tablename__ = "alert_events"
-    __table_args__ = (Index("ix_alert_events_fired", "alert_id", "fired_at"),)
+    __table_args__ = (
+        Index("ix_alert_events_fired", "alert_id", "fired_at"),
+        CheckConstraint(
+            "outcome IN ('fired','suppressed','delivery_failed')",
+            name="ck_alert_events_outcome",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     alert_id: Mapped[int] = mapped_column(Integer, ForeignKey("alerts.id"), nullable=False)
