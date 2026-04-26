@@ -30,6 +30,9 @@ from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
+from pointlessql.services.lineage_edges import synth_target_row_id
+
+LINEAGE_ROW_ID_COLUMN = "_lineage_row_id"
 
 
 def write_table(
@@ -112,6 +115,13 @@ def write_table(
                     **recorder.extra_params,
                     "source_table_fqn": source_table_fqn,
                 }
+                source_ids, target_ids, df = _stamp_lineage_for_write(df, full_name)
+                if source_ids:
+                    recorder.pending_lineage_edges = {
+                        "source_table": source_table_fqn,
+                        "source_row_ids": source_ids,
+                        "target_row_ids": target_ids,
+                    }
 
         try:
             if not table_exists:
@@ -138,6 +148,59 @@ def write_table(
                 _create_table.sync(client=client, body=body)
         except httpx.ConnectError as exc:
             raise CatalogUnavailableError(unreachable_msg) from exc
+
+
+def _stamp_lineage_for_write(df: Any, target_full_name: str) -> tuple[list[str], list[str], Any]:
+    """Replace ``_lineage_row_id`` on *df* with synthesised target IDs.
+
+    Mirrors :func:`pointlessql.pql._merge._prepare_lineage` but works
+    on whatever frame shape the engine accepts (pandas /
+    PyArrow / Polars).  When the column is absent or the frame can't
+    be inspected the helper returns empty lists so the audit-row hook
+    skips edge emission cleanly.
+
+    Args:
+        df: Frame the caller passed to :func:`write_table`.
+        target_full_name: Fully-qualified UC name being written to.
+
+    Returns:
+        ``(source_row_ids, target_row_ids, df_with_target_ids)``.
+        Empty ID lists when the lineage column wasn't present or
+        couldn't be rewritten — caller skips edge persistence.
+    """
+    column = LINEAGE_ROW_ID_COLUMN
+    try:
+        import pandas as pd
+    except ImportError:  # pragma: no cover — pandas is a hard dep
+        return [], [], df
+
+    if isinstance(df, pd.DataFrame):
+        if column not in df.columns:
+            return [], [], df
+        source_ids = [str(v) for v in df[column].tolist()]
+        target_ids = [synth_target_row_id(s, target_full_name) for s in source_ids]
+        df = df.copy()
+        df[column] = target_ids
+        return source_ids, target_ids, df
+
+    try:
+        import pyarrow as pa
+    except ImportError:  # pragma: no cover — pyarrow is a hard dep
+        return [], [], df
+
+    if isinstance(df, pa.Table):
+        if column not in df.schema.names:
+            return [], [], df
+        source_ids = [str(v) if v is not None else "" for v in df.column(column).to_pylist()]
+        target_ids = [synth_target_row_id(s, target_full_name) for s in source_ids]
+        rebuilt = df.set_column(
+            df.schema.get_field_index(column),
+            column,
+            pa.array(target_ids, type=pa.string()),
+        )
+        return source_ids, target_ids, rebuilt
+
+    return [], [], df
 
 
 def safe_delta_version(location: str) -> int | None:

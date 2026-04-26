@@ -73,6 +73,13 @@ class OperationRecorder:
         extra_params: Dict merged into ``params_json`` so the
             primitive can attach run-time stats (file counts, merge
             stats) without rebuilding the params dict.
+        pending_lineage_edges: Sprint-15.3 hook — when a primitive
+            knows the source-row → target-row mapping for a merge or
+            write that carried ``_lineage_row_id`` it stashes
+            ``{"source_table": str, "source_row_ids": list[str],
+            "target_row_ids": list[str]}`` here.  The post-commit
+            hook reads it (after ``op_id`` is known) and bulk-inserts
+            into ``lineage_row_edges`` best-effort.
     """
 
     input_sha: str | None = None
@@ -81,6 +88,7 @@ class OperationRecorder:
     delta_version_after: int | None = None
     target_table: str | None = None
     extra_params: dict[str, Any] = field(default_factory=dict)
+    pending_lineage_edges: dict[str, Any] | None = None
 
 
 def record_operation(
@@ -278,6 +286,13 @@ def operation_context(
         params=merged_params,
         extra_params=recorder.extra_params,
     )
+    _record_row_edges_after_commit(
+        session_factory,
+        op_id=op_id,
+        agent_run_id=agent_run_id,
+        target_table=final_target,
+        pending=recorder.pending_lineage_edges,
+    )
 
 
 def _emit_lineage_after_commit(
@@ -340,16 +355,84 @@ def _emit_lineage_after_commit(
     if failure is None:
         return
 
-    marker = f"{_LINEAGE_FAILED_MARKER} {failure!r}"
+    _stamp_audit_marker(
+        session_factory, op_id=op_id, marker=f"{_LINEAGE_FAILED_MARKER} {failure!r}"
+    )
+
+
+def _record_row_edges_after_commit(
+    session_factory: sessionmaker[Session],
+    *,
+    op_id: int,
+    agent_run_id: str,
+    target_table: str | None,
+    pending: dict[str, Any] | None,
+) -> None:
+    """Persist Sprint-15.3 per-row lineage edges in a best-effort pass.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        op_id: Just-committed ``agent_run_operations.id``.
+        agent_run_id: PointlesSQL run UUID.
+        target_table: Output table FQN; required to record edges.
+        pending: ``OperationRecorder.pending_lineage_edges`` payload
+            populated by ``pql.merge`` / ``pql.write_table`` when the
+            source carried a ``_lineage_row_id`` column and the
+            caller declared ``source_table_fqn``.  ``None`` when the
+            primitive had no lineage to record.
+    """
+    if not pending or not target_table:
+        return
+    source_table = pending.get("source_table")
+    source_row_ids = pending.get("source_row_ids")
+    target_row_ids = pending.get("target_row_ids")
+    if (
+        not isinstance(source_table, str)
+        or not isinstance(source_row_ids, list)
+        or not isinstance(target_row_ids, list)
+        or not source_row_ids
+    ):
+        return
+
+    from pointlessql.services.lineage_edges import record_edges
+
+    failure = record_edges(
+        session_factory,
+        run_id=agent_run_id,
+        op_id=op_id,
+        source_table=source_table,
+        target_table=target_table,
+        source_row_ids=[str(s) for s in source_row_ids],
+        target_row_ids=[str(t) for t in target_row_ids],
+    )
+    if failure is None:
+        return
+    _stamp_audit_marker(session_factory, op_id=op_id, marker=f"[lineage_edges_partial] {failure!r}")
+
+
+def _stamp_audit_marker(session_factory: sessionmaker[Session], *, op_id: int, marker: str) -> None:
+    """Append a best-effort marker to ``agent_run_operations.error_message``.
+
+    Used when a side-effect (lineage emit, edge insert) failed but
+    the underlying op succeeded — the audit row should still record
+    that the side-effect was attempted.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        op_id: Operation row to update.
+        marker: Bracketed-marker prefixed string to write.
+    """
     try:
         with session_factory() as session:
             row = session.get(AgentRunOperation, op_id)
             if row is None:
                 return
-            row.error_message = marker
+            existing = row.error_message
+            row.error_message = marker if not existing else f"{existing}; {marker}"
             session.commit()
     except SQLAlchemyError:
         logger.exception(
-            "operation_context: failed to stamp lineage_emit_failed marker on op_id=%s",
+            "operation_context: failed to stamp marker on op_id=%s: %s",
             op_id,
+            marker,
         )

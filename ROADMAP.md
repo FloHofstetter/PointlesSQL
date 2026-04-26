@@ -4929,17 +4929,30 @@ PointlesSQL
 │   │       ``_inject_audit_columns`` alongside the existing
 │   │       three audit columns.  No migration — it's a
 │   │       convention; the column appears on the next autoload.
-│   ├── Sprint 15.3 — ``lineage_row_edges`` shadow table         ⏳ queued
-│   │   └── New Alembic migration creates ``lineage_row_edges``
+│   ├── Sprint 15.3 — ``lineage_row_edges`` shadow table         ✅ done
+│   │   └── Alembic ``d4e5f6a7b8c9`` creates ``lineage_row_edges``
 │   │       (``run_id``, ``op_id``, ``source_table``,
 │   │       ``source_row_id``, ``target_table``, ``target_row_id``,
-│   │       ``created_at``).  ``pql.merge`` synthesises a stable
-│   │       ``target_lineage_id`` for each input row, writes it as
-│   │       the target's ``_lineage_row_id``, and batch-inserts
-│   │       one edge per source row.  Storage in PointlesSQL
-│   │       metadata DB — sibling Delta tables would be the
-│   │       Phase-17+ scaling answer if a single run ever exceeds
-│   │       ~1M edges.
+│   │       ``created_at`` plus four indexes).  New
+│   │       ``services/lineage_edges.py`` exposes
+│   │       ``synth_target_row_id`` =
+│   │       ``SHA-256("<source_id>:<target_table>")`` plus a
+│   │       best-effort batch-INSERT (``record_edges``) and the
+│   │       Sprint-15.4-bound walk-back / count-per-op queries.
+│   │       ``pql.merge`` and ``pql.write_table`` (when the caller
+│   │       declares ``source_table_fqn``) capture source IDs,
+│   │       synthesise target IDs, write them as the target's
+│   │       ``_lineage_row_id`` column, and stash the mapping on
+│   │       ``OperationRecorder.pending_lineage_edges`` so the
+│   │       post-commit hook persists one edge per row.  Failures
+│   │       stamp ``[lineage_edges_partial]`` onto
+│   │       ``error_message`` so the audit trail records the
+│   │       attempt.  ``pql.sql`` has no direct write path today —
+│   │       ground-truth confirmed at sprint start — so
+│   │       ``lineage_break`` markers stay documentation-only until
+│   │       a CTAS path appears.  Storage in PointlesSQL metadata
+│   │       DB; sibling Delta tables remain the Phase-17+ scaling
+│   │       option if a single run ever exceeds ~1M edges.
 │   ├── Sprint 15.4 — Row-trace UI                              ⏳ queued
 │   │   └── ``GET /api/lineage/row-trace?table=&row_id=`` walks
 │   │       backwards through ``lineage_row_edges`` to the bronze

@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 15.3: `lineage_row_edges` shadow table + merge instrumentation (2026-04-26)
+
+Third Phase-15 sprint.  Per-row provenance now closes the loop: a
+silver row produced by `pql.merge` carries a deterministic
+`_lineage_row_id` that joins to a `lineage_row_edges` row pointing
+back at the bronze cell that fed it.  Sprint 15.4 will surface this
+in the UI.
+
+- **Added** Alembic migration `d4e5f6a7b8c9` creating
+  [`lineage_row_edges`](pointlessql/alembic/versions/d4e5f6a7b8c9_lineage_row_edges.py)
+  (`run_id` FK to `agent_runs.id`, `op_id` FK to
+  `agent_run_operations.id`, `source_table`, `source_row_id`,
+  `target_table`, `target_row_id`, `created_at` plus four indexes
+  for the lookup patterns Sprint 15.4 needs).  No UNIQUE constraint
+  — re-merges of the same rows produce fresh edges with new
+  `op_id`s, preserving merge history as an audit signal.
+- **Added** [`pointlessql/models/lineage.py`](pointlessql/models/lineage.py)
+  `LineageRowEdge` ORM model (re-exported from `pointlessql.models`).
+- **Added** [`pointlessql/services/lineage_edges.py`](pointlessql/services/lineage_edges.py)
+  with the public surface used by the merge/write instrumentation
+  and Sprint 15.4's UI:
+  - `synth_target_row_id(source_id, target_table) ->`
+    `SHA-256("<source_id>:<target_table>")` — deterministic +
+    table-distinct so re-runs reuse target IDs while never
+    collapsing across tables.
+  - `record_edges(...)` — best-effort bulk INSERT, returns the
+    underlying exception on failure for the marker hook.
+  - `fetch_target_row_predecessors` / `fetch_source_row_descendants`
+    / `walk_back(table, row_id, max_hops=20)` — Sprint-15.4-bound
+    read API.
+  - `lookup_bronze_source_file(table, row_id, storage_location)` —
+    DuckDB-over-deltalake one-row probe so the deepest walkback
+    step can label its bronze origin file.
+  - `count_edges_for_op(op_ids)` — UI counts per operation.
+- **Added** `OperationRecorder.pending_lineage_edges` (kept off
+  `params_json` so 100k-row payloads don't pollute the audit row)
+  on
+  [`pointlessql/services/agent_runs/operations.py`](pointlessql/services/agent_runs/operations.py).
+  New post-commit hook `_record_row_edges_after_commit()` reads the
+  payload, calls `record_edges`, and stamps
+  `[lineage_edges_partial]` onto `agent_run_operations.error_message`
+  on failure (refactored marker stamping into
+  `_stamp_audit_marker` shared with Sprint-15.1's emit hook).
+- **Updated** [`pointlessql/pql/_merge.py`](pointlessql/pql/_merge.py)
+  new `_prepare_lineage()` helper extracts source row IDs from the
+  PyArrow source's `_lineage_row_id` column (when present),
+  synthesises target IDs via `synth_target_row_id`, and rebuilds
+  the column so the target table's row inherits the new ID.  Empty
+  ID lists when the source has no lineage column — the chain just
+  stops there.  `pending_lineage_edges` is set only when both the
+  source carried IDs **and** the caller declared `source_table_fqn`.
+- **Updated** [`pointlessql/pql/_write.py`](pointlessql/pql/_write.py)
+  parallel `_stamp_lineage_for_write()` works on pandas
+  DataFrames or PyArrow Tables (the two engine-native frame shapes
+  the writer accepts) and threads the source/target IDs through to
+  the recorder for the same post-commit edge insert.
+
 ### Added — Sprint 15.2: Bronze `_lineage_row_id` audit column (2026-04-26)
 
 Second Phase-15 sprint.  Bronze rows now carry a stable per-row

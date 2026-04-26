@@ -54,6 +54,9 @@ from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._read import read_table
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
+from pointlessql.services.lineage_edges import synth_target_row_id
+
+LINEAGE_ROW_ID_COLUMN = "_lineage_row_id"
 
 MergeStrategy = Literal["upsert", "scd2"]
 
@@ -140,6 +143,8 @@ def merge_table(
 
     factory = get_session_factory() if agent_run_id else None
 
+    source_row_ids, target_row_ids, arrow_source = _prepare_lineage(arrow_source, target)
+
     with operation_context(
         factory,
         agent_run_id=agent_run_id,
@@ -166,8 +171,51 @@ def merge_table(
             if source_table_fqn:
                 extras["source_table_fqn"] = source_table_fqn
             recorder.extra_params = extras
+            if source_row_ids and source_table_fqn:
+                recorder.pending_lineage_edges = {
+                    "source_table": source_table_fqn,
+                    "source_row_ids": source_row_ids,
+                    "target_row_ids": target_row_ids,
+                }
 
         return stats
+
+
+def _prepare_lineage(arrow_source: pa.Table, target: str) -> tuple[list[str], list[str], pa.Table]:
+    """Extract source ``_lineage_row_id`` values and synthesise target IDs.
+
+    When the source has a ``_lineage_row_id`` column the target gets
+    a deterministic per-row ID written into the same column so the
+    chain stays connected.  When the source has no such column the
+    helper is a no-op — the target table simply doesn't gain a
+    lineage column for the rows from this merge, and Sprint 15.4's
+    walk-back stops there with a "lineage break" marker.
+
+    Args:
+        arrow_source: PyArrow Table fed into the merge.
+        target: Fully-qualified UC name of the merge target.
+
+    Returns:
+        ``(source_row_ids, target_row_ids, arrow_source_with_target_ids)``.
+        Both lists are empty when the source doesn't carry a lineage
+        column — caller skips edge emission.
+    """
+    if LINEAGE_ROW_ID_COLUMN not in arrow_source.schema.names:
+        return [], [], arrow_source
+
+    column = arrow_source.column(LINEAGE_ROW_ID_COLUMN)
+    source_row_ids: list[str] = [
+        v if isinstance(v, str) else ""
+        for v in column.to_pylist()  # pyright: ignore[reportUnknownVariableType]
+    ]
+    target_row_ids = [synth_target_row_id(src, target) if src else "" for src in source_row_ids]
+    target_array = pa.array(target_row_ids, type=pa.string())
+    rebuilt = arrow_source.set_column(
+        arrow_source.schema.get_field_index(LINEAGE_ROW_ID_COLUMN),
+        LINEAGE_ROW_ID_COLUMN,
+        target_array,
+    )
+    return source_row_ids, target_row_ids, rebuilt
 
 
 def _merge_rows_affected(stats: dict[str, Any]) -> int | None:
