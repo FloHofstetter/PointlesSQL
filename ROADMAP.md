@@ -1445,12 +1445,14 @@ PointlesSQL
 │   │   no CSRF, no rate limiting, no JWT-key rotation story, no
 │   │   in-app audit viewer. The public-visibility / external-
 │   │   distribution work that was briefly mooted here has moved
-│   │   to Phase 14 (queued last, on purpose). Sequence from here:
-│   │   hardening (11) → features (12, 13) → public launch (14) →
-│   │   audit-completeness (14.x) → Provenance Log (15) →
-│   │   Branching + Rollback (16). Phases 14.x / 15 / 16 are the
-│   │   "fully autonomous data analysis" critical path captured
-│   │   in `project_full_autonomous_audit_critical_path.md`.
+│   │   to the unscheduled Some-day Launch block at the bottom
+│   │   of this tree. Sequence from here:
+│   │   hardening (11) → features (12, 13) →
+│   │   audit-completeness (14) → Provenance Log (15) →
+│   │   Branching + Rollback (16) → Some-day public launch.
+│   │   Phases 14 / 15 / 16 are the "fully autonomous data
+│   │   analysis" critical path captured in
+│   │   `project_full_autonomous_audit_critical_path.md`.
 │   │
 │   ├── Sprint 41 — Admin audit-log viewer                ✅ done (2b25b89)
 │   │   ├── `GET /admin/audit` gated by `_require_admin`; reuses
@@ -4800,87 +4802,67 @@ PointlesSQL
 │     (``project_catalog_strategy.md`` principle applied to
 │     compute).
 │
-├── Phase 14 — Public launch + external distribution      ⏳ queued (last)
-│   │
-│   │   Deliberately queued for the end. Phase 10's retrospective
-│   │   spelled it out: building release-engineering against a
-│   │   private audience of one generates self-inflicted auth
-│   │   friction, and release candidates shipped without
-│   │   downstream consumers are wasted motion. Hardening
-│   │   (Phase 11) and features (Phase 12, 13) come first. When
-│   │   this phase runs, it is the moment the stack goes from
-│   │   "my project" to "something strangers can try". Until
-│   │   then this entry exists as an anchor so the future work
-│   │   isn't forgotten — not as a scheduled commitment.
-│   │
-│   │   Scope (not yet split into sprints):
-│   │
-│   ├── GHCR packages flipped private → public for both
-│   │   `pointlessql` and `soyuz-catalog` images; the Phase-10-
-│   │   deferred `docs/e2e-walkthroughs/packaging.md` dogfood
-│   │   replay finally runs end-to-end without the PAT dance
-│   ├── Multi-arch (amd64 + arm64) image builds via docker
-│   │   buildx — the single-sprint work that Phase 10 couldn't
-│   │   justify for an audience of one
-│   ├── Public PyPI publish of `soyuz-catalog-client` (first)
-│   │   and the `pointlessql` wheel (second); replaces Phase 10's
-│   │   private git-tag pin for the general audience while
-│   │   keeping the tag-pin option available for consumers who
-│   │   prefer reproducible git-based installs
-│   ├── Optional: Helm chart for K8s deployments, generalising
-│   │   "runs on a €15/month vServer" to "runs on a cluster"
-│   └── README / docs pass: swap the "functional Databricks
-│       clone" alpha framing for whatever the honest public
-│       positioning is at the time. License decision (Apache 2.0
-│       is the default-obvious choice — UC-compatible, no
-│       ethical-use clauses worth the drama; revisit only if
-│       something has changed)
-│
-├── Phase 14.x — Audit-trail completeness pass             ⏳ queued
+├── Phase 14 — Audit-trail completeness pass               ⏳ queued
 │   │
 │   │   Closes the three Tier-3 gaps captured in
 │   │   ``project_phase13_audit_gaps.md`` plus the external-write
 │   │   blind spot surfaced by the 2026-04-25 live walkthrough
 │   │   (see ``project_full_autonomous_audit_critical_path.md``).
-│   │   Bundleable with Phase 14 launch readiness — these are
-│   │   operational-hygiene items, not greenfield features.
+│   │   Operational-hygiene items, not greenfield features. Public-
+│   │   launch readiness lives in the unscheduled ``Some-day``
+│   │   block at the bottom of this tree.
 │   │
-│   ├── soyuz UC mutation cross-reference into ``/runs/{id}``
-│   │   ├── join soyuz audit_log on ``agent_run_id`` (forwarded via
-│   │   │   X-Agent-Run-Id) so set_tag / create_table / set_owner
-│   │   │   calls show up in the run-detail audit log alongside
-│   │   │   PointlesSQL's own audit rows
-│   │   └── needs soyuz-side `X-Agent-Run-Id` header propagation
-│   │       and a small UI section in the existing Audit-log tab
-│   ├── Read-audit for `pql.table()` and engine-direct reads
-│   │   ├── DSGVO "wer hat meine Daten gelesen?" gap — today only
-│   │   │   `/api/sql/execute` is logged, direct Delta reads via
-│   │   │   `pql.table(...)` bypass `query_history` entirely
-│   │   ├── extend `query_history` schema with `read_kind` enum
-│   │   │   (`api`, `pql_table`, `engine_direct`) or add a
-│   │   │   sibling `read_history` table — decide on first design
-│   │   │   pass
-│   │   └── PQL primitive instrumentation point: `_client.get_table`
-│   │       in `pointlessql/pql/_write.py` is the choke
-│   ├── Cost-gate EXPLAIN-snapshot in `agent_runs.denied_reason`
+│   │   Tool-calls tab landed silently in the Sprint-13.7.4 window
+│   │   before the migrations squash (see
+│   │   ``frontend/templates/pages/run_view.html`` lines 235-240),
+│   │   so the original Sprint-13.10 carry-over item is dropped.
+│   │
+│   │   Sprint sequence is intentional: smallest footprint first
+│   │   to validate the migration + quality-gate pattern, cross-
+│   │   repo work last because the soyuz tag-bump is a natural
+│   │   sync point. Plan in
+│   │   ``.claude/plans/plane-phase-14-komplett-floofy-nest.md``.
+│   │
+│   ├── Sprint 14.1 — Cost-gate EXPLAIN-snapshot on ``agent_runs``
 │   │   └── when Sprint-13.1 cost gate denies, store the full
-│   │       EXPLAIN-FORMAT-JSON output as a JSON column so the
-│   │       reviewer can see WHY without re-running the query
-│   ├── External-write detection ("unattributed writes")
-│   │   ├── poll `_delta_log/*.json` for new commits whose
-│   │   │   CommitInfo doesn't match an `agent_run_operations`
-│   │   │   row in the same Delta-version range
-│   │   ├── flag in run-detail UI as "external/unattributed write
-│   │   │   between version N and N+1" with timestamp + commit
-│   │   │   metadata
+│   │       EXPLAIN-FORMAT-JSON output plus threshold + estimated
+│   │       cost + engine in a new ``cost_gate_trigger JSON``
+│   │       column so the reviewer can see WHY without re-running
+│   │       the query
+│   ├── Sprint 14.2 — Read-audit for ``pql.table()`` + engine-direct
+│   │   ├── DSGVO "wer hat meine Daten gelesen?" gap — today only
+│   │   │   ``/api/sql/execute`` is logged, direct Delta reads via
+│   │   │   ``pql.table(...)`` bypass ``query_history`` entirely
+│   │   ├── extend ``query_history`` with a ``read_kind`` enum
+│   │   │   (``sql_execute`` / ``pql_table`` / ``engine_direct``);
+│   │   │   sibling table rejected — keeps unified UI + filter +
+│   │   │   ``agent_run_id`` join in one place
+│   │   └── PQL primitive instrumentation point: ``read_table()``
+│   │       in ``pointlessql/pql/_read.py`` (memory pre-squash
+│   │       referenced ``_write.py`` — corrected by 2026-04-26
+│   │       ground-truth pass)
+│   ├── Sprint 14.3 — External-write detection ("unattributed writes")
+│   │   ├── walk ``deltalake.DeltaTable(table_path).history()``
+│   │   │   per UC table; flag commits whose Delta version isn't
+│   │   │   referenced by any ``agent_run_operations.delta_version_after``
+│   │   ├── new ``unattributed_writes`` table (acknowledged_at /
+│   │   │   acknowledged_by); ``/admin/external-writes`` page +
+│   │   │   sidebar badge + run-detail gap-marker
 │   │   └── Detection-only — does NOT block external writers.
 │   │       Hard-block via storage permissions stays Phase 16+ if
 │   │       a real customer ever asks
-│   └── Run-detail "Tool calls" UI tab (carried over from
-│       Sprint 13.10 if not landed by then) — backend exists
-│       since Sprint 13.7.4 (Alembic 024), template tab between
-│       Operations and Queries was never added.  Tool calls show
-│       up only via Events + Audit log today
+│   └── Sprint 14.4 — soyuz UC mutation cross-reference into ``/runs/{id}``
+│       ├── soyuz side: middleware reads ``X-Agent-Run-Id``
+│       │   header → ContextVar → nullable ``audit_log.agent_run_id``
+│       │   column; ``GET /audit-log?agent_run_id=`` filter; tag
+│       │   bump
+│       ├── PointlesSQL side: outbound ``X-Agent-Run-Id`` from
+│       │   ``soyuz_client``; new ``soyuz_audit.fetch_for_run()``;
+│       │   re-pin tag in ``[tool.uv.sources]``; re-gen client if
+│       │   schema drifted
+│       └── UI: new "UC mutations" tab on ``/runs/{id}`` rendering
+│           set_tag / create_table / set_owner attributed to the
+│           run
 │
 ├── Phase 15 — Provenance Log (data + LLM signed audit)    ⏳ queued
 │   │
@@ -4957,15 +4939,52 @@ PointlesSQL
 │   └── Control-Room UI: list active branches, owners, compute
 │       cost, promote/discard per branch
 │
+├── Some-day — Public launch + external distribution      💤 unscheduled
+│   │
+│   │   Deliberately queued for the end. Phase 10's retrospective
+│   │   spelled it out: building release-engineering against a
+│   │   private audience of one generates self-inflicted auth
+│   │   friction, and release candidates shipped without
+│   │   downstream consumers are wasted motion. Hardening
+│   │   (Phase 11) and features (Phase 12, 13, 14) come first.
+│   │   When this block runs, it is the moment the stack goes
+│   │   from "my project" to "something strangers can try". Until
+│   │   then this entry exists as an anchor so the future work
+│   │   isn't forgotten — not as a scheduled commitment. No
+│   │   target date; promote to a numbered phase the day a real
+│   │   external consumer asks.
+│   │
+│   │   Scope (not yet split into sprints):
+│   │
+│   ├── GHCR packages flipped private → public for both
+│   │   `pointlessql` and `soyuz-catalog` images; the Phase-10-
+│   │   deferred `docs/e2e-walkthroughs/packaging.md` dogfood
+│   │   replay finally runs end-to-end without the PAT dance
+│   ├── Multi-arch (amd64 + arm64) image builds via docker
+│   │   buildx — the single-sprint work that Phase 10 couldn't
+│   │   justify for an audience of one
+│   ├── Public PyPI publish of `soyuz-catalog-client` (first)
+│   │   and the `pointlessql` wheel (second); replaces Phase 10's
+│   │   private git-tag pin for the general audience while
+│   │   keeping the tag-pin option available for consumers who
+│   │   prefer reproducible git-based installs
+│   ├── Optional: Helm chart for K8s deployments, generalising
+│   │   "runs on a €15/month vServer" to "runs on a cluster"
+│   └── README / docs pass: swap the "functional Databricks
+│       clone" alpha framing for whatever the honest public
+│       positioning is at the time. License decision is locked
+│       to Apache 2.0 (UC-compatible, no ethical-use clauses
+│       worth the drama; revisit only if something has changed)
+│
 ├── Icebox — enterprise-audit follow-ups                  🧊 on ice
 │   │
 │   │   Sprint 48 ported six of nine shoreguard-fresh audit
 │   │   patterns. The three skipped ones are legitimately wanted
 │   │   in enterprise / compliance scenarios but do not pay for
 │   │   themselves at the single-node-vServer scale today. Parked
-│   │   here so Phase 14's enterprise-positioning pass knows where
-│   │   to look; trivially promotable to a numbered sprint when a
-│   │   real consumer asks.
+│   │   here so the Some-day Launch's enterprise-positioning pass
+│   │   knows where to look; trivially promotable to a numbered
+│   │   sprint when a real consumer asks.
 │   │
 │   ├── Audit export with sha256 digest + manifest  🧊 on ice
 │   │   ├── CLI ``pointlessql audit export --out FILE`` that

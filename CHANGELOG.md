@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — Sprint 14.0: Phase 14 scope split (2026-04-26)
+
+Phase 14 in `ROADMAP.md` is now scoped exclusively to the
+audit-trail completeness pass (former 14.x): cost-gate EXPLAIN
+snapshot, read-audit for `pql.table()`, external-write detection,
+soyuz UC-mutation cross-reference. Sprint sequence 14.1 → 14.4
+fixed; cross-repo soyuz work intentionally last as the natural
+synchronisation point.
+
+The original Phase 14 public-launch track (GHCR-public flip,
+PyPI publish, multi-arch builds, Helm chart, README pass) moved
+to a new unscheduled `Some-day` block at the end of the roadmap
+tree. License decision locked to Apache 2.0. Memory heuristic
+*"Don't pre-build release engineering for one user"* (see
+`feedback_release_engineering_timing.md`) gates promotion: the
+block stays unscheduled until an external consumer asks.
+
+The previously-listed *"Run-detail Tool calls UI tab"* sub-item
+is dropped — already landed silently in
+`frontend/templates/pages/run_view.html:235-240` during the
+Sprint-13.7.4 window before the migrations squash.
+
+Plan: `.claude/plans/plane-phase-14-komplett-floofy-nest.md`.
+
 ### Added — Sprint 13.11.11: PQL write endpoints (2026-04-26)
 
 Closed the read-only gap on the agent's tool surface that the
