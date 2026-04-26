@@ -5129,7 +5129,7 @@ PointlesSQL
 │           (≤100); table-detail link + column-trace fan-in;
 │           run-view counter.
 │
-├── Phase 15.7 — Value-Level Lineage                       ⏳ in progress
+├── Phase 15.7 — Value-Level Lineage                       ✅ done (2026-04-26)
 │   │
 │   │   The fourth lineage axis: not *where* a value came from
 │   │   (15 / 15.5 / 15.6 already cover that) but *what it was
@@ -5166,28 +5166,28 @@ PointlesSQL
 │   │   - PointlesSQL-only.  Cross-tool valueChange facet ingest
 │   │     in soyuz is a hypothetical Phase 15.8+ topic.
 │   │
-│   ├── Sprint 15.7.0 — open Phase 15.7 in ROADMAP / CHANGELOG ⏳
+│   ├── Sprint 15.7.0 — open Phase 15.7 in ROADMAP / CHANGELOG ✅ done (7b42369)
 │   │   └── Housekeeping commit only — no migration, no code.
-│   ├── Sprint 15.7.1 — ``lineage_value_changes`` + helpers    ⏳
-│   │   └── New Alembic migration parented on ``g7b8c9d0e1f2``
-│   │       (lineage_column_map).  ``LineageValueChange`` ORM
-│   │       model with ``Text`` old/new value columns.
-│   │       ``record_value_changes`` +
+│   ├── Sprint 15.7.1 — ``lineage_value_changes`` + helpers    ✅ done (6641ed2)
+│   │   └── New Alembic migration ``h8c9d0e1f2a3`` parented on
+│   │       ``g7b8c9d0e1f2`` (lineage_column_map).
+│   │       ``LineageValueChange`` ORM model with ``Text`` old/new
+│   │       value columns.  ``record_value_changes`` +
 │   │       ``count_value_changes_for_op`` +
 │   │       ``fetch_value_changes_for_row`` helpers (mirror 15.6
 │   │       ``record_column_edges`` shape).
 │   │       ``OperationRecorder.pending_value_changes``
 │   │       post-commit hook with ``[lineage_value_partial]``
 │   │       marker on cap-hit.
-│   ├── Sprint 15.7.2 — CDF bootstrap on new Delta writes      ⏳
+│   ├── Sprint 15.7.2 — CDF bootstrap on new Delta writes      ✅ done (acb9954)
 │   │   └── New ``pointlessql/pql/_cdf.py`` exposing
 │   │       ``cdf_creation_config()`` +
 │   │       ``ensure_cdf_enabled(target_location)``.
 │   │       ``pql.write_table`` (create-path) and ``pql.autoload``
-│   │       (first-write) pass
-│   │       ``configuration={"delta.enableChangeDataFeed":
-│   │       "true"}`` to ``deltalake.write_deltalake``.
-│   ├── Sprint 15.7.3 — ``pql.merge(track_value_changes=True)`` ⏳
+│   │       (first-write) call ``ensure_cdf_enabled`` post-write
+│   │       so every new Delta table has
+│   │       ``delta.enableChangeDataFeed=true``.
+│   ├── Sprint 15.7.3 — ``pql.merge(track_value_changes=True)`` ✅ done (31847dd)
 │   │   └── New ``services/value_change_capture.extract_value_changes``
 │   │       pure-function diff helper consuming a CDF PyArrow
 │   │       Table.  ``track_value_changes`` kwarg on
@@ -5198,19 +5198,21 @@ PointlesSQL
 │   │       ``dt.load_cdf()``; pairs ``update_preimage`` /
 │   │       ``update_postimage`` on ``_lineage_row_id`` and emits
 │   │       one ``ValueChangeSpec`` per changed cell.
-│   ├── Sprint 15.7.4 — value-change API + UI surface          ⏳
+│   ├── Sprint 15.7.4 — value-change API + UI surface          ✅ done (fb8fcb2)
 │   │   └── ``GET /api/lineage/value-changes?table=&row_id=
 │   │       &column=`` (JSON).  Row-trace page gains
 │   │       collapsible "Value changes (N)" per step listing
 │   │       ``column · old → new · created_at``.  Run-detail
 │   │       Operations tab gains a ``value changes: N`` counter.
-│   └── Sprint 15.7.5 — notebook + headful Firefox replay      ⏳
+│   └── Sprint 15.7.5 — notebook + headful Firefox replay      ✅ done (this commit)
 │       └── ``notebooks/hermes_medallion.py`` silver
-│           ``pql.merge`` gets ``track_value_changes=True``.
-│           Second cell tweaks one ``unit_price`` and re-runs
-│           the merge.  Live replay: API smoke; DB row-count
-│           canary (=1); row-trace "Value changes" collapsible;
-│           run-view counter.
+│           ``pql.merge`` gets ``track_value_changes=True``;
+│           second cell tweaks one ``unit_price`` and re-runs
+│           the merge.  Live replay confirmed: 1 value-change
+│           row in DB (``unit_price`` 2.5 → 2.51), API responds
+│           with the change, row-trace renders "Value changes
+│           (1)" collapsible, run-view counter shows
+│           ``value changes: 1`` on the merge op.
 │
 ├── Phase 16 — Delta-Branching + first-class Rollback      ⏳ queued
 │   │

@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added — Phase 15.7: Value-Level Lineage (in progress)
+### Added — Phase 15.7: Value-Level Lineage (2026-04-26)
 
 Fourth lineage axis after row (Phase 15), reject (15.5),
 column (15.6).  Answers *"this gold row's `revenue` is $1234 —
@@ -21,8 +21,35 @@ we diff per-cell on `_lineage_row_id` and persist into a new
 default-off; `MAX_VALUE_CHANGES_PER_OP = 100_000` cap with
 `[lineage_value_partial]` audit-row marker.
 
-Sub-sprints (15.7.0 housekeeping → 15.7.5 live replay) tracked
-in [ROADMAP.md](ROADMAP.md).
+Sub-sprints:
+
+- **15.7.0** — Open Phase 15.7 in ROADMAP / CHANGELOG (7b42369).
+- **15.7.1** — Alembic migration `h8c9d0e1f2a3` adds
+  `lineage_value_changes` table.  ORM `LineageValueChange`
+  with `Text`-typed `old_value` / `new_value` columns.
+  `record_value_changes` / `count_value_changes_for_op` /
+  `fetch_value_changes_for_row` service helpers.
+  `OperationRecorder.pending_value_changes` post-commit hook
+  with `[lineage_value_partial]` marker (6641ed2).
+- **15.7.2** — `pointlessql/pql/_cdf.py` exposes
+  `cdf_creation_config()` and `ensure_cdf_enabled()`.
+  `pql.write_table` (create-path) and `pql.autoload`
+  (first-write) call `ensure_cdf_enabled` so every new Delta
+  table records CDF events going forward (acb9954).
+- **15.7.3** — `pql.merge` gains `track_value_changes` kwarg.
+  Pure-function `services/value_change_capture.extract_value_changes`
+  pairs `update_preimage` / `update_postimage` events on
+  `_lineage_row_id` and emits one `ValueChangeSpec` per changed
+  cell.  SCD-2 logs warning and skips (31847dd).
+- **15.7.4** — `GET /api/lineage/value-changes?table=&row_id=
+  &column=` JSON.  Row-trace page gains collapsible
+  "Value changes (N)" per step.  Run-detail Operations tab
+  shows `value changes: N` counter (fb8fcb2).
+- **15.7.5** — `notebooks/hermes_medallion.py` silver `pql.merge`
+  gets `track_value_changes=True`; second cell tweaks one
+  `unit_price` and re-runs the merge.  Live replay confirmed:
+  exactly 1 value-change in DB (`unit_price` 2.5 → 2.51),
+  API + row-trace + run-view counter all render correctly.
 
 ### Added — Phase 15.6: Column-Level Lineage (2026-04-26)
 

@@ -123,6 +123,12 @@ silver_source = (
 # Sprint 15.5.3: ``track_rejects=True`` records source rows that won't
 # land (NULL on-key, duplicate within source) into ``lineage_row_rejects``
 # so the run-detail Reject tab can explain dropped rows.
+# Sprint 15.7.3: ``track_value_changes=True`` reads the Delta Change Data
+# Feed for the merge's commit range and records one
+# ``lineage_value_changes`` row per actually-different cell on a
+# matched-and-updated target row.  Ignored on the very first run
+# (insert-only — preimages don't exist yet); the second cell below
+# tweaks one ``unit_price`` to produce a real value-change.
 try:
     silver_result = pql.merge(
         source=silver_source,
@@ -131,6 +137,7 @@ try:
         strategy="upsert",
         source_table_fqn=BRONZE_TABLE,
         track_rejects=True,
+        track_value_changes=True,
     )
     print(f"Silver: {silver_result.get('num_target_rows_inserted', 0)} inserted, "
           f"{silver_result.get('num_target_rows_updated', 0)} updated")
@@ -177,6 +184,50 @@ gold_result = pql.aggregate(
 print(
     f"Gold: {GOLD_TABLE} refreshed with {gold_result['rows_written']} aggregate "
     f"row(s); {gold_result['edges_emitted']} fan-in edge(s) recorded"
+)
+
+# %% [markdown] pql_cell_id="44444444-4444-4444-8444-dddddddddddd"
+# ## Value-change demo (Sprint 15.7.5)
+#
+# The merge above is the *first* upsert into silver — every row is
+# brand-new, so the Change Data Feed only carries ``insert`` events
+# and no value-changes appear.  This second cell tweaks one row's
+# ``unit_price`` and re-runs the same merge with
+# ``track_value_changes=True`` so a real preimage/postimage pair
+# lands in ``lineage_value_changes``.
+
+# %% pql_cell_id="55555555-5555-4555-8555-eeeeeeeeeeee"
+silver_for_tweak = pql.table(BRONZE_TABLE)
+silver_for_tweak = (
+    silver_for_tweak.assign(
+        qty=lambda d: pd.to_numeric(d["qty"], errors="coerce")
+        .fillna(0)
+        .astype(int),
+        unit_price=lambda d: pd.to_numeric(
+            d["unit_price"], errors="coerce"
+        ).fillna(0.0),
+        placed_at=lambda d: pd.to_datetime(d["placed_at"], utc=True),
+    )
+)
+# Bump the unit_price of the first order by 0.01 — this is the only
+# cell-level change in the second merge.
+mask = silver_for_tweak["order_id"] == silver_for_tweak["order_id"].iloc[0]
+silver_for_tweak.loc[mask, "unit_price"] = (
+    silver_for_tweak.loc[mask, "unit_price"] + 0.01
+)
+tweak_result = pql.merge(
+    source=silver_for_tweak,
+    target=SILVER_TABLE,
+    on=["order_id"],
+    strategy="upsert",
+    source_table_fqn=BRONZE_TABLE,
+    track_rejects=True,
+    track_value_changes=True,
+)
+print(
+    f"Silver re-run: "
+    f"{tweak_result.get('num_target_rows_inserted', 0)} inserted, "
+    f"{tweak_result.get('num_target_rows_updated', 0)} updated"
 )
 
 # %% [markdown] pql_cell_id="33333333-3333-4333-8333-cccccccccccc"
