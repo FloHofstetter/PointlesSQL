@@ -4,19 +4,81 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Phase 15.6 — Column-Level Lineage (in progress)
+### Added — Phase 15.6: Column-Level Lineage (2026-04-26)
 
 Orthogonal column dimension to the row-lineage Phase 15 / 15.5
-already shipped: every PQL primitive populates a new
+already shipped.  Every PQL primitive now populates a new
 `lineage_column_map` table that answers *"if I rename `unit_price`
 in silver, which gold columns break?"*.  PointlesSQL-only storage
-(soyuz columnLineage facet ingest stays out of scope).
-`sqlglot.optimizer.lineage` drives the AST walk for `pql.sql`;
-`derivations={...}` opt-in kwarg captures pre-call `.assign(...)`
-mappings on aggregate / merge / write_table.  Volume bounded by
-schema breadth (~26 column edges for the canonical Hermes-
-Medallion run vs the 102 row edges we already accept).  Sprints in
-flight; details land per sprint as they close.
+(soyuz columnLineage facet ingest deferred to Phase 15.8+).
+Volume bounded by schema breadth: ~52 column edges for the
+canonical Hermes-Medallion run vs the 102 row edges + 2 rejects
+Phase 15.5 already accepts.
+
+- **Sprint 15.6.1** — new `lineage_column_map` table (Alembic
+  `g7b8c9d0e1f2`) parented on the 15.5.3 rejects table.
+  CHECK-constrained `transform_kind` enum:
+  `identity` / `rename` / `derived` / `aggregate` /
+  `unknown_origin` / `sql_select` / `sql_function` /
+  `sql_unknown`.  Indices on (target_table, target_column),
+  (source_table, source_column), run_id, op_id.  Service helpers
+  `record_column_edges` (with a 1000-edge per-op cap that returns
+  a `ColumnEdgeCapExceeded` sentinel and stamps
+  `[lineage_column_partial]` on the audit row), `walk_back_columns`
+  (column-trace walkback mirroring the Sprint-15.5.2 fan-in
+  shape), and `count_column_edges_for_op`.  Best-effort
+  post-commit hook on `OperationRecorder.pending_column_edges`
+  matching the row-lineage / rejects contract.
+- **Sprint 15.6.2** — every declarative PQL primitive populates
+  the new table:
+  - `pql.aggregate`: `aggs` dict drives the `aggregate` edges
+    (with the agg-fn name in `transform_detail`); `group_by`
+    columns become identity edges; new `derivations={...}` kwarg
+    captures upstream `.assign(...)` mappings as `derived` edges
+    with chain detail (e.g. `via 'line_revenue' →
+    sum('line_revenue')`).
+  - `pql.merge` / `pql.write_table`: schema-diff against the
+    source frame.  Identity edges for surviving columns;
+    `_lineage_row_id` rewritten to a `derived` edge with
+    `transform_detail="synth_target_row_id"` so the row-id
+    origin chain is queryable from `lineage_column_map` alone.
+    `derivations` kwarg honoured; no `source_table_fqn` skips
+    edge emission quietly.
+  - `pql.autoload`: post-append Delta schema reads — non-audit
+    columns recorded as `unknown_origin` with detail =
+    `source_volume_fqn` or `"file"`; audit columns recorded as
+    `unknown_origin` with detail `"audit"`.
+  - New `services/column_lineage_diff.infer_column_edges` helper
+    encapsulates the merge/write_table/autoload classification.
+- **Sprint 15.6.3** — `pql.sql` populates the table for SELECT
+  projections via `sqlglot.lineage`.  Per output column:
+  bare-column refs → `sql_select`, function/arithmetic/CASE →
+  `sql_function` (with rendered subexpression as
+  `transform_detail`), zero-downstream nodes (`count(*)`, window
+  functions, lateral joins) → `sql_unknown`.  Schema dict built
+  from DuckDB `DESCRIBE` against the already-registered Delta
+  views — no soyuz round-trip at SQL time.  Synthetic
+  `target_table="query"` since `pql.sql` results aren't
+  persisted; op_id is the unique discriminator.
+- **Sprint 15.6.4** — three UI surfaces around the walkback:
+  - `GET /api/lineage/column-trace?table=&column=` JSON +
+    `/catalogs/.../columns/{col}/trace` HTML page (`column_trace.html`)
+    with colour-coded transform_kind badges, fan-in collapsibles,
+    click-through to source columns.
+  - Table-detail page renders a small "lineage" badge per column
+    that has at least one `lineage_column_map` row.
+  - Run-detail Operations tab adds a "column edges: N" badge per
+    op that produced edges (no new tab; same shape as the 15.5.4
+    rejects counter).
+- **Sprint 15.6.5** — `notebooks/hermes_medallion.py` declares
+  `derivations={"placed_day": ["placed_at"], "line_revenue":
+  ["qty", "unit_price"]}` on the gold aggregate.  Live E2E
+  replay (headful Firefox): two notebook runs against fresh
+  schemas, 52 column edges total, column-trace API walks
+  `revenue → (qty, unit_price)` and `placed_day → placed_at` to
+  bronze, table-detail page shows lineage badges on all five
+  gold columns, run-detail tab shows `column edges: 10/10/6` per
+  op.  Console clean.
 
 ### Added — Phase 15.5: Aggregate Lineage + Reject Visibility (2026-04-26)
 

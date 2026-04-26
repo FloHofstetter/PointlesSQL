@@ -5059,7 +5059,7 @@ PointlesSQL
 │           (analog to the Phase-15 replay): row-trace on a
 │           gold row shows fan-in, run-detail shows rejects tab.
 │
-├── Phase 15.6 — Column-Level Lineage                      ⏳ open
+├── Phase 15.6 — Column-Level Lineage                      ✅ done (2026-04-26)
 │   │
 │   │   Orthogonal dimension to row-lineage: which input column
 │   │   feeds which output column, with a ``transform_kind`` label
@@ -5089,9 +5089,9 @@ PointlesSQL
 │   │   - Value-level change tracking deferred to a future Phase
 │   │     15.7 (``lineage_value_changes`` opt-in table).
 │   │
-│   ├── Sprint 15.6.0 — open Phase 15.6 in ROADMAP / CHANGELOG ⏳ open
+│   ├── Sprint 15.6.0 — open Phase 15.6 in ROADMAP / CHANGELOG ✅ done (834f30e)
 │   │   └── Housekeeping commit only — no migration, no code.
-│   ├── Sprint 15.6.1 — ``lineage_column_map`` + helpers       ⏳ open
+│   ├── Sprint 15.6.1 — ``lineage_column_map`` + helpers       ✅ done (52bc740)
 │   │   └── New Alembic ``g7b8c9d0e1f2``-style migration parented
 │   │       on ``f6a7b8c9d0e1`` (lineage_row_rejects).
 │   │       ``LineageColumnMap`` ORM model with CHECK-constrained
@@ -5100,7 +5100,7 @@ PointlesSQL
 │   │       ``record_edges`` / ``walk_back`` shape).
 │   │       ``OperationRecorder.pending_column_edges`` post-commit
 │   │       hook with ``[lineage_column_partial]`` marker on cap-hit.
-│   ├── Sprint 15.6.2 — declarative-path instrumentation       ⏳ open
+│   ├── Sprint 15.6.2 — declarative-path instrumentation       ✅ done (907a41a)
 │   │   └── New ``services/column_lineage_diff.infer_column_edges``
 │   │       schema-diff helper.  ``derivations={...}`` kwarg lands
 │   │       on ``pql.aggregate`` + ``pql.merge`` + ``pql.write_table``.
@@ -5108,20 +5108,20 @@ PointlesSQL
 │   │       edges automatically.  ``_lineage_row_id`` cross-stage
 │   │       edges land as ``derived`` with detail
 │   │       ``"synth_target_row_id"``.
-│   ├── Sprint 15.6.3 — ``pql.sql`` AST extraction             ⏳ open
+│   ├── Sprint 15.6.3 — ``pql.sql`` AST extraction             ✅ done (aa8ce4d)
 │   │   └── ``sql_parser.extract_column_lineage`` walks
 │   │       ``sqlglot.optimizer.lineage`` per output column.
 │   │       transform_kinds ``sql_select`` / ``sql_function`` /
 │   │       ``sql_unknown``.  Window functions + lateral joins are
 │   │       ``sql_unknown`` for v1.
-│   ├── Sprint 15.6.4 — column-trace API + UI                  ⏳ open
+│   ├── Sprint 15.6.4 — column-trace API + UI                  ✅ done (b2d3a86)
 │   │   └── ``GET /api/lineage/column-trace?table=&column=``
 │   │       (JSON) and HTML at
 │   │       ``/catalogs/{cat}/schemas/{sch}/tables/{tbl}/columns/{col}/trace``.
 │   │       Table-detail page surfaces a "lineage" link per column
 │   │       (gated by an ``EXISTS`` query).  Run-detail Operations
 │   │       tab gains a ``column edges: N`` counter (no new tab).
-│   └── Sprint 15.6.5 — notebook + headful Firefox replay     ⏳ open
+│   └── Sprint 15.6.5 — notebook + headful Firefox replay     ✅ done (81a2459)
 │       └── ``notebooks/hermes_medallion.py`` aggregate call gets
 │           ``derivations={"placed_day": ["placed_at"],
 │           "line_revenue": ["qty", "unit_price"]}``.  Live replay
