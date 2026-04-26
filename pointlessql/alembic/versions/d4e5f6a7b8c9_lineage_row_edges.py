@@ -32,7 +32,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.create_table(
         "lineage_row_edges",
-        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("run_id", sa.String(length=36), nullable=False),
         sa.Column("op_id", sa.Integer(), nullable=False),
         sa.Column("source_table", sa.String(length=255), nullable=False),

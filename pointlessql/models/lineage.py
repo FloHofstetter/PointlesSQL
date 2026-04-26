@@ -22,7 +22,6 @@ from __future__ import annotations
 import datetime
 
 from sqlalchemy import (
-    BigInteger,
     DateTime,
     ForeignKey,
     Index,
@@ -67,7 +66,7 @@ class LineageRowEdge(Base):
         Index("ix_lineage_row_edges_op", "op_id"),
     )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
     op_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("agent_run_operations.id"), nullable=False

@@ -84,7 +84,7 @@
     {% if run and run.tables_touched %}
     <div>
         {% set first_touched = run.tables_touched[0] %}
-        <a href="/catalogs/{{ first_touched.split('.')[0] }}/{{ first_touched.split('.')[1] }}/{{ first_touched.split('.')[2] }}#lineage"
+        <a href="/catalogs/{{ first_touched.split('.')[0] }}/schemas/{{ first_touched.split('.')[1] }}/tables/{{ first_touched.split('.')[2] }}#lineage"
            class="btn btn-sm btn-outline-secondary"
            title="Open the lineage card for {{ first_touched }} (Sprint 15.1 OpenLineage emission)">
             <i class="bi bi-diagram-3 me-1"></i>View lineage graph
