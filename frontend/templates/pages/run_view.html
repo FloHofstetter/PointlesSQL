@@ -258,6 +258,14 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-uc-mutations-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-uc-mutations" type="button" role="tab"
+                aria-controls="tab-uc-mutations" aria-selected="false">
+            <i class="bi bi-database-gear me-1"></i>UC mutations
+            {% if uc_mutations %}<span class="badge bg-secondary ms-1">{{ uc_mutations | length }}</span>{% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-queries-btn" data-bs-toggle="tab"
                 data-bs-target="#tab-queries" type="button" role="tab"
                 aria-controls="tab-queries" aria-selected="false">
@@ -478,6 +486,56 @@
             No tool calls recorded for this run.  Tool calls are persisted by the
             <code>hermes-plugin-pointlessql</code> <code>post_tool_call</code> hook for any tool
             whose name starts with <code>pql_</code> (Sprint 13.7.4).
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="tab-uc-mutations" role="tabpanel" aria-labelledby="tab-uc-mutations-btn">
+        {% if uc_mutations %}
+        <div class="card">
+            <div class="card-header small text-muted">
+                {{ uc_mutations | length }} UC mutation{% if uc_mutations | length != 1 %}s{% endif %}
+                attributed to this run via soyuz audit log
+                (<code>X-Agent-Run-Id</code> cross-reference).
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 small align-middle">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                            <th>Principal</th>
+                            <th>Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in uc_mutations %}
+                        <tr>
+                            <td class="font-monospace text-muted">{{ m.created_at }}</td>
+                            <td><span class="badge bg-info text-dark font-monospace">{{ m.action }}</span></td>
+                            <td class="font-monospace">{{ m.target }}</td>
+                            <td class="font-monospace small">{{ m.principal or "—" }}</td>
+                            <td class="font-monospace small text-muted" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis;">
+                                <code title="{{ m.detail or '' }}">
+                                    {{ (m.detail or '')[:120] }}{% if (m.detail or '')|length > 120 %}…{% endif %}
+                                </code>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            No soyuz UC mutations recorded for this run.  Mutations land here
+            when the agent calls a soyuz mutation route
+            (<code>set_tag</code>, <code>create_table</code>, …) and PointlesSQL
+            forwards <code>X-Agent-Run-Id: {{ run.id }}</code> outbound.
+            Empty also means the running soyuz is older than
+            <code>v0.2.0rc3</code> and lacks the audit-log endpoint.
         </div>
         {% endif %}
     </div>

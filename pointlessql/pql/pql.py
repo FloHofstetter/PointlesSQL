@@ -96,25 +96,30 @@ class PQL:
         agent_run_id: str | None = None,
     ) -> None:
         resolved = settings or Settings()
+        # Agent-run-id resolution mirrors `principal`.  Explicit
+        # kwarg wins; otherwise the runtime sets the env var before
+        # exec'ing the agent's `.py`.  ``None`` keeps the interactive
+        # PQL path agnostic — no operation rows are emitted.
+        self._current_run_id = agent_run_id or os.environ.get("POINTLESSQL_AGENT_RUN_ID")
         if client is not None:
             self._client = client
         else:
             effective = principal or os.environ.get("POINTLESSQL_PRINCIPAL")
+            # Forward X-Agent-Run-Id outbound on every UC call so
+            # soyuz's audit log (Sprint 14.4) can attribute the
+            # mutation to the owning run.  ``None`` skips the header.
             if effective:
-                self._client = make_principal_client(resolved, effective)
+                self._client = make_principal_client(
+                    resolved, effective, agent_run_id=self._current_run_id
+                )
             else:
-                self._client = make_soyuz_client(resolved)
+                self._client = make_soyuz_client(resolved, agent_run_id=self._current_run_id)
         if engine is None:
             self._engine = make_engine(resolved.delta.engine)
         elif isinstance(engine, str):
             self._engine = make_engine(engine)
         else:
             self._engine = engine
-        # Agent-run-id resolution mirrors `principal`.  Explicit
-        # kwarg wins; otherwise the runtime sets the env var before
-        # exec'ing the agent's `.py`.  ``None`` keeps the interactive
-        # PQL path agnostic — no operation rows are emitted.
-        self._current_run_id = agent_run_id or os.environ.get("POINTLESSQL_AGENT_RUN_ID")
         # Subprocess-spawned agent notebooks bypass the FastAPI
         # lifespan, so ``get_session_factory()`` would raise on the
         # first ``agent_run_operations`` write.  Lazy-init the

@@ -4857,18 +4857,22 @@ PointlesSQL
 │   │       writes on touched tables.  Detection-only — hard-block
 │   │       via storage permissions stays Phase 16+ if a real
 │   │       customer ever asks
-│   └── Sprint 14.4 — soyuz UC mutation cross-reference into ``/runs/{id}``
-│       ├── soyuz side: middleware reads ``X-Agent-Run-Id``
-│       │   header → ContextVar → nullable ``audit_log.agent_run_id``
-│       │   column; ``GET /audit-log?agent_run_id=`` filter; tag
-│       │   bump
-│       ├── PointlesSQL side: outbound ``X-Agent-Run-Id`` from
-│       │   ``soyuz_client``; new ``soyuz_audit.fetch_for_run()``;
-│       │   re-pin tag in ``[tool.uv.sources]``; re-gen client if
-│       │   schema drifted
+│   └── Sprint 14.4 — soyuz UC mutation cross-reference into ``/runs/{id}`` ✅ done
+│       ├── soyuz side (commit ``57e166d``, locally tagged
+│       │   ``v0.2.0rc3``, push pending): greenfield audit
+│       │   infrastructure — Alembic 015 ``audit_log`` table, new
+│       │   ``audit_service.log_action`` helper, middleware
+│       │   captures ``X-Principal``+``X-Agent-Run-Id`` via
+│       │   ContextVars, ``GET /audit-log`` route mounted at root,
+│       │   six mutation routes instrumented (tags / tables / schemas)
+│       ├── PointlesSQL side: ``make_soyuz_client``/
+│       │   ``make_principal_client`` accept ``agent_run_id`` kwarg;
+│       │   ``PQL.__init__`` resolves env and forwards it; new
+│       │   ``services/soyuz_audit.fetch_for_run()`` via raw httpx
+│       │   (404 → empty for older soyuz)
 │       └── UI: new "UC mutations" tab on ``/runs/{id}`` rendering
-│           set_tag / create_table / set_owner attributed to the
-│           run
+│           soyuz audit rows attributed to the run.  Pin bump to
+│           ``v0.2.0rc3`` pending a push of the soyuz tag
 │
 ├── Phase 15 — Provenance Log (data + LLM signed audit)    ⏳ queued
 │   │

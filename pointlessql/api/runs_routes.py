@@ -183,6 +183,33 @@ def _load_audit_entries_for_run(
     return out
 
 
+async def _load_uc_mutations_for_run(
+    request: Request,
+    run_id: str,
+) -> list[dict[str, Any]]:
+    """Return soyuz audit-log rows attributed to *run_id*.
+
+    Asks soyuz's ``GET /audit-log?agent_run_id=`` cross-reference
+    surface (PointlesSQL Sprint 14.4 / soyuz `v0.2.0rc3`).  Returns
+    ``[]`` against older soyuz versions that lack the endpoint —
+    the run-detail "UC mutations" tab simply renders empty.
+
+    Args:
+        request: Incoming FastAPI request — provides
+            ``app.state.uc_client``.
+        run_id: Owning ``AgentRun.id``.
+
+    Returns:
+        Raw soyuz JSON dicts (``id`` / ``action`` / ``target`` /
+        ``principal`` / ``agent_run_id`` / ``client_ip`` /
+        ``detail`` / ``created_at``) ready for the template.
+    """
+    from pointlessql.services import soyuz_audit
+
+    uc = request.app.state.uc_client
+    return await soyuz_audit.fetch_for_run(uc, run_id, limit=200)
+
+
 def _load_unattributed_for_run(
     request: Request,
     *,
@@ -675,6 +702,7 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
                 request,
                 tables_touched=list(serialize_agent_run(run_row).get("tables_touched", [])),
             ),
+            "uc_mutations": await _load_uc_mutations_for_run(request, run_id),
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,
             "active_page": "runs",

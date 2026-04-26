@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 14.4: soyuz UC-mutation cross-reference (2026-04-26)
+
+Closes the fourth and final Phase-14 audit-trail gap.  PointlesSQL
+now forwards `X-Agent-Run-Id` outbound on every soyuz call made
+from inside an agent run; soyuz's `audit_log` table (added
+in soyuz `v0.2.0rc3`) attributes the mutation; the run-detail view
+gains a "UC mutations" tab that joins them back together.
+
+- **Added** [`pointlessql/services/soyuz_client.py`](pointlessql/services/soyuz_client.py)
+  `make_soyuz_client(...)` and `make_principal_client(...)` accept
+  an optional `agent_run_id` kwarg that lands as the
+  `X-Agent-Run-Id` request header on every UC call the returned
+  client makes.
+- **Added** [`pointlessql/pql/pql.py`](pointlessql/pql/pql.py)
+  `PQL.__init__` resolves the run id (explicit kwarg →
+  `POINTLESSQL_AGENT_RUN_ID` env) before client construction so
+  every PQL primitive's outbound UC traffic is attributable.
+- **Added** [`pointlessql/services/soyuz_audit.py`](pointlessql/services/soyuz_audit.py)
+  `fetch_for_run(uc_client, run_id, limit)` — read-only client for
+  soyuz's `GET /audit-log?agent_run_id=` cross-reference surface,
+  implemented via raw httpx (`get_async_httpx_client()`) since the
+  generated client has no methods for `/audit-log` yet.  404
+  collapses to `[]` so older soyuz versions degrade gracefully.
+- **Added** [`pointlessql/api/runs_routes.py`](pointlessql/api/runs_routes.py)
+  `_load_uc_mutations_for_run(request, run_id)` helper; the
+  run-detail page passes `uc_mutations` into the template context.
+- **Added** New "UC mutations" tab in `run_view.html` between Tool
+  calls and Queries; renders action / target / principal / detail
+  / created_at columns.  Empty-state copy spells out the
+  `X-Agent-Run-Id` propagation contract and the soyuz `v0.2.0rc3`
+  minimum.
+
+Soyuz pin still at `v0.2.0rc2` — bumping to `v0.2.0rc3` pending a
+push of the local soyuz tag.  The PointlesSQL code works against
+any soyuz version: older soyuz returns 404 on `/audit-log` and the
+UC mutations tab simply renders empty.
+
 ### Added — Sprint 14.3: external-write detection (2026-04-26)
 
 Closes the third of four Phase-14 audit-trail gaps.  Delta commits
