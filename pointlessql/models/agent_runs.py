@@ -95,6 +95,13 @@ class AgentRun(Base):
             ``duckdb``, ...).  Required by ``POST /api/agent-runs``;
             the column is nullable so legacy rows from before the
             requirement landed stay queryable.
+        cost_gate_trigger: JSON-encoded snapshot of the EXPLAIN plan
+            the cost gate fired on, plus the threshold + estimated
+            cost + engine that produced the verdict.  Populated by
+            the runtime when it transitions a run to ``denied``
+            because of a cost-gate verdict; ``None`` for runs that
+            never hit the gate.  Lets a reviewer see WHY a run was
+            blocked without re-running the query.
     """
 
     __tablename__ = "agent_runs"
@@ -124,3 +131,4 @@ class AgentRun(Base):
     )
     denied_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     runtime_versions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cost_gate_trigger: Mapped[str | None] = mapped_column(Text, nullable=True)

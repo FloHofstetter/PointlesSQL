@@ -117,6 +117,24 @@
             <dt class="col-3 col-md-2">Denied reason</dt>
             <dd class="col-9 col-md-10">{{ run.denied_reason }}</dd>
             {% endif %}
+            {% if run.cost_gate_trigger %}
+            <dt class="col-3 col-md-2">Cost-gate trigger</dt>
+            <dd class="col-9 col-md-10" x-data="{ open: false }">
+                <div class="small">
+                    <span class="badge bg-warning text-dark me-2">{{ run.cost_gate_trigger.engine or "duckdb" }}</span>
+                    estimated cost
+                    <span class="font-monospace">{{ run.cost_gate_trigger.estimated_cost }}</span>
+                    &gt; threshold
+                    <span class="font-monospace">{{ run.cost_gate_trigger.threshold }}</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+                            @click="open = !open"
+                            x-text="open ? 'Hide EXPLAIN' : 'Show EXPLAIN'">Show EXPLAIN</button>
+                </div>
+                <pre class="bg-body-tertiary border rounded p-2 mt-2 small mb-0"
+                     :class="{ 'd-block': open, 'd-none': !open }"
+                     style="max-height: 360px; overflow: auto;">{{ run.cost_gate_trigger.explain | tojson(indent=2) }}</pre>
+            </dd>
+            {% endif %}
         </dl>
     </div>
 </div>

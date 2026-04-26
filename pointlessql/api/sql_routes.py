@@ -678,7 +678,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
             "needs_approval": needs_approval,
         },
     )
-    return {
+    response: dict[str, Any] = {
         "plan": result.plan,
         "cost": {
             "max_cardinality": result.cost.max_cardinality,
@@ -690,6 +690,15 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
         "threshold": threshold,
         "referenced_tables": result.referenced_tables,
     }
+    if needs_approval:
+        response["cost_gate_trigger"] = {
+            "explain": result.plan,
+            "estimated_cost": result.cost.cost,
+            "threshold": threshold,
+            "engine": "duckdb",
+            "referenced_tables": result.referenced_tables,
+        }
+    return response
 
 
 @router.get("/sql", response_class=HTMLResponse)

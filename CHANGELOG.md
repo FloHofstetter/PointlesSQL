@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 14.1: cost-gate EXPLAIN snapshot (2026-04-26)
+
+Closes the first of four Phase-14 audit-trail gaps.  When the
+Sprint-13.1 cost gate denies a query, reviewers can now see the
+EXPLAIN plan that produced the verdict without re-running it.
+
+- **Added** Alembic `a1c051a7e1ab` — `agent_runs.cost_gate_trigger`
+  nullable JSON-as-Text column (down-revision: `b55f1020b8a4`).
+- **Added** [`pointlessql/api/sql_routes.py`](pointlessql/api/sql_routes.py)
+  `api_sql_explain` returns a new `cost_gate_trigger` field
+  (`{explain, estimated_cost, threshold, engine, referenced_tables}`)
+  in the response body when `needs_approval` is true.
+- **Added** [`pointlessql/api/agent_runs_routes.py`](pointlessql/api/agent_runs_routes.py)
+  `_coerce_cost_gate_trigger` helper; finish-route accepts the
+  optional `cost_gate_trigger` body field; `serialize_agent_run`
+  decodes it back to a dict.
+- **Added** Run-detail metadata card (`run_view.html`) renders a
+  collapsible Cost-gate-trigger row with badge + estimated/threshold
+  numbers + EXPLAIN-JSON `<pre>` toggle (Alpine `:class` /
+  `d-block`/`d-none` per `feedback_bootstrap_modal_x_show.md`).
+
 ### Changed — Sprint 14.0: Phase 14 scope split (2026-04-26)
 
 Phase 14 in `ROADMAP.md` is now scoped exclusively to the

@@ -88,6 +88,14 @@ def serialize_agent_run(row: AgentRun) -> dict[str, Any]:
             decoded = None
         if isinstance(decoded, dict):
             runtime_versions = decoded  # pyright: ignore[reportUnknownVariableType]
+    cost_gate_trigger: dict[str, Any] | None = None
+    if row.cost_gate_trigger:
+        try:
+            decoded_trigger: Any = json.loads(row.cost_gate_trigger)
+        except json.JSONDecodeError:
+            decoded_trigger = None
+        if isinstance(decoded_trigger, dict):
+            cost_gate_trigger = decoded_trigger  # pyright: ignore[reportUnknownVariableType]
     return {
         "id": row.id,
         "principal": row.principal,
@@ -104,6 +112,7 @@ def serialize_agent_run(row: AgentRun) -> dict[str, Any]:
         "approved_at": row.approved_at.isoformat() if row.approved_at else None,
         "denied_reason": row.denied_reason,
         "runtime_versions": runtime_versions,
+        "cost_gate_trigger": cost_gate_trigger,
     }
 
 
@@ -131,6 +140,34 @@ def _coerce_tables_touched(value: Any) -> str | None:
     ):
         raise ValidationError("tables_touched must be a list of strings")
     return json.dumps(value)
+
+
+def _coerce_cost_gate_trigger(value: Any) -> str | None:
+    """Validate and JSON-encode the ``cost_gate_trigger`` snapshot.
+
+    The runtime forwards the dict the cost gate emitted on
+    ``/api/sql/explain`` (see ``sql_routes.api_sql_explain``) so the
+    reviewer can see the EXPLAIN plan, threshold, and estimated cost
+    that produced the verdict without re-running the query.
+
+    Args:
+        value: Raw field value from the request body.
+
+    Returns:
+        JSON-encoded mapping text, or ``None`` when unset.
+
+    Raises:
+        ValidationError: If ``value`` is neither ``None`` nor a
+            JSON-serializable mapping.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValidationError("cost_gate_trigger must be a JSON object")
+    try:
+        return json.dumps(value)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError("cost_gate_trigger must be JSON-serializable") from exc
 
 
 def _coerce_cost_est(value: Any) -> Decimal | None:
@@ -330,7 +367,9 @@ async def api_finish_agent_run(
         run_id: The UUID string used on creation.
         body: JSON payload with required ``status`` and optional
             ``exit_code`` / ``cost_est`` / ``tables_touched`` /
-            ``finished_at`` / ``denied_reason``.
+            ``finished_at`` / ``denied_reason`` /
+            ``cost_gate_trigger`` (JSON object captured from
+            ``/api/sql/explain`` when the gate denied the query).
 
     Returns:
         The serialized, now-terminal :class:`AgentRun` row.
@@ -356,6 +395,12 @@ async def api_finish_agent_run(
     denied_reason = (
         str(denied_reason_raw).strip()
         if isinstance(denied_reason_raw, str) and denied_reason_raw.strip()
+        else None
+    )
+
+    cost_gate_trigger = (
+        _coerce_cost_gate_trigger(body["cost_gate_trigger"])
+        if "cost_gate_trigger" in body
         else None
     )
 
@@ -390,6 +435,8 @@ async def api_finish_agent_run(
             row.exit_code = exit_code
         if denied_reason is not None:
             row.denied_reason = denied_reason
+        if cost_gate_trigger is not None:
+            row.cost_gate_trigger = cost_gate_trigger
         if cost_est is not None:
             row.cost_est = cost_est
         if tables_touched is not None:
