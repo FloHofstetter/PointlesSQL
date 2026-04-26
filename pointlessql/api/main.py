@@ -39,6 +39,7 @@ from pointlessql.api.jobs_routes import (
 from pointlessql.api.middleware import register_middleware
 from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
+from pointlessql.api.pql_write_routes import router as pql_write_router
 from pointlessql.api.queries_routes import router as queries_router
 from pointlessql.api.runs_routes import router as runs_router
 from pointlessql.api.sql_routes import router as sql_router
@@ -137,9 +138,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # source of truth once the table is populated).
     inserted = api_keys_service.bootstrap_from_env(app.state.session_factory)
     if inserted:
-        logger.info(
-            "Bootstrapped %d API key(s) from POINTLESSQL_API_KEYS", inserted
-        )
+        logger.info("Bootstrapped %d API key(s) from POINTLESSQL_API_KEYS", inserted)
 
     scheduler: scheduler_service.Scheduler | None = None
     if settings.scheduler.enabled:
@@ -194,9 +193,7 @@ async def _audit_retention_loop(
     retention = settings.audit.retention_days
     while True:
         try:
-            await asyncio.to_thread(
-                audit_service.cleanup_old_entries, factory, retention
-            )
+            await asyncio.to_thread(audit_service.cleanup_old_entries, factory, retention)
         except Exception:  # noqa: BLE001 — retention loop must survive everything
             logger.exception("audit: retention loop tick raised")
         try:
@@ -224,6 +221,7 @@ app.include_router(notebooks_router)
 app.include_router(runs_router)
 app.include_router(agent_runs_router)
 app.include_router(pql_introspect_router)
+app.include_router(pql_write_router)
 app.include_router(federation_router)
 app.include_router(jobs_router)
 app.include_router(dashboards_router)
@@ -271,7 +269,6 @@ async def metrics(request: Request) -> Response:
 # dashboards, home, admin).  Exceptions raised inside any handler
 # propagate to the centralised handler in
 # ``api/error_handlers.py``.
-
 
 
 def cli() -> None:
