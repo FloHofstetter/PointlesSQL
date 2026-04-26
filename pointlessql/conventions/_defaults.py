@@ -22,7 +22,12 @@ _BRONZE = LayerConvention(
         "Raw fidelity from the source, append-only, every row carries "
         "audit columns so provenance is recoverable months later."
     ),
-    required_audit_columns=("_ingested_at", "_source_file", "_source_system"),
+    required_audit_columns=(
+        "_ingested_at",
+        "_source_file",
+        "_source_system",
+        "_lineage_row_id",
+    ),
 )
 
 _SILVER = LayerConvention(

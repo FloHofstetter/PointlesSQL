@@ -188,6 +188,7 @@ def autoload_files(
                 arrow_table,
                 audit_columns,
                 file_path=file_path,
+                file_sha=sha,
                 source_system=source_system,
                 ingested_at=ingested_at,
             )
@@ -350,6 +351,7 @@ def _inject_audit_columns(
     audit_columns: tuple[str, ...],
     *,
     file_path: str,
+    file_sha: str,
     source_system: str,
     ingested_at: datetime.datetime,
 ) -> pa.Table:
@@ -362,11 +364,18 @@ def _inject_audit_columns(
     full path is excessive in audit context and can change when an
     operator renames a Volume mount.
 
+    The Sprint 15.2 ``_lineage_row_id`` column is computed
+    deterministically from ``file_sha`` and the row's offset within
+    the file, so re-ingesting the same bytes gives the same IDs and
+    every silver-layer trace can walk back to the originating cell.
+
     Args:
         arrow_table: The data DuckDB read.
         audit_columns: The configured audit-column names.
         file_path: Source file path; the basename goes into
             ``_source_file``.
+        file_sha: SHA-256 hex digest of the source file's bytes;
+            seeds the deterministic ``_lineage_row_id`` per row.
         source_system: Value for ``_source_system`` (free-form).
         ingested_at: UTC instant for ``_ingested_at``.
 
@@ -383,6 +392,10 @@ def _inject_audit_columns(
         "_ingested_at": pa.array([ingested_at] * n, type=pa.timestamp("us", tz="UTC")),
         "_source_file": pa.array([base_name] * n, type=pa.string()),
         "_source_system": pa.array([source_system] * n, type=pa.string()),
+        "_lineage_row_id": pa.array(
+            [_row_lineage_id(file_sha, idx) for idx in range(n)],
+            type=pa.string(),
+        ),
     }
     augmented = arrow_table
     for name in audit_columns:
@@ -392,6 +405,24 @@ def _inject_audit_columns(
             continue
         augmented = augmented.append_column(name, column_values[name])
     return augmented
+
+
+def _row_lineage_id(file_sha: str, offset: int) -> str:
+    """Synthesise a deterministic per-row lineage identity.
+
+    The result hashes ``"<file_sha>:<offset>"`` so the same row in
+    the same source file always lands on the same ID — re-ingest is
+    safe and downstream silver/gold rows can be traced back to the
+    exact bronze row that fed them.
+
+    Args:
+        file_sha: SHA-256 hex digest of the source file's bytes.
+        offset: Zero-based row offset within the file.
+
+    Returns:
+        64-character lowercase hex digest.
+    """
+    return hashlib.sha256(f"{file_sha}:{offset}".encode()).hexdigest()
 
 
 def _sha256_file(file_path: str) -> str:

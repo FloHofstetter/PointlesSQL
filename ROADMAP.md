@@ -4920,7 +4920,7 @@ PointlesSQL
 │   │       upstream UC inputs (``pql.merge`` derives this
 │   │       automatically when *source* is itself a UC string).
 │   │       Run-detail header gains a "View lineage graph" link.
-│   ├── Sprint 15.2 — Bronze ``_lineage_row_id`` column          ⏳ queued
+│   ├── Sprint 15.2 — Bronze ``_lineage_row_id`` column          ✅ done
 │   │   └── ``LayerConvention`` for ``bronze`` gains a fourth
 │   │       audit column ``_lineage_row_id`` =
 │   │       ``SHA-256(file_sha || ":" || row_offset)``.

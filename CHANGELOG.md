@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 15.2: Bronze `_lineage_row_id` audit column (2026-04-26)
+
+Second Phase-15 sprint.  Bronze rows now carry a stable per-row
+identity that downstream silver/gold transformations can reference
+to walk the trail back to the originating cell.
+
+- **Updated** [`pointlessql/conventions/_defaults.py`](pointlessql/conventions/_defaults.py)
+  the bronze `LayerConvention` gains a fourth required audit column
+  `_lineage_row_id` (alongside `_ingested_at`, `_source_file`,
+  `_source_system`).  Other layers stay unchanged — silver/gold
+  inherit lineage IDs through the merge primitive (Sprint 15.3) and
+  don't get them injected at write time.
+- **Updated** [`pointlessql/pql/_autoload.py`](pointlessql/pql/_autoload.py)
+  `_inject_audit_columns()` now accepts `file_sha` and computes
+  `_lineage_row_id` per row as
+  `SHA-256("<file_sha>:<row_offset>")`.  The new helper
+  `_row_lineage_id(file_sha, offset)` exposes the same construction
+  for tests and downstream tooling.  The autoload caller threads
+  the file SHA it already has from the dedup checkpoint into the
+  injection call — no extra hashing pass.
+- The change is a **convention**, not a schema migration: existing
+  bronze tables keep their schema until the next autoload appends
+  to them, at which point deltalake adds the new column with NULL
+  for the older rows.  Re-running an autoload over the same file is
+  a no-op (existing checkpoint dedup) and the IDs are deterministic
+  so any future re-ingest produces identical row IDs.
+
 ### Added — Sprint 15.1: PQL → soyuz OpenLineage emission (2026-04-26)
 
 First Phase-15 sprint.  Every successful PQL primitive call inside an
