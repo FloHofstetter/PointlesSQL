@@ -24,6 +24,7 @@ from pointlessql.pql._autoload import AutoloadFormat, autoload_files
 from pointlessql.pql._list import list_catalogs, list_schemas, list_tables
 from pointlessql.pql._merge import MergeStrategy, merge_table
 from pointlessql.pql._read import read_table
+from pointlessql.pql._rollback import RollbackResult, rollback_table
 from pointlessql.pql._sql import run_sql
 from pointlessql.pql._types import SQLResult
 from pointlessql.pql._write import write_table
@@ -303,6 +304,61 @@ class PQL:
             track_rejects=track_rejects,
             track_value_changes=track_value_changes,
             derivations=derivations,
+        )
+
+    def rollback(
+        self,
+        target: str,
+        *,
+        before_run: str,
+        op_ordinal: int | None = None,
+        allow_force: bool = False,
+    ) -> RollbackResult:
+        """Undo *before_run*'s write to *target* via Delta restore.
+
+        Looks up the targeted operation by ``(before_run, target)``
+        in ``agent_run_operations``, recovers its
+        ``delta_version_before``, and atomically restores the Delta
+        table to that version.  Rollback IS an operation: a fresh
+        ``agent_run_operations`` row is emitted with
+        ``op_name='rollback'`` so the audit trail records the undo
+        alongside the original change.
+
+        The four refusal modes are evaluated *before* the Delta
+        state is mutated.  Pass ``op_ordinal`` to disambiguate runs
+        that wrote *target* more than once; pass
+        ``allow_force=True`` to suppress the staleness check when
+        intervening writes by other runs would otherwise be
+        silently overwritten.
+
+        Args:
+            target: UC ``"catalog.schema.table"`` reference.  Must
+                already exist in soyuz-catalog.
+            before_run: ``agent_runs.id`` of the run whose write
+                to *target* should be undone.
+            op_ordinal: Explicit ordinal of the op to rollback when
+                the run touched *target* more than once.  ``None``
+                works when exactly one op matches.
+            allow_force: When ``True``, bypass the staleness check.
+                Defaults to ``False`` so a casual click cannot
+                silently overwrite intervening writes from other
+                runs.
+
+        Returns:
+            A :class:`RollbackResult` with ``version_before``,
+            ``version_after``, the historical
+            ``target_version_restored``, and the
+            ``restored_file_count`` reported by the deltalake
+            metrics dict.
+        """
+        return rollback_table(
+            client=self._client,
+            target=target,
+            before_run=before_run,
+            unreachable_msg=self._unreachable_msg(),
+            op_ordinal=op_ordinal,
+            allow_force=allow_force,
+            agent_run_id=self._current_run_id,
         )
 
     def aggregate(
