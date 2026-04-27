@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — Roadmap expansion: Phase 17-20 + Some-day rewrite (2026-04-27)
+
+Strategic conversation post-15.7-close generated a substantial
+roadmap extension covering the *non-capture* side of audit
+infrastructure: navigation, exploration, governance UX,
+forensics, distribution.  Previously the roadmap stopped at
+Phase 16 (Rollback) with a vague Some-day block; it now reads
+through Phase 20 with concrete sub-sprints.
+
+- **Phase 17 — UI Overhaul**: two-column sidebar, run-detail
+  tabs consolidation (10→4), lineage-DAG view (cytoscape.js),
+  table-detail entdichten, catalog-browser search/filter.
+- **Phase 18 — Audit Cockpit**: three new ``/api/audit/*``
+  endpoints (summary / timeseries / anomalies) feed cross-axis
+  navigation, PII-aware masking, saved audit queries, run-diff
+  view, anomaly highlighting.
+- **Phase 19 — Audit-Reviewer Agent + Grafana**: shared
+  Phase-18 backbone drives a Grafana dashboard JSON
+  (``grafana/pointlessql_audit.json``), 10 audit-read tools in
+  ``hermes-plugin-pointlessql``, daily Audit-Reviewer-Agent
+  reference run, Compliance-Bot + Incident-Responder demos.
+- **Phase 20 — Forensics + Retention**: CloudTrail / audit-
+  stream forwarder, PII detection + masking layer, lineage
+  retention policies, time-travel value queries in UI, soyuz
+  columnLineage / valueChange facet ingest (formerly the
+  Phase-15.8+ sketch).
+- **Some-day rewrite**: pre-OSS-release hygiene (EUIPO
+  trademarks, NOTICE, CLA, domains) + big-bang launch day
+  (HN / Twitter / Reddit / LinkedIn / blog) + conference
+  circuit (DataCouncil, Subsurface, dbt Coalesce, Berlin
+  Buzzwords, Big Data LDN) + sustained visibility + the
+  original GHCR / PyPI / Helm / docs items + commercial
+  offering pathway (3-5 design partners → UG/GmbH →
+  cryptographic anchor service / hosted Cloud).
+
+No code change in this entry — pure roadmap edit.  Engineering
+work continues against the new tree.  See [ROADMAP.md](ROADMAP.md).
+
 ### Added — Phase 15.7: Value-Level Lineage (2026-04-26)
 
 Fourth lineage axis after row (Phase 15), reject (15.5),

@@ -5247,42 +5247,361 @@ PointlesSQL
 │   └── Control-Room UI: list active branches, owners, compute
 │       cost, promote/discard per branch
 │
+├── Phase 17 — UI Overhaul                                ⏳ queued
+│   │
+│   │   Post-15.7 honest UX assessment surfaced three problems:
+│   │   top navbar at 9 items is overloaded, run-detail at 10
+│   │   tabs is creaking, and the lineage UI is linear (no DAG
+│   │   view, three lineage axes are three separate pages with
+│   │   no cross-correlation).  Substance is there; navigation
+│   │   isn't.
+│   │
+│   │   Strategic ordering note: Phase 17 lands AFTER Phase 16
+│   │   so the Rollback button has a UI home.  Skipping Phase 17
+│   │   to jump to Phase 18 would mean the new audit cockpit
+│   │   sits inside the same overloaded tab structure.
+│   │
+│   ├── Sprint 17.1 — Two-column sidebar (Databricks/Snowsight)
+│   │   └── 60px icon-rail with main nav (Federation, Runs, SQL,
+│   │       Workspace, Jobs, Alerts, Volumes, Dashboards, Admin)
+│   │       + 240px contextual panel that swaps based on active
+│   │       section.  Catalog tree becomes the panel for the
+│   │       "Federation" icon.  Search moves to top-right.
+│   ├── Sprint 17.2 — Run-detail consolidation
+│   │   └── Today's 10 tabs (Cells / Operations / Rejects / Tool
+│   │       calls / UC mutations / Lineage / Queries / Source /
+│   │       Events / Audit log) collapse into 4 top-tabs with
+│   │       sub-tabs: Overview (Source + Cells + Events),
+│   │       Operations (Operations + Rejects + Queries + UC
+│   │       mutations), Lineage (Row trace + Column trace +
+│   │       Value changes), Audit (Tool calls + Audit log +
+│   │       External writes).
+│   ├── Sprint 17.3 — Lineage-DAG view
+│   │   └── ``GET /runs/{id}/graph`` renders a unified
+│   │       cytoscape.js / D3-force DAG joining
+│   │       ``lineage_row_edges`` + ``lineage_column_map`` per
+│   │       ``run_id``+``op_id``.  One box per table, arrows
+│   │       labelled with ``transform_kind``.  Click a column →
+│   │       highlights upstream + downstream simultaneously.
+│   │       Replaces the linear vertical-list trace pages for
+│   │       complex fan-in scenarios; the per-row trace pages
+│   │       stay for deep-dive on one row_id.
+│   ├── Sprint 17.4 — Table-detail entdichten
+│   │   └── Today's table-detail page stacks metadata + tags +
+│   │       permissions + effective-permissions + columns +
+│   │       lineage badges + sync history vertically.  Convert
+│   │       to tabs or accordion.  Search/filter on column list
+│   │       for 50+ column tables.
+│   └── Sprint 17.5 — Catalog-Browser search/filter
+│       └── 20+ schemas in a catalog → today: scroll-wall.
+│           Add search box at top, type-ahead filtering of
+│           sidebar tree, recent-table list at top.
+│
+├── Phase 18 — Audit Cockpit                              ⏳ queued
+│   │
+│   │   Volume reality after Phase 15.7: ~100-300 audit
+│   │   datapoints per run × 100 runs/day = 10-30k datapoints
+│   │   daily = 3-10M per year.  No human reads this row-by-row.
+│   │   Phase 17 makes the data NAVIGABLE; Phase 18 makes it
+│   │   ACTIONABLE for the four real personas:
+│   │
+│   │   1. Operator on-call: *"was ist gerade kaputt?"*
+│   │   2. Developer debug: *"was hat dieser Run gemacht?"*
+│   │   3. Compliance auditor: *"alle Q3-Writes auf PII-Spalten"*
+│   │   4. Daily trust glance: *"sieht heute normal aus?"*
+│   │
+│   │   Today only #2 is half-served.  Phase 18 closes the gap.
+│   │
+│   ├── Sprint 18.0 — Audit-Read API backbone
+│   │   └── Three new read-only endpoints feed everything else:
+│   │       ``GET /api/audit/summary`` (counts), ``timeseries``
+│   │       (binned over time), ``anomalies`` (statistical
+│   │       outliers vs N-day baseline).  Same endpoint set
+│   │       drives the agent tools (Phase 19), Grafana panels
+│   │       (Phase 19), and the cockpit UI (this phase).
+│   │       Self-tracking: read-tools must themselves land in
+│   │       ``query_history`` (audit-of-audit).
+│   ├── Sprint 18.1 — Cross-axis navigation
+│   │   └── Today: Operations badge ``column edges: N`` + ``value
+│   │       changes: N`` are static.  Make them clickable +
+│   │       filtering.  Row-trace links to Column-trace links to
+│   │       Value-changes for the same op.  Operation rows show
+│   │       op_id as a deep-link that filters every other tab to
+│   │       only-this-op.
+│   ├── Sprint 18.2 — PII-aware masking
+│   │   └── ``lineage_value_changes`` stores Klartext today (e.g.
+│   │       customer_email).  Column-level PII tag from
+│   │       soyuz-catalog drives masked rendering: ``***@***.com``
+│   │       in default UI; reveal-button with audit-log-of-show.
+│   │       Tags read from soyuz tags-API (Sprint 28 era).
+│   ├── Sprint 18.3 — Saved audit queries
+│   │   └── SQL-editor scoped to the audit tables with a curated
+│   │       set of starter queries: "all writes to PII columns
+│   │       last 90 days", "all rollbacks Q3", "all
+│   │       cost-gate-denied queries this week".  Persist to a
+│   │       new ``saved_audit_queries`` table.  Compliance-export
+│   │       per saved-query → CSV/PDF for SOC2 / GDPR Art. 30
+│   │       evidence packets.
+│   ├── Sprint 18.4 — Run-diff view
+│   │   └── ``GET /runs/{id_a}/diff/{id_b}`` — pick two runs of
+│   │       the same notebook + visualise the delta:
+│   │       row-counts, value-change-counts, schema-drift,
+│   │       reject-pattern-shift.  The natural "what changed
+│   │       between yesterday and today" forensics surface.
+│   └── Sprint 18.5 — Anomaly highlighting
+│       └── Statistical baseline per metric (mean ± 2σ over
+│           N-day window): "Run X had 50 rejects, typical 0-3 →
+│           ⚠️ flag" surfaces on home dashboard + email digest
+│           + saved-query alerts.  Same machinery feeds Phase 19
+│           anomaly-tool.
+│
+├── Phase 19 — Audit-Reviewer Agent + Grafana             ⏳ queued
+│   │
+│   │   Same Phase-18 backbone, three consumer paths.  This is
+│   │   where audit infrastructure scales past human capacity:
+│   │   agents reviewing agents, dashboards giving glance-trust,
+│   │   compliance auditors pulling raw evidence.
+│   │
+│   │   Strategic ordering note: Sprint 19.0 (Grafana JSON)
+│   │   could land BEFORE Phase 17 / 18 as a 1-day quick win
+│   │   reading the existing tables directly.  The other
+│   │   sub-sprints depend on the Phase-18 audit-API.
+│   │
+│   ├── Sprint 19.0 — Grafana dashboard (XS quick-win)
+│   │   └── Checked-in ``grafana/pointlessql_audit.json`` plus
+│   │       ``docker-compose.grafana.yml`` overlay that auto-
+│   │       provisions the board.  Pre-built panels: runs/day,
+│   │       reject-rate vs baseline, value-change-volume per
+│   │       table (alert >1k/run), external-write count (alert
+│   │       on every new row), top-mutating-principals,
+│   │       cost-gate denials, tool-call p50/p99 per tool_name,
+│   │       EXPLAIN-cost histogram.  Reads existing tables
+│   │       directly; no Phase-18 dependency.
+│   ├── Sprint 19.1 — Audit-read tools in hermes-plugin-pointlessql
+│   │   └── ~10 new tools that wrap the Phase-18 audit-API:
+│   │       ``pql_get_run``, ``pql_list_recent_runs``,
+│   │       ``pql_query_row_lineage``, ``pql_query_column_lineage``,
+│   │       ``pql_query_value_changes``, ``pql_query_rejects``,
+│   │       ``pql_query_external_writes``, ``pql_query_history_audit``,
+│   │       ``pql_audit_summary``, ``pql_anomaly_check``.  Each
+│   │       tool's call is logged into ``query_history`` so the
+│   │       audit-of-audit gap doesn't open.
+│   ├── Sprint 19.2 — Audit-Reviewer-Agent reference run
+│   │   └── Hermes-driven daily run at 06:00 that calls the
+│   │       audit-summary + anomaly tools, drafts a Markdown
+│   │       summary of yesterday's anomalies, posts to a
+│   │       configurable webhook (Slack / email).  Becomes the
+│   │       reference implementation for "agents reviewing
+│   │       agents" — first concrete demonstration of the
+│   │       supervision-first thesis.
+│   └── Sprint 19.3 — Compliance-Bot + Incident-Responder demos
+│       └── Two more Hermes flows on the same tool surface:
+│           ad-hoc "welche Runs schrieben Q3 auf PII-Spalten?"
+│           via Slack-bot, and "was hat Run X kaputt gemacht?"
+│           via interactive chat.  Validates the three-persona
+│           thesis (operator / auditor / responder all served
+│           from the same endpoint set).
+│
+├── Phase 20 — Forensics + Retention                      ⏳ queued
+│   │
+│   │   The orthogonal post-cockpit governance pass.  Audit
+│   │   data has been *captured* (15.x), *displayed* (17), and
+│   │   *queried* (18, 19) — now it needs lifecycle management,
+│   │   compliance-grade external streaming, and the time-axis
+│   │   visualization that Delta time-travel enables.
+│   │
+│   ├── Sprint 20.0 — CloudTrail / Audit-Stream forwarder
+│   │   └── New ``services/audit_forwarder.py`` that, on
+│   │       ``OperationRecorder.commit()``, additionally fires a
+│   │       CloudTrail-PutCustomEvent (or AWS Audit-Manager /
+│   │       GCP Cloud Audit Logs / Azure Activity Log custom
+│   │       event) for ~5-10 governance-relevant event types:
+│   │       run-created, external-write-detected, rollback-
+│   │       executed, policy-violation, cost-gate-denied,
+│   │       audit-export-issued.  Settings-driven (off by
+│   │       default).  S3-bucket sink as the on-prem-friendly
+│   │       alternative for non-cloud deployments.
+│   ├── Sprint 20.1 — PII detection + masking layer
+│   │   └── Pattern-based + soyuz-tag-driven PII column
+│   │       identification.  ``lineage_value_changes`` insert
+│   │       hook can opt to hash/redact PII columns before
+│   │       persist.  ``settings.audit.pii_mode`` switch:
+│   │       ``store_clear`` (today) | ``hash_only`` |
+│   │       ``redact_with_audit_log``.  Closes the
+│   │       ``customer_email`` Klartext compliance gap.
+│   ├── Sprint 20.2 — Lineage retention policies
+│   │   └── Per-table TTL on the four lineage tables
+│   │       (``lineage_row_edges``, ``lineage_row_rejects``,
+│   │       ``lineage_column_map``, ``lineage_value_changes``).
+│   │       Background job (uses Phase-12 scheduler) prunes rows
+│   │       older than configurable threshold per table.
+│   │       Defaults: row_edges 365d, value_changes 730d (longer
+│   │       because compliance), column_map forever (small
+│   │       volume).  Pruning logged in audit_log itself so
+│   │       deletion is itself auditable.
+│   ├── Sprint 20.3 — Time-travel value queries in UI
+│   │   └── Surface what we already capture in
+│   │       ``agent_run_operations.delta_version_after``: a
+│   │       table-detail "view at version N" picker, a row-
+│   │       trace "what did this row look like 30 days ago"
+│   │       button.  Wraps ``DeltaTable.load_as_version(N)``;
+│   │       UI hides the version-arithmetic.
+│   └── Sprint 20.4 — Soyuz columnLineage / valueChange ingest
+│       └── Cross-tool sibling to the PointlesSQL-only stack:
+│           teach soyuz-catalog's ``services/lineage_service``
+│           to ingest OpenLineage ``columnLineage`` and (new)
+│           ``valueChange`` facets so non-PointlesSQL writers
+│           on UC-managed Delta tables also surface in the
+│           lineage graph.  Originally sketched as Phase 15.8
+│           in the 15.6 close memo.  Lives here because it's a
+│           soyuz-side change, not a PointlesSQL one — the
+│           Phase-20 grouping is convenience for tracking, not
+│           coupling.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
-│   │   Deliberately queued for the end. Phase 10's retrospective
-│   │   spelled it out: building release-engineering against a
-│   │   private audience of one generates self-inflicted auth
-│   │   friction, and release candidates shipped without
-│   │   downstream consumers are wasted motion. Hardening
-│   │   (Phase 11) and features (Phase 12, 13, 14) come first.
-│   │   When this block runs, it is the moment the stack goes
-│   │   from "my project" to "something strangers can try". Until
-│   │   then this entry exists as an anchor so the future work
-│   │   isn't forgotten — not as a scheduled commitment. No
-│   │   target date; promote to a numbered phase the day a real
-│   │   external consumer asks.
+│   │   This is the moment the stack goes from "my project" to
+│   │   "something strangers can try" — and importantly, from
+│   │   "code on my laptop" to "verifiable trust infrastructure
+│   │   in the EU AI Act / SOC2 / GDPR sense".  Apache 2.0 is
+│   │   locked (UC-compatible, no ethical-use-clause drama).
 │   │
-│   │   Scope (not yet split into sprints):
+│   │   Strategic framing (from the Phase-15.7-close strategy
+│   │   conversation):
 │   │
-│   ├── GHCR packages flipped private → public for both
-│   │   `pointlessql` and `soyuz-catalog` images; the Phase-10-
-│   │   deferred `docs/e2e-walkthroughs/packaging.md` dogfood
-│   │   replay finally runs end-to-end without the PAT dance
-│   ├── Multi-arch (amd64 + arm64) image builds via docker
-│   │   buildx — the single-sprint work that Phase 10 couldn't
-│   │   justify for an audience of one
-│   ├── Public PyPI publish of `soyuz-catalog-client` (first)
-│   │   and the `pointlessql` wheel (second); replaces Phase 10's
-│   │   private git-tag pin for the general audience while
-│   │   keeping the tag-pin option available for consumers who
-│   │   prefer reproducible git-based installs
-│   ├── Optional: Helm chart for K8s deployments, generalising
-│   │   "runs on a €15/month vServer" to "runs on a cluster"
-│   └── README / docs pass: swap the "functional Databricks
-│       clone" alpha framing for whatever the honest public
-│       positioning is at the time. License decision is locked
-│       to Apache 2.0 (UC-compatible, no ethical-use clauses
-│       worth the drama; revisit only if something has changed)
+│   │   - Audit infrastructure ≠ ordinary OSS.  Compliance
+│   │     buyers REQUIRE source-availability — closed-source
+│   │     audit tools fail the third-party-auditor test.  OSS
+│   │     here is an asset, not a giveaway.
+│   │   - Empirical OSS-infra track record: Sentry, dbt, Grafana,
+│   │     HashiCorp, Confluent all spent 2-4 years OSS-only
+│   │     before commercial offering.  "Sales platform first"
+│   │     is the wrong move for solo-founder infra.
+│   │   - The commercial wedge is NOT the OSS code.  Candidates:
+│   │     hosted SaaS (PointlesSQL Cloud), enterprise edition
+│   │     (SSO/SAML/multi-tenant audit storage), cryptographic
+│   │     anchor service (closed/hosted, the shoreguard
+│   │     Provenance Log angle), certified compliance reports.
+│   │     None of these compete with Apache-2.0 community edition.
+│   │
+│   ├── Pre-OSS-release hygiene (1 week of work)         ⏳
+│   │   ├── EUIPO trademark filings for ``PointlesSQL``,
+│   │   │   ``soyuz-catalog``, ``shoreguard``.  Classes 9
+│   │   │   (software), 42 (SaaS), 41 (consulting).  ~€2550 total,
+│   │   │   10-year protection.  DE-only fallback at ~€290 each
+│   │   │   if EU-wide too costly upfront.  Trademark is
+│   │   │   non-optional for any future commercial wedge.
+│   │   ├── ``NOTICE.txt`` in each core repo establishing
+│   │   │   author + Apache 2.0 + Copyright 2026 Florian
+│   │   │   Hofstetter.  Anchors solo-author copyright record
+│   │   │   for any future Founder Resolution / IP-transfer to
+│   │   │   incorporated entity.
+│   │   ├── ``CONTRIBUTING.md`` + ``CODE_OF_CONDUCT.md`` +
+│   │   │   ``SECURITY.md`` per repo.  Defines governance
+│   │   │   *before* community arrives.
+│   │   ├── CLA-Bot (CLA-Assistant or EasyCLA) on every PR.
+│   │   │   CNCF-CLA template adapted.  Without CLA, third-party
+│   │   │   contributions fragment copyright and block any
+│   │   │   future dual-licensing option.
+│   │   ├── Domain ownership: pointlessql.dev/.io/.com,
+│   │   │   shoreguard.io, soyuz-catalog.io.  ~€50/year each.
+│   │   └── Private STRATEGY.md (NOT in repo): commercial-wedge
+│   │     decision document.  "Hosted PointlesSQL Cloud +
+│   │     cryptographic anchor as the closed wedge" or whatever
+│   │     it is.  Clarity for founder, signal for investors
+│   │     later.  NOT public until commercial offering ships.
+│   │
+│   ├── Big-bang launch day (1 day, coordinated)         ⏳
+│   │   ├── ``Show HN: PointlesSQL — per-cell lineage for Delta
+│   │   │   Lake via CDF`` posted Mon/Tue 8-10 UTC for European
+│   │   │   prime time + US morning.  Demo screenshot, link to
+│   │   │   blog post #1, mention soyuz + shoreguard as siblings.
+│   │   ├── Twitter / Mastodon thread (10-12 tweets) with
+│   │   │   architecture diagrams.  Tag data-eng-Twitter
+│   │   │   gravity (Benn Stancil, Tristan Handy, Pedram Navid,
+│   │   │   Chad Sanderson, Julien Le Dem).
+│   │   ├── Reddit posts: r/dataengineering + r/programming.
+│   │   ├── LinkedIn long-form post.
+│   │   ├── Blog post #1: *"Why we built per-cell lineage on
+│   │   │   Delta CDF"* — published same day, linked from HN.
+│   │   └── Hacker News frontpage hit-rate target: 30%.  Even a
+│   │       moderate showing (~50 upvotes, 200 visitors) creates
+│   │       the "Sarah saw this in our internal Slack" pathway
+│   │       that converts to recruiter / engineer outreach.
+│   │
+│   ├── Conference circuit (3-12 month lead time)        ⏳
+│   │   ├── DataCouncil — "How per-cell lineage closes the
+│   │   │   EU-AI-Act audit gap".  Springs 2026 / Falls 2027.
+│   │   ├── Subsurface — "Building Z3-verified policies for
+│   │   │   agent sandboxes" (shoreguard angle).
+│   │   ├── dbt Coalesce — "Comparing PointlesSQL audit-substrate
+│   │   │   to Unity Catalog Lineage".
+│   │   ├── Berlin Buzzwords — DE local, easier to land first
+│   │   │   slot, builds CFP-pipeline credibility.
+│   │   ├── Big Data LDN — UK enterprise audience, compliance
+│   │   │   buyer-aligned.
+│   │   └── KubeCon EU (longer shot) — shoreguard / OpenShell
+│   │       angle if maturity allows.
+│   │
+│   ├── Sustained visibility (months 1-12 post-launch)   ⏳
+│   │   ├── Blog post series, 1 every 3 weeks: per-cell lineage
+│   │   │   for EU AI Act, Delta CDF deep-dive, comparing to UC
+│   │   │   Lineage, Z3-verified policies, cross-tool lineage.
+│   │   ├── Twitter daily: 3-5 substantive posts/week.  Reply
+│   │   │   to Data-Eng-Twitter threads with substance not spam.
+│   │   ├── LinkedIn updated: headline "Building open-source
+│   │   │   data audit + governance — PointlesSQL, soyuz,
+│   │   │   shoreguard".  About-section + skills tuned for
+│   │   │   recruiter sourcing tools (HireEZ / Gem / SeekOut
+│   │   │   scrape LinkedIn keywords, not GitHub).
+│   │   └── Office Hours outbound: 1:1 calls with engineering
+│   │       managers at target acquirers (Snowflake, Atlan,
+│   │       Acryl Data, OneTrust, Drata, Vanta, Snowplow,
+│   │       Microsoft Purview team) once first-run substance
+│   │       is shipped (Phase 18+ done).
+│   │
+│   ├── Packaging + distribution (the original Some-day)  ⏳
+│   │   ├── GHCR packages flipped private → public for both
+│   │   │   ``pointlessql`` and ``soyuz-catalog`` images; the
+│   │   │   Phase-10-deferred ``docs/e2e-walkthroughs/packaging.md``
+│   │   │   dogfood replay finally runs end-to-end without the
+│   │   │   PAT dance
+│   │   ├── Multi-arch (amd64 + arm64) image builds via docker
+│   │   │   buildx — the single-sprint work that Phase 10
+│   │   │   couldn't justify for an audience of one
+│   │   ├── Public PyPI publish of ``soyuz-catalog-client``
+│   │   │   (first) and the ``pointlessql`` wheel (second);
+│   │   │   replaces Phase 10's private git-tag pin for the
+│   │   │   general audience while keeping the tag-pin option
+│   │   │   available for consumers who prefer reproducible
+│   │   │   git-based installs
+│   │   ├── Optional: Helm chart for K8s deployments,
+│   │   │   generalising "runs on a €15/month vServer" to
+│   │   │   "runs on a cluster"
+│   │   └── README / docs pass: swap the "functional Databricks
+│   │       clone" alpha framing for the post-15.7 honest
+│   │       positioning: *"per-cell auditable lakehouse for
+│   │       agent-driven data engineering, EU-AI-Act-native"*.
+│   │
+│   └── Commercial offering (12-24 months post-OSS)      ⏳
+│       ├── Identify 3-5 paying design partners from the
+│       │   community (mid-cap retailer with EU-AI-Act compliance
+│       │   pressure, healthcare-data-engineering, financial
+│       │   reporting under ASC 606).  €500-2k/month each as
+│       │   willingness-to-pay validation.
+│       ├── Co-design the commercial wedge with design partners
+│       │   — what they actually want to pay for vs what they
+│       │   get free.  Likely: hosted SaaS, certified
+│       │   compliance reports, multi-tenant audit retention,
+│       │   SSO/SAML, cryptographic anchor service.
+│       ├── UG/GmbH incorporation (~€500 + Notar) once a
+│       │   contract template + 2 verbal-LOIs exist.  Founder
+│       │   Resolution transfers pre-incorporation IP to entity.
+│       └── First commercial offering live, based on what design
+│           partners actually paid for — not what was guessed
+│           upfront.  Expected revenue trajectory: €0 → €60k ARR
+│           year 1 → €200-500k year 2 → €1-3M year 3 (typical
+│           OSS-infra commercial-bootstrap curve).
 │
 ├── Icebox — enterprise-audit follow-ups                  🧊 on ice
 │   │
