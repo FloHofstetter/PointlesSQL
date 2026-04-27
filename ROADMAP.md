@@ -1503,38 +1503,104 @@ PointlesSQL
 │           (1)" collapsible, run-view counter shows
 │           ``value changes: 1`` on the merge op.
 │
-├── Phase 16 — Delta-Branching + first-class Rollback      ⏳ queued
+├── Phase 16 — First-Class Rollback                       ⏳ in progress
 │   │
-│   │   The agent-trust UX.  Two patterns:
+│   │   The reactive half of the agent-trust UX: a run already
+│   │   hit main and a human at 09:00 wants ONE button to undo
+│   │   it.  Today Delta time-travel exists, but PointlesSQL has
+│   │   no first-class primitive and no UI on top of it.
 │   │
-│   │   - **Branching** is proactive: every agent run gets a
-│   │     zero-copy branch, promote-to-main is a shoreguard-
-│   │     gated approval, discard is free.  Full design in
-│   │     ``project_delta_branching_idea.md``.
-│   │   - **Rollback** is reactive: a run already hit main and
-│   │     a human at 09:00 wants ONE button to undo it.  Today
-│   │     Delta time-travel exists but no first-class primitive
-│   │     and no UI.
+│   │   Originally sketched alongside Delta-Branching as one
+│   │   bundled phase.  Per AskUserQuestion 2026-04-27 the phase
+│   │   **splits**: Phase 16 ships rollback only (4 sub-sprints,
+│   │   the audit→action loop); Delta-Branching becomes Phase
+│   │   16.5 (sketch only — load-bearing on a ``_delta_log/``
+│   │   shallow-clone spike that deltalake-python 1.5.0 doesn't
+│   │   expose first-class).
 │   │
-│   │   Both are needed.  Don't conflate.  Cascade-aware so a
-│   │   silver-table rollback warns when downstream gold tables
-│   │   were computed from it.
+│   │   Cascade-aware: warns when downstream tables were derived
+│   │   from the rollback target.  Fail-loud on staleness:
+│   │   refuses if ``delta_version_after(targeted_op) !=
+│   │   current_version`` unless ``allow_force=True``.
 │   │
-│   ├── `pql.rollback(target, before_run=run_id)` primitive —
-│   │   resolves Delta version via
-│   │   ``agent_run_operations.delta_version_before``, emits its
-│   │   own `agent_run_operations` row (rollback IS an operation)
-│   ├── `/runs/{id}` "Rollback this run" button (admin-gated,
-│   │   shoreguard-approval-required) with cascade preview
-│   ├── `pql.branch("name")` API — creates UC schema branch via
-│   │   Delta `SHALLOW CLONE`, soyuz metadata extension for
-│   │   parent + creation time, automatic cleanup of idle
-│   │   branches after N days
-│   ├── Promote/discard workflow via shoreguard approval flow —
-│   │   "promote experiment-X to main" is a shoreguard policy
-│   │   target indistinguishable from any other write approval
-│   └── Control-Room UI: list active branches, owners, compute
-│       cost, promote/discard per branch
+│   ├── Sprint 16.0 — Housekeeping                          ⏳
+│   │   ├── ROADMAP + CHANGELOG opened for Phase 16
+│   │   ├── Alembic ``i9d0e1f2a3b4`` extends
+│   │   │   ``ck_agent_run_operations_op_name`` with
+│   │   │   ``'rollback'``; ``VALID_OP_NAMES`` updated
+│   │   └── ``RollbackError`` family in ``operations.py``:
+│   │       ``RollbackTargetNotFound`` /
+│   │       ``RollbackAmbiguous`` / ``RollbackInvalid`` /
+│   │       ``RollbackStale``
+│   ├── Sprint 16.1 — ``pql.rollback`` primitive             ⏳
+│   │   ├── ``pointlessql/pql/_rollback.py`` with verified
+│   │   │   ``DeltaTable.restore(target_version, ...)`` call
+│   │   │   sequence (atomic, writes a new commit, CDF-safe)
+│   │   ├── Resolution: query
+│   │   │   ``agent_run_operations(run_id, target_table)``
+│   │   │   ordered by ``ordinal``; fail-loud on
+│   │   │   ambiguous/missing/invalid/stale
+│   │   ├── Audit: rollback IS an operation —
+│   │   │   ``op_name='rollback'``, params record
+│   │   │   ``rolled_back_run`` + ``op_id`` +
+│   │   │   ``target_version_restored`` + ``allow_force``
+│   │   └── Skips lineage / row-edges / column-edges /
+│   │       value-changes hooks (restored rows are pre-
+│   │       existing, no row-id mapping is meaningful)
+│   ├── Sprint 16.2 — Cascade detection + preview API       ⏳
+│   │   ├── ``pointlessql/services/cascade.py`` with
+│   │   │   ``find_downstream_tables(source_table, since=...)``
+│   │   │   reading ``lineage_row_edges`` +
+│   │   │   ``lineage_column_map``
+│   │   └── ``GET /api/runs/{run_id}/rollback-preview?target=…``
+│   │       returns version delta, staleness flag,
+│   │       intervening writes, downstream warnings;
+│   │       admin-only
+│   └── Sprint 16.3 — Rollback UI + CloudEvent + replay     ⏳
+│       ├── ``/runs/{id}`` Rollback dropdown (admin-only) +
+│       │   modal with stale-checkbox gate + downstream
+│       │   warning panel
+│       ├── ``POST /api/runs/{run_id}/rollback`` spawns a
+│       │   fresh agent run, invokes ``pql.rollback``,
+│       │   returns the new run id
+│       ├── CloudEvent ``pointlessql.rollback.executed``
+│       │   joins the existing event family
+│       └── ``docs/e2e-walkthroughs/rollback.md`` headful
+│           Firefox replay covers happy-path + stale-path
+│
+├── Phase 16.5 — Delta-Branching                          ⏳ sketch
+│   │
+│   │   Proactive isolation: every agent run gets its own
+│   │   zero-copy branch of the target schema, promote-to-main
+│   │   goes through an approval, discard is free.  Full design
+│   │   in ``project_delta_branching_idea.md``.
+│   │
+│   │   **Blocked on a load-bearing spike**: deltalake-python
+│   │   1.5.0 has no first-class clone API.  The spike (16.5.0)
+│   │   tests whether ``deltalake.transaction`` can build a
+│   │   ``_delta_log/00...000.json`` from pre-built ``Add``
+│   │   actions, falling back to a filesystem-level seed
+│   │   (read+rewrite source ``_delta_log/*.json`` with absolute
+│   │   parquet URIs).  If neither works, branching deep-copies
+│   │   parquet (loses the zero-copy story) and the phase needs
+│   │   a product re-decision.
+│   │
+│   │   Promotion uses pointer-swap with hard
+│   │   ``BranchPromotionConflict`` if the parent moved during
+│   │   branch lifetime.  Diff+replay stays a hypothetical
+│   │   future topic.
+│   │
+│   ├── 16.5.0 — ``_delta_log/`` shallow-clone spike
+│   ├── 16.5.1 — soyuz tag schema for branches
+│   │   (``pointlessql.branch.*``)
+│   ├── 16.5.2 — ``pql.branch(source_schema, branch_name)``
+│   ├── 16.5.3 — ``pql.branch_discard(branch_schema)`` with
+│   │   safety guards
+│   ├── 16.5.4 — ``pql.branch_promote(branch_schema)`` v1
+│   │   (pointer-swap only)
+│   ├── 16.5.5 — Control-Room UI (list / promote / discard)
+│   ├── 16.5.6 — Auto-cleanup job (opt-in)
+│   └── 16.5.7 — End-to-end replay (headful Firefox)
 │
 ├── Phase 17 — UI Overhaul                                ⏳ queued
 │   │

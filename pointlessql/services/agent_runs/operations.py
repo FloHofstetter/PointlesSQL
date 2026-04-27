@@ -43,7 +43,101 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-VALID_OP_NAMES = frozenset({"autoload", "merge", "write_table", "sql", "aggregate"})
+VALID_OP_NAMES = frozenset({"autoload", "merge", "write_table", "sql", "aggregate", "rollback"})
+
+
+class RollbackError(Exception):
+    """Base class for ``pql.rollback`` failures.
+
+    Subclasses encode the four refusal modes the rollback primitive
+    surfaces: target-not-found, ambiguous (multi-op runs), invalid
+    (creation ops), and stale (intervening writes).  Raising any
+    subclass guarantees no Delta state has been mutated — the
+    ``DeltaTable.restore(...)`` call is gated on all four checks
+    passing first.
+    """
+
+
+class RollbackTargetNotFound(RollbackError):
+    """No ``agent_run_operations`` row matches ``(run_id, target)``.
+
+    Either the run never wrote to the named target, or the run id is
+    unknown to the registry.  The caller should treat this as a
+    user error (likely mistyped FQN or wrong run id).
+    """
+
+
+class RollbackAmbiguous(RollbackError):
+    """Multiple ops in one run touched the same target.
+
+    Common for runs that ran ``pql.merge`` more than once on the
+    same table.  The caller must re-issue with an explicit
+    ``op_ordinal=N`` to disambiguate.  ``self.candidates`` carries
+    the matching operation rows ordered by ``ordinal``; each row
+    exposes the ``ordinal`` / ``delta_version_before`` /
+    ``delta_version_after`` triple the caller needs to pick.
+
+    Args:
+        candidates: The list of matching operation rows ordered
+            by ``ordinal``.
+    """
+
+    def __init__(self, candidates: list[AgentRunOperation]) -> None:
+        ordinals = [c.ordinal for c in candidates]
+        super().__init__(
+            f"rollback: {len(candidates)} ops match (ordinals={ordinals}); "
+            f"pass op_ordinal=N to pick"
+        )
+        self.candidates = candidates
+
+
+class RollbackInvalid(RollbackError):
+    """Chosen op has ``delta_version_before is None``.
+
+    The op created the table, so rolling it back would mean
+    dropping the table — that is a different primitive
+    (``pql.drop_table``) and is out of v1 scope.
+    """
+
+
+class RollbackStale(RollbackError):
+    """Current Delta version moved past the targeted op's version.
+
+    Restoring would silently overwrite intervening writes by other
+    runs.  The caller must re-issue with ``allow_force=True`` to
+    confirm they accept that loss.  ``self.current_version`` /
+    ``self.expected_version`` / ``self.intervening_op_count``
+    carry the staleness-check result for the UI confirmation
+    dialog.
+
+    Args:
+        current_version: ``DeltaTable.version()`` at the moment
+            of the staleness check.
+        expected_version: The targeted op's
+            ``delta_version_after``; equal to
+            ``current_version`` for the non-stale path.
+        intervening_op_count: Number of ``agent_run_operations``
+            rows with the same ``target_table`` and a
+            ``delta_version_after`` strictly greater than the
+            targeted op's.
+    """
+
+    def __init__(
+        self,
+        *,
+        current_version: int,
+        expected_version: int,
+        intervening_op_count: int,
+    ) -> None:
+        super().__init__(
+            f"rollback stale: current_version={current_version} "
+            f"expected={expected_version} "
+            f"intervening_op_count={intervening_op_count}; "
+            f"pass allow_force=True to overwrite intervening writes"
+        )
+        self.current_version = current_version
+        self.expected_version = expected_version
+        self.intervening_op_count = intervening_op_count
 
 
 @dataclass
@@ -374,6 +468,8 @@ def _emit_lineage_after_commit(
             ``source_table_fqn`` / ``source_volume_fqn`` declared by
             merge / write_table / autoload callers.
     """
+    if op_name == "rollback":
+        return
     inputs: list[str] = []
     outputs: list[str] = []
     if target_table:
@@ -568,9 +664,7 @@ def _record_value_changes_after_commit(
     )
     if failure is None:
         return
-    _stamp_audit_marker(
-        session_factory, op_id=op_id, marker=f"[lineage_value_partial] {failure!r}"
-    )
+    _stamp_audit_marker(session_factory, op_id=op_id, marker=f"[lineage_value_partial] {failure!r}")
 
 
 def _stamp_audit_marker(session_factory: sessionmaker[Session], *, op_id: int, marker: str) -> None:

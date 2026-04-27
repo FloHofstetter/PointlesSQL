@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 16: First-Class Rollback (in progress, 2026-04-27)
+
+Closes the audit→action loop.  Phases 13–15.7 captured the audit
+data plane across five lineage axes; Phase 16 adds the missing
+governance primitive: a single ``pql.rollback`` call (and matching
+``/runs/{id}`` button) that undoes the changes one run made to one
+target Delta table.
+
+Per AskUserQuestion 2026-04-27 the original "Delta-Branching +
+first-class Rollback" sketch **splits**: Phase 16 ships rollback
+only (4 sub-sprints, audit→action loop closed); Delta-Branching
+becomes Phase 16.5, blocked on a ``_delta_log/`` shallow-clone
+spike that deltalake-python 1.5.0 doesn't expose first-class.
+
+Sprint 16.0 — Housekeeping:
+
+- Alembic ``i9d0e1f2a3b4`` extends
+  ``ck_agent_run_operations_op_name`` to include ``'rollback'``.
+- ``VALID_OP_NAMES`` in
+  ``pointlessql/services/agent_runs/operations.py`` updated.
+- ``RollbackError`` family added (``RollbackTargetNotFound``,
+  ``RollbackAmbiguous``, ``RollbackInvalid``, ``RollbackStale``)
+  for the four refusal modes the rollback primitive surfaces.
+- ``_emit_lineage_after_commit`` skips ``op_name="rollback"``
+  ops — restored rows are pre-existing, no row-id mapping is
+  meaningful.
+
 ### Changed — ROADMAP compression: archive completed phases 0-12.8 + 12.10-13.5 (2026-04-27)
 
 `ROADMAP.md` had grown to 5685 lines, dominated by per-sprint
