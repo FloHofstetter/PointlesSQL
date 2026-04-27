@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — ROADMAP compression: archive completed phases 0-12.8 + 12.10-13.5 (2026-04-27)
+
+`ROADMAP.md` had grown to 5685 lines, dominated by per-sprint
+detail of long-completed phases that no current conversation
+references.  Compressed to 1983 lines (-65%) by:
+
+- Collapsing **Phases 0–12.8** into a one-line-per-phase summary
+  table at the top of the active roadmap.
+- Collapsing **Phases 12.10–13.5** into a second summary table
+  immediately after Phase 12.9 (which stays full-detail because
+  it's `🔜 in progress`).
+- Moving the full per-sprint detail of all collapsed phases
+  into a new [`ROADMAP_ARCHIVE.md`](ROADMAP_ARCHIVE.md) file
+  (3797 lines, append-only).
+- Keeping **Phases 14–15.7** (recently closed, last ~30 days)
+  at full detail because they're load-bearing for follow-up
+  conversations.
+- Keeping **Phases 16–20**, **Some-day**, **Icebox**, and the
+  out-of-scope footer at full detail.
+
+`CLAUDE.md` updated to mention the archive convention.  The
+"How to update this file" section in `ROADMAP.md` now describes
+the collapse trigger (>2000 lines or >3 months no-reference)
+so future sessions know how and when to roll out further
+phases.
+
+No code change.
+
 ### Changed — Roadmap expansion: Phase 17-20 + Some-day rewrite (2026-04-27)
 
 Strategic conversation post-15.7-close generated a substantial

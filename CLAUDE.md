@@ -196,6 +196,12 @@ of truth for what is done, what is in progress, and what is next.
 Every sprint update lands there with its commit hash. Do not
 invent new milestone or sprint names — extend the existing tree.
 
+Older completed phases are collapsed into a summary table; their
+per-sprint detail lives in
+[`ROADMAP_ARCHIVE.md`](ROADMAP_ARCHIVE.md).  Read the archive only
+when investigating a specific old decision — `ROADMAP.md` alone
+covers all current and recently-closed work.
+
 ## Replaying the e2e walkthroughs
 
 `docs/e2e-walkthroughs/` holds eleven deterministic Markdown
