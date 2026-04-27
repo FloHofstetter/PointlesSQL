@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added — Phase 16: First-Class Rollback (in progress, 2026-04-27)
+### Added — Phase 16: First-Class Rollback (closed 2026-04-27)
 
 Closes the audit→action loop.  Phases 13–15.7 captured the audit
 data plane across five lineage axes; Phase 16 adds the missing
@@ -30,6 +30,51 @@ Sprint 16.0 — Housekeeping:
 - ``_emit_lineage_after_commit`` skips ``op_name="rollback"``
   ops — restored rows are pre-existing, no row-id mapping is
   meaningful.
+
+Sprint 16.1 — ``pql.rollback`` primitive:
+
+- ``pointlessql/pql/_rollback.py`` wraps the verified
+  ``DeltaTable.restore(target_version, ...)`` API.  Atomic, writes
+  a new commit (CDF-safe), takes a ``CommitProperties.custom_metadata``
+  dict that stamps the rollback's commit log with
+  ``pointlessql.rollback_of_run`` / ``pointlessql.rollback_of_op_id``.
+- All four refusal gates (target-not-found / ambiguous / invalid /
+  stale) fire *before* the ``restore`` call, so any refusal leaves
+  Delta state untouched.
+- ``pql.rollback`` is the public method on the ``PQL`` class.
+- 8 tests in ``tests/test_rollback_primitive.py``.
+
+Sprint 16.2 — Cascade detection + preview API:
+
+- ``pointlessql/services/cascade.py`` exports
+  ``find_downstream_tables(source_table)`` — walks
+  ``lineage_row_edges`` + ``lineage_column_map`` and reports
+  distinct downstream targets aggregated across both axes.
+- ``GET /api/runs/{run_id}/rollback-preview?target=<fqn>`` returns
+  version delta, staleness flag, intervening-writes list,
+  multi-op ``op_candidates``, and downstream warnings.  Admin-only.
+- 11 tests in ``tests/test_rollback_preview.py``.
+
+Sprint 16.3 — Rollback UI + CloudEvent + replay:
+
+- Rollback card on ``/runs/{id}`` (admin-only): target dropdown,
+  preview modal, stale-checkbox gate, downstream warning panel,
+  multi-op ordinal picker.  Modal fetches
+  ``/rollback-preview`` JSON; submit posts to
+  ``POST /api/runs/{run_id}/rollback`` and redirects to the new
+  rollback run.
+- ``POST /api/runs/{run_id}/rollback`` spawns a fresh
+  ``agent_runs`` row, invokes ``pql.rollback`` on a worker thread,
+  marks the run ``succeeded`` on completion (or ``failed`` with
+  ``denied_reason`` when a refusal fires).  Refusal-to-HTTP map:
+  ``RollbackTargetNotFound`` → 404, ``RollbackAmbiguous`` → 422,
+  ``RollbackInvalid`` → 422, ``RollbackStale`` → 422.
+- New CloudEvent type ``pointlessql.rollback.executed`` joins
+  ``AGENT_RUN_EVENT_TYPES`` — no migration needed (existing CHECK
+  is on ``outcome``, not event_type).
+- ``docs/e2e-walkthroughs/rollback.md`` covers happy + stale paths
+  in headful Firefox plus a refusal-mode CLI smoke matrix.
+- 6 route tests in ``tests/test_rollback_route.py``.
 
 ### Changed — ROADMAP compression: archive completed phases 0-12.8 + 12.10-13.5 (2026-04-27)
 

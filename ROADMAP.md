@@ -1503,7 +1503,7 @@ PointlesSQL
 │           (1)" collapsible, run-view counter shows
 │           ``value changes: 1`` on the merge op.
 │
-├── Phase 16 — First-Class Rollback                       ⏳ in progress
+├── Phase 16 — First-Class Rollback                       ✅ closed 2026-04-27
 │   │
 │   │   The reactive half of the agent-trust UX: a run already
 │   │   hit main and a human at 09:00 wants ONE button to undo
@@ -1523,7 +1523,7 @@ PointlesSQL
 │   │   refuses if ``delta_version_after(targeted_op) !=
 │   │   current_version`` unless ``allow_force=True``.
 │   │
-│   ├── Sprint 16.0 — Housekeeping                          ⏳
+│   ├── Sprint 16.0 — Housekeeping                          ✅
 │   │   ├── ROADMAP + CHANGELOG opened for Phase 16
 │   │   ├── Alembic ``i9d0e1f2a3b4`` extends
 │   │   │   ``ck_agent_run_operations_op_name`` with
@@ -1532,41 +1532,49 @@ PointlesSQL
 │   │       ``RollbackTargetNotFound`` /
 │   │       ``RollbackAmbiguous`` / ``RollbackInvalid`` /
 │   │       ``RollbackStale``
-│   ├── Sprint 16.1 — ``pql.rollback`` primitive             ⏳
-│   │   ├── ``pointlessql/pql/_rollback.py`` with verified
-│   │   │   ``DeltaTable.restore(target_version, ...)`` call
-│   │   │   sequence (atomic, writes a new commit, CDF-safe)
-│   │   ├── Resolution: query
-│   │   │   ``agent_run_operations(run_id, target_table)``
-│   │   │   ordered by ``ordinal``; fail-loud on
-│   │   │   ambiguous/missing/invalid/stale
-│   │   ├── Audit: rollback IS an operation —
-│   │   │   ``op_name='rollback'``, params record
-│   │   │   ``rolled_back_run`` + ``op_id`` +
-│   │   │   ``target_version_restored`` + ``allow_force``
-│   │   └── Skips lineage / row-edges / column-edges /
-│   │       value-changes hooks (restored rows are pre-
-│   │       existing, no row-id mapping is meaningful)
-│   ├── Sprint 16.2 — Cascade detection + preview API       ⏳
-│   │   ├── ``pointlessql/services/cascade.py`` with
-│   │   │   ``find_downstream_tables(source_table, since=...)``
-│   │   │   reading ``lineage_row_edges`` +
-│   │   │   ``lineage_column_map``
+│   ├── Sprint 16.1 — ``pql.rollback`` primitive             ✅
+│   │   ├── ``pointlessql/pql/_rollback.py`` calls
+│   │   │   ``DeltaTable.restore(target_version, ...)``
+│   │   │   (atomic, new commit, CDF-safe).  8 tests cover
+│   │   │   happy-path / audit-row-shape / target-not-found /
+│   │   │   ambiguous / invalid (creation op) / stale-without-
+│   │   │   force / stale-with-force-succeeds / multi-op-
+│   │   │   resolved-by-ordinal.
+│   │   ├── ``pql.rollback`` exposed on the ``PQL`` class;
+│   │   │   forwards client / engine / agent_run_id from
+│   │   │   ``self``
+│   │   └── ``operation_context`` skips lineage / row-edges /
+│   │       column-edges / value-changes hooks for
+│   │       ``op_name='rollback'``
+│   ├── Sprint 16.2 — Cascade detection + preview API       ✅
+│   │   ├── ``pointlessql/services/cascade.py``:
+│   │   │   ``find_downstream_tables`` walks
+│   │   │   ``lineage_row_edges`` + ``lineage_column_map``,
+│   │   │   marks via=``row``/``column``/``both``, sorted by
+│   │   │   edge_count desc
 │   │   └── ``GET /api/runs/{run_id}/rollback-preview?target=…``
-│   │       returns version delta, staleness flag,
-│   │       intervening writes, downstream warnings;
-│   │       admin-only
-│   └── Sprint 16.3 — Rollback UI + CloudEvent + replay     ⏳
-│       ├── ``/runs/{id}`` Rollback dropdown (admin-only) +
-│       │   modal with stale-checkbox gate + downstream
-│       │   warning panel
+│   │       returns version delta + ``is_stale`` +
+│   │       ``intervening_writes`` + ``op_candidates`` +
+│   │       ``downstream_warnings``; admin-only
+│   └── Sprint 16.3 — Rollback UI + CloudEvent + replay     ✅
+│       ├── ``/runs/{id}`` rollback card (admin-only) with
+│       │   target dropdown + preview modal + stale checkbox
+│       │   gate + downstream warning panel + multi-op
+│       │   ordinal picker
 │       ├── ``POST /api/runs/{run_id}/rollback`` spawns a
-│       │   fresh agent run, invokes ``pql.rollback``,
-│       │   returns the new run id
+│       │   fresh ``agent_runs`` row, invokes ``pql.rollback``
+│       │   on a worker thread, marks the run ``succeeded``
+│       │   on completion
 │       ├── CloudEvent ``pointlessql.rollback.executed``
-│       │   joins the existing event family
-│       └── ``docs/e2e-walkthroughs/rollback.md`` headful
-│           Firefox replay covers happy-path + stale-path
+│       │   joins ``AGENT_RUN_EVENT_TYPES`` (no migration
+│       │   needed — existing CHECK is on ``outcome``, not
+│       │   event_type)
+│       ├── ``docs/e2e-walkthroughs/rollback.md`` headful
+│       │   Firefox replay covers happy + stale paths,
+│       │   refusal-mode CLI smoke, stop conditions
+│       └── 6 route tests: admin-required, body-validation,
+│           target-not-found, invalid-creation, stale-no-force,
+│           happy-path-spawns-run-and-emits-event
 │
 ├── Phase 16.5 — Delta-Branching                          ⏳ sketch
 │   │
