@@ -26,11 +26,11 @@ from fastapi import APIRouter, Body, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.api.dependencies import get_user, require_admin, require_auditor
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import LineageValueChange
 from pointlessql.services import audit_aggregator as agg
-from pointlessql.services.query_history import record_query
+from pointlessql.services.query_history import VALID_READ_KINDS, list_queries, record_query
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ async def api_audit_summary(
         ``{"since", "until", "principal", "agent_id", "table",
         "counts": {...}}``.
     """
-    require_admin(request)
+    require_auditor(request)
     started_at = datetime.datetime.now(datetime.UTC)
     since_dt = _parse_iso8601("since", since)
     until_dt = _parse_iso8601("until", until)
@@ -209,7 +209,7 @@ async def api_audit_timeseries(
             outside their respective whitelists, or ``since``/
             ``until`` are not ISO-8601.
     """
-    require_admin(request)
+    require_auditor(request)
     if metric not in agg.VALID_METRICS:
         raise ValidationError(f"unknown metric: {metric}")
     if bin_ not in agg.VALID_BINS:
@@ -288,7 +288,7 @@ async def api_audit_anomalies(
         ValidationError: ``metric``/``bin_`` outside the whitelist
             or ``since``/``until`` not ISO-8601.
     """
-    require_admin(request)
+    require_auditor(request)
     if metric not in agg.VALID_METRICS:
         raise ValidationError(f"unknown metric: {metric}")
     if bin_ not in agg.VALID_BINS:
@@ -406,3 +406,96 @@ async def api_audit_pii_reveal(
         "old_value": row.old_value,
         "new_value": row.new_value,
     }
+
+
+@router.get("/api/audit/history")
+async def api_audit_history(
+    request: Request,
+    since: str | None = Query(default=None, description="ISO-8601 lower bound on started_at"),
+    until: str | None = Query(default=None, description="ISO-8601 upper bound (exclusive)"),
+    read_kind: str | None = Query(
+        default=None,
+        description="Filter to a single read_kind; default excludes audit_api to avoid recursion",
+    ),
+    status: str | None = Query(default=None, description="Filter on query_history.status"),
+    limit: int = Query(default=200, ge=1, le=500),
+    include_audit_api: bool = Query(
+        default=False,
+        description="Set true to include audit-of-audit rows; default hides them.",
+    ),
+) -> dict[str, Any]:
+    """Paginated ``query_history`` slice for audit-trail traversal.
+
+    Sprint 19.1 — gives the daily Audit-Reviewer-Agent (and the
+    compliance / incident demo flows) a way to walk yesterday's
+    activity log without the full SQL-editor surface.
+
+    By default the response *excludes* rows whose ``read_kind`` is
+    ``audit_api`` (the rows produced by the cockpit endpoints
+    themselves, including this route).  Without that filter a
+    well-meaning agent would page through its own audit-of-audit
+    breadcrumbs forever; admins who do want to inspect the
+    cockpit's self-tracking can pass ``?include_audit_api=true`` or
+    ``?read_kind=audit_api`` directly.
+
+    Args:
+        request: Incoming FastAPI request.
+        since: ISO-8601 lower bound on ``started_at``.  ``None`` is
+            "all-time".
+        until: ISO-8601 upper bound (exclusive).  ``None`` is "now".
+        read_kind: Single ``read_kind`` filter.  Unknown values fall
+            through to "no filter" (matches :func:`list_queries`'s
+            tolerance contract).
+        status: Filter to a single status value.  ``None`` returns
+            all.
+        limit: Hard row cap (1–500).
+        include_audit_api: When ``False`` (the default) and no
+            explicit ``read_kind`` is set, rows with
+            ``read_kind='audit_api'`` are filtered out post-query.
+            When ``True`` no recursion filter is applied.
+
+    Returns:
+        ``{"since", "until", "read_kind", "status", "include_audit_api",
+        "limit", "rows": [...], "row_count": int}``.
+    """
+    require_auditor(request)
+    started_at = datetime.datetime.now(datetime.UTC)
+    since_dt = _parse_iso8601("since", since)
+    until_dt = _parse_iso8601("until", until)
+    factory = request.app.state.session_factory
+    rows = list_queries(
+        factory,
+        since=since_dt,
+        read_kind=read_kind,
+        status=status,
+        limit=limit,
+    )
+    if until_dt is not None:
+        cutoff = until_dt.isoformat()
+        rows = [r for r in rows if (r.get("started_at") or "") < cutoff]
+    if not include_audit_api and read_kind != "audit_api":
+        rows = [r for r in rows if r.get("read_kind") != "audit_api"]
+    response: dict[str, Any] = {
+        "since": since_dt.isoformat() if since_dt else None,
+        "until": until_dt.isoformat() if until_dt else None,
+        "read_kind": read_kind if read_kind in VALID_READ_KINDS else None,
+        "status": status,
+        "include_audit_api": include_audit_api,
+        "limit": limit,
+        "row_count": len(rows),
+        "rows": rows,
+    }
+    _record_self(
+        request,
+        endpoint="/api/audit/history",
+        params={
+            "since": since,
+            "until": until,
+            "read_kind": read_kind,
+            "status": status,
+            "limit": limit,
+            "include_audit_api": include_audit_api,
+        },
+        started_at=started_at,
+    )
+    return response

@@ -39,9 +39,9 @@ def test_parse_keys_supports_newline_and_comma() -> None:
     raw = "hermes:abc123\npaperclip:xyz789, bot:secret"
     parsed = api_keys_service.parse_keys(raw)
     assert parsed == {
-        "hermes": ("abc123", False),
-        "paperclip": ("xyz789", False),
-        "bot": ("secret", False),
+        "hermes": ("abc123", False, False),
+        "paperclip": ("xyz789", False, False),
+        "bot": ("secret", False, False),
     }
 
 
@@ -49,8 +49,17 @@ def test_parse_keys_supports_supervisor_scope() -> None:
     raw = "alice:s1, sup:godkey:supervisor"
     parsed = api_keys_service.parse_keys(raw)
     assert parsed == {
-        "alice": ("s1", False),
-        "sup": ("godkey", True),
+        "alice": ("s1", False, False),
+        "sup": ("godkey", True, False),
+    }
+
+
+def test_parse_keys_supports_auditor_scope() -> None:
+    raw = "alice:s1, aud:k:auditor"
+    parsed = api_keys_service.parse_keys(raw)
+    assert parsed == {
+        "alice": ("s1", False, False),
+        "aud": ("k", False, True),
     }
 
 

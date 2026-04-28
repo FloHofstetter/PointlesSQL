@@ -50,6 +50,7 @@ class KeyEntry:
 
     name: str
     supervisor: bool
+    auditor: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -89,21 +90,26 @@ def invalidate_cache() -> None:
 # ---------------------------------------------------------------------------
 
 
-def parse_keys(raw: str | None) -> dict[str, tuple[str, bool]]:
-    """Parse ``POINTLESSQL_API_KEYS`` env value into ``{name: (secret, supervisor)}``.
+def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool]]:
+    """Parse ``POINTLESSQL_API_KEYS`` env value into ``{name: (secret, supervisor, auditor)}``.
 
-    Format: ``name:secret`` keeps the legacy shape
-    (``supervisor=False``); ``name:secret:supervisor`` opts into the
-    supervisor scope.
+    Format:
+
+    - ``name:secret`` — non-privileged agent key (legacy default).
+    - ``name:secret:supervisor`` — supervisor scope.
+    - ``name:secret:auditor`` — auditor scope (Sprint 19.1).
+
     Anything else as the third token raises so a typo can't silently
-    grant supervisor access.
+    grant a privileged scope.  A single env entry maps to exactly one
+    scope; a key needing both scopes is provisioned via the admin
+    JSON CRUD instead.
 
     Args:
         raw: The raw env-var value, or ``None`` when unset.
 
     Returns:
-        Mapping ``{name: (secret, supervisor)}``.  Empty when *raw*
-        is missing or whitespace-only.
+        Mapping ``{name: (secret, supervisor, auditor)}``.  Empty
+        when *raw* is missing or whitespace-only.
 
     Raises:
         ValueError: When a pair lacks a colon, has empty name/secret,
@@ -112,7 +118,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool]]:
     """
     if raw is None or not raw.strip():
         return {}
-    out: dict[str, tuple[str, bool]] = {}
+    out: dict[str, tuple[str, bool, bool]] = {}
     for chunk in raw.replace(",", "\n").splitlines():
         pair = chunk.strip()
         if not pair:
@@ -121,24 +127,29 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool]]:
         if len(parts) < 2 or len(parts) > 3:
             raise ValueError(
                 f"POINTLESSQL_API_KEYS entry {pair!r} must be in "
-                f"'name:secret' or 'name:secret:supervisor' form"
+                f"'name:secret', 'name:secret:supervisor', or "
+                f"'name:secret:auditor' form"
             )
         name = parts[0].strip()
         secret = parts[1].strip()
         if not name or not secret:
             raise ValueError(f"POINTLESSQL_API_KEYS entry {pair!r} has an empty name or secret")
         supervisor = False
+        auditor = False
         if len(parts) == 3:
             scope = parts[2].strip().lower()
-            if scope != "supervisor":
+            if scope == "supervisor":
+                supervisor = True
+            elif scope == "auditor":
+                auditor = True
+            else:
                 raise ValueError(
                     f"POINTLESSQL_API_KEYS entry {pair!r} has unknown "
-                    f"scope {scope!r} — only 'supervisor' is recognised"
+                    f"scope {scope!r} — only 'supervisor' and 'auditor' are recognised"
                 )
-            supervisor = True
         if name in out:
             raise ValueError(f"POINTLESSQL_API_KEYS entry name {name!r} is duplicated")
-        out[name] = (secret, supervisor)
+        out[name] = (secret, supervisor, auditor)
     return out
 
 
@@ -171,7 +182,7 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
     inserted = 0
     with session_factory() as session:
         existing_names = {n for (n,) in session.execute(select(ApiKey.name)).all()}
-        for name, (secret, supervisor) in parsed.items():
+        for name, (secret, supervisor, auditor) in parsed.items():
             if name in existing_names:
                 continue
             session.add(
@@ -180,6 +191,7 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
                     secret_hash=_hash_secret(secret),
                     secret_prefix=secret[:8],
                     supervisor=supervisor,
+                    auditor=auditor,
                     created_at=datetime.now(UTC),
                 )
             )
@@ -202,6 +214,7 @@ def create_api_key(
     *,
     name: str,
     supervisor: bool = False,
+    auditor: bool = False,
     created_by_user_id: int | None = None,
 ) -> tuple[ApiKey, str]:
     """Generate + persist a fresh Bearer-token credential.
@@ -215,6 +228,8 @@ def create_api_key(
         name: Unique label (max 64 chars).
         supervisor: When ``True``, the key may invoke supervisor-scope
             routes.
+        auditor: When ``True``, the key may invoke audit-read routes
+            (Sprint 19.1).  Independent of ``supervisor``.
         created_by_user_id: Admin who created the key.  ``None`` for
             CLI-provisioned or env-var-bootstrapped keys.
 
@@ -236,6 +251,7 @@ def create_api_key(
             secret_hash=_hash_secret(plaintext),
             secret_prefix=plaintext[:8],
             supervisor=supervisor,
+            auditor=auditor,
             created_at=datetime.now(UTC),
             created_by_user_id=created_by_user_id,
         )
@@ -337,7 +353,11 @@ def verify_bearer(
         # equality — keeps the surface uniform with the env-var path.
         if not hmac.compare_digest(row.secret_hash, digest):
             return None
-        entry = KeyEntry(name=row.name, supervisor=bool(row.supervisor))
+        entry = KeyEntry(
+            name=row.name,
+            supervisor=bool(row.supervisor),
+            auditor=bool(row.auditor),
+        )
         # Best-effort last-used update — failures don't affect auth.
         try:
             session.execute(
@@ -370,3 +390,23 @@ def is_supervisor(session_factory: _SessionFactory, *, name: str) -> bool:
     with session_factory() as session:
         row = session.scalar(select(ApiKey).where(ApiKey.name == name, ApiKey.revoked_at.is_(None)))
         return bool(row and row.supervisor)
+
+
+def is_auditor(session_factory: _SessionFactory, *, name: str) -> bool:
+    """Return ``True`` when the named key carries the auditor scope.
+
+    Sprint 19.1 sibling to :func:`is_supervisor`.  Defensive recheck
+    used by :func:`pointlessql.api.dependencies.require_auditor` when
+    the cached :class:`KeyEntry` is unavailable.
+
+    Args:
+        session_factory: Sessionmaker callable.
+        name: API-key name.
+
+    Returns:
+        ``True`` when the key exists, is not revoked, and has
+        ``auditor=True``.
+    """
+    with session_factory() as session:
+        row = session.scalar(select(ApiKey).where(ApiKey.name == name, ApiKey.revoked_at.is_(None)))
+        return bool(row and row.auditor)

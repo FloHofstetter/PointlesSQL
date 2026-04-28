@@ -4,6 +4,135 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 19.1: Audit-read tools + ``auditor`` scope (2026-04-28)
+
+Sprint 19.1 closes the gap between the Phase-18 audit-data plane
+and Phase-19's three consumer flows (Audit-Reviewer-Agent,
+Compliance-Bot, Incident-Responder).  Adds a fourth privilege
+scope, lifts the read endpoints out of admin-only gating, exposes
+five new run-scoped JSON axes, and grows
+``hermes-plugin-pointlessql`` from 20 → 29 tools.
+
+- **New ``auditor`` scope on ``api_keys``.**  Alembic migration
+  ``k1f2a3b4c5d6_api_keys_auditor`` adds a ``BOOLEAN NOT NULL
+  DEFAULT 0`` column.  ``KeyEntry`` gains an ``auditor`` field;
+  ``parse_keys`` now accepts ``name:secret:auditor`` env entries
+  alongside the existing ``:supervisor`` form.  Middleware sets
+  ``request.state.api_key_auditor`` from the verified bearer.
+  New ``require_auditor`` dependency in
+  ``pointlessql/api/dependencies.py`` enforces the gate;
+  ``require_supervisor`` is widened to also accept the auditor
+  scope so a single auditor key drives both tenant-wide and
+  per-run audit reads without inheriting supervisor's
+  approve/deny privileges or admin's PII-reveal.
+
+- **Phase-18 audit endpoints lowered to ``require_auditor``.**
+  ``GET /api/audit/summary``, ``/timeseries``, and ``/anomalies``
+  no longer require an admin cookie — an auditor key is enough.
+  ``POST /api/audit/pii/reveal`` stays admin-only.
+
+- **Five new run-scoped JSON endpoints** under
+  ``/api/agent-runs/{run_id}/audit/<axis>``:
+  - ``lineage`` wraps the existing
+    ``load_lineage_summary_for_run`` helper (per-op row-edge
+    counts).
+  - ``rejects`` wraps ``load_rejects_for_run`` (Sprint-15.5.3
+    rejected rows).
+  - ``value-changes`` queries ``lineage_value_changes`` directly
+    and **always masks ``old_value`` / ``new_value`` for non-admin
+    callers** — auditor scope cannot un-mask, regardless of the
+    ``mask=false`` query flag.  Admin cookie + ``mask=false``
+    surfaces cleartext via the same response shape; the
+    historical admin-only ``POST /api/audit/pii/reveal`` is
+    unchanged.
+  - ``external-writes`` wraps ``load_unattributed_for_run``
+    (filters to the run's ``tables_touched`` JSON list +
+    ``acknowledged_at IS NULL``).
+  - ``column-lineage`` queries ``lineage_column_map`` directly
+    (per-run source-column → target-column edges).
+
+  All five validate the run id up-front via ``_ensure_run_visible``
+  and return ``CatalogNotFoundError`` (404) on stale UUIDs rather
+  than empty rows.  Three formerly-private helpers in
+  ``runs_routes.py`` (``_load_lineage_summary_for_run`` →
+  ``load_lineage_summary_for_run`` etc.) were renamed when their
+  cross-module use surfaced — strict pyright was rightfully
+  complaining about ``reportPrivateUsage`` once
+  ``agent_runs_routes`` started reaching for them.
+
+- **New tenant-wide ``GET /api/audit/history``.**  Paginated
+  ``query_history`` walk for the audit-of-audit traversal flow.
+  Default response **excludes ``read_kind='audit_api'`` rows**
+  so an audit-reviewer agent doesn't loop on its own
+  breadcrumbs; ``?include_audit_api=true`` or
+  ``?read_kind=audit_api`` lift the filter.  Routes through the
+  existing ``list_queries`` service.
+
+- **Anomaly-baseline bugfix in
+  :func:`audit_aggregator.anomalies`.**  When the caller bounds
+  ``since`` to (e.g.) yesterday-00:00 UTC, the previous
+  implementation returned only points inside ``[since, until)``
+  to the rolling-baseline loop, leaving the first bin with an
+  empty baseline and false-positive ``critical`` verdicts.  Fix
+  widens the underlying ``timeseries`` query by ``window_days``
+  internally, then trims the response back to ``[since, until)``
+  via a new dialect-safe ``_bin_floor_compare_string`` helper
+  (SQLite ``%Y-%m-%d`` vs Postgres ``date_trunc(...)::String``
+  reconciled by a 10-/16-char prefix compare).  This unblocks the
+  Sprint-19.2 daily reviewer's "yesterday closed-day verdict"
+  prompt.
+
+- **Audit-of-audit logging on every new endpoint.**  Each new
+  audit-read endpoint records a synthetic ``query_history`` row
+  with ``read_kind='audit_api'`` via a new
+  ``_record_audit_self`` helper (mirror of the existing
+  ``_record_self`` in ``audit_routes.py``).  Server-side, not
+  plugin-side — a malicious agent cannot turn off the
+  audit-of-audit trail.
+
+- **Plugin-side: 9 new tools in ``hermes-plugin-pointlessql``.**
+  Bumps the registered count from 20 to 29.  New
+  ``POINTLESSQL_AUDITOR_MODE`` env flag (analog to the existing
+  ``POINTLESSQL_SUPERVISOR_MODE``) gates a new
+  ``register_auditor_tools`` factory:
+  - ``pql_list_recent_runs`` — generic recent-N-runs listing
+    (the existing ``pql_runs_by_principal`` /
+    ``pql_runs_by_agent`` cover filtered listings).
+  - ``pql_audit_summary`` — wraps both ``/api/audit/summary``
+    (``mode="counts"``) and ``/api/audit/timeseries``
+    (``mode="timeseries"``) behind one tool.
+  - ``pql_anomaly_check`` — wraps ``/api/audit/anomalies``.
+  - ``pql_query_history_audit`` — wraps ``/api/audit/history``;
+    default hides audit_api rows.
+  - ``pql_query_row_lineage`` — per-op row-edge aggregate
+    (run-scoped, distinct from the existing soyuz table-level
+    ``pql_lineage`` tool).
+  - ``pql_query_column_lineage`` — column-axis JSON view.
+  - ``pql_query_value_changes`` — always-masked at the
+    PointlesSQL boundary; the plugin doesn't expose a cleartext
+    path.
+  - ``pql_query_rejects`` — Sprint-15.5.3 reject rows.
+  - ``pql_query_external_writes`` — unattributed Delta commits.
+  - ``pql_get_run`` was deliberately dropped — the existing
+    ``pql_run_summary`` already covers it.
+
+- **16 new pytest cases in
+  ``tests/test_audit_routes_sprint_19.py``** covering the
+  privilege ladder (normal/supervisor/auditor/admin against
+  tenant-wide and per-run reads), the masked-by-default
+  contract on ``/audit/value-changes``, the audit-of-audit
+  recursion guard on ``/api/audit/history``, the
+  ``query_history`` row landing for each successful per-run
+  audit read, and the structural shape of the anomaly bugfix.
+  ``test_api_key_gate.py`` updated for the new
+  ``parse_keys`` triple shape and gains a
+  ``test_parse_keys_supports_auditor_scope`` case.
+  Pre-existing unrelated test failures in
+  ``test_api_notebook_workspace.py`` /
+  ``test_scheduler_papermill.py`` /
+  ``test_table_stats.py`` are untouched (verified clean on
+  HEAD prior to this change).
+
 ### Added — Phase 18: Audit Cockpit (2026-04-28)
 
 Closes Phase 18 in one autonomous session — six sub-sprints landed

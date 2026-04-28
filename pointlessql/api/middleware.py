@@ -70,7 +70,9 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     need no awareness of the alternate auth path;
     ``request.state.api_key_name`` keeps the audit attribution and
     ``request.state.api_key_supervisor`` exposes the supervisor
-    scope flag for ``require_supervisor``.
+    scope flag for ``require_supervisor``;
+    ``request.state.api_key_auditor`` exposes the Sprint-19.1
+    auditor scope flag for ``require_auditor``.
 
     Cookie auth still wins when both are present so a human in a
     browser keeps their identity even if a misconfigured proxy
@@ -109,6 +111,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
         if entry is not None:
             request.state.api_key_name = entry.name
             request.state.api_key_supervisor = entry.supervisor
+            request.state.api_key_auditor = entry.auditor
             request.state.user = UserInfo(
                 id=0,
                 email=f"api_key:{entry.name}",

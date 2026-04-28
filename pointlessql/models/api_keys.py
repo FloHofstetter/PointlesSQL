@@ -34,7 +34,14 @@ class ApiKey(Base):
             secrets, and we control the secrets here.
         secret_prefix: First 8 plaintext characters for UI display.
         supervisor: When ``True``, the key may invoke the supervisor
-            routes.
+            routes (per-run summary / diff).
+        auditor: When ``True``, the key may invoke the audit-read
+            surface (tenant-wide ``/api/audit/*`` aggregates and the
+            per-run audit-axis routes).  Independent of
+            ``supervisor`` — Sprint 19.1 separates read-audit from
+            run-supervision so the daily Audit-Reviewer-Agent can be
+            issued an auditor key without inheriting supervisor
+            privileges (or admin's PII-reveal).
         created_at: Timestamp the key was created.
         created_by_user_id: Admin who created the key, or ``None``
             for env-var-bootstrapped keys + CLI-provisioned keys.
@@ -57,6 +64,9 @@ class ApiKey(Base):
     secret_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     secret_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
     supervisor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    auditor: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True

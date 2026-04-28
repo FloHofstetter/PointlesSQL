@@ -3,7 +3,7 @@
 Covers:
 
 * The three load helpers (``_load_operations_for_run``,
-  ``_load_rejects_for_run``, ``_load_lineage_summary_for_run``)
+  ``load_rejects_for_run``, ``load_lineage_summary_for_run``)
   honour the optional ``op_id`` keyword.
 * The ``/runs/{run_id}`` HTML route accepts ``?op_id=`` as a query
   param and renders the filter chip.
@@ -22,9 +22,9 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.api.runs_routes import (
-    _load_lineage_summary_for_run,
     _load_operations_for_run,
-    _load_rejects_for_run,
+    load_lineage_summary_for_run,
+    load_rejects_for_run,
 )
 from pointlessql.models import (
     AgentRun,
@@ -165,10 +165,10 @@ def test_load_rejects_filters_to_single_op(now: datetime.datetime) -> None:
     class _R:
         app = app
 
-    full = _load_rejects_for_run(_R(), run_id)  # type: ignore[arg-type]
+    full = load_rejects_for_run(_R(), run_id)  # type: ignore[arg-type]
     assert len(full) == 8
 
-    only_op1 = _load_rejects_for_run(_R(), run_id, op_id=op1)  # type: ignore[arg-type]
+    only_op1 = load_rejects_for_run(_R(), run_id, op_id=op1)  # type: ignore[arg-type]
     assert len(only_op1) == 3
     assert all(r["op_id"] == op1 for r in only_op1)
 
@@ -181,10 +181,10 @@ def test_load_lineage_summary_filters_to_single_op(now: datetime.datetime) -> No
     class _R:
         app = app
 
-    full = _load_lineage_summary_for_run(_R(), run_id)  # type: ignore[arg-type]
+    full = load_lineage_summary_for_run(_R(), run_id)  # type: ignore[arg-type]
     assert full["total_edges"] == 11
 
-    only_op1 = _load_lineage_summary_for_run(_R(), run_id, op_id=op1)  # type: ignore[arg-type]
+    only_op1 = load_lineage_summary_for_run(_R(), run_id, op_id=op1)  # type: ignore[arg-type]
     assert only_op1["total_edges"] == 4
 
 

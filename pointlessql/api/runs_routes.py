@@ -203,7 +203,7 @@ def _load_audit_entries_for_run(
     return out
 
 
-def _load_lineage_summary_for_run(
+def load_lineage_summary_for_run(
     request: Request,
     run_id: str,
     *,
@@ -273,7 +273,7 @@ def _load_lineage_summary_for_run(
     return {"total_edges": total, "rows": rows}
 
 
-def _load_rejects_for_run(
+def load_rejects_for_run(
     request: Request,
     run_id: str,
     *,
@@ -348,7 +348,7 @@ async def _load_uc_mutations_for_run(
     return await soyuz_audit.fetch_for_run(uc, run_id, limit=200)
 
 
-def _load_unattributed_for_run(
+def load_unattributed_for_run(
     request: Request,
     *,
     tables_touched: list[str],
@@ -891,13 +891,13 @@ async def run_detail_page(
                     request, list(serialize_agent_run(run_row).get("tables_touched", []))
                 )
             ],
-            "unattributed_writes": _load_unattributed_for_run(
+            "unattributed_writes": load_unattributed_for_run(
                 request,
                 tables_touched=list(serialize_agent_run(run_row).get("tables_touched", [])),
             ),
             "uc_mutations": await _load_uc_mutations_for_run(request, run_id),
-            "lineage_summary": _load_lineage_summary_for_run(request, run_id, op_id=op_id),
-            "rejects": _load_rejects_for_run(request, run_id, op_id=op_id),
+            "lineage_summary": load_lineage_summary_for_run(request, run_id, op_id=op_id),
+            "rejects": load_rejects_for_run(request, run_id, op_id=op_id),
             "rollback_targets": _rollback_targets_for_run(request, run_id),
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,

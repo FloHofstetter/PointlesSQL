@@ -1778,15 +1778,64 @@ PointlesSQL
 │   │       EXPLAIN-cost histogram (``CAST(cost_est AS REAL)``).
 │   │       SQLite-only by design — Postgres deferred to
 │   │       Sprint 19.0.1.
-│   ├── Sprint 19.1 — Audit-read tools in hermes-plugin-pointlessql
-│   │   └── ~10 new tools that wrap the Phase-18 audit-API:
-│   │       ``pql_get_run``, ``pql_list_recent_runs``,
-│   │       ``pql_query_row_lineage``, ``pql_query_column_lineage``,
-│   │       ``pql_query_value_changes``, ``pql_query_rejects``,
-│   │       ``pql_query_external_writes``, ``pql_query_history_audit``,
-│   │       ``pql_audit_summary``, ``pql_anomaly_check``.  Each
-│   │       tool's call is logged into ``query_history`` so the
-│   │       audit-of-audit gap doesn't open.
+│   ├── Sprint 19.1 — Audit-read tools + new ``auditor`` scope    ✅
+│   │   ├── New ``auditor: bool`` column on ``api_keys`` (Alembic
+│   │   │   ``k1f2a3b4c5d6``) + matching ``KeyEntry`` field +
+│   │   │   middleware ``request.state.api_key_auditor`` +
+│   │   │   ``require_auditor`` dependency.  Privilege ladder:
+│   │   │   admin > auditor (tenant-wide audit reads) > supervisor
+│   │   │   (per-run inspection) > agent.  ``require_supervisor``
+│   │   │   now also accepts the auditor scope so a single auditor
+│   │   │   key drives both the tenant-wide ``/api/audit/*``
+│   │   │   aggregates AND the per-run ``/audit/<axis>`` reads.
+│   │   │   PII reveal stays admin-only.
+│   │   ├── Five new run-scoped JSON endpoints under
+│   │   │   ``/api/agent-runs/{run_id}/audit/<axis>``: ``lineage``
+│   │   │   (wraps ``load_lineage_summary_for_run``), ``rejects``
+│   │   │   (wraps ``load_rejects_for_run``), ``value-changes``
+│   │   │   (always-masked for non-admin auditor calls — cleartext
+│   │   │   stays via the existing admin-only PII-reveal route),
+│   │   │   ``external-writes`` (wraps
+│   │   │   ``load_unattributed_for_run``), ``column-lineage``
+│   │   │   (queries ``lineage_column_map`` directly).
+│   │   ├── New tenant-wide ``GET /api/audit/history`` route
+│   │   │   (paginated ``query_history`` walk).  Default response
+│   │   │   excludes ``read_kind='audit_api'`` rows so an agent
+│   │   │   can't loop on its own audit-of-audit breadcrumbs;
+│   │   │   ``?include_audit_api=true`` or
+│   │   │   ``?read_kind=audit_api`` lift the filter on demand.
+│   │   ├── Anomaly-baseline bugfix in
+│   │   │   :func:`audit_aggregator.anomalies` — when ``since`` is
+│   │   │   set, widen the underlying ``timeseries`` query by
+│   │   │   ``window_days`` internally and trim the response back
+│   │   │   to ``[since, until)`` afterwards.  Without this the
+│   │   │   first bin of a ``since``-bounded call had an empty
+│   │   │   baseline and false-positived as anomalous.  New
+│   │   │   helper ``_bin_floor_compare_string`` does dialect-safe
+│   │   │   bin-precision prefix compare for SQLite + Postgres.
+│   │   ├── Audit-of-audit logging — every successful
+│   │   │   ``/api/audit/*`` and ``/api/agent-runs/.../audit/*``
+│   │   │   call records a ``query_history`` row with
+│   │   │   ``read_kind='audit_api'`` so the cockpit traffic stays
+│   │   │   visible in the same audit lake it queries.
+│   │   ├── Plugin-side: ``hermes-plugin-pointlessql`` grows from
+│   │   │   20 → 29 tools.  9 new audit-read tools
+│   │   │   (``pql_list_recent_runs``, ``pql_audit_summary``,
+│   │   │   ``pql_anomaly_check``, ``pql_query_history_audit``,
+│   │   │   ``pql_query_row_lineage``, ``pql_query_column_lineage``,
+│   │   │   ``pql_query_value_changes``, ``pql_query_rejects``,
+│   │   │   ``pql_query_external_writes``) gated on the new
+│   │   │   ``POINTLESSQL_AUDITOR_MODE`` opt-in, registered via
+│   │   │   ``register_auditor_tools``.  ``pql_get_run`` dropped
+│   │   │   from the original sketch — ``pql_run_summary`` already
+│   │   │   covers it.
+│   │   └── 16 new pytest cases in
+│   │       ``tests/test_audit_routes_sprint_19.py`` covering the
+│   │       privilege ladder (auditor 200 / supervisor 403 on
+│   │       tenant-wide / supervisor 200 on per-run / normal 403
+│   │       everywhere), audit-of-audit recursion guard, value-
+│   │       change masking default, 404 on stale ``run_id``, and
+│   │       the anomaly bugfix's structural shape.
 │   ├── Sprint 19.2 — Audit-Reviewer-Agent reference run
 │   │   └── Hermes-driven daily run at 06:00 that calls the
 │   │       audit-summary + anomaly tools, drafts a Markdown

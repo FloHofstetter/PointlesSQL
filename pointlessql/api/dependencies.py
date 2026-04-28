@@ -110,9 +110,13 @@ def require_supervisor(request: Request) -> None:
     runs-by-agent) are restricted to API keys flagged
     ``supervisor=True`` — supervision telemetry shouldn't be
     walkable by every working agent.  Cookie-authenticated admins
-    also pass: the admin role is strictly stronger than supervisor
-    (admin can revoke any key) so the "admin can do everything"
-    mental model holds.
+    also pass: the admin role is strictly stronger than supervisor.
+
+    Sprint 19.1 also accepts the ``auditor`` scope here: an
+    auditor's read-only mandate spans both tenant-wide aggregates
+    AND per-run inspection, so an audit-reviewer key can drill into
+    any run's risk-summary without also issuing it a supervisor
+    key.  Approve / deny stay :func:`require_admin` regardless.
 
     Args:
         request: Incoming FastAPI request.
@@ -120,9 +124,11 @@ def require_supervisor(request: Request) -> None:
     Raises:
         AuthorizationError: When the caller is neither an admin
             nor authenticated via a Bearer key with the supervisor
-            flag set.
+            or auditor flag set.
     """
     if getattr(request.state, "api_key_supervisor", False):
+        return
+    if getattr(request.state, "api_key_auditor", False):
         return
     user = get_user(request)
     if user.get("is_admin"):
@@ -132,6 +138,41 @@ def require_supervisor(request: Request) -> None:
         privilege="supervisor",
         securable_type="system",
         full_name="agent_runs",
+    )
+
+
+def require_auditor(request: Request) -> None:
+    """Raise :class:`AuthorizationError` if the caller lacks auditor scope.
+
+    Sprint 19.1 introduces a read-only audit scope that gates the
+    tenant-wide ``/api/audit/*`` aggregates (summary / timeseries /
+    anomalies / history) and the per-run audit-axis routes
+    (``/api/agent-runs/{id}/audit/<axis>``).  Cookie-authenticated
+    admins pass — admin is strictly stronger.  Supervisor keys do
+    NOT pass: tenant-wide aggregates would leak data the supervisor
+    scope is not chartered to see.
+
+    PII reveal stays admin-only (``require_admin``); auditor scope
+    deliberately cannot un-mask reversible values.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Raises:
+        AuthorizationError: When the caller is neither an admin
+            nor authenticated via a Bearer key with the auditor
+            flag set.
+    """
+    if getattr(request.state, "api_key_auditor", False):
+        return
+    user = get_user(request)
+    if user.get("is_admin"):
+        return
+    raise AuthorizationError(
+        principal=user.get("email", ""),
+        privilege="auditor",
+        securable_type="system",
+        full_name="audit_read",
     )
 
 

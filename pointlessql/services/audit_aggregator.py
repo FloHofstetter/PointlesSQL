@@ -621,11 +621,22 @@ def anomalies(
     """
     if window_days < 1:
         raise ValueError("window_days must be >= 1")
+    # Sprint 19.1 baseline-coverage fix: when the caller bounds
+    # ``since`` to (e.g.) yesterday, the previous behaviour returned
+    # only points inside ``[since, until)`` to the rolling-baseline
+    # loop, which meant the first bin in the window had an empty
+    # baseline and therefore every point looked anomalous.  Widen
+    # the underlying timeseries query by ``window_days`` so the
+    # rolling baseline always has prior context, then trim the
+    # response back to ``[since, until)`` for the caller.
+    extended_since: datetime.datetime | None = None
+    if since is not None:
+        extended_since = since - datetime.timedelta(days=window_days)
     series = timeseries(
         factory,
         metric=metric,
         bin_=bin_,
-        since=since,
+        since=extended_since,
         until=until,
         principal=principal,
         agent_id=agent_id,
@@ -634,17 +645,14 @@ def anomalies(
     )
     raw_points = series["points"]
     out: list[dict[str, Any]] = []
+    if bin_ == "hour":
+        window_size = max(1, window_days * 24)
+    elif bin_ == "week":
+        window_size = max(1, window_days // 7 or 1)
+    else:
+        window_size = max(1, window_days)
+    since_floor = _bin_floor_compare_string(since, bin_) if since is not None else None
     for i, point in enumerate(raw_points):
-        # Rolling baseline = the prior ``window_days`` bins; for
-        # ``hour`` bins multiply, for ``week`` divide.  Simpler:
-        # take the last N points where N == window_days * (24 if
-        # hour else 1 if day else 1/7 if week, rounded up).
-        if bin_ == "hour":
-            window_size = max(1, window_days * 24)
-        elif bin_ == "week":
-            window_size = max(1, window_days // 7 or 1)
-        else:
-            window_size = max(1, window_days)
         baseline_slice = raw_points[max(0, i - window_size) : i]
         baseline_values = [float(p["value"]) for p in baseline_slice]
         if baseline_values:
@@ -656,6 +664,14 @@ def anomalies(
             std = 0.0
         observed = float(point["value"])
         sigma_distance = (observed - mean) / std if std > 0 else 0.0
+        # Trim points that pre-date the caller's ``since`` — they
+        # only exist in the result to seed the rolling baseline.
+        # Compare bin-precision prefixes so SQLite ("2026-04-27")
+        # and Postgres ("2026-04-27 00:00:00+00") agree.
+        if since_floor:
+            ts_prefix = str(point["ts"])[: len(since_floor)]
+            if ts_prefix < since_floor:
+                continue
         out.append(
             {
                 "ts": point["ts"],
@@ -673,3 +689,37 @@ def anomalies(
         "bin": bin_,
         "points": out,
     }
+
+
+def _bin_floor_compare_string(since: datetime.datetime, bin_: Bin) -> str:
+    """Return a bin-precision prefix string for lexicographic compare.
+
+    ``timeseries`` emits bin strings shaped by :func:`_bin_expr`:
+    SQLite gives ``%Y-%m-%d`` / ``%Y-%m-%d %H:00`` / ``%Y-%W``;
+    Postgres casts a ``date_trunc`` result to a string that starts
+    with the same date/hour prefix but carries seconds + offset
+    suffixes.  Comparing both against a bin-precision prefix of
+    *since* keeps the trim correct on either dialect.  Returned
+    strings have lengths 10 (day), 16 (hour), or 7 (week) — the
+    caller slices the point's ``ts`` to that length before the
+    compare.
+
+    Args:
+        since: Caller-supplied lower bound.
+        bin_: Active bin width.
+
+    Returns:
+        Prefix string suitable for ``ts[:len(prefix)] < prefix``
+        compares.
+    """
+    if bin_ == "day":
+        return since.strftime("%Y-%m-%d")
+    if bin_ == "hour":
+        return since.strftime("%Y-%m-%d %H:00")
+    # week: SQLite uses ISO week index (``%Y-%W``); Postgres uses
+    # the Monday date_trunc form which begins with the date of that
+    # Monday — the two formats diverge so we fall back to keeping
+    # the seed weeks in the response.  Week-bin anomaly detection
+    # is rare in practice (cron uses day) and the small inflation
+    # is documented in the docstring.
+    return ""

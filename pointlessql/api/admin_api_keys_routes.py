@@ -33,13 +33,15 @@ def _serialize(row: Any) -> dict[str, Any]:
             :func:`create_api_key`.
 
     Returns:
-        ``{name, secret_prefix, supervisor, created_at, revoked_at,
-        last_used_at}``.  Plaintext secret is never included.
+        ``{name, secret_prefix, supervisor, auditor, created_at,
+        revoked_at, last_used_at}``.  Plaintext secret is never
+        included.
     """
     return {
         "name": row.name,
         "secret_prefix": row.secret_prefix,
         "supervisor": bool(row.supervisor),
+        "auditor": bool(getattr(row, "auditor", False)),
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
         "last_used_at": (row.last_used_at.isoformat() if row.last_used_at else None),
@@ -75,11 +77,12 @@ async def api_admin_create_api_key(
 
     Args:
         request: Incoming FastAPI request.
-        body: JSON ``{name: str, supervisor?: bool}``.
+        body: JSON ``{name: str, supervisor?: bool, auditor?: bool}``.
 
     Returns:
-        ``{name, secret, secret_prefix, supervisor, created_at}``
-        — ``secret`` is the plaintext, persist it now or lose it.
+        ``{name, secret, secret_prefix, supervisor, auditor,
+        created_at}`` — ``secret`` is the plaintext, persist it
+        now or lose it.
 
     Raises:
         ValidationError: ``name`` missing or empty.
@@ -89,12 +92,14 @@ async def api_admin_create_api_key(
     if not isinstance(name_raw, str) or not name_raw.strip():
         raise ValidationError("name must be a non-empty string")
     supervisor = bool(body.get("supervisor", False))
+    auditor = bool(body.get("auditor", False))
     user = get_user(request)
     try:
         row, plaintext = api_keys_service.create_api_key(
             request.app.state.session_factory,
             name=name_raw,
             supervisor=supervisor,
+            auditor=auditor,
             created_by_user_id=user.get("id") or None,
         )
     except ValueError as exc:
@@ -103,13 +108,14 @@ async def api_admin_create_api_key(
         request,
         "api_key.created",
         f"api_key:{row.name}",
-        {"supervisor": supervisor},
+        {"supervisor": supervisor, "auditor": auditor},
     )
     return {
         "name": row.name,
         "secret": plaintext,
         "secret_prefix": row.secret_prefix,
         "supervisor": bool(row.supervisor),
+        "auditor": bool(getattr(row, "auditor", False)),
         "created_at": row.created_at.isoformat() if row.created_at else None,
     }
 
