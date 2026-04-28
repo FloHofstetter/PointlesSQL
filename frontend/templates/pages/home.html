@@ -15,6 +15,29 @@
     </div>
     {% endif %}
 
+    {% if summary.anomalies and (summary.anomalies.critical > 0 or summary.anomalies.warn > 0) %}
+    <div class="alert {% if summary.anomalies.critical > 0 %}alert-danger{% else %}alert-warning{% endif %} d-flex align-items-center justify-content-between m-0"
+         role="alert">
+        <div>
+            <i class="bi bi-exclamation-octagon me-2"></i>
+            {% if summary.anomalies.critical > 0 %}
+            <strong>{{ summary.anomalies.critical }}</strong>
+            metric{{ "s" if summary.anomalies.critical != 1 else "" }} above
+            <strong>2σ</strong> baseline today.
+            {% endif %}
+            {% if summary.anomalies.warn > 0 %}
+            <strong>{{ summary.anomalies.warn }}</strong>
+            metric{{ "s" if summary.anomalies.warn != 1 else "" }} above
+            <strong>1σ</strong> baseline today.
+            {% endif %}
+            <span class="ms-2 small text-muted">Sprint 18.5 — anomaly highlighting</span>
+        </div>
+        <a href="/audit/queries" class="btn btn-sm btn-outline-dark">
+            <i class="bi bi-shield-check me-1"></i>Open audit cockpit
+        </a>
+    </div>
+    {% endif %}
+
     <header class="pql-stack pql-stack--tight">
         <h1 class="h3 m-0">Welcome, {{ summary.user.display_name }}</h1>
         <p class="text-muted m-0">

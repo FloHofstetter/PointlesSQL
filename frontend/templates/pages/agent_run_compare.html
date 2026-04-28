@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Compare runs · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/runs" class="text-decoration-none">Runs</a></li>
+    <li class="breadcrumb-item active">compare {{ run_a.id[:8] }} vs {{ run_b.id[:8] }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-columns-gap fs-3"></i>
+    <h1 class="h3 mb-0">Compare runs</h1>
+    <span class="text-muted small ms-2">Sprint 18.4 lineage-aware diff</span>
+</div>
+
+<div class="row g-3 mb-4">
+    {% set _stats = [
+        ('Rows touched', summary_a.rows_touched, summary_b.rows_touched, false),
+        ('Value changes', value_changes_a, value_changes_b, false),
+        ('Errored ops', summary_a.errored_ops_count, summary_b.errored_ops_count, true),
+        ('Rejects', rejects_a, rejects_b, true)
+    ] %}
+    {% for label, va, vb, bad_when_up in _stats %}
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">{{ label }}</div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span class="fs-4 font-monospace">{{ va }}</span>
+                    <i class="bi bi-arrow-right text-muted"></i>
+                    <span class="fs-4 font-monospace">{{ vb }}</span>
+                </div>
+                {% set delta = (vb or 0) - (va or 0) %}
+                {% if delta != 0 %}
+                {% if (delta > 0 and bad_when_up) or (delta < 0 and not bad_when_up) %}
+                <span class="badge bg-warning-subtle text-warning-emphasis">
+                    {% if delta > 0 %}+{% endif %}{{ delta }}
+                </span>
+                {% else %}
+                <span class="badge bg-success-subtle text-success-emphasis">
+                    {% if delta > 0 %}+{% endif %}{{ delta }}
+                </span>
+                {% endif %}
+                {% else %}
+                <span class="text-muted small">no change</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+    {% for run, summary, label in [(run_a, summary_a, 'A'), (run_b, summary_b, 'B')] %}
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <span class="badge bg-secondary">{{ label }}</span>
+                <span class="font-monospace small">{{ run.id[:12] }}…</span>
+                <span class="text-muted ms-auto small">
+                    <i class="bi bi-person"></i> {{ run.principal or '<unknown>' }}
+                </span>
+            </div>
+            <div class="card-body small">
+                <div><strong>Notebook:</strong> <code>{{ run.notebook_path }}</code></div>
+                <div><strong>Status:</strong> <span class="badge bg-info-subtle text-info-emphasis">{{ run.status }}</span></div>
+                <div><strong>Tables touched:</strong> {{ summary.tables_touched | length }}</div>
+                <div><strong>Operations:</strong> {{ summary.operations_count }}</div>
+                <div><strong>Tool calls:</strong> {{ summary.tool_calls_count }}</div>
+                <div><strong>Started:</strong> <span class="font-monospace">{{ run.started_at }}</span></div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-ops-btn" data-bs-toggle="tab" data-bs-target="#tab-ops" type="button" role="tab">
+            <i class="bi bi-list-ol me-1"></i>Operations
+            <span class="badge bg-secondary ms-1">{{ detail.operations_diff | length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-lineage" type="button" role="tab">
+            <i class="bi bi-diagram-3 me-1"></i>Lineage
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-rejects-btn" data-bs-toggle="tab" data-bs-target="#tab-rejects" type="button" role="tab">
+            <i class="bi bi-x-octagon me-1"></i>Rejects
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-tools-btn" data-bs-toggle="tab" data-bs-target="#tab-tools" type="button" role="tab">
+            <i class="bi bi-tools me-1"></i>Tool calls
+            <span class="badge bg-secondary ms-1">{{ detail.tool_calls_diff | length }}</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    <div class="tab-pane fade show active" id="tab-ops" role="tabpanel">
+        <div class="card"><div class="card-body p-0">
+            <table class="table table-sm mb-0 small">
+                <thead>
+                    <tr>
+                        <th class="text-center" style="width: 5%">slot</th>
+                        <th>A</th>
+                        <th>B</th>
+                        <th class="text-center" style="width: 10%">Δ rows</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pair in detail.operations_diff %}
+                    <tr {% if pair.a_op is none %}class="table-success"{% elif pair.b_op is none %}class="table-warning"{% endif %}>
+                        <td class="text-center font-monospace text-muted">{{ loop.index }}</td>
+                        <td class="font-monospace small">
+                            {% if pair.a_op %}
+                            <span class="badge bg-secondary text-uppercase">{{ pair.a_op.op_name }}</span>
+                            {{ pair.a_op.target_table or "—" }}
+                            <span class="text-muted">({{ pair.a_op.rows_affected }} rows)</span>
+                            {% else %}
+                            <span class="text-muted fst-italic">— only in B</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-monospace small">
+                            {% if pair.b_op %}
+                            <span class="badge bg-secondary text-uppercase">{{ pair.b_op.op_name }}</span>
+                            {{ pair.b_op.target_table or "—" }}
+                            <span class="text-muted">({{ pair.b_op.rows_affected }} rows)</span>
+                            {% else %}
+                            <span class="text-muted fst-italic">— only in A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center font-monospace">
+                            {% if pair.rows_affected_diff is defined %}
+                            {% if pair.rows_affected_diff > 0 %}+{% endif %}{{ pair.rows_affected_diff }}
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-lineage" role="tabpanel">
+        <div class="row g-3">
+            <div class="col-12 col-lg-6">
+                <div class="card">
+                    <div class="card-header"><strong>Value-change volume per table</strong></div>
+                    <div class="card-body">
+                        <canvas id="chart-value-changes" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-6">
+                <div class="card">
+                    <div class="card-header"><strong>Rows written per table</strong></div>
+                    <div class="card-body">
+                        <canvas id="chart-rows" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-rejects" role="tabpanel">
+        <div class="card">
+            <div class="card-header"><strong>Reject-reason buckets</strong></div>
+            <div class="card-body">
+                <canvas id="chart-rejects" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-tools" role="tabpanel">
+        <div class="card"><div class="card-body p-0">
+            <table class="table table-sm mb-0 small">
+                <thead>
+                    <tr>
+                        <th class="text-center" style="width: 5%">slot</th>
+                        <th>A</th>
+                        <th>B</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pair in detail.tool_calls_diff %}
+                    <tr {% if pair.a_call is none %}class="table-success"{% elif pair.b_call is none %}class="table-warning"{% endif %}>
+                        <td class="text-center font-monospace text-muted">{{ loop.index }}</td>
+                        <td class="font-monospace small">
+                            {% if pair.a_call %}{{ pair.a_call.tool_name }}{% else %}<span class="text-muted fst-italic">— only in B</span>{% endif %}
+                        </td>
+                        <td class="font-monospace small">
+                            {% if pair.b_call %}{{ pair.b_call.tool_name }}{% else %}<span class="text-muted fst-italic">— only in A</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+
+</div>
+
+<script id="lineage-diff-payload" type="application/json">{{ lineage_diff | tojson }}</script>
+
+<script>
+(function () {
+    const payloadEl = document.getElementById('lineage-diff-payload');
+    if (!payloadEl) return;
+    const payload = JSON.parse(payloadEl.textContent);
+
+    function renderBars(canvasId, shift, badWhenUp) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !window.Chart) return;
+        const labels = Object.keys(shift.delta);
+        if (labels.length === 0) {
+            canvas.parentElement.innerHTML = '<div class="text-muted small fst-italic">No data on either side.</div>';
+            return;
+        }
+        new window.Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'A', data: labels.map((k) => shift.a[k] || 0), backgroundColor: 'rgba(108,117,125,0.6)' },
+                    { label: 'B', data: labels.map((k) => shift.b[k] || 0), backgroundColor: badWhenUp ? 'rgba(220,53,69,0.6)' : 'rgba(13,110,253,0.6)' },
+                ],
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                },
+                scales: { y: { beginAtZero: true } },
+            },
+        });
+    }
+
+    renderBars('chart-value-changes', payload.value_change_volume_per_table, false);
+    renderBars('chart-rows', payload.row_count_delta_per_table, false);
+    renderBars('chart-rejects', payload.reject_pattern_shift, true);
+})();
+</script>
+{% endblock %}

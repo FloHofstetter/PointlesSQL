@@ -206,6 +206,8 @@ def _load_audit_entries_for_run(
 def _load_lineage_summary_for_run(
     request: Request,
     run_id: str,
+    *,
+    op_id: int | None = None,
 ) -> dict[str, Any]:
     """Aggregate Sprint-15.3 ``lineage_row_edges`` per operation.
 
@@ -217,6 +219,8 @@ def _load_lineage_summary_for_run(
     Args:
         request: Incoming FastAPI request.
         run_id: Owning ``AgentRun.id``.
+        op_id: Sprint 18.1 cross-axis filter — when set, restrict
+            the aggregate to a single op.
 
     Returns:
         Dict shaped ``{"total_edges": int, "rows": [{
@@ -252,6 +256,8 @@ def _load_lineage_summary_for_run(
             )
             .order_by(AgentRunOperation.ordinal)
         )
+        if op_id is not None:
+            stmt = stmt.where(AgentRunOperation.id == op_id)
         for row in session.execute(stmt).all():
             edge_count = int(row[5])
             total += edge_count
@@ -267,12 +273,20 @@ def _load_lineage_summary_for_run(
     return {"total_edges": total, "rows": rows}
 
 
-def _load_rejects_for_run(request: Request, run_id: str) -> list[dict[str, Any]]:
+def _load_rejects_for_run(
+    request: Request,
+    run_id: str,
+    *,
+    op_id: int | None = None,
+) -> list[dict[str, Any]]:
     """Return Sprint-15.5.3 ``lineage_row_rejects`` for the run-detail tab.
 
     Args:
         request: Incoming FastAPI request.
         run_id: Owning ``AgentRun.id``.
+        op_id: Sprint 18.1 cross-axis filter — when set, restrict
+            to rejects produced by this single op.  ``None`` keeps
+            the full run-scoped list.
 
     Returns:
         List of dicts shaped ``{"op_id", "source_table",
@@ -291,6 +305,8 @@ def _load_rejects_for_run(request: Request, run_id: str) -> list[dict[str, Any]]
             .where(LineageRowReject.run_id == run_id)
             .order_by(LineageRowReject.id)
         )
+        if op_id is not None:
+            stmt = stmt.where(LineageRowReject.op_id == op_id)
         for r in session.scalars(stmt):
             rows.append(
                 {
@@ -386,6 +402,8 @@ def _load_unattributed_for_run(
 def _load_operations_for_run(
     request: Request,
     run_id: str,
+    *,
+    op_id: int | None = None,
 ) -> list[dict[str, Any]]:
     """Return all ``agent_run_operations`` rows for *run_id* in ordinal order.
 
@@ -396,6 +414,10 @@ def _load_operations_for_run(
     Args:
         request: Incoming FastAPI request.
         run_id: UUID string of the owning run.
+        op_id: Sprint 18.1 cross-axis filter — when set, only the
+            single op with this id is returned (still as a one-row
+            list so the template stays branchless).  ``None`` keeps
+            the full ordered list.
 
     Returns:
         List of dicts ready to feed into the Jinja template.
@@ -408,6 +430,8 @@ def _load_operations_for_run(
             .where(AgentRunOperation.agent_run_id == run_id)
             .order_by(AgentRunOperation.ordinal)
         )
+        if op_id is not None:
+            stmt = stmt.where(AgentRunOperation.id == op_id)
         rows = list(session.scalars(stmt).all())
 
     op_ids = [row.id for row in rows]
@@ -781,7 +805,11 @@ async def _conformance_findings_for_run(
 
 
 @router.get("/runs/{run_id}", response_class=HTMLResponse)
-async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
+async def run_detail_page(
+    request: Request,
+    run_id: str,
+    op_id: int | None = None,
+) -> HTMLResponse:
     """Render the per-run supervision view.
 
     Loads the ``agent_runs`` row, parses the referenced ``.py``
@@ -796,6 +824,11 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
     Args:
         request: Incoming FastAPI request.
         run_id: Run UUID from the URL.
+        op_id: Sprint 18.1 cross-axis deep-link.  When set, every
+            tab whose surface has an ``op_id`` linkage (Operations,
+            Rejects, Lineage) renders pre-filtered to this single
+            op; tabs without that linkage render unfiltered with a
+            visible "(filter inactive on this surface)" hint.
 
     Returns:
         ``pages/run_view.html`` with ``run``, ``cells``,
@@ -815,6 +848,23 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
     except OSError, ValueError:
         cells = []
 
+    # ``filter_op_ordinal`` is the human-friendly label rendered in
+    # the cross-axis chip; the deep link carries the integer id.
+    filter_op_ordinal: int | None = None
+    if op_id is not None:
+        ops_for_label = _load_operations_for_run(request, run_id, op_id=op_id)
+        if ops_for_label:
+            filter_op_ordinal = int(ops_for_label[0]["ordinal"])
+        else:
+            # Stale link (op deleted, run rerun, ...) — fall back to
+            # unfiltered view rather than 404; cockpit drill-downs
+            # should be permissive.
+            op_id = None
+
+    # Sprint 18.5 — run-detail anomaly chip.  Best-effort: if the
+    # aggregator fails the run still renders without the chip.
+    run_anomaly: dict[str, Any] | None = _run_anomaly_chip(request, run_id)
+
     return _templates(request).TemplateResponse(
         request,
         "pages/run_view.html",
@@ -824,7 +874,7 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             "cell_outputs": _load_outputs_for_run(request, run_id),
             "cell_runs": _load_cell_runs_for_run(request, run_id),
             "audit_entries": _load_audit_entries_for_run(request, run_id),
-            "operations": _load_operations_for_run(request, run_id),
+            "operations": _load_operations_for_run(request, run_id, op_id=op_id),
             "source": _load_source_for_run(request, run_id),
             "events": _load_events_for_run(request, run_id),
             "queries": _load_queries_for_run(request, run_id),
@@ -846,8 +896,8 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
                 tables_touched=list(serialize_agent_run(run_row).get("tables_touched", [])),
             ),
             "uc_mutations": await _load_uc_mutations_for_run(request, run_id),
-            "lineage_summary": _load_lineage_summary_for_run(request, run_id),
-            "rejects": _load_rejects_for_run(request, run_id),
+            "lineage_summary": _load_lineage_summary_for_run(request, run_id, op_id=op_id),
+            "rejects": _load_rejects_for_run(request, run_id, op_id=op_id),
             "rollback_targets": _rollback_targets_for_run(request, run_id),
             "run": serialize_agent_run(run_row),
             "render_markdown": output_rendering_service.render_markdown_source,
@@ -855,6 +905,9 @@ async def run_detail_page(request: Request, run_id: str) -> HTMLResponse:
             "active_catalog": None,
             "active_schema": None,
             "active_table": None,
+            "filter_op_id": op_id,
+            "filter_op_ordinal": filter_op_ordinal,
+            "run_anomaly": run_anomaly,
         },
     )
 
@@ -1370,3 +1423,137 @@ def _refusal_to_http_error(exc: Exception) -> Exception:
     if isinstance(exc, RollbackTargetNotFound):
         return CatalogNotFoundError(str(exc))
     return exc
+
+
+def _run_anomaly_chip(request: Request, run_id: str) -> dict[str, Any] | None:
+    """Return an anomaly verdict for the run-detail chip, or ``None``.
+
+    Sprint 18.5 — compares the run's reject + errored-op count
+    against the global per-day baseline for the same metrics.  If
+    either metric breaches the configured σ threshold, returns
+    ``{metric, severity, observed, baseline_mean}`` describing the
+    worst offender; otherwise ``None`` so the template renders
+    nothing.
+
+    Best-effort: any failure logs and returns ``None`` so a broken
+    aggregator never breaks the run-detail page.
+
+    Args:
+        request: FastAPI request — used for app state.
+        run_id: ``AgentRun.id`` whose chip to compute.
+
+    Returns:
+        Verdict dict or ``None``.
+    """
+    try:
+        from pointlessql.services import audit_aggregator as agg
+
+        settings = request.app.state.settings
+        factory = request.app.state.session_factory
+        worst: dict[str, Any] | None = None
+        for metric in ("rejects", "errored_ops"):
+            result = agg.anomalies(
+                factory,
+                metric=metric,  # type: ignore[arg-type]
+                window_days=settings.audit.anomaly_baseline_window_days,
+                sigma=settings.audit.anomaly_threshold_sigma,
+                bin_="day",
+            )
+            if not result["points"]:
+                continue
+            latest = result["points"][-1]
+            if latest["severity"] == "ok":
+                continue
+            severity_rank = {"warn": 1, "critical": 2}
+            if worst is None or severity_rank[latest["severity"]] > severity_rank.get(
+                worst["severity"], 0
+            ):
+                worst = {
+                    "metric": metric,
+                    "severity": latest["severity"],
+                    "observed": latest["observed"],
+                    "baseline_mean": latest["baseline_mean"],
+                    "sigma": latest["sigma"],
+                }
+        return worst
+    except Exception:  # noqa: BLE001 — chip is best-effort
+        return None
+
+
+@router.get("/runs/{a}/diff/{b}", response_class=HTMLResponse)
+async def agent_run_diff_page(
+    request: Request,
+    a: str,
+    b: str,
+) -> HTMLResponse:
+    """Render the Sprint 18.4 agent-run diff page.
+
+    Loads both runs through
+    :func:`pointlessql.api.agent_runs_routes._load_run_summary_bundle`
+    + :func:`pointlessql.services.run_diff.build_lineage_diff` so
+    the template can show:
+
+    * stat-cards on top (rows touched / value changes / errored
+      ops / rejects, with ``+Δ`` chips);
+    * an Operations tab with content-aligned op pairs;
+    * a Lineage tab with reject-pattern + value-change-volume
+      bar charts;
+    * a Tool calls tab.
+
+    Args:
+        request: FastAPI request.
+        a: Left-side run UUID.
+        b: Right-side run UUID.
+
+    Returns:
+        Rendered ``pages/agent_run_compare.html``.
+    """
+    # pyright: ignore[reportPrivateUsage] — these helpers
+    # intentionally live one module over and are reused by the
+    # /runs HTML route to avoid duplicating run-load+summarize SQL.
+    from pointlessql.api.agent_runs_routes import (
+        _load_run_summary_bundle,  # pyright: ignore[reportPrivateUsage]
+        _summarize_run,  # pyright: ignore[reportPrivateUsage]
+    )
+    from pointlessql.services import run_diff
+
+    factory = request.app.state.session_factory
+    run_a, ops_a, tcs_a, qs_a = _load_run_summary_bundle(factory, a)
+    run_b, ops_b, tcs_b, qs_b = _load_run_summary_bundle(factory, b)
+    summary_a = _summarize_run(run_a, ops_a, tcs_a, qs_a)
+    summary_b = _summarize_run(run_b, ops_b, tcs_b, qs_b)
+    detail = run_diff.build_detail_diff(
+        ops_a=ops_a,
+        ops_b=ops_b,
+        tool_calls_a=tcs_a,
+        tool_calls_b=tcs_b,
+        align="content",
+    )
+    lineage_diff = run_diff.build_lineage_diff(factory, run_a_id=a, run_b_id=b)
+    value_changes_a = sum(lineage_diff["value_change_volume_per_table"]["a"].values())
+    value_changes_b = sum(lineage_diff["value_change_volume_per_table"]["b"].values())
+    rejects_a = sum(lineage_diff["reject_pattern_shift"]["a"].values())
+    rejects_b = sum(lineage_diff["reject_pattern_shift"]["b"].values())
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/agent_run_compare.html",
+        {
+            "run_a": serialize_agent_run(run_a),
+            "run_b": serialize_agent_run(run_b),
+            "summary_a": summary_a,
+            "summary_b": summary_b,
+            "value_changes_a": value_changes_a,
+            "value_changes_b": value_changes_b,
+            "rejects_a": rejects_a,
+            "rejects_b": rejects_b,
+            "detail": detail,
+            "lineage_diff": lineage_diff,
+            "rows_touched_diff": summary_b["rows_touched"] - summary_a["rows_touched"],
+            "errored_ops_diff": summary_b["errored_ops_count"]
+            - summary_a["errored_ops_count"],
+            "active_page": "runs",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )

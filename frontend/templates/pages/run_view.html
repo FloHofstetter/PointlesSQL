@@ -65,6 +65,23 @@
 {% endblock %}
 
 {% block content %}
+{% if run_anomaly %}
+<div class="alert {% if run_anomaly.severity == 'critical' %}alert-danger{% else %}alert-warning{% endif %} d-flex align-items-center justify-content-between py-2 mb-3"
+     role="status">
+    <div>
+        <i class="bi bi-exclamation-octagon me-2"></i>
+        <strong>{{ run_anomaly.severity | upper }}</strong>
+        — <code>{{ run_anomaly.metric }}</code> at
+        <strong>{{ run_anomaly.observed }}</strong>
+        ({{ run_anomaly.sigma }} σ above
+        {{ run_anomaly.baseline_mean }} baseline).
+        <span class="ms-2 small text-muted">Sprint 18.5 — anomaly chip</span>
+    </div>
+    <a href="/audit/queries" class="btn btn-sm btn-outline-dark">
+        <i class="bi bi-shield-check me-1"></i>Drill into cockpit
+    </a>
+</div>
+{% endif %}
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div class="d-flex align-items-center gap-2">
         <i class="bi bi-file-earmark-code fs-3"></i>
@@ -447,6 +464,24 @@ function rollbackPanel(initial) {
    Sprint 13.10 added the "Tool calls" tab between Operations and
    Queries — backend (Alembic 024 + POST route + CloudEvent type)
    shipped in Sprint 13.7.4 but the tab was deferred. #}
+{% if filter_op_id %}
+<div class="alert alert-primary d-flex align-items-center justify-content-between py-2 mb-3"
+     role="status">
+    <div>
+        <i class="bi bi-funnel-fill me-2"></i>
+        Filtered to operation
+        <strong>#{{ filter_op_ordinal or filter_op_id }}</strong>
+        across Operations, Rejects, and Lineage.
+        <span class="text-muted ms-2 small">
+            Tabs without per-op linkage (Cells, Tool calls, Source, Events, Queries,
+            UC mutations, Audit log) ignore the filter.
+        </span>
+    </div>
+    <a href="/runs/{{ run.id }}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-x-lg me-1"></i>Clear filter
+    </a>
+</div>
+{% endif %}
 <ul class="nav nav-tabs mb-3" id="runDetailTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" id="tab-cells-btn" data-bs-toggle="tab"
@@ -649,16 +684,25 @@ function rollbackPanel(initial) {
                                 <span class="badge bg-success-subtle text-success-emphasis">ok</span>
                                 {% endif %}
                                 {% if op.column_edges_count and op.column_edges_count > 0 %}
-                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1"
-                                      title="Sprint 15.6 — column-level lineage edges produced by this op">
+                                <a href="/runs/{{ run.id }}?op_id={{ op.id }}#tab-lineage"
+                                   class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1 text-decoration-none"
+                                   title="Sprint 18.1 — filter Lineage + Rejects + Operations to this op">
                                     <i class="bi bi-bezier2"></i> column edges: {{ op.column_edges_count }}
-                                </span>
+                                </a>
                                 {% endif %}
                                 {% if op.value_changes_count and op.value_changes_count > 0 %}
-                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1"
-                                      title="Sprint 15.7 — per-cell value changes captured from Delta CDF">
+                                <a href="/runs/{{ run.id }}?op_id={{ op.id }}#tab-lineage"
+                                   class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1 text-decoration-none"
+                                   title="Sprint 18.1 — filter Lineage + Rejects + Operations to this op">
                                     <i class="bi bi-pencil-square"></i> value changes: {{ op.value_changes_count }}
-                                </span>
+                                </a>
+                                {% endif %}
+                                {% if not filter_op_id %}
+                                <a href="/runs/{{ run.id }}?op_id={{ op.id }}#tab-ops"
+                                   class="text-decoration-none ms-2 small text-muted"
+                                   title="Sprint 18.1 — filter every cross-axis tab to this op">
+                                    <i class="bi bi-funnel"></i>
+                                </a>
                                 {% endif %}
                             </td>
                         </tr>

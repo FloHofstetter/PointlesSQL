@@ -270,9 +270,48 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
             "sparkline": {"days": days},
         }
 
-    catalogs_block, db_block = await asyncio.gather(
+    def _anomalies_block() -> dict[str, int]:
+        """Sprint 18.5 — count today's anomaly verdicts for the home banner.
+
+        Best-effort: any failure (table missing on a fresh install,
+        SQL hiccup) downgrades to ``{warn: 0, critical: 0}`` so the
+        home dashboard never breaks because the cockpit aggregator
+        is.  Admin-only display is enforced template-side.
+        """
+        if not is_admin:
+            return {"warn": 0, "critical": 0}
+        try:
+            from pointlessql.services import audit_aggregator as agg
+
+            settings = request.app.state.settings
+            window_days = settings.audit.anomaly_baseline_window_days
+            sigma = settings.audit.anomaly_threshold_sigma
+            warn = 0
+            critical = 0
+            for metric in ("rejects", "errored_ops", "external_writes"):
+                result = agg.anomalies(
+                    request.app.state.session_factory,
+                    metric=metric,  # type: ignore[arg-type]
+                    window_days=window_days,
+                    sigma=sigma,
+                    bin_="day",
+                )
+                if not result["points"]:
+                    continue
+                latest = result["points"][-1]
+                if latest["severity"] == "critical":
+                    critical += 1
+                elif latest["severity"] == "warn":
+                    warn += 1
+            return {"warn": warn, "critical": critical}
+        except Exception:  # noqa: BLE001 — anomaly surface is best-effort
+            logger.warning("home: anomaly aggregation failed", exc_info=True)
+            return {"warn": 0, "critical": 0}
+
+    catalogs_block, db_block, anomalies_block = await asyncio.gather(
         _catalogs_block(),
         asyncio.to_thread(_db_block),
+        asyncio.to_thread(_anomalies_block),
     )
 
     have_catalogs = bool(catalogs_block["has_catalogs"])
@@ -297,6 +336,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
         "dashboards": db_block["dashboards"],
         "latest_runs": db_block["latest_runs"],
         "sparkline": db_block["sparkline"],
+        "anomalies": anomalies_block,
         "onboarding": {
             "show": show_onboarding,
             "have_catalogs": have_catalogs,

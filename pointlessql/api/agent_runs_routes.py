@@ -48,7 +48,11 @@ from pointlessql.services.agent_runs import (
     emit_agent_run_event,
     event_type_for_status,
 )
-from pointlessql.services.run_diff import AlignmentMode, build_detail_diff
+from pointlessql.services.run_diff import (
+    AlignmentMode,
+    build_detail_diff,
+    build_lineage_diff,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -818,6 +822,11 @@ async def api_agent_runs_diff(
                 tool_calls_b=tcs_b,
                 align=align_mode,
             )
+        )
+        payload["lineage_diff"] = build_lineage_diff(
+            factory,
+            run_a_id=a,
+            run_b_id=b,
         )
     return payload
 
