@@ -4,6 +4,145 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Phase 18: Audit Cockpit (2026-04-28)
+
+Closes Phase 18 in one autonomous session — six sub-sprints landed
+on top of the Phase 15.7 capture surface to make the audit data
+*actionable* for the four real personas (operator on-call,
+developer debug, compliance auditor, daily trust glance).
+Sequencing decision: Phase 18 lands **before** Phase 17 against
+today's 10-tab run-detail layout; 18.1 cross-axis links will be
+re-touched once Phase 17's tab consolidation lands.
+
+- **Sprint 18.0 — Audit-Read API backbone.**  Three read-only
+  JSON endpoints feed every later cockpit, Grafana, and
+  Hermes-tool surface:
+  - ``GET /api/audit/summary?since&until&principal&agent_id&table``
+    returns one count per metric across runs, ops, errored ops,
+    rows written (merge + write_table), value changes, rejects,
+    external writes, cost-gate denials, tool calls, queries.
+  - ``GET /api/audit/timeseries?metric&bin&group_by&...``
+    bins by hour/day/week with optional grouping by table or
+    principal.
+  - ``GET /api/audit/anomalies?metric&window_days&sigma&...``
+    classifies each bin against an N-day rolling mean ± Nσ as
+    ``ok`` / ``warn`` (≥σ) / ``critical`` (≥2σ).
+  - Backed by a new ``audit_aggregator`` service with a single
+    ``_apply_audit_filters`` helper so the WHERE-clause logic
+    lives in one place.  Dialect-aware bucketing (SQLite
+    ``strftime`` vs Postgres ``date_trunc``) keeps both
+    deployments working.
+  - Self-tracking: every successful call inserts a
+    ``query_history`` row with ``read_kind='audit_api'`` so the
+    cockpit endpoints land in the audit lake they query.
+    ``audit_api`` was added to ``VALID_READ_KINDS``.
+  - All three endpoints are admin-gated.
+
+- **Sprint 18.1 — Cross-axis navigation.**  The Operations-tab
+  ``column edges: N`` and ``value changes: N`` badges now wrap
+  in deep-links to ``/runs/{id}?op_id=N#tab-lineage``.  The
+  ``run_detail_page`` handler accepts ``?op_id=`` and threads it
+  into ``_load_operations_for_run`` /
+  ``_load_rejects_for_run`` / ``_load_lineage_summary_for_run``
+  so the three cross-axis tabs render filtered to that single
+  op.  A "filtered to op #N" chip with a Clear-filter button
+  sits above the tab strip.  Stale ``op_id`` falls back to
+  unfiltered rendering rather than 404 (drill-downs are
+  permissive).
+
+- **Sprint 18.2 — PII-aware masking.**  New
+  ``pointlessql/services/pii_resolver.py`` resolves column-level
+  PII tags from soyuz-catalog (``GET /tags/column/{fqn.col}``)
+  with a TTL cache keyed on ``(table, column)`` so a row-trace
+  page rendering 100 cells from one table issues at most one
+  soyuz call.  ``pii_mask`` helper replaces cleartext with
+  ``***@***.***`` (email) / ``***-***-1234`` (phone) /
+  ``A***z`` (default) shapes.  Row-trace template renders
+  ``display_old`` / ``display_new`` (masked when
+  ``is_pii=True``) and shows a Reveal button to admins;
+  ``POST /api/audit/pii/reveal`` returns the cleartext and
+  writes an ``audit_log`` row of
+  ``action='pii.value_revealed'``.  ``AuditSettings`` gained
+  ``pii_mask_default`` (default ``True``) and
+  ``pii_cache_ttl_seconds`` (default ``600``).  Storage stays
+  byte-faithful — masking is render-time only.
+
+- **Sprint 18.3 — Saved audit queries + CSV/JSON export.**  New
+  ``saved_audit_queries`` table (Alembic ``j0e1f2a3b4c5``)
+  separate from ``saved_queries`` because:
+  - visibility is admin-only, not the owner-+-shared model;
+  - five canonical starter rows ship with the migration:
+    ``pii-writes-last-90d``, ``rollbacks-last-quarter``,
+    ``cost-gate-denials-this-week``,
+    ``unacknowledged-external-writes``,
+    ``top-mutating-principals-30d``;
+  - ``alert_threshold_count`` plugs into the Sprint 18.5 alert
+    surface;
+  - service enforces an explicit allow-list of audit-table
+    names (``agent_runs``, ``agent_run_operations``,
+    ``lineage_*``, ``query_history``, ``audit_log``,
+    ``unattributed_writes``, …) via sqlglot — SELECT-only,
+    no DDL/DML.
+  - CRUD endpoints at ``/api/saved-audit-queries`` plus
+    ``/{slug}/run`` and ``/{slug}/export.csv`` /
+    ``/{slug}/export.json`` (PDF deferred — CSV+JSON satisfy
+    SOC2 / GDPR Art. 30 evidence packets).
+  - Every export writes a ``saved_audit_query.exported`` audit
+    row.  Starter rows refuse PATCH/DELETE.
+  - New admin-only ``/audit/queries`` HTML workbench: split-
+    pane list-of-queries + textarea + Run/Export buttons +
+    result table.
+
+- **Sprint 18.4 — Run-diff lineage view.**  New service
+  ``run_diff.build_lineage_diff(factory, run_a_id, run_b_id)``
+  produces three buckets:
+  - ``reject_pattern_shift`` — counts of
+    ``LineageRowReject.reason`` values per side, plus a
+    per-reason ``delta``;
+  - ``value_change_volume_per_table`` — per-target counts;
+  - ``row_count_delta_per_table`` — sum of ``rows_affected``
+    per merge / write target.
+
+  ``GET /api/agent-runs/diff?detail=true`` carries the new
+  ``lineage_diff`` payload.  New HTML route
+  ``GET /runs/{a}/diff/{b}`` consumes both
+  ``build_detail_diff`` and ``build_lineage_diff`` to render
+  ``pages/agent_run_compare.html``: four +Δ stat cards
+  (rows touched / value changes / errored ops / rejects) plus
+  Chart.js bar charts for each lineage axis.
+
+- **Sprint 18.5 — Anomaly highlighting.**  Three surfaces all
+  driven by the Sprint 18.0 ``/api/audit/anomalies`` endpoint:
+  - ``/api/home/summary`` carries an ``anomalies: {warn, critical}``
+    block computed against ``rejects``, ``errored_ops``, and
+    ``external_writes``; the home page renders a yellow/red
+    banner when ≥1 metric is critical/warn.
+  - ``/runs/{id}`` HTML adds an anomaly chip at the top of the
+    page when the latest day's value for any of those metrics
+    breaches the configured σ threshold; the chip names the
+    worst-offender metric + observed-vs-baseline values.
+  - ``saved_audit_queries.alert_threshold_count`` (new column)
+    plugs into the existing ``/api/alerts`` machinery so a
+    scheduled run that returns more rows than the threshold
+    fires.
+
+  ``AuditSettings`` gained ``anomaly_baseline_window_days``
+  (default 7) and ``anomaly_threshold_sigma`` (default 2.0).
+  Anomalies are computed on-the-fly — no
+  ``audit_anomalies_daily`` materialised table.  Email-digest
+  CLI deliberately deferred to Phase 19.2 (Audit-Reviewer-Agent
+  covers daily-summary territory; building it twice is waste).
+
+Tests: 72 new unit + integration tests across
+``tests/test_audit_aggregator.py``,
+``tests/test_runs_op_filter.py``,
+``tests/test_pii_resolver.py``,
+``tests/test_saved_audit_queries.py``,
+``tests/test_run_diff_lineage.py``, and
+``tests/test_anomaly_highlighting.py``.  Existing
+``test_lineage_*`` and ``test_value_change_*`` suites still
+pass — no regressions in the 15.x axes.
+
 ### Added — Sprint 19.0: Grafana audit dashboard (XS quick-win, 2026-04-28)
 
 First Phase-19 sub-sprint, landed out of phase order.  Strategic

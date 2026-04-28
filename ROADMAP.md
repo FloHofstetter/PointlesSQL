@@ -1660,63 +1660,82 @@ PointlesSQL
 │           Add search box at top, type-ahead filtering of
 │           sidebar tree, recent-table list at top.
 │
-├── Phase 18 — Audit Cockpit                              ⏳ queued
+├── Phase 18 — Audit Cockpit                              ✅ closed
 │   │
 │   │   Volume reality after Phase 15.7: ~100-300 audit
 │   │   datapoints per run × 100 runs/day = 10-30k datapoints
 │   │   daily = 3-10M per year.  No human reads this row-by-row.
-│   │   Phase 17 makes the data NAVIGABLE; Phase 18 makes it
-│   │   ACTIONABLE for the four real personas:
+│   │   Phase 18 makes the data ACTIONABLE for the four real
+│   │   personas (operator on-call, developer debug, compliance
+│   │   auditor, daily trust glance) before the Phase 17 UI
+│   │   overhaul lands.  Sequencing decision: Phase 18 ships
+│   │   first against today's 10-tab layout; 18.1 cross-axis
+│   │   links will get re-touched once Phase 17 collapses tabs.
 │   │
-│   │   1. Operator on-call: *"was ist gerade kaputt?"*
-│   │   2. Developer debug: *"was hat dieser Run gemacht?"*
-│   │   3. Compliance auditor: *"alle Q3-Writes auf PII-Spalten"*
-│   │   4. Daily trust glance: *"sieht heute normal aus?"*
-│   │
-│   │   Today only #2 is half-served.  Phase 18 closes the gap.
-│   │
-│   ├── Sprint 18.0 — Audit-Read API backbone
-│   │   └── Three new read-only endpoints feed everything else:
-│   │       ``GET /api/audit/summary`` (counts), ``timeseries``
-│   │       (binned over time), ``anomalies`` (statistical
-│   │       outliers vs N-day baseline).  Same endpoint set
-│   │       drives the agent tools (Phase 19), Grafana panels
-│   │       (Phase 19), and the cockpit UI (this phase).
-│   │       Self-tracking: read-tools must themselves land in
-│   │       ``query_history`` (audit-of-audit).
-│   ├── Sprint 18.1 — Cross-axis navigation
-│   │   └── Today: Operations badge ``column edges: N`` + ``value
-│   │       changes: N`` are static.  Make them clickable +
-│   │       filtering.  Row-trace links to Column-trace links to
-│   │       Value-changes for the same op.  Operation rows show
-│   │       op_id as a deep-link that filters every other tab to
-│   │       only-this-op.
-│   ├── Sprint 18.2 — PII-aware masking
-│   │   └── ``lineage_value_changes`` stores Klartext today (e.g.
-│   │       customer_email).  Column-level PII tag from
-│   │       soyuz-catalog drives masked rendering: ``***@***.com``
-│   │       in default UI; reveal-button with audit-log-of-show.
-│   │       Tags read from soyuz tags-API (Sprint 28 era).
-│   ├── Sprint 18.3 — Saved audit queries
-│   │   └── SQL-editor scoped to the audit tables with a curated
-│   │       set of starter queries: "all writes to PII columns
-│   │       last 90 days", "all rollbacks Q3", "all
-│   │       cost-gate-denied queries this week".  Persist to a
-│   │       new ``saved_audit_queries`` table.  Compliance-export
-│   │       per saved-query → CSV/PDF for SOC2 / GDPR Art. 30
-│   │       evidence packets.
-│   ├── Sprint 18.4 — Run-diff view
-│   │   └── ``GET /runs/{id_a}/diff/{id_b}`` — pick two runs of
-│   │       the same notebook + visualise the delta:
-│   │       row-counts, value-change-counts, schema-drift,
-│   │       reject-pattern-shift.  The natural "what changed
-│   │       between yesterday and today" forensics surface.
-│   └── Sprint 18.5 — Anomaly highlighting
-│       └── Statistical baseline per metric (mean ± 2σ over
-│           N-day window): "Run X had 50 rejects, typical 0-3 →
-│           ⚠️ flag" surfaces on home dashboard + email digest
-│           + saved-query alerts.  Same machinery feeds Phase 19
-│           anomaly-tool.
+│   ├── Sprint 18.0 — Audit-Read API backbone                 ✅
+│   │   └── Three read-only JSON endpoints
+│   │       (``GET /api/audit/summary|timeseries|anomalies``)
+│   │       backed by a new
+│   │       ``pointlessql/services/audit_aggregator.py`` doing
+│   │       SQLite/Postgres-aware bucketing.  Self-tracking via
+│   │       ``query_history.read_kind = 'audit_api'`` so cockpit
+│   │       calls land in the same audit lake they query.
+│   │       Severity classifier returns ``ok``/``warn``/``critical``
+│   │       against an N-day rolling mean ± Nσ.
+│   ├── Sprint 18.1 — Cross-axis navigation                   ✅
+│   │   └── Operations-tab ``column edges`` + ``value changes``
+│   │       badges become clickable links to
+│   │       ``/runs/{id}?op_id=N#tab-lineage``; the run-detail
+│   │       handler accepts ``?op_id=`` and threads it into
+│   │       ``_load_operations_for_run`` /
+│   │       ``_load_rejects_for_run`` /
+│   │       ``_load_lineage_summary_for_run`` so the three
+│   │       cross-axis tabs render filtered.  A "filtered to op
+│   │       #N" chip with a Clear-filter button sits above the
+│   │       tab strip.  Stale ``op_id`` falls back to unfiltered
+│   │       (drill-downs are permissive).
+│   ├── Sprint 18.2 — PII-aware masking                       ✅
+│   │   └── New ``pii_resolver`` (TTL cache against soyuz
+│   │       column-tags) + ``pii_mask`` helper renders
+│   │       ``***@***.***`` style placeholders for tagged
+│   │       columns in the row-trace value-change list.  Admin-
+│   │       only ``POST /api/audit/pii/reveal`` returns the
+│   │       cleartext and writes an ``audit_log`` row of
+│   │       ``action='pii.value_revealed'``.  ``AuditSettings``
+│   │       gains ``pii_mask_default`` + ``pii_cache_ttl_seconds``.
+│   ├── Sprint 18.3 — Saved audit queries + CSV/JSON export   ✅
+│   │   └── New ``saved_audit_queries`` table (Alembic
+│   │       ``j0e1f2a3b4c5``) with five seeded starter rows.
+│   │       Service enforces an explicit table allow-list via
+│   │       sqlglot (SELECT-only, references only audit tables);
+│   │       starter rows refuse PATCH/DELETE.  CRUD route at
+│   │       ``/api/saved-audit-queries`` plus ``/run`` /
+│   │       ``/export.csv`` / ``/export.json`` endpoints; new
+│   │       admin-only ``/audit/queries`` HTML workbench.  Each
+│   │       export writes a ``saved_audit_query.exported`` audit
+│   │       row.  PDF deliberately deferred (CSV+JSON cover SOC2
+│   │       / GDPR Art. 30 in practice).
+│   ├── Sprint 18.4 — Run-diff lineage view                   ✅
+│   │   └── New ``/runs/{a}/diff/{b}`` HTML route consuming
+│   │       ``build_detail_diff`` + new
+│   │       ``build_lineage_diff`` (reject-reason buckets,
+│   │       value-change volume per table, row-count delta per
+│   │       table).  ``GET /api/agent-runs/diff?detail=true``
+│   │       carries the new ``lineage_diff`` payload.  Page
+│   │       renders Chart.js bar charts for each lineage axis +
+│   │       four +Δ stat cards on top.
+│   └── Sprint 18.5 — Anomaly highlighting                    ✅
+│       └── ``/api/home/summary`` carries an ``anomalies``
+│           block ({warn, critical}) computed across rejects,
+│           errored_ops, and external_writes.  Home page renders
+│           a yellow/red banner when ≥ 1 metric breaches the
+│           configured σ threshold; ``/runs/{id}`` shows an
+│           anomaly chip at the top with the worst-offender
+│           metric + observed-vs-baseline.  Saved-query alert
+│           thresholds (``alert_threshold_count`` column on
+│           ``saved_audit_queries``) reuse the existing alerts
+│           machinery.  Email digest deferred to Phase 19.2
+│           (Audit-Reviewer-Agent territory).
 │
 ├── Phase 19 — Audit-Reviewer Agent + Grafana             ⏳ queued
 │   │
