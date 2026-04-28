@@ -110,22 +110,37 @@
                         </summary>
                         <ul class="list-unstyled mt-2 mb-0 ms-3">
                             {% for change in step.value_changes %}
-                            <li class="mb-1 font-monospace text-break">
+                            <li class="mb-1 font-monospace text-break"
+                                {% if change.is_pii %}data-pii-cell="1" data-run-id="{{ change.run_id }}" data-op-id="{{ change.op_id }}" data-table="{{ step.table }}" data-row-id="{{ step.row_id }}" data-column="{{ change.target_column }}"{% endif %}>
                                 <span class="badge bg-light text-dark border">{{ change.target_column }}</span>
+                                {% if change.is_pii %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+                                      title="Sprint 18.2 — column tagged PII in soyuz; cleartext masked by default">
+                                    <i class="bi bi-shield-lock me-1"></i>PII
+                                </span>
+                                {% endif %}
                                 <span class="text-muted">·</span>
                                 {% if change.old_value is none %}
                                 <span class="text-muted fst-italic">NULL</span>
                                 {% else %}
-                                <span>{{ change.old_value }}</span>
+                                <span class="pii-old">{{ change.display_old }}</span>
                                 {% endif %}
                                 <i class="bi bi-arrow-right mx-1"></i>
                                 {% if change.new_value is none %}
                                 <span class="text-muted fst-italic">NULL</span>
                                 {% else %}
-                                <span>{{ change.new_value }}</span>
+                                <span class="pii-new">{{ change.display_new }}</span>
                                 {% endif %}
                                 {% if change.created_at %}
                                 <span class="text-muted ms-2">{{ change.created_at }}</span>
+                                {% endif %}
+                                {% if change.is_pii and current_user and current_user.is_admin %}
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-warning ms-2 py-0"
+                                        data-pii-reveal="1"
+                                        title="Sprint 18.2 — admin-only reveal; logs an audit_log row of action=pii.value_revealed">
+                                    <i class="bi bi-eye"></i> Reveal
+                                </button>
                                 {% endif %}
                             </li>
                             {% endfor %}
@@ -159,4 +174,59 @@
     <a href="/runs">the runs page</a>.
 </div>
 {% endif %}
+
+{# Sprint 18.2 — PII reveal handler.  Each masked cell carries
+   data-pii-cell="1" + the metadata the reveal endpoint needs.
+   Admin-only button (template gates by current_user.is_admin) #}
+<script>
+(function () {
+    function csrfToken() {
+        const m = document.cookie.match(/(?:^|;\s*)pql_csrf=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+    document.querySelectorAll('button[data-pii-reveal="1"]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const cell = btn.closest('li[data-pii-cell="1"]');
+            if (!cell) return;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> revealing…';
+            try {
+                const resp = await fetch('/api/audit/pii/reveal', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken(),
+                    },
+                    body: JSON.stringify({
+                        run_id: cell.dataset.runId,
+                        op_id: parseInt(cell.dataset.opId, 10),
+                        table: cell.dataset.table,
+                        row_id: cell.dataset.rowId,
+                        column: cell.dataset.column,
+                    }),
+                });
+                if (!resp.ok) {
+                    btn.innerHTML = '<i class="bi bi-x-circle"></i> ' + resp.status;
+                    return;
+                }
+                const body = await resp.json();
+                const oldEl = cell.querySelector('.pii-old');
+                const newEl = cell.querySelector('.pii-new');
+                if (oldEl && body.old_value !== null && body.old_value !== undefined) {
+                    oldEl.textContent = body.old_value;
+                    oldEl.classList.add('text-warning-emphasis');
+                }
+                if (newEl && body.new_value !== null && body.new_value !== undefined) {
+                    newEl.textContent = body.new_value;
+                    newEl.classList.add('text-warning-emphasis');
+                }
+                btn.remove();
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-x-circle"></i> error';
+            }
+        });
+    });
+})();
+</script>
 {% endblock %}

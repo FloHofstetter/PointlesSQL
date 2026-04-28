@@ -37,6 +37,7 @@ from pointlessql.api.dependencies import (
 )
 from pointlessql.exceptions import CatalogNotFoundError, CatalogUnavailableError
 from pointlessql.models import AgentRunOperation
+from pointlessql.services import pii_mask, pii_resolver
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.services.lineage_edges import (
     ColumnPredecessorRef,
@@ -162,6 +163,11 @@ def _attach_value_changes(
     ``(target_table, target_row_id)``; max-hops is 20, so the call
     is bounded to ≤20 lightweight reads.
 
+    Sprint 18.2 — every emitted change carries ``is_pii=False``
+    initially and ``display_old`` / ``display_new`` mirror the raw
+    values; :func:`_apply_pii_masking` mutates those fields in
+    place after the soyuz tag lookup completes.
+
     Args:
         factory: SQLAlchemy session factory.
         step_dicts: Already-projected step dicts (output of
@@ -170,8 +176,9 @@ def _attach_value_changes(
     Returns:
         The same list, mutated in place — each step's
         ``value_changes`` list is replaced with the ``[{column,
-        old_value, new_value, run_id, op_id, created_at}]`` entries
-        for its ``(table, row_id)``.
+        old_value, new_value, run_id, op_id, created_at, is_pii,
+        display_old, display_new}]`` entries for its ``(table,
+        row_id)``.
     """
     for step in step_dicts:
         rows = fetch_value_changes_for_row(
@@ -187,9 +194,72 @@ def _attach_value_changes(
                 "run_id": r.run_id,
                 "op_id": r.op_id,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
+                "is_pii": False,
+                "display_old": r.old_value if r.old_value is not None else None,
+                "display_new": r.new_value if r.new_value is not None else None,
             }
             for r in rows
         ]
+    return step_dicts
+
+
+async def _apply_pii_masking(
+    request: Request,
+    step_dicts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Resolve PII tags for every value-change column and mask in place.
+
+    Sprint 18.2 — runs once per row-trace render *after*
+    :func:`_attach_value_changes` so the mutated ``display_old`` /
+    ``display_new`` fields override the raw cleartext when the
+    soyuz tag system flags the column as PII.
+
+    Disabled globally when
+    :attr:`AuditSettings.pii_mask_default` is ``False`` — the
+    whole helper is a no-op in that case.  Otherwise resolves all
+    unique ``(target_table, target_column)`` pairs in one batch.
+
+    Args:
+        request: Incoming FastAPI request.  Used to pull
+            ``app.state.uc_client`` and the audit settings.
+        step_dicts: Step list with ``value_changes`` already
+            populated by :func:`_attach_value_changes`.
+
+    Returns:
+        The same step list, mutated in place.
+    """
+    settings = request.app.state.settings
+    if not getattr(settings.audit, "pii_mask_default", True):
+        return step_dicts
+    flat_pairs: list[tuple[str, str]] = []
+    for step in step_dicts:
+        for change in step.get("value_changes", []):
+            flat_pairs.append((step["table"], change["target_column"]))
+    if not flat_pairs:
+        return step_dicts
+    uc = getattr(request.app.state, "uc_client", None)
+    if uc is None:
+        return step_dicts
+    pii_map = await pii_resolver.resolve_many(
+        uc,
+        flat_pairs,
+        ttl_seconds=settings.audit.pii_cache_ttl_seconds,
+    )
+    for step in step_dicts:
+        for change in step.get("value_changes", []):
+            key = (step["table"], change["target_column"])
+            if pii_map.get(key, False):
+                change["is_pii"] = True
+                change["display_old"] = (
+                    pii_mask.mask_value(change["old_value"])
+                    if change["old_value"] is not None
+                    else None
+                )
+                change["display_new"] = (
+                    pii_mask.mask_value(change["new_value"])
+                    if change["new_value"] is not None
+                    else None
+                )
     return step_dicts
 
 
@@ -336,6 +406,7 @@ async def api_row_trace(
     op_meta = _load_op_metadata(_collect_op_ids(steps))
     step_dicts = [_step_to_dict(s, op_meta) for s in steps]
     step_dicts = _attach_value_changes(factory, step_dicts)
+    step_dicts = await _apply_pii_masking(request, step_dicts)
     return {
         "table": table,
         "row_id": row_id,
@@ -377,6 +448,7 @@ async def html_row_trace(
     op_meta = _load_op_metadata(_collect_op_ids(steps))
     step_dicts = [_step_to_dict(s, op_meta) for s in steps]
     step_dicts = _attach_value_changes(factory, step_dicts)
+    step_dicts = await _apply_pii_masking(request, step_dicts)
 
     return _templates(request).TemplateResponse(
         request,

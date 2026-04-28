@@ -239,18 +239,38 @@ class SchedulerSettings(BaseSettings):
 
 
 class AuditSettings(BaseSettings):
-    """Audit-log retention and cleanup configuration.
+    """Audit-log retention, cleanup, and cockpit configuration.
 
     Reads ``POINTLESSQL_AUDIT_*`` environment variables. Rows older
     than ``retention_days`` are deleted by the scheduler's periodic
     audit-cleanup tick.  Set ``retention_days=0`` to keep every
     audit row forever (disables retention entirely).
+
+    Phase 18 added cockpit knobs:
+
+    * ``anomaly_baseline_window_days`` — N-day rolling window the
+      ``/api/audit/anomalies`` endpoint compares observed values
+      against.  7 days mirrors the Sprint 19.0 Grafana panel.
+    * ``anomaly_threshold_sigma`` — observations more than this many
+      standard deviations above the baseline mean count as ``warn``
+      (≥ σ) or ``critical`` (≥ 2σ × this).  Default 2.0 matches the
+      common "two-sigma rule" most operators expect.
+    * ``pii_mask_default`` — when ``True`` (the default) values whose
+      target column is tagged ``PII`` in soyuz are rendered masked.
+      Set to ``False`` to disable masking globally (single-tenant
+      deployments where every viewer is already trusted).
+    * ``pii_cache_ttl_seconds`` — how long the PII tag resolver
+      caches a ``(table, column)`` lookup before re-querying soyuz.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AUDIT_")
 
     retention_days: int = 365
     cleanup_interval_seconds: int = 86400  # once per day
+    anomaly_baseline_window_days: int = 7
+    anomaly_threshold_sigma: float = 2.0
+    pii_mask_default: bool = True
+    pii_cache_ttl_seconds: int = 600
 
 
 class DeltaSettings(BaseSettings):
