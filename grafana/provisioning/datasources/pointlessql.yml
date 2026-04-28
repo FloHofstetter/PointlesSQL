@@ -1,0 +1,16 @@
+# Auto-provisioned Grafana datasource for PointlesSQL's SQLite
+# metadata DB.  The hardcoded ``uid`` is what keeps panel→datasource
+# bindings stable across reprovisioning — without it every restart
+# shuffles UIDs and breaks every panel.
+
+apiVersion: 1
+
+datasources:
+  - name: PointlesSQL
+    uid: pointlessql-sqlite
+    type: frser-sqlite-datasource
+    access: proxy
+    isDefault: true
+    editable: false
+    jsonData:
+      path: /data/pointlessql/pointlessql.db

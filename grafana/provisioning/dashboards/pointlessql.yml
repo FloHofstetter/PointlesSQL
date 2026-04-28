@@ -1,0 +1,19 @@
+# Auto-provisioned dashboard provider.  ``folder: PointlesSQL``
+# keeps the dashboard out of Grafana's default ``General`` folder
+# where built-in samples live.  ``allowUiUpdates: false`` makes
+# the JSON the source of truth — UI edits revert at the next
+# reload interval.
+
+apiVersion: 1
+
+providers:
+  - name: pointlessql
+    orgId: 1
+    folder: PointlesSQL
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

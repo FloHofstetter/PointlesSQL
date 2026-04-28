@@ -4,6 +4,88 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 19.0: Grafana audit dashboard (XS quick-win, 2026-04-28)
+
+First Phase-19 sub-sprint, landed out of phase order.  Strategic
+ordering note in ROADMAP marks 19.0 as eligible to land before
+Phase 17 / 18 because it reads the existing audit + lineage tables
+directly — no Phase-18 audit-API dependency.  Phases 19.1–19.3
+remain queued (they wrap the not-yet-built Phase-18 backbone).
+
+Goal: glance-trust dashboard.  No agent code, no API changes — a
+``docker compose -f docker-compose.yml -f docker-compose.grafana.yml up``
+spins up Grafana auto-provisioned with eight panels covering
+runs/day, reject-rate vs 7-day baseline, value-change-volume per
+table (red ≥1000), external-write count (red ≥1), top mutating
+principals, cost-gate denials, tool-call latency table, and
+EXPLAIN-cost histogram.
+
+- ``docker-compose.grafana.yml`` overlay adds a
+  ``grafana/grafana-oss:latest`` service.  Two intentional config
+  choices that surfaced in the design pass:
+  - ``GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=frser-sqlite-datasource``
+    is **mandatory** — the SQLite plugin is unsigned and Grafana
+    refuses to load it without the explicit allow.  Skipping it
+    is the #2 cause of "datasource doesn't appear" reports.
+  - ``pointlessql_data:/data/pointlessql`` is mounted **read-write**,
+    NOT ``:ro``.  Reason: the app runs SQLite in WAL mode (the
+    ``.db-wal`` and ``.db-shm`` files exist alongside the DB);
+    the SQLite library needs write access to manage ``-shm`` even
+    for readers.  A ``:ro`` bind produces ``disk I/O error`` on
+    the first query.  The Grafana plugin only issues SELECTs.
+- ``grafana/provisioning/datasources/pointlessql.yml`` pins the
+  datasource UID to ``pointlessql-sqlite`` so panel→datasource
+  bindings survive reprovisioning.  Without a hardcoded UID,
+  every restart shuffles UIDs and breaks every panel.
+- ``grafana/provisioning/dashboards/pointlessql.yml`` provider
+  drops the dashboard into a ``PointlesSQL`` folder (keeps it
+  out of Grafana's default ``General`` folder where built-in
+  samples live), ``allowUiUpdates: false`` enforces JSON as
+  the source of truth.
+- ``grafana/dashboards/pointlessql_audit.json`` — 10 panels
+  (8 spec'd + Markdown header + datasource-health smoke).  Layout
+  on a 24×32 grid.  Notable per-panel choices:
+  - **Runs/day**: timeseries-bar grouped by ``date(started_at)``,
+    using the frser plugin's ``$__timeFilter()`` macro (bare
+    ``$__timeFrom()`` / ``$__timeTo()`` is **not** supported).
+  - **Reject-rate vs baseline**: two series, today's daily count
+    plus a 7-day trailing average computed via correlated
+    subquery (no SQL window functions — the frser plugin's query
+    parser truncates them in some Grafana releases).
+  - **Value-change-volume per table**: stacked bars per
+    ``target_table``, threshold style ``line`` at 1000 to make
+    over-budget runs visually pop.
+  - **External-write count**: stat panel reading
+    ``unattributed_writes WHERE acknowledged_at IS NULL``,
+    threshold red at ≥1.
+  - **Top-mutating-principals**: horizontal bars of summed
+    ``rows_affected`` for ``op_name IN ('merge', 'write_table')``.
+    NULL principals coalesced to ``'<unknown>'`` so background
+    agents are still visible.
+  - **Tool-call latency**: SQLite has no ``percentile_cont``,
+    so the panel emits raw rows and a Grafana ``Reduce →
+    percentile`` transform computes p50/p99 client-side.
+  - **EXPLAIN-cost histogram**: ``CAST(cost_est AS REAL)`` is
+    mandatory because ``cost_est`` is ``Decimal(18,4)`` ORM-side
+    and the frser plugin returns Decimals as strings, which the
+    histogram viz can't bucket.
+- Scope decisions baked into the sprint:
+  - **SQLite-only.**  Postgres deferred to Sprint 19.0.1 (separate
+    overlay, separate dashboard).  Reason: dialect divergence
+    (no ``percentile_cont`` / ``date_trunc`` in SQLite) makes
+    a templated dual-mode dashboard cost more than the XS
+    sizing allows.
+  - **Panel thresholds only, no alert routing.**  Webhook /
+    Slack / email routing is Phase 19.2 territory.
+  - **Anonymous viewer enabled**, admin password still
+    enforced for edits.
+
+End-to-end smoke (against the host's live DB, ten queries):
+all 10 panel SQLs parse cleanly and return expected shape —
+``agent_runs`` has 7 rows, ``lineage_row_rejects`` 58, the
+7-day baseline subquery returns 8.29 rejects/day, three
+mutating principals (admin@local with 206 rows leading).
+
 ### Added — Phase 16: First-Class Rollback (closed 2026-04-27)
 
 Closes the audit→action loop.  Phases 13–15.7 captured the audit

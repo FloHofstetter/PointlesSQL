@@ -1,0 +1,52 @@
+# Compose override — Grafana auto-provisioned audit dashboard.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.grafana.yml up
+#
+# Adds a Grafana service that reads PointlesSQL's metadata SQLite DB
+# directly via the frser-sqlite-datasource plugin and renders a
+# pre-provisioned ``PointlesSQL Audit`` dashboard with eight panels
+# (runs/day, reject-rate, value-change-volume per table, external
+# writes, top-mutating principals, cost-gate denials, tool-call
+# latency, EXPLAIN-cost histogram).
+#
+# SQLite-only.  Postgres deployments are deferred to Sprint 19.0.1
+# because dialect divergence (no ``percentile_cont`` / ``date_trunc``
+# in SQLite) makes a templated dual-mode dashboard cost more than
+# the XS sizing of this sprint allows.
+#
+# Anonymous viewer is enabled so ``http://localhost:3000`` lands on
+# the dashboard with no login.  Admin password (default ``admin``)
+# is still enforced for editing.
+
+services:
+  grafana:
+    image: grafana/grafana-oss:latest
+    environment:
+      # The frser-sqlite-datasource plugin is unsigned — the allow-
+      # loading flag is mandatory or the datasource simply doesn't
+      # appear at startup.
+      GF_INSTALL_PLUGINS: frser-sqlite-datasource
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: frser-sqlite-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+    ports:
+      - "${GRAFANA_HOST_PORT:-3000}:3000"
+    volumes:
+      # PointlesSQL's SQLite metadata DB.  Mounted read-WRITE on
+      # purpose: SQLite WAL mode requires the library to manage
+      # ``-shm`` files even for readers; a ``:ro`` bind produces
+      # ``disk I/O error`` on the first query.  The Grafana plugin
+      # only issues SELECTs.
+      - pointlessql_data:/data/pointlessql
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      pointlessql:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  grafana_data:

@@ -1730,16 +1730,35 @@ PointlesSQL
 │   │   reading the existing tables directly.  The other
 │   │   sub-sprints depend on the Phase-18 audit-API.
 │   │
-│   ├── Sprint 19.0 — Grafana dashboard (XS quick-win)
-│   │   └── Checked-in ``grafana/pointlessql_audit.json`` plus
-│   │       ``docker-compose.grafana.yml`` overlay that auto-
-│   │       provisions the board.  Pre-built panels: runs/day,
-│   │       reject-rate vs baseline, value-change-volume per
-│   │       table (alert >1k/run), external-write count (alert
-│   │       on every new row), top-mutating-principals,
-│   │       cost-gate denials, tool-call p50/p99 per tool_name,
-│   │       EXPLAIN-cost histogram.  Reads existing tables
-│   │       directly; no Phase-18 dependency.
+│   ├── Sprint 19.0 — Grafana dashboard (XS quick-win)        ✅
+│   │   ├── ``docker-compose.grafana.yml`` overlay adds a
+│   │   │   ``grafana/grafana-oss:latest`` service mounting the
+│   │   │   ``pointlessql_data`` named volume read-write at
+│   │   │   ``/data/pointlessql`` (RW because SQLite WAL-mode
+│   │   │   needs the library to manage ``-shm``; ``:ro`` would
+│   │   │   produce ``disk I/O error``).  Anonymous viewer +
+│   │   │   admin password; ``GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS``
+│   │   │   set to load the unsigned ``frser-sqlite-datasource``
+│   │   ├── ``grafana/provisioning/datasources/pointlessql.yml``
+│   │   │   pins UID ``pointlessql-sqlite`` (stable across
+│   │   │   restarts so the dashboard JSON's panel→datasource
+│   │   │   bindings survive)
+│   │   ├── ``grafana/provisioning/dashboards/pointlessql.yml``
+│   │   │   provider drops the dashboard into a ``PointlesSQL``
+│   │   │   folder, ``allowUiUpdates: false`` (JSON is the
+│   │   │   source of truth)
+│   │   └── ``grafana/dashboards/pointlessql_audit.json`` —
+│   │       10 panels (8 spec'd + Markdown header + datasource-
+│   │       health smoke): runs/day, reject-rate vs 7-day
+│   │       baseline, value-change-volume per table (red ≥1000),
+│   │       external-write count stat (red ≥1), top-mutating-
+│   │       principals (rows written via ``op_name IN ('merge',
+│   │       'write_table')``), cost-gate denials, tool-call
+│   │       latency table (Grafana ``Reduce → percentile``
+│   │       transform; SQLite has no ``percentile_cont``),
+│   │       EXPLAIN-cost histogram (``CAST(cost_est AS REAL)``).
+│   │       SQLite-only by design — Postgres deferred to
+│   │       Sprint 19.0.1.
 │   ├── Sprint 19.1 — Audit-read tools in hermes-plugin-pointlessql
 │   │   └── ~10 new tools that wrap the Phase-18 audit-API:
 │   │       ``pql_get_run``, ``pql_list_recent_runs``,

@@ -72,6 +72,20 @@ docker compose up -d
 welcome page. JupyterLab is on `:8888`, soyuz-catalog's UC API on
 `:8080`.
 
+**Optional — Grafana audit dashboard.** Append the
+`docker-compose.grafana.yml` overlay to spin up Grafana with a
+pre-provisioned audit + lineage dashboard at
+`http://127.0.0.1:3000`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.grafana.yml up -d
+```
+
+Reads the same SQLite metadata DB the app uses; no agent code,
+no API changes, no extra config. Postgres deployments aren't yet
+supported here (see Sprint 19.0.1 in
+[`ROADMAP.md`](../ROADMAP.md)).
+
 Pin to a digest for reproducibility in production:
 
 ```yaml
