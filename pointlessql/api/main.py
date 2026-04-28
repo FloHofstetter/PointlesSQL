@@ -45,6 +45,9 @@ from pointlessql.api.pql_introspect_routes import router as pql_introspect_route
 from pointlessql.api.pql_write_routes import router as pql_write_router
 from pointlessql.api.queries_routes import router as queries_router
 from pointlessql.api.runs_routes import router as runs_router
+from pointlessql.api.saved_audit_queries_routes import (
+    router as saved_audit_queries_router,
+)
 from pointlessql.api.sql_routes import router as sql_router
 from pointlessql.api.volumes_routes import (
     DELTA_PRIMITIVE_TO_UC as _DELTA_PRIMITIVE_TO_UC,  # noqa: F401  # pyright: ignore[reportUnusedImport]
@@ -276,6 +279,7 @@ app.include_router(sql_router)
 app.include_router(queries_router)
 app.include_router(alerts_router)
 app.include_router(audit_router)
+app.include_router(saved_audit_queries_router)
 app.include_router(volumes_router)
 app.include_router(lineage_router)
 app.include_router(governance_router)

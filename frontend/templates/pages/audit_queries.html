@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Audit cockpit · saved queries · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item active">Audit cockpit</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-shield-check fs-3"></i>
+    <h1 class="h3 mb-0">Audit cockpit · saved queries</h1>
+</div>
+
+<p class="text-muted">
+    Sprint 18.3 — admin-scoped SQL workbench against the audit
+    tables.  Starter queries cover the most common compliance and
+    on-call questions; create your own for project-specific
+    drill-downs.  Every run is logged in <code>query_history</code>;
+    every export writes an <code>audit_log</code> row.
+</p>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-bookmark-star"></i>
+                <span class="fw-semibold">Saved queries</span>
+                <span class="badge bg-secondary ms-auto">{{ saved_audit_queries | length }}</span>
+            </div>
+            <ul class="list-group list-group-flush small">
+                {% for q in saved_audit_queries %}
+                <li class="list-group-item list-group-item-action px-3 py-2 saq-item"
+                    data-slug="{{ q.slug }}"
+                    data-sql="{{ q.sql_text }}"
+                    data-title="{{ q.title }}"
+                    role="button">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="me-2">
+                            <div class="fw-semibold">{{ q.title }}</div>
+                            {% if q.description %}
+                            <div class="text-muted small">{{ q.description }}</div>
+                            {% endif %}
+                        </div>
+                        {% if q.is_starter %}
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">starter</span>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-terminal"></i>
+                <span class="fw-semibold" id="saq-current-title">— Pick a query on the left —</span>
+                <div class="ms-auto d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" id="saq-run" disabled>
+                        <i class="bi bi-play-fill"></i> Run
+                    </button>
+                    <a class="btn btn-sm btn-outline-secondary disabled" id="saq-export-csv" target="_blank" rel="noopener">
+                        <i class="bi bi-filetype-csv"></i> CSV
+                    </a>
+                    <a class="btn btn-sm btn-outline-secondary disabled" id="saq-export-json" target="_blank" rel="noopener">
+                        <i class="bi bi-filetype-json"></i> JSON
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <textarea id="saq-sql" class="form-control border-0 font-monospace small"
+                          rows="8" spellcheck="false"
+                          placeholder="-- Pick a saved query, or type your own SELECT against the audit tables.&#10;-- Allow-list: agent_runs, agent_run_operations, lineage_*, query_history, audit_log, …"></textarea>
+            </div>
+            <div class="card-footer p-0" id="saq-result-wrap" hidden>
+                <div class="px-3 py-2 small text-muted" id="saq-result-meta"></div>
+                <div class="table-responsive" style="max-height: 60vh">
+                    <table class="table table-sm mb-0 small font-monospace align-middle">
+                        <thead id="saq-result-thead"></thead>
+                        <tbody id="saq-result-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const sqlEl = document.getElementById('saq-sql');
+    const titleEl = document.getElementById('saq-current-title');
+    const runBtn = document.getElementById('saq-run');
+    const csvBtn = document.getElementById('saq-export-csv');
+    const jsonBtn = document.getElementById('saq-export-json');
+    const wrap = document.getElementById('saq-result-wrap');
+    const meta = document.getElementById('saq-result-meta');
+    const thead = document.getElementById('saq-result-thead');
+    const tbody = document.getElementById('saq-result-tbody');
+    let currentSlug = null;
+
+    function selectQuery(item) {
+        currentSlug = item.dataset.slug;
+        sqlEl.value = item.dataset.sql;
+        titleEl.textContent = item.dataset.title;
+        runBtn.disabled = false;
+        csvBtn.classList.remove('disabled');
+        jsonBtn.classList.remove('disabled');
+        csvBtn.href = `/api/saved-audit-queries/${currentSlug}/export.csv`;
+        jsonBtn.href = `/api/saved-audit-queries/${currentSlug}/export.json`;
+        document.querySelectorAll('.saq-item.active').forEach((n) => n.classList.remove('active'));
+        item.classList.add('active');
+    }
+
+    document.querySelectorAll('.saq-item').forEach((item) => {
+        item.addEventListener('click', () => selectQuery(item));
+    });
+
+    runBtn.addEventListener('click', async () => {
+        if (!currentSlug) return;
+        runBtn.disabled = true;
+        runBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> running…';
+        try {
+            const resp = await fetch(`/api/saved-audit-queries/${currentSlug}/run?row_cap=1000`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const body = await resp.json();
+            if (!resp.ok) {
+                meta.innerHTML = '<span class="text-danger">' + (body.detail || resp.status) + '</span>';
+                wrap.hidden = false;
+                return;
+            }
+            renderResult(body);
+        } finally {
+            runBtn.disabled = false;
+            runBtn.innerHTML = '<i class="bi bi-play-fill"></i> Run';
+        }
+    });
+
+    function renderResult(body) {
+        meta.innerHTML = `${body.row_count} row(s) · references ${body.referenced_tables.join(', ')}`
+            + (body.truncated ? ' · <span class="text-warning">truncated</span>' : '');
+        thead.innerHTML = '<tr>' + body.columns.map((c) => `<th>${c}</th>`).join('') + '</tr>';
+        tbody.innerHTML = body.rows.map((row) =>
+            '<tr>' + body.columns.map((c) => `<td>${row[c] === null || row[c] === undefined ? '<span class="text-muted fst-italic">NULL</span>' : escapeHtml(String(row[c]))}</td>`).join('') + '</tr>'
+        ).join('');
+        wrap.hidden = false;
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+    }
+})();
+</script>
+{% endblock %}

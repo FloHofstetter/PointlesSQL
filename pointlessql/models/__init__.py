@@ -68,6 +68,7 @@ from pointlessql.models.notebook import (
     NotebookCellRunSource,
     NotebookOutput,
 )
+from pointlessql.models.saved_audit_queries import SavedAuditQuery
 from pointlessql.models.scheduler import (
     Job,
     JobLog,
@@ -107,6 +108,7 @@ __all__ = [
     "QueryHistory",
     "QueryHistoryTable",
     "RateLimitEvent",
+    "SavedAuditQuery",
     "SavedQuery",
     "SyncRun",
     "TableStats",
