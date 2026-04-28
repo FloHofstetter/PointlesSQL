@@ -16,9 +16,9 @@
     {% endif %}
 
     {% if summary.anomalies and (summary.anomalies.critical > 0 or summary.anomalies.warn > 0) %}
-    <div class="alert {% if summary.anomalies.critical > 0 %}alert-danger{% else %}alert-warning{% endif %} d-flex align-items-center justify-content-between m-0"
+    <div class="alert {% if summary.anomalies.critical > 0 %}alert-danger{% else %}alert-warning{% endif %} d-flex align-items-center justify-content-between gap-3 m-0"
          role="alert">
-        <div>
+        <div class="flex-grow-1 min-w-0">
             <i class="bi bi-exclamation-octagon me-2"></i>
             {% if summary.anomalies.critical > 0 %}
             <strong>{{ summary.anomalies.critical }}</strong>
@@ -32,7 +32,7 @@
             {% endif %}
             <span class="ms-2 small text-muted">Sprint 18.5 — anomaly highlighting</span>
         </div>
-        <a href="/audit/queries" class="btn btn-sm btn-outline-dark">
+        <a href="/audit/queries" class="btn btn-sm btn-outline-dark flex-shrink-0 text-nowrap">
             <i class="bi bi-shield-check me-1"></i>Open audit cockpit
         </a>
     </div>
