@@ -4,6 +4,66 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Closed — Phase 19: Audit-Reviewer Agent + Grafana (2026-04-29)
+
+Six sub-sprints landed across two days, closing the original
+"agents reviewing agents" thesis from the Phase-19 sketch.  The
+audit lake captured by Phase 14-15 + the cockpit surface from
+Phase 18 are now driven by three real personas, plus the Grafana
+glance-trust dashboard that was Phase 19's quick-win opener.
+
+Personas served:
+
+- **Daily Audit-Reviewer-Agent** (Sprint 19.2.0/1/2) — Hermes cron
+  at 06:00 UTC; wake-gate skips the LLM round-trip on clean days,
+  on `warn`/`critical` the agent drafts Markdown, posts via
+  `pql_post_audit_review` (PointlesSQL is the source of truth),
+  PointlesSQL fans the CloudEvent out to admin-configured webhook
+  destinations, Hermes also delivers via its own platform adapters.
+  Cockpit "Latest review" card on `/` + `/agent-reviews/{id}`
+  detail page.
+- **Compliance-Bot** (Sprint 19.3) — read-only Hermes one-shot
+  triggered by Slack/Matrix DM. Answers ad-hoc questions with the
+  four-block Question/Answer/How/Caveats skeleton. Five hard
+  prompt constraints (no writes, mandatory masking, no API-key
+  echo, time-window pinning, refuse-and-escalate on remediation
+  asks). New `/api/audit/principal-summary` route + matching
+  plugin tool fill the runs-by-principal enumeration gap.
+- **Incident-Responder** (Sprint 19.4) — multi-turn drill-down
+  for "was hat Run X kaputt gemacht?". Takes a `run_id` up
+  front, walks failing op → rejects → external-write neighbours.
+  Pure prompt composition — no new server endpoints. Synthetic
+  broken-run fixture (`scripts/seed-broken-run.py`) for replays.
+
+Numbers:
+
+- Plugin grew 29 → 32 tools (`pql_post_audit_review`,
+  `pql_get_latest_review`, `pql_principal_summary`).
+- Two new tables (`agent_reviews`, `review_destinations`,
+  Alembic `l2g3a4b5c6d7`).
+- Two new admin-gated CRUD routes for review destinations + four
+  new auditor-gated agent-review routes (POST + latest + detail +
+  principal-summary).
+- One Hermes pre-run script (`scripts/audit-wake-gate.py`).
+- Three new walkthroughs in `docs/e2e-walkthroughs/`
+  (audit-reviewer-daily, compliance-bot, incident-responder)
+  + three Hermes job manifests in `docs/hermes-jobs/`.
+- Six commits (`57ec67c`, `8d6de75`, `fe5d26d`, `4735b76`,
+  `51659b6`, plus the closing commit) against PointlesSQL; two
+  commits (`ac57fed`, `14ad3ea`) against `hermes-plugin-pointlessql`.
+
+What's deliberately out of scope:
+
+- Conversation memory for the chat personas — that's Hermes' job;
+  see the limitations sections in
+  `docs/e2e-walkthroughs/{compliance-bot,incident-responder}.md`.
+- "Auto-fix" / "draft remediation PR" personas. The read-only
+  posture is the design intent — Sprint 19.5+ could add a
+  write-shaped persona, but that's a different conversation.
+- Per-job env overlays in Hermes. All cron jobs in an install
+  share `~/.hermes/.env`; if you need separate keys per job, add
+  Hermes-side feature support first.
+
 ### Added — Sprint 19.4: Incident-Responder persona (2026-04-29)
 
 Third Phase-19 persona: multi-turn Hermes flow for "was hat Run X
