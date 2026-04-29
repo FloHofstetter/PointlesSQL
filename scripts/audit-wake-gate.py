@@ -117,6 +117,13 @@ def main() -> int:
     with httpx.Client(base_url=base_url, headers=headers) as client:
         verdicts = [_verdict_for_metric(client, m, since, until) for m in _METRICS]
 
+    # Fail-open: if ANY metric returned an error, wake the agent
+    # defensively rather than silently silencing the daily review on a
+    # transient PointlesSQL outage.  Sprint 19.4 bug-hunt found that
+    # the prior "demote errors to severity=ok" policy could let a
+    # connect failure mask a real anomaly day, which violates the
+    # README's documented fail-open posture.
+    has_error = any("error" in v for v in verdicts)
     worst = max(_SEVERITY_RANK[v["severity"]] for v in verdicts)
     overall = next(s for s, r in _SEVERITY_RANK.items() if r == worst)
 
@@ -138,8 +145,12 @@ def main() -> int:
 
     # Emit the wake-gate JSON as the FINAL non-empty line (Hermes only
     # parses the last one).  ``ok`` → skip the LLM call.  ``warn`` /
-    # ``critical`` → wake.
-    print(json.dumps({"wakeAgent": overall != "ok", "severity": overall}))
+    # ``critical`` → wake.  Any error → wake regardless (fail-open).
+    wake = has_error or overall != "ok"
+    payload: dict[str, Any] = {"wakeAgent": wake, "severity": overall}
+    if has_error:
+        payload["reason"] = "audit-api unreachable; waking agent defensively"
+    print(json.dumps(payload))
     return 0
 
 

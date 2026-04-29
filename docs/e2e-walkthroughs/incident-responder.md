@@ -50,11 +50,13 @@ masking, rollback-as-option-not-action).
      > was the error?
    - Assert: response follows the three-block skeleton (Finding /
      Evidence / Next).  The "Evidence" block calls
-     `pql_run_summary(run_id=<broken-run-id>)` first.  The
-     "Finding" sentence names op 2 (merge) and surfaces the
-     ``DeltaError: Schema mismatch on column 'amount'`` message.
-     "Next" suggests asking about the rejects (the natural follow-
-     up).
+     `pql_run_summary(run_id=<broken-run-id>)` first.  The response
+     carries `failing_ops[]` with one entry pointing at op 2
+     (`op_name: "merge"`, `error_message: "DeltaError: Schema
+     mismatch on column 'amount': source DOUBLE, target
+     DECIMAL(10,2)"`).  The "Finding" sentence names op 2 and
+     paraphrases the error.  "Next" suggests asking about the
+     rejects (the natural follow-up).
 
 4. **Drill 2 — show rejects in op 3.**
    - Action: continuing the conversation:
@@ -107,11 +109,12 @@ masking, rollback-as-option-not-action).
      ```bash
      curl -s -H "Authorization: Bearer <auditor-token>" \
        "http://127.0.0.1:8000/api/audit/history?include_audit_api=true&read_kind=audit_api&limit=50" \
-       | jq '.queries | map(select(.sql_text | contains("<broken-run-id>"))) | length'
+       | jq '.rows | map(select(.sql_text | contains("<broken-run-id>"))) | length'
      ```
    - Assert: the count matches the number of tool calls the
      responder made during the conversation.  Each row's
-     `principal` is `api_key:<auditor-key-name>`.
+     `user_email` is `api_key:<auditor-key-name>` (the `user_email`
+     column carries `api_key:<name>` for bearer-authenticated calls).
 
 ## Cleanup
 

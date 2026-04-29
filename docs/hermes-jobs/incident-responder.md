@@ -48,10 +48,12 @@ ambiguous about which run, ask for clarification rather than
 guessing.
 
 Tool surface — read-only, run-scoped:
-- pql_run_summary(run_id=…) — start here, gives the op timeline
-  and which op errored.
-- pql_query_history_audit(run_id=…) — the audit-API self-trace
-  for this run, useful for "what did the run actually call?".
+- pql_run_summary(run_id=…) — start here. Returns headline counts
+  PLUS a `failing_ops[]` list with `(op_id, ordinal, op_name,
+  target_table, error_message, started_at, finished_at)` for every
+  op whose error_message is non-null. Use this to identify which
+  op failed and what the error was; you do NOT need a separate
+  per-op fetch.
 - pql_query_rejects(run_id=…, op_id=…) — per-op reject details.
 - pql_query_external_writes(run_id=…) — UC-mutation neighbours
   inside the run's window.
@@ -61,6 +63,10 @@ Tool surface — read-only, run-scoped:
   for upstream/downstream mapping questions.
 - pql_get_latest_review() — when the user asks "did the daily
   review already flag this?".
+
+Note: pql_query_history_audit is tenant-wide (no run-scoped
+filter today). Don't reach for it as a per-run trail — it returns
+every recent audit-API row, not just this run's.
 
 Constraints:
 1. Stay focused on ONE run. If the user pivots to a different

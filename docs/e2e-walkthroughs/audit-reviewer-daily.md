@@ -108,7 +108,9 @@ output. There is no browser, no Alpine, no `mcp__playwright__*` calls.
      the last few minutes — one per audit-tool call the agent made
      (`pql_audit_summary` plus three `pql_anomaly_check` invocations
      at minimum, more on `warn`/`critical` days). Each row's
-     `principal` reads `api_key:daily-review`.
+     `user_email` reads `api_key:daily-review` (the `user_email`
+     column carries `api_key:<name>` for bearer-authenticated calls —
+     see Sprint 13.11's `_audit_helpers`).
    - This proves the daily review is itself auditable: any attempt to
      hide activity in the digest can be cross-checked against the
      query_history rows the agent generated while drafting it.

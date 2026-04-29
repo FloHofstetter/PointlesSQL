@@ -102,13 +102,18 @@ The PointlesSQL side does not change between the three.
      ```bash
      curl -s -H "Authorization: Bearer <auditor-token>" \
        "http://127.0.0.1:8000/api/audit/history?include_audit_api=true&read_kind=audit_api&limit=50&since=$(date -u +%FT00:00:00Z)" \
-       | jq '.queries | map(.endpoint) | unique'
+       | jq -r '.rows[].sql_text' | grep -oE '/api/audit/[a-z-]+' | sort -u
      ```
+     The audit-API self-trace stores the endpoint inside each row's
+     `sql_text` as a leading `-- audit_api: <endpoint> {…params…}`
+     comment, so we grep the endpoint out of the comment.
    - Assert: the unique-endpoint list contains every audit route
      the bot called during the session — at minimum
      `/api/audit/principal-summary`, `/api/audit/anomalies`, plus
      whichever per-run axes the drill-downs hit. Each row's
-     `principal` is `api_key:<auditor-key-name>`.
+     `user_email` is `api_key:<auditor-key-name>` (the `user_email`
+     column carries the synthetic `api_key:<name>` principal for
+     bearer-authenticated calls).
 
 ## Known limitations
 

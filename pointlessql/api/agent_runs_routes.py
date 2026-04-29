@@ -637,10 +637,15 @@ def _summarize_run(
 
     Returns:
         ``{rows_touched, delta_version_range, errored_ops_count,
-        queries_count, tables_touched, status, has_denied_reason}``.
-        Deliberately omits ``cost_gate_threshold`` (Anti-gaming —
-        agents shouldn't read the threshold they could be tuned to
-        stay under).
+        failing_ops, queries_count, tables_touched, status,
+        has_denied_reason}``.  ``failing_ops`` is a list of the
+        per-op detail rows (op_id, ordinal, op_name, target_table,
+        error_message, started_at, finished_at) for every operation
+        whose ``error_message`` is non-null — Sprint 19.4 added this
+        so the Incident-Responder agent can identify which op
+        failed without a separate per-op fetch.  Deliberately omits
+        ``cost_gate_threshold`` (Anti-gaming — agents shouldn't read
+        the threshold they could be tuned to stay under).
     """
     tables_touched: list[str] = []
     if run_row.tables_touched:
@@ -655,6 +660,24 @@ def _summarize_run(
             ]
     rows_touched = sum((op.rows_affected or 0) for op in operations)
     errored_ops_count = sum(1 for op in operations if op.error_message)
+    # Sprint 19.4 bug-hunt: surface every errored op so the
+    # Incident-Responder agent can name the failing op + its error
+    # message without a separate per-op fetch.  Without this the
+    # response only carried a count and the agent had no way to
+    # answer "which op errored?".
+    failing_ops: list[dict[str, Any]] = [
+        {
+            "op_id": op.id,
+            "ordinal": op.ordinal,
+            "op_name": op.op_name,
+            "target_table": op.target_table,
+            "error_message": op.error_message,
+            "started_at": op.started_at.isoformat() if op.started_at else None,
+            "finished_at": op.finished_at.isoformat() if op.finished_at else None,
+        }
+        for op in operations
+        if op.error_message
+    ]
     delta_version_range: dict[str, list[int | None]] = {}
     for op in operations:
         if op.target_table is None:
@@ -677,6 +700,7 @@ def _summarize_run(
         "agent_id": run_row.agent_id,
         "rows_touched": rows_touched,
         "errored_ops_count": errored_ops_count,
+        "failing_ops": failing_ops,
         "operations_count": len(operations),
         "tool_calls_count": len(tool_calls),
         "queries_count": len(queries),

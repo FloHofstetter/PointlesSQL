@@ -239,13 +239,20 @@ def create_api_key(
         session open.
 
     Raises:
-        ValueError: When *name* is blank or longer than 64 chars.
+        ValueError: When *name* is blank, longer than 64 chars, or
+            already exists in the table (duplicate names would
+            otherwise raise ``IntegrityError`` from the UNIQUE
+            constraint, which is harder for the CLI / HTTP layer to
+            present cleanly).
     """
     cleaned = name.strip()
     if not cleaned or len(cleaned) > 64:
         raise ValueError("API key name must be a non-empty string up to 64 chars")
     plaintext = secrets.token_urlsafe(32)
     with session_factory() as session:
+        existing = session.scalar(select(ApiKey).where(ApiKey.name == cleaned))
+        if existing is not None:
+            raise ValueError(f"API key {cleaned!r} already exists")
         row = ApiKey(
             name=cleaned,
             secret_hash=_hash_secret(plaintext),
