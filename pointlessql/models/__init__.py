@@ -52,6 +52,7 @@ from pointlessql.models.audit_sinks import SINK_TYPES, AuditSink, GovernanceEven
 from pointlessql.models.auth import User
 from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.models.base import Base
+from pointlessql.models.branch_audit import BRANCH_ACTIONS, BranchAuditLog
 from pointlessql.models.catalog import (
     Dashboard,
     QueryHistory,
@@ -99,7 +100,9 @@ __all__ = [
     "AuditLog",
     "AuditSink",
     "AutoloadCheckpoint",
+    "BRANCH_ACTIONS",
     "Base",
+    "BranchAuditLog",
     "Dashboard",
     "GovernanceEvent",
     "Job",

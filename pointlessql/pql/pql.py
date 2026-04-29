@@ -21,7 +21,7 @@ from soyuz_catalog_client import Client
 
 from pointlessql.pql._aggregate import AggregateMode, AggSpec, aggregate_table
 from pointlessql.pql._autoload import AutoloadFormat, autoload_files
-from pointlessql.pql._branch import create_branch_schema
+from pointlessql.pql._branch import create_branch_schema, discard_branch_schema
 from pointlessql.pql._list import list_catalogs, list_schemas, list_tables
 from pointlessql.pql._merge import MergeStrategy, merge_table
 from pointlessql.pql._read import read_table
@@ -581,6 +581,26 @@ class PQL:
             branch_name=branch_name,
             settings=Settings(),
             strategy=strategy,
+            agent_run_id=self._current_run_id,
+        )
+
+    def branch_discard(self, branch_schema: str) -> None:
+        """Permanently remove a Delta branch and its UC namespace.
+
+        Phase 16.5.3 entry point.  Idempotent for already-discarded
+        branches (no-op + warning log).  Refuses to discard a
+        promoted branch — promotion is final.  Cleans up the local-
+        FS storage tree without touching the source parquets that
+        symlinks point at.
+
+        Args:
+            branch_schema: Two-part ``catalog.branch_name`` of the
+                branch to remove.
+        """
+        discard_branch_schema(
+            client=self._client,
+            branch_schema_fqn=branch_schema,
+            settings=Settings(),
             agent_run_id=self._current_run_id,
         )
 

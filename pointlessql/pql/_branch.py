@@ -59,11 +59,15 @@ from pointlessql.exceptions import (
 from pointlessql.pql._branch_errors import (
     BranchAlreadyExistsError,
     BranchCloudUnsupportedError,
+    BranchInUseError,
+    BranchNotFoundError,
     BranchOfBranchError,
 )
 from pointlessql.services import branch_tags
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.branch_tags import (
+    STATUS_DISCARDED,
+    STATUS_PROMOTED,
     STRATEGY_DEEP_COPY,
     STRATEGY_SYMLINK,
 )
@@ -505,6 +509,19 @@ def create_branch_schema(
                 f"Cannot reach soyuz-catalog while creating branch {branch_fqn!r}."
             ) from exc
 
+    _record_branch_audit_log(
+        branch_schema_fqn=branch_fqn,
+        parent_schema_fqn=source_schema_fqn,
+        action="create",
+        run_id=agent_run_id,
+        payload={
+            "strategy": chosen_strategy,
+            "parent_versions": parent_versions,
+            "branch_storage_root": branch_storage_root,
+            "table_count": table_count,
+        },
+    )
+
     _emit_branch_created_event(
         settings=settings,
         parent_schema=source_schema_fqn,
@@ -620,6 +637,50 @@ def _register_branch_table(
     _create_table.sync(client=client, body=body)
 
 
+def _emit_branch_event(
+    *,
+    settings: Settings,
+    event_type: str,
+    data: dict[str, Any],
+) -> None:
+    """Best-effort fire of one ``pointlessql.branch.*`` CloudEvent.
+
+    Persists into ``governance_events`` and fans out to active sinks.
+    Failures are swallowed so a flaky audit-stream cannot break a
+    successful branch operation — :func:`emit_governance_event`
+    already logs internally.  If no DB is bound (purely interactive
+    PQL with no metadata DB) the event is silently dropped, mirroring
+    :func:`emit_governance_event` semantics.
+
+    Args:
+        settings: Resolved :class:`Settings`.
+        event_type: One of the ``pointlessql.branch.*`` event types
+            registered in :mod:`pointlessql.services.governance_events`.
+        data: Event payload dict (must JSON-serialise).
+    """
+    import asyncio
+
+    from pointlessql.db import get_session_factory
+    from pointlessql.services.governance_events import emit_governance_event
+
+    try:
+        factory = get_session_factory()
+    except RuntimeError:
+        return
+
+    try:
+        asyncio.run(
+            emit_governance_event(
+                event_type,
+                data,
+                settings=settings,
+                session_factory=factory,
+            )
+        )
+    except RuntimeError as exc:  # pragma: no cover — defensive
+        logger.warning("_emit_branch_event(%s): asyncio.run failed: %s", event_type, exc)
+
+
 def _emit_branch_created_event(
     *,
     settings: Settings,
@@ -629,12 +690,7 @@ def _emit_branch_created_event(
     strategy: str,
     table_count: int,
 ) -> None:
-    """Best-effort fire of the ``pointlessql.branch.created.v1`` CloudEvent.
-
-    Persists into ``governance_events`` and fans out to active sinks.
-    Failures are swallowed so a flaky audit-stream cannot break a
-    successful branch creation — :func:`emit_governance_event`
-    already logs internally.
+    """Fire the ``pointlessql.branch.created.v1`` CloudEvent.
 
     Args:
         settings: Resolved :class:`Settings`.
@@ -644,35 +700,250 @@ def _emit_branch_created_event(
         strategy: Picked clone strategy.
         table_count: Number of tables cloned.
     """
-    import asyncio
+    from pointlessql.services.governance_events import EVENT_TYPE_BRANCH_CREATED
+
+    _emit_branch_event(
+        settings=settings,
+        event_type=EVENT_TYPE_BRANCH_CREATED,
+        data={
+            "parent_schema": parent_schema,
+            "branch_schema": branch_schema,
+            "run_id": run_id,
+            "strategy": strategy,
+            "table_count": table_count,
+        },
+    )
+
+
+def _record_branch_audit_log(
+    *,
+    branch_schema_fqn: str,
+    parent_schema_fqn: str | None,
+    action: str,
+    run_id: str | None,
+    payload: dict[str, Any] | None = None,
+) -> None:
+    """Append one row to ``branch_audit_log``.
+
+    Survives the discard of the underlying UC schema so auditors can
+    reconstruct branch life-cycle weeks after the schema is gone.
+    A no-op when the metadata DB isn't bound (interactive-only path).
+
+    Args:
+        branch_schema_fqn: ``catalog.schema`` of the branch.
+        parent_schema_fqn: ``catalog.schema`` of the source, or
+            ``None`` when unknown (legacy auto_cleanup rows).
+        action: One of the values in
+            :data:`pointlessql.models.BRANCH_ACTIONS`.
+        run_id: Active run id or ``None``.
+        payload: Free-form JSON-serialisable details.  Stored as a
+            JSON string capped by convention at ~1 MiB.
+    """
+    import datetime
 
     from pointlessql.db import get_session_factory
-    from pointlessql.services.governance_events import (
-        EVENT_TYPE_BRANCH_CREATED,
-        emit_governance_event,
-    )
+    from pointlessql.models import BranchAuditLog
 
     try:
         factory = get_session_factory()
     except RuntimeError:
-        # No DB bound — interactive-only path; CloudEvent is silently
-        # dropped to mirror :func:`emit_governance_event` semantics.
         return
 
     try:
-        asyncio.run(
-            emit_governance_event(
-                EVENT_TYPE_BRANCH_CREATED,
-                {
-                    "parent_schema": parent_schema,
-                    "branch_schema": branch_schema,
-                    "run_id": run_id,
-                    "strategy": strategy,
-                    "table_count": table_count,
-                },
-                settings=settings,
-                session_factory=factory,
+        with factory() as session:
+            row = BranchAuditLog(
+                branch_schema_fqn=branch_schema_fqn,
+                parent_schema_fqn=parent_schema_fqn,
+                action=action,
+                run_id=run_id,
+                payload_json=json.dumps(payload, default=str) if payload else None,
+                created_at=datetime.datetime.now(datetime.UTC),
             )
+            session.add(row)
+            session.commit()
+    except Exception:  # noqa: BLE001 — audit-log failures must not break the op
+        logger.exception(
+            "_record_branch_audit_log: failed to persist row for action=%s branch=%s",
+            action,
+            branch_schema_fqn,
         )
-    except RuntimeError as exc:  # pragma: no cover — defensive
-        logger.warning("emit_branch_created_event: asyncio.run failed: %s", exc)
+
+
+def discard_branch_schema(
+    *,
+    client: Client,
+    branch_schema_fqn: str,
+    settings: Settings,
+    agent_run_id: str | None = None,
+) -> None:
+    """Permanently remove a Delta branch and its UC namespace.
+
+    Idempotent: a branch already in ``status='discarded'`` is a no-op
+    plus a warning log.  Branches in ``status='promoted'`` are
+    refused with :class:`BranchInUseError` because the post-promote
+    backup is not a "branch" any more — it's the previous parent
+    state preserved for time-travel.
+
+    Storage cleanup is safe-by-design for both clone modes:
+
+    * Symlink branches: ``shutil.rmtree`` on the branch directory
+      removes the symlinks themselves, not the source parquets they
+      point at.
+    * Deep-copy branches: ``rmtree`` removes the branch's owned
+      copies.
+
+    Cloud-storage discard is a follow-up — the v1 path requires the
+    branch to be local FS, which is the only configuration that
+    16.5.2 actually creates today.
+
+    Args:
+        client: Configured soyuz client.
+        branch_schema_fqn: ``catalog.schema`` of the branch.
+        settings: Resolved :class:`Settings`.
+        agent_run_id: Active run id; ``None`` when invoked from a
+            scheduler / admin path.
+
+    Raises:
+        BranchNotFoundError: ``branch_schema_fqn`` does not exist
+            in UC, or exists but carries no ``pointlessql.branch.*``
+            tags (refusing to delete a non-branch schema).
+        BranchInUseError: Branch is in ``status='promoted'``.
+        CatalogUnavailableError: soyuz unreachable.
+    """  # noqa: DOC502,DOC503 — Catalog* / Branch* propagate from helpers
+    catalog, branch_name = _split_two_part(branch_schema_fqn, "branch_schema")
+
+    try:
+        existing = _get_schema.sync(client=client, full_name=branch_schema_fqn)
+    except UnexpectedStatus:
+        existing = None
+    except httpx.ConnectError as exc:
+        raise CatalogUnavailableError(
+            f"Cannot reach soyuz-catalog while resolving {branch_schema_fqn!r}."
+        ) from exc
+
+    tags = branch_tags.read_branch_tags_sync(client, branch_schema_fqn)
+    if not isinstance(existing, SchemaInfo) and tags is None:
+        msg = f"branch {branch_schema_fqn!r} not found in soyuz-catalog"
+        raise BranchNotFoundError(msg)
+    if tags is None:
+        msg = (
+            f"schema {branch_schema_fqn!r} exists in soyuz-catalog but carries no "
+            f"pointlessql.branch.* tags — refusing to discard a non-branch schema"
+        )
+        raise BranchNotFoundError(msg)
+    if tags.status == STATUS_PROMOTED:
+        msg = (
+            f"cannot discard branch {branch_schema_fqn!r}: "
+            f"status='promoted' (promotion is final)"
+        )
+        raise BranchInUseError(msg)
+    if tags.status == STATUS_DISCARDED:
+        logger.warning(
+            "discard_branch_schema: %s already status='discarded' — no-op",
+            branch_schema_fqn,
+        )
+        return
+
+    storage_root = _resolve_storage_root(existing, branch_schema_fqn) if isinstance(
+        existing, SchemaInfo
+    ) else None
+
+    from pointlessql.db import get_session_factory
+
+    factory = get_session_factory() if agent_run_id else None
+
+    with operation_context(
+        factory,
+        agent_run_id=agent_run_id,
+        op_name="branch_discard",
+        params={
+            "branch_schema": branch_schema_fqn,
+            "parent_schema": tags.parent_schema,
+        },
+        target_table=branch_schema_fqn,
+    ) as recorder:
+        try:
+            _delete_branch_storage(storage_root)
+
+            from pointlessql.services.unitycatalog._api import (
+                _delete_schema as delete_schema_api,
+            )
+
+            delete_schema_api.sync(
+                full_name=branch_schema_fqn,
+                client=client,
+                force=True,
+            )
+
+            recorder.extra_params.update(
+                {
+                    "strategy": tags.strategy,
+                    "deleted_storage_root": storage_root,
+                }
+            )
+        except httpx.ConnectError as exc:
+            raise CatalogUnavailableError(
+                f"Cannot reach soyuz-catalog while discarding branch {branch_schema_fqn!r}."
+            ) from exc
+
+    _record_branch_audit_log(
+        branch_schema_fqn=branch_schema_fqn,
+        parent_schema_fqn=tags.parent_schema,
+        action="discard",
+        run_id=agent_run_id,
+        payload={
+            "strategy": tags.strategy,
+            "parent_versions": tags.parent_version_at_create,
+            "deleted_storage_root": storage_root,
+        },
+    )
+
+    _emit_branch_event(
+        settings=settings,
+        event_type="pointlessql.branch.discarded.v1",
+        data={
+            "branch_schema": branch_schema_fqn,
+            "parent_schema": tags.parent_schema,
+            "run_id": agent_run_id,
+            "strategy": tags.strategy,
+        },
+    )
+
+    # Reference catalog/branch_name for log narrowing only — keeping
+    # them named in the discard path makes future per-catalog cleanup
+    # filters trivial.
+    del catalog, branch_name
+
+
+def _delete_branch_storage(storage_root: str | None) -> None:
+    """Remove a branch's local-FS storage tree.
+
+    Safe for both clone modes: ``shutil.rmtree`` unlinks symlinks
+    rather than recursing into them, so a symlink-strategy branch's
+    cleanup does not touch the source parquets.
+
+    A no-op when *storage_root* is ``None`` (UC schema vanished
+    independently — only the audit row + tag cleanup remain) or when
+    the directory does not exist (idempotent re-discard).
+
+    Args:
+        storage_root: URI returned by UC for the branch schema, or
+            ``None``.
+
+    Raises:
+        ValueError: When *storage_root* is on cloud storage —
+            the v1 discard path is local-FS only, mirroring the
+            v1 create path.
+    """
+    if not storage_root:
+        return
+    scheme = _classify_storage_scheme(storage_root)
+    if scheme == "cloud":
+        msg = (
+            f"cloud-storage discard not implemented in v1 (storage_root={storage_root!r}); "
+            f"this is a Phase-16.5 follow-up"
+        )
+        raise ValueError(msg)
+    branch_path = _uri_to_local_path(storage_root)
+    if branch_path.exists():
+        shutil.rmtree(branch_path)
