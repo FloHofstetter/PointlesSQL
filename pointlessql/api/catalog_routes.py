@@ -51,6 +51,128 @@ async def api_tree(request: Request) -> list[dict[str, object]]:
     return await client.get_tree()
 
 
+@router.get("/api/tree/search")
+async def api_tree_search(request: Request, q: str, limit: int = 50) -> dict[str, object]:
+    """Server-side substring search across the catalog tree (Sprint 17.5.1).
+
+    Returns the catalog/schema/table FQNs whose components match
+    *q* case-insensitively.  Walks the tree once via the existing
+    :meth:`UnityCatalogClient.get_tree` and filters in-memory; for
+    >1000-table tenants this is significantly cheaper than shipping
+    the entire payload to the browser and filtering with JS.
+
+    The cap is hardcoded at *limit* to keep payloads bounded; if a
+    user types something so generic that it matches >limit tables
+    they should refine the query.
+
+    Args:
+        request: Incoming FastAPI request.
+        q: Substring (case-insensitive).  Must be ≥ 2 chars.
+        limit: Max matches (default 50, capped at 200).
+
+    Returns:
+        ``{matches: [{kind: catalog|schema|table, full_name, ...}]}``.
+
+    Raises:
+        ValidationError: When *q* is shorter than 2 chars.
+    """
+    from pointlessql.exceptions import ValidationError
+
+    needle = q.strip().lower()
+    if len(needle) < 2:
+        raise ValidationError("query must be at least 2 characters")
+    capped = min(max(1, limit), 200)
+
+    client = get_uc_client(request)
+    tree = await client.get_tree()
+
+    matches: list[dict[str, object]] = []
+
+    def _maybe_add(entry: dict[str, object]) -> bool:
+        matches.append(entry)
+        return len(matches) >= capped
+
+    for catalog in tree:
+        if not isinstance(catalog, dict):
+            continue
+        catalog_name = str(catalog.get("name") or "")
+        if not catalog_name:
+            continue
+        if needle in catalog_name.lower():
+            if _maybe_add({"kind": "catalog", "full_name": catalog_name}):
+                break
+        schemas_obj = catalog.get("schemas")
+        if not isinstance(schemas_obj, list):
+            continue
+        for schema in schemas_obj:
+            if not isinstance(schema, dict):
+                continue
+            schema_name = str(schema.get("name") or "")
+            if not schema_name:
+                continue
+            schema_fqn = f"{catalog_name}.{schema_name}"
+            if needle in schema_name.lower() and _maybe_add(
+                {"kind": "schema", "full_name": schema_fqn}
+            ):
+                break
+            tables_obj = schema.get("tables")
+            if not isinstance(tables_obj, list):
+                continue
+            for table in tables_obj:
+                if not isinstance(table, dict):
+                    continue
+                table_name = str(table.get("name") or "")
+                if not table_name:
+                    continue
+                if needle in table_name.lower():
+                    if _maybe_add(
+                        {
+                            "kind": "table",
+                            "full_name": f"{schema_fqn}.{table_name}",
+                            "catalog": catalog_name,
+                            "schema": schema_name,
+                            "table": table_name,
+                        }
+                    ):
+                        break
+            if len(matches) >= capped:
+                break
+        if len(matches) >= capped:
+            break
+
+    return {"matches": matches, "truncated": len(matches) >= capped}
+
+
+@router.get("/api/recents")
+async def api_recents(request: Request) -> dict[str, object]:
+    """Return the current user's most-recent table visits (Sprint 17.5.1)."""
+    from pointlessql.services import recents as recents_service
+
+    user = get_user(request)
+    user_id = int(user.get("id", 0) or 0)
+    factory = request.app.state.session_factory
+    rows = recents_service.top_recent_tables(factory, user_id)
+    return {"recents": rows}
+
+
+@router.delete("/api/recents")
+async def api_clear_recents(request: Request) -> dict[str, bool]:
+    """Wipe the current user's recents block (Sprint 17.5.1)."""
+    from sqlalchemy import delete
+
+    from pointlessql.models import RecentTable
+
+    user = get_user(request)
+    user_id = int(user.get("id", 0) or 0)
+    if user_id <= 0:
+        return {"ok": True}
+    factory = request.app.state.session_factory
+    with factory() as session:
+        session.execute(delete(RecentTable).where(RecentTable.user_id == user_id))
+        session.commit()
+    return {"ok": True}
+
+
 @router.get("/api/catalogs")
 async def api_catalogs(request: Request) -> list[dict[str, object]]:
     """Return all catalogs as JSON."""

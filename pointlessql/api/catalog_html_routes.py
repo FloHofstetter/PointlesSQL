@@ -224,6 +224,17 @@ async def table_detail(
             full_name,
             SELECT,
         )
+        # Sprint 17.5.1 — record the visit for the per-user "Recent
+        # tables" sidebar block.  Best-effort; service swallows its
+        # own exceptions so a recents-write hiccup never blocks the
+        # rendered page.
+        from pointlessql.services import recents as recents_service
+
+        recents_service.record_table_visit(
+            request.app.state.session_factory,
+            int(user.get("id", 0) or 0),
+            full_name,
+        )
 
     can_manage = has_privilege(
         effective,

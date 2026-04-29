@@ -66,12 +66,69 @@
             </div>
         </template>
 
-        <template x-if="tree && filteredEmpty()">
+        {# Sprint 17.5.1 — server-side search results, flat list of
+           matching catalog/schema/table FQNs.  Renders only while the
+           query is >= 2 chars AND the server returned matches; falls
+           back to the client-side filter path when the server errors
+           out (searchResults left empty in fetchServerSearch). #}
+        <template x-if="normalisedQuery().length >= 2 && searchResults.length > 0">
+            <div class="px-2 pt-2">
+                <div class="text-muted small mb-1">
+                    <span x-text="searchResults.length"></span>
+                    <span x-text="searchResults.length === 1 ? 'match' : 'matches'"></span>
+                    <template x-if="searchTruncated">
+                        <span class="ms-1">(truncated)</span>
+                    </template>
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <template x-for="m in searchResults" :key="m.full_name">
+                        <li>
+                            <template x-if="m.kind === 'table'">
+                                <a :href="'/catalogs/' + m.catalog + '/schemas/' + m.schema + '/tables/' + m.table"
+                                   class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
+                                   :title="m.full_name">
+                                    <i class="bi bi-table flex-shrink-0"></i>
+                                    <span class="text-truncate" x-text="m.table"></span>
+                                    <span class="text-muted small ms-auto flex-shrink-0"
+                                          style="font-size: 0.65rem;"
+                                          x-text="m.schema + '.' + m.catalog"></span>
+                                </a>
+                            </template>
+                            <template x-if="m.kind === 'schema'">
+                                <a :href="'/catalogs/' + m.full_name.split('.')[0] + '/schemas/' + m.full_name.split('.')[1]"
+                                   class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
+                                   :title="m.full_name">
+                                    <i class="bi bi-folder flex-shrink-0"></i>
+                                    <span class="text-truncate" x-text="m.full_name"></span>
+                                </a>
+                            </template>
+                            <template x-if="m.kind === 'catalog'">
+                                <a :href="'/catalogs/' + m.full_name"
+                                   class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
+                                   :title="m.full_name">
+                                    <i class="bi bi-database flex-shrink-0"></i>
+                                    <span class="text-truncate" x-text="m.full_name"></span>
+                                </a>
+                            </template>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+
+        <template x-if="normalisedQuery().length >= 2 && !searching && searchResults.length === 0">
             <div class="text-muted small p-3 fst-italic"
                  x-text="'No matches for &quot;' + query + '&quot;'"></div>
         </template>
 
-        <ul class="list-unstyled mb-0" x-show="tree && !filteredEmpty()" x-cloak>
+        <template x-if="tree && normalisedQuery().length < 2 && filteredEmpty()">
+            <div class="text-muted small p-3 fst-italic"
+                 x-text="'No matches for &quot;' + query + '&quot;'"></div>
+        </template>
+
+        <ul class="list-unstyled mb-0"
+            x-show="tree && !filteredEmpty() && !(normalisedQuery().length >= 2 && searchResults.length > 0)"
+            x-cloak>
             <template x-for="c in (tree || [])" :key="c.name">
                 <li x-show="catalogVisible(c)" x-cloak>
                     <div class="pql-tree-item"
@@ -146,12 +203,23 @@
     const RECENTS_KEY = 'pql.recentTables';
 
     function loadRecents() {
+        // Sprint 17.5.1 — localStorage stays as the synchronous initial
+        // render so the sidebar isn't empty on first paint (and as a
+        // no-auth fallback for anonymous browsing).  ``fetchRecents``
+        // below overrides this asynchronously with the DB-backed list
+        // for logged-in users.
         try {
             const raw = localStorage.getItem(RECENTS_KEY);
             if (!raw) return [];
             const parsed = JSON.parse(raw);
             return Array.isArray(parsed) ? parsed : [];
         } catch (e) { return []; }
+    }
+
+    function fqnParts(fqn) {
+        const parts = (fqn || '').split('.');
+        if (parts.length !== 3) return null;
+        return { catalog: parts[0], schema: parts[1], table: parts[2], fqn };
     }
 
     window.catalogTree = function () {
@@ -164,6 +232,12 @@
             // Sprint 17.5 — client-side filter + recent-tables list.
             query: '',
             recents: loadRecents(),
+            // Sprint 17.5.1 — server-side search results (only used
+            // when query.length >= 2).  Empty array = client-side
+            // filter mode is active.
+            searchResults: [],
+            searching: false,
+            searchTruncated: false,
 
             isOpen(key) { return !!this.open[key]; },
 
@@ -207,13 +281,68 @@
                 return !this.tree.some(c => this.catalogVisible(c));
             },
             onQueryChange() {
-                // No persistence — the query resets between page
-                // loads on purpose so the tree always opens in its
-                // "natural" expanded state.
+                // Sprint 17.5.1 — when the query is non-trivial, ask
+                // the server for matches instead of walking the full
+                // tree client-side (cheap up to a few hundred tables,
+                // slow past a thousand).  Empty / single-char queries
+                // fall back to the client-side filter path so typing
+                // feels instant for trivial input.
+                const q = this.normalisedQuery();
+                if (q.length < 2) {
+                    this.searchResults = [];
+                    this.searchTruncated = false;
+                    return;
+                }
+                this.fetchServerSearch(q);
+            },
+            async fetchServerSearch(q) {
+                this.searching = true;
+                try {
+                    const res = await fetch(
+                        '/api/tree/search?q=' + encodeURIComponent(q),
+                    );
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    this.searchResults = Array.isArray(data.matches)
+                        ? data.matches
+                        : [];
+                    this.searchTruncated = !!data.truncated;
+                } catch (e) {
+                    // Fall back to client-side filter on error;
+                    // searchResults stays empty so the existing
+                    // tableVisible / schemaVisible code paths take
+                    // over.
+                    this.searchResults = [];
+                    this.searchTruncated = false;
+                } finally {
+                    this.searching = false;
+                }
             },
             clearRecents() {
                 try { localStorage.removeItem(RECENTS_KEY); } catch (e) {}
                 this.recents = [];
+                // Sprint 17.5.1 — also wipe the server-side mirror
+                // for logged-in users.  Anonymous sessions skip the
+                // call (the DELETE returns ok regardless).
+                fetch('/api/recents', { method: 'DELETE' }).catch(() => {});
+            },
+            async fetchRecents() {
+                // Sprint 17.5.1 — replace the localStorage-bootstrap
+                // value with the DB-backed list for logged-in users.
+                try {
+                    const res = await fetch('/api/recents');
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (!Array.isArray(data.recents)) return;
+                    const items = data.recents
+                        .map((r) => fqnParts(r.table_full_name))
+                        .filter((p) => p !== null);
+                    if (items.length > 0) {
+                        this.recents = items;
+                    }
+                } catch (e) {
+                    // No-op — keep the localStorage view.
+                }
             },
 
             async load() {
@@ -238,6 +367,10 @@
 
                 if (!this.tree) await this.fetchTree();
                 else this.fetchTree();
+                // Sprint 17.5.1 — pull the DB-backed recents in the
+                // background; localStorage already populated the
+                // initial view so this is a non-blocking upgrade.
+                this.fetchRecents();
             },
 
             async reload() {
