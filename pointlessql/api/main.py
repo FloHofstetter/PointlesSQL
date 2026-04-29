@@ -175,6 +175,27 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="external-writes-scan",
         )
 
+    # Sprint 20.2 lineage retention pruner.  Runs as its own
+    # asyncio task next to the audit-retention loop — the existing
+    # scheduler is built around per-user JobExecutor callbacks that
+    # don't fit a system-maintenance task without per-axis None
+    # thresholds the loop also short-circuits.
+    lineage_pruner_task: asyncio.Task[None] | None = None
+    retention = settings.audit.lineage_retention
+    if any(
+        v is not None and v > 0
+        for v in (
+            retention.row_edges_days,
+            retention.row_rejects_days,
+            retention.column_map_days,
+            retention.value_changes_days,
+        )
+    ):
+        lineage_pruner_task = asyncio.create_task(
+            _lineage_pruner_loop(app.state.session_factory, settings),
+            name="lineage-pruner",
+        )
+
     # The browser notebook editor was retired; a future
     # :class:`KernelRegistry` on ``app.state`` will serve as the
     # execution backend for the ``agent_run`` scheduler kind.
@@ -189,6 +210,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             external_writes_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await external_writes_task
+        if lineage_pruner_task is not None:
+            lineage_pruner_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await lineage_pruner_task
         if scheduler is not None:
             await scheduler.stop()
         await app.state.uc_client.aclose()
@@ -262,6 +287,43 @@ async def _external_writes_loop(
                 )
         except Exception:  # noqa: BLE001 — scanner loop must survive everything
             logger.exception("external_writes: scan tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _lineage_pruner_loop(
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Periodic prune of the four lineage tables (Sprint 20.2).
+
+    Active when at least one
+    :class:`LineageRetentionSettings` axis has a positive
+    ``*_days`` value.  The loop wakes every
+    ``audit.cleanup_interval_seconds`` (default 86400 = 24h),
+    matching the audit-log retention cadence — both run in the
+    operator-quiet hours.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the rest
+            of the app.
+        settings: Snapshotted :class:`Settings`.
+    """
+    from pointlessql.services.lineage_pruner import prune_once_async
+
+    interval = max(60, settings.audit.cleanup_interval_seconds)
+    while True:
+        try:
+            deleted = await prune_once_async(factory, settings)
+            if deleted:
+                logger.info(
+                    "lineage_pruner: pruned %s",
+                    ", ".join(f"{axis}={count}" for axis, count in deleted.items()),
+                )
+        except Exception:  # noqa: BLE001 — pruner must survive everything
+            logger.exception("lineage_pruner: prune tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:

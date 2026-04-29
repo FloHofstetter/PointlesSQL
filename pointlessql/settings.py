@@ -238,6 +238,37 @@ class SchedulerSettings(BaseSettings):
     max_concurrent_runs: int = 4
 
 
+class LineageRetentionSettings(BaseSettings):
+    """Per-axis TTL on the four lineage tables (Sprint 20.2).
+
+    Reads ``POINTLESSQL_AUDIT_LINEAGE_RETENTION_*`` environment
+    variables.  Each ``*_days`` field is either a positive integer
+    (rows older than ``now - N days`` get pruned at the next tick)
+    or ``None`` / ``0`` (axis never pruned).
+
+    Defaults follow the Phase 20 plan:
+
+    * ``row_edges`` and ``row_rejects`` — 365 days (one operating
+      year, enough for compliance retrospectives).
+    * ``value_changes`` — 730 days (longer because value-level
+      auditing is the strongest forensic surface; doubling the
+      window costs little if redaction is on).
+    * ``column_map`` — never (small volume, useful as a stable
+      schema-evolution record).
+
+    The pruner runs as a scheduler job at 03:00 UTC daily by default
+    (off-peak for most operating timezones).
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AUDIT_LINEAGE_RETENTION_")
+
+    row_edges_days: int | None = 365
+    row_rejects_days: int | None = 365
+    column_map_days: int | None = None
+    value_changes_days: int | None = 730
+    cron: str = "0 3 * * *"
+
+
 class AuditSettings(BaseSettings):
     """Audit-log retention, cleanup, and cockpit configuration.
 
@@ -273,6 +304,7 @@ class AuditSettings(BaseSettings):
     pii_cache_ttl_seconds: int = 600
     pii_mode: Literal["store_clear", "hash_only", "redact_with_audit_log"] = "hash_only"
     pii_hash_secret: str | None = None
+    lineage_retention: LineageRetentionSettings = Field(default_factory=LineageRetentionSettings)
 
 
 class DeltaSettings(BaseSettings):

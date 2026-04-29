@@ -2026,16 +2026,35 @@ PointlesSQL
 │   │       rewritten — soft transition.  Historical cleartext
 │   │       stays readable to admins; new writes hash.  Quality
 │   │       gates clean.
-│   ├── Sprint 20.2 — Lineage retention policies
-│   │   └── Per-table TTL on the four lineage tables
-│   │       (``lineage_row_edges``, ``lineage_row_rejects``,
-│   │       ``lineage_column_map``, ``lineage_value_changes``).
-│   │       Background job (uses Phase-12 scheduler) prunes rows
-│   │       older than configurable threshold per table.
-│   │       Defaults: row_edges 365d, value_changes 730d (longer
-│   │       because compliance), column_map forever (small
-│   │       volume).  Pruning logged in audit_log itself so
-│   │       deletion is itself auditable.
+│   ├── Sprint 20.2 — Lineage retention TTLs                  ✅
+│   │   ├── New ``services/lineage_pruner.py`` exports
+│   │   │   ``prune_once`` (sync) + ``prune_once_async`` (async
+│   │   │   wrapper that emits one
+│   │   │   ``pointlessql.lineage.pruned`` governance CloudEvent
+│   │   │   per axis after the DB prune commits).  Each per-axis
+│   │   │   prune also appends one ``audit_log`` row so deletion
+│   │   │   is itself auditable.
+│   │   ├── New ``LineageRetentionSettings`` (env prefix
+│   │   │   ``POINTLESSQL_AUDIT_LINEAGE_RETENTION_*``) carries
+│   │   │   per-axis ``*_days`` thresholds.  ``None`` /
+│   │   │   ``0`` short-circuits the axis (never pruned).
+│   │   │   Defaults: row_edges 365, row_rejects 365,
+│   │   │   value_changes 730, column_map ``None``.
+│   │   ├── Lifespan task ``_lineage_pruner_loop`` ticks every
+│   │   │   ``audit.cleanup_interval_seconds`` (default 24h).
+│   │   │   Active only when at least one axis has a positive
+│   │   │   threshold.  Survives any per-axis exception so a
+│   │   │   transient DB hiccup never takes the loop down.
+│   │   ├── Sprint 20.0's governance event catalog already
+│   │   │   includes ``EVENT_TYPE_LINEAGE_PRUNED``; the pruner
+│   │   │   is its first emitter.  Audit-stream sinks see prunes
+│   │   │   as part of the same pipe as external-write detections
+│   │   │   and cost-gate denials.
+│   │   └── Quality gates clean.  Smoke test confirms 400-day-old
+│   │       rows are deleted, fresh rows preserved, three
+│   │       per-axis audit_log rows appended, and the
+│   │       ``column_map`` axis is correctly skipped when its
+│   │       threshold is ``None``.
 │   ├── Sprint 20.3 — Time-travel value queries in UI
 │   │   └── Surface what we already capture in
 │   │       ``agent_run_operations.delta_version_after``: a

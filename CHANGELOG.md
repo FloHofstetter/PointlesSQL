@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 20.2: Lineage retention TTLs (2026-04-29)
+
+Bounded-growth invariant on the four lineage tables.  Each axis
+gets its own retention threshold; the pruner runs as a lifespan
+task next to the existing audit-cleanup loop.
+
+- New `services/lineage_pruner.py`: `prune_once` (sync DB I/O) +
+  `prune_once_async` (async wrapper that fires one
+  `pointlessql.lineage.pruned` governance CloudEvent per axis
+  after the DB commit).  Each per-axis prune appends an
+  `audit_log` row (`actor_role=system`, `action=lineage_prune`,
+  `target=lineage_<axis>`, `detail={deleted, cutoff,
+  threshold_days}`).
+- `LineageRetentionSettings` (env prefix
+  `POINTLESSQL_AUDIT_LINEAGE_RETENTION_*`) with per-axis
+  `*_days` thresholds.  `None` / `0` skips the axis.  Defaults:
+  row_edges 365, row_rejects 365, value_changes 730,
+  column_map `None`.
+- `_lineage_pruner_loop` lifespan task ticks every
+  `audit.cleanup_interval_seconds` (default 24h).  Active only
+  when at least one axis has a positive threshold.
+- Sprint 20.0's `EVENT_TYPE_LINEAGE_PRUNED` finds its first
+  emitter.  Audit-stream sinks see prunes alongside external-
+  write detections and cost-gate denials.
+
 ### Added — Sprint 20.1: PII detection + masking write-hook (2026-04-29)
 
 Sprint 20.1 closes the cleartext-at-rest gap on
