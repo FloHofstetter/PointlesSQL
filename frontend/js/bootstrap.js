@@ -85,6 +85,15 @@ import { commandPalette } from './components/command_palette.js';
 
 window.commandPalette = commandPalette;
 
+// Sprint 17.3 — Lineage-DAG factory for the Graph sub-tab on
+// /runs/{id}.  cytoscape.js + cytoscape-dagre are loaded from the
+// run_view.html extra_js block (CDN), and the factory itself
+// reads them off ``window.cytoscape`` / ``window.cytoscapeDagre``
+// when its ``init()`` runs.
+import { lineageDag } from './components/lineage_dag.js';
+
+window.lineageDag = lineageDag;
+
 // Page-template factories migrated to ESM (Sprint 94+).  Each was
 // previously an inline ``<script>`` IIFE inside its
 // pages/*.html file; lifting them here means a single shared
