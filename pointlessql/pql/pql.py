@@ -21,7 +21,12 @@ from soyuz_catalog_client import Client
 
 from pointlessql.pql._aggregate import AggregateMode, AggSpec, aggregate_table
 from pointlessql.pql._autoload import AutoloadFormat, autoload_files
-from pointlessql.pql._branch import create_branch_schema, discard_branch_schema
+from pointlessql.pql._branch import (
+    create_branch_schema,
+    discard_branch_schema,
+    preview_promote_conflicts,
+    promote_branch_schema,
+)
 from pointlessql.pql._list import list_catalogs, list_schemas, list_tables
 from pointlessql.pql._merge import MergeStrategy, merge_table
 from pointlessql.pql._read import read_table
@@ -582,6 +587,51 @@ class PQL:
             settings=Settings(),
             strategy=strategy,
             agent_run_id=self._current_run_id,
+        )
+
+    def branch_promote(self, branch_schema: str) -> dict[str, str]:
+        """Promote a branch to be the new parent via UC pointer-swap.
+
+        Phase 16.5.4 entry point.  Refuses promotion when the parent
+        moved between branch creation and now (raises
+        :class:`BranchPromotionConflictError`); recovery is to discard
+        and re-branch.  v1 is pointer-swap-only — the parent is
+        renamed to ``{parent}_pre_promote_<ts>`` (backup), the branch
+        is renamed to the parent's old name, and tags are updated.
+
+        Permission gate: caller is responsible for enforcing
+        admin / supervisor scope before invoking.  The route handler
+        in 16.5.5 wraps this with :func:`require_admin`.
+
+        Args:
+            branch_schema: Two-part ``catalog.branch_name``.
+
+        Returns:
+            ``{"new_parent": ..., "backup": ...}``.
+        """
+        return promote_branch_schema(
+            client=self._client,
+            branch_schema_fqn=branch_schema,
+            settings=Settings(),
+            agent_run_id=self._current_run_id,
+        )
+
+    def branch_promote_preview(self, branch_schema: str) -> dict[str, Any]:
+        """Dry-run conflict-detection for a planned promotion.
+
+        Returns ``{ok: bool, conflicts: list[...]}`` without mutating
+        any UC state.  The Control-Room UI renders this directly so
+        a reviewer sees the conflict-report before clicking promote.
+
+        Args:
+            branch_schema: Two-part ``catalog.branch_name``.
+
+        Returns:
+            Conflict report dict (see :func:`preview_promote_conflicts`).
+        """
+        return preview_promote_conflicts(
+            client=self._client,
+            branch_schema_fqn=branch_schema,
         )
 
     def branch_discard(self, branch_schema: str) -> None:
