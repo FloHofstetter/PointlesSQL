@@ -1648,7 +1648,7 @@ requires-dist = [
     { name = "pyright", specifier = ">=1.1" },
     { name = "python-multipart", specifier = ">=0.0.26" },
     { name = "pyyaml", specifier = ">=6.0" },
-    { name = "soyuz-catalog-client", git = "https://github.com/FloHofstetter/soyuz-catalog?subdirectory=soyuz-catalog-client&tag=v0.2.0rc3" },
+    { name = "soyuz-catalog-client", git = "https://github.com/FloHofstetter/soyuz-catalog?subdirectory=soyuz-catalog-client&tag=v0.2.0rc5" },
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "sqlglot", specifier = ">=26.0" },
     { name = "typer", specifier = ">=0.15" },
@@ -2324,8 +2324,8 @@ wheels = [
 
 [[package]]
 name = "soyuz-catalog-client"
-version = "0.2.0rc2"
-source = { git = "https://github.com/FloHofstetter/soyuz-catalog?subdirectory=soyuz-catalog-client&tag=v0.2.0rc3#b15babc3362c9c43ee32644627c0f71cb400a758" }
+version = "0.2.0rc4"
+source = { git = "https://github.com/FloHofstetter/soyuz-catalog?subdirectory=soyuz-catalog-client&tag=v0.2.0rc5#339153308623ac4a9172de10a2dbca3f3d381a9f" }
 dependencies = [
     { name = "attrs" },
     { name = "httpx" },

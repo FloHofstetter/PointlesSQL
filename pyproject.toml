@@ -162,4 +162,4 @@ show_missing = true
 skip_covered = false
 
 [tool.uv.sources]
-soyuz-catalog-client = { git = "https://github.com/FloHofstetter/soyuz-catalog", tag = "v0.2.0rc3", subdirectory = "soyuz-catalog-client" }
+soyuz-catalog-client = { git = "https://github.com/FloHofstetter/soyuz-catalog", tag = "v0.2.0rc5", subdirectory = "soyuz-catalog-client" }
