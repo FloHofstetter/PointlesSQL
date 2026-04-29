@@ -1,0 +1,29 @@
+{
+  "_comment": "Sprint 19.4 — Incident-Responder interactive Hermes flow. Wake-on-message via Hermes' chat-platform adapter — same install pattern as compliance-bot.json. The user's first message is expected to carry a run_id; the system prompt at docs/hermes-jobs/incident-responder.md mandates persisting that run_id across the multi-turn conversation. Replace the `prompt` stub below with the canonical system prompt at platform-message time; the harness's failure to do so makes the agent emit the loud failure response instead of trying to answer.",
+  "name": "incident-responder",
+  "schedule": {
+    "kind": "interval",
+    "minutes": 1440,
+    "display": "every 1440m"
+  },
+  "schedule_display": "every 1440m",
+  "prompt": "You are PointlesSQL Incident-Responder. See docs/hermes-jobs/incident-responder.md for the full system prompt; the harness should override this `prompt` field with the canonical Markdown system prompt at platform-message time. Do NOT answer with this stub directly — fail loudly so the operator notices the misconfiguration.",
+  "skills": null,
+  "skill": null,
+  "model": null,
+  "provider": null,
+  "base_url": null,
+  "script": null,
+  "repeat": {
+    "times": null,
+    "completed": 0
+  },
+  "enabled": true,
+  "state": "scheduled",
+  "paused_at": null,
+  "paused_reason": null,
+  "deliver": "origin",
+  "origin": null,
+  "enabled_toolsets": ["pointlessql"],
+  "workdir": null
+}

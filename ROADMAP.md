@@ -1918,11 +1918,21 @@ PointlesSQL
 │   │   properties (refuses writes, always-masked
 │   │   value-changes, no API-key leak in output bytes,
 │   │   audit-of-audit history matches the tool surface).
-│   └── Sprint 19.4 — Incident-Responder (interactive chat)
-│       └── Hermes one-shot flow optimised for follow-up
-│           questions: "was hat Run X kaputt gemacht?"  Walks
-│           down to root cause across rejecting ops + external
-│           writes.  No new server endpoints, prompt-only.
+│   └── Sprint 19.4 — Incident-Responder (interactive chat)     ✅
+│       Multi-turn Hermes one-shot flow.  Takes a ``run_id`` up
+│       front, walks down failing op → reject details → external-
+│       write neighbours.  No new server endpoints — prompt-only
+│       composition over the existing per-run audit-axis tools
+│       from Sprint 19.1.  Ships ``docs/hermes-jobs/incident-
+│       responder.{md,json}`` (system prompt with three-block
+│       Finding/Evidence/Next skeleton + five constraints
+│       including no-write-recommendations, rollback-as-option-
+│       not-action, and proactive external-write callout),
+│       ``scripts/seed-broken-run.py`` (synthetic broken
+│       AgentRun + 3 ops + ~50 LineageRowRejects + 2
+│       UnattributedWrite rows), and ``docs/e2e-walkthroughs/
+│       incident-responder.md`` covering three drill-down
+│       patterns and four safety properties.
 │
 ├── Phase 20 — Forensics + Retention                      ⏳ queued
 │   │

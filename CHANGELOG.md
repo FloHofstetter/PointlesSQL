@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 19.4: Incident-Responder persona (2026-04-29)
+
+Third Phase-19 persona: multi-turn Hermes flow for "was hat Run X
+kaputt gemacht?".  Takes a ``run_id`` up front (typically pasted from
+a banner alert / deploy log), walks down to root cause across the
+existing per-run audit axes, never recommends a write.
+
+- **No new server endpoints.**  This sprint is purely prompt
+  composition + a fixture: every tool the responder uses landed in
+  Sprint 19.1.  The plugin tool-count is unchanged at 32.
+
+- **System prompt + manifest** at
+  ``docs/hermes-jobs/incident-responder.{md,json}``.  Three-block
+  answer skeleton (Finding / Evidence / Next) optimised for
+  follow-up questions.  Five hard constraints: stay focused on
+  one run, never recommend a write, mention rollback as an option
+  exactly once per conversation, surface external-write neighbours
+  proactively, be terse (operator is on call).
+
+- **Synthetic broken-run fixture** at
+  ``scripts/seed-broken-run.py``.  Inserts one
+  :class:`AgentRun` with status ``failed``, three
+  :class:`AgentRunOperation` rows (``autoload`` ok / ``merge``
+  errored on schema mismatch / ``write_table`` accumulated rejects),
+  ~50 :class:`LineageRowReject` rows, and 2
+  :class:`UnattributedWrite` rows landing in the same window.  Plus
+  one extra ``succeeded`` run for the same principal so per-
+  principal aggregations have a non-trivial denominator.  Prints
+  the run_id for use in the chat prompt.
+
+- **e2e walkthrough** at
+  ``docs/e2e-walkthroughs/incident-responder.md`` exercises three
+  drill-down patterns (failing op, op-3 rejects, proactive
+  external-write callout) and four safety properties (refuses
+  writes, rollback mentioned at most once, masking on
+  value-changes, audit-of-audit history matches the tool surface).
+
 ### Added — Sprint 19.3: Compliance-Bot (ad-hoc Slack/chat persona) (2026-04-29)
 
 Read-only Hermes one-shot flow that answers ad-hoc compliance

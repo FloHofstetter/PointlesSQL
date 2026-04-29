@@ -15,6 +15,7 @@ PointlesSQL is the audit data store + tool surface they call into.
 |---|---|---|---|---|
 | [`audit-reviewer-daily.json`](audit-reviewer-daily.json) | 19.2 | Reviewer | `0 6 * * *` | Daily anomaly digest of yesterday's agent activity. Wake-gate (`scripts/audit-wake-gate.py`) skips the LLM round-trip on `ok` days; on `warn`/`critical` the agent drafts Markdown, persists it via `pql_post_audit_review`, and PointlesSQL fans the CloudEvent out to webhooks. |
 | [`compliance-bot.json`](compliance-bot.json) | 19.3 | Compliance-Bot | wake-on-message | Read-only Hermes flow that answers ad-hoc questions ("which runs did X drive last quarter on table Y?") via Slack/Matrix DM. System prompt at [`compliance-bot.md`](compliance-bot.md). |
+| [`incident-responder.json`](incident-responder.json) | 19.4 | Incident-Responder | wake-on-message | Multi-turn drill-down for "was hat Run X kaputt gemacht?" — takes a `run_id` up front, walks failing op → rejects → external writes. System prompt at [`incident-responder.md`](incident-responder.md). |
 
 (More personas land in 19.3 / 19.4 — Compliance-Bot and Incident-Responder.)
 
