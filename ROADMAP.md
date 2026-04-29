@@ -1690,23 +1690,64 @@ PointlesSQL
 │   │       ≥20-column search box stays in the Columns tab; no
 │   │       new client-side filter yet.  Card content + Alpine
 │   │       factories preserved verbatim.
-│   └── Sprint 17.5 — Catalog-Browser search/filter           ✅
-│       └── ``components/sidebar.html`` gains a debounced search
-│           input above the tree.  Typing case-insensitive
-│           substrings hides non-matching catalogs / schemas /
-│           tables and force-expands branches that contain a
-│           match, so partial hits are visible without manual
-│           chevron-clicks.  A new "Recent tables" block above
-│           the tree surfaces the last five
-│           ``catalog.schema.table`` visits, written into
-│           ``localStorage['pql.recentTables']`` by a small
-│           ``base.html`` script (sibling of the Sprint-32
-│           ``pql.recentCatalogs`` writer).  No server-side
-│           changes — the existing ``/api/tree`` payload covers
-│           the filter.  Sprint 17.5.1 (deferred) would add
-│           ``/api/tree/search`` for >1000-table tenants and a
-│           DB-backed ``RecentTable`` model for cross-device
-│           recents.
+│   ├── Sprint 17.5 — Catalog-Browser search/filter           ✅
+│   │   └── ``components/sidebar.html`` gains a debounced search
+│   │       input above the tree.  Typing case-insensitive
+│   │       substrings hides non-matching catalogs / schemas /
+│   │       tables and force-expands branches that contain a
+│   │       match, so partial hits are visible without manual
+│   │       chevron-clicks.  A new "Recent tables" block above
+│   │       the tree surfaces the last five
+│   │       ``catalog.schema.table`` visits, written into
+│   │       ``localStorage['pql.recentTables']`` by a small
+│   │       ``base.html`` script (sibling of the Sprint-32
+│   │       ``pql.recentCatalogs`` writer).  No server-side
+│   │       changes — the existing ``/api/tree`` payload covers
+│   │       the filter.
+│   │
+│   │   Phase-17 follow-ups, queued from the 2026-04-29 closing
+│   │   replay (Playwright-MCP against headful Firefox; one
+│   │   load-bearing bug surfaced — BUG-17.2-01 ``rollback``
+│   │   ``x-data="..."`` collided with ``|tojson`` ``"`` chars,
+│   │   fixed in commit ``fc940be``).  None of these block the
+│   │   Phase-17 closing — they are polish + nice-to-have:
+│   │
+│   ├── Sprint 17.3.1 — Lazy-load cytoscape on Graph sub-tab  ⏳ queued
+│   │   └── Today the cytoscape (~280 KB) + dagre (~50 KB) +
+│   │       cytoscape-dagre adapter scripts ship from jsdelivr
+│   │       on every ``/runs/{id}`` page (cold-cache cost).
+│   │       Goal: defer the ``<script>`` tags until the user
+│   │       toggles the Lineage / Graph sub-tab the first time.
+│   │       Mechanism: dynamic ``import()`` inside the Alpine
+│   │       factory's ``init()``, gated on a ``window.``
+│   │       ``__cytoscapeLoaded`` flag.  Falls back to the
+│   │       existing ``<script>`` shape for the no-JS case.
+│   │
+│   ├── Sprint 17.5.1 — Server-side tree search + DB recents  ⏳ queued
+│   │   └── ``/api/tree/search?q=`` for >1000-table tenants
+│   │       (the Sprint-17.5 client-side filter walks the full
+│   │       payload in JS — fine up to a few hundred tables,
+│   │       slow past a thousand).  Plus a DB-backed
+│   │       ``RecentTable(user_id, table_full_name,
+│   │       last_visited_at)`` model + Alembic migration so
+│   │       recents survive across devices for a single user
+│   │       (today: localStorage only).  Re-uses the Sprint-31
+│   │       Cmd+K search service via a small refactor that
+│   │       ``frontend/js/components/command_palette.js``
+│   │       already calls.
+│   │
+│   └── Sprint 17.6 — Lineage trace sub-panes                  ⏳ queued
+│       └── The Sprint-15 Row trace, Sprint-15.6 Column trace,
+│       │   and Sprint-15.7 Value-changes drill-downs live on
+│       │   separate ``/catalogs/.../trace`` pages today.
+│       │   This sprint embeds them as additional sub-panes of
+│       │   the Lineage top-tab on ``/runs/{id}``, so a
+│       │   reviewer can flip Summary → Graph → Row → Column →
+│       │   Values without leaving the run-detail page.  Trade-
+│       │   off: more JS shipping in the run-detail bundle vs
+│       │   fewer page-flips for the audit-reviewer persona.
+│       │   Defer until usage data shows the page-flip is the
+│       │   real bottleneck.
 │
 ├── Phase 18 — Audit Cockpit                              ✅ closed
 │   │
