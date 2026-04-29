@@ -155,6 +155,56 @@ class PQL:
             unreachable_msg=self._unreachable_msg(),
         )
 
+    def table_at_version(self, full_name: str, version: int) -> Any:
+        """Read a Delta table as of a specific historical version (Sprint 20.3).
+
+        Always materialises through pandas — the engine abstraction
+        targets current-version reads only, and per-engine
+        ``load_as_version`` would surface near-identical code.
+        Records a ``query_history`` row with
+        ``read_kind="pql_table_at_version"`` so the time-travel read
+        shows up in ``/queries``.
+
+        Args:
+            full_name: Three-part name ``"catalog.schema.table"``.
+            version: Target Delta version.  ``0`` is the initial
+                commit; subsequent commits monotonically increment.
+
+        Returns:
+            A pandas DataFrame as the table looked at *version*.
+        """
+        from pointlessql.pql._time_travel import read_table_at_version
+
+        return read_table_at_version(
+            client=self._client,
+            full_name=full_name,
+            version=version,
+            unreachable_msg=self._unreachable_msg(),
+        )
+
+    def table_at_timestamp(self, full_name: str, when: Any) -> Any:
+        """Read a Delta table as it looked at wall-clock instant *when*.
+
+        Resolves to a Delta version via
+        :meth:`deltalake.DeltaTable.load_as_version` (the public API
+        accepts a datetime).
+
+        Args:
+            full_name: Three-part name ``"catalog.schema.table"``.
+            when: Timezone-aware ``datetime``.
+
+        Returns:
+            A pandas DataFrame as the table looked at *when*.
+        """
+        from pointlessql.pql._time_travel import read_table_at_timestamp
+
+        return read_table_at_timestamp(
+            client=self._client,
+            full_name=full_name,
+            when=when,
+            unreachable_msg=self._unreachable_msg(),
+        )
+
     @staticmethod
     def sql(
         query: str,

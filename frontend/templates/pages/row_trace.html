@@ -42,6 +42,88 @@
     </div>
 </div>
 
+{% if current_user and current_user.is_admin %}
+<div class="card mb-4" x-data="rowAtVersion()">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history"></i>
+        <span>View this row at a specific Delta version</span>
+        <span class="badge bg-info ms-auto">admin only</span>
+    </div>
+    <div class="card-body small">
+        <div class="d-flex gap-2 align-items-end mb-2">
+            <div>
+                <label for="row-version-input" class="form-label">Delta version</label>
+                <input id="row-version-input" type="number" min="0" class="form-control form-control-sm"
+                       style="width: 8em;" x-model.number="version" placeholder="e.g. 3">
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary"
+                    :disabled="loading || version === null || version === ''"
+                    @click="lookup()">
+                <i class="bi bi-arrow-clockwise me-1"></i>
+                <span x-text="loading ? 'Loading…' : 'Look up'"></span>
+            </button>
+        </div>
+        <template x-if="error">
+            <div class="alert alert-warning small mb-0" x-text="error"></div>
+        </template>
+        <template x-if="result && !result.found">
+            <div class="text-muted fst-italic mb-0">
+                Row was not present at v<span x-text="result.version"></span>
+                <span x-show="result.note" class="ms-1" x-text="'(' + result.note + ')'"></span>
+            </div>
+        </template>
+        <template x-if="result && result.found">
+            <div class="bg-body-tertiary p-2 rounded small">
+                <div class="text-muted mb-1">
+                    State at v<span x-text="result.version"></span>:
+                </div>
+                <table class="table table-sm mb-0 align-middle">
+                    <tbody>
+                        <template x-for="[col, val] in Object.entries(result.row || {})" :key="col">
+                            <tr>
+                                <td class="font-monospace small text-muted" x-text="col"></td>
+                                <td class="font-monospace small" x-text="val === null ? '—' : String(val)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </template>
+    </div>
+</div>
+
+<script>
+function rowAtVersion() {
+    return {
+        version: null,
+        loading: false,
+        error: null,
+        result: null,
+        async lookup() {
+            if (this.version === null || this.version === '') return;
+            this.loading = true;
+            this.error = null;
+            this.result = null;
+            try {
+                const url = `/api/lineage/row-at-version?table={{ full_name | urlencode }}&row_id={{ row_id | urlencode }}&version=${this.version}`;
+                const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    this.error = data.detail || 'Lookup failed';
+                } else {
+                    this.result = data;
+                }
+            } catch (err) {
+                this.error = err.message || 'Network error';
+            } finally {
+                this.loading = false;
+            }
+        },
+    };
+}
+</script>
+{% endif %}
+
 {% set has_predecessors = steps|selectattr("predecessors")|list %}
 {% set has_value_changes = steps|selectattr("value_changes")|list %}
 {% if steps and (has_predecessors or has_value_changes) %}

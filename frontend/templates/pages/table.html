@@ -76,12 +76,29 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
     </div>
 </div>
 
-<div class="card mb-4" x-data="tablePreview()" x-init="load()">
-    <div class="card-header d-flex align-items-center justify-content-between">
+<div class="card mb-4" x-data="tablePreview()" x-init="load(); loadVersions();">
+    <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <span>Preview</span>
-        <span class="text-muted small" x-show="ready">
-            <span x-text="rows.length"></span> of <span x-text="truncated ? '10+' : rows.length"></span> rows
-        </span>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <label class="text-muted small mb-0" for="version-select-{{ table_name }}">
+                <i class="bi bi-clock-history me-1"></i>View at
+            </label>
+            <select id="version-select-{{ table_name }}"
+                    class="form-select form-select-sm"
+                    style="width: auto;"
+                    x-model.number="selectedVersion"
+                    @change="onVersionChange()">
+                <option :value="null">current</option>
+                <template x-for="v in versions" :key="v.version">
+                    <option :value="v.version"
+                            x-text="`v${v.version}` + (v.timestamp ? ` (${new Date(v.timestamp).toLocaleDateString()})` : '') + (v.run_id ? ` — run ${v.run_id.slice(0,8)}…` : '')">
+                    </option>
+                </template>
+            </select>
+            <span class="text-muted small" x-show="ready">
+                <span x-text="rows.length"></span> rows
+            </span>
+        </div>
     </div>
     <div class="card-body p-0">
         <template x-if="loading">
@@ -137,6 +154,7 @@ df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></
 
 <script>
 function tablePreview() {
+    const FQN = '{{ catalog_name }}.{{ schema_name }}.{{ table_name }}';
     return {
         loading: true,
         ready: false,
@@ -144,7 +162,12 @@ function tablePreview() {
         columns: [],
         rows: [],
         truncated: false,
+        versions: [],
+        selectedVersion: null,
         async load() {
+            this.loading = true;
+            this.ready = false;
+            this.error = null;
             try {
                 const resp = await fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/preview', {
                     headers: {'Accept': 'application/json'},
@@ -156,6 +179,42 @@ function tablePreview() {
                     this.columns = data.columns || [];
                     this.rows = data.rows || [];
                     this.truncated = !!data.truncated;
+                    this.ready = true;
+                }
+            } catch (err) {
+                this.error = err.message || 'Network error';
+            } finally {
+                this.loading = false;
+            }
+        },
+        async loadVersions() {
+            try {
+                const resp = await fetch(`/api/tables/${encodeURIComponent(FQN)}/versions`, {
+                    headers: {'Accept': 'application/json'},
+                });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                this.versions = data.versions || [];
+            } catch (_err) { /* ignore */ }
+        },
+        async onVersionChange() {
+            if (this.selectedVersion === null || this.selectedVersion === '' || this.selectedVersion === undefined) {
+                await this.load();
+                return;
+            }
+            this.loading = true;
+            this.ready = false;
+            this.error = null;
+            try {
+                const url = `/api/tables/${encodeURIComponent(FQN)}/preview-at-version?version=${this.selectedVersion}&limit=50`;
+                const resp = await fetch(url, {headers: {'Accept': 'application/json'}});
+                const data = await resp.json();
+                if (!resp.ok) {
+                    this.error = data.detail || 'Unable to load historical version';
+                } else {
+                    this.columns = data.columns || [];
+                    this.rows = (data.rows || []).map(r => this.columns.map(c => r[c]));
+                    this.truncated = data.total > this.rows.length;
                     this.ready = true;
                 }
             } catch (err) {

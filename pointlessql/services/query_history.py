@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 _RUN_ID_LENGTH = 36
 
 VALID_READ_KINDS: frozenset[str] = frozenset(
-    {"sql_execute", "pql_table", "engine_direct", "audit_api"}
+    {"sql_execute", "pql_table", "pql_table_at_version", "engine_direct", "audit_api"}
 )
 
 

@@ -2055,13 +2055,38 @@ PointlesSQL
 │   │       per-axis audit_log rows appended, and the
 │   │       ``column_map`` axis is correctly skipped when its
 │   │       threshold is ``None``.
-│   ├── Sprint 20.3 — Time-travel value queries in UI
-│   │   └── Surface what we already capture in
-│   │       ``agent_run_operations.delta_version_after``: a
-│   │       table-detail "view at version N" picker, a row-
-│   │       trace "what did this row look like 30 days ago"
-│   │       button.  Wraps ``DeltaTable.load_as_version(N)``;
-│   │       UI hides the version-arithmetic.
+│   ├── Sprint 20.3 — Time-travel value queries in UI       ✅
+│   │   ├── New ``pql.table_at_version(fqn, n)`` +
+│   │   │   ``pql.table_at_timestamp(fqn, when)`` PQL helpers
+│   │   │   wrap :meth:`DeltaTable.load_as_version`.  Always
+│   │   │   materialise pandas (engine abstraction targets
+│   │   │   current-version reads only).  Each call writes a
+│   │   │   ``query_history`` row with ``read_kind=
+│   │   │   "pql_table_at_version"``.
+│   │   ├── New ``api/time_travel_routes.py`` exposes three
+│   │   │   read-only routes: ``/api/tables/{fqn}/versions``
+│   │   │   (history list joined against
+│   │   │   ``agent_run_operations.delta_version_after`` so each
+│   │   │   version names the originating run when known),
+│   │   │   ``/api/tables/{fqn}/preview-at-version`` (paged
+│   │   │   rows up to 200), ``/api/lineage/row-at-version``
+│   │   │   (admin-gated single-row state lookup keyed on
+│   │   │   ``_lineage_row_id``).
+│   │   ├── Table-detail preview card gains a "View at:" select
+│   │   │   populated from ``/api/tables/{fqn}/versions``;
+│   │   │   choosing a non-current version reloads the preview
+│   │   │   via the new endpoint.
+│   │   ├── Row-trace page gains an admin-only "View this row
+│   │   │   at a specific Delta version" card with numeric
+│   │   │   input + lookup button; renders the two-column
+│   │   │   key/value table or a "row was not present" notice.
+│   │   ├── ``query_history.read_kind`` enum extends with
+│   │   │   ``pql_table_at_version`` so ``/queries`` surfaces
+│   │   │   time-travel reads alongside ordinary
+│   │   │   ``pql.table()`` calls.
+│   │   └── ``docs/e2e-walkthroughs/time-travel.md`` is the
+│   │       browser-replay playbook (table picker + row
+│   │       admin-only card).  Quality gates clean.
 │   └── Sprint 20.4 — Soyuz columnLineage / valueChange ingest
 │       └── Cross-tool sibling to the PointlesSQL-only stack:
 │           teach soyuz-catalog's ``services/lineage_service``

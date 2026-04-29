@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 20.3: Time-travel value queries in UI (2026-04-29)
+
+Surfaces the version arithmetic
+`agent_run_operations.delta_version_after` already captures.
+
+- New `pql.table_at_version(fqn, n)` + `pql.table_at_timestamp`
+  helpers wrap `DeltaTable.load_as_version`.  Each call writes a
+  `query_history` row with `read_kind="pql_table_at_version"`.
+- New `api/time_travel_routes.py` exposes three read-only routes:
+  `GET /api/tables/{fqn}/versions` (history joined with
+  `agent_run_operations` so each version names the originating
+  run when known), `GET /api/tables/{fqn}/preview-at-version`
+  (paged rows up to 200), `GET /api/lineage/row-at-version`
+  (admin-gated single-row lookup keyed on `_lineage_row_id`).
+- Table-detail preview card gains a "View at:" select.
+  Row-trace page gains an admin-only "View this row at version"
+  card.  Both consume the new API.
+- `query_history.read_kind` enum extends with
+  `pql_table_at_version` so `/queries` surfaces time-travel reads
+  alongside ordinary `pql.table()` calls.
+- Browser-replay playbook in `docs/e2e-walkthroughs/time-travel.md`.
+
 ### Added — Sprint 20.2: Lineage retention TTLs (2026-04-29)
 
 Bounded-growth invariant on the four lineage tables.  Each axis
