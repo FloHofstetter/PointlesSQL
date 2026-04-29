@@ -1902,12 +1902,22 @@ PointlesSQL
 │   │       the wake-gate's verdicts.  Walkthrough adds a
 │   │       step-7 verification path (clean day → no LLM, seeded
 │   │       reject row → LLM fires).
-│   ├── Sprint 19.3 — Compliance-Bot (ad-hoc Slack/chat)
-│   │   └── Hermes one-shot flow on the auditor tool surface.
-│   │       Persona: "welche Runs schrieben Q3 auf PII-Spalten?"
-│   │       via Slack DM or slash-command.  Ships as a
-│   │       prompt-template + manifest pair plus an optional
-│   │       ``/api/audit/principal-summary`` route.
+│   ├── Sprint 19.3 — Compliance-Bot (ad-hoc Slack/chat)        ✅
+│   │   New ``GET /api/audit/principal-summary`` (auditor-gated)
+│   │   route — paginated runs list + headline counters scoped to
+│   │   one ``AgentRun.principal``, the missing piece between
+│   │   Sprint 19.1's per-run audit axes and the "which runs did
+│   │   X drive last quarter" persona question.  Plugin grows
+│   │   31 → 32 tools (``pql_principal_summary``).  Ships
+│   │   ``docs/hermes-jobs/compliance-bot.md`` (full system prompt
+│   │   with the four-block answer skeleton + read-only safety
+│   │   rules), ``docs/hermes-jobs/compliance-bot.json`` (Hermes
+│   │   wake-on-message manifest with ``deliver: "origin"``), and
+│   │   ``docs/e2e-walkthroughs/compliance-bot.md`` exercising
+│   │   three canonical question shapes plus four safety
+│   │   properties (refuses writes, always-masked
+│   │   value-changes, no API-key leak in output bytes,
+│   │   audit-of-audit history matches the tool surface).
 │   └── Sprint 19.4 — Incident-Responder (interactive chat)
 │       └── Hermes one-shot flow optimised for follow-up
 │           questions: "was hat Run X kaputt gemacht?"  Walks

@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 19.3: Compliance-Bot (ad-hoc Slack/chat persona) (2026-04-29)
+
+Read-only Hermes one-shot flow that answers ad-hoc compliance
+questions over the existing auditor toolset.  The persona name comes
+from the original Phase-19 sketch: "welche Runs schrieben Q3 auf
+PII-Spalten?" via Slack DM or slash-command.
+
+- **New ``GET /api/audit/principal-summary``** (auditor-gated).
+  Aggregates :class:`AgentRun` rows for one ``principal`` over a
+  window and returns headline counters (runs, ops, rejects,
+  value_changes, external_writes) plus the most recent ``limit``
+  runs.  Closes the gap between Sprint 19.1's per-run audit axes and
+  the persona's "enumerate runs by principal first" pattern.
+  Self-tracks as ``read_kind='audit_api'`` like the rest of
+  ``/api/audit/*``.
+
+- **Plugin tool ``pql_principal_summary``.**  Required arg
+  ``principal``; optional ``since`` / ``until`` / ``limit`` (1–200,
+  server clamped).  Goes into ``register_auditor_tools`` so it loads
+  only when ``POINTLESSQL_AUDITOR_MODE=1``.  Plugin grows from 31
+  → 32 tools.
+
+- **System prompt + manifest** at
+  ``docs/hermes-jobs/compliance-bot.{md,json}``.  Four-block answer
+  skeleton (Question / Answer / How / Caveats) so auditors can
+  reproduce any answer from the tool-call trail.  Five hard
+  constraints in the prompt: no writes, mandatory masking on
+  value-changes, no API-key echo, mandatory time-window pinning,
+  explicit refusal-and-escalation when the question would require a
+  write.  Manifest uses Hermes' wake-on-message dispatch (no cron
+  schedule); the chat-platform adapter routes incoming messages.
+
+- **e2e walkthrough** at
+  ``docs/e2e-walkthroughs/compliance-bot.md`` exercises the three
+  canonical question shapes (runs-by-principal, yesterday's external
+  writes, high-reject runs) and asserts the four safety properties:
+  read-only refusal works, value-changes always masked, API-key never
+  appears in output bytes, audit-of-audit history matches the
+  observed tool surface.
+
 ### Added — Sprint 19.2.2: Wake-gate (skip clean days) (2026-04-29)
 
 Optimisation pass on the daily Audit-Reviewer-Agent: most days have
