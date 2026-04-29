@@ -1,13 +1,59 @@
 <aside class="pql-sidebar border-end"
        x-data="catalogTree()"
        x-init="load()"
-       @htmx:after-swap.window="activePath = pathFromUrl()">
+       @htmx:after-swap.window="activePath = pathFromUrl()"
+       @pql:recent-tables-changed.window="recents = $event.detail.items">
     <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
         <span class="text-uppercase small fw-semibold text-muted">Catalog</span>
         <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
             <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
         </button>
     </div>
+
+    {# Sprint 17.5 — client-side filter on the catalog tree.  Typing
+       in the search box hides catalog / schema / table rows whose
+       name does not contain the query and auto-expands the matching
+       branches so partial matches are visible without manual
+       chevron-clicking. #}
+    <div class="px-2 pt-2 pb-1 border-bottom">
+        <input type="search"
+               class="form-control form-control-sm"
+               x-model.debounce.150ms="query"
+               x-on:input="onQueryChange()"
+               placeholder="Filter catalog tree…"
+               aria-label="Filter catalog tree">
+    </div>
+
+    {# Sprint 17.5 — Recent tables, last five visits keyed by FQN.
+       Items come from the localStorage writer in base.html and stay
+       in sync via the pql:recent-tables-changed CustomEvent. #}
+    <template x-if="recents && recents.length > 0">
+        <div class="px-2 pt-2 pb-1 border-bottom">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="text-uppercase small fw-semibold text-muted">Recent</span>
+                <button class="btn btn-link btn-sm p-0 text-muted small"
+                        @click="clearRecents()"
+                        title="Clear recent tables">
+                    Clear
+                </button>
+            </div>
+            <ul class="list-unstyled mb-0">
+                <template x-for="r in recents" :key="r.fqn">
+                    <li>
+                        <a :href="'/catalogs/' + r.catalog + '/schemas/' + r.schema + '/tables/' + r.table"
+                           class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
+                           :title="r.fqn">
+                            <i class="bi bi-table flex-shrink-0"></i>
+                            <span class="text-truncate" x-text="r.table"></span>
+                            <span class="text-muted small ms-auto flex-shrink-0"
+                                  style="font-size: 0.65rem;"
+                                  x-text="r.schema + '.' + r.catalog"></span>
+                        </a>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </template>
 
     <div class="pql-sidebar-body">
         <template x-if="error">
@@ -20,9 +66,14 @@
             </div>
         </template>
 
-        <ul class="list-unstyled mb-0" x-show="tree" x-cloak>
+        <template x-if="tree && filteredEmpty()">
+            <div class="text-muted small p-3 fst-italic"
+                 x-text="'No matches for &quot;' + query + '&quot;'"></div>
+        </template>
+
+        <ul class="list-unstyled mb-0" x-show="tree && !filteredEmpty()" x-cloak>
             <template x-for="c in (tree || [])" :key="c.name">
-                <li>
+                <li x-show="catalogVisible(c)" x-cloak>
                     <div class="pql-tree-item"
                          :class="{ active: activePath.catalog === c.name && !activePath.schema }">
                         <button class="pql-tree-chevron" @click="toggle('c:' + c.name)"
@@ -40,9 +91,9 @@
                         </a>
                     </div>
 
-                    <ul class="list-unstyled mb-0" x-show="isOpen('c:' + c.name)" x-cloak>
+                    <ul class="list-unstyled mb-0" x-show="isCatalogExpanded(c)" x-cloak>
                         <template x-for="s in (c.schemas || [])" :key="s.name">
-                            <li>
+                            <li x-show="schemaVisible(c, s)" x-cloak>
                                 <div class="pql-tree-item pql-tree-lvl-2"
                                      :class="{ active: activePath.catalog === c.name && activePath.schema === s.name && !activePath.table }">
                                     <button class="pql-tree-chevron" @click="toggle('s:' + c.name + '.' + s.name)"
@@ -55,9 +106,9 @@
                                     </a>
                                 </div>
 
-                                <ul class="list-unstyled mb-0" x-show="isOpen('s:' + c.name + '.' + s.name)" x-cloak>
+                                <ul class="list-unstyled mb-0" x-show="isSchemaExpanded(c, s)" x-cloak>
                                     <template x-for="t in (s.tables || [])" :key="t.name">
-                                        <li>
+                                        <li x-show="tableVisible(t)" x-cloak>
                                             <div class="pql-tree-item pql-tree-lvl-3"
                                                  :class="{ active: activePath.catalog === c.name && activePath.schema === s.name && activePath.table === t.name }">
                                                 <span class="pql-tree-chevron"></span>
@@ -92,6 +143,17 @@
     }
     window.pathFromUrl = pathFromUrl;
 
+    const RECENTS_KEY = 'pql.recentTables';
+
+    function loadRecents() {
+        try {
+            const raw = localStorage.getItem(RECENTS_KEY);
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) { return []; }
+    }
+
     window.catalogTree = function () {
         return {
             tree: null,
@@ -99,12 +161,59 @@
             error: null,
             open: {},
             activePath: pathFromUrl(),
+            // Sprint 17.5 — client-side filter + recent-tables list.
+            query: '',
+            recents: loadRecents(),
 
             isOpen(key) { return !!this.open[key]; },
 
             toggle(key) {
                 this.open[key] = !this.open[key];
                 try { sessionStorage.setItem(OPEN_KEY, JSON.stringify(this.open)); } catch (e) {}
+            },
+
+            // Sprint 17.5 helpers — case-insensitive substring match
+            // against the query.  Empty query → everything visible.
+            normalisedQuery() {
+                return (this.query || '').trim().toLowerCase();
+            },
+            tableVisible(t) {
+                const q = this.normalisedQuery();
+                if (!q) return true;
+                return (t.name || '').toLowerCase().includes(q);
+            },
+            schemaVisible(c, s) {
+                const q = this.normalisedQuery();
+                if (!q) return true;
+                if ((s.name || '').toLowerCase().includes(q)) return true;
+                return (s.tables || []).some(t => this.tableVisible(t));
+            },
+            catalogVisible(c) {
+                const q = this.normalisedQuery();
+                if (!q) return true;
+                if ((c.name || '').toLowerCase().includes(q)) return true;
+                return (c.schemas || []).some(s => this.schemaVisible(c, s));
+            },
+            isCatalogExpanded(c) {
+                if (this.normalisedQuery()) return this.catalogVisible(c);
+                return this.isOpen('c:' + c.name);
+            },
+            isSchemaExpanded(c, s) {
+                if (this.normalisedQuery()) return this.schemaVisible(c, s);
+                return this.isOpen('s:' + c.name + '.' + s.name);
+            },
+            filteredEmpty() {
+                if (!this.tree || !this.normalisedQuery()) return false;
+                return !this.tree.some(c => this.catalogVisible(c));
+            },
+            onQueryChange() {
+                // No persistence — the query resets between page
+                // loads on purpose so the tree always opens in its
+                // "natural" expanded state.
+            },
+            clearRecents() {
+                try { localStorage.removeItem(RECENTS_KEY); } catch (e) {}
+                this.recents = [];
             },
 
             async load() {
