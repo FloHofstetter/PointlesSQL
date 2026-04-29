@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Closed — Phase 17 polish: 17.3.1 + 17.5.1 (2026-04-29)
+
+Two queued follow-ups land in one autonomous session.  17.6
+(lineage trace sub-panes) stays queued — the ROADMAP-side
+"defer until usage data" decision still holds.
+
+* **17.3.1 — Lazy-load cytoscape on the Graph sub-tab.**  The
+  three jsdelivr scripts (cytoscape ~280 KB + dagre ~50 KB +
+  adapter) no longer ship on every ``/runs/{id}`` cold load.
+  ``loadCytoscapeOnce()`` injects them on demand the first
+  time the user activates the Graph sub-tab, gated on
+  Bootstrap's ``shown.bs.tab``.  Promise-cached at module
+  level; fail-soft on CDN block.
+* **17.5.1 — Server-side tree search + DB-backed recents.**
+  New ``recent_tables`` table (Alembic ``p6l8n0q3s5u7``)
+  mirrors the Sprint-17.5 localStorage block in
+  PointlesSQL's metadata DB so recents survive across
+  devices.  ``GET /api/tree/search?q=`` walks the soyuz tree
+  once and filters in-memory (capped@50) — significantly
+  cheaper than shipping the full tree to a >1000-table
+  browser.  Sidebar keeps localStorage as first-paint +
+  no-auth fallback and overrides asynchronously for
+  logged-in users.
+
+Tests: 7 new (recents service).  Static gates clean.
+
 ### Closed — Phase 16.5: Delta-Branching (2026-04-29)
 
 Seven sub-sprints (16.5.0 spike + 16.5.1 → 16.5.7) close the

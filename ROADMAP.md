@@ -1778,29 +1778,32 @@ PointlesSQL
 │   │   fixed in commit ``fc940be``).  None of these block the
 │   │   Phase-17 closing — they are polish + nice-to-have:
 │   │
-│   ├── Sprint 17.3.1 — Lazy-load cytoscape on Graph sub-tab  ⏳ queued
-│   │   └── Today the cytoscape (~280 KB) + dagre (~50 KB) +
-│   │       cytoscape-dagre adapter scripts ship from jsdelivr
-│   │       on every ``/runs/{id}`` page (cold-cache cost).
-│   │       Goal: defer the ``<script>`` tags until the user
-│   │       toggles the Lineage / Graph sub-tab the first time.
-│   │       Mechanism: dynamic ``import()`` inside the Alpine
-│   │       factory's ``init()``, gated on a ``window.``
-│   │       ``__cytoscapeLoaded`` flag.  Falls back to the
-│   │       existing ``<script>`` shape for the no-JS case.
+│   ├── Sprint 17.3.1 — Lazy-load cytoscape on Graph sub-tab  ✅ done (168960b)
+│   │   └── Three ``<script defer>`` tags removed from
+│   │       ``run_view.html``.  ``loadCytoscapeOnce()`` in
+│   │       ``lineage_dag.js`` injects cytoscape + dagre +
+│   │       cytoscape-dagre on demand the first time the
+│   │       Graph sub-tab is activated, gated on Bootstrap's
+│   │       ``shown.bs.tab`` event.  Promise-cached at module
+│   │       level so repeated tab toggles re-use the same
+│   │       load.  Fail-soft if the CDN is blocked.  Cache-bust
+│   │       bumped to ``?v=sprint17.3.1``.
 │   │
-│   ├── Sprint 17.5.1 — Server-side tree search + DB recents  ⏳ queued
-│   │   └── ``/api/tree/search?q=`` for >1000-table tenants
-│   │       (the Sprint-17.5 client-side filter walks the full
-│   │       payload in JS — fine up to a few hundred tables,
-│   │       slow past a thousand).  Plus a DB-backed
-│   │       ``RecentTable(user_id, table_full_name,
-│   │       last_visited_at)`` model + Alembic migration so
-│   │       recents survive across devices for a single user
-│   │       (today: localStorage only).  Re-uses the Sprint-31
-│   │       Cmd+K search service via a small refactor that
-│   │       ``frontend/js/components/command_palette.js``
-│   │       already calls.
+│   ├── Sprint 17.5.1 — Server-side tree search + DB recents  ✅ done (eb4d4c4)
+│   │   └── New ``recent_tables`` table (Alembic
+│   │       ``p6l8n0q3s5u7``) one row per ``(user_id,
+│   │       table_full_name)``.  ``services/recents.py`` with
+│   │       dialect-aware INSERT-ON-CONFLICT-DO-UPDATE upsert
+│   │       + per-user TRIM_THRESHOLD=50.  Auto-write hook in
+│   │       the catalog-table HTML detail handler.  Three new
+│   │       routes — ``GET /api/tree/search?q=`` (q≥2,
+│   │       capped@50, truncated flag), ``GET /api/recents``,
+│   │       ``DELETE /api/recents``.  Sidebar keeps
+│   │       localStorage as first-paint + no-auth fallback;
+│   │       ``fetchRecents`` overrides asynchronously for
+│   │       logged-in users.  Search box switches to server-side
+│   │       at q.length≥2 with client-side fallback on error.
+│   │       7 new pytest cases.
 │   │
 │   └── Sprint 17.6 — Lineage trace sub-panes                  ⏳ queued
 │       └── The Sprint-15 Row trace, Sprint-15.6 Column trace,
