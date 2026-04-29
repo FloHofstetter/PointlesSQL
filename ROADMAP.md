@@ -1883,8 +1883,25 @@ PointlesSQL
 │   │   │   fan-out log with status codes.  Plugin
 │   │   │   ``hermes-plugin-pointlessql`` grows from 29 → 31 tools
 │   │   │   (``pql_post_audit_review``, ``pql_get_latest_review``).
-│   │   └── Sprint 19.2.2 — Wake-gate (skip clean days)
-│   │       (sketched).
+│   │   └── Sprint 19.2.2 — Wake-gate (skip clean days)         ✅
+│   │       New ``scripts/audit-wake-gate.py`` — Hermes pre-run
+│   │       script that hits ``GET /api/audit/anomalies`` for
+│   │       rejects / errored_ops / external_writes against the
+│   │       closed-day window, prints a ``#``-prefixed context
+│   │       block (becomes prompt context on wake), and emits the
+│   │       wake-gate JSON line as the LAST stdout line.  On
+│   │       severity ``ok`` the line is ``{"wakeAgent": false,
+│   │       "severity": "ok"}`` and Hermes skips the LLM round-trip
+│   │       entirely (see ``hermes-agent/cron/scheduler.py:_parse_wake_gate``).
+│   │       On ``warn``/``critical`` the agent wakes with the
+│   │       pre-fetched anomaly numbers already in its prompt — no
+│   │       redundant ``pql_anomaly_check`` calls.  Cost: ~3 HTTP
+│   │       round-trips per clean day instead of an LLM call.
+│   │       Reference manifest now carries ``script:
+│   │       "scripts/audit-wake-gate.py"``; prompt updated to trust
+│   │       the wake-gate's verdicts.  Walkthrough adds a
+│   │       step-7 verification path (clean day → no LLM, seeded
+│   │       reject row → LLM fires).
 │   ├── Sprint 19.3 — Compliance-Bot (ad-hoc Slack/chat)
 │   │   └── Hermes one-shot flow on the auditor tool surface.
 │   │       Persona: "welche Runs schrieben Q3 auf PII-Spalten?"

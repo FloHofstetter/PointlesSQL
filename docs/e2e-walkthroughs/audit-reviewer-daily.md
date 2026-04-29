@@ -124,10 +124,32 @@ output. There is no browser, no Alpine, no `mcp__playwright__*` calls.
      [`hermes-jobs/README.md`](../hermes-jobs/README.md)).
    - Assert: re-run via `hermes cron run <job_id> && hermes cron tick`,
      confirm the Slack channel got a Markdown post matching
-     `~/.hermes/cron/output/<job_id>/<ts>.md`. (Sprint 19.2.1
-     adds the `pql_post_audit_review` round-trip so PointlesSQL
-     becomes the source of truth and Slack/email are best-effort
-     fan-out.)
+     `~/.hermes/cron/output/<job_id>/<ts>.md`.
+   - Sprint 19.2.1 also persists every review back into PointlesSQL
+     (the agent's last tool call is `pql_post_audit_review`).
+     `/api/agent-reviews/latest` returns the row; the home page
+     renders a "Latest review" card. Configure additional outbound
+     CloudEvents webhooks under `/admin/review-destinations`.
+
+7. **Wake-gate verification (Sprint 19.2.2).**
+   - The reference manifest carries `script:
+     "scripts/audit-wake-gate.py"`. On a yesterday-was-quiet day the
+     script's last stdout line is `{"wakeAgent": false}` and Hermes
+     skips the LLM round-trip entirely. On a `warn`/`critical` day
+     the same script's stdout (the pre-fetched anomaly summary) gets
+     prepended to the agent's prompt as context, so the LLM doesn't
+     re-fetch the same data.
+   - Smoke test: clear yesterday's reject + external-write history
+     from PointlesSQL (or just run on a fresh DB) and trigger the
+     job. `hermes cron list` shows `last_status: ok` but no
+     `iteration` row landed in PointlesSQL — the agent never woke.
+     Then seed a single rejected row "yesterday", re-run the job,
+     and assert the LLM did fire (a fresh `agent_reviews` row +
+     fresh tool-call rows in `query_history`).
+   - Cost: on a clean day the wake-gate burns one HTTP round-trip per
+     metric (3 total) instead of an LLM call worth roughly one to
+     three orders of magnitude more tokens. Over a quarter of clean
+     days that's the difference between zero and ~90 LLM rounds.
 
 ## Cleanup
 

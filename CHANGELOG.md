@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 19.2.2: Wake-gate (skip clean days) (2026-04-29)
+
+Optimisation pass on the daily Audit-Reviewer-Agent: most days have
+nothing to report, and burning a full LLM round-trip on those days is
+pointless and expensive.
+
+- **`scripts/audit-wake-gate.py`.**  Hermes pre-run script invoked
+  before the LLM call.  Hits `GET /api/audit/anomalies` for the three
+  metrics (rejects, errored_ops, external_writes) against the
+  closed-day window, prints a `#`-prefixed human-readable context
+  block (the agent sees this as prompt context when it does wake),
+  and emits the wake-gate JSON line as the FINAL non-empty stdout
+  line.  On `ok` days the line is
+  `{"wakeAgent": false, "severity": "ok"}` and Hermes skips the LLM
+  round-trip per the contract in
+  `hermes-agent/cron/scheduler.py:_parse_wake_gate`.  Failures
+  (PointlesSQL unreachable, missing API key) fail open: the script
+  always exits 0 and returns `{"wakeAgent": true}` so a transient
+  outage never silences a real anomaly day.
+
+- **Manifest update.**  `docs/hermes-jobs/audit-reviewer-daily.json`
+  carries `"script": "scripts/audit-wake-gate.py"`.  The prompt is
+  rewritten to trust the wake-gate's pre-fetched verdicts: the agent
+  no longer re-calls `pql_anomaly_check` for the same window, saving
+  one LLM round-trip on every `warn`/`critical` day too.
+
+- **Walkthrough update.**  `docs/e2e-walkthroughs/audit-reviewer-daily.md`
+  gains a step-7 verification path (clean day → no LLM iteration row
+  in PointlesSQL; seeded reject row → LLM fires) and a cost note
+  (clean-day cost: 3 HTTP round-trips vs. one LLM call worth
+  one-to-three orders of magnitude more tokens).
+
 ### Added — Sprint 19.2.1: Review persistence + CloudEvents fan-out + cockpit card (2026-04-29)
 
 Second half of Phase-19's "Audit-Reviewer-Agent reference run" sub-phase.

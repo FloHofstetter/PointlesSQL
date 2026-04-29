@@ -13,7 +13,7 @@ PointlesSQL is the audit data store + tool surface they call into.
 
 | File | Phase | Persona | Schedule | Purpose |
 |---|---|---|---|---|
-| [`audit-reviewer-daily.json`](audit-reviewer-daily.json) | 19.2 | Reviewer | `0 6 * * *` | Daily anomaly digest of yesterday's agent activity. Calls `pql_audit_summary` + `pql_anomaly_check` against the closed-day window and renders Markdown. |
+| [`audit-reviewer-daily.json`](audit-reviewer-daily.json) | 19.2 | Reviewer | `0 6 * * *` | Daily anomaly digest of yesterday's agent activity. Wake-gate (`scripts/audit-wake-gate.py`) skips the LLM round-trip on `ok` days; on `warn`/`critical` the agent drafts Markdown, persists it via `pql_post_audit_review`, and PointlesSQL fans the CloudEvent out to webhooks. |
 
 (More personas land in 19.3 / 19.4 — Compliance-Bot and Incident-Responder.)
 
@@ -78,3 +78,16 @@ per job, add a Hermes-side feature first.
   shape. The Markdown skeleton is fixed because downstream consumers
   (Sprint 19.2.1's cockpit card, future digest aggregators) parse
   the same shape.
+- The wake-gate at [`scripts/audit-wake-gate.py`](../../scripts/audit-wake-gate.py)
+  pre-fetches the anomaly verdicts and prints them as the leading
+  `#`-prefixed context block. The agent trusts that block and does
+  not re-call `pql_anomaly_check` — saves one LLM round-trip on
+  `warn`/`critical` days and skips the LLM entirely on `ok` days
+  (the script's last line is `{"wakeAgent": false}` then; see
+  `cron/scheduler.py:_parse_wake_gate`).
+- The final tool call is always `pql_post_audit_review`. PointlesSQL
+  is the source of truth — the cockpit "Latest review" card and the
+  webhook fan-out both read from `agent_reviews`. Hermes-native
+  delivery (`deliver: "slack:…"`) is a parallel best-effort path on
+  top, useful when PointlesSQL is briefly unreachable but the chat
+  channel still needs the digest.
