@@ -818,6 +818,8 @@ def record_value_changes(
     run_id: str,
     op_id: int,
     changes: Sequence[ValueChangeSpec],
+    pii_mode: str = "store_clear",
+    pii_hash_secret: str | None = None,
 ) -> Exception | None:
     """Bulk-insert one row per :class:`ValueChangeSpec` into ``lineage_value_changes``.
 
@@ -832,12 +834,28 @@ def record_value_changes(
     most columns.  When breached the function inserts no rows and
     returns a :class:`ValueChangeCapExceeded` sentinel.
 
+    Sprint 20.1 adds the PII redaction hook: when ``pii_mode`` is
+    ``hash_only`` or ``redact_with_audit_log``, every column whose
+    name matches
+    :data:`pointlessql.services.pii_redactor.PII_NAME_PATTERN` gets
+    its ``old_value`` / ``new_value`` rewritten before insert.
+    ``hash_only`` keeps equality joinable across runs; the
+    ``redact_with_audit_log`` mode also appends a single
+    ``audit_log`` row noting the redaction count.
+
     Args:
         session_factory: SQLAlchemy session factory.
         run_id: PointlesSQL ``agent_run_id`` driving the merge.
         op_id: ``agent_run_operations.id`` of the merge.
         changes: Value-change specs to persist.  Empty input is a
             no-op.
+        pii_mode: One of ``store_clear`` (default — no rewrite),
+            ``hash_only``, ``redact_with_audit_log``.  Resolves
+            from :attr:`pointlessql.settings.AuditSettings.pii_mode`
+            in production callers.
+        pii_hash_secret: Pre-shared secret for ``hash_only`` mode.
+            ``None`` triggers a lazy auto-generation via
+            :func:`pointlessql.services.pii_redactor.get_or_create_pii_hash_secret`.
 
     Returns:
         ``None`` on success or empty input.
@@ -861,6 +879,55 @@ def record_value_changes(
         )
         return ValueChangeCapExceeded(msg)
 
+    redacted_count = 0
+    if pii_mode != "store_clear":
+        from pointlessql.services.pii_redactor import (
+            get_or_create_pii_hash_secret,
+            hash_value,
+            is_pii_by_name,
+            redact_value,
+        )
+
+        secret: str | None = pii_hash_secret
+        if pii_mode == "hash_only" and not secret:
+            try:
+                secret = get_or_create_pii_hash_secret(session_factory)
+            except Exception as exc:  # noqa: BLE001 — fall back to redact
+                logger.warning(
+                    "pii_redactor: secret generation failed (run=%s op=%s): %s; "
+                    "falling back to redact_with_audit_log mode for this op",
+                    run_id,
+                    op_id,
+                    exc,
+                )
+                pii_mode = "redact_with_audit_log"
+
+        new_changes: list[ValueChangeSpec] = []
+        from dataclasses import replace as _dc_replace
+
+        for change in changes:
+            if not is_pii_by_name(change.target_column):
+                new_changes.append(change)
+                continue
+            if pii_mode == "hash_only":
+                new_changes.append(
+                    _dc_replace(
+                        change,
+                        old_value=hash_value(change.old_value, secret=secret or ""),
+                        new_value=hash_value(change.new_value, secret=secret or ""),
+                    )
+                )
+            else:  # redact_with_audit_log
+                new_changes.append(
+                    _dc_replace(
+                        change,
+                        old_value=redact_value(change.old_value),
+                        new_value=redact_value(change.new_value),
+                    )
+                )
+            redacted_count += 1
+        changes = new_changes
+
     now = datetime.datetime.now(datetime.UTC)
     rows = [
         {
@@ -880,7 +947,6 @@ def record_value_changes(
         with session_factory() as session:
             session.execute(insert(LineageValueChange), rows)
             session.commit()
-        return None
     except SQLAlchemyError as exc:
         logger.info(
             "lineage_value_changes insert failed for run=%s op=%s n=%s: %s",
@@ -890,6 +956,28 @@ def record_value_changes(
             exc,
         )
         return exc
+
+    if pii_mode == "redact_with_audit_log" and redacted_count > 0:
+        from pointlessql.services.audit import log_action
+
+        try:
+            log_action(
+                session_factory,
+                0,
+                "system:pii_redactor",
+                "pii_redact",
+                f"agent_run_operations:{op_id}",
+                {"redacted_count": redacted_count, "mode": pii_mode},
+                actor_role="system",
+            )
+        except Exception:  # noqa: BLE001 — audit-log failure must not break write
+            logger.exception(
+                "pii_redactor: audit_log append failed for run=%s op=%s",
+                run_id,
+                op_id,
+            )
+
+    return None
 
 
 def count_value_changes_for_op(

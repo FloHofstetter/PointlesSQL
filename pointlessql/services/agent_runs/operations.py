@@ -655,12 +655,16 @@ def _record_value_changes_after_commit(
         return
 
     from pointlessql.services.lineage_edges import record_value_changes
+    from pointlessql.settings import Settings
 
+    settings = Settings()
     failure = record_value_changes(
         session_factory,
         run_id=agent_run_id,
         op_id=op_id,
         changes=pending,
+        pii_mode=settings.audit.pii_mode,
+        pii_hash_secret=settings.audit.pii_hash_secret,
     )
     if failure is None:
         return

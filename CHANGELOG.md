@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 20.1: PII detection + masking write-hook (2026-04-29)
+
+Sprint 20.1 closes the cleartext-at-rest gap on
+`lineage_value_changes`.  Render-time masking from Phase 18.2 only
+protected the API surface; this sprint rewrites the row before it
+hits SQLite when `pii_mode` is anything other than `store_clear`.
+
+- New `system_keys` table (Alembic `n4i5j6k7l8m9`) for the lazy
+  install-scoped PII hash secret.  First-write generates a
+  32-byte URL-safe random token.
+- `services/pii_redactor.py` ships pattern-based PII detection
+  (regex over column names — covers `email`, `phone`, `ssn`,
+  `credit_card`, `iban`, `passport`, `first_name`, `last_name`,
+  `address`, `birth`, plus generic `pii` substring), HMAC-SHA256
+  hashing (16 hex chars, equality-joinable), and the literal
+  `<redacted>` placeholder.
+- `record_value_changes` accepts `pii_mode` + `pii_hash_secret`
+  parameters.  `store_clear` keeps pre-20.1 behaviour;
+  `hash_only` (the new default) rewrites old/new values to a
+  16-hex HMAC for any pattern-matched column;
+  `redact_with_audit_log` substitutes the literal `<redacted>`
+  and appends one `audit_log` row per masked per-op call.
+- `operations._record_value_changes_after_commit` resolves
+  `Settings` and forwards the mode + secret automatically;
+  primitives stay agnostic.
+- Soyuz tag-driven PII detection stays out of the sync write path
+  (would dominate per-write cost).  The Phase-18 render-time
+  masking still gates tagged-but-non-pattern columns at the API.
+- `docs/audit/pii-modes.md` documents the three modes, secret
+  bootstrap, migration impact, and the verification recipe.
+- Existing `lineage_value_changes` rows are NOT rewritten — soft
+  transition.  Historical cleartext stays readable to admins via
+  render-time masking; new writes hash.
+
 ### Added — Sprint 20.0: Audit-Stream forwarder (2026-04-29)
 
 Phase 20 opens with the audit-stream forwarder: a settings-driven,

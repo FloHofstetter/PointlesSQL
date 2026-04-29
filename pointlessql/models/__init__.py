@@ -83,6 +83,7 @@ from pointlessql.models.scheduler import (
     TaskRun,
 )
 from pointlessql.models.sync import SyncRun
+from pointlessql.models.system_keys import SystemKey
 
 __all__ = [
     "AgentReview",
@@ -123,6 +124,7 @@ __all__ = [
     "SavedAuditQuery",
     "SavedQuery",
     "SyncRun",
+    "SystemKey",
     "TableStats",
     "TaskRun",
     "UnattributedWrite",

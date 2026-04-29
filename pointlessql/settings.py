@@ -271,6 +271,8 @@ class AuditSettings(BaseSettings):
     anomaly_threshold_sigma: float = 2.0
     pii_mask_default: bool = True
     pii_cache_ttl_seconds: int = 600
+    pii_mode: Literal["store_clear", "hash_only", "redact_with_audit_log"] = "hash_only"
+    pii_hash_secret: str | None = None
 
 
 class DeltaSettings(BaseSettings):

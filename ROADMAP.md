@@ -1990,14 +1990,42 @@ PointlesSQL
 │   │       ``examplebucket.s3.amazonaws.com``.  Quality gates
 │   │       clean: ruff / pyright (0 errors) / pydoclint /
 │   │       alembic check.
-│   ├── Sprint 20.1 — PII detection + masking layer
-│   │   └── Pattern-based + soyuz-tag-driven PII column
-│   │       identification.  ``lineage_value_changes`` insert
-│   │       hook can opt to hash/redact PII columns before
-│   │       persist.  ``settings.audit.pii_mode`` switch:
-│   │       ``store_clear`` (today) | ``hash_only`` |
-│   │       ``redact_with_audit_log``.  Closes the
-│   │       ``customer_email`` Klartext compliance gap.
+│   ├── Sprint 20.1 — PII detection + masking write-hook    ✅
+│   │   ├── Alembic ``n4i5j6k7l8m9`` adds ``system_keys``
+│   │   │   (name UNIQUE, value TEXT, created_at) for the
+│   │   │   lazy-generated PII hash secret.  No schema change to
+│   │   │   ``lineage_value_changes`` — the redaction is
+│   │   │   write-time inside ``record_value_changes``.
+│   │   ├── New ``services/pii_redactor.py`` ships pattern-based
+│   │   │   PII detection (regex matches ``email``, ``phone``,
+│   │   │   ``ssn``, ``credit_card``, ``iban``, ``passport``,
+│   │   │   ``first_name`` / ``last_name``, ``address``,
+│   │   │   ``birth``, plus generic ``pii`` substring),
+│   │   │   ``hash_value`` (HMAC-SHA256, 16 hex chars),
+│   │   │   ``redact_value`` (literal ``<redacted>``), and
+│   │   │   ``get_or_create_pii_hash_secret`` (lazy bootstrap).
+│   │   ├── ``record_value_changes`` gains ``pii_mode`` +
+│   │   │   ``pii_hash_secret`` parameters.  ``store_clear``
+│   │   │   keeps pre-20.1 behaviour; ``hash_only`` (default)
+│   │   │   rewrites old/new values to a 16-hex HMAC for any
+│   │   │   pattern-matched column;
+│   │   │   ``redact_with_audit_log`` substitutes the literal
+│   │   │   ``<redacted>`` and appends one
+│   │   │   ``audit_log`` row per per-op call.
+│   │   ├── ``operations._record_value_changes_after_commit``
+│   │   │   resolves :class:`Settings` and forwards the mode +
+│   │   │   secret automatically — primitives stay agnostic.
+│   │   ├── Soyuz tag-driven PII detection stays out of the
+│   │   │   sync write path (would dominate per-write cost).
+│   │   │   The Phase-18 render-time masking still gates
+│   │   │   tagged-but-non-pattern columns at the API surface.
+│   │   ├── ``docs/audit/pii-modes.md`` documents the three
+│   │   │   modes, secret bootstrap, migration impact, and
+│   │   │   the verification recipe.
+│   │   └── Existing ``lineage_value_changes`` rows are not
+│   │       rewritten — soft transition.  Historical cleartext
+│   │       stays readable to admins; new writes hash.  Quality
+│   │       gates clean.
 │   ├── Sprint 20.2 — Lineage retention policies
 │   │   └── Per-table TTL on the four lineage tables
 │   │       (``lineage_row_edges``, ``lineage_row_rejects``,
