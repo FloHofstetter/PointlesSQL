@@ -1934,7 +1934,7 @@ PointlesSQL
 │       incident-responder.md`` covering three drill-down
 │       patterns and four safety properties.
 │
-├── Phase 20 — Forensics + Retention                      🔜 in progress
+├── Phase 20 — Forensics + Retention                      ✅ closed (2026-04-29)
 │   │
 │   │   The orthogonal post-cockpit governance pass.  Audit
 │   │   data has been *captured* (15.x), *displayed* (17), and

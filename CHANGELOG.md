@@ -4,6 +4,85 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Closed — Phase 20: Forensics + Retention (2026-04-29)
+
+Five sub-sprints landed in one autonomous session, closing the
+"forensics + retention" governance pass that the post-Phase-15.7
+strategy-conversation flagged as the orthogonal gap to the
+already-shipped audit capture / display / query stack.
+
+What's now in place:
+
+- **Audit-stream forwarder** (Sprint 20.0). Six governance event
+  types (`external_write.detected`, `cost_gate.denied`,
+  `audit_export.issued`, `policy.violated`, `lineage.pruned`,
+  `audit_sink.test`) fan out to admin-configured sinks of three
+  types — webhook (HMAC), S3 (SigV4 PUT, supports
+  MinIO/Cloudflare R2 via `endpoint_url`), AWS CloudTrail
+  (PutAuditEvents).  Off by default; admin CRUD at
+  `/api/admin/audit-sinks`.
+- **Write-time PII redaction** (Sprint 20.1). `pii_mode` defaults
+  to `hash_only`: any column whose name matches a built-in PII
+  pattern (`email`, `phone`, `ssn`, `credit_card`, `iban`,
+  `passport`, `first_name`, `address`, `birth`, +
+  contains-`pii`) gets HMAC-SHA256-hashed at `record_value_changes`
+  time.  `system_keys` table holds the auto-generated 32-byte
+  secret.  `redact_with_audit_log` mode also appends one
+  `audit_log` row per masked per-op call.
+- **Lineage retention** (Sprint 20.2). Per-axis TTLs on the four
+  lineage tables (defaults: row_edges 365, row_rejects 365,
+  value_changes 730, column_map none).  Lifespan task ticks every
+  24h; each prune appends an `audit_log` row + fires a
+  `pointlessql.lineage.pruned` governance CloudEvent.
+- **Time-travel value queries in UI** (Sprint 20.3).
+  `pql.table_at_version` / `pql.table_at_timestamp`; routes
+  `/api/tables/{fqn}/versions`,
+  `/api/tables/{fqn}/preview-at-version`,
+  `/api/lineage/row-at-version` (admin-gated); table-detail
+  preview "View at:" select; row-trace admin-only version-input
+  card.  `query_history.read_kind` enum extends with
+  `pql_table_at_version`.
+- **Cross-tool lineage facet ingest** (Sprint 20.4). PointlesSQL
+  emits `columnLineage` + `valueChange` facets (the latter is a
+  PointlesSQL extension, namespaced under `_producer`); soyuz
+  ingests both via two new ORM models (`LineageColumnEdge`,
+  `LineageValueChange`), Alembic `016`, expanded `ingest_event`
+  walker, response counters
+  (`accepted_column_edges`, `accepted_value_changes`).  PII
+  values cross the wire pre-redacted.
+
+Numbers:
+
+- 5 commits on PointlesSQL: `1072170`, `b715f3f`, `ca07013`,
+  `f06ba97`, `8050c2f` + this closing commit.
+- 1 commit on soyuz-catalog: `2d73c87` (locally tagged
+  `v0.2.0rc4`, push pending).
+- 7 new tables / migrations across both repos
+  (`audit_sinks`, `governance_events`, `system_keys`,
+  `lineage_column_edges`, `lineage_value_changes` +
+  PointlesSQL Alembic `m3h4i5j6k7l8` / `n4i5j6k7l8m9` +
+  soyuz Alembic `016`).
+- 3 new admin/operational walkthroughs
+  (`docs/e2e-walkthroughs/audit-sinks.md`,
+  `docs/e2e-walkthroughs/time-travel.md`,
+  `docs/audit/pii-modes.md`).
+- ~40 new public API surface points (admin CRUD + per-event-
+  type emission helpers + 3 time-travel routes).
+
+What's deliberately out of scope:
+
+- Admin HTML page for audit-sinks — JSON-only routes shipped;
+  page is a Phase-20.6+ follow-up.
+- Soyuz tag-driven PII detection at write time — would dominate
+  per-write cost; the Phase-18 render-time masking still gates
+  tagged-but-non-pattern columns at the API surface.
+- Foreign-producer `valueChange` schema validation — soyuz
+  documents the facet as PointlesSQL-defined and ingests
+  permissively.
+- Pushing the `v0.2.0rc3` / `v0.2.0rc4` soyuz tags — same
+  posture as the Phase-14 push that's still pending; install
+  works because both response-shape extensions are additive.
+
 ### Added — Sprint 20.4: Soyuz columnLineage + valueChange (2026-04-29)
 
 Cross-tool sibling to the PointlesSQL-only column / value lineage
