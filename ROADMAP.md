@@ -1610,7 +1610,7 @@ PointlesSQL
 │   ├── 16.5.6 — Auto-cleanup job (opt-in)
 │   └── 16.5.7 — End-to-end replay (headful Firefox)
 │
-├── Phase 17 — UI Overhaul                                ⏳ queued
+├── Phase 17 — UI Overhaul                                ✅ closed
 │   │
 │   │   Post-15.7 honest UX assessment surfaced three problems:
 │   │   top navbar at 9 items is overloaded, run-detail at 10
@@ -1624,41 +1624,89 @@ PointlesSQL
 │   │   to jump to Phase 18 would mean the new audit cockpit
 │   │   sits inside the same overloaded tab structure.
 │   │
-│   ├── Sprint 17.1 — Two-column sidebar (Databricks/Snowsight)
+│   ├── Sprint 17.1 — Two-column sidebar (Databricks/Snowsight)  ✅
 │   │   └── 60px icon-rail with main nav (Federation, Runs, SQL,
 │   │       Workspace, Jobs, Alerts, Volumes, Dashboards, Admin)
 │   │       + 240px contextual panel that swaps based on active
 │   │       section.  Catalog tree becomes the panel for the
-│   │       "Federation" icon.  Search moves to top-right.
-│   ├── Sprint 17.2 — Run-detail consolidation
+│   │       "Federation" icon.  Cmd+K search trigger stays in the
+│   │       topbar; user dropdown lifts out of nav_links into its
+│   │       own ``components/user_menu.html`` so the topbar carries
+│   │       only brand + search + user.  ``components/nav_links.html``
+│   │       is now drawer-only (mobile), and the offcanvas drawer
+│   │       carries section panel + nav links + user menu so phones
+│   │       have a single navigation surface.
+│   ├── Sprint 17.2 — Run-detail consolidation                ✅
 │   │   └── Today's 10 tabs (Cells / Operations / Rejects / Tool
 │   │       calls / UC mutations / Lineage / Queries / Source /
 │   │       Events / Audit log) collapse into 4 top-tabs with
 │   │       sub-tabs: Overview (Source + Cells + Events),
 │   │       Operations (Operations + Rejects + Queries + UC
-│   │       mutations), Lineage (Row trace + Column trace +
-│   │       Value changes), Audit (Tool calls + Audit log +
-│   │       External writes).
-│   ├── Sprint 17.3 — Lineage-DAG view
-│   │   └── ``GET /runs/{id}/graph`` renders a unified
-│   │       cytoscape.js / D3-force DAG joining
+│   │       mutations) + admin-only "Danger zone" rollback card
+│   │       at the bottom of the Operations top-pane, Lineage
+│   │       (single Lineage summary sub-pane today; Sprint 17.3
+│   │       will add Row / Column / Value / Graph sub-tabs),
+│   │       Audit (Tool calls + Audit log + External writes —
+│   │       the unattributed_writes alert from Sprint 13.7.5
+│   │       lifted out of the Operations tab into its own
+│   │       sub-pane).  URL hash deeplinks (``#tab-lineage``,
+│   │       ``#tab-ops``, …) keep working via a small inline
+│   │       hash-listener that walks up the DOM and activates
+│   │       the parent top-tab in addition to the targeted
+│   │       sub-tab.  op_id-filter chip from Sprint 18.1 stays
+│   │       above the top-tab strip so cross-axis drilldown
+│   │       is unaffected.
+│   ├── Sprint 17.3 — Lineage-DAG view                        ✅
+│   │   └── New ``GET /api/runs/{run_id}/graph?op_id=...`` JSON
+│   │       endpoint backed by a new
+│   │       ``services/lineage_graph_builder.py`` that joins
 │   │       ``lineage_row_edges`` + ``lineage_column_map`` per
-│   │       ``run_id``+``op_id``.  One box per table, arrows
-│   │       labelled with ``transform_kind``.  Click a column →
-│   │       highlights upstream + downstream simultaneously.
-│   │       Replaces the linear vertical-list trace pages for
-│   │       complex fan-in scenarios; the per-row trace pages
-│   │       stay for deep-dive on one row_id.
-│   ├── Sprint 17.4 — Table-detail entdichten
-│   │   └── Today's table-detail page stacks metadata + tags +
-│   │       permissions + effective-permissions + columns +
-│   │       lineage badges + sync history vertically.  Convert
-│   │       to tabs or accordion.  Search/filter on column list
-│   │       for 50+ column tables.
-│   └── Sprint 17.5 — Catalog-Browser search/filter
-│       └── 20+ schemas in a catalog → today: scroll-wall.
-│           Add search box at top, type-ahead filtering of
-│           sidebar tree, recent-table list at top.
+│   │       ``run_id``+``op_id`` into a flat ``{nodes, edges}``
+│   │       payload.  New Lineage-Graph sub-tab inside the
+│   │       Sprint-17.2 Lineage top-pane embeds a cytoscape.js
+│   │       canvas (cytoscape + dagre + cytoscape-dagre via
+│   │       jsdelivr, scoped to the run-detail page so default
+│   │       pages don't pay the bundle).  One box per touched
+│   │       table; arrows labelled with the per-edge
+│   │       ``transform_kinds`` aggregate; clicking a node
+│   │       highlights its incident edges, clicking an edge opens
+│   │       a side-panel listing the column-pairs, and clicking a
+│   │       column name highlights every edge that touches it
+│   │       (upstream + downstream simultaneously).  Auth gate
+│   │       is ``require_supervisor`` (auditor scope OK).  The
+│   │       per-row / per-column / per-value trace pages from
+│   │       Phase 15 stay for deep-dive on one ``row_id``.
+│   ├── Sprint 17.4 — Table-detail entdichten                 ✅
+│   │   └── ``pages/table.html`` collapses from a single long
+│   │       vertical stack of nine cards into six top-level tabs:
+│   │       Overview (Metadata + Properties + PQL Snippet),
+│   │       Preview (preview Alpine card with version selector),
+│   │       Columns (columns table + Sprint-56 column-statistics
+│   │       card + Sprint-15.6 column-lineage badges), Lineage
+│   │       (existing ``components/lineage_card.html`` upstream
+│   │       + downstream graph), Tags (``tags_editor.html``),
+│   │       Permissions (``permissions_card.html`` with the
+│   │       Sprint-30 effective-permissions toggle).  Existing
+│   │       ≥20-column search box stays in the Columns tab; no
+│   │       new client-side filter yet.  Card content + Alpine
+│   │       factories preserved verbatim.
+│   └── Sprint 17.5 — Catalog-Browser search/filter           ✅
+│       └── ``components/sidebar.html`` gains a debounced search
+│           input above the tree.  Typing case-insensitive
+│           substrings hides non-matching catalogs / schemas /
+│           tables and force-expands branches that contain a
+│           match, so partial hits are visible without manual
+│           chevron-clicks.  A new "Recent tables" block above
+│           the tree surfaces the last five
+│           ``catalog.schema.table`` visits, written into
+│           ``localStorage['pql.recentTables']`` by a small
+│           ``base.html`` script (sibling of the Sprint-32
+│           ``pql.recentCatalogs`` writer).  No server-side
+│           changes — the existing ``/api/tree`` payload covers
+│           the filter.  Sprint 17.5.1 (deferred) would add
+│           ``/api/tree/search`` for >1000-table tenants and a
+│           DB-backed ``RecentTable`` model for cross-device
+│           recents.
 │
 ├── Phase 18 — Audit Cockpit                              ✅ closed
 │   │
