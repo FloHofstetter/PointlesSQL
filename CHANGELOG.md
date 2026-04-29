@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 20.4: Soyuz columnLineage + valueChange (2026-04-29)
+
+Cross-tool sibling to the PointlesSQL-only column / value lineage
+stack.  Two OpenLineage facets now flow from PointlesSQL emission
+into soyuz-side persistence:
+
+- `services/soyuz_lineage.emit_event_sync` accepts optional
+  `column_edges` + `value_changes` lists.  Builds
+  `outputs[*].facets.columnLineage` (spec 1.x) and
+  `outputs[*].facets.valueChange` (PointlesSQL extension under
+  `_producer = "https://github.com/FloHofstetter/pointlessql"`).
+- `operations._emit_lineage_after_commit` threads the recorder's
+  `pending_column_edges` + `pending_value_changes` through so every
+  merge / declarative write that already populates
+  `LineageColumnMap` + `LineageValueChange` (Phases 15.6 + 15.7)
+  automatically surfaces in soyuz too.
+- PII safety: PointlesSQL emits **already-redacted** values when
+  `pii_mode != store_clear` (Sprint 20.1's default `hash_only`
+  rewrites `old_value` / `new_value` to a 16-hex HMAC), so soyuz
+  never sees cleartext.
+
+Soyuz changes (commit pending push, locally tagged `v0.2.0rc4`):
+two new ORM models (`LineageColumnEdge`, `LineageValueChange`),
+Alembic `016`, `ingest_event` facet walker, response counters
+(`accepted_column_edges`, `accepted_value_changes`).  See
+`../soyuz-catalog/CHANGELOG.md` for the full soyuz-side notes.
+
 ### Added — Sprint 20.3: Time-travel value queries in UI (2026-04-29)
 
 Surfaces the version arithmetic

@@ -407,6 +407,8 @@ def operation_context(
         target_table=final_target,
         params=merged_params,
         extra_params=recorder.extra_params,
+        pending_column_edges=recorder.pending_column_edges,
+        pending_value_changes=recorder.pending_value_changes,
     )
     _record_row_edges_after_commit(
         session_factory,
@@ -444,6 +446,8 @@ def _emit_lineage_after_commit(
     target_table: str | None,
     params: dict[str, Any],
     extra_params: dict[str, Any],
+    pending_column_edges: list[Any] | None = None,
+    pending_value_changes: list[Any] | None = None,
 ) -> None:
     """Fire the soyuz OpenLineage event for a freshly-committed op row.
 
@@ -451,6 +455,19 @@ def _emit_lineage_after_commit(
     onto the row's ``error_message`` field so the audit trail records
     that the side-effect was attempted but didn't reach soyuz; the
     underlying PQL write is never blocked.
+
+    Sprint 20.4 extends the body with two optional output facets when
+    the recorder collected matching pending entries:
+
+    * ``columnLineage`` (OpenLineage 1.x) — built from
+      ``pending_column_edges`` (one
+      :class:`pointlessql.services.lineage_edges.ColumnEdgeSpec`
+      per entry).
+    * ``valueChange`` (PointlesSQL extension) — built from
+      ``pending_value_changes`` (one
+      :class:`pointlessql.services.lineage_edges.ValueChangeSpec`
+      per entry).  PointlesSQL emits **already-redacted** values so
+      cleartext PII never leaves the install.
 
     Args:
         session_factory: SQLAlchemy session factory used both to
@@ -467,6 +484,13 @@ def _emit_lineage_after_commit(
         extra_params: Recorder extras alone — checked for
             ``source_table_fqn`` / ``source_volume_fqn`` declared by
             merge / write_table / autoload callers.
+        pending_column_edges: Optional list of
+            :class:`ColumnEdgeSpec` rows the merge / declarative
+            primitive collected; populates the columnLineage facet.
+        pending_value_changes: Optional list of
+            :class:`ValueChangeSpec` rows the
+            ``track_value_changes`` opt-in collected; populates the
+            valueChange facet.
     """
     if op_name == "rollback":
         return
@@ -486,6 +510,30 @@ def _emit_lineage_after_commit(
     if not inputs and not outputs:
         return
 
+    column_edges_payload: list[dict[str, Any]] = []
+    if pending_column_edges:
+        for spec in pending_column_edges:
+            column_edges_payload.append(
+                {
+                    "source_table": getattr(spec, "source_table", None),
+                    "source_column": getattr(spec, "source_column", None),
+                    "target_column": getattr(spec, "target_column", None),
+                    "transform_kind": getattr(spec, "transform_kind", None),
+                }
+            )
+
+    value_changes_payload: list[dict[str, Any]] = []
+    if pending_value_changes:
+        for spec in pending_value_changes:
+            value_changes_payload.append(
+                {
+                    "row_id": getattr(spec, "target_row_id", None),
+                    "column": getattr(spec, "target_column", None),
+                    "old_value": getattr(spec, "old_value", None),
+                    "new_value": getattr(spec, "new_value", None),
+                }
+            )
+
     from pointlessql.services.soyuz_lineage import emit_event_sync
 
     failure = emit_event_sync(
@@ -493,6 +541,8 @@ def _emit_lineage_after_commit(
         op_name=op_name,
         inputs=inputs,
         outputs=outputs,
+        column_edges=column_edges_payload or None,
+        value_changes=value_changes_payload or None,
     )
     if failure is None:
         return

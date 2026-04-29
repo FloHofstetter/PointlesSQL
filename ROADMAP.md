@@ -2087,17 +2087,47 @@ PointlesSQL
 │   │   └── ``docs/e2e-walkthroughs/time-travel.md`` is the
 │   │       browser-replay playbook (table picker + row
 │   │       admin-only card).  Quality gates clean.
-│   └── Sprint 20.4 — Soyuz columnLineage / valueChange ingest
-│       └── Cross-tool sibling to the PointlesSQL-only stack:
-│           teach soyuz-catalog's ``services/lineage_service``
-│           to ingest OpenLineage ``columnLineage`` and (new)
-│           ``valueChange`` facets so non-PointlesSQL writers
-│           on UC-managed Delta tables also surface in the
-│           lineage graph.  Originally sketched as Phase 15.8
-│           in the 15.6 close memo.  Lives here because it's a
-│           soyuz-side change, not a PointlesSQL one — the
-│           Phase-20 grouping is convenience for tracking, not
-│           coupling.
+│   └── Sprint 20.4 — Soyuz columnLineage + valueChange ingest  ✅
+│       ├── Soyuz side (commit pending push, locally tagged
+│       │   ``v0.2.0rc4``): two new ORM models —
+│       │   ``LineageColumnEdge`` (composite-uniqueness on
+│       │   the source-quad, transformation_type free-text)
+│       │   and ``LineageValueChange`` (per-cell before/after,
+│       │   no unique constraint).  Alembic ``016`` creates
+│       │   both with ``ON DELETE CASCADE`` on ``run_id``.
+│       │   ``ingest_event`` walks the per-output
+│       │   ``facets.columnLineage`` (OpenLineage 1.x) +
+│       │   ``facets.valueChange`` (PointlesSQL extension,
+│       │   namespaced under ``_producer``).  Permissive parse
+│       │   — malformed entries dropped silently.
+│       │   ``LineageIngestResponse`` gains
+│       │   ``accepted_column_edges`` /
+│       │   ``accepted_value_changes`` (default 0; backwards
+│       │   compatible).  Generated client regenerated.
+│       │   Existing test suite (545 tests) green after
+│       │   additive response-shape update.
+│       ├── PointlesSQL side: ``services/soyuz_lineage.py``
+│       │   ``emit_event_sync`` accepts optional
+│       │   ``column_edges`` + ``value_changes`` lists; builds
+│       │   the ``columnLineage`` + ``valueChange`` facet
+│       │   bodies into each output dataset's
+│       │   ``additional_properties``.
+│       │   ``operations._emit_lineage_after_commit`` threads
+│       │   the recorder's pending lists through so every
+│       │   merge / declarative write that already populates
+│       │   ``LineageColumnMap`` + ``LineageValueChange``
+│       │   automatically surfaces in soyuz too.
+│       ├── PII safety: PointlesSQL emits already-redacted
+│       │   values when ``pii_mode != store_clear`` (the
+│       │   Sprint 20.1 default ``hash_only`` mode rewrites
+│       │   ``old_value`` / ``new_value`` to a 16-hex HMAC),
+│       │   so soyuz never sees cleartext PII.  External
+│       │   producers may emit the same facet but must
+│       │   redact themselves — soyuz doesn't introspect.
+│       └── ``v0.2.0rc4`` push + pin-bump from ``v0.2.0rc3``
+│           to ``v0.2.0rc4`` are pending — same posture as the
+│           Phase-14 rc3 push (the install still works because
+│           the response shape extension is additive).
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
