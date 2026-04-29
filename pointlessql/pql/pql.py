@@ -21,6 +21,7 @@ from soyuz_catalog_client import Client
 
 from pointlessql.pql._aggregate import AggregateMode, AggSpec, aggregate_table
 from pointlessql.pql._autoload import AutoloadFormat, autoload_files
+from pointlessql.pql._branch import create_branch_schema
 from pointlessql.pql._list import list_catalogs, list_schemas, list_tables
 from pointlessql.pql._merge import MergeStrategy, merge_table
 from pointlessql.pql._read import read_table
@@ -538,6 +539,49 @@ class PQL:
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
             source_volume_fqn=source_volume_fqn,
+        )
+
+    def branch(
+        self,
+        source_schema: str,
+        branch_name: str,
+        *,
+        strategy: Literal["auto", "symlink", "deep_copy"] = "auto",
+    ) -> str:
+        """Create a Delta branch of *source_schema* under *branch_name*.
+
+        Phase 16.5.2 entry point.  Drops a fresh UC schema named
+        ``catalog.branch_name`` (catalog is inherited from
+        *source_schema*) whose Delta tables either symlink (local
+        FS) or deep-copy (cloud, opt-in) the source's parquet files,
+        then stamps the schema with ``pointlessql.branch.*`` tag
+        metadata so subsequent ``pql.branch_discard`` /
+        ``pql.branch_promote`` calls can find it.
+
+        Writes against the branch (``pql.write_table``,
+        ``pql.merge``, etc.) land in the branch's storage prefix and
+        do not touch the parent — this is the isolation guarantee.
+
+        Args:
+            source_schema: Two-part ``catalog.schema`` of the parent.
+            branch_name: Plain branch schema name (no dots).
+            strategy: ``"auto"`` (recommended), ``"symlink"``, or
+                ``"deep_copy"``.  ``"auto"`` resolves to symlink on
+                local FS and to either deep-copy or
+                :class:`BranchCloudUnsupportedError` on cloud
+                storage, depending on
+                ``settings.branch.cloud_strategy``.
+
+        Returns:
+            The branch's two-part FQN ``catalog.branch_name``.
+        """
+        return create_branch_schema(
+            client=self._client,
+            source_schema_fqn=source_schema,
+            branch_name=branch_name,
+            settings=Settings(),
+            strategy=strategy,
+            agent_run_id=self._current_run_id,
         )
 
     def list_catalogs(self) -> list[dict[str, Any]]:

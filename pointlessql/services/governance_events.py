@@ -48,6 +48,9 @@ EVENT_TYPE_POLICY_VIOLATION = "pointlessql.policy.violated"
 EVENT_TYPE_COST_GATE_DENIED = "pointlessql.cost_gate.denied"
 EVENT_TYPE_AUDIT_EXPORT_ISSUED = "pointlessql.audit_export.issued"
 EVENT_TYPE_LINEAGE_PRUNED = "pointlessql.lineage.pruned"
+EVENT_TYPE_BRANCH_CREATED = "pointlessql.branch.created.v1"
+EVENT_TYPE_BRANCH_PROMOTED = "pointlessql.branch.promoted.v1"
+EVENT_TYPE_BRANCH_DISCARDED = "pointlessql.branch.discarded.v1"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_EXTERNAL_WRITE,
@@ -55,6 +58,9 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_COST_GATE_DENIED,
     EVENT_TYPE_AUDIT_EXPORT_ISSUED,
     EVENT_TYPE_LINEAGE_PRUNED,
+    EVENT_TYPE_BRANCH_CREATED,
+    EVENT_TYPE_BRANCH_PROMOTED,
+    EVENT_TYPE_BRANCH_DISCARDED,
 )
 
 

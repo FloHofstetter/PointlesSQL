@@ -21,6 +21,7 @@ from soyuz_catalog_client.models.update_tags_tags_securable_type_full_name_patch
 from pointlessql.services.unitycatalog._api import (
     _create_schema,
     _create_table,
+    _delete_schema,
     _delete_table,
     _get_schema,
     _get_table,
@@ -118,6 +119,34 @@ class MetadataMixin:
         """
         full_name = f"{catalog_name}.{schema_name}.{table_name}"
         await _delete_table.asyncio(full_name=full_name, client=self._client)
+
+    @wrap_catalog_errors
+    async def delete_schema(
+        self,
+        catalog_name: str,
+        schema_name: str,
+        *,
+        force: bool = False,
+    ) -> None:
+        """Delete a schema by its two-part name.
+
+        Used by the Phase 16.5 branch-discard primitive to drop the
+        UC namespace once the branch's per-table storage has been
+        removed.  ``force=True`` lets soyuz cascade-delete any
+        remaining tables in the schema; the discard primitive cleans
+        them explicitly first, so ``force=False`` is the default.
+
+        Args:
+            catalog_name: Parent catalog.
+            schema_name: Target schema.
+            force: When ``True``, soyuz cascade-deletes nested tables.
+        """
+        full_name = f"{catalog_name}.{schema_name}"
+        await _delete_schema.asyncio(
+            full_name=full_name,
+            client=self._client,
+            force=force,
+        )
 
     @wrap_catalog_errors
     async def update_schema(

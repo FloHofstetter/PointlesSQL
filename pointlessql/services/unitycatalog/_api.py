@@ -99,6 +99,9 @@ from soyuz_catalog_client.api.schemas import (
     create_schema_api_2_1_unity_catalog_schemas_post as _create_schema,
 )
 from soyuz_catalog_client.api.schemas import (
+    delete_schema_api_2_1_unity_catalog_schemas_full_name_delete as _delete_schema,
+)
+from soyuz_catalog_client.api.schemas import (
     get_schema_api_2_1_unity_catalog_schemas_full_name_get as _get_schema,
 )
 from soyuz_catalog_client.api.schemas import (
@@ -144,6 +147,7 @@ __all__ = [
     "_delete_connection",
     "_delete_credential",
     "_delete_ext_loc",
+    "_delete_schema",
     "_delete_table",
     "_get_catalog",
     "_get_connection",

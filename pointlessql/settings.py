@@ -404,6 +404,34 @@ class ExternalWritesSettings(BaseSettings):
     history_limit: int = 200
 
 
+class BranchSettings(BaseSettings):
+    """Delta-Branching strategy + auto-cleanup configuration (Sprint 16.5).
+
+    Reads ``POINTLESSQL_BRANCH_*`` environment variables.  Two
+    independent concerns:
+
+    * ``cloud_strategy`` — how :func:`pql.branch` handles a parent
+      schema whose ``storage_root`` is on object storage (``s3://``,
+      ``gs://``, ``abfss://``, ``wasbs://``).  Cloud has no symlink
+      primitive so the zero-copy ideal from ADR-0003 is unavailable
+      there.  ``"error"`` (the default) refuses cloud branching
+      outright; ``"deep_copy"`` opts into the bigger storage cost so
+      branching works everywhere.  Local FS always uses the
+      symlink path.
+    * ``auto_cleanup_*`` — opt-in scheduler job that discards old
+      ``status=active`` branches so storage doesn't drift.  Default
+      disabled (``auto_cleanup_enabled=False``); operators flip it
+      on once they trust the discard primitive.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_BRANCH_")
+
+    cloud_strategy: Literal["deep_copy", "error"] = "error"
+    auto_cleanup_enabled: bool = False
+    auto_cleanup_retention_days: int = 30
+    auto_cleanup_cron: str = "0 2 * * *"
+
+
 class ConventionsSettings(BaseSettings):
     """Medallion conventions config-file pointer.
 
@@ -449,4 +477,5 @@ class Settings(BaseSettings):
     agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)
     audit_stream: AuditStreamSettings = Field(default_factory=AuditStreamSettings)
     external_writes: ExternalWritesSettings = Field(default_factory=ExternalWritesSettings)
+    branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
