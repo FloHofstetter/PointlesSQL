@@ -1576,29 +1576,41 @@ PointlesSQL
 │           target-not-found, invalid-creation, stale-no-force,
 │           happy-path-spawns-run-and-emits-event
 │
-├── Phase 16.5 — Delta-Branching                          ⏳ sketch
+├── Phase 16.5 — Delta-Branching                          ⏳ in progress (spike done)
 │   │
 │   │   Proactive isolation: every agent run gets its own
 │   │   zero-copy branch of the target schema, promote-to-main
 │   │   goes through an approval, discard is free.  Full design
 │   │   in ``project_delta_branching_idea.md``.
 │   │
-│   │   **Blocked on a load-bearing spike**: deltalake-python
-│   │   1.5.0 has no first-class clone API.  The spike (16.5.0)
-│   │   tests whether ``deltalake.transaction`` can build a
-│   │   ``_delta_log/00...000.json`` from pre-built ``Add``
-│   │   actions, falling back to a filesystem-level seed
-│   │   (read+rewrite source ``_delta_log/*.json`` with absolute
-│   │   parquet URIs).  If neither works, branching deep-copies
-│   │   parquet (loses the zero-copy story) and the phase needs
-│   │   a product re-decision.
+│   │   **Spike verdict (Sprint 16.5.0, 2026-04-29 —
+│   │   ADR-0003)**: the zero-copy ideal is NOT viable on cloud
+│   │   storage with deltalake-python 1.5.0.  Absolute paths in
+│   │   Add actions get re-anchored to the table root by the
+│   │   delta-rs reader (file-not-found); ``file://`` URIs hit
+│   │   the same path.  A symlink-into-branch-dir + relative
+│   │   path fallback works on local FS (5/5 rows, append on
+│   │   branch leaves source untouched, zero storage overhead)
+│   │   but cannot run on S3/GCS/Azure where symlinks don't
+│   │   exist.
+│   │
+│   │   **Adopted strategy**: hybrid — symlink-clone on local
+│   │   FS, deep-copy on cloud storage, controlled by a new
+│   │   ``cloud_branch_strategy`` knob in ``pointlessql.yaml``
+│   │   (``'deep_copy'`` | ``'error'``).  Honest zero-copy
+│   │   story for local dev (the primary early-adopter
+│   │   deployment), working fallback for cloud deployers.
 │   │
 │   │   Promotion uses pointer-swap with hard
 │   │   ``BranchPromotionConflict`` if the parent moved during
 │   │   branch lifetime.  Diff+replay stays a hypothetical
 │   │   future topic.
 │   │
-│   ├── 16.5.0 — ``_delta_log/`` shallow-clone spike
+│   ├── 16.5.0 — ``_delta_log/`` shallow-clone spike            ✅ done
+│   │   └── See ``docs/adr/0003-delta-branching-spike.md`` for
+│   │       the three approaches tried and their results.
+│   │       Verdict above; reproducer at ``tmp/spike_16_5_0.py``
+│   │       (not committed — re-run from ADR if needed).
 │   ├── 16.5.1 — soyuz tag schema for branches
 │   │   (``pointlessql.branch.*``)
 │   ├── 16.5.2 — ``pql.branch(source_schema, branch_name)``
