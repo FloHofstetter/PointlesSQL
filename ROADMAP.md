@@ -1576,7 +1576,7 @@ PointlesSQL
 │           target-not-found, invalid-creation, stale-no-force,
 │           happy-path-spawns-run-and-emits-event
 │
-├── Phase 16.5 — Delta-Branching                          ⏳ in progress (spike done)
+├── Phase 16.5 — Delta-Branching                          ✅ closed (2026-04-29)
 │   │
 │   │   Proactive isolation: every agent run gets its own
 │   │   zero-copy branch of the target schema, promote-to-main
@@ -1596,31 +1596,85 @@ PointlesSQL
 │   │
 │   │   **Adopted strategy**: hybrid — symlink-clone on local
 │   │   FS, deep-copy on cloud storage, controlled by a new
-│   │   ``cloud_branch_strategy`` knob in ``pointlessql.yaml``
+│   │   ``branch.cloud_strategy`` knob in :class:`BranchSettings`
 │   │   (``'deep_copy'`` | ``'error'``).  Honest zero-copy
 │   │   story for local dev (the primary early-adopter
 │   │   deployment), working fallback for cloud deployers.
 │   │
 │   │   Promotion uses pointer-swap with hard
-│   │   ``BranchPromotionConflict`` if the parent moved during
-│   │   branch lifetime.  Diff+replay stays a hypothetical
+│   │   ``BranchPromotionConflictError`` if the parent moved
+│   │   during branch lifetime.  Diff+replay stays a hypothetical
 │   │   future topic.
 │   │
-│   ├── 16.5.0 — ``_delta_log/`` shallow-clone spike            ✅ done
+│   ├── 16.5.0 — ``_delta_log/`` shallow-clone spike            ✅ done (bd15265)
 │   │   └── See ``docs/adr/0003-delta-branching-spike.md`` for
 │   │       the three approaches tried and their results.
 │   │       Verdict above; reproducer at ``tmp/spike_16_5_0.py``
 │   │       (not committed — re-run from ADR if needed).
-│   ├── 16.5.1 — soyuz tag schema for branches
-│   │   (``pointlessql.branch.*``)
-│   ├── 16.5.2 — ``pql.branch(source_schema, branch_name)``
-│   ├── 16.5.3 — ``pql.branch_discard(branch_schema)`` with
-│   │   safety guards
-│   ├── 16.5.4 — ``pql.branch_promote(branch_schema)`` v1
-│   │   (pointer-swap only)
-│   ├── 16.5.5 — Control-Room UI (list / promote / discard)
-│   ├── 16.5.6 — Auto-cleanup job (opt-in)
-│   └── 16.5.7 — End-to-end replay (headful Firefox)
+│   ├── 16.5.1 — soyuz tag schema for branches              ✅ done (64a7d31)
+│   │   (``pointlessql.branch.*``).  ``services/branch_tags.py``
+│   │   reserves the namespace, ships :class:`BranchTags` typed
+│   │   read + apply / set-status / mark-pre-promote-backup
+│   │   helpers in both async (UnityCatalogClient, web routes)
+│   │   and sync (raw soyuz Client, ``pql/_branch.py``)
+│   │   flavours.  No soyuz schema change — the generic ``tags``
+│   │   table accepts arbitrary keys.
+│   ├── 16.5.2 — ``pql.branch(source_schema, branch_name)``  ✅ done (64a7d31)
+│   │   ``pointlessql/pql/_branch.py`` orchestrates the create
+│   │   flow: classify storage scheme, pick strategy, create
+│   │   UC schema + tables, clone parquets via
+│   │   ``DeltaTable.create_write_transaction``, stamp branch
+│   │   tags, emit ``pointlessql.branch.created.v1`` CloudEvent.
+│   │   Plus :class:`BranchSettings` (cloud_strategy
+│   │   default='error', auto_cleanup_*),
+│   │   ``MetadataMixin.delete_schema()``, three new event types
+│   │   in ``governance_events.py``.
+│   ├── 16.5.3 — ``pql.branch_discard(branch_schema)`` with  ✅ done (3b72261)
+│   │   safety guards.  Idempotent for already-discarded
+│   │   branches.  Refuses promoted branches
+│   │   (:class:`BranchInUseError`).  Refuses non-branch
+│   │   schemas (:class:`BranchNotFoundError`).
+│   │   ``shutil.rmtree`` on the local-FS storage tree
+│   │   (unlinks symlinks rather than recursing).  New
+│   │   ``branch_audit_log`` table (Alembic ``o5k7m9p2r4t6``)
+│   │   captures create / promote / discard / auto_cleanup
+│   │   rows so audit trails survive the UC schema's
+│   │   deletion.
+│   ├── 16.5.4 — ``pql.branch_promote(branch_schema)`` v1    ✅ done (36baac1)
+│   │   (pointer-swap only).  Atomic two-step rename: parent →
+│   │   ``{parent}_pre_promote_<ts>`` (backup), branch →
+│   │   parent.  Per-table conflict detection up front:
+│   │   :class:`BranchPromotionConflictError(table, expected,
+│   │   actual)` raised BEFORE any UC mutation.  Best-effort
+│   │   revert on second-rename failure.
+│   │   ``pql.branch_promote_preview()`` is the dry-run for the
+│   │   UI — same conflict-detection, no side effects.
+│   ├── 16.5.5 — Control-Room UI                            ✅ done (ac9d18a)
+│   │   ``pointlessql/api/branches_routes.py`` ships 7 routes
+│   │   (3 HTML, 4 JSON).  ``pages/branches.html`` is the
+│   │   searchable + status-filtered list.
+│   │   ``pages/branch_detail.html`` carries metadata cards,
+│   │   parent-version table, audit-log tail, and an admin-only
+│   │   Danger-zone with Preview / Promote / Discard buttons.
+│   │   Sidebar icon-rail entry (admin-only) under
+│   │   ``bi-diagram-3``.
+│   ├── 16.5.6 — Auto-cleanup job (opt-in)                  ✅ done (7cf3743)
+│   │   ``services/branch_cleanup.py::cleanup_old_branches``
+│   │   walks UC schemas, picks ``status='active'`` branches
+│   │   past ``branch.auto_cleanup_retention_days``, calls
+│   │   ``discard_branch_schema`` on each.  Default-disabled.
+│   │   Single-discard failures are logged + counted but
+│   │   never abort the loop.  Registered as scheduler kind
+│   │   ``"branch_cleanup"`` AND as a background task in the
+│   │   FastAPI lifespan; both share the same helper.
+│   └── 16.5.7 — End-to-end replay (headful Firefox)        ✅ done
+│       ``docs/e2e-walkthroughs/branches.md`` chains: seed
+│       parent → branch → write to branch → prove parent
+│       untouched → preview-promote → break with competing
+│       parent write → discard → re-branch → clean promote.
+│       Inspects symlink layout, audit-log, governance_events.
+│       Local FS / symlink strategy only — cloud-side discard
+│       + promote stay deferred follow-ups.
 │
 ├── Phase 17 — UI Overhaul                                ✅ closed
 │   │
@@ -2229,6 +2283,161 @@ PointlesSQL
 │           to ``v0.2.0rc4`` are pending — same posture as the
 │           Phase-14 rc3 push (the install still works because
 │           the response shape extension is additive).
+│
+├── Phase 21 — ML Registry + Auditable Training           ⏳ planned
+│   │
+│   │   The stack today audits *data engineering* end-to-end
+│   │   (Phases 14-20) but has a gap when the workload is *model
+│   │   training*: hyperparameters, seeds, library versions and
+│   │   hardware fingerprints live nowhere structured.  ``model.fit
+│   │   (seed=42, lr=0.001)`` is plain Python — captured as cell
+│   │   content, not as first-class audit rows.  Phase 21 closes
+│   │   that gap on three layers, mirroring how Databricks' Unity
+│   │   Catalog absorbed MLflow Registry as a MODEL Securable in
+│   │   2023-24.
+│   │
+│   │   **Three-layer split (analogous to JupyterLab embedding):**
+│   │
+│   │   ```
+│   │   Layer        Owner              Responsibility
+│   │   ───────────  ─────────────────  ──────────────────────────
+│   │   Tracking     MLflow subprocess  Experiments, runs, params,
+│   │                                   metrics, artifacts (REST)
+│   │   Registry     soyuz-catalog      MODEL securable: identity,
+│   │                                   versions, aliases, grants,
+│   │                                   tags — UC-spec parity
+│   │   Operations   PointlesSQL UI +   Promote, A/B, shadow-mode,
+│   │                Hermes agents      drift alerts, approval-hop,
+│   │                                   audit cockpit integration
+│   │   ```
+│   │
+│   │   **Why register in soyuz, not just proxy MLflow Registry:**
+│   │   if the catalog doesn't know models as first-class objects,
+│   │   every Phase-14-20 win evaporates — uniform grants, lineage
+│   │   over training-input → model → inference-output, valueChange
+│   │   tracking on inference results, audit-trail across promotion
+│   │   steps.  This is exactly the "model is a Catalog object, not
+│   │   a sidecar" point UC won over plain-MLflow on.
+│   │
+│   │   **Honest reproducibility caveat:** seed + hyperparams give
+│   │   a strong audit answer to *"how was it configured"* but not
+│   │   to *"would it come out bit-identical on rerun"* — CUDA
+│   │   non-determinism, parallel dataloaders, atomic-add ordering
+│   │   leak even with full state capture.  Document this gap
+│   │   explicitly; many EU-AI-Act Art. 12 implementations conflate
+│   │   the two.  Phase 21's promise is auditability of intent, not
+│   │   bit-replay.
+│   │
+│   │   Strategic ordering note: Phase 21 lands AFTER Phase 16.5
+│   │   (Delta-Branching) so the agent-run isolation story already
+│   │   exists when training runs need their own scratch branches.
+│   │   Lands BEFORE the Some-day public launch so the ML angle is
+│   │   in the launch-day narrative ("auditable agent-driven ML on
+│   │   the lakehouse, not just data engineering").
+│   │
+│   ├── Sprint 21.0 — MLflow Tracking subprocess + UI embed     ⏳
+│   │   ├── ``services/mlflow.py`` lifecycle manager analogous to
+│   │   │   ``services/jupyter.py`` (Phase 1).  Boots ``mlflow
+│   │   │   server`` on a configurable port, health-checks, exposes
+│   │   │   REST proxy through PointlesSQL's auth layer.
+│   │   ├── Storage: experiments + runs in PointlesSQL's own
+│   │   │   metadata DB (Alembic migration), artifacts in a UC
+│   │   │   Volume so they inherit Phase-12.5 grants.
+│   │   ├── ``MLflow`` tab in main nav, embedded iframe initially;
+│   │   │   later sprints replace key flows with native UI.
+│   │   └── ``pointlessql.mlflow_url`` auto-configured for
+│   │       notebook + agent contexts so ``mlflow.log_param`` works
+│   │       without env-setup boilerplate.
+│   │
+│   ├── Sprint 21.1 — soyuz ``MODEL`` Securable (UC-spec parity)  ⏳
+│   │   ├── New endpoints in ``soyuz-catalog`` matching UC spec:
+│   │   │   ``POST /models``, ``GET /models/{full_name}``,
+│   │   │   ``POST /models/{full_name}/versions``,
+│   │   │   ``GET /model-versions/{full_name}/{version}``,
+│   │   │   plus aliases (``PUT /models/{full_name}/aliases/{alias}``).
+│   │   ├── Same Securable machinery as TABLE/VOLUME: grants,
+│   │   │   tags, lineage edges, audit log entries.
+│   │   ├── ``soyuz-catalog-client`` regen so PointlesSQL gets
+│   │   │   typed access; ``v0.3.0`` minor bump.
+│   │   └── Spec-conformance test (Sprint-12 in soyuz) extended
+│   │       with the MODEL endpoints from ``all.yaml``.
+│   │
+│   ├── Sprint 21.2 — Cross-link ``agent_run`` ↔ MLflow ↔ MODEL    ⏳
+│   │   ├── ``agent_run.mlflow_run_id`` column (Alembic migration);
+│   │   │   populated automatically when an op detects an MLflow
+│   │   │   call inside the run.
+│   │   ├── ``model_version`` carries ``mlflow_run_id`` as a soyuz
+│   │   │   tag (UC-compatible, no schema deviation).
+│   │   ├── New ``GET /api/runs/{id}/ml-context`` aggregator that
+│   │   │   joins agent_run + MLflow Run + soyuz model_version into
+│   │   │   one audit response — the "wie wurde das Modell trainiert"
+│   │   │   query that plain-MLflow can't answer.
+│   │   └── Audit-cockpit (Phase 18) gains an "ML" axis.
+│   │
+│   ├── Sprint 21.3 — Forced ML-Param-Capture (analog 13.8)      ⏳
+│   │   ├── Wrap ``mlflow.start_run`` in agent-run contexts so
+│   │   │   ``autolog()`` is mandatory, not opt-in — the same
+│   │   │   "Forced Audit Trail" logic as Phase 13.8 read-audit.
+│   │   ├── If a training op completes without any logged params,
+│   │   │   raise an ``UnauditedTrainingError`` (fail-loud, like
+│   │   │   ``RollbackError`` in Phase 16).  Suppressible via
+│   │   │   explicit ``@no_audit`` decorator that itself logs.
+│   │   ├── Captured per training op: ``params`` dict, ``metrics``
+│   │   │   dict, framework name + version, ``set_seed`` calls
+│   │   │   intercepted from numpy/torch/tf/random.
+│   │   └── ``pointlessql.model.trained`` CloudEvent for Phase-19
+│   │       audit-reviewer-agent consumption.
+│   │
+│   ├── Sprint 21.4 — Lib + Hardware Fingerprint                ⏳
+│   │   ├── ``pip freeze`` snapshot per training op stored in
+│   │   │   ``agent_run_operations.env_snapshot`` (compressed JSON).
+│   │   ├── Hardware fingerprint: CPU model, CUDA version, GPU
+│   │   │   model + driver, ``torch.backends.cudnn.deterministic``
+│   │   │   flag — captured but flagged "advisory only" given the
+│   │   │   non-determinism caveat.
+│   │   ├── Conda env / pyproject hash if running inside a managed
+│   │   │   env so the snapshot is restorable, not just inspectable.
+│   │   └── UI surface: "Repro" sub-tab on run-detail (Phase 17.2)
+│   │       showing the full repro context next to params/metrics.
+│   │
+│   ├── Sprint 21.5 — PointlesSQL Models-Tab                    ⏳
+│   │   ├── Catalog-tree extended with model nodes
+│   │   │   (catalog → schema → model → version).
+│   │   ├── Model-detail page: versions table, params/metrics
+│   │   │   side-by-side compare across versions, lineage DAG
+│   │   │   pointing back to training agent_run + input tables.
+│   │   ├── Version-diff view: param delta + metric delta + input
+│   │   │   dataset version delta — the "what changed between v3
+│   │   │   and v4" dashboard.
+│   │   └── Browser-walkthrough playbook in
+│   │       ``docs/e2e-walkthroughs/ml-registry.md``.
+│   │
+│   ├── Sprint 21.6 — Champion/Challenger Aliases + Promotion-Hop ⏳
+│   │   ├── Promote-button on model-version → opens approval-hop
+│   │   │   modal (reuse Sprint-19.4-style supervisor handoff).
+│   │   ├── ``champion`` / ``challenger`` / ``staging`` /
+│   │   │   ``production`` aliases as soyuz UC aliases (no PointlesSQL-
+│   │   │   specific schema).
+│   │   ├── Promotion writes a structured ``agent_run_operation``
+│   │   │   so the move from challenger → champion is itself
+│   │   │   auditable, with reviewer-id + timestamp.
+│   │   └── ``pointlessql.model.promoted`` CloudEvent +
+│   │       audit-reviewer-agent rule that flags promotions
+│   │       without recorded approval.
+│   │
+│   └── Sprint 21.7 — Inference Lineage + Drift Alert           ⏳
+│       ├── ``pql.predict(model="cat.sch.m@champion", input=df)``
+│       │   helper that records inference as a first-class
+│       │   operation: model_version_id, input_row_ids
+│       │   (Phase 15), output_row_ids, latency.
+│       ├── Inference-output table opt-in to ``track_value_changes``
+│       │   (Phase 15.7) so swapping champion → new version surfaces
+│       │   the diff at row-level: "1247 predictions changed,
+│       │   83% lower confidence on segment X".
+│       ├── Drift alerts: reuse Phase-12.5 alerts framework; train
+│       │   a baseline + watch metrics drift over rolling windows.
+│       └── Models-tab "Inference" sub-tab showing per-version
+│           prediction volume + drift trend + cost-per-1k-inferences.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

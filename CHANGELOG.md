@@ -4,6 +4,62 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Closed — Phase 16.5: Delta-Branching (2026-04-29)
+
+Seven sub-sprints (16.5.0 spike + 16.5.1 → 16.5.7) close the
+Phase-16.5 design opened post-Phase-16.  Per-agent-run zero-copy
+isolation: every run gets its own private branch of the target
+schema, promote-to-main goes through an approval, discard is
+free.
+
+Spike (`docs/adr/0003-delta-branching-spike.md`) found the
+zero-copy ideal isn't viable on cloud storage — delta-rs re-anchors
+absolute Add-action paths.  Adopted **hybrid strategy**: symlink
+on local FS, deep-copy on cloud (opt-in via
+`branch.cloud_strategy`; default `"error"` refuses cloud
+branching outright until the operator consciously opts into the
+storage cost).
+
+What's now in place:
+
+- **`pql.branch(source, name)`** — atomic create flow that
+  classifies storage scheme, picks strategy, creates UC schema
+  + tables, clones parquets via
+  `DeltaTable.create_write_transaction`, stamps
+  `pointlessql.branch.*` tags, emits CloudEvent.
+- **`pql.branch_discard(branch)`** — idempotent removal, refuses
+  promoted / non-branch schemas, `shutil.rmtree`s the local-FS
+  storage tree (symlinks unlink without recursing into source).
+- **`pql.branch_promote(branch)`** — pointer-swap rename
+  (parent → backup, branch → parent).  Per-table conflict
+  detection BEFORE any UC mutation; if the parent moved during
+  the branch's lifetime, `BranchPromotionConflictError` aborts
+  with zero side effects.
+- **`pql.branch_promote_preview(branch)`** — dry-run for the UI.
+- **Control-Room UI** at `/branches` (admin-only).  List page
+  with status / strategy / parent columns + status chips;
+  detail page with metadata cards, parent-version table,
+  audit-log tail, and an admin-only Danger-zone with Preview /
+  Promote / Discard buttons.  Sidebar icon-rail entry under
+  `bi-diagram-3`.
+- **Auto-cleanup loop** (default-disabled).  Background task in
+  the FastAPI lifespan + scheduler kind `"branch_cleanup"`;
+  walks UC schemas, picks active branches past
+  `branch.auto_cleanup_retention_days`, calls
+  `discard_branch_schema` on each.
+- **`branch_audit_log` table** (Alembic `o5k7m9p2r4t6`)
+  captures create / promote / discard / auto_cleanup rows so
+  audit trails survive the UC schema's deletion.
+- **Three new CloudEvents** —
+  `pointlessql.branch.created.v1`, `.promoted.v1`,
+  `.discarded.v1`.
+
+Tests: 14 (branch_tags) + 35 (create) + 10 (discard) +
+11 (promote) + 11 (cleanup) = 81 new green pytest cases.
+End-to-end coverage in
+`docs/e2e-walkthroughs/branches.md` (notebook + browser combo).
+Static gates clean — ruff / pyright / pydoclint / alembic.
+
 ### Closed — Phase 17: UI Overhaul (2026-04-29)
 
 Five sub-sprints in one autonomous session, closing the

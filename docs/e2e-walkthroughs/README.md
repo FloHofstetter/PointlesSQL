@@ -105,6 +105,19 @@ external runtime that pretends to be Hermes:
     tabs all populated.  Agent-authored Medallion lakehouse
     in one playbook.
 
+**Delta-Branching** (Phase 16.5).  Exercises the zero-copy branch
+primitives end-to-end:
+
+14. [`branches.md`](branches.md) — Sprint 16.5.7 closing replay.
+    Notebook + browser combo: ``pql.branch`` → write to branch →
+    prove parent untouched → preview-promote → break it with a
+    competing parent write → discard → re-branch → clean
+    promote.  Covers the symlink-strategy storage layout,
+    conflict-detection, audit-log entries, and the three new
+    `pointlessql.branch.*` CloudEvents.  Local FS only —
+    cloud-storage discard / promote is documented out-of-scope
+    for v1.
+
 ## Stack start
 
 ```bash
