@@ -21,406 +21,475 @@
     <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
 </div>
 {% elif table %}
+{# Sprint 17.4 — table-detail tabs.  The pre-17.4 single
+   long stack of cards (Metadata + Properties + PQL Snippet +
+   Preview + Tags + Permissions + Columns + Lineage + Column
+   statistics) folds into six top-level tabs so a wide-table
+   detail page is no longer a scroll wall.  Card content is
+   preserved verbatim — only the wrapping changes. #}
+<ul class="nav nav-tabs mb-3" id="tableDetailTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-overview" type="button" role="tab"
+                aria-controls="tab-overview" aria-selected="true">
+            <i class="bi bi-info-circle me-1"></i>Overview
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-preview-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-preview" type="button" role="tab"
+                aria-controls="tab-preview" aria-selected="false">
+            <i class="bi bi-eye me-1"></i>Preview
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-columns-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-columns" type="button" role="tab"
+                aria-controls="tab-columns" aria-selected="false">
+            <i class="bi bi-list-columns me-1"></i>Columns
+            <span class="badge bg-secondary ms-1">{{ table.columns|length }}</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-lineage" type="button" role="tab"
+                aria-controls="tab-lineage" aria-selected="false">
+            <i class="bi bi-diagram-3 me-1"></i>Lineage
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-tags-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-tags" type="button" role="tab"
+                aria-controls="tab-tags" aria-selected="false">
+            <i class="bi bi-tags me-1"></i>Tags
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-permissions-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-permissions" type="button" role="tab"
+                aria-controls="tab-permissions" aria-selected="false">
+            <i class="bi bi-shield-lock me-1"></i>Permissions
+        </button>
+    </li>
+</ul>
+<div class="tab-content" id="tableDetailTabContent">
+    <div class="tab-pane fade show active" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview-btn">
+    <div class="card mb-4">
+        <div class="card-header">Metadata</div>
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-muted">Full name</dt>
+                <dd class="col-sm-9 font-monospace">{{ catalog_name }}.{{ schema_name }}.{{ table.name }}</dd>
 
-<div class="card mb-4">
-    <div class="card-header">Metadata</div>
-    <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3 text-muted">Full name</dt>
-            <dd class="col-sm-9 font-monospace">{{ catalog_name }}.{{ schema_name }}.{{ table.name }}</dd>
+                <dt class="col-sm-3 text-muted">Type</dt>
+                <dd class="col-sm-9"><span class="badge bg-primary">{{ table.table_type }}</span></dd>
 
-            <dt class="col-sm-3 text-muted">Type</dt>
-            <dd class="col-sm-9"><span class="badge bg-primary">{{ table.table_type }}</span></dd>
+                <dt class="col-sm-3 text-muted">Format</dt>
+                <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ table.data_source_format }}</span></dd>
 
-            <dt class="col-sm-3 text-muted">Format</dt>
-            <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ table.data_source_format }}</span></dd>
+                <dt class="col-sm-3 text-muted">Comment</dt>
+                <dd class="col-sm-9">{{ table.comment or "—" }}</dd>
 
-            <dt class="col-sm-3 text-muted">Comment</dt>
-            <dd class="col-sm-9">{{ table.comment or "—" }}</dd>
+                <dt class="col-sm-3 text-muted">Owner</dt>
+                <dd class="col-sm-9">{{ table.owner or "—" }}</dd>
 
-            <dt class="col-sm-3 text-muted">Owner</dt>
-            <dd class="col-sm-9">{{ table.owner or "—" }}</dd>
+                <dt class="col-sm-3 text-muted">Table ID</dt>
+                <dd class="col-sm-9 font-monospace small">{{ table.table_id or "—" }}</dd>
 
-            <dt class="col-sm-3 text-muted">Table ID</dt>
-            <dd class="col-sm-9 font-monospace small">{{ table.table_id or "—" }}</dd>
+                <dt class="col-sm-3 text-muted">Created</dt>
+                <dd class="col-sm-9">{{ table.created_at|epoch_ms }}{% if table.created_by %} by {{ table.created_by }}{% endif %}</dd>
 
-            <dt class="col-sm-3 text-muted">Created</dt>
-            <dd class="col-sm-9">{{ table.created_at|epoch_ms }}{% if table.created_by %} by {{ table.created_by }}{% endif %}</dd>
+                <dt class="col-sm-3 text-muted">Updated</dt>
+                <dd class="col-sm-9">{{ table.updated_at|epoch_ms }}{% if table.updated_by %} by {{ table.updated_by }}{% endif %}</dd>
 
-            <dt class="col-sm-3 text-muted">Updated</dt>
-            <dd class="col-sm-9">{{ table.updated_at|epoch_ms }}{% if table.updated_by %} by {{ table.updated_by }}{% endif %}</dd>
-
-            <dt class="col-sm-3 text-muted">Storage location</dt>
-            <dd class="col-sm-9 font-monospace small">{{ table.storage_location or "—" }}</dd>
-        </dl>
-    </div>
-</div>
-
-<div class="card mb-4" x-data="{ copied: false }">
-    <div class="card-header d-flex align-items-center justify-content-between">
-        <span>PQL Snippet</span>
-        <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary"
-                    @click="navigator.clipboard.writeText($refs.snippet.textContent); copied = true; setTimeout(() => copied = false, 1500)"
-                    :title="copied ? 'Copied!' : 'Copy to clipboard'">
-                <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
-                <span x-text="copied ? 'Copied' : 'Copy'" class="ms-1"></span>
-            </button>
+                <dt class="col-sm-3 text-muted">Storage location</dt>
+                <dd class="col-sm-9 font-monospace small">{{ table.storage_location or "—" }}</dd>
+            </dl>
         </div>
     </div>
-    <div class="card-body">
-        <pre class="mb-0"><code x-ref="snippet">from pointlessql import PQL
 
-pql = PQL()
-df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></pre>
-    </div>
-</div>
-
-<div class="card mb-4" x-data="tablePreview()" x-init="load(); loadVersions();">
-    <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
-        <span>Preview</span>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <label class="text-muted small mb-0" for="version-select-{{ table_name }}">
-                <i class="bi bi-clock-history me-1"></i>View at
-            </label>
-            <select id="version-select-{{ table_name }}"
-                    class="form-select form-select-sm"
-                    style="width: auto;"
-                    x-model.number="selectedVersion"
-                    @change="onVersionChange()">
-                <option :value="null">current</option>
-                <template x-for="v in versions" :key="v.version">
-                    <option :value="v.version"
-                            x-text="`v${v.version}` + (v.timestamp ? ` (${new Date(v.timestamp).toLocaleDateString()})` : '') + (v.run_id ? ` — run ${v.run_id.slice(0,8)}…` : '')">
-                    </option>
-                </template>
-            </select>
-            <span class="text-muted small" x-show="ready">
-                <span x-text="rows.length"></span> rows
-            </span>
-        </div>
-    </div>
-    <div class="card-body p-0">
-        <template x-if="loading">
-            <div class="p-3 text-muted small">
-                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                Loading preview…
-            </div>
-        </template>
-        <template x-if="error">
-            <div class="p-3 text-muted small fst-italic">
-                <i class="bi bi-exclamation-triangle me-1"></i>
-                Preview unavailable: <span x-text="error"></span>
-            </div>
-        </template>
-        <template x-if="ready && rows.length === 0">
-            <div class="p-3 text-muted small fst-italic">Table is empty.</div>
-        </template>
-        <template x-if="ready && rows.length > 0">
-            <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle pql-list-table">
-                    <thead>
-                        <tr>
-                            <template x-for="col in columns" :key="col">
-                                <th class="font-monospace small" x-text="col"></th>
-                            </template>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="(row, i) in rows" :key="i">
-                            <tr>
-                                <template x-for="(cell, j) in row" :key="j">
-                                    <td class="small" :data-label="columns[j]">
-                                        <template x-if="columns[j] === '_lineage_row_id' && cell">
-                                            <a :href="`/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/rows/${encodeURIComponent(cell)}/trace`"
-                                               class="font-monospace small text-decoration-none"
-                                               title="Walk this row's lineage back to the bronze cell that produced it">
-                                                <i class="bi bi-arrow-up-right-square me-1"></i><span x-text="String(cell).slice(0, 12) + '…'"></span>
-                                            </a>
-                                        </template>
-                                        <template x-if="!(columns[j] === '_lineage_row_id' && cell)">
-                                            <span x-text="cell === null ? '—' : String(cell)"></span>
-                                        </template>
-                                    </td>
-                                </template>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-        </template>
-    </div>
-</div>
-
-<script>
-function tablePreview() {
-    const FQN = '{{ catalog_name }}.{{ schema_name }}.{{ table_name }}';
-    return {
-        loading: true,
-        ready: false,
-        error: null,
-        columns: [],
-        rows: [],
-        truncated: false,
-        versions: [],
-        selectedVersion: null,
-        async load() {
-            this.loading = true;
-            this.ready = false;
-            this.error = null;
-            try {
-                const resp = await fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/preview', {
-                    headers: {'Accept': 'application/json'},
-                });
-                const data = await resp.json();
-                if (!resp.ok || data.error) {
-                    this.error = data.detail || data.error || 'Unable to load preview';
-                } else {
-                    this.columns = data.columns || [];
-                    this.rows = data.rows || [];
-                    this.truncated = !!data.truncated;
-                    this.ready = true;
-                }
-            } catch (err) {
-                this.error = err.message || 'Network error';
-            } finally {
-                this.loading = false;
-            }
-        },
-        async loadVersions() {
-            try {
-                const resp = await fetch(`/api/tables/${encodeURIComponent(FQN)}/versions`, {
-                    headers: {'Accept': 'application/json'},
-                });
-                if (!resp.ok) return;
-                const data = await resp.json();
-                this.versions = data.versions || [];
-            } catch (_err) { /* ignore */ }
-        },
-        async onVersionChange() {
-            if (this.selectedVersion === null || this.selectedVersion === '' || this.selectedVersion === undefined) {
-                await this.load();
-                return;
-            }
-            this.loading = true;
-            this.ready = false;
-            this.error = null;
-            try {
-                const url = `/api/tables/${encodeURIComponent(FQN)}/preview-at-version?version=${this.selectedVersion}&limit=50`;
-                const resp = await fetch(url, {headers: {'Accept': 'application/json'}});
-                const data = await resp.json();
-                if (!resp.ok) {
-                    this.error = data.detail || 'Unable to load historical version';
-                } else {
-                    this.columns = data.columns || [];
-                    this.rows = (data.rows || []).map(r => this.columns.map(c => r[c]));
-                    this.truncated = data.total > this.rows.length;
-                    this.ready = true;
-                }
-            } catch (err) {
-                this.error = err.message || 'Network error';
-            } finally {
-                this.loading = false;
-            }
-        },
-    };
-}
-</script>
-
-{% with tags_url="/api/tags/table/" ~ catalog_name ~ "." ~ schema_name ~ "." ~ table_name, tags=tags %}
-    {% include "components/tags_editor.html" %}
-{% endwith %}
-
-{% set _table_full = catalog_name ~ "." ~ schema_name ~ "." ~ table_name %}
-{% with permissions_url="/api/permissions/table/" ~ _table_full,
-        effective_url="/api/effective-permissions/table/" ~ _table_full,
-        permissions=permissions, effective=effective,
-        can_manage=can_manage,
-        current_user_email=current_user.email if current_user else "" %}
-    {% include "components/permissions_card.html" %}
-{% endwith %}
-
-{% if table.properties %}
-<div class="card mb-4">
-    <div class="card-header">Properties</div>
-    <div class="card-body p-0">
-        <table class="table table-sm mb-0">
-            <tbody>
-                {% for key, value in table.properties.items() %}
-                <tr>
-                    <td class="font-monospace small text-muted ps-3" style="width: 30%;">{{ key }}</td>
-                    <td class="font-monospace small">{{ value }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
-
-{% set _col_search = table.columns|length >= 20 %}
-<div class="card"
-    {% if _col_search %}x-data="listTable({searchPlaceholder: 'Search columns…', initialSort: {key: 'position', dir: 'asc'}, mobileSort: true})"{% endif %}>
-    <div class="card-header d-flex align-items-center justify-content-between">
-        <span>Columns</span>
-        <span class="text-muted small">{{ table.columns|length }} total</span>
-    </div>
-    {% if _col_search %}
-    <div class="pql-list-controls p-2 border-bottom">
-        <input type="search" class="form-control form-control-sm"
-               x-ref="search" x-model="query" x-on:input="onInput()"
-               :placeholder="searchPlaceholder">
-    </div>
-    {% endif %}
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle pql-list-table">
-                <thead>
-                    <tr>
-                        <th {% if _col_search %}data-sort-key="position"{% endif %} style="width: 3rem;">#</th>
-                        <th {% if _col_search %}data-sort-key="name"{% endif %}>Name</th>
-                        <th {% if _col_search %}data-sort-key="type"{% endif %}>Type</th>
-                        <th {% if _col_search %}data-sort-key="nullable"{% endif %}>Nullable</th>
-                        <th>Comment</th>
-                    </tr>
-                </thead>
+    {% if table.properties %}
+    <div class="card mb-4">
+        <div class="card-header">Properties</div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
                 <tbody>
-                    {% for col in table.columns|sort(attribute="position") %}
-                    <tr {% if _col_search %}data-search="{{ col.name|lower }} {{ col.type_text|lower }} {{ (col.comment or '')|lower }}"
-                        data-sort-position="{{ col.position }}"
-                        data-sort-name="{{ col.name|lower }}"
-                        data-sort-type="{{ col.type_text|lower }}"
-                        data-sort-nullable="{{ '1' if col.nullable else '0' }}"{% endif %}>
-                        <td class="text-muted small" data-label="#">{{ col.position }}</td>
-                        <td class="font-monospace fw-medium" data-label="Name">
-                            {{ col.name }}
-                            {% if col.partition_index is not none %}
-                            <span class="badge bg-warning text-dark ms-1" title="Partition column #{{ col.partition_index }}">
-                                <i class="bi bi-diagram-3"></i> Part
-                            </span>
-                            {% endif %}
-                            {% if lineage_columns and col.name in lineage_columns %}
-                            <a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/columns/{{ col.name }}/trace"
-                               class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1 text-decoration-none"
-                               title="Column-level lineage trace (Sprint 15.6)">
-                                <i class="bi bi-bezier2"></i> lineage
-                            </a>
-                            {% endif %}
-                        </td>
-                        <td class="font-monospace small text-info" data-label="Type">{{ col.type_text }}</td>
-                        <td data-label="Nullable">
-                            {% if col.nullable %}
-                            <span class="text-muted small">nullable</span>
-                            {% else %}
-                            <span class="badge bg-warning text-dark">NOT NULL</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-muted small" data-label="Comment">{{ col.comment or "—" }}</td>
+                    {% for key, value in table.properties.items() %}
+                    <tr>
+                        <td class="font-monospace small text-muted ps-3" style="width: 30%;">{{ key }}</td>
+                        <td class="font-monospace small">{{ value }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-</div>
+    {% endif %}
 
-{% set _column_names = (table.columns | map(attribute="name") | list) if table and table.columns else [] %}
-{% with lineage=lineage, table_columns=_column_names %}
-    {% include "components/lineage_card.html" %}
-{% endwith %}
+    <div class="card mb-4" x-data="{ copied: false }">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>PQL Snippet</span>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary"
+                        @click="navigator.clipboard.writeText($refs.snippet.textContent); copied = true; setTimeout(() => copied = false, 1500)"
+                        :title="copied ? 'Copied!' : 'Copy to clipboard'">
+                    <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
+                    <span x-text="copied ? 'Copied' : 'Copy'" class="ms-1"></span>
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <pre class="mb-0"><code x-ref="snippet">from pointlessql import PQL
 
-<div class="card mt-4" x-data="tableStats()" x-init="init()">
-    <div class="card-header d-flex align-items-center justify-content-between">
-        <span>Column statistics</span>
-        <div class="d-flex gap-2 align-items-center">
-            <span class="text-muted small"
-                  x-show="deltaVersion !== null"
-                  x-cloak>
-                Delta v<span x-text="deltaVersion"></span>
-                <span x-show="cached" class="badge text-bg-secondary ms-1">cached</span>
-            </span>
-            {% if is_admin %}
-            <button type="button"
-                    class="btn btn-outline-danger btn-sm"
-                    x-show="columns.length > 0"
-                    @click="clearCache()">
-                <i class="bi bi-trash"></i> Clear cache
-            </button>
-            {% endif %}
-            <button type="button"
-                    class="btn btn-primary btn-sm"
-                    @click="profile()"
-                    :disabled="loading">
-                <span x-show="!loading">
-                    <i class="bi bi-bar-chart-steps"></i>
-                    <span x-text="columns.length > 0 ? 'Re-profile' : 'Profile columns'"></span>
-                </span>
-                <span x-show="loading" x-cloak>
-                    <span class="spinner-border spinner-border-sm me-1"></span>Profiling…
-                </span>
-            </button>
+    pql = PQL()
+    df = pql.table("{{ catalog_name }}.{{ schema_name }}.{{ table_name }}")</code></pre>
         </div>
     </div>
-    <div class="card-body p-0">
-        <template x-if="columns.length === 0 && !loading">
-            <div class="p-3 text-muted small">
-                No statistics computed yet.  Profiling issues one DuckDB
-                pass per column (count / null_count / distinct_count /
-                min / max / mean) plus a top-5 histogram for low-
-                cardinality columns.
+
+    </div>
+
+    <div class="tab-pane fade" id="tab-preview" role="tabpanel" aria-labelledby="tab-preview-btn">
+    <div class="card mb-4" x-data="tablePreview()" x-init="load(); loadVersions();">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
+            <span>Preview</span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <label class="text-muted small mb-0" for="version-select-{{ table_name }}">
+                    <i class="bi bi-clock-history me-1"></i>View at
+                </label>
+                <select id="version-select-{{ table_name }}"
+                        class="form-select form-select-sm"
+                        style="width: auto;"
+                        x-model.number="selectedVersion"
+                        @change="onVersionChange()">
+                    <option :value="null">current</option>
+                    <template x-for="v in versions" :key="v.version">
+                        <option :value="v.version"
+                                x-text="`v${v.version}` + (v.timestamp ? ` (${new Date(v.timestamp).toLocaleDateString()})` : '') + (v.run_id ? ` — run ${v.run_id.slice(0,8)}…` : '')">
+                        </option>
+                    </template>
+                </select>
+                <span class="text-muted small" x-show="ready">
+                    <span x-text="rows.length"></span> rows
+                </span>
             </div>
-        </template>
-        <template x-if="columns.length > 0">
+        </div>
+        <div class="card-body p-0">
+            <template x-if="loading">
+                <div class="p-3 text-muted small">
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    Loading preview…
+                </div>
+            </template>
+            <template x-if="error">
+                <div class="p-3 text-muted small fst-italic">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Preview unavailable: <span x-text="error"></span>
+                </div>
+            </template>
+            <template x-if="ready && rows.length === 0">
+                <div class="p-3 text-muted small fst-italic">Table is empty.</div>
+            </template>
+            <template x-if="ready && rows.length > 0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle pql-list-table">
+                        <thead>
+                            <tr>
+                                <template x-for="col in columns" :key="col">
+                                    <th class="font-monospace small" x-text="col"></th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(row, i) in rows" :key="i">
+                                <tr>
+                                    <template x-for="(cell, j) in row" :key="j">
+                                        <td class="small" :data-label="columns[j]">
+                                            <template x-if="columns[j] === '_lineage_row_id' && cell">
+                                                <a :href="`/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/rows/${encodeURIComponent(cell)}/trace`"
+                                                   class="font-monospace small text-decoration-none"
+                                                   title="Walk this row's lineage back to the bronze cell that produced it">
+                                                    <i class="bi bi-arrow-up-right-square me-1"></i><span x-text="String(cell).slice(0, 12) + '…'"></span>
+                                                </a>
+                                            </template>
+                                            <template x-if="!(columns[j] === '_lineage_row_id' && cell)">
+                                                <span x-text="cell === null ? '—' : String(cell)"></span>
+                                            </template>
+                                        </td>
+                                    </template>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <script>
+    function tablePreview() {
+        const FQN = '{{ catalog_name }}.{{ schema_name }}.{{ table_name }}';
+        return {
+            loading: true,
+            ready: false,
+            error: null,
+            columns: [],
+            rows: [],
+            truncated: false,
+            versions: [],
+            selectedVersion: null,
+            async load() {
+                this.loading = true;
+                this.ready = false;
+                this.error = null;
+                try {
+                    const resp = await fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/preview', {
+                        headers: {'Accept': 'application/json'},
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok || data.error) {
+                        this.error = data.detail || data.error || 'Unable to load preview';
+                    } else {
+                        this.columns = data.columns || [];
+                        this.rows = data.rows || [];
+                        this.truncated = !!data.truncated;
+                        this.ready = true;
+                    }
+                } catch (err) {
+                    this.error = err.message || 'Network error';
+                } finally {
+                    this.loading = false;
+                }
+            },
+            async loadVersions() {
+                try {
+                    const resp = await fetch(`/api/tables/${encodeURIComponent(FQN)}/versions`, {
+                        headers: {'Accept': 'application/json'},
+                    });
+                    if (!resp.ok) return;
+                    const data = await resp.json();
+                    this.versions = data.versions || [];
+                } catch (_err) { /* ignore */ }
+            },
+            async onVersionChange() {
+                if (this.selectedVersion === null || this.selectedVersion === '' || this.selectedVersion === undefined) {
+                    await this.load();
+                    return;
+                }
+                this.loading = true;
+                this.ready = false;
+                this.error = null;
+                try {
+                    const url = `/api/tables/${encodeURIComponent(FQN)}/preview-at-version?version=${this.selectedVersion}&limit=50`;
+                    const resp = await fetch(url, {headers: {'Accept': 'application/json'}});
+                    const data = await resp.json();
+                    if (!resp.ok) {
+                        this.error = data.detail || 'Unable to load historical version';
+                    } else {
+                        this.columns = data.columns || [];
+                        this.rows = (data.rows || []).map(r => this.columns.map(c => r[c]));
+                        this.truncated = data.total > this.rows.length;
+                        this.ready = true;
+                    }
+                } catch (err) {
+                    this.error = err.message || 'Network error';
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    }
+    </script>
+
+    </div>
+
+    <div class="tab-pane fade" id="tab-columns" role="tabpanel" aria-labelledby="tab-columns-btn">
+    {% set _col_search = table.columns|length >= 20 %}
+    <div class="card"
+        {% if _col_search %}x-data="listTable({searchPlaceholder: 'Search columns…', initialSort: {key: 'position', dir: 'asc'}, mobileSort: true})"{% endif %}>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Columns</span>
+            <span class="text-muted small">{{ table.columns|length }} total</span>
+        </div>
+        {% if _col_search %}
+        <div class="pql-list-controls p-2 border-bottom">
+            <input type="search" class="form-control form-control-sm"
+                   x-ref="search" x-model="query" x-on:input="onInput()"
+                   :placeholder="searchPlaceholder">
+        </div>
+        {% endif %}
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle">
+                <table class="table table-sm mb-0 align-middle pql-list-table">
                     <thead>
                         <tr>
-                            <th>Column</th>
-                            <th class="text-end">Count</th>
-                            <th class="text-end">Nulls</th>
-                            <th class="text-end">Distinct</th>
-                            <th class="text-end">Min</th>
-                            <th class="text-end">Max</th>
-                            <th class="text-end">Mean</th>
-                            <th>Top 5</th>
+                            <th {% if _col_search %}data-sort-key="position"{% endif %} style="width: 3rem;">#</th>
+                            <th {% if _col_search %}data-sort-key="name"{% endif %}>Name</th>
+                            <th {% if _col_search %}data-sort-key="type"{% endif %}>Type</th>
+                            <th {% if _col_search %}data-sort-key="nullable"{% endif %}>Nullable</th>
+                            <th>Comment</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <template x-for="col in columns" :key="col.column_name">
-                            <tr>
-                                <td class="font-monospace">
-                                    <span x-text="col.column_name"></span>
-                                    <small class="text-info ms-1"
-                                           x-text="col.stats.column_type || ''"></small>
-                                </td>
-                                <td class="text-end font-monospace"
-                                    x-text="(col.stats.count ?? '') + ''"></td>
-                                <td class="text-end font-monospace"
-                                    x-text="(col.stats.null_count ?? '') + ''"></td>
-                                <td class="text-end font-monospace"
-                                    x-text="(col.stats.distinct_count ?? '') + ''"></td>
-                                <td class="text-end font-monospace small"
-                                    x-text="col.stats.min ?? '—'"></td>
-                                <td class="text-end font-monospace small"
-                                    x-text="col.stats.max ?? '—'"></td>
-                                <td class="text-end font-monospace"
-                                    x-text="col.stats.mean !== null && col.stats.mean !== undefined ? col.stats.mean.toFixed(2) : '—'"></td>
-                                <td>
-                                    <template x-if="Array.isArray(col.stats.top_5) && col.stats.top_5.length > 0">
-                                        <div class="pql-stats-sparkline"
-                                             :data-col-name="col.column_name"
-                                             style="width: 180px; height: 40px;"></div>
-                                    </template>
-                                    <template x-if="!col.stats.top_5 || col.stats.top_5.length === 0">
-                                        <span class="text-muted small">—</span>
-                                    </template>
-                                </td>
-                            </tr>
-                        </template>
+                        {% for col in table.columns|sort(attribute="position") %}
+                        <tr {% if _col_search %}data-search="{{ col.name|lower }} {{ col.type_text|lower }} {{ (col.comment or '')|lower }}"
+                            data-sort-position="{{ col.position }}"
+                            data-sort-name="{{ col.name|lower }}"
+                            data-sort-type="{{ col.type_text|lower }}"
+                            data-sort-nullable="{{ '1' if col.nullable else '0' }}"{% endif %}>
+                            <td class="text-muted small" data-label="#">{{ col.position }}</td>
+                            <td class="font-monospace fw-medium" data-label="Name">
+                                {{ col.name }}
+                                {% if col.partition_index is not none %}
+                                <span class="badge bg-warning text-dark ms-1" title="Partition column #{{ col.partition_index }}">
+                                    <i class="bi bi-diagram-3"></i> Part
+                                </span>
+                                {% endif %}
+                                {% if lineage_columns and col.name in lineage_columns %}
+                                <a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/columns/{{ col.name }}/trace"
+                                   class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1 text-decoration-none"
+                                   title="Column-level lineage trace (Sprint 15.6)">
+                                    <i class="bi bi-bezier2"></i> lineage
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td class="font-monospace small text-info" data-label="Type">{{ col.type_text }}</td>
+                            <td data-label="Nullable">
+                                {% if col.nullable %}
+                                <span class="text-muted small">nullable</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">NOT NULL</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted small" data-label="Comment">{{ col.comment or "—" }}</td>
+                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </template>
+        </div>
+    </div>
+
+    <div class="card mt-4" x-data="tableStats()" x-init="init()">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Column statistics</span>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="text-muted small"
+                      x-show="deltaVersion !== null"
+                      x-cloak>
+                    Delta v<span x-text="deltaVersion"></span>
+                    <span x-show="cached" class="badge text-bg-secondary ms-1">cached</span>
+                </span>
+                {% if is_admin %}
+                <button type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        x-show="columns.length > 0"
+                        @click="clearCache()">
+                    <i class="bi bi-trash"></i> Clear cache
+                </button>
+                {% endif %}
+                <button type="button"
+                        class="btn btn-primary btn-sm"
+                        @click="profile()"
+                        :disabled="loading">
+                    <span x-show="!loading">
+                        <i class="bi bi-bar-chart-steps"></i>
+                        <span x-text="columns.length > 0 ? 'Re-profile' : 'Profile columns'"></span>
+                    </span>
+                    <span x-show="loading" x-cloak>
+                        <span class="spinner-border spinner-border-sm me-1"></span>Profiling…
+                    </span>
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <template x-if="columns.length === 0 && !loading">
+                <div class="p-3 text-muted small">
+                    No statistics computed yet.  Profiling issues one DuckDB
+                    pass per column (count / null_count / distinct_count /
+                    min / max / mean) plus a top-5 histogram for low-
+                    cardinality columns.
+                </div>
+            </template>
+            <template x-if="columns.length > 0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Column</th>
+                                <th class="text-end">Count</th>
+                                <th class="text-end">Nulls</th>
+                                <th class="text-end">Distinct</th>
+                                <th class="text-end">Min</th>
+                                <th class="text-end">Max</th>
+                                <th class="text-end">Mean</th>
+                                <th>Top 5</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="col in columns" :key="col.column_name">
+                                <tr>
+                                    <td class="font-monospace">
+                                        <span x-text="col.column_name"></span>
+                                        <small class="text-info ms-1"
+                                               x-text="col.stats.column_type || ''"></small>
+                                    </td>
+                                    <td class="text-end font-monospace"
+                                        x-text="(col.stats.count ?? '') + ''"></td>
+                                    <td class="text-end font-monospace"
+                                        x-text="(col.stats.null_count ?? '') + ''"></td>
+                                    <td class="text-end font-monospace"
+                                        x-text="(col.stats.distinct_count ?? '') + ''"></td>
+                                    <td class="text-end font-monospace small"
+                                        x-text="col.stats.min ?? '—'"></td>
+                                    <td class="text-end font-monospace small"
+                                        x-text="col.stats.max ?? '—'"></td>
+                                    <td class="text-end font-monospace"
+                                        x-text="col.stats.mean !== null && col.stats.mean !== undefined ? col.stats.mean.toFixed(2) : '—'"></td>
+                                    <td>
+                                        <template x-if="Array.isArray(col.stats.top_5) && col.stats.top_5.length > 0">
+                                            <div class="pql-stats-sparkline"
+                                                 :data-col-name="col.column_name"
+                                                 style="width: 180px; height: 40px;"></div>
+                                        </template>
+                                        <template x-if="!col.stats.top_5 || col.stats.top_5.length === 0">
+                                            <span class="text-muted small">—</span>
+                                        </template>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+        </div>
+    </div>
+    </div>
+
+    <div class="tab-pane fade" id="tab-lineage" role="tabpanel" aria-labelledby="tab-lineage-btn">
+    {% set _column_names = (table.columns | map(attribute="name") | list) if table and table.columns else [] %}
+    {% with lineage=lineage, table_columns=_column_names %}
+        {% include "components/lineage_card.html" %}
+    {% endwith %}
+
+    </div>
+
+    <div class="tab-pane fade" id="tab-tags" role="tabpanel" aria-labelledby="tab-tags-btn">
+    {% with tags_url="/api/tags/table/" ~ catalog_name ~ "." ~ schema_name ~ "." ~ table_name, tags=tags %}
+        {% include "components/tags_editor.html" %}
+    {% endwith %}
+
+    </div>
+
+    <div class="tab-pane fade" id="tab-permissions" role="tabpanel" aria-labelledby="tab-permissions-btn">
+    {% set _table_full = catalog_name ~ "." ~ schema_name ~ "." ~ table_name %}
+    {% with permissions_url="/api/permissions/table/" ~ _table_full,
+            effective_url="/api/effective-permissions/table/" ~ _table_full,
+            permissions=permissions, effective=effective,
+            can_manage=can_manage,
+            current_user_email=current_user.email if current_user else "" %}
+        {% include "components/permissions_card.html" %}
+    {% endwith %}
+
     </div>
 </div>
 {% endif %}
