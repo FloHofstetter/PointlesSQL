@@ -33,6 +33,11 @@ below.
 
 from __future__ import annotations
 
+from pointlessql.models.agent_reviews import (
+    REVIEW_SEVERITIES,
+    AgentReview,
+    ReviewDestination,
+)
 from pointlessql.models.agent_run_audit import (
     AgentRunEvent,
     AgentRunOperation,
@@ -79,6 +84,7 @@ from pointlessql.models.scheduler import (
 from pointlessql.models.sync import SyncRun
 
 __all__ = [
+    "AgentReview",
     "AgentRun",
     "AgentRunEvent",
     "AgentRunOperation",
@@ -107,7 +113,9 @@ __all__ = [
     "NotebookOutput",
     "QueryHistory",
     "QueryHistoryTable",
+    "REVIEW_SEVERITIES",
     "RateLimitEvent",
+    "ReviewDestination",
     "SavedAuditQuery",
     "SavedQuery",
     "SyncRun",

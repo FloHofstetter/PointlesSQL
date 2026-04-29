@@ -308,10 +308,45 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
             logger.warning("home: anomaly aggregation failed", exc_info=True)
             return {"warn": 0, "critical": 0}
 
-    catalogs_block, db_block, anomalies_block = await asyncio.gather(
+    def _latest_review_block() -> dict[str, Any] | None:
+        """Sprint 19.2.1 — surface yesterday's Audit-Reviewer-Agent verdict.
+
+        Best-effort, mirrors :func:`_anomalies_block`: any failure
+        (table missing on a fresh install, no review yet) returns
+        ``None`` so the home page renders without the card.  Admin-
+        gated display, same as the anomaly banner, because the
+        Markdown body may quote run principals.
+        """
+        if not is_admin:
+            return None
+        try:
+            from sqlalchemy import desc, select
+
+            from pointlessql.models.agent_reviews import AgentReview
+
+            with request.app.state.session_factory() as session:
+                row = session.scalars(
+                    select(AgentReview).order_by(desc(AgentReview.created_at)).limit(1)
+                ).first()
+                if row is None:
+                    return None
+                return {
+                    "id": row.id,
+                    "severity": row.severity,
+                    "summary_md": row.summary_md,
+                    "period_start": row.period_start.astimezone(UTC).isoformat(),
+                    "period_end": row.period_end.astimezone(UTC).isoformat(),
+                    "created_at": row.created_at.astimezone(UTC).isoformat(),
+                }
+        except Exception:  # noqa: BLE001 — review surface is best-effort
+            logger.warning("home: latest review lookup failed", exc_info=True)
+            return None
+
+    catalogs_block, db_block, anomalies_block, latest_review = await asyncio.gather(
         _catalogs_block(),
         asyncio.to_thread(_db_block),
         asyncio.to_thread(_anomalies_block),
+        asyncio.to_thread(_latest_review_block),
     )
 
     have_catalogs = bool(catalogs_block["has_catalogs"])
@@ -337,6 +372,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
         "latest_runs": db_block["latest_runs"],
         "sparkline": db_block["sparkline"],
         "anomalies": anomalies_block,
+        "latest_review": latest_review,
         "onboarding": {
             "show": show_onboarding,
             "have_catalogs": have_catalogs,
@@ -365,6 +401,8 @@ async def catalogs_index(request: Request) -> HTMLResponse:
             connections = await get_uc_client(request).list_connections()
         except CatalogUnavailableError:
             logger.warning("home: soyuz connections list unavailable", exc_info=True)
+    from pointlessql.services import output_rendering as output_rendering_service
+
     return _templates(request).TemplateResponse(
         request,
         "pages/home.html",
@@ -376,6 +414,7 @@ async def catalogs_index(request: Request) -> HTMLResponse:
             "active_catalog": None,
             "active_schema": None,
             "active_table": None,
+            "render_markdown": output_rendering_service.render_markdown_source,
         },
     )
 

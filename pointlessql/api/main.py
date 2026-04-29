@@ -21,6 +21,7 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
 from pointlessql.api.admin_external_writes_routes import router as admin_external_writes_router
 from pointlessql.api.admin_routes import router as admin_router
+from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
 from pointlessql.api.audit_routes import router as audit_router
@@ -44,6 +45,7 @@ from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
 from pointlessql.api.pql_write_routes import router as pql_write_router
 from pointlessql.api.queries_routes import router as queries_router
+from pointlessql.api.review_destinations_routes import router as review_destinations_router
 from pointlessql.api.runs_routes import router as runs_router
 from pointlessql.api.saved_audit_queries_routes import (
     router as saved_audit_queries_router,
@@ -286,6 +288,7 @@ app.include_router(governance_router)
 app.include_router(notebooks_router)
 app.include_router(runs_router)
 app.include_router(agent_runs_router)
+app.include_router(agent_reviews_router)
 app.include_router(pql_introspect_router)
 app.include_router(pql_write_router)
 app.include_router(federation_router)
@@ -295,6 +298,7 @@ app.include_router(home_router)
 app.include_router(admin_router)
 app.include_router(admin_api_keys_router)
 app.include_router(admin_external_writes_router)
+app.include_router(review_destinations_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Audit review #{{ review.id }} · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Audit cockpit", "href": "/audit/queries"},
+    {"label": "Review #" ~ review.id}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-robot fs-3"></i>
+        <h1 class="h3 mb-0">Audit review #{{ review.id }}</h1>
+        {% set _sev = review.severity %}
+        <span class="badge {% if _sev == 'critical' %}bg-danger{% elif _sev == 'warn' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+            {{ _sev }}
+        </span>
+    </div>
+    <span class="text-muted small">
+        {{ review.period_start[:19] }}Z &rarr; {{ review.period_end[:19] }}Z
+    </span>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-card-text"></i>
+                <span class="fw-semibold">Markdown summary</span>
+            </div>
+            <div class="card-body markdown-body">
+                {{ render_markdown(review.summary_md) | safe }}
+            </div>
+        </div>
+
+        {% if review.payload_json is not none %}
+        <div class="card mt-3">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-braces"></i>
+                <span class="fw-semibold">Replay payload</span>
+                <span class="ms-auto small text-muted">raw tool-call transcript</span>
+            </div>
+            <pre class="card-body small mb-0" style="white-space: pre-wrap; word-break: break-word;">{{ review.payload_json | tojson(indent=2) }}</pre>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle"></i>
+                <span class="fw-semibold">Metadata</span>
+            </div>
+            <ul class="list-group list-group-flush small">
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Created</span>
+                    <span>{{ review.created_at[:19] }}Z</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Run ID</span>
+                    {% if review.run_id %}
+                    <a href="/runs/{{ review.run_id }}" class="text-decoration-none font-monospace small">
+                        {{ review.run_id[:8] }}…
+                    </a>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Severity</span>
+                    <span>{{ review.severity }}</span>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Window</span>
+                    <span>{{ review.period_start[:10] }} → {{ review.period_end[:10] }}</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-broadcast-pin"></i>
+                <span class="fw-semibold">Dispatcher fan-out</span>
+                <span class="badge bg-secondary ms-auto">{{ review.delivered_to | length }}</span>
+            </div>
+            {% if review.delivered_to %}
+            <ul class="list-group list-group-flush small">
+                {% for dest in review.delivered_to %}
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-semibold">{{ dest.name }}</span>
+                        <span class="badge {% if dest.status_code == 200 %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ dest.status_code }}
+                        </span>
+                    </div>
+                    <div class="font-monospace small text-muted text-truncate" title="{{ dest.url_hash }}">
+                        {{ dest.url_hash }}
+                    </div>
+                    <div class="text-muted small">
+                        {{ dest.delivered_at[:19] }}Z
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="card-body text-muted small">
+                No webhook destinations configured at the time of dispatch.
+                Configure destinations in
+                <code>/admin/review-destinations</code> to fan reviews
+                out to external sinks.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

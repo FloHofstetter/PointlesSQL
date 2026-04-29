@@ -4,6 +4,69 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 19.2.1: Review persistence + CloudEvents fan-out + cockpit card (2026-04-29)
+
+Second half of Phase-19's "Audit-Reviewer-Agent reference run" sub-phase.
+PointlesSQL now persists every posted review, fans the CloudEvents
+envelope out to admin-configured webhooks (alongside Hermes-native
+delivery), and surfaces the result on the home cockpit so operators
+see yesterday's verdict without leaving the UI.
+
+- **New ``agent_reviews`` table.**  Alembic migration
+  ``l2g3a4b5c6d7_agent_reviews`` adds (id, run_id FK ``agent_runs.id``
+  nullable, period_start, period_end, severity ``ok|warn|critical``,
+  summary_md, payload_json, delivered_to_json, created_at) +
+  CHECK constraints on severity and ``period_end > period_start``.
+
+- **New ``review_destinations`` table.**  Admin-configured webhook
+  sinks (name, webhook_url, hmac_secret, is_active, min_severity).
+  ``min_severity`` gates noise: a ``warn``-default destination won't
+  receive an ``ok``-day review.
+
+- **``services/review_dispatcher``.**  Thin wrapper around
+  ``alert_dispatcher.dispatch_webhook``: builds a
+  ``pointlessql.agent_review.posted.v1`` CloudEvent, enumerates
+  active destinations whose ``min_severity`` gate passes, fans out
+  with HTTP+HMAC+retry, and persists the per-destination outcome
+  (status code + URL hash, never the cleartext URL) onto
+  ``AgentReview.delivered_to_json``.
+
+- **Three auditor-gated agent-review routes.**
+  ``POST /api/agent-reviews`` (validates bounds, persists, dispatches,
+  returns the persisted row + fan-out log),
+  ``GET /api/agent-reviews/latest`` (cockpit + plugin reads),
+  ``GET /api/agent-reviews/{id}`` (detail JSON).
+  Privilege ladder: auditor 200, supervisor 403, bare key 403,
+  cookie admin 200.  ``GET /agent-reviews/{id}`` is the corresponding
+  HTML detail page (admin-gated; auditor keys stay HTTP-only).
+
+- **Four admin-gated review-destination routes** at
+  ``/api/admin/review-destinations``.  Mirrors the existing
+  admin-api-keys CRUD: list, create-with-secret-display, patch
+  (sparse), delete.  Hard-delete is fine because
+  ``AgentReview.delivered_to_json`` already records the destination's
+  ``url_hash`` + ``name`` so historical fan-out attribution survives.
+
+- **Cockpit "Latest review" card on ``/``.**  Admin-only.  Severity
+  pill + rendered Markdown digest + period chip + "Full transcript"
+  button → ``/agent-reviews/{id}``.  Lookup is best-effort with the
+  same posture as Sprint 18.5's anomaly banner: a fresh-install
+  pointlessql with no reviews yet renders the home page without the
+  card, no error.
+
+- **Detail page** at ``/agent-reviews/{id}``.  Three-column layout:
+  Markdown summary + (optional) replay payload pretty-printed JSON,
+  metadata sidebar (run_id link, severity, window), and the
+  dispatcher fan-out log card listing every destination by name +
+  url_hash + status_code.
+
+- **Plugin grows from 29 → 31 tools.**  ``pql_post_audit_review``
+  posts the rendered Markdown digest at the end of the daily review
+  (now the final step of the Sprint-19.2.0 prompt).
+  ``pql_get_latest_review`` reads the most recent review back so the
+  Compliance-Bot / Incident-Responder personas can anchor their
+  answers to yesterday's verdict.
+
 ### Added — Sprint 19.2.0: Daily-review Hermes job + auditor key bootstrap (2026-04-29)
 
 First half of Phase-19's "Audit-Reviewer-Agent reference run" sub-phase.

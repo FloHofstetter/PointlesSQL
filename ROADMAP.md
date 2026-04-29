@@ -1856,8 +1856,33 @@ PointlesSQL
 │   │   │   ``~/.hermes/.env`` overlay, manual ``jobs.json``
 │   │   │   patch, ``hermes cron run/tick``, and an audit-of-audit
 │   │   │   verification via ``GET /api/audit/history``).
-│   │   ├── Sprint 19.2.1 — Persistence + CloudEvents fan-out
-│   │   │   + cockpit card (sketched).
+│   │   ├── Sprint 19.2.1 — Persistence + CloudEvents fan-out    ✅
+│   │   │   + cockpit card.  Alembic ``l2g3a4b5c6d7`` adds
+│   │   │   ``agent_reviews`` (id, run_id FK nullable, period_*,
+│   │   │   severity ok/warn/critical, summary_md ≤ 50 KiB,
+│   │   │   payload_json ≤ 1 MiB, delivered_to_json) +
+│   │   │   ``review_destinations`` (admin-configured webhooks
+│   │   │   with HMAC + per-destination ``min_severity`` gate).
+│   │   │   New ``services/review_dispatcher.dispatch_review``
+│   │   │   builds a ``pointlessql.agent_review.posted.v1``
+│   │   │   CloudEvent, enumerates active destinations whose
+│   │   │   severity gate passes, and reuses
+│   │   │   ``alert_dispatcher.dispatch_webhook`` for HTTP+HMAC+
+│   │   │   retry — saved-query alert plumbing without a single
+│   │   │   line of new HTTP code.  Three new auditor-gated
+│   │   │   routes (``POST /api/agent-reviews``,
+│   │   │   ``GET /api/agent-reviews/latest``,
+│   │   │   ``GET /api/agent-reviews/{id}``) plus four admin-gated
+│   │   │   ``/api/admin/review-destinations`` routes (list /
+│   │   │   create-with-secret-display / patch / delete) mirror
+│   │   │   the existing admin-api-keys CRUD shape.  Cockpit:
+│   │   │   "Latest review" card on ``/`` (admin-only — best-effort
+│   │   │   query mirrors the Sprint-18.5 anomaly banner pattern)
+│   │   │   + ``/agent-reviews/{id}`` detail page rendering the
+│   │   │   Markdown summary, replay payload, and per-destination
+│   │   │   fan-out log with status codes.  Plugin
+│   │   │   ``hermes-plugin-pointlessql`` grows from 29 → 31 tools
+│   │   │   (``pql_post_audit_review``, ``pql_get_latest_review``).
 │   │   └── Sprint 19.2.2 — Wake-gate (skip clean days)
 │   │       (sketched).
 │   ├── Sprint 19.3 — Compliance-Bot (ad-hoc Slack/chat)
