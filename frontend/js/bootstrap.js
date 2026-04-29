@@ -86,10 +86,12 @@ import { commandPalette } from './components/command_palette.js';
 window.commandPalette = commandPalette;
 
 // Sprint 17.3 — Lineage-DAG factory for the Graph sub-tab on
-// /runs/{id}.  cytoscape.js + cytoscape-dagre are loaded from the
-// run_view.html extra_js block (CDN), and the factory itself
-// reads them off ``window.cytoscape`` / ``window.cytoscapeDagre``
-// when its ``init()`` runs.
+// /runs/{id}.  Sprint 17.3.1 — cytoscape.js + dagre +
+// cytoscape-dagre are now loaded LAZILY by the factory itself
+// (``loadCytoscapeOnce()`` inside ``lineage_dag.js``) the first
+// time the Graph sub-tab is activated, gated on Bootstrap's
+// ``shown.bs.tab`` event.  No CDN bytes hit the wire on a normal
+// /runs/{id} page load.
 import { lineageDag } from './components/lineage_dag.js';
 
 window.lineageDag = lineageDag;

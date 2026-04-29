@@ -8,12 +8,16 @@
  * directed graph (one box per touched table, arrows annotated
  * with transform_kind).
  *
- * Cytoscape + cytoscape-dagre are loaded from jsdelivr in
- * run_view.html's extra_js block — this file assumes
- * window.cytoscape and window.cytoscapeDagre are present at
- * factory-call time.  If they aren't (script blocked, offline,
- * etc.), the component renders a fail-soft message instead of
- * throwing.
+ * Sprint 17.3.1 — cytoscape, dagre, and the cytoscape-dagre
+ * adapter are loaded LAZILY: the three CDN scripts are no longer
+ * in run_view.html's extra_js block.  ``loadCytoscapeOnce()``
+ * below injects them on demand the first time the user activates
+ * the Graph sub-tab, gated by ``shown.bs.tab`` on the sub-tab
+ * button.  Alpine's eager x-init still fires at page load, but it
+ * only registers the listener and immediately returns; no
+ * cytoscape bytes hit the wire until the user actually opens the
+ * Graph view.  Idempotent across tab toggles via a module-level
+ * Promise cache.
  *
  * Click behaviour:
  *  - Click a node (table)  → highlight the node + its incident
@@ -27,6 +31,41 @@
  *    it (upstream + downstream simultaneously, per the Sprint
  *    17.3 plan).
  */
+
+const CYTOSCAPE_SRCS = [
+    'https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js',
+    'https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js',
+    'https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js',
+];
+
+let _cytoscapeLoadPromise = null;
+
+/**
+ * Lazy-load cytoscape + dagre + cytoscape-dagre in order.
+ *
+ * Returns a Promise that resolves once all three scripts have run
+ * AND ``window.cytoscape`` / ``window.cytoscapeDagre`` are defined.
+ * Repeated calls return the same Promise — the loader is
+ * idempotent across tab toggles, multiple component mounts, and
+ * navigation back-and-forth.  Promise rejects on first script
+ * load failure so the caller can surface a fail-soft error.
+ */
+function loadCytoscapeOnce() {
+    if (_cytoscapeLoadPromise) return _cytoscapeLoadPromise;
+    _cytoscapeLoadPromise = (async () => {
+        for (const src of CYTOSCAPE_SRCS) {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.async = false;
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error('failed to load ' + src));
+                document.head.appendChild(s);
+            });
+        }
+    })();
+    return _cytoscapeLoadPromise;
+}
 
 const STYLE = [
     {
@@ -109,7 +148,45 @@ export function lineageDag(initial) {
         selectedEdgeId: null,
         selectedColumn: null, // {column: str, direction: 'upstream'|'downstream'} | null
 
+        // Sprint 17.3.1 — the loading flag stays true until the user
+        // first activates the Graph sub-tab.  The canvas template's
+        // ``x-show="!loading && !error && nodes.length > 0"`` keeps
+        // showing the spinner until then, which is the correct UX
+        // (the user just clicked into the tab; brief load is expected).
+        _started: false,
+
         async init() {
+            const tabBtn = document.querySelector(
+                '[data-bs-target="#tab-lineage-graph"]',
+            );
+            if (!tabBtn) {
+                // No Bootstrap tab navigation context (e.g. test
+                // harness, deeplinked iframe).  Fall through to an
+                // immediate load so the component still works.
+                return this._loadAndRender();
+            }
+            if (tabBtn.classList.contains('active')) {
+                // Page-load with hash deeplink (#tab-lineage-graph)
+                // already activated the tab — load immediately.
+                return this._loadAndRender();
+            }
+            tabBtn.addEventListener(
+                'shown.bs.tab',
+                () => this._loadAndRender(),
+                { once: true },
+            );
+        },
+
+        async _loadAndRender() {
+            if (this._started) return;
+            this._started = true;
+            try {
+                await loadCytoscapeOnce();
+            } catch (e) {
+                this.error = 'cytoscape.js failed to load: ' + String(e);
+                this.loading = false;
+                return;
+            }
             try {
                 const res = await fetch(this._url(), {
                     headers: { Accept: 'application/json' },
@@ -143,7 +220,8 @@ export function lineageDag(initial) {
                 return;
             }
             if (typeof window.cytoscape !== 'function') {
-                this.error = 'cytoscape.js failed to load — check the extra_js script tags in run_view.html.';
+                this.error =
+                    'cytoscape.js failed to load — loadCytoscapeOnce() resolved but window.cytoscape is undefined.';
                 return;
             }
             // Wire the dagre extension on first call (idempotent — the

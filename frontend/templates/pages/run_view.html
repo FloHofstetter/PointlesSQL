@@ -1353,13 +1353,11 @@
 </script>
 {% endblock %}
 
-{% block extra_js %}
-{# Sprint 17.3 — cytoscape + dagre layout from CDN, scoped to the
-   run-detail page so the bundle (~280 KB cytoscape + ~50 KB dagre +
-   small adapter) does not hit pages that have no graph view.
-   Order matters: cytoscape → dagre → cytoscape-dagre adapter.
-   ``defer`` keeps execution order stable while the body parses. #}
-<script defer src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
-{% endblock %}
+{# Sprint 17.3.1 — the cytoscape, dagre, and cytoscape-dagre
+   bundles are NO LONGER eagerly fetched on every /runs/{id} load.
+   ``loadCytoscapeOnce()`` in lineage_dag.js injects the three
+   scripts on demand the first time the user activates the
+   Lineage → Graph sub-tab.  Cold-cache cost on every page load
+   drops by ~330 KB (cytoscape ~280 KB + dagre ~50 KB + adapter).
+   The fail-soft error path inside the component covers the
+   offline / blocked-CDN case. #}
