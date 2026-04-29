@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}{{ branch_schema_fqn }} · Branch · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Branches", "href": "/branches"},
+    {"label": branch_schema_fqn}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3 fs-3"></i>
+        <h1 class="h3 mb-0 font-monospace">{{ branch_schema_fqn }}</h1>
+        {% if tags.status == "active" %}
+        <span class="badge bg-success-subtle text-success-emphasis">active</span>
+        {% elif tags.status == "promoted" %}
+        <span class="badge bg-primary-subtle text-primary-emphasis">promoted</span>
+        {% else %}
+        <span class="badge bg-secondary-subtle text-secondary-emphasis">discarded</span>
+        {% endif %}
+        {% if tags.is_pre_promote_backup %}
+        <span class="badge bg-warning-subtle text-warning-emphasis"
+              title="Pre-promote backup of a previous parent">pre-promote backup</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Metadata</div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-5">Parent schema</dt>
+                    <dd class="col-sm-7 font-monospace">{{ tags.parent_schema }}</dd>
+                    <dt class="col-sm-5">Strategy</dt>
+                    <dd class="col-sm-7"><code>{{ tags.strategy }}</code></dd>
+                    <dt class="col-sm-5">Created at</dt>
+                    <dd class="col-sm-7">{{ tags.created_at }}</dd>
+                    <dt class="col-sm-5">Created by run</dt>
+                    <dd class="col-sm-7 font-monospace">
+                        {% if tags.created_by_run_id %}
+                        <a href="/runs/{{ tags.created_by_run_id }}">{{ tags.created_by_run_id }}</a>
+                        {% else %}
+                        <span class="text-muted">— (admin / interactive)</span>
+                        {% endif %}
+                    </dd>
+                    {% if tags.promoted_at %}
+                    <dt class="col-sm-5">Promoted at</dt>
+                    <dd class="col-sm-7">{{ tags.promoted_at }}</dd>
+                    {% endif %}
+                    {% if tags.discarded_at %}
+                    <dt class="col-sm-5">Discarded at</dt>
+                    <dd class="col-sm-7">{{ tags.discarded_at }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Parent versions at branch creation</div>
+            <div class="card-body">
+                {% if tags.parent_version_at_create %}
+                <table class="table table-sm small mb-0">
+                    <thead><tr><th>Table</th><th class="text-end">Version</th></tr></thead>
+                    <tbody>
+                        {% for table_name, version in tags.parent_version_at_create.items() %}
+                        <tr>
+                            <td class="font-monospace">{{ table_name }}</td>
+                            <td class="text-end font-monospace">{{ version }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted mb-0 small">No tables tracked.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if is_admin and tags.status == "active" and not tags.is_pre_promote_backup %}
+<div class="card border-danger mb-4"
+     x-data='{
+        previewing: false,
+        promoting: false,
+        discarding: false,
+        previewResult: null,
+        previewError: null,
+
+        previewPromote() {
+            this.previewing = true;
+            this.previewResult = null;
+            this.previewError = null;
+            window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/preview-promote", { method: "GET" })
+                .then(r => r.json())
+                .then(j => { this.previewResult = j; this.previewing = false; })
+                .catch(e => { this.previewError = String(e); this.previewing = false; });
+        },
+
+        promote() {
+            if (!confirm("Promote {{ branch_schema_fqn }} to {{ tags.parent_schema }}?\n\nThe current parent will be renamed to {{ tags.parent_schema }}_pre_promote_<ts> as a backup.")) return;
+            this.promoting = true;
+            window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/promote", { method: "POST" })
+                .then(r => r.json())
+                .then(j => {
+                    this.promoting = false;
+                    if (!j.ok) {
+                        if (window.pqlToast) window.pqlToast.error("Promote failed: " + (j.message || j.error));
+                        return;
+                    }
+                    if (window.pqlToast) window.pqlToast.success("Promoted to " + j.new_parent);
+                    setTimeout(() => window.location.href = "/branches", 800);
+                })
+                .catch(e => { this.promoting = false; if (window.pqlToast) window.pqlToast.error(String(e)); });
+        },
+
+        discard() {
+            if (!confirm("Permanently discard {{ branch_schema_fqn }}?\n\nThe branch storage and UC schema will be removed. The source parent stays untouched.")) return;
+            this.discarding = true;
+            window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/discard", { method: "POST" })
+                .then(r => r.json())
+                .then(j => {
+                    this.discarding = false;
+                    if (!j.ok) {
+                        if (window.pqlToast) window.pqlToast.error("Discard failed: " + (j.message || j.error));
+                        return;
+                    }
+                    if (window.pqlToast) window.pqlToast.success("Branch discarded");
+                    setTimeout(() => window.location.href = "/branches", 800);
+                })
+                .catch(e => { this.discarding = false; if (window.pqlToast) window.pqlToast.error(String(e)); });
+        },
+     }'>
+    <div class="card-header bg-danger-subtle text-danger-emphasis">
+        <i class="bi bi-exclamation-triangle me-1"></i>Danger zone
+    </div>
+    <div class="card-body">
+        <div class="d-flex gap-2 flex-wrap mb-3">
+            <button class="btn btn-outline-secondary btn-sm"
+                    x-on:click="previewPromote()"
+                    x-bind:disabled="previewing">
+                <span x-show="previewing" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                Preview promote
+            </button>
+            <button class="btn btn-primary btn-sm"
+                    x-on:click="promote()"
+                    x-bind:disabled="promoting">
+                <span x-show="promoting" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                Promote
+            </button>
+            <button class="btn btn-danger btn-sm ms-auto"
+                    x-on:click="discard()"
+                    x-bind:disabled="discarding">
+                <span x-show="discarding" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                Discard
+            </button>
+        </div>
+        <div class="alert alert-danger small" x-show="previewError" x-text="previewError" x-cloak></div>
+        <template x-if="previewResult && previewResult.ok">
+            <div class="alert alert-success small mb-0">
+                <i class="bi bi-check-circle me-1"></i>No conflicts detected — promote is safe.
+            </div>
+        </template>
+        <template x-if="previewResult && !previewResult.ok">
+            <div class="alert alert-warning small mb-0">
+                <strong><i class="bi bi-exclamation-circle me-1"></i>Promotion conflicts detected</strong>
+                <table class="table table-sm small mt-2 mb-0">
+                    <thead><tr><th>Table</th><th>Expected</th><th>Actual</th><th>Reason</th></tr></thead>
+                    <tbody>
+                        <template x-for="c in previewResult.conflicts" :key="c.table">
+                            <tr>
+                                <td class="font-monospace" x-text="c.table"></td>
+                                <td class="font-monospace" x-text="c.expected_version"></td>
+                                <td class="font-monospace" x-text="c.actual_version"></td>
+                                <td x-text="c.reason"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <div class="mt-2 mb-0">
+                    Discard and re-branch from the current parent state to resolve.
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">Audit log</div>
+    <div class="card-body p-0">
+        {% if audit_log %}
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">When</th>
+                        <th>Action</th>
+                        <th>Run</th>
+                        <th>Payload</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in audit_log %}
+                    <tr>
+                        <td class="ps-3 small text-muted font-monospace">{{ entry.created_at[:19] }}</td>
+                        <td><code>{{ entry.action }}</code></td>
+                        <td class="font-monospace small">
+                            {% if entry.run_id %}
+                            <a href="/runs/{{ entry.run_id }}">{{ entry.run_id[:8] }}</a>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td><pre class="small mb-0">{{ entry.payload | tojson(indent=2) if entry.payload else "" }}</pre></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted small p-3 mb-0">No audit-log entries yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

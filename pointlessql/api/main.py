@@ -27,6 +27,7 @@ from pointlessql.api.alerts_routes import router as alerts_router
 from pointlessql.api.audit_routes import router as audit_router
 from pointlessql.api.audit_sinks_routes import router as audit_sinks_router
 from pointlessql.api.auth_routes import router as auth_router
+from pointlessql.api.branches_routes import router as branches_router
 from pointlessql.api.catalog_html_routes import router as catalog_html_router
 from pointlessql.api.catalog_routes import router as catalog_router
 from pointlessql.api.conventions_routes import router as conventions_router
@@ -354,6 +355,7 @@ app.include_router(notebooks_router)
 app.include_router(runs_router)
 app.include_router(agent_runs_router)
 app.include_router(agent_reviews_router)
+app.include_router(branches_router)
 app.include_router(pql_introspect_router)
 app.include_router(pql_write_router)
 app.include_router(federation_router)

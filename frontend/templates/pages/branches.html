@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Branches · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Branches"}] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-diagram-3 fs-3"></i>
+        <h1 class="h3 mb-0">Delta branches</h1>
+    </div>
+    <div class="text-muted small">
+        Per-agent-run zero-copy isolation. Phase 16.5.
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if branches %}
+        <div x-data='listTable({
+                searchPlaceholder: "Search branches…",
+                initialSort: { key: "branch", dir: "asc" },
+                mobileSort: true,
+                chips: [
+                    { id: "active", label: "Active",
+                      match: (tr) => tr.dataset.status === "active" },
+                    { id: "promoted", label: "Promoted",
+                      match: (tr) => tr.dataset.status === "promoted" },
+                    { id: "discarded", label: "Discarded",
+                      match: (tr) => tr.dataset.status === "discarded" },
+                ],
+             })'>
+            <div class="pql-list-controls">
+                <input type="search"
+                       class="form-control form-control-sm pql-list-controls__search"
+                       x-model="query"
+                       x-on:input="onInput()"
+                       x-bind:placeholder="searchPlaceholder"
+                       aria-label="Search branches">
+                <template x-for="chip in chips" :key="chip.id">
+                    <button type="button"
+                            class="pql-chip"
+                            x-bind:class="activeChips[chip.id] ? 'pql-chip--active' : ''"
+                            x-on:click="toggleChip(chip.id)"
+                            x-text="chip.label"></button>
+                </template>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle pql-list-table">
+                    <thead>
+                        <tr>
+                            <th class="ps-3" data-sort-key="branch">Branch</th>
+                            <th data-sort-key="parent">Parent</th>
+                            <th data-sort-key="status">Status</th>
+                            <th data-sort-key="strategy">Strategy</th>
+                            <th data-sort-key="created">Created</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in branches %}
+                        <tr data-search="{{ b.branch_schema_fqn|lower }} {{ b.tags.parent_schema|lower }}"
+                            data-sort-branch="{{ b.branch_schema_fqn|lower }}"
+                            data-sort-parent="{{ b.tags.parent_schema|lower }}"
+                            data-sort-status="{{ b.tags.status }}"
+                            data-sort-strategy="{{ b.tags.strategy }}"
+                            data-sort-created="{{ b.tags.created_at }}"
+                            data-status="{{ b.tags.status }}">
+                            <td class="ps-3 font-monospace small" data-label="Branch">
+                                <a href="/branches/{{ b.branch_schema_fqn }}"
+                                   class="text-decoration-none">{{ b.branch_schema_fqn }}</a>
+                                {% if b.tags.is_pre_promote_backup %}
+                                <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+                                      title="Pre-promote backup of a previous parent">backup</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-monospace small" data-label="Parent">
+                                {{ b.tags.parent_schema }}
+                            </td>
+                            <td data-label="Status">
+                                {% if b.tags.status == "active" %}
+                                <span class="badge bg-success-subtle text-success-emphasis">active</span>
+                                {% elif b.tags.status == "promoted" %}
+                                <span class="badge bg-primary-subtle text-primary-emphasis">promoted</span>
+                                {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis">discarded</span>
+                                {% endif %}
+                            </td>
+                            <td class="small" data-label="Strategy">
+                                <code>{{ b.tags.strategy }}</code>
+                            </td>
+                            <td class="small text-muted" data-label="Created">
+                                {{ b.tags.created_at[:19] }}
+                            </td>
+                            <td class="text-end pe-3" data-label="Actions">
+                                <a class="btn btn-sm btn-outline-secondary"
+                                   href="/branches/{{ b.branch_schema_fqn }}">Open</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        {% with flush=True, icon="bi-diagram-3",
+                title="No branches yet",
+                message="Create one with pql.branch('catalog.schema', 'branch_name') in a notebook." %}
+            {% include "components/empty.html" %}
+        {% endwith %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

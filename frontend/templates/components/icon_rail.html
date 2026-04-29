@@ -84,6 +84,16 @@
                 <span class="pql-icon-rail__label">Dashboards</span>
             </a>
         </li>
+        {% if current_user is defined and current_user and current_user.is_admin %}
+        <li class="pql-icon-rail__item">
+            <a href="/branches"
+               class="pql-icon-rail__link{% if active_section == 'branches' %} active{% endif %}"
+               title="Delta branches (Phase 16.5)">
+                <i class="bi bi-diagram-3"></i>
+                <span class="pql-icon-rail__label">Branches</span>
+            </a>
+        </li>
+        {% endif %}
     </ul>
     {% if current_user is defined and current_user and current_user.is_admin %}
     <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
