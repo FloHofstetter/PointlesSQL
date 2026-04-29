@@ -1,17 +1,21 @@
 {#
-  Primary navigation links — rendered twice:
+  Sprint 17.1: this partial now renders ONLY inside the mobile
+  offcanvas drawer (< md, 768 px).  At >= md the icon-rail
+  (``components/icon_rail.html``) replaces the topbar nav, and the
+  topbar carries the user menu via ``components/user_menu.html``
+  separately.
 
-  1. In the top navbar (Bootstrap `navbar-nav`) at >= 640 px.
-  2. As a footer block inside the sidebar drawer at < 640 px, so the
-     drawer is the single entry point on very narrow phones and the
-     top navbar collapses to the brand + hamburger + Cmd+K trigger.
+  The drawer is the single entry point on phones / portrait tablets:
+  hamburger toggles it, and it carries the same nine sections the
+  icon-rail exposes on desktop, plus the user dropdown at the
+  bottom.
 
-  The caller can override the `<ul>` classes via the ``nav_list_class``
-  variable (default: ``navbar-nav``). The admin-only Workspace link and
-  the current-user dropdown follow the same ``current_user`` /
-  ``current_user.is_admin`` gating as the original inline markup.
+  The caller can override the `<ul>` classes via the
+  ``nav_list_class`` variable (default: ``navbar-nav``).  The
+  admin-only Workspace link and the user dropdown follow the same
+  ``current_user`` / ``current_user.is_admin`` gating as the
+  original inline markup.
 #}
-{% from "_macros/csrf.html" import csrf_input with context %}
 {% set nav_list_class = nav_list_class or "navbar-nav" %}
 <ul class="{{ nav_list_class }}">
     <li class="nav-item dropdown">
@@ -81,26 +85,6 @@
         </a>
         <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
             <li><a class="dropdown-item{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}" href="/admin/audit">Audit log</a></li>
-        </ul>
-    </li>
-    {% endif %}
-    {% if current_user is defined and current_user %}
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"
-           href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-person-circle"></i>
-            {{ current_user.display_name or current_user.email }}
-        </a>
-        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-            <li><span class="dropdown-item-text text-muted small">{{ current_user.email }}</span></li>
-            {% if current_user.is_admin %}<li><span class="dropdown-item-text text-muted small"><i class="bi bi-shield-check"></i> Admin</span></li>{% endif %}
-            <li><hr class="dropdown-divider"></li>
-            <li>
-                <form method="post" action="/auth/logout" hx-boost="false" class="m-0">
-                    {{ csrf_input() }}
-                    <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Sign out</button>
-                </form>
-            </li>
         </ul>
     </li>
     {% endif %}

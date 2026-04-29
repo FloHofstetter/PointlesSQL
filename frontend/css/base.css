@@ -7,6 +7,8 @@
     --pointless-accent: #76b900;
     --pql-sidebar-width: 280px;
     --pql-topbar-height: 56px;
+    --pql-icon-rail-width: 60px;
+    --pql-context-panel-width: 240px;
 
     /* Spacing — 4-px scale, eight steps cover every utility we use today */
     --pql-space-1: 0.25rem;

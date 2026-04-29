@@ -15,8 +15,16 @@
     grid-template-columns: minmax(0, 1fr);
 }
 @media (min-width: 768px) {
+    /* Sprint 17.1: shell is now icon-rail + contextual panel + content.
+       The mobile offcanvas drawer keeps using the legacy single-column
+       width via .pql-sidebar-shell rules below, so we don't expose the
+       drawer at md+ — the icon-rail + context-panel pair is the
+       desktop nav. */
     .pql-shell {
-        grid-template-columns: var(--pql-sidebar-width) minmax(0, 1fr);
+        grid-template-columns:
+            var(--pql-icon-rail-width)
+            var(--pql-context-panel-width)
+            minmax(0, 1fr);
     }
     .pql-shell--no-sidebar {
         grid-template-columns: minmax(0, 1fr);
@@ -37,6 +45,12 @@
         max-height: calc(100vh - var(--pql-topbar-height));
         overflow-y: auto;
         background: transparent;
+        /* Sprint 17.1 — column divider so the section panels that
+           don't bring their own .border-end (runs/sql/jobs/...)
+           still read as a column.  Federation + Dashboards bring
+           ``.pql-sidebar.border-end`` on the inner <aside>; that
+           sits flush against this border so they don't double up. */
+        border-right: 1px solid var(--bs-border-color-translucent);
     }
 }
 

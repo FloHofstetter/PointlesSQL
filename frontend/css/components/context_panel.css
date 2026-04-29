@@ -1,0 +1,101 @@
+/* ---------------------------------------------------------------
+ * Sprint 17.1 — contextual panel.
+ *
+ * 240 px column to the right of the icon-rail.  Contents are picked
+ * by the active_section (Federation → catalog tree, Dashboards →
+ * dashboards tree, all other sections → static link list).
+ *
+ * Visible at >= md (768 px); on mobile the offcanvas drawer keeps
+ * embedding the section's panel directly under nav_links.html.
+ * ------------------------------------------------------------- */
+
+.pql-context-panel {
+    /* Sticky positioning + overflow are handled by the parent
+       .pql-sidebar-shell wrapper at >= md (see layout.css).  Putting
+       another sticky on the panel itself would clamp to the
+       wrapper's overflow bounds and break the scroll. */
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background: transparent;
+}
+
+@media (min-width: 768px) {
+    .pql-context-panel {
+        display: flex;
+    }
+}
+
+.pql-context-panel > .pql-sidebar {
+    width: 100%;
+    border-right: 0;
+    background: transparent;
+}
+
+.pql-context-panel__header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+}
+
+.pql-context-panel__body {
+    padding: 0.5rem 0;
+}
+
+.pql-context-panel__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pql-context-panel__link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 1rem;
+    color: var(--bs-body-color);
+    text-decoration: none;
+    font-size: 0.875rem;
+    border-left: 3px solid transparent;
+}
+
+.pql-context-panel__link:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+.pql-context-panel__link.active {
+    color: var(--pql-color-accent);
+    border-left-color: var(--pql-color-accent);
+    background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.08));
+}
+
+.pql-context-panel__link i {
+    color: var(--bs-secondary-color);
+    width: 1rem;
+    text-align: center;
+}
+
+.pql-context-panel__link.active i {
+    color: var(--pql-color-accent);
+}
+
+.pql-context-panel__hint {
+    padding: 0.5rem 1rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-style: italic;
+}
+
+/* On mobile (< md) the panel renders inside the bootstrap offcanvas
+   drawer.  Force it visible there so the drawer body actually shows
+   the section content. */
+@media (max-width: 767.98px) {
+    .pql-context-panel {
+        display: flex;
+    }
+}

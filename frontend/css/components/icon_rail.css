@@ -1,0 +1,96 @@
+/* ---------------------------------------------------------------
+ * Sprint 17.1 — left icon-rail.
+ *
+ * 60 px vertical column with one icon per top-level section
+ * (Federation / Runs / SQL / Workspace / Jobs / Alerts / Volumes /
+ *  Dashboards / Admin).  Replaces the wide horizontal nav strip in
+ * the topbar.
+ *
+ * Visible at >= md (768 px); on mobile the offcanvas drawer keeps
+ * carrying nav_links.html as before.
+ * ------------------------------------------------------------- */
+
+.pql-icon-rail {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    width: var(--pql-icon-rail-width);
+    background: var(--bs-tertiary-bg);
+    border-right: 1px solid var(--bs-border-color-translucent);
+    position: sticky;
+    top: var(--pql-topbar-height);
+    max-height: calc(100vh - var(--pql-topbar-height));
+    overflow-y: auto;
+    z-index: 1010;
+}
+
+@media (min-width: 768px) {
+    .pql-icon-rail {
+        display: flex;
+    }
+}
+
+.pql-icon-rail__list {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem 0;
+    flex: 1 1 auto;
+}
+
+.pql-icon-rail__list--footer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+
+.pql-icon-rail__item {
+    margin: 0;
+}
+
+.pql-icon-rail__link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    padding: 0.55rem 0;
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    background: transparent;
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 0;
+    cursor: pointer;
+    transition: color var(--pql-duration-fast) var(--pql-ease),
+                background var(--pql-duration-fast) var(--pql-ease),
+                border-color var(--pql-duration-fast) var(--pql-ease);
+}
+
+.pql-icon-rail__link:hover {
+    color: var(--bs-body-color);
+    background: var(--bs-secondary-bg);
+}
+
+.pql-icon-rail__link.active {
+    color: var(--pql-color-accent);
+    background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.08));
+    border-left-color: var(--pql-color-accent);
+}
+
+.pql-icon-rail__link i {
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+.pql-icon-rail__label {
+    font-size: 0.625rem;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

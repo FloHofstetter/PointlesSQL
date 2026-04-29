@@ -21,6 +21,8 @@
 @import url("./base.css");                         /* design tokens, font, focus ring */
 @import url("./primitives.css");                   /* .pql-stack, .pql-cluster, .pql-card, .pql-badge */
 @import url("./layout.css");                       /* topbar, shell, sidebar, tree, content */
+@import url("./components/icon_rail.css");         /* Sprint 17.1: 60 px nav-rail */
+@import url("./components/context_panel.css");     /* Sprint 17.1: 240 px contextual panel */
 @import url("./components/breadcrumbs.css");
 @import url("./components/empty_state.css");       /* + error-shell variant */
 @import url("./components/toast.css");

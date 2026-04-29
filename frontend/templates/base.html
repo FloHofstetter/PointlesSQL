@@ -11,6 +11,28 @@
     <link href="/static/css/style.css" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
+{# Sprint 17.1 — derive active_section from active_page so the
+   icon-rail can highlight the right item and the context-panel can
+   pick the right partial.  Default is 'federation' so any page that
+   does not thread active_page (home, table-detail, schema-detail,
+   etc.) keeps showing the catalog tree it had before. #}
+{% set _section_map = {
+    'connections': 'federation',
+    'external_locations': 'federation',
+    'credentials': 'federation',
+    'runs': 'runs',
+    'sql': 'sql',
+    'queries': 'sql',
+    'workspace': 'workspace',
+    'jobs': 'jobs',
+    'alerts': 'alerts',
+    'volumes': 'volumes',
+    'dashboards': 'dashboards',
+    'audit': 'admin',
+    'admin': 'admin',
+    'admin_audit': 'admin',
+} %}
+{% set active_section = _section_map.get(active_page if active_page is defined else None, 'federation') %}
 <body hx-boost="true"
       hx-target="#main-content"
       hx-select="#main-content"
@@ -46,13 +68,20 @@
                 onclick="window.dispatchEvent(new CustomEvent('pql:open-palette'))">
             <i class="bi bi-search fs-5"></i>
         </button>
-        <div class="pql-topbar-nav d-none d-sm-flex">
-            {% include "components/nav_links.html" %}
+        <div class="d-none d-md-flex">
+            {% include "components/user_menu.html" %}
         </div>
     </nav>
 
     <div class="pql-shell{% if hide_sidebar %} pql-shell--no-sidebar{% endif %}">
         {% if not hide_sidebar %}
+        {# Sprint 17.1 — desktop (>= md): icon-rail + context-panel
+           are siblings of <main>.  Each is sticky-positioned by its
+           own CSS.  At < md, both are hidden (per icon_rail.css /
+           context_panel.css media queries) and the offcanvas drawer
+           below carries the section content + nav_links + user
+           menu instead. #}
+        {% include "components/icon_rail.html" %}
         <div class="offcanvas-md offcanvas-start pql-sidebar-shell"
              id="pqlSidebarOffcanvas"
              tabindex="-1"
@@ -65,17 +94,17 @@
                         data-bs-target="#pqlSidebarOffcanvas"
                         aria-label="Close"></button>
             </div>
-            {% if active_page is defined and active_page == 'dashboards' %}
-                {% include "components/dashboards_sidebar.html" %}
-            {% else %}
-                {% include "components/sidebar.html" %}
-            {% endif %}
-            <div class="pql-sidebar-nav-footer d-sm-none">
+            {% include "components/context_panel.html" %}
+            <div class="pql-sidebar-nav-footer d-md-none">
                 <hr class="my-0">
                 <div class="px-3 py-2 text-muted small text-uppercase">Navigation</div>
                 {% with nav_list_class="list-unstyled mb-0 pql-sidebar-nav-list" %}
                     {% include "components/nav_links.html" %}
                 {% endwith %}
+                <hr class="my-0">
+                <div class="px-3 py-2">
+                    {% include "components/user_menu.html" %}
+                </div>
             </div>
         </div>
         {% endif %}
@@ -109,7 +138,7 @@
          re-attachments are live before Alpine's x-data walk begins.
          MUST stay before the Alpine CDN script —
          scripts/check-frontend-bootstrap-order.sh asserts the ordering. -->
-    <script type="module" src="/static/js/bootstrap.js?v=sprint95"></script>
+    <script type="module" src="/static/js/bootstrap.js?v=sprint17.3"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
         // Auto-attach the CSRF token from the <meta> tag to every HTMX
@@ -190,6 +219,44 @@
         } catch (e) {
             /* quota / disabled storage — ignore */
         }
+    })();
+    </script>
+    {% endif %}
+    {% if active_table is defined and active_table and active_schema is defined and active_schema and active_catalog is defined and active_catalog %}
+    <script>
+    // Sprint 17.5 — record a "table visit" for the catalog-tree
+    // sidebar's Recent tables list.  Sibling of the
+    // pql.recentCatalogs writer above; same dedupe / cap-to-five
+    // pattern, dispatches a ``pql:recent-tables-changed`` event so
+    // the open Alpine catalog tree picks the new entry up without
+    // a hard reload.
+    (function () {
+        try {
+            const KEY = 'pql.recentTables';
+            const MAX = 5;
+            const fqn = (
+                {{ active_catalog|tojson }} + '.' +
+                {{ active_schema|tojson }} + '.' +
+                {{ active_table|tojson }}
+            );
+            let items = [];
+            const raw = localStorage.getItem(KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) items = parsed;
+            }
+            items = items.filter(i => i && i.fqn !== fqn);
+            items.unshift({
+                fqn: fqn,
+                catalog: {{ active_catalog|tojson }},
+                schema: {{ active_schema|tojson }},
+                table: {{ active_table|tojson }},
+                ts: Date.now(),
+            });
+            if (items.length > MAX) items.length = MAX;
+            localStorage.setItem(KEY, JSON.stringify(items));
+            window.dispatchEvent(new CustomEvent('pql:recent-tables-changed', {detail: {items}}));
+        } catch (e) { /* quota / disabled storage — ignore */ }
     })();
     </script>
     {% endif %}

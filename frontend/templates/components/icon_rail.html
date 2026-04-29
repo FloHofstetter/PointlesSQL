@@ -1,0 +1,100 @@
+{#
+  Sprint 17.1 — left icon-rail (60 px).
+
+  One vertical strip of icons, one per top-level section.  Replaces
+  the horizontal nav row that used to live in the topbar at >= sm.
+  Visible at >= md (768 px); on mobile the offcanvas drawer keeps
+  rendering ``nav_links.html`` directly.
+
+  The caller threads ``active_section`` (computed in ``base.html``
+  from ``active_page``) so we can mark the matching rail item active.
+  Federation (catalogs / connections / external locations / credentials)
+  is the catch-all default for any page that does not set
+  ``active_page`` — that keeps the catalog tree visible on the home
+  dashboard, table-detail, schema-detail, etc.
+
+  Admin-only items render only when ``current_user.is_admin``.  The
+  user dropdown stays in the topbar (right side).
+#}
+<nav class="pql-icon-rail" aria-label="Primary navigation">
+    <ul class="pql-icon-rail__list">
+        <li class="pql-icon-rail__item">
+            <a href="/connections"
+               class="pql-icon-rail__link{% if active_section == 'federation' %} active{% endif %}"
+               title="Federation (catalogs, connections, external locations, credentials)">
+                <i class="bi bi-plug"></i>
+                <span class="pql-icon-rail__label">Federation</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/runs"
+               class="pql-icon-rail__link{% if active_section == 'runs' %} active{% endif %}"
+               title="Agent runs">
+                <i class="bi bi-activity"></i>
+                <span class="pql-icon-rail__label">Runs</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/sql"
+               class="pql-icon-rail__link{% if active_section == 'sql' %} active{% endif %}"
+               title="SQL editor and query history">
+                <i class="bi bi-code-square"></i>
+                <span class="pql-icon-rail__label">SQL</span>
+            </a>
+        </li>
+        {% if current_user is defined and current_user and current_user.is_admin %}
+        <li class="pql-icon-rail__item">
+            <a href="/notebooks/workspace"
+               class="pql-icon-rail__link{% if active_section == 'workspace' %} active{% endif %}"
+               title="Notebook workspace">
+                <i class="bi bi-folder2-open"></i>
+                <span class="pql-icon-rail__label">Workspace</span>
+            </a>
+        </li>
+        {% endif %}
+        <li class="pql-icon-rail__item">
+            <a href="/jobs"
+               class="pql-icon-rail__link{% if active_section == 'jobs' %} active{% endif %}"
+               title="Jobs">
+                <i class="bi bi-clock-history"></i>
+                <span class="pql-icon-rail__label">Jobs</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/alerts"
+               class="pql-icon-rail__link{% if active_section == 'alerts' %} active{% endif %}"
+               title="Alerts">
+                <i class="bi bi-bell"></i>
+                <span class="pql-icon-rail__label">Alerts</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/volumes"
+               class="pql-icon-rail__link{% if active_section == 'volumes' %} active{% endif %}"
+               title="Volumes">
+                <i class="bi bi-hdd-stack"></i>
+                <span class="pql-icon-rail__label">Volumes</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/dashboards"
+               class="pql-icon-rail__link{% if active_section == 'dashboards' %} active{% endif %}"
+               title="Dashboards">
+                <i class="bi bi-speedometer2"></i>
+                <span class="pql-icon-rail__label">Dashboards</span>
+            </a>
+        </li>
+    </ul>
+    {% if current_user is defined and current_user and current_user.is_admin %}
+    <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
+        <li class="pql-icon-rail__item">
+            <a href="/admin/audit"
+               class="pql-icon-rail__link{% if active_section == 'admin' %} active{% endif %}"
+               title="Admin (audit log, audit cockpit, external writes)">
+                <i class="bi bi-shield-check"></i>
+                <span class="pql-icon-rail__label">Admin</span>
+            </a>
+        </li>
+    </ul>
+    {% endif %}
+</nav>

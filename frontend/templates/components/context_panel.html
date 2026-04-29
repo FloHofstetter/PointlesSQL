@@ -1,0 +1,146 @@
+{#
+  Sprint 17.1 — contextual side-panel (240 px).
+
+  Sits to the right of the icon-rail at >= md.  The contents are a
+  function of ``active_section`` (computed in base.html from
+  ``active_page``):
+
+    * federation  → catalog tree (existing components/sidebar.html)
+    * dashboards  → dashboards tree (existing components/dashboards_sidebar.html)
+    * runs / sql / workspace / jobs / alerts / volumes / admin
+                 → static link list rendered inline below
+
+  Federation is the catch-all default, so /, /catalogs/*, /tables/*,
+  /schemas/*, etc. all keep showing the catalog tree they had before.
+
+  On mobile, ``base.html`` mounts this same partial inside the
+  bootstrap offcanvas drawer; ``components/context_panel.css``
+  drops the sticky/border chrome there.
+#}
+<aside class="pql-context-panel" aria-label="Section navigation">
+    {% if active_section == 'federation' %}
+        {% include "components/sidebar.html" %}
+    {% elif active_section == 'dashboards' %}
+        {% include "components/dashboards_sidebar.html" %}
+    {% elif active_section == 'runs' %}
+        <div class="pql-context-panel__header">Runs</div>
+        <div class="pql-context-panel__body">
+            <ul class="pql-context-panel__list">
+                <li>
+                    <a href="/runs"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'runs' %} active{% endif %}">
+                        <i class="bi bi-list-ul"></i>
+                        <span>All runs</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="pql-context-panel__hint">
+                Use Cmd+K to jump to a specific run.
+            </div>
+        </div>
+    {% elif active_section == 'sql' %}
+        <div class="pql-context-panel__header">SQL</div>
+        <div class="pql-context-panel__body">
+            <ul class="pql-context-panel__list">
+                <li>
+                    <a href="/sql"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'sql' %} active{% endif %}">
+                        <i class="bi bi-code-square"></i>
+                        <span>Editor</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/queries"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'queries' %} active{% endif %}">
+                        <i class="bi bi-clock-history"></i>
+                        <span>History</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="pql-context-panel__hint">
+                Saved queries appear in the editor's right-hand drawer.
+            </div>
+        </div>
+    {% elif active_section == 'workspace' %}
+        <div class="pql-context-panel__header">Workspace</div>
+        <div class="pql-context-panel__body">
+            <ul class="pql-context-panel__list">
+                <li>
+                    <a href="/notebooks/workspace"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'workspace' %} active{% endif %}">
+                        <i class="bi bi-folder2-open"></i>
+                        <span>Notebooks</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    {% elif active_section == 'jobs' %}
+        <div class="pql-context-panel__header">Jobs</div>
+        <div class="pql-context-panel__body">
+            <ul class="pql-context-panel__list">
+                <li>
+                    <a href="/jobs"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'jobs' %} active{% endif %}">
+                        <i class="bi bi-list-ul"></i>
+                        <span>All jobs</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    {% elif active_section == 'alerts' %}
+        <div class="pql-context-panel__header">Alerts</div>
+        <div class="pql-context-panel__body">
+            <ul class="pql-context-panel__list">
+                <li>
+                    <a href="/alerts"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'alerts' %} active{% endif %}">
+                        <i class="bi bi-bell"></i>
+                        <span>All alerts</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    {% elif active_section == 'volumes' %}
+        <div class="pql-context-panel__header">Volumes</div>
+        <div class="pql-context-panel__body">
+            <ul class="pql-context-panel__list">
+                <li>
+                    <a href="/volumes"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'volumes' %} active{% endif %}">
+                        <i class="bi bi-hdd-stack"></i>
+                        <span>All volumes</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    {% elif active_section == 'admin' %}
+        <div class="pql-context-panel__header">Admin</div>
+        <div class="pql-context-panel__body">
+            <ul class="pql-context-panel__list">
+                <li>
+                    <a href="/admin/audit"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}">
+                        <i class="bi bi-journal-text"></i>
+                        <span>Audit log</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/audit/queries"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'audit' %} active{% endif %}">
+                        <i class="bi bi-shield-check"></i>
+                        <span>Audit cockpit</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="/admin/external-writes"
+                       class="pql-context-panel__link{% if active_page is defined and active_page == 'admin' %} active{% endif %}">
+                        <i class="bi bi-exclamation-octagon"></i>
+                        <span>External writes</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    {% else %}
+        {% include "components/sidebar.html" %}
+    {% endif %}
+</aside>
