@@ -677,17 +677,31 @@ def _emit_branch_event(
     except RuntimeError:
         return
 
+    coro = emit_governance_event(
+        event_type,
+        data,
+        settings=settings,
+        session_factory=factory,
+    )
     try:
-        asyncio.run(
-            emit_governance_event(
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is None:
+        # No running loop — fresh event loop drives the emission.
+        try:
+            asyncio.run(coro)
+        except RuntimeError as exc:  # pragma: no cover — defensive
+            logger.warning(
+                "_emit_branch_event(%s): asyncio.run failed: %s",
                 event_type,
-                data,
-                settings=settings,
-                session_factory=factory,
+                exc,
             )
-        )
-    except RuntimeError as exc:  # pragma: no cover — defensive
-        logger.warning("_emit_branch_event(%s): asyncio.run failed: %s", event_type, exc)
+        return
+    # Running loop already (e.g. inside an async scheduler executor).
+    # Fire-and-forget on the loop; emission errors are already logged
+    # internally by emit_governance_event.
+    loop.create_task(coro)
 
 
 def _emit_branch_created_event(

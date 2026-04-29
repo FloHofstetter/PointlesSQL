@@ -80,6 +80,7 @@ def build_default_registry() -> KindRegistry:
     # only needs the executors at factory-call time.
     from pointlessql.services.scheduler.executors import (
         _alert_check_executor,
+        _branch_cleanup_executor,
         _papermill_executor,
         _pg_sync_executor,
         _python_executor,
@@ -90,4 +91,5 @@ def build_default_registry() -> KindRegistry:
     registry.register("python", _python_executor)
     registry.register("papermill", _papermill_executor)
     registry.register("alert_check", _alert_check_executor)
+    registry.register("branch_cleanup", _branch_cleanup_executor)
     return registry

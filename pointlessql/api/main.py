@@ -198,6 +198,15 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="lineage-pruner",
         )
 
+    # Sprint 16.5.6 branch auto-cleanup.  Opt-in default-disabled
+    # (``branch.auto_cleanup_enabled=False``); the loop body itself
+    # short-circuits when disabled, so we always start it but it's a
+    # cheap no-op until the operator flips the flag.
+    branch_cleanup_task: asyncio.Task[None] = asyncio.create_task(
+        _branch_cleanup_loop(app.state.uc_client, settings),
+        name="branch-cleanup",
+    )
+
     # The browser notebook editor was retired; a future
     # :class:`KernelRegistry` on ``app.state`` will serve as the
     # execution backend for the ``agent_run`` scheduler kind.
@@ -216,6 +225,9 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             lineage_pruner_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await lineage_pruner_task
+        branch_cleanup_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await branch_cleanup_task
         if scheduler is not None:
             await scheduler.stop()
         await app.state.uc_client.aclose()
@@ -326,6 +338,45 @@ async def _lineage_pruner_loop(
                 )
         except Exception:  # noqa: BLE001 — pruner must survive everything
             logger.exception("lineage_pruner: prune tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _branch_cleanup_loop(
+    uc: Any,
+    settings: Settings,
+) -> None:
+    """Periodic Phase-16.5 branch auto-cleanup pass.
+
+    Wakes once per ``audit.cleanup_interval_seconds`` (default
+    24h), then either short-circuits (when
+    ``branch.auto_cleanup_enabled=False``) or walks UC schemas and
+    discards active branches past
+    ``branch.auto_cleanup_retention_days``.  The 24h cadence is
+    deliberately coarse — branch cleanup is a maintenance op, not a
+    realtime concern.
+
+    Args:
+        uc: ``UnityCatalogClient`` whose underlying sync client
+            drives the cleanup pass.
+        settings: Snapshotted :class:`Settings`.
+    """
+    from pointlessql.services.branch_cleanup import cleanup_old_branches
+
+    interval = max(60, settings.audit.cleanup_interval_seconds)
+    while True:
+        try:
+            summary = await asyncio.to_thread(
+                cleanup_old_branches,
+                client=uc._client,  # noqa: SLF001 — sync soyuz client
+                settings=settings,
+            )
+            if summary.get("deleted"):
+                logger.info("branch_cleanup: %s", summary)
+        except Exception:  # noqa: BLE001 — cleanup loop must survive everything
+            logger.exception("branch_cleanup: tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:
