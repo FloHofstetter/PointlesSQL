@@ -786,11 +786,16 @@
            as before; the factory definition lives in the <script>
            block at the bottom of this top-pane. #}
         {% if rollback_targets and current_user and current_user.is_admin %}
+        {# Single-quoted x-data so the JSON ``"`` characters from
+           ``rollback_targets | tojson`` do not terminate the HTML
+           attribute prematurely.  Per Sprint-58 BUG-64-01 lesson —
+           Jinja's ``tojson`` marks itself safe and skips autoescape,
+           so the surrounding attribute must escape ``"`` itself. #}
         <div class="card mt-4 border-danger-subtle"
-             x-data="rollbackPanel({
-                runId: '{{ run.id }}',
+             x-data='rollbackPanel({
+                runId: "{{ run.id }}",
                 targets: {{ rollback_targets | tojson }},
-             })">
+             })'>
             <div class="card-header bg-danger-subtle">
                 <i class="bi bi-arrow-counterclockwise me-1"></i>Danger zone — rollback this run
             </div>
