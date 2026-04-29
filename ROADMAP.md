@@ -1836,21 +1836,41 @@ PointlesSQL
 │   │       everywhere), audit-of-audit recursion guard, value-
 │   │       change masking default, 404 on stale ``run_id``, and
 │   │       the anomaly bugfix's structural shape.
-│   ├── Sprint 19.2 — Audit-Reviewer-Agent reference run
-│   │   └── Hermes-driven daily run at 06:00 that calls the
-│   │       audit-summary + anomaly tools, drafts a Markdown
-│   │       summary of yesterday's anomalies, posts to a
-│   │       configurable webhook (Slack / email).  Becomes the
-│   │       reference implementation for "agents reviewing
-│   │       agents" — first concrete demonstration of the
-│   │       supervision-first thesis.
-│   └── Sprint 19.3 — Compliance-Bot + Incident-Responder demos
-│       └── Two more Hermes flows on the same tool surface:
-│           ad-hoc "welche Runs schrieben Q3 auf PII-Spalten?"
-│           via Slack-bot, and "was hat Run X kaputt gemacht?"
-│           via interactive chat.  Validates the three-persona
-│           thesis (operator / auditor / responder all served
-│           from the same endpoint set).
+│   ├── Sprint 19.2 — Audit-Reviewer-Agent reference run     ⏳ in progress
+│   │   ├── Sprint 19.2.0 — Daily-review Hermes job + auditor   ✅
+│   │   │   key bootstrap.  New ``pointlessql admin
+│   │   │   issue-auditor-key --name=…`` Typer subcommand on
+│   │   │   the existing ``[project.scripts] pointlessql`` entry
+│   │   │   point (no-arg invocation still starts uvicorn — the
+│   │   │   Typer callback delegates).  Reference manifest at
+│   │   │   ``docs/hermes-jobs/audit-reviewer-daily.json``
+│   │   │   (cron ``0 6 * * *``, ``enabled_toolsets:
+│   │   │   ["pointlessql"]``, deliver ``local`` by default,
+│   │   │   prompt pinned to the closed-day window
+│   │   │   ``[yesterday-00:00 UTC, today-00:00 UTC)``).  Sister
+│   │   │   docs: ``docs/hermes-jobs/README.md`` (auth + install
+│   │   │   notes; explains why ``hermes cron create`` cannot
+│   │   │   carry the toolset flag yet) and
+│   │   │   ``docs/e2e-walkthroughs/audit-reviewer-daily.md``
+│   │   │   (operational runbook chaining the CLI key-issue,
+│   │   │   ``~/.hermes/.env`` overlay, manual ``jobs.json``
+│   │   │   patch, ``hermes cron run/tick``, and an audit-of-audit
+│   │   │   verification via ``GET /api/audit/history``).
+│   │   ├── Sprint 19.2.1 — Persistence + CloudEvents fan-out
+│   │   │   + cockpit card (sketched).
+│   │   └── Sprint 19.2.2 — Wake-gate (skip clean days)
+│   │       (sketched).
+│   ├── Sprint 19.3 — Compliance-Bot (ad-hoc Slack/chat)
+│   │   └── Hermes one-shot flow on the auditor tool surface.
+│   │       Persona: "welche Runs schrieben Q3 auf PII-Spalten?"
+│   │       via Slack DM or slash-command.  Ships as a
+│   │       prompt-template + manifest pair plus an optional
+│   │       ``/api/audit/principal-summary`` route.
+│   └── Sprint 19.4 — Incident-Responder (interactive chat)
+│       └── Hermes one-shot flow optimised for follow-up
+│           questions: "was hat Run X kaputt gemacht?"  Walks
+│           down to root cause across rejecting ops + external
+│           writes.  No new server endpoints, prompt-only.
 │
 ├── Phase 20 — Forensics + Retention                      ⏳ queued
 │   │

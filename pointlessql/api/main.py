@@ -337,8 +337,8 @@ async def metrics(request: Request) -> Response:
 # ``api/error_handlers.py``.
 
 
-def cli() -> None:
-    """Run the development server."""
+def _run_dev_server() -> None:
+    """Start the uvicorn dev server with the project-scoped reload watcher."""
     import uvicorn
 
     settings = Settings()
@@ -356,3 +356,71 @@ def cli() -> None:
         reload=True,
         reload_dirs=[str(project_root), str(project_root.parent / "frontend")],
     )
+
+
+# ---------------------------------------------------------------------------
+# CLI surface — Typer app exposed via ``[project.scripts] pointlessql = "...:cli"``
+# ---------------------------------------------------------------------------
+#
+# Why: Sprint 19.2.0 needed an admin-side helper to mint an auditor-scoped
+# API key for the Audit-Reviewer-Agent's daily Hermes job. Rather than
+# layering a separate console script, the existing ``pointlessql`` entry
+# point grew a Typer app: the no-argument invocation still starts the dev
+# server (backward-compat), and ``pointlessql admin <subcommand>`` exposes
+# operational helpers.
+
+import typer  # noqa: E402  # import below to keep heavy deps out of FastAPI import path
+
+cli = typer.Typer(
+    name="pointlessql",
+    help="PointlesSQL CLI. Run with no arguments to start the dev server.",
+    invoke_without_command=True,
+    no_args_is_help=False,
+)
+_admin_cli = typer.Typer(help="Administrative helpers (key issuance, …).")
+cli.add_typer(_admin_cli, name="admin")
+
+
+@cli.callback()
+def _root(ctx: typer.Context) -> None:  # pyright: ignore[reportUnusedFunction]
+    """Default to the dev server when no subcommand is given."""
+    if ctx.invoked_subcommand is None:
+        _run_dev_server()
+
+
+@_admin_cli.command("issue-auditor-key")
+def _admin_issue_auditor_key(  # pyright: ignore[reportUnusedFunction]
+    name: str = typer.Option(..., "--name", help="Unique key name (≤ 64 chars)."),
+    supervisor: bool = typer.Option(
+        False,
+        "--supervisor",
+        help="Also grant the supervisor scope (per-run write privileges).",
+    ),
+) -> None:
+    """Issue a fresh auditor-scoped API key and print the plaintext token once.
+
+    The token is stored as a salted hash in ``api_keys`` and cannot be
+    recovered afterwards — copy it into the Hermes cron job's
+    ``POINTLESSQL_API_KEY`` env overlay immediately.
+    """
+    settings = Settings()
+    init_db(settings.db.url)
+    factory = get_session_factory()
+    try:
+        row, plaintext = api_keys_service.create_api_key(
+            factory,
+            name=name,
+            auditor=True,
+            supervisor=supervisor,
+        )
+    except ValueError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+    typer.echo(f"name        = {row.name}")
+    typer.echo(f"prefix      = {row.secret_prefix}")
+    typer.echo(f"auditor     = {row.auditor}")
+    typer.echo(f"supervisor  = {row.supervisor}")
+    typer.echo(f"created_at  = {row.created_at.isoformat()}")
+    typer.echo("")
+    typer.echo("token (shown once — save it now):")
+    typer.echo(plaintext)

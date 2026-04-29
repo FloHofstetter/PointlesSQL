@@ -4,6 +4,53 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 19.2.0: Daily-review Hermes job + auditor key bootstrap (2026-04-29)
+
+First half of Phase-19's "Audit-Reviewer-Agent reference run" sub-phase.
+Wires the operator-facing onboarding for the daily 06:00 UTC anomaly
+digest: the CLI to mint an auditor-scoped API key, the reference Hermes
+cron manifest, and an operational runbook that chains the two.
+
+No server-side schema changes — Sprint 19.2.1 is the one that adds the
+``agent_reviews`` + ``review_destinations`` tables.
+
+- **New ``pointlessql admin issue-auditor-key`` Typer subcommand.**  The
+  existing ``[project.scripts] pointlessql = "...:cli"`` entry point
+  grew a Typer app: invoking ``pointlessql`` with no arguments still
+  starts the uvicorn dev server (backward-compat via an
+  ``invoke_without_command=True`` callback), and ``pointlessql admin
+  issue-auditor-key --name=… [--supervisor]`` mints a fresh API key
+  with ``api_keys.auditor=True``.  The plaintext token is printed
+  exactly once and cannot be recovered afterwards — same hash-only
+  storage discipline as Sprint 13.11's admin HTTP route.
+
+- **Reference Hermes-cron manifest** at
+  ``docs/hermes-jobs/audit-reviewer-daily.json``.  Schedule
+  ``0 6 * * *``, ``enabled_toolsets: ["pointlessql"]``, ``deliver:
+  "local"`` (Slack / email fan-out is opt-in via
+  ``hermes cron edit --deliver``), and a self-contained prompt that
+  pins the audit window to ``[yesterday-00:00 UTC, today-00:00 UTC)``
+  so the digest is deterministic regardless of when the cron actually
+  fires.  Renders Markdown to a fixed skeleton so downstream consumers
+  (Sprint 19.2.1's cockpit card, future digest aggregators) can
+  parse it.
+
+- **``docs/hermes-jobs/README.md``** — index for the manifest folder.
+  Documents why ``hermes cron create`` does not yet expose the
+  ``--enabled-toolsets`` flag the auditor flow needs (so the
+  walkthrough installs the manifest by editing
+  ``~/.hermes/cron/jobs.json`` directly), the
+  ``POINTLESSQL_AUDITOR_MODE`` plugin-side opt-in, and the lack of
+  per-job env overlays in Hermes (``~/.hermes/.env`` is reloaded fresh
+  per cron tick).
+
+- **``docs/e2e-walkthroughs/audit-reviewer-daily.md``** — operational
+  runbook (CLI + cron, no browser) chaining: mint key → ``.env``
+  overlay → ``jobs.json`` patch → ``hermes cron run`` + ``tick`` →
+  cross-check ``GET /api/audit/history?read_kind=audit_api`` rows
+  attributed to ``api_key:daily-review``.  Closes the loop on
+  audit-of-audit observability for the new flow.
+
 ### Added — Sprint 19.1: Audit-read tools + ``auditor`` scope (2026-04-28)
 
 Sprint 19.1 closes the gap between the Phase-18 audit-data plane
