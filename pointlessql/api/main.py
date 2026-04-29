@@ -25,6 +25,7 @@ from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
 from pointlessql.api.audit_routes import router as audit_router
+from pointlessql.api.audit_sinks_routes import router as audit_sinks_router
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.api.catalog_html_routes import router as catalog_html_router
 from pointlessql.api.catalog_routes import router as catalog_router
@@ -299,6 +300,7 @@ app.include_router(admin_router)
 app.include_router(admin_api_keys_router)
 app.include_router(admin_external_writes_router)
 app.include_router(review_destinations_router)
+app.include_router(audit_sinks_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),

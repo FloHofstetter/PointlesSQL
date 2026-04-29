@@ -698,6 +698,27 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
             "engine": "duckdb",
             "referenced_tables": result.referenced_tables,
         }
+        from pointlessql.services.governance_events import (
+            EVENT_TYPE_COST_GATE_DENIED,
+            emit_governance_event,
+        )
+
+        factory = getattr(request.app.state, "session_factory", None)
+        try:
+            await emit_governance_event(
+                EVENT_TYPE_COST_GATE_DENIED,
+                {
+                    "principal": email,
+                    "estimated_cost": result.cost.cost,
+                    "threshold": threshold,
+                    "referenced_tables": result.referenced_tables,
+                    "query_hash": short_sql_hash(query),
+                },
+                settings=settings,
+                session_factory=factory,
+            )
+        except Exception:  # noqa: BLE001 — emit must never raise
+            logger.exception("cost_gate.denied emit failed for %s", short_sql_hash(query))
     return response
 
 

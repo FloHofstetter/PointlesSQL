@@ -220,6 +220,32 @@ async def admin_audit_export(
     rows = await asyncio.to_thread(_rows)
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
+    from pointlessql.api.dependencies import effective_principal, get_user
+    from pointlessql.services.governance_events import (
+        EVENT_TYPE_AUDIT_EXPORT_ISSUED,
+        emit_governance_event,
+    )
+
+    requester_user = get_user(request)
+    requester_email = effective_principal(request) or requester_user.get("email") or ""
+    try:
+        await emit_governance_event(
+            EVENT_TYPE_AUDIT_EXPORT_ISSUED,
+            {
+                "principal": requester_email,
+                "fmt": fmt,
+                "since": since,
+                "row_count": len(rows),
+                "filter_action": action,
+                "filter_user": user,
+                "filter_target": target,
+                "exported_at": timestamp,
+            },
+            session_factory=factory,
+        )
+    except Exception:  # noqa: BLE001 — emit must never raise
+        logger.exception("audit_export.issued emit failed at %s", timestamp)
+
     if fmt == "json":
         body = json.dumps({"exported_at": timestamp, "entries": rows}, indent=2)
         return Response(

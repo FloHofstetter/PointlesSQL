@@ -48,6 +48,7 @@ from pointlessql.models.agent_runs import AgentRun
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
 from pointlessql.models.api_keys import ApiKey
 from pointlessql.models.audit import AuditLog
+from pointlessql.models.audit_sinks import SINK_TYPES, AuditSink, GovernanceEvent
 from pointlessql.models.auth import User
 from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.models.base import Base
@@ -95,9 +96,11 @@ __all__ = [
     "AlertEvent",
     "ApiKey",
     "AuditLog",
+    "AuditSink",
     "AutoloadCheckpoint",
     "Base",
     "Dashboard",
+    "GovernanceEvent",
     "Job",
     "JobLog",
     "JobRun",
@@ -116,6 +119,7 @@ __all__ = [
     "REVIEW_SEVERITIES",
     "RateLimitEvent",
     "ReviewDestination",
+    "SINK_TYPES",
     "SavedAuditQuery",
     "SavedQuery",
     "SyncRun",

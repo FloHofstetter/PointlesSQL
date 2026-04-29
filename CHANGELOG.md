@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added — Sprint 20.0: Audit-Stream forwarder (2026-04-29)
+
+Phase 20 opens with the audit-stream forwarder: a settings-driven,
+plug-in-typed CloudEvents fan-out that mirrors the existing webhook
+dispatcher's HMAC + retry contract for new sink types.
+
+- New `audit_sinks` table (id, name, type, config_json,
+  is_active, event_types_json, created_at) plus FK-free
+  `governance_events` table for non-run-scoped CloudEvents.
+  Alembic `m3h4i5j6k7l8`.
+- Three sink types ship: `webhook` (reuses the saved-query alert
+  dispatcher), `s3` (httpx + minimal SigV4 signer at
+  `services/aws_sigv4.py`, works against MinIO / R2 by setting
+  `endpoint_url`), `aws_cloudtrail` (PutAuditEvents to the
+  CloudTrail Data Service). SigV4 implementation verified against
+  the AWS reference test vector.
+- Five governance event types fire from the existing audit
+  surfaces: `pointlessql.external_write.detected` (scanner),
+  `cost_gate.denied` (`/api/sql/explain` when `needs_approval`
+  flips true), `audit_export.issued` (`/admin/audit/export`),
+  `policy.violated` (free hook for future), `lineage.pruned`
+  (paired with Sprint 20.2). Run-lifecycle events stay on the
+  Phase-13 `agent_run_events` path; admins flip
+  `POINTLESSQL_AUDIT_STREAM_MIRROR_LIFECYCLE_TO_SINKS=1` to fan
+  those into `audit_sinks` too.
+- Admin CRUD at `/api/admin/audit-sinks` (GET/POST/PATCH/DELETE)
+  with sensitive-key redaction on read-back, a `POST .../{id}/test`
+  synthetic-envelope endpoint, and a `GET .../recent-events`
+  tail of the last 50 governance rows.
+- Off by default — `POINTLESSQL_AUDIT_STREAM_ENABLED=0`. The
+  governance row always persists (durability matters); only the
+  outbound POST is gated.
+- Operational runbook in `docs/e2e-walkthroughs/audit-sinks.md`
+  (curl-driven, no browser). Admin HTML page deferred to the
+  Phase-20 close-memo bug-hunt sweep.
+
 ### Closed — Phase 19: Audit-Reviewer Agent + Grafana (2026-04-29)
 
 Six sub-sprints landed across two days, closing the original

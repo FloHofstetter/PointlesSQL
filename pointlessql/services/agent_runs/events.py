@@ -30,6 +30,7 @@ from sqlalchemy import select
 
 from pointlessql.models import AgentRunEvent
 from pointlessql.services.alert_dispatcher import dispatch_webhook
+from pointlessql.services.audit_sinks import dispatch_to_sinks
 from pointlessql.settings import Settings
 
 if TYPE_CHECKING:
@@ -298,6 +299,20 @@ async def emit_agent_run_event(
             agent_run_data.get("id"),
             url,
         )
+
+    if (
+        session_factory is not None
+        and resolved_settings.audit_stream.enabled
+        and resolved_settings.audit_stream.mirror_lifecycle_to_sinks
+    ):
+        try:
+            await dispatch_to_sinks(session_factory, envelope)
+        except Exception:  # noqa: BLE001 — emitter must never raise
+            logger.exception(
+                "emit_agent_run_event: audit-sink mirror raised for %s run=%s",
+                event_type,
+                agent_run_data.get("id"),
+            )
 
     if session_factory is not None and row_id is not None:
         _update_event_outcome(

@@ -326,6 +326,30 @@ class AgentRunsSettings(BaseSettings):
     webhook_hmac_secret: str | None = None
 
 
+class AuditStreamSettings(BaseSettings):
+    """Phase 20 audit-stream forwarder configuration.
+
+    Reads ``POINTLESSQL_AUDIT_STREAM_*`` environment variables.  All
+    sinks are off by default — the stream only fires when at least
+    one ``is_active`` row exists in the ``audit_sinks`` table AND
+    the corresponding ``*_enabled`` toggle here is ``True``.  The
+    two-gate design lets an admin pre-configure destinations without
+    accidentally turning on outbound traffic.
+
+    For the agent-run lifecycle events (``started`` / ``completed``
+    / ``failed`` / ``tool_call`` / ``rollback.executed``) the
+    existing single-URL pipeline at
+    :class:`AgentRunsSettings` keeps working unchanged; flip
+    ``mirror_lifecycle_to_sinks`` to ``True`` to additionally fan
+    those envelopes into the audit-sinks table for a unified trail.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_AUDIT_STREAM_")
+
+    enabled: bool = False
+    mirror_lifecycle_to_sinks: bool = False
+
+
 class ExternalWritesSettings(BaseSettings):
     """External-write detection scanner configuration.
 
@@ -389,5 +413,6 @@ class Settings(BaseSettings):
     delta: DeltaSettings = Field(default_factory=DeltaSettings)
     sql: SQLSettings = Field(default_factory=SQLSettings)
     agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)
+    audit_stream: AuditStreamSettings = Field(default_factory=AuditStreamSettings)
     external_writes: ExternalWritesSettings = Field(default_factory=ExternalWritesSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)

@@ -1934,25 +1934,62 @@ PointlesSQL
 │       incident-responder.md`` covering three drill-down
 │       patterns and four safety properties.
 │
-├── Phase 20 — Forensics + Retention                      ⏳ queued
+├── Phase 20 — Forensics + Retention                      🔜 in progress
 │   │
 │   │   The orthogonal post-cockpit governance pass.  Audit
 │   │   data has been *captured* (15.x), *displayed* (17), and
 │   │   *queried* (18, 19) — now it needs lifecycle management,
 │   │   compliance-grade external streaming, and the time-axis
-│   │   visualization that Delta time-travel enables.
+│   │   visualization that Delta time-travel enables.  Plan in
+│   │   ``.claude/plans/plane-phase-20-vollst-ndig-vast-galaxy.md``.
 │   │
-│   ├── Sprint 20.0 — CloudTrail / Audit-Stream forwarder
-│   │   └── New ``services/audit_forwarder.py`` that, on
-│   │       ``OperationRecorder.commit()``, additionally fires a
-│   │       CloudTrail-PutCustomEvent (or AWS Audit-Manager /
-│   │       GCP Cloud Audit Logs / Azure Activity Log custom
-│   │       event) for ~5-10 governance-relevant event types:
-│   │       run-created, external-write-detected, rollback-
-│   │       executed, policy-violation, cost-gate-denied,
-│   │       audit-export-issued.  Settings-driven (off by
-│   │       default).  S3-bucket sink as the on-prem-friendly
-│   │       alternative for non-cloud deployments.
+│   ├── Sprint 20.0 — Audit-Stream forwarder (3 sink types)    ✅
+│   │   ├── Alembic ``m3h4i5j6k7l8`` adds ``audit_sinks``
+│   │   │   (id, name, type, config_json, is_active,
+│   │   │   event_types_json, created_at) plus
+│   │   │   ``governance_events`` (FK-free CloudEvents persistence
+│   │   │   for events not tied to a single agent run).
+│   │   ├── New ``services/audit_sinks.py`` ships three sink-type
+│   │   │   dispatchers: ``webhook`` (reuses
+│   │   │   ``alert_dispatcher.dispatch_webhook``), ``s3``
+│   │   │   (httpx + ``services/aws_sigv4.py`` for SigV4 PUT,
+│   │   │   works against MinIO / Cloudflare R2 via
+│   │   │   ``endpoint_url``), and ``aws_cloudtrail`` (CloudTrail
+│   │   │   Data Service PutAuditEvents).  ``dispatch_to_sinks``
+│   │   │   honours per-sink ``event_types_json`` allow-lists.
+│   │   ├── New ``services/governance_events.py`` exports five
+│   │   │   constants — ``external_write.detected``,
+│   │   │   ``policy.violated``, ``cost_gate.denied``,
+│   │   │   ``audit_export.issued``, ``lineage.pruned`` —
+│   │   │   plus ``emit_governance_event`` which persists +
+│   │   │   fans out.  Off by default; gated by
+│   │   │   ``POINTLESSQL_AUDIT_STREAM_ENABLED``.
+│   │   ├── Wire-in points: ``external_write_scanner.scan_all``
+│   │   │   emits per-row events on every newly-detected
+│   │   │   unattributed write; ``/api/sql/explain`` emits when
+│   │   │   ``needs_approval`` flips true; ``/admin/audit/export``
+│   │   │   emits before stream-return.  ``rollback.executed``
+│   │   │   stays on the Phase-16 ``agent_run_events`` path
+│   │   │   (already lifecycle-attributed); the audit-stream
+│   │   │   pipe gains it via ``mirror_lifecycle_to_sinks``
+│   │   │   when admins flip the toggle.
+│   │   ├── New ``api/audit_sinks_routes.py`` exposes admin CRUD
+│   │   │   (``GET/POST/PATCH/DELETE /api/admin/audit-sinks``)
+│   │   │   plus a ``POST /audit-sinks/{id}/test`` synthetic
+│   │   │   envelope and a ``GET /audit-sinks/recent-events``
+│   │   │   tail of the last 50 governance rows.  Sensitive
+│   │   │   keys (HMAC, AWS access keys) are redacted on
+│   │   │   readback; cleartext appears only at create time
+│   │   │   in the request body.
+│   │   ├── ``docs/e2e-walkthroughs/audit-sinks.md`` is the
+│   │   │   operational runbook (curl / httpie, no browser).
+│   │   │   Admin HTML page deferred to Phase 20.5 (close memo
+│   │   │   + bug-hunt sweep) once the API surface settles.
+│   │   └── SigV4 signer verified against AWS reference test
+│   │       vector for S3 GET test.txt at
+│   │       ``examplebucket.s3.amazonaws.com``.  Quality gates
+│   │       clean: ruff / pyright (0 errors) / pydoclint /
+│   │       alembic check.
 │   ├── Sprint 20.1 — PII detection + masking layer
 │   │   └── Pattern-based + soyuz-tag-driven PII column
 │   │       identification.  ``lineage_value_changes`` insert

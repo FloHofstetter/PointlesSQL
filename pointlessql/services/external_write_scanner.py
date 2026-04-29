@@ -104,7 +104,7 @@ def scan_table(
     storage_location: str,
     history_limit: int = DEFAULT_HISTORY_LIMIT,
     now: datetime.datetime | None = None,
-) -> int:
+) -> list[dict[str, Any]]:
     """Scan one Delta table's history and INSERT-OR-IGNORE unattributed commits.
 
     Args:
@@ -119,7 +119,12 @@ def scan_table(
             hook).  ``None`` uses ``datetime.now(UTC)``.
 
     Returns:
-        The number of new ``unattributed_writes`` rows persisted.
+        One dict per newly-persisted ``unattributed_writes`` row,
+        shape ``{table_fqn, delta_version,
+        commit_timestamp, detected_at, operation}``.  Empty list
+        when no new rows were inserted; idempotent re-scans always
+        return ``[]``.  Callers that just want the count can do
+        ``len(scan_table(...))``.
     """
     import deltalake
 
@@ -134,12 +139,12 @@ def scan_table(
             storage_location,
             exc,
         )
-        return 0
+        return []
 
     if not history:
-        return 0
+        return []
 
-    inserted = 0
+    inserted: list[dict[str, Any]] = []
     with factory() as session:
         attributed = _attributed_versions(session, table_fqn)
         for entry in history:
@@ -148,10 +153,11 @@ def scan_table(
                 continue
             if version_raw in attributed:
                 continue
+            commit_ts = _parse_commit_timestamp(entry)
             row = UnattributedWrite(
                 table_fqn=table_fqn,
                 delta_version=version_raw,
-                commit_timestamp=_parse_commit_timestamp(entry),
+                commit_timestamp=commit_ts,
                 commit_info=json.dumps(entry, default=str),
                 detected_at=detected_at,
             )
@@ -163,7 +169,15 @@ def scan_table(
                 # (table_fqn, delta_version) makes re-scans idempotent.
                 session.rollback()
                 continue
-            inserted += 1
+            inserted.append(
+                {
+                    "table_fqn": table_fqn,
+                    "delta_version": version_raw,
+                    "commit_timestamp": commit_ts.isoformat() if commit_ts else None,
+                    "detected_at": detected_at.isoformat(),
+                    "operation": entry.get("operation"),
+                }
+            )
         session.commit()
     return inserted
 
@@ -176,6 +190,13 @@ async def scan_all(
 ) -> int:
     """Iterate every UC table and scan each one's Delta history.
 
+    Each newly-persisted ``unattributed_writes`` row also fires one
+    ``pointlessql.external_write.detected`` governance CloudEvent so
+    audit-stream sinks (Slack, S3 archive, CloudTrail) see the
+    detection in real time.  Emit failures are logged but never
+    raised — the persisted row is the source of truth, the event is
+    a courtesy.
+
     Args:
         factory: SQLAlchemy session factory.
         uc: Async UC facade (used to enumerate catalogs / schemas /
@@ -187,6 +208,11 @@ async def scan_all(
         scanned table.
     """
     import asyncio
+
+    from pointlessql.services.governance_events import (
+        EVENT_TYPE_EXTERNAL_WRITE,
+        emit_governance_event,
+    )
 
     total = 0
     catalogs = await uc.list_catalogs()
@@ -220,14 +246,27 @@ async def scan_all(
                 if not isinstance(tbl_name, str) or not isinstance(storage, str) or not storage:
                     continue
                 fqn = f"{cat_name}.{sch_name}.{tbl_name}"
-                inserted = await asyncio.to_thread(
+                new_rows = await asyncio.to_thread(
                     scan_table,
                     factory,
                     table_fqn=fqn,
                     storage_location=storage,
                     history_limit=history_limit,
                 )
-                total += inserted
+                total += len(new_rows)
+                for entry in new_rows:
+                    try:
+                        await emit_governance_event(
+                            EVENT_TYPE_EXTERNAL_WRITE,
+                            entry,
+                            session_factory=factory,
+                        )
+                    except Exception:  # noqa: BLE001 — emit must never raise
+                        logger.exception(
+                            "external_write_scanner: emit failed for %s v%s",
+                            entry.get("table_fqn"),
+                            entry.get("delta_version"),
+                        )
     return total
 
 
