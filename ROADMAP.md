@@ -2403,17 +2403,25 @@ PointlesSQL
 │   │   └── UI surface: "Repro" sub-tab on run-detail (Phase 17.2)
 │   │       showing the full repro context next to params/metrics.
 │   │
-│   ├── Sprint 21.5 — PointlesSQL Models-Tab                    ⏳
-│   │   ├── Catalog-tree extended with model nodes
-│   │   │   (catalog → schema → model → version).
-│   │   ├── Model-detail page: versions table, params/metrics
-│   │   │   side-by-side compare across versions, lineage DAG
-│   │   │   pointing back to training agent_run + input tables.
-│   │   ├── Version-diff view: param delta + metric delta + input
-│   │   │   dataset version delta — the "what changed between v3
-│   │   │   and v4" dashboard.
+│   ├── Sprint 21.5 — PointlesSQL Models-Tab                    ✅
+│   │   ├── Catalog-tree extended with model nodes (sidebar) +
+│   │   │   server-side tree-search supports ``kind="model"``.
+│   │   ├── Top-level ``/models`` index with per-catalog filter +
+│   │   │   ``bi-box-seam`` icon-rail tab.
+│   │   ├── Model-detail page at ``/models/{full_name}`` with five
+│   │   │   tabs (Overview, Versions, Lineage, MLflow, Permissions);
+│   │   │   Versions tab pulls MLflow params/metrics/tags via
+│   │   │   ``MlflowClient.get_run`` per linked run.
+│   │   ├── Side-by-side compare-view at ``/models/.../compare``
+│   │   │   with metric-direction heuristic
+│   │   │   (lower-better/higher-better) and added/removed/changed
+│   │   │   diff for params + tags.
+│   │   ├── Focused lineage DAG via ``/api/models/.../lineage``:
+│   │   │   orange-hexagon model node + green source-table nodes
+│   │   │   for every table consumed by any Hermes-run linked to
+│   │   │   any version of the model.
 │   │   └── Browser-walkthrough playbook in
-│   │       ``docs/e2e-walkthroughs/ml-registry.md``.
+│   │       ``docs/e2e-walkthroughs/models-tab.md``.
 │   │
 │   ├── Sprint 21.6 — Champion/Challenger Aliases + Promotion-Hop ⏳
 │   │   ├── Promote-button on model-version → opens approval-hop

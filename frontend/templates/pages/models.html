@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Models · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Models"}] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-box-seam fs-3"></i>
+    <h1 class="h3 mb-0">Registered Models</h1>
+</div>
+
+<div x-data="modelsBrowse()" x-init="init()">
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row gx-2 align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-1">Catalog</label>
+                    <select class="form-select form-select-sm" x-model="catalogName" @change="onCatalogChange()">
+                        <option value="">All catalogs</option>
+                        <template x-for="c in catalogs" :key="c.name">
+                            <option :value="c.name" x-text="c.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small text-muted mb-1">Schema</label>
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="(optional, requires catalog)"
+                           x-model="schemaName"
+                           @change="reload()"
+                           :disabled="!catalogName">
+                </div>
+                <div class="col-md-4 d-flex align-items-end justify-content-end">
+                    <button class="btn btn-sm btn-outline-secondary" @click="reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <template x-if="loading">
+        <div class="text-muted small p-3">
+            <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+        </div>
+    </template>
+
+    <template x-if="error">
+        <div class="alert alert-danger" x-text="error"></div>
+    </template>
+
+    <template x-if="!loading && !error && models.length === 0">
+        <div class="alert alert-secondary">
+            <i class="bi bi-info-circle me-1"></i>
+            No registered models found.
+            <span class="small text-muted">
+                Use the Hermes plugin or call <code>mlflow.register_model()</code>
+                against the soyuz UC-OSS endpoint to register one.
+            </span>
+        </div>
+    </template>
+
+    <template x-if="!loading && !error && models.length > 0">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Full Name</th>
+                            <th>Owner</th>
+                            <th>Latest Version</th>
+                            <th>Status</th>
+                            <th>Linked Runs</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="m in models" :key="m.full_name">
+                            <tr>
+                                <td>
+                                    <a :href="'/models/' + m.full_name" class="text-decoration-none">
+                                        <i class="bi bi-box-seam me-1"></i>
+                                        <span x-text="m.full_name"></span>
+                                    </a>
+                                </td>
+                                <td><span x-text="m.owner || '—'" class="small text-muted"></span></td>
+                                <td>
+                                    <template x-if="m.latest_version">
+                                        <span class="badge bg-secondary" x-text="'v' + m.latest_version"></span>
+                                    </template>
+                                    <template x-if="!m.latest_version">
+                                        <span class="text-muted small">—</span>
+                                    </template>
+                                </td>
+                                <td>
+                                    <template x-if="m.latest_status === 'READY'">
+                                        <span class="badge bg-success" x-text="m.latest_status"></span>
+                                    </template>
+                                    <template x-if="m.latest_status && m.latest_status !== 'READY'">
+                                        <span class="badge bg-warning text-dark" x-text="m.latest_status"></span>
+                                    </template>
+                                    <template x-if="!m.latest_status">
+                                        <span class="text-muted small">—</span>
+                                    </template>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark" x-text="m.linked_run_count || 0"></span>
+                                </td>
+                                <td class="small text-muted" x-text="formatTime(m.updated_at)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+window.modelsBrowse = function () {
+    return {
+        catalogs: {{ catalogs | tojson }},
+        catalogName: '',
+        schemaName: '',
+        models: [],
+        loading: false,
+        error: null,
+
+        async init() {
+            await this.reload();
+        },
+
+        async onCatalogChange() {
+            if (!this.catalogName) this.schemaName = '';
+            await this.reload();
+        },
+
+        async reload() {
+            this.loading = true;
+            this.error = null;
+            try {
+                const params = new URLSearchParams({ enrich_latest: '1' });
+                if (this.catalogName) params.set('catalog_name', this.catalogName);
+                if (this.schemaName) params.set('schema_name', this.schemaName);
+                const res = await fetch('/api/models?' + params.toString());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.models = Array.isArray(data.models) ? data.models : [];
+            } catch (e) {
+                this.error = 'Failed to load models: ' + e.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        formatTime(ts) {
+            if (!ts) return '';
+            try {
+                const d = new Date(ts);
+                if (isNaN(d.getTime())) return '';
+                return d.toLocaleString();
+            } catch (e) { return ''; }
+        },
+    };
+};
+</script>
+{% endblock %}

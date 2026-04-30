@@ -79,12 +79,14 @@ from pointlessql.services.unitycatalog._catalogs import CatalogsMixin
 from pointlessql.services.unitycatalog._federation import FederationMixin
 from pointlessql.services.unitycatalog._lineage import LineageMixin
 from pointlessql.services.unitycatalog._metadata import MetadataMixin
+from pointlessql.services.unitycatalog._models import ModelsMixin
 from pointlessql.services.unitycatalog._permissions import PermissionsMixin
 
 
 class UnityCatalogClient(
     CatalogsMixin,
     MetadataMixin,
+    ModelsMixin,
     PermissionsMixin,
     LineageMixin,
     FederationMixin,
@@ -129,6 +131,7 @@ __all__ = [
     "FederationMixin",
     "LineageMixin",
     "MetadataMixin",
+    "ModelsMixin",
     "PermissionsMixin",
     "UnityCatalogClient",
     "_create_catalog",

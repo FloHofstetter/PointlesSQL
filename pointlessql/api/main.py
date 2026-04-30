@@ -46,6 +46,8 @@ from pointlessql.api.middleware import register_middleware
 from pointlessql.api.ml_routes import router as ml_router
 from pointlessql.api.mlflow_html_routes import router as mlflow_html_router
 from pointlessql.api.mlflow_proxy import router as mlflow_proxy_router
+from pointlessql.api.models_html_routes import router as models_html_router
+from pointlessql.api.models_routes import router as models_router
 from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
 from pointlessql.api.pql_write_routes import router as pql_write_router
@@ -450,6 +452,8 @@ app.include_router(audit_sinks_router)
 app.include_router(ml_router)
 app.include_router(mlflow_html_router)
 app.include_router(mlflow_proxy_router)
+app.include_router(models_router)
+app.include_router(models_html_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),

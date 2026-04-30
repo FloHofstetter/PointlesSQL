@@ -1,0 +1,189 @@
+"""Sprint 21.5.5 — model-lineage DAG endpoint + aggregator tests."""
+
+from __future__ import annotations
+
+import json
+import uuid
+from unittest.mock import AsyncMock
+
+import httpx
+import pytest
+
+from pointlessql.api.main import app
+from pointlessql.models import AgentRun, LineageRowEdge
+from pointlessql.services.models_lineage import (
+    aggregate_source_tables_for_runs,
+    build_model_lineage_graph,
+)
+
+
+def _client(**kwargs) -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        follow_redirects=False,
+        **kwargs,
+    )
+
+
+def _seed_run_with_edges(
+    factory, run_id: str, source_tables: list[str]
+) -> None:
+    """Insert an AgentRun + a LineageRowEdge per source table."""
+    import datetime as _dt
+
+    now = _dt.datetime.now(_dt.UTC)
+    with factory() as session:
+        run = AgentRun(
+            id=run_id,
+            principal="alice",
+            notebook_path=f"/tmp/{run_id}.py",
+            status="completed",
+            started_at=now,
+        )
+        session.add(run)
+        for src in source_tables:
+            session.add(
+                LineageRowEdge(
+                    run_id=run_id,
+                    op_id=1,
+                    source_table=src,
+                    source_row_id="r-1",
+                    target_table="cat1.sch1.smoke_model",
+                    target_row_id="r-1",
+                    created_at=now,
+                )
+            )
+        session.commit()
+
+
+def test_aggregate_source_tables_dedupes_across_runs(auth_cookies) -> None:
+    factory = app.state.session_factory
+    run_a = str(uuid.uuid4())
+    run_b = str(uuid.uuid4())
+    _seed_run_with_edges(factory, run_a, ["cat1.sch1.users", "cat1.sch1.events"])
+    _seed_run_with_edges(factory, run_b, ["cat1.sch1.events", "cat1.sch1.products"])
+
+    sources = aggregate_source_tables_for_runs(factory, [run_a, run_b])
+    assert sources == ["cat1.sch1.events", "cat1.sch1.products", "cat1.sch1.users"]
+
+
+def test_aggregate_source_tables_empty_input() -> None:
+    factory = app.state.session_factory
+    assert aggregate_source_tables_for_runs(factory, []) == []
+    assert aggregate_source_tables_for_runs(factory, [None, ""]) == []
+
+
+def test_build_model_lineage_graph_emits_model_centre_node(auth_cookies) -> None:
+    factory = app.state.session_factory
+    run_id = str(uuid.uuid4())
+    _seed_run_with_edges(factory, run_id, ["cat1.sch1.users"])
+
+    graph = build_model_lineage_graph(
+        factory,
+        model_full_name="cat1.sch1.smoke_model",
+        agent_run_ids=[run_id],
+    )
+    assert graph["model_full_name"] == "cat1.sch1.smoke_model"
+    # Nodes contain the model centre node (type=model) and the source-table node.
+    types = {n["id"]: n["type"] for n in graph["nodes"]}
+    assert types["cat1.sch1.smoke_model"] == "model"
+    assert types["cat1.sch1.users"] == "table"
+    # Edge points from source → model with label="trained_from".
+    assert graph["edges"] == [
+        {
+            "id": "cat1.sch1.users__cat1.sch1.smoke_model",
+            "source": "cat1.sch1.users",
+            "target": "cat1.sch1.smoke_model",
+            "label": "trained_from",
+        }
+    ]
+
+
+def test_build_model_lineage_graph_no_runs_returns_only_model_node() -> None:
+    factory = app.state.session_factory
+    graph = build_model_lineage_graph(
+        factory,
+        model_full_name="cat1.sch1.smoke_model",
+        agent_run_ids=[],
+    )
+    assert len(graph["nodes"]) == 1
+    assert graph["nodes"][0]["type"] == "model"
+    assert graph["edges"] == []
+
+
+# ---------- API endpoint test ----------
+
+
+_LINK_MARKER = json.dumps(
+    {
+        "_pql_link": {
+            "agent_run_id": "deadbeef",
+            "mlflow_run_id": "mlf-abc",
+            "linked_at": "2026-04-30T00:00:00+00:00",
+        }
+    },
+    sort_keys=True,
+)
+
+
+@pytest.fixture
+def uc_for_lineage(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
+    monkeypatch.setattr(
+        "pointlessql.api.dependencies.effective_principal",
+        lambda request: None,
+    )
+    mock = AsyncMock()
+
+    async def _list_model_versions(full_name, max_results=None, page_token=None):
+        if full_name != "cat1.sch1.smoke_model":
+            return []
+        return [
+            {"version": 1, "comment": _LINK_MARKER},
+            {"version": 2, "comment": "no marker"},
+        ]
+
+    mock.list_model_versions.side_effect = _list_model_versions
+    app.state.uc_client = mock
+    return mock
+
+
+@pytest.mark.asyncio
+async def test_api_model_lineage_returns_model_node_and_source_tables(
+    uc_for_lineage: AsyncMock, auth_cookies: dict[str, str]
+) -> None:
+    factory = app.state.session_factory
+    _seed_run_with_edges(factory, "deadbeef", ["cat1.sch1.users"])
+
+    async with _client(cookies=auth_cookies) as c:
+        resp = await c.get("/api/models/cat1.sch1.smoke_model/lineage")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["model_full_name"] == "cat1.sch1.smoke_model"
+    types = {n["id"]: n["type"] for n in body["nodes"]}
+    assert types["cat1.sch1.smoke_model"] == "model"
+    assert types["cat1.sch1.users"] == "table"
+    assert len(body["edges"]) == 1
+    assert body["edges"][0]["label"] == "trained_from"
+
+
+@pytest.mark.asyncio
+async def test_api_model_lineage_empty_when_no_linked_runs(
+    uc_for_lineage: AsyncMock, auth_cookies: dict[str, str]
+) -> None:
+    # No seeded runs → only the centre model node, zero edges.
+    async with _client(cookies=auth_cookies) as c:
+        resp = await c.get("/api/models/cat1.sch1.smoke_model/lineage")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["nodes"]) == 1
+    assert body["edges"] == []
+
+
+@pytest.mark.asyncio
+async def test_api_model_lineage_unauthenticated(
+    uc_for_lineage: AsyncMock,
+) -> None:
+    async with _client() as c:
+        resp = await c.get("/api/models/cat1.sch1.smoke_model/lineage")
+    assert resp.status_code == 401

@@ -67,6 +67,118 @@ function loadCytoscapeOnce() {
     return _cytoscapeLoadPromise;
 }
 
+// Sprint 21.5.5 — exposed on window so the model-detail Lineage tab
+// (inline script, not part of the ESM bundle) can call the same
+// lazy-loader the run-detail Graph sub-tab uses.
+if (typeof window !== 'undefined') {
+    window.loadCytoscapeOnce = loadCytoscapeOnce;
+}
+
+/**
+ * Sprint 21.5.5 — render a focused model-lineage DAG.
+ *
+ * The model-detail page builds its own ``{nodes, edges}`` payload
+ * via ``GET /api/models/{full_name}/lineage`` and feeds it to this
+ * helper after ``loadCytoscapeOnce()`` resolves.  The render is
+ * intentionally minimal: no click highlighting, no side panel, no
+ * column-pair overlay.  The model node renders as an orange hexagon
+ * so it stands out from the green table predecessors.
+ *
+ * @param {string} containerId  DOM id of the cytoscape mount.
+ * @param {{nodes: object[], edges: object[]}} graphData  Payload.
+ */
+function renderModelGraph(containerId, graphData) {
+    if (typeof window.cytoscape !== 'function') return null;
+    if (typeof window.cytoscapeDagre === 'function' && !window.__cytoscapeDagreRegistered) {
+        window.cytoscape.use(window.cytoscapeDagre);
+        window.__cytoscapeDagreRegistered = true;
+    }
+    const elements = [
+        ...(graphData.nodes || []).map((n) => ({
+            data: {
+                id: n.id,
+                label: n.label || n.id,
+                kind: n.type || 'table',
+            },
+        })),
+        ...(graphData.edges || []).map((e) => ({
+            data: {
+                id: e.id,
+                source: e.source,
+                target: e.target,
+                label: e.label || '',
+            },
+        })),
+    ];
+    const style = [
+        {
+            selector: 'node[kind = "table"]',
+            style: {
+                'background-color': '#1e293b',
+                'border-color': '#76b900',
+                'border-width': 1,
+                'shape': 'round-rectangle',
+                'label': 'data(label)',
+                'color': '#e6e6e6',
+                'font-family': 'Inter, system-ui, sans-serif',
+                'font-size': 11,
+                'text-valign': 'center',
+                'text-halign': 'center',
+                'width': 'label',
+                'height': 'label',
+                'padding': '12px',
+            },
+        },
+        {
+            selector: 'node[kind = "model"]',
+            style: {
+                'background-color': '#3a2a1e',
+                'border-color': '#fb923c',
+                'border-width': 2,
+                'shape': 'hexagon',
+                'label': 'data(label)',
+                'color': '#fde68a',
+                'font-family': 'Inter, system-ui, sans-serif',
+                'font-size': 13,
+                'font-weight': 'bold',
+                'text-valign': 'center',
+                'text-halign': 'center',
+                'width': 'label',
+                'height': 'label',
+                'padding': '18px',
+            },
+        },
+        {
+            selector: 'edge',
+            style: {
+                'curve-style': 'bezier',
+                'target-arrow-shape': 'triangle',
+                'line-color': '#475569',
+                'target-arrow-color': '#475569',
+                'width': 2,
+                'label': 'data(label)',
+                'font-size': 9,
+                'color': '#94a3b8',
+                'text-background-color': '#0f172a',
+                'text-background-opacity': 0.7,
+                'text-background-padding': 2,
+            },
+        },
+    ];
+    return window.cytoscape({
+        container: document.getElementById(containerId),
+        elements,
+        style,
+        layout: window.__cytoscapeDagreRegistered
+            ? { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 80 }
+            : { name: 'breadthfirst', directed: true },
+    });
+}
+
+if (typeof window !== 'undefined') {
+    window.renderModelGraph = renderModelGraph;
+}
+
 const STYLE = [
     {
         selector: 'node',

@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Sprint 21.5 — registered-models browse surface.** Models now
+  appear in the catalog tree per schema (alongside tables) and have
+  a top-level `/models` index page in the icon rail. Each registered
+  model has a detail page at `/models/{full_name}` with five tabs
+  (Overview, Versions, Lineage, MLflow, Permissions); the Versions
+  tab pulls params/metrics/tags from the linked MLflow run via
+  `MlflowClient.get_run`, the Lineage tab renders a focused
+  cytoscape DAG showing the model node + the source tables consumed
+  by any Hermes-agent-run linked to a version of the model. A
+  side-by-side compare view at `/models/{full_name}/compare?v1=N&v2=M`
+  highlights metric deltas with a `lower-better`/`higher-better`
+  classification heuristic and lists added/removed/changed params
+  and tags. Anonymous access is gated by the existing auth
+  middleware. New `ModelsMixin` on `UnityCatalogClient` exposes the
+  four typed soyuz model RPCs the routes depend on
+  (`list_registered_models`, `get_registered_model`,
+  `list_model_versions`, `get_model_version`). The browser
+  walkthrough at `docs/e2e-walkthroughs/models-tab.md` replays the
+  full flow.
+
 ### Closed — Phase 21 audit-foundation: 21.0 + 21.1 + 21.2 (2026-04-30)
 
 Vertical slice "audit-foundation for ML" landed in one autonomous

@@ -92,6 +92,14 @@
                 <span class="pql-icon-rail__label">ML</span>
             </a>
         </li>
+        <li class="pql-icon-rail__item">
+            <a href="/models"
+               class="pql-icon-rail__link{% if active_section == 'models' %} active{% endif %}"
+               title="Registered models (Phase 21.5)">
+                <i class="bi bi-box-seam"></i>
+                <span class="pql-icon-rail__label">Models</span>
+            </a>
+        </li>
         {% if current_user is defined and current_user and current_user.is_admin %}
         <li class="pql-icon-rail__item">
             <a href="/branches"

@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}{{ model.full_name }} · Models · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Models", "href": "/models"},
+    {"label": model.full_name},
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-2">
+    <i class="bi bi-box-seam fs-3"></i>
+    <h1 class="h3 mb-0">{{ model.full_name }}</h1>
+    {% if model.owner %}
+    <span class="badge bg-secondary ms-2">{{ model.owner }}</span>
+    {% endif %}
+</div>
+
+{% if model.comment %}
+<p class="text-muted small">{{ model.comment }}</p>
+{% endif %}
+
+<ul class="nav nav-tabs mb-3" id="modelTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-overview" type="button" role="tab">Overview</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-versions-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-versions" type="button" role="tab">Versions</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-lineage" type="button" role="tab">Lineage</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-mlflow-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-mlflow" type="button" role="tab">MLflow</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-perms-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-perms" type="button" role="tab">Permissions</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="modelTabsContent">
+    {# Overview #}
+    <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">Metadata</div>
+                    <div class="card-body small">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Catalog</dt>
+                            <dd class="col-sm-8">{{ model.catalog_name }}</dd>
+                            <dt class="col-sm-4">Schema</dt>
+                            <dd class="col-sm-8">{{ model.schema_name }}</dd>
+                            <dt class="col-sm-4">Name</dt>
+                            <dd class="col-sm-8">{{ model.name }}</dd>
+                            <dt class="col-sm-4">Owner</dt>
+                            <dd class="col-sm-8">{{ model.owner or "—" }}</dd>
+                            <dt class="col-sm-4">Storage</dt>
+                            <dd class="col-sm-8 text-break">
+                                <code>{{ model.storage_location or "—" }}</code>
+                            </dd>
+                            <dt class="col-sm-4">Versions</dt>
+                            <dd class="col-sm-8">{{ versions | length }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">Linked Hermes runs</div>
+                    <div class="card-body small">
+                        {% set linked = versions | selectattr("link_marker") | list %}
+                        {% if linked %}
+                        <ul class="list-unstyled mb-0">
+                            {% for v in linked[:5] %}
+                            <li class="mb-2">
+                                <span class="badge bg-secondary">v{{ v.version }}</span>
+                                {% if v.link_marker.agent_run_id %}
+                                <a href="/runs/{{ v.link_marker.agent_run_id }}"
+                                   class="text-decoration-none">
+                                    <i class="bi bi-arrow-right-short"></i>
+                                    run <code>{{ v.link_marker.agent_run_id[:8] }}</code>
+                                </a>
+                                {% endif %}
+                                {% if v.link_marker.linked_at %}
+                                <span class="text-muted ms-2">{{ v.link_marker.linked_at }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted mb-0">
+                            No PointlesSQL run cross-links recorded yet.
+                            Hermes-driven training runs auto-populate the
+                            <code>_pql_link</code> marker via the recorder hook.
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Versions #}
+    <div class="tab-pane fade" id="tab-versions" role="tabpanel"
+         x-data="modelVersions()">
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Status</th>
+                            <th>MLflow Run</th>
+                            <th>Linked Agent Run</th>
+                            <th>Top Metrics</th>
+                            <th>Compare</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in versions %}
+                        <tr>
+                            <td><span class="badge bg-secondary">v{{ v.version }}</span></td>
+                            <td>
+                                {% if v.status == "READY" %}
+                                <span class="badge bg-success">{{ v.status }}</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">{{ v.status or "—" }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.mlflow and v.mlflow.run_id %}
+                                <code class="small">{{ v.mlflow.run_id[:12] }}…</code>
+                                {% elif v.run_id %}
+                                <code class="small">{{ v.run_id[:12] }}…</code>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.link_marker and v.link_marker.agent_run_id %}
+                                <a href="/runs/{{ v.link_marker.agent_run_id }}" class="small">
+                                    {{ v.link_marker.agent_run_id[:8] }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="small">
+                                {% if v.mlflow and v.mlflow.metrics %}
+                                {% for name, val in (v.mlflow.metrics.items() | list)[:3] %}
+                                <span class="me-2">
+                                    <code>{{ name }}</code>=<span class="fw-semibold">{{ '%.4g' | format(val) if val is number else val }}</span>
+                                </span>
+                                {% endfor %}
+                                {% elif v.mlflow and v.mlflow.error %}
+                                <span class="text-muted small fst-italic">{{ v.mlflow.error }}</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @click="selectForCompare({{ v.version }})">
+                                    <span x-show="firstSelected === null || firstSelected === {{ v.version }}">
+                                        <i class="bi bi-bar-chart"></i> Compare
+                                    </span>
+                                    <span x-show="firstSelected !== null && firstSelected !== {{ v.version }}">
+                                        <i class="bi bi-arrow-right"></i> vs v{{ v.version }}
+                                    </span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="text-muted small mt-2" x-show="firstSelected !== null">
+            Selected v<span x-text="firstSelected"></span>. Click another version to compare.
+        </div>
+    </div>
+
+    {# Lineage — populated lazily by modelLineageDag (Sprint 21.5.5). #}
+    <div class="tab-pane fade" id="tab-lineage" role="tabpanel">
+        <div x-data="modelLineageDag('{{ model.full_name }}')" x-init="init()">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">
+                    Source tables consumed by linked Hermes-agent runs.
+                </span>
+                <button class="btn btn-sm btn-link" @click="reload()" x-show="loaded">
+                    <i class="bi bi-arrow-clockwise"></i> Reload
+                </button>
+            </div>
+            <div x-show="!loaded && !loading && !empty" class="text-muted small p-3">
+                Click here to render lineage…
+                <button class="btn btn-sm btn-outline-secondary ms-2" @click="render()">
+                    Render now
+                </button>
+            </div>
+            <div x-show="loading" class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Loading lineage…
+            </div>
+            <div x-show="error" class="alert alert-danger small" x-text="error"></div>
+            <div x-show="empty" class="text-muted small p-3">
+                No lineage edges recorded yet — train the model with an
+                instrumented Hermes plugin to populate the graph.
+            </div>
+            <div id="model-cy" style="width: 100%; height: 600px;" x-show="loaded"></div>
+        </div>
+    </div>
+
+    {# MLflow #}
+    <div class="tab-pane fade" id="tab-mlflow" role="tabpanel">
+        {% if mlflow_running %}
+        <div class="card">
+            <div class="card-body p-0" style="height: calc(100vh - 320px); min-height: 480px;">
+                <iframe src="/mlflow/#/models/{{ model.full_name }}"
+                        class="w-100 h-100 border-0"
+                        title="MLflow model {{ model.full_name }}"
+                        allow="clipboard-write"></iframe>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>MLflow not running</h5>
+            <p class="mb-0 small">
+                Start the MLflow subprocess to view the run-detail in MLflow's
+                native UI. PointlesSQL spawns it during the FastAPI lifespan
+                when <code>POINTLESSQL_MLFLOW_ENABLED=1</code>.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    {# Permissions — read-only stub. #}
+    <div class="tab-pane fade" id="tab-perms" role="tabpanel">
+        <div class="alert alert-secondary small" role="alert">
+            <i class="bi bi-info-circle me-1"></i>
+            Permissions UI for <code>registered_model</code> securables is not yet
+            wired into PointlesSQL. Use the soyuz UC-OSS REST API to grant or
+            revoke privileges:
+            <pre class="mt-2 mb-0"><code>PATCH /api/2.1/unity-catalog/permissions/registered_model/{{ model.full_name }}</code></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+window.modelVersions = function () {
+    return {
+        firstSelected: null,
+        selectForCompare(version) {
+            if (this.firstSelected === null) {
+                this.firstSelected = version;
+                return;
+            }
+            if (this.firstSelected === version) {
+                this.firstSelected = null;
+                return;
+            }
+            const url = '/models/{{ model.full_name }}/compare?v1=' + this.firstSelected + '&v2=' + version;
+            window.location.href = url;
+        },
+    };
+};
+
+window.modelLineageDag = function (fullName) {
+    return {
+        loaded: false,
+        loading: false,
+        error: null,
+        empty: false,
+        _started: false,
+
+        init() {
+            // Lazy: only fetch when the Lineage tab is actually shown.
+            const btn = document.querySelector('[data-bs-target="#tab-lineage"]');
+            if (btn) {
+                btn.addEventListener('shown.bs.tab', () => this.render(), { once: true });
+            }
+        },
+
+        async render() {
+            if (this._started) return;
+            this._started = true;
+            this.loading = true;
+            this.error = null;
+            try {
+                if (typeof loadCytoscapeOnce === 'function') {
+                    await loadCytoscapeOnce();
+                }
+                const res = await fetch('/api/models/' + encodeURIComponent(fullName) + '/lineage');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (!data.nodes || data.nodes.length <= 1) {
+                    this.empty = true;
+                    this.loaded = true;
+                    return;
+                }
+                if (typeof window.renderModelGraph === 'function') {
+                    window.renderModelGraph('model-cy', data);
+                }
+                this.loaded = true;
+            } catch (e) {
+                this.error = 'Failed to load lineage: ' + e.message;
+                this._started = false;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async reload() {
+            this._started = false;
+            this.loaded = false;
+            this.empty = false;
+            await this.render();
+        },
+    };
+};
+</script>
+{% endblock %}

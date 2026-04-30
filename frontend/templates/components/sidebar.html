@@ -110,6 +110,17 @@
                                     <span class="text-truncate" x-text="m.full_name"></span>
                                 </a>
                             </template>
+                            <template x-if="m.kind === 'model'">
+                                <a :href="'/models/' + m.full_name"
+                                   class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
+                                   :title="m.full_name">
+                                    <i class="bi bi-box-seam flex-shrink-0"></i>
+                                    <span class="text-truncate" x-text="m.model"></span>
+                                    <span class="text-muted small ms-auto flex-shrink-0"
+                                          style="font-size: 0.65rem;"
+                                          x-text="m.schema + '.' + m.catalog"></span>
+                                </a>
+                            </template>
                         </li>
                     </template>
                 </ul>
@@ -176,6 +187,18 @@
                                             </div>
                                         </li>
                                     </template>
+                                    <template x-for="m in (s.models || [])" :key="'m:' + m.name">
+                                        <li x-show="modelVisible(m)" x-cloak>
+                                            <div class="pql-tree-item pql-tree-lvl-3"
+                                                 :class="{ active: activePath.catalog === c.name && activePath.schema === s.name && activePath.model === m.name }">
+                                                <span class="pql-tree-chevron"></span>
+                                                <a :href="'/models/' + c.name + '.' + s.name + '.' + m.name" class="pql-tree-label">
+                                                    <i class="bi bi-box-seam"></i>
+                                                    <span class="text-truncate" x-text="m.name"></span>
+                                                </a>
+                                            </div>
+                                        </li>
+                                    </template>
                                 </ul>
                             </li>
                         </template>
@@ -192,11 +215,25 @@
     const OPEN_KEY = 'pql.tree.open';
 
     function pathFromUrl() {
-        const m = window.location.pathname.match(
+        const cat = window.location.pathname.match(
             /^\/catalogs\/([^\/]+)(?:\/schemas\/([^\/]+)(?:\/tables\/([^\/]+))?)?/
         );
-        if (!m) return { catalog: '', schema: '', table: '' };
-        return { catalog: m[1] || '', schema: m[2] || '', table: m[3] || '' };
+        if (cat) {
+            return {
+                catalog: cat[1] || '', schema: cat[2] || '',
+                table: cat[3] || '', model: '',
+            };
+        }
+        const mdl = window.location.pathname.match(
+            /^\/models\/([^\/.]+)\.([^\/.]+)\.([^\/.]+)/
+        );
+        if (mdl) {
+            return {
+                catalog: mdl[1] || '', schema: mdl[2] || '',
+                table: '', model: mdl[3] || '',
+            };
+        }
+        return { catalog: '', schema: '', table: '', model: '' };
     }
     window.pathFromUrl = pathFromUrl;
 
@@ -256,11 +293,17 @@
                 if (!q) return true;
                 return (t.name || '').toLowerCase().includes(q);
             },
+            modelVisible(m) {
+                const q = this.normalisedQuery();
+                if (!q) return true;
+                return (m.name || '').toLowerCase().includes(q);
+            },
             schemaVisible(c, s) {
                 const q = this.normalisedQuery();
                 if (!q) return true;
                 if ((s.name || '').toLowerCase().includes(q)) return true;
-                return (s.tables || []).some(t => this.tableVisible(t));
+                if ((s.tables || []).some(t => this.tableVisible(t))) return true;
+                return (s.models || []).some(m => this.modelVisible(m));
             },
             catalogVisible(c) {
                 const q = this.normalisedQuery();

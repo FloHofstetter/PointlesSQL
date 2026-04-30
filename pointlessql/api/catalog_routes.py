@@ -116,25 +116,45 @@ async def api_tree_search(request: Request, q: str, limit: int = 50) -> dict[str
             ):
                 break
             tables_obj = schema.get("tables")
-            if not isinstance(tables_obj, list):
-                continue
-            for table in tables_obj:
-                if not isinstance(table, dict):
-                    continue
-                table_name = str(table.get("name") or "")
-                if not table_name:
-                    continue
-                if needle in table_name.lower():
-                    if _maybe_add(
-                        {
-                            "kind": "table",
-                            "full_name": f"{schema_fqn}.{table_name}",
-                            "catalog": catalog_name,
-                            "schema": schema_name,
-                            "table": table_name,
-                        }
-                    ):
-                        break
+            if isinstance(tables_obj, list):
+                for table in tables_obj:
+                    if not isinstance(table, dict):
+                        continue
+                    table_name = str(table.get("name") or "")
+                    if not table_name:
+                        continue
+                    if needle in table_name.lower():
+                        if _maybe_add(
+                            {
+                                "kind": "table",
+                                "full_name": f"{schema_fqn}.{table_name}",
+                                "catalog": catalog_name,
+                                "schema": schema_name,
+                                "table": table_name,
+                            }
+                        ):
+                            break
+                if len(matches) >= capped:
+                    break
+            models_obj = schema.get("models")
+            if isinstance(models_obj, list):
+                for model in models_obj:
+                    if not isinstance(model, dict):
+                        continue
+                    model_name = str(model.get("name") or "")
+                    if not model_name:
+                        continue
+                    if needle in model_name.lower():
+                        if _maybe_add(
+                            {
+                                "kind": "model",
+                                "full_name": f"{schema_fqn}.{model_name}",
+                                "catalog": catalog_name,
+                                "schema": schema_name,
+                                "model": model_name,
+                            }
+                        ):
+                            break
             if len(matches) >= capped:
                 break
         if len(matches) >= capped:

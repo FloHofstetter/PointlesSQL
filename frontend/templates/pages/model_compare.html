@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Compare v{{ v1.version }} vs v{{ v2.version }} · {{ model_full_name }}{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Models", "href": "/models"},
+    {"label": model_full_name, "href": "/models/" ~ model_full_name},
+    {"label": "Compare v" ~ v1.version ~ " ↔ v" ~ v2.version},
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-bar-chart fs-3"></i>
+    <h1 class="h3 mb-0">
+        {{ model_full_name }}
+        <small class="text-muted">v{{ v1.version }} ↔ v{{ v2.version }}</small>
+    </h1>
+</div>
+
+<a href="/models/{{ model_full_name }}" class="btn btn-sm btn-outline-secondary mb-3">
+    <i class="bi bi-arrow-left"></i> Back to {{ model_full_name }}
+</a>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">v{{ v1.version }}</div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">{{ v1.status or "—" }}</dd>
+                    <dt class="col-sm-4">MLflow Run</dt>
+                    <dd class="col-sm-8">
+                        {% if v1_mlflow.run_id %}
+                        <code>{{ v1_mlflow.run_id[:16] }}…</code>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </dd>
+                    <dt class="col-sm-4">Source</dt>
+                    <dd class="col-sm-8 text-break"><code>{{ v1.source or "—" }}</code></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">v{{ v2.version }}</div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">{{ v2.status or "—" }}</dd>
+                    <dt class="col-sm-4">MLflow Run</dt>
+                    <dd class="col-sm-8">
+                        {% if v2_mlflow.run_id %}
+                        <code>{{ v2_mlflow.run_id[:16] }}…</code>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </dd>
+                    <dt class="col-sm-4">Source</dt>
+                    <dd class="col-sm-8 text-break"><code>{{ v2.source or "—" }}</code></dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header">Metrics</div>
+    {% if metric_diff %}
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th class="text-end">v{{ v1.version }}</th>
+                    <th class="text-end">v{{ v2.version }}</th>
+                    <th class="text-end">Δ</th>
+                    <th class="text-end">Δ%</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in metric_diff %}
+                <tr>
+                    <td>
+                        <code>{{ row.name }}</code>
+                        <span class="badge bg-light text-muted ms-1" title="metric polarity heuristic">
+                            {{ row.classification }}
+                        </span>
+                    </td>
+                    <td class="text-end font-monospace small">
+                        {% if row.v1 is none %}<span class="text-muted">—</span>
+                        {% else %}{{ '%.6g' | format(row.v1) }}{% endif %}
+                    </td>
+                    <td class="text-end font-monospace small">
+                        {% if row.v2 is none %}<span class="text-muted">—</span>
+                        {% else %}{{ '%.6g' | format(row.v2) }}{% endif %}
+                    </td>
+                    <td class="text-end font-monospace small
+                        {% if row.direction == 'better' %}text-success
+                        {% elif row.direction == 'worse' %}text-danger
+                        {% else %}text-muted{% endif %}">
+                        {% if row.delta_abs is none %}—
+                        {% else %}{{ '%+.6g' | format(row.delta_abs) }}{% endif %}
+                    </td>
+                    <td class="text-end font-monospace small
+                        {% if row.direction == 'better' %}text-success
+                        {% elif row.direction == 'worse' %}text-danger
+                        {% else %}text-muted{% endif %}">
+                        {% if row.delta_pct is none %}—
+                        {% else %}{{ '%+.2f' | format(row.delta_pct) }}%{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body small text-muted">No metrics recorded for either run.</div>
+    {% endif %}
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">Params</div>
+            <div class="card-body small">
+                {% if params_diff.added or params_diff.removed or params_diff.changed %}
+                {% if params_diff.changed %}
+                <h6 class="text-warning">Changed</h6>
+                <table class="table table-sm">
+                    <thead><tr><th>Name</th><th>v{{ v1.version }}</th><th>v{{ v2.version }}</th></tr></thead>
+                    <tbody>
+                        {% for row in params_diff.changed %}
+                        <tr>
+                            <td><code>{{ row.name }}</code></td>
+                            <td class="font-monospace small">{{ row.v1 }}</td>
+                            <td class="font-monospace small">{{ row.v2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+                {% if params_diff.added %}
+                <h6 class="text-success">Added in v{{ v2.version }}</h6>
+                <ul class="list-unstyled small">
+                    {% for k, v in params_diff.added.items() %}
+                    <li><code>{{ k }}</code> = <span class="font-monospace">{{ v }}</span></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% if params_diff.removed %}
+                <h6 class="text-danger">Removed (only in v{{ v1.version }})</h6>
+                <ul class="list-unstyled small">
+                    {% for k, v in params_diff.removed.items() %}
+                    <li><code>{{ k }}</code> = <span class="font-monospace">{{ v }}</span></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% else %}
+                <p class="text-muted mb-0">No param differences.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-header">Tags</div>
+            <div class="card-body small">
+                {% if tags_diff.added or tags_diff.removed or tags_diff.changed %}
+                {% if tags_diff.changed %}
+                <h6 class="text-warning">Changed</h6>
+                <table class="table table-sm">
+                    <thead><tr><th>Name</th><th>v{{ v1.version }}</th><th>v{{ v2.version }}</th></tr></thead>
+                    <tbody>
+                        {% for row in tags_diff.changed %}
+                        <tr>
+                            <td><code>{{ row.name }}</code></td>
+                            <td class="font-monospace small">{{ row.v1 }}</td>
+                            <td class="font-monospace small">{{ row.v2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+                {% if tags_diff.added %}
+                <h6 class="text-success">Added in v{{ v2.version }}</h6>
+                <ul class="list-unstyled small">
+                    {% for k, v in tags_diff.added.items() %}
+                    <li><code>{{ k }}</code> = <span class="font-monospace">{{ v }}</span></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% if tags_diff.removed %}
+                <h6 class="text-danger">Removed (only in v{{ v1.version }})</h6>
+                <ul class="list-unstyled small">
+                    {% for k, v in tags_diff.removed.items() %}
+                    <li><code>{{ k }}</code> = <span class="font-monospace">{{ v }}</span></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% else %}
+                <p class="text-muted mb-0">No tag differences.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
