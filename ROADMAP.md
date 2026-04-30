@@ -2503,7 +2503,7 @@ PointlesSQL
 │           closes the "Closure pending (user job)" item from the
 │           21.0–21.7 close note.
 │
-├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅; 22.1–22.5 queued)
+├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅; 22.2–22.5 queued)
 │   │
 │   │   Phase 21 closed the audit/ML story end-to-end and the stack
 │   │   is feature-complete enough to demo to non-Flo readers — the
@@ -2577,15 +2577,35 @@ PointlesSQL
 │   │   │   ``--strict`` gets re-enabled.
 │   │   └── ``site/`` added to ``.gitignore``.
 │   │
-│   ├── Sprint 22.1 — Landing + getting started            🔜
-│   │   ├── ``docs/index.md`` rewrite: hero, value-prop narrative,
-│   │   │   Mermaid ecosystem diagram, comparison table.
-│   │   ├── ``docs/getting-started/quickstart.md`` (NEW): five-
-│   │   │   minute "browse a catalog → read a Delta table" tour.
-│   │   ├── ``docs/getting-started/concepts.md`` (NEW): mental
-│   │   │   model in one read.
-│   │   └── ``README.md``: replace ASCII architecture with Mermaid;
-│   │       30 % trim of Status + Stack sections.
+│   ├── Sprint 22.1 — Landing + getting started            ✅ done 2026-04-30
+│   │   ├── ``docs/index.md`` rewrite: hero, "What is PointlesSQL?"
+│   │   │   narrative, Mermaid ecosystem diagram (agents → plugin →
+│   │   │   PointlesSQL → soyuz / Delta), problem framing with
+│   │   │   before/after Python snippet, comparison table, feature
+│   │   │   highlights with deep-links into the e2e walkthroughs,
+│   │   │   "Where to next" link grid.
+│   │   ├── ``docs/getting-started/quickstart.md`` (NEW, 7 steps):
+│   │   │   docker compose up → first-user register → seed-e2e.py →
+│   │   │   browse demo catalog → read demo.sales.orders via PQL →
+│   │   │   write demo.sales.orders_high → see audit row + lineage
+│   │   │   in the run-detail view.  Tear-down + four common-failure
+│   │   │   troubleshooting blocks.
+│   │   ├── ``docs/getting-started/concepts.md`` (NEW, ~250 lines):
+│   │   │   four-layer stack table, three-part name story, PQL
+│   │   │   primitive list, agent-runs as audit container,
+│   │   │   four-level lineage chain (with Mermaid), Audit Cockpit,
+│   │   │   Family A/B/C supervision tiers, Delta-branching,
+│   │   │   champion/challenger marker grammar, "what PointlesSQL
+│   │   │   is not" section.
+│   │   ├── ``docs/getting-started/index.md``: real section landing.
+│   │   ├── ``mkdocs.yml`` nav: Quickstart + Concepts overview added.
+│   │   └── ``README.md`` polish: replaced ASCII architecture block
+│   │       with Mermaid (renders in GitHub), added Documentation
+│   │       pointer above Status section, trimmed Status + Stack
+│   │       sections by ~30 % (hand off detail to docs site).
+│   │       Stale ``docs/install.md`` / ``docs/jobs.md`` /
+│   │       ``docs/adr/`` references in ``README.md`` and
+│   │       ``CLAUDE.md`` updated to the post-22.0 layout.
 │   │
 │   ├── Sprint 22.2 — Architecture + concepts              ⏳
 │   │   └── ``docs/concepts/{architecture, audit-trail, lineage,

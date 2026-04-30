@@ -1,76 +1,87 @@
 # PointlesSQL
 
-A web UI for a Python-only Databricks-compatible lakehouse stack --
-built on top of [soyuz-catalog](https://github.com/FloHofstetter/soyuz-catalog)
-(a Python Unity Catalog REST server), Delta Lake, and optionally
-Apache Spark.
+**Databricks-shaped, Python-only, agent-native.**
+A web UI and Python bridge over
+[soyuz-catalog](https://github.com/FloHofstetter/soyuz-catalog)
+(Unity-Catalog REST), Delta Lake, and MLflow — with a forced
+audit trail every agent action falls into.
+
+📚 **Documentation**: run `uv run mkdocs serve` and open
+<http://127.0.0.1:8000>.  The docs site goes public as part of
+the launch sprint; until then, browse the markdown source under
+[`docs/`](docs/).
 
 ## Status
 
-**Phase 1 MVP complete.** PointlesSQL ships three integrated
-capabilities:
+Phase 21 (audit-first ML registry) closed 2026-04-30.  The stack
+ships:
 
-1. **Catalog browser** -- browse catalogs, schemas, tables, and
-   columns in a dark-mode web UI with inline metadata editing
-2. **PQL library** -- `from pointlessql import PQL` -- read and write
-   Delta tables as pandas DataFrames using Unity Catalog metadata
-3. **Native notebook editor** -- a first-party Monaco-based editor
-   (Phase 12.6) with pyright LSP, per-notebook ipykernel, Variable
-   Explorer, Insert-from-Catalog command, and autosaved
-   ``.py`` jupytext Percent-format files.  Replaced the Sprint-3
-   JupyterLab iframe in Sprint 63
+- **Catalog browser** with inline metadata edit
+- **PQL library** — `from pointlessql import PQL` — read / write
+  / merge / branch / rollback Delta tables by UC name
+- **Audit Cockpit** — `agent_run_operations` with row, column,
+  value, and inference-level lineage
+- **Native notebook editor** with pyright LSP and per-notebook
+  ipykernel
+- **MLflow registry surface** with champion/challenger promotion
+  and forced-autolog training audit
 
-See [`ROADMAP.md`](ROADMAP.md) for the full sprint history and
-upcoming phases.
+See [`ROADMAP.md`](ROADMAP.md) for the per-sprint detail and
+[`CHANGELOG.md`](CHANGELOG.md) for release notes.  The
+[concepts overview](docs/getting-started/concepts.md) is the
+ten-minute read that links the pieces together.
 
 ## Stack
 
 - **Python 3.14**, managed with [`uv`](https://docs.astral.sh/uv/)
-- **FastAPI + Uvicorn** for the web UI backend
-- **Jinja2 templates** + **Bootstrap 5.3** + **HTMX** + **Alpine.js**
-- **`soyuz-catalog-client`** -- typed, generated httpx wrapper for
-  the Unity Catalog REST API
-- **Delta Lake** (`deltalake>=0.24`) -- storage format for managed
-  tables
-- **pandas** (`>=2.2`) -- DataFrame engine for PQL
-- **`jupyter_client`** (`>=8.6`) + **`ipykernel`** (`>=6.29`) --
-  per-notebook kernel subprocess for the native editor (Sprint 59)
-- **`pyright`** (`>=1.1`) -- language server for completion / hover
-  / diagnostics in the native editor (Sprint 61)
-- **`jupytext`** (`>=1.16`) -- ``.py`` Percent format as the
-  native-editor on-disk source of truth (Sprint 58)
-- **SQLAlchemy 2.0 + Alembic** -- for our own metadata DB (sessions,
-  UI preferences); soyuz-catalog owns the lakehouse metadata
-- **pytest / ruff / pyright / pydoclint / pre-commit**
+- **FastAPI + Uvicorn**, Jinja2 + Bootstrap 5.3 + HTMX + Alpine
+- **`soyuz-catalog-client`** — typed httpx wrapper for UC REST
+- **`deltalake` + `pandas` + `polars` + `duckdb`** — PQL bridge
+- **`jupyter_client` + `ipykernel` + `pyright` + `jupytext`** —
+  notebook editor
+- **SQLAlchemy 2.0 + Alembic** — own metadata DB (sessions, UI
+  preferences, audit trail); soyuz-catalog owns the lakehouse
+  metadata
+- **`mlflow`** — registry subprocess (Phase 21)
+- **pytest + ruff + pyright + pydoclint + pre-commit**
 
 ## Architecture
 
-```text
-+---------------------------------+        +------------------------+
-| PointlesSQL                     |        | soyuz-catalog          |
-| (FastAPI + Jinja2, :8000)       |        | (FastAPI, :8080)       |
-|                                 | HTTP   |                        |
-|  Web UI - soyuz_catalog_client -+------->|  Unity Catalog REST    |
-|  PQL   - soyuz_catalog_client --+------->|  + over-the-spec       |
-|                                 |        |    extensions          |
-|  Native editor + pyright LSP +  |        +----------+-------------+
-|  per-notebook ipykernel         |                   |
-+---------------------------------+                   v
-                                           +------------------------+
-                                           | Delta Lake / storage   |
-                                           +------------------------+
+```mermaid
+graph TB
+    subgraph "PointlesSQL (this repo)"
+        UI[Web UI · Audit Cockpit]
+        PQL[PQL bridge]
+        ML[MLflow subprocess]
+    end
+    subgraph "soyuz-catalog"
+        SC[Unity Catalog REST]
+    end
+    subgraph "Storage"
+        DL[Delta Lake]
+    end
+
+    UI -->|httpx| SC
+    PQL -->|httpx| SC
+    PQL -->|deltalake| DL
+    UI -->|deltalake read| DL
+    ML -->|register MODEL| SC
+
+    style UI fill:#5C6BC0,color:#fff,stroke:#3F51B5
+    style PQL fill:#5C6BC0,color:#fff,stroke:#3F51B5
+    style ML fill:#5C6BC0,color:#fff,stroke:#3F51B5
 ```
 
 PointlesSQL and soyuz-catalog are **separate processes**.
 PointlesSQL imports the typed client library and talks to
-soyuz-catalog over HTTP -- no shared Python state, no shared
+soyuz-catalog over HTTP — no shared Python state, no shared
 database.
 
 ## Quick start (Docker + GHCR images)
 
 Zero-build install — both images pull from GHCR. No source
 checkout required. Full detail including PAT-creation and
-troubleshooting in [`docs/install.md`](docs/install.md).
+troubleshooting in [`docs/getting-started/installation.md`](docs/getting-started/installation.md).
 
 **1. Log in to GHCR** with a classic PAT that has `read:packages`:
 
@@ -88,7 +99,7 @@ curl -L -o docker-compose.yml \
 
 **3. Flip both services from `build:` to `image:`** — in each
 service comment out the `build:` block and uncomment the `image:`
-line directly above it. See [`docs/install.md`](docs/install.md)
+line directly above it. See [`docs/getting-started/installation.md`](docs/getting-started/installation.md)
 for the exact two-line edit.
 
 **4. Pull and start:**
@@ -109,7 +120,7 @@ JupyterLab iframe; see the [migration note](#migrating-from-the-jupyterlab-ifram
 ## Quick start (local development)
 
 Source-checkout flow for contributors. See
-[`docs/install.md`](docs/install.md) for the full three-flavour
+[`docs/getting-started/installation.md`](docs/getting-started/installation.md) for the full three-flavour
 guide.
 
 **1. Start soyuz-catalog:**
@@ -188,7 +199,7 @@ jupytext --to py:percent notebooks/my_notebook.ipynb
 
 This produces ``notebooks/my_notebook.py``; the editor picks it up
 on open and assigns UUIDs to every cell on first save (ADR 0001 in
-``docs/adr/0001-notebook-editor.md`` explains the ``pql_cell_id``
+``docs/decisions/0001-notebook-editor.md`` explains the ``pql_cell_id``
 marker format).
 
 The ``jupyterlab`` pypi dep is gone, ``POINTLESSQL_JUPYTER_PORT``
@@ -213,7 +224,7 @@ If `uv sync` fails to fetch `soyuz-catalog-client`, confirm your
 shell has git credentials for the private soyuz-catalog repo (an
 ssh key against `github.com`, or a classic PAT wired through
 `git config --global url.insteadOf`). See
-[`docs/install.md`](docs/install.md) Troubleshooting for the full
+[`docs/getting-started/installation.md`](docs/getting-started/installation.md) Troubleshooting for the full
 checklist.
 
 ## Configuration
@@ -241,7 +252,7 @@ PointlesSQL includes an in-process scheduler that can run multi-task
 DAGs on a cron schedule. Two job kinds ship out of the box:
 `pg_sync` (the Postgres-to-UC mirror) and `python` (an entry-point
 loader for user-authored executors). See
-[`docs/jobs.md`](docs/jobs.md) for how to author a custom job kind,
+[`docs/guides/jobs.md`](docs/guides/jobs.md) for how to author a custom job kind,
 the executor signature, the optional failure webhook, and a worked
 example that uses `pql` inside a task.
 

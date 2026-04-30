@@ -6,6 +6,43 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 22.1 — Documentation landing + getting started.**  The
+  site stops being placeholders and gets a real first impression.
+  * `docs/index.md` rewritten as the hero landing — one-liner
+    pitch, "What is PointlesSQL?" narrative, Mermaid ecosystem
+    diagram (agents → plugin → PointlesSQL → soyuz / Delta), a
+    before/after Python snippet that shows the value-prop
+    concretely, comparison table against the no-PointlesSQL
+    workflow, feature highlights deep-linking into the relevant
+    e2e walkthroughs, "Where to next" link grid.
+  * `docs/getting-started/quickstart.md` (NEW, 7 steps) — five-
+    minute tour from `docker compose up` through "I just read a
+    Delta table by name and saw the audit row pop up."  Uses the
+    idempotent `scripts/seed-e2e.py` to lay down the `demo.sales`
+    + `demo.hr` sample catalog, then walks through `pql.table()`
+    + `pql.write_table(source_table_fqn=...)` with the lineage
+    DAG showing the result.
+  * `docs/getting-started/concepts.md` (NEW, ~250 lines) — the
+    ten-minute mental-model read.  Four-layer stack, three-part
+    name grammar, PQL primitive surface, agent runs as audit
+    container, four-level lineage chain (with Mermaid), Audit
+    Cockpit, Family A/B/C supervision tiers, Delta-branching,
+    champion/challenger marker grammar, explicit "what
+    PointlesSQL is not" section.
+  * `mkdocs.yml` nav: Quickstart + Concepts-overview wired into
+    Getting Started.
+  * `README.md` polish: ASCII architecture block replaced with
+    Mermaid (renders inline on GitHub), Documentation pointer
+    added above Status, Status + Stack sections trimmed ~30 % to
+    hand detail off to the docs site.  Stale `docs/install.md` /
+    `docs/jobs.md` / `docs/adr/` references in `README.md` and
+    `CLAUDE.md` updated to the post-22.0 layout.
+  * Anchor `#docker--ghcr-images-recommended` →
+    `#docker-ghcr-images-recommended` in
+    `docs/getting-started/installation.md` (mkdocs slugify
+    collapses `+` correctly; the old link was broken pre-move
+    too).
+
 - **Sprint 22.0 — Documentation site tooling foundation.**  Phase 22
   opens the docs track aimed at shoreguard-fresh's polish bar.  This
   sub-sprint lays the tooling without writing new content.

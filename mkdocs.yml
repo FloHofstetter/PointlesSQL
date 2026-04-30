@@ -88,6 +88,8 @@ nav:
   - Getting Started:
       - getting-started/index.md
       - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+      - Concepts overview: getting-started/concepts.md
   - Concepts:
       - concepts/index.md
       - Auth: concepts/auth.md

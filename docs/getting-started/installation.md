@@ -8,7 +8,7 @@ situation. All three require access to the private
 
 | Flavour | Who it is for | What it needs |
 |---|---|---|
-| [Docker + GHCR images](#docker--ghcr-images-recommended) | End users, quick-start | Docker Engine 24+, a PAT with `read:packages` |
+| [Docker + GHCR images](#docker-ghcr-images-recommended) | End users, quick-start | Docker Engine 24+, a PAT with `read:packages` |
 | [pip install from git tag](#pip-install-from-git-tag) | Library consumers, scripting | Python 3.14, `uv`, a PAT with `Contents: Read` on soyuz-catalog |
 | [Source checkout](#source-checkout-contributors) | Contributors | Git, Python 3.14, `uv`, an ssh key or PAT |
 
