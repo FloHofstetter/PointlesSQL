@@ -291,7 +291,7 @@ page that loads vendored Monaco and runs the same
 returns in ~80 ms. Same code under our Alpine x-data: hangs
 forever.
 
-Fix in [frontend/js/notebook_editor.js](../../frontend/js/notebook_editor.js):
+Fix in [frontend/js/notebook_editor.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook_editor.js):
 hoist `_model` and `_editor` into closure-scoped `let` vars
 inside the `notebookEditor()` factory and remove them from the
 returned object. All 50-odd in-method `this._editor` /
@@ -326,7 +326,7 @@ INFO     scheduler: stopped
 INFO     kernel shut down for demo@pql.test notebook=scratch.py
 ```
 
-Fix in [pointlessql/api/main.py:cli()](../../pointlessql/api/main.py):
+Fix in [pointlessql/api/main.py:cli()](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py):
 pin uvicorn's reload watcher to the source trees:
 
 ```python
@@ -421,24 +421,24 @@ markdown cell.
 
 ### What shipped for Sprint 66
 
-- [frontend/js/notebook/cell_types.js](../../frontend/js/notebook/cell_types.js) — registry.
+- [frontend/js/notebook/cell_types.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_types.js) — registry.
   One descriptor per type (``code``, ``markdown``).  Sprint 71
   adds ``sql`` here without touching any other module.
-- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+- [frontend/js/notebook/cell_affordances.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_affordances.js)
   — factory for the toolbar and inserter view zones.  All DOM
   and timer state lives closure-scoped; BUG-64-02 invariant
   preserved.
-- [frontend/js/notebook/cell_parser.js](../../frontend/js/notebook/cell_parser.js)
+- [frontend/js/notebook/cell_parser.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_parser.js)
   — widened ``CELL_MARKER_RE`` to ``(\s+\[\w+\])?`` so forward-
   compat tags round-trip cleanly.
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — ``renderKernelMsg`` now intercepts ``execute_input`` +
   ``execute_reply``; ``runCellById`` is the single execution
   seam; ``insertCellAfter`` drives the inserter.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — CSS additions for ``.pql-nbedit-cell-toolbar``,
   ``.pql-nbedit-status-pill``, ``.pql-nbedit-inserter``.
-- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+- [scripts/check-frontend-no-reactive-monaco.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden list to cover ``this._cellAffordances``,
   ``this._statusWidgets``, ``this._cellWidgets``,
   ``this._reactiveRoot``.
@@ -459,10 +459,10 @@ before ``window.notebookEditor`` existed, leaving the reactive
 scope empty (every binding printed a
 ``ReferenceError: <key> is not defined`` warning).
 
-Fix: converted [bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+Fix: converted [bootstrap.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/bootstrap.js)
 from a module to a classic IIFE that registers the factory
 synchronously at parse time and dynamic-imports
-[main.js](../../frontend/js/notebook/main.js) inside the
+[main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js) inside the
 factory's ``mount()`` method.  Same shape as the Sprint-41 SQL-
 editor mitigation documented in commit ``b830300``.  The script
 tag also carries a ``?v=sprint66`` query to bust Firefox's
@@ -475,7 +475,7 @@ for requests skipped because an earlier request in the same
 ``execute_reply`` chain failed.  The initial Sprint-66 handler
 only remapped ``aborted`` → ``cancelled`` so interrupts showed up
 as red ``error`` pills.  Refined the reply handler in
-[main.js](../../frontend/js/notebook/main.js) to also map
+[main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js) to also map
 ``ename==='KeyboardInterrupt'`` → ``cancelled``.
 
 ## Part H — Sprint 67: file-tree sidebar + notebook CRUD
@@ -566,32 +566,32 @@ directory (e.g. ``scratch/one.py`` and ``scratch/two.py``).
 
 ### What shipped for Sprint 67
 
-- [pointlessql/services/notebook_workspace.py](../../pointlessql/services/notebook_workspace.py)
+- [pointlessql/services/notebook_workspace.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/notebook_workspace.py)
   — added ``resolve_notebook_target``, ``create_empty_notebook``,
   ``rename_notebook``, ``delete_notebook``; ``resolve_upload_target``
   now delegates to the shared resolver.
-- [pointlessql/services/notebook_outputs.py](../../pointlessql/services/notebook_outputs.py)
+- [pointlessql/services/notebook_outputs.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/notebook_outputs.py)
   — added ``rename_path`` next to ``clear_path`` so rename
   preserves the replay cache.
-- [pointlessql/api/main.py](../../pointlessql/api/main.py)
+- [pointlessql/api/main.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
   — ``POST /api/notebooks/create``, ``PATCH /api/notebooks/rename``,
   ``DELETE /api/notebooks?path=…``; all admin-only, all audit-logged.
-- [frontend/js/notebook/file_tree.js](../../frontend/js/notebook/file_tree.js)
+- [frontend/js/notebook/file_tree.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/file_tree.js)
   — new ESM module exporting ``createFileTreeSlice`` (Alpine
   sub-object) and ``flattenTree`` (pure).  AbortController lives in
   closure scope.
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — spreads the file-tree slice into the returned reactive root;
   ``mount()`` fires ``loadTreeInitial()`` alongside the kernel /
   LSP opens.
-- [frontend/js/notebook/bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+- [frontend/js/notebook/bootstrap.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/bootstrap.js)
   — added matching pre-mount keys + method stubs so Alpine's
   ``x-show`` / ``x-text`` expressions survive the pre-mount window.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — ``<aside class="pql-nbedit-files">`` + Files toggle in the
   toolbar + three Bootstrap modals (new / rename / delete).  CSS
   added for ``.pql-nbedit-files`` and its per-row affordances.
-- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+- [scripts/check-frontend-no-reactive-monaco.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden list to cover ``this._treeFetchCtrl`` /
   ``this._treeAbort``.
 
@@ -795,18 +795,18 @@ hydration starts from a known state.
 
 ### What shipped for Sprint 68
 
-- [pointlessql/api/main.py](../../pointlessql/api/main.py) —
+- [pointlessql/api/main.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py) —
   new ``GET /api/notebook/doc`` endpoint returning the same
   ``{cells, dirty, outputs}`` bundle the HTML route embeds
   (via shared ``_build_notebook_doc_bundle`` helper).  The
   only backend change in this otherwise frontend-only sprint.
-- [frontend/js/notebook/editor_shell.js](../../frontend/js/notebook/editor_shell.js)
+- [frontend/js/notebook/editor_shell.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/editor_shell.js)
   — **new** module: Alpine factory ``createNotebookEditorShell``
   owning the tabs model, activeTabId, close-confirm modal,
   localStorage persistence, and the cross-scope event bus
   (``pql:open-tab`` / ``pql:file-renamed`` / ``pql:file-
   deleted`` / ``pql:tab-state-changed`` / ``pql:save-tab``).
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — renamed ``createNotebookEditor`` → ``createNotebookTabEditor``;
   added ``tabId`` + optional ``initial`` + optional
   ``bundleLoader`` args; moved cell/output initialisation into
@@ -814,20 +814,20 @@ hydration starts from a known state.
   ``pql:tab-state-changed`` for ``mounted`` / ``dirty`` /
   ``saveState`` transitions so the shell can keep tab chrome
   in sync without polling a proxy.
-- [frontend/js/notebook/bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+- [frontend/js/notebook/bootstrap.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/bootstrap.js)
   — two factories registered on ``window``:
   ``notebookEditorShell`` (outer scope) and
   ``notebookTabEditor`` (per-tab scope).  Each has its own pre-
   mount stub scope to avoid the BUG-64-02 class of
   pre-mount-warning spam.
-- [frontend/js/notebook/file_tree.js](../../frontend/js/notebook/file_tree.js)
+- [frontend/js/notebook/file_tree.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/file_tree.js)
   — API reshaped to accept ``getActivePath`` + ``isPathOpenInAnyTab``
   callbacks instead of a static ``currentPath``; navigation-like
   methods (``openNotebook``, ``submitCreateNotebook``,
   ``submitRenameNotebook``, ``submitDeleteNotebook``) dispatch
   CustomEvents on ``document`` instead of calling
   ``window.location.assign``.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — outer ``x-data="notebookEditorShell(...)"`` wrapper; new
   ``.pql-nbedit-tabbar`` above the layout; tab panes via
   ``<template x-for="tab in tabs">`` with inner
@@ -835,7 +835,7 @@ hydration starts from a known state.
   ``x-if="tab.mounted || tab.id === activeTabId"``; new
   close-confirm modal (``:class`` gated per BUG-67-01).  Files
   toggle moved from per-tab toolbar to shell-level tab-bar.
-- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+- [scripts/check-frontend-no-reactive-monaco.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden list to cover ``this._tabRefs`` and
   ``this._tabFactories`` so a future temptation to aggregate
   per-tab closure bags onto the shell's Alpine proxy trips CI.
@@ -961,39 +961,39 @@ Sprint-22 backstory).
 
 ### What shipped for Sprint 69
 
-- [frontend/js/notebook/markdown.js](../../frontend/js/notebook/markdown.js)
+- [frontend/js/notebook/markdown.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/markdown.js)
   — full rewrite.  ``renderMarkdown(src)`` now delegates to a
   cached ``markdown-it`` instance (cached in a module-scoped
   ``let mdSingleton`` variable, not on any Alpine proxy) with
   linkify + breaks, layered ``markdown-it-texmath`` when
   ``window.texmath`` + ``window.katex`` are both present.
-- [frontend/js/notebook/cell_types.js](../../frontend/js/notebook/cell_types.js)
+- [frontend/js/notebook/cell_types.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_types.js)
   — ``markdown`` descriptor gains ``affordances: ['pin']``.
-- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+- [frontend/js/notebook/cell_affordances.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_affordances.js)
   — pencil button in ``makeToolbarDom`` gated on
   ``descriptor.affordances.includes('pin')``; new exported
   ``setPinState(record, pinned)`` flips the icon + title +
   active class.
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — ``handlers.onTogglePin`` owns the in-memory pin flag on
   ``markdownZones[cellId].editModePinned``; ``updateHiddenAreas``
   skips pinned cells; a rebuild re-syncs the pencil state via
   ``setPinState`` so a content edit that rebuilds affordances
   does not desync the button icon.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — KaTeX CSS link, three UMD ``<script>`` tags (markdown-it,
   katex, texmath — KaTeX before texmath so ``.use(window.texmath,
   { engine: window.katex })`` finds its engine), bootstrap.js
   cache bust bumped to ``?v=sprint69``, new CSS for the pencil
   button + markdown-it tables / nested lists / blockquotes /
   KaTeX blocks.
-- [scripts/vendor-markdown-libs.sh](../../scripts/vendor-markdown-libs.sh)
+- [scripts/vendor-markdown-libs.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/vendor-markdown-libs.sh)
   — **new** fetch script mirroring ``vendor-monaco.sh``.  Pins
   markdown-it 14.1.0, markdown-it-texmath 1.0.0, KaTeX 0.16.11
   via env overrides.  Appends a ``window.texmath = texmath``
   line to the vendored texmath.js (ships CommonJS-only).
-- [.gitignore](../../.gitignore) — three new vendor dirs.
-- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+- [.gitignore](https://github.com/FloHofstetter/PointlesSQL/blob/main/.gitignore) — three new vendor dirs.
+- [scripts/check-frontend-no-reactive-monaco.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden list to cover ``this._mdSingleton``,
   ``this._mdPinState``, ``this._pinHandlers`` so a future
   temptation to cache the markdown-it instance or pin-handler
@@ -1151,7 +1151,7 @@ data.  Fix in the same commit: ``recomputeOutline()`` re-splits
 from the live Monaco model (``splitCells(model.getValue())``)
 with a fallback to ``cells`` when ``refs.get('model')`` is null
 (mount-time before Monaco creates the model).  See
-[frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+[frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
 ``recomputeOutline`` near the ``scheduleAutosave`` block.
 
 **BUG-70-02 — over-stripping jupytext prefix double-shifted
@@ -1164,24 +1164,24 @@ load path already strips the jupytext ``# `` comment-prefix
 before sending the bundle; Monaco's model and
 ``/api/notebook/doc`` both return raw, unwrapped markdown.  Fix
 in the same commit: removed the client-side strip from
-[frontend/js/notebook/outline.js](../../frontend/js/notebook/outline.js).
+[frontend/js/notebook/outline.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/outline.js).
 
 ### Files changed (Sprint 70)
 
-- [frontend/js/notebook/outline.js](../../frontend/js/notebook/outline.js)
+- [frontend/js/notebook/outline.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/outline.js)
   — **new**, pure ``buildOutline(cells)`` regex extractor.
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — closure-scoped ``outlineEntries`` + 150ms debounce timer;
   reactive ``this.outline`` assigned fresh slice on change;
   ``toggleOutline`` (mutex with ``toggleVariables``);
   ``jumpToCell(cellId)`` reusing ``findCellMarkerLine``;
   recompute re-splits from the live Monaco model to sidestep
   the stale-closure-``cells`` trap.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — ``Outline`` toolbar button; right-side ``<aside class
   ="pql-nbedit-outline">`` mirroring the Variables aside;
   inline CSS for per-level indent classes.
-- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+- [scripts/check-frontend-no-reactive-monaco.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden pattern to cover
   ``this._outlineEntries``, ``this._outlineTimer``,
   ``this._outlineDebounce``.
@@ -1194,7 +1194,7 @@ in the same commit: removed the client-side strip from
   In a fresh dev stack ``main.default.demo`` is the canonical
   fixture; if absent, register one via the SQL editor or the
   ``/admin`` seeders before running the playbook.
-- ``scratch.py`` open in [/notebook/editor](../../) — a Code
+- ``scratch.py`` open in [/notebook/editor](http://127.0.0.1:8000/notebook/editor) — a Code
   cell at top is fine; the SQL cell goes below.
 
 **L1 — ``+ SQL`` inserter shows up.**  Hover the cell-bottom
@@ -1266,34 +1266,34 @@ query, so no ``[*]`` running indicator and no DataFrame binding.
 
 ### Files changed (Sprint 71)
 
-- [frontend/js/notebook/cell_types.js](../../frontend/js/notebook/cell_types.js)
+- [frontend/js/notebook/cell_types.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_types.js)
   — registered ``sql`` descriptor with ``markerTag: ' [sql]'``,
   ``canExecute: true``, ``bandClass: 'pql-nbedit-cell-band-sql'``,
   ``affordances: ['result_var']``.
-- [frontend/js/notebook/cell_parser.js](../../frontend/js/notebook/cell_parser.js)
+- [frontend/js/notebook/cell_parser.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_parser.js)
   — widened ``CELL_MARKER_RE`` to capture optional
   ``result_var="<ident>"`` (group 3); ``splitCells`` /
   ``joinCells`` round-trip the field; ``RESULT_VAR_RE`` exported
   for the affordance validator.
-- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+- [frontend/js/notebook/cell_affordances.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_affordances.js)
   — ``result_var`` input + 300 ms debounce + ``RESULT_VAR_RE``
   validator with ``pql-nbedit-result-var-error`` CSS class;
   ``+ SQL`` inserter button next to ``+ Code`` / ``+ Markdown``;
   ``removeAffordances`` clears the debounce on cell teardown.
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — ``runCellById`` branches on ``typeId === 'sql'`` and emits
   the ``execute_sql`` WS frame; ``runAllCells`` / ``runCellsAbove``
   share the new ``sendCellFrame`` helper; ``cellResultVarById``
   reads the marker; ``applyResultVarToMarker`` writes back via
   ``editor.executeEdits`` so on-disk text stays the source of
   truth.
-- [pointlessql/api/main.py](../../pointlessql/api/main.py)
+- [pointlessql/api/main.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
   — new ``execute_sql`` WS branch that re-uses the
   ``/api/sql/execute`` parse + privilege-check loop via the
   shared ``_resolve_sql_approved_tables`` helper; refactored
   ``_wipe_cell_for_new_execute`` so ``execute`` and
   ``execute_sql`` share the persistence prelude.
-- [pointlessql/services/kernel_session.py](../../pointlessql/services/kernel_session.py)
+- [pointlessql/services/kernel_session.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/kernel_session.py)
   — ``_NOTEBOOK_BOOTSTRAP_CODE`` defines ``__pql_sql_run`` in
   the kernel; ``_run_bootstrap`` runs it silently between
   ``wait_for_ready`` and the pump tasks (with a
@@ -1317,10 +1317,10 @@ level result, not displays mid-flight.  Fix in the same commit:
 extract the bare names via ``[c.get("name") if isinstance(c, dict)
 else c for c in res.columns]`` before constructing the DataFrame.
 Caught at the L4 step on the first replay.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — ``.pql-nbedit-cell-band-sql`` band hue + ``.pql-nbedit-result-var``
   input styling.
-- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+- [scripts/check-frontend-no-reactive-monaco.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden pattern to cover ``this._resultVarTimers``
   / ``this._sqlBootstrap``.
 
@@ -1333,7 +1333,7 @@ Caught at the L4 step on the first replay.
   pulling).
 - Fresh kernel — restart it via the toolbar after the dependency
   bump so the kernel subprocess inherits the new ``sys.path``.
-- ``scratch.py`` open in [/notebook/editor](../../).
+- ``scratch.py`` open in [/notebook/editor](http://127.0.0.1:8000/notebook/editor).
 
 **M1 — Synthetic widget bundle renders the placeholder card.**
 Insert a Code cell, type:
@@ -1403,12 +1403,12 @@ serialise / deserialise round-trip because Sprint 60's
 
 **BUG-72-01 — ES module disk cache hides new mime branches in
 PointlesSQL until you hard-reload.**  The notebook editor's
-[bootstrap.js](../../frontend/js/notebook/bootstrap.js) carries a
+[bootstrap.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/bootstrap.js) carries a
 ``?v=sprintNN`` query param so its own ``<script>`` invalidates,
 but the modules it dynamically imports
-([editor_shell.js](../../frontend/js/notebook/editor_shell.js) +
-[main.js](../../frontend/js/notebook/main.js) + the eight
-siblings, including [output_renderer.js](../../frontend/js/notebook/output_renderer.js))
+([editor_shell.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/editor_shell.js) +
+[main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js) + the eight
+siblings, including [output_renderer.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/output_renderer.js))
 do **not** carry a version param, so the browser keeps the
 previous deploy's modules in disk cache even after the bootstrap
 script bumps.  Verified via
@@ -1420,7 +1420,7 @@ function body.  Initial workaround attempt (bumping bootstrap.js's
 imports — the URLs they request are unchanged, so the disk-cached
 siblings still load.  **Real fix landed in the Phase-12.7 tail
 commit**: a new HTTP middleware
-[``static_module_revalidate_middleware``](../../pointlessql/api/main.py)
+[``static_module_revalidate_middleware``](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
 stamps ``Cache-Control: no-cache, must-revalidate`` on every
 ``/static/js/notebook/*`` response so the browser MUST issue a
 conditional ``If-Modified-Since`` request next time.  Starlette's
@@ -1433,19 +1433,19 @@ new function body that includes the widget branch.
 
 ### Files changed (Sprint 72)
 
-- [pyproject.toml](../../pyproject.toml) — added
+- [pyproject.toml](https://github.com/FloHofstetter/PointlesSQL/blob/main/pyproject.toml) — added
   ``ipywidgets>=8.1`` dependency.  ``uv lock`` resolved
   ``ipywidgets-8.1.8`` + ``jupyterlab-widgets-3.0.16`` +
   ``widgetsnbextension-4.0.15``.
-- [frontend/js/notebook/output_renderer.js](../../frontend/js/notebook/output_renderer.js)
+- [frontend/js/notebook/output_renderer.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/output_renderer.js)
   — new high-priority MIME branch in ``renderMimeBundle`` for
   ``application/vnd.jupyter.widget-view+json`` (must come BEFORE
   ``text/html`` so the widget bundle wins over the fallback
   ``text/plain`` repr).
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — silent swallow of ``comm_open`` / ``comm_msg`` / ``comm_close``
   in ``renderKernelMsg``.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — ``.pql-nbedit-output-widget-placeholder`` + ``.pql-nbedit-widget-model-id``
   + ``.pql-nbedit-widget-note`` styles; bootstrap script version
   bumped to ``sprint72``.
@@ -1462,9 +1462,9 @@ widget-manager.
   verify with ``uv run alembic check``).
 - ``scripts/vendor-diff-lib.sh`` has been run so
   ``frontend/js/vendor/jsdiff/diff.min.js`` exists (the script tag
-  in [notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+  in [notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   references it as a vendored UMD bundle).
-- ``scratch.py`` open in [/notebook/editor](../../).
+- ``scratch.py`` open in [/notebook/editor](http://127.0.0.1:8000/notebook/editor).
 
 **N1 — History button mounts on every executable cell.**  Hover any
 code cell's toolbar.  Assert: a clock-icon
@@ -1532,7 +1532,7 @@ audit trail is what we want to PRESERVE across re-runs).
 
 **BUG-73-01 — ``clear_cell`` cascade was wiping history on every
 re-run.**  The first version of the
-[notebook_outputs.py](../../pointlessql/services/notebook_outputs.py)
+[notebook_outputs.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/notebook_outputs.py)
 service threaded ``NotebookCellRunSource`` deletes through the
 ``clear_cell`` cascade alongside ``NotebookOutput`` and
 ``NotebookCellRun``.  But ``clear_cell`` is called from
@@ -1552,21 +1552,21 @@ still cascades on ``clear_cell`` because that table holds
 
 ### Files changed (Sprint 73)
 
-- [pointlessql/alembic/versions/018_notebook_cell_run_sources.py](../../pointlessql/alembic/versions/018_notebook_cell_run_sources.py)
+- [pointlessql/alembic/versions/018_notebook_cell_run_sources.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/alembic/versions/018_notebook_cell_run_sources.py)
   — new migration creating ``notebook_cell_run_sources`` with
   autoincrement id PK, ``ix_notebook_cell_run_sources_path_cell``
   on ``(file_path, cell_id, started_at)``.  No FK to
   ``notebook_cell_runs`` — link is logical, cascade via service.
-- [pointlessql/models.py](../../pointlessql/models.py)
+- [pointlessql/models.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/models.py)
   — new ``NotebookCellRunSource`` ORM model mirroring the migration.
-- [pointlessql/services/notebook_outputs.py](../../pointlessql/services/notebook_outputs.py)
+- [pointlessql/services/notebook_outputs.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/notebook_outputs.py)
   — ``record_cell_run_start`` (insert + return id),
   ``record_cell_run_finish`` (stamp status + finish + execution
   count by id), ``list_cell_run_sources`` (newest-first read with
   ISO timestamps).  ``clear_path`` + ``rename_path`` extended;
   ``clear_cell`` + ``clear_session`` deliberately NOT extended
   (BUG-73-01 fix).
-- [pointlessql/api/main.py](../../pointlessql/api/main.py)
+- [pointlessql/api/main.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
   — ``pending_run_sources`` map keyed by ``(cell_id,
   kernel_session_id)``; ``_wipe_cell_for_new_execute`` calls
   ``record_cell_run_start`` and stashes the returned id;
@@ -1575,37 +1575,37 @@ still cascades on ``clear_cell`` because that table holds
   ``GET /api/notebook/cell-runs?path=…&cell_id=…&limit=…`` admin-
   gated route.  ``pending_run_sources`` cleared on kernel restart
   + on dropped reply on a fresh start for the same key.
-- [frontend/js/notebook/run_history.js](../../frontend/js/notebook/run_history.js)
+- [frontend/js/notebook/run_history.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/run_history.js)
   — new module.  Closure-scoped ``_historyCache``, ``_popoverEl``,
   ``_inflightAbort``.  ``openPopover`` fetches
   ``/api/notebook/cell-runs``, renders newest-first with
   ``view diff`` (jsdiff-based ``.pql-nbedit-diff`` table, cap at
   10000 input lines) + ``re-run`` (sends historical source via
   ``execute`` WS frame, does NOT touch Monaco).
-- [frontend/js/notebook/cell_affordances.js](../../frontend/js/notebook/cell_affordances.js)
+- [frontend/js/notebook/cell_affordances.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_affordances.js)
   — clock-icon ``.pql-nbedit-history-btn`` mounted on every
   ``canExecute`` cell; ``handlers.onShowHistory(cellId, anchorEl)``
   callback plumbed through ``mountAffordances``.
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — ``openHistoryPopover(cellId, anchorEl)`` reads current source
   via ``cellSourceById`` for diffing, threads ``onRerun`` →
   ``sendKernelFrame({type:'execute', ...})`` (NOT
   ``execute_sql``, since SQL history rows hold the wrapped
   ``__pql_sql_run(...)`` snippet — re-running it executes the
   same SQL the kernel saw without re-walking privilege checks).
-- [scripts/vendor-diff-lib.sh](../../scripts/vendor-diff-lib.sh)
+- [scripts/vendor-diff-lib.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/vendor-diff-lib.sh)
   — new vendoring script for jsdiff 5.2.0 (npm ``diff``, MIT,
   ~10 KB UMD ``window.Diff``).  Mirrors
   ``vendor-markdown-libs.sh`` shape.
-- [.gitignore](../../.gitignore)
+- [.gitignore](https://github.com/FloHofstetter/PointlesSQL/blob/main/.gitignore)
   — added ``frontend/js/vendor/jsdiff/`` (mirrors the markdown-it
   / KaTeX gitignore entries).
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — ``<script src="/static/js/vendor/jsdiff/diff.min.js?v=sprint73">``
   tag; bootstrap.js bumped to ``?v=sprint73``;
   ``.pql-nbedit-history-btn`` /
   ``.pql-nbedit-history-popover`` / ``.pql-nbedit-diff`` styles.
-- [scripts/check-frontend-no-reactive-monaco.sh](../../scripts/check-frontend-no-reactive-monaco.sh)
+- [scripts/check-frontend-no-reactive-monaco.sh](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/check-frontend-no-reactive-monaco.sh)
   — widened forbidden pattern to cover ``this._historyCache`` /
   ``this._historyPopover`` / ``this._historyAbort``.
 
@@ -1616,7 +1616,7 @@ import the run-history module; revert is sprint-local.
 
 **Preconditions.**
 
-- ``scratch.py`` open in [/notebook/editor](../../) on a fresh
+- ``scratch.py`` open in [/notebook/editor](http://127.0.0.1:8000/notebook/editor) on a fresh
   profile (localStorage empty so defaults apply).
 - Hard-reload the page if upgrading from a pre-sprint-74 deploy —
   the bootstrap.js version was bumped to ``?v=sprint74``.
@@ -1684,7 +1684,7 @@ implementation: both tabs subscribe to
 stay in sync by design — confirmed at replay time.)
 
 **O7 — Phase 12.7 close state.**  Open
-[ROADMAP.md](../../ROADMAP.md); scroll to the Phase 12.7 node.
+[ROADMAP.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md); scroll to the Phase 12.7 node.
 Assert: header flipped ``⏳ open`` → ``✅ done`` with a close-out
 prose block summarising Sprints 65-74 and their commit hashes.
 CHANGELOG.md shows the Sprint 74 entry at the top of
@@ -1692,17 +1692,17 @@ CHANGELOG.md shows the Sprint 74 entry at the top of
 
 ### Files changed (Sprint 74)
 
-- [frontend/js/notebook/settings_drawer.js](../../frontend/js/notebook/settings_drawer.js)
+- [frontend/js/notebook/settings_drawer.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/settings_drawer.js)
   — new module.  Bootstrap offcanvas with theme / fontSize /
   debounce controls; broadcasts ``pql:settings-changed``
   CustomEvent on change; reads + persists via three localStorage
   keys under the ``pql.nbedit.*.v1`` namespace (Sprint-67 /
   Sprint-68 convention).
-- [frontend/js/notebook/keymap_overlay.js](../../frontend/js/notebook/keymap_overlay.js)
+- [frontend/js/notebook/keymap_overlay.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/keymap_overlay.js)
   — new module.  Static 15-row commands array + Bootstrap modal
   renderer.  Reachable via the toolbar ``?`` button, ``Ctrl+Alt+/``
   keybind, and the ``pql.openKeymap`` palette action.
-- [frontend/js/notebook/main.js](../../frontend/js/notebook/main.js)
+- [frontend/js/notebook/main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js)
   — imports both new modules; applies loaded settings on Monaco
   create (``theme`` / ``fontSize``); lifts ``_autosaveDebounceMs``
   out of module scope so ``scheduleAutosave`` reads it at
@@ -1714,12 +1714,12 @@ CHANGELOG.md shows the Sprint 74 entry at the top of
   ``pql.openSettings`` / ``pql.openKeymap``; new Alpine methods
   ``openSettings`` / ``openKeymap`` /
   ``openHistoryForCurrentCell``.
-- [frontend/js/notebook/bootstrap.js](../../frontend/js/notebook/bootstrap.js)
+- [frontend/js/notebook/bootstrap.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/bootstrap.js)
   — extended the tab-scope stub with ``outlineVisible`` /
   ``outline`` and the four new Sprint-74 Alpine methods so the
   pre-mount window does not emit ``ReferenceError`` on
   ``x-show`` / ``@click`` expressions.
-- [frontend/templates/pages/notebook_editor.html](../../frontend/templates/pages/notebook_editor.html)
+- [frontend/templates/pages/notebook_editor.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/notebook_editor.html)
   — gear + ``?`` toolbar buttons; bootstrap.js script tag bumped
   to ``?v=sprint74``.
 
@@ -1734,7 +1734,7 @@ JavaScript's template-literal grammar does not nest backticks —
 the first inner backtick closed the literal, and the rest of the
 HTML became a syntax error inside ``buildModal``, which threw
 the moment ``mountKeymapOverlay`` called it.  Symptom: Alpine's
-``mount()`` caught the error at [main.js:317](../../frontend/js/notebook/main.js#L317)
+``mount()`` caught the error at [main.js:317](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js#L317)
 with a ``Error @ http://…/main.js:317`` log; the settings drawer
 mounted fine (earlier in the mount flow), but the keymap overlay
 never materialised and the per-cell affordances never rebuilt.
@@ -1781,7 +1781,7 @@ in the Sprint 72 "What the replay caught" section).
 Sprint 71's frontend correctly parsed and serialised
 ``# %% [sql] pql_cell_id="…" result_var="…"`` markers, but the
 server-side
-[``notebook_doc.py``](../../pointlessql/services/notebook_doc.py)
+[``notebook_doc.py``](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/notebook_doc.py)
 service used jupytext for both load and save.  jupytext only
 recognises ``[markdown]`` as a cell-type tag — anything else
 (``[sql]``, ``[raw]``, …) is silently dropped from the marker
@@ -1792,17 +1792,17 @@ cell on the editor (no SQL band, no run-via-execute_sql, no
 ``result_var`` input populated); saving the editor's SQL cell
 back stripped the tag again.  Save also rejected
 ``cell_type='sql'`` outright in the
-[``api_save_notebook_doc``](../../pointlessql/api/main.py)
+[``api_save_notebook_doc``](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
 validator — it only allowed ``code`` / ``markdown`` — so
 autosave silently failed for SQL cells.
 
 **Fix (single follow-up commit):**
 
 1. Extended
-   [``notebook_doc.NotebookCell``](../../pointlessql/services/notebook_doc.py)
+   [``notebook_doc.NotebookCell``](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/notebook_doc.py)
    with an optional ``result_var: str | None`` field.
 2. Added a module-level ``_PQL_MARKER_RE`` mirroring
-   [cell_parser.js](../../frontend/js/notebook/cell_parser.js)'s
+   [cell_parser.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_parser.js)'s
    ``CELL_MARKER_RE``.
 3. ``load_document`` post-parses the raw .py file with the regex
    to recover ``[sql]`` tags + ``result_var`` segments and
@@ -1815,7 +1815,7 @@ autosave silently failed for SQL cells.
    reads optional ``result_var``.
 6. ``api_load_notebook_doc`` includes ``result_var`` in the JSON
    bundle for every cell.
-7. [main.js](../../frontend/js/notebook/main.js) normalises
+7. [main.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/main.js) normalises
    ``result_var`` ↔ ``resultVar`` at the wire boundary on both
    load (incoming bundle) and save (outgoing POST body).
 
@@ -1838,7 +1838,7 @@ autosave silently failed for SQL cells.
 
 The original "bump bootstrap.js's ``?v=``" workaround claim was
 wrong.  The real fix in the same follow-up commit:
-[``static_module_revalidate_middleware``](../../pointlessql/api/main.py)
+[``static_module_revalidate_middleware``](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
 stamps ``Cache-Control: no-cache, must-revalidate`` on every
 ``/static/js/notebook/*`` response.  Starlette's StaticFiles
 already supports conditional GETs via

@@ -19,7 +19,7 @@ published both images with the OCI labels they should carry.
   `GHCR_PAT`. (Fine-grained PATs need per-package grants that the
   classic scope sidesteps.)
 - Browser: launch with `--browser firefox` per
-  [CLAUDE.md](../../CLAUDE.md) (bundled Firefox, not system Chrome).
+  [CLAUDE.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md) (bundled Firefox, not system Chrome).
 - **Do NOT run this playbook from a PointlesSQL source checkout.**
   Compose inside a source tree would find the local
   `docker-compose.yml` with the `build:` blocks active and silently

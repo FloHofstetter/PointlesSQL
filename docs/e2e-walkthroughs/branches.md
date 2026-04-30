@@ -24,7 +24,7 @@ This walkthrough is **driven from a notebook + a browser** (Phase
   from PointlesSQL.
 - A test catalog exists with a writeable schema (the seeded
   `playground` catalog from
-  [`scripts/seed-e2e.py`](../../scripts/seed-e2e.py) is fine, or
+  [`scripts/seed-e2e.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/seed-e2e.py) is fine, or
   any catalog you create via the home dashboard).
 - `branch.cloud_strategy` is at its default `"error"` (we exercise
   local FS only).

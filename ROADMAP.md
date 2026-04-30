@@ -2503,7 +2503,7 @@ PointlesSQL
 │           closes the "Closure pending (user job)" item from the
 │           21.0–21.7 close note.
 │
-├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅ 22.2 ✅ 22.3 ✅ 22.4 ✅; 22.5 queued)
+├── Phase 22 — Documentation site (shoreguard-quality)     ✅ done 2026-04-30 (22.0 ✅ 22.1 ✅ 22.2 ✅ 22.3 ✅ 22.4 ✅ 22.5 ✅)
 │   │
 │   │   Phase 21 closed the audit/ML story end-to-end and the stack
 │   │   is feature-complete enough to demo to non-Flo readers — the
@@ -2723,19 +2723,47 @@ PointlesSQL
 │   │       new high-level pages above ``Jobs``, walkthroughs
 │   │       split into five themed sub-sub-sections.
 │   │
-│   └── Sprint 22.5 — Polish + launch-ready                ⏳
-│       ├── Screenshot capture pass (Playwright MCP, 1280×800,
-│       │   consolidated under ``docs/screenshots/``).
-│       ├── Cross-link sweep — ``mkdocs build --strict`` exits 0;
-│       │   workflow flips back to ``--strict``.
-│       ├── ``docs/integrations/{soyuz-catalog, hermes-plugin,
-│       │   mlflow, grafana}.md`` (NEW).
-│       ├── Auto-snipped ``docs/changelog.md`` ([Unreleased] +
-│       │   last 3 sprints) via ``scripts/gen_whats_new.py``.
-│       ├── Roadmap shim page including ``ROADMAP.md``.
-│       └── ``docs/decisions/0004-public-flip-checklist.md`` (NEW)
-│           — EUIPO trademark check, NOTICE / CLA hygiene, custom
-│           domain decision, badge update, social-post copy.
+│   └── Sprint 22.5 — Polish + launch-ready                ✅ done 2026-04-30
+│       ├── **Cross-link sweep**: ~117 source-tree warnings
+│       │   eliminated via bulk rewrite.  Every walkthrough
+│       │   ``../../<path>`` reference rewrites to a canonical
+│       │   GitHub URL (``https://github.com/FloHofstetter/PointlesSQL/blob/main/<path>``);
+│       │   the four orphan ``../../`` repo-root links in
+│       │   ``notebook-editor.md`` resolve to
+│       │   ``http://127.0.0.1:8000/notebook/editor``.
+│       ├── ``mkdocs build --strict`` now exits 0 with **zero**
+│       │   warnings and zero INFO-level link complaints.
+│       │   ``mkdocs.yml`` flips ``strict: false`` → ``strict: true``;
+│       │   ``.github/workflows/docs.yml`` flips back to
+│       │   ``mkdocs build --strict`` (the 22.0 deferral is over).
+│       ├── ``docs/integrations/soyuz-catalog.md`` (NEW): boundary
+│       │   doc, generated-client pin shape, editable escape-hatch,
+│       │   bug-fix-at-source rule, sequence diagram.
+│       ├── ``docs/integrations/hermes-plugin.md`` (NEW): install
+│       │   procedure, Family A/B/C tool count breakdown (16/4/22),
+│       │   conventions, lifecycle hooks, "why httpx not import"
+│       │   rationale.
+│       ├── ``docs/integrations/mlflow.md`` (NEW): subprocess +
+│       │   reverse-proxy architecture (Mermaid), Phase-21 audit
+│       │   additions list, configuration reference, lazy-spawn
+│       │   semantics, "why subprocess not import" rationale.
+│       ├── ``docs/integrations/grafana.md`` (NEW): the 8-panel
+│       │   audit dashboard, install via overlay, four known
+│       │   gotchas (WAL RW mount, unsigned plugin flag, datasource
+│       │   UID, Decimal cast).
+│       ├── ``docs/changelog.md`` (NEW): hand-curated What's-new
+│       │   digest covering Phases 19/20/21/22 with pointer to
+│       │   the full ``CHANGELOG.md`` in the repo root.  Future
+│       │   ``gen_whats_new.py`` script (Phase 23 candidate) will
+│       │   auto-snip this from ``[Unreleased]`` + last 3 sprints.
+│       ├── ``docs/decisions/0004-public-flip-checklist.md`` (NEW):
+│       │   the launch-sprint procedure — four-item pre-flight
+│       │   (EUIPO trademark / NOTICE / CLA / custom domain) plus
+│       │   three-commit flip (workflow / repo visibility / README
+│       │   badge).  Codifies the user's "local-only through
+│       │   Phase 22" pick.
+│       └── ``mkdocs.yml`` nav: 4 integrations pages + ADR-0004 +
+│           top-level "What's new" entry wired in.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

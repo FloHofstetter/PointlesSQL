@@ -19,7 +19,7 @@ visibility split on notebook hits.
   there is at least one `.ipynb` under `notebooks/` for the notebook
   source to surface.
 - Browser: launch with `--browser firefox` per
-  [CLAUDE.md](../../CLAUDE.md) (the system Chrome channel breaks the
+  [CLAUDE.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md) (the system Chrome channel breaks the
   Playwright MCP harness).
 
 ## Walkthrough

@@ -102,7 +102,7 @@ new runtime dependency — and every reject writes a
 ## Playwright MCP script
 
 Run the Firefox Playwright MCP server — per
-[`CLAUDE.md`](../../CLAUDE.md), use `--browser firefox`.
+[`CLAUDE.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md), use `--browser firefox`.
 
 ```text
 # 1-2. Ten failing logins, eleventh 429.

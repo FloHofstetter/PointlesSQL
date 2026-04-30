@@ -6,7 +6,7 @@ one unit of work. Two kinds ship in-box:
 
 - `pg_sync` — the Sprint 18 Postgres-to-UC mirror. This is the
   reference implementation. Read
-  [`pointlessql/services/pg_sync.py`](../pointlessql/services/pg_sync.py)
+  [`pointlessql/services/pg_sync.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/pg_sync.py)
   alongside the scheduler source to see how a real kind is wired.
 - `python` — a loader that resolves a plugin entry point and hands it
   the full executor context (see below).

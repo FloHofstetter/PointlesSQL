@@ -20,7 +20,7 @@ whole page.
 - Run [`dashboards.md`](dashboards.md) so at least one Dashboard
   exists — it drives the Your-dashboards card.
 - Browser: launch with `--browser firefox` per
-  [CLAUDE.md](../../CLAUDE.md).
+  [CLAUDE.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md).
 
 ## Walkthrough
 

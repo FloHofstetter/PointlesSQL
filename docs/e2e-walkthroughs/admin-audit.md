@@ -21,7 +21,7 @@ chips, and the click-to-expand detail cell.
      `/catalogs/demo` and edit the comment (same flow as the
      `inline-editors.md` Part A step 1 — any value is fine).
    - This writes an `update_catalog` row via
-     [`_audit()`](../../pointlessql/api/main.py#L239) into the
+     [`_audit()`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py#L239) into the
      Sprint-7 `audit_log` table.
 
 2. **Admin opens `/admin/audit` via the nav dropdown**.
@@ -98,7 +98,7 @@ chips, and the click-to-expand detail cell.
      inspect the top navbar.
    - Assert: no "Admin" dropdown is present. The entry is
      gated by `current_user.is_admin` in
-     [`components/nav_links.html`](../../frontend/templates/components/nav_links.html).
+     [`components/nav_links.html`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/components/nav_links.html).
 
 ## Playwright MCP script
 

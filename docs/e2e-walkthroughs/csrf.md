@@ -93,7 +93,7 @@ takes for every non-safe request.
 ## Playwright MCP script
 
 Run the Firefox Playwright MCP server — per
-[`CLAUDE.md`](../../CLAUDE.md), use
+[`CLAUDE.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md), use
 `--browser firefox` (or the bundled `chrome-for-testing`, not
 the system Chrome channel).
 

@@ -189,7 +189,7 @@ browser_click('button:has-text("Compare")')
   ``resolve_notebook_path`` raises ``"papermill notebook not
   found"``. A 10-way parallel hammer of the Refresh endpoint saw
   9/10 runs fail before the fix and 0/10 after. Root cause + fix
-  in [`pointlessql/settings.py`](../../pointlessql/settings.py):
+  in [`pointlessql/settings.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/settings.py):
   capture ``_STARTUP_CWD = Path.cwd()`` at module import (before
   any papermill tick) and anchor relative ``notebooks_dir``
   defaults against it in a ``field_validator``. ``.resolve()``
@@ -206,7 +206,7 @@ browser_click('button:has-text("Compare")')
   `404 Job {n} not found` page inside the iframe, which defeats the
   whole point of dashboards being a consumer-facing publishing
   surface. Fixed by adding a sibling route
-  [`GET /dashboards/{slug}/output`](../../pointlessql/api/main.py)
+  [`GET /dashboards/{slug}/output`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
   whose visibility guard is the dashboard itself (any logged-in
   user) — the handler still verifies the bound job is papermill and
   that the latest succeeded run belongs to that job before rendering.

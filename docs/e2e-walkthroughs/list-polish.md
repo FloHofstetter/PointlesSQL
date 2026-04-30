@@ -20,7 +20,7 @@ and the toast-then-reload cadence for row mutations.
   so `/dashboards`, `/connections`, `/credentials`, and
   `/external-locations` all have ≥ 2 rows.
 - Browser: launch with `--browser firefox` per
-  [CLAUDE.md](../../CLAUDE.md).
+  [CLAUDE.md](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md).
 
 ## Walkthrough
 
@@ -173,8 +173,8 @@ and the toast-then-reload cadence for row mutations.
   Alpine logged `expected expression, got '}'` and the cells rendered
   empty. Fixed by switching the outer attribute to single quotes
   (`x-data='{ c: {{ job.cron_expr|tojson }} }'`) on both
-  [jobs.html](../../frontend/templates/pages/jobs.html) and
-  [job_detail.html](../../frontend/templates/pages/job_detail.html).
+  [jobs.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/jobs.html) and
+  [job_detail.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/job_detail.html).
   Surfaced by the Sprint-33 post-merge Playwright replay.
 
 - **BUG-33-02** (fixed same-sprint): relative-time strings drifted
@@ -187,7 +187,7 @@ and the toast-then-reload cadence for row mutations.
   `latest_runs`), but Sprint 33 surfaced it on the new jobs
   Last-run column so the fix lands here. Added
   `window.pqlParseServerIso(iso)` in
-  [relative_time.js](../../frontend/js/relative_time.js) — appends
+  [relative_time.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/relative_time.js) — appends
   'Z' only when the string has no tz marker — and routed
   `pqlRelativeTime` + both `toLocaleString` tooltip call sites
   (jobs.html, home.html) through it.

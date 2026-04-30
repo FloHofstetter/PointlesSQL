@@ -208,7 +208,7 @@ browser_evaluate(async () => {
 
 - **BUG-23-02** — fixed in the same sprint commit. `POST
   /api/jobs` in
-  [`pointlessql/api/main.py`](../../pointlessql/api/main.py)
+  [`pointlessql/api/main.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
   committed the `Job` row and its `JobTask` rows *before* calling
   `scheduler_service.validate_dag`. A payload with a cycle or an
   unknown `depends_on` was rejected with 422 after the rows

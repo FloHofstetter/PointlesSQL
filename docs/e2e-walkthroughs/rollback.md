@@ -24,7 +24,7 @@ row whose `delta_version_before/after` proves the table moved.
 1. **PointlesSQL** + **soyuz-catalog** running per the
    [Hermes-Medallion playbook](hermes_medallion.md) preconditions.
 2. The Medallion notebook
-   [`notebooks/hermes_medallion.py`](../../notebooks/hermes_medallion.py)
+   [`notebooks/hermes_medallion.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/hermes_medallion.py)
    has been replayed at least once so silver and gold tables
    exist with `lineage_row_edges` / `lineage_column_map`
    populated.  (If you've never run it, replay it before this

@@ -168,7 +168,7 @@ browser_evaluate('async () => await fetch("/auth/me").then(r => r.json())')
 
 - **BUG-23-01** — fixed in the same sprint commit. The
   `oidc_enabled` computed property in
-  [`pointlessql/settings.py`](../../pointlessql/settings.py) used
+  [`pointlessql/settings.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/settings.py) used
   `is not None` to gate the SSO button. That treated the empty
   strings produced by the compose overlay's
   `${POINTLESSQL_OIDC_DISCOVERY_URL:-}` fallback as *configured*
@@ -191,5 +191,5 @@ Live Pass 2 results (with the bridge-IP workaround in step 5):
   `oidc_subject` equals the `sub` claim (`oidc-user-1`).
 - A second sign-in with the same subject reuses the existing row
   (no duplicate) — `find_or_create_oidc_user` in
-  [`pointlessql/services/oidc.py`](../../pointlessql/services/oidc.py)
+  [`pointlessql/services/oidc.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/oidc.py)
   match-on-provider-subject path works.

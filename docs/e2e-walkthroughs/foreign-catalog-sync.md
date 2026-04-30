@@ -15,7 +15,7 @@ button.
 - Seed script ran — the `pg_e2e` Connection exists and the
   `postgres-e2e` sidecar is populated with the `shop.customers`
   / `shop.products` / `shop.orders` tables (see
-  [`../../scripts/pg-seed.sql`](../../scripts/pg-seed.sql)).
+  [`../../scripts/pg-seed.sql`](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/pg-seed.sql)).
 - Currently logged in as `admin@pql.test`.
 
 ## Walkthrough
@@ -33,7 +33,7 @@ button.
    - Action: click **Create**.
    - Assert: browser navigates to `/catalogs/pg_mirror` (per
      `createForeignCatalogForm.submit()` in
-     [`frontend/js/federation.js`](../../frontend/js/federation.js)).
+     [`frontend/js/federation.js`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/federation.js)).
 
 3. **Foreign-catalog detail renders the foreign card + empty
    sync-history**.
@@ -65,7 +65,7 @@ button.
    - Assert: the columns table shows `id`, `name`, `email`,
      `created_at` with types derived from
      `information_schema.columns` by
-     [`pointlessql/services/pg_sync.py`](../../pointlessql/services/pg_sync.py).
+     [`pointlessql/services/pg_sync.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/pg_sync.py).
 
 6. **Second sync is idempotent (no duplicate adds)**.
    - Action: navigate back to `/catalogs/pg_mirror` and click

@@ -2,7 +2,7 @@
 
 The single source of truth for PointlesSQL's design system, landed
 in Sprint 29 as the foundation every later Phase-9 sprint consumes.
-Tokens live in [`frontend/css/style.css`](../frontend/css/style.css)
+Tokens live in [`frontend/css/style.css`](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/css/style.css)
 under the `:root` block; this file is the human-facing reference.
 
 Philosophy: one token scale per concern, no magic values in

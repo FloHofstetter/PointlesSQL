@@ -10,11 +10,7 @@ Decision, Consequences.
 | [0001](0001-notebook-editor.md) | Accepted | Notebook editor: native Monaco + `pql_cell_id` marker grammar |
 | [0002](0002-duckdb-first.md) | Accepted | DuckDB-first: DuckDB owns compute, deltalake owns writes |
 | [0003](0003-delta-branching-spike.md) | Accepted | Delta-branching: hybrid symlink-local / deep-copy-cloud |
-
-Sprint 22.5 adds **ADR-0004 Public-flip checklist** documenting
-the trigger flip in `.github/workflows/docs.yml`, the EUIPO
-trademark check, NOTICE / CLA hygiene, and custom domain
-decision.
+| [0004](0004-public-flip-checklist.md) | Accepted | Docs-site public-flip three-commit procedure with EUIPO / NOTICE / CLA / domain pre-flight |
 
 ## Conventions
 

@@ -122,7 +122,7 @@ traversal, cell failure).
      no such button renders — the conditional is
      `{% if job.kind == "papermill" and run.status in ("succeeded",
      "failed") %}` in
-     [frontend/templates/pages/job_detail.html](../../frontend/templates/pages/job_detail.html).
+     [frontend/templates/pages/job_detail.html](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/job_detail.html).
 
 7. **Click "Open in JupyterLab"**.
    - Action: click the link. It opens a new tab pointing at
@@ -135,7 +135,7 @@ traversal, cell failure).
      non-empty catalog list — confirming that
      `POINTLESSQL_PRINCIPAL` made it to the kernel and that `PQL()`
      inherited it (Sprint 24 wiring in
-     [pointlessql/pql/pql.py](../../pointlessql/pql/pql.py)).
+     [pointlessql/pql/pql.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/pql/pql.py)).
 
 ### Part D — negative cases
 
@@ -172,7 +172,7 @@ traversal, cell failure).
       `"papermill execution failed in cell"` and
       `"ZeroDivisionError"` (the `PapermillExecutionError` ->
       `EngineError` conversion in
-      [services/scheduler.py](../../pointlessql/services/scheduler.py)).
+      [services/scheduler.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/scheduler.py)).
     - Assert: `notebooks/runs/{run_id}.ipynb` still exists (papermill
       writes the partial output before raising) and the offending
       cell shows the traceback when opened in JupyterLab.
@@ -520,7 +520,7 @@ MCP session; both fixed in the same sprint commit.
   the Output artifacts card's `window` listener sat idle and the
   selection never swapped. The DAG tasks table upstream wraps
   its `.table-responsive` in `x-data="{...}"` for the same
-  reason ([job_detail.html:106](../../frontend/templates/pages/job_detail.html#L106));
+  reason ([job_detail.html:106](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/templates/pages/job_detail.html#L106));
   we have no state to carry here so the simpler fix was to swap
   the `x-on:click` for a plain `onclick=
   "window.dispatchEvent(new CustomEvent('run-selected', ...))"`.

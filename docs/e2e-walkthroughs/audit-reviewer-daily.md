@@ -6,11 +6,11 @@ delivers Markdown to a configured sink.
 
 Unlike the Playwright-driven UI walkthroughs in the rest of this
 folder, this one is an **operational runbook**. It chains:
-- the new [`pointlessql admin issue-auditor-key`](../../pointlessql/api/main.py)
+- the new [`pointlessql admin issue-auditor-key`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py)
   CLI subcommand,
 - the [`audit-reviewer-daily.json`](../integrations/hermes-jobs/audit-reviewer-daily.json)
   Hermes-cron manifest, and
-- the [`hermes cron tick`](../../../hermes-agent/cron/scheduler.py)
+- the [`hermes cron tick`](https://github.com/FloHofstetter/hermes-agent/blob/main/cron/scheduler.py)
   scheduler run.
 
 Each step lists the exact command to run plus what to assert in the

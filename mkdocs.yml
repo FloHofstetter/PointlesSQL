@@ -164,6 +164,10 @@ nav:
       - Permissions: reference/permissions.md
   - Integrations:
       - integrations/index.md
+      - soyuz-catalog: integrations/soyuz-catalog.md
+      - Hermes plugin: integrations/hermes-plugin.md
+      - MLflow: integrations/mlflow.md
+      - Grafana: integrations/grafana.md
       - Hermes jobs:
           - integrations/hermes-jobs/README.md
           - Compliance bot: integrations/hermes-jobs/compliance-bot.md
@@ -176,6 +180,8 @@ nav:
       - "ADR-0001 Notebook editor": decisions/0001-notebook-editor.md
       - "ADR-0002 DuckDB-first": decisions/0002-duckdb-first.md
       - "ADR-0003 Delta-branching spike": decisions/0003-delta-branching-spike.md
+      - "ADR-0004 Public-flip checklist": decisions/0004-public-flip-checklist.md
+  - "What's new": changelog.md
 
 # `architecture.excalidraw` and `**/*.json` are copied as static assets
 # (referenced by markdown), not surfaced in nav.
@@ -183,5 +189,7 @@ not_in_nav: |
   /architecture.excalidraw
   /integrations/hermes-jobs/*.json
 
-strict: false  # Sprint 22.5 flips this to `true` after the
-               # cross-link sweep cleans up the last warnings.
+strict: true  # Sprint 22.5 cross-link sweep cleared the last
+              # warnings — every cross-link in the 38 walkthroughs
+              # now resolves either to a docs page or to the
+              # canonical GitHub URL.

@@ -3,7 +3,7 @@
 This folder holds reference Hermes-cron job manifests that drive
 PointlesSQL's "agents reviewing agents" surface. The manifests are
 plain JSON snippets shaped like a single entry of `~/.hermes/cron/jobs.json`
-— see [`hermes-agent/cron/jobs.py:create_job`](../../../hermes-agent/cron/jobs.py)
+— see [`hermes-agent/cron/jobs.py:create_job`](https://github.com/FloHofstetter/hermes-agent/blob/main/cron/jobs.py)
 for the field set the scheduler reads.
 
 PointlesSQL never executes these manifests itself. Hermes is the runtime;
@@ -80,7 +80,7 @@ per job, add a Hermes-side feature first.
   shape. The Markdown skeleton is fixed because downstream consumers
   (Sprint 19.2.1's cockpit card, future digest aggregators) parse
   the same shape.
-- The wake-gate at [`scripts/audit-wake-gate.py`](../../scripts/audit-wake-gate.py)
+- The wake-gate at [`scripts/audit-wake-gate.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/audit-wake-gate.py)
   pre-fetches the anomaly verdicts and prints them as the leading
   `#`-prefixed context block. The agent trusts that block and does
   not re-call `pql_anomaly_check` — saves one LLM round-trip on

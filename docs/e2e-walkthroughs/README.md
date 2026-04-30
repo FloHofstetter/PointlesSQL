@@ -10,7 +10,7 @@ can be replayed by either:
 - **Claude Code** in an MCP-enabled session using the
   `mcp__playwright__browser_*` tool family.
 
-Phase 7 of [`ROADMAP.md`](../../ROADMAP.md) explains the
+Phase 7 of [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) explains the
 motivation: unit and integration tests have never instantiated
 the rendered templates — commit `e09a661` (the job-pause form
 landing on a raw JSON page) is the kind of bug only a live
@@ -85,7 +85,7 @@ external runtime that pretends to be Hermes:
 12. [`agent_drift_monitor.md`](agent_drift_monitor.md) —
     Sprint 13.5 demo.  Registers an agent run via
     `POST /api/agent-runs`, runs the
-    [`notebooks/agent_drift_monitor.py`](../../notebooks/agent_drift_monitor.py)
+    [`notebooks/agent_drift_monitor.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/agent_drift_monitor.py)
     notebook (freshness + null-rate + value-drift checks),
     appends results to `ops.quality_history`, fires a
     CloudEvent on threshold breach, drills into `/runs/{id}`
@@ -97,7 +97,7 @@ external runtime that pretends to be Hermes:
     Sprint 13.5.5 — the Phase-13 **done moment**.  A real
     Hermes session (with `hermes-plugin-pointlessql` loaded)
     autoloads
-    [`notebooks/hermes_medallion_data/orders.csv`](../../notebooks/hermes_medallion_data/orders.csv)
+    [`notebooks/hermes_medallion_data/orders.csv`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/hermes_medallion_data/orders.csv)
     into `main.bronze.orders_raw`, upserts into
     `main.silver.orders`, aggregates into
     `main.gold.orders_summary`, and the run-detail view shows
@@ -250,7 +250,7 @@ Every playbook has three sections:
   fixed in the same sprint commit (with a short-SHA link) or
   left as a `BUG-22-NN` TODO with a clear next action. No
   "something was weird" entries (per
-  [`ROADMAP.md`](../../ROADMAP.md) Phase 7 prelude).
+  [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) Phase 7 prelude).
 
 ### Human replay
 

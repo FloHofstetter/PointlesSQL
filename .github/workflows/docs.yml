@@ -37,9 +37,5 @@ jobs:
         with:
           python-version: "3.14"
       - run: uv sync --group docs
-      # NOTE: --strict deferred to Sprint 22.5 once the cross-link
-      # sweep cleans up the last source-tree references in the 39
-      # walkthroughs.  Until then a plain build proves the site
-      # produces.
-      - run: uv run mkdocs build
+      - run: uv run mkdocs build --strict
       # - run: uv run mkdocs gh-deploy --force   # <-- uncomment in launch sprint

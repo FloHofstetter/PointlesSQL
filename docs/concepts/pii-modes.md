@@ -24,7 +24,7 @@ queries still work.
 
 Sprint 20.1 uses pattern-based detection at write time.  A column
 whose name matches
-[`PII_NAME_PATTERN`](../../pointlessql/services/pii_redactor.py#L48)
+[`PII_NAME_PATTERN`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/pii_redactor.py#L48)
 is redacted regardless of soyuz tags.  Patterns include:
 
 - `email`, `e_mail`, `mail`
