@@ -245,7 +245,7 @@ async def test_model_detail_renders_all_tabs(
     assert 'id="tab-versions"' in body
     assert 'id="tab-lineage"' in body
     assert 'id="tab-mlflow"' in body
-    assert 'id="tab-perms"' in body
+    assert 'id="tab-promotion"' in body
     # Versions table has both versions.
     assert ">v1<" in body
     assert ">v2<" in body

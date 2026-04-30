@@ -2287,7 +2287,7 @@ PointlesSQL
 │           Phase-14 rc3 push (the install still works because
 │           the response shape extension is additive).
 │
-├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2 done 2026-04-30)
+├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2/21.5/21.6 done 2026-04-30)
 │   │
 │   │   The stack today audits *data engineering* end-to-end
 │   │   (Phases 14-20) but has a gap when the workload is *model
@@ -2423,18 +2423,24 @@ PointlesSQL
 │   │   └── Browser-walkthrough playbook in
 │   │       ``docs/e2e-walkthroughs/models-tab.md``.
 │   │
-│   ├── Sprint 21.6 — Champion/Challenger Aliases + Promotion-Hop ⏳
-│   │   ├── Promote-button on model-version → opens approval-hop
-│   │   │   modal (reuse Sprint-19.4-style supervisor handoff).
-│   │   ├── ``champion`` / ``challenger`` / ``staging`` /
-│   │   │   ``production`` aliases as soyuz UC aliases (no PointlesSQL-
-│   │   │   specific schema).
-│   │   ├── Promotion writes a structured ``agent_run_operation``
-│   │   │   so the move from challenger → champion is itself
-│   │   │   auditable, with reviewer-id + timestamp.
-│   │   └── ``pointlessql.model.promoted`` CloudEvent +
-│   │       audit-reviewer-agent rule that flags promotions
-│   │       without recorded approval.
+│   ├── Sprint 21.6 — Champion/Challenger Promotion-Hop          ✅
+│   │   ├── ``_pql_promotion`` JSON marker stored in the registered-
+│   │   │   model's ``comment`` field (mirrors ``_pql_link``); marker
+│   │   │   parser/serializer in
+│   │   │   ``pointlessql/services/model_promotion.py``.
+│   │   ├── ``POST /api/models/{full_name}/promote`` endpoint gated by
+│   │   │   ``require_supervisor``; ``GET /api/models/{full_name}/
+│   │   │   promotion`` returns champion + history.
+│   │   ├── ``agent_reviews.kind`` discriminator column (Alembic
+│   │   │   ``r8n0p2q4s6u8``); promotion review rows coexist with
+│   │   │   Phase-19 audit-review rows.
+│   │   ├── ``pointlessql.model.promoted`` CloudEvent envelope.
+│   │   ├── Promotion-tab on ``/models/{full_name}`` replaces the
+│   │   │   Sprint-21.5 Permissions stub: champion card + per-version
+│   │   │   promote-button + reason modal + collapsed history list.
+│   │   │   Champion-badge on the Versions tab.
+│   │   └── First-class soyuz aliases deferred — marker convention
+│   │       gives equivalent semantics without a soyuz schema bump.
 │   │
 │   └── Sprint 21.7 — Inference Lineage + Drift Alert           ⏳
 │       ├── ``pql.predict(model="cat.sch.m@champion", input=df)``

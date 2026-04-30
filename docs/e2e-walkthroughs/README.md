@@ -118,6 +118,18 @@ primitives end-to-end:
     cloud-storage discard / promote is documented out-of-scope
     for v1.
 
+**ML registry** (Phase 21).  Replay these after the Phase-21
+audit-foundation lifespan-config is in place
+(`POINTLESSQL_MLFLOW_ENABLED=1`) and at least one trained
+model lives in soyuz:
+
+15. [`models-tab.md`](models-tab.md) — Sprint 21.5 browse +
+    compare-view replay.
+16. [`models-promotion.md`](models-promotion.md) — Sprint 21.6
+    promote a challenger to champion through the modal,
+    confirm marker on soyuz + `agent_reviews` row +
+    `pointlessql.model.promoted` envelope.
+
 ## Stack start
 
 ```bash

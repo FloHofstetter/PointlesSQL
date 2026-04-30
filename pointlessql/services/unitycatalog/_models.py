@@ -23,12 +23,16 @@ from soyuz_catalog_client.api.registered_models import (
 from soyuz_catalog_client.api.registered_models import (
     list_registered_models_api_2_1_unity_catalog_models_get as _list_rm,
 )
+from soyuz_catalog_client.api.registered_models import (
+    update_registered_model_api_2_1_unity_catalog_models_full_name_patch as _update_rm,
+)
 from soyuz_catalog_client.models.list_model_versions_response import (
     ListModelVersionsResponse,
 )
 from soyuz_catalog_client.models.list_registered_models_response import (
     ListRegisteredModelsResponse,
 )
+from soyuz_catalog_client.models.update_registered_model import UpdateRegisteredModel
 
 from pointlessql.services.unitycatalog._api import wrap_catalog_errors
 
@@ -119,6 +123,41 @@ class ModelsMixin:
         """Return metadata for a single model version."""
         response = await _get_mv.asyncio(
             full_name=full_name, version=version, client=self._client
+        )
+        if response is None:
+            return {}
+        return response.to_dict()
+
+    @wrap_catalog_errors
+    async def update_registered_model(
+        self,
+        full_name: str,
+        comment: str | None = None,
+        new_name: str | None = None,
+    ) -> dict[str, Any]:
+        """Patch a registered model's mutable fields.
+
+        UC-OSS spec only permits ``comment`` and ``new_name``; passing
+        anything else server-side is rejected with HTTP 422. Sprint
+        21.6 uses this to write the ``_pql_promotion`` JSON marker
+        into the comment field.
+
+        Args:
+            full_name: Three-level FQN ``catalog.schema.model``.
+            comment: New comment value, or ``None`` to leave untouched.
+            new_name: New short name, or ``None`` to leave untouched.
+
+        Returns:
+            The updated registered-model dict, or an empty dict when
+            soyuz returned no body.
+        """
+        body = UpdateRegisteredModel()
+        if comment is not None:
+            body.comment = comment
+        if new_name is not None:
+            body.new_name = new_name
+        response = await _update_rm.asyncio(
+            full_name=full_name, client=self._client, body=body
         )
         if response is None:
             return {}

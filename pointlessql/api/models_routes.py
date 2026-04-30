@@ -15,8 +15,16 @@ version-compare view:
 - ``GET /api/models/{full_name}/lineage`` builds the focused model
   lineage DAG (added in Sprint 21.5.5).
 
-All endpoints require an authenticated user; supervisor scope is
-*not* required because the browse experience is read-only. The
+Two write endpoints landed in Sprint 21.6 to support champion/
+challenger promotion:
+
+- ``GET /api/models/{full_name}/promotion`` returns the current
+  champion + history.
+- ``POST /api/models/{full_name}/promote`` swaps the champion;
+  supervisor scope required.
+
+All read endpoints require an authenticated user; supervisor scope
+is *not* required because the browse experience is read-only. The
 sensitive surface (cross-link marker payloads) only echoes
 metadata that already lives on the soyuz row.
 """
@@ -27,9 +35,16 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
-from pointlessql.api.dependencies import get_uc_client, get_user
+from pointlessql.api.dependencies import (
+    effective_principal,
+    get_uc_client,
+    get_user,
+    require_supervisor,
+)
 from pointlessql.exceptions import CatalogNotFoundError
+from pointlessql.services import model_promotion
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.mlflow_soyuz_link import parse_link_marker
 from pointlessql.services.models_lineage import build_model_lineage_graph
@@ -257,3 +272,78 @@ async def api_model_linked_runs(request: Request, full_name: str) -> dict[str, A
             }
         )
     return {"runs": runs}
+
+
+class PromoteRequest(BaseModel):
+    """Body for ``POST /api/models/{full_name}/promote``."""
+
+    target_version: int = Field(..., ge=1, description="Version to crown.")
+    reason: str = Field(..., min_length=1, max_length=4000, description="Justification.")
+
+
+@router.get("/api/models/{full_name}/promotion")
+async def api_get_promotion(request: Request, full_name: str) -> dict[str, Any]:
+    """Return the current champion + chronological promotion history.
+
+    Args:
+        request: FastAPI request.
+        full_name: Three-level FQN ``catalog.schema.model``.
+
+    Returns:
+        ``{"champion_version", "history": [...]}``.  ``champion_version``
+        is ``None`` when the model has no READY versions yet.
+    """
+    _require_auth(request)
+    client = get_uc_client(request)
+    champion = await model_promotion.get_current_champion(client, full_name)
+    factory = request.app.state.session_factory
+    history = await model_promotion.list_promotion_history(factory, full_name)
+    return {"champion_version": champion, "history": history}
+
+
+@router.post("/api/models/{full_name}/promote")
+async def api_promote_model(
+    request: Request, full_name: str, body: PromoteRequest
+) -> dict[str, Any]:
+    """Promote a challenger version to champion.
+
+    Requires supervisor scope.  Writes a ``_pql_promotion`` marker
+    into the registered-model's ``comment``, persists an
+    ``AgentReview`` row with ``kind="model_promotion"``, and emits
+    a ``pointlessql.model.promoted`` CloudEvents envelope (returned
+    in the response so the caller can inspect or fan out).
+
+    Args:
+        request: FastAPI request.
+        full_name: Three-level FQN ``catalog.schema.model``.
+        body: Validated promotion request.
+
+    Returns:
+        ``{"champion_version", "previous_champion", "promoted_at",
+        "review_id", "event"}`` on success.
+
+    Raises:
+        HTTPException: 400 when validation fails (version not READY,
+            already champion, missing reason); 502 when soyuz rejects
+            the comment PATCH.
+    """
+    require_supervisor(request)
+    user = get_user(request)
+    actor = effective_principal(request) or user.get("email") or "unknown"
+
+    client = get_uc_client(request)
+    factory = request.app.state.session_factory
+    try:
+        result = await model_promotion.promote_version(
+            factory,
+            client,
+            full_name,
+            target_version=body.target_version,
+            promoted_by=actor,
+            reason=body.reason,
+        )
+    except model_promotion.PromotionError as exc:
+        message = str(exc)
+        status = 502 if "soyuz" in message.lower() else 400
+        raise HTTPException(status_code=status, detail=message) from exc
+    return result

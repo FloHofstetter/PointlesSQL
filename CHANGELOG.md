@@ -6,6 +6,32 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 21.6 — Champion/Challenger Promotion-Hop.** Operators (or
+  supervisor-scoped agents) can now promote a `READY` model version
+  to *champion* through `POST /api/models/{full_name}/promote`. The
+  swap writes a `_pql_promotion` JSON marker into the registered
+  model's `comment` (mirrors the Phase-21.2 `_pql_link` convention so
+  the read-side parsers stay independent), inserts an `AgentReview`
+  row with `kind="model_promotion"` so the Phase-19 cockpit fan-out
+  can notify subscribers, and emits a `pointlessql.model.promoted`
+  CloudEvent envelope. The 21.5 Permissions stub on
+  `/models/{full_name}` is replaced by a Promotion tab: current
+  champion card, per-version `[Promote]` button, mandatory-reason
+  modal, and a collapsed promotion-history list. Champion badge
+  also renders on the Versions tab. Supervisor or admin scope
+  required (mirrors the Phase 13.11 ladder). New Alembic migration
+  `r8n0p2q4s6u8` adds a non-null `kind` column to `agent_reviews`
+  with `audit_review` as the default for backfill. New service
+  module `pointlessql/services/model_promotion.py` carries the
+  marker round-trip, current-champion resolver (falls back to
+  highest-numbered READY version when no marker exists),
+  `promote_version` service, history aggregator, and CloudEvent
+  builder. `ModelsMixin` gains `update_registered_model`. First-
+  class soyuz aliases deferred — the marker convention gives
+  equivalent semantics without a soyuz schema bump and a future
+  one-shot script can re-emit markers as real catalog tags once
+  soyuz adds them. 17 new pytest cases.
+
 - **Sprint 21.5 — registered-models browse surface.** Models now
   appear in the catalog tree per schema (alongside tables) and have
   a top-level `/models` index page in the icon rail. Each registered

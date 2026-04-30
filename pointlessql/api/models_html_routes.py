@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from pointlessql.api.dependencies import get_uc_client, get_user
 from pointlessql.api.models_routes import annotate_version, fetch_mlflow_context
+from pointlessql.services import model_promotion
 
 _logger = logging.getLogger(__name__)
 
@@ -90,6 +91,14 @@ async def model_detail_page(
 
     mlflow_running = getattr(request.app.state, "mlflow_subprocess", None) is not None
 
+    # Sprint 21.6: surface the current champion so the Versions tab
+    # can render a star-badge and the Promotion tab pre-loads.
+    try:
+        champion_version = await model_promotion.get_current_champion(client, full_name)
+    except Exception:  # noqa: BLE001 — promotion lookup must never block the page
+        _logger.warning("get_current_champion failed for %s", full_name, exc_info=True)
+        champion_version = None
+
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
@@ -99,7 +108,8 @@ async def model_detail_page(
             "model": model,
             "versions": versions_enriched,
             "mlflow_running": mlflow_running,
-            "is_admin": user["is_admin"],
+            "champion_version": champion_version,
+            "is_admin": user["id"] != 0 and user["is_admin"],
         },
     )
 

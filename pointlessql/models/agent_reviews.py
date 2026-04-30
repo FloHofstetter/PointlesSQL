@@ -33,6 +33,10 @@ from pointlessql.models.base import Base
 
 REVIEW_SEVERITIES: frozenset[str] = frozenset({"ok", "warn", "critical"})
 
+REVIEW_KIND_AUDIT = "audit_review"
+REVIEW_KIND_MODEL_PROMOTION = "model_promotion"
+REVIEW_KINDS: frozenset[str] = frozenset({REVIEW_KIND_AUDIT, REVIEW_KIND_MODEL_PROMOTION})
+
 
 class AgentReview(Base):
     """One closed-day Audit-Reviewer-Agent run, persisted for replay.
@@ -54,6 +58,10 @@ class AgentReview(Base):
         run_id: FK to :class:`AgentRun`.  Nullable because the review
             itself runs as an agent_run, but historical imports +
             replays may not have a corresponding registered run.
+        kind: Discriminator (Sprint 21.6) — ``audit_review`` for
+            the Phase-19 daily anomaly review, ``model_promotion``
+            for a champion/challenger swap.  Defaults to
+            ``audit_review`` so existing rows backfill cleanly.
         period_start: Inclusive UTC lower bound of the review window.
         period_end: Exclusive UTC upper bound; must be strictly
             greater than ``period_start`` (CHECK constraint).
@@ -71,6 +79,7 @@ class AgentReview(Base):
     __table_args__ = (
         Index("ix_agent_reviews_period_end", "period_end"),
         Index("ix_agent_reviews_severity", "severity"),
+        Index("ix_agent_reviews_kind", "kind"),
         CheckConstraint(
             "severity IN ('ok','warn','critical')",
             name="ck_agent_reviews_severity",
@@ -84,6 +93,9 @@ class AgentReview(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=True
+    )
+    kind: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="audit_review"
     )
     period_start: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_end: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
