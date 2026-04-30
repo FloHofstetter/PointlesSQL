@@ -33,6 +33,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from pointlessql.exceptions import AuditUnavailableError
+from pointlessql.services.agent_runs.mlflow_detector import detect_mlflow_run_id
 from pointlessql.models import AgentRun, AgentRunOperation
 
 _LINEAGE_FAILED_MARKER = "[lineage_emit_failed]"
@@ -258,6 +259,11 @@ def record_operation(
     if op_name not in VALID_OP_NAMES:
         raise AuditUnavailableError(f"agent_run_operations: unknown op_name {op_name!r}")
 
+    # Phase 21.2 cross-link: sniff MLflow's active_run() so audit rows
+    # link to the matching MLflow run without an out-of-band lookup.
+    # Side-effect-free; returns ``None`` for non-ML ops.
+    mlflow_run_id = detect_mlflow_run_id()
+
     try:
         with session_factory() as session:
             run_exists = session.scalar(select(AgentRun.id).where(AgentRun.id == agent_run_id))
@@ -286,8 +292,16 @@ def record_operation(
                 started_at=started_at,
                 finished_at=finished_at,
                 error_message=error_message,
+                mlflow_run_id=mlflow_run_id,
             )
             session.add(row)
+            # Phase 21.2: backfill the parent agent_runs row's
+            # mlflow_run_id on first detection.  Subsequent ops on the
+            # same parent leave it untouched.
+            if mlflow_run_id is not None:
+                parent = session.get(AgentRun, agent_run_id)
+                if parent is not None and parent.mlflow_run_id is None:
+                    parent.mlflow_run_id = mlflow_run_id
             session.commit()
             session.refresh(row)
             return row.id

@@ -2287,7 +2287,7 @@ PointlesSQL
 │           Phase-14 rc3 push (the install still works because
 │           the response shape extension is additive).
 │
-├── Phase 21 — ML Registry + Auditable Training           ⏳ planned
+├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2 done 2026-04-30)
 │   │
 │   │   The stack today audits *data engineering* end-to-end
 │   │   (Phases 14-20) but has a gap when the workload is *model
@@ -2338,7 +2338,7 @@ PointlesSQL
 │   │   in the launch-day narrative ("auditable agent-driven ML on
 │   │   the lakehouse, not just data engineering").
 │   │
-│   ├── Sprint 21.0 — MLflow Tracking subprocess + UI embed     ⏳
+│   ├── Sprint 21.0 — MLflow Tracking subprocess + UI embed     ✅ done 2026-04-30
 │   │   ├── ``services/mlflow.py`` lifecycle manager analogous to
 │   │   │   ``services/jupyter.py`` (Phase 1).  Boots ``mlflow
 │   │   │   server`` on a configurable port, health-checks, exposes
@@ -2352,7 +2352,7 @@ PointlesSQL
 │   │       notebook + agent contexts so ``mlflow.log_param`` works
 │   │       without env-setup boilerplate.
 │   │
-│   ├── Sprint 21.1 — soyuz ``MODEL`` Securable (UC-spec parity)  ⏳
+│   ├── Sprint 21.1 — soyuz ``MODEL`` Securable (UC-spec parity)  ✅ done 2026-04-30 (soyuz 248f73f, tag v0.3.0rc1 local)
 │   │   ├── New endpoints in ``soyuz-catalog`` matching UC spec:
 │   │   │   ``POST /models``, ``GET /models/{full_name}``,
 │   │   │   ``POST /models/{full_name}/versions``,
@@ -2365,7 +2365,7 @@ PointlesSQL
 │   │   └── Spec-conformance test (Sprint-12 in soyuz) extended
 │   │       with the MODEL endpoints from ``all.yaml``.
 │   │
-│   ├── Sprint 21.2 — Cross-link ``agent_run`` ↔ MLflow ↔ MODEL    ⏳
+│   ├── Sprint 21.2 — Cross-link ``agent_run`` ↔ MLflow ↔ MODEL    ✅ done 2026-04-30
 │   │   ├── ``agent_run.mlflow_run_id`` column (Alembic migration);
 │   │   │   populated automatically when an op detects an MLflow
 │   │   │   call inside the run.

@@ -84,6 +84,14 @@
                 <span class="pql-icon-rail__label">Dashboards</span>
             </a>
         </li>
+        <li class="pql-icon-rail__item">
+            <a href="/ml"
+               class="pql-icon-rail__link{% if active_section == 'mlflow' %} active{% endif %}"
+               title="MLflow Tracking (Phase 21.0)">
+                <i class="bi bi-robot"></i>
+                <span class="pql-icon-rail__label">ML</span>
+            </a>
+        </li>
         {% if current_user is defined and current_user and current_user.is_admin %}
         <li class="pql-icon-rail__item">
             <a href="/branches"

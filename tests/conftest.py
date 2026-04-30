@@ -7,6 +7,13 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+# Disable optional integrations whose subprocess startup would otherwise
+# kick in during the FastAPI lifespan triggered by ``TestClient(app)``.
+# Settings() reads env vars at construction time, so this must be set
+# before any test imports ``pointlessql.api.main``.
+os.environ.setdefault("POINTLESSQL_JUPYTER_ENABLED", "0")
+os.environ.setdefault("POINTLESSQL_MLFLOW_ENABLED", "0")
+
 import pytest
 from soyuz_catalog_client import Client
 from soyuz_catalog_client.api.catalogs import (
@@ -81,9 +88,11 @@ def _auth_db():
         app.state.settings = Settings(
             jupyter={"enabled": False},
             scheduler={"enabled": False},
+            mlflow={"enabled": False},
         )
     else:
         app.state.settings.scheduler.enabled = False  # type: ignore[attr-defined]
+        app.state.settings.mlflow.enabled = False  # type: ignore[attr-defined]
 
     # Ensure secret_key is always set.
     app.state.settings.auth.secret_key = _TEST_SECRET  # type: ignore[attr-defined]

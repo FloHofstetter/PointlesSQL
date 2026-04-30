@@ -451,6 +451,35 @@ class ConventionsSettings(BaseSettings):
     path: Path | None = None
 
 
+class MLflowSettings(BaseSettings):
+    """Embedded MLflow Tracking subprocess + reverse-proxy configuration.
+
+    Reads ``POINTLESSQL_MLFLOW_*`` environment variables. When
+    ``enabled=True`` and the optional ``mlflow`` package is installed
+    (``pip install pointlessql[ml]``), the FastAPI ``lifespan``
+    spawns ``mlflow server`` on ``port`` and the
+    :class:`pointlessql.api.mlflow_proxy.router` forwards
+    ``/mlflow/...`` requests through PointlesSQL's auth layer.
+
+    The three URI fields default to ``None`` because they're derived
+    at startup time from the soyuz URL and the process CWD:
+    ``backend_store_uri`` becomes ``sqlite:///./mlflow.db``,
+    ``artifact_root`` becomes ``file://{cwd}/mlflow_artifacts``, and
+    ``registry_uri`` becomes ``uc:{soyuz_url}`` (MLflow's UC-OSS
+    scheme; see Phase 21.1's ``uc_oss_proto_diff.md`` for why
+    ``uc:`` not ``uc-oss:``). Operators override via
+    ``POINTLESSQL_MLFLOW_BACKEND_STORE_URI`` etc.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_MLFLOW_")
+
+    enabled: bool = True
+    port: int = 5000
+    backend_store_uri: str | None = None
+    artifact_root: str | None = None
+    registry_uri: str | None = None
+
+
 class Settings(BaseSettings):
     """Root settings aggregating every sub-model.
 
@@ -479,3 +508,4 @@ class Settings(BaseSettings):
     external_writes: ExternalWritesSettings = Field(default_factory=ExternalWritesSettings)
     branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
+    mlflow: MLflowSettings = Field(default_factory=MLflowSettings)

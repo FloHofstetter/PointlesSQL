@@ -52,3 +52,10 @@ notebooks/playbook_upload.ipynb
 # jsdiff) were removed in favour of a server-side Jinja run-detail
 # view. The ``frontend/js/vendor/`` directory no longer exists and
 # the corresponding ``scripts/vendor-*.sh`` fetchers were deleted.
+
+# Phase 21.0 — MLflow subprocess artifacts (cwd-local).
+mlflow.pid
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
+mlflow_artifacts/

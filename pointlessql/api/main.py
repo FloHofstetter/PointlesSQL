@@ -43,6 +43,9 @@ from pointlessql.api.jobs_routes import (
 )
 from pointlessql.api.lineage_routes import router as lineage_router
 from pointlessql.api.middleware import register_middleware
+from pointlessql.api.ml_routes import router as ml_router
+from pointlessql.api.mlflow_html_routes import router as mlflow_html_router
+from pointlessql.api.mlflow_proxy import router as mlflow_proxy_router
 from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
 from pointlessql.api.pql_write_routes import router as pql_write_router
@@ -69,6 +72,11 @@ from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import audit as audit_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import scheduler as scheduler_service
+from pointlessql.services.mlflow_subprocess import (
+    MLflowStartupError,
+    MLflowSubprocess,
+    mlflow_available,
+)
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
@@ -207,6 +215,25 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         name="branch-cleanup",
     )
 
+    # Phase 21.0 MLflow Tracking subprocess.  Optional — only spawned
+    # when ``settings.mlflow.enabled`` AND the optional ``mlflow``
+    # package is installed (``pip install pointlessql[ml]``).  A
+    # startup failure (port collision, missing dep, broken sqlite)
+    # logs a warning and leaves ``app.state.mlflow_subprocess = None``
+    # so the ``/mlflow/`` proxy can return a clear 503 instead of
+    # bringing the entire PointlesSQL up-cycle down.
+    app.state.mlflow_subprocess = None
+    if settings.mlflow.enabled and mlflow_available():
+        mlflow_proc = MLflowSubprocess(settings.mlflow, settings.soyuz.catalog_url)
+        try:
+            await mlflow_proc.start()
+            app.state.mlflow_subprocess = mlflow_proc
+        except MLflowStartupError as exc:
+            logger.warning(
+                "MLflow subprocess failed to start; /mlflow tab unavailable: %s",
+                exc,
+            )
+
     # The browser notebook editor was retired; a future
     # :class:`KernelRegistry` on ``app.state`` will serve as the
     # execution backend for the ``agent_run`` scheduler kind.
@@ -214,6 +241,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        if app.state.mlflow_subprocess is not None:
+            await app.state.mlflow_subprocess.stop()
         audit_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await audit_task
@@ -418,6 +447,9 @@ app.include_router(admin_api_keys_router)
 app.include_router(admin_external_writes_router)
 app.include_router(review_destinations_router)
 app.include_router(audit_sinks_router)
+app.include_router(ml_router)
+app.include_router(mlflow_html_router)
+app.include_router(mlflow_proxy_router)
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),

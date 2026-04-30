@@ -148,6 +148,9 @@ class AgentRunOperation(Base):
         DateTime(timezone=True), nullable=True
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Phase 21.2 cross-link: populated by record_operation when MLflow
+    # is active (see :mod:`pointlessql.services.agent_runs.mlflow_detector`).
+    mlflow_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
 
 class AgentRunEvent(Base):

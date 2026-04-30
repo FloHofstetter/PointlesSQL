@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}ML · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "ML"}] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-robot fs-3"></i>
+    <h1 class="h3 mb-0">MLflow Tracking</h1>
+</div>
+
+{% if mlflow_running %}
+<div class="card mlflow-frame-card">
+    <div class="card-body p-0" style="height: calc(100vh - 220px); min-height: 480px;">
+        <iframe src="/mlflow/"
+                class="w-100 h-100 border-0"
+                title="MLflow Tracking UI"
+                allow="clipboard-write"></iframe>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-warning" role="alert">
+    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>MLflow not running</h5>
+    <p class="mb-1">
+        The embedded MLflow Tracking subprocess is not running.
+    </p>
+    <ul class="mb-2 small">
+        <li>Install the optional <code>[ml]</code> extra:
+            <code>pip install pointlessql[ml]</code>
+            (or <code>uv sync --extra ml</code> for development).</li>
+        <li>Ensure <code>POINTLESSQL_MLFLOW_ENABLED=1</code> (default).</li>
+        <li>Restart PointlesSQL — the subprocess starts during the FastAPI lifespan hook.</li>
+    </ul>
+    <p class="mb-0 small text-muted">
+        Phase 21.0 wired this in; see <code>pointlessql/services/mlflow_subprocess.py</code>.
+    </p>
+</div>
+{% endif %}
+{% endblock %}

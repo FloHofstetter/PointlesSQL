@@ -4,6 +4,49 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Closed — Phase 21 audit-foundation: 21.0 + 21.1 + 21.2 (2026-04-30)
+
+Vertical slice "audit-foundation for ML" landed in one autonomous
+session: a Hermes-driven training run now records its MLflow context
+into PointlesSQL's audit trail, the soyuz-catalog model-version row,
+and a single-call cross-link aggregator. Three sub-sprints, install
+`pip install pointlessql[ml]` to opt in.
+
+* **Sprint 21.1 — soyuz UC-OSS MODEL Securable wire-compat for
+  MLflow.** Soyuz commit `248f73f` (tag `v0.3.0rc1` local).
+  Closes the wire-compat gap so MLflow's UC-OSS client
+  (`mlflow.set_registry_uri("uc:http://...")`) can roundtrip:
+  create model → create version (PENDING) → upload → finalize →
+  READY → get/list/update/delete. Three additive endpoints
+  (`finalizeModelVersion`, `temporary-model-version-credentials`)
+  + status-state-machine fix + schema accommodation for the proto's
+  URL-redundant body fields. Aliases stay out-of-scope — UC-OSS
+  proto has no alias RPCs (only the Databricks variant).
+* **Sprint 21.0 — MLflow Tracking subprocess + UI tab + reverse-proxy.**
+  `MLflowSubprocess` lifecycle manager (HTTP health-check, PID file,
+  graceful SIGTERM → SIGKILL) wired into the FastAPI `lifespan`.
+  `/ml` HTML page mounts an iframe at `/mlflow/` which is served
+  by a `httpx`-based reverse-proxy that injects the authenticated
+  user as `X-MLflow-User` so the soyuz-side audit trail can
+  correlate. New `MLflowSettings` (`POINTLESSQL_MLFLOW_*`) with
+  optional URI overrides. Tab branded "ML" in the icon-rail.
+* **Sprint 21.2 — Cross-link agent_run ↔ MLflow ↔ MODEL.**  Alembic
+  `q7m9o1p3r5t7` adds `mlflow_run_id` columns to `agent_runs`
+  and `agent_run_operations`. The op-recorder hot path sniffs
+  `mlflow.active_run()` and stamps the run-id on both rows so a
+  single SQL join answers "how was this model trained?". New
+  `GET /api/runs/{id}/ml-context` aggregator returns the three-way
+  join of agent-run + MLflow run + soyuz model-versions. Soyuz
+  model-versions are tagged via a JSON marker in the `comment`
+  field as a bridge until soyuz Sprint-25 tags-on-models lands.
+  New CloudEvents type `pointlessql.mlflow.linked`.
+
+22 new unit/integration tests + 4 live-soyuz smoke tests
+(`test_mlflow_uc_oss_smoke.py`). Hermes-plugin `pql_mlflow_link_model`
+tool deferred — auto-link via the recorder hook covers the core
+flow; explicit linkage tool can land in a polish sprint once we
+see the agent-pattern that needs it.
+
 ### Closed — Phase 17 polish: 17.3.1 + 17.5.1 (2026-04-29)
 
 Two queued follow-ups land in one autonomous session.  17.6
