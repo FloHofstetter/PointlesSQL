@@ -98,7 +98,7 @@ function renderModelGraph(containerId, graphData) {
             data: {
                 id: n.id,
                 label: n.label || n.id,
-                kind: n.type || 'table',
+                kind: n.kind || n.type || 'table',
             },
         })),
         ...(graphData.edges || []).map((e) => ({
@@ -120,6 +120,24 @@ function renderModelGraph(containerId, graphData) {
                 'shape': 'round-rectangle',
                 'label': 'data(label)',
                 'color': '#e6e6e6',
+                'font-family': 'Inter, system-ui, sans-serif',
+                'font-size': 11,
+                'text-valign': 'center',
+                'text-halign': 'center',
+                'width': 'label',
+                'height': 'label',
+                'padding': '12px',
+            },
+        },
+        {
+            selector: 'node[kind = "prediction"]',
+            style: {
+                'background-color': '#1e293b',
+                'border-color': '#3b82f6',
+                'border-width': 1,
+                'shape': 'round-rectangle',
+                'label': 'data(label)',
+                'color': '#bfdbfe',
                 'font-family': 'Inter, system-ui, sans-serif',
                 'font-size': 11,
                 'text-valign': 'center',
@@ -162,6 +180,15 @@ function renderModelGraph(containerId, graphData) {
                 'text-background-color': '#0f172a',
                 'text-background-opacity': 0.7,
                 'text-background-padding': 2,
+            },
+        },
+        {
+            selector: 'edge[label = "inferred_to"]',
+            style: {
+                'line-style': 'dashed',
+                'line-color': '#3b82f6',
+                'target-arrow-color': '#3b82f6',
+                'color': '#bfdbfe',
             },
         },
     ];

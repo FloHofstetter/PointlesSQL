@@ -46,6 +46,7 @@ def write_table(
     unreachable_msg: str,
     agent_run_id: str | None = None,
     source_table_fqn: str | None = None,
+    source_model_uri: str | None = None,
     derivations: Mapping[str, Sequence[str]] | None = None,
 ) -> None:
     """Write a frame to a Delta table and register it in the catalog.
@@ -66,6 +67,14 @@ def write_table(
             in the lineage graph (Sprint 15.1).  ``None`` keeps
             ``write_table`` generic for in-memory frames with no UC
             origin.
+        source_model_uri: Sprint 21.7 — when set, declares the
+            originating registered-model URI
+            (``models:/cat.sch.model/<version>``) so every
+            ``lineage_row_edges`` row produced by this write
+            carries the model provenance, and the model-detail DAG
+            can paint ``target_table`` as a downstream prediction
+            node.  Requires ``source_table_fqn`` for the row-edge
+            grain to be meaningful.
         derivations: Optional declarative mapping of derived target
             columns to their *true* source-column names (Sprint
             15.6.2).  Effective only when ``source_table_fqn`` is
@@ -121,12 +130,18 @@ def write_table(
                     **recorder.extra_params,
                     "source_table_fqn": source_table_fqn,
                 }
+                if source_model_uri:
+                    recorder.extra_params = {
+                        **recorder.extra_params,
+                        "source_model_uri": source_model_uri,
+                    }
                 source_ids, target_ids, df = _stamp_lineage_for_write(df, full_name)
                 if source_ids:
                     recorder.pending_lineage_edges = {
                         "source_table": source_table_fqn,
                         "source_row_ids": source_ids,
                         "target_row_ids": target_ids,
+                        "source_model_uri": source_model_uri,
                     }
 
                 column_names = _frame_column_names(df)

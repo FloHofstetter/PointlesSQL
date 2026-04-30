@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 21.7 — Inference-Lineage (model → prediction tables).**
+  Closes the second half of the model-lineage graph: when
+  `pql.write_table(predictions, target, source_model_uri="models:/
+  cat.sch.model/3")` runs, every row-edge it produces carries the
+  originating model URI on a new `lineage_row_edges.source_model_uri`
+  column (Alembic `s9o1p3r5t7u9`). The model-detail Lineage tab is
+  now bidirectional: source-tables upstream with solid green
+  `trained_from` edges, prediction-tables downstream with dashed
+  blue `inferred_to` edges, plus a new "Prediction tables" card
+  underneath the cytoscape view that lists each target FQN with its
+  edge count. New `GET /api/models/{full_name}/predictions`
+  endpoint reads `lineage_row_edges` directly (no soyuz round-trip,
+  cost is O(R · E) on the audit DB rather than O(C · M · V)).
+  `aggregate_prediction_tables_for_model` matches by
+  `models:/{fqn}/%` so any version of the model contributes. The
+  `build_model_lineage_graph` builder gained a `kind` field
+  (`"model"` / `"table"` / `"prediction"`) on every node so the
+  cytoscape style branches three ways. 10 new pytest cases.
+  Drift alerts and a dedicated `pql.predict` helper are deferred
+  to Phase 22+.
+
 - **Sprint 21.6 — Champion/Challenger Promotion-Hop.** Operators (or
   supervisor-scoped agents) can now promote a `READY` model version
   to *champion* through `POST /api/models/{full_name}/promote`. The

@@ -592,6 +592,7 @@ def _record_row_edges_after_commit(
     source_table = pending.get("source_table")
     source_row_ids = pending.get("source_row_ids")
     target_row_ids = pending.get("target_row_ids")
+    source_model_uri = pending.get("source_model_uri")
     if (
         not isinstance(source_table, str)
         or not isinstance(source_row_ids, list)
@@ -610,6 +611,7 @@ def _record_row_edges_after_commit(
         target_table=target_table,
         source_row_ids=[str(s) for s in source_row_ids],
         target_row_ids=[str(t) for t in target_row_ids],
+        source_model_uri=source_model_uri if isinstance(source_model_uri, str) else None,
     )
     if failure is None:
         return

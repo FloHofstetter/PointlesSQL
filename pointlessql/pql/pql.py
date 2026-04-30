@@ -252,6 +252,7 @@ class PQL:
         *,
         mode: Literal["error", "append", "overwrite", "ignore"] = "overwrite",
         source_table_fqn: str | None = None,
+        source_model_uri: str | None = None,
         derivations: Mapping[str, Sequence[str]] | None = None,
     ) -> None:
         """Write a frame to a Delta table and register it in the catalog.
@@ -265,6 +266,12 @@ class PQL:
                 that produced *df*.  When set, drives the OpenLineage
                 event so the resulting edge ``source_table_fqn →
                 full_name`` shows up on the lineage card.
+            source_model_uri: Sprint 21.7 — optional registered-model
+                URI ``models:/cat.sch.model/<version>`` declaring
+                that *df* is the output of inference against a model.
+                Stamps every row-edge with the model URI so the
+                model-detail Lineage DAG can paint *full_name* as a
+                downstream prediction node.
             derivations: Optional declarative mapping of derived
                 target columns to their *true* source-column names
                 (Sprint 15.6.2).  Effective only when
@@ -279,6 +286,7 @@ class PQL:
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
             source_table_fqn=source_table_fqn,
+            source_model_uri=source_model_uri,
             derivations=derivations,
         )
 

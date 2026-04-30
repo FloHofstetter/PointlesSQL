@@ -47,7 +47,10 @@ from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.services import model_promotion
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.mlflow_soyuz_link import parse_link_marker
-from pointlessql.services.models_lineage import build_model_lineage_graph
+from pointlessql.services.models_lineage import (
+    aggregate_prediction_tables_for_model,
+    build_model_lineage_graph,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -206,14 +209,16 @@ async def api_get_model_version(
 
 @router.get("/api/models/{full_name}/lineage")
 async def api_model_lineage(request: Request, full_name: str) -> dict[str, Any]:
-    """Build the focused model-lineage DAG.
+    """Build the bidirectional model-lineage DAG (Sprint 21.5.5 + 21.7).
 
     Walks the model's versions to collect the linked agent-run ids
     from the ``_pql_link`` markers, then aggregates the distinct
     source tables consumed by those runs from
-    :class:`pointlessql.models.LineageRowEdge`.  Returns an empty
-    ``edges`` list (and only the centre model node) when no runs
-    are linked or no row-edges exist yet.
+    :class:`pointlessql.models.LineageRowEdge`.  Sprint 21.7 adds
+    the downstream half: every row-edge whose ``source_model_uri``
+    matches the model FQN contributes a prediction-table successor.
+    Returns just the centre model node when no runs are linked
+    and no inference edges exist yet.
 
     Args:
         request: FastAPI request.
@@ -240,6 +245,30 @@ async def api_model_lineage(request: Request, full_name: str) -> dict[str, Any]:
         model_full_name=full_name,
         agent_run_ids=agent_run_ids,
     )
+
+
+@router.get("/api/models/{full_name}/predictions")
+async def api_model_predictions(
+    request: Request, full_name: str
+) -> dict[str, Any]:
+    """Return distinct prediction-tables this model has written into.
+
+    Sprint 21.7 — backs the "Predictions" sub-card on the
+    model-detail Lineage tab.  Reads ``lineage_row_edges`` directly
+    (no soyuz round-trip) so cost is O(R · E) rather than the
+    O(C · M · V) full-scan of the upstream side.
+
+    Args:
+        request: FastAPI request.
+        full_name: Three-level FQN ``catalog.schema.model``.
+
+    Returns:
+        ``{"predictions": [{"target_table", "edge_count"}, ...]}``.
+    """
+    _require_auth(request)
+    factory = request.app.state.session_factory
+    rows = aggregate_prediction_tables_for_model(factory, full_name)
+    return {"predictions": rows}
 
 
 @router.get("/api/models/{full_name}/runs")

@@ -77,6 +77,11 @@ class LineageRowEdge(Base):
             ``SHA-256("<source_row_id>:<target_table>")`` so re-runs
             of the same merge produce identical target IDs and the
             walk-backward query has a stable join column.
+        source_model_uri: Sprint 21.7 — when an edge represents
+            inference (a model wrote predictions into ``target_table``)
+            this carries the ``models:/cat.sch.model/<version>`` URI
+            of the originating registered-model version.  ``None``
+            for ordinary table-to-table writes / merges.
         created_at: Wall-clock timestamp the edge row was inserted.
     """
 
@@ -87,6 +92,7 @@ class LineageRowEdge(Base):
         Index("ix_lineage_row_edges_source", "source_table", "source_row_id"),
         Index("ix_lineage_row_edges_run", "run_id"),
         Index("ix_lineage_row_edges_op", "op_id"),
+        Index("ix_lineage_row_edges_source_model_uri", "source_model_uri"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -98,6 +104,7 @@ class LineageRowEdge(Base):
     source_row_id: Mapped[str] = mapped_column(String(64), nullable=False)
     target_table: Mapped[str] = mapped_column(String(255), nullable=False)
     target_row_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_model_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

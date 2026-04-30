@@ -251,6 +251,7 @@ def record_edges(
     target_table: str,
     source_row_ids: Sequence[str],
     target_row_ids: Sequence[str],
+    source_model_uri: str | None = None,
 ) -> Exception | None:
     """Bulk-insert one edge row per ``(source_row_id, target_row_id)`` pair.
 
@@ -266,6 +267,9 @@ def record_edges(
             ``target_row_ids``.
         target_row_ids: Target-side IDs synthesised by
             :func:`synth_target_row_id`.
+        source_model_uri: Sprint 21.7 — when set, every edge row
+            carries the originating model URI so the model-detail
+            DAG can paint the downstream "Predictions" half.
 
     Returns:
         ``None`` on a successful commit (or when both ID lists are
@@ -286,6 +290,7 @@ def record_edges(
             "source_row_id": source_row_ids[i],
             "target_table": target_table,
             "target_row_id": target_row_ids[i],
+            "source_model_uri": source_model_uri,
             "created_at": now,
         }
         for i in range(n)

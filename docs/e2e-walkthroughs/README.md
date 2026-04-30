@@ -129,6 +129,12 @@ model lives in soyuz:
     promote a challenger to champion through the modal,
     confirm marker on soyuz + `agent_reviews` row +
     `pointlessql.model.promoted` envelope.
+17. [`inference-lineage.md`](inference-lineage.md) — Sprint 21.7
+    `pql.write_table(..., source_model_uri=...)` writes inference
+    edges, the model-detail Lineage tab paints both the
+    upstream (`trained_from`) and downstream (`inferred_to`)
+    halves of the bidirectional DAG, the Predictions card
+    surfaces the target-table edge counts.
 
 ## Stack start
 

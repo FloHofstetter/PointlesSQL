@@ -2287,7 +2287,7 @@ PointlesSQL
 │           Phase-14 rc3 push (the install still works because
 │           the response shape extension is additive).
 │
-├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2/21.5/21.6 done 2026-04-30)
+├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2/21.5/21.6/21.7 done 2026-04-30)
 │   │
 │   │   The stack today audits *data engineering* end-to-end
 │   │   (Phases 14-20) but has a gap when the workload is *model
@@ -2442,19 +2442,26 @@ PointlesSQL
 │   │   └── First-class soyuz aliases deferred — marker convention
 │   │       gives equivalent semantics without a soyuz schema bump.
 │   │
-│   └── Sprint 21.7 — Inference Lineage + Drift Alert           ⏳
-│       ├── ``pql.predict(model="cat.sch.m@champion", input=df)``
-│       │   helper that records inference as a first-class
-│       │   operation: model_version_id, input_row_ids
-│       │   (Phase 15), output_row_ids, latency.
-│       ├── Inference-output table opt-in to ``track_value_changes``
-│       │   (Phase 15.7) so swapping champion → new version surfaces
-│       │   the diff at row-level: "1247 predictions changed,
-│       │   83% lower confidence on segment X".
-│       ├── Drift alerts: reuse Phase-12.5 alerts framework; train
-│       │   a baseline + watch metrics drift over rolling windows.
-│       └── Models-tab "Inference" sub-tab showing per-version
-│           prediction volume + drift trend + cost-per-1k-inferences.
+│   └── Sprint 21.7 — Inference-Lineage (model → predictions)    ✅
+│       ├── New ``source_model_uri`` nullable column on
+│       │   ``lineage_row_edges`` (Alembic ``s9o1p3r5t7u9``); every
+│       │   row-edge produced by an inference write carries the
+│       │   originating ``models:/{full_name}/{version}`` URI.
+│       ├── ``pql.write_table()`` accepts a new
+│       │   ``source_model_uri`` kwarg that propagates through the
+│       │   operation_context recorder and ``record_edges`` into
+│       │   the column above.
+│       ├── New ``aggregate_prediction_tables_for_model`` aggregator
+│       │   feeds ``GET /api/models/{full_name}/predictions`` and
+│       │   the bidirectional model-lineage graph.
+│       ├── ``build_model_lineage_graph`` extended to include
+│       │   prediction nodes (``kind="prediction"``) with dashed
+│       │   blue ``inferred_to`` edges; cytoscape style + legend
+│       │   updated.
+│       ├── New "Prediction tables" card on the model-detail
+│       │   Lineage tab.
+│       └── Drift alerts + dedicated ``pql.predict`` helper +
+│           cost-per-1k-inferences deferred to Phase 22+.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
