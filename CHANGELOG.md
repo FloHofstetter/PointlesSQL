@@ -6,6 +6,39 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 21 closed — ML Registry + Auditable Training.** Eight
+  sub-sprints landed in two autonomous sessions on 2026-04-30:
+  21.0 (MLflow subprocess + `/mlflow/` proxy + tab), 21.1 (soyuz
+  UC-OSS `MODEL` Securable), 21.2 (cross-link `agent_run` ↔ MLflow
+  run ↔ ModelVersion), 21.3 (forced autolog), 21.4 (hardware
+  fingerprint), 21.5 (Models browse + 5-tab detail + compare),
+  21.6 (champion/challenger promotion-hop), 21.7 (inference
+  lineage). All eight share the audit-of-intent framing — capture
+  enough to answer "wie wurde das Modell trainiert + wo schreibt
+  es seine Predictions?" without claiming bit-identical replay.
+
+- **Sprint 21.4 — Hardware/Library Fingerprint.** Adds a nullable
+  `agent_run_operations.env_snapshot` Text column (Alembic
+  `u1q3r5s7t9v1`) carrying an advisory JSON blob with three
+  sub-keys: `python` (version + platform + cpu_count), `packages`
+  (top-200 distributions via `importlib.metadata`, capped at
+  4 KiB), `gpu` (when torch + CUDA available, per-device name +
+  total memory). The snapshot is built once at module-import
+  time and cached for the whole PointlesSQL process so subsequent
+  `record_operation` calls don't re-walk `importlib.metadata` on
+  every write — appropriate for an advisory fingerprint where a
+  fork-side package add doesn't justify the per-op cost. The
+  Run-detail Operations tab now renders a collapsed "Environment
+  fingerprint" accordion under each op row showing the Python
+  banner, the GPU list (if any), and the package list as an inner
+  collapsed details block. End-to-end best-effort: every sub-step
+  is wrapped in try/except and degrades to `None` rather than
+  blocking the audit row. Honest reproducibility caveat: the
+  blob captures the engineer's declared intent, not provability
+  of bitwise reproducibility (CUDA non-determinism, parallel
+  dataloaders, atomic-add ordering all leak through). 9 new
+  pytest cases.
+
 - **Sprint 21.3 — Forced Autolog (training param/metric capture).**
   New `pql.training_context()` context-manager wraps a training
   block, calls `mlflow.autolog()` for the requested framework hint

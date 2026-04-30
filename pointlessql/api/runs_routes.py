@@ -471,6 +471,14 @@ def _load_operations_for_run(
                     }
             except json.JSONDecodeError:
                 training_params = None
+        env_snapshot: dict[str, Any] | None = None
+        if row.env_snapshot:
+            try:
+                parsed_env = json.loads(row.env_snapshot)
+                if isinstance(parsed_env, dict):
+                    env_snapshot = parsed_env
+            except json.JSONDecodeError:
+                env_snapshot = None
         out.append(
             {
                 "id": row.id,
@@ -490,6 +498,7 @@ def _load_operations_for_run(
                 "column_edges_count": column_edge_counts.get(row.id, 0),
                 "value_changes_count": value_change_counts.get(row.id, 0),
                 "training_params": training_params,
+                "env_snapshot": env_snapshot,
             }
         )
     return out

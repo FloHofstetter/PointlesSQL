@@ -589,6 +589,63 @@
                                     </td>
                                 </tr>
                                 {% endif %}
+                                {% if op.env_snapshot %}
+                                {# Sprint 21.4 — advisory env fingerprint. #}
+                                <tr>
+                                    <td></td>
+                                    <td colspan="6" class="small">
+                                        <details>
+                                            <summary class="text-muted">
+                                                <i class="bi bi-cpu me-1"></i>
+                                                Environment fingerprint
+                                                {% if op.env_snapshot.python and op.env_snapshot.python.version %}
+                                                · Python {{ op.env_snapshot.python.version }}
+                                                {% endif %}
+                                                {% if op.env_snapshot.gpu %}
+                                                · {{ op.env_snapshot.gpu | length }} GPU(s)
+                                                {% endif %}
+                                                {% if op.env_snapshot.packages %}
+                                                · {{ op.env_snapshot.packages | length }} packages
+                                                {% endif %}
+                                            </summary>
+                                            <div class="ps-3 mt-2 small">
+                                                {% if op.env_snapshot.python %}
+                                                <div class="mb-2">
+                                                    <span class="text-muted">Host:</span>
+                                                    <code>{{ op.env_snapshot.python.platform }}</code>
+                                                    {% if op.env_snapshot.python.machine %}
+                                                    / <code>{{ op.env_snapshot.python.machine }}</code>
+                                                    {% endif %}
+                                                    {% if op.env_snapshot.python.cpu_count %}
+                                                    / {{ op.env_snapshot.python.cpu_count }} CPU
+                                                    {% endif %}
+                                                </div>
+                                                {% endif %}
+                                                {% if op.env_snapshot.gpu %}
+                                                <div class="mb-2">
+                                                    <span class="text-muted">GPU:</span>
+                                                    {% for g in op.env_snapshot.gpu %}
+                                                    <code>{{ g.name }}</code>{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                                {% endif %}
+                                                {% if op.env_snapshot.packages %}
+                                                <details>
+                                                    <summary class="text-muted">
+                                                        Packages ({{ op.env_snapshot.packages | length }})
+                                                    </summary>
+                                                    <div class="font-monospace small text-muted ps-3">
+                                                        {% for name, ver in op.env_snapshot.packages.items() %}
+                                                        <span class="me-3">{{ name }}=={{ ver }}</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                </details>
+                                                {% endif %}
+                                            </div>
+                                        </details>
+                                    </td>
+                                </tr>
+                                {% endif %}
                                 {% if op.training_params %}
                                 {# Sprint 21.3 — autolog snapshot. #}
                                 <tr>

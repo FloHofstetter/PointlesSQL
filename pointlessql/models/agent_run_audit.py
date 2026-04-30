@@ -126,6 +126,11 @@ class AgentRunOperation(Base):
             and ``metrics`` sub-keys captured by
             :func:`pql.training_context()`.  ``None`` for non-training
             ops.
+        env_snapshot: Phase 21.4 — advisory JSON snapshot of the
+            host environment (Python version, top-level package
+            versions, GPU list when torch is installed).  Cached
+            once per PointlesSQL process so the hot path stays
+            cheap.  ``None`` when capture failed at start-up.
     """
 
     __tablename__ = "agent_run_operations"
@@ -161,6 +166,9 @@ class AgentRunOperation(Base):
     mlflow_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # Phase 21.3 — autolog snapshot ({"params": {...}, "metrics": {...}}).
     training_params_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Phase 21.4 — advisory hardware/library fingerprint
+    # (Python version, top-level package versions, GPU list).
+    env_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AgentRunEvent(Base):

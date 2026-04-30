@@ -241,6 +241,7 @@ def record_operation(
     finished_at: datetime.datetime | None,
     error_message: str | None,
     training_params_json: str | None = None,
+    env_snapshot: str | None = None,
 ) -> int:
     """Insert one ``agent_run_operations`` row in strict mode.
 
@@ -262,6 +263,9 @@ def record_operation(
         training_params_json: Sprint 21.3 — JSON blob with
             ``params`` and ``metrics`` sub-keys captured from
             MLflow autolog.  ``None`` for non-training ops.
+        env_snapshot: Sprint 21.4 — advisory hardware/library
+            fingerprint blob.  When ``None``, the cached
+            process-wide snapshot is stamped automatically.
 
     Returns:
         The auto-assigned primary key.
@@ -279,6 +283,17 @@ def record_operation(
     # link to the matching MLflow run without an out-of-band lookup.
     # Side-effect-free; returns ``None`` for non-ML ops.
     mlflow_run_id = detect_mlflow_run_id()
+
+    # Phase 21.4: stamp the cached env-fingerprint when the caller
+    # didn't supply one.  Best-effort — `cached_env_snapshot()` returns
+    # `None` if the import-time capture failed; we never raise.
+    if env_snapshot is None:
+        try:
+            from pointlessql.services.agent_runs.env_snapshot import cached_env_snapshot
+
+            env_snapshot = cached_env_snapshot()
+        except Exception:  # noqa: BLE001 — env-snapshot is advisory
+            env_snapshot = None
 
     try:
         with session_factory() as session:
@@ -310,6 +325,7 @@ def record_operation(
                 error_message=error_message,
                 mlflow_run_id=mlflow_run_id,
                 training_params_json=training_params_json,
+                env_snapshot=env_snapshot,
             )
             session.add(row)
             # Phase 21.2: backfill the parent agent_runs row's

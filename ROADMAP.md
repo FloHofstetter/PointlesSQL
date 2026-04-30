@@ -2287,7 +2287,7 @@ PointlesSQL
 │           Phase-14 rc3 push (the install still works because
 │           the response shape extension is additive).
 │
-├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2/21.3/21.5/21.6/21.7 done 2026-04-30)
+├── Phase 21 — ML Registry + Auditable Training           ✅ done 2026-04-30 (21.0/21.1/21.2/21.3/21.4/21.5/21.6/21.7)
 │   │
 │   │   The stack today audits *data engineering* end-to-end
 │   │   (Phases 14-20) but has a gap when the workload is *model
@@ -2398,17 +2398,26 @@ PointlesSQL
 │   │       path here covers the audit-of-intent goal without
 │   │       blocking training when MLflow misbehaves.
 │   │
-│   ├── Sprint 21.4 — Lib + Hardware Fingerprint                ⏳
-│   │   ├── ``pip freeze`` snapshot per training op stored in
-│   │   │   ``agent_run_operations.env_snapshot`` (compressed JSON).
-│   │   ├── Hardware fingerprint: CPU model, CUDA version, GPU
-│   │   │   model + driver, ``torch.backends.cudnn.deterministic``
-│   │   │   flag — captured but flagged "advisory only" given the
-│   │   │   non-determinism caveat.
-│   │   ├── Conda env / pyproject hash if running inside a managed
-│   │   │   env so the snapshot is restorable, not just inspectable.
-│   │   └── UI surface: "Repro" sub-tab on run-detail (Phase 17.2)
-│   │       showing the full repro context next to params/metrics.
+│   ├── Sprint 21.4 — Lib + Hardware Fingerprint                 ✅
+│   │   ├── New ``agent_run_operations.env_snapshot`` Text column
+│   │   │   (Alembic ``u1q3r5s7t9v1``) carries an advisory JSON
+│   │   │   blob with three sub-keys: ``python`` (version + cpu
+│   │   │   count + platform), ``packages`` (top 200 distributions
+│   │   │   via ``importlib.metadata`` capped at 4 KiB), ``gpu``
+│   │   │   (when torch + CUDA are available, per-device name +
+│   │   │   total memory).
+│   │   ├── Snapshot built once at module-import time and cached
+│   │   │   for the whole PointlesSQL process; subsequent
+│   │   │   ``record_operation`` calls reuse the cached blob so
+│   │   │   the hot path stays cheap.
+│   │   ├── Run-detail Operations tab gains a collapsed
+│   │   │   "Environment fingerprint" accordion under each op row.
+│   │   ├── Best-effort end-to-end: every sub-step is wrapped in
+│   │   │   try/except and degrades to ``None`` rather than
+│   │   │   blocking the audit row.
+│   │   └── ``cudnn.deterministic`` flag + conda/pyproject hashes +
+│   │       a dedicated "Repro" sub-tab deferred — the column is
+│   │       extension-friendly so future passes can layer them in.
 │   │
 │   ├── Sprint 21.5 — PointlesSQL Models-Tab                    ✅
 │   │   ├── Catalog-tree extended with model nodes (sidebar) +
