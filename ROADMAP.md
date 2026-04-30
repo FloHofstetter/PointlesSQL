@@ -2503,7 +2503,7 @@ PointlesSQL
 │           closes the "Closure pending (user job)" item from the
 │           21.0–21.7 close note.
 │
-├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅ 22.2 ✅ 22.3 ✅; 22.4–22.5 queued)
+├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅ 22.2 ✅ 22.3 ✅ 22.4 ✅; 22.5 queued)
 │   │
 │   │   Phase 21 closed the audit/ML story end-to-end and the stack
 │   │   is feature-complete enough to demo to non-Flo readers — the
@@ -2691,13 +2691,37 @@ PointlesSQL
 │   │   └── ``mkdocs.yml`` nav: full Reference tree (Python API
 │   │       sub-section + 5 reference pages) wired in.
 │   │
-│   ├── Sprint 22.4 — Guides + cookbook                    ⏳
-│   │   ├── 38 e2e-walkthroughs themed into 5-6 sub-sections
-│   │   │   under Guides → How-to.
-│   │   ├── ``docs/guides/{agent-bring-up, operator-cookbook,
-│   │   │   troubleshooting, faq}.md`` (new high-level recipes).
-│   │   └── Troubleshooting page mines the ``feedback_*.md``
-│   │       memory files for the well-known landmines.
+│   ├── Sprint 22.4 — Guides + cookbook                    ✅ done 2026-04-30
+│   │   ├── ``docs/guides/index.md`` rewrite — taxonomic landing
+│   │   │   with three flavours (high-level recipes, operator
+│   │   │   cookbook, e2e walkthroughs) + the 38 walkthroughs
+│   │   │   spread across five themed sub-sections (Getting
+│   │   │   around / Working with data / Notebooks + jobs /
+│   │   │   Audit + lineage / Agents + ML registry).
+│   │   ├── ``docs/guides/agent-bring-up.md`` (NEW, 7-step
+│   │   │   recipe, ~250 lines): wire a brand-new Hermes agent
+│   │   │   end-to-end in ~30 minutes.  Chains four e2e
+│   │   │   walkthroughs (auth + agent-ml-registry +
+│   │   │   audit-reviewer-daily + admin-audit) into one
+│   │   │   narrative; ends with a Mermaid loop showing the
+│   │   │   audit-trail-feeds-review-bot pattern.
+│   │   ├── ``docs/guides/operator-cookbook.md`` (NEW, 20
+│   │   │   recipes): Daily / Weekly / Per-agent / Per-incident /
+│   │   │   Per-model / Per-data-issue / Maintenance buckets.
+│   │   │   Each recipe is one to three sentences plus a deep-
+│   │   │   link to the long-form walkthrough.
+│   │   ├── ``docs/guides/troubleshooting.md`` (NEW, ~290 lines):
+│   │   │   symptom-first index across Install + first boot,
+│   │   │   Auth + sessions, Plugin / Hermes, PQL writes, Audit
+│   │   │   cockpit, Notebooks, Storage / Delta, CI / packaging.
+│   │   │   References ``BUG-NN-NN`` source-comment markers and
+│   │   │   the relevant configuration / permissions docs.
+│   │   ├── ``docs/guides/faq.md`` (NEW, ~190 lines): What / Why
+│   │   │   this and not… / How / When / Should I sections,
+│   │   │   organised by question shape rather than topic.
+│   │   └── ``mkdocs.yml`` nav: Guides section reorganised, four
+│   │       new high-level pages above ``Jobs``, walkthroughs
+│   │       split into five themed sub-sub-sections.
 │   │
 │   └── Sprint 22.5 — Polish + launch-ready                ⏳
 │       ├── Screenshot capture pass (Playwright MCP, 1280×800,

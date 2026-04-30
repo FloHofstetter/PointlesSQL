@@ -6,6 +6,37 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 22.4 — Guides + cookbook.**  The Guides section turns
+  into a real task surface with four new high-level recipes plus
+  a themed reorganisation of the 38 e2e walkthroughs.
+  * `docs/guides/index.md` rewritten as the taxonomic landing
+    with three flavours (high-level recipes, operator cookbook,
+    e2e walkthroughs) and walkthroughs themed into five sub-
+    sections (Getting around / Working with data / Notebooks +
+    jobs / Audit + lineage / Agents + ML registry).
+  * `docs/guides/agent-bring-up.md` (NEW, 7 steps, ~250 lines):
+    wire a brand-new Hermes agent end-to-end in ~30 minutes.
+    Chains four e2e walkthroughs (auth + agent-ml-registry +
+    audit-reviewer-daily + admin-audit) into one narrative; ends
+    with a Mermaid loop showing the audit-trail-feeds-review-bot
+    pattern.
+  * `docs/guides/operator-cookbook.md` (NEW, 20 recipes):
+    Daily / Weekly / Per-agent / Per-incident / Per-model /
+    Per-data-issue / Maintenance buckets.  Each recipe is one to
+    three sentences plus a deep-link to the long-form walkthrough.
+  * `docs/guides/troubleshooting.md` (NEW, ~290 lines): symptom-
+    first index across Install + first boot, Auth + sessions,
+    Plugin / Hermes, PQL writes, Audit cockpit, Notebooks,
+    Storage / Delta, CI / packaging.  References `BUG-NN-NN`
+    source-comment markers and the relevant configuration /
+    permissions docs.
+  * `docs/guides/faq.md` (NEW, ~190 lines): What / Why this and
+    not… / How / When / Should I, organised by question shape
+    rather than topic.
+  * `mkdocs.yml` nav reorganised: four new high-level pages
+    above `Jobs`, walkthroughs split into five themed sub-sub-
+    sections.
+
 - **Sprint 22.3 — Reference manual.**  The Reference section
   becomes the canonical surface for Python API, REST API, CLI,
   configuration, CloudEvents, and permissions.

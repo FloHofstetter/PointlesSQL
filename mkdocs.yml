@@ -101,47 +101,56 @@ nav:
       - PII modes: concepts/pii-modes.md
   - Guides:
       - guides/index.md
+      - Agent bring-up: guides/agent-bring-up.md
+      - Operator cookbook: guides/operator-cookbook.md
+      - Troubleshooting: guides/troubleshooting.md
+      - FAQ: guides/faq.md
       - Jobs: guides/jobs.md
       - E2E walkthroughs:
           - e2e-walkthroughs/README.md
-          - Admin audit: e2e-walkthroughs/admin-audit.md
-          - Agent drift monitor: e2e-walkthroughs/agent_drift_monitor.md
-          - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
-          - Audit reviewer daily: e2e-walkthroughs/audit-reviewer-daily.md
-          - Audit sinks: e2e-walkthroughs/audit-sinks.md
-          - Auth: e2e-walkthroughs/auth.md
-          - Branches: e2e-walkthroughs/branches.md
-          - Catalog browsing: e2e-walkthroughs/catalog-browsing.md
-          - Command palette: e2e-walkthroughs/command-palette.md
-          - Compliance bot: e2e-walkthroughs/compliance-bot.md
-          - Config matrix: e2e-walkthroughs/config-matrix.md
-          - CSRF: e2e-walkthroughs/csrf.md
-          - Dashboards: e2e-walkthroughs/dashboards.md
-          - Error handling: e2e-walkthroughs/error-handling.md
-          - Federation: e2e-walkthroughs/federation.md
-          - Foreign catalog sync: e2e-walkthroughs/foreign-catalog-sync.md
-          - Hermes medallion: e2e-walkthroughs/hermes_medallion.md
-          - Home: e2e-walkthroughs/home.md
-          - Incident responder: e2e-walkthroughs/incident-responder.md
-          - Inference lineage: e2e-walkthroughs/inference-lineage.md
-          - Inline editors: e2e-walkthroughs/inline-editors.md
-          - Jobs DAG: e2e-walkthroughs/jobs-dag.md
-          - List polish: e2e-walkthroughs/list-polish.md
-          - Mobile: e2e-walkthroughs/mobile.md
-          - Models promotion: e2e-walkthroughs/models-promotion.md
-          - Models tab: e2e-walkthroughs/models-tab.md
-          - Notebook editor: e2e-walkthroughs/notebook-editor.md
-          - Notebook full walkthrough: e2e-walkthroughs/notebook_full_walkthrough.md
-          - Notebook jobs: e2e-walkthroughs/notebook-jobs.md
-          - OIDC: e2e-walkthroughs/oidc.md
-          - Operational: e2e-walkthroughs/operational.md
-          - Packaging: e2e-walkthroughs/packaging.md
-          - Rate limit: e2e-walkthroughs/rate-limit.md
-          - Rollback: e2e-walkthroughs/rollback.md
-          - Sprint 13.11 reflexive tools: e2e-walkthroughs/sprint_13_11_reflexive_tools.md
-          - SQL editor: e2e-walkthroughs/sql-editor.md
-          - Time travel: e2e-walkthroughs/time-travel.md
-          - UX overhaul: e2e-walkthroughs/ux-overhaul.md
+          - Getting around:
+              - Home: e2e-walkthroughs/home.md
+              - Catalog browsing: e2e-walkthroughs/catalog-browsing.md
+              - Mobile: e2e-walkthroughs/mobile.md
+              - List polish: e2e-walkthroughs/list-polish.md
+              - Command palette: e2e-walkthroughs/command-palette.md
+              - UX overhaul: e2e-walkthroughs/ux-overhaul.md
+              - Auth: e2e-walkthroughs/auth.md
+              - CSRF: e2e-walkthroughs/csrf.md
+              - Rate limit: e2e-walkthroughs/rate-limit.md
+              - OIDC: e2e-walkthroughs/oidc.md
+          - Working with data:
+              - SQL editor: e2e-walkthroughs/sql-editor.md
+              - Inline editors: e2e-walkthroughs/inline-editors.md
+              - Time travel: e2e-walkthroughs/time-travel.md
+              - Branches: e2e-walkthroughs/branches.md
+              - Hermes medallion: e2e-walkthroughs/hermes_medallion.md
+              - Federation: e2e-walkthroughs/federation.md
+              - Foreign catalog sync: e2e-walkthroughs/foreign-catalog-sync.md
+              - Dashboards: e2e-walkthroughs/dashboards.md
+              - Config matrix: e2e-walkthroughs/config-matrix.md
+              - Error handling: e2e-walkthroughs/error-handling.md
+              - Packaging: e2e-walkthroughs/packaging.md
+          - Notebooks + jobs:
+              - Notebook editor: e2e-walkthroughs/notebook-editor.md
+              - Notebook full walkthrough: e2e-walkthroughs/notebook_full_walkthrough.md
+              - Notebook jobs: e2e-walkthroughs/notebook-jobs.md
+              - Jobs DAG: e2e-walkthroughs/jobs-dag.md
+          - Audit + lineage:
+              - Admin audit: e2e-walkthroughs/admin-audit.md
+              - Audit sinks: e2e-walkthroughs/audit-sinks.md
+              - Audit reviewer daily: e2e-walkthroughs/audit-reviewer-daily.md
+              - Compliance bot: e2e-walkthroughs/compliance-bot.md
+              - Incident responder: e2e-walkthroughs/incident-responder.md
+              - Rollback: e2e-walkthroughs/rollback.md
+              - Operational: e2e-walkthroughs/operational.md
+              - Agent drift monitor: e2e-walkthroughs/agent_drift_monitor.md
+          - Agents + ML registry:
+              - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
+              - Models tab: e2e-walkthroughs/models-tab.md
+              - Models promotion: e2e-walkthroughs/models-promotion.md
+              - Inference lineage: e2e-walkthroughs/inference-lineage.md
+              - Sprint 13.11 reflexive tools: e2e-walkthroughs/sprint_13_11_reflexive_tools.md
   - Reference:
       - reference/index.md
       - Python API:
