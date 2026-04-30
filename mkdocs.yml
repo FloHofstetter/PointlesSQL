@@ -144,6 +144,15 @@ nav:
           - UX overhaul: e2e-walkthroughs/ux-overhaul.md
   - Reference:
       - reference/index.md
+      - Python API:
+          - reference/python/index.md
+          - PQL class: reference/python/pql.md
+          - Service modules: reference/python/services.md
+      - REST API: reference/api.md
+      - CLI: reference/cli.md
+      - Configuration: reference/configuration.md
+      - CloudEvents: reference/cloudevents.md
+      - Permissions: reference/permissions.md
   - Integrations:
       - integrations/index.md
       - Hermes jobs:

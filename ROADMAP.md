@@ -2503,7 +2503,7 @@ PointlesSQL
 │           closes the "Closure pending (user job)" item from the
 │           21.0–21.7 close note.
 │
-├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅ 22.2 ✅; 22.3–22.5 queued)
+├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅ 22.2 ✅ 22.3 ✅; 22.4–22.5 queued)
 │   │
 │   │   Phase 21 closed the audit/ML story end-to-end and the stack
 │   │   is feature-complete enough to demo to non-Flo readers — the
@@ -2643,16 +2643,53 @@ PointlesSQL
 │   │   └── ``mkdocs.yml`` nav: four new concept pages wired in
 │   │       above the existing reference-style ones.
 │   │
-│   ├── Sprint 22.3 — Reference manual                     ⏳
-│   │   ├── ``docs/reference/python/{pql, services, index}.md``
-│   │   │   (mkdocstrings auto-gen).
-│   │   ├── ``docs/reference/api.md`` — auto-generated from
-│   │   │   ``app.openapi()`` via ``scripts/gen_api_docs.py`` plus
-│   │   │   a hand-polished prelude over the 30 most-used routes.
-│   │   ├── ``docs/reference/{cli, configuration, cloudevents,
-│   │   │   permissions}.md``.
-│   │   └── Pre-commit hook re-runs the gen-scripts on touched
-│   │       source files.
+│   ├── Sprint 22.3 — Reference manual                     ✅ done 2026-04-30
+│   │   ├── ``docs/reference/python/index.md`` — landing page
+│   │   │   distinguishing auto-gen (``PQL`` + service modules)
+│   │   │   from hand-written (REST top-30 + CLI) reference.
+│   │   ├── ``docs/reference/python/pql.md`` — mkdocstrings
+│   │   │   directive against ``pointlessql.pql.pql.PQL`` (Google
+│   │   │   docstring style, members_order=source, ``filters: !^_``)
+│   │   │   plus a usage preface showing all 19 primitives in one
+│   │   │   block.
+│   │   ├── ``docs/reference/python/services.md`` — mkdocstrings
+│   │   │   for five service modules: ``agent_runs.operations``
+│   │   │   (record_operation forced-audit), ``agent_runs.training_context``
+│   │   │   (Phase 21.3 autolog wrap), ``audit`` (base writer),
+│   │   │   ``branch_tags`` (Delta-branching), ``mlflow_subprocess``
+│   │   │   (lazy MLflow lifespan).
+│   │   ├── ``docs/reference/api.md`` — hand-curated top-30 REST
+│   │   │   reference grouped by tag (Auth, Agent runs, PQL writes,
+│   │   │   Models, Lineage, Branches, Audit cockpit, Reviews,
+│   │   │   Admin API keys, Audit sinks, Health/metrics).  Tier
+│   │   │   icons (🍪 🔑 👮 🕵 ⚙) per route + canonical error
+│   │   │   envelope shape.  Auto-generated appendix for the
+│   │   │   remaining ~180 routes deferred to 22.5.
+│   │   ├── ``docs/reference/cli.md`` — ``pointlessql`` Typer
+│   │   │   surface (no-arg dev server + ``admin issue-auditor-key``)
+│   │   │   with synopsis, options table, output sample, exit
+│   │   │   codes, and an explicit "what's *not* in the CLI" list.
+│   │   ├── ``docs/reference/configuration.md`` — every
+│   │   │   ``POINTLESSQL_*`` env var grouped by ``settings.py``
+│   │   │   sub-model (18 sub-models + the four special agent-run
+│   │   │   env vars + GHCR_PAT) with rationale per setting.
+│   │   ├── ``docs/reference/cloudevents.md`` — all 12 emitted
+│   │   │   ``pointlessql.<domain>.<verb>`` types across five
+│   │   │   domains (agent_run lifecycle, cost gate, rollback,
+│   │   │   lineage retention, external writes, policy violations,
+│   │   │   audit export, MLflow link, model promotion) with
+│   │   │   payload schemas + examples + HMAC-signing convention.
+│   │   ├── ``docs/reference/permissions.md`` — the trust-tier
+│   │   │   matrix (Anonymous → Cookie → API key → +supervisor /
+│   │   │   +auditor → Admin), asymmetric scope ladder, server-side
+│   │   │   FastAPI dependency mapping, plugin-side family gating,
+│   │   │   admin-only actions list, "why no per-table ACLs"
+│   │   │   rationale.
+│   │   ├── ``docs/reference/index.md`` — replaces the placeholder
+│   │   │   with a real audience-grouped landing + hand-written-
+│   │   │   vs-auto-gen drift-handling table.
+│   │   └── ``mkdocs.yml`` nav: full Reference tree (Python API
+│   │       sub-section + 5 reference pages) wired in.
 │   │
 │   ├── Sprint 22.4 — Guides + cookbook                    ⏳
 │   │   ├── 38 e2e-walkthroughs themed into 5-6 sub-sections

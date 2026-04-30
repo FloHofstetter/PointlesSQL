@@ -6,6 +6,43 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 22.3 — Reference manual.**  The Reference section
+  becomes the canonical surface for Python API, REST API, CLI,
+  configuration, CloudEvents, and permissions.
+  * `docs/reference/python/pql.md` — mkdocstrings directive
+    against `pointlessql.pql.pql.PQL` plus a usage preface
+    showing all 19 primitives.
+  * `docs/reference/python/services.md` — mkdocstrings for five
+    service modules: `agent_runs.operations`,
+    `agent_runs.training_context`, `audit`, `branch_tags`,
+    `mlflow_subprocess`.
+  * `docs/reference/python/index.md` — landing distinguishing
+    auto-gen (Python class methods) from hand-written (REST +
+    CLI).
+  * `docs/reference/api.md` — hand-curated top-30 REST reference
+    grouped by tag (Auth, Agent runs, PQL writes, Models,
+    Lineage, Branches, Audit cockpit, Reviews, Admin API keys,
+    Audit sinks, Health/metrics) with tier icons (🍪 🔑 👮 🕵 ⚙)
+    per route + canonical error envelope shape.  Auto-generated
+    appendix for the remaining ~180 routes deferred to 22.5.
+  * `docs/reference/cli.md` — `pointlessql` Typer surface with
+    synopsis, options table, output sample, exit codes, "what's
+    *not* in the CLI" list.
+  * `docs/reference/configuration.md` — every `POINTLESSQL_*`
+    env var grouped by `settings.py` sub-model (18 sub-models +
+    four special agent-run env vars + `GHCR_PAT`) with rationale
+    per setting.
+  * `docs/reference/cloudevents.md` — all 12 emitted
+    `pointlessql.<domain>.<verb>` event types with payload
+    schemas + examples + HMAC-signing convention.
+  * `docs/reference/permissions.md` — trust-tier matrix
+    (Anonymous → Cookie → API key → +supervisor / +auditor →
+    Admin), asymmetric scope ladder, FastAPI dependency mapping,
+    plugin family gating, "why no per-table ACLs" rationale.
+  * `docs/reference/index.md` — real audience-grouped landing.
+  * `mkdocs.yml` nav: full Reference tree wired in (Python API
+    sub-section + 5 reference pages).
+
 - **Sprint 22.2 — Architecture + concepts pages.**  The Concepts
   section turns from three reference-style files into a real
   deep-dive surface — architecture, audit trail, lineage, and
