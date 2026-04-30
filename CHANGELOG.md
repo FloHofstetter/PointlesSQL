@@ -6,6 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 21.8 — Hermes plugin extension (Phase 21 cross-repo
+  closure).** Two commits, one logical unit:
+  * Server: extends `POST /api/pql/write_table` + `POST /api/pql/merge`
+    bodies with optional `source_model_uri`; the write route
+    auto-derives `source_table_fqn` from the SELECT when there's
+    exactly one ref so the row-edge grain anchors cleanly.
+    `PQL.merge()` Python sig grows the same kwarg for symmetry with
+    `write_table`.  New `POST /api/pql/training/log` endpoint writes
+    a one-shot `record_operation(op_name="train_model",
+    training_params_json={"params":..., "metrics":...})` row — the
+    HTTP-only equivalent of `pql.training_context()` for httpx
+    callers.  Tests: 19 (3 source_model_uri + 7 training-log + 9
+    write-routes regression).
+  * Plugin (`hermes-plugin-pointlessql`, commit `f01d4e0`): adds 8
+    new tools — `pql_list_models`, `pql_get_model`,
+    `pql_get_model_predictions`, `pql_get_model_lineage`,
+    `pql_get_model_runs`, `pql_get_promotion_history`,
+    `pql_log_training_run` (always-on Family A) plus
+    `pql_promote_model` (supervisor-gated, Family B).  Extends
+    `pql_write_table` + `pql_merge` to accept `source_model_uri`.
+    Tool count 34 → 42.  Tests: 19 new (10 model_tools + 5
+    log_training + 2 write extension + 2 merge extension); 101/101
+    plugin pytest grün.
+  * Closes the "Closure pending (user job): Hermes plugin
+    extension" item from the 21.0–21.7 close note in
+    `project_phase21_closed.md`.
+
 - **Phase 21 closed — ML Registry + Auditable Training.** Eight
   sub-sprints landed in two autonomous sessions on 2026-04-30:
   21.0 (MLflow subprocess + `/mlflow/` proxy + tab), 21.1 (soyuz

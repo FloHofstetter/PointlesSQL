@@ -2287,7 +2287,7 @@ PointlesSQL
 │           Phase-14 rc3 push (the install still works because
 │           the response shape extension is additive).
 │
-├── Phase 21 — ML Registry + Auditable Training           ✅ done 2026-04-30 (21.0/21.1/21.2/21.3/21.4/21.5/21.6/21.7)
+├── Phase 21 — ML Registry + Auditable Training           ✅ done 2026-04-30 (21.0/21.1/21.2/21.3/21.4/21.5/21.6/21.7/21.8)
 │   │
 │   │   The stack today audits *data engineering* end-to-end
 │   │   (Phases 14-20) but has a gap when the workload is *model
@@ -2458,26 +2458,50 @@ PointlesSQL
 │   │   └── First-class soyuz aliases deferred — marker convention
 │   │       gives equivalent semantics without a soyuz schema bump.
 │   │
-│   └── Sprint 21.7 — Inference-Lineage (model → predictions)    ✅
-│       ├── New ``source_model_uri`` nullable column on
-│       │   ``lineage_row_edges`` (Alembic ``s9o1p3r5t7u9``); every
-│       │   row-edge produced by an inference write carries the
-│       │   originating ``models:/{full_name}/{version}`` URI.
-│       ├── ``pql.write_table()`` accepts a new
-│       │   ``source_model_uri`` kwarg that propagates through the
-│       │   operation_context recorder and ``record_edges`` into
-│       │   the column above.
-│       ├── New ``aggregate_prediction_tables_for_model`` aggregator
-│       │   feeds ``GET /api/models/{full_name}/predictions`` and
-│       │   the bidirectional model-lineage graph.
-│       ├── ``build_model_lineage_graph`` extended to include
-│       │   prediction nodes (``kind="prediction"``) with dashed
-│       │   blue ``inferred_to`` edges; cytoscape style + legend
-│       │   updated.
-│       ├── New "Prediction tables" card on the model-detail
-│       │   Lineage tab.
-│       └── Drift alerts + dedicated ``pql.predict`` helper +
-│           cost-per-1k-inferences deferred to Phase 22+.
+│   ├── Sprint 21.7 — Inference-Lineage (model → predictions)    ✅
+│   │   ├── New ``source_model_uri`` nullable column on
+│   │   │   ``lineage_row_edges`` (Alembic ``s9o1p3r5t7u9``); every
+│   │   │   row-edge produced by an inference write carries the
+│   │   │   originating ``models:/{full_name}/{version}`` URI.
+│   │   ├── ``pql.write_table()`` accepts a new
+│   │   │   ``source_model_uri`` kwarg that propagates through the
+│   │   │   operation_context recorder and ``record_edges`` into
+│   │   │   the column above.
+│   │   ├── New ``aggregate_prediction_tables_for_model`` aggregator
+│   │   │   feeds ``GET /api/models/{full_name}/predictions`` and
+│   │   │   the bidirectional model-lineage graph.
+│   │   ├── ``build_model_lineage_graph`` extended to include
+│   │   │   prediction nodes (``kind="prediction"``) with dashed
+│   │   │   blue ``inferred_to`` edges; cytoscape style + legend
+│   │   │   updated.
+│   │   ├── New "Prediction tables" card on the model-detail
+│   │   │   Lineage tab.
+│   │   └── Drift alerts + dedicated ``pql.predict`` helper +
+│   │       cost-per-1k-inferences deferred to Phase 22+.
+│   │
+│   └── Sprint 21.8 — Hermes plugin extension (cross-repo closure) ✅
+│       ├── ``POST /api/pql/write_table`` + ``POST /api/pql/merge``
+│       │   bodies grow optional ``source_model_uri``; the write
+│       │   route auto-derives ``source_table_fqn`` from the SELECT
+│       │   when there's exactly one ref so the row-edge grain
+│       │   anchors cleanly.
+│       ├── ``PQL.merge()`` Python sig grows ``source_model_uri``
+│       │   for symmetry with ``PQL.write_table()``; threaded into
+│       │   ``recorder.extra_params`` + ``recorder.pending_lineage_edges``.
+│       ├── New ``POST /api/pql/training/log`` endpoint persists a
+│       │   one-shot ``record_operation(op_name="train_model",
+│       │   training_params_json={...})`` row — HTTP-only equivalent
+│       │   of ``pql.training_context()`` for the plugin's httpx-only
+│       │   transport.
+│       ├── Plugin commit ``f01d4e0``: 8 new tools (list_models /
+│       │   get_model / get_model_predictions / get_model_lineage /
+│       │   get_model_runs / get_promotion_history / log_training_run
+│       │   + supervisor-gated promote_model) + 2 extended
+│       │   (write_table + merge accept source_model_uri).  Tool
+│       │   count 34 → 42.
+│       └── Server commit ``5919c63``, plugin commit ``f01d4e0``;
+│           closes the "Closure pending (user job)" item from the
+│           21.0–21.7 close note.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

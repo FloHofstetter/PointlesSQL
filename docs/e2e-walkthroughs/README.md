@@ -135,6 +135,12 @@ model lives in soyuz:
     upstream (`trained_from`) and downstream (`inferred_to`)
     halves of the bidirectional DAG, the Predictions card
     surfaces the target-table edge counts.
+18. [`agent-ml-registry.md`](agent-ml-registry.md) — Sprint 21.8
+    cross-repo closure.  An agent connected through
+    `hermes-plugin-pointlessql` exercises the eight new ML-
+    Registry tools end-to-end (browse → log-training → write
+    inference → promote) — fully HTTP-only, no PointlesSQL
+    imports on the agent side.
 
 ## Stack start
 
