@@ -168,10 +168,13 @@ async def test_write_table_admin_runs_select_and_writes(
         def __init__(self, **kwargs: Any) -> None:
             captured["init"] = kwargs
 
-        def write_table(self, df: Any, full_name: str, *, mode: str) -> None:
+        def write_table(
+            self, df: Any, full_name: str, *, mode: str, **kwargs: Any
+        ) -> None:
             captured["df_rows"] = int(len(df))
             captured["target"] = full_name
             captured["mode"] = mode
+            captured["write_kwargs"] = kwargs
 
     monkeypatch.setattr(pql_write_routes, "_build_pql", lambda r, **kw: _FakePQL(**kw))
     async with _admin_client() as client:
@@ -226,11 +229,13 @@ async def test_merge_admin_dispatches_with_keys(
             *,
             on: list[str],
             strategy: str,
+            **kwargs: Any,
         ) -> dict[str, Any]:
             captured["source_rows"] = int(len(source))
             captured["target"] = target
             captured["on"] = on
             captured["strategy"] = strategy
+            captured["merge_kwargs"] = kwargs
             return {
                 "strategy": strategy,
                 "num_target_rows_inserted": 0,

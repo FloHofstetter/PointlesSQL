@@ -356,9 +356,13 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
     Args:
         request: Incoming FastAPI request.
         body: JSON body with ``sql`` (the source SELECT), ``target``
-            (3-part UC name), and ``mode`` (one of ``"error"`` /
+            (3-part UC name), ``mode`` (one of ``"error"`` /
             ``"append"`` / ``"overwrite"`` / ``"ignore"``, default
-            ``"overwrite"``).
+            ``"overwrite"``), and optional ``source_model_uri``
+            (Sprint 21.8 — registered-model URI of the form
+            ``models:/cat.sch.model/<version>`` when *df* is the
+            output of inference against a model; threaded into
+            ``lineage_row_edges.source_model_uri``).
 
     Returns:
         ``{"target", "mode", "rows_written"}`` — the row count is
@@ -379,6 +383,7 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
     sql = (body or {}).get("sql", "")
     target = (body or {}).get("target", "")
     mode = (body or {}).get("mode", "overwrite")
+    source_model_uri_raw = (body or {}).get("source_model_uri")
 
     if not isinstance(sql, str) or not sql.strip():
         raise ValidationError("sql is required and must be a string.")
@@ -388,6 +393,13 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
         raise ValidationError(
             f"mode must be one of {_VALID_WRITE_MODES!r}.",
         )
+    source_model_uri: str | None = None
+    if source_model_uri_raw is not None:
+        if not isinstance(source_model_uri_raw, str) or not source_model_uri_raw.strip():
+            raise ValidationError(
+                "source_model_uri must be a non-empty string when provided."
+            )
+        source_model_uri = source_model_uri_raw.strip()
 
     try:
         prepared = prepare_sql(sql)
@@ -401,10 +413,25 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
     email = effective_principal(request) or user.get("email", "")
     agent_run_id = effective_agent_run_id(request)
 
+    # When the agent declares this write as inference output, auto-derive
+    # source_table_fqn from the SELECT refs so the row-edge grain in
+    # lineage_row_edges has somewhere to anchor (Sprint 21.7's primitive
+    # only persists source_model_uri alongside a source table).  Skip
+    # auto-derive when the SELECT references multiple tables — ambiguous.
+    derived_source_fqn: str | None = None
+    if source_model_uri and len(prepared.refs) == 1:
+        derived_source_fqn = prepared.refs[0]
+
     def _run() -> dict[str, Any]:
         df = _materialise_select_to_pandas(sql, approved)
         pql = _build_pql(request, principal=email, agent_run_id=agent_run_id)
-        pql.write_table(df, target, mode=mode)
+        pql.write_table(
+            df,
+            target,
+            mode=mode,
+            source_table_fqn=derived_source_fqn,
+            source_model_uri=source_model_uri,
+        )
         return {
             "target": target,
             "mode": mode,
@@ -412,15 +439,18 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
         }
 
     result = await asyncio.to_thread(_run)
+    audit_extra: dict[str, Any] = {
+        "mode": mode,
+        "rows_written": result["rows_written"],
+        "source_refs": prepared.refs,
+    }
+    if source_model_uri:
+        audit_extra["source_model_uri"] = source_model_uri
     await audit(
         request,
         "pql.write_table",
         f"table:{target}",
-        {
-            "mode": mode,
-            "rows_written": result["rows_written"],
-            "source_refs": prepared.refs,
-        },
+        audit_extra,
     )
     return result
 
@@ -445,8 +475,11 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
     Args:
         request: Incoming FastAPI request.
         body: JSON body with ``sql`` (source SELECT), ``target`` (3-part
-            UC name), ``on`` (non-empty list of merge-key columns), and
-            ``strategy`` (``"upsert"`` default, or ``"scd2"``).
+            UC name), ``on`` (non-empty list of merge-key columns),
+            ``strategy`` (``"upsert"`` default, or ``"scd2"``), and
+            optional ``source_model_uri`` (Sprint 21.8 — registered-
+            model URI when the merge writes inference outputs into an
+            existing predictions table).
 
     Returns:
         The merge stats dict from :meth:`PQL.merge` — carries
@@ -469,6 +502,7 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
     target = (body or {}).get("target", "")
     on_raw = (body or {}).get("on", [])
     strategy = (body or {}).get("strategy", "upsert")
+    source_model_uri_raw = (body or {}).get("source_model_uri")
 
     if not isinstance(sql, str) or not sql.strip():
         raise ValidationError("sql is required and must be a string.")
@@ -487,6 +521,13 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
         raise ValidationError(
             f"strategy must be one of {_VALID_MERGE_STRATEGIES!r}.",
         )
+    source_model_uri: str | None = None
+    if source_model_uri_raw is not None:
+        if not isinstance(source_model_uri_raw, str) or not source_model_uri_raw.strip():
+            raise ValidationError(
+                "source_model_uri must be a non-empty string when provided."
+            )
+        source_model_uri = source_model_uri_raw.strip()
 
     try:
         prepared = prepare_sql(sql)
@@ -500,21 +541,35 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
     email = effective_principal(request) or user.get("email", "")
     agent_run_id = effective_agent_run_id(request)
 
+    derived_source_fqn: str | None = None
+    if source_model_uri and len(prepared.refs) == 1:
+        derived_source_fqn = prepared.refs[0]
+
     def _run() -> dict[str, Any]:
         df = _materialise_select_to_pandas(sql, approved)
         pql = _build_pql(request, principal=email, agent_run_id=agent_run_id)
-        return pql.merge(df, target, on=on, strategy=strategy)
+        return pql.merge(
+            df,
+            target,
+            on=on,
+            strategy=strategy,
+            source_table_fqn=derived_source_fqn,
+            source_model_uri=source_model_uri,
+        )
 
     result = await asyncio.to_thread(_run)
+    audit_extra: dict[str, Any] = {
+        "strategy": strategy,
+        "on": on,
+        "source_refs": prepared.refs,
+    }
+    if source_model_uri:
+        audit_extra["source_model_uri"] = source_model_uri
     await audit(
         request,
         "pql.merge",
         f"table:{target}",
-        {
-            "strategy": strategy,
-            "on": on,
-            "source_refs": prepared.refs,
-        },
+        audit_extra,
     )
     return result
 

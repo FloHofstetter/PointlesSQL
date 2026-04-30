@@ -50,6 +50,7 @@ from pointlessql.api.models_html_routes import router as models_html_router
 from pointlessql.api.models_routes import router as models_router
 from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
+from pointlessql.api.pql_training_routes import router as pql_training_router
 from pointlessql.api.pql_write_routes import router as pql_write_router
 from pointlessql.api.queries_routes import router as queries_router
 from pointlessql.api.review_destinations_routes import router as review_destinations_router
@@ -440,6 +441,7 @@ app.include_router(agent_reviews_router)
 app.include_router(branches_router)
 app.include_router(pql_introspect_router)
 app.include_router(pql_write_router)
+app.include_router(pql_training_router)
 app.include_router(federation_router)
 app.include_router(jobs_router)
 app.include_router(dashboards_router)

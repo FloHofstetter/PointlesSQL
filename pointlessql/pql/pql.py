@@ -298,6 +298,7 @@ class PQL:
         on: list[str],
         strategy: MergeStrategy = "upsert",
         source_table_fqn: str | None = None,
+        source_model_uri: str | None = None,
         track_rejects: bool = False,
         track_value_changes: bool = False,
         derivations: Mapping[str, Sequence[str]] | None = None,
@@ -330,6 +331,13 @@ class PQL:
                 ``source_table_fqn → target`` shows up on the lineage
                 card.  When *source* is itself a UC string the helper
                 derives this automatically below.
+            source_model_uri: Sprint 21.8 — optional registered-model
+                URI ``models:/cat.sch.model/<version>`` declaring
+                that *source* is the output of inference against a
+                model.  Stamps every row-edge with the model URI so
+                the model-detail Lineage DAG can paint *target* as a
+                downstream prediction node when merging into a
+                pre-existing predictions table.
             track_rejects: When ``True``, scan the source pre-merge
                 for rows that won't land (NULL ``on`` key, duplicate
                 key in source) and record them on
@@ -365,6 +373,7 @@ class PQL:
             unreachable_msg=self._unreachable_msg(),
             agent_run_id=self._current_run_id,
             source_table_fqn=derived_source_fqn,
+            source_model_uri=source_model_uri,
             track_rejects=track_rejects,
             track_value_changes=track_value_changes,
             derivations=derivations,

@@ -80,6 +80,7 @@ def merge_table(
     unreachable_msg: str,
     agent_run_id: str | None = None,
     source_table_fqn: str | None = None,
+    source_model_uri: str | None = None,
     track_rejects: bool = False,
     track_value_changes: bool = False,
     derivations: Mapping[str, Sequence[str]] | None = None,
@@ -113,6 +114,14 @@ def merge_table(
             in the lineage graph (Sprint 15.1).  ``None`` when the
             source is an in-memory frame with no UC origin — the
             audit row is still written but no lineage edge appears.
+        source_model_uri: Sprint 21.7 — when set, declares the
+            originating registered-model URI
+            (``models:/cat.sch.model/<version>``) so every
+            ``lineage_row_edges`` row produced by this merge carries
+            the model provenance.  Effective only when
+            ``source_table_fqn`` is also set (the row-edge grain
+            needs a source table to be meaningful).  Sprint 21.8
+            extension mirroring :func:`pointlessql.pql._write.write_table`.
         track_rejects: When ``True``, scan the source frame for
             rows that won't land in the target (NULL ``on`` keys,
             duplicate keys within the source) and bulk-insert one
@@ -208,12 +217,15 @@ def merge_table(
             extras: dict[str, Any] = {"stats": _stats_for_audit(stats)}
             if source_table_fqn:
                 extras["source_table_fqn"] = source_table_fqn
+            if source_model_uri:
+                extras["source_model_uri"] = source_model_uri
             recorder.extra_params = extras
             if source_row_ids and source_table_fqn:
                 recorder.pending_lineage_edges = {
                     "source_table": source_table_fqn,
                     "source_row_ids": source_row_ids,
                     "target_row_ids": target_row_ids,
+                    "source_model_uri": source_model_uri,
                 }
             if rejects and source_table_fqn:
                 recorder.pending_rejects = {
