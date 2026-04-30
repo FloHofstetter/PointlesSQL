@@ -2287,7 +2287,7 @@ PointlesSQL
 │           Phase-14 rc3 push (the install still works because
 │           the response shape extension is additive).
 │
-├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2/21.5/21.6/21.7 done 2026-04-30)
+├── Phase 21 — ML Registry + Auditable Training           ⏳ in progress (21.0/21.1/21.2/21.3/21.5/21.6/21.7 done 2026-04-30)
 │   │
 │   │   The stack today audits *data engineering* end-to-end
 │   │   (Phases 14-20) but has a gap when the workload is *model
@@ -2377,19 +2377,26 @@ PointlesSQL
 │   │   │   query that plain-MLflow can't answer.
 │   │   └── Audit-cockpit (Phase 18) gains an "ML" axis.
 │   │
-│   ├── Sprint 21.3 — Forced ML-Param-Capture (analog 13.8)      ⏳
-│   │   ├── Wrap ``mlflow.start_run`` in agent-run contexts so
-│   │   │   ``autolog()`` is mandatory, not opt-in — the same
-│   │   │   "Forced Audit Trail" logic as Phase 13.8 read-audit.
-│   │   ├── If a training op completes without any logged params,
-│   │   │   raise an ``UnauditedTrainingError`` (fail-loud, like
-│   │   │   ``RollbackError`` in Phase 16).  Suppressible via
-│   │   │   explicit ``@no_audit`` decorator that itself logs.
-│   │   ├── Captured per training op: ``params`` dict, ``metrics``
-│   │   │   dict, framework name + version, ``set_seed`` calls
-│   │   │   intercepted from numpy/torch/tf/random.
-│   │   └── ``pointlessql.model.trained`` CloudEvent for Phase-19
-│   │       audit-reviewer-agent consumption.
+│   ├── Sprint 21.3 — Forced Autolog (training param/metric capture) ✅
+│   │   ├── New ``pql.training_context()`` context-manager wraps a
+│   │   │   training block, enables ``mlflow.autolog()`` for the
+│   │   │   requested framework hint, and at exit copies
+│   │   │   ``run.data.params`` + ``run.data.metrics`` into a
+│   │   │   JSON blob on ``agent_run_operations.training_params_json``
+│   │   │   (Alembic ``t0p2q4r6s8u0``).
+│   │   ├── Best-effort: works without the mlflow extra (audit row
+│   │   │   still lands), without a live tracking server (snapshot
+│   │   │   stays empty), and even when the wrapped training body
+│   │   │   raises (partial autolog state captured before re-raise).
+│   │   ├── ``train_model`` added to the ``op_name`` enum + CHECK
+│   │   │   constraint.
+│   │   ├── Run-detail Operations tab gains a collapsed "Training
+│   │   │   params + metrics" accordion underneath each
+│   │   │   ``train_model`` op row.
+│   │   └── Strict fail-loud (``UnauditedTrainingError``) +
+│   │       framework/seed interceptors deferred — the best-effort
+│   │       path here covers the audit-of-intent goal without
+│   │       blocking training when MLflow misbehaves.
 │   │
 │   ├── Sprint 21.4 — Lib + Hardware Fingerprint                ⏳
 │   │   ├── ``pip freeze`` snapshot per training op stored in

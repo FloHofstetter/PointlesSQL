@@ -589,6 +589,50 @@
                                     </td>
                                 </tr>
                                 {% endif %}
+                                {% if op.training_params %}
+                                {# Sprint 21.3 — autolog snapshot. #}
+                                <tr>
+                                    <td></td>
+                                    <td colspan="6" class="small">
+                                        <details>
+                                            <summary class="text-info">
+                                                <i class="bi bi-mortarboard me-1"></i>
+                                                Training params + metrics
+                                                ({{ op.training_params.params | length }} params,
+                                                 {{ op.training_params.metrics | length }} metrics)
+                                            </summary>
+                                            <div class="row mt-2 ps-3">
+                                                {% if op.training_params.params %}
+                                                <div class="col-md-6">
+                                                    <div class="text-muted">Params</div>
+                                                    <table class="table table-sm table-borderless mb-0 small">
+                                                        {% for name, val in op.training_params.params.items() %}
+                                                        <tr>
+                                                            <td class="font-monospace text-muted">{{ name }}</td>
+                                                            <td class="font-monospace">{{ val }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </table>
+                                                </div>
+                                                {% endif %}
+                                                {% if op.training_params.metrics %}
+                                                <div class="col-md-6">
+                                                    <div class="text-muted">Metrics</div>
+                                                    <table class="table table-sm table-borderless mb-0 small">
+                                                        {% for name, val in op.training_params.metrics.items() %}
+                                                        <tr>
+                                                            <td class="font-monospace text-muted">{{ name }}</td>
+                                                            <td class="font-monospace">{{ '%.4g' | format(val) if val is number else val }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </table>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </details>
+                                    </td>
+                                </tr>
+                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>

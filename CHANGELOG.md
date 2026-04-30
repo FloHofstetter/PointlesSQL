@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 21.3 — Forced Autolog (training param/metric capture).**
+  New `pql.training_context()` context-manager wraps a training
+  block, calls `mlflow.autolog()` for the requested framework hint
+  (`"auto"` covers sklearn/xgboost/torch/tf out of the box), opens
+  an MLflow run (or nests under an outer one), and at exit copies
+  `run.data.params + run.data.metrics` into a JSON blob on
+  `agent_run_operations.training_params_json` (new Alembic migration
+  `t0p2q4r6s8u0`). The op_name enum gained `train_model`. The
+  Run-detail Operations tab now renders a collapsed "Training
+  params + metrics" accordion underneath each `train_model` row
+  with the snapshot rendered as two side-by-side tables. The
+  whole layer is best-effort: works without the mlflow extra
+  (audit row still lands, snapshot stays empty), with an
+  unreachable tracking server, and when the wrapped training body
+  raises (partial autolog state is captured before re-raise so
+  the audit trail never loses a training-event). 7 new pytest
+  cases. Fail-loud `UnauditedTrainingError` and seed-interceptor
+  capture deferred — the best-effort path here covers the
+  audit-of-intent goal without blocking training when MLflow
+  misbehaves.
+
 - **Sprint 21.7 — Inference-Lineage (model → prediction tables).**
   Closes the second half of the model-lineage graph: when
   `pql.write_table(predictions, target, source_model_uri="models:/

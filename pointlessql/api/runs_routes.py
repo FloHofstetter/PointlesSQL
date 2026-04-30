@@ -460,6 +460,17 @@ def _load_operations_for_run(
             params = json.loads(row.params_json)
         except json.JSONDecodeError:
             params = {}
+        training_params: dict[str, Any] | None = None
+        if row.training_params_json:
+            try:
+                parsed_tp = json.loads(row.training_params_json)
+                if isinstance(parsed_tp, dict):
+                    training_params = {
+                        "params": parsed_tp.get("params") or {},
+                        "metrics": parsed_tp.get("metrics") or {},
+                    }
+            except json.JSONDecodeError:
+                training_params = None
         out.append(
             {
                 "id": row.id,
@@ -478,6 +489,7 @@ def _load_operations_for_run(
                 "status": "error" if row.error_message else "ok",
                 "column_edges_count": column_edge_counts.get(row.id, 0),
                 "value_changes_count": value_change_counts.get(row.id, 0),
+                "training_params": training_params,
             }
         )
     return out

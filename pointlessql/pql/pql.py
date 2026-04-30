@@ -370,6 +370,52 @@ class PQL:
             derivations=derivations,
         )
 
+    def training_context(
+        self,
+        *,
+        framework: str = "auto",
+        op_name: str = "train_model",
+        params: Mapping[str, Any] | None = None,
+    ) -> Any:
+        """Wrap a training block so MLflow autolog fires + audit row lands.
+
+        Sprint 21.3 — agents call::
+
+            with pql.training_context(framework="sklearn"):
+                model.fit(X, y)
+
+        The wrapper enables ``mlflow.autolog()`` for the requested
+        framework, opens an MLflow run (or nests under an outer one),
+        captures ``run.data.params + .metrics`` at exit, and stores
+        the JSON-encoded snapshot on the audit operation row's
+        ``training_params_json`` column. Best-effort: works without
+        MLflow installed (audit row still lands, snapshot is empty).
+
+        Args:
+            framework: Hint for ``mlflow.autolog`` flavor; defaults to
+                ``"auto"``.
+            op_name: Audit-row label; defaults to ``"train_model"``.
+            params: Optional initial params dict merged into the
+                operation row.
+
+        Returns:
+            A context manager yielding a
+            :class:`~pointlessql.services.agent_runs.training_context.TrainingRecorder`.
+        """
+        from pointlessql.db import get_session_factory
+        from pointlessql.services.agent_runs.training_context import (
+            training_context as _training_context,
+        )
+
+        factory = get_session_factory() if self._current_run_id else None
+        return _training_context(
+            factory,
+            agent_run_id=self._current_run_id,
+            framework=framework,
+            op_name=op_name,
+            params=dict(params) if params is not None else None,
+        )
+
     def rollback(
         self,
         target: str,

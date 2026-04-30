@@ -93,7 +93,7 @@ class AgentRunOperation(Base):
         ordinal: Monotonic per-run sequence number (1-indexed).
         op_name: One of ``"autoload"`` / ``"merge"`` /
             ``"write_table"`` / ``"sql"`` / ``"aggregate"`` /
-            ``"rollback"``.  CHECK-constrained.
+            ``"rollback"`` / ``"train_model"``.  CHECK-constrained.
         params_json: JSON-encoded primitive arguments.  Excludes
             DataFrame contents — only call shape and stats.
         target_table: ``"catalog.schema.table"`` for writes; ``None``
@@ -119,6 +119,13 @@ class AgentRunOperation(Base):
             mid-op).
         error_message: ``repr(exc)`` when the primitive raised.
             ``None`` on success.
+        mlflow_run_id: Phase 21.2 cross-link — populated by
+            :func:`record_operation` when MLflow is active.  ``None``
+            for non-ML ops.
+        training_params_json: Phase 21.3 — JSON blob with ``params``
+            and ``metrics`` sub-keys captured by
+            :func:`pql.training_context()`.  ``None`` for non-training
+            ops.
     """
 
     __tablename__ = "agent_run_operations"
@@ -126,7 +133,8 @@ class AgentRunOperation(Base):
         UniqueConstraint("agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"),
         Index("ix_agent_run_operations_run", "agent_run_id"),
         CheckConstraint(
-            "op_name IN ('autoload','merge','write_table','sql','aggregate','rollback')",
+            "op_name IN "
+            "('autoload','merge','write_table','sql','aggregate','rollback','train_model')",
             name="ck_agent_run_operations_op_name",
         ),
     )
@@ -151,6 +159,8 @@ class AgentRunOperation(Base):
     # Phase 21.2 cross-link: populated by record_operation when MLflow
     # is active (see :mod:`pointlessql.services.agent_runs.mlflow_detector`).
     mlflow_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # Phase 21.3 — autolog snapshot ({"params": {...}, "metrics": {...}}).
+    training_params_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AgentRunEvent(Base):

@@ -33,8 +33,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from pointlessql.exceptions import AuditUnavailableError
-from pointlessql.services.agent_runs.mlflow_detector import detect_mlflow_run_id
 from pointlessql.models import AgentRun, AgentRunOperation
+from pointlessql.services.agent_runs.mlflow_detector import detect_mlflow_run_id
 
 _LINEAGE_FAILED_MARKER = "[lineage_emit_failed]"
 
@@ -44,7 +44,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-VALID_OP_NAMES = frozenset({"autoload", "merge", "write_table", "sql", "aggregate", "rollback"})
+VALID_OP_NAMES = frozenset(
+    {"autoload", "merge", "write_table", "sql", "aggregate", "rollback", "train_model"}
+)
 
 
 class RollbackError(Exception):
@@ -200,6 +202,13 @@ class OperationRecorder:
             ``lineage_value_changes`` best-effort.  ``None`` (the
             default) means the merge ran without opt-in or had no
             actual value differences.
+        training_params_json: Sprint-21.3 hook — when ``pql.training_context()``
+            wraps a training block with ``mlflow.autolog()`` enabled,
+            it captures ``run.data.params`` + ``run.data.metrics`` at
+            MLflow run-exit time and stashes the JSON-encoded blob
+            here so :func:`record_operation` writes it onto
+            ``agent_run_operations.training_params_json``.  ``None``
+            for non-training ops.
     """
 
     input_sha: str | None = None
@@ -212,6 +221,9 @@ class OperationRecorder:
     pending_rejects: dict[str, Any] | None = None
     pending_column_edges: list[Any] | None = None
     pending_value_changes: list[Any] | None = None
+    # Phase 21.3 — autolog snapshot {"params": {...}, "metrics": {...}}
+    # populated by ``training_context`` at MLflow run-exit time.
+    training_params_json: str | None = None
 
 
 def record_operation(
@@ -228,6 +240,7 @@ def record_operation(
     started_at: datetime.datetime,
     finished_at: datetime.datetime | None,
     error_message: str | None,
+    training_params_json: str | None = None,
 ) -> int:
     """Insert one ``agent_run_operations`` row in strict mode.
 
@@ -246,6 +259,9 @@ def record_operation(
         finished_at: Wall-clock instant the primitive exited, or
             ``None`` when the row represents a still-in-flight call.
         error_message: ``repr(exc)`` on failure, ``None`` on success.
+        training_params_json: Sprint 21.3 — JSON blob with
+            ``params`` and ``metrics`` sub-keys captured from
+            MLflow autolog.  ``None`` for non-training ops.
 
     Returns:
         The auto-assigned primary key.
@@ -293,6 +309,7 @@ def record_operation(
                 finished_at=finished_at,
                 error_message=error_message,
                 mlflow_run_id=mlflow_run_id,
+                training_params_json=training_params_json,
             )
             session.add(row)
             # Phase 21.2: backfill the parent agent_runs row's
@@ -386,6 +403,7 @@ def operation_context(
                 started_at=started_at,
                 finished_at=finished_at,
                 error_message=error_message,
+                training_params_json=recorder.training_params_json,
             )
         except AuditUnavailableError:
             logger.exception(
@@ -412,6 +430,7 @@ def operation_context(
         started_at=started_at,
         finished_at=finished_at,
         error_message=None,
+        training_params_json=recorder.training_params_json,
     )
     _emit_lineage_after_commit(
         session_factory,
