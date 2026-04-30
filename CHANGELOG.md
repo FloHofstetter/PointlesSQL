@@ -6,6 +6,43 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 22.2 — Architecture + concepts pages.**  The Concepts
+  section turns from three reference-style files into a real
+  deep-dive surface — architecture, audit trail, lineage, and
+  agent supervision each get a dedicated page with Mermaid
+  diagrams and full schema breakdowns.
+  * `docs/concepts/architecture.md` (NEW, ~250 lines): four
+    logical layers (routes / services / PQL / storage), the
+    soyuz-catalog boundary with bug-fix-at-source rule, two
+    sequence diagrams (`pql.write_table` end-to-end and
+    supervisor model promotion), why Python-only beats JVM for
+    agent integration, full module map.
+  * `docs/concepts/audit-trail.md` (NEW, ~280 lines): the cells /
+    operations / queries 3-level model, the
+    `agent_run_operations` schema (16 columns including the four
+    Phase-21 additions), the `record_operation` forced-audit
+    pattern, `params_json` examples per op-name, the rollback
+    action loop, explicit boundary against shoreguard's LLM
+    Provenance Log.
+  * `docs/concepts/lineage.md` (NEW, ~210 lines): four-level
+    row → column → value → inference chain with cost/opt-in
+    matrix, schema for each table, sqlglot-driven column
+    provenance, value-level CDF semantics with PII masking,
+    bidirectional model DAG, aggregate fan-in (Phase 15.5),
+    rejects table.
+  * `docs/concepts/agent-supervision.md` (NEW, ~290 lines):
+    Family A/B/C privilege tiers + tool counts, asymmetric scope
+    ladder (auditor passes `require_supervisor` but not vice
+    versa), wake-gate optimisation that skips the LLM on `ok`
+    days, `agent_reviews` schema with `kind` discriminator,
+    CloudEvents 1.0 fan-out shape, the four canonical bot
+    personas (daily Audit-Reviewer, Compliance-Bot, Incident-
+    Responder, Promotion-gate), trust-ladder Mermaid.
+  * `docs/concepts/index.md`: real section landing with reading
+    order recommendation.
+  * `mkdocs.yml` nav: four new concept pages wired in above the
+    existing reference-style ones.
+
 - **Sprint 22.1 — Documentation landing + getting started.**  The
   site stops being placeholders and gets a real first impression.
   * `docs/index.md` rewritten as the hero landing — one-liner

@@ -92,6 +92,10 @@ nav:
       - Concepts overview: getting-started/concepts.md
   - Concepts:
       - concepts/index.md
+      - Architecture: concepts/architecture.md
+      - Audit trail: concepts/audit-trail.md
+      - Lineage: concepts/lineage.md
+      - Agent supervision: concepts/agent-supervision.md
       - Auth: concepts/auth.md
       - Data layers: concepts/data-layers.md
       - PII modes: concepts/pii-modes.md

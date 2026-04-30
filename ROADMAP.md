@@ -2503,7 +2503,7 @@ PointlesSQL
 │           closes the "Closure pending (user job)" item from the
 │           21.0–21.7 close note.
 │
-├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅; 22.2–22.5 queued)
+├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅ 22.1 ✅ 22.2 ✅; 22.3–22.5 queued)
 │   │
 │   │   Phase 21 closed the audit/ML story end-to-end and the stack
 │   │   is feature-complete enough to demo to non-Flo readers — the
@@ -2607,10 +2607,41 @@ PointlesSQL
 │   │       ``docs/adr/`` references in ``README.md`` and
 │   │       ``CLAUDE.md`` updated to the post-22.0 layout.
 │   │
-│   ├── Sprint 22.2 — Architecture + concepts              ⏳
-│   │   └── ``docs/concepts/{architecture, audit-trail, lineage,
-│   │       agent-supervision}.md``; ADR index page; Mermaid
-│   │       diagrams everywhere.
+│   ├── Sprint 22.2 — Architecture + concepts              ✅ done 2026-04-30
+│   │   ├── ``docs/concepts/architecture.md`` (NEW, ~250 lines):
+│   │   │   four logical layers (routes/services/PQL/storage), the
+│   │   │   soyuz-catalog boundary + bug-fix-at-source rule, two
+│   │   │   sequence diagrams (agent writes a derived table,
+│   │   │   supervisor promotes a model to champion), why
+│   │   │   Python-only, full module map.
+│   │   ├── ``docs/concepts/audit-trail.md`` (NEW, ~280 lines):
+│   │   │   3-level model (cells / operations / queries), the
+│   │   │   ``agent_run_operations`` schema (16 columns), the
+│   │   │   ``record_operation`` forced-audit pattern, ``params_json``
+│   │   │   examples per op-name, Phase-21 audit additions
+│   │   │   (mlflow_run_id / training_params_json / env_snapshot /
+│   │   │   source_model_uri), the rollback action loop, what's
+│   │   │   *not* recorded (LLM prompts → shoreguard's job).
+│   │   ├── ``docs/concepts/lineage.md`` (NEW, ~210 lines):
+│   │   │   four-level chain (row → column → value → inference)
+│   │   │   with cost/opt-in matrix, schema for each table,
+│   │   │   sqlglot-driven column provenance, value-level CDF
+│   │   │   semantics with PII masking, bidirectional model DAG,
+│   │   │   aggregate fan-in (Phase 15.5), rejects.
+│   │   ├── ``docs/concepts/agent-supervision.md`` (NEW, ~290 lines):
+│   │   │   Family A/B/C tiers + tool counts, asymmetric scope
+│   │   │   ladder (auditor passes ``require_supervisor`` but not
+│   │   │   vice versa), wake-gate optimisation, ``agent_reviews``
+│   │   │   schema with kind discriminator, CloudEvents 1.0 fan-out
+│   │   │   shape, the four canonical bot personas (daily Audit-
+│   │   │   Reviewer, Compliance-Bot, Incident-Responder,
+│   │   │   Promotion-gate), trust-ladder Mermaid.
+│   │   ├── ``docs/concepts/index.md``: real section landing,
+│   │   │   reading order (architecture → audit-trail → lineage →
+│   │   │   agent-supervision), pointers to auth / data-layers /
+│   │   │   pii-modes + the ADR index.
+│   │   └── ``mkdocs.yml`` nav: four new concept pages wired in
+│   │       above the existing reference-style ones.
 │   │
 │   ├── Sprint 22.3 — Reference manual                     ⏳
 │   │   ├── ``docs/reference/python/{pql, services, index}.md``
