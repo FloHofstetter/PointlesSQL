@@ -19,7 +19,7 @@ This walkthrough is **driven from a notebook + a browser** (Phase
 ## Preconditions
 
 - PointlesSQL is running locally on `http://127.0.0.1:8000`.
-  Default config from [`docs/install.md`](../install.md) is fine.
+  Default config from [`docs/install.md`](../getting-started/installation.md) is fine.
 - soyuz-catalog is running on `http://127.0.0.1:8080` and reachable
   from PointlesSQL.
 - A test catalog exists with a writeable schema (the seeded

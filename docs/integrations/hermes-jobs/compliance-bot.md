@@ -94,7 +94,7 @@ answers once, the run terminates.  No cron schedule.
 ## Replay
 
 The full e2e walkthrough is at
-[`docs/e2e-walkthroughs/compliance-bot.md`](../e2e-walkthroughs/compliance-bot.md).
+[`docs/e2e-walkthroughs/compliance-bot.md`](../../e2e-walkthroughs/compliance-bot.md).
 It exercises the three canonical question shapes against a freshly
 seeded PointlesSQL and asserts (a) the agent uses
 `pql_principal_summary` first when the question names a principal,

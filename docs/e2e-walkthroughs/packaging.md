@@ -59,7 +59,7 @@ published both images with the OCI labels they should carry.
      's/^([[:space:]]*)# (image: ghcr\.io)/\1\2/;
      s/^([[:space:]]*)(build:|  context:|  dockerfile:|  additional_contexts:|    soyuz-catalog:|  ssh:|    - default|  secrets:|    - gh_pat)/\1# \2/'
      docker-compose.yml` — exact incantation lives in
-     [docs/install.md](../install.md)).
+     [Installation](../getting-started/installation.md)).
    - Assert: `grep -c '^[[:space:]]*image: ghcr.io' docker-compose.yml` returns `2`.
    - Assert: `grep -c '^[[:space:]]*build:' docker-compose.yml` returns `0`.
 

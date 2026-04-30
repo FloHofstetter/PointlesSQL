@@ -18,6 +18,9 @@ node_modules/
 *.sqlite
 .ipynb_checkpoints/
 
+# mkdocs build output — site is generated, never committed.
+site/
+
 # Runtime state from docker-compose stacks — never commit seeded
 # Delta files or the Playwright MCP artefact directory.
 warehouse/

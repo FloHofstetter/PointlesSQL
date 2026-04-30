@@ -36,10 +36,10 @@ masking, rollback-as-option-not-action).
 
 2. **Install the manifest.**
    - Action: paste a copy of
-     [`incident-responder.json`](../hermes-jobs/incident-responder.json)
+     [`incident-responder.json`](../integrations/hermes-jobs/incident-responder.json)
      into `~/.hermes/cron/jobs.json`, mint a fresh 12-hex-char `id`,
      and replace the `prompt` field with the system prompt block
-     from [`incident-responder.md`](../hermes-jobs/incident-responder.md).
+     from [`incident-responder.md`](../integrations/hermes-jobs/incident-responder.md).
    - Assert: `hermes cron list` shows the bot.  Like Compliance-Bot,
      the schedule reads `every 1440m` — that's a no-op; chat-
      platform messages are what actually wake it.

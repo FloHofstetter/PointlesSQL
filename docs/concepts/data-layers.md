@@ -82,5 +82,5 @@ protocol upgrades, `VACUUM`); DuckDB owns the scan + transform
 side.  Storage stays Delta-portable, the catalog stays
 UC-portable, the runtime stays pluggable — the opinion only
 binds the compute layer.  See
-[`docs/adr/0002-duckdb-first.md`](adr/0002-duckdb-first.md) for
+[`docs/adr/0002-duckdb-first.md`](../decisions/0002-duckdb-first.md) for
 the full rationale.

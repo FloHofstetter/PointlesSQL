@@ -84,7 +84,7 @@ docker compose -f docker-compose.yml -f docker-compose.grafana.yml up -d
 Reads the same SQLite metadata DB the app uses; no agent code,
 no API changes, no extra config. Postgres deployments aren't yet
 supported here (see Sprint 19.0.1 in
-[`ROADMAP.md`](../ROADMAP.md)).
+[`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md)).
 
 Pin to a digest for reproducibility in production:
 

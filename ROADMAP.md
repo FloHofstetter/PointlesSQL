@@ -2503,6 +2503,128 @@ PointlesSQL
 │           closes the "Closure pending (user job)" item from the
 │           21.0–21.7 close note.
 │
+├── Phase 22 — Documentation site (shoreguard-quality)     ⏳ in progress (22.0 ✅; 22.1–22.5 queued)
+│   │
+│   │   Phase 21 closed the audit/ML story end-to-end and the stack
+│   │   is feature-complete enough to demo to non-Flo readers — the
+│   │   next bottleneck is *visibility*, not *features*.  Phase 22
+│   │   brings PointlesSQL to the same docs polish that
+│   │   ``shoreguard-fresh`` ships on
+│   │   ``flohofstetter.github.io/shoreguard``: mkdocs-material with
+│   │   navigation tabs, palette toggle, mkdocstrings auto-generated
+│   │   Python API, hand-polished prelude over auto-generated REST
+│   │   reference, Mermaid diagrams everywhere, five-minute
+│   │   quickstart.
+│   │
+│   │   **Deploy posture (user pick 2026-04-30)**: local-only
+│   │   through Phase 22.  ``mkdocs serve`` for iteration; the
+│   │   ``docs.yml`` workflow is staged with ``workflow_dispatch``
+│   │   (manual) trigger and a ``mkdocs build`` step (no
+│   │   ``gh-deploy``) so PRs catch broken builds without making the
+│   │   site URL public.  The launch sprint flips: trigger →
+│   │   ``push: main``, repo visibility → public, README badge →
+│   │   live URL.  Procedure goes into ``ADR-0004 Public-flip
+│   │   checklist`` in Sprint 22.5.
+│   │
+│   │   **Plan**: ``.claude/plans/dann-plane-diese-vollst-ndig-stateful-music.md``
+│   │   is the canonical source for the six sub-sprints.
+│   │
+│   ├── Sprint 22.0 — Tooling foundation                   ✅ done 2026-04-30
+│   │   ├── New ``mkdocs.yml`` (~140 lines) — material theme,
+│   │   │   palette toggle, navigation tabs/sections/instant,
+│   │   │   mkdocstrings (Google docstring style),
+│   │   │   pymdownx.superfences with Mermaid custom-fence,
+│   │   │   eight-section ``nav:`` skeleton including all 38 e2e
+│   │   │   walkthroughs explicitly listed.
+│   │   ├── New ``.github/workflows/docs.yml`` — ``workflow_dispatch``
+│   │   │   only (no auto-publish); runs ``mkdocs build`` to prove
+│   │   │   the build is green.  ``--strict`` deferred to 22.5 once
+│   │   │   the cross-link sweep cleans up the last source-tree
+│   │   │   warnings.  Deploy step (``mkdocs gh-deploy --force``)
+│   │   │   present but commented out with a TODO marker pointing
+│   │   │   at the launch sprint.
+│   │   ├── ``docs/`` re-organised into mkdocs-material layout
+│   │   │   (8 sections): ``getting-started/``, ``concepts/``,
+│   │   │   ``guides/``, ``reference/``, ``integrations/``,
+│   │   │   ``development/``, ``decisions/``, ``e2e-walkthroughs/``.
+│   │   │   File moves done with ``git mv`` so blame history
+│   │   │   survives.  ``docs/install.md`` →
+│   │   │   ``docs/getting-started/installation.md``;
+│   │   │   ``docs/auth.md`` → ``docs/concepts/auth.md``;
+│   │   │   ``docs/data-layers.md`` → ``docs/concepts/data-layers.md``;
+│   │   │   ``docs/audit/pii-modes.md`` →
+│   │   │   ``docs/concepts/pii-modes.md``;
+│   │   │   ``docs/jobs.md`` → ``docs/guides/jobs.md``;
+│   │   │   ``docs/design-tokens.md`` →
+│   │   │   ``docs/development/design-tokens.md``;
+│   │   │   ``docs/adr/*.md`` → ``docs/decisions/*.md``;
+│   │   │   ``docs/hermes-jobs/`` → ``docs/integrations/hermes-jobs/``.
+│   │   ├── Eight new section landing pages
+│   │   │   (``index.md``-each) — one-screen hooks pointing at
+│   │   │   what's filled in today and what each later sub-sprint
+│   │   │   will add.  Sprint 22.1 rewrites the top-level
+│   │   │   ``docs/index.md`` with a real hero.
+│   │   ├── 14 stale move-induced cross-links fixed across
+│   │   │   ``packaging.md``, ``ux-overhaul.md``, ``installation.md``,
+│   │   │   ``audit-reviewer-daily.md``, ``branches.md``,
+│   │   │   ``compliance-bot.md``, ``incident-responder.md``,
+│   │   │   ``data-layers.md``, ``hermes-jobs/{README,
+│   │   │   compliance-bot, incident-responder}.md``.  Remaining
+│   │   │   ~117 ``mkdocs build`` warnings are pre-existing
+│   │   │   source-tree references (``../../frontend/...``,
+│   │   │   ``../../pointlessql/...``) that the walkthroughs make
+│   │   │   on purpose — Sprint 22.5 cross-link sweep is when
+│   │   │   ``--strict`` gets re-enabled.
+│   │   └── ``site/`` added to ``.gitignore``.
+│   │
+│   ├── Sprint 22.1 — Landing + getting started            🔜
+│   │   ├── ``docs/index.md`` rewrite: hero, value-prop narrative,
+│   │   │   Mermaid ecosystem diagram, comparison table.
+│   │   ├── ``docs/getting-started/quickstart.md`` (NEW): five-
+│   │   │   minute "browse a catalog → read a Delta table" tour.
+│   │   ├── ``docs/getting-started/concepts.md`` (NEW): mental
+│   │   │   model in one read.
+│   │   └── ``README.md``: replace ASCII architecture with Mermaid;
+│   │       30 % trim of Status + Stack sections.
+│   │
+│   ├── Sprint 22.2 — Architecture + concepts              ⏳
+│   │   └── ``docs/concepts/{architecture, audit-trail, lineage,
+│   │       agent-supervision}.md``; ADR index page; Mermaid
+│   │       diagrams everywhere.
+│   │
+│   ├── Sprint 22.3 — Reference manual                     ⏳
+│   │   ├── ``docs/reference/python/{pql, services, index}.md``
+│   │   │   (mkdocstrings auto-gen).
+│   │   ├── ``docs/reference/api.md`` — auto-generated from
+│   │   │   ``app.openapi()`` via ``scripts/gen_api_docs.py`` plus
+│   │   │   a hand-polished prelude over the 30 most-used routes.
+│   │   ├── ``docs/reference/{cli, configuration, cloudevents,
+│   │   │   permissions}.md``.
+│   │   └── Pre-commit hook re-runs the gen-scripts on touched
+│   │       source files.
+│   │
+│   ├── Sprint 22.4 — Guides + cookbook                    ⏳
+│   │   ├── 38 e2e-walkthroughs themed into 5-6 sub-sections
+│   │   │   under Guides → How-to.
+│   │   ├── ``docs/guides/{agent-bring-up, operator-cookbook,
+│   │   │   troubleshooting, faq}.md`` (new high-level recipes).
+│   │   └── Troubleshooting page mines the ``feedback_*.md``
+│   │       memory files for the well-known landmines.
+│   │
+│   └── Sprint 22.5 — Polish + launch-ready                ⏳
+│       ├── Screenshot capture pass (Playwright MCP, 1280×800,
+│       │   consolidated under ``docs/screenshots/``).
+│       ├── Cross-link sweep — ``mkdocs build --strict`` exits 0;
+│       │   workflow flips back to ``--strict``.
+│       ├── ``docs/integrations/{soyuz-catalog, hermes-plugin,
+│       │   mlflow, grafana}.md`` (NEW).
+│       ├── Auto-snipped ``docs/changelog.md`` ([Unreleased] +
+│       │   last 3 sprints) via ``scripts/gen_whats_new.py``.
+│       ├── Roadmap shim page including ``ROADMAP.md``.
+│       └── ``docs/decisions/0004-public-flip-checklist.md`` (NEW)
+│           — EUIPO trademark check, NOTICE / CLA hygiene, custom
+│           domain decision, badge update, social-post copy.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

@@ -12,7 +12,7 @@ migration.
 - [`catalog-browsing.md`](catalog-browsing.md) seed ran — catalog `demo`
   with schemas `sales` + `hr` is present.
 - A non-paused demo job exists for the toast-flow pass. Any job created
-  by [`jobs.md`](jobs.md) works; otherwise create one through the
+  by [`jobs.md`](../guides/jobs.md) works; otherwise create one through the
   `/jobs` modal first.
 
 ## Walkthrough

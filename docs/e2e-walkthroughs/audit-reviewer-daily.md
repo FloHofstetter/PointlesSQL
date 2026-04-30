@@ -8,7 +8,7 @@ Unlike the Playwright-driven UI walkthroughs in the rest of this
 folder, this one is an **operational runbook**. It chains:
 - the new [`pointlessql admin issue-auditor-key`](../../pointlessql/api/main.py)
   CLI subcommand,
-- the [`audit-reviewer-daily.json`](../hermes-jobs/audit-reviewer-daily.json)
+- the [`audit-reviewer-daily.json`](../integrations/hermes-jobs/audit-reviewer-daily.json)
   Hermes-cron manifest, and
 - the [`hermes cron tick`](../../../hermes-agent/cron/scheduler.py)
   scheduler run.
@@ -25,7 +25,7 @@ output. There is no browser, no Alpine, no `mcp__playwright__*` calls.
   appears.
 - PointlesSQL is running locally on `http://127.0.0.1:8000`. The
   default config from
-  [`docs/install.md`](../install.md) is fine.
+  [`docs/install.md`](../getting-started/installation.md) is fine.
 - At least one historical agent_run exists in the PointlesSQL DB
   (any prior plugin run will have created one). Without seed data
   the walkthrough still works; the agent simply reports "nothing of
@@ -65,7 +65,7 @@ output. There is no browser, no Alpine, no `mcp__playwright__*` calls.
 
 3. **Install the manifest into the Hermes cron store.**
    - Action: ensure `~/.hermes/cron/jobs.json` is a JSON array, then
-     paste a copy of [`audit-reviewer-daily.json`](../hermes-jobs/audit-reviewer-daily.json)
+     paste a copy of [`audit-reviewer-daily.json`](../integrations/hermes-jobs/audit-reviewer-daily.json)
      into the array. Mint a fresh 12-hex-char `id` (e.g.
      `python3 -c 'import uuid; print(uuid.uuid4().hex[:12])'`) and
      set the `id` field on the entry. Strip the leading `_comment`
@@ -123,7 +123,7 @@ output. There is no browser, no Alpine, no `mcp__playwright__*` calls.
      hermes cron edit <job_id> --deliver "slack:<channel-id>"
      ```
      Hermes' platform adapter handles auth (see
-     [`hermes-jobs/README.md`](../hermes-jobs/README.md)).
+     [`hermes-jobs/README.md`](../integrations/hermes-jobs/README.md)).
    - Assert: re-run via `hermes cron run <job_id> && hermes cron tick`,
      confirm the Slack channel got a Markdown post matching
      `~/.hermes/cron/output/<job_id>/<ts>.md`.

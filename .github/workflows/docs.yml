@@ -1,0 +1,45 @@
+name: Docs
+
+# Sprint 22.0 — manual-only build; no public deploy.  The launch
+# sprint flips the trigger to push-on-main and uncomments the
+# gh-deploy step.  Until then this workflow proves the build is
+# green without making the docs URL public.
+#
+# To flip live (launch sprint):
+#   1. Replace `workflow_dispatch:` with the commented-out
+#      `push:` block below.
+#   2. Uncomment the `gh-deploy` step.
+#   3. Repo visibility flips public (separate gh CLI call).
+#   4. README badge points at flohofstetter.github.io/PointlesSQL.
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "docs/**"
+  #     - "mkdocs.yml"
+  #     - "CHANGELOG.md"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
+      - run: uv sync --group docs
+      # NOTE: --strict deferred to Sprint 22.5 once the cross-link
+      # sweep cleans up the last source-tree references in the 39
+      # walkthroughs.  Until then a plain build proves the site
+      # produces.
+      - run: uv run mkdocs build
+      # - run: uv run mkdocs gh-deploy --force   # <-- uncomment in launch sprint

@@ -6,6 +6,40 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 22.0 — Documentation site tooling foundation.**  Phase 22
+  opens the docs track aimed at shoreguard-fresh's polish bar.  This
+  sub-sprint lays the tooling without writing new content.
+  * New `mkdocs.yml` (~140 lines) wires mkdocs-material with palette
+    toggle, navigation tabs/sections/instant, mkdocstrings (Google
+    docstring style), pymdownx superfences with a Mermaid custom-
+    fence, and an eight-section `nav:` skeleton that explicitly
+    lists all 38 e2e walkthroughs.
+  * New `.github/workflows/docs.yml` runs `mkdocs build` on
+    `workflow_dispatch` only — no auto-publish, no public URL, per
+    the user's "local-only through Phase 22" pick.  The `gh-deploy`
+    line is staged but commented out with a TODO marker pointing at
+    the launch sprint that flips trigger + repo visibility + README
+    badge in one shot.
+  * `docs/` re-organised into the mkdocs-material layout: eight
+    sections (`getting-started/`, `concepts/`, `guides/`,
+    `reference/`, `integrations/`, `development/`, `decisions/`,
+    `e2e-walkthroughs/`).  All file moves done with `git mv` so
+    blame survives.  Eight new section index pages
+    (`index.md`-each) describe what's filled in today and what
+    later sub-sprints will add.
+  * 14 stale move-induced cross-links fixed across the walkthrough
+    folder, `installation.md`, and the hermes-jobs integration
+    pages.  Remaining ~117 `mkdocs build` warnings are pre-existing
+    source-tree references (the walkthroughs intentionally point at
+    `../../frontend/...`, `../../pointlessql/...`) and are Sprint
+    22.5's cross-link-sweep job — that's when `--strict` gets
+    flipped back on.
+  * `site/` added to `.gitignore` so the local build artefact
+    doesn't leak into commits.
+  * Plan: see
+    `.claude/plans/dann-plane-diese-vollst-ndig-stateful-music.md`
+    for the full six-sub-sprint phase shape.
+
 - **Sprint 21.8 — Hermes plugin extension (Phase 21 cross-repo
   closure).** Two commits, one logical unit:
   * Server: extends `POST /api/pql/write_table` + `POST /api/pql/merge`

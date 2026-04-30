@@ -34,7 +34,7 @@ directly:
 4. Restart the Hermes gateway (or run `hermes cron tick --once` in
    the foreground if you only want a one-off).
 
-The walkthrough at [`docs/e2e-walkthroughs/audit-reviewer-daily.md`](../e2e-walkthroughs/audit-reviewer-daily.md)
+The walkthrough at [`docs/e2e-walkthroughs/audit-reviewer-daily.md`](../../e2e-walkthroughs/audit-reviewer-daily.md)
 spells the install out step by step, including the prerequisite
 `pointlessql admin issue-auditor-key` step and the `~/.hermes/.env`
 overlay.

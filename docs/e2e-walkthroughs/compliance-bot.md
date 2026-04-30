@@ -26,10 +26,10 @@ The PointlesSQL side does not change between the three.
 
 1. **Install the manifest.**
    - Action: paste a copy of
-     [`compliance-bot.json`](../hermes-jobs/compliance-bot.json) into
+     [`compliance-bot.json`](../integrations/hermes-jobs/compliance-bot.json) into
      `~/.hermes/cron/jobs.json`, mint a fresh 12-hex-char `id`, and
      replace the `prompt` field with the system prompt block from
-     [`compliance-bot.md`](../hermes-jobs/compliance-bot.md).
+     [`compliance-bot.md`](../integrations/hermes-jobs/compliance-bot.md).
      (The stub `prompt` in the manifest fails loudly on purpose so
      the operator notices if they forgot this step.)
    - Assert: `hermes cron list` shows the bot. The schedule reads

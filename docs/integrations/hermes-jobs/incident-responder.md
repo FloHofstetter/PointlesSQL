@@ -111,7 +111,7 @@ back into the same chat thread.  No cron schedule.
 
 ## Replay
 
-Walkthrough at [`docs/e2e-walkthroughs/incident-responder.md`](../e2e-walkthroughs/incident-responder.md).
+Walkthrough at [`docs/e2e-walkthroughs/incident-responder.md`](../../e2e-walkthroughs/incident-responder.md).
 Uses the synthetic broken run from `scripts/seed-broken-run.py`
 to exercise the three drill-down patterns and assert the four
 safety properties.

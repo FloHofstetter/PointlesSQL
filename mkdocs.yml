@@ -1,0 +1,163 @@
+site_name: PointlesSQL
+site_url: https://flohofstetter.github.io/PointlesSQL/
+site_description: Databricks-shaped, Python-only, agent-native lakehouse
+site_author: Florian Hofstetter
+repo_url: https://github.com/FloHofstetter/PointlesSQL
+repo_name: FloHofstetter/PointlesSQL
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2025–2026 Florian Hofstetter — Apache 2.0
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+  icon:
+    repo: fontawesome/brands/github
+
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/FloHofstetter/PointlesSQL
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_if_no_docstring: false
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            merge_init_into_class: true
+            show_signature_annotations: true
+            separate_signature: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+# Sprint 22.0 nav.  Alphabetical inside e2e-walkthroughs for now;
+# Sprint 22.4 will theme-group them.
+nav:
+  - Home: index.md
+  - Getting Started:
+      - getting-started/index.md
+      - Installation: getting-started/installation.md
+  - Concepts:
+      - concepts/index.md
+      - Auth: concepts/auth.md
+      - Data layers: concepts/data-layers.md
+      - PII modes: concepts/pii-modes.md
+  - Guides:
+      - guides/index.md
+      - Jobs: guides/jobs.md
+      - E2E walkthroughs:
+          - e2e-walkthroughs/README.md
+          - Admin audit: e2e-walkthroughs/admin-audit.md
+          - Agent drift monitor: e2e-walkthroughs/agent_drift_monitor.md
+          - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
+          - Audit reviewer daily: e2e-walkthroughs/audit-reviewer-daily.md
+          - Audit sinks: e2e-walkthroughs/audit-sinks.md
+          - Auth: e2e-walkthroughs/auth.md
+          - Branches: e2e-walkthroughs/branches.md
+          - Catalog browsing: e2e-walkthroughs/catalog-browsing.md
+          - Command palette: e2e-walkthroughs/command-palette.md
+          - Compliance bot: e2e-walkthroughs/compliance-bot.md
+          - Config matrix: e2e-walkthroughs/config-matrix.md
+          - CSRF: e2e-walkthroughs/csrf.md
+          - Dashboards: e2e-walkthroughs/dashboards.md
+          - Error handling: e2e-walkthroughs/error-handling.md
+          - Federation: e2e-walkthroughs/federation.md
+          - Foreign catalog sync: e2e-walkthroughs/foreign-catalog-sync.md
+          - Hermes medallion: e2e-walkthroughs/hermes_medallion.md
+          - Home: e2e-walkthroughs/home.md
+          - Incident responder: e2e-walkthroughs/incident-responder.md
+          - Inference lineage: e2e-walkthroughs/inference-lineage.md
+          - Inline editors: e2e-walkthroughs/inline-editors.md
+          - Jobs DAG: e2e-walkthroughs/jobs-dag.md
+          - List polish: e2e-walkthroughs/list-polish.md
+          - Mobile: e2e-walkthroughs/mobile.md
+          - Models promotion: e2e-walkthroughs/models-promotion.md
+          - Models tab: e2e-walkthroughs/models-tab.md
+          - Notebook editor: e2e-walkthroughs/notebook-editor.md
+          - Notebook full walkthrough: e2e-walkthroughs/notebook_full_walkthrough.md
+          - Notebook jobs: e2e-walkthroughs/notebook-jobs.md
+          - OIDC: e2e-walkthroughs/oidc.md
+          - Operational: e2e-walkthroughs/operational.md
+          - Packaging: e2e-walkthroughs/packaging.md
+          - Rate limit: e2e-walkthroughs/rate-limit.md
+          - Rollback: e2e-walkthroughs/rollback.md
+          - Sprint 13.11 reflexive tools: e2e-walkthroughs/sprint_13_11_reflexive_tools.md
+          - SQL editor: e2e-walkthroughs/sql-editor.md
+          - Time travel: e2e-walkthroughs/time-travel.md
+          - UX overhaul: e2e-walkthroughs/ux-overhaul.md
+  - Reference:
+      - reference/index.md
+  - Integrations:
+      - integrations/index.md
+      - Hermes jobs:
+          - integrations/hermes-jobs/README.md
+          - Compliance bot: integrations/hermes-jobs/compliance-bot.md
+          - Incident responder: integrations/hermes-jobs/incident-responder.md
+  - Development:
+      - development/index.md
+      - Design tokens: development/design-tokens.md
+  - Decisions:
+      - decisions/index.md
+      - "ADR-0001 Notebook editor": decisions/0001-notebook-editor.md
+      - "ADR-0002 DuckDB-first": decisions/0002-duckdb-first.md
+      - "ADR-0003 Delta-branching spike": decisions/0003-delta-branching-spike.md
+
+# `architecture.excalidraw` and `**/*.json` are copied as static assets
+# (referenced by markdown), not surfaced in nav.
+not_in_nav: |
+  /architecture.excalidraw
+  /integrations/hermes-jobs/*.json
+
+strict: false  # Sprint 22.5 flips this to `true` after the
+               # cross-link sweep cleans up the last warnings.
