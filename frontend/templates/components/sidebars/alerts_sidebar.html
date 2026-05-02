@@ -1,0 +1,92 @@
+{#
+   Phase 24.4 — Alerts context-panel.
+
+   Replaces the lone "All alerts" link with a list of configured
+   alerts split into Enabled (top, info chip) + Disabled (bottom).
+   Each row shows the alert title (or slug as fallback) + a bell-
+   icon + a small status dot; click navigates to
+   ``/alerts/<slug>``.
+
+   Driven by ``alertsSidebar()`` in
+   ``frontend/js/components/sidebars/alerts_sidebar.js``.
+#}
+<div class="pql-sidebar border-end"
+     x-data="alertsSidebar()"
+     x-init="load()"
+     @htmx:after-swap.window="activeSlug = decodeURIComponent(((window.location.pathname.match(/^\/alerts\/([^/]+)/) || [])[1]) || '')">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <a href="/alerts"
+           class="text-uppercase small fw-semibold text-muted text-decoration-none">
+            Alerts
+        </a>
+        <button class="btn btn-sm btn-link p-0 text-muted"
+                @click="reload()"
+                title="Refresh">
+            <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
+        </button>
+    </div>
+
+    <div class="pql-sidebar-body">
+        <template x-if="error">
+            <div class="alert alert-danger m-2 small" x-text="error"></div>
+        </template>
+
+        <template x-if="!error && items.length === 0 && !loading">
+            <div class="text-muted small p-3">
+                <p class="mb-2">No alerts configured.</p>
+                <p class="mb-0 fst-italic">
+                    Save a SQL query and turn it into an alert from
+                    <a href="/alerts/new" class="text-decoration-none">/alerts/new</a>.
+                </p>
+            </div>
+        </template>
+
+        <template x-if="loading && items.length === 0">
+            <div class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+            </div>
+        </template>
+
+        <template x-if="grouped().enabled.length > 0">
+            <div>
+                <div class="px-3 pt-2 pb-1 text-uppercase small fw-semibold text-info">
+                    Enabled
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <template x-for="a in grouped().enabled" :key="a.slug">
+                        <li>
+                            <a :href="'/alerts/' + encodeURIComponent(a.slug)"
+                               class="pql-context-row"
+                               :class="{ active: isActive(a.slug) }"
+                               :title="a.slug">
+                                <i class="bi bi-bell flex-shrink-0 text-success"></i>
+                                <span class="pql-context-row__name" x-text="a.title || a.slug"></span>
+                            </a>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+
+        <template x-if="grouped().disabled.length > 0">
+            <div>
+                <div class="px-3 pt-2 pb-1 text-uppercase small fw-semibold text-secondary">
+                    Disabled
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <template x-for="a in grouped().disabled" :key="a.slug">
+                        <li>
+                            <a :href="'/alerts/' + encodeURIComponent(a.slug)"
+                               class="pql-context-row"
+                               :class="{ active: isActive(a.slug) }"
+                               :title="a.slug">
+                                <i class="bi bi-bell-slash flex-shrink-0 text-muted"></i>
+                                <span class="pql-context-row__name text-muted" x-text="a.title || a.slug"></span>
+                            </a>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+    </div>
+</div>

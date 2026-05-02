@@ -56,18 +56,7 @@
     {% elif active_section == 'jobs' %}
         {% include "components/sidebars/jobs_sidebar.html" %}
     {% elif active_section == 'alerts' %}
-        <div class="pql-context-panel__header">Alerts</div>
-        <div class="pql-context-panel__body">
-            <ul class="pql-context-panel__list">
-                <li>
-                    <a href="/alerts"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'alerts' %} active{% endif %}">
-                        <i class="bi bi-bell"></i>
-                        <span>All alerts</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
+        {% include "components/sidebars/alerts_sidebar.html" %}
     {% elif active_section == 'volumes' %}
         <div class="pql-context-panel__header">Volumes</div>
         <div class="pql-context-panel__body">
