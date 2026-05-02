@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 24 — every rail icon now opens a useful context-panel.**
+  Six previously-static or fall-through panels became navigable
+  surfaces, mirroring the catalog tree's role for Federation:
+  - **Runs** — recent agent runs grouped into Needs approval /
+    Running / Recent buckets, 8-char short-IDs + status badges +
+    relative timestamps.  Source: ``GET /api/runs?limit=15``.
+  - **Branches** — Delta-branches grouped Active / Promoted /
+    Discarded with strategy + timing tags.  Source:
+    ``GET /api/branches`` (supervisor-gated; rail item is admin-
+    only).
+  - **Workspace** — flat alphabetical list of every ``.py`` /
+    ``.ipynb`` notebook the scheduler can pick up; format badge
+    per row.  Source: ``GET /api/notebooks/tree`` (admin-only).
+  - **Jobs** — split into Active (with last-run-status badge) and
+    Paused.  Source: ``GET /api/jobs``.
+  - **Alerts** — split into Enabled (green bell) and Disabled
+    (muted).  Source: ``GET /api/alerts``.
+  - **MLflow** — recent UC-registered models with latest-version
+    + status badge; "Open MLflow UI →" link to ``/ml``.  Source:
+    ``GET /api/models?enrich_latest=true&limit=10``.
+
+  Each panel is a small Alpine factory at
+  ``frontend/js/components/sidebars/<section>_sidebar.js``
+  imported through ``bootstrap.js``, paired with a partial at
+  ``frontend/templates/components/sidebars/<section>_sidebar.html``
+  included from ``components/context_panel.html``.  Pattern
+  mirrors :func:`catalogTree` exactly (sessionStorage instant-
+  paint, async refetch with refresh button, ``htmx:after-swap``
+  re-binds active-row highlight from the URL).  Shared row
+  styles live in
+  ``frontend/css/components/context_sidebars.css``.
+
 ### Changed
 
 - **Volumes + Models now live inside the catalog tree** — both

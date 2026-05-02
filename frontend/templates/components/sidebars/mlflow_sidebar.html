@@ -1,0 +1,84 @@
+{#
+   Phase 24.5 — MLflow context-panel.
+
+   The rail's MLflow icon historically pointed at /ml (embedded
+   MLflow UI in an iframe), and the context-panel fell through to
+   the catalog tree by accident.  This panel instead lists the most-
+   recent UC-registered models with their latest-version + status,
+   so a user can drill straight into a model detail page.
+
+   Driven by ``mlflowSidebar()`` in
+   ``frontend/js/components/sidebars/mlflow_sidebar.js``.
+#}
+<div class="pql-sidebar border-end"
+     x-data="mlflowSidebar()"
+     x-init="load()"
+     @htmx:after-swap.window="activeFqn = decodeURIComponent(((window.location.pathname.match(/^\/models\/([^/?#]+)/) || [])[1]) || '')">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <a href="/ml"
+           class="text-uppercase small fw-semibold text-muted text-decoration-none">
+            MLflow
+        </a>
+        <button class="btn btn-sm btn-link p-0 text-muted"
+                @click="reload()"
+                title="Refresh">
+            <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
+        </button>
+    </div>
+
+    <div class="pql-sidebar-body">
+        <template x-if="error">
+            <div class="alert alert-danger m-2 small" x-text="error"></div>
+        </template>
+
+        <template x-if="!error && items.length === 0 && !loading">
+            <div class="text-muted small p-3">
+                <p class="mb-2">No registered models yet.</p>
+                <p class="mb-0 fst-italic">
+                    Log one inside an agent run with
+                    <code>mlflow.register_model(...)</code>.
+                </p>
+            </div>
+        </template>
+
+        <template x-if="loading && items.length === 0">
+            <div class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+            </div>
+        </template>
+
+        <template x-if="items.length > 0">
+            <div>
+                <div class="px-3 pt-2 pb-1 text-uppercase small fw-semibold text-muted">
+                    Recent models
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <template x-for="m in items" :key="m.full_name">
+                        <li>
+                            <a :href="'/models/' + encodeURIComponent(m.full_name)"
+                               class="pql-context-row"
+                               :class="{ active: isActive(m.full_name) }"
+                               :title="m.full_name">
+                                <i class="bi bi-box-seam flex-shrink-0 text-muted"></i>
+                                <span class="pql-context-row__name" x-text="m.name"></span>
+                                <template x-if="m.latest_version">
+                                    <span class="badge bg-secondary"
+                                          x-text="'v' + m.latest_version"></span>
+                                </template>
+                                <template x-if="m.latest_status">
+                                    <span class="badge"
+                                          :class="statusBadgeClass(m.latest_status)"
+                                          x-text="m.latest_status"></span>
+                                </template>
+                            </a>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+
+        <div class="pql-context-panel__hint mt-2">
+            <a href="/ml" class="text-decoration-none">Open MLflow UI →</a>
+        </div>
+    </div>
+</div>

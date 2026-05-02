@@ -1,17 +1,26 @@
 {#
   Sprint 17.1 — contextual side-panel (240 px).
+  Phase 24 — six static branches replaced by per-section
+  ``components/sidebars/*_sidebar.html`` partials with their own
+  Alpine factories (see ``frontend/js/components/sidebars/``).
 
   Sits to the right of the icon-rail at >= md.  The contents are a
   function of ``active_section`` (computed in base.html from
   ``active_page``):
 
-    * federation  → catalog tree (existing components/sidebar.html)
-    * dashboards  → dashboards tree (existing components/dashboards_sidebar.html)
-    * runs / sql / workspace / jobs / alerts / volumes / admin
-                 → static link list rendered inline below
+    * federation  → catalog tree (components/sidebar.html)
+    * dashboards  → dashboards tree (components/dashboards_sidebar.html)
+    * runs        → recent agent runs grouped by status
+    * branches    → active/promoted/discarded delta-branches
+    * workspace   → flat list of every notebook
+    * jobs        → active/paused jobs
+    * alerts      → enabled/disabled alerts
+    * mlflow      → recent UC-registered models
+    * sql / admin → small static link lists (kept inline below)
 
-  Federation is the catch-all default, so /, /catalogs/*, /tables/*,
-  /schemas/*, etc. all keep showing the catalog tree they had before.
+  Federation is the catch-all default for sections without a
+  dedicated branch (volumes, models — both already render inside
+  the catalog tree per Phase 23.x).
 
   On mobile, ``base.html`` mounts this same partial inside the
   bootstrap offcanvas drawer; ``components/context_panel.css``
@@ -57,19 +66,8 @@
         {% include "components/sidebars/jobs_sidebar.html" %}
     {% elif active_section == 'alerts' %}
         {% include "components/sidebars/alerts_sidebar.html" %}
-    {% elif active_section == 'volumes' %}
-        <div class="pql-context-panel__header">Volumes</div>
-        <div class="pql-context-panel__body">
-            <ul class="pql-context-panel__list">
-                <li>
-                    <a href="/volumes"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'volumes' %} active{% endif %}">
-                        <i class="bi bi-hdd-stack"></i>
-                        <span>All volumes</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
+    {% elif active_section == 'mlflow' %}
+        {% include "components/sidebars/mlflow_sidebar.html" %}
     {% elif active_section == 'admin' %}
         <div class="pql-context-panel__header">Admin</div>
         <div class="pql-context-panel__body">
