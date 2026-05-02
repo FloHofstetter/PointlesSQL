@@ -6,6 +6,28 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Preview-card sometimes blank on HTMX-boosted navigation.**
+  ``frontend/templates/pages/table.html`` declared its
+  ``tablePreview()`` Alpine factory as a top-level function
+  inside an inline ``<script>``.  When HTMX boosted into the
+  page and re-injected the script tag, the function did not
+  promote to a global reliably and ``x-data="tablePreview()"``
+  failed to evaluate — leaving the Preview tab empty until the
+  user did a full page reload.  Now registered as
+  ``window.tablePreview = function () { … }`` (same pattern as
+  ``window.catalogTree`` in ``components/sidebar.html``).
+
+- **Missing-storage hint copy no longer suggests re-seeding the
+  demo.**  PointlesSQL catalog data is independent of the demo
+  seed scripts and walkthrough fixtures; pointing users at
+  ``scripts/seed-full-stack-demo.py`` after a missing-path error
+  was misleading for anyone whose tables are real production
+  data.  The hint now reads "the data may have been moved,
+  deleted, or never landed at this path; update
+  ``storage_location``, restore the data, or drop the table"
+  — product-agnostic.  Test ``test_message_does_not_couple_to_
+  demo_seed`` pins the policy.
+
 - **Catalog tree disappeared on deep paths after the previous HTMX
   shell-swap fix.**  Switching ``hx-target`` to ``.pql-shell`` so
   the icon-rail's ``.active`` class would update on boost

@@ -24,16 +24,34 @@ class TestHumanizePreviewError:
 
     def test_missing_storage_path_with_file_uri_extracts_path(self) -> None:
         exc = Exception(
-            'Invalid table location: file:///tmp/demo/orders Error: '
+            'Invalid table location: file:///var/lake/orders Error: '
             'Os { code: 2, kind: NotFound, message: "No such file or directory" }'
         )
         detail, kind = humanize_preview_error(exc)
         assert kind == "missing_storage"
-        assert "/tmp/demo/orders" in detail
+        assert "/var/lake/orders" in detail
         assert "missing on disk" in detail.lower()
         # No raw Rust noise leaks through.
         assert "Os { code:" not in detail
         assert "NotFound" not in detail
+
+    def test_message_does_not_couple_to_demo_seed(self) -> None:
+        """The hint copy must not assume the user ran a demo seed script.
+
+        Catalog data is independent of integration tests / walkthroughs
+        — references to ``seed``, the ``scripts/seed-*.py`` family, or
+        ``demo data`` would mislead users whose tables are real
+        production data, not seeded fixtures.
+        """
+        exc = Exception(
+            'Invalid table location: file:///var/lake/orders Error: '
+            'Os { code: 2, kind: NotFound, message: "No such file or directory" }'
+        )
+        detail, _kind = humanize_preview_error(exc)
+        lowered = detail.lower()
+        assert "seed" not in lowered, f"hint mentions 'seed': {detail!r}"
+        assert "demo" not in lowered, f"hint mentions 'demo': {detail!r}"
+        assert "scripts/" not in lowered, f"hint mentions a script path: {detail!r}"
 
     def test_missing_storage_path_without_file_uri_falls_to_generic_text(self) -> None:
         exc = Exception(

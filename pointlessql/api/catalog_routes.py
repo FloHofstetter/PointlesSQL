@@ -339,9 +339,8 @@ def humanize_preview_error(exc: Exception) -> tuple[str, str | None]:
         if path:
             return (
                 f"Table data is missing on disk: {path}. "
-                "The catalog still points here but the files are gone — "
-                "the demo seed may have been cleaned up, or /tmp was "
-                "cleared on reboot.",
+                "The catalog still points here but no files were found "
+                "at that location.",
                 "missing_storage",
             )
         return (

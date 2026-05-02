@@ -190,11 +190,13 @@
                     <template x-if="errorKind === 'missing_storage'">
                         <div class="mt-2 text-muted">
                             <i class="bi bi-info-circle me-1"></i>
-                            <strong>How to fix:</strong>
-                            re-seed the demo data
-                            (<code>python scripts/seed-full-stack-demo.py --fresh</code>)
-                            or drop this table from the catalog if it's no
-                            longer needed.
+                            <strong>What to check:</strong>
+                            the data may have been moved, deleted, or
+                            never landed at this path.  Update the
+                            table's <code>storage_location</code> to point
+                            at the current location, restore the data at
+                            the path above, or drop the table from the
+                            catalog if it's no longer needed.
                         </div>
                     </template>
                 </div>
@@ -239,7 +241,12 @@
     </div>
 
     <script>
-    function tablePreview() {
+    // Sprint 23 — register on ``window`` so ``x-data="tablePreview()"``
+    // evaluates correctly when the page lands via HTMX boost (where
+    // top-level ``function`` declarations in a re-injected ``<script>``
+    // do not always promote to globals reliably).  Same pattern as
+    // ``window.catalogTree`` in components/sidebar.html.
+    window.tablePreview = function () {
         const FQN = '{{ catalog_name }}.{{ schema_name }}.{{ table_name }}';
         return {
             loading: true,
@@ -313,7 +320,7 @@
                 }
             },
         };
-    }
+    };
     </script>
 
     </div>
