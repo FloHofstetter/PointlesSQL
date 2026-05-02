@@ -25,6 +25,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # settings (BUG-28-02).
 _STARTUP_CWD = Path.cwd()
 
+# Repository root — derived from the location of this module on disk
+# so default paths are stable regardless of which CWD the server was
+# launched from.  ``settings.py`` lives at ``<repo>/pointlessql/``;
+# parent.parent is therefore ``<repo>/``.  Operators who want the
+# legacy CWD-relative behaviour can still override every default
+# via the matching env var (BUG-grand-09).
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 class ServerSettings(BaseSettings):
     """HTTP server bind address and public URL.
@@ -64,7 +72,11 @@ class DatabaseSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_DB_")
 
-    url: str = "sqlite:///./pointlessql.db"
+    # BUG-grand-09 — anchored to the repo root so the default DB
+    # location is stable no matter which CWD the server was started
+    # from.  Override via ``POINTLESSQL_DB_URL`` when a different
+    # location is needed (Docker volumes, multi-tenant installs).
+    url: str = f"sqlite:///{_PROJECT_ROOT / 'pointlessql.db'}"
 
 
 class AuthSettings(BaseSettings):

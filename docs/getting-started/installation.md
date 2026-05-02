@@ -216,3 +216,23 @@ The soyuz-catalog image failed to start. Check logs with
 `docker compose logs soyuz-catalog`. Most common cause: the
 `/app/data` volume has a stale SQLite from a previous version;
 `docker compose down -v` wipes it.
+
+## Default file locations
+
+Since the BUG-grand-09 fix the SQLite database, MLflow tracking
+store, and MLflow artifact root all anchor to the **repository
+root** rather than the working directory the server was launched
+from. Concretely the defaults resolve to:
+
+| File | Default path | Override env var |
+|---|---|---|
+| PointlesSQL DB | `<repo>/pointlessql.db` | `POINTLESSQL_DB_URL` |
+| MLflow backend | `<repo>/mlflow.db` | `POINTLESSQL_MLFLOW_BACKEND_STORE_URI` |
+| MLflow artifacts | `<repo>/mlflow_artifacts/` | `POINTLESSQL_MLFLOW_ARTIFACT_ROOT` |
+
+Pre-fix, those paths were CWD-relative — starting `pointlessql`
+from a sibling directory created a *parallel* `pointlessql.db`
+there, which the server then read from while the seed-demo wrote
+to the in-repo file. Operators who need the legacy CWD-relative
+behaviour set the matching env var to `sqlite:///./pointlessql.db`
+(or `file://./mlflow_artifacts`) explicitly.

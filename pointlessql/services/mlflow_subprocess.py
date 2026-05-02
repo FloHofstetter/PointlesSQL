@@ -53,6 +53,14 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+# Repo root anchor for cwd-relative URI defaults (BUG-grand-09).
+# This file lives at ``<repo>/pointlessql/services/mlflow_subprocess.py``
+# so three ``parent`` walks yield the repo root.  Operators who want
+# the legacy CWD-relative behaviour can still set
+# ``POINTLESSQL_MLFLOW_BACKEND_STORE_URI`` /
+# ``POINTLESSQL_MLFLOW_ARTIFACT_ROOT`` explicitly.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 _PID_FILE_NAME = "mlflow.pid"
 _HEALTH_TIMEOUT_S = 30.0
 _HEALTH_POLL_S = 0.5
@@ -119,7 +127,12 @@ class MLflowSubprocess:
         """
         self.settings = settings
         self.soyuz_url = soyuz_url
-        self.cwd = cwd or Path.cwd()
+        # BUG-grand-09 — anchor relative-path defaults to the repo
+        # root rather than ``Path.cwd()`` so the MLflow tracking DB
+        # and artifact root land in the same place no matter which
+        # directory the server was started from.  Caller-supplied
+        # ``cwd`` overrides (Docker compose, custom installs).
+        self.cwd = cwd or _PROJECT_ROOT
         self.proc: asyncio.subprocess.Process | None = None
 
     def _derive_uris(self) -> tuple[str, str, str]:
@@ -128,7 +141,10 @@ class MLflowSubprocess:
         Returns:
             tuple[str, str, str]: ``(backend_store_uri, artifact_root, registry_uri)``.
         """
-        backend = self.settings.backend_store_uri or "sqlite:///./mlflow.db"
+        backend = (
+            self.settings.backend_store_uri
+            or f"sqlite:///{(self.cwd / 'mlflow.db').resolve()}"
+        )
         artifact_root = (
             self.settings.artifact_root
             or f"file://{(self.cwd / 'mlflow_artifacts').resolve()}"
