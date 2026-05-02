@@ -37,8 +37,8 @@
 } %}
 {% set active_section = _section_map.get(active_page if active_page is defined else None, 'federation') %}
 <body hx-boost="true"
-      hx-target="#main-content"
-      hx-select="#main-content"
+      hx-target=".pql-shell"
+      hx-select=".pql-shell"
       hx-swap="outerHTML show:window:top"
       {% if list_page is defined and list_page %}data-pql-refresh="1"{% endif %}>
     <nav class="navbar navbar-expand bg-body-tertiary border-bottom px-3 pql-topbar">

@@ -9,9 +9,10 @@
 //
 // Loaded as a non-module ``<script>`` AFTER the Bootstrap bundle
 // in base.html (which exposes ``window.bootstrap``).  HTMX boosts
-// re-render ``#main-content`` without a full reload, so we also
-// re-init on ``htmx:afterSwap`` to cover icons rendered into the
-// boosted content area.
+// swap the entire ``.pql-shell`` (icon-rail + context-panel +
+// main) so we also re-init on ``htmx:afterSwap`` to cover icons
+// rendered into any of those zones — popover instances bound to
+// the previous DOM nodes are GC'd along with their elements.
 (function () {
     'use strict';
 
