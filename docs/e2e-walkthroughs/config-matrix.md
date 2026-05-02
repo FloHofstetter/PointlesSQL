@@ -8,43 +8,43 @@ run. One fully-written primary walk + five delta walks.
 
 - Stack up with the e2e overlay.
 - `admin@pql.test` + the seeded `demo` catalog exist (from
-  `auth.md` + `scripts/seed-e2e.py`).
+ `auth.md` + `scripts/seed-e2e.py`).
 - All axes are flipped via **host env exported before
-  `docker compose up --force-recreate pointlessql`** — none of
-  them are runtime-togglable (see `api/main.py:49-50` which calls
-  `configure_logging` at import time).
+ `docker compose up --force-recreate pointlessql`** — none of
+ them are runtime-togglable (see `api/main.py:49-50` which calls
+ `configure_logging` at import time).
 
 ## Config axes and defaults
 
-| Env var                          | Default   | Accepted values                    |
+| Env var | Default | Accepted values |
 | -------------------------------- | --------- | ---------------------------------- |
-| `POINTLESSQL_DELTA_ENGINE`             | `pandas`  | `pandas`, `duckdb`, `polars`       |
-| `POINTLESSQL_LOG_FORMAT`         | `text`    | `text`, `json`                     |
-| `POINTLESSQL_DB_URL`             | sqlite…   | any SQLAlchemy URL (sqlite/postgres) |
+| `POINTLESSQL_DELTA_ENGINE` | `pandas` | `pandas`, `duckdb`, `polars` |
+| `POINTLESSQL_LOG_FORMAT` | `text` | `text`, `json` |
+| `POINTLESSQL_DB_URL` | sqlite… | any SQLAlchemy URL (sqlite/postgres) |
 
 ## Primary walk — `engine=pandas`, `log=text`, `db=sqlite`
 
 1. **Start with the defaults**.
-   ```bash
-   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
-   docker compose exec pointlessql python /app/scripts/seed-e2e.py
-   ```
+ ```bash
+ docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
+ docker compose exec pointlessql python /app/scripts/seed-e2e.py
+ ```
 
 2. **Assert startup log reports the expected values**.
-   ```bash
-   docker compose logs pointlessql | grep 'PointlesSQL starting' | tail -1
-   ```
-   Expect the line to contain `engine=pandas, log_format=text`
-   (emitted by `api/main.py:102`).
+ ```bash
+ docker compose logs pointlessql | grep 'PointlesSQL starting' | tail -1
+ ```
+ Expect the line to contain `engine=pandas, log_format=text`
+ (emitted by `api/main.py:102`).
 
 3. **Run the abbreviated golden-path browser walk**:
-   - Register `admin@pql.test` (first-user bootstrap).
-   - Log in.
-   - Navigate `/catalogs/demo/schemas/sales/tables/orders`, assert
-     the PQL snippet card renders with
-     `pql.table("demo.sales.orders")`.
-   - Navigate `/metrics` as admin, assert the response is
-     `text/plain` with `pointlessql_job_runs_total`.
+ - Register `admin@pql.test` (first-user bootstrap).
+ - Log in.
+ - Navigate `/catalogs/demo/schemas/sales/tables/orders`, assert
+ the PQL snippet card renders with
+ `pql.table("demo.sales.orders")`.
+ - Navigate `/metrics` as admin, assert the response is
+ `text/plain` with `pointlessql_job_runs_total`.
 
 Primary walk acceptance: all four asserts pass.
 
@@ -59,7 +59,7 @@ confirms the override landed.
 
 ```bash
 POINTLESSQL_DELTA_ENGINE=duckdb docker compose -f docker-compose.yml \
-    -f docker-compose.e2e.yml up -d --force-recreate pointlessql
+ -f docker-compose.e2e.yml up -d --force-recreate pointlessql
 ```
 
 Assert startup log shows `engine=duckdb`. Re-run seed (harmless,
@@ -74,13 +74,13 @@ Same pattern; expect `engine=polars`.
 
 ```bash
 POINTLESSQL_LOG_FORMAT=json docker compose -f docker-compose.yml \
-    -f docker-compose.e2e.yml up -d --force-recreate pointlessql
+ -f docker-compose.e2e.yml up -d --force-recreate pointlessql
 ```
 
 Assert:
 ```bash
 docker compose logs pointlessql | grep -o '{.*"message":[^}]*}' | head -1 \
-    | jq '.log_format // .message'
+ | jq '.log_format //.message'
 ```
 yields valid JSON. Visit `/` from the browser; a second log line
 with a non-null `request_id` field should appear.
@@ -89,7 +89,7 @@ with a non-null `request_id` field should appear.
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.postgres.yml \
-    -f docker-compose.e2e.yml up -d --force-recreate pointlessql postgres
+ -f docker-compose.e2e.yml up -d --force-recreate pointlessql postgres
 ```
 
 Note: a fresh `postgres_data` volume has no users. Re-register
@@ -97,7 +97,7 @@ Note: a fresh `postgres_data` volume has no users. Re-register
 DB). Re-run seed. Run the browser walk. Verify with:
 ```bash
 docker compose exec postgres psql -U pointlessql -c \
-    "SELECT email FROM users;"
+ "SELECT email FROM users;"
 ```
 Expect `admin@pql.test` to appear.
 
@@ -132,14 +132,14 @@ browser_navigate('http://127.0.0.1:8000/')
 _No bugs surfaced. Live spot-check covered the JSON log delta:_
 
 - _`POINTLESSQL_LOG_FORMAT=json` flip + recreate landed; startup
-  log lines emitted as single-line JSON with fields
-  `timestamp, level, logger, message, request_id, job_run_id,
-  task_id`. Request-scoped log lines (triggered by
-  `curl -H 'X-Request-ID: matrix-json-test' /`) carried
-  `"request_id": "matrix-json-test"` — Sprint 16's contextvar
-  propagation still holds under the JSON formatter._
+ log lines emitted as single-line JSON with fields
+ `timestamp, level, logger, message, request_id, job_run_id,
+ task_id`. Request-scoped log lines (triggered by
+ `curl -H 'X-Request-ID: matrix-json-test' /`) carried
+ `"request_id": "matrix-json-test"` — 's contextvar
+ propagation still holds under the JSON formatter._
 - _Other deltas (engine, database) exercise the same code paths
-  already validated by Sprint 22's live walk; the playbook is
-  in place for future regressions (e.g. a type-mapping change
-  in `DuckDBEngine` would surface as a missing column in the
-  `demo.sales.orders` table detail page)._
+ already validated by 's live walk; the playbook is
+ in place for future regressions (e.g. a type-mapping change
+ in `DuckDBEngine` would surface as a missing column in the
+ `demo.sales.orders` table detail page)._

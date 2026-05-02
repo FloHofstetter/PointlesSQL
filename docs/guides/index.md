@@ -1,15 +1,15 @@
 # Guides
 
-Task-oriented walkthroughs.  Three flavours:
+Task-oriented walkthroughs. Three flavours:
 
 1. **High-level recipes** — short, opinionated paths through
-   common workflows.  Read these first.
+ common workflows. Read these first.
 2. **Operator cookbook** — short recipes that link out to the
-   long-form e2e walkthrough for each.
+ long-form e2e walkthrough for each.
 3. **Deterministic e2e walkthroughs** — 38 step-by-step
-   playbooks, replayable by humans or by Claude Code through the
-   Playwright MCP browser tools.  Source of truth for every UI
-   surface.
+ playbooks, replayable by humans or by Claude Code through the
+ Playwright MCP browser tools. Source of truth for every UI
+ surface.
 
 ## High-level recipes
 
@@ -17,14 +17,14 @@ Task-oriented walkthroughs.  Three flavours:
 |---|---|
 | **[Agent bring-up](agent-bring-up.md)** | Wire a brand-new Hermes agent to PointlesSQL end-to-end — install plugin, mint API keys, register the cron job, watch the first run land in the audit cockpit. |
 | **[Operator cookbook](operator-cookbook.md)** | Twenty things an operator does in a typical week, each linking to the deep walkthrough. |
-| **[Troubleshooting](troubleshooting.md)** | Common errors and how to fix them.  Mined from real bug reports and the codebase's "BUG-NN-NN" markers. |
+| **[Troubleshooting](troubleshooting.md)** | Common errors and how to fix them. Mined from real bug reports and the codebase's "BUG-NN-NN" markers. |
 | **[FAQ](faq.md)** | The questions a new reader actually asks. |
 | **[Jobs](jobs.md)** | The in-process scheduler — author a `python` job kind, register a cron, hook the failure webhook. |
 
 ## E2E walkthroughs
 
 The 38 walkthroughs under [`docs/e2e-walkthroughs/`](../e2e-walkthroughs/README.md)
-are themed in the nav into five sub-sections.  Each playbook is
+are themed in the nav into five sub-sections. Each playbook is
 a deterministic markdown file replayable by both humans and
 Claude Code through Playwright MCP.
 
@@ -86,12 +86,12 @@ Claude Code through Playwright MCP.
 Every walkthrough has a deterministic shape:
 
 1. **Setup** — preconditions ("auth.md walked first; admin@pql.test
-   logged in; seed-e2e.py ran").
+ logged in; seed-e2e.py ran").
 2. **Numbered steps** — each step has an `Action:` (terminal
-   command or browser click) and an `Expect:` (assertion on
-   rendered state).
+ command or browser click) and an `Expect:` (assertion on
+ rendered state).
 3. **Failure modes** — the visible-error envelopes operators
-   should see for the most common slips.
+ should see for the most common slips.
 
 Claude Code through Playwright MCP can replay any walkthrough
 end-to-end without human intervention; the
@@ -99,7 +99,7 @@ end-to-end without human intervention; the
 explains the harness.
 
 When a sprint touches HTML or JS, the relevant walkthrough should
-be replayed in a real browser before the sprint commits.  The
+be replayed in a real browser before the sprint commits. The
 [run-playbook-as-gate convention](https://github.com/FloHofstetter/PointlesSQL/blob/main/CLAUDE.md)
-is enforced by code review, not CI — Sprint 23 is a candidate
+is enforced by code review, not CI — is a candidate
 for adding a Playwright nightly that diffs against the playbooks.

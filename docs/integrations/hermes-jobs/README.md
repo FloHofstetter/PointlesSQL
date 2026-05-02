@@ -28,11 +28,11 @@ directly:
 
 1. Make sure `~/.hermes/cron/` exists (`mkdir -p ~/.hermes/cron`).
 2. If `~/.hermes/cron/jobs.json` does not yet exist, create it with
-   `[]` as the file body.
+ `[]` as the file body.
 3. Open the file, paste the manifest entry into the top-level array,
-   give it a fresh 12-hex-char `id` (`uuid4().hex[:12]`), and save.
+ give it a fresh 12-hex-char `id` (`uuid4().hex[:12]`), and save.
 4. Restart the Hermes gateway (or run `hermes cron tick --once` in
-   the foreground if you only want a one-off).
+ the foreground if you only want a one-off).
 
 The walkthrough at [`docs/e2e-walkthroughs/audit-reviewer-daily.md`](../../e2e-walkthroughs/audit-reviewer-daily.md)
 spells the install out step by step, including the prerequisite
@@ -49,15 +49,15 @@ The audit-read tools the manifests call (`pql_audit_summary`,
 two things:
 
 1. The plugin's `POINTLESSQL_AUDITOR_MODE` env var (which makes the
-   plugin register the 9 auditor tools at session start).
+ plugin register the 9 auditor tools at session start).
 2. A PointlesSQL API key with the `auditor` scope set on it
-   (`api_keys.auditor=True`, added in Sprint 19.1's Alembic
-   migration `k1f2a3b4c5d6`). Mint one with:
-   ```bash
-   pointlessql admin issue-auditor-key --name=daily-review
-   ```
-   The CLI prints the bearer token exactly once — copy it into
-   `~/.hermes/.env` as `POINTLESSQL_API_KEY=<token>` immediately.
+ (`api_keys.auditor=True`, added's Alembic
+ migration `k1f2a3b4c5d6`). Mint one with:
+ ```bash
+ pointlessql admin issue-auditor-key --name=daily-review
+ ```
+ The CLI prints the bearer token exactly once — copy it into
+ `~/.hermes/.env` as `POINTLESSQL_API_KEY=<token>` immediately.
 
 Both knobs are read at Hermes-cron run time from `~/.hermes/.env`
 (Hermes reloads the dotenv on every cron run; see
@@ -69,27 +69,27 @@ per job, add a Hermes-side feature first.
 ## Prompt design notes
 
 - The prompt always pins the time window the agent should review.
-  Daily-review uses `[yesterday-00:00 UTC, today-00:00 UTC)`, which
-  is closed-day so the response is deterministic regardless of when
-  the cron actually fires.
+ Daily-review uses `[yesterday-00:00 UTC, today-00:00 UTC)`, which
+ is closed-day so the response is deterministic regardless of when
+ the cron actually fires.
 - The prompt forbids any write-side tools by name. The auditor scope
-  on the API key already blocks them server-side — the prompt rule
-  is belt-and-braces and saves an LLM round-trip when the agent gets
-  curious.
+ on the API key already blocks them server-side — the prompt rule
+ is belt-and-braces and saves an LLM round-trip when the agent gets
+ curious.
 - The prompt never asks the agent to "be creative" with the output
-  shape. The Markdown skeleton is fixed because downstream consumers
-  (Sprint 19.2.1's cockpit card, future digest aggregators) parse
-  the same shape.
+ shape. The Markdown skeleton is fixed because downstream consumers
+ ('s cockpit card, future digest aggregators) parse
+ the same shape.
 - The wake-gate at [`scripts/audit-wake-gate.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/scripts/audit-wake-gate.py)
-  pre-fetches the anomaly verdicts and prints them as the leading
-  `#`-prefixed context block. The agent trusts that block and does
-  not re-call `pql_anomaly_check` — saves one LLM round-trip on
-  `warn`/`critical` days and skips the LLM entirely on `ok` days
-  (the script's last line is `{"wakeAgent": false}` then; see
-  `cron/scheduler.py:_parse_wake_gate`).
+ pre-fetches the anomaly verdicts and prints them as the leading
+ `#`-prefixed context block. The agent trusts that block and does
+ not re-call `pql_anomaly_check` — saves one LLM round-trip on
+ `warn`/`critical` days and skips the LLM entirely on `ok` days
+ (the script's last line is `{"wakeAgent": false}` then; see
+ `cron/scheduler.py:_parse_wake_gate`).
 - The final tool call is always `pql_post_audit_review`. PointlesSQL
-  is the source of truth — the cockpit "Latest review" card and the
-  webhook fan-out both read from `agent_reviews`. Hermes-native
-  delivery (`deliver: "slack:…"`) is a parallel best-effort path on
-  top, useful when PointlesSQL is briefly unreachable but the chat
-  channel still needs the digest.
+ is the source of truth — the cockpit "Latest review" card and the
+ webhook fan-out both read from `agent_reviews`. Hermes-native
+ delivery (`deliver: "slack:…"`) is a parallel best-effort path on
+ top, useful when PointlesSQL is briefly unreachable but the chat
+ channel still needs the digest.

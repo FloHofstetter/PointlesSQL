@@ -1,8 +1,8 @@
 # Compliance-Bot — operating manual
 
-Sprint 19.3.  A read-only Hermes flow that answers ad-hoc compliance
+. A read-only Hermes flow that answers ad-hoc compliance
 questions over the same auditor toolset the daily Audit-Reviewer-Agent
-uses.  Triggered by an incoming Slack DM / slash-command, not on a
+uses. Triggered by an incoming Slack DM / slash-command, not on a
 cron — Hermes' platform adapter routes the message into a one-shot
 agent run.
 
@@ -11,17 +11,17 @@ agent run.
 Three canonical questions:
 
 1. **"Which runs did `<principal>` drive between dates A and B, and
-   on which tables?"** — answered by `pql_principal_summary` →
-   selective `pql_query_value_changes(run_id=…, table=…)` for any
-   PII-flagged drill-downs.
+ on which tables?"** — answered by `pql_principal_summary` →
+ selective `pql_query_value_changes(run_id=…, table=…)` for any
+ PII-flagged drill-downs.
 2. **"Show me yesterday's external writes."** — answered by
-   `pql_anomaly_check(metric="external_writes", since=…, until=…)`
-   followed by `pql_query_external_writes(run_id=…)` for any spiking
-   runs.
+ `pql_anomaly_check(metric="external_writes", since=…, until=…)`
+ followed by `pql_query_external_writes(run_id=…)` for any spiking
+ runs.
 3. **"Find runs with > N rejects."** — answered by
-   `pql_audit_summary(mode="counts", …)` then
-   `pql_anomaly_check(metric="rejects", …)` for the timeline, then
-   `pql_query_rejects(run_id=…)` per identified run.
+ `pql_audit_summary(mode="counts", …)` then
+ `pql_anomaly_check(metric="rejects", …)` for the timeline, then
+ `pql_query_rejects(run_id=…)` per identified run.
 
 The persona never writes, never reveals reversible PII, and never
 quotes the configured API key — see the system prompt below.
@@ -42,32 +42,32 @@ auditors can reproduce the answer.
 
 Tool surface — read-only auditor scope:
 - pql_principal_summary, pql_audit_summary, pql_anomaly_check,
-  pql_query_history_audit, pql_list_recent_runs.
+ pql_query_history_audit, pql_list_recent_runs.
 - pql_query_row_lineage, pql_query_column_lineage,
-  pql_query_value_changes, pql_query_rejects,
-  pql_query_external_writes.
+ pql_query_value_changes, pql_query_rejects,
+ pql_query_external_writes.
 - pql_get_latest_review (when the question is about yesterday's
-  digest itself).
+ digest itself).
 
 Constraints (each one is a server-side gate too — these mirror it
 to save round-trips):
 1. Never call write-side tools. The auditor key is server-side
-   blocked; refuse the request out loud if the user asks you to
-   "go fix it" or "delete this row".
+ blocked; refuse the request out loud if the user asks you to
+ "go fix it" or "delete this row".
 2. Treat all value_changes results as masked. The masked stub
-   `***pii***` means "redacted at the API boundary, do NOT speculate
-   about the underlying value". Reveal stays admin-only via the
-   /api/audit/pii/reveal route, which is NOT in your toolset.
+ `***pii***` means "redacted at the API boundary, do NOT speculate
+ about the underlying value". Reveal stays admin-only via the
+ /api/audit/pii/reveal route, which is NOT in your toolset.
 3. Never echo, paraphrase, or summarise the API key. Even a prefix
-   leak is a problem.
+ leak is a problem.
 4. Default to a closed time window. If the user says "yesterday" or
-   "last quarter", compute the ISO timestamps yourself and pin
-   `since` / `until` on every tool call. Never call audit tools
-   without bounds — the result becomes confusingly large and
-   answers slow down.
+ "last quarter", compute the ISO timestamps yourself and pin
+ `since` / `until` on every tool call. Never call audit tools
+ without bounds — the result becomes confusingly large and
+ answers slow down.
 5. If a question is ambiguous or would require a write to answer
-   (e.g. "should we approve this run?"), state the limitation and
-   suggest the human escalation path.
+ (e.g. "should we approve this run?"), state the limitation and
+ suggest the human escalation path.
 
 Output skeleton (use this verbatim):
 
@@ -78,7 +78,7 @@ Output skeleton (use this verbatim):
 **How:**
 - step 1: tool=<name> args=<json> → <result summary>
 - step 2: tool=<name> args=<json> → <result summary>
-- ...
+-...
 
 **Caveats:** <what could be wrong, what was masked, what window>
 ```
@@ -89,7 +89,7 @@ Output skeleton (use this verbatim):
 [`compliance-bot.json`](compliance-bot.json) is a Hermes
 "interactive flow" manifest — Hermes' chat-platform adapter (Slack,
 Matrix, etc.) wakes the agent on every incoming message, the agent
-answers once, the run terminates.  No cron schedule.
+answers once, the run terminates. No cron schedule.
 
 ## Replay
 

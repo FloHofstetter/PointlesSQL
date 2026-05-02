@@ -155,10 +155,10 @@ the [installation guide](getting-started/installation.md).
 | Try it in five minutes | [Quickstart](getting-started/quickstart.md) |
 | Understand the mental model | [Concepts overview](getting-started/concepts.md) |
 | See a typed list of every operator surface | [Guides](guides/index.md) |
-| Read the API surface | [Reference](reference/index.md) (Sprint 22.3) |
+| Read the API surface | [Reference](reference/index.md) |
 | Wire in an agent runtime | [Hermes jobs](integrations/hermes-jobs/README.md) |
 | Understand a design decision | [ADRs](decisions/index.md) |
 
-<!-- TODO Sprint 22.5 / launch-sprint:
+<!-- TODO before public launch:
      replace `https://github.com/...` repo links with
      in-site cross-refs once the docs URL is public. -->

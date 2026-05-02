@@ -1,9 +1,9 @@
-# E2E walkthrough — Inference-Lineage (Sprint 21.7)
+# E2E walkthrough — Inference-Lineage
 
 This playbook validates the `models:/{fqn}/{version}` inference-
 lineage path: the model-detail Lineage DAG must show source-tables
-upstream (Sprint 21.5.5, solid green `trained_from`) **and**
-prediction-tables downstream (Sprint 21.7, dashed blue
+upstream (, solid green `trained_from`) **and**
+prediction-tables downstream (, dashed blue
 `inferred_to`).
 
 It assumes the [`models-tab.md`](models-tab.md) and
@@ -36,10 +36,10 @@ pql = PQL(agent_run_id="seed-inference-21.7")
 # Suppose the smoke_model is at models:/pql_test.mlflow_smoke.smoke_model/1
 predictions = pd.DataFrame({"id": [1, 2, 3], "score": [0.91, 0.42, 0.78]})
 pql.write_table(
-    predictions,
-    "pql_test.mlflow_smoke.smoke_predictions",
-    source_table_fqn="pql_test.mlflow_smoke.features",
-    source_model_uri="models:/pql_test.mlflow_smoke.smoke_model/1",
+ predictions,
+ "pql_test.mlflow_smoke.smoke_predictions",
+ source_table_fqn="pql_test.mlflow_smoke.features",
+ source_model_uri="models:/pql_test.mlflow_smoke.smoke_model/1",
 )
 ```
 
@@ -51,16 +51,16 @@ soyuz, and persists three `lineage_row_edges` rows whose
 
 ```bash
 curl -s -b "pql_session=$(grep pql_session ~/.config/pointlessql/auth.cookie)" \
-  http://127.0.0.1:8000/api/models/pql_test.mlflow_smoke.smoke_model/predictions | jq
+ http://127.0.0.1:8000/api/models/pql_test.mlflow_smoke.smoke_model/predictions | jq
 ```
 
 Expect:
 
 ```json
 {
-  "predictions": [
-    {"target_table": "pql_test.mlflow_smoke.smoke_predictions", "edge_count": 3}
-  ]
+ "predictions": [
+ {"target_table": "pql_test.mlflow_smoke.smoke_predictions", "edge_count": 3}
+ ]
 }
 ```
 
@@ -73,12 +73,12 @@ click the *Lineage* tab.
 Expect:
 
 - **Legend** at the top: green `Sources trained_from` + blue
-  `Predictions inferred_to`.
+ `Predictions inferred_to`.
 - The orange-hexagon model node sits in the centre.
 - A green round-rectangle node `features` upstream (left) with a
-  solid edge `trained_from`.
+ solid edge `trained_from`.
 - A blue round-rectangle node `smoke_predictions` downstream (right)
-  with a dashed edge `inferred_to`.
+ with a dashed edge `inferred_to`.
 
 Below the cytoscape view a "Prediction tables" card lists
 `pql_test.mlflow_smoke.smoke_predictions` with `Edges = 3`.
@@ -96,9 +96,9 @@ specific writes aggregate at the registered-model level).
 
 ```python
 pql.write_table(
-    pd.DataFrame({"id": [1]}),
-    "pql_test.mlflow_smoke.unrelated_table",
-    source_table_fqn="pql_test.mlflow_smoke.features",
+ pd.DataFrame({"id": [1]}),
+ "pql_test.mlflow_smoke.unrelated_table",
+ source_table_fqn="pql_test.mlflow_smoke.features",
 )
 ```
 
@@ -107,8 +107,8 @@ column `NULL` and the Predictions card stays unchanged. Confirm:
 
 ```bash
 sqlite3 ~/.local/share/pointlessql/auth.db \
-  "SELECT target_table, source_model_uri FROM lineage_row_edges \
-   WHERE target_table LIKE 'pql_test.mlflow_smoke.unrelated_table%'"
+ "SELECT target_table, source_model_uri FROM lineage_row_edges \
+ WHERE target_table LIKE 'pql_test.mlflow_smoke.unrelated_table%'"
 ```
 
 Expect: `target_table` populated, `source_model_uri = NULL`.
@@ -123,10 +123,10 @@ remain visible in `lineage_row_edges`.
 ## Known limitations
 
 - The bidirectional DAG currently aggregates at the registered-
-  model level, not per-version. Per-version split (so the operator
-  can see "v1 wrote to predictions_2026_q1, v2 wrote to
-  predictions_2026_q2") is queued as a Phase-22 polish.
+ model level, not per-version. Per-version split (so the operator
+ can see "v1 wrote to predictions_2026_q1, v2 wrote to
+ predictions_2026_q2") is queued as a polish.
 - A dedicated `pql.predict(model="…", input=df)` helper that
-  auto-detects model context from `mlflow.active_run()` is also
-  Phase-22 — the explicit `source_model_uri=` path covers the
-  audit need today.
+ auto-detects model context from `mlflow.active_run()` is also
+ — the explicit `source_model_uri=` path covers the
+ audit need today.

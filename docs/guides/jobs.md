@@ -4,12 +4,12 @@ PointlesSQL's scheduler (see `pointlessql/services/scheduler.py`) walks
 a small registry of **job kinds** — callables that know how to perform
 one unit of work. Two kinds ship in-box:
 
-- `pg_sync` — the Sprint 18 Postgres-to-UC mirror. This is the
-  reference implementation. Read
-  [`pointlessql/services/pg_sync.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/pg_sync.py)
-  alongside the scheduler source to see how a real kind is wired.
+- `pg_sync` — the Postgres-to-UC mirror. This is the
+ reference implementation. Read
+ [`pointlessql/services/pg_sync.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/pg_sync.py)
+ alongside the scheduler source to see how a real kind is wired.
 - `python` — a loader that resolves a plugin entry point and hands it
-  the full executor context (see below).
+ the full executor context (see below).
 
 This document covers how to add your own kind via the `python` loader
 + a plugin entry point. If you need a brand-new registry key, see the
@@ -27,26 +27,26 @@ from pointlessql.types import UserInfo
 
 
 async def run_my_job(
-    job_run_id: int,
-    user_info: UserInfo,
-    config: dict[str, Any],
-    uc_client: UnityCatalogClient,
+ job_run_id: int,
+ user_info: UserInfo,
+ config: dict[str, Any],
+ uc_client: UnityCatalogClient,
 ) -> None:
-    """One unit of work.
+ """One unit of work.
 
-    Args:
-        job_run_id: The current :class:`~pointlessql.models.JobRun`
-            id. Use it when calling :func:`pointlessql.services.scheduler.log_job`
-            to tag log rows with this run.
-        user_info: The "run-as" user the scheduler resolved from the
-            job row. Its ``email`` is the principal forwarded to
-            soyuz-catalog.
-        config: Deserialized JSON config from the task row (or the
-            job row, for single-task jobs).
-        uc_client: A Unity Catalog facade that already carries the
-            ``X-Principal`` header for ``user_info["email"]``.
-    """
-    ...
+ Args:
+ job_run_id: The current :class:`~pointlessql.models.JobRun`
+ id. Use it when calling :func:`pointlessql.services.scheduler.log_job`
+ to tag log rows with this run.
+ user_info: The "run-as" user the scheduler resolved from the
+ job row. Its ``email`` is the principal forwarded to
+ soyuz-catalog.
+ config: Deserialized JSON config from the task row (or the
+ job row, for single-task jobs).
+ uc_client: A Unity Catalog facade that already carries the
+ ``X-Principal`` header for ``user_info["email"]``.
+ """
+...
 ```
 
 Return `None` on success. Raise anything on failure — the scheduler
@@ -77,10 +77,10 @@ and the entry-point name in `config`:
 
 ```json
 {
-  "name": "summarise_events_daily",
-  "cron_expr": "0 2 * * *",
-  "kind": "python",
-  "config": {"entry_point": "my_job", "catalog": "events"}
+ "name": "summarise_events_daily",
+ "cron_expr": "0 2 * * *",
+ "kind": "python",
+ "config": {"entry_point": "my_job", "catalog": "events"}
 }
 ```
 
@@ -93,13 +93,13 @@ payload is:
 
 ```json
 {
-  "job_id": 42,
-  "job_name": "summarise_events_daily",
-  "run_id": 1337,
-  "status": "failed",
-  "error": "...",
-  "started_at": "2026-04-16T02:00:00+00:00",
-  "finished_at": "2026-04-16T02:00:03+00:00"
+ "job_id": 42,
+ "job_name": "summarise_events_daily",
+ "run_id": 1337,
+ "status": "failed",
+ "error": "...",
+ "started_at": "2026-04-16T02:00:00+00:00",
+ "finished_at": "2026-04-16T02:00:03+00:00"
 }
 ```
 
@@ -129,51 +129,51 @@ from pointlessql.types import UserInfo
 
 
 async def summarise_events(
-    job_run_id: int,
-    user_info: UserInfo,
-    config: dict[str, Any],
-    uc_client: UnityCatalogClient,
+ job_run_id: int,
+ user_info: UserInfo,
+ config: dict[str, Any],
+ uc_client: UnityCatalogClient,
 ) -> None:
-    """Read events, aggregate, and write a summary table.
+ """Read events, aggregate, and write a summary table.
 
-    Expects ``config`` with keys:
+ Expects ``config`` with keys:
 
-    * ``source_table``: three-part name to read
-    * ``target_table``: three-part name to write
-    * ``group_by``: column name to group on
-    """
-    from pointlessql.db import get_session_factory
+ * ``source_table``: three-part name to read
+ * ``target_table``: three-part name to write
+ * ``group_by``: column name to group on
+ """
+ from pointlessql.db import get_session_factory
 
-    source = config["source_table"]
-    target = config["target_table"]
-    group_by = config["group_by"]
+ source = config["source_table"]
+ target = config["target_table"]
+ group_by = config["group_by"]
 
-    # PQL works with the same generated soyuz-catalog client the
-    # uc_client facade wraps, so reusing ``uc_client._client`` keeps
-    # X-Principal forwarding consistent end-to-end.
-    pql = PQL(client=uc_client._client)  # noqa: SLF001
+ # PQL works with the same generated soyuz-catalog client the
+ # uc_client facade wraps, so reusing ``uc_client._client`` keeps
+ # X-Principal forwarding consistent end-to-end.
+ pql = PQL(client=uc_client._client) # noqa: SLF001
 
-    factory = get_session_factory()
-    log_job(
-        factory, job_run_id, None, "INFO",
-        f"reading {source} as {user_info['email']}",
-    )
+ factory = get_session_factory()
+ log_job(
+ factory, job_run_id, None, "INFO",
+ f"reading {source} as {user_info['email']}",
+ )
 
-    df = pql.table(source)
-    if not isinstance(df, pd.DataFrame):
-        raise RuntimeError("this job only supports the pandas engine")
+ df = pql.table(source)
+ if not isinstance(df, pd.DataFrame):
+ raise RuntimeError("this job only supports the pandas engine")
 
-    summary = (
-        df.groupby(group_by)
-        .size()
-        .reset_index(name="n")
-    )
+ summary = (
+ df.groupby(group_by)
+.size()
+.reset_index(name="n")
+ )
 
-    log_job(
-        factory, job_run_id, None, "INFO",
-        f"writing {len(summary)} rows to {target}",
-    )
-    pql.write_table(summary, target, mode="overwrite")
+ log_job(
+ factory, job_run_id, None, "INFO",
+ f"writing {len(summary)} rows to {target}",
+ )
+ pql.write_table(summary, target, mode="overwrite")
 ```
 
 Register it:
@@ -187,33 +187,33 @@ And schedule it:
 
 ```json
 {
-  "name": "summarise_events_daily",
-  "cron_expr": "0 2 * * *",
-  "kind": "python",
-  "config": {
-    "entry_point": "summarise_events",
-    "source_table": "events.raw.clicks",
-    "target_table": "events.agg.clicks_daily",
-    "group_by": "country"
-  }
+ "name": "summarise_events_daily",
+ "cron_expr": "0 2 * * *",
+ "kind": "python",
+ "config": {
+ "entry_point": "summarise_events",
+ "source_table": "events.raw.clicks",
+ "target_table": "events.agg.clicks_daily",
+ "group_by": "country"
+ }
 }
 ```
 
 ## 5. Logging, retries, concurrency
 
 - Use `log_job(factory, job_run_id, task_id, level, message)` from
-  `pointlessql.services.scheduler` for rows that show up in the log
-  panel. `task_id=None` means run-scoped.
+ `pointlessql.services.scheduler` for rows that show up in the log
+ panel. `task_id=None` means run-scoped.
 - Standard stdlib `logger.info(...)` also works — the scheduler sets
-  `request_id_var`, `job_run_id_var`, and `task_id_var` around every
-  executor call so correlation IDs flow through the `RequestIdFilter`
-  automatically.
+ `request_id_var`, `job_run_id_var`, and `task_id_var` around every
+ executor call so correlation IDs flow through the `RequestIdFilter`
+ automatically.
 - Retry policy is a DB concern, not an executor one — set
-  `max_retries` / `retry_backoff_seconds` on the task row. Raising
-  in your executor is what triggers the retry.
+ `max_retries` / `retry_backoff_seconds` on the task row. Raising
+ in your executor is what triggers the retry.
 - Concurrency is capped per-job (`max_parallel_runs`) and globally
-  (`POINTLESSQL_SCHEDULER_MAX_CONCURRENT_RUNS`). Your executor does
-  not need to reason about either.
+ (`POINTLESSQL_SCHEDULER_MAX_CONCURRENT_RUNS`). Your executor does
+ not need to reason about either.
 
 ## 6. Observability
 
@@ -236,9 +236,9 @@ If your job is generic enough that "ship a plugin wheel + use
 new kind directly on the default registry:
 
 1. Add an `async` executor in `pointlessql/services/scheduler.py`
-   (or a dedicated module under `pointlessql/services/`).
+ (or a dedicated module under `pointlessql/services/`).
 2. Wire it in `build_default_registry()` alongside `"pg_sync"` and
-   `"python"`.
+ `"python"`.
 3. Add tests.
 
 Use the `pg_sync` kind as the reference — it is deliberately the

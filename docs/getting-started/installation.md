@@ -39,7 +39,7 @@ active):
 ```bash
 mkdir ~/pointlessql && cd ~/pointlessql
 curl -L -o docker-compose.yml \
-  https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
+ https://raw.githubusercontent.com/FloHofstetter/PointlesSQL/v0.1.0rc3/docker-compose.yml
 ```
 
 **4. Flip the two services from `build:` → `image:`.** In each
@@ -48,15 +48,15 @@ service block, comment out the `build:` block and uncomment the
 
 ```yaml
 soyuz-catalog:
-  image: ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2   # ← uncomment
-  # build:                                               # ← comment
-  #   context: .                                         #   entire
-  #   dockerfile: Dockerfile.soyuz                       #   block
-  #   additional_contexts:
-  #     soyuz-catalog: ../soyuz-catalog
-  ports:
-    - "${SOYUZ_HOST_PORT:-8080}:8080"
-  ...
+ image: ghcr.io/flohofstetter/soyuz-catalog:v0.2.0rc2 # ← uncomment
+ # build: # ← comment
+ # context:. # entire
+ # dockerfile: Dockerfile.soyuz # block
+ # additional_contexts:
+ # soyuz-catalog:../soyuz-catalog
+ ports:
+ - "${SOYUZ_HOST_PORT:-8080}:8080"
+...
 ```
 
 Same edit on the `pointlessql:` service.
@@ -83,7 +83,7 @@ docker compose -f docker-compose.yml -f docker-compose.grafana.yml up -d
 
 Reads the same SQLite metadata DB the app uses; no agent code,
 no API changes, no extra config. Postgres deployments aren't yet
-supported here (see Sprint 19.0.1 in
+supported here (see in
 [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md)).
 
 Pin to a digest for reproducibility in production:
@@ -111,8 +111,8 @@ export GH_PAT='ghp_...'
 
 ```bash
 git config --global \
-  url."https://x-access-token:${GH_PAT}@github.com/".insteadOf \
-  "https://github.com/"
+ url."https://x-access-token:${GH_PAT}@github.com/".insteadOf \
+ "https://github.com/"
 ```
 
 **3. Install PointlesSQL:**
@@ -164,16 +164,16 @@ need regenerated client output to surface without a tag bump,
 flip the dependency to an editable sibling checkout:
 
 ```bash
-git clone git@github.com:FloHofstetter/soyuz-catalog.git ../soyuz-catalog
-bash scripts/use-editable-soyuz.sh       # pyproject.toml dirty on purpose
-# ...iterate: edit soyuz-catalog, regen client, `uv sync`, test...
-bash scripts/use-pinned-soyuz.sh         # restore before committing
+git clone git@github.com:FloHofstetter/soyuz-catalog.git../soyuz-catalog
+bash scripts/use-editable-soyuz.sh # pyproject.toml dirty on purpose
+#...iterate: edit soyuz-catalog, regen client, `uv sync`, test...
+bash scripts/use-pinned-soyuz.sh # restore before committing
 ```
 
 **4. Start both processes.** In terminal 1:
 
 ```bash
-cd ../soyuz-catalog
+cd../soyuz-catalog
 uv sync
 uv run soyuz-catalog
 ```
@@ -204,7 +204,7 @@ docker compose build`.
 Set `DOCKER_BUILDKIT=1` in your shell or configure
 `"features": {"buildkit": true}` in `~/.docker/config.json`.
 
-**`uv sync` fails with `Authentication failed for ...soyuz-catalog`** —
+**`uv sync` fails with `Authentication failed for...soyuz-catalog`** —
 The `url.insteadOf` rewrite isn't active in this shell. Confirm
 with `git config --global --get url."https://x-access-token:...@github.com/".insteadOf`.
 Use a **classic** PAT, not a fine-grained one — fine-grained PATs

@@ -8,18 +8,18 @@ can be replayed by either:
 
 - **A human** with a browser and a text editor, or
 - **Claude Code** in an MCP-enabled session using the
-  `mcp__playwright__browser_*` tool family.
+ `mcp__playwright__browser_*` tool family.
 
-Phase 7 of [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) explains the
+ of [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) explains the
 motivation: unit and integration tests have never instantiated
 the rendered templates — commit `e09a661` (the job-pause form
 landing on a raw JSON page) is the kind of bug only a live
 browser surfaces.
 
-Sprint 22 delivered the harness plus the five **data-surface**
-playbooks. Sprint 23 adds five **orchestration + operational**
+ delivered the harness plus the five **data-surface**
+playbooks. adds five **orchestration + operational**
 playbooks on top of the same harness (jobs, notebook, OIDC,
-`/metrics`, config matrix) — closing Phase 7.
+`/metrics`, config matrix) — closing.
 
 ## Playbooks
 
@@ -28,131 +28,131 @@ it visits every major UI surface in one ~30-minute click-through and
 cross-links to the deep-dive playbooks below for the edge cases:
 
 0. [`grand-tour.md`](grand-tour.md) — single coherent journey through
-   the catalog, lineage (incl. the Phase-15.8 row / column / value
-   axes), SQL editor, jobs, run-detail, ML Registry with the
-   bidirectional inference DAG, branches, dashboards, alerts (incl.
-   the Atom feed), audit cockpit, federation, volumes, and the
-   responsive + theme toggles. Self-bootstraps via
-   `seed-full-stack-demo.py --fresh --demo-rollback --keep-state`.
+ the catalog, lineage (incl. the row / column / value
+ axes), SQL editor, jobs, run-detail, ML Registry with the
+ bidirectional inference DAG, branches, dashboards, alerts (incl.
+ the Atom feed), audit cockpit, federation, volumes, and the
+ responsive + theme toggles. Self-bootstraps via
+ `seed-full-stack-demo.py --fresh --demo-rollback --keep-state`.
 
-**Data-surface** (Sprint 22). Run these first, in order — later
+**Data-surface**. Run these first, in order — later
 ones reuse users and catalogs created by earlier ones:
 
 1. [`auth.md`](auth.md) — register the first-user admin, then a
-   non-admin user, log in and out, cover redirect-to-login and
-   the `/403` gate on `/metrics`.
+ non-admin user, log in and out, cover redirect-to-login and
+ the `/403` gate on `/metrics`.
 2. [`catalog-browsing.md`](catalog-browsing.md) — navigate the
-   catalog/schema/table detail pages, exercise the sidebar tree
-   and its sessionStorage persistence, copy the PQL snippet.
+ catalog/schema/table detail pages, exercise the sidebar tree
+ and its sessionStorage persistence, copy the PQL snippet.
 3. [`inline-editors.md`](inline-editors.md) — drive every
-   inline-edit component (`editable`, `properties_editor`,
-   `tags_editor`, `permissions_card` grant/revoke + Assigned /
-   Effective tabs, `lineage_card`).
+ inline-edit component (`editable`, `properties_editor`,
+ `tags_editor`, `permissions_card` grant/revoke + Assigned /
+ Effective tabs, `lineage_card`).
 4. [`federation.md`](federation.md) — admin CRUD of connections,
-   external locations, credentials (list + detail + create modal
-   + `deleteConfirm`), plus a non-admin negative pass.
+ external locations, credentials (list + detail + create modal
+ + `deleteConfirm`), plus a non-admin negative pass.
 5. [`foreign-catalog-sync.md`](foreign-catalog-sync.md) — create
-   a foreign catalog via the modal on `/`, run "Sync now",
-   confirm the sync-history card and mirrored schemas/tables.
+ a foreign catalog via the modal on `/`, run "Sync now",
+ confirm the sync-history card and mirrored schemas/tables.
 
-**Orchestration + operational** (Sprint 23). Each one assumes the
+**Orchestration + operational**. Each one assumes the
 data-surface playbooks have run at least once:
 
 6. [`jobs-dag.md`](jobs-dag.md) — single-task + DAG job creation,
-   Run-now, retry + fail-skip propagation, Pause/Resume, per-task
-   log panel, and a `pg_sync`-kind cross-feature smoke against
-   `pg_mirror`.
-7. [`notebook-editor.md`](notebook-editor.md) — Phase-12.6 native
-   editor end-to-end: open + autosave, cell execute + output
-   persistence across reload, kernel restart, Pyright LSP
-   (completion / hover / diagnostics), Variable Explorer,
-   Insert-from-catalog modal, and the post-retirement surfaces
-   that prove the JupyterLab iframe is really gone.  Replaced
-   the Sprint-23 `notebook.md` playbook in Sprint 64 when the
-   iframe retired.
+ Run-now, retry + fail-skip propagation, Pause/Resume, per-task
+ log panel, and a `pg_sync`-kind cross-feature smoke against
+ `pg_mirror`.
+7. [`notebook-editor.md`](notebook-editor.md) — native
+ editor end-to-end: open + autosave, cell execute + output
+ persistence across reload, kernel restart, Pyright LSP
+ (completion / hover / diagnostics), Variable Explorer,
+ Insert-from-catalog modal, and the post-retirement surfaces
+ that prove the JupyterLab iframe is really gone. Replaced
+ the `notebook.md` playbook when the
+ iframe retired.
 8. [`oidc.md`](oidc.md) — OIDC-off (SSO button absent) then
-   OIDC-on via the `mock-oidc` sidecar; full authorize-code + PKCE
-   round-trip with auto-user-creation and claim mapping.
+ OIDC-on via the `mock-oidc` sidecar; full authorize-code + PKCE
+ round-trip with auto-user-creation and claim mapping.
 9. [`operational.md`](operational.md) — public `/healthz`, admin
-   `/metrics`, non-admin `/403`, JSON-error envelope, and the
-   `X-Request-ID` generate-and-forward middleware contract.
+ `/metrics`, non-admin `/403`, JSON-error envelope, and the
+ `X-Request-ID` generate-and-forward middleware contract.
 10. [`config-matrix.md`](config-matrix.md) — one primary golden
-    path (`engine=pandas, log=text, db=sqlite`) plus five delta
-    walks for every non-default value of `POINTLESSQL_DELTA_ENGINE`,
-    `POINTLESSQL_LOG_FORMAT`, and `POINTLESSQL_DB_URL`.
+ path (`engine=pandas, log=text, db=sqlite`) plus five delta
+ walks for every non-default value of `POINTLESSQL_DELTA_ENGINE`,
+ `POINTLESSQL_LOG_FORMAT`, and `POINTLESSQL_DB_URL`.
 
-**Packaging** (Sprint 40). Validates the GHCR-pull install path —
+**Packaging**. Validates the GHCR-pull install path —
 the one install flavour that cannot be run from a source checkout
 at all. Runs on its own, no dependency on the harness above:
 
 11. [`packaging.md`](packaging.md) — clean-machine flow: `docker
-    login ghcr.io`, download the compose file at a tag, flip
-    `build:` → `image:`, `docker compose pull && up`, home page
-    renders, OCI labels verified on the pulled images.
+ login ghcr.io`, download the compose file at a tag, flip
+ `build:` → `image:`, `docker compose pull && up`, home page
+ renders, OCI labels verified on the pulled images.
 
-**Agent supervision** (Phase 13). Exercises the registry +
+**Agent supervision**. Exercises the registry +
 CloudEvents + control-room surface end-to-end through an
 external runtime that pretends to be Hermes:
 
 12. [`agent_drift_monitor.md`](agent_drift_monitor.md) —
-    Sprint 13.5 demo.  Registers an agent run via
-    `POST /api/agent-runs`, runs the
-    [`notebooks/agent_drift_monitor.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/agent_drift_monitor.py)
-    notebook (freshness + null-rate + value-drift checks),
-    appends results to `ops.quality_history`, fires a
-    CloudEvent on threshold breach, drills into `/runs/{id}`
-    in Firefox to verify the conformance card + audit log +
-    tables-touched chips, all attributed to the
-    `X-Principal`-forwarded identity (Sprint 13.6).
+ demo. Registers an agent run via
+ `POST /api/agent-runs`, runs the
+ [`notebooks/agent_drift_monitor.py`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/agent_drift_monitor.py)
+ notebook (freshness + null-rate + value-drift checks),
+ appends results to `ops.quality_history`, fires a
+ CloudEvent on threshold breach, drills into `/runs/{id}`
+ in Firefox to verify the conformance card + audit log +
+ tables-touched chips, all attributed to the
+ `X-Principal`-forwarded identity.
 
 13. [`hermes_medallion.md`](hermes_medallion.md) —
-    Sprint 13.5.5 — the Phase-13 **done moment**.  A real
-    Hermes session (with `hermes-plugin-pointlessql` loaded)
-    autoloads
-    [`notebooks/hermes_medallion_data/orders.csv`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/hermes_medallion_data/orders.csv)
-    into `main.bronze.orders_raw`, upserts into
-    `main.silver.orders`, aggregates into
-    `main.gold.orders_summary`, and the run-detail view shows
-    Source + Operations + Tool calls + Queries + Conformance
-    tabs all populated.  Agent-authored Medallion lakehouse
-    in one playbook.
+ the **done moment**. A real
+ Hermes session (with `hermes-plugin-pointlessql` loaded)
+ autoloads
+ [`notebooks/hermes_medallion_data/orders.csv`](https://github.com/FloHofstetter/PointlesSQL/blob/main/notebooks/hermes_medallion_data/orders.csv)
+ into `main.bronze.orders_raw`, upserts into
+ `main.silver.orders`, aggregates into
+ `main.gold.orders_summary`, and the run-detail view shows
+ Source + Operations + Tool calls + Queries + Conformance
+ tabs all populated. Agent-authored Medallion lakehouse
+ in one playbook.
 
-**Delta-Branching** (Phase 16.5).  Exercises the zero-copy branch
+**Delta-Branching**. Exercises the zero-copy branch
 primitives end-to-end:
 
-14. [`branches.md`](branches.md) — Sprint 16.5.7 closing replay.
-    Notebook + browser combo: ``pql.branch`` → write to branch →
-    prove parent untouched → preview-promote → break it with a
-    competing parent write → discard → re-branch → clean
-    promote.  Covers the symlink-strategy storage layout,
-    conflict-detection, audit-log entries, and the three new
-    `pointlessql.branch.*` CloudEvents.  Local FS only —
-    cloud-storage discard / promote is documented out-of-scope
-    for v1.
+14. [`branches.md`](branches.md) — closing replay.
+ Notebook + browser combo: ``pql.branch`` → write to branch →
+ prove parent untouched → preview-promote → break it with a
+ competing parent write → discard → re-branch → clean
+ promote. Covers the symlink-strategy storage layout,
+ conflict-detection, audit-log entries, and the three new
+ `pointlessql.branch.*` CloudEvents. Local FS only —
+ cloud-storage discard / promote is documented out-of-scope
+ for v1.
 
-**ML registry** (Phase 21).  Replay these after the Phase-21
+**ML registry**. Replay these after the 
 audit-foundation lifespan-config is in place
 (`POINTLESSQL_MLFLOW_ENABLED=1`) and at least one trained
 model lives in soyuz:
 
-15. [`models-tab.md`](models-tab.md) — Sprint 21.5 browse +
-    compare-view replay.
-16. [`models-promotion.md`](models-promotion.md) — Sprint 21.6
-    promote a challenger to champion through the modal,
-    confirm marker on soyuz + `agent_reviews` row +
-    `pointlessql.model.promoted` envelope.
-17. [`inference-lineage.md`](inference-lineage.md) — Sprint 21.7
-    `pql.write_table(..., source_model_uri=...)` writes inference
-    edges, the model-detail Lineage tab paints both the
-    upstream (`trained_from`) and downstream (`inferred_to`)
-    halves of the bidirectional DAG, the Predictions card
-    surfaces the target-table edge counts.
-18. [`agent-ml-registry.md`](agent-ml-registry.md) — Sprint 21.8
-    cross-repo closure.  An agent connected through
-    `hermes-plugin-pointlessql` exercises the eight new ML-
-    Registry tools end-to-end (browse → log-training → write
-    inference → promote) — fully HTTP-only, no PointlesSQL
-    imports on the agent side.
+15. [`models-tab.md`](models-tab.md) — browse +
+ compare-view replay.
+16. [`models-promotion.md`](models-promotion.md) — 
+ promote a challenger to champion through the modal,
+ confirm marker on soyuz + `agent_reviews` row +
+ `pointlessql.model.promoted` envelope.
+17. [`inference-lineage.md`](inference-lineage.md) — 
+ `pql.write_table(..., source_model_uri=...)` writes inference
+ edges, the model-detail Lineage tab paints both the
+ upstream (`trained_from`) and downstream (`inferred_to`)
+ halves of the bidirectional DAG, the Predictions card
+ surfaces the target-table edge counts.
+18. [`agent-ml-registry.md`](agent-ml-registry.md) — 
+ cross-repo closure. An agent connected through
+ `hermes-plugin-pointlessql` exercises the eight new ML-
+ Registry tools end-to-end (browse → log-training → write
+ inference → promote) — fully HTTP-only, no PointlesSQL
+ imports on the agent side.
 
 ## Stack start
 
@@ -162,7 +162,7 @@ docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
 # wait for health: `docker compose ps` should show both PointlesSQL
 # and soyuz-catalog "(healthy)" plus postgres-e2e "(healthy)"
 docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
-    exec pointlessql python /app/scripts/seed-e2e.py
+ exec pointlessql python /app/scripts/seed-e2e.py
 ```
 
 Seed runs **inside the PointlesSQL container** because
@@ -183,33 +183,33 @@ first seed:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
-    build pointlessql
+ build pointlessql
 docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
-    up -d --force-recreate pointlessql
+ up -d --force-recreate pointlessql
 ```
 
-## Host env overlays (Sprint 23)
+## Host env overlays
 
 The `docker-compose.e2e.yml` overlay exposes a handful of
 `${…:-default}` env passthroughs so a playbook can flip a single
 knob without editing the file. All are off/default unless the host
 exports the override:
 
-| Host env var                        | Default | Used by              |
+| Host env var | Default | Used by |
 | ----------------------------------- | ------- | -------------------- |
-| `POINTLESSQL_SCHEDULER_TICK_SECONDS`| `2`     | `jobs-dag.md`        |
-| `POINTLESSQL_JUPYTER_ENABLED`       | `true`  | (Sprint 63 no-op; kept for backward-compat) |
-| `POINTLESSQL_LOG_FORMAT`            | `text`  | `config-matrix.md`   |
-| `POINTLESSQL_DELTA_ENGINE`          | `pandas`| `config-matrix.md`   |
-| `POINTLESSQL_OIDC_DISCOVERY_URL`    | (empty) | `oidc.md` Pass 2     |
-| `POINTLESSQL_OIDC_CLIENT_ID`        | (empty) | `oidc.md` Pass 2     |
-| `POINTLESSQL_OIDC_CLIENT_SECRET`    | (empty) | `oidc.md` Pass 2     |
-| `POINTLESSQL_SERVER_BASE_URL`       | (empty) | `oidc.md` Pass 2     |
+| `POINTLESSQL_SCHEDULER_TICK_SECONDS`| `2` | `jobs-dag.md` |
+| `POINTLESSQL_JUPYTER_ENABLED` | `true` | ( no-op; kept for backward-compat) |
+| `POINTLESSQL_LOG_FORMAT` | `text` | `config-matrix.md` |
+| `POINTLESSQL_DELTA_ENGINE` | `pandas`| `config-matrix.md` |
+| `POINTLESSQL_OIDC_DISCOVERY_URL` | (empty) | `oidc.md` Pass 2 |
+| `POINTLESSQL_OIDC_CLIENT_ID` | (empty) | `oidc.md` Pass 2 |
+| `POINTLESSQL_OIDC_CLIENT_SECRET` | (empty) | `oidc.md` Pass 2 |
+| `POINTLESSQL_SERVER_BASE_URL` | (empty) | `oidc.md` Pass 2 |
 
-**Sprint 45 note:** ``POINTLESSQL_ENGINE`` and ``POINTLESSQL_BASE_URL``
+** note:** ``POINTLESSQL_ENGINE`` and ``POINTLESSQL_BASE_URL``
 were renamed to ``POINTLESSQL_DELTA_ENGINE`` and
 ``POINTLESSQL_SERVER_BASE_URL`` when the flat :class:`Settings` moved
-to nested sub-models.  See ``CHANGELOG.md`` for the full mapping;
+to nested sub-models. See ``CHANGELOG.md`` for the full mapping;
 ``config-matrix.md`` and ``oidc.md`` still document the old names
 and will be refreshed on their next replay.
 
@@ -218,8 +218,8 @@ container so the new env reaches the uvicorn process:
 
 ```bash
 POINTLESSQL_JUPYTER_ENABLED=false docker compose \
-    -f docker-compose.yml -f docker-compose.e2e.yml \
-    up -d --force-recreate pointlessql
+ -f docker-compose.yml -f docker-compose.e2e.yml \
+ up -d --force-recreate pointlessql
 ```
 
 The `mock-oidc` container is always running (idle < 80 MB). The
@@ -232,10 +232,10 @@ unaffected.
 
 The playbooks create and then reuse the following accounts:
 
-| Email              | Password   | Role  | Created in        |
+| Email | Password | Role | Created in |
 | ------------------ | ---------- | ----- | ----------------- |
-| `admin@pql.test`   | `Passw0rd!` | admin | `auth.md` step 1 |
-| `user@pql.test`    | `Passw0rd!` | user  | `auth.md` step 3 |
+| `admin@pql.test` | `Passw0rd!` | admin | `auth.md` step 1 |
+| `user@pql.test` | `Passw0rd!` | user | `auth.md` step 3 |
 
 The first-registered account is auto-promoted to admin by
 PointlesSQL's first-user bootstrap (see
@@ -254,15 +254,15 @@ the Delta warehouse), so the next `up -d` starts with no users.
 Every playbook has three sections:
 
 - **Preconditions** — which previous playbooks must have run,
-  and any environment assumptions.
+ and any environment assumptions.
 - **Walkthrough** — numbered steps. Each step names the intent,
-  the action to take (MCP tool call or equivalent browser
-  interaction), and the assertion that confirms the step worked.
+ the action to take (MCP tool call or equivalent browser
+ interaction), and the assertion that confirms the step worked.
 - **Found bugs** — problems surfaced in a live run. Either
-  fixed in the same sprint commit (with a short-SHA link) or
-  left as a `BUG-22-NN` TODO with a clear next action. No
-  "something was weird" entries (per
-  [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) Phase 7 prelude).
+ fixed in the same sprint commit (with a short-SHA link) or
+ left as a `BUG-22-NN` TODO with a clear next action. No
+ "something was weird" entries (per
+ [`ROADMAP.md`](https://github.com/FloHofstetter/PointlesSQL/blob/main/ROADMAP.md) prelude).
 
 ### Human replay
 
@@ -287,14 +287,14 @@ Templates intentionally do **not** carry `data-test`
 attributes. Playbook steps use, in order of preference:
 
 1. **Visible text** — `getByRole('button', {name: /Save/})`,
-   `getByText('Create foreign catalog')`
+ `getByText('Create foreign catalog')`
 2. **ARIA labels** or form `label for=`
 3. **Placeholder text** — `getByPlaceholder('key')`
 4. **Modal ID** — `#createForeignCatalogModal`,
-   `#createConnectionModal`
+ `#createConnectionModal`
 5. **Alpine state** inspected via `browser_evaluate` — check
-   `x-show`, `x-text`, or `sessionStorage` keys directly when
-   the DOM selector alone would be ambiguous.
+ `x-show`, `x-text`, or `sessionStorage` keys directly when
+ the DOM selector alone would be ambiguous.
 
 ## Teardown
 

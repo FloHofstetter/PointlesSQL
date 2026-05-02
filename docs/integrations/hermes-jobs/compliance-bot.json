@@ -1,29 +1,29 @@
 {
-  "_comment": "Sprint 19.3 — Compliance-Bot interactive Hermes flow. Wake-on-message via Hermes' chat-platform adapter (Slack/Matrix/etc.). The flow has NO cron schedule; Hermes fires it whenever a DM lands in the configured platform. Like audit-reviewer-daily.json, drop this entry into ~/.hermes/cron/jobs.json — the schedule field below is a Hermes 'interval' set to a no-op long enough that the cron tick won't pre-empt platform-driven wakes. See docs/hermes-jobs/compliance-bot.md for the full system prompt; this manifest just points at it.",
-  "name": "compliance-bot",
-  "schedule": {
-    "kind": "interval",
-    "minutes": 1440,
-    "display": "every 1440m"
-  },
-  "schedule_display": "every 1440m",
-  "prompt": "You are PointlesSQL Compliance-Bot. See docs/hermes-jobs/compliance-bot.md for the full system prompt; the harness should override this `prompt` field with the canonical Markdown system prompt at platform-message time. Do NOT answer with this stub directly — fail loudly so the operator notices the misconfiguration.",
-  "skills": null,
-  "skill": null,
-  "model": null,
-  "provider": null,
-  "base_url": null,
-  "script": null,
-  "repeat": {
-    "times": null,
-    "completed": 0
-  },
-  "enabled": true,
-  "state": "scheduled",
-  "paused_at": null,
-  "paused_reason": null,
-  "deliver": "origin",
-  "origin": null,
-  "enabled_toolsets": ["pointlessql"],
-  "workdir": null
+ "_comment": "Compliance-Bot interactive Hermes flow. Wake-on-message via Hermes' chat-platform adapter (Slack/Matrix/etc.). The flow has NO cron schedule; Hermes fires it whenever a DM lands in the configured platform. Like audit-reviewer-daily.json, drop this entry into ~/.hermes/cron/jobs.json — the schedule field below is a Hermes 'interval' set to a no-op long enough that the cron tick won't pre-empt platform-driven wakes. See docs/hermes-jobs/compliance-bot.md for the full system prompt; this manifest just points at it.",
+ "name": "compliance-bot",
+ "schedule": {
+ "kind": "interval",
+ "minutes": 1440,
+ "display": "every 1440m"
+ },
+ "schedule_display": "every 1440m",
+ "prompt": "You are PointlesSQL Compliance-Bot. See docs/hermes-jobs/compliance-bot.md for the full system prompt; the harness should override this `prompt` field with the canonical Markdown system prompt at platform-message time. Do NOT answer with this stub directly — fail loudly so the operator notices the misconfiguration.",
+ "skills": null,
+ "skill": null,
+ "model": null,
+ "provider": null,
+ "base_url": null,
+ "script": null,
+ "repeat": {
+ "times": null,
+ "completed": 0
+ },
+ "enabled": true,
+ "state": "scheduled",
+ "paused_at": null,
+ "paused_reason": null,
+ "deliver": "origin",
+ "origin": null,
+ "enabled_toolsets": ["pointlessql"],
+ "workdir": null
 }

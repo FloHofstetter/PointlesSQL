@@ -81,8 +81,8 @@ markdown_extensions:
   - toc:
       permalink: true
 
-# Sprint 22.0 nav.  Alphabetical inside e2e-walkthroughs for now;
-# Sprint 22.4 will theme-group them.
+# Alphabetical inside e2e-walkthroughs for now; theme-grouping is a
+# follow-up.
 nav:
   - Home: index.md
   - Getting Started:
@@ -154,7 +154,7 @@ nav:
               - Models tab: e2e-walkthroughs/models-tab.md
               - Models promotion: e2e-walkthroughs/models-promotion.md
               - Inference lineage: e2e-walkthroughs/inference-lineage.md
-              - Sprint 13.11 reflexive tools: e2e-walkthroughs/sprint_13_11_reflexive_tools.md
+              - Reflexive tools: e2e-walkthroughs/sprint_13_11_reflexive_tools.md
   - Reference:
       - reference/index.md
       - Python API:
@@ -193,7 +193,6 @@ not_in_nav: |
   /architecture.excalidraw
   /integrations/hermes-jobs/*.json
 
-strict: true  # Sprint 22.5 cross-link sweep cleared the last
-              # warnings — every cross-link in the 38 walkthroughs
-              # now resolves either to a docs page or to the
-              # canonical GitHub URL.
+strict: true  # every cross-link in the walkthroughs resolves
+              # either to a docs page or to the canonical GitHub
+              # URL — broken links fail the build.

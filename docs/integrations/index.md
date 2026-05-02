@@ -6,9 +6,9 @@ stack.
 Currently filled in:
 
 - [Hermes jobs](hermes-jobs/README.md) — daily Audit-Reviewer,
-  Compliance-Bot, Incident-Responder one-shot agents
+ Compliance-Bot, Incident-Responder one-shot agents
 
-Sprint 22.5 adds dedicated pages for soyuz-catalog (UC API
-backend), the hermes plugin (42 agent tools), MLflow (Phase 21
-audit-first ML registry), and Grafana (Phase 19 audit
+ adds dedicated pages for soyuz-catalog (UC API
+backend), the hermes plugin (42 agent tools), MLflow (
+audit-first ML registry), and Grafana ( audit
 dashboards).
