@@ -1,9 +1,7 @@
 # `frontend/js/` — module conventions
 
-Last reorganised in Phase 12.12 (agent-first pivot).  The browser
-notebook editor + its Monaco/Pyright stack were removed; what remains
-is small Alpine x-data factories + a few utility singletons, all
-native ES modules.  `bootstrap.js` imports them and re-attaches each
+Small Alpine x-data factories + a few utility singletons, all native
+ES modules.  `bootstrap.js` imports them and re-attaches each
 export to `window.<same-name>` so existing template
 `x-data="editable({...})"` lookups keep resolving without HTML edits.
 
@@ -38,8 +36,8 @@ inline editors:
   every `federation.js` create-form's name validation.
 - `createDictEditor(field, patchUrl, initial)` is the
   start/cancel/save/addRow/removeRow state machine that
-  `propertiesEditor` and `optionsEditor` share (was a private
-  `_makeDictEditor` helper inside properties_editor.js pre-Sprint-75).
+  `propertiesEditor` and `optionsEditor` share (was previously a
+  private `_makeDictEditor` helper inside properties_editor.js).
 
 What is intentionally NOT extracted: the
 `if (res.ok) { ... } else { this.error = 'X: ' + res.error; }` block.
@@ -68,8 +66,7 @@ x-data walk begins.  This ordering is asserted by
 ## CSRF
 
 `pqlApi.fetch` injects the `X-CSRF-Token` header from
-`<meta name="csrf-token">` for every non-GET/HEAD/OPTIONS request
-(Sprint 75 Phase 5 fix — pre-Sprint-75 `pqlApi` relied on the
-server-side form-field fallback alone).  Callers may still set the
-header explicitly; their value wins.  HTMX requests get the header
-via the `htmx:configRequest` hook in `base.html`.
+`<meta name="csrf-token">` for every non-GET/HEAD/OPTIONS request.
+Callers may still set the header explicitly; their value wins.
+HTMX requests get the header via the `htmx:configRequest` hook in
+`base.html`.

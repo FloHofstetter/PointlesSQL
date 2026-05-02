@@ -1,5 +1,5 @@
 /*
- * PointlesSQL list-table helper — Sprint 33.
+ * PointlesSQL list-table helper.
  *
  * Wraps a Bootstrap `<table>` with debounced client-side search,
  * sortable column headers, and optional filter chips. Progressive
@@ -39,7 +39,7 @@
  *   - The "no results" fallback is injected once as a sibling of
  *     the table; it uses the component's configured `emptyMessage`.
  */
-// Sprint 75 Phase 4: ES-module shape; window registration via bootstrap.js.
+// ES-module shape; window registration via bootstrap.js.
 export function listTable(config) {
     const cfg = config || {};
     const chips = Array.isArray(cfg.chips) ? cfg.chips : [];

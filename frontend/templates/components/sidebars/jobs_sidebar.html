@@ -1,10 +1,9 @@
 {#
-   Phase 24.3 — Jobs context-panel.
+   Jobs context-panel.
 
-   Replaces the lone "All jobs" link with a list of scheduled jobs
-   split into two buckets: Active (not paused, top) and Paused
-   (bottom).  Each row shows the job name, the humanized cron
-   expression, and the most-recent run status badge.
+   Lists scheduled jobs split into two buckets: Active (not paused,
+   top) and Paused (bottom).  Each row shows the job name, the
+   humanized cron expression, and the most-recent run status badge.
 
    Driven by ``jobsSidebar()`` in
    ``frontend/js/components/sidebars/jobs_sidebar.js``.

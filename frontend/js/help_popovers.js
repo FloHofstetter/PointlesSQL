@@ -1,5 +1,5 @@
-// Phase 23 — initialise Bootstrap Popovers for the contextual
-// help-icons rendered by frontend/templates/_macros/help_icon.html.
+// Initialise Bootstrap Popovers for the contextual help-icons
+// rendered by frontend/templates/_macros/help_icon.html.
 //
 // The macro emits ``<button data-bs-toggle="popover"
 // data-bs-trigger="focus" …>``.  Trigger=focus means Bootstrap

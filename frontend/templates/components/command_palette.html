@@ -1,102 +1,102 @@
 <div x-data="commandPalette()"
-     x-init="init()"
-     @pql:open-palette.window="openPalette()"
-     @keydown.window="onGlobalKeydown($event)">
+ x-init="init()"
+ @pql:open-palette.window="openPalette()"
+ @keydown.window="onGlobalKeydown($event)">
 
-    <!-- Command palette dialog -->
-    <div x-show="open"
-         x-cloak
-         class="pql-cmdk-backdrop"
-         @click="closePalette()"
-         x-transition.opacity></div>
-    <div x-show="open"
-         x-cloak
-         class="pql-cmdk-dialog"
-         role="dialog"
-         aria-modal="true"
-         aria-label="Search PointlesSQL"
-         @keydown="onDialogKeydown($event)"
-         @click.stop
-         x-transition>
-        <div class="pql-cmdk-input">
-            <i class="bi bi-search"></i>
-            <input type="text"
-                   x-ref="search"
-                   x-model="query"
-                   @input="onQueryInput()"
-                   placeholder="Search catalogs, tables, jobs, dashboards…"
-                   spellcheck="false"
-                   autocomplete="off">
-            <span x-show="loading" class="pql-cmdk-spinner" aria-hidden="true">
-                <span class="spinner-border spinner-border-sm"></span>
-            </span>
-        </div>
-        <ul class="pql-cmdk-list" role="listbox">
-            <template x-if="!query && recent.length === 0">
-                <li class="pql-cmdk-empty">Start typing to search.</li>
-            </template>
-            <template x-if="query && !loading && results.length === 0">
-                <li class="pql-cmdk-empty">No matches.</li>
-            </template>
-            <template x-if="!query && recent.length > 0">
-                <li class="pql-cmdk-section">Recent</li>
-            </template>
-            <template x-for="(hit, idx) in (query ? results : recent)"
-                      :key="hit.url + ':' + idx">
-                <li class="pql-cmdk-item"
-                    :class="{ 'is-selected': idx === selected }"
-                    role="option"
-                    :aria-selected="idx === selected"
-                    @click="select(idx)"
-                    @mouseenter="selected = idx">
-                    <span class="pql-cmdk-type"
-                          :class="'pql-cmdk-type--' + hit.type"
-                          x-text="hit.type.replace('_', ' ')"></span>
-                    <span class="pql-cmdk-label" x-text="hit.label"></span>
-                    <span class="pql-cmdk-desc"
-                          x-show="hit.description"
-                          x-text="hit.description"></span>
-                </li>
-            </template>
-        </ul>
-        <footer class="pql-cmdk-hints">
-            <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
-            <span><kbd>↵</kbd> open</span>
-            <span><kbd>esc</kbd> close</span>
-        </footer>
-    </div>
+ <!-- Command palette dialog -->
+ <div x-show="open"
+ x-cloak
+ class="pql-cmdk-backdrop"
+ @click="closePalette()"
+ x-transition.opacity></div>
+ <div x-show="open"
+ x-cloak
+ class="pql-cmdk-dialog"
+ role="dialog"
+ aria-modal="true"
+ aria-label="Search PointlesSQL"
+ @keydown="onDialogKeydown($event)"
+ @click.stop
+ x-transition>
+ <div class="pql-cmdk-input">
+ <i class="bi bi-search"></i>
+ <input type="text"
+ x-ref="search"
+ x-model="query"
+ @input="onQueryInput()"
+ placeholder="Search catalogs, tables, jobs, dashboards…"
+ spellcheck="false"
+ autocomplete="off">
+ <span x-show="loading" class="pql-cmdk-spinner" aria-hidden="true">
+ <span class="spinner-border spinner-border-sm"></span>
+ </span>
+ </div>
+ <ul class="pql-cmdk-list" role="listbox">
+ <template x-if="!query && recent.length === 0">
+ <li class="pql-cmdk-empty">Start typing to search.</li>
+ </template>
+ <template x-if="query && !loading && results.length === 0">
+ <li class="pql-cmdk-empty">No matches.</li>
+ </template>
+ <template x-if="!query && recent.length > 0">
+ <li class="pql-cmdk-section">Recent</li>
+ </template>
+ <template x-for="(hit, idx) in (query ? results : recent)"
+ :key="hit.url + ':' + idx">
+ <li class="pql-cmdk-item"
+ :class="{ 'is-selected': idx === selected }"
+ role="option"
+ :aria-selected="idx === selected"
+ @click="select(idx)"
+ @mouseenter="selected = idx">
+ <span class="pql-cmdk-type"
+ :class="'pql-cmdk-type--' + hit.type"
+ x-text="hit.type.replace('_', ' ')"></span>
+ <span class="pql-cmdk-label" x-text="hit.label"></span>
+ <span class="pql-cmdk-desc"
+ x-show="hit.description"
+ x-text="hit.description"></span>
+ </li>
+ </template>
+ </ul>
+ <footer class="pql-cmdk-hints">
+ <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+ <span><kbd>↵</kbd> open</span>
+ <span><kbd>esc</kbd> close</span>
+ </footer>
+ </div>
 
-    <!-- Keyboard-shortcuts help modal -->
-    <div x-show="helpOpen"
-         x-cloak
-         class="pql-cmdk-backdrop"
-         @click="helpOpen = false"
-         x-transition.opacity></div>
-    <div x-show="helpOpen"
-         x-cloak
-         class="pql-cmdk-dialog pql-cmdk-help"
-         role="dialog"
-         aria-modal="true"
-         aria-label="Keyboard shortcuts"
-         @keydown.escape.stop.prevent="helpOpen = false"
-         @click.stop
-         x-transition>
-        <h5 class="m-0">Keyboard shortcuts</h5>
-        <dl class="pql-cmdk-shortcuts">
-            <template x-for="s in shortcuts" :key="s.label">
-                <div class="pql-cmdk-shortcut-row">
-                    <dt>
-                        <template x-for="(k, i) in s.keys" :key="i">
-                            <span>
-                                <span x-show="i > 0" class="pql-cmdk-shortcut-sep" x-text="s.combiner"></span><kbd x-text="k"></kbd>
-                            </span>
-                        </template>
-                    </dt>
-                    <dd x-text="s.label"></dd>
-                </div>
-            </template>
-        </dl>
-    </div>
+ <!-- Keyboard-shortcuts help modal -->
+ <div x-show="helpOpen"
+ x-cloak
+ class="pql-cmdk-backdrop"
+ @click="helpOpen = false"
+ x-transition.opacity></div>
+ <div x-show="helpOpen"
+ x-cloak
+ class="pql-cmdk-dialog pql-cmdk-help"
+ role="dialog"
+ aria-modal="true"
+ aria-label="Keyboard shortcuts"
+ @keydown.escape.stop.prevent="helpOpen = false"
+ @click.stop
+ x-transition>
+ <h5 class="m-0">Keyboard shortcuts</h5>
+ <dl class="pql-cmdk-shortcuts">
+ <template x-for="s in shortcuts" :key="s.label">
+ <div class="pql-cmdk-shortcut-row">
+ <dt>
+ <template x-for="(k, i) in s.keys" :key="i">
+ <span>
+ <span x-show="i > 0" class="pql-cmdk-shortcut-sep" x-text="s.combiner"></span><kbd x-text="k"></kbd>
+ </span>
+ </template>
+ </dt>
+ <dd x-text="s.label"></dd>
+ </div>
+ </template>
+ </dl>
+ </div>
 </div>
 
-<!-- commandPalette() factory lives in frontend/js/components/command_palette.js since Sprint 92. -->
+<!-- commandPalette() factory lives in frontend/js/components/command_palette.js since. -->

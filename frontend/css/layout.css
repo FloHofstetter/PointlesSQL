@@ -1,118 +1,118 @@
 
 .pql-topbar {
-    height: var(--pql-topbar-height);
-    position: sticky;
-    top: 0;
-    z-index: 1020;
+ height: var(--pql-topbar-height);
+ position: sticky;
+ top: 0;
+ z-index: 1020;
 }
 
 .pql-shell {
-    display: grid;
-    min-height: calc(100vh - var(--pql-topbar-height));
-    grid-template-columns: minmax(0, 1fr);
+ display: grid;
+ min-height: calc(100vh - var(--pql-topbar-height));
+ grid-template-columns: minmax(0, 1fr);
 }
 .pql-shell--no-sidebar {
-    grid-template-columns: minmax(0, 1fr);
+ grid-template-columns: minmax(0, 1fr);
 }
 @media (min-width: 768px) {
-    /* Sprint 17.1: shell is now icon-rail + contextual panel + content.
-       The mobile offcanvas drawer keeps using the legacy single-column
-       width via .pql-sidebar-shell rules below, so we don't expose the
-       drawer at md+ — the icon-rail + context-panel pair is the
-       desktop nav. */
-    .pql-shell {
-        grid-template-columns:
-            var(--pql-icon-rail-width)
-            var(--pql-context-panel-width)
-            minmax(0, 1fr);
-    }
-    .pql-shell--no-sidebar {
-        grid-template-columns: minmax(0, 1fr);
-    }
+ /* shell is now icon-rail + contextual panel + content.
+ The mobile offcanvas drawer keeps using the legacy single-column
+ width via.pql-sidebar-shell rules below, so we don't expose the
+ drawer at md+ — the icon-rail + context-panel pair is the
+ desktop nav. */
+.pql-shell {
+ grid-template-columns:
+ var(--pql-icon-rail-width)
+ var(--pql-context-panel-width)
+ minmax(0, 1fr);
+ }
+.pql-shell--no-sidebar {
+ grid-template-columns: minmax(0, 1fr);
+ }
 }
 
 /* Sidebar wrapper: static column ≥ md, slides in as an offcanvas drawer < md.
-   Bootstrap's ``.offcanvas-md`` handles the responsive switch — we only tune
-   the static variant so it fills the shell column, and give it an ``.offcanvas``
-   background on mobile. */
+ Bootstrap's ``.offcanvas-md`` handles the responsive switch — we only tune
+ the static variant so it fills the shell column, and give it an ``.offcanvas``
+ background on mobile. */
 .pql-sidebar-shell {
-    background: var(--bs-tertiary-bg);
+ background: var(--bs-tertiary-bg);
 }
 @media (min-width: 768px) {
-    .pql-sidebar-shell {
-        position: sticky;
-        top: var(--pql-topbar-height);
-        max-height: calc(100vh - var(--pql-topbar-height));
-        overflow-y: auto;
-        background: transparent;
-        /* Sprint 17.1 — column divider so the section panels that
-           don't bring their own .border-end (runs/sql/jobs/...)
-           still read as a column.  Federation + Dashboards bring
-           ``.pql-sidebar.border-end`` on the inner <aside>; that
-           sits flush against this border so they don't double up. */
-        border-right: 1px solid var(--bs-border-color-translucent);
-    }
+.pql-sidebar-shell {
+ position: sticky;
+ top: var(--pql-topbar-height);
+ max-height: calc(100vh - var(--pql-topbar-height));
+ overflow-y: auto;
+ background: transparent;
+ /* column divider so the section panels that
+ don't bring their own.border-end (runs/sql/jobs/...)
+ still read as a column. Federation + Dashboards bring
+ ``.pql-sidebar.border-end`` on the inner <aside>; that
+ sits flush against this border so they don't double up. */
+ border-right: 1px solid var(--bs-border-color-translucent);
+ }
 }
 
 .pql-sidebar-toggle {
-    border: 0;
-    line-height: 1;
+ border: 0;
+ line-height: 1;
 }
 .pql-sidebar-toggle:focus { box-shadow: none; }
 
 .pql-sidebar {
-    background: var(--bs-tertiary-bg);
-    overflow-y: auto;
+ background: var(--bs-tertiary-bg);
+ overflow-y: auto;
 }
 @media (min-width: 768px) {
-    .pql-sidebar {
-        max-height: calc(100vh - var(--pql-topbar-height));
-    }
+.pql-sidebar {
+ max-height: calc(100vh - var(--pql-topbar-height));
+ }
 }
 
 .pql-sidebar-body {
-    padding: 0.25rem 0;
+ padding: 0.25rem 0;
 }
 
 .pql-tree-item {
-    display: flex;
-    align-items: center;
-    font-size: 0.875rem;
-    white-space: nowrap;
-    padding-right: 0.5rem;
+ display: flex;
+ align-items: center;
+ font-size: 0.875rem;
+ white-space: nowrap;
+ padding-right: 0.5rem;
 }
 
 .pql-tree-item:hover { background: var(--bs-secondary-bg); }
 
 .pql-tree-item.active {
-    background: rgba(118, 185, 0, 0.15);
+ background: rgba(118, 185, 0, 0.15);
 }
-.pql-tree-item.active .pql-tree-label { color: var(--pointless-accent); }
+.pql-tree-item.active.pql-tree-label { color: var(--pointless-accent); }
 
 .pql-tree-chevron {
-    flex: 0 0 auto;
-    width: 1.25rem;
-    height: 1.6rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 0;
-    color: var(--bs-secondary-color);
-    padding: 0;
+ flex: 0 0 auto;
+ width: 1.25rem;
+ height: 1.6rem;
+ display: inline-flex;
+ align-items: center;
+ justify-content: center;
+ background: transparent;
+ border: 0;
+ color: var(--bs-secondary-color);
+ padding: 0;
 }
 .pql-tree-chevron i { font-size: 0.7rem; }
 .pql-tree-chevron:hover { color: var(--bs-body-color); }
 
 .pql-tree-label {
-    flex: 1 1 auto;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.25rem;
-    color: var(--bs-body-color);
-    text-decoration: none;
-    min-width: 0;
+ flex: 1 1 auto;
+ display: flex;
+ align-items: center;
+ gap: 0.4rem;
+ padding: 0.3rem 0.25rem;
+ color: var(--bs-body-color);
+ text-decoration: none;
+ min-width: 0;
 }
 .pql-tree-label:hover { color: var(--bs-body-color); }
 
@@ -123,65 +123,65 @@
 @keyframes pql-spin { to { transform: rotate(360deg); } }
 
 .pql-editable-view {
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    padding: 0.1rem 0.3rem;
-    margin: -0.1rem -0.3rem;
-    border-radius: 0.25rem;
-    transition: background 0.12s;
+ cursor: pointer;
+ display: inline-flex;
+ align-items: center;
+ padding: 0.1rem 0.3rem;
+ margin: -0.1rem -0.3rem;
+ border-radius: 0.25rem;
+ transition: background 0.12s;
 }
 .pql-editable-view:hover {
-    background: var(--bs-secondary-bg);
+ background: var(--bs-secondary-bg);
 }
-.pql-editable-view:hover .pql-editable-pencil {
-    opacity: 0.5 !important;
+.pql-editable-view:hover.pql-editable-pencil {
+ opacity: 0.5 !important;
 }
 
 .pql-content {
-    padding: 1.5rem 2rem;
-    min-width: 0;
+ padding: 1.5rem 2rem;
+ min-width: 0;
 }
 
 .table > :not(caption) > * > * {
-    padding: 0.6rem 0.75rem;
+ padding: 0.6rem 0.75rem;
 }
 
 .pql-content--notebook {
-    padding: 0;
-    overflow: hidden;
+ padding: 0;
+ overflow: hidden;
 }
 
 .pql-notebook-iframe {
-    width: 100%;
-    height: calc(100vh - var(--pql-topbar-height));
-    border: none;
-    display: block;
+ width: 100%;
+ height: calc(100vh - var(--pql-topbar-height));
+ border: none;
+ display: block;
 }
 
-/* Sprint 95: sidebar drawer footer (moved here from responsive.css —
+/* sidebar drawer footer (moved here from responsive.css —
  * it is layout chrome, not a media-query, so it belongs next to the
- * other sidebar styling).  Navigation links collapse into here at
- * <640 px so the top navbar stays lean.  Reset the list styling so
+ * other sidebar styling). Navigation links collapse into here at
+ * <640 px so the top navbar stays lean. Reset the list styling so
  * the included `<ul>` looks like a sidebar menu instead of the
  * pill-shaped Bootstrap navbar nav. */
-.pql-sidebar-nav-footer .pql-sidebar-nav-list {
-    padding: 0.5rem 0;
+.pql-sidebar-nav-footer.pql-sidebar-nav-list {
+ padding: 0.5rem 0;
 }
-.pql-sidebar-nav-footer .pql-sidebar-nav-list .nav-link {
-    padding: 0.65rem 1rem;
-    color: var(--bs-body-color);
+.pql-sidebar-nav-footer.pql-sidebar-nav-list.nav-link {
+ padding: 0.65rem 1rem;
+ color: var(--bs-body-color);
 }
-.pql-sidebar-nav-footer .pql-sidebar-nav-list .nav-link.active {
-    color: var(--pql-color-accent);
-    background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
+.pql-sidebar-nav-footer.pql-sidebar-nav-list.nav-link.active {
+ color: var(--pql-color-accent);
+ background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.12));
 }
-.pql-sidebar-nav-footer .pql-sidebar-nav-list .dropdown-menu {
-    position: static;
-    float: none;
-    width: 100%;
-    margin: 0;
-    border: 0;
-    box-shadow: none;
-    background: transparent;
+.pql-sidebar-nav-footer.pql-sidebar-nav-list.dropdown-menu {
+ position: static;
+ float: none;
+ width: 100%;
+ margin: 0;
+ border: 0;
+ box-shadow: none;
+ background: transparent;
 }

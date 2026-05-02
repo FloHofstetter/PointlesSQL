@@ -1,5 +1,5 @@
 /*
- * PointlesSQL job-row hover actions — Sprint 33, ES-module Sprint 75 Phase 4.
+ * PointlesSQL job-row hover actions.
  *
  * Mount on the per-row `<td class="pql-row-actions">` via
  *   <td class="pql-row-actions" x-data="jobRowActions({ jobId, paused })">

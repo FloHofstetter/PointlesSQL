@@ -2,508 +2,508 @@
 {% block title %}SQL · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
-    {"label": "Home", "href": "/"},
-    {"label": "SQL"}
+ {"label": "Home", "href": "/"},
+ {"label": "SQL"}
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Phase-12 editor surface. */
-    .pql-sql-editor-host {
-        min-height: 30vh;
-        border: 1px solid var(--bs-border-color);
-        border-radius: 0.25rem;
-        overflow: hidden;
-    }
-    .pql-sql-editor-host .cm-editor { height: 100%; }
-    /* The results card is ``display: flex`` (Bootstrap default for
-       ``.card``); its ``.card-body`` is a flex item that defaults to
-       ``min-width: auto`` and refuses to shrink below the wide
-       ``<table>``'s intrinsic width.  The result was the table running
-       past the card's right edge.  ``min-width: 0`` lets the body
-       shrink so ``overflow-x: auto`` on the wrap kicks in cleanly. */
-    .pql-sql-results-card .card-body { min-width: 0; }
-    .pql-sql-results-wrap {
-        overflow-x: auto;
-        max-width: 100%;
-    }
-    .pql-sql-results-wrap table { font-size: 0.85rem; }
-    .pql-sql-explain-tree {
-        background: var(--bs-secondary-bg);
-        border-radius: 0.25rem;
-        padding: 0.75rem 1rem;
-        /* Tall plans can run >50 lines once every operator's
-           extra_info is rendered; cap loosely so simple plans stay
-           compact but rich plans don't disappear behind a scrollbar. */
-        max-height: min(75vh, 1000px);
-        overflow: auto;
-    }
-    .pql-sql-explain-list { font-size: 0.85rem; }
-    .pql-sql-explain-node {
-        position: relative;
-        padding: 0.4rem 0;
-    }
-    /* Faint vertical guideline at every indent level so the tree
-       structure is visible without explicit connector chevrons. */
-    .pql-sql-explain-node[data-depth]:not([data-depth="0"])::before {
-        content: "";
-        position: absolute;
-        left: -0.85rem;
-        top: 0;
-        bottom: 0;
-        border-left: 1px dashed var(--bs-border-color);
-    }
-    /* Operator-type badge — small, monospace, colour-coded by
-       ``kind`` (scan / filter / join / agg / limit / proj / sort /
-       other).  Borrows Bootstrap's --bs-* tokens so dark + light
-       themes are both legible. */
-    .pql-sql-explain-badge {
-        display: inline-block;
-        padding: 0.1rem 0.45rem;
-        border-radius: 0.25rem;
-        font-family: var(--bs-font-monospace);
-        font-size: 0.78rem;
-        font-weight: 600;
-        background: var(--bs-tertiary-bg);
-        color: var(--bs-body-color);
-        border: 1px solid var(--bs-border-color);
-        line-height: 1.3;
-    }
-    .pql-sql-explain-badge--scan {
-        background: rgba(25, 135, 84, 0.15);
-        border-color: rgba(25, 135, 84, 0.4);
-        color: #4dd29a;
-    }
-    .pql-sql-explain-badge--filter {
-        background: rgba(13, 110, 253, 0.15);
-        border-color: rgba(13, 110, 253, 0.4);
-        color: #6ea8fe;
-    }
-    .pql-sql-explain-badge--join {
-        background: rgba(253, 126, 20, 0.18);
-        border-color: rgba(253, 126, 20, 0.4);
-        color: #ffb079;
-    }
-    .pql-sql-explain-badge--agg {
-        background: rgba(214, 51, 132, 0.15);
-        border-color: rgba(214, 51, 132, 0.4);
-        color: #ff8fc6;
-    }
-    .pql-sql-explain-badge--limit {
-        background: rgba(108, 117, 125, 0.2);
-        border-color: rgba(108, 117, 125, 0.4);
-        color: #adb5bd;
-    }
-    .pql-sql-explain-badge--proj {
-        background: rgba(102, 16, 242, 0.15);
-        border-color: rgba(102, 16, 242, 0.4);
-        color: #b692f6;
-    }
-    .pql-sql-explain-badge--sort {
-        background: rgba(255, 193, 7, 0.18);
-        border-color: rgba(255, 193, 7, 0.45);
-        color: #ffd866;
-    }
-    /* Key/value list for extra_info entries under each operator. */
-    .pql-sql-explain-kv {
-        margin-left: 0.25rem;
-        padding-left: 0.75rem;
-        border-left: 2px solid var(--bs-border-color);
-    }
-    .pql-sql-explain-kv-row {
-        display: grid;
-        grid-template-columns: minmax(7rem, auto) 1fr;
-        column-gap: 0.75rem;
-        align-items: baseline;
-    }
-    .pql-sql-explain-kv-row dt {
-        font-size: 0.7rem;
-        letter-spacing: 0.04em;
-    }
-    .pql-sql-explain-kv-row dd {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .pql-sql-explain-panel {
-        background: var(--bs-secondary-bg);
-        border-radius: 0.25rem;
-        padding: 0.75rem;
-        font-size: 0.82rem;
-        max-height: 50vh;
-        overflow: auto;
-        white-space: pre;
-    }
-    /* Sprint 54: Chart view. The canvas host sizes to its column
-       so Chart.js' responsive layout has a concrete height to work
-       with; we cap at 45vh so the chart never pushes the result
-       metadata out of view. */
-    .pql-sql-chart-host {
-        position: relative;
-        height: 45vh;
-        min-height: 280px;
-    }
-    /* Sprint 53: mobile stacking. Below 768 px the editor + drawer
-       collapse into one column so the results table can breathe. */
-    @media (max-width: 767.98px) {
-        .pql-sql-editor-host {
-            min-height: 40vh;
-        }
-    }
+ /* editor surface. */
+.pql-sql-editor-host {
+ min-height: 30vh;
+ border: 1px solid var(--bs-border-color);
+ border-radius: 0.25rem;
+ overflow: hidden;
+ }
+.pql-sql-editor-host.cm-editor { height: 100%; }
+ /* The results card is ``display: flex`` (Bootstrap default for
+ ``.card``); its ``.card-body`` is a flex item that defaults to
+ ``min-width: auto`` and refuses to shrink below the wide
+ ``<table>``'s intrinsic width. The result was the table running
+ past the card's right edge. ``min-width: 0`` lets the body
+ shrink so ``overflow-x: auto`` on the wrap kicks in cleanly. */
+.pql-sql-results-card.card-body { min-width: 0; }
+.pql-sql-results-wrap {
+ overflow-x: auto;
+ max-width: 100%;
+ }
+.pql-sql-results-wrap table { font-size: 0.85rem; }
+.pql-sql-explain-tree {
+ background: var(--bs-secondary-bg);
+ border-radius: 0.25rem;
+ padding: 0.75rem 1rem;
+ /* Tall plans can run >50 lines once every operator's
+ extra_info is rendered; cap loosely so simple plans stay
+ compact but rich plans don't disappear behind a scrollbar. */
+ max-height: min(75vh, 1000px);
+ overflow: auto;
+ }
+.pql-sql-explain-list { font-size: 0.85rem; }
+.pql-sql-explain-node {
+ position: relative;
+ padding: 0.4rem 0;
+ }
+ /* Faint vertical guideline at every indent level so the tree
+ structure is visible without explicit connector chevrons. */
+.pql-sql-explain-node[data-depth]:not([data-depth="0"])::before {
+ content: "";
+ position: absolute;
+ left: -0.85rem;
+ top: 0;
+ bottom: 0;
+ border-left: 1px dashed var(--bs-border-color);
+ }
+ /* Operator-type badge — small, monospace, colour-coded by
+ ``kind`` (scan / filter / join / agg / limit / proj / sort /
+ other). Borrows Bootstrap's --bs-* tokens so dark + light
+ themes are both legible. */
+.pql-sql-explain-badge {
+ display: inline-block;
+ padding: 0.1rem 0.45rem;
+ border-radius: 0.25rem;
+ font-family: var(--bs-font-monospace);
+ font-size: 0.78rem;
+ font-weight: 600;
+ background: var(--bs-tertiary-bg);
+ color: var(--bs-body-color);
+ border: 1px solid var(--bs-border-color);
+ line-height: 1.3;
+ }
+.pql-sql-explain-badge--scan {
+ background: rgba(25, 135, 84, 0.15);
+ border-color: rgba(25, 135, 84, 0.4);
+ color: #4dd29a;
+ }
+.pql-sql-explain-badge--filter {
+ background: rgba(13, 110, 253, 0.15);
+ border-color: rgba(13, 110, 253, 0.4);
+ color: #6ea8fe;
+ }
+.pql-sql-explain-badge--join {
+ background: rgba(253, 126, 20, 0.18);
+ border-color: rgba(253, 126, 20, 0.4);
+ color: #ffb079;
+ }
+.pql-sql-explain-badge--agg {
+ background: rgba(214, 51, 132, 0.15);
+ border-color: rgba(214, 51, 132, 0.4);
+ color: #ff8fc6;
+ }
+.pql-sql-explain-badge--limit {
+ background: rgba(108, 117, 125, 0.2);
+ border-color: rgba(108, 117, 125, 0.4);
+ color: #adb5bd;
+ }
+.pql-sql-explain-badge--proj {
+ background: rgba(102, 16, 242, 0.15);
+ border-color: rgba(102, 16, 242, 0.4);
+ color: #b692f6;
+ }
+.pql-sql-explain-badge--sort {
+ background: rgba(255, 193, 7, 0.18);
+ border-color: rgba(255, 193, 7, 0.45);
+ color: #ffd866;
+ }
+ /* Key/value list for extra_info entries under each operator. */
+.pql-sql-explain-kv {
+ margin-left: 0.25rem;
+ padding-left: 0.75rem;
+ border-left: 2px solid var(--bs-border-color);
+ }
+.pql-sql-explain-kv-row {
+ display: grid;
+ grid-template-columns: minmax(7rem, auto) 1fr;
+ column-gap: 0.75rem;
+ align-items: baseline;
+ }
+.pql-sql-explain-kv-row dt {
+ font-size: 0.7rem;
+ letter-spacing: 0.04em;
+ }
+.pql-sql-explain-kv-row dd {
+ white-space: nowrap;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ }
+.pql-sql-explain-panel {
+ background: var(--bs-secondary-bg);
+ border-radius: 0.25rem;
+ padding: 0.75rem;
+ font-size: 0.82rem;
+ max-height: 50vh;
+ overflow: auto;
+ white-space: pre;
+ }
+ /* Chart view. The canvas host sizes to its column
+ so Chart.js' responsive layout has a concrete height to work
+ with; we cap at 45vh so the chart never pushes the result
+ metadata out of view. */
+.pql-sql-chart-host {
+ position: relative;
+ height: 45vh;
+ min-height: 280px;
+ }
+ /* mobile stacking. Below 768 px the editor + drawer
+ collapse into one column so the results table can breathe. */
+ @media (max-width: 767.98px) {
+.pql-sql-editor-host {
+ min-height: 40vh;
+ }
+ }
 </style>
 {% endblock %}
 
 {% block content %}
 {% if not sql_enabled %}
 <div class="text-center py-5">
-    <i class="bi bi-code-square display-1 text-muted mb-3 d-block"></i>
-    <h2 class="h4 mb-2">SQL editor disabled</h2>
-    <p class="text-muted">
-        Set <code>POINTLESSQL_SQL_ENABLED=true</code> to enable the Phase-12 SQL editor.
-    </p>
+ <i class="bi bi-code-square display-1 text-muted mb-3 d-block"></i>
+ <h2 class="h4 mb-2">SQL editor disabled</h2>
+ <p class="text-muted">
+ Set <code>POINTLESSQL_SQL_ENABLED=true</code> to enable the SQL editor.
+ </p>
 </div>
 {% else %}
 <div x-data="sqlEditor()" x-init="init()">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-code-square fs-3"></i>
-            <h1 class="h3 mb-0">SQL</h1>
-        </div>
-        <div class="text-muted small" x-show="lastRun" x-cloak>
-            <span x-text="lastRun ? lastRun.summary : ''"></span>
-        </div>
-    </div>
+ <div class="d-flex align-items-center justify-content-between mb-3">
+ <div class="d-flex align-items-center gap-2">
+ <i class="bi bi-code-square fs-3"></i>
+ <h1 class="h3 mb-0">SQL</h1>
+ </div>
+ <div class="text-muted small" x-show="lastRun" x-cloak>
+ <span x-text="lastRun ? lastRun.summary : ''"></span>
+ </div>
+ </div>
 
-    <div class="row g-3">
-        <div class="col-lg-9">
-            <div class="card mb-3">
-                <div class="card-body">
-                    <div id="pql-sql-editor-root" class="pql-sql-editor-host mb-3"></div>
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button type="button"
-                                class="btn btn-primary btn-sm"
-                                @click="run()"
-                                :disabled="running">
-                            <span x-show="!running">
-                                <i class="bi bi-play-fill"></i> Run
-                            </span>
-                            <span x-show="running" x-cloak>
-                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                Running… <span x-text="elapsedSeconds"></span>s
-                            </span>
-                        </button>
-                        <button type="button"
-                                class="btn btn-outline-danger btn-sm"
-                                x-show="running"
-                                x-cloak
-                                @click="cancel()">
-                            <i class="bi bi-x-octagon"></i> Cancel
-                        </button>
-                        <button type="button"
-                                class="btn btn-outline-info btn-sm"
-                                @click="run({ explain: true })"
-                                :disabled="running"
-                                title="EXPLAIN ANALYZE">
-                            <i class="bi bi-diagram-3"></i> Explain
-                        </button>
-                        <button type="button"
-                                class="btn btn-outline-secondary btn-sm"
-                                @click="openSaveModal()">
-                            <i class="bi bi-bookmark-plus"></i> Save
-                        </button>
-                        <span class="text-muted small align-self-center ms-2">
-                            <kbd>Cmd</kbd>+<kbd>Enter</kbd> run · <kbd>Cmd</kbd>+<kbd>S</kbd> save
-                        </span>
-                        <span class="ms-auto text-muted small align-self-center" x-show="referencedTables.length" x-cloak>
-                            Tables: <template x-for="t in referencedTables" :key="t"><code class="me-1" x-text="t"></code></template>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3">
-            {% include "components/saved_queries_drawer.html" %}
-        </div>
-    </div>
+ <div class="row g-3">
+ <div class="col-lg-9">
+ <div class="card mb-3">
+ <div class="card-body">
+ <div id="pql-sql-editor-root" class="pql-sql-editor-host mb-3"></div>
+ <div class="d-flex gap-2 flex-wrap">
+ <button type="button"
+ class="btn btn-primary btn-sm"
+ @click="run()"
+ :disabled="running">
+ <span x-show="!running">
+ <i class="bi bi-play-fill"></i> Run
+ </span>
+ <span x-show="running" x-cloak>
+ <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+ Running… <span x-text="elapsedSeconds"></span>s
+ </span>
+ </button>
+ <button type="button"
+ class="btn btn-outline-danger btn-sm"
+ x-show="running"
+ x-cloak
+ @click="cancel()">
+ <i class="bi bi-x-octagon"></i> Cancel
+ </button>
+ <button type="button"
+ class="btn btn-outline-info btn-sm"
+ @click="run({ explain: true })"
+ :disabled="running"
+ title="EXPLAIN ANALYZE">
+ <i class="bi bi-diagram-3"></i> Explain
+ </button>
+ <button type="button"
+ class="btn btn-outline-secondary btn-sm"
+ @click="openSaveModal()">
+ <i class="bi bi-bookmark-plus"></i> Save
+ </button>
+ <span class="text-muted small align-self-center ms-2">
+ <kbd>Cmd</kbd>+<kbd>Enter</kbd> run · <kbd>Cmd</kbd>+<kbd>S</kbd> save
+ </span>
+ <span class="ms-auto text-muted small align-self-center" x-show="referencedTables.length" x-cloak>
+ Tables: <template x-for="t in referencedTables" :key="t"><code class="me-1" x-text="t"></code></template>
+ </span>
+ </div>
+ </div>
+ </div>
+ </div>
+ <div class="col-lg-3">
+ {% include "components/saved_queries_drawer.html" %}
+ </div>
+ </div>
 
-    <!-- Save-query modal -->
-    <div class="modal fade" id="pqlSaveQueryModal" tabindex="-1" aria-hidden="true"
-         x-data="{}">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Save query</h5>
-                    <button type="button" class="btn-close"
-                            data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label small" for="save-title">Title</label>
-                        <input id="save-title" type="text"
-                               class="form-control form-control-sm"
-                               x-model="saveForm.title"
-                               placeholder="Daily orders">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small" for="save-description">Description (optional)</label>
-                        <textarea id="save-description"
-                                  class="form-control form-control-sm"
-                                  rows="2"
-                                  x-model="saveForm.description"></textarea>
-                    </div>
-                    <div class="form-check">
-                        <input id="save-is-shared"
-                               class="form-check-input"
-                               type="checkbox"
-                               x-model="saveForm.is_shared">
-                        <label class="form-check-label" for="save-is-shared">
-                            Share with other users
-                        </label>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary"
-                            data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary"
-                            @click="saveCurrent()"
-                            :disabled="saving">
-                        <span x-show="!saving">Save</span>
-                        <span x-show="saving" x-cloak>
-                            <span class="spinner-border spinner-border-sm me-1"></span>Saving…
-                        </span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+ <!-- Save-query modal -->
+ <div class="modal fade" id="pqlSaveQueryModal" tabindex="-1" aria-hidden="true"
+ x-data="{}">
+ <div class="modal-dialog">
+ <div class="modal-content">
+ <div class="modal-header">
+ <h5 class="modal-title">Save query</h5>
+ <button type="button" class="btn-close"
+ data-bs-dismiss="modal" aria-label="Close"></button>
+ </div>
+ <div class="modal-body">
+ <div class="mb-3">
+ <label class="form-label small" for="save-title">Title</label>
+ <input id="save-title" type="text"
+ class="form-control form-control-sm"
+ x-model="saveForm.title"
+ placeholder="Daily orders">
+ </div>
+ <div class="mb-3">
+ <label class="form-label small" for="save-description">Description (optional)</label>
+ <textarea id="save-description"
+ class="form-control form-control-sm"
+ rows="2"
+ x-model="saveForm.description"></textarea>
+ </div>
+ <div class="form-check">
+ <input id="save-is-shared"
+ class="form-check-input"
+ type="checkbox"
+ x-model="saveForm.is_shared">
+ <label class="form-check-label" for="save-is-shared">
+ Share with other users
+ </label>
+ </div>
+ </div>
+ <div class="modal-footer">
+ <button type="button" class="btn btn-outline-secondary"
+ data-bs-dismiss="modal">Cancel</button>
+ <button type="button" class="btn btn-primary"
+ @click="saveCurrent()"
+ :disabled="saving">
+ <span x-show="!saving">Save</span>
+ <span x-show="saving" x-cloak>
+ <span class="spinner-border spinner-border-sm me-1"></span>Saving…
+ </span>
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>
 
-    <div class="card pql-sql-results-card" x-show="result || error || explainText" x-cloak>
-        <div class="card-body">
-            <template x-if="error">
-                <div class="alert alert-danger mb-0 mb-0">
-                    <div class="fw-semibold mb-1">
-                        <i class="bi bi-x-octagon me-1"></i> <span x-text="errorTitle"></span>
-                    </div>
-                    <pre class="mb-0" x-text="error"></pre>
-                </div>
-            </template>
+ <div class="card pql-sql-results-card" x-show="result || error || explainText" x-cloak>
+ <div class="card-body">
+ <template x-if="error">
+ <div class="alert alert-danger mb-0 mb-0">
+ <div class="fw-semibold mb-1">
+ <i class="bi bi-x-octagon me-1"></i> <span x-text="errorTitle"></span>
+ </div>
+ <pre class="mb-0" x-text="error"></pre>
+ </div>
+ </template>
 
-            <template x-if="explainText">
-                <div>
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="fw-semibold small">
-                            <i class="bi bi-diagram-3"></i> Query plan
-                        </div>
-                        <template x-if="explainPlan">
-                            <button type="button"
-                                    class="btn btn-link btn-sm p-0 small text-muted"
-                                    @click="explainShowJson = !explainShowJson"
-                                    x-text="explainShowJson ? 'Show tree' : 'Show raw JSON'"></button>
-                        </template>
-                    </div>
+ <template x-if="explainText">
+ <div>
+ <div class="d-flex justify-content-between align-items-center mb-2">
+ <div class="fw-semibold small">
+ <i class="bi bi-diagram-3"></i> Query plan
+ </div>
+ <template x-if="explainPlan">
+ <button type="button"
+ class="btn btn-link btn-sm p-0 small text-muted"
+ @click="explainShowJson = !explainShowJson"
+ x-text="explainShowJson ? 'Show tree' : 'Show raw JSON'"></button>
+ </template>
+ </div>
 
-                    {# Sprint 23 — structured plan tree.  Renders the
-                       parsed JSON returned from DuckDB's
-                       ``PRAGMA enable_profiling='json'`` mode as a
-                       collapsible indented list.  Falls back to the
-                       legacy ``<pre>`` JSON dump if ``explainPlan``
-                       is missing (older clients, parse failures). #}
-                    <template x-if="explainPlan && !explainShowJson">
-                        <div class="pql-sql-explain-tree">
-                            <div class="small mb-2 d-flex flex-wrap gap-3">
-                                <span x-show="explainPlan.latency != null">
-                                    <i class="bi bi-stopwatch me-1"></i>Latency
-                                    <strong class="ms-1" x-text="formatTiming(explainPlan.latency)"></strong>
-                                </span>
-                                <template x-for="m in rootByteMetrics(explainPlan)" :key="m[0]">
-                                    <span class="text-muted">
-                                        <span x-text="m[0]"></span>
-                                        <strong class="ms-1 text-body" x-text="m[1]"></strong>
-                                    </span>
-                                </template>
-                            </div>
-                            <template x-if="rootSubLatencies(explainPlan).length > 0">
-                                <div class="small text-muted mb-3 d-flex flex-wrap gap-3">
-                                    <span class="text-uppercase small" style="letter-spacing: 0.05em;">Sub-latencies:</span>
-                                    <template x-for="s in rootSubLatencies(explainPlan)" :key="s[0]">
-                                        <span>
-                                            <span x-text="s[0]"></span>:
-                                            <span class="font-monospace" x-text="s[1]"></span>
-                                        </span>
-                                    </template>
-                                </div>
-                            </template>
-                            <ul class="list-unstyled mb-0 pql-sql-explain-list">
-                                <template x-for="node in flattenPlan(explainPlan, 0)"
-                                          :key="node.path">
-                                    <li :style="{ marginLeft: (node.depth * 1.5) + 'rem' }"
-                                        :data-depth="node.depth"
-                                        class="pql-sql-explain-node">
-                                        <div class="d-flex align-items-baseline gap-2 flex-wrap">
-                                            <span class="pql-sql-explain-badge"
-                                                  :class="'pql-sql-explain-badge--' + node.kind"
-                                                  x-text="node.name"></span>
-                                            <span class="text-muted small font-monospace"
-                                                  x-show="node.timing != null"
-                                                  x-text="formatTiming(node.timing)"></span>
-                                            <span class="text-muted small"
-                                                  x-show="node.cardinality != null && node.cardinality > 0">
-                                                <i class="bi bi-arrow-right-short"></i>
-                                                <span x-text="node.cardinality.toLocaleString() + ' rows out'"></span>
-                                            </span>
-                                            <span class="text-muted small"
-                                                  x-show="node.rowsScanned != null && node.rowsScanned > 0">
-                                                <i class="bi bi-arrow-down-short"></i>
-                                                <span x-text="node.rowsScanned.toLocaleString() + ' rows in'"></span>
-                                            </span>
-                                        </div>
-                                        <template x-if="node.details && node.details.length > 0">
-                                            <dl class="pql-sql-explain-kv mb-0 mt-1">
-                                                <template x-for="d in node.details" :key="d[0]">
-                                                    <div class="pql-sql-explain-kv-row">
-                                                        <dt class="text-muted small text-uppercase" x-text="d[0]"></dt>
-                                                        <dd class="small font-monospace mb-0" x-text="d[1]"></dd>
-                                                    </div>
-                                                </template>
-                                            </dl>
-                                        </template>
-                                    </li>
-                                </template>
-                            </ul>
-                        </div>
-                    </template>
+ {# structured plan tree. Renders the
+ parsed JSON returned from DuckDB's
+ ``PRAGMA enable_profiling='json'`` mode as a
+ collapsible indented list. Falls back to the
+ legacy ``<pre>`` JSON dump if ``explainPlan``
+ is missing (older clients, parse failures). #}
+ <template x-if="explainPlan && !explainShowJson">
+ <div class="pql-sql-explain-tree">
+ <div class="small mb-2 d-flex flex-wrap gap-3">
+ <span x-show="explainPlan.latency != null">
+ <i class="bi bi-stopwatch me-1"></i>Latency
+ <strong class="ms-1" x-text="formatTiming(explainPlan.latency)"></strong>
+ </span>
+ <template x-for="m in rootByteMetrics(explainPlan)" :key="m[0]">
+ <span class="text-muted">
+ <span x-text="m[0]"></span>
+ <strong class="ms-1 text-body" x-text="m[1]"></strong>
+ </span>
+ </template>
+ </div>
+ <template x-if="rootSubLatencies(explainPlan).length > 0">
+ <div class="small text-muted mb-3 d-flex flex-wrap gap-3">
+ <span class="text-uppercase small" style="letter-spacing: 0.05em;">Sub-latencies:</span>
+ <template x-for="s in rootSubLatencies(explainPlan)" :key="s[0]">
+ <span>
+ <span x-text="s[0]"></span>:
+ <span class="font-monospace" x-text="s[1]"></span>
+ </span>
+ </template>
+ </div>
+ </template>
+ <ul class="list-unstyled mb-0 pql-sql-explain-list">
+ <template x-for="node in flattenPlan(explainPlan, 0)"
+ :key="node.path">
+ <li :style="{ marginLeft: (node.depth * 1.5) + 'rem' }"
+ :data-depth="node.depth"
+ class="pql-sql-explain-node">
+ <div class="d-flex align-items-baseline gap-2 flex-wrap">
+ <span class="pql-sql-explain-badge"
+ :class="'pql-sql-explain-badge--' + node.kind"
+ x-text="node.name"></span>
+ <span class="text-muted small font-monospace"
+ x-show="node.timing != null"
+ x-text="formatTiming(node.timing)"></span>
+ <span class="text-muted small"
+ x-show="node.cardinality != null && node.cardinality > 0">
+ <i class="bi bi-arrow-right-short"></i>
+ <span x-text="node.cardinality.toLocaleString() + ' rows out'"></span>
+ </span>
+ <span class="text-muted small"
+ x-show="node.rowsScanned != null && node.rowsScanned > 0">
+ <i class="bi bi-arrow-down-short"></i>
+ <span x-text="node.rowsScanned.toLocaleString() + ' rows in'"></span>
+ </span>
+ </div>
+ <template x-if="node.details && node.details.length > 0">
+ <dl class="pql-sql-explain-kv mb-0 mt-1">
+ <template x-for="d in node.details" :key="d[0]">
+ <div class="pql-sql-explain-kv-row">
+ <dt class="text-muted small text-uppercase" x-text="d[0]"></dt>
+ <dd class="small font-monospace mb-0" x-text="d[1]"></dd>
+ </div>
+ </template>
+ </dl>
+ </template>
+ </li>
+ </template>
+ </ul>
+ </div>
+ </template>
 
-                    <template x-if="!explainPlan || explainShowJson">
-                        <div class="pql-sql-explain-panel" x-text="explainText"></div>
-                    </template>
-                </div>
-            </template>
+ <template x-if="!explainPlan || explainShowJson">
+ <div class="pql-sql-explain-panel" x-text="explainText"></div>
+ </template>
+ </div>
+ </template>
 
-            <template x-if="result && !explainText">
-                <div>
-                    <div class="d-flex justify-content-between align-items-center mb-2 small text-muted flex-wrap gap-2">
-                        <span>
-                            <span x-text="result.row_count"></span>
-                            row<span x-text="result.row_count === 1 ? '' : 's'"></span>
-                            <span x-show="result.truncated" class="badge text-bg-warning ms-2">truncated</span>
-                        </span>
-                        <div class="btn-group btn-group-sm" role="group" aria-label="View">
-                            <button type="button"
-                                    class="btn btn-outline-secondary"
-                                    :class="{ active: viewMode === 'table' }"
-                                    @click="viewMode = 'table'; destroyChart()">
-                                <i class="bi bi-table"></i> Table
-                            </button>
-                            <button type="button"
-                                    class="btn btn-outline-secondary"
-                                    :class="{ active: viewMode === 'chart' }"
-                                    @click="viewMode = 'chart'; _autoPickAxes(); $nextTick(() => renderChart())">
-                                <i class="bi bi-bar-chart"></i> Chart
-                            </button>
-                        </div>
-                        <span><span x-text="result.duration_ms"></span> ms</span>
-                    </div>
+ <template x-if="result && !explainText">
+ <div>
+ <div class="d-flex justify-content-between align-items-center mb-2 small text-muted flex-wrap gap-2">
+ <span>
+ <span x-text="result.row_count"></span>
+ row<span x-text="result.row_count === 1 ? '' : 's'"></span>
+ <span x-show="result.truncated" class="badge text-bg-warning ms-2">truncated</span>
+ </span>
+ <div class="btn-group btn-group-sm" role="group" aria-label="View">
+ <button type="button"
+ class="btn btn-outline-secondary"
+ :class="{ active: viewMode === 'table' }"
+ @click="viewMode = 'table'; destroyChart()">
+ <i class="bi bi-table"></i> Table
+ </button>
+ <button type="button"
+ class="btn btn-outline-secondary"
+ :class="{ active: viewMode === 'chart' }"
+ @click="viewMode = 'chart'; _autoPickAxes(); $nextTick(() => renderChart())">
+ <i class="bi bi-bar-chart"></i> Chart
+ </button>
+ </div>
+ <span><span x-text="result.duration_ms"></span> ms</span>
+ </div>
 
-                    <template x-if="viewMode === 'table'">
-                        <div class="pql-sql-results-wrap">
-                            <table class="table table-sm table-striped mb-0">
-                                <thead>
-                                    <tr>
-                                        <template x-for="c in result.columns" :key="c.name">
-                                            <th class="text-nowrap">
-                                                <span x-text="c.name"></span>
-                                                <small class="text-muted ms-1" x-text="c.type"></small>
-                                            </th>
-                                        </template>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="(row, i) in result.rows" :key="i">
-                                        <tr>
-                                            <template x-for="(cell, j) in row" :key="j">
-                                                <td class="text-nowrap" x-text="formatCell(cell)"></td>
-                                            </template>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </template>
+ <template x-if="viewMode === 'table'">
+ <div class="pql-sql-results-wrap">
+ <table class="table table-sm table-striped mb-0">
+ <thead>
+ <tr>
+ <template x-for="c in result.columns" :key="c.name">
+ <th class="text-nowrap">
+ <span x-text="c.name"></span>
+ <small class="text-muted ms-1" x-text="c.type"></small>
+ </th>
+ </template>
+ </tr>
+ </thead>
+ <tbody>
+ <template x-for="(row, i) in result.rows" :key="i">
+ <tr>
+ <template x-for="(cell, j) in row" :key="j">
+ <td class="text-nowrap" x-text="formatCell(cell)"></td>
+ </template>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </div>
+ </template>
 
-                    <template x-if="viewMode === 'chart'">
-                        <div>
-                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2 small">
-                                <label class="d-flex align-items-center gap-1">
-                                    <span class="text-muted">Type</span>
-                                    <select class="form-select form-select-sm"
-                                            x-model="chartConfig.type"
-                                            @change="onChartConfigChange()">
-                                        <option value="bar">Bar</option>
-                                        <option value="line">Line</option>
-                                        <option value="scatter">Scatter</option>
-                                        <option value="pie">Pie</option>
-                                    </select>
-                                </label>
-                                <label class="d-flex align-items-center gap-1">
-                                    <span class="text-muted">X</span>
-                                    <!-- Deliberately no ``x-model`` on the axis selects:
-                                         Alpine syncs the native ``<select>.value`` before
-                                         the ``x-for`` options are in the DOM, which pins
-                                         the dropdown to the first rendered option and
-                                         ignores later programmatic changes
-                                         (``_autoPickAxes``).  Use ``:selected`` on each
-                                         option + explicit ``@change`` assignment to keep
-                                         the two directions wired. -->
-                                    <select class="form-select form-select-sm"
-                                            @change="chartConfig.x = $event.target.value; onChartConfigChange()">
-                                        <template x-for="c in (result ? result.columns : [])" :key="'x-' + c.name">
-                                            <option :value="c.name"
-                                                    :selected="c.name === chartConfig.x"
-                                                    x-text="c.name"></option>
-                                        </template>
-                                    </select>
-                                </label>
-                                <label class="d-flex align-items-center gap-1">
-                                    <span class="text-muted">Y</span>
-                                    <select class="form-select form-select-sm"
-                                            @change="chartConfig.y = $event.target.value; onChartConfigChange()">
-                                        <template x-for="c in (result ? result.columns : [])" :key="'y-' + c.name">
-                                            <option :value="c.name"
-                                                    :selected="c.name === chartConfig.y"
-                                                    x-text="c.name"></option>
-                                        </template>
-                                    </select>
-                                </label>
-                                <button type="button"
-                                        class="btn btn-outline-secondary btn-sm ms-auto"
-                                        @click="downloadChartPng()"
-                                        :disabled="!chartConfig.x || !chartConfig.y">
-                                    <i class="bi bi-download"></i> PNG
-                                </button>
-                                <span class="text-muted small">
-                                    <kbd>c</kbd> toggles view
-                                </span>
-                            </div>
-                            <div class="pql-sql-chart-host">
-                                <canvas id="pql-sql-chart-canvas"></canvas>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </template>
-        </div>
-    </div>
+ <template x-if="viewMode === 'chart'">
+ <div>
+ <div class="d-flex flex-wrap gap-2 align-items-center mb-2 small">
+ <label class="d-flex align-items-center gap-1">
+ <span class="text-muted">Type</span>
+ <select class="form-select form-select-sm"
+ x-model="chartConfig.type"
+ @change="onChartConfigChange()">
+ <option value="bar">Bar</option>
+ <option value="line">Line</option>
+ <option value="scatter">Scatter</option>
+ <option value="pie">Pie</option>
+ </select>
+ </label>
+ <label class="d-flex align-items-center gap-1">
+ <span class="text-muted">X</span>
+ <!-- Deliberately no ``x-model`` on the axis selects:
+ Alpine syncs the native ``<select>.value`` before
+ the ``x-for`` options are in the DOM, which pins
+ the dropdown to the first rendered option and
+ ignores later programmatic changes
+ (``_autoPickAxes``). Use ``:selected`` on each
+ option + explicit ``@change`` assignment to keep
+ the two directions wired. -->
+ <select class="form-select form-select-sm"
+ @change="chartConfig.x = $event.target.value; onChartConfigChange()">
+ <template x-for="c in (result ? result.columns : [])" :key="'x-' + c.name">
+ <option :value="c.name"
+ :selected="c.name === chartConfig.x"
+ x-text="c.name"></option>
+ </template>
+ </select>
+ </label>
+ <label class="d-flex align-items-center gap-1">
+ <span class="text-muted">Y</span>
+ <select class="form-select form-select-sm"
+ @change="chartConfig.y = $event.target.value; onChartConfigChange()">
+ <template x-for="c in (result ? result.columns : [])" :key="'y-' + c.name">
+ <option :value="c.name"
+ :selected="c.name === chartConfig.y"
+ x-text="c.name"></option>
+ </template>
+ </select>
+ </label>
+ <button type="button"
+ class="btn btn-outline-secondary btn-sm ms-auto"
+ @click="downloadChartPng()"
+ :disabled="!chartConfig.x || !chartConfig.y">
+ <i class="bi bi-download"></i> PNG
+ </button>
+ <span class="text-muted small">
+ <kbd>c</kbd> toggles view
+ </span>
+ </div>
+ <div class="pql-sql-chart-host">
+ <canvas id="pql-sql-chart-canvas"></canvas>
+ </div>
+ </div>
+ </template>
+ </div>
+ </template>
+ </div>
+ </div>
 </div>
 {% endif %}
 {% endblock %}
 
 {#-
-  BUG-grand-03 follow-up: the @codemirror/* importmap previously lived
-  in this template's extra_js block, which renders at the END of <body>
-  — too late for bootstrap.js (loaded in <head>) to resolve the bare
-  specifiers when sqlEditor().init() fires its dynamic imports. Moved
-  to base.html <head> so it's parsed before any module requests an
-  @codemirror/* specifier. Non-/sql pages pay nothing — the importmap
-  is just ignored when no module asks for the specifier.
+ BUG-grand-03 follow-up: the @codemirror/* importmap previously lived
+ in this template's extra_js block, which renders at the END of <body>
+ — too late for bootstrap.js (loaded in <head>) to resolve the bare
+ specifiers when sqlEditor().init() fires its dynamic imports. Moved
+ to base.html <head> so it's parsed before any module requests an
+ @codemirror/* specifier. Non-/sql pages pay nothing — the importmap
+ is just ignored when no module asks for the specifier.
 -#}

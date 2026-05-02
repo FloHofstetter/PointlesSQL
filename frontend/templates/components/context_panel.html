@@ -1,101 +1,101 @@
 {#
-  Sprint 17.1 — contextual side-panel (240 px).
-  Phase 24 — six static branches replaced by per-section
-  ``components/sidebars/*_sidebar.html`` partials with their own
-  Alpine factories (see ``frontend/js/components/sidebars/``).
+ contextual side-panel (240 px).
+ — six static branches replaced by per-section
+ ``components/sidebars/*_sidebar.html`` partials with their own
+ Alpine factories (see ``frontend/js/components/sidebars/``).
 
-  Sits to the right of the icon-rail at >= md.  The contents are a
-  function of ``active_section`` (computed in base.html from
-  ``active_page``):
+ Sits to the right of the icon-rail at >= md. The contents are a
+ function of ``active_section`` (computed in base.html from
+ ``active_page``):
 
-    * federation  → catalog tree (components/sidebar.html)
-    * dashboards  → dashboards tree (components/dashboards_sidebar.html)
-    * runs        → recent agent runs grouped by status
-    * branches    → active/promoted/discarded delta-branches
-    * workspace   → flat list of every notebook
-    * jobs        → active/paused jobs
-    * alerts      → enabled/disabled alerts
-    * mlflow      → recent UC-registered models
-    * sql / admin → small static link lists (kept inline below)
+ * federation → catalog tree (components/sidebar.html)
+ * dashboards → dashboards tree (components/dashboards_sidebar.html)
+ * runs → recent agent runs grouped by status
+ * branches → active/promoted/discarded delta-branches
+ * workspace → flat list of every notebook
+ * jobs → active/paused jobs
+ * alerts → enabled/disabled alerts
+ * mlflow → recent UC-registered models
+ * sql / admin → small static link lists (kept inline below)
 
-  Federation is the catch-all default for sections without a
-  dedicated branch (volumes, models — both already render inside
-  the catalog tree per Phase 23.x).
+ Federation is the catch-all default for sections without a
+ dedicated branch (volumes, models — both already render inside
+ the catalog tree per.x).
 
-  On mobile, ``base.html`` mounts this same partial inside the
-  bootstrap offcanvas drawer; ``components/context_panel.css``
-  drops the sticky/border chrome there.
+ On mobile, ``base.html`` mounts this same partial inside the
+ bootstrap offcanvas drawer; ``components/context_panel.css``
+ drops the sticky/border chrome there.
 #}
 <aside class="pql-context-panel" aria-label="Section navigation"
-       id="pql-context-panel"
-       hx-swap-oob="true">
-    {% if active_section == 'federation' %}
-        {% include "components/sidebar.html" %}
-    {% elif active_section == 'dashboards' %}
-        {% include "components/dashboards_sidebar.html" %}
-    {% elif active_section == 'runs' %}
-        {% include "components/sidebars/runs_sidebar.html" %}
-    {% elif active_section == 'branches' %}
-        {% include "components/sidebars/branches_sidebar.html" %}
-    {% elif active_section == 'sql' %}
-        <div class="pql-context-panel__header">SQL</div>
-        <div class="pql-context-panel__body">
-            <ul class="pql-context-panel__list">
-                <li>
-                    <a href="/sql"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'sql' %} active{% endif %}">
-                        <i class="bi bi-code-square"></i>
-                        <span>Editor</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/queries"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'queries' %} active{% endif %}">
-                        <i class="bi bi-clock-history"></i>
-                        <span>History</span>
-                    </a>
-                </li>
-            </ul>
-            <div class="pql-context-panel__hint">
-                Saved queries appear in the editor's right-hand drawer.
-            </div>
-        </div>
-    {% elif active_section == 'workspace' %}
-        {% include "components/sidebars/workspace_sidebar.html" %}
-    {% elif active_section == 'jobs' %}
-        {% include "components/sidebars/jobs_sidebar.html" %}
-    {% elif active_section == 'alerts' %}
-        {% include "components/sidebars/alerts_sidebar.html" %}
-    {% elif active_section == 'mlflow' %}
-        {% include "components/sidebars/mlflow_sidebar.html" %}
-    {% elif active_section == 'admin' %}
-        <div class="pql-context-panel__header">Admin</div>
-        <div class="pql-context-panel__body">
-            <ul class="pql-context-panel__list">
-                <li>
-                    <a href="/admin/audit"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}">
-                        <i class="bi bi-journal-text"></i>
-                        <span>Audit log</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/audit/queries"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'audit' %} active{% endif %}">
-                        <i class="bi bi-shield-check"></i>
-                        <span>Audit cockpit</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="/admin/external-writes"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'admin' %} active{% endif %}">
-                        <i class="bi bi-exclamation-octagon"></i>
-                        <span>External writes</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-    {% else %}
-        {% include "components/sidebar.html" %}
-    {% endif %}
+ id="pql-context-panel"
+ hx-swap-oob="true">
+ {% if active_section == 'federation' %}
+ {% include "components/sidebar.html" %}
+ {% elif active_section == 'dashboards' %}
+ {% include "components/dashboards_sidebar.html" %}
+ {% elif active_section == 'runs' %}
+ {% include "components/sidebars/runs_sidebar.html" %}
+ {% elif active_section == 'branches' %}
+ {% include "components/sidebars/branches_sidebar.html" %}
+ {% elif active_section == 'sql' %}
+ <div class="pql-context-panel__header">SQL</div>
+ <div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/sql"
+ class="pql-context-panel__link{% if active_page is defined and active_page == 'sql' %} active{% endif %}">
+ <i class="bi bi-code-square"></i>
+ <span>Editor</span>
+ </a>
+ </li>
+ <li>
+ <a href="/queries"
+ class="pql-context-panel__link{% if active_page is defined and active_page == 'queries' %} active{% endif %}">
+ <i class="bi bi-clock-history"></i>
+ <span>History</span>
+ </a>
+ </li>
+ </ul>
+ <div class="pql-context-panel__hint">
+ Saved queries appear in the editor's right-hand drawer.
+ </div>
+ </div>
+ {% elif active_section == 'workspace' %}
+ {% include "components/sidebars/workspace_sidebar.html" %}
+ {% elif active_section == 'jobs' %}
+ {% include "components/sidebars/jobs_sidebar.html" %}
+ {% elif active_section == 'alerts' %}
+ {% include "components/sidebars/alerts_sidebar.html" %}
+ {% elif active_section == 'mlflow' %}
+ {% include "components/sidebars/mlflow_sidebar.html" %}
+ {% elif active_section == 'admin' %}
+ <div class="pql-context-panel__header">Admin</div>
+ <div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/admin/audit"
+ class="pql-context-panel__link{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}">
+ <i class="bi bi-journal-text"></i>
+ <span>Audit log</span>
+ </a>
+ </li>
+ <li>
+ <a href="/audit/queries"
+ class="pql-context-panel__link{% if active_page is defined and active_page == 'audit' %} active{% endif %}">
+ <i class="bi bi-shield-check"></i>
+ <span>Audit cockpit</span>
+ </a>
+ </li>
+ <li>
+ <a href="/admin/external-writes"
+ class="pql-context-panel__link{% if active_page is defined and active_page == 'admin' %} active{% endif %}">
+ <i class="bi bi-exclamation-octagon"></i>
+ <span>External writes</span>
+ </a>
+ </li>
+ </ul>
+ </div>
+ {% else %}
+ {% include "components/sidebar.html" %}
+ {% endif %}
 </aside>

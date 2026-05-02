@@ -8,19 +8,20 @@
     <link rel="preload" href="/static/fonts/inter-regular.woff2" as="font" type="font/woff2" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="/static/css/style.css?v=sprint23-rail-80b" rel="stylesheet">
+    <link href="/static/css/style.css?v=0.1.0rc3" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
-{# Sprint 17.1 — derive active_section from active_page so the
-   icon-rail can highlight the right item and the context-panel can
-   pick the right partial.  Default is 'federation' so any page that
-   does not thread active_page (home, table-detail, schema-detail,
-   etc.) keeps showing the catalog tree it had before. #}
-{# Phase 23 follow-up: volumes + models no longer have their own
-   rail icon (they render inline in the catalog tree alongside
-   tables).  Their pages still set ``active_page='volumes'`` /
-   ``='models'``, but the section maps to ``federation`` so the
-   catalog tree stays visible in the context-panel. #}
+{# Derive active_section from active_page so the icon-rail can
+   highlight the right item and the context-panel can pick the
+   right partial.  Default is 'federation' so any page that does
+   not thread active_page (home, table-detail, schema-detail, etc.)
+   keeps showing the catalog tree.
+
+   Volumes + models no longer have their own rail icon (they render
+   inline in the catalog tree alongside tables).  Their pages still
+   set ``active_page='volumes'`` / ``='models'``, but the section
+   maps to ``federation`` so the catalog tree stays visible in the
+   context-panel. #}
 {% set _section_map = {
     'connections': 'federation',
     'external_locations': 'federation',
@@ -83,12 +84,12 @@
 
     <div class="pql-shell{% if hide_sidebar %} pql-shell--no-sidebar{% endif %}">
         {% if not hide_sidebar %}
-        {# Sprint 17.1 — desktop (>= md): icon-rail + context-panel
-           are siblings of <main>.  Each is sticky-positioned by its
-           own CSS.  At < md, both are hidden (per icon_rail.css /
-           context_panel.css media queries) and the offcanvas drawer
-           below carries the section content + nav_links + user
-           menu instead. #}
+        {# Desktop (>= md): icon-rail + context-panel are siblings
+           of <main>.  Each is sticky-positioned by its own CSS.
+           At < md, both are hidden (per icon_rail.css /
+           context_panel.css media queries) and the offcanvas
+           drawer below carries the section content + nav_links +
+           user menu instead. #}
         {% include "components/icon_rail.html" %}
         <div class="offcanvas-md offcanvas-start pql-sidebar-shell"
              id="pqlSidebarOffcanvas"
@@ -132,12 +133,12 @@
          aria-atomic="true"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"></script>
-    <!-- Sprint 54: Chart.js 4.x UMD.  Loaded non-module so every page
-         gets ``window.Chart`` synchronously.  Do NOT switch to the
-         ``chart.esm.js`` build — the SQL editor's Alpine IIFE expects
-         ``window.Chart`` at factory-return time, and the Phase-12
-         Alpine-race replay fix (commit b830300) burned us on exactly
-         this category of bug. -->
+    <!-- Chart.js 4.x UMD.  Loaded non-module so every page gets
+         ``window.Chart`` synchronously.  Do NOT switch to the
+         ``chart.esm.js`` build — the SQL editor's Alpine IIFE
+         expects ``window.Chart`` at factory-return time, and the
+         Alpine-race replay fix (commit b830300) burned us on
+         exactly this category of bug. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     {#-
       BUG-grand-03 follow-up: the importmap MUST be parsed before any
@@ -148,8 +149,8 @@
       makes it page-agnostic — non-/sql pages don't pay for it (it's
       parsed once and ignored if no module asks for the specifier)
       and /sql doesn't race against the page's extra_js block
-      rendering at the end of <body>. The import-map was originally
-      in pages/sql_editor.html (Sprint 75 Phase 4); moved here on the
+      rendering at the end of <body>. The import-map originally
+      lived in pages/sql_editor.html and was lifted here on the
       grand-tour first-replay cleanup.
     -#}
     <script type="importmap">
@@ -165,23 +166,23 @@
       }
     }
     </script>
-    <!-- Sprint 75 Phase 4: every former IIFE-shape JS file under
-         frontend/js/ is now a native ES module imported via
-         bootstrap.js, which re-attaches each factory / singleton to
-         ``window.*`` under the same name templates already reference
-         in their x-data attributes.  ``type="module"`` is
-         defer-by-default and runs in document order, so the windowed
-         re-attachments are live before Alpine's x-data walk begins.
-         MUST stay before the Alpine CDN script —
-         scripts/check-frontend-bootstrap-order.sh asserts the ordering. -->
-    <script type="module" src="/static/js/bootstrap.js?v=phase24-help-icons"></script>
+    <!-- Every JS file under frontend/js/ is a native ES module
+         imported via bootstrap.js, which re-attaches each factory /
+         singleton to ``window.*`` under the same name templates
+         already reference in their x-data attributes.
+         ``type="module"`` is defer-by-default and runs in document
+         order, so the windowed re-attachments are live before
+         Alpine's x-data walk begins.  MUST stay before the Alpine
+         CDN script — scripts/check-frontend-bootstrap-order.sh
+         asserts the ordering. -->
+    <script type="module" src="/static/js/bootstrap.js?v=0.1.0rc3"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
         // Auto-attach the CSRF token from the <meta> tag to every HTMX
         // request that uses a non-safe verb. The server-side middleware
         // accepts either this header or a hidden ``csrf_token`` form
         // field; HTMX-driven flows use the header path so we never have
-        // to edit individual templates. Sprint 42.
+        // to edit individual templates.
         (function () {
             const meta = document.querySelector('meta[name="csrf-token"]');
             const token = meta ? meta.content : '';
@@ -202,14 +203,15 @@
         // aborted the entire init for the boosted page —
         // surfacing as e.g. a blank Preview tab on table-detail.
         // Trust Alpine's observer; do not call ``initTree``.
-        // Phase 23 follow-up — sync the icon-rail's ``.active`` class
-        // after every HTMX-boosted navigation.  ``hx-target="#main-
-        // content"`` keeps the rail (which lives outside main) frozen
-        // at whatever the first page render produced; this listener
+        // Sync the icon-rail's ``.active`` class after every
+        // HTMX-boosted navigation.  ``hx-target="#main-content"``
+        // keeps the rail (which lives outside main) frozen at
+        // whatever the first page render produced; this listener
         // reads ``data-active-section`` from the new ``<main>`` and
-        // applies the matching ``.active`` class to the rail link with
-        // the same ``data-section``.  Same for the offcanvas
-        // ``nav_links`` rail on mobile if it ever grows the attribute.
+        // applies the matching ``.active`` class to the rail link
+        // with the same ``data-section``.  Same for the offcanvas
+        // ``nav_links`` rail on mobile if it ever grows the
+        // attribute.
         function syncActiveSection() {
             const main = document.getElementById('main-content');
             if (!main) return;
@@ -224,7 +226,7 @@
                 });
         }
         document.body.addEventListener('htmx:afterSwap', syncActiveSection);
-        // Sprint 44: server-side HX-Trigger toast bridge. Domain errors
+        // Server-side HX-Trigger toast bridge. Domain errors
         // from a non-boosted HTMX request do not swap the DOM (htmx
         // ignores 4xx/5xx by default); the server emits an HX-Trigger
         // header carrying a ``pqlToast`` payload and htmx dispatches it
@@ -246,20 +248,20 @@
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Phase 23 — initialise Bootstrap Popovers for the
-         contextual help-icons emitted by ``_macros/help_icon.html``.
+    <!-- Initialise Bootstrap Popovers for the contextual
+         help-icons emitted by ``_macros/help_icon.html``.
          Must load AFTER the Bootstrap bundle above. -->
     <script src="/static/js/help_popovers.js"></script>
-    <!-- Sprint 75 Phase 4: toast.js + api.js are now ES modules
-         imported by bootstrap.js (loaded as <script type="module">
-         further up the body).  bootstrap.js re-attaches the singletons
-         to ``window.pqlToast`` / ``window.pqlApi`` before Alpine walks
+    <!-- toast.js + api.js are ES modules imported by bootstrap.js
+         (loaded as <script type="module"> further up the body).
+         bootstrap.js re-attaches the singletons to
+         ``window.pqlToast`` / ``window.pqlApi`` before Alpine walks
          the x-data tree.  Anything that reads those window globals
          (the inline pqlToast bridge above, page templates, etc.)
          continues to find them. -->
     {% if active_catalog is defined and active_catalog %}
     <script>
-    // Record a catalog "visit" for the Sprint-32 home dashboard's
+    // Record a catalog "visit" for the home dashboard's
     // Recent catalogs card. Any page that threads ``active_catalog``
     // (catalog/schema/table detail) counts as a visit; we dedupe by
     // name, keep the five most recent, and write back to localStorage
@@ -289,12 +291,11 @@
     {% endif %}
     {% if active_table is defined and active_table and active_schema is defined and active_schema and active_catalog is defined and active_catalog %}
     <script>
-    // Sprint 17.5 — record a "table visit" for the catalog-tree
-    // sidebar's Recent tables list.  Sibling of the
-    // pql.recentCatalogs writer above; same dedupe / cap-to-five
-    // pattern, dispatches a ``pql:recent-tables-changed`` event so
-    // the open Alpine catalog tree picks the new entry up without
-    // a hard reload.
+    // Record a "table visit" for the catalog-tree sidebar's
+    // Recent tables list.  Sibling of the pql.recentCatalogs
+    // writer above; same dedupe / cap-to-five pattern, dispatches
+    // a ``pql:recent-tables-changed`` event so the open Alpine
+    // catalog tree picks the new entry up without a hard reload.
     (function () {
         try {
             const KEY = 'pql.recentTables';

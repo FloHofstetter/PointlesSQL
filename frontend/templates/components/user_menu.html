@@ -1,33 +1,33 @@
 {#
-  Sprint 17.1 — current-user dropdown extracted from
-  ``components/nav_links.html`` so it can render standalone in the
-  topbar (right side) at >= md while the rest of nav_links is
-  retired from the topbar in favour of the icon-rail.
+ current-user dropdown extracted from
+ ``components/nav_links.html`` so it can render standalone in the
+ topbar (right side) at >= md while the rest of nav_links is
+ retired from the topbar in favour of the icon-rail.
 
-  ``nav_links.html`` continues to include this partial at its end so
-  the mobile offcanvas drawer keeps showing the user menu in the
-  same place.
+ ``nav_links.html`` continues to include this partial at its end so
+ the mobile offcanvas drawer keeps showing the user menu in the
+ same place.
 #}
 {% from "_macros/csrf.html" import csrf_input with context %}
 {% if current_user is defined and current_user %}
 <ul class="navbar-nav align-items-center">
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"
-           href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-person-circle"></i>
-            <span class="d-none d-lg-inline">{{ current_user.display_name or current_user.email }}</span>
-        </a>
-        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-            <li><span class="dropdown-item-text text-muted small">{{ current_user.email }}</span></li>
-            {% if current_user.is_admin %}<li><span class="dropdown-item-text text-muted small"><i class="bi bi-shield-check"></i> Admin</span></li>{% endif %}
-            <li><hr class="dropdown-divider"></li>
-            <li>
-                <form method="post" action="/auth/logout" hx-boost="false" class="m-0">
-                    {{ csrf_input() }}
-                    <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Sign out</button>
-                </form>
-            </li>
-        </ul>
-    </li>
+ <li class="nav-item dropdown">
+ <a class="nav-link dropdown-toggle d-flex align-items-center gap-1"
+ href="#" data-bs-toggle="dropdown">
+ <i class="bi bi-person-circle"></i>
+ <span class="d-none d-lg-inline">{{ current_user.display_name or current_user.email }}</span>
+ </a>
+ <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+ <li><span class="dropdown-item-text text-muted small">{{ current_user.email }}</span></li>
+ {% if current_user.is_admin %}<li><span class="dropdown-item-text text-muted small"><i class="bi bi-shield-check"></i> Admin</span></li>{% endif %}
+ <li><hr class="dropdown-divider"></li>
+ <li>
+ <form method="post" action="/auth/logout" hx-boost="false" class="m-0">
+ {{ csrf_input() }}
+ <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Sign out</button>
+ </form>
+ </li>
+ </ul>
+ </li>
 </ul>
 {% endif %}

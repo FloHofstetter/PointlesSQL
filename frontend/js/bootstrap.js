@@ -1,4 +1,4 @@
-// Phase 12.7 Sprint 75 — ESM bridge entrypoint.
+// ESM bridge entrypoint.
 //
 // Loaded as ``<script type="module">`` from base.html, ordered BEFORE
 // Alpine's CDN bundle.  ``type="module"`` scripts are defer-by-default
@@ -36,7 +36,7 @@ window.pqlParseServerIso = pqlParseServerIso;
 window.pqlRelativeTime = pqlRelativeTime;
 window.pqlHumanizeCron = pqlHumanizeCron;
 
-// Inline-editor factories (Phase 3).
+// Inline-editor factories.
 import { editable } from './editable.js';
 import { permissionsEditor } from './permissions_editor.js';
 import { tagsEditor } from './tags_editor.js';
@@ -48,10 +48,10 @@ window.tagsEditor = tagsEditor;
 window.propertiesEditor = propertiesEditor;
 window.optionsEditor = optionsEditor;
 
-// Federation create-forms + delete-confirm (Phase 4).  Sprint 92
-// split federation.js into three sibling modules; bootstrap.js
-// imports from each directly so the window-name surface stays
-// identical without an extra façade layer.
+// Federation create-forms + delete-confirm.  federation.js is split
+// into three sibling modules; bootstrap.js imports from each directly
+// so the window-name surface stays identical without an extra façade
+// layer.
 import { createConnectionForm } from './federation_connections.js';
 import {
     createCredentialForm,
@@ -68,7 +68,7 @@ window.createCredentialForm = createCredentialForm;
 window.createForeignCatalogForm = createForeignCatalogForm;
 window.deleteConfirm = deleteConfirm;
 
-// List table + job-row hover actions + SQL editor (Phase 4).
+// List table + job-row hover actions + SQL editor.
 import { listTable } from './list_table.js';
 import { jobRowActions } from './job_row_actions.js';
 import { sqlEditor } from './sql_editor.js';
@@ -77,31 +77,28 @@ window.listTable = listTable;
 window.jobRowActions = jobRowActions;
 window.sqlEditor = sqlEditor;
 
-// Cmd+K command palette (Sprint 92 lifted out of the partial's
-// inline <script>; bootstrap.js re-attaches the factory under
+// Cmd+K command palette.  bootstrap.js re-attaches the factory under
 // the same window name so the partial's x-data="commandPalette()"
-// keeps working unchanged).
+// keeps working unchanged.
 import { commandPalette } from './components/command_palette.js';
 
 window.commandPalette = commandPalette;
 
-// Sprint 17.3 — Lineage-DAG factory for the Graph sub-tab on
-// /runs/{id}.  Sprint 17.3.1 — cytoscape.js + dagre +
-// cytoscape-dagre are now loaded LAZILY by the factory itself
-// (``loadCytoscapeOnce()`` inside ``lineage_dag.js``) the first
-// time the Graph sub-tab is activated, gated on Bootstrap's
+// Lineage-DAG factory for the Graph sub-tab on /runs/{id}.
+// cytoscape.js + dagre + cytoscape-dagre are loaded LAZILY by the
+// factory itself (``loadCytoscapeOnce()`` inside ``lineage_dag.js``)
+// the first time the Graph sub-tab is activated, gated on Bootstrap's
 // ``shown.bs.tab`` event.  No CDN bytes hit the wire on a normal
 // /runs/{id} page load.
 import { lineageDag } from './components/lineage_dag.js';
 
 window.lineageDag = lineageDag;
 
-// Page-template factories migrated to ESM (Sprint 94+).  Each was
-// previously an inline ``<script>`` IIFE inside its
-// pages/*.html file; lifting them here means a single shared
-// import graph and Phase-12 trap #1 (synchronous window-attach
-// before Alpine's DOM walk) stays defused without per-page
-// boilerplate.
+// Page-template factories.  Each was previously an inline
+// ``<script>`` IIFE inside its pages/*.html file; lifting them here
+// means a single shared import graph and the synchronous-window-
+// attach-before-Alpine-DOM-walk invariant stays defused without
+// per-page boilerplate.
 import { alertsPage } from './pages/alerts.js';
 import { alertDetail } from './pages/alert_detail.js';
 import { volumeDetail } from './pages/volume_detail.js';
@@ -109,10 +106,9 @@ import { notebookWorkspace } from './pages/notebooks_workspace.js';
 import { tablePreview } from './pages/table_preview.js';
 import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
 
-// Phase 24 — per-section context-panel factories.  Each replaces a
-// previously static link list in components/context_panel.html with
-// a navigable, refresh-aware Alpine factory analogous to
-// catalogTree() above.
+// Per-section context-panel factories.  Each replaces a static link
+// list in components/context_panel.html with a navigable,
+// refresh-aware Alpine factory analogous to catalogTree() above.
 import { runsSidebar } from './components/sidebars/runs_sidebar.js';
 import { branchesSidebar } from './components/sidebars/branches_sidebar.js';
 import { workspaceSidebar } from './components/sidebars/workspace_sidebar.js';

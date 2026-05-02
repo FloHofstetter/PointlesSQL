@@ -1,8 +1,8 @@
 /**
  * Jobs context-panel Alpine factory.
  *
- * Phase 24.3 — replaces the static "All jobs" link with a list of
- * scheduled jobs split into Active (not paused) + Paused buckets.
+ * Lists scheduled jobs split into Active (not paused) + Paused
+ * buckets.
  */
 
 const STORAGE_KEY = 'pql.jobs.recent';

@@ -2,124 +2,124 @@
 {% block title %}{{ volume.full_name }} · Volumes · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
-    {"label": "Home", "href": "/"},
-    {"label": "Volumes", "href": "/volumes"},
-    {"label": volume.full_name}
+ {"label": "Home", "href": "/"},
+ {"label": "Volumes", "href": "/volumes"},
+ {"label": volume.full_name}
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
 <div x-data='volumeDetail({fullName: {{ volume.full_name|tojson }}, files: {{ files|tojson }}})' x-init="init()">
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-hdd-stack fs-3"></i>
-            <h1 class="h3 mb-0">{{ volume.full_name }}</h1>
-            <span class="badge text-bg-info ms-2">{{ volume.volume_type }}</span>
-        </div>
-        <a class="btn btn-outline-secondary btn-sm" href="/volumes">
-            <i class="bi bi-arrow-left"></i> Back
-        </a>
-    </div>
+ <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+ <div class="d-flex align-items-center gap-2">
+ <i class="bi bi-hdd-stack fs-3"></i>
+ <h1 class="h3 mb-0">{{ volume.full_name }}</h1>
+ <span class="badge text-bg-info ms-2">{{ volume.volume_type }}</span>
+ </div>
+ <a class="btn btn-outline-secondary btn-sm" href="/volumes">
+ <i class="bi bi-arrow-left"></i> Back
+ </a>
+ </div>
 
-    <div class="card mb-3">
-        <div class="card-header small fw-semibold">Metadata</div>
-        <div class="card-body small">
-            <dl class="row mb-0">
-                <dt class="col-sm-3 text-muted">Storage</dt>
-                <dd class="col-sm-9 font-monospace">{{ volume.storage_location or '—' }}</dd>
-                <dt class="col-sm-3 text-muted">Owner</dt>
-                <dd class="col-sm-9">{{ volume.owner or '—' }}</dd>
-                <dt class="col-sm-3 text-muted">Comment</dt>
-                <dd class="col-sm-9">{{ volume.comment or '—' }}</dd>
-            </dl>
-        </div>
-    </div>
+ <div class="card mb-3">
+ <div class="card-header small fw-semibold">Metadata</div>
+ <div class="card-body small">
+ <dl class="row mb-0">
+ <dt class="col-sm-3 text-muted">Storage</dt>
+ <dd class="col-sm-9 font-monospace">{{ volume.storage_location or '—' }}</dd>
+ <dt class="col-sm-3 text-muted">Owner</dt>
+ <dd class="col-sm-9">{{ volume.owner or '—' }}</dd>
+ <dt class="col-sm-3 text-muted">Comment</dt>
+ <dd class="col-sm-9">{{ volume.comment or '—' }}</dd>
+ </dl>
+ </div>
+ </div>
 
-    <div class="card mb-3">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <span class="small fw-semibold">Upload a file</span>
-            <span class="text-muted small">
-                Supported for convert-to-Delta: <code>.csv</code>,
-                <code>.parquet</code>, <code>.json</code>
-            </span>
-        </div>
-        <div class="card-body">
-            <form @submit.prevent="submitUpload()" class="d-flex gap-2 flex-wrap align-items-end">
-                <div class="flex-grow-1" style="min-width: 240px;">
-                    <label class="form-label small">File</label>
-                    <input type="file" class="form-control form-control-sm"
-                           x-ref="fileInput"
-                           @change="onFileChange($event)">
-                </div>
-                <div>
-                    <label class="form-label small">Destination path</label>
-                    <input type="text" class="form-control form-control-sm"
-                           x-model="uploadPath"
-                           placeholder="hello.csv">
-                </div>
-                <div>
-                    <button type="submit" class="btn btn-primary btn-sm"
-                            :disabled="uploading || !uploadPath">
-                        <span x-show="!uploading">
-                            <i class="bi bi-upload"></i> Upload
-                        </span>
-                        <span x-show="uploading" x-cloak>
-                            <span class="spinner-border spinner-border-sm me-1"></span>
-                            Uploading…
-                        </span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+ <div class="card mb-3">
+ <div class="card-header d-flex align-items-center justify-content-between">
+ <span class="small fw-semibold">Upload a file</span>
+ <span class="text-muted small">
+ Supported for convert-to-Delta: <code>.csv</code>,
+ <code>.parquet</code>, <code>.json</code>
+ </span>
+ </div>
+ <div class="card-body">
+ <form @submit.prevent="submitUpload()" class="d-flex gap-2 flex-wrap align-items-end">
+ <div class="flex-grow-1" style="min-width: 240px;">
+ <label class="form-label small">File</label>
+ <input type="file" class="form-control form-control-sm"
+ x-ref="fileInput"
+ @change="onFileChange($event)">
+ </div>
+ <div>
+ <label class="form-label small">Destination path</label>
+ <input type="text" class="form-control form-control-sm"
+ x-model="uploadPath"
+ placeholder="hello.csv">
+ </div>
+ <div>
+ <button type="submit" class="btn btn-primary btn-sm"
+ :disabled="uploading || !uploadPath">
+ <span x-show="!uploading">
+ <i class="bi bi-upload"></i> Upload
+ </span>
+ <span x-show="uploading" x-cloak>
+ <span class="spinner-border spinner-border-sm me-1"></span>
+ Uploading…
+ </span>
+ </button>
+ </div>
+ </form>
+ </div>
+ </div>
 
-    <div class="card">
-        <div class="card-header small fw-semibold">Files</div>
-        <div class="card-body p-0">
-            <template x-if="files.length === 0">
-                <div class="p-3 text-muted small">Volume is empty.</div>
-            </template>
-            <template x-if="files.length > 0">
-                <table class="table table-sm mb-0 small">
-                    <thead>
-                        <tr>
-                            <th>Path</th>
-                            <th class="text-end">Size</th>
-                            <th class="text-end pe-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <template x-for="file in files" :key="file.path">
-                            <tr>
-                                <td class="font-monospace" x-text="file.path"></td>
-                                <td class="text-end font-monospace"
-                                    x-text="humanBytes(file.size_bytes)"></td>
-                                <td class="text-end pe-3">
-                                    <button type="button"
-                                            class="btn btn-outline-primary btn-sm me-1"
-                                            x-show="isConvertible(file)"
-                                            @click="convertToDelta(file)">
-                                        <i class="bi bi-lightning-charge"></i>
-                                        Convert to Delta
-                                    </button>
-                                    <button type="button"
-                                            class="btn btn-outline-danger btn-sm"
-                                            @click="removeFile(file)">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </template>
-        </div>
-    </div>
+ <div class="card">
+ <div class="card-header small fw-semibold">Files</div>
+ <div class="card-body p-0">
+ <template x-if="files.length === 0">
+ <div class="p-3 text-muted small">Volume is empty.</div>
+ </template>
+ <template x-if="files.length > 0">
+ <table class="table table-sm mb-0 small">
+ <thead>
+ <tr>
+ <th>Path</th>
+ <th class="text-end">Size</th>
+ <th class="text-end pe-3"></th>
+ </tr>
+ </thead>
+ <tbody>
+ <template x-for="file in files" :key="file.path">
+ <tr>
+ <td class="font-monospace" x-text="file.path"></td>
+ <td class="text-end font-monospace"
+ x-text="humanBytes(file.size_bytes)"></td>
+ <td class="text-end pe-3">
+ <button type="button"
+ class="btn btn-outline-primary btn-sm me-1"
+ x-show="isConvertible(file)"
+ @click="convertToDelta(file)">
+ <i class="bi bi-lightning-charge"></i>
+ Convert to Delta
+ </button>
+ <button type="button"
+ class="btn btn-outline-danger btn-sm"
+ @click="removeFile(file)">
+ <i class="bi bi-trash"></i>
+ </button>
+ </td>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </template>
+ </div>
+ </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{# Sprint 94: volumeDetail() factory lives in
-   frontend/js/pages/volume_detail.js; bootstrap.js attaches it
-   to window.volumeDetail. #}
+{# : volumeDetail() factory lives in
+ frontend/js/pages/volume_detail.js; bootstrap.js attaches it
+ to window.volumeDetail. #}
 {% endblock %}

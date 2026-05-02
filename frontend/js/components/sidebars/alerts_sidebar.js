@@ -1,8 +1,7 @@
 /**
  * Alerts context-panel Alpine factory.
  *
- * Phase 24.4 — replaces the static "All alerts" link with a list of
- * configured alerts split into Enabled + Disabled buckets.
+ * Lists configured alerts split into Enabled + Disabled buckets.
  */
 
 const STORAGE_KEY = 'pql.alerts.recent';

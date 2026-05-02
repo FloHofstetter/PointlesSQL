@@ -2,124 +2,124 @@
 {% block title %}Row trace · {{ table_name }}{% endblock %}
 
 {% set breadcrumbs = [
-    {"label": "Home", "href": "/"},
-    {"label": "Catalogs", "href": "/catalogs"},
-    {"label": catalog_name, "href": "/catalogs/" ~ catalog_name},
-    {"label": schema_name, "href": "/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema_name},
-    {"label": table_name, "href": "/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema_name ~ "/tables/" ~ table_name},
-    {"label": "Row trace"}
+ {"label": "Home", "href": "/"},
+ {"label": "Catalogs", "href": "/catalogs"},
+ {"label": catalog_name, "href": "/catalogs/" ~ catalog_name},
+ {"label": schema_name, "href": "/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema_name},
+ {"label": table_name, "href": "/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema_name ~ "/tables/" ~ table_name},
+ {"label": "Row trace"}
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-3">
-    <i class="bi bi-diagram-3 fs-3"></i>
-    <h1 class="h4 mb-0">Row trace</h1>
-    <span class="text-muted">·</span>
-    <span class="font-monospace small">{{ full_name }}</span>
+ <i class="bi bi-diagram-3 fs-3"></i>
+ <h1 class="h4 mb-0">Row trace</h1>
+ <span class="text-muted">·</span>
+ <span class="font-monospace small">{{ full_name }}</span>
 </div>
 
 <div class="card mb-4">
-    <div class="card-header"><i class="bi bi-fingerprint me-1"></i>Input row</div>
-    <div class="card-body small">
-        <dl class="row mb-0">
-            <dt class="col-3 col-md-2">Table</dt>
-            <dd class="col-9 col-md-10 font-monospace">{{ full_name }}</dd>
-            <dt class="col-3 col-md-2"><code>_lineage_row_id</code></dt>
-            <dd class="col-9 col-md-10 font-monospace text-break">{{ row_id }}</dd>
-            <dt class="col-3 col-md-2">Walkback depth</dt>
-            <dd class="col-9 col-md-10">
-                {% if steps %}
-                {{ steps|length }} step{{ 's' if steps|length != 1 else '' }}
-                {% if steps|length == 1 %}
-                <span class="badge bg-warning text-dark ms-2" title="No predecessor edge in lineage_row_edges">lineage break</span>
-                {% endif %}
-                {% else %}
-                <span class="badge bg-secondary">no edges recorded</span>
-                {% endif %}
-            </dd>
-        </dl>
-    </div>
+ <div class="card-header"><i class="bi bi-fingerprint me-1"></i>Input row</div>
+ <div class="card-body small">
+ <dl class="row mb-0">
+ <dt class="col-3 col-md-2">Table</dt>
+ <dd class="col-9 col-md-10 font-monospace">{{ full_name }}</dd>
+ <dt class="col-3 col-md-2"><code>_lineage_row_id</code></dt>
+ <dd class="col-9 col-md-10 font-monospace text-break">{{ row_id }}</dd>
+ <dt class="col-3 col-md-2">Walkback depth</dt>
+ <dd class="col-9 col-md-10">
+ {% if steps %}
+ {{ steps|length }} step{{ 's' if steps|length != 1 else '' }}
+ {% if steps|length == 1 %}
+ <span class="badge bg-warning text-dark ms-2" title="No predecessor edge in lineage_row_edges">lineage break</span>
+ {% endif %}
+ {% else %}
+ <span class="badge bg-secondary">no edges recorded</span>
+ {% endif %}
+ </dd>
+ </dl>
+ </div>
 </div>
 
 {% if current_user and current_user.is_admin %}
 <div class="card mb-4" x-data="rowAtVersion()">
-    <div class="card-header d-flex align-items-center gap-2">
-        <i class="bi bi-clock-history"></i>
-        <span>View this row at a specific Delta version</span>
-        <span class="badge bg-info ms-auto">admin only</span>
-    </div>
-    <div class="card-body small">
-        <div class="d-flex gap-2 align-items-end mb-2">
-            <div>
-                <label for="row-version-input" class="form-label">Delta version</label>
-                <input id="row-version-input" type="number" min="0" class="form-control form-control-sm"
-                       style="width: 8em;" x-model.number="version" placeholder="e.g. 3">
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-primary"
-                    :disabled="loading || version === null || version === ''"
-                    @click="lookup()">
-                <i class="bi bi-arrow-clockwise me-1"></i>
-                <span x-text="loading ? 'Loading…' : 'Look up'"></span>
-            </button>
-        </div>
-        <template x-if="error">
-            <div class="alert alert-warning small mb-0" x-text="error"></div>
-        </template>
-        <template x-if="result && !result.found">
-            <div class="text-muted fst-italic mb-0">
-                Row was not present at v<span x-text="result.version"></span>
-                <span x-show="result.note" class="ms-1" x-text="'(' + result.note + ')'"></span>
-            </div>
-        </template>
-        <template x-if="result && result.found">
-            <div class="bg-body-tertiary p-2 rounded small">
-                <div class="text-muted mb-1">
-                    State at v<span x-text="result.version"></span>:
-                </div>
-                <table class="table table-sm mb-0 align-middle">
-                    <tbody>
-                        <template x-for="[col, val] in Object.entries(result.row || {})" :key="col">
-                            <tr>
-                                <td class="font-monospace small text-muted" x-text="col"></td>
-                                <td class="font-monospace small" x-text="val === null ? '—' : String(val)"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-            </div>
-        </template>
-    </div>
+ <div class="card-header d-flex align-items-center gap-2">
+ <i class="bi bi-clock-history"></i>
+ <span>View this row at a specific Delta version</span>
+ <span class="badge bg-info ms-auto">admin only</span>
+ </div>
+ <div class="card-body small">
+ <div class="d-flex gap-2 align-items-end mb-2">
+ <div>
+ <label for="row-version-input" class="form-label">Delta version</label>
+ <input id="row-version-input" type="number" min="0" class="form-control form-control-sm"
+ style="width: 8em;" x-model.number="version" placeholder="e.g. 3">
+ </div>
+ <button type="button" class="btn btn-sm btn-outline-primary"
+ :disabled="loading || version === null || version === ''"
+ @click="lookup()">
+ <i class="bi bi-arrow-clockwise me-1"></i>
+ <span x-text="loading ? 'Loading…' : 'Look up'"></span>
+ </button>
+ </div>
+ <template x-if="error">
+ <div class="alert alert-warning small mb-0" x-text="error"></div>
+ </template>
+ <template x-if="result && !result.found">
+ <div class="text-muted fst-italic mb-0">
+ Row was not present at v<span x-text="result.version"></span>
+ <span x-show="result.note" class="ms-1" x-text="'(' + result.note + ')'"></span>
+ </div>
+ </template>
+ <template x-if="result && result.found">
+ <div class="bg-body-tertiary p-2 rounded small">
+ <div class="text-muted mb-1">
+ State at v<span x-text="result.version"></span>:
+ </div>
+ <table class="table table-sm mb-0 align-middle">
+ <tbody>
+ <template x-for="[col, val] in Object.entries(result.row || {})" :key="col">
+ <tr>
+ <td class="font-monospace small text-muted" x-text="col"></td>
+ <td class="font-monospace small" x-text="val === null ? '—' : String(val)"></td>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </div>
+ </template>
+ </div>
 </div>
 
 <script>
 function rowAtVersion() {
-    return {
-        version: null,
-        loading: false,
-        error: null,
-        result: null,
-        async lookup() {
-            if (this.version === null || this.version === '') return;
-            this.loading = true;
-            this.error = null;
-            this.result = null;
-            try {
-                const url = `/api/lineage/row-at-version?table={{ full_name | urlencode }}&row_id={{ row_id | urlencode }}&version=${this.version}`;
-                const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-                const data = await resp.json();
-                if (!resp.ok) {
-                    this.error = data.detail || 'Lookup failed';
-                } else {
-                    this.result = data;
-                }
-            } catch (err) {
-                this.error = err.message || 'Network error';
-            } finally {
-                this.loading = false;
-            }
-        },
-    };
+ return {
+ version: null,
+ loading: false,
+ error: null,
+ result: null,
+ async lookup() {
+ if (this.version === null || this.version === '') return;
+ this.loading = true;
+ this.error = null;
+ this.result = null;
+ try {
+ const url = `/api/lineage/row-at-version?table={{ full_name | urlencode }}&row_id={{ row_id | urlencode }}&version=${this.version}`;
+ const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+ const data = await resp.json();
+ if (!resp.ok) {
+ this.error = data.detail || 'Lookup failed';
+ } else {
+ this.result = data;
+ }
+ } catch (err) {
+ this.error = err.message || 'Network error';
+ } finally {
+ this.loading = false;
+ }
+ },
+ };
 }
 </script>
 {% endif %}
@@ -128,187 +128,187 @@ function rowAtVersion() {
 {% set has_value_changes = steps|selectattr("value_changes")|list %}
 {% if steps and (has_predecessors or has_value_changes) %}
 <div class="card">
-    <div class="card-header"><i class="bi bi-arrow-down me-1"></i>Walk back</div>
-    <ol class="list-group list-group-flush list-group-numbered">
-        {% for step in steps %}
-        <li class="list-group-item">
-            <div class="d-flex justify-content-between align-items-start gap-3">
-                <div class="ms-2 me-auto flex-grow-1">
-                    <div class="d-flex align-items-center gap-2 mb-1">
-                        <span class="badge bg-secondary">depth {{ step.depth }}</span>
-                        {% set parts = step.table.split('.') %}
-                        {% if parts|length == 3 %}
-                        <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}" class="font-monospace text-decoration-none">{{ step.table }}</a>
-                        {% else %}
-                        <span class="font-monospace">{{ step.table }}</span>
-                        {% endif %}
-                        {% if step.op_name %}
-                        <span class="badge bg-info text-dark" title="op_id={{ step.op_id }}">{{ step.op_name }}</span>
-                        {% endif %}
-                        {% if step.predecessors|length > 1 %}
-                        <span class="badge bg-warning text-dark" title="Sprint 15.5.2 fan-in — multiple source rows fed this output">
-                            <i class="bi bi-diagram-2 me-1"></i>fan-in × {{ step.predecessors|length }}
-                        </span>
-                        {% endif %}
-                    </div>
-                    <div class="small text-muted font-monospace text-break"><code>_lineage_row_id</code> = {{ step.row_id }}</div>
-                    {% if step.source_file %}
-                    <div class="small mt-1">
-                        <i class="bi bi-file-earmark-text me-1"></i>
-                        <strong>Source file:</strong> <span class="font-monospace">{{ step.source_file }}</span>
-                    </div>
-                    {% endif %}
-                    {% if step.predecessors|length > 1 %}
-                    <details class="mt-2 small">
-                        <summary class="text-muted">
-                            Aggregated from {{ step.predecessors|length }} source rows
-                        </summary>
-                        <ul class="list-unstyled mt-2 mb-0 ms-3">
-                            {% for pred in step.predecessors %}
-                            {% set pred_parts = pred.table.split('.') %}
-                            <li class="mb-1">
-                                {% if pred_parts|length == 3 %}
-                                <a href="/catalogs/{{ pred_parts[0] }}/schemas/{{ pred_parts[1] }}/tables/{{ pred_parts[2] }}/rows/{{ pred.row_id }}/trace"
-                                   class="text-decoration-none font-monospace text-break">
-                                    <i class="bi bi-arrow-90deg-left me-1"></i>{{ pred.row_id[:16] }}…
-                                </a>
-                                <span class="text-muted">in</span>
-                                <span class="font-monospace">{{ pred.table }}</span>
-                                {% else %}
-                                <span class="font-monospace">{{ pred.table }} / {{ pred.row_id[:16] }}…</span>
-                                {% endif %}
-                                {% if pred.op_name and pred.op_id != step.op_id %}
-                                <span class="badge bg-light text-dark border">{{ pred.op_name }}</span>
-                                {% endif %}
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </details>
-                    {% endif %}
-                    {% if step.value_changes %}
-                    <details class="mt-2 small">
-                        <summary class="text-muted">
-                            <i class="bi bi-pencil-square me-1"></i>Value changes ({{ step.value_changes|length }})
-                        </summary>
-                        <ul class="list-unstyled mt-2 mb-0 ms-3">
-                            {% for change in step.value_changes %}
-                            <li class="mb-1 font-monospace text-break"
-                                {% if change.is_pii %}data-pii-cell="1" data-run-id="{{ change.run_id }}" data-op-id="{{ change.op_id }}" data-table="{{ step.table }}" data-row-id="{{ step.row_id }}" data-column="{{ change.target_column }}"{% endif %}>
-                                <span class="badge bg-light text-dark border">{{ change.target_column }}</span>
-                                {% if change.is_pii %}
-                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
-                                      title="Sprint 18.2 — column tagged PII in soyuz; cleartext masked by default">
-                                    <i class="bi bi-shield-lock me-1"></i>PII
-                                </span>
-                                {% endif %}
-                                <span class="text-muted">·</span>
-                                {% if change.old_value is none %}
-                                <span class="text-muted fst-italic">NULL</span>
-                                {% else %}
-                                <span class="pii-old">{{ change.display_old }}</span>
-                                {% endif %}
-                                <i class="bi bi-arrow-right mx-1"></i>
-                                {% if change.new_value is none %}
-                                <span class="text-muted fst-italic">NULL</span>
-                                {% else %}
-                                <span class="pii-new">{{ change.display_new }}</span>
-                                {% endif %}
-                                {% if change.created_at %}
-                                <span class="text-muted ms-2">{{ change.created_at }}</span>
-                                {% endif %}
-                                {% if change.is_pii and current_user and current_user.is_admin %}
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-warning ms-2 py-0"
-                                        data-pii-reveal="1"
-                                        title="Sprint 18.2 — admin-only reveal; logs an audit_log row of action=pii.value_revealed">
-                                    <i class="bi bi-eye"></i> Reveal
-                                </button>
-                                {% endif %}
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </details>
-                    {% endif %}
-                </div>
-                <div class="text-end small">
-                    {% if step.run_id %}
-                    <a href="/runs/{{ step.run_id }}" class="text-decoration-none font-monospace">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                        run #{{ step.run_id[:8] }}
-                    </a>
-                    {% else %}
-                    <span class="text-muted">input row</span>
-                    {% endif %}
-                </div>
-            </div>
-        </li>
-        {% endfor %}
-    </ol>
+ <div class="card-header"><i class="bi bi-arrow-down me-1"></i>Walk back</div>
+ <ol class="list-group list-group-flush list-group-numbered">
+ {% for step in steps %}
+ <li class="list-group-item">
+ <div class="d-flex justify-content-between align-items-start gap-3">
+ <div class="ms-2 me-auto flex-grow-1">
+ <div class="d-flex align-items-center gap-2 mb-1">
+ <span class="badge bg-secondary">depth {{ step.depth }}</span>
+ {% set parts = step.table.split('.') %}
+ {% if parts|length == 3 %}
+ <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}" class="font-monospace text-decoration-none">{{ step.table }}</a>
+ {% else %}
+ <span class="font-monospace">{{ step.table }}</span>
+ {% endif %}
+ {% if step.op_name %}
+ <span class="badge bg-info text-dark" title="op_id={{ step.op_id }}">{{ step.op_name }}</span>
+ {% endif %}
+ {% if step.predecessors|length > 1 %}
+ <span class="badge bg-warning text-dark" title="fan-in — multiple source rows fed this output">
+ <i class="bi bi-diagram-2 me-1"></i>fan-in × {{ step.predecessors|length }}
+ </span>
+ {% endif %}
+ </div>
+ <div class="small text-muted font-monospace text-break"><code>_lineage_row_id</code> = {{ step.row_id }}</div>
+ {% if step.source_file %}
+ <div class="small mt-1">
+ <i class="bi bi-file-earmark-text me-1"></i>
+ <strong>Source file:</strong> <span class="font-monospace">{{ step.source_file }}</span>
+ </div>
+ {% endif %}
+ {% if step.predecessors|length > 1 %}
+ <details class="mt-2 small">
+ <summary class="text-muted">
+ Aggregated from {{ step.predecessors|length }} source rows
+ </summary>
+ <ul class="list-unstyled mt-2 mb-0 ms-3">
+ {% for pred in step.predecessors %}
+ {% set pred_parts = pred.table.split('.') %}
+ <li class="mb-1">
+ {% if pred_parts|length == 3 %}
+ <a href="/catalogs/{{ pred_parts[0] }}/schemas/{{ pred_parts[1] }}/tables/{{ pred_parts[2] }}/rows/{{ pred.row_id }}/trace"
+ class="text-decoration-none font-monospace text-break">
+ <i class="bi bi-arrow-90deg-left me-1"></i>{{ pred.row_id[:16] }}…
+ </a>
+ <span class="text-muted">in</span>
+ <span class="font-monospace">{{ pred.table }}</span>
+ {% else %}
+ <span class="font-monospace">{{ pred.table }} / {{ pred.row_id[:16] }}…</span>
+ {% endif %}
+ {% if pred.op_name and pred.op_id != step.op_id %}
+ <span class="badge bg-light text-dark border">{{ pred.op_name }}</span>
+ {% endif %}
+ </li>
+ {% endfor %}
+ </ul>
+ </details>
+ {% endif %}
+ {% if step.value_changes %}
+ <details class="mt-2 small">
+ <summary class="text-muted">
+ <i class="bi bi-pencil-square me-1"></i>Value changes ({{ step.value_changes|length }})
+ </summary>
+ <ul class="list-unstyled mt-2 mb-0 ms-3">
+ {% for change in step.value_changes %}
+ <li class="mb-1 font-monospace text-break"
+ {% if change.is_pii %}data-pii-cell="1" data-run-id="{{ change.run_id }}" data-op-id="{{ change.op_id }}" data-table="{{ step.table }}" data-row-id="{{ step.row_id }}" data-column="{{ change.target_column }}"{% endif %}>
+ <span class="badge bg-light text-dark border">{{ change.target_column }}</span>
+ {% if change.is_pii %}
+ <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+ title="column tagged PII in soyuz; cleartext masked by default">
+ <i class="bi bi-shield-lock me-1"></i>PII
+ </span>
+ {% endif %}
+ <span class="text-muted">·</span>
+ {% if change.old_value is none %}
+ <span class="text-muted fst-italic">NULL</span>
+ {% else %}
+ <span class="pii-old">{{ change.display_old }}</span>
+ {% endif %}
+ <i class="bi bi-arrow-right mx-1"></i>
+ {% if change.new_value is none %}
+ <span class="text-muted fst-italic">NULL</span>
+ {% else %}
+ <span class="pii-new">{{ change.display_new }}</span>
+ {% endif %}
+ {% if change.created_at %}
+ <span class="text-muted ms-2">{{ change.created_at }}</span>
+ {% endif %}
+ {% if change.is_pii and current_user and current_user.is_admin %}
+ <button type="button"
+ class="btn btn-sm btn-outline-warning ms-2 py-0"
+ data-pii-reveal="1"
+ title="admin-only reveal; logs an audit_log row of action=pii.value_revealed">
+ <i class="bi bi-eye"></i> Reveal
+ </button>
+ {% endif %}
+ </li>
+ {% endfor %}
+ </ul>
+ </details>
+ {% endif %}
+ </div>
+ <div class="text-end small">
+ {% if step.run_id %}
+ <a href="/runs/{{ step.run_id }}" class="text-decoration-none font-monospace">
+ <i class="bi bi-box-arrow-up-right"></i>
+ run #{{ step.run_id[:8] }}
+ </a>
+ {% else %}
+ <span class="text-muted">input row</span>
+ {% endif %}
+ </div>
+ </div>
+ </li>
+ {% endfor %}
+ </ol>
 </div>
 {% else %}
 <div class="alert alert-warning">
-    <i class="bi bi-exclamation-triangle me-1"></i>
-    No <code>lineage_row_edges</code> rows reference this
-    <code>_lineage_row_id</code>.  Either the row was written without
-    declaring an upstream UC source (no <code>source_table_fqn</code>
-    on the merge / write call), or the row predates Sprint 15.3.
-    Operation-level lineage may still be available on
-    <a href="/runs">the runs page</a>.
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ No <code>lineage_row_edges</code> rows reference this
+ <code>_lineage_row_id</code>. Either the row was written without
+ declaring an upstream UC source (no <code>source_table_fqn</code>
+ on the merge / write call), or the row predates the present trace shape.
+ Operation-level lineage may still be available on
+ <a href="/runs">the runs page</a>.
 </div>
 {% endif %}
 
-{# Sprint 18.2 — PII reveal handler.  Each masked cell carries
-   data-pii-cell="1" + the metadata the reveal endpoint needs.
-   Admin-only button (template gates by current_user.is_admin) #}
+{# PII reveal handler. Each masked cell carries
+ data-pii-cell="1" + the metadata the reveal endpoint needs.
+ Admin-only button (template gates by current_user.is_admin) #}
 <script>
 (function () {
-    function csrfToken() {
-        const m = document.cookie.match(/(?:^|;\s*)pql_csrf=([^;]+)/);
-        return m ? decodeURIComponent(m[1]) : '';
-    }
-    document.querySelectorAll('button[data-pii-reveal="1"]').forEach(function (btn) {
-        btn.addEventListener('click', async function () {
-            const cell = btn.closest('li[data-pii-cell="1"]');
-            if (!cell) return;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> revealing…';
-            try {
-                const resp = await fetch('/api/audit/pii/reveal', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken(),
-                    },
-                    body: JSON.stringify({
-                        run_id: cell.dataset.runId,
-                        op_id: parseInt(cell.dataset.opId, 10),
-                        table: cell.dataset.table,
-                        row_id: cell.dataset.rowId,
-                        column: cell.dataset.column,
-                    }),
-                });
-                if (!resp.ok) {
-                    btn.innerHTML = '<i class="bi bi-x-circle"></i> ' + resp.status;
-                    return;
-                }
-                const body = await resp.json();
-                const oldEl = cell.querySelector('.pii-old');
-                const newEl = cell.querySelector('.pii-new');
-                if (oldEl && body.old_value !== null && body.old_value !== undefined) {
-                    oldEl.textContent = body.old_value;
-                    oldEl.classList.add('text-warning-emphasis');
-                }
-                if (newEl && body.new_value !== null && body.new_value !== undefined) {
-                    newEl.textContent = body.new_value;
-                    newEl.classList.add('text-warning-emphasis');
-                }
-                btn.remove();
-            } catch (err) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-x-circle"></i> error';
-            }
-        });
-    });
+ function csrfToken() {
+ const m = document.cookie.match(/(?:^|;\s*)pql_csrf=([^;]+)/);
+ return m ? decodeURIComponent(m[1]) : '';
+ }
+ document.querySelectorAll('button[data-pii-reveal="1"]').forEach(function (btn) {
+ btn.addEventListener('click', async function () {
+ const cell = btn.closest('li[data-pii-cell="1"]');
+ if (!cell) return;
+ btn.disabled = true;
+ btn.innerHTML = '<i class="bi bi-hourglass-split"></i> revealing…';
+ try {
+ const resp = await fetch('/api/audit/pii/reveal', {
+ method: 'POST',
+ headers: {
+ 'Content-Type': 'application/json',
+ 'X-CSRF-Token': csrfToken(),
+ },
+ body: JSON.stringify({
+ run_id: cell.dataset.runId,
+ op_id: parseInt(cell.dataset.opId, 10),
+ table: cell.dataset.table,
+ row_id: cell.dataset.rowId,
+ column: cell.dataset.column,
+ }),
+ });
+ if (!resp.ok) {
+ btn.innerHTML = '<i class="bi bi-x-circle"></i> ' + resp.status;
+ return;
+ }
+ const body = await resp.json();
+ const oldEl = cell.querySelector('.pii-old');
+ const newEl = cell.querySelector('.pii-new');
+ if (oldEl && body.old_value !== null && body.old_value !== undefined) {
+ oldEl.textContent = body.old_value;
+ oldEl.classList.add('text-warning-emphasis');
+ }
+ if (newEl && body.new_value !== null && body.new_value !== undefined) {
+ newEl.textContent = body.new_value;
+ newEl.classList.add('text-warning-emphasis');
+ }
+ btn.remove();
+ } catch (err) {
+ btn.disabled = false;
+ btn.innerHTML = '<i class="bi bi-x-circle"></i> error';
+ }
+ });
+ });
 })();
 </script>
 {% endblock %}

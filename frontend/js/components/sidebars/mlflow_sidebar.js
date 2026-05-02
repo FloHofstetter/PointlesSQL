@@ -1,11 +1,9 @@
 /**
  * MLflow context-panel Alpine factory.
  *
- * Phase 24.5 — for the rail's MLflow icon (which today shows the
- * embedded MLflow Tracking UI in an iframe).  The panel surfaces
- * the most-recent UC-registered models with their latest version
- * and status, so the user can drill straight into a model's detail
- * page without a round-trip to /models.
+ * Surfaces the most-recent UC-registered models with their latest
+ * version and status, so the user can drill straight into a model's
+ * detail page without a round-trip to /models.
  *
  * Experiments-tree is intentionally out-of-scope; that would need
  * a new endpoint proxying ``mlflow.search_experiments()``.

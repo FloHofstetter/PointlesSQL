@@ -1,12 +1,10 @@
 /**
  * Workspace context-panel Alpine factory.
  *
- * Phase 24.2 — replaces the static "Notebooks" link with a flat
- * list of every ``.py`` / ``.ipynb`` notebook the scheduler can
- * pick up.  Source: ``/api/notebooks/tree`` (admin-only); the
+ * Flat list of every ``.py`` / ``.ipynb`` notebook the scheduler
+ * can pick up.  Source: ``/api/notebooks/tree`` (admin-only); the
  * rail item is already ``is_admin``-gated, so non-admins never
- * reach this partial.  No "recently opened" surface — the
- * workspace page does not have a per-notebook detail view.
+ * reach this partial.
  */
 
 const STORAGE_KEY = 'pql.workspace.tree';

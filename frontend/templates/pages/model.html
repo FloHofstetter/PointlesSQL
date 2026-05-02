@@ -195,7 +195,7 @@
         </div>
     </div>
 
-    {# Lineage — populated lazily by modelLineageDag (Sprint 21.5.5 + 21.7). #}
+    {# Lineage — populated lazily by modelLineageDag. #}
     <div class="tab-pane fade" id="tab-lineage" role="tabpanel">
         <div x-data="modelLineageDag('{{ model.full_name }}')" x-init="init()">
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -281,7 +281,7 @@
         {% endif %}
     </div>
 
-    {# Promotion — Sprint 21.6 champion/challenger surface. #}
+    {# Promotion — champion/challenger surface. #}
     <div class="tab-pane fade" id="tab-promotion" role="tabpanel"
          x-data="modelPromotion('{{ model.full_name }}', {{ champion_version | tojson }})"
          x-init="init()">

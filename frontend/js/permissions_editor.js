@@ -1,4 +1,4 @@
-// Sprint 75 Phase 3: ES-module shape; window registration via
+// ES-module shape; window registration via
 // bootstrap.js.  Uses validateRequired from editor_base.
 import { validateRequired } from './editor_base.js';
 

@@ -1,4 +1,4 @@
-// PointlesSQL toast API — Sprint 30, ES-module shape Sprint 75 Phase 4.
+// PointlesSQL toast API.
 //
 // Usage (templates / other modules):
 //   window.pqlToast.success("Saved.");

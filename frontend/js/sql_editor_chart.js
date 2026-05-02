@@ -1,9 +1,8 @@
 /**
  * SQL editor — chart view, axis auto-pick, and persisted chart-config.
  *
- * Sprint 91 split out of ``sql_editor.js``.  Owns the Sprint-54
- * chart card on the SQL editor: ``toggleView()`` between table and
- * chart modes, ``_autoPickAxes()`` heuristic that prefers a
+ * Owns the chart card on the SQL editor: ``toggleView()`` between
+ * table and chart modes, ``_autoPickAxes()`` heuristic that prefers a
  * non-numeric X + numeric Y, ``renderChart()`` Chart.js wiring for
  * bar / line / pie / scatter, ``downloadChartPng()`` export, and
  * the debounced ``PATCH /api/queries/{id}/chart-config`` that

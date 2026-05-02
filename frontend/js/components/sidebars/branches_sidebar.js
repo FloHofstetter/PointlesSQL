@@ -1,9 +1,7 @@
 /**
  * Branches context-panel Alpine factory.
  *
- * Phase 24.1 — replaces the static fall-through (which used to show
- * the catalog tree on /branches by accident).  Lists active +
- * promoted Delta-branches grouped by status.
+ * Lists active + promoted Delta-branches grouped by status.
  */
 
 const STORAGE_KEY = 'pql.branches.recent';

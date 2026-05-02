@@ -1,38 +1,34 @@
 /* ----------------------------------------------------------------
- * PointlesSQL stylesheet — Sprint 75 Phase 6 split.
+ * PointlesSQL stylesheet — modular split.
  *
- * The 32 KB single-file style.css from Sprint 36 has been carved up
- * into ten purpose-scoped files; this master sheet just @imports
- * them in cascade order.  Cascade matters here — later files
- * override earlier ones for a given selector, so a refactor that
- * moves rules between files needs to keep the @import order stable.
+ * Carved up into purpose-scoped files; this master sheet just
+ * @imports them in cascade order.  Cascade matters here — later
+ * files override earlier ones for a given selector, so a refactor
+ * that moves rules between files needs to keep the @import order
+ * stable.
  *
  * Why @import and not concatenation: PointlesSQL ships JS and CSS
  * as-is via FastAPI StaticFiles, no build step (CLAUDE.md hard
  * constraint).  CSS @import resolves natively in every browser we
  * support.  The cost is one extra HTTP request per file on cold
- * cache, which HTTP/2 multiplexes harmlessly on localhost; if a
- * future sprint introduces a wheel-time concatenator the @imports
- * become trivial to roll into one file.
+ * cache, which HTTP/2 multiplexes harmlessly on localhost.
  *
- * Cascade-ordered @imports:
+ * The ``?v=`` query strings force the browser to refetch each
+ * sub-file when this master sheet's parent cache-buster bumps;
+ * without them, @import URLs keep their own per-URL cache and
+ * never see token / rail-width edits.  Bump the version when any
+ * of the files below change in a way users need to see immediately.
  * ---------------------------------------------------------------- */
-
-/* Phase 23 follow-up: ?v= query strings force the browser to refetch
-   each sub-file when style.css's parent cache-buster bumps; without
-   these, @import URLs keep their own per-URL cache and never see
-   token / rail-width edits.  Bump the version when any of the files
-   below change in a way users need to see immediately. */
-@import url("./base.css?v=sprint23-rail-80b");                      /* design tokens, font, focus ring */
-@import url("./primitives.css?v=sprint23-rail-80b");                /* .pql-stack, .pql-cluster, .pql-card, .pql-badge */
-@import url("./layout.css?v=sprint23-rail-80b");                    /* topbar, shell, sidebar, tree, content */
-@import url("./components/icon_rail.css?v=sprint23-rail-80b");      /* Sprint 17.1: 60 px nav-rail */
-@import url("./components/context_panel.css?v=sprint23-rail-80b");  /* Sprint 17.1: 240 px contextual panel */
-@import url("./components/context_sidebars.css?v=phase24-sidebars"); /* Phase 24: per-section sidebars */
-@import url("./components/breadcrumbs.css?v=sprint23-rail-80b");
-@import url("./components/empty_state.css?v=sprint23-rail-80b");    /* + error-shell variant */
-@import url("./components/toast.css?v=sprint23-rail-80b");
-@import url("./components/command_palette.css?v=sprint23-rail-80b");
-@import url("./components/dashboard.css?v=sprint23-rail-80b");      /* home dashboard, status dot, onboarding, admin audit */
-@import url("./components/list_table.css?v=sprint23-rail-80b");     /* search input, chips, sortable headers, row actions */
-@import url("./responsive.css?v=sprint23-rail-80b");                /* mobile breakpoints, reduced-motion */
+@import url("./base.css?v=0.1.0rc3");                      /* design tokens, font, focus ring */
+@import url("./primitives.css?v=0.1.0rc3");                /* .pql-stack, .pql-cluster, .pql-card, .pql-badge */
+@import url("./layout.css?v=0.1.0rc3");                    /* topbar, shell, sidebar, tree, content */
+@import url("./components/icon_rail.css?v=0.1.0rc3");      /* 60 px nav-rail */
+@import url("./components/context_panel.css?v=0.1.0rc3");  /* 240 px contextual panel */
+@import url("./components/context_sidebars.css?v=0.1.0rc3"); /* per-section sidebars */
+@import url("./components/breadcrumbs.css?v=0.1.0rc3");
+@import url("./components/empty_state.css?v=0.1.0rc3");    /* + error-shell variant */
+@import url("./components/toast.css?v=0.1.0rc3");
+@import url("./components/command_palette.css?v=0.1.0rc3");
+@import url("./components/dashboard.css?v=0.1.0rc3");      /* home dashboard, status dot, onboarding, admin audit */
+@import url("./components/list_table.css?v=0.1.0rc3");     /* search input, chips, sortable headers, row actions */
+@import url("./responsive.css?v=0.1.0rc3");                /* mobile breakpoints, reduced-motion */

@@ -1,4 +1,4 @@
-// PointlesSQL cron humanizer — Sprint 33, ES-module Sprint 75 Phase 4.
+// PointlesSQL cron humanizer.
 //
 // Usage:
 //   <span x-data="{ c: '0 0 * * *' }"

@@ -1,11 +1,10 @@
 {#
-   Phase 24.5 — MLflow context-panel.
+   MLflow context-panel.
 
-   The rail's MLflow icon historically pointed at /ml (embedded
-   MLflow UI in an iframe), and the context-panel fell through to
-   the catalog tree by accident.  This panel instead lists the most-
-   recent UC-registered models with their latest-version + status,
-   so a user can drill straight into a model detail page.
+   Lists the most-recent UC-registered models with their latest-
+   version + status, so a user can drill straight into a model
+   detail page.  The rail's MLflow icon points at /ml (embedded
+   MLflow UI in an iframe).
 
    Driven by ``mlflowSidebar()`` in
    ``frontend/js/components/sidebars/mlflow_sidebar.js``.

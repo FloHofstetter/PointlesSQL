@@ -1,55 +1,55 @@
 {#
-  Phase-12 saved-queries drawer rendered on the /sql page.
+ Saved-queries drawer rendered on the /sql page.
 
-  Binds to the same `sqlEditor()` Alpine component as the editor,
-  so ``loadSaved(slug)`` and ``deleteSaved(slug)`` can dispatch
-  straight from the click — no extra factory needed.
+ Binds to the same `sqlEditor()` Alpine component as the editor,
+ so ``loadSaved(slug)`` and ``deleteSaved(slug)`` can dispatch
+ straight from the click — no extra factory needed.
 #}
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center py-2">
-        <span class="fw-semibold small">
-            <i class="bi bi-bookmark"></i> Saved queries
-        </span>
-        <button type="button"
-                class="btn btn-link btn-sm p-0 text-decoration-none"
-                @click="refreshSaved()"
-                :disabled="savedLoading"
-                title="Refresh">
-            <i class="bi bi-arrow-clockwise"></i>
-        </button>
-    </div>
-    <div class="list-group list-group-flush" x-show="!savedLoading && saved.length" x-cloak>
-        <template x-for="row in saved" :key="row.slug">
-            <div class="list-group-item py-2">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="flex-grow-1">
-                        <button type="button"
-                                class="btn btn-link p-0 text-start text-decoration-none fw-semibold small"
-                                @click="loadSaved(row)"
-                                x-text="row.title"></button>
-                        <div class="small text-muted" x-text="row.description || ''"
-                             x-show="row.description"></div>
-                        <div class="small text-muted">
-                            <span x-text="row.user_email || ''"></span>
-                            <template x-if="row.is_shared">
-                                <span class="badge bg-info text-dark ms-1">shared</span>
-                            </template>
-                        </div>
-                    </div>
-                    <button type="button"
-                            class="btn btn-link btn-sm p-0 text-danger"
-                            @click="deleteSaved(row)"
-                            title="Delete">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
-            </div>
-        </template>
-    </div>
-    <div class="card-body text-center text-muted small py-3" x-show="!savedLoading && !saved.length" x-cloak>
-        Nothing saved yet.
-    </div>
-    <div class="card-body text-center text-muted small py-3" x-show="savedLoading" x-cloak>
-        <span class="spinner-border spinner-border-sm"></span>
-    </div>
+ <div class="card-header d-flex justify-content-between align-items-center py-2">
+ <span class="fw-semibold small">
+ <i class="bi bi-bookmark"></i> Saved queries
+ </span>
+ <button type="button"
+ class="btn btn-link btn-sm p-0 text-decoration-none"
+ @click="refreshSaved()"
+ :disabled="savedLoading"
+ title="Refresh">
+ <i class="bi bi-arrow-clockwise"></i>
+ </button>
+ </div>
+ <div class="list-group list-group-flush" x-show="!savedLoading && saved.length" x-cloak>
+ <template x-for="row in saved" :key="row.slug">
+ <div class="list-group-item py-2">
+ <div class="d-flex justify-content-between align-items-start">
+ <div class="flex-grow-1">
+ <button type="button"
+ class="btn btn-link p-0 text-start text-decoration-none fw-semibold small"
+ @click="loadSaved(row)"
+ x-text="row.title"></button>
+ <div class="small text-muted" x-text="row.description || ''"
+ x-show="row.description"></div>
+ <div class="small text-muted">
+ <span x-text="row.user_email || ''"></span>
+ <template x-if="row.is_shared">
+ <span class="badge bg-info text-dark ms-1">shared</span>
+ </template>
+ </div>
+ </div>
+ <button type="button"
+ class="btn btn-link btn-sm p-0 text-danger"
+ @click="deleteSaved(row)"
+ title="Delete">
+ <i class="bi bi-x"></i>
+ </button>
+ </div>
+ </div>
+ </template>
+ </div>
+ <div class="card-body text-center text-muted small py-3" x-show="!savedLoading && !saved.length" x-cloak>
+ Nothing saved yet.
+ </div>
+ <div class="card-body text-center text-muted small py-3" x-show="savedLoading" x-cloak>
+ <span class="spinner-border spinner-border-sm"></span>
+ </div>
 </div>

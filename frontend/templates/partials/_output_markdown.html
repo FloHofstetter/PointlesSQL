@@ -1,11 +1,11 @@
 {# Output partial: ``text/markdown`` mime branch.
 
-   Phase 12.12.1 additive prep. ``output`` is a
-   :class:`pointlessql.services.output_rendering.RenderedOutput` with
-   ``kind == "markdown"``; body is pre-rendered via markdown-it-py
-   with HTML disabled (no raw-HTML passthrough, so ``| safe`` here
-   is safe against arbitrary Markdown sources).
+ additive prep. ``output`` is a
+ :class:`pointlessql.services.output_rendering.RenderedOutput` with
+ ``kind == "markdown"``; body is pre-rendered via markdown-it-py
+ with HTML disabled (no raw-HTML passthrough, so ``| safe`` here
+ is safe against arbitrary Markdown sources).
 #}
 <div class="pql-run-output pql-run-output--markdown mb-2">
-    {{ output.html | safe }}
+ {{ output.html | safe }}
 </div>

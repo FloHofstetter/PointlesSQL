@@ -2,198 +2,198 @@
 {% block title %}{{ alert.title }} · Alerts · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
-    {"label": "Home", "href": "/"},
-    {"label": "Alerts", "href": "/alerts"},
-    {"label": alert.title}
+ {"label": "Home", "href": "/"},
+ {"label": "Alerts", "href": "/alerts"},
+ {"label": alert.title}
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
 <div x-data='alertDetail({slug: {{ alert.slug|tojson }}, destinations: {{ alert.destinations|tojson }}})' x-init="init()">
-    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-bell fs-3"></i>
-            <h1 class="h3 mb-0">{{ alert.title }}</h1>
-            <span class="badge ms-2
-                        {% if alert.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
-                {{ 'active' if alert.is_active else 'paused' }}
-            </span>
-        </div>
-        <a class="btn btn-outline-secondary btn-sm" href="/alerts">
-            <i class="bi bi-arrow-left"></i> Back
-        </a>
-    </div>
+ <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+ <div class="d-flex align-items-center gap-2">
+ <i class="bi bi-bell fs-3"></i>
+ <h1 class="h3 mb-0">{{ alert.title }}</h1>
+ <span class="badge ms-2
+ {% if alert.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+ {{ 'active' if alert.is_active else 'paused' }}
+ </span>
+ </div>
+ <a class="btn btn-outline-secondary btn-sm" href="/alerts">
+ <i class="bi bi-arrow-left"></i> Back
+ </a>
+ </div>
 
-    <div class="row g-3">
-        <div class="col-lg-5">
-            <div class="card mb-3">
-                <div class="card-header small fw-semibold">Configuration</div>
-                <div class="card-body small">
-                    <dl class="row mb-0">
-                        <dt class="col-5">Slug</dt>
-                        <dd class="col-7 font-monospace">{{ alert.slug }}</dd>
-                        <dt class="col-5">Saved query</dt>
-                        <dd class="col-7">#{{ alert.saved_query_id }}</dd>
-                        <dt class="col-5">Cron</dt>
-                        <dd class="col-7 font-monospace">{{ alert.cron_expr }}</dd>
-                        <dt class="col-5">Condition</dt>
-                        <dd class="col-7">
-                            row_count {{ alert.condition_op }} {{ alert.threshold }}
-                        </dd>
-                    </dl>
-                </div>
-            </div>
+ <div class="row g-3">
+ <div class="col-lg-5">
+ <div class="card mb-3">
+ <div class="card-header small fw-semibold">Configuration</div>
+ <div class="card-body small">
+ <dl class="row mb-0">
+ <dt class="col-5">Slug</dt>
+ <dd class="col-7 font-monospace">{{ alert.slug }}</dd>
+ <dt class="col-5">Saved query</dt>
+ <dd class="col-7">#{{ alert.saved_query_id }}</dd>
+ <dt class="col-5">Cron</dt>
+ <dd class="col-7 font-monospace">{{ alert.cron_expr }}</dd>
+ <dt class="col-5">Condition</dt>
+ <dd class="col-7">
+ row_count {{ alert.condition_op }} {{ alert.threshold }}
+ </dd>
+ </dl>
+ </div>
+ </div>
 
-            <div class="card mb-3">
-                <div class="card-header small fw-semibold d-flex justify-content-between align-items-center">
-                    <span>Destinations</span>
-                    <button type="button" class="btn btn-primary btn-sm"
-                            @click="openAddDest()">
-                        <i class="bi bi-plus-lg"></i> Add
-                    </button>
-                </div>
-                <div class="card-body p-0">
-                    <template x-if="destinations.length === 0">
-                        <div class="p-3 text-muted small">No destinations yet.</div>
-                    </template>
-                    <template x-if="destinations.length > 0">
-                        <table class="table table-sm mb-0 small">
-                            <thead>
-                                <tr>
-                                    <th>Kind</th>
-                                    <th>URL</th>
-                                    <th>HMAC</th>
-                                    <th class="text-end pe-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="dest in destinations" :key="dest.id">
-                                    <tr>
-                                        <td>
-                                            <span class="badge text-bg-info" x-text="dest.kind"></span>
-                                        </td>
-                                        <td>
-                                            <code class="small" x-text="dest.webhook_url || '(pull feed)'"></code>
-                                        </td>
-                                        <td>
-                                            <span x-show="dest.has_hmac" class="badge text-bg-success">yes</span>
-                                            <span x-show="!dest.has_hmac" class="text-muted">—</span>
-                                        </td>
-                                        <td class="text-end pe-3">
-                                            <button type="button"
-                                                    class="btn btn-outline-danger btn-sm"
-                                                    @click="removeDest(dest)">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </template>
-                </div>
-            </div>
-        </div>
+ <div class="card mb-3">
+ <div class="card-header small fw-semibold d-flex justify-content-between align-items-center">
+ <span>Destinations</span>
+ <button type="button" class="btn btn-primary btn-sm"
+ @click="openAddDest()">
+ <i class="bi bi-plus-lg"></i> Add
+ </button>
+ </div>
+ <div class="card-body p-0">
+ <template x-if="destinations.length === 0">
+ <div class="p-3 text-muted small">No destinations yet.</div>
+ </template>
+ <template x-if="destinations.length > 0">
+ <table class="table table-sm mb-0 small">
+ <thead>
+ <tr>
+ <th>Kind</th>
+ <th>URL</th>
+ <th>HMAC</th>
+ <th class="text-end pe-3"></th>
+ </tr>
+ </thead>
+ <tbody>
+ <template x-for="dest in destinations" :key="dest.id">
+ <tr>
+ <td>
+ <span class="badge text-bg-info" x-text="dest.kind"></span>
+ </td>
+ <td>
+ <code class="small" x-text="dest.webhook_url || '(pull feed)'"></code>
+ </td>
+ <td>
+ <span x-show="dest.has_hmac" class="badge text-bg-success">yes</span>
+ <span x-show="!dest.has_hmac" class="text-muted">—</span>
+ </td>
+ <td class="text-end pe-3">
+ <button type="button"
+ class="btn btn-outline-danger btn-sm"
+ @click="removeDest(dest)">
+ <i class="bi bi-trash"></i>
+ </button>
+ </td>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </template>
+ </div>
+ </div>
+ </div>
 
-        <div class="col-lg-7">
-            <div class="card">
-                <div class="card-header small fw-semibold">
-                    Recent events (last 50)
-                </div>
-                <div class="card-body p-0">
-                    {% if not events %}
-                    <div class="p-3 text-muted small">
-                        No events yet.  The alert will write one row per firing.
-                    </div>
-                    {% else %}
-                    <table class="table table-sm table-striped mb-0 small">
-                        <thead>
-                            <tr>
-                                <th>Fired at</th>
-                                <th>Outcome</th>
-                                <th>Row count</th>
-                                <th>Event id</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for ev in events %}
-                            <tr>
-                                <td>{{ ev.fired_at }}</td>
-                                <td>
-                                    {% if ev.outcome == 'fired' %}
-                                    <span class="badge text-bg-success">fired</span>
-                                    {% elif ev.outcome == 'delivery_failed' %}
-                                    <span class="badge text-bg-danger">delivery failed</span>
-                                    {% else %}
-                                    <span class="badge text-bg-secondary">{{ ev.outcome }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ ev.row_count if ev.row_count is not none else '—' }}</td>
-                                <td class="font-monospace">{{ ev.event_id }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
+ <div class="col-lg-7">
+ <div class="card">
+ <div class="card-header small fw-semibold">
+ Recent events (last 50)
+ </div>
+ <div class="card-body p-0">
+ {% if not events %}
+ <div class="p-3 text-muted small">
+ No events yet. The alert will write one row per firing.
+ </div>
+ {% else %}
+ <table class="table table-sm table-striped mb-0 small">
+ <thead>
+ <tr>
+ <th>Fired at</th>
+ <th>Outcome</th>
+ <th>Row count</th>
+ <th>Event id</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for ev in events %}
+ <tr>
+ <td>{{ ev.fired_at }}</td>
+ <td>
+ {% if ev.outcome == 'fired' %}
+ <span class="badge text-bg-success">fired</span>
+ {% elif ev.outcome == 'delivery_failed' %}
+ <span class="badge text-bg-danger">delivery failed</span>
+ {% else %}
+ <span class="badge text-bg-secondary">{{ ev.outcome }}</span>
+ {% endif %}
+ </td>
+ <td>{{ ev.row_count if ev.row_count is not none else '—' }}</td>
+ <td class="font-monospace">{{ ev.event_id }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ {% endif %}
+ </div>
+ </div>
+ </div>
+ </div>
 
-    <!-- Add destination modal -->
-    <div class="modal fade" id="pqlAddDestModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form @submit.prevent="submitAddDest()">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add destination</h5>
-                        <button type="button" class="btn-close"
-                                data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label small">Kind</label>
-                            <select class="form-select form-select-sm"
-                                    x-model="destForm.kind">
-                                <option value="webhook">Webhook (CloudEvents POST)</option>
-                                <option value="feed">Pull feed</option>
-                            </select>
-                        </div>
-                        <div class="mb-3" x-show="destForm.kind === 'webhook'">
-                            <label class="form-label small">Webhook URL</label>
-                            <input type="url" class="form-control form-control-sm"
-                                   x-model="destForm.webhook_url"
-                                   placeholder="https://example.com/hook">
-                        </div>
-                        <div class="mb-3" x-show="destForm.kind === 'webhook'">
-                            <label class="form-label small">HMAC secret (optional)</label>
-                            <input type="text" class="form-control form-control-sm"
-                                   x-model="destForm.hmac_secret"
-                                   placeholder="Pre-shared secret for X-PointlesSQL-Signature">
-                            <small class="text-muted">
-                                If set, the receiver can verify each POST by
-                                re-HMAC-SHA256-ing the body with the same
-                                secret and comparing against the
-                                ``X-PointlesSQL-Signature: sha256=<hex>``
-                                header.
-                            </small>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary"
-                                data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Add</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+ <!-- Add destination modal -->
+ <div class="modal fade" id="pqlAddDestModal" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog">
+ <div class="modal-content">
+ <form @submit.prevent="submitAddDest()">
+ <div class="modal-header">
+ <h5 class="modal-title">Add destination</h5>
+ <button type="button" class="btn-close"
+ data-bs-dismiss="modal" aria-label="Close"></button>
+ </div>
+ <div class="modal-body">
+ <div class="mb-3">
+ <label class="form-label small">Kind</label>
+ <select class="form-select form-select-sm"
+ x-model="destForm.kind">
+ <option value="webhook">Webhook (CloudEvents POST)</option>
+ <option value="feed">Pull feed</option>
+ </select>
+ </div>
+ <div class="mb-3" x-show="destForm.kind === 'webhook'">
+ <label class="form-label small">Webhook URL</label>
+ <input type="url" class="form-control form-control-sm"
+ x-model="destForm.webhook_url"
+ placeholder="https://example.com/hook">
+ </div>
+ <div class="mb-3" x-show="destForm.kind === 'webhook'">
+ <label class="form-label small">HMAC secret (optional)</label>
+ <input type="text" class="form-control form-control-sm"
+ x-model="destForm.hmac_secret"
+ placeholder="Pre-shared secret for X-PointlesSQL-Signature">
+ <small class="text-muted">
+ If set, the receiver can verify each POST by
+ re-HMAC-SHA256-ing the body with the same
+ secret and comparing against the
+ ``X-PointlesSQL-Signature: sha256=<hex>``
+ header.
+ </small>
+ </div>
+ </div>
+ <div class="modal-footer">
+ <button type="button" class="btn btn-outline-secondary"
+ data-bs-dismiss="modal">Cancel</button>
+ <button type="submit" class="btn btn-primary">Add</button>
+ </div>
+ </form>
+ </div>
+ </div>
+ </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{# Sprint 94: alertDetail() factory lives in
-   frontend/js/pages/alert_detail.js; bootstrap.js attaches it to
-   window.alertDetail.  First-paint state seeds via the x-data
-   attribute's parameter object. #}
+{# : alertDetail() factory lives in
+ frontend/js/pages/alert_detail.js; bootstrap.js attaches it to
+ window.alertDetail. First-paint state seeds via the x-data
+ attribute's parameter object. #}
 {% endblock %}

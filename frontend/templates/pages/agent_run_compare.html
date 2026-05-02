@@ -13,7 +13,7 @@
 <div class="d-flex align-items-center gap-2 mb-4">
     <i class="bi bi-columns-gap fs-3"></i>
     <h1 class="h3 mb-0">Compare runs</h1>
-    <span class="text-muted small ms-2">Sprint 18.4 lineage-aware diff</span>
+    <span class="text-muted small ms-2">lineage-aware diff</span>
 </div>
 
 <div class="row g-3 mb-4">
@@ -216,7 +216,7 @@
     if (!payloadEl) return;
     const payload = JSON.parse(payloadEl.textContent);
 
-    // Bug fix (Sprint 18.4 follow-up): Chart.js needs the canvas
+    // Chart.js needs the canvas
     // to have non-zero dimensions at construction time.  Bootstrap
     // tab-panes are display:none until activated, so a render fired
     // on page-load against a hidden canvas produces an empty chart

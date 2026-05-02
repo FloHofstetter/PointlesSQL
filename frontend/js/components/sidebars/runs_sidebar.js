@@ -1,11 +1,10 @@
 /**
  * Runs context-panel Alpine factory.
  *
- * Phase 24.0 — replaces the static "All runs" link in the context
- * panel with a navigable list of recent agent runs grouped by
- * status.  Pattern mirrors :func:`catalogTree` in
- * ``catalog_tree.js`` (sessionStorage instant-paint + async refetch
- * + ``pathFromUrl``-based active highlight).
+ * Renders the static "All runs" link as a navigable list of recent
+ * agent runs grouped by status.  Pattern mirrors :func:`catalogTree`
+ * in ``catalog_tree.js`` (sessionStorage instant-paint + async
+ * refetch + ``pathFromUrl``-based active highlight).
  */
 
 const STORAGE_KEY = 'pql.runs.recent';

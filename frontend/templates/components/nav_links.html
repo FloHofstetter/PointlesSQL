@@ -1,91 +1,91 @@
 {#
-  Sprint 17.1: this partial now renders ONLY inside the mobile
-  offcanvas drawer (< md, 768 px).  At >= md the icon-rail
-  (``components/icon_rail.html``) replaces the topbar nav, and the
-  topbar carries the user menu via ``components/user_menu.html``
-  separately.
+ : this partial now renders ONLY inside the mobile
+ offcanvas drawer (< md, 768 px). At >= md the icon-rail
+ (``components/icon_rail.html``) replaces the topbar nav, and the
+ topbar carries the user menu via ``components/user_menu.html``
+ separately.
 
-  The drawer is the single entry point on phones / portrait tablets:
-  hamburger toggles it, and it carries the same nine sections the
-  icon-rail exposes on desktop, plus the user dropdown at the
-  bottom.
+ The drawer is the single entry point on phones / portrait tablets:
+ hamburger toggles it, and it carries the same nine sections the
+ icon-rail exposes on desktop, plus the user dropdown at the
+ bottom.
 
-  The caller can override the `<ul>` classes via the
-  ``nav_list_class`` variable (default: ``navbar-nav``).  The
-  admin-only Workspace link and the user dropdown follow the same
-  ``current_user`` / ``current_user.is_admin`` gating as the
-  original inline markup.
+ The caller can override the `<ul>` classes via the
+ ``nav_list_class`` variable (default: ``navbar-nav``). The
+ admin-only Workspace link and the user dropdown follow the same
+ ``current_user`` / ``current_user.is_admin`` gating as the
+ original inline markup.
 #}
 {% set nav_list_class = nav_list_class or "navbar-nav" %}
 <ul class="{{ nav_list_class }}">
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('connections', 'external_locations', 'credentials') %} active{% endif %}"
-           href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-plug"></i> Federation
-        </a>
-        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'connections' %} active{% endif %}" href="/connections">Connections</a></li>
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'external_locations' %} active{% endif %}" href="/external-locations">External Locations</a></li>
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'credentials' %} active{% endif %}" href="/credentials">Credentials</a></li>
-        </ul>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'runs' %} active{% endif %}"
-           href="/runs">
-            <i class="bi bi-activity"></i> Runs
-        </a>
-    </li>
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('sql', 'queries') %} active{% endif %}"
-           href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-code-square"></i> SQL
-        </a>
-        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'sql' %} active{% endif %}" href="/sql">Editor</a></li>
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'queries' %} active{% endif %}" href="/queries">History</a></li>
-        </ul>
-    </li>
-    {% if current_user is defined and current_user and current_user.is_admin %}
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'workspace' %} active{% endif %}"
-           href="/notebooks/workspace">
-            <i class="bi bi-folder2-open"></i> Workspace
-        </a>
-    </li>
-    {% endif %}
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'jobs' %} active{% endif %}"
-           href="/jobs">
-            <i class="bi bi-clock-history"></i> Jobs
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'alerts' %} active{% endif %}"
-           href="/alerts">
-            <i class="bi bi-bell"></i> Alerts
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'volumes' %} active{% endif %}"
-           href="/volumes">
-            <i class="bi bi-hdd-stack"></i> Volumes
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'dashboards' %} active{% endif %}"
-           href="/dashboards">
-            <i class="bi bi-speedometer2"></i> Dashboards
-        </a>
-    </li>
-    {% if current_user is defined and current_user and current_user.is_admin %}
-    <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('admin_audit',) %} active{% endif %}"
-           href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-shield-check"></i> Admin
-        </a>
-        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-            <li><a class="dropdown-item{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}" href="/admin/audit">Audit log</a></li>
-        </ul>
-    </li>
-    {% endif %}
+ <li class="nav-item dropdown">
+ <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('connections', 'external_locations', 'credentials') %} active{% endif %}"
+ href="#" data-bs-toggle="dropdown">
+ <i class="bi bi-plug"></i> Federation
+ </a>
+ <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+ <li><a class="dropdown-item{% if active_page is defined and active_page == 'connections' %} active{% endif %}" href="/connections">Connections</a></li>
+ <li><a class="dropdown-item{% if active_page is defined and active_page == 'external_locations' %} active{% endif %}" href="/external-locations">External Locations</a></li>
+ <li><a class="dropdown-item{% if active_page is defined and active_page == 'credentials' %} active{% endif %}" href="/credentials">Credentials</a></li>
+ </ul>
+ </li>
+ <li class="nav-item">
+ <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'runs' %} active{% endif %}"
+ href="/runs">
+ <i class="bi bi-activity"></i> Runs
+ </a>
+ </li>
+ <li class="nav-item dropdown">
+ <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('sql', 'queries') %} active{% endif %}"
+ href="#" data-bs-toggle="dropdown">
+ <i class="bi bi-code-square"></i> SQL
+ </a>
+ <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+ <li><a class="dropdown-item{% if active_page is defined and active_page == 'sql' %} active{% endif %}" href="/sql">Editor</a></li>
+ <li><a class="dropdown-item{% if active_page is defined and active_page == 'queries' %} active{% endif %}" href="/queries">History</a></li>
+ </ul>
+ </li>
+ {% if current_user is defined and current_user and current_user.is_admin %}
+ <li class="nav-item">
+ <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'workspace' %} active{% endif %}"
+ href="/notebooks/workspace">
+ <i class="bi bi-folder2-open"></i> Workspace
+ </a>
+ </li>
+ {% endif %}
+ <li class="nav-item">
+ <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'jobs' %} active{% endif %}"
+ href="/jobs">
+ <i class="bi bi-clock-history"></i> Jobs
+ </a>
+ </li>
+ <li class="nav-item">
+ <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'alerts' %} active{% endif %}"
+ href="/alerts">
+ <i class="bi bi-bell"></i> Alerts
+ </a>
+ </li>
+ <li class="nav-item">
+ <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'volumes' %} active{% endif %}"
+ href="/volumes">
+ <i class="bi bi-hdd-stack"></i> Volumes
+ </a>
+ </li>
+ <li class="nav-item">
+ <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'dashboards' %} active{% endif %}"
+ href="/dashboards">
+ <i class="bi bi-speedometer2"></i> Dashboards
+ </a>
+ </li>
+ {% if current_user is defined and current_user and current_user.is_admin %}
+ <li class="nav-item dropdown">
+ <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('admin_audit',) %} active{% endif %}"
+ href="#" data-bs-toggle="dropdown">
+ <i class="bi bi-shield-check"></i> Admin
+ </a>
+ <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+ <li><a class="dropdown-item{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}" href="/admin/audit">Audit log</a></li>
+ </ul>
+ </li>
+ {% endif %}
 </ul>

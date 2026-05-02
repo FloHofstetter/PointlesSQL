@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
- * Empty-state component — Sprint 30. Reuses ``.pql-card`` padding
+ * Empty-state component.  Reuses ``.pql-card`` padding
  * so inline and full-page usages look consistent.
  * ------------------------------------------------------------- */
 .pql-empty {

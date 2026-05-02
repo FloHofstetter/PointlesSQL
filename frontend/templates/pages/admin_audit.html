@@ -2,199 +2,199 @@
 {% block title %}Audit log · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
-    {"label": "Home", "href": "/"},
-    {"label": "Admin"},
-    {"label": "Audit log"}
+ {"label": "Home", "href": "/"},
+ {"label": "Admin"},
+ {"label": "Audit log"}
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-3">
-    <div class="d-flex align-items-center gap-2">
-        <i class="bi bi-shield-check fs-3"></i>
-        <h1 class="h3 mb-0">Audit log</h1>
-    </div>
-    <span class="text-muted small">
-        {{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }}
-        shown
-    </span>
+ <div class="d-flex align-items-center gap-2">
+ <i class="bi bi-shield-check fs-3"></i>
+ <h1 class="h3 mb-0">Audit log</h1>
+ </div>
+ <span class="text-muted small">
+ {{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }}
+ shown
+ </span>
 </div>
 
 <form method="get" action="/admin/audit" class="card mb-3">
-    <div class="card-body">
-        <div class="row g-2 align-items-end">
-            <div class="col-sm-6 col-md-3">
-                <label class="form-label small mb-1" for="f-since">Window</label>
-                <select id="f-since" name="since" class="form-select form-select-sm">
-                    <option value="24h" {% if filter_since == '24h' %}selected{% endif %}>Last 24 hours</option>
-                    <option value="7d" {% if filter_since == '7d' %}selected{% endif %}>Last 7 days</option>
-                    <option value="30d" {% if filter_since == '30d' %}selected{% endif %}>Last 30 days</option>
-                    <option value="all" {% if filter_since == 'all' %}selected{% endif %}>All time</option>
-                </select>
-            </div>
-            <div class="col-sm-6 col-md-3">
-                <label class="form-label small mb-1" for="f-action">Action</label>
-                <select id="f-action" name="action" class="form-select form-select-sm">
-                    <option value="">(any)</option>
-                    {% for a in distinct_actions %}
-                    <option value="{{ a }}" {% if filter_action == a %}selected{% endif %}>{{ a }}</option>
-                    {% endfor %}
-                    {# Keep a manually-typed action around even if it isn't in this page's distinct list. #}
-                    {% if filter_action and filter_action not in distinct_actions %}
-                    <option value="{{ filter_action }}" selected>{{ filter_action }}</option>
-                    {% endif %}
-                </select>
-            </div>
-            <div class="col-sm-6 col-md-3">
-                <label class="form-label small mb-1" for="f-user">User (email contains)</label>
-                <input id="f-user" name="user" type="text" class="form-control form-control-sm"
-                       value="{{ filter_user }}" placeholder="alice@…">
-            </div>
-            <div class="col-sm-6 col-md-3">
-                <label class="form-label small mb-1" for="f-target">Target (contains)</label>
-                <input id="f-target" name="target" type="text" class="form-control form-control-sm"
-                       value="{{ filter_target }}" placeholder="catalog:&hellip;">
-            </div>
-        </div>
-        <div class="d-flex gap-2 mt-3 flex-wrap">
-            <button type="submit" class="btn btn-primary btn-sm">
-                <i class="bi bi-funnel me-1"></i>Apply filters
-            </button>
-            <a href="/admin/audit" class="btn btn-outline-secondary btn-sm">Reset</a>
-            {# Sprint 48: export the currently-filtered set as JSON / CSV.
-               The server mirrors the same filter surface on
-               ``/admin/audit/export`` so operators can download what they
-               see. Cap: 10 000 rows per export. #}
-            <div class="ms-auto d-flex gap-2">
-                <a href="/admin/audit/export?fmt=json&since={{ filter_since }}{% if filter_action %}&action={{ filter_action|urlencode }}{% endif %}{% if filter_user %}&user={{ filter_user|urlencode }}{% endif %}{% if filter_target %}&target={{ filter_target|urlencode }}{% endif %}"
-                   class="btn btn-outline-primary btn-sm"
-                   hx-boost="false">
-                    <i class="bi bi-filetype-json me-1"></i>Export JSON
-                </a>
-                <a href="/admin/audit/export?fmt=csv&since={{ filter_since }}{% if filter_action %}&action={{ filter_action|urlencode }}{% endif %}{% if filter_user %}&user={{ filter_user|urlencode }}{% endif %}{% if filter_target %}&target={{ filter_target|urlencode }}{% endif %}"
-                   class="btn btn-outline-primary btn-sm"
-                   hx-boost="false">
-                    <i class="bi bi-filetype-csv me-1"></i>Export CSV
-                </a>
-            </div>
-        </div>
-    </div>
+ <div class="card-body">
+ <div class="row g-2 align-items-end">
+ <div class="col-sm-6 col-md-3">
+ <label class="form-label small mb-1" for="f-since">Window</label>
+ <select id="f-since" name="since" class="form-select form-select-sm">
+ <option value="24h" {% if filter_since == '24h' %}selected{% endif %}>Last 24 hours</option>
+ <option value="7d" {% if filter_since == '7d' %}selected{% endif %}>Last 7 days</option>
+ <option value="30d" {% if filter_since == '30d' %}selected{% endif %}>Last 30 days</option>
+ <option value="all" {% if filter_since == 'all' %}selected{% endif %}>All time</option>
+ </select>
+ </div>
+ <div class="col-sm-6 col-md-3">
+ <label class="form-label small mb-1" for="f-action">Action</label>
+ <select id="f-action" name="action" class="form-select form-select-sm">
+ <option value="">(any)</option>
+ {% for a in distinct_actions %}
+ <option value="{{ a }}" {% if filter_action == a %}selected{% endif %}>{{ a }}</option>
+ {% endfor %}
+ {# Keep a manually-typed action around even if it isn't in this page's distinct list. #}
+ {% if filter_action and filter_action not in distinct_actions %}
+ <option value="{{ filter_action }}" selected>{{ filter_action }}</option>
+ {% endif %}
+ </select>
+ </div>
+ <div class="col-sm-6 col-md-3">
+ <label class="form-label small mb-1" for="f-user">User (email contains)</label>
+ <input id="f-user" name="user" type="text" class="form-control form-control-sm"
+ value="{{ filter_user }}" placeholder="alice@…">
+ </div>
+ <div class="col-sm-6 col-md-3">
+ <label class="form-label small mb-1" for="f-target">Target (contains)</label>
+ <input id="f-target" name="target" type="text" class="form-control form-control-sm"
+ value="{{ filter_target }}" placeholder="catalog:&hellip;">
+ </div>
+ </div>
+ <div class="d-flex gap-2 mt-3 flex-wrap">
+ <button type="submit" class="btn btn-primary btn-sm">
+ <i class="bi bi-funnel me-1"></i>Apply filters
+ </button>
+ <a href="/admin/audit" class="btn btn-outline-secondary btn-sm">Reset</a>
+ {# : export the currently-filtered set as JSON / CSV.
+ The server mirrors the same filter surface on
+ ``/admin/audit/export`` so operators can download what they
+ see. Cap: 10 000 rows per export. #}
+ <div class="ms-auto d-flex gap-2">
+ <a href="/admin/audit/export?fmt=json&since={{ filter_since }}{% if filter_action %}&action={{ filter_action|urlencode }}{% endif %}{% if filter_user %}&user={{ filter_user|urlencode }}{% endif %}{% if filter_target %}&target={{ filter_target|urlencode }}{% endif %}"
+ class="btn btn-outline-primary btn-sm"
+ hx-boost="false">
+ <i class="bi bi-filetype-json me-1"></i>Export JSON
+ </a>
+ <a href="/admin/audit/export?fmt=csv&since={{ filter_since }}{% if filter_action %}&action={{ filter_action|urlencode }}{% endif %}{% if filter_user %}&user={{ filter_user|urlencode }}{% endif %}{% if filter_target %}&target={{ filter_target|urlencode }}{% endif %}"
+ class="btn btn-outline-primary btn-sm"
+ hx-boost="false">
+ <i class="bi bi-filetype-csv me-1"></i>Export CSV
+ </a>
+ </div>
+ </div>
+ </div>
 </form>
 
 {% if truncated %}
 <div class="alert alert-info d-flex align-items-center py-2" role="alert">
-    <i class="bi bi-info-circle me-2"></i>
-    <div class="small mb-0">
-        Showing the most recent {{ row_limit }} entries — narrow the
-        window or add filters to see older rows.
-    </div>
+ <i class="bi bi-info-circle me-2"></i>
+ <div class="small mb-0">
+ Showing the most recent {{ row_limit }} entries — narrow the
+ window or add filters to see older rows.
+ </div>
 </div>
 {% endif %}
 
 <div class="card">
-    <div class="card-body p-0">
-        {% if entries %}
-        <div x-data="listTable({
-                searchPlaceholder: 'Search action / target / user…',
-                initialSort: { key: 'created-at', dir: 'desc' },
-                mobileSort: true,
-                chips: [
-                    { id: 'mine', label: 'Mine only',
-                      match: (tr) => tr.dataset.userId === '{{ current_user_id }}' },
-                ],
-             })">
-            <div class="pql-list-controls">
-                <input type="search"
-                       class="form-control form-control-sm pql-list-controls__search"
-                       x-model="query"
-                       x-on:input="onInput()"
-                       x-bind:placeholder="searchPlaceholder"
-                       aria-label="Search audit log">
-                <template x-for="chip in chips" :key="chip.id">
-                    <button type="button"
-                            class="pql-chip"
-                            x-bind:class="activeChips[chip.id] ? 'pql-chip--active' : ''"
-                            x-on:click="toggleChip(chip.id)"
-                            x-text="chip.label"></button>
-                </template>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle pql-list-table">
-                    <thead>
-                        <tr>
-                            <th class="ps-3" data-sort-key="created-at">Time</th>
-                            <th data-sort-key="user-email">User</th>
-                            <th data-sort-key="actor-role">Role</th>
-                            <th data-sort-key="action">Action</th>
-                            <th data-sort-key="target">Target</th>
-                            <th data-sort-key="client-ip">IP</th>
-                            <th class="pe-3">Detail</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for entry in entries %}
-                        <tr data-search="{{ entry.user_email|lower }} {{ entry.action|lower }} {{ entry.target|lower }} {{ entry.client_ip or '' }}"
-                            data-sort-created-at="{{ entry.created_at }}"
-                            data-sort-user-email="{{ entry.user_email|lower }}"
-                            data-sort-actor-role="{{ entry.actor_role|lower }}"
-                            data-sort-action="{{ entry.action|lower }}"
-                            data-sort-target="{{ entry.target|lower }}"
-                            data-sort-client-ip="{{ entry.client_ip or '' }}"
-                            data-user-id="{{ entry.user_id }}">
-                            <td class="ps-3 small text-muted font-monospace" data-label="Time">
-                                <span x-data='{ iso: {{ entry.created_at|tojson }} }'
-                                      x-text="pqlRelativeTime(iso)"
-                                      x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ entry.created_at }}</span>
-                            </td>
-                            <td data-label="User" class="small">{{ entry.user_email }}</td>
-                            <td data-label="Role">
-                                {# Sprint 48: role badges — admin rows get the
-                                   darker ``bg-dark`` so an operator scanning
-                                   the log can isolate privileged actions at a
-                                   glance; ``system`` (rate-limit rejects) is
-                                   muted. #}
-                                {% if entry.actor_role == 'admin' %}
-                                <span class="badge bg-dark">admin</span>
-                                {% elif entry.actor_role == 'system' %}
-                                <span class="badge bg-secondary">system</span>
-                                {% else %}
-                                <span class="badge bg-light text-dark">user</span>
-                                {% endif %}
-                            </td>
-                            <td data-label="Action">
-                                <span class="badge bg-secondary font-monospace">{{ entry.action }}</span>
-                            </td>
-                            <td data-label="Target" class="font-monospace small">{{ entry.target }}</td>
-                            <td data-label="IP" class="font-monospace small text-muted">
-                                {{ entry.client_ip or '—' }}
-                            </td>
-                            <td class="pe-3 small" data-label="Detail"
-                                x-data="{ open: false }">
-                                {% if entry.detail %}
-                                <button type="button"
-                                        class="btn btn-link btn-sm p-0 text-decoration-none"
-                                        x-on:click.stop="open = !open"
-                                        x-text="open ? 'Hide' : 'Show'"></button>
-                                <pre class="small mb-0 mt-1 pql-audit-detail"
-                                     x-show="open"
-                                     x-cloak>{{ entry.detail }}</pre>
-                                {% else %}
-                                <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% else %}
-        {% with flush=True, icon="bi-shield-check",
-                title="No audit entries match these filters",
-                message="Widen the window or clear the filters above to see more activity." %}
-            {% include "components/empty.html" %}
-        {% endwith %}
-        {% endif %}
-    </div>
+ <div class="card-body p-0">
+ {% if entries %}
+ <div x-data="listTable({
+ searchPlaceholder: 'Search action / target / user…',
+ initialSort: { key: 'created-at', dir: 'desc' },
+ mobileSort: true,
+ chips: [
+ { id: 'mine', label: 'Mine only',
+ match: (tr) => tr.dataset.userId === '{{ current_user_id }}' },
+ ],
+ })">
+ <div class="pql-list-controls">
+ <input type="search"
+ class="form-control form-control-sm pql-list-controls__search"
+ x-model="query"
+ x-on:input="onInput()"
+ x-bind:placeholder="searchPlaceholder"
+ aria-label="Search audit log">
+ <template x-for="chip in chips" :key="chip.id">
+ <button type="button"
+ class="pql-chip"
+ x-bind:class="activeChips[chip.id] ? 'pql-chip--active' : ''"
+ x-on:click="toggleChip(chip.id)"
+ x-text="chip.label"></button>
+ </template>
+ </div>
+ <div class="table-responsive">
+ <table class="table table-sm mb-0 align-middle pql-list-table">
+ <thead>
+ <tr>
+ <th class="ps-3" data-sort-key="created-at">Time</th>
+ <th data-sort-key="user-email">User</th>
+ <th data-sort-key="actor-role">Role</th>
+ <th data-sort-key="action">Action</th>
+ <th data-sort-key="target">Target</th>
+ <th data-sort-key="client-ip">IP</th>
+ <th class="pe-3">Detail</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for entry in entries %}
+ <tr data-search="{{ entry.user_email|lower }} {{ entry.action|lower }} {{ entry.target|lower }} {{ entry.client_ip or '' }}"
+ data-sort-created-at="{{ entry.created_at }}"
+ data-sort-user-email="{{ entry.user_email|lower }}"
+ data-sort-actor-role="{{ entry.actor_role|lower }}"
+ data-sort-action="{{ entry.action|lower }}"
+ data-sort-target="{{ entry.target|lower }}"
+ data-sort-client-ip="{{ entry.client_ip or '' }}"
+ data-user-id="{{ entry.user_id }}">
+ <td class="ps-3 small text-muted font-monospace" data-label="Time">
+ <span x-data='{ iso: {{ entry.created_at|tojson }} }'
+ x-text="pqlRelativeTime(iso)"
+ x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ entry.created_at }}</span>
+ </td>
+ <td data-label="User" class="small">{{ entry.user_email }}</td>
+ <td data-label="Role">
+ {# : role badges — admin rows get the
+ darker ``bg-dark`` so an operator scanning
+ the log can isolate privileged actions at a
+ glance; ``system`` (rate-limit rejects) is
+ muted. #}
+ {% if entry.actor_role == 'admin' %}
+ <span class="badge bg-dark">admin</span>
+ {% elif entry.actor_role == 'system' %}
+ <span class="badge bg-secondary">system</span>
+ {% else %}
+ <span class="badge bg-light text-dark">user</span>
+ {% endif %}
+ </td>
+ <td data-label="Action">
+ <span class="badge bg-secondary font-monospace">{{ entry.action }}</span>
+ </td>
+ <td data-label="Target" class="font-monospace small">{{ entry.target }}</td>
+ <td data-label="IP" class="font-monospace small text-muted">
+ {{ entry.client_ip or '—' }}
+ </td>
+ <td class="pe-3 small" data-label="Detail"
+ x-data="{ open: false }">
+ {% if entry.detail %}
+ <button type="button"
+ class="btn btn-link btn-sm p-0 text-decoration-none"
+ x-on:click.stop="open = !open"
+ x-text="open ? 'Hide' : 'Show'"></button>
+ <pre class="small mb-0 mt-1 pql-audit-detail"
+ x-show="open"
+ x-cloak>{{ entry.detail }}</pre>
+ {% else %}
+ <span class="text-muted">—</span>
+ {% endif %}
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ {% with flush=True, icon="bi-shield-check",
+ title="No audit entries match these filters",
+ message="Widen the window or clear the filters above to see more activity." %}
+ {% include "components/empty.html" %}
+ {% endwith %}
+ {% endif %}
+ </div>
 </div>
 {% endblock %}

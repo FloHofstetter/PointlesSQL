@@ -1,5 +1,5 @@
 /* ---------------------------------------------------------------
- * Home dashboard — Sprint 32. Two flex columns at desktop (primary
+ * Home dashboard.  Two flex columns at desktop (primary
  * wide = sparkline + runs, secondary narrow = quick actions + recent
  * catalogs + your dashboards), one stack on narrow viewports. Flex
  * columns let each card hug its natural height — CSS Grid with

@@ -1,10 +1,8 @@
 /**
  * Cmd+K command palette + global keyboard shortcuts.
  *
- * Sprint 92 lifted the inline ``<script>`` block from
- * ``frontend/templates/components/command_palette.html`` into this
- * ESM module.  The Alpine factory ``commandPalette()`` is wired
- * via ``bootstrap.js`` (which re-attaches it to ``window`` so the
+ * The Alpine factory ``commandPalette()`` is wired via
+ * ``bootstrap.js`` (which re-attaches it to ``window`` so the
  * partial's ``x-data="commandPalette()"`` keeps working unchanged).
  *
  * The palette owns four user-facing surfaces:
