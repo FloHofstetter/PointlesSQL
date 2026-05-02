@@ -18,7 +18,8 @@
   drops the sticky/border chrome there.
 #}
 <aside class="pql-context-panel" aria-label="Section navigation"
-       id="pql-context-panel">
+       id="pql-context-panel"
+       hx-swap-oob="true">
     {% if active_section == 'federation' %}
         {% include "components/sidebar.html" %}
     {% elif active_section == 'dashboards' %}

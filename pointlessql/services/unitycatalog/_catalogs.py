@@ -108,17 +108,19 @@ class CatalogsMixin:
         """Return the full catalog tree in one shot.
 
         Fetches all catalogs, then all schemas per catalog, then all
-        tables + registered-models per schema concurrently.  Intended
-        for sidebar rendering where the whole tree is needed up-front.
-        Cross-mixin: relies on :meth:`MetadataMixin.list_schemas`,
-        :meth:`MetadataMixin.list_tables`, and
+        tables + volumes + registered-models per schema concurrently.
+        Intended for sidebar rendering where the whole tree is needed
+        up-front.  Cross-mixin: relies on
+        :meth:`MetadataMixin.list_schemas`,
+        :meth:`MetadataMixin.list_tables`,
+        :meth:`MetadataMixin.list_volumes`, and
         :meth:`ModelsMixin.list_registered_models` being on ``self``
         via the concrete :class:`UnityCatalogClient`.
 
         Returns:
             A list of catalogs, each enriched with a ``schemas`` key
-            whose entries each carry both ``tables`` and ``models``
-            keys.
+            whose entries each carry ``tables``, ``volumes``, and
+            ``models`` keys.
         """
         catalogs = await self.list_catalogs()
 
@@ -127,11 +129,19 @@ class CatalogsMixin:
 
             async def _with_children(schema: dict[str, Any]) -> dict[str, Any]:
                 tables_task = self.list_tables(cat["name"], schema["name"])  # type: ignore[attr-defined]
+                volumes_task = self.list_volumes(cat["name"], schema["name"])  # type: ignore[attr-defined]
                 models_task = self.list_registered_models(  # type: ignore[attr-defined]
                     catalog_name=cat["name"], schema_name=schema["name"]
                 )
-                tables, models = await asyncio.gather(tables_task, models_task)
-                return {**schema, "tables": tables, "models": models}
+                tables, volumes, models = await asyncio.gather(
+                    tables_task, volumes_task, models_task
+                )
+                return {
+                    **schema,
+                    "tables": tables,
+                    "volumes": volumes,
+                    "models": models,
+                }
 
             schema_results = await asyncio.gather(*(_with_children(s) for s in schemas))
             return {**cat, "schemas": list(schema_results)}

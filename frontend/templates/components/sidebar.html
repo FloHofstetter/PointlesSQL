@@ -110,6 +110,17 @@
                                     <span class="text-truncate" x-text="m.full_name"></span>
                                 </a>
                             </template>
+                            <template x-if="m.kind === 'volume'">
+                                <a :href="'/volumes/' + m.full_name"
+                                   class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
+                                   :title="m.full_name">
+                                    <i class="bi bi-hdd-stack flex-shrink-0"></i>
+                                    <span class="text-truncate" x-text="m.volume"></span>
+                                    <span class="text-muted small ms-auto flex-shrink-0"
+                                          style="font-size: 0.65rem;"
+                                          x-text="m.schema + '.' + m.catalog"></span>
+                                </a>
+                            </template>
                             <template x-if="m.kind === 'model'">
                                 <a :href="'/models/' + m.full_name"
                                    class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
@@ -183,6 +194,18 @@
                                                 <a :href="'/catalogs/' + c.name + '/schemas/' + s.name + '/tables/' + t.name" class="pql-tree-label">
                                                     <i class="bi bi-table"></i>
                                                     <span class="text-truncate" x-text="t.name"></span>
+                                                </a>
+                                            </div>
+                                        </li>
+                                    </template>
+                                    <template x-for="v in (s.volumes || [])" :key="'v:' + v.name">
+                                        <li x-show="volumeVisible(v)" x-cloak>
+                                            <div class="pql-tree-item pql-tree-lvl-3"
+                                                 :class="{ active: activePath.catalog === c.name && activePath.schema === s.name && activePath.volume === v.name }">
+                                                <span class="pql-tree-chevron"></span>
+                                                <a :href="'/volumes/' + c.name + '.' + s.name + '.' + v.name" class="pql-tree-label">
+                                                    <i class="bi bi-hdd-stack"></i>
+                                                    <span class="text-truncate" x-text="v.name"></span>
                                                 </a>
                                             </div>
                                         </li>

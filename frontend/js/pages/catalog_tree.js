@@ -22,6 +22,7 @@ export function pathFromUrl() {
             catalog: cat[1] || '',
             schema: cat[2] || '',
             table: cat[3] || '',
+            volume: '',
             model: '',
         };
     }
@@ -33,10 +34,23 @@ export function pathFromUrl() {
             catalog: mdl[1] || '',
             schema: mdl[2] || '',
             table: '',
+            volume: '',
             model: mdl[3] || '',
         };
     }
-    return { catalog: '', schema: '', table: '', model: '' };
+    const vol = window.location.pathname.match(
+        /^\/volumes\/([^/.]+)\.([^/.]+)\.([^/.]+)/,
+    );
+    if (vol) {
+        return {
+            catalog: vol[1] || '',
+            schema: vol[2] || '',
+            table: '',
+            volume: vol[3] || '',
+            model: '',
+        };
+    }
+    return { catalog: '', schema: '', table: '', volume: '', model: '' };
 }
 
 function loadRecents() {
@@ -88,6 +102,11 @@ export function catalogTree() {
             if (!q) return true;
             return (t.name || '').toLowerCase().includes(q);
         },
+        volumeVisible(v) {
+            const q = this.normalisedQuery();
+            if (!q) return true;
+            return (v.name || '').toLowerCase().includes(q);
+        },
         modelVisible(m) {
             const q = this.normalisedQuery();
             if (!q) return true;
@@ -98,6 +117,7 @@ export function catalogTree() {
             if (!q) return true;
             if ((s.name || '').toLowerCase().includes(q)) return true;
             if ((s.tables || []).some((t) => this.tableVisible(t))) return true;
+            if ((s.volumes || []).some((v) => this.volumeVisible(v))) return true;
             return (s.models || []).some((m) => this.modelVisible(m));
         },
         catalogVisible(c) {

@@ -74,15 +74,11 @@
                 <span class="pql-icon-rail__label">Alerts</span>
             </a>
         </li>
-        <li class="pql-icon-rail__item">
-            <a href="/volumes"
-               data-section="volumes"
-               class="pql-icon-rail__link{% if active_section == 'volumes' %} active{% endif %}"
-               title="Volumes">
-                <i class="bi bi-hdd-stack"></i>
-                <span class="pql-icon-rail__label">Volumes</span>
-            </a>
-        </li>
+        {# Volumes + Models intentionally have NO rail icon — they
+           render inline under each schema in the catalog tree
+           (sidebar.html), same as tables.  Direct URLs /volumes
+           and /models still work for flat-list views; reach them
+           via Cmd+K or the catalog tree's filter. #}
         <li class="pql-icon-rail__item">
             <a href="/dashboards"
                data-section="dashboards"
@@ -99,15 +95,6 @@
                title="MLflow Tracking (Phase 21.0)">
                 <i class="bi bi-robot"></i>
                 <span class="pql-icon-rail__label">ML</span>
-            </a>
-        </li>
-        <li class="pql-icon-rail__item">
-            <a href="/models"
-               data-section="models"
-               class="pql-icon-rail__link{% if active_section == 'models' %} active{% endif %}"
-               title="Registered models (Phase 21.5)">
-                <i class="bi bi-box-seam"></i>
-                <span class="pql-icon-rail__label">Models</span>
             </a>
         </li>
         {% if current_user is defined and current_user and current_user.is_admin %}

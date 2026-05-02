@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Volumes + Models now live inside the catalog tree** — both
+  used to have their own top-level rail icon (``Volumes`` ·
+  ``Models``) which served a flat ``/volumes`` / ``/models``
+  listing.  In Unity Catalog, both are siblings of Tables under
+  a Schema, so they belong in the catalog tree right next to
+  ``bi-table`` rows.  The rail now omits both and the tree
+  renders three child kinds per schema:
+  ``bi-table`` (tables) → ``bi-hdd-stack`` (volumes) →
+  ``bi-box-seam`` (models).  Server-side
+  :meth:`UnityCatalogClient.get_tree` was extended to fetch
+  volumes per schema concurrently with tables + models; a new
+  :meth:`MetadataMixin.list_volumes` wraps the soyuz
+  ``/api/2.1/unity-catalog/volumes`` endpoint that the
+  generated client doesn't expose yet.  ``/api/tree/search``
+  also matches volume names and returns ``kind: "volume"``
+  results, rendered with a hard-disk icon in the sidebar
+  search results.  The flat ``/volumes`` and ``/models``
+  pages still work for direct URL hits (Cmd+K / typed URL);
+  the ``active_section`` for both falls through to
+  ``federation`` so the catalog tree stays visible in the
+  context panel.
+
 ### Fixed
 
 - **Icon rail labels truncated under the icons** — bumped

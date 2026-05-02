@@ -205,6 +205,34 @@ class MetadataMixin:
         return data.get("tables", data.get("identifiers", []))
 
     @wrap_catalog_errors
+    async def list_volumes(
+        self, catalog_name: str, schema_name: str
+    ) -> list[dict[str, Any]]:
+        """Return all volumes inside a schema.
+
+        Calls the soyuz ``/api/2.1/unity-catalog/volumes`` endpoint
+        directly because the generated client does not yet wrap it.
+        Same shape as :meth:`list_tables` so :meth:`get_tree` can
+        treat volumes as a third sibling list alongside tables +
+        models.
+
+        Args:
+            catalog_name: Name of the parent catalog.
+            schema_name: Name of the parent schema.
+
+        Returns:
+            A list of volume dicts.
+        """
+        url = "/api/2.1/unity-catalog/volumes"
+        params = {"catalog_name": catalog_name, "schema_name": schema_name}
+        http = self._client.get_async_httpx_client()
+        resp = await http.get(url, params=params)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        return data.get("volumes", [])
+
+    @wrap_catalog_errors
     async def get_tags(self, securable_type: str, full_name: str) -> list[dict[str, Any]]:
         """Return tags for a securable (catalog, schema, or table).
 

@@ -16,6 +16,11 @@
    pick the right partial.  Default is 'federation' so any page that
    does not thread active_page (home, table-detail, schema-detail,
    etc.) keeps showing the catalog tree it had before. #}
+{# Phase 23 follow-up: volumes + models no longer have their own
+   rail icon (they render inline in the catalog tree alongside
+   tables).  Their pages still set ``active_page='volumes'`` /
+   ``='models'``, but the section maps to ``federation`` so the
+   catalog tree stays visible in the context-panel. #}
 {% set _section_map = {
     'connections': 'federation',
     'external_locations': 'federation',
@@ -26,11 +31,11 @@
     'workspace': 'workspace',
     'jobs': 'jobs',
     'alerts': 'alerts',
-    'volumes': 'volumes',
+    'volumes': 'federation',
     'dashboards': 'dashboards',
     'branches': 'branches',
     'mlflow': 'mlflow',
-    'models': 'models',
+    'models': 'federation',
     'audit': 'admin',
     'admin': 'admin',
     'admin_audit': 'admin',
@@ -39,7 +44,6 @@
 <body hx-boost="true"
       hx-target="#main-content"
       hx-select="#main-content"
-      hx-select-oob="#pql-context-panel"
       hx-swap="outerHTML show:window:top"
       {% if list_page is defined and list_page %}data-pql-refresh="1"{% endif %}>
     <nav class="navbar navbar-expand bg-body-tertiary border-bottom px-3 pql-topbar">
@@ -170,7 +174,7 @@
          re-attachments are live before Alpine's x-data walk begins.
          MUST stay before the Alpine CDN script —
          scripts/check-frontend-bootstrap-order.sh asserts the ordering. -->
-    <script type="module" src="/static/js/bootstrap.js?v=sprint23-context-panel-oob"></script>
+    <script type="module" src="/static/js/bootstrap.js?v=sprint23-volumes-in-tree"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
         // Auto-attach the CSRF token from the <meta> tag to every HTMX

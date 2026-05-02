@@ -137,6 +137,27 @@ async def api_tree_search(request: Request, q: str, limit: int = 50) -> dict[str
                             break
                 if len(matches) >= capped:
                     break
+            volumes_obj = schema.get("volumes")
+            if isinstance(volumes_obj, list):
+                for volume in volumes_obj:
+                    if not isinstance(volume, dict):
+                        continue
+                    volume_name = str(volume.get("name") or "")
+                    if not volume_name:
+                        continue
+                    if needle in volume_name.lower():
+                        if _maybe_add(
+                            {
+                                "kind": "volume",
+                                "full_name": f"{schema_fqn}.{volume_name}",
+                                "catalog": catalog_name,
+                                "schema": schema_name,
+                                "volume": volume_name,
+                            }
+                        ):
+                            break
+                if len(matches) >= capped:
+                    break
             models_obj = schema.get("models")
             if isinstance(models_obj, list):
                 for model in models_obj:
