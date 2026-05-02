@@ -18,6 +18,7 @@ from fastapi.responses import (
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+import pointlessql
 from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
 from pointlessql.api.admin_external_writes_routes import router as admin_external_writes_router
 from pointlessql.api.admin_routes import router as admin_router
@@ -119,6 +120,11 @@ _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
 # the global once here means every template — including ones rendered
 # in tests via ``TestClient`` — can call it without a per-route hook.
 _TEMPLATES.env.globals["help"] = _get_help  # pyright: ignore[reportArgumentType]
+
+# Asset cache-bust token.  Bumps automatically with every release;
+# templates use ``?v={{ asset_version }}`` instead of hand-edited
+# per-edit strings.
+_TEMPLATES.env.globals["asset_version"] = pointlessql.__version__
 
 
 _original_template_response = _TEMPLATES.TemplateResponse
@@ -464,6 +470,25 @@ app.include_router(mlflow_html_router)
 app.include_router(mlflow_proxy_router)
 app.include_router(models_router)
 app.include_router(models_html_router)
+_STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"
+
+
+@app.get("/static/css/style.css", include_in_schema=False)
+async def _style_css() -> Response:
+    """Serve the master stylesheet with the cache-bust token
+    rewritten to ``__version__``.
+
+    Browsers cache ``@import`` URLs independently of their referring
+    sheet, so the parent's cache-bust does not propagate.  Rewriting
+    on the fly lets a single ``__version__`` bump invalidate every
+    imported sub-sheet at once without a build step.
+    """
+    body = _STYLE_CSS_PATH.read_text().replace(
+        "?v=ASSET_VERSION", f"?v={pointlessql.__version__}",
+    )
+    return Response(body, media_type="text/css")
+
+
 app.mount(
     "/static",
     StaticFiles(directory=str(_FRONTEND_DIR)),
