@@ -51,8 +51,81 @@ export function sqlEditor() {
         elapsedSeconds: 0,
         _tickHandle: null,
 
-        // -- EXPLAIN (Sprint 53) ----------------------------------------
+        // -- EXPLAIN (Sprint 53; Sprint 23 added structured plan) -----
         explainText: null,
+        explainPlan: null,
+        explainShowJson: false,
+
+        // Walk the parsed JSON plan returned by DuckDB's
+        // ``enable_profiling='json'`` pragma into a flat list of
+        // ``{ name, timing, cardinality, detail, depth, children, path }``
+        // entries the template iterates over.  Skips the top-level
+        // root (its operator info is empty) and starts at its
+        // children — typically an ``EXPLAIN_ANALYZE`` wrapper, then
+        // the actual plan.
+        flattenPlan(node, depth, path = '') {
+            if (!node) return [];
+            const out = [];
+            const children = Array.isArray(node.children) ? node.children : [];
+            // Top-level root (depth 0) has no operator_name; descend
+            // straight into its children at depth 0.
+            if (depth === 0 && !node.operator_name) {
+                for (let i = 0; i < children.length; i++) {
+                    out.push(...this.flattenPlan(children[i], 0, `${i}`));
+                }
+                return out;
+            }
+            const name = node.operator_name || node.operator_type || 'UNKNOWN';
+            const timing = (typeof node.operator_timing === 'number')
+                ? node.operator_timing : null;
+            const card = (typeof node.operator_cardinality === 'number')
+                ? node.operator_cardinality : null;
+            const extra = node.extra_info && typeof node.extra_info === 'object'
+                ? node.extra_info : {};
+            // Pick the most informative single line of extra_info to
+            // render inline under the node.  Estimated Cardinality
+            // and Projections are the most-asked-for, so prefer those.
+            let detail = null;
+            if (Array.isArray(extra.Projections) && extra.Projections.length > 0) {
+                detail = 'Projections: ' + extra.Projections.slice(0, 3).join(', ')
+                    + (extra.Projections.length > 3 ? ' …' : '');
+            } else if (typeof extra.__text__ === 'string' && extra.__text__) {
+                detail = extra.__text__;
+            } else {
+                const interesting = ['Filters', 'Conditions', 'Estimated Cardinality', 'Function'];
+                for (const k of interesting) {
+                    if (extra[k] != null) {
+                        const v = Array.isArray(extra[k]) ? extra[k].join(', ') : String(extra[k]);
+                        detail = `${k}: ${v}`;
+                        break;
+                    }
+                }
+            }
+            out.push({
+                name,
+                timing,
+                cardinality: card,
+                detail,
+                depth,
+                children: children.length,
+                path,
+            });
+            for (let i = 0; i < children.length; i++) {
+                out.push(...this.flattenPlan(children[i], depth + 1, `${path}.${i}`));
+            }
+            return out;
+        },
+
+        // Compact human-readable byte formatting for the plan
+        // header line (peak memory, etc.).  Mirrors the simple-units
+        // pattern used in the catalog tree's volume sidebar.
+        formatBytes(n) {
+            if (n == null || isNaN(n)) return '';
+            if (n < 1024) return `${n} B`;
+            if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KiB`;
+            if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MiB`;
+            return `${(n / 1024 / 1024 / 1024).toFixed(2)} GiB`;
+        },
 
         // -- Chart view (Sprint 54) -------------------------------------
         // ``viewMode`` toggles between ``'table'`` (default) and

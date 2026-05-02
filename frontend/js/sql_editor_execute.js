@@ -54,6 +54,7 @@ export const executeMethods = {
             this.errorTitle = 'Nothing to run';
             this.result = null;
             this.explainText = null;
+            this.explainPlan = null;
             return;
         }
         const explain = !!(opts && opts.explain);
@@ -61,6 +62,7 @@ export const executeMethods = {
         this.error = null;
         this.result = null;
         this.explainText = null;
+        this.explainPlan = null;
         this.currentQueryId = this._generateQueryId();
         this._startElapsed();
         const started = performance.now();
@@ -76,6 +78,7 @@ export const executeMethods = {
         if (res.ok && res.data) {
             if (res.data.is_explain) {
                 this.explainText = res.data.explain_text || '(empty plan)';
+                this.explainPlan = res.data.explain_plan || null;
                 this.referencedTables = res.data.referenced_tables || [];
                 this.lastRun = {
                     ok: true,

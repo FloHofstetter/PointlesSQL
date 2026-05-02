@@ -29,6 +29,30 @@
         max-width: 100%;
     }
     .pql-sql-results-wrap table { font-size: 0.85rem; }
+    .pql-sql-explain-tree {
+        background: var(--bs-secondary-bg);
+        border-radius: 0.25rem;
+        padding: 0.75rem 1rem;
+        max-height: 50vh;
+        overflow: auto;
+    }
+    .pql-sql-explain-list { font-size: 0.85rem; }
+    .pql-sql-explain-node {
+        position: relative;
+        padding: 0.15rem 0;
+    }
+    .pql-sql-explain-node-bullet {
+        display: inline-block;
+        width: 1rem;
+        text-align: center;
+        color: var(--bs-secondary-color);
+    }
+    .pql-sql-explain-detail {
+        opacity: 0.85;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     .pql-sql-explain-panel {
         background: var(--bs-secondary-bg);
         border-radius: 0.25rem;
@@ -194,10 +218,73 @@
 
             <template x-if="explainText">
                 <div>
-                    <div class="fw-semibold small mb-2">
-                        <i class="bi bi-diagram-3"></i> Query plan
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="fw-semibold small">
+                            <i class="bi bi-diagram-3"></i> Query plan
+                        </div>
+                        <template x-if="explainPlan">
+                            <button type="button"
+                                    class="btn btn-link btn-sm p-0 small text-muted"
+                                    @click="explainShowJson = !explainShowJson"
+                                    x-text="explainShowJson ? 'Show tree' : 'Show raw JSON'"></button>
+                        </template>
                     </div>
-                    <div class="pql-sql-explain-panel" x-text="explainText"></div>
+
+                    {# Sprint 23 — structured plan tree.  Renders the
+                       parsed JSON returned from DuckDB's
+                       ``PRAGMA enable_profiling='json'`` mode as a
+                       collapsible indented list.  Falls back to the
+                       legacy ``<pre>`` JSON dump if ``explainPlan``
+                       is missing (older clients, parse failures). #}
+                    <template x-if="explainPlan && !explainShowJson">
+                        <div class="pql-sql-explain-tree">
+                            <div class="small text-muted mb-2">
+                                <span x-show="explainPlan.latency != null">
+                                    Latency:
+                                    <strong x-text="(explainPlan.latency * 1000).toFixed(2) + ' ms'"></strong>
+                                </span>
+                                <span x-show="explainPlan.cumulative_cardinality != null" class="ms-3">
+                                    Rows:
+                                    <strong x-text="explainPlan.cumulative_cardinality"></strong>
+                                </span>
+                                <span x-show="explainPlan.total_memory_allocated != null && explainPlan.total_memory_allocated > 0" class="ms-3">
+                                    Peak memory:
+                                    <strong x-text="formatBytes(explainPlan.total_memory_allocated)"></strong>
+                                </span>
+                            </div>
+                            <ul class="list-unstyled mb-0 pql-sql-explain-list">
+                                <template x-for="node in flattenPlan(explainPlan, 0)"
+                                          :key="node.path">
+                                    <li :style="{ marginLeft: (node.depth * 1.25) + 'rem' }"
+                                        class="pql-sql-explain-node">
+                                        <span class="pql-sql-explain-node-bullet">
+                                            <i class="bi"
+                                               :class="node.children > 0 ? 'bi-caret-down-fill' : 'bi-dot'"></i>
+                                        </span>
+                                        <span class="font-monospace small fw-semibold"
+                                              x-text="node.name"></span>
+                                        <span class="text-muted small ms-2"
+                                              x-show="node.timing != null">
+                                            <span x-text="(node.timing * 1000).toFixed(2) + ' ms'"></span>
+                                        </span>
+                                        <span class="text-muted small ms-2"
+                                              x-show="node.cardinality != null && node.cardinality > 0">
+                                            ·
+                                            <span x-text="node.cardinality + ' rows'"></span>
+                                        </span>
+                                        <template x-if="node.detail">
+                                            <div class="text-muted small ms-3 font-monospace pql-sql-explain-detail"
+                                                 x-text="node.detail"></div>
+                                        </template>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+
+                    <template x-if="!explainPlan || explainShowJson">
+                        <div class="pql-sql-explain-panel" x-text="explainText"></div>
+                    </template>
                 </div>
             </template>
 

@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **SQL editor: structured EXPLAIN plan tree.**  Replaces the raw
+  ASCII-art tree DuckDB returns from ``EXPLAIN ANALYZE`` with a
+  proper indented operator tree carrying per-node timing, row
+  cardinality, and inline ``Projections``/``Filters``/``Estimated
+  Cardinality`` details.  ``_sql.py`` flips DuckDB into
+  ``PRAGMA enable_profiling='json'`` mode so the same EXPLAIN
+  call returns a structured profiling JSON tree; the route layer
+  parses it and ships it as a new ``explain_plan`` field on the
+  ``/api/sql/execute`` response (``explain_text`` stays as a
+  pretty-printed JSON fallback for older clients / cURL).  The
+  Alpine ``flattenPlan`` helper walks the tree into a flat list
+  the template iterates with ``margin-left`` indentation.  A
+  small "Show raw JSON" toggle is available for users who need
+  to inspect the full profiling envelope.
+
 ### Fixed
 
 - **SQL editor result table no longer overflows the results card.**

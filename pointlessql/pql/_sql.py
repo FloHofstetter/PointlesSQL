@@ -117,6 +117,15 @@ def run_sql(
             for ref in prepared.refs:
                 register_delta_view(conn, ref, approved_tables[ref])
 
+            if explain:
+                # Sprint 23 — switch DuckDB into JSON profiling mode so
+                # ``EXPLAIN ANALYZE`` returns a structured tree the
+                # frontend can render with proper indentation, badges,
+                # and per-operator timing.  The legacy ASCII tree is
+                # preserved as a fallback by the route layer (parses
+                # the JSON, formats it back to a readable text blob).
+                conn.execute("PRAGMA enable_profiling='json'")
+
             final_sql = (
                 f"EXPLAIN ANALYZE {prepared.rewritten_sql}" if explain else prepared.rewritten_sql
             )

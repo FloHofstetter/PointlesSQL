@@ -21,6 +21,7 @@ a stale history row is not a bypass.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -383,21 +384,47 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         )
 
     explain_text: str | None = None
+    explain_plan: dict[str, Any] | None = None
     if explain:
-        # DuckDB returns EXPLAIN ANALYZE as a set of rows with
-        # column(s) like ``explain_key`` / ``explain_value``.
-        # Flatten everything into a single monospace blob that
-        # the frontend can drop straight into a <pre>.
-        lines: list[str] = []
+        # Sprint 23 — DuckDB is now in JSON profiling mode (set by
+        # ``_sql.py`` before the EXPLAIN ANALYZE call), so the
+        # result-set carries a single JSON blob instead of the
+        # legacy ASCII tree.  Find the JSON cell, parse it for the
+        # frontend's structured renderer, AND keep a pretty-printed
+        # text fallback so older clients / cURL still see something
+        # readable.
+        plan_text: str | None = None
         for row in result.rows:
-            lines.append("\t".join("" if cell is None else str(cell) for cell in row))
-        explain_text = "\n".join(lines)
+            for cell in row:
+                if isinstance(cell, str) and cell.lstrip().startswith(("{", "[")):
+                    plan_text = cell
+                    break
+            if plan_text is not None:
+                break
+        if plan_text is not None:
+            try:
+                parsed = json.loads(plan_text)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, dict):
+                explain_plan = parsed
+                explain_text = json.dumps(parsed, indent=2)
+            else:
+                explain_text = plan_text
+        else:
+            # Defensive fallback: pragma may have failed; flatten
+            # whatever DuckDB returned into a tab-joined blob.
+            lines: list[str] = []
+            for row in result.rows:
+                lines.append("\t".join("" if cell is None else str(cell) for cell in row))
+            explain_text = "\n".join(lines)
 
     return {
         "query_id": query_id,
         "history_id": history_id,
         "is_explain": explain,
         "explain_text": explain_text,
+        "explain_plan": explain_plan,
         "columns": result.columns,
         "rows": result.rows,
         "row_count": result.row_count,
