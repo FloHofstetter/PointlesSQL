@@ -17,7 +17,17 @@
         overflow: hidden;
     }
     .pql-sql-editor-host .cm-editor { height: 100%; }
-    .pql-sql-results-wrap { overflow-x: auto; }
+    /* The results card is ``display: flex`` (Bootstrap default for
+       ``.card``); its ``.card-body`` is a flex item that defaults to
+       ``min-width: auto`` and refuses to shrink below the wide
+       ``<table>``'s intrinsic width.  The result was the table running
+       past the card's right edge.  ``min-width: 0`` lets the body
+       shrink so ``overflow-x: auto`` on the wrap kicks in cleanly. */
+    .pql-sql-results-card .card-body { min-width: 0; }
+    .pql-sql-results-wrap {
+        overflow-x: auto;
+        max-width: 100%;
+    }
     .pql-sql-results-wrap table { font-size: 0.85rem; }
     .pql-sql-explain-panel {
         background: var(--bs-secondary-bg);
@@ -171,7 +181,7 @@
         </div>
     </div>
 
-    <div class="card" x-show="result || error || explainText" x-cloak>
+    <div class="card pql-sql-results-card" x-show="result || error || explainText" x-cloak>
         <div class="card-body">
             <template x-if="error">
                 <div class="alert alert-danger mb-0 mb-0">

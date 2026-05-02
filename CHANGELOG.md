@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **SQL editor result table no longer overflows the results card.**
+  ``frontend/templates/pages/sql_editor.html`` declared
+  ``.pql-sql-results-wrap { overflow-x: auto }`` to make wide
+  result tables scroll horizontally inside the card.  But the
+  parent ``.card-body`` is a flex item of the Bootstrap
+  ``display: flex`` ``.card`` and defaults to
+  ``min-width: auto``, so it refused to shrink below the
+  intrinsic min-content width of the wide ``<table>`` (every
+  cell carries ``text-nowrap``, so columns like a UUID
+  ``_lineage_row_id`` push the table well past the card width).
+  Added a ``.pql-sql-results-card`` modifier whose
+  ``.card-body`` is ``min-width: 0``, so the wrap's
+  ``overflow-x: auto`` actually clips and scrolls instead of
+  bleeding past the card's right edge.  Verified live via
+  Playwright at 1400 px viewport: card width 1036 px, wrap
+  client width 1002 px, table width 1519 px,
+  ``wrapScrolls=true``, ``cardOverflowsViewport=false``.
+
 - **Alpine init crash on every HTMX-boosted page (root cause of
   the blank Preview tab + every other un-initialised Alpine
   component).**  ``base.html`` registered an
