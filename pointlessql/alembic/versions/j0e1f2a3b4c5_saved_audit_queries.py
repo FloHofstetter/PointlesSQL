@@ -1,6 +1,6 @@
-"""saved_audit_queries table + 5 starter rows (Sprint 18.3)
+"""saved_audit_queries table + 5 starter rows
 
-Sprint 18 (Audit Cockpit) adds a separate "saved query" surface
+ (Audit Cockpit) adds a separate "saved query" surface
 scoped to the audit tables.  See
 ``pointlessql/models/saved_audit_queries.py`` for the column
 contract; this migration creates the table and seeds the starter

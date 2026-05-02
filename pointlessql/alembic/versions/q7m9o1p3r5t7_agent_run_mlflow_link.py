@@ -1,4 +1,4 @@
-"""agent_run mlflow_run_id link (Phase 21.2)
+"""agent_run mlflow_run_id link
 
 Adds nullable ``mlflow_run_id`` columns to ``agent_runs`` and
 ``agent_run_operations`` so the cross-link layer in

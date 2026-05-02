@@ -9,7 +9,7 @@ Spark, ``cp`` of parquet files, or any other foreign tool.
 
 Detection-only.  See
 ``project_full_autonomous_audit_critical_path.md`` for the
-hard-block alternative deferred to Phase 16+.
+hard-block alternative deferred to +.
 
 The scanner reuses the
 :func:`pointlessql.services.table_stats.read_delta_log_version`

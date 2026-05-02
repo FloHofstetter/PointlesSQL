@@ -111,7 +111,7 @@ def extract_column_lineage(
 ) -> list[ColumnEdgeSpec]:
     """Walk the AST of *sql* per output column and return column-edge specs.
 
-    Sprint 15.6.3 — best-effort column-lineage extraction for
+    best-effort column-lineage extraction for
     ``pql.sql``.  Uses :func:`sqlglot.lineage.lineage` to derive the
     set of source columns each SELECT projection depends on, then
     classifies the root expression to pick a ``transform_kind``:

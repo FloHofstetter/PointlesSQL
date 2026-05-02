@@ -271,7 +271,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
         }
 
     def _anomalies_block() -> dict[str, int]:
-        """Sprint 18.5 — count today's anomaly verdicts for the home banner.
+        """Count today's anomaly verdicts for the home banner.
 
         Best-effort: any failure (table missing on a fresh install,
         SQL hiccup) downgrades to ``{warn: 0, critical: 0}`` so the
@@ -309,7 +309,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
             return {"warn": 0, "critical": 0}
 
     def _latest_review_block() -> dict[str, Any] | None:
-        """Sprint 19.2.1 — surface yesterday's Audit-Reviewer-Agent verdict.
+        """Surface yesterday's Audit-Reviewer-Agent verdict.
 
         Best-effort, mirrors :func:`_anomalies_block`: any failure
         (table missing on a fresh install, no review yet) returns

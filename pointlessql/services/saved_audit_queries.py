@@ -1,6 +1,6 @@
 """CRUD + safe-execute layer for ``saved_audit_queries``.
 
-Sprint 18.3 — admin-only audit cockpit surface.  Three things
+admin-only audit cockpit surface.  Three things
 this module owns that ``saved_queries`` does not:
 
 * an explicit table allow-list (only the metadata DB's audit
@@ -185,7 +185,7 @@ def create(
         sql_text: SQL to save.  Validated against
             :data:`AUDIT_READ_ALLOWLIST` before the row lands so
             an obvious mistake fails fast.
-        alert_threshold_count: Sprint 18.5 alert threshold.
+        alert_threshold_count:  alert threshold.
 
     Returns:
         Serialised row dict.

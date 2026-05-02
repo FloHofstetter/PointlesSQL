@@ -1,4 +1,4 @@
-"""lineage_column_map table for column-level lineage (Sprint 15.6.1)
+"""lineage_column_map table for column-level lineage
 
 Sibling to ``lineage_row_edges`` covering the orthogonal column
 dimension.  Every PQL primitive populates one row per
@@ -11,7 +11,7 @@ sqlglot-AST path on ``pql.sql``.
 
 Volume contract: bounded by **schema breadth**, not row count.  The
 canonical Hermes-Medallion run produces ~26 column edges total
-against the 102 row edges + 2 rejects from Phase 15.5.  The
+against the 102 row edges + 2 rejects from .  The
 ``record_column_edges`` service helper enforces a 1000-edge cap per
 op as a safety net for pathological ``pql.sql`` queries.
 

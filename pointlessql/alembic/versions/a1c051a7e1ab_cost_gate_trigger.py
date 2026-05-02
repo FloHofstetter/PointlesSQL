@@ -2,7 +2,7 @@
 
 Adds a nullable JSON-as-Text column that captures the EXPLAIN
 snapshot the cost gate fired on, so a reviewer of a denied run can
-see WHY without re-running the query (Sprint 14.1).
+see WHY without re-running the query.
 
 Revision ID: a1c051a7e1ab
 Revises: b55f1020b8a4

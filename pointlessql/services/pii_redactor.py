@@ -1,7 +1,7 @@
-"""Write-time PII redaction for value-change rows (Sprint 20.1).
+"""Write-time PII redaction for value-change rows.
 
-Phase 18.2 added render-time masking that gates cleartext behind an
-admin role at the API boundary.  Sprint 20.1 closes the
+ added render-time masking that gates cleartext behind an
+admin role at the API boundary.   closes the
 cleartext-at-rest gap: when ``settings.audit.pii_mode`` is anything
 other than ``store_clear``, the bulk-insert into
 ``lineage_value_changes`` redacts ``old_value`` / ``new_value`` for
@@ -23,7 +23,7 @@ Two PII-detection paths run in OR order:
 
 Three modes (``settings.audit.pii_mode``):
 
-* ``store_clear`` — pre-Phase-20 behaviour, no redaction.
+* ``store_clear`` — earlier behaviour, no redaction.
 * ``hash_only`` — equality-joinable HMAC-SHA256, hex-encoded, first
   16 chars.  Equality across runs lets analysts pivot rows by
   hashed identity (e.g. "every change to the same email") without
@@ -77,7 +77,7 @@ PII_NAME_PATTERN = re.compile(
 Liberal on purpose: false positives mask non-PII columns
 (low-impact: a hash is harder to read), false negatives leak
 cleartext (high-impact).  Operators wanting tighter control set
-tags in soyuz and rely on the Phase-18 render-time masking
+tags in soyuz and rely on the  render-time masking
 instead.
 """
 

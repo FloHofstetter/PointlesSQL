@@ -115,7 +115,7 @@ class PQL:
         else:
             effective = principal or os.environ.get("POINTLESSQL_PRINCIPAL")
             # Forward X-Agent-Run-Id outbound on every UC call so
-            # soyuz's audit log (Sprint 14.4) can attribute the
+            # soyuz's audit log can attribute the
             # mutation to the owning run.  ``None`` skips the header.
             if effective:
                 self._client = make_principal_client(
@@ -162,7 +162,7 @@ class PQL:
         )
 
     def table_at_version(self, full_name: str, version: int) -> Any:
-        """Read a Delta table as of a specific historical version (Sprint 20.3).
+        """Read a Delta table as of a specific historical version.
 
         Always materialises through pandas — the engine abstraction
         targets current-version reads only, and per-engine
@@ -226,7 +226,7 @@ class PQL:
         helper handles parsing, the approved-tables guard, view
         registration, execution, row-cap slicing, and result framing.
 
-        Lineage propagation (Sprint 15.8): when a referenced source
+        Lineage propagation: when a referenced source
         table carries ``_lineage_row_id`` and the agent will feed the
         result frame into :meth:`write_table` or :meth:`merge` with
         row-edges expected, the SELECT must explicitly project the
@@ -277,19 +277,18 @@ class PQL:
                 that produced *df*.  When set, drives the OpenLineage
                 event so the resulting edge ``source_table_fqn →
                 full_name`` shows up on the lineage card.
-            source_model_uri: Sprint 21.7 — optional registered-model
+            source_model_uri: optional registered-model
                 URI ``models:/cat.sch.model/<version>`` declaring
                 that *df* is the output of inference against a model.
                 Stamps every row-edge with the model URI so the
                 model-detail Lineage DAG can paint *full_name* as a
                 downstream prediction node.  Requires
                 ``source_table_fqn`` AND ``_lineage_row_id`` on *df*
-                (Sprint 15.8 caveat) — without either, the row-edge
+                ( caveat) — without either, the row-edge
                 hook short-circuits and the URI has nowhere to land.
             derivations: Optional declarative mapping of derived
-                target columns to their *true* source-column names
-                (Sprint 15.6.2).  Effective only when
-                ``source_table_fqn`` is also set.
+                target columns to their *true* source-column names.
+                Effective only when ``source_table_fqn`` is also set.
         """
         write_table(
             client=self._client,
@@ -345,7 +344,7 @@ class PQL:
                 ``source_table_fqn → target`` shows up on the lineage
                 card.  When *source* is itself a UC string the helper
                 derives this automatically below.
-            source_model_uri: Sprint 21.8 — optional registered-model
+            source_model_uri: optional registered-model
                 URI ``models:/cat.sch.model/<version>`` declaring
                 that *source* is the output of inference against a
                 model.  Stamps every row-edge with the model URI so
@@ -356,14 +355,14 @@ class PQL:
                 for rows that won't land (NULL ``on`` key, duplicate
                 key in source) and record them on
                 ``lineage_row_rejects`` so the run-detail UI can
-                explain dropped rows (Sprint 15.5.3).  Default
+                explain dropped rows.  Default
                 ``False`` keeps the cost off the hot path.
             track_value_changes: First merge after a fresh
                 :meth:`write_table` produces only ``insert`` CDF
                 events, which the helper deliberately skips —
                 value-change rows start landing on the second merge
                 where ``update_preimage`` / ``update_postimage``
-                pairs are emitted (Sprint 15.8 doc-pin).  When ``True`` and
+                pairs are emitted ( doc-pin).  When ``True`` and
                 ``strategy="upsert"``, read the Delta Change Data
                 Feed for the merge's commit range and record one
                 ``lineage_value_changes`` row per actually-different
@@ -372,9 +371,9 @@ class PQL:
                 Default ``False`` keeps the CDF read off the hot
                 path.
             derivations: Optional declarative mapping of derived
-                target columns to their *true* source-column names
-                (Sprint 15.6.2).  Lets the column-trace UI surface
-                upstream-of-merge ``.assign(...)`` derivations.
+                target columns to their *true* source-column names.
+                Lets the column-trace UI surface upstream-of-merge
+                ``.assign(...)`` derivations.
 
         Returns:
             A dict carrying ``strategy`` and the deltalake merge
@@ -409,7 +408,7 @@ class PQL:
     ) -> Any:
         """Wrap a training block so MLflow autolog fires + audit row lands.
 
-        Sprint 21.3 — agents call::
+        agents call::
 
             with pql.training_context(framework="sklearn"):
                 model.fit(X, y)
@@ -421,7 +420,7 @@ class PQL:
         ``training_params_json`` column. Best-effort: works without
         MLflow installed (audit row still lands, snapshot is empty).
 
-        BUG-grand-05 / Phase 21.5.5 — pass both ``source_table_fqn``
+        BUG-grand-05 / pass both ``source_table_fqn``
         and ``model_fqn`` to anchor a single training-source edge in
         ``lineage_row_edges`` so the model-detail Lineage DAG paints
         the upstream training source.  Either alone or both unset →
@@ -535,7 +534,7 @@ class PQL:
         dropped per-row lineage because the N-to-1 fan-in cannot
         carry through the merge ID-synthesis formula.  This primitive
         records one edge per (source row → target group) pair so
-        Sprint 15.5.2's row-trace UI can surface the fan-in.
+        's row-trace UI can surface the fan-in.
 
         ``source_table_fqn`` is **required** here (unlike the
         optional kwarg on :meth:`merge` and :meth:`write_table`):
@@ -561,7 +560,7 @@ class PQL:
                 target columns (those produced by upstream
                 ``.assign(...)``, arithmetic, or other DataFrame
                 ops before this call) to their *true* source-column
-                names.  Sprint 15.6.2 — populates ``derived`` rows
+                names.  populates ``derived`` rows
                 in ``lineage_column_map`` so the column-trace UI
                 can answer "where did ``placed_day`` come from?"
                 even though the primitive itself only saw the
@@ -653,7 +652,7 @@ class PQL:
     ) -> str:
         """Create a Delta branch of *source_schema* under *branch_name*.
 
-        Phase 16.5.2 entry point.  Drops a fresh UC schema named
+         entry point.  Drops a fresh UC schema named
         ``catalog.branch_name`` (catalog is inherited from
         *source_schema*) whose Delta tables either symlink (local
         FS) or deep-copy (cloud, opt-in) the source's parquet files,
@@ -690,7 +689,7 @@ class PQL:
     def branch_promote(self, branch_schema: str) -> dict[str, str]:
         """Promote a branch to be the new parent via UC pointer-swap.
 
-        Phase 16.5.4 entry point.  Refuses promotion when the parent
+         entry point.  Refuses promotion when the parent
         moved between branch creation and now (raises
         :class:`BranchPromotionConflictError`); recovery is to discard
         and re-branch.  v1 is pointer-swap-only — the parent is
@@ -735,7 +734,7 @@ class PQL:
     def branch_discard(self, branch_schema: str) -> None:
         """Permanently remove a Delta branch and its UC namespace.
 
-        Phase 16.5.3 entry point.  Idempotent for already-discarded
+         entry point.  Idempotent for already-discarded
         branches (no-op + warning log).  Refuses to discard a
         promoted branch — promotion is final.  Cleans up the local-
         FS storage tree without touching the source parquets that

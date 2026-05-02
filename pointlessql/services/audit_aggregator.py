@@ -1,4 +1,4 @@
-"""SQL aggregation backbone for the Phase-18 Audit Cockpit.
+"""SQL aggregation backbone for the  Audit Cockpit.
 
 Three pure-SQL aggregations compose every cockpit surface:
 
@@ -621,7 +621,7 @@ def anomalies(
     """
     if window_days < 1:
         raise ValueError("window_days must be >= 1")
-    # Sprint 19.1 baseline-coverage fix: when the caller bounds
+    #  baseline-coverage fix: when the caller bounds
     # ``since`` to (e.g.) yesterday, the previous behaviour returned
     # only points inside ``[since, until)`` to the rolling-baseline
     # loop, which meant the first bin in the window had an empty

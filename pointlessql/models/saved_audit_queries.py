@@ -1,6 +1,6 @@
 """Saved audit queries — admin-scoped SQL bookmarks for the cockpit.
 
-Sprint 18.3 — separate from :class:`SavedQuery` because:
+separate from :class:`SavedQuery` because:
 
 * visibility is admin-only, not the owner-+-shared model the SQL
   editor uses;
@@ -19,7 +19,7 @@ Five starter rows seed at upgrade time:
 
 The :attr:`is_starter` flag prevents PATCH/DELETE on those rows
 so an upgrade keeps the canonical examples stable.
-``alert_threshold_count`` plugs into Sprint 18.5's saved-query
+``alert_threshold_count`` plugs into 's saved-query
 alert mechanism: when a scheduled run of the query returns more
 rows than this number, an alert fires through the existing
 ``/api/alerts`` machinery.
@@ -63,7 +63,7 @@ class SavedAuditQuery(Base):
             :class:`SavedQuery`.
         is_starter: ``True`` for shipped-with-the-app rows; PATCH
             and DELETE refuse on those.
-        alert_threshold_count: Sprint 18.5 — when set and a
+        alert_threshold_count: when set and a
             scheduled run returns more rows than this number, the
             alert dispatcher fires.  ``None`` disables alerting.
         created_at: Insert timestamp.

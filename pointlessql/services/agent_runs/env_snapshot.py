@@ -1,4 +1,4 @@
-"""Hardware/library fingerprint snapshot (Phase 21.4).
+"""Hardware/library fingerprint snapshot.
 
 Captures a compact JSON blob describing the host environment so an
 audit reviewer can answer "what env produced this row?" from the

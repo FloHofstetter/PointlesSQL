@@ -1,6 +1,6 @@
-"""Error family for the Phase 16.5 Delta-branching primitives.
+"""Error family for the  Delta-branching primitives.
 
-Mirrors the Phase 16 ``RollbackError`` family in spirit: hard,
+Mirrors the  ``RollbackError`` family in spirit: hard,
 domain-named exceptions raised by ``pql.branch`` /
 ``pql.branch_promote`` / ``pql.branch_discard`` so callers (and
 the Control-Room UI) can map them onto specific HTTP status codes

@@ -1,4 +1,4 @@
-"""unattributed_writes table for external-write detection (Sprint 14.3)
+"""unattributed_writes table for external-write detection
 
 Adds the persistence layer for the Delta-log scanner that flags
 commits whose version is not referenced by any
@@ -8,7 +8,7 @@ Spark, ``cp`` of parquet files, foreign tools).
 
 Detection-only by design.  See
 ``project_full_autonomous_audit_critical_path.md`` for the
-hard-block alternative deferred to Phase 16+.
+hard-block alternative deferred to +.
 
 Revision ID: c3d4f5a6b7e8
 Revises: b27e6ad14ead

@@ -1,9 +1,9 @@
-"""op_name CHECK constraint extended by 'rollback' (Sprint 16.0)
+"""op_name CHECK constraint extended by 'rollback'
 
-Sprint 16.0 opens Phase 16 (First-Class Rollback) by adding the
+ opens  (First-Class Rollback) by adding the
 ``pql.rollback`` primitive, which emits ``agent_run_operations`` rows
 with ``op_name = 'rollback'``.  The CHECK constraint installed by
-``e5f6a7b8c9d0`` (Sprint 15.5.1) covers
+``e5f6a7b8c9d0`` covers
 ``autoload``/``merge``/``write_table``/``sql``/``aggregate`` but
 rejects the new value with ``CHECK constraint failed``.
 

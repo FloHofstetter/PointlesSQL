@@ -1,4 +1,4 @@
-"""Reverse-proxy for the embedded MLflow server (Phase 21.0).
+"""Reverse-proxy for the embedded MLflow server.
 
 The PointlesSQL "ML" tab embeds the MLflow UI in an iframe at
 ``/mlflow/``. The MLflow subprocess listens on a separate port
@@ -10,7 +10,7 @@ upstream call.
 Auth model: anonymous users (``user.id == 0``) get HTTP 401; any
 authenticated user can use the iframe. The proxy injects an
 ``X-MLflow-User`` header with the operator's email so downstream
-audit hooks (Phase 21.2) can correlate MLflow runs to PointlesSQL
+audit hooks can correlate MLflow runs to PointlesSQL
 agent-runs without an out-of-band lookup.
 
 Streaming: this proxy buffers full request + response bodies. MLflow's
@@ -18,7 +18,7 @@ typical bodies are JSON metadata or small images, so buffering keeps
 the implementation small. The artifact-upload path
 (``log_artifact``) does NOT go through here — MLflow's UC-OSS client
 talks to soyuz's storage_location URL directly with
-``LocalArtifactRepository`` (see Phase 21.1's diff report). Only the
+``LocalArtifactRepository`` (see 's diff report). Only the
 MLflow tracking + UI traffic flows through this proxy.
 """
 

@@ -556,7 +556,7 @@ async def _branch_cleanup_executor(
     config: dict[str, Any],
     uc_client: UnityCatalogClient,
 ) -> None:
-    """Run the Phase-16.5 branch auto-cleanup pass.
+    """Run the  branch auto-cleanup pass.
 
     Walks UC schemas, picks ``status='active'`` branches past the
     configured retention, and discards them.  Default-disabled — the

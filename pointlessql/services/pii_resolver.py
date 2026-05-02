@@ -1,6 +1,6 @@
 """Cached PII-tag lookups against soyuz-catalog.
 
-Lineage value-changes (Sprint 15.7) and any future audit surface
+Lineage value-changes and any future audit surface
 that renders raw cell values needs to know whether a column is
 flagged ``PII`` so it can mask the cleartext from non-admin
 viewers.  Soyuz exposes a per-securable tags surface (``GET

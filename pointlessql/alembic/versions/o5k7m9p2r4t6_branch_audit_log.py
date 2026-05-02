@@ -1,4 +1,4 @@
-"""branch_audit_log table (Sprint 16.5.3)
+"""branch_audit_log table
 
 PointlesSQL-side append-only record of every branch life-cycle event
 (create / promote / discard / auto_cleanup).  Survives the discard

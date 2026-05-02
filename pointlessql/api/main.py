@@ -113,7 +113,7 @@ def _format_epoch_ms(value: Any) -> str:
 
 _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
 
-# Phase 23 — contextual help-popover registry (see ``pointlessql/web/
+# contextual help-popover registry (see ``pointlessql/web/
 # help.py``).  Templates resolve slugs via ``{{ help('runs.what-is-a-
 # run') }}`` and render through ``_macros/help_icon.html``.  Registering
 # the global once here means every template — including ones rendered
@@ -196,7 +196,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="external-writes-scan",
         )
 
-    # Sprint 20.2 lineage retention pruner.  Runs as its own
+    #  lineage retention pruner.  Runs as its own
     # asyncio task next to the audit-retention loop — the existing
     # scheduler is built around per-user JobExecutor callbacks that
     # don't fit a system-maintenance task without per-axis None
@@ -217,7 +217,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="lineage-pruner",
         )
 
-    # Sprint 16.5.6 branch auto-cleanup.  Opt-in default-disabled
+    #  branch auto-cleanup.  Opt-in default-disabled
     # (``branch.auto_cleanup_enabled=False``); the loop body itself
     # short-circuits when disabled, so we always start it but it's a
     # cheap no-op until the operator flips the flag.
@@ -226,7 +226,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         name="branch-cleanup",
     )
 
-    # Phase 21.0 MLflow Tracking subprocess.  Optional — only spawned
+    #  MLflow Tracking subprocess.  Optional — only spawned
     # when ``settings.mlflow.enabled`` AND the optional ``mlflow``
     # package is installed (``pip install pointlessql[ml]``).  A
     # startup failure (port collision, missing dep, broken sqlite)
@@ -351,7 +351,7 @@ async def _lineage_pruner_loop(
     factory: Any,
     settings: Settings,
 ) -> None:
-    """Periodic prune of the four lineage tables (Sprint 20.2).
+    """Periodic prune of the four lineage tables.
 
     Active when at least one
     :class:`LineageRetentionSettings` axis has a positive
@@ -388,7 +388,7 @@ async def _branch_cleanup_loop(
     uc: Any,
     settings: Settings,
 ) -> None:
-    """Periodic Phase-16.5 branch auto-cleanup pass.
+    """Periodic  branch auto-cleanup pass.
 
     Wakes once per ``audit.cleanup_interval_seconds`` (default
     24h), then either short-circuits (when
@@ -531,7 +531,7 @@ def _run_dev_server() -> None:
 # CLI surface — Typer app exposed via ``[project.scripts] pointlessql = "...:cli"``
 # ---------------------------------------------------------------------------
 #
-# Why: Sprint 19.2.0 needed an admin-side helper to mint an auditor-scoped
+# Why:  needed an admin-side helper to mint an auditor-scoped
 # API key for the Audit-Reviewer-Agent's daily Hermes job. Rather than
 # layering a separate console script, the existing ``pointlessql`` entry
 # point grew a Typer app: the no-argument invocation still starts the dev

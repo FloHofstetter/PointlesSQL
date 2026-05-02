@@ -1,4 +1,4 @@
-"""HTML page route for the MLflow Tracking tab (Phase 21.0).
+"""HTML page route for the MLflow Tracking tab.
 
 Single-route module that renders the iframe wrapper page at ``/ml``.
 The iframe target ``/mlflow/`` is served by the reverse-proxy in

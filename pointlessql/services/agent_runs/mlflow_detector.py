@@ -1,4 +1,4 @@
-"""MLflow context detection for the operation-recorder hook (Phase 21.2).
+"""MLflow context detection for the operation-recorder hook.
 
 The cross-link layer in :mod:`pointlessql.services.agent_runs.operations`
 calls :func:`detect_mlflow_run_id` after every successful primitive

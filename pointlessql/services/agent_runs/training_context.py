@@ -1,4 +1,4 @@
-"""Training-block wrapper that forces MLflow autolog (Phase 21.3).
+"""Training-block wrapper that forces MLflow autolog.
 
 ``pql.training_context()`` is the entry point an agent uses to wrap
 a training call (sklearn ``.fit()``, torch loop, …).  Inside the
@@ -22,7 +22,7 @@ The whole layer is **best-effort**: if the ``mlflow`` extra is
 not installed, or if any sub-step raises, the wrapper degrades to
 a plain :func:`operation_context` with no autolog and an empty
 ``training_params_json``.  Training failures are NEVER blocked by
-audit-side problems — that's the inverse of the Phase-13.8 forced-
+audit-side problems — that's the inverse of the  forced-
 audit rule for write paths, but matches the ROADMAP "auditability
 of intent, not bit-replay" framing.
 
@@ -151,14 +151,14 @@ def training_context(
     :func:`operation_context` — the audit row lands without
     training-params content.
 
-    BUG-grand-05 / Phase 21.5.5 — when both ``source_table_fqn`` and
+    BUG-grand-05 / when both ``source_table_fqn`` and
     ``model_fqn`` are set, the wrapper emits **one** training-source
     edge into ``lineage_row_edges`` so the model-detail Lineage DAG
     can paint the upstream node (the gold/training source).  The
     edge uses synthetic ``("1" → "1")`` row-ids because training
     reads the WHOLE table — per-row identity isn't meaningful at
     the model-artefact grain.  Mirror of the
-    ``write_table → record_row_edges`` pattern from Phase 15.3.
+    ``write_table → record_row_edges`` pattern from .
 
     Args:
         session_factory: SQLAlchemy session factory (required when
@@ -179,7 +179,7 @@ def training_context(
             ``model_fqn`` the wrapper emits a single
             ``lineage_row_edges`` row anchoring
             ``source_table_fqn → model_fqn`` on the model-detail
-            Lineage DAG (Phase 21.5.5 contract).  Either alone
+            Lineage DAG ( contract).  Either alone
             or both unset → no edge.
         model_fqn: Optional UC FQN of the registered model the
             training will produce.  Drives both the audit-row's
@@ -216,7 +216,7 @@ def training_context(
                 "source_table_fqn": source_table_fqn,
                 "model_fqn": model_fqn,
             }
-            # BUG-grand-05 / Phase 21.5.5 — single synthetic edge
+            # BUG-grand-05 / single synthetic edge
             # because training reads the whole table; row-level
             # provenance is meaningless at the model-artefact grain.
             op_recorder.pending_lineage_edges = {

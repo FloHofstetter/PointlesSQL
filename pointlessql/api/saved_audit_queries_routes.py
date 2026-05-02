@@ -1,4 +1,4 @@
-"""Saved-audit-query CRUD + run + export endpoints (Sprint 18.3).
+"""Saved-audit-query CRUD + run + export endpoints.
 
 Admin-only.  See
 :mod:`pointlessql.services.saved_audit_queries` for the

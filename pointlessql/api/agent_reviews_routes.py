@@ -1,4 +1,4 @@
-"""Agent-review API routes — Sprint 19.2.1.
+"""Agent-review API routes.
 
 Three endpoints, all auditor-gated:
 

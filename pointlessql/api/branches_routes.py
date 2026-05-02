@@ -1,6 +1,6 @@
-"""Branches Control-Room routes (Sprint 16.5.5).
+"""Branches Control-Room routes.
 
-Surfaces the Phase-16.5 Delta-branching primitives behind a
+Surfaces the  Delta-branching primitives behind a
 browser-driven UI plus a JSON API a Hermes plugin or external
 reviewer can call.
 

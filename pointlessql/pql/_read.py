@@ -35,7 +35,7 @@ def read_table(
 
     On success a ``query_history`` row with ``read_kind="pql_table"``
     is written via :func:`pointlessql.services.read_audit.record_read`
-    so the DSGVO read-audit gap (Sprint 14.2) is closed for this
+    so the DSGVO read-audit gap is closed for this
     bypass path.  The audit insert is best-effort — it runs only
     when a session factory is available and never raises into the
     read path.

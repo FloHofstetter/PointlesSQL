@@ -1,7 +1,7 @@
 """Stringy masking helpers for PII-tagged values.
 
-Lineage value-changes (Sprint 15.7) store cleartext old/new values
-in the metadata DB.  Sprint 18.2 keeps the cleartext at rest (the
+Lineage value-changes store cleartext old/new values
+in the metadata DB.   keeps the cleartext at rest (the
 audit trail must be byte-faithful) but renders a masked form in
 the UI when the column is PII-tagged.  The reveal endpoint
 returns the cleartext only after writing an ``audit_log`` row of

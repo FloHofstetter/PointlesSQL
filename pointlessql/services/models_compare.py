@@ -1,4 +1,4 @@
-"""Version-compare diff helpers for the model compare-view (Phase 21.5.4).
+"""Version-compare diff helpers for the model compare-view.
 
 Three pure functions consumed by the
 ``/models/{full_name}/compare`` route to compute the diff between
@@ -12,7 +12,7 @@ two model-version MLflow contexts:
 
 The metric direction heuristic uses substring rules that match
 roughly 90% of common ML metric names.  Domain-specific overrides
-are out of scope for Sprint 21.5; a future enhancement could read a
+are out of scope for ; a future enhancement could read a
 per-metric direction map from the soyuz catalog row.
 """
 

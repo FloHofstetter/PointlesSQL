@@ -1,4 +1,4 @@
-"""agent_run_operations env_snapshot (Phase 21.4)
+"""agent_run_operations env_snapshot
 
 Adds a nullable Text column for an advisory hardware/library
 fingerprint snapshot.  The snapshot is captured at module-import

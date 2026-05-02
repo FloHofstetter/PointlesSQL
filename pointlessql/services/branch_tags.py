@@ -1,4 +1,4 @@
-"""Branch metadata tag schema (Sprint 16.5.1).
+"""Branch metadata tag schema.
 
 Reserves the ``pointlessql.branch.*`` tag namespace on UC schemas to
 mark them as Delta branches, and provides helpers to apply / read /
@@ -12,9 +12,9 @@ not a list of dicts.
 
 Both async and sync variants are provided.  The async path drives
 the existing :class:`UnityCatalogClient` facade and is consumed by
-web routes / Control-Room UI (Sprint 16.5.5).  The sync path drives
+web routes / Control-Room UI.  The sync path drives
 the soyuz client directly and is consumed by ``pql/_branch.py``
-(Sprint 16.5.2 onwards) so the ``pql.branch`` family stays sync,
+( onwards) so the ``pql.branch`` family stays sync,
 matching every other PQL primitive.
 """
 
@@ -345,7 +345,7 @@ async def apply_branch_tags(
 
     The schema must already exist in UC — this function only writes
     metadata.  After this call the schema is ``status=active`` and
-    fully discoverable to the rest of Phase 16.5.
+    fully discoverable to the rest of .
 
     Args:
         uc: UC client (forwards principal + handles soyuz errors).
@@ -406,7 +406,7 @@ async def set_branch_status(
     * :data:`STATUS_DISCARDED` writes :data:`TAG_DISCARDED_AT`.
     * :data:`STATUS_ACTIVE` removes both timestamp tags so a future
       reader does not see stale promote/discard markers (defensive
-      — Phase 16.5.4 does not currently de-promote branches).
+     .4 does not currently de-promote branches).
 
     Args:
         uc: UC client.
@@ -421,9 +421,9 @@ async def set_branch_status(
 async def mark_pre_promote_backup(uc: UnityCatalogClient, schema_fqn: str) -> None:
     """Tag a (renamed) pre-promote backup schema for later recognition.
 
-    Sprint 16.5.4 promotes a branch by renaming the parent schema to
+     promotes a branch by renaming the parent schema to
     ``{parent}_pre_promote_{timestamp}`` and stamping it with this
-    tag.  The Control-Room UI (Sprint 16.5.5) lists those backups in
+    tag.  The Control-Room UI lists those backups in
     a separate panel so reviewers can find the original parent state
     after a promotion.
 

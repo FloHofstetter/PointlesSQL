@@ -118,7 +118,7 @@ def run_sql(
                 register_delta_view(conn, ref, approved_tables[ref])
 
             if explain:
-                # Sprint 23 — switch DuckDB into JSON profiling mode so
+                # switch DuckDB into JSON profiling mode so
                 # ``EXPLAIN ANALYZE`` returns a structured tree the
                 # frontend can render with proper indentation, badges,
                 # and per-operator timing.  The legacy ASCII tree is
@@ -159,7 +159,7 @@ def run_sql(
                     schema=schema_dict,
                     output_columns=col_names,
                 )
-                # Phase 15.8 — flag SELECTs that strip ``_lineage_row_id``
+                # flag SELECTs that strip ``_lineage_row_id``
                 # from a lineage-bearing source.  The downstream
                 # ``write_table → record_row_edges`` hook needs the
                 # column on the result frame to correlate target rows
@@ -201,7 +201,7 @@ def _build_schema_dict(
 ) -> dict[str, dict[str, dict[str, dict[str, str]]]]:
     """Return a nested ``{catalog: {schema: {table: {column: type}}}}`` schema.
 
-    Sprint 15.6.3 — fed to :func:`sqlglot.lineage.lineage` so it can
+    fed to :func:`sqlglot.lineage.lineage` so it can
     qualify unqualified column references back to their owning
     table.  We use DuckDB introspection on the already-registered
     Delta views (each ref was registered by
@@ -245,7 +245,7 @@ def _refs_with_lineage_row_id(
 ) -> list[str]:
     """Return the subset of *refs* whose source schema carries ``_lineage_row_id``.
 
-    Phase 15.8 — used by :func:`run_sql` to detect SELECTs that drop
+    used by :func:`run_sql` to detect SELECTs that drop
     a lineage-bearing column from the projection.  When the helper
     returns a non-empty list and ``_lineage_row_id`` is missing from
     the result columns, the agent's downstream ``write_table`` will

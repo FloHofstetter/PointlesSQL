@@ -1,4 +1,4 @@
-"""Cascade detection across the lineage row + column axes (Sprint 16.2).
+"""Cascade detection across the lineage row + column axes.
 
 When the operator is about to rollback table X, the rollback-preview
 endpoint surfaces a warning naming downstream tables that were
@@ -6,7 +6,7 @@ derived from X via row lineage (``lineage_row_edges``) or column
 lineage (``lineage_column_map``).  v1 ships **preview-only**: the
 warning is informational, never auto-cascades.  Auto-cascade
 (rolling back downstream tables in the same click) lands as a
-hypothetical Phase 16.4 if a real demand surfaces.
+hypothetical  if a real demand surfaces.
 
 The helper lives next to :mod:`pointlessql.services.lineage_edges`
 and reuses the same best-effort posture: a DB error returns ``[]``

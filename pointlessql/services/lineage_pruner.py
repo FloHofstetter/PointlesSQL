@@ -1,27 +1,27 @@
-"""Lineage retention pruner (Sprint 20.2).
+"""Lineage retention pruner.
 
 Five lineage tables grow proportionally with run count:
 
-* ``lineage_row_edges`` — Sprint 15.3, per-row provenance edges.
-* ``lineage_row_rejects`` — Sprint 15.5.3, rejected merge rows.
-* ``lineage_column_map`` — Sprint 15.6.1, per-column edges.
-* ``lineage_value_changes`` — Sprint 15.7.1, per-cell value diffs.
-* (``unattributed_writes`` from Phase 14.3 stays out — its volume
+* ``lineage_row_edges``.3, per-row provenance edges.
+* ``lineage_row_rejects``.3, rejected merge rows.
+* ``lineage_column_map``.1, per-column edges.
+* ``lineage_value_changes``.1, per-cell value diffs.
+* (``unattributed_writes`` from  stays out — its volume
   is dominated by detection cadence, not run count, so a TTL adds
   little.)
 
 The pruner deletes rows older than per-table thresholds set on
 :class:`pointlessql.settings.LineageRetentionSettings`.  ``None`` on
 a per-table threshold means "never prune that axis".  Defaults
-follow the Phase-20 plan: row_edges 365d, row_rejects 365d,
+follow the  plan: row_edges 365d, row_rejects 365d,
 value_changes 730d, column_map forever.
 
 Each per-axis prune emits one ``audit_log`` row plus one
 ``pointlessql.lineage.pruned`` governance CloudEvent so the
-forwarder fan-out (Sprint 20.0) sees the deletion.  Pruning is
+forwarder fan-out sees the deletion.  Pruning is
 itself auditable.
 
-The function runs inside the existing scheduler.  Sprint 20.2 also
+The function runs inside the existing scheduler.   also
 ships an ``ensure_lineage_prune_job`` lifespan helper that upserts
 a ``kind="lineage_prune"`` row in ``jobs`` so the prune lives next
 to user-authored jobs (visible in ``/jobs``, can be paused).

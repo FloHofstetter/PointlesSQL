@@ -1,6 +1,6 @@
 """Read-only client for soyuz's ``/audit-log`` cross-reference surface.
 
-PointlesSQL Sprint 14.4 closer.  PQL primitives forward
+PointlesSQL  closer.  PQL primitives forward
 ``X-Agent-Run-Id`` outbound on every UC call (see
 :mod:`pointlessql.services.soyuz_client`); soyuz's
 ``RequestIDMiddleware`` writes the header value into

@@ -1,7 +1,7 @@
-"""agent_reviews kind discriminator (Phase 21.6)
+"""agent_reviews kind discriminator
 
 Adds a non-null ``kind`` column to ``agent_reviews`` so model-promotion
-reviews coexist with the Phase-19 daily audit-review rows. Existing
+reviews coexist with the  daily audit-review rows. Existing
 rows get backfilled to ``"audit_review"`` via a server-side default.
 
 Revision ID: r8n0p2q4s6u8

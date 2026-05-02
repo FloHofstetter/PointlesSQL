@@ -1,14 +1,14 @@
-"""lineage_row_edges table for per-row provenance (Sprint 15.3)
+"""lineage_row_edges table for per-row provenance
 
 Adds the persistence layer for the per-row lineage map produced by
 ``pql.merge`` (and, when the caller declares ``source_table_fqn``,
 ``pql.write_table``).  Operation-level lineage already lives in
 ``agent_run_operations``; this table extends the picture down to
-"silver row R came from bronze row S".  Sprint 15.4 walks the graph
+"silver row R came from bronze row S".   walks the graph
 backwards for the row-trace UI.
 
 Bronze rows carry their identity in the ``_lineage_row_id`` audit
-column (Sprint 15.2 — ``SHA-256("<file_sha>:<offset>")``); merge
+column (``SHA-256("<file_sha>:<offset>")``); merge
 synthesises target IDs as ``SHA-256("<source_id>:<target_table>")``
 so re-runs reuse target IDs deterministically while still producing
 fresh ``op_id``-tagged edges in this table.

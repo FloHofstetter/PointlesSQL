@@ -1,6 +1,6 @@
-"""Recent-table tracking service (Sprint 17.5.1).
+"""Recent-table tracking service.
 
-Helpers for the Phase 17 catalog-browser "Recent tables" block.
+Helpers for the  catalog-browser "Recent tables" block.
 Wraps :class:`pointlessql.models.RecentTable` with two operations:
 
 * :func:`record_table_visit` — upsert a row for the user-table

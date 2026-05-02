@@ -1,4 +1,4 @@
-"""Admin CRUD for the ``review_destinations`` table — Sprint 19.2.1.
+"""Admin CRUD for the ``review_destinations`` table.
 
 Four JSON endpoints, all gated by :func:`require_admin`.  HMAC
 secrets are returned at create time only; subsequent reads expose

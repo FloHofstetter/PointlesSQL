@@ -1,6 +1,6 @@
-"""recent_tables (Sprint 17.5.1)
+"""recent_tables
 
-Server-side mirror of the Sprint-17.5 ``localStorage['pql.recentTables']``
+Server-side mirror of the  ``localStorage['pql.recentTables']``
 block.  One row per ``(user, table_full_name)`` so the sidebar's
 "Recent tables" list survives device + session changes.
 

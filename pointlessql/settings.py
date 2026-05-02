@@ -251,14 +251,14 @@ class SchedulerSettings(BaseSettings):
 
 
 class LineageRetentionSettings(BaseSettings):
-    """Per-axis TTL on the four lineage tables (Sprint 20.2).
+    """Per-axis TTL on the four lineage tables.
 
     Reads ``POINTLESSQL_AUDIT_LINEAGE_RETENTION_*`` environment
     variables.  Each ``*_days`` field is either a positive integer
     (rows older than ``now - N days`` get pruned at the next tick)
     or ``None`` / ``0`` (axis never pruned).
 
-    Defaults follow the Phase 20 plan:
+    Defaults follow the  plan:
 
     * ``row_edges`` and ``row_rejects`` — 365 days (one operating
       year, enough for compliance retrospectives).
@@ -289,11 +289,11 @@ class AuditSettings(BaseSettings):
     audit-cleanup tick.  Set ``retention_days=0`` to keep every
     audit row forever (disables retention entirely).
 
-    Phase 18 added cockpit knobs:
+     added cockpit knobs:
 
     * ``anomaly_baseline_window_days`` — N-day rolling window the
       ``/api/audit/anomalies`` endpoint compares observed values
-      against.  7 days mirrors the Sprint 19.0 Grafana panel.
+      against.  7 days mirrors the  Grafana panel.
     * ``anomaly_threshold_sigma`` — observations more than this many
       standard deviations above the baseline mean count as ``warn``
       (≥ σ) or ``critical`` (≥ 2σ × this).  Default 2.0 matches the
@@ -373,7 +373,7 @@ class AgentRunsSettings(BaseSettings):
 
 
 class AuditStreamSettings(BaseSettings):
-    """Phase 20 audit-stream forwarder configuration.
+    """audit-stream forwarder configuration.
 
     Reads ``POINTLESSQL_AUDIT_STREAM_*`` environment variables.  All
     sinks are off by default — the stream only fires when at least
@@ -400,7 +400,7 @@ class ExternalWritesSettings(BaseSettings):
     """External-write detection scanner configuration.
 
     Reads ``POINTLESSQL_EXTERNAL_WRITES_*`` environment variables.
-    The Sprint 14.3 scanner walks ``DeltaTable.history()`` per UC
+    The  scanner walks ``DeltaTable.history()`` per UC
     table and INSERT-OR-IGNOREs into ``unattributed_writes`` for
     every commit not matched by an ``agent_run_operations`` row.
 
@@ -417,7 +417,7 @@ class ExternalWritesSettings(BaseSettings):
 
 
 class BranchSettings(BaseSettings):
-    """Delta-Branching strategy + auto-cleanup configuration (Sprint 16.5).
+    """Delta-Branching strategy + auto-cleanup configuration.
 
     Reads ``POINTLESSQL_BRANCH_*`` environment variables.  Two
     independent concerns:
@@ -478,7 +478,7 @@ class MLflowSettings(BaseSettings):
     ``backend_store_uri`` becomes ``sqlite:///./mlflow.db``,
     ``artifact_root`` becomes ``file://{cwd}/mlflow_artifacts``, and
     ``registry_uri`` becomes ``uc:{soyuz_url}`` (MLflow's UC-OSS
-    scheme; see Phase 21.1's ``uc_oss_proto_diff.md`` for why
+    scheme; see 's ``uc_oss_proto_diff.md`` for why
     ``uc:`` not ``uc-oss:``). Operators override via
     ``POINTLESSQL_MLFLOW_BACKEND_STORE_URI`` etc.
     """

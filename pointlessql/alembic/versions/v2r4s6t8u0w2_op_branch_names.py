@@ -61,7 +61,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Restore the pre-Phase-21.x op_name CHECK."""
+    """Restore the earlier.x op_name CHECK."""
     with op.batch_alter_table("agent_run_operations", recreate="auto") as batch:
         batch.drop_constraint("ck_agent_run_operations_op_name", type_="check")
         batch.create_check_constraint(

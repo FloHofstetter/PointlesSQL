@@ -1,4 +1,4 @@
-"""Per-cell preimage/postimage diff helper (Sprint 15.7.3).
+"""Per-cell preimage/postimage diff helper.
 
 Pure-function bridge between Delta's Change Data Feed (CDF) PyArrow
 output and the :class:`~pointlessql.services.lineage_edges.ValueChangeSpec`

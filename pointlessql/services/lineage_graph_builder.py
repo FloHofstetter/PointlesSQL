@@ -1,4 +1,4 @@
-"""Sprint 17.3 — run-scoped lineage DAG builder.
+"""run-scoped lineage DAG builder.
 
 Joins :class:`pointlessql.models.LineageRowEdge` and
 :class:`pointlessql.models.LineageColumnMap` for one ``run_id`` (and
@@ -201,7 +201,7 @@ def build_lineage_graph(
         # An op that wrote rows but recorded zero column-map rows still
         # deserves a node-to-node edge so the DAG is complete.  This is
         # rare in practice (column-lineage is recorded for every PQL
-        # primitive that records row edges since Sprint 15.6) but keeps
+        # primitive that records row edges since ) but keeps
         # the contract simple: every (src, tgt, op) row-edge triple
         # appears in the graph.
         for (src, tgt, op_id_value), n in row_count_by_key.items():

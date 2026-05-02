@@ -8,12 +8,12 @@ write that bypassed every PQL primitive (raw
 ``deltalake.write_deltalake()``, Spark, ``cp`` of parquet, foreign
 tools).
 
-Sprint 14.3 closes that blind spot detection-side.  The
+ closes that blind spot detection-side.  The
 :mod:`pointlessql.services.external_write_scanner` walks
 ``DeltaTable.history()`` per UC table and INSERT-OR-IGNOREs into
 ``unattributed_writes`` for every commit not matched by an
 ``agent_run_operations`` row.  Detection-only — no storage-level
-hard-block (that lives in Phase 16+ if a real customer asks; see
+hard-block (that lives+ if a real customer asks; see
 ``project_full_autonomous_audit_critical_path.md``).
 """
 

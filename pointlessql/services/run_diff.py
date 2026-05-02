@@ -384,7 +384,7 @@ def build_lineage_diff(
     run_a_id: str,
     run_b_id: str,
 ) -> dict[str, Any]:
-    """Compose the Sprint 18.4 lineage-shaped delta between two runs.
+    """Compose the  lineage-shaped delta between two runs.
 
     The diff focuses on what *forensics* needs:
 

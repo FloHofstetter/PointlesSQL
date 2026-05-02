@@ -1,4 +1,4 @@
-"""Focused model-lineage DAG builder (Phase 21.5.5 + 21.7).
+"""Focused model-lineage DAG builder ( + 21.7).
 
 The model-detail Lineage tab does not reuse the run-detail
 ``build_lineage_graph`` because the audience and scope differ:
@@ -10,7 +10,7 @@ The model-detail Lineage tab does not reuse the run-detail
   (``trained_from`` edges), prediction-tables it inferred into
   on the downstream side (``inferred_to`` edges, dashed).
 
-Sprint 21.7 added the downstream half:
+added the downstream half:
 :func:`aggregate_prediction_tables_for_model` queries
 :class:`pointlessql.models.LineageRowEdge` for every row whose
 ``source_model_uri`` matches the model FQN, returning the distinct

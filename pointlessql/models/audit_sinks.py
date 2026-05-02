@@ -1,6 +1,6 @@
-"""Audit-stream sink + governance-event ORM models (Sprint 20.0).
+"""Audit-stream sink + governance-event ORM models.
 
-Two tables that together implement Phase 20's audit-stream forwarder:
+Two tables that together implement 's audit-stream forwarder:
 
 * :class:`AuditSink` — admin-configured destination for governance
   CloudEvents.  Three sink types (``webhook``, ``s3``,
@@ -73,7 +73,7 @@ class AuditSink(Base):
 
             Secrets at rest are plaintext for the MVP — same posture
             as :class:`pointlessql.models.alerts.AlertDestination`'s
-            ``hmac_secret``.  Encrypt-at-rest is a Phase 20.1+
+            ``hmac_secret``.  Encrypt-at-rest is a +
             follow-up.
         is_active: Inactive sinks are skipped by the dispatcher.
         event_types_json: Optional JSON-encoded list of

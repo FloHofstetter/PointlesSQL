@@ -186,7 +186,7 @@ async def test_home_html_renders_anomaly_banner_on_critical() -> None:
         r = await client.get("/")
     assert r.status_code == 200
     body = r.text
-    assert "Sprint 18.5 — anomaly highlighting" in body
+    assert "anomaly highlighting" in body
     assert "Open audit cockpit" in body
 
 
@@ -196,7 +196,7 @@ async def test_home_html_no_banner_when_baseline_steady() -> None:
     async with _admin_client() as client:
         r = await client.get("/")
     assert r.status_code == 200
-    assert "Sprint 18.5 — anomaly highlighting" not in r.text
+    assert "anomaly highlighting" not in r.text
 
 
 # ---------------------------------------------------------------------
@@ -213,7 +213,7 @@ async def test_run_detail_renders_anomaly_chip_on_critical() -> None:
         r = await client.get(f"/runs/{today_run}")
     assert r.status_code == 200
     body = r.text
-    assert "Sprint 18.5 — anomaly chip" in body
+    assert "anomaly chip" in body
     assert "rejects" in body  # metric name shows up
 
 
@@ -225,4 +225,4 @@ async def test_run_detail_no_chip_when_steady() -> None:
     async with _admin_client() as client:
         r = await client.get(f"/runs/{today_run}")
     assert r.status_code == 200
-    assert "Sprint 18.5 — anomaly chip" not in r.text
+    assert "anomaly chip" not in r.text

@@ -1,6 +1,6 @@
-"""system_keys table + pii_mode default = hash_only (Sprint 20.1)
+"""system_keys table + pii_mode default = hash_only
 
-Sprint 20.1 ships the PII detection + masking write-hook.  It needs
+ ships the PII detection + masking write-hook.  It needs
 two pieces of persistent state:
 
 * ``system_keys`` — single row per install-scoped secret.  The PII

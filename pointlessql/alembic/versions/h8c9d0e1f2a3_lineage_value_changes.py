@@ -1,6 +1,6 @@
-"""lineage_value_changes table for value-level lineage (Sprint 15.7.1)
+"""lineage_value_changes table for value-level lineage
 
-Fourth lineage axis after row (Phase 15), reject (15.5), column (15.6).
+Fourth lineage axis after row, reject (15.5), column (15.6).
 Records per-cell before/after pairs produced by
 ``pql.merge(strategy="upsert", track_value_changes=True)``.  Capture
 mechanic: every new Delta write enables Change Data Feed

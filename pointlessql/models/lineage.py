@@ -1,8 +1,8 @@
 """Per-row lineage edges and rejects from PQL merge / write_table.
 
-Sprint 15.3 introduced :class:`LineageRowEdge` — one row per
+ introduced :class:`LineageRowEdge` — one row per
 ``(source_row, target_row, op)`` mapping that lets the row-trace UI
-walk silver back to bronze.  Sprint 15.5.3 adds
+walk silver back to bronze.   adds
 :class:`LineageRowReject` — one row per source row that was supposed
 to land but didn't, with an enumerated ``reason`` so the UI can
 explain "47 of 50 rows survived; here are the 3 that were dropped".
@@ -10,7 +10,7 @@ explain "47 of 50 rows survived; here are the 3 that were dropped".
 Storage decision: PointlesSQL metadata DB rather than sibling Delta
 ``<fqn>_lineage`` tables.  Typical agent-ETL volumes (1k-100k rows
 per run) fit easily; the Delta-table escalation path stays open as
-a Phase-17+ option if a single run ever ships > 1M edges.
+a + option if a single run ever ships > 1M edges.
 
 There is **no** UNIQUE constraint on either table.  For edges, a
 re-merge of the same rows produces a fresh edge with a different
@@ -77,7 +77,7 @@ class LineageRowEdge(Base):
             ``SHA-256("<source_row_id>:<target_table>")`` so re-runs
             of the same merge produce identical target IDs and the
             walk-backward query has a stable join column.
-        source_model_uri: Sprint 21.7 — when an edge represents
+        source_model_uri: when an edge represents
             inference (a model wrote predictions into ``target_table``)
             this carries the ``models:/cat.sch.model/<version>`` URI
             of the originating registered-model version.  ``None``
@@ -111,7 +111,7 @@ class LineageRowEdge(Base):
 class LineageRowReject(Base):
     """One source row that was supposed to land in *target_table* but didn't.
 
-    Sprint 15.5.3 — opt-in capture via ``pql.merge(track_rejects=True)``.
+    opt-in capture via ``pql.merge(track_rejects=True)``.
     The default is ``False`` because pre-merge set-diff against the
     source has a small per-row pandas cost; production callers that
     want the audit trail flip it on explicitly.
@@ -162,7 +162,7 @@ class LineageRowReject(Base):
 class LineageColumnMap(Base):
     """One source-column → target-column mapping produced by a PQL op.
 
-    Sprint 15.6.1 — sibling to :class:`LineageRowEdge` covering the
+    sibling to :class:`LineageRowEdge` covering the
     orthogonal column dimension.  Each row says "for op *op_id*,
     target column *target_table.target_column* was fed by source
     column *source_table.source_column* via *transform_kind*".
@@ -230,7 +230,7 @@ class LineageColumnMap(Base):
 class LineageValueChange(Base):
     """One per-cell before/after pair produced by an upsert merge.
 
-    Sprint 15.7.1 — fourth lineage axis after row (15), reject (15.5),
+    fourth lineage axis after row (15), reject (15.5),
     column (15.6).  Populated only when the caller opts in via
     ``pql.merge(strategy="upsert", track_value_changes=True)``.
 

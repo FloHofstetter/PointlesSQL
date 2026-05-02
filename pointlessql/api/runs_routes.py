@@ -210,7 +210,7 @@ def load_lineage_summary_for_run(
     *,
     op_id: int | None = None,
 ) -> dict[str, Any]:
-    """Aggregate Sprint-15.3 ``lineage_row_edges`` per operation.
+    """Aggregate  ``lineage_row_edges`` per operation.
 
     Joins ``lineage_row_edges`` against ``agent_run_operations`` so
     the run-detail Lineage tab can render one row per op with
@@ -220,7 +220,7 @@ def load_lineage_summary_for_run(
     Args:
         request: Incoming FastAPI request.
         run_id: Owning ``AgentRun.id``.
-        op_id: Sprint 18.1 cross-axis filter — when set, restrict
+        op_id:  cross-axis filter — when set, restrict
             the aggregate to a single op.
 
     Returns:
@@ -280,12 +280,12 @@ def load_rejects_for_run(
     *,
     op_id: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Return Sprint-15.5.3 ``lineage_row_rejects`` for the run-detail tab.
+    """Return  ``lineage_row_rejects`` for the run-detail tab.
 
     Args:
         request: Incoming FastAPI request.
         run_id: Owning ``AgentRun.id``.
-        op_id: Sprint 18.1 cross-axis filter — when set, restrict
+        op_id:  cross-axis filter — when set, restrict
             to rejects produced by this single op.  ``None`` keeps
             the full run-scoped list.
 
@@ -329,7 +329,7 @@ async def _load_uc_mutations_for_run(
     """Return soyuz audit-log rows attributed to *run_id*.
 
     Asks soyuz's ``GET /audit-log?agent_run_id=`` cross-reference
-    surface (PointlesSQL Sprint 14.4 / soyuz `v0.2.0rc3`).  Returns
+    surface (PointlesSQL  / soyuz `v0.2.0rc3`).  Returns
     ``[]`` against older soyuz versions that lack the endpoint —
     the run-detail "UC mutations" tab simply renders empty.
 
@@ -415,7 +415,7 @@ def _load_operations_for_run(
     Args:
         request: Incoming FastAPI request.
         run_id: UUID string of the owning run.
-        op_id: Sprint 18.1 cross-axis filter — when set, only the
+        op_id:  cross-axis filter — when set, only the
             single op with this id is returned (still as a one-row
             list so the template stays branchless).  ``None`` keeps
             the full ordered list.
@@ -857,7 +857,7 @@ async def run_detail_page(
     Args:
         request: Incoming FastAPI request.
         run_id: Run UUID from the URL.
-        op_id: Sprint 18.1 cross-axis deep-link.  When set, every
+        op_id:  cross-axis deep-link.  When set, every
             tab whose surface has an ``op_id`` linkage (Operations,
             Rejects, Lineage) renders pre-filtered to this single
             op; tabs without that linkage render unfiltered with a
@@ -894,7 +894,7 @@ async def run_detail_page(
             # should be permissive.
             op_id = None
 
-    # Sprint 18.5 — run-detail anomaly chip.  Best-effort: if the
+    # run-detail anomaly chip.  Best-effort: if the
     # aggregator fails the run still renders without the chip.
     run_anomaly: dict[str, Any] | None = _run_anomaly_chip(request, run_id)
 
@@ -987,7 +987,7 @@ async def api_run_graph(
 ) -> dict[str, Any]:
     """Return the unified row + column lineage DAG for one run.
 
-    Sprint 17.3 — backbone for the Lineage / Graph sub-tab on
+    backbone for the Lineage / Graph sub-tab on
     ``/runs/{id}``.  Joins :class:`pointlessql.models.LineageRowEdge`
     and :class:`pointlessql.models.LineageColumnMap` per
     ``run_id`` (and optional ``op_id``) into a single
@@ -998,7 +998,7 @@ async def api_run_graph(
     downstream simultaneously without a second round-trip.
 
     The route follows the auditor / supervisor scope ladder that
-    Sprint 19.1 set for the per-run audit-axis JSON endpoints —
+     set for the per-run audit-axis JSON endpoints —
     same data already visible on the run-detail Lineage tab,
     just rearranged.
 
@@ -1510,7 +1510,7 @@ def _refusal_to_http_error(exc: Exception) -> Exception:
 def _run_anomaly_chip(request: Request, run_id: str) -> dict[str, Any] | None:
     """Return an anomaly verdict for the run-detail chip, or ``None``.
 
-    Sprint 18.5 — compares the run's reject + errored-op count
+    compares the run's reject + errored-op count
     against the global per-day baseline for the same metrics.  If
     either metric breaches the configured σ threshold, returns
     ``{metric, severity, observed, baseline_mean}`` describing the
@@ -1568,7 +1568,7 @@ async def agent_run_diff_page(
     a: str,
     b: str,
 ) -> HTMLResponse:
-    """Render the Sprint 18.4 agent-run diff page.
+    """Render the  agent-run diff page.
 
     Loads both runs through
     :func:`pointlessql.api.agent_runs_routes._load_run_summary_bundle`

@@ -141,7 +141,7 @@ class QueryHistory(Base):
         read_kind: Discriminator across the read paths that converge
             on ``query_history`` — ``"sql_execute"`` for ``/api/sql/
             execute`` traffic (the default and the only writer
-            before Sprint 14.2), ``"pql_table"`` for direct
+            before ), ``"pql_table"`` for direct
             ``pql.table()`` reads recorded via
             :func:`pointlessql.services.read_audit.record_read`,
             and ``"engine_direct"`` for raw engine reads instrumented

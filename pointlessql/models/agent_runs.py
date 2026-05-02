@@ -132,7 +132,7 @@ class AgentRun(Base):
     denied_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     runtime_versions: Mapped[str | None] = mapped_column(Text, nullable=True)
     cost_gate_trigger: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Phase 21.2 cross-link: populated by the operation_context recorder
+    #  cross-link: populated by the operation_context recorder
     # when an op detects an active MLflow run via mlflow_detector.  Index
     # is added in alembic q7m9o1p3r5t7 so /api/runs/{id}/ml-context can
     # join to MLflow without a full scan.

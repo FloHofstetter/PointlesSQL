@@ -1,6 +1,6 @@
-"""Recent-table tracking for the catalog browser (Sprint 17.5.1).
+"""Recent-table tracking for the catalog browser.
 
-Sprint 17.5 surfaced a "Recent tables" block in the sidebar tree
+ surfaced a "Recent tables" block in the sidebar tree
 backed by ``localStorage['pql.recentTables']``.  That works for a
 single browser on a single device but breaks the moment a user
 opens PointlesSQL on a second machine — the recents follow neither

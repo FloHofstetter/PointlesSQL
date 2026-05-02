@@ -359,7 +359,7 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
             (3-part UC name), ``mode`` (one of ``"error"`` /
             ``"append"`` / ``"overwrite"`` / ``"ignore"``, default
             ``"overwrite"``), and optional ``source_model_uri``
-            (Sprint 21.8 — registered-model URI of the form
+            (registered-model URI of the form
             ``models:/cat.sch.model/<version>`` when *df* is the
             output of inference against a model; threaded into
             ``lineage_row_edges.source_model_uri``).
@@ -415,7 +415,7 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
 
     # When the agent declares this write as inference output, auto-derive
     # source_table_fqn from the SELECT refs so the row-edge grain in
-    # lineage_row_edges has somewhere to anchor (Sprint 21.7's primitive
+    # lineage_row_edges has somewhere to anchor ('s primitive
     # only persists source_model_uri alongside a source table).  Skip
     # auto-derive when the SELECT references multiple tables — ambiguous.
     derived_source_fqn: str | None = None
@@ -477,7 +477,7 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
         body: JSON body with ``sql`` (source SELECT), ``target`` (3-part
             UC name), ``on`` (non-empty list of merge-key columns),
             ``strategy`` (``"upsert"`` default, or ``"scd2"``), and
-            optional ``source_model_uri`` (Sprint 21.8 — registered-
+            optional ``source_model_uri`` (registered-
             model URI when the merge writes inference outputs into an
             existing predictions table).
 

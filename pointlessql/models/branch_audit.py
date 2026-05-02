@@ -1,4 +1,4 @@
-"""Branch-operation audit trail (Sprint 16.5.3).
+"""Branch-operation audit trail.
 
 UC tags carry per-branch metadata while the schema exists, but they
 disappear with the schema once a branch is discarded.  ``branch_audit_log``
@@ -9,13 +9,13 @@ schemas themselves are gone.
 
 A row is written:
 
-* On branch creation — by ``pql.branch`` (Sprint 16.5.2 emits the row
+* On branch creation — by ``pql.branch`` ( emits the row
   too if the table is available; older creations only show in the
   log from this sprint forward).
-* On branch promotion — by ``pql.branch_promote`` (Sprint 16.5.4).
+* On branch promotion — by ``pql.branch_promote``.
 * On branch discard — by ``pql.branch_discard`` (this sprint).
 * On auto-cleanup discard — by ``services/branch_cleanup.py``
-  (Sprint 16.5.6) with ``run_id=None``.
+  with ``run_id=None``.
 
 The table is intentionally *not* coupled to ``agent_run_operations``
 (which only records ops that ran inside a run scope).  Some branch

@@ -121,7 +121,7 @@ def record_query(
             inputs.
         read_kind: Discriminator for the read path that produced this
             row.  Defaults to ``"sql_execute"`` for the historical
-            ``/api/sql/execute`` writer; Sprint 14.2's read-audit
+            ``/api/sql/execute`` writer; 's read-audit
             helper passes ``"pql_table"`` / ``"engine_direct"``.
             Validated against :data:`VALID_READ_KINDS` so a typo
             cannot land an unknown value the UI cannot filter on.

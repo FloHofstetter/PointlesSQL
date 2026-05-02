@@ -386,7 +386,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     explain_text: str | None = None
     explain_plan: dict[str, Any] | None = None
     if explain:
-        # Sprint 23 — DuckDB is now in JSON profiling mode (set by
+        # DuckDB is now in JSON profiling mode (set by
         # ``_sql.py`` before the EXPLAIN ANALYZE call), so the
         # result-set carries a single JSON blob instead of the
         # legacy ASCII tree.  Find the JSON cell, parse it for the

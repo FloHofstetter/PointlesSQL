@@ -1,6 +1,6 @@
 """HTTP wrapper around the in-process ``pql.training_context()`` capture.
 
-Sprint 21.8 — the Hermes plugin is HTTP-only (no PointlesSQL imports);
+the Hermes plugin is HTTP-only (no PointlesSQL imports);
 without an HTTP surface, agents that train models through the plugin
 cannot persist the autolog snapshot that
 :func:`pointlessql.services.agent_runs.training_context.training_context`

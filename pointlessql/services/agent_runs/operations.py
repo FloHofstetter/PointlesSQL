@@ -181,21 +181,21 @@ class OperationRecorder:
         extra_params: Dict merged into ``params_json`` so the
             primitive can attach run-time stats (file counts, merge
             stats) without rebuilding the params dict.
-        pending_lineage_edges: Sprint-15.3 hook — when a primitive
+        pending_lineage_edges:  hook — when a primitive
             knows the source-row → target-row mapping for a merge or
             write that carried ``_lineage_row_id`` it stashes
             ``{"source_table": str, "source_row_ids": list[str],
             "target_row_ids": list[str]}`` here.  The post-commit
             hook reads it (after ``op_id`` is known) and bulk-inserts
             into ``lineage_row_edges`` best-effort.
-        pending_rejects: Sprint-15.5.3 hook — when a primitive ran
+        pending_rejects:  hook — when a primitive ran
             with ``track_rejects=True`` and identified source rows
             that won't land in the target, it stashes
             ``{"source_table": str,
             "rejects": list[tuple[source_row_id, reason, detail]]}``
             here.  The post-commit hook bulk-inserts into
             ``lineage_row_rejects`` best-effort.
-        pending_column_edges: Sprint-15.6.1 hook — every PQL
+        pending_column_edges:  hook — every PQL
             primitive populates this with a list of
             :class:`~pointlessql.services.lineage_edges.ColumnEdgeSpec`
             entries describing the source-column → target-column
@@ -204,7 +204,7 @@ class OperationRecorder:
             ``None`` (the default) means the primitive had no
             mappings to record (e.g. read-only ops, or a write that
             ran without ``source_table_fqn``).
-        pending_value_changes: Sprint-15.7.1 hook — when
+        pending_value_changes:  hook — when
             ``pql.merge(strategy="upsert", track_value_changes=True)``
             captured per-cell preimage/postimage pairs from the Delta
             CDF stream, it stashes the resulting list of
@@ -213,7 +213,7 @@ class OperationRecorder:
             ``lineage_value_changes`` best-effort.  ``None`` (the
             default) means the merge ran without opt-in or had no
             actual value differences.
-        training_params_json: Sprint-21.3 hook — when ``pql.training_context()``
+        training_params_json:  hook — when ``pql.training_context()``
             wraps a training block with ``mlflow.autolog()`` enabled,
             it captures ``run.data.params`` + ``run.data.metrics`` at
             MLflow run-exit time and stashes the JSON-encoded blob
@@ -232,7 +232,7 @@ class OperationRecorder:
     pending_rejects: dict[str, Any] | None = None
     pending_column_edges: list[Any] | None = None
     pending_value_changes: list[Any] | None = None
-    # Phase 21.3 — autolog snapshot {"params": {...}, "metrics": {...}}
+    # autolog snapshot {"params": {...}, "metrics": {...}}
     # populated by ``training_context`` at MLflow run-exit time.
     training_params_json: str | None = None
     # BUG-grand-08 — non-fatal side-effect markers stamped by
@@ -277,10 +277,10 @@ def record_operation(
         finished_at: Wall-clock instant the primitive exited, or
             ``None`` when the row represents a still-in-flight call.
         error_message: ``repr(exc)`` on failure, ``None`` on success.
-        training_params_json: Sprint 21.3 — JSON blob with
+        training_params_json: JSON blob with
             ``params`` and ``metrics`` sub-keys captured from
             MLflow autolog.  ``None`` for non-training ops.
-        env_snapshot: Sprint 21.4 — advisory hardware/library
+        env_snapshot: advisory hardware/library
             fingerprint blob.  When ``None``, the cached
             process-wide snapshot is stamped automatically.
         warnings_json: BUG-grand-08 — JSON blob with a ``markers``
@@ -301,12 +301,12 @@ def record_operation(
     if op_name not in VALID_OP_NAMES:
         raise AuditUnavailableError(f"agent_run_operations: unknown op_name {op_name!r}")
 
-    # Phase 21.2 cross-link: sniff MLflow's active_run() so audit rows
+    #  cross-link: sniff MLflow's active_run() so audit rows
     # link to the matching MLflow run without an out-of-band lookup.
     # Side-effect-free; returns ``None`` for non-ML ops.
     mlflow_run_id = detect_mlflow_run_id()
 
-    # Phase 21.4: stamp the cached env-fingerprint when the caller
+    # stamp the cached env-fingerprint when the caller
     # didn't supply one.  Best-effort — `cached_env_snapshot()` returns
     # `None` if the import-time capture failed; we never raise.
     if env_snapshot is None:
@@ -351,7 +351,7 @@ def record_operation(
                 warnings_json=warnings_json,
             )
             session.add(row)
-            # Phase 21.2: backfill the parent agent_runs row's
+            # backfill the parent agent_runs row's
             # mlflow_run_id on first detection.  Subsequent ops on the
             # same parent leave it untouched.
             if mlflow_run_id is not None:
@@ -531,7 +531,7 @@ def _emit_lineage_after_commit(
     underlying PQL write is never blocked, and ``error_message``
     stays reserved for "the primitive itself raised" (BUG-grand-08).
 
-    Sprint 20.4 extends the body with two optional output facets when
+     extends the body with two optional output facets when
     the recorder collected matching pending entries:
 
     * ``columnLineage`` (OpenLineage 1.x) — built from
@@ -635,7 +635,7 @@ def _record_row_edges_after_commit(
     target_table: str | None,
     pending: dict[str, Any] | None,
 ) -> None:
-    """Persist Sprint-15.3 per-row lineage edges in a best-effort pass.
+    """Persist  per-row lineage edges in a best-effort pass.
 
     Args:
         session_factory: SQLAlchemy session factory.
@@ -686,7 +686,7 @@ def _record_rejects_after_commit(
     agent_run_id: str,
     pending: dict[str, Any] | None,
 ) -> None:
-    """Persist Sprint-15.5.3 reject markers in a best-effort pass.
+    """Persist  reject markers in a best-effort pass.
 
     Args:
         session_factory: SQLAlchemy session factory.
@@ -729,7 +729,7 @@ def _record_column_edges_after_commit(
     agent_run_id: str,
     pending: list[Any] | None,
 ) -> None:
-    """Persist Sprint-15.6.1 column-level lineage edges in a best-effort pass.
+    """Persist  column-level lineage edges in a best-effort pass.
 
     Args:
         session_factory: SQLAlchemy session factory.
@@ -766,7 +766,7 @@ def _record_value_changes_after_commit(
     agent_run_id: str,
     pending: list[Any] | None,
 ) -> None:
-    """Persist Sprint-15.7.1 per-cell value changes in a best-effort pass.
+    """Persist  per-cell value changes in a best-effort pass.
 
     Args:
         session_factory: SQLAlchemy session factory.

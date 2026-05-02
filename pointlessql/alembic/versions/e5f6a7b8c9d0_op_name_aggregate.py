@@ -1,6 +1,6 @@
-"""op_name CHECK constraint extended by 'aggregate' (Sprint 15.5.1)
+"""op_name CHECK constraint extended by 'aggregate'
 
-Sprint 15.5.1 introduces the ``pql.aggregate`` primitive, which emits
+introduces the ``pql.aggregate`` primitive, which emits
 ``agent_run_operations`` rows with ``op_name = 'aggregate'``.  The
 existing CHECK constraint installed by the squashed initial schema
 (``b55f1020b8a4``) only permits ``autoload`` / ``merge`` /

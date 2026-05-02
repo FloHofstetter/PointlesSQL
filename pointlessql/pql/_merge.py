@@ -111,22 +111,22 @@ def merge_table(
         source_table_fqn: When set, declared as the upstream UC
             input on the OpenLineage event emitted to soyuz so the
             cross-table edge ``source_table_fqn → target`` appears
-            in the lineage graph (Sprint 15.1).  ``None`` when the
+            in the lineage graph.  ``None`` when the
             source is an in-memory frame with no UC origin — the
             audit row is still written but no lineage edge appears.
-        source_model_uri: Sprint 21.7 — when set, declares the
+        source_model_uri: when set, declares the
             originating registered-model URI
             (``models:/cat.sch.model/<version>``) so every
             ``lineage_row_edges`` row produced by this merge carries
             the model provenance.  Effective only when
             ``source_table_fqn`` is also set (the row-edge grain
-            needs a source table to be meaningful).  Sprint 21.8
+            needs a source table to be meaningful).  
             extension mirroring :func:`pointlessql.pql._write.write_table`.
         track_rejects: When ``True``, scan the source frame for
             rows that won't land in the target (NULL ``on`` keys,
             duplicate keys within the source) and bulk-insert one
             ``lineage_row_rejects`` row per rejected source row
-            (Sprint 15.5.3).  ``False`` (default) skips the scan —
+           .  ``False`` (default) skips the scan —
             performance-conservative; production callers that need
             reject visibility flip it on explicitly.  Effective
             only when the source carries ``_lineage_row_id`` and
@@ -136,7 +136,7 @@ def merge_table(
             read the Delta Change Data Feed for the merge's commit
             range and record one ``lineage_value_changes`` row per
             actually-different cell on a matched-and-updated target
-            row (Sprint 15.7.3).  Requires ``_lineage_row_id`` on
+            row.  Requires ``_lineage_row_id`` on
             both source and target rows so preimage/postimage events
             can be paired.  Silently ignored on ``strategy="scd2"``
             because SCD-2 already encodes value history in the
@@ -199,7 +199,7 @@ def merge_table(
         params={"target": target, "on": list(on), "strategy": strategy},
         target_table=target,
     ) as recorder:
-        # Phase 15.8: bootstrap CDF on the target BEFORE capturing
+        # bootstrap CDF on the target BEFORE capturing
         # ``delta_version_before`` so the merge commit lands with CDF
         # on regardless of the target's history.  For tables created
         # via :func:`pql.write_table` this is a no-op (CDF was set
@@ -306,9 +306,9 @@ def _capture_value_changes(
 ) -> list[Any] | None:
     """Best-effort capture of per-cell value changes from Delta CDF.
 
-    Sprint 15.7.3 — runs after ``_do_upsert`` returns and the audit
+    runs after ``_do_upsert`` returns and the audit
     row has its delta_version_before / delta_version_after stamped.
-    Sprint 15.8 — assumes the caller already enabled CDF on the
+    assumes the caller already enabled CDF on the
     target before ``_do_upsert`` (so the merge commit lands with CDF
     on); this helper just reads the stream and pairs events.  Any
     failure (deltalake error, missing ``_lineage_row_id``) is logged
@@ -334,7 +334,7 @@ def _capture_value_changes(
     if version_after <= version_before:
         return None
 
-    # Phase 15.8: CDF is now bootstrapped before ``_do_upsert`` (see
+    # CDF is now bootstrapped before ``_do_upsert`` (see
     # ``merge_table``), so the merge commit always lands with CDF on
     # — no post-merge ALTER needed here.
 
@@ -366,7 +366,7 @@ def _detect_rejects(
 ) -> tuple[pa.Table, list[tuple[str, str, str | None]]]:
     """Identify pre-merge reject rows and return the cleaned source.
 
-    Sprint 15.5.3 — opt-in via ``track_rejects=True``.  Only two
+    opt-in via ``track_rejects=True``.  Only two
     reject reasons are detectable pre-merge without inspecting the
     target Delta state:
 
@@ -458,7 +458,7 @@ def _prepare_lineage(arrow_source: pa.Table, target: str) -> tuple[list[str], li
     a deterministic per-row ID written into the same column so the
     chain stays connected.  When the source has no such column the
     helper is a no-op — the target table simply doesn't gain a
-    lineage column for the rows from this merge, and Sprint 15.4's
+    lineage column for the rows from this merge, and 's
     walk-back stops there with a "lineage break" marker.
 
     Args:

@@ -1,4 +1,4 @@
-r"""Champion/Challenger promotion service (Phase 21.6).
+r"""Champion/Challenger promotion service.
 
 A registered model carries at most one *champion* version at a time.
 Operators (or supervisor-scoped agents) promote a challenger version
@@ -7,10 +7,10 @@ to champion through :func:`promote_version`, which:
 1. Validates the challenger is ``READY`` and not already champion.
 2. Patches the registered-model's ``comment`` field with a
    ``_pql_promotion`` JSON marker (analog to ``_pql_link`` from
-   Phase 21.2 — see
+   see
    :mod:`pointlessql.services.agent_runs.mlflow_soyuz_link`).
 3. Inserts an :class:`AgentReview` row with
-   ``kind="model_promotion"`` so the Phase-19 cockpit fan-out can
+   ``kind="model_promotion"`` so the  cockpit fan-out can
    notify subscribed webhooks.
 4. Returns a CloudEvents 1.0 envelope (``pointlessql.model.promoted``)
    the caller is free to dispatch.
@@ -19,7 +19,7 @@ The marker convention deliberately spiegelt ``_pql_link`` — both
 JSON blobs coexist in the same ``comment`` field, separated by
 ``\n\n`` chunks, so the read-side parsers stay independent. A
 future migration to first-class soyuz aliases (out of scope for
-Phase 21) re-emits markers as real catalog tags via a one-shot
+) re-emits markers as real catalog tags via a one-shot
 script.
 """
 

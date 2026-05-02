@@ -1,4 +1,4 @@
-"""Audit-stream sink dispatchers (Sprint 20.0).
+"""Audit-stream sink dispatchers.
 
 Three sink types ship in the first cut:
 

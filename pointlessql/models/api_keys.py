@@ -38,7 +38,7 @@ class ApiKey(Base):
         auditor: When ``True``, the key may invoke the audit-read
             surface (tenant-wide ``/api/audit/*`` aggregates and the
             per-run audit-axis routes).  Independent of
-            ``supervisor`` — Sprint 19.1 separates read-audit from
+            ``supervisor``.1 separates read-audit from
             run-supervision so the daily Audit-Reviewer-Agent can be
             issued an auditor key without inheriting supervisor
             privileges (or admin's PII-reveal).

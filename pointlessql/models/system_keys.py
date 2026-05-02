@@ -1,10 +1,10 @@
-"""Persistent system-key storage (Sprint 20.1).
+"""Persistent system-key storage.
 
 Some PointlesSQL features need long-lived install-scoped secrets
 that must survive restarts but should never appear in env vars or
 config files (rotation-friendly, no leak via process lists).
 
-The first consumer is the PII hashing secret used by Sprint 20.1's
+The first consumer is the PII hashing secret used by 's
 write-time redaction layer: when ``pii_mode`` is ``hash_only`` and
 no operator-supplied ``POINTLESSQL_AUDIT_PII_HASH_SECRET`` is in the
 environment, the redactor lazily generates a 32-byte URL-safe random

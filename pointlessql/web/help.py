@@ -1,4 +1,4 @@
-"""Contextual help-popover registry (Phase 23).
+"""Contextual help-popover registry.
 
 Single source of truth for the copy that powers the small
 ``bi-info-circle`` icons across the web UI.  Templates call
@@ -100,7 +100,7 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/lineage/",
     ),
-    # Phase 24 — context-panel headers.  One slug per rail section
+    # context-panel headers.  One slug per rail section
     # whose panel was rebuilt as a navigable list (Runs / Branches
     # / Workspace / Jobs / Alerts / MLflow).  Header copy explains
     # what the panel actually shows so a newcomer doesn't have to

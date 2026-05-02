@@ -1,4 +1,4 @@
-"""CloudEvents fan-out for posted agent reviews (Sprint 19.2.1).
+"""CloudEvents fan-out for posted agent reviews.
 
 When the Audit-Reviewer-Agent posts a review via
 ``POST /api/agent-reviews``, the route handler persists the row and

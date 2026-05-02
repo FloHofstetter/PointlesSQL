@@ -71,7 +71,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     ``request.state.api_key_name`` keeps the audit attribution and
     ``request.state.api_key_supervisor`` exposes the supervisor
     scope flag for ``require_supervisor``;
-    ``request.state.api_key_auditor`` exposes the Sprint-19.1
+    ``request.state.api_key_auditor`` exposes the 
     auditor scope flag for ``require_auditor``.
 
     Cookie auth still wins when both are present so a human in a

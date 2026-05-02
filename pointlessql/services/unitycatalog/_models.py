@@ -1,7 +1,7 @@
-"""Registered-model + model-version CRUD (Phase 21.5).
+"""Registered-model + model-version CRUD.
 
 Wraps the typed soyuz client functions for the UC-OSS MODEL Securable.
-RegisteredModels and ModelVersions land in soyuz via Sprint 21.1; this
+RegisteredModels and ModelVersions land in soyuz via ; this
 mixin exposes them through ``UnityCatalogClient`` so PointlesSQL UI
 routes can treat them like tables and schemas.
 """

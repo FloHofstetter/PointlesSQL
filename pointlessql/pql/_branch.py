@@ -1,7 +1,7 @@
-"""Helpers for the Phase 16.5 Delta-branching primitives.
+"""Helpers for the  Delta-branching primitives.
 
-Implements ``pql.branch`` (Sprint 16.5.2), ``pql.branch_discard``
-(Sprint 16.5.3), and ``pql.branch_promote`` (Sprint 16.5.4) on top
+Implements ``pql.branch``, ``pql.branch_discard``
+(), and ``pql.branch_promote`` on top
 of the soyuz UC client and the local Delta storage layout.
 
 The branch-creation path (this sprint) is the central piece — once
@@ -197,7 +197,7 @@ def _resolve_storage_root(schema_info: SchemaInfo, schema_fqn: str) -> str:
             return field
     msg = (
         f"schema {schema_fqn!r} has no storage_location or storage_root.  "
-        f"Phase 16.5 branching requires a known storage root on the parent schema."
+        f" branching requires a known storage root on the parent schema."
     )
     raise CatalogNotFoundError(msg)
 
@@ -592,8 +592,8 @@ def _clone_one_table(
     """Dispatch to the symlink or deep-copy local clone.
 
     Cloud-side ``deep_copy`` against true object storage is not yet
-    wired (Sprint 16.5.2 ships local + local-deep-copy); a cloud
-    deep-copy that goes via httpx + SigV4 is a Phase-16.5 follow-up.
+    wired ( ships local + local-deep-copy); a cloud
+    deep-copy that goes via httpx + SigV4 is a  follow-up.
     For now any cloud-storage URI hits :func:`_uri_to_local_path`'s
     error path before reaching here.
 
@@ -1019,7 +1019,7 @@ def _rename_schema(client: Client, full_name: str, new_name: str) -> None:
 
     Wraps :func:`_update_schema.sync` with the ``new_name`` patch
     body.  The schema's ``storage_root`` is *not* touched — UC
-    pointer-swap is the whole point of Phase 16.5.4.
+    pointer-swap is the whole point of .
 
     Args:
         client: soyuz client.
@@ -1303,7 +1303,7 @@ def _delete_branch_storage(storage_root: str | None) -> None:
     if scheme == "cloud":
         msg = (
             f"cloud-storage discard not implemented in v1 (storage_root={storage_root!r}); "
-            f"this is a Phase-16.5 follow-up"
+            f"this is a  follow-up"
         )
         raise ValueError(msg)
     branch_path = _uri_to_local_path(storage_root)

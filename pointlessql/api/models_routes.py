@@ -1,4 +1,4 @@
-"""JSON aggregator endpoints for the registered-models browse surface (Phase 21.5).
+"""JSON aggregator endpoints for the registered-models browse surface.
 
 Five endpoints back the ``/models`` index, model-detail page, and
 version-compare view:
@@ -13,9 +13,9 @@ version-compare view:
 - ``GET /api/models/{full_name}/runs`` returns the unique
   agent-run-ids referenced by any version's ``_pql_link`` marker.
 - ``GET /api/models/{full_name}/lineage`` builds the focused model
-  lineage DAG (added in Sprint 21.5.5).
+  lineage DAG (added).
 
-Two write endpoints landed in Sprint 21.6 to support champion/
+Two write endpoints landed to support champion/
 challenger promotion:
 
 - ``GET /api/models/{full_name}/promotion`` returns the current
@@ -209,12 +209,12 @@ async def api_get_model_version(
 
 @router.get("/api/models/{full_name}/lineage")
 async def api_model_lineage(request: Request, full_name: str) -> dict[str, Any]:
-    """Build the bidirectional model-lineage DAG (Sprint 21.5.5 + 21.7).
+    """Build the bidirectional model-lineage DAG ( + 21.7).
 
     Walks the model's versions to collect the linked agent-run ids
     from the ``_pql_link`` markers, then aggregates the distinct
     source tables consumed by those runs from
-    :class:`pointlessql.models.LineageRowEdge`.  Sprint 21.7 adds
+    :class:`pointlessql.models.LineageRowEdge`.   adds
     the downstream half: every row-edge whose ``source_model_uri``
     matches the model FQN contributes a prediction-table successor.
     Returns just the centre model node when no runs are linked
@@ -253,7 +253,7 @@ async def api_model_predictions(
 ) -> dict[str, Any]:
     """Return distinct prediction-tables this model has written into.
 
-    Sprint 21.7 — backs the "Predictions" sub-card on the
+    backs the "Predictions" sub-card on the
     model-detail Lineage tab.  Reads ``lineage_row_edges`` directly
     (no soyuz round-trip) so cost is O(R · E) rather than the
     O(C · M · V) full-scan of the upstream side.

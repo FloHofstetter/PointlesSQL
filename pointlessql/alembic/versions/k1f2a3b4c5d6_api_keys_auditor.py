@@ -1,6 +1,6 @@
-"""api_keys.auditor scope column (Sprint 19.1)
+"""api_keys.auditor scope column
 
-Sprint 19 adds an ``auditor`` Bearer-token scope so the daily
+ adds an ``auditor`` Bearer-token scope so the daily
 Audit-Reviewer-Agent (and the compliance + incident demos) can read
 the ``/api/audit/*`` aggregates and the per-run audit-axis routes
 without inheriting admin's PII-reveal capability or supervisor's

@@ -112,7 +112,7 @@ def require_supervisor(request: Request) -> None:
     walkable by every working agent.  Cookie-authenticated admins
     also pass: the admin role is strictly stronger than supervisor.
 
-    Sprint 19.1 also accepts the ``auditor`` scope here: an
+     also accepts the ``auditor`` scope here: an
     auditor's read-only mandate spans both tenant-wide aggregates
     AND per-run inspection, so an audit-reviewer key can drill into
     any run's risk-summary without also issuing it a supervisor
@@ -144,7 +144,7 @@ def require_supervisor(request: Request) -> None:
 def require_auditor(request: Request) -> None:
     """Raise :class:`AuthorizationError` if the caller lacks auditor scope.
 
-    Sprint 19.1 introduces a read-only audit scope that gates the
+    introduces a read-only audit scope that gates the
     tenant-wide ``/api/audit/*`` aggregates (summary / timeseries /
     anomalies / history) and the per-run audit-axis routes
     (``/api/agent-runs/{id}/audit/<axis>``).  Cookie-authenticated

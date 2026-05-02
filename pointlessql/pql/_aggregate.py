@@ -1,4 +1,4 @@
-"""``pql.aggregate()`` — fan-in-aware aggregation primitive (Sprint 15.5.1).
+"""``pql.aggregate()`` — fan-in-aware aggregation primitive.
 
 The third Medallion building block — bronze (autoload) → silver
 (merge) → gold (aggregate).  Earlier sprints used ``pql.write_table(
@@ -119,7 +119,7 @@ def aggregate_table(
         derivations: Optional declarative mapping of derived target
             columns (those produced by upstream ``.assign(...)`` /
             arithmetic / etc. before the aggregate call) to their
-            source-column names.  Sprint 15.6.2 — populates
+            source-column names.  populates
             ``derived`` rows in ``lineage_column_map`` so the
             column-trace UI can answer "where did ``placed_day``
             come from?" even when the primitive itself only saw the

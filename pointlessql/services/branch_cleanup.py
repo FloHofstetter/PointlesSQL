@@ -1,4 +1,4 @@
-"""Auto-cleanup of stale Delta branches (Sprint 16.5.6).
+"""Auto-cleanup of stale Delta branches.
 
 Walks the UC schema set, picks branches in ``status='active'`` whose
 ``created_at`` is older than ``settings.branch.auto_cleanup_retention_days``,

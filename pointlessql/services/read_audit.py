@@ -14,7 +14,7 @@ into ``query_history`` with ``read_kind="pql_table"`` (or
 queries tab, and ``QueryHistoryTable`` reverse-lookup all keep
 working without a parallel audit surface.
 
-Behaviour matches Sprint 13.8's :func:`operation_context`:
+Behaviour matches 's :func:`operation_context`:
 
 * Best-effort — when no session factory is available (interactive
   PQL with no DB initialised), the call is a silent passthrough so

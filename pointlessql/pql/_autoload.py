@@ -127,7 +127,7 @@ def autoload_files(
             Volume on the OpenLineage event.  Today the value is
             stashed but the lineage emission still uses no inputs
             (autoload sources are filesystem paths, not UC
-            securables); see Sprint 15.1 for context.
+            securables); see  for context.
 
     Returns:
         ``{"target", "files_scanned", "files_ingested", "files_skipped",
@@ -442,7 +442,7 @@ def _inject_audit_columns(
     full path is excessive in audit context and can change when an
     operator renames a Volume mount.
 
-    The Sprint 15.2 ``_lineage_row_id`` column is computed
+    The  ``_lineage_row_id`` column is computed
     deterministically from ``file_sha`` and the row's offset within
     the file, so re-ingesting the same bytes gives the same IDs and
     every silver-layer trace can walk back to the originating cell.

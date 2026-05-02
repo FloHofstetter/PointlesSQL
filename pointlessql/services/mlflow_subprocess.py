@@ -1,4 +1,4 @@
-"""Lifecycle manager for the embedded MLflow Tracking server (Phase 21.0).
+"""Lifecycle manager for the embedded MLflow Tracking server.
 
 PointlesSQL spawns ``mlflow server`` as a managed sub-process so the
 ``/mlflow/`` UI tab in :mod:`pointlessql.api.mlflow_proxy` can forward
@@ -150,7 +150,7 @@ class MLflowSubprocess:
             or f"file://{(self.cwd / 'mlflow_artifacts').resolve()}"
         )
         # MLflow's UC-OSS scheme is `uc:` followed by the bare HTTP URL,
-        # not `uc-oss:` (see uc_oss_rest_store.py + Phase 21.1's diff).
+        # not `uc-oss:` (see uc_oss_rest_store.py + 's diff).
         registry = self.settings.registry_uri or f"uc:{self.soyuz_url}"
         return backend, artifact_root, registry
 
@@ -259,7 +259,7 @@ class MLflowSubprocess:
             try:
                 self.proc.send_signal(signal.SIGTERM)
                 await asyncio.wait_for(self.proc.wait(), timeout=_SHUTDOWN_GRACE_S)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 _logger.warning(
                     "MLflow subprocess (pid=%s) did not exit within %.1fs of SIGTERM; "
                     "escalating to SIGKILL",

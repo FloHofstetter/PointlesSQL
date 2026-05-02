@@ -1,4 +1,4 @@
-"""Admin CRUD for the ``audit_sinks`` table — Sprint 20.0.
+"""Admin CRUD for the ``audit_sinks`` table.
 
 Six JSON endpoints, all gated by :func:`require_admin`:
 

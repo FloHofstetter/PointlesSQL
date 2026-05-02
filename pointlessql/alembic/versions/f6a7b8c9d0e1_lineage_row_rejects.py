@@ -1,6 +1,6 @@
-"""lineage_row_rejects table for opt-in merge-reject capture (Sprint 15.5.3)
+"""lineage_row_rejects table for opt-in merge-reject capture
 
-Phase 15 surfaced one half of agent-debuggability: per-row provenance
+ surfaced one half of agent-debuggability: per-row provenance
 chains that walk silver back to bronze.  The other half — visibility
 into rows that were *supposed* to land but didn't — is filled by
 this table.

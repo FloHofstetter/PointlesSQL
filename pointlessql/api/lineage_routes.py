@@ -1,6 +1,6 @@
-"""Per-row lineage trace routes (Sprint 15.4).
+"""Per-row lineage trace routes.
 
-Sprint 15.3 fills ``lineage_row_edges`` from every PQL merge / write
+ fills ``lineage_row_edges`` from every PQL merge / write
 that carried ``_lineage_row_id``.  This module exposes:
 
 * ``GET /api/lineage/row-trace?table=&row_id=`` — JSON walkback to
@@ -135,7 +135,7 @@ def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict
         is the full list of edges feeding this row — length > 1
         indicates fan-in (aggregate op or repeated re-runs).
         ``value_changes`` is the per-cell preimage/postimage list
-        for this step's ``(table, row_id)`` pair (Sprint 15.7.4),
+        for this step's ``(table, row_id)`` pair,
         empty when no merge with ``track_value_changes=True`` has
         touched this row.
     """
@@ -158,12 +158,12 @@ def _attach_value_changes(
 ) -> list[dict[str, Any]]:
     """Populate the ``value_changes`` key on each step from the metadata DB.
 
-    Sprint 15.7.4 — best-effort lookup that runs once per row-trace
+    best-effort lookup that runs once per row-trace
     render.  Each step probe is one indexed query on
     ``(target_table, target_row_id)``; max-hops is 20, so the call
     is bounded to ≤20 lightweight reads.
 
-    Sprint 18.2 — every emitted change carries ``is_pii=False``
+    every emitted change carries ``is_pii=False``
     initially and ``display_old`` / ``display_new`` mirror the raw
     values; :func:`_apply_pii_masking` mutates those fields in
     place after the soyuz tag lookup completes.
@@ -209,7 +209,7 @@ async def _apply_pii_masking(
 ) -> list[dict[str, Any]]:
     """Resolve PII tags for every value-change column and mask in place.
 
-    Sprint 18.2 — runs once per row-trace render *after*
+    runs once per row-trace render *after*
     :func:`_attach_value_changes` so the mutated ``display_old`` /
     ``display_new`` fields override the raw cleartext when the
     soyuz tag system flags the column as PII.
@@ -389,7 +389,7 @@ async def api_row_trace(
         ``steps`` is the deterministic walkback (depth-0 is the
         input row itself; subsequent depths are predecessors).
         Empty ``steps`` list when the row exists at the input table
-        but has no incoming edge — Sprint-15.4 callers render this
+        but has no incoming edge —  callers render this
         as "lineage break".
 
     Raises:
@@ -545,7 +545,7 @@ async def api_column_trace(
 ) -> dict[str, Any]:
     """Return the column-lineage walkback for one column as JSON.
 
-    Sprint 15.6.4 — sibling to :func:`api_row_trace`.  Each step
+    sibling to :func:`api_row_trace`.  Each step
     lists every predecessor edge that fed the current
     ``(table, column)`` pair, classified by ``transform_kind``.
 
@@ -633,7 +633,7 @@ async def api_value_changes(
 ) -> dict[str, Any]:
     """Return per-cell preimage/postimage history for one target row.
 
-    Sprint 15.7.4 — value-level analog of the row-trace and
+    value-level analog of the row-trace and
     column-trace endpoints.  Returns every ``lineage_value_changes``
     row that lands on ``(table, row_id)``, optionally narrowed to one
     column.  Same SELECT-privilege enforcement as ``row-trace`` /

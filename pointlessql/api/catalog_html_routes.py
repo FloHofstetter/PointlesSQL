@@ -224,7 +224,7 @@ async def table_detail(
             full_name,
             SELECT,
         )
-        # Sprint 17.5.1 — record the visit for the per-user "Recent
+        # record the visit for the per-user "Recent
         # tables" sidebar block.  Best-effort; service swallows its
         # own exceptions so a recents-write hiccup never blocks the
         # rendered page.
@@ -269,7 +269,7 @@ async def table_detail(
 def _columns_with_lineage(full_name: str) -> set[str]:
     """Return the set of column names in *full_name* that have a column-edge row.
 
-    Sprint 15.6.4 — drives the table-detail page's "lineage" link
+    drives the table-detail page's "lineage" link
     per column.  Best-effort: a missing metadata DB or schema drift
     yields an empty set so the link silently disappears rather than
     raising.

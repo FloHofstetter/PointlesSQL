@@ -119,14 +119,14 @@ class AgentRunOperation(Base):
             mid-op).
         error_message: ``repr(exc)`` when the primitive raised.
             ``None`` on success.
-        mlflow_run_id: Phase 21.2 cross-link — populated by
+        mlflow_run_id:  cross-link — populated by
             :func:`record_operation` when MLflow is active.  ``None``
             for non-ML ops.
-        training_params_json: Phase 21.3 — JSON blob with ``params``
+        training_params_json: JSON blob with ``params``
             and ``metrics`` sub-keys captured by
             :func:`pql.training_context()`.  ``None`` for non-training
             ops.
-        env_snapshot: Phase 21.4 — advisory JSON snapshot of the
+        env_snapshot: advisory JSON snapshot of the
             host environment (Python version, top-level package
             versions, GPU list when torch is installed).  Cached
             once per PointlesSQL process so the hot path stays
@@ -168,12 +168,12 @@ class AgentRunOperation(Base):
         DateTime(timezone=True), nullable=True
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Phase 21.2 cross-link: populated by record_operation when MLflow
+    #  cross-link: populated by record_operation when MLflow
     # is active (see :mod:`pointlessql.services.agent_runs.mlflow_detector`).
     mlflow_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    # Phase 21.3 — autolog snapshot ({"params": {...}, "metrics": {...}}).
+    # autolog snapshot ({"params": {...}, "metrics": {...}}).
     training_params_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Phase 21.4 — advisory hardware/library fingerprint
+    # advisory hardware/library fingerprint
     # (Python version, top-level package versions, GPU list).
     env_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
     # BUG-grand-08 — non-fatal side-effect markers (lineage emit /

@@ -1,4 +1,4 @@
-"""agent_run_operations training_params_json (Phase 21.3)
+"""agent_run_operations training_params_json
 
 Adds a nullable JSON column for MLflow autolog params + metrics
 captured by ``pql.training_context()``. The column is a Text blob

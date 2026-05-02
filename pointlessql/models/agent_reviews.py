@@ -1,4 +1,4 @@
-"""Agent-review + review-destination ORM models (Sprint 19.2.1).
+"""Agent-review + review-destination ORM models.
 
 The Audit-Reviewer-Agent (a Hermes cron defined in
 ``docs/hermes-jobs/audit-reviewer-daily.json``) writes one
@@ -58,8 +58,8 @@ class AgentReview(Base):
         run_id: FK to :class:`AgentRun`.  Nullable because the review
             itself runs as an agent_run, but historical imports +
             replays may not have a corresponding registered run.
-        kind: Discriminator (Sprint 21.6) — ``audit_review`` for
-            the Phase-19 daily anomaly review, ``model_promotion``
+        kind: Discriminator — ``audit_review`` for
+            the  daily anomaly review, ``model_promotion``
             for a champion/challenger swap.  Defaults to
             ``audit_review`` so existing rows backfill cleanly.
         period_start: Inclusive UTC lower bound of the review window.

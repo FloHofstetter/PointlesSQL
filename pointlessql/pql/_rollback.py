@@ -327,7 +327,7 @@ def _count_intervening_ops(
     """Count ``agent_run_operations`` rows that wrote *target* after the targeted op.
 
     The number of intervening ops drives the staleness-warning UI
-    in Sprint 16.3 (``"will overwrite N intervening write(s)"``).
+    (``"will overwrite N intervening write(s)"``).
     A best-effort count: a DB error returns ``0`` rather than
     raising into the rollback path.
 

@@ -1,20 +1,20 @@
 """Best-effort emission of OpenLineage events to soyuz-catalog.
 
-Phase 15 Sprint 15.1.  Every successful PQL primitive call inside an
+ .  Every successful PQL primitive call inside an
 agent run emits one ``OpenLineage`` ``RunEvent`` to soyuz so the
 table-level lineage graph (``soyuz_catalog.lineage_runs`` +
-``lineage_edges``, see soyuz Sprint 22 / ADR-0008) auto-populates.
+``lineage_edges``, see soyuz  / ADR-0008) auto-populates.
 The cross-reference lives in the ``runId`` field — soyuz strips
 hyphens to derive ``LineageRun.id``, so a 36-char PointlesSQL
 ``agent_run_id`` becomes the 32-char soyuz primary key without any
 extra mapping table.
 
-Sprint 20.4 extends emission with two optional output facets:
+ extends emission with two optional output facets:
 
 * ``columnLineage`` — OpenLineage 1.x standard.  Built from the
-  Phase-15.6 ``LineageColumnMap`` rows for the same op.
+   ``LineageColumnMap`` rows for the same op.
 * ``valueChange`` — PointlesSQL custom facet (non-spec, namespaced
-  by ``_producer``).  Built from the Phase-15.7 ``LineageValueChange``
+  by ``_producer``).  Built from the  ``LineageValueChange``
   rows for the same op.  PointlesSQL emits already-redacted values
   (per ``settings.audit.pii_mode``) so cleartext PII never leaves
   the install.

@@ -1,4 +1,4 @@
-"""Audit-Read API backbone — Sprint 18.0.
+"""Audit-Read API backbone.
 
 Three read-only JSON endpoints over the audit data lake.  Every
 later 18.x sprint (cross-axis navigation, PII masking, saved
@@ -124,7 +124,7 @@ async def api_audit_summary(
     """Single-dict counts of every cockpit metric.
 
     Powers the cockpit home stat cards and the
-    ``pql_audit_summary`` Hermes tool (Sprint 19.1).
+    ``pql_audit_summary`` Hermes tool.
 
     Args:
         request: Incoming FastAPI request.
@@ -335,11 +335,11 @@ async def api_audit_principal_summary(
     until: str | None = Query(default=None, description="ISO-8601 upper bound (exclusive)"),
     limit: int = Query(default=20, ge=1, le=200, description="Cap on returned runs"),
 ) -> dict[str, Any]:
-    """Per-principal activity summary — Sprint 19.3.
+    """Per-principal activity summary.
 
     Compliance questions like "which runs did <principal> drive last
     quarter, and what tables did they touch?" need this shape.  The
-    five per-run audit axes from Sprint 19.1 give the deep-dive once
+    five per-run audit axes from  give the deep-dive once
     a run is identified, but enumerating runs by principal across a
     window was missing.
 
@@ -429,7 +429,7 @@ async def api_audit_pii_reveal(
 ) -> dict[str, Any]:
     """Return the cleartext for one masked PII value, audit-logged.
 
-    Sprint 18.2 — admin-only.  Looks up the
+    admin-only.  Looks up the
     :class:`LineageValueChange` row identified by ``(run_id, op_id,
     table, row_id, column)`` and returns its raw old/new values.
     Every successful reveal writes an :class:`AuditLog` row of
@@ -521,7 +521,7 @@ async def api_audit_history(
 ) -> dict[str, Any]:
     """Paginated ``query_history`` slice for audit-trail traversal.
 
-    Sprint 19.1 — gives the daily Audit-Reviewer-Agent (and the
+    gives the daily Audit-Reviewer-Agent (and the
     compliance / incident demo flows) a way to walk yesterday's
     activity log without the full SQL-editor surface.
 

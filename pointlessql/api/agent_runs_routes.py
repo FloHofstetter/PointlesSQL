@@ -641,7 +641,7 @@ def _summarize_run(
         has_denied_reason}``.  ``failing_ops`` is a list of the
         per-op detail rows (op_id, ordinal, op_name, target_table,
         error_message, started_at, finished_at) for every operation
-        whose ``error_message`` is non-null — Sprint 19.4 added this
+        whose ``error_message`` is non-null.4 added this
         so the Incident-Responder agent can identify which op
         failed without a separate per-op fetch.  Deliberately omits
         ``cost_gate_threshold`` (Anti-gaming — agents shouldn't read
@@ -660,7 +660,7 @@ def _summarize_run(
             ]
     rows_touched = sum((op.rows_affected or 0) for op in operations)
     errored_ops_count = sum(1 for op in operations if op.error_message)
-    # Sprint 19.4 bug-hunt: surface every errored op so the
+    #  bug-hunt: surface every errored op so the
     # Incident-Responder agent can name the failing op + its error
     # message without a separate per-op fetch.  Without this the
     # response only carried a count and the agent had no way to
@@ -1068,7 +1068,7 @@ def _record_audit_self(
 ) -> None:
     """Persist a ``query_history`` row for one ``/api/agent-runs/.../audit/*`` call.
 
-    Sprint 19.1 audit-of-audit logging — every per-run audit-axis
+     audit-of-audit logging — every per-run audit-axis
     read leaves a ``read_kind='audit_api'`` breadcrumb so the
     cockpit/Hermes traffic stays visible in the same audit lake it
     queries.  Best-effort: a swallowed insert never fails the actual
@@ -1140,7 +1140,7 @@ async def api_agent_run_audit_lineage(
 ) -> dict[str, Any]:
     """Return :class:`LineageRowEdge` aggregates per op for one run.
 
-    Sprint 19.1 — JSON sibling to the run-detail Lineage tab,
+    JSON sibling to the run-detail Lineage tab,
     consumed by the new ``pql_query_row_lineage``-style Hermes
     tools.  Calls into :func:`runs_routes.load_lineage_summary_for_run`
     so the SQL stays in one place.
@@ -1186,7 +1186,7 @@ async def api_agent_run_audit_rejects(
 ) -> dict[str, Any]:
     """Return :class:`LineageRowReject` rows for one run as JSON.
 
-    Sprint 19.1 — wraps :func:`runs_routes.load_rejects_for_run`.
+    wraps :func:`runs_routes.load_rejects_for_run`.
     Reject reasons are stored verbatim in the DB; PII handling is
     the caller's problem (PointlesSQL doesn't mask rejects today).
 
@@ -1248,7 +1248,7 @@ async def api_agent_run_audit_value_changes(
 ) -> dict[str, Any]:
     """Return :class:`LineageValueChange` rows for one run.
 
-    Sprint 19.1 — value-axis JSON view.  By default all
+    value-axis JSON view.  By default all
     ``old_value`` / ``new_value`` cells are masked at the API
     boundary; un-masking still requires admin via
     :func:`api_audit_pii_reveal`.  This keeps an auditor-key bound
@@ -1331,7 +1331,7 @@ async def api_agent_run_audit_external_writes(
 ) -> dict[str, Any]:
     """Return ``unattributed_writes`` rows touching this run's tables.
 
-    Sprint 19.1 — JSON over the existing
+    JSON over the existing
     :func:`runs_routes.load_unattributed_for_run` helper.  Filters
     to the tables the run actually touched (via
     ``AgentRun.tables_touched`` JSON) and to unacknowledged rows
@@ -1391,7 +1391,7 @@ async def api_agent_run_audit_column_lineage(
 ) -> dict[str, Any]:
     """Return :class:`LineageColumnMap` rows for one run.
 
-    Sprint 19.1 — column-axis JSON view.  Powers the
+    column-axis JSON view.  Powers the
     ``pql_query_column_lineage`` Hermes tool and is the backing
     surface the run-detail column-trace links also call.
 

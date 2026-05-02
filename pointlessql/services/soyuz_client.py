@@ -20,7 +20,7 @@ def make_soyuz_client(
         agent_run_id: Optional run-UUID to forward as
             ``X-Agent-Run-Id`` so soyuz's audit log can attribute
             every UC mutation made through this client to the
-            owning PointlesSQL run (Sprint 14.4 cross-reference).
+            owning PointlesSQL run ( cross-reference).
 
     Returns:
         A ready-to-use ``Client`` pointing at the configured
@@ -51,7 +51,7 @@ def make_principal_client(
         agent_run_id: Optional run-UUID to forward as
             ``X-Agent-Run-Id`` so soyuz's audit log can attribute
             every UC mutation made through this client to the
-            owning PointlesSQL run (Sprint 14.4 cross-reference).
+            owning PointlesSQL run ( cross-reference).
 
     Returns:
         A ``Client`` instance with the ``X-Principal`` header set

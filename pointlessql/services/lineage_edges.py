@@ -1,7 +1,7 @@
-"""Per-row lineage edge helpers (Sprint 15.3 + 15.4).
+"""Per-row lineage edge helpers ( + 15.4).
 
-Sprint 15.3 fills the table from ``pql.merge`` and ``pql.write_table``;
-Sprint 15.4 walks it backwards for the row-trace UI.  All inserts are
+ fills the table from ``pql.merge`` and ``pql.write_table``;
+ walks it backwards for the row-trace UI.  All inserts are
 **best-effort** — a DB hiccup must never roll back a Delta write that
 already committed.  Failures are returned to the caller as an
 ``Exception`` so the operation row can carry the
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 class PredecessorRef:
     """One source-side edge feeding a :class:`LineageStep`.
 
-    Sprint 15.5.2 — surfaces aggregate fan-in (and the occasional
+    surfaces aggregate fan-in (and the occasional
     re-run history) on the row-trace UI.  Multiple predecessors per
     step mean either:
 
@@ -102,7 +102,7 @@ class LineageStep:
 class ColumnEdgeSpec:
     """One source-column → target-column mapping.
 
-    Sprint 15.6.1 — bulk-insert input for :func:`record_column_edges`
+    bulk-insert input for :func:`record_column_edges`
     and the in-memory shape PQL primitives stash on the recorder
     until the post-commit hook persists them.
 
@@ -177,7 +177,7 @@ class ColumnTraceStep:
 class ValueChangeSpec:
     """One per-cell preimage/postimage pair for ``lineage_value_changes``.
 
-    Sprint 15.7.1 — bulk-insert input for :func:`record_value_changes`
+    bulk-insert input for :func:`record_value_changes`
     and the in-memory shape :func:`extract_value_changes` produces
     after pairing CDF events on ``_lineage_row_id``.
 
@@ -267,7 +267,7 @@ def record_edges(
             ``target_row_ids``.
         target_row_ids: Target-side IDs synthesised by
             :func:`synth_target_row_id`.
-        source_model_uri: Sprint 21.7 — when set, every edge row
+        source_model_uri: when set, every edge row
             carries the originating model URI so the model-detail
             DAG can paint the downstream "Predictions" half.
 
@@ -322,7 +322,7 @@ def record_rejects(
 ) -> Exception | None:
     """Bulk-insert rejected-row markers into ``lineage_row_rejects``.
 
-    Sprint 15.5.3 — populated by ``pql.merge(track_rejects=True)``
+    populated by ``pql.merge(track_rejects=True)``
     when a pre-merge set-diff identifies source rows that won't land.
 
     Args:
@@ -576,7 +576,7 @@ def record_column_edges(
 ) -> Exception | None:
     """Bulk-insert one row per :class:`ColumnEdgeSpec` into ``lineage_column_map``.
 
-    Sprint 15.6.1 — column-level analog of :func:`record_edges`.
+    column-level analog of :func:`record_edges`.
     Same best-effort contract: a DB hiccup or cap breach is returned
     to the caller, never raised, so the Delta write upstream never
     rolls back.  The audit row gets a ``[lineage_column_partial]``
@@ -714,7 +714,7 @@ def walk_back_columns(
 ) -> list[ColumnTraceStep]:
     """Walk the column-lineage graph backward from one column to its sources.
 
-    Sprint 15.6.1 — column-level analog of :func:`walk_back`.  Each
+    column-level analog of :func:`walk_back`.  Each
     step records every predecessor edge that feeds the current
     ``(table, column)`` pair via :class:`ColumnPredecessorRef` entries.
     The chain-recursion picks the **first unique** source column at
@@ -828,7 +828,7 @@ def record_value_changes(
 ) -> Exception | None:
     """Bulk-insert one row per :class:`ValueChangeSpec` into ``lineage_value_changes``.
 
-    Sprint 15.7.1 — value-level analog of :func:`record_column_edges`.
+    value-level analog of :func:`record_column_edges`.
     Same best-effort contract: the function returns the exception
     rather than raising, so a Delta merge that already committed never
     rolls back.  The audit row gets a ``[lineage_value_partial]``
@@ -839,7 +839,7 @@ def record_value_changes(
     most columns.  When breached the function inserts no rows and
     returns a :class:`ValueChangeCapExceeded` sentinel.
 
-    Sprint 20.1 adds the PII redaction hook: when ``pii_mode`` is
+     adds the PII redaction hook: when ``pii_mode`` is
     ``hash_only`` or ``redact_with_audit_log``, every column whose
     name matches
     :data:`pointlessql.services.pii_redactor.PII_NAME_PATTERN` gets

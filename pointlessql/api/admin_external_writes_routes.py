@@ -1,6 +1,6 @@
 """Admin surface for the external-write (unattributed Delta) scanner.
 
-Owns the four routes that drive Sprint 14.3's detection-only flow:
+Owns the four routes that drive 's detection-only flow:
 
 * ``GET /admin/external-writes`` (HTML) — list view with table-FQN
   substring filter and an "unacknowledged only" toggle.

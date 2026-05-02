@@ -1,7 +1,7 @@
-"""HTML page routes for the registered-models browse surface (Phase 21.5).
+"""HTML page routes for the registered-models browse surface.
 
 Three pages: the metastore-wide ``/models`` index, the per-model
-detail page at ``/models/{full_name}`` (Sprint 21.5.3), and the
+detail page at ``/models/{full_name}``, and the
 version-compare view at ``/models/{full_name}/compare`` (Sprint
 21.5.4).  All three redirect anonymous browsers to ``/auth/login``
 with a ``next=`` hint so the deep-link survives the round trip.
@@ -91,7 +91,7 @@ async def model_detail_page(
 
     mlflow_running = getattr(request.app.state, "mlflow_subprocess", None) is not None
 
-    # Sprint 21.6: surface the current champion so the Versions tab
+    # surface the current champion so the Versions tab
     # can render a star-badge and the Promotion tab pre-loads.
     try:
         champion_version = await model_promotion.get_current_champion(client, full_name)
@@ -122,7 +122,7 @@ async def model_detail_page(
 async def model_compare_page(
     full_name: str, request: Request, v1: int, v2: int
 ) -> HTMLResponse | RedirectResponse:
-    """Render the side-by-side version-compare view (Sprint 21.5.4)."""
+    """Render the side-by-side version-compare view."""
     user = get_user(request)
     if user["id"] == 0:
         return RedirectResponse(

@@ -1,6 +1,6 @@
-"""Change Data Feed (CDF) bootstrap helpers (Sprint 15.7.2).
+"""Change Data Feed (CDF) bootstrap helpers.
 
-Phase 15.7's value-level lineage rests on Delta Lake's Change Data
+'s value-level lineage rests on Delta Lake's Change Data
 Feed: when a table has the ``delta.enableChangeDataFeed=true`` table
 property, every commit emits ``insert`` / ``update_preimage`` /
 ``update_postimage`` / ``delete`` events that
@@ -21,7 +21,7 @@ This module wraps two operations:
   dict to pass to ``deltalake.write_deltalake`` on the create path.
   Centralises the literal so the three primitives don't repeat it.
 * :func:`ensure_cdf_enabled` is the retroactive escape hatch:
-  if a table was created before Phase 15.7 (or by an external writer
+  if a table was created before  (or by an external writer
   that didn't pass the configuration), call this helper before
   ``load_cdf()`` and the property will be flipped via ``ALTER TABLE``
   in deltalake's :class:`TableAlterer`.  Idempotent — a table that
@@ -61,7 +61,7 @@ def cdf_creation_config() -> dict[str, str]:
 def ensure_cdf_enabled(target_location: str) -> bool:
     """Best-effort enable of CDF on an existing Delta table.
 
-    For tables created before Phase 15.7, the CDF property is not on
+    For tables created before , the CDF property is not on
     by default.  Calling ``DeltaTable.load_cdf()`` against such a
     table raises a deltalake error.  This helper opens the table,
     checks the configuration, and — if CDF is missing — issues an

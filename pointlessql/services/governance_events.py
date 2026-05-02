@@ -1,9 +1,9 @@
-"""Governance CloudEvents emitter (Sprint 20.0).
+"""Governance CloudEvents emitter.
 
 Five governance event types fan out to ``audit_sinks`` (the Phase
 20 forwarder pluggable destination set):
 
-* ``pointlessql.external_write.detected`` — Sprint 14.3 scanner found
+* ``pointlessql.external_write.detected``.3 scanner found
   a Delta commit not attributed to any agent run.
 * ``pointlessql.cost_gate.denied`` — :func:`/api/sql/explain` returned
   ``needs_approval=True`` because the row estimate exceeded
@@ -14,7 +14,7 @@ Five governance event types fan out to ``audit_sinks`` (the Phase
   for future policies; emit it from any code path that detects an
   out-of-policy condition.  The data payload is free-shape but
   should include a ``policy`` key.
-* ``pointlessql.lineage.pruned`` — Sprint 20.2 pruner deleted N rows
+* ``pointlessql.lineage.pruned``.2 pruner deleted N rows
   from a lineage table.
 
 Run-tied lifecycle events stay in

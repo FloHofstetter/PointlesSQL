@@ -1,4 +1,4 @@
-"""Time-travel value-read helpers for the PQL surface (Sprint 20.3).
+"""Time-travel value-read helpers for the PQL surface.
 
 Module-level entry points for :meth:`PQL.table_at_version` /
 :meth:`PQL.table_at_timestamp`.

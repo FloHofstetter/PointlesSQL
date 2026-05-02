@@ -1,18 +1,18 @@
-"""soyuz model-version cross-link helpers (Phase 21.2).
+"""soyuz model-version cross-link helpers.
 
 When a Hermes-driven training run produces a registered model in
 soyuz, the
 :func:`link_model_version_to_run` helper writes a JSON blob into
 the model-version's ``comment`` field that pins the agent-run-id +
 MLflow-run-id to the catalog row. This is a *bridge* implementation:
-soyuz Sprint-25 tags currently exclude ``registered_model`` from
+soyuz  tags currently exclude ``registered_model`` from
 ``TagSecurableType``, so we use ``comment`` as a tag-equivalent
 until tags-on-models lands. The marker prefix ``_pql_link`` makes
 the future migration trivial — a one-shot script can read every
 ``comment`` for the prefix and re-emit as a real tag.
 
 The CloudEvent ``pointlessql.mlflow.linked`` fires once per
-successful linkage so Phase-19 audit-reviewer agents can flag
+successful linkage so  audit-reviewer agents can flag
 training-without-linkage anomalies.
 """
 
@@ -146,7 +146,7 @@ def parse_link_marker(comment: str | None) -> dict[str, Any] | None:
     """Extract the ``_pql_link`` marker from a comment, if present.
 
     Counterpart to :func:`_serialize_link` for the read-side
-    aggregator endpoint (Phase 21.2 ``/api/runs/{id}/ml-context``).
+    aggregator endpoint ( ``/api/runs/{id}/ml-context``).
 
     Args:
         comment: A model-version ``comment`` value, possibly ``None``.
@@ -181,8 +181,8 @@ def build_mlflow_linked_event(
 ) -> dict[str, Any]:
     """Build the CloudEvents 1.0 envelope for ``pointlessql.mlflow.linked``.
 
-    Phase 21.2 emits this event after every successful linkage so
-    the Phase-19 audit-reviewer agents (and external webhook
+     emits this event after every successful linkage so
+    the  audit-reviewer agents (and external webhook
     consumers) can correlate training to catalog state.
 
     Args:

@@ -1,4 +1,4 @@
-"""query_history.read_kind for read-audit (Sprint 14.2)
+"""query_history.read_kind for read-audit
 
 Extends ``query_history`` with a ``read_kind`` discriminator so
 direct-Delta reads via ``pql.table()`` and engine-direct paths can

@@ -64,10 +64,10 @@ def write_table(
         source_table_fqn: When set, declared as the upstream UC
             input on the OpenLineage event emitted to soyuz so the
             cross-table edge ``source_table_fqn → full_name`` appears
-            in the lineage graph (Sprint 15.1).  ``None`` keeps
+            in the lineage graph.  ``None`` keeps
             ``write_table`` generic for in-memory frames with no UC
             origin.
-        source_model_uri: Sprint 21.7 — when set, declares the
+        source_model_uri: when set, declares the
             originating registered-model URI
             (``models:/cat.sch.model/<version>``) so every
             ``lineage_row_edges`` row produced by this write
@@ -75,7 +75,7 @@ def write_table(
             can paint ``target_table`` as a downstream prediction
             node.  Requires ``source_table_fqn`` for the row-edge
             grain to be meaningful AND ``_lineage_row_id`` on *df*
-            (Sprint 15.8 caveat) — without the column the row-edge
+            ( caveat) — without the column the row-edge
             hook short-circuits with no source IDs to correlate on,
             and the URI has nowhere to land.
         derivations: Optional declarative mapping of derived target

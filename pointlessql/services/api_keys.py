@@ -97,7 +97,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool]]:
 
     - ``name:secret`` — non-privileged agent key (legacy default).
     - ``name:secret:supervisor`` — supervisor scope.
-    - ``name:secret:auditor`` — auditor scope (Sprint 19.1).
+    - ``name:secret:auditor`` — auditor scope.
 
     Anything else as the third token raises so a typo can't silently
     grant a privileged scope.  A single env entry maps to exactly one
@@ -229,7 +229,7 @@ def create_api_key(
         supervisor: When ``True``, the key may invoke supervisor-scope
             routes.
         auditor: When ``True``, the key may invoke audit-read routes
-            (Sprint 19.1).  Independent of ``supervisor``.
+           .  Independent of ``supervisor``.
         created_by_user_id: Admin who created the key.  ``None`` for
             CLI-provisioned or env-var-bootstrapped keys.
 
@@ -402,7 +402,7 @@ def is_supervisor(session_factory: _SessionFactory, *, name: str) -> bool:
 def is_auditor(session_factory: _SessionFactory, *, name: str) -> bool:
     """Return ``True`` when the named key carries the auditor scope.
 
-    Sprint 19.1 sibling to :func:`is_supervisor`.  Defensive recheck
+     sibling to :func:`is_supervisor`.  Defensive recheck
     used by :func:`pointlessql.api.dependencies.require_auditor` when
     the cached :class:`KeyEntry` is unavailable.
 

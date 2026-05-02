@@ -1,4 +1,4 @@
-"""Time-travel value-query routes (Sprint 20.3).
+"""Time-travel value-query routes.
 
 Three endpoints surface the version arithmetic
 :class:`pointlessql.models.AgentRunOperation.delta_version_after`
@@ -244,7 +244,7 @@ async def api_row_at_version(
     Admin-only — arbitrary historic reads bypass the per-row trace's
     "this row was here" implicit existence check, and a row's
     historical values can carry PII the row-trace masks at
-    render-time.  Phase 18.2 redaction still applies on the API
+    render-time.   redaction still applies on the API
     boundary; admins see cleartext, non-admins see the masked
     rendition.
 

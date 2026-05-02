@@ -54,7 +54,7 @@ async def api_tree(request: Request) -> list[dict[str, object]]:
 
 @router.get("/api/tree/search")
 async def api_tree_search(request: Request, q: str, limit: int = 50) -> dict[str, object]:
-    """Server-side substring search across the catalog tree (Sprint 17.5.1).
+    """Server-side substring search across the catalog tree.
 
     Returns the catalog/schema/table FQNs whose components match
     *q* case-insensitively.  Walks the tree once via the existing
@@ -187,7 +187,7 @@ async def api_tree_search(request: Request, q: str, limit: int = 50) -> dict[str
 
 @router.get("/api/recents")
 async def api_recents(request: Request) -> dict[str, object]:
-    """Return the current user's most-recent table visits (Sprint 17.5.1)."""
+    """Return the current user's most-recent table visits."""
     from pointlessql.services import recents as recents_service
 
     user = get_user(request)
@@ -199,7 +199,7 @@ async def api_recents(request: Request) -> dict[str, object]:
 
 @router.delete("/api/recents")
 async def api_clear_recents(request: Request) -> dict[str, bool]:
-    """Wipe the current user's recents block (Sprint 17.5.1)."""
+    """Wipe the current user's recents block."""
     from sqlalchemy import delete
 
     from pointlessql.models import RecentTable

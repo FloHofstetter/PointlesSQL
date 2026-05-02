@@ -130,7 +130,7 @@ class MetadataMixin:
     ) -> None:
         """Delete a schema by its two-part name.
 
-        Used by the Phase 16.5 branch-discard primitive to drop the
+        Used by the  branch-discard primitive to drop the
         UC namespace once the branch's per-table storage has been
         removed.  ``force=True`` lets soyuz cascade-delete any
         remaining tables in the schema; the discard primitive cleans

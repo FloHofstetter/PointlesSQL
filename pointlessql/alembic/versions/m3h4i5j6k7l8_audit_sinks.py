@@ -1,6 +1,6 @@
-"""audit_sinks + governance_events tables (Sprint 20.0)
+"""audit_sinks + governance_events tables
 
-Phase 20's first sub-sprint extends the existing CloudEvent
+'s first sub-sprint extends the existing CloudEvent
 emission catalog with six new governance event types and adds a
 pluggable sink-type fan-out so an organisation can route the same
 envelope at multiple destinations (webhook + S3 + AWS CloudTrail).

@@ -1,6 +1,6 @@
-"""agent_reviews + review_destinations tables (Sprint 19.2.1)
+"""agent_reviews + review_destinations tables
 
-Sprint 19.2.1 makes the daily Audit-Reviewer-Agent's Markdown digest
+ makes the daily Audit-Reviewer-Agent's Markdown digest
 queryable from inside PointlesSQL itself: every successful review is
 persisted into ``agent_reviews`` (severity + summary_md + replay
 payload + dispatcher fan-out log), and every active webhook in

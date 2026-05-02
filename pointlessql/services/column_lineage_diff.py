@@ -1,6 +1,6 @@
 """Schema-diff helper that turns column lists into ``ColumnEdgeSpec``s.
 
-Sprint 15.6.2 — used by ``pql.merge`` / ``pql.write_table`` /
+used by ``pql.merge`` / ``pql.write_table`` /
 ``pql.autoload`` to populate the column-lineage table without
 requiring the caller to spell every mapping out.  The algorithm is
 plain set arithmetic on column-name lists; the DataFrame schema

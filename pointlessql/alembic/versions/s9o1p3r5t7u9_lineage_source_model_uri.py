@@ -1,4 +1,4 @@
-"""lineage_row_edges source_model_uri (Phase 21.7)
+"""lineage_row_edges source_model_uri
 
 Adds a nullable ``source_model_uri`` column to ``lineage_row_edges``
 so a write-time call site (typically batch inference: a model
@@ -8,7 +8,7 @@ predicts into a Delta table) can stamp the originating
 Existing rows stay ``NULL`` — pre-21.7 writes were table-to-table
 only. The model-detail Lineage DAG joins on this column when
 building the downstream "Predictions" half of the bidirectional
-graph (Sprint 21.7).
+graph.
 
 Revision ID: s9o1p3r5t7u9
 Revises: r8n0p2q4s6u8

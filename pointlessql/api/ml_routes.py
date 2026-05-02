@@ -1,4 +1,4 @@
-"""ML-context aggregator endpoint (Phase 21.2).
+"""ML-context aggregator endpoint.
 
 Single route that joins the three audit sources for a given
 agent-run into one response: PointlesSQL's ``agent_runs`` row,
@@ -7,7 +7,7 @@ and any soyuz model-versions linked back via the
 ``_pql_link``-marker convention from
 :mod:`pointlessql.services.agent_runs.mlflow_soyuz_link`.
 
-The endpoint is supervisor-scoped — same gate as Sprint 19.1's
+The endpoint is supervisor-scoped — same gate as 's
 audit axes — so reviewers and the audit-reviewer agent can answer
 "how was this model trained?" with a single round-trip.
 """
@@ -82,11 +82,11 @@ def _fetch_linked_model_versions(agent_run_id: str) -> list[dict[str, Any]]:
     """
     try:
         soyuz = make_soyuz_client()
-        from soyuz_catalog_client.api.registered_models import (
-            list_registered_models_api_2_1_unity_catalog_models_get as _list_rm,
-        )
         from soyuz_catalog_client.api.model_versions import (
             list_model_versions_api_2_1_unity_catalog_models_full_name_versions_get as _list_mv,
+        )
+        from soyuz_catalog_client.api.registered_models import (
+            list_registered_models_api_2_1_unity_catalog_models_get as _list_rm,
         )
 
         # Soyuz allows a metastore-wide list when both catalog/schema are unset.
