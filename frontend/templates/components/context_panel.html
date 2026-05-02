@@ -25,21 +25,7 @@
     {% elif active_section == 'dashboards' %}
         {% include "components/dashboards_sidebar.html" %}
     {% elif active_section == 'runs' %}
-        <div class="pql-context-panel__header">Runs</div>
-        <div class="pql-context-panel__body">
-            <ul class="pql-context-panel__list">
-                <li>
-                    <a href="/runs"
-                       class="pql-context-panel__link{% if active_page is defined and active_page == 'runs' %} active{% endif %}">
-                        <i class="bi bi-list-ul"></i>
-                        <span>All runs</span>
-                    </a>
-                </li>
-            </ul>
-            <div class="pql-context-panel__hint">
-                Use Cmd+K to jump to a specific run.
-            </div>
-        </div>
+        {% include "components/sidebars/runs_sidebar.html" %}
     {% elif active_section == 'sql' %}
         <div class="pql-context-panel__header">SQL</div>
         <div class="pql-context-panel__body">

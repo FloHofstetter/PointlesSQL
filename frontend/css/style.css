@@ -28,6 +28,7 @@
 @import url("./layout.css?v=sprint23-rail-80b");                    /* topbar, shell, sidebar, tree, content */
 @import url("./components/icon_rail.css?v=sprint23-rail-80b");      /* Sprint 17.1: 60 px nav-rail */
 @import url("./components/context_panel.css?v=sprint23-rail-80b");  /* Sprint 17.1: 240 px contextual panel */
+@import url("./components/context_sidebars.css?v=phase24-sidebars"); /* Phase 24: per-section sidebars */
 @import url("./components/breadcrumbs.css?v=sprint23-rail-80b");
 @import url("./components/empty_state.css?v=sprint23-rail-80b");    /* + error-shell variant */
 @import url("./components/toast.css?v=sprint23-rail-80b");

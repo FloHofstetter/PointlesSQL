@@ -109,6 +109,12 @@ import { notebookWorkspace } from './pages/notebooks_workspace.js';
 import { tablePreview } from './pages/table_preview.js';
 import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
 
+// Phase 24 — per-section context-panel factories.  Each replaces a
+// previously static link list in components/context_panel.html with
+// a navigable, refresh-aware Alpine factory analogous to
+// catalogTree() above.
+import { runsSidebar } from './components/sidebars/runs_sidebar.js';
+
 window.alertsPage = alertsPage;
 window.alertDetail = alertDetail;
 window.volumeDetail = volumeDetail;
@@ -116,3 +122,4 @@ window.notebookWorkspace = notebookWorkspace;
 window.tablePreview = tablePreview;
 window.catalogTree = catalogTree;
 window.pathFromUrl = pathFromUrl;
+window.runsSidebar = runsSidebar;

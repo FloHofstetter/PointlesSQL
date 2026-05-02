@@ -1,0 +1,73 @@
+/* ---------------------------------------------------------------
+ * Phase 24 — context-panel rich sidebars (per-section).
+ *
+ * Shared row styles for the Runs / Branches / Workspace / Jobs /
+ * Alerts / MLflow context-panel partials in
+ * frontend/templates/components/sidebars/.  Each panel uses the
+ * same .pql-runs-row / .pql-context-row pattern: tight single-line
+ * row, monospace short-id on the left, status badge in the middle,
+ * relative timestamp pushed to the right edge.
+ * ------------------------------------------------------------- */
+
+.pql-runs-row,
+.pql-context-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.75rem 0.3rem 1rem;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    color: var(--bs-body-color);
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    min-width: 0;
+}
+
+.pql-runs-row:hover,
+.pql-context-row:hover {
+    background: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+.pql-runs-row.active,
+.pql-context-row.active {
+    background: var(--pql-color-accent-bg, rgba(118, 185, 0, 0.08));
+    border-left-color: var(--pql-color-accent);
+    color: var(--pql-color-accent);
+}
+
+.pql-runs-row__id,
+.pql-context-row__id {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    flex-shrink: 0;
+}
+
+.pql-runs-row.active .pql-runs-row__id,
+.pql-context-row.active .pql-context-row__id {
+    color: var(--pql-color-accent);
+}
+
+.pql-runs-row .badge,
+.pql-context-row .badge {
+    font-size: 0.625rem;
+    padding: 0.15em 0.45em;
+    flex-shrink: 0;
+}
+
+.pql-runs-row__when,
+.pql-context-row__when {
+    font-size: 0.7rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.pql-runs-row__name,
+.pql-context-row__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
