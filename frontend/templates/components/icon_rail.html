@@ -20,7 +20,8 @@
     <ul class="pql-icon-rail__list">
         <li class="pql-icon-rail__item">
             <a href="/connections"
-               class="pql-icon-rail__link{% if active_section == 'federation' %} active{% endif %}"
+               data-section="federation"
+           class="pql-icon-rail__link{% if active_section == 'federation' %} active{% endif %}"
                title="Federation (catalogs, connections, external locations, credentials)">
                 <i class="bi bi-plug"></i>
                 <span class="pql-icon-rail__label">Federation</span>
@@ -28,6 +29,7 @@
         </li>
         <li class="pql-icon-rail__item">
             <a href="/runs"
+               data-section="runs"
                class="pql-icon-rail__link{% if active_section == 'runs' %} active{% endif %}"
                title="Agent runs">
                 <i class="bi bi-activity"></i>
@@ -36,6 +38,7 @@
         </li>
         <li class="pql-icon-rail__item">
             <a href="/sql"
+               data-section="sql"
                class="pql-icon-rail__link{% if active_section == 'sql' %} active{% endif %}"
                title="SQL editor and query history">
                 <i class="bi bi-code-square"></i>
@@ -45,6 +48,7 @@
         {% if current_user is defined and current_user and current_user.is_admin %}
         <li class="pql-icon-rail__item">
             <a href="/notebooks/workspace"
+               data-section="workspace"
                class="pql-icon-rail__link{% if active_section == 'workspace' %} active{% endif %}"
                title="Notebook workspace">
                 <i class="bi bi-folder2-open"></i>
@@ -54,6 +58,7 @@
         {% endif %}
         <li class="pql-icon-rail__item">
             <a href="/jobs"
+               data-section="jobs"
                class="pql-icon-rail__link{% if active_section == 'jobs' %} active{% endif %}"
                title="Jobs">
                 <i class="bi bi-clock-history"></i>
@@ -62,6 +67,7 @@
         </li>
         <li class="pql-icon-rail__item">
             <a href="/alerts"
+               data-section="alerts"
                class="pql-icon-rail__link{% if active_section == 'alerts' %} active{% endif %}"
                title="Alerts">
                 <i class="bi bi-bell"></i>
@@ -70,6 +76,7 @@
         </li>
         <li class="pql-icon-rail__item">
             <a href="/volumes"
+               data-section="volumes"
                class="pql-icon-rail__link{% if active_section == 'volumes' %} active{% endif %}"
                title="Volumes">
                 <i class="bi bi-hdd-stack"></i>
@@ -78,6 +85,7 @@
         </li>
         <li class="pql-icon-rail__item">
             <a href="/dashboards"
+               data-section="dashboards"
                class="pql-icon-rail__link{% if active_section == 'dashboards' %} active{% endif %}"
                title="Dashboards">
                 <i class="bi bi-speedometer2"></i>
@@ -86,6 +94,7 @@
         </li>
         <li class="pql-icon-rail__item">
             <a href="/ml"
+               data-section="mlflow"
                class="pql-icon-rail__link{% if active_section == 'mlflow' %} active{% endif %}"
                title="MLflow Tracking (Phase 21.0)">
                 <i class="bi bi-robot"></i>
@@ -94,6 +103,7 @@
         </li>
         <li class="pql-icon-rail__item">
             <a href="/models"
+               data-section="models"
                class="pql-icon-rail__link{% if active_section == 'models' %} active{% endif %}"
                title="Registered models (Phase 21.5)">
                 <i class="bi bi-box-seam"></i>
@@ -103,6 +113,7 @@
         {% if current_user is defined and current_user and current_user.is_admin %}
         <li class="pql-icon-rail__item">
             <a href="/branches"
+               data-section="branches"
                class="pql-icon-rail__link{% if active_section == 'branches' %} active{% endif %}"
                title="Delta branches (Phase 16.5)">
                 <i class="bi bi-diagram-3"></i>
@@ -115,6 +126,7 @@
     <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
         <li class="pql-icon-rail__item">
             <a href="/admin/audit"
+               data-section="admin"
                class="pql-icon-rail__link{% if active_section == 'admin' %} active{% endif %}"
                title="Admin (audit log, audit cockpit, external writes)">
                 <i class="bi bi-shield-check"></i>

@@ -37,8 +37,8 @@
 } %}
 {% set active_section = _section_map.get(active_page if active_page is defined else None, 'federation') %}
 <body hx-boost="true"
-      hx-target=".pql-shell"
-      hx-select=".pql-shell"
+      hx-target="#main-content"
+      hx-select="#main-content"
       hx-swap="outerHTML show:window:top"
       {% if list_page is defined and list_page %}data-pql-refresh="1"{% endif %}>
     <nav class="navbar navbar-expand bg-body-tertiary border-bottom px-3 pql-topbar">
@@ -111,7 +111,9 @@
             </div>
         </div>
         {% endif %}
-        <main class="pql-content {% block content_class %}{% endblock %}" id="main-content">
+        <main class="pql-content {% block content_class %}{% endblock %}"
+              id="main-content"
+              data-active-section="{{ active_section }}">
             {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
         </main>
@@ -192,6 +194,28 @@
                 window.Alpine.initTree(e.detail.target);
             }
         });
+        // Phase 23 follow-up — sync the icon-rail's ``.active`` class
+        // after every HTMX-boosted navigation.  ``hx-target="#main-
+        // content"`` keeps the rail (which lives outside main) frozen
+        // at whatever the first page render produced; this listener
+        // reads ``data-active-section`` from the new ``<main>`` and
+        // applies the matching ``.active`` class to the rail link with
+        // the same ``data-section``.  Same for the offcanvas
+        // ``nav_links`` rail on mobile if it ever grows the attribute.
+        function syncActiveSection() {
+            const main = document.getElementById('main-content');
+            if (!main) return;
+            const section = main.dataset.activeSection || '';
+            document
+                .querySelectorAll('.pql-icon-rail__link[data-section]')
+                .forEach((link) => {
+                    link.classList.toggle(
+                        'active',
+                        link.dataset.section === section,
+                    );
+                });
+        }
+        document.body.addEventListener('htmx:afterSwap', syncActiveSection);
         // Sprint 44: server-side HX-Trigger toast bridge. Domain errors
         // from a non-boosted HTMX request do not swap the DOM (htmx
         // ignores 4xx/5xx by default); the server emits an HX-Trigger

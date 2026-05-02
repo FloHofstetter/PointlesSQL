@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Catalog tree disappeared on deep paths after the previous HTMX
+  shell-swap fix.**  Switching ``hx-target`` to ``.pql-shell`` so
+  the icon-rail's ``.active`` class would update on boost
+  inadvertently broke the ``catalogTree`` Alpine factory: its
+  inline ``<script>`` registration at the bottom of
+  ``components/sidebar.html`` did not re-evaluate reliably on
+  HTMX-swapped content, leaving the tree empty on every page
+  past the initial load.  Reverted ``hx-target`` to
+  ``#main-content`` (catalog tree, recents, filter all behave
+  again) and now sync the rail's active class via a small
+  ``htmx:afterSwap`` listener that reads
+  ``data-active-section`` from the new ``<main>`` and toggles
+  ``.active`` on the rail link with the matching ``data-section``.
+
 - **Friendly preview-card error when a table's storage path is
   missing on disk.**  Tables whose ``storage_root`` no longer
   resolves (demo seed cleaned up, ``/tmp`` cleared on reboot,
