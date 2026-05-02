@@ -235,6 +235,11 @@ class OperationRecorder:
     # Phase 21.3 — autolog snapshot {"params": {...}, "metrics": {...}}
     # populated by ``training_context`` at MLflow run-exit time.
     training_params_json: str | None = None
+    # BUG-grand-08 — non-fatal side-effect markers stamped by
+    # post-commit hooks (lineage emit / edge insert / reject /
+    # column / value-change failures).  Persisted into the row's
+    # ``warnings_json`` column so ``error_message`` stays clean.
+    warnings: list[str] = field(default_factory=list)
 
 
 def record_operation(
@@ -253,6 +258,7 @@ def record_operation(
     error_message: str | None,
     training_params_json: str | None = None,
     env_snapshot: str | None = None,
+    warnings_json: str | None = None,
 ) -> int:
     """Insert one ``agent_run_operations`` row in strict mode.
 
@@ -277,6 +283,11 @@ def record_operation(
         env_snapshot: Sprint 21.4 — advisory hardware/library
             fingerprint blob.  When ``None``, the cached
             process-wide snapshot is stamped automatically.
+        warnings_json: BUG-grand-08 — JSON blob with a ``markers``
+            sub-key listing non-fatal side-effect failures
+            stamped before commit.  Defaults to ``None``;
+            post-commit hooks append further markers via
+            :func:`_stamp_audit_marker`.
 
     Returns:
         The auto-assigned primary key.
@@ -337,6 +348,7 @@ def record_operation(
                 mlflow_run_id=mlflow_run_id,
                 training_params_json=training_params_json,
                 env_snapshot=env_snapshot,
+                warnings_json=warnings_json,
             )
             session.add(row)
             # Phase 21.2: backfill the parent agent_runs row's
@@ -431,6 +443,7 @@ def operation_context(
                 finished_at=finished_at,
                 error_message=error_message,
                 training_params_json=recorder.training_params_json,
+                warnings_json=_serialise_warnings(recorder.warnings),
             )
         except AuditUnavailableError:
             logger.exception(
@@ -458,6 +471,7 @@ def operation_context(
         finished_at=finished_at,
         error_message=None,
         training_params_json=recorder.training_params_json,
+        warnings_json=_serialise_warnings(recorder.warnings),
     )
     _emit_lineage_after_commit(
         session_factory,
@@ -512,9 +526,10 @@ def _emit_lineage_after_commit(
     """Fire the soyuz OpenLineage event for a freshly-committed op row.
 
     Best-effort. A failure stamps a ``[lineage_emit_failed]`` marker
-    onto the row's ``error_message`` field so the audit trail records
+    into the row's ``warnings_json`` blob so the audit trail records
     that the side-effect was attempted but didn't reach soyuz; the
-    underlying PQL write is never blocked.
+    underlying PQL write is never blocked, and ``error_message``
+    stays reserved for "the primitive itself raised" (BUG-grand-08).
 
     Sprint 20.4 extends the body with two optional output facets when
     the recorder collected matching pending entries:
@@ -783,25 +798,56 @@ def _record_value_changes_after_commit(
     _stamp_audit_marker(session_factory, op_id=op_id, marker=f"[lineage_value_partial] {failure!r}")
 
 
-def _stamp_audit_marker(session_factory: sessionmaker[Session], *, op_id: int, marker: str) -> None:
-    """Append a best-effort marker to ``agent_run_operations.error_message``.
+def _serialise_warnings(markers: list[str]) -> str | None:
+    """Encode a marker list into the ``warnings_json`` blob shape.
 
-    Used when a side-effect (lineage emit, edge insert) failed but
-    the underlying op succeeded — the audit row should still record
-    that the side-effect was attempted.
+    Returns ``None`` for an empty list so the column stays NULL when
+    nothing was stamped; otherwise emits ``{"markers": [...]}`` so
+    downstream consumers can extend the shape with new sub-keys
+    without another schema change.
+    """
+    if not markers:
+        return None
+    return json.dumps({"markers": list(markers)}, sort_keys=False)
+
+
+def _stamp_audit_marker(session_factory: sessionmaker[Session], *, op_id: int, marker: str) -> None:
+    """Append a best-effort marker to ``agent_run_operations.warnings_json``.
+
+    Used when a side-effect (lineage emit, edge insert, reject /
+    column / value-change record) failed but the underlying op
+    succeeded — the audit row should still record that the
+    side-effect was attempted, but ``error_message`` must stay
+    reserved for "the primitive itself raised" (BUG-grand-08).
 
     Args:
         session_factory: SQLAlchemy session factory.
         op_id: Operation row to update.
-        marker: Bracketed-marker prefixed string to write.
+        marker: Bracketed-marker prefixed string to append.
     """
     try:
         with session_factory() as session:
             row = session.get(AgentRunOperation, op_id)
             if row is None:
                 return
-            existing = row.error_message
-            row.error_message = marker if not existing else f"{existing}; {marker}"
+            existing_markers: list[str] = []
+            if row.warnings_json:
+                try:
+                    parsed = json.loads(row.warnings_json)
+                    if isinstance(parsed, dict):
+                        raw = parsed.get("markers")
+                        if isinstance(raw, list):
+                            existing_markers = [str(m) for m in raw]
+                except (TypeError, ValueError):
+                    # Corrupted blob — discard and start fresh; we
+                    # never lose successful primitive output here, only
+                    # the previous warning history.
+                    logger.warning(
+                        "operation_context: warnings_json on op_id=%s was unparseable, resetting",
+                        op_id,
+                    )
+            existing_markers.append(marker)
+            row.warnings_json = json.dumps({"markers": existing_markers}, sort_keys=False)
             session.commit()
     except SQLAlchemyError:
         logger.exception(

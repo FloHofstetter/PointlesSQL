@@ -479,6 +479,16 @@ def _load_operations_for_run(
                     env_snapshot = parsed_env
             except json.JSONDecodeError:
                 env_snapshot = None
+        warnings: list[str] | None = None
+        if row.warnings_json:
+            try:
+                parsed_warnings = json.loads(row.warnings_json)
+                if isinstance(parsed_warnings, dict):
+                    raw = parsed_warnings.get("markers")
+                    if isinstance(raw, list):
+                        warnings = [str(m) for m in raw]
+            except json.JSONDecodeError:
+                warnings = None
         out.append(
             {
                 "id": row.id,
@@ -495,6 +505,7 @@ def _load_operations_for_run(
                 "duration_ms": duration_ms,
                 "error_message": row.error_message,
                 "status": "error" if row.error_message else "ok",
+                "warnings": warnings,
                 "column_edges_count": column_edge_counts.get(row.id, 0),
                 "value_changes_count": value_change_counts.get(row.id, 0),
                 "training_params": training_params,

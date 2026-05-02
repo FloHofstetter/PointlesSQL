@@ -131,6 +131,13 @@ class AgentRunOperation(Base):
             versions, GPU list when torch is installed).  Cached
             once per PointlesSQL process so the hot path stays
             cheap.  ``None`` when capture failed at start-up.
+        warnings_json: BUG-grand-08 — JSON blob with a ``markers``
+            sub-key listing non-fatal post-commit failures
+            (lineage emit / edges / rejects / column / value).
+            ``error_message`` stays reserved for "the primitive
+            itself raised"; this column carries side-effect
+            warnings without poisoning the operation's status.
+            ``None`` when no marker was stamped.
     """
 
     __tablename__ = "agent_run_operations"
@@ -169,6 +176,11 @@ class AgentRunOperation(Base):
     # Phase 21.4 — advisory hardware/library fingerprint
     # (Python version, top-level package versions, GPU list).
     env_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # BUG-grand-08 — non-fatal side-effect markers (lineage emit /
+    # edge insert / reject / column / value-change failures).  JSON:
+    # ``{"markers": [str, ...]}``.  ``error_message`` stays reserved
+    # for "the primitive itself raised".
+    warnings_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AgentRunEvent(Base):

@@ -23,9 +23,10 @@ This module is **best-effort**: a soyuz outage, a 5xx response, or a
 network blip never blocks the underlying PQL write.  Failures are
 returned to the caller (``operation_context`` in
 :mod:`pointlessql.services.agent_runs.operations`) which stamps a
-``[lineage_emit_failed]`` marker onto the just-inserted
-``agent_run_operations`` row so the audit trail still records that
-the side-effect was attempted.
+``[lineage_emit_failed]`` marker into the just-inserted
+``agent_run_operations.warnings_json`` blob so the audit trail
+still records that the side-effect was attempted (BUG-grand-08
+keeps these markers out of ``error_message``).
 """
 
 from __future__ import annotations

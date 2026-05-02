@@ -557,6 +557,13 @@
                                         {% else %}
                                         <span class="badge bg-success-subtle text-success-emphasis">ok</span>
                                         {% endif %}
+                                        {% if op.warnings %}
+                                        {# BUG-grand-08 — non-fatal post-commit markers stay separate from error status. #}
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1"
+                                              title="{{ op.warnings | join('; ') }}">
+                                            <i class="bi bi-exclamation-triangle"></i> {{ op.warnings | length }} warning{% if op.warnings | length != 1 %}s{% endif %}
+                                        </span>
+                                        {% endif %}
                                         {% if op.column_edges_count and op.column_edges_count > 0 %}
                                         <a href="/runs/{{ run.id }}?op_id={{ op.id }}#tab-lineage"
                                            class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1 text-decoration-none"
