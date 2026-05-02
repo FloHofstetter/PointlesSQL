@@ -69,7 +69,9 @@
                         data-sort-cost="{{ run.cost_est or 0 }}"
                         data-sort-started_at="{{ run.started_at or '' }}"
                     >
-                        <td><a href="/runs/{{ run.id }}" class="text-decoration-none font-monospace small">{{ run.id }}</a></td>
+                        <td><a href="/runs/{{ run.id }}"
+                               class="text-decoration-none font-monospace small"
+                               title="{{ run.id }}">{{ run.id[:8] }}</a></td>
                         <td class="font-monospace small">{{ run.principal or "—" }}</td>
                         <td class="font-monospace small">{{ run.agent_id or "—" }}</td>
                         <td>
