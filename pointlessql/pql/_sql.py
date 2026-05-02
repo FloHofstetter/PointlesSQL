@@ -10,6 +10,7 @@ leak data.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any
@@ -22,6 +23,10 @@ from pointlessql.pql._types import SQLResult
 from pointlessql.pql.engine import register_delta_view
 from pointlessql.pql.sql_parser import SQLParseError, extract_column_lineage, prepare_sql
 from pointlessql.services.agent_runs import operation_context
+
+logger = logging.getLogger(__name__)
+
+LINEAGE_ROW_ID_COLUMN = "_lineage_row_id"
 
 
 def run_sql(
@@ -145,6 +150,27 @@ def run_sql(
                     schema=schema_dict,
                     output_columns=col_names,
                 )
+                # Phase 15.8 — flag SELECTs that strip ``_lineage_row_id``
+                # from a lineage-bearing source.  The downstream
+                # ``write_table → record_row_edges`` hook needs the
+                # column on the result frame to correlate target rows
+                # back to the source; without it the audit trail
+                # silently drops row-edges for that op (and every
+                # downstream table inherits the gap).  An INFO log here
+                # is the cheapest signal that the agent's projection is
+                # the cause.
+                lineage_sources = _refs_with_lineage_row_id(prepared.refs, schema_dict)
+                if lineage_sources and LINEAGE_ROW_ID_COLUMN not in col_names:
+                    logger.info(
+                        "PQL.sql: query projects no %s from %s; "
+                        "downstream write_table edges will be skipped",
+                        LINEAGE_ROW_ID_COLUMN,
+                        ", ".join(sorted(lineage_sources)),
+                    )
+                    recorder.extra_params = {
+                        **recorder.extra_params,
+                        "lineage_row_id_dropped_at_select": True,
+                    }
 
             return SQLResult(
                 columns=columns,
@@ -202,3 +228,32 @@ def _build_schema_dict(
             col_name, col_type = (row[0], row[1]) if len(row) >= 2 else (row[0], "")
             tbl[str(col_name)] = str(col_type)
     return schema
+
+
+def _refs_with_lineage_row_id(
+    refs: list[str],
+    schema_dict: dict[str, dict[str, dict[str, dict[str, str]]]],
+) -> list[str]:
+    """Return the subset of *refs* whose source schema carries ``_lineage_row_id``.
+
+    Phase 15.8 — used by :func:`run_sql` to detect SELECTs that drop
+    a lineage-bearing column from the projection.  When the helper
+    returns a non-empty list and ``_lineage_row_id`` is missing from
+    the result columns, the agent's downstream ``write_table`` will
+    silently skip row-edge emission (no ``source_row_id`` to
+    correlate on).
+    """
+    sources: list[str] = []
+    for ref in refs:
+        parts = ref.split(".")
+        if len(parts) != 3:
+            continue
+        catalog_name, schema_name, table_name = parts
+        cols = (
+            schema_dict.get(catalog_name, {})
+            .get(schema_name, {})
+            .get(table_name, {})
+        )
+        if LINEAGE_ROW_ID_COLUMN in cols:
+            sources.append(ref)
+    return sources

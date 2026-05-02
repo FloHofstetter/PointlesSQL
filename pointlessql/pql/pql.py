@@ -226,6 +226,17 @@ class PQL:
         helper handles parsing, the approved-tables guard, view
         registration, execution, row-cap slicing, and result framing.
 
+        Lineage propagation (Sprint 15.8): when a referenced source
+        table carries ``_lineage_row_id`` and the agent will feed the
+        result frame into :meth:`write_table` or :meth:`merge` with
+        row-edges expected, the SELECT must explicitly project the
+        column (``SELECT t._lineage_row_id AS _lineage_row_id, …``).
+        Without it, the downstream audit hook short-circuits — no
+        source IDs to correlate on, so ``lineage_row_edges`` records
+        nothing and every further table inherits the gap.  An INFO
+        log + ``lineage_row_id_dropped_at_select`` flag on the op's
+        ``params_json`` surfaces the omission for run-detail review.
+
         Args:
             query: The user-entered SQL.  Must be a single SELECT.
             approved_tables: Mapping of fully-qualified table name to
@@ -271,7 +282,10 @@ class PQL:
                 that *df* is the output of inference against a model.
                 Stamps every row-edge with the model URI so the
                 model-detail Lineage DAG can paint *full_name* as a
-                downstream prediction node.
+                downstream prediction node.  Requires
+                ``source_table_fqn`` AND ``_lineage_row_id`` on *df*
+                (Sprint 15.8 caveat) — without either, the row-edge
+                hook short-circuits and the URI has nowhere to land.
             derivations: Optional declarative mapping of derived
                 target columns to their *true* source-column names
                 (Sprint 15.6.2).  Effective only when
@@ -344,7 +358,12 @@ class PQL:
                 ``lineage_row_rejects`` so the run-detail UI can
                 explain dropped rows (Sprint 15.5.3).  Default
                 ``False`` keeps the cost off the hot path.
-            track_value_changes: When ``True`` and
+            track_value_changes: First merge after a fresh
+                :meth:`write_table` produces only ``insert`` CDF
+                events, which the helper deliberately skips —
+                value-change rows start landing on the second merge
+                where ``update_preimage`` / ``update_postimage``
+                pairs are emitted (Sprint 15.8 doc-pin).  When ``True`` and
                 ``strategy="upsert"``, read the Delta Change Data
                 Feed for the merge's commit range and record one
                 ``lineage_value_changes`` row per actually-different

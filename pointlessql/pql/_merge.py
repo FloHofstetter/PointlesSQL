@@ -199,6 +199,19 @@ def merge_table(
         params={"target": target, "on": list(on), "strategy": strategy},
         target_table=target,
     ) as recorder:
+        # Phase 15.8: bootstrap CDF on the target BEFORE capturing
+        # ``delta_version_before`` so the merge commit lands with CDF
+        # on regardless of the target's history.  For tables created
+        # via :func:`pql.write_table` this is a no-op (CDF was set
+        # post-create); the load-bearing case is non-pql-created
+        # targets where ``ensure_cdf_enabled`` running AFTER the merge
+        # would mean ``load_cdf`` returns nothing for the just-committed
+        # merge.
+        if agent_run_id is not None and track_value_changes and strategy == "upsert":
+            from pointlessql.pql._cdf import ensure_cdf_enabled
+
+            ensure_cdf_enabled(target_location)
+
         if agent_run_id is not None:
             recorder.delta_version_before = safe_delta_version(target_location)
             try:
@@ -295,9 +308,12 @@ def _capture_value_changes(
 
     Sprint 15.7.3 — runs after ``_do_upsert`` returns and the audit
     row has its delta_version_before / delta_version_after stamped.
-    Any failure (CDF disabled, deltalake error, missing
-    ``_lineage_row_id``) is logged at INFO and returns ``None`` so
-    the merge that already committed never rolls back.
+    Sprint 15.8 — assumes the caller already enabled CDF on the
+    target before ``_do_upsert`` (so the merge commit lands with CDF
+    on); this helper just reads the stream and pairs events.  Any
+    failure (deltalake error, missing ``_lineage_row_id``) is logged
+    at INFO and returns ``None`` so the merge that already committed
+    never rolls back.
 
     Args:
         target_location: Delta table URI.
@@ -318,14 +334,9 @@ def _capture_value_changes(
     if version_after <= version_before:
         return None
 
-    from pointlessql.pql._cdf import ensure_cdf_enabled
-
-    if not ensure_cdf_enabled(target_location):
-        logger.info(
-            "value-change capture skipped: ensure_cdf_enabled returned False for %s",
-            target_location,
-        )
-        return None
+    # Phase 15.8: CDF is now bootstrapped before ``_do_upsert`` (see
+    # ``merge_table``), so the merge commit always lands with CDF on
+    # — no post-merge ALTER needed here.
 
     try:
         import deltalake

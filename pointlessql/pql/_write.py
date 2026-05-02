@@ -74,7 +74,10 @@ def write_table(
             carries the model provenance, and the model-detail DAG
             can paint ``target_table`` as a downstream prediction
             node.  Requires ``source_table_fqn`` for the row-edge
-            grain to be meaningful.
+            grain to be meaningful AND ``_lineage_row_id`` on *df*
+            (Sprint 15.8 caveat) — without the column the row-edge
+            hook short-circuits with no source IDs to correlate on,
+            and the URI has nowhere to land.
         derivations: Optional declarative mapping of derived target
             columns to their *true* source-column names (Sprint
             15.6.2).  Effective only when ``source_table_fqn`` is
