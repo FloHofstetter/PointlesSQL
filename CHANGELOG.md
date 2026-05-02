@@ -6,6 +6,47 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 23.0 — Contextual help-popover infrastructure + 5 hero
+  anchors.**  Small `bi-info-circle` buttons next to high-value
+  anchor points open a Bootstrap popover with a 1-3 sentence
+  explanation of what the view/concept means and why it exists,
+  plus an optional "Learn more →" link to the public mkdocs
+  concept guides.  Phase 23 lays the foundation; subsequent
+  sub-sprints (23.1 catalog/table-detail, 23.2 models,
+  23.3 branches/audit/home, 23.4 SQL/rail/settings, 23.5 polish +
+  doc-link sweep) ship the remaining ~45 anchor points across the
+  rest of the UI.
+  * `pointlessql/web/help.py` (NEW): typed `HelpEntry` dataclass
+    + `HELP` registry with the 5 hero slugs (`runs.what-is-a-run`,
+    `runs.what-is-an-operation`, `models.what-is-promotion`,
+    `branches.what-is-a-delta-branch`, `lineage.what-is-lineage`).
+    `get_help` raises `KeyError` on unknown slugs so template
+    typos fail loudly in CI rather than silently rendering an
+    empty popover.
+  * `frontend/templates/_macros/help_icon.html` (NEW): Jinja macro
+    `info('<slug>')` emits a `<button data-bs-toggle="popover"
+    data-bs-trigger="focus">` — Bootstrap auto-dismisses on
+    outside-click and Escape, no extra JS listener needed.
+  * `frontend/js/help_popovers.js` (NEW): idempotent
+    `bootstrap.Popover` initialiser bound to `DOMContentLoaded`
+    and `htmx:afterSwap` so HTMX-boosted swaps re-wire popovers
+    in the new content.
+  * `pointlessql/api/main.py`: registers `get_help` as the Jinja
+    global `help` once on the shared `_TEMPLATES.env`.
+  * `frontend/templates/base.html`: loads the popover initialiser
+    immediately after the Bootstrap bundle.
+  * 5 page templates (`runs_list.html`, `run_view.html`,
+    `model.html`, `branches.html`, `table.html`) thread the macro
+    next to their highest-value anchor (page header, Operations
+    tab intro, Promotion card-header, Lineage tab intro).
+  * `docs/concepts/contextual-help.md` (NEW): short author-facing
+    stub explaining how to add a new slug and why click-popover
+    won over hover-tooltip.
+  * `tests/test_help_registry.py` (NEW): 18 tests covering slug
+    naming convention, length caps (title ≤ 60, body ≤ 280 chars),
+    `learn_more` URL well-formedness, `KeyError` on missing
+    slugs, and the Sprint-23.0 hero-slug invariant.
+
 - **Sprint 22.5 — Polish + launch-ready.**  Phase 22 closes; the
   docs site is launch-ready (built locally, deploy pre-staged
   but inert per the user's "local-only through Phase 22" pick).

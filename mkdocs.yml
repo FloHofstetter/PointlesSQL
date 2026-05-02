@@ -99,6 +99,7 @@ nav:
       - Auth: concepts/auth.md
       - Data layers: concepts/data-layers.md
       - PII modes: concepts/pii-modes.md
+      - Contextual help: concepts/contextual-help.md
   - Guides:
       - guides/index.md
       - Agent bring-up: guides/agent-bring-up.md

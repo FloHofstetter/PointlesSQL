@@ -1,0 +1,39 @@
+{#
+   Phase 23 — contextual help-icon macro.
+
+   Usage:
+
+       {% from "_macros/help_icon.html" import info %}
+       <h1>Agent runs {{ info('runs.what-is-a-run') }}</h1>
+
+   Renders a small ``bi-info-circle`` button that opens a Bootstrap
+   popover with title + body + optional "Learn more →" link.  The
+   slug must exist in ``pointlessql/web/help.py``; the Jinja global
+   ``help`` (registered in ``pointlessql.api.main``) resolves it
+   to a ``HelpEntry``.
+
+   Trigger is ``focus``, which makes Bootstrap auto-dismiss the
+   popover on outside-click and Escape — no extra JS listener
+   needed.  ``frontend/js/help_popovers.js`` only initialises the
+   Popover instances on DOMContentLoaded.
+
+   The "Learn more" link points at the public mkdocs site at
+   https://flohofstetter.github.io/PointlesSQL.  Slugs without a
+   ``learn_more`` value render the popover without a link.
+#}
+{% macro info(slug) -%}
+{%- set entry = help(slug) -%}
+{%- set body_html = entry.body -%}
+{%- if entry.learn_more -%}
+{%- set body_html = body_html ~ "<br><a href='https://flohofstetter.github.io/PointlesSQL" ~ entry.learn_more ~ "' target='_blank' rel='noopener'>Learn more &rarr;</a>" -%}
+{%- endif -%}
+<button type="button"
+        class="btn btn-link p-0 ms-1 align-baseline help-icon text-muted"
+        data-bs-toggle="popover"
+        data-bs-trigger="focus"
+        data-bs-placement="auto"
+        data-bs-html="true"
+        data-bs-title="{{ entry.title }}"
+        data-bs-content="{{ body_html|safe }}"
+        aria-label="{{ entry.title }}"><i class="bi bi-info-circle"></i></button>
+{%- endmacro %}

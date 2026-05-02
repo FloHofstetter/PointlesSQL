@@ -83,6 +83,7 @@ from pointlessql.services.mlflow_subprocess import (
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
+from pointlessql.web.help import get_help as _get_help
 
 # Configure logging at module import time so it takes effect in every
 # process that serves traffic — the uvicorn --reload worker imports
@@ -111,6 +112,13 @@ def _format_epoch_ms(value: Any) -> str:
 
 
 _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
+
+# Phase 23 — contextual help-popover registry (see ``pointlessql/web/
+# help.py``).  Templates resolve slugs via ``{{ help('runs.what-is-a-
+# run') }}`` and render through ``_macros/help_icon.html``.  Registering
+# the global once here means every template — including ones rendered
+# in tests via ``TestClient`` — can call it without a per-route hook.
+_TEMPLATES.env.globals["help"] = _get_help  # pyright: ignore[reportArgumentType]
 
 
 _original_template_response = _TEMPLATES.TemplateResponse

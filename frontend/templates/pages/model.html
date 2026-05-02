@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}{{ model.full_name }} · Models · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -288,7 +289,7 @@
             <div class="col-md-5">
                 <div class="card mb-3">
                     <div class="card-header">
-                        <i class="bi bi-star-fill text-warning me-1"></i>Current champion
+                        <i class="bi bi-star-fill text-warning me-1"></i>Current champion{{ info('models.what-is-promotion') }}
                     </div>
                     <div class="card-body small">
                         <template x-if="champion === null">

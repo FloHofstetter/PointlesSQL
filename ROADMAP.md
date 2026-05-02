@@ -2849,6 +2849,77 @@ PointlesSQL
 │       Phase 15 is now both **spec-complete** AND
 │       **end-to-end-loop-complete**.
 │
+├── Phase 23 — Contextual help-popovers across the UI       ⏳ in progress (23.0 ✅ 23.1 ⏳ 23.2 ⏳ 23.3 ⏳ 23.4 ⏳ 23.5 ⏳)
+│   │
+│   │   The audit/lineage/branching/promotion stack is now
+│   │   feature-complete (Phases 13-21) and the docs site is
+│   │   launch-ready (Phase 22), but the web UI itself never
+│   │   tells a newcomer what an "agent run", "Delta branch",
+│   │   "champion version" or "2σ baseline" actually means —
+│   │   you have to leave the page and read mkdocs.  Phase 23
+│   │   adds small ``bi-info-circle`` icons next to every
+│   │   high-value anchor (page headers, key tabs, domain
+│   │   badges); a click opens a Bootstrap popover with a 1-3
+│   │   sentence "what + why" plus an optional "Learn more →"
+│   │   link to the matching mkdocs concept guide.
+│   │
+│   │   Cross-cutting picks (confirmed via AskUserQuestion at
+│   │   plan time): click-popover (mobile-tauglich, focus-trigger
+│   │   auto-dismisses, room for multi-sentence body + link);
+│   │   typed Python-dict copy registry at ``pointlessql/web/
+│   │   help.py`` (pyright-validated, single source of truth);
+│   │   staged 5-sub-sprint shape so each PR is reviewable.
+│   │
+│   ├── Sprint 23.0 — Infra + 5 hero anchors                  ✅ 2026-05-02
+│   │   ├── ``pointlessql/web/help.py`` (NEW) — typed
+│   │   │   ``HelpEntry`` dataclass + ``HELP`` registry with
+│   │   │   the 5 hero slugs (``runs.what-is-a-run``,
+│   │   │   ``runs.what-is-an-operation``,
+│   │   │   ``models.what-is-promotion``,
+│   │   │   ``branches.what-is-a-delta-branch``,
+│   │   │   ``lineage.what-is-lineage``).  ``get_help`` raises
+│   │   │   ``KeyError`` on unknown slugs so template typos fail
+│   │   │   loudly in CI rather than silently render an empty
+│   │   │   popover.
+│   │   ├── ``frontend/templates/_macros/help_icon.html`` (NEW)
+│   │   │   — Jinja macro ``info('<slug>')`` emits a
+│   │   │   ``<button data-bs-toggle="popover"
+│   │   │   data-bs-trigger="focus">``.  Bootstrap auto-dismisses
+│   │   │   on outside-click + Escape, no extra JS listener
+│   │   │   needed.  Inner ``<a>`` link uses single-quoted
+│   │   │   attributes to avoid colliding with the outer
+│   │   │   double-quoted ``data-bs-content``.
+│   │   ├── ``frontend/js/help_popovers.js`` (NEW) — idempotent
+│   │   │   ``bootstrap.Popover`` initialiser bound to
+│   │   │   ``DOMContentLoaded`` + ``htmx:afterSwap`` so
+│   │   │   HTMX-boosted swaps re-wire popovers in the new
+│   │   │   content.  Loaded immediately after the Bootstrap
+│   │   │   bundle in ``base.html``.
+│   │   ├── ``pointlessql/api/main.py`` — registers ``get_help``
+│   │   │   as the Jinja global ``help`` once on the shared
+│   │   │   ``_TEMPLATES.env`` next to the existing
+│   │   │   ``epoch_ms`` filter.
+│   │   ├── 5 page-template edits: ``runs_list.html`` page
+│   │   │   header, ``run_view.html`` Operations top-tab intro
+│   │   │   line, ``model.html`` Promotion-tab "Current
+│   │   │   champion" card-header, ``branches.html`` page
+│   │   │   header, ``table.html`` Lineage-tab intro line.
+│   │   ├── ``docs/concepts/contextual-help.md`` (NEW) —
+│   │   │   author-facing stub: "How to add a new help slug",
+│   │   │   why click-popover won over hover-tooltip, what's
+│   │   │   out of scope (i18n, inline tutorials, help-editor
+│   │   │   UI).  Wired into ``mkdocs.yml`` Concepts nav.
+│   │   └── ``tests/test_help_registry.py`` (NEW, 18 tests) —
+│   │       slug naming convention, length caps (title ≤ 60,
+│   │       body ≤ 280 chars), ``learn_more`` URL well-
+│   │       formedness, ``KeyError`` on missing slugs,
+│   │       Sprint-23.0 hero-slug presence pin.
+│   ├── Sprint 23.1 — Catalog tree + table-detail            ⏳
+│   ├── Sprint 23.2 — Models index + detail                  ⏳
+│   ├── Sprint 23.3 — Branches + audit + home                ⏳
+│   ├── Sprint 23.4 — SQL editor + sidebar rail + settings   ⏳
+│   └── Sprint 23.5 — Polish + doc-link sweep + e2e replay   ⏳
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to
