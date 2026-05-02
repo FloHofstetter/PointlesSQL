@@ -42,9 +42,9 @@ async def mlflow_page(request: Request) -> HTMLResponse | RedirectResponse:
     mlflow_running = request.app.state.mlflow_subprocess is not None
 
     return templates.TemplateResponse(
+        request,
         "pages/mlflow.html",
         {
-            "request": request,
             "active_page": "mlflow",
             "mlflow_running": mlflow_running,
             "is_admin": user["is_admin"],

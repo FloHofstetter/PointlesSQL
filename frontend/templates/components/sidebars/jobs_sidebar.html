@@ -9,15 +9,16 @@
    Driven by ``jobsSidebar()`` in
    ``frontend/js/components/sidebars/jobs_sidebar.js``.
 #}
+{% from "_macros/help_icon.html" import info %}
 <div class="pql-sidebar border-end"
      x-data="jobsSidebar()"
      x-init="load()"
      @htmx:after-swap.window="activeId = ((window.location.pathname.match(/^\/jobs\/(\d+)/) || [])[1] || null) && Number((window.location.pathname.match(/^\/jobs\/(\d+)/) || [])[1])">
     <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
-        <a href="/jobs"
-           class="text-uppercase small fw-semibold text-muted text-decoration-none">
-            Jobs
-        </a>
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/jobs" class="text-muted text-decoration-none">Jobs</a>
+            {{ info('jobs.context-panel') }}
+        </span>
         <button class="btn btn-sm btn-link p-0 text-muted"
                 @click="reload()"
                 title="Refresh">

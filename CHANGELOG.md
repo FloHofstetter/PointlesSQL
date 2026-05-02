@@ -38,6 +38,23 @@ All notable changes to this project will be documented in this file.
   styles live in
   ``frontend/css/components/context_sidebars.css``.
 
+  Each panel header carries a Phase-23 contextual help-icon
+  (slugs ``runs.context-panel`` / ``branches.context-panel`` /
+  …) explaining what the panel shows and linking to the matching
+  mkdocs concept page.  ``docs/e2e-walkthroughs/contextual-
+  panels.md`` records the replayable verification sequence; it
+  is wired into ``mkdocs.yml`` under "Getting around".
+
+### Fixed
+
+- **`/ml` page returned HTTP 500 since Phase 21.0** — the
+  Phase-21 commit registered ``app.state.templates`` (the
+  centralised Jinja env) but ``mlflow_html_routes.py`` still
+  called ``templates.TemplateResponse("pages/mlflow.html",
+  {context})`` with the pre-Starlette-0.37 positional
+  signature.  Updated to pass ``request`` first.  Surfaced
+  while live-verifying the MLflow context-panel.
+
 ### Changed
 
 - **Volumes + Models now live inside the catalog tree** — both

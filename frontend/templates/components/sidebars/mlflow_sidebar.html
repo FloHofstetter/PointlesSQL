@@ -10,15 +10,16 @@
    Driven by ``mlflowSidebar()`` in
    ``frontend/js/components/sidebars/mlflow_sidebar.js``.
 #}
+{% from "_macros/help_icon.html" import info %}
 <div class="pql-sidebar border-end"
      x-data="mlflowSidebar()"
      x-init="load()"
      @htmx:after-swap.window="activeFqn = decodeURIComponent(((window.location.pathname.match(/^\/models\/([^/?#]+)/) || [])[1]) || '')">
     <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
-        <a href="/ml"
-           class="text-uppercase small fw-semibold text-muted text-decoration-none">
-            MLflow
-        </a>
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/ml" class="text-muted text-decoration-none">MLflow</a>
+            {{ info('mlflow.context-panel') }}
+        </span>
         <button class="btn btn-sm btn-link p-0 text-muted"
                 @click="reload()"
                 title="Refresh">

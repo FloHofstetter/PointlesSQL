@@ -12,15 +12,16 @@
    contract as the /runs page (``/api/runs?limit=15``); cached in
    ``sessionStorage`` for instant first paint.
 #}
+{% from "_macros/help_icon.html" import info %}
 <div class="pql-sidebar border-end"
      x-data="runsSidebar()"
      x-init="load()"
      @htmx:after-swap.window="activeId = (window.location.pathname.match(/^\/runs\/([^/]+)/) || [])[1] || ''">
     <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
-        <a href="/runs"
-           class="text-uppercase small fw-semibold text-muted text-decoration-none">
-            Runs
-        </a>
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/runs" class="text-muted text-decoration-none">Runs</a>
+            {{ info('runs.context-panel') }}
+        </span>
         <button class="btn btn-sm btn-link p-0 text-muted"
                 @click="reload()"
                 title="Refresh">

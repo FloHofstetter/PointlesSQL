@@ -100,6 +100,71 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/lineage/",
     ),
+    # Phase 24 — context-panel headers.  One slug per rail section
+    # whose panel was rebuilt as a navigable list (Runs / Branches
+    # / Workspace / Jobs / Alerts / MLflow).  Header copy explains
+    # what the panel actually shows so a newcomer doesn't have to
+    # click through every row.
+    "runs.context-panel": HelpEntry(
+        title="Runs panel",
+        body=(
+            "Lists the 15 most-recent agent runs grouped by "
+            "status: Needs approval (top), Running / Queued, "
+            "and Recent. Each row links to its run-detail page "
+            "with the full operation + lineage trail."
+        ),
+        learn_more="/concepts/agent-runs/",
+    ),
+    "branches.context-panel": HelpEntry(
+        title="Branches panel",
+        body=(
+            "Lists active and recently-promoted Delta-branches "
+            "with their copy-on-write strategy. Active rows are "
+            "writable; promoted rows merged back to parent; "
+            "discarded rows kept for the audit trail."
+        ),
+        learn_more="/concepts/delta-branching/",
+    ),
+    "workspace.context-panel": HelpEntry(
+        title="Workspace panel",
+        body=(
+            "Flat list of every .py / .ipynb notebook the "
+            "scheduler can pick up. Click a row to open the "
+            "workspace browser at that path; the Schedule "
+            "button on each detail view turns it into a job."
+        ),
+        learn_more="/concepts/notebooks/",
+    ),
+    "jobs.context-panel": HelpEntry(
+        title="Jobs panel",
+        body=(
+            "Scheduled jobs split into Active (eligible to run on "
+            "schedule) and Paused. The badge per active row is "
+            "the most-recent run's status — succeeded, failed, "
+            "or running."
+        ),
+        learn_more="/concepts/jobs/",
+    ),
+    "alerts.context-panel": HelpEntry(
+        title="Alerts panel",
+        body=(
+            "Configured alerts split into Enabled (the cron "
+            "schedule fires) and Disabled. Each alert is a "
+            "saved SQL query plus a threshold; firings are "
+            "fanned out to the alert's destinations."
+        ),
+        learn_more="/concepts/alerts/",
+    ),
+    "mlflow.context-panel": HelpEntry(
+        title="MLflow panel",
+        body=(
+            "Most-recent UC-registered models with their latest "
+            "version + status. Click a row for the model "
+            "detail view; click the footer link for the "
+            "embedded MLflow Tracking UI."
+        ),
+        learn_more="/concepts/mlflow/",
+    ),
 }
 
 

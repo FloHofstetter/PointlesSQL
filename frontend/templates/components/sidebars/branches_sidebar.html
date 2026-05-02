@@ -10,15 +10,16 @@
    icon-rail's Branches item is already ``is_admin``-only, so
    non-admins never reach this partial.
 #}
+{% from "_macros/help_icon.html" import info %}
 <div class="pql-sidebar border-end"
      x-data="branchesSidebar()"
      x-init="load()"
      @htmx:after-swap.window="activeFqn = (window.location.pathname === '/branches' ? decodeURIComponent((window.location.hash || '').replace(/^#/, '')) : '')">
     <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
-        <a href="/branches"
-           class="text-uppercase small fw-semibold text-muted text-decoration-none">
-            Branches
-        </a>
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/branches" class="text-muted text-decoration-none">Branches</a>
+            {{ info('branches.context-panel') }}
+        </span>
         <button class="btn btn-sm btn-link p-0 text-muted"
                 @click="reload()"
                 title="Refresh">

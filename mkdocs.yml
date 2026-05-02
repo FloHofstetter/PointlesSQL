@@ -117,6 +117,7 @@ nav:
               - List polish: e2e-walkthroughs/list-polish.md
               - Command palette: e2e-walkthroughs/command-palette.md
               - UX overhaul: e2e-walkthroughs/ux-overhaul.md
+              - Contextual panels: e2e-walkthroughs/contextual-panels.md
               - Auth: e2e-walkthroughs/auth.md
               - CSRF: e2e-walkthroughs/csrf.md
               - Rate limit: e2e-walkthroughs/rate-limit.md
