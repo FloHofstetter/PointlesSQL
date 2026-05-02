@@ -2765,6 +2765,90 @@ PointlesSQL
 │       └── ``mkdocs.yml`` nav: 4 integrations pages + ADR-0004 +
 │           top-level "What's new" entry wired in.
 │
+├── Phase 15.8 — Lineage Wiring Audit                     ✅ closed 2026-04-30
+│   │
+│   │   Surfaced 2026-04-30 by ``scripts/seed-full-stack-demo.py``
+│   │   Phase-2-coverage replay; closed same day in one autonomous
+│   │   session after the planning pass relocated the bug.  The
+│   │   initial 3-axis symptom list (row-edges, value-changes,
+│   │   source_model_uri all 0 for ``demo_ml.*``) collapsed to **one
+│   │   root cause + one orthogonal latent bug** at line-level
+│   │   investigation:
+│   │
+│   │   - **Root cause** — ``_step_silver``'s explicit-column
+│   │     ``SELECT h.house_id, h.size_sqft, …`` projection at
+│   │     ``scripts/seed-full-stack-demo.py:490`` drops
+│   │     ``_lineage_row_id``.  The downstream
+│   │     ``_stamp_lineage_for_write`` short-circuits with no
+│   │     ``source_ids``, so ``recorder.pending_lineage_edges``
+│   │     stays unset and the post-commit hook records nothing.
+│   │     Silver/gold/predictions inherit the gap.
+│   │   - **Consequence** — value-changes = 0 isn't a CDF-bootstrap
+│   │     bug: CDF IS enabled correctly by ``write_table``'s
+│   │     post-create ALTER, the cell-flip merge IS at v3 with CDF
+│   │     events.  ``extract_value_changes`` returns ``[]`` because
+│   │     the merge frame copies silver_df which has no
+│   │     ``_lineage_row_id``.
+│   │   - **Consequence** — ``source_model_uri`` plumbing is
+│   │     end-to-end intact (``pql.py:255+289 → _write.py:49+144 →
+│   │     operations.py:641+660 → lineage_edges.py:254+293``).  The
+│   │     missing rows are because ``_write.py:139`` only enters
+│   │     the pending-edges block when ``source_ids`` is non-empty
+│   │     — no row-id, no edge row, nowhere for the model URI to
+│   │     land.
+│   │   - **Latent bug (orthogonal)** — ``_merge.py:321`` called
+│   │     ``ensure_cdf_enabled`` AFTER ``_do_upsert``, so a merge
+│   │     against a non-pql-created Delta target would record its
+│   │     commit without CDF.  Fixed by moving
+│   │     ``ensure_cdf_enabled`` ahead of ``_do_upsert`` in
+│   │     ``merge_table``.
+│   │
+│   │   Full plan with code-level call-site references at
+│   │   ``.claude/plans/phase-15-8-lineage-wiring-audit.md``.
+│   │
+│   ├── Sprint 15.8.1 — repro fixture                          ✅
+│   │   └── ``tests/test_phase158_lineage_wiring.py`` —
+│   │       7 contract tests: positive + negative row-edges path,
+│   │       source_model_uri stamping, value-change capture across
+│   │       fresh-write+remerge, the new INFO-log diagnostic,
+│   │       and a regression for merge-against-non-CDF target.
+│   ├── Sprint 15.8.2 — ``_lineage_row_id`` propagation         ✅
+│   │   └── ``scripts/seed-full-stack-demo.py`` — silver SELECT
+│   │       projects ``h._lineage_row_id``, inference projects
+│   │       ``_lineage_row_id`` onto the predictions frame.
+│   │       ``pointlessql/pql/_sql.py`` — INFO log + new
+│   │       ``lineage_row_id_dropped_at_select`` flag on the op's
+│   │       ``params_json`` when a SELECT references a
+│   │       lineage-bearing source but doesn't project the column.
+│   │       ``pointlessql/pql/pql.py`` — ``PQL.sql`` docstring
+│   │       documents the propagation contract.
+│   ├── Sprint 15.8.3 — ``source_model_uri`` regression-pin     ✅
+│   │   └── No code change needed (line-level investigation
+│   │       proved the plumbing was already complete).  The
+│   │       ``source_model_uri`` regression test in
+│   │       ``test_phase158_lineage_wiring.py`` exercises the
+│   │       real-Delta round-trip (no ``_FakePQL`` mock) and pins
+│   │       the wiring.  Docstring caveats added to
+│   │       ``pql.write_table`` flagging the ``_lineage_row_id``
+│   │       prerequisite.
+│   └── Sprint 15.8.4 — CDF ordering fix + doc                 ✅
+│       └── ``pointlessql/pql/_merge.py`` — moved
+│           ``ensure_cdf_enabled`` from inside
+│           ``_capture_value_changes`` (post-merge) to ahead of
+│           ``_do_upsert`` (pre-merge), so the merge commit lands
+│           with CDF on regardless of the target's history.
+│           Removed the duplicate post-merge call.  ``pql.merge``
+│           docstring documents the "first merge after a fresh
+│           write_table produces only ``insert`` events; value
+│           changes start at the second merge" semantics.
+│
+│       Acceptance (against ``pointlessql.db`` after
+│       ``--fresh --demo-rollback`` replay): all six L5 axes
+│       non-zero —  silver=400, gold-train=160, gold-test=40,
+│       predictions=80, value_changes=1, pred_with_model_uri=40.
+│       Phase 15 is now both **spec-complete** AND
+│       **end-to-end-loop-complete**.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to
