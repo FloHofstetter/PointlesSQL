@@ -2,7 +2,7 @@
 
 Covers:
 
-* The three load helpers (``_load_operations_for_run``,
+* The three load helpers (``load_operations_for_run``,
   ``load_rejects_for_run``, ``load_lineage_summary_for_run``)
   honour the optional ``op_id`` keyword.
 * The ``/runs/{run_id}`` HTML route accepts ``?op_id=`` as a query
@@ -22,7 +22,7 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.api.runs_routes import (
-    _load_operations_for_run,
+    load_operations_for_run,
     load_lineage_summary_for_run,
     load_rejects_for_run,
 )
@@ -148,10 +148,10 @@ def test_load_operations_filters_to_single_op(now: datetime.datetime) -> None:
     class _R:
         app = app
 
-    full = _load_operations_for_run(_R(), run_id)  # type: ignore[arg-type]
+    full = load_operations_for_run(_R(), run_id)  # type: ignore[arg-type]
     assert len(full) == 2
 
-    one = _load_operations_for_run(_R(), run_id, op_id=op1)  # type: ignore[arg-type]
+    one = load_operations_for_run(_R(), run_id, op_id=op1)  # type: ignore[arg-type]
     assert len(one) == 1
     assert one[0]["id"] == op1
     assert one[0]["ordinal"] == 1
