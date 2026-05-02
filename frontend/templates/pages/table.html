@@ -182,9 +182,21 @@
                 </div>
             </template>
             <template x-if="error">
-                <div class="p-3 text-muted small fst-italic">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    Preview unavailable: <span x-text="error"></span>
+                <div class="p-3 small">
+                    <div class="text-muted fst-italic">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Preview unavailable: <span x-text="error"></span>
+                    </div>
+                    <template x-if="errorKind === 'missing_storage'">
+                        <div class="mt-2 text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>How to fix:</strong>
+                            re-seed the demo data
+                            (<code>python scripts/seed-full-stack-demo.py --fresh</code>)
+                            or drop this table from the catalog if it's no
+                            longer needed.
+                        </div>
+                    </template>
                 </div>
             </template>
             <template x-if="ready && rows.length === 0">
@@ -233,6 +245,7 @@
             loading: true,
             ready: false,
             error: null,
+            errorKind: null,
             columns: [],
             rows: [],
             truncated: false,
@@ -242,6 +255,7 @@
                 this.loading = true;
                 this.ready = false;
                 this.error = null;
+                this.errorKind = null;
                 try {
                     const resp = await fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/preview', {
                         headers: {'Accept': 'application/json'},
@@ -249,6 +263,7 @@
                     const data = await resp.json();
                     if (!resp.ok || data.error) {
                         this.error = data.detail || data.error || 'Unable to load preview';
+                        this.errorKind = data.kind || null;
                     } else {
                         this.columns = data.columns || [];
                         this.rows = data.rows || [];

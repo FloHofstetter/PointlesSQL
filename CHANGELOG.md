@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Friendly preview-card error when a table's storage path is
+  missing on disk.**  Tables whose ``storage_root`` no longer
+  resolves (demo seed cleaned up, ``/tmp`` cleared on reboot,
+  external location moved) used to render the raw Rust-style
+  deltalake error in the preview card: ``Invalid table location:
+  file:///tmp/demo/orders Error: Os { code: 2, kind: NotFound,
+  message: "No such file or directory" }``.  Now classified by
+  the new ``humanize_preview_error`` helper into a one-line
+  ``Table data is missing on disk: /tmp/demo/orders. The catalog
+  still points here but the files are gone …`` plus an
+  actionable "How to fix" hint pointing at
+  ``scripts/seed-full-stack-demo.py --fresh`` or the drop-table
+  path.  Applies to both ``/api/catalogs/.../preview`` and
+  ``/api/tables/.../preview-at-version``.  Tests:
+  ``tests/test_preview_error_humanizer.py`` (NEW, 7 tests).
+
 - **Friendly soyuz error extraction in the SQL editor.**  Querying
   a missing catalog used to surface the raw multi-line
   ``UnexpectedStatus`` dump (``Unexpected status code: 404\n\n

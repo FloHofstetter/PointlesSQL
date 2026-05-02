@@ -208,13 +208,19 @@ async def api_table_preview_at_version(
         HTTPException: 4xx / 5xx surfaces from
             :func:`_resolve_storage` or a Delta load failure.
     """
+    from pointlessql.api.catalog_routes import humanize_preview_error
+
     storage = await _resolve_storage(request, full_name)
     try:
         table = deltalake.DeltaTable(storage)
         table.load_as_version(version)
         frame = table.to_pandas()
     except Exception as exc:  # noqa: BLE001 — Delta absent / version invalid
-        raise HTTPException(status_code=400, detail=f"Could not load v{version}: {exc}") from exc
+        detail, _kind = humanize_preview_error(exc)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not load v{version}: {detail}",
+        ) from exc
 
     rows, total = _frame_rows_to_dicts(frame, limit)
     return {

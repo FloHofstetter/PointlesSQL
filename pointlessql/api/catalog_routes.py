@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -309,6 +310,48 @@ def preview_head(frame: Any, n: int) -> Any:
     return pd.DataFrame(frame).head(n)
 
 
+def humanize_preview_error(exc: Exception) -> tuple[str, str | None]:
+    """Translate a deltalake/duckdb preview failure into user-facing copy.
+
+    The deltalake Python library propagates Rust-style errors verbatim,
+    e.g. ``Invalid table location: file:///tmp/demo/orders Error:
+    Os { code: 2, kind: NotFound, message: "No such file or
+    directory" }``.  The card surfaces those raw and reads as API
+    debug noise rather than something a user can act on.
+
+    This helper classifies the most common failure and returns a
+    one-line plain-English message plus a slug the frontend can use
+    to render an actionable hint.  Unknown failures fall through to
+    ``str(exc)`` so we never lose information.
+
+    Args:
+        exc: The exception raised inside :func:`run_table_preview`.
+
+    Returns:
+        ``(detail, kind)`` where ``detail`` is the message to render
+        in place of the raw exception text, and ``kind`` is one of
+        ``"missing_storage"`` or ``None`` (for the unknown bucket).
+    """
+    msg = str(exc)
+    if "NotFound" in msg and "No such file or directory" in msg:
+        path_match = re.search(r"file://(\S+?)(?:\s|$|/Error)", msg)
+        path = path_match.group(1) if path_match else None
+        if path:
+            return (
+                f"Table data is missing on disk: {path}. "
+                "The catalog still points here but the files are gone — "
+                "the demo seed may have been cleaned up, or /tmp was "
+                "cleared on reboot.",
+                "missing_storage",
+            )
+        return (
+            "Table data is missing on disk. The catalog still points "
+            "to a path that no longer exists.",
+            "missing_storage",
+        )
+    return (msg, None)
+
+
 def run_table_preview(settings: Settings, principal: str, full_name: str) -> dict[str, Any]:
     """Read up to 10 rows of a Delta table and serialise them.
 
@@ -325,7 +368,9 @@ def run_table_preview(settings: Settings, principal: str, full_name: str) -> dic
     Returns:
         Either ``{"columns": [...], "rows": [...], "truncated": bool}``
         on success, or ``{"error": "preview_unavailable", "detail":
-        str}`` on failure.
+        <friendly>, "kind": <slug | None>}`` on failure.  The
+        ``detail`` is humanised by :func:`humanize_preview_error`;
+        ``kind`` lets the frontend render an actionable hint.
     """
     from pointlessql.pql.pql import PQL
 
@@ -338,7 +383,8 @@ def run_table_preview(settings: Settings, principal: str, full_name: str) -> dic
         df = preview_head(frame, PREVIEW_ROW_LIMIT + 1)
     except Exception as exc:  # noqa: BLE001 — degrade preview card
         logger.warning("table preview failed for %s: %s", full_name, exc)
-        return {"error": "preview_unavailable", "detail": str(exc)}
+        detail, kind = humanize_preview_error(exc)
+        return {"error": "preview_unavailable", "detail": detail, "kind": kind}
     truncated = len(df) > PREVIEW_ROW_LIMIT
     df = df.head(PREVIEW_ROW_LIMIT)
     columns = [str(c) for c in df.columns]
