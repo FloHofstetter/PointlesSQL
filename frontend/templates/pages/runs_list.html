@@ -75,17 +75,7 @@
  <td class="font-monospace small">{{ run.principal or "—" }}</td>
  <td class="font-monospace small">{{ run.agent_id or "—" }}</td>
  <td>
- {% if run.status == 'succeeded' %}
- <span class="badge bg-success">{{ run.status }}</span>
- {% elif run.status == 'failed' %}
- <span class="badge bg-danger">{{ run.status }}</span>
- {% elif run.status == 'denied' %}
- <span class="badge bg-secondary">{{ run.status }}</span>
- {% elif run.status == 'needs_approval' %}
- <span class="badge bg-warning text-dark">{{ run.status }}</span>
- {% else %}
- <span class="badge bg-info text-dark">{{ run.status }}</span>
- {% endif %}
+ <span class="badge {{ status_class(run.status) }}">{{ run.status }}</span>
  </td>
  <td class="font-monospace small text-muted">
  {% if run.cost_est is not none %}{{ run.cost_est }}{% else %}—{% endif %}

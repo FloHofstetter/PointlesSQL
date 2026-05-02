@@ -6,6 +6,7 @@
  */
 
 import { makeSidebar } from './_base.js';
+import { statusClass } from '../status_styles.js';
 
 function activeJobIdFromUrl() {
     const m = window.location.pathname.match(/^\/jobs\/(\d+)/);
@@ -33,12 +34,7 @@ export function jobsSidebar() {
             paused: items.filter((j) => j.is_paused).slice(0, 5),
         }),
         methods: {
-            statusBadgeClass(status) {
-                if (status === 'succeeded') return 'bg-success';
-                if (status === 'failed') return 'bg-danger';
-                if (status === 'running') return 'bg-info text-dark';
-                return 'bg-secondary';
-            },
+            statusBadgeClass: statusClass,
             humanCron(expr) {
                 if (!expr) return '';
                 if (typeof window.pqlHumanizeCron === 'function') {

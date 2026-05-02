@@ -7,6 +7,7 @@
  */
 
 import { makeSidebar } from './_base.js';
+import { statusClass } from '../status_styles.js';
 
 function activeFqnFromUrl() {
     const m = window.location.pathname.match(/^\/models\/([^/?#]+)/);
@@ -27,12 +28,7 @@ export function mlflowSidebar() {
         activeKey: 'activeFqn',
         activeFromUrl: activeFqnFromUrl,
         methods: {
-            statusBadgeClass(status) {
-                if (status === 'READY') return 'bg-success';
-                if (status === 'PENDING_REGISTRATION') return 'bg-warning text-dark';
-                if (status === 'FAILED_REGISTRATION') return 'bg-danger';
-                return 'bg-secondary';
-            },
+            statusBadgeClass: statusClass,
         },
     });
 }

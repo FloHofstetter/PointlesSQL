@@ -6,6 +6,7 @@
  */
 
 import { makeSidebar } from './_base.js';
+import { statusClass } from '../status_styles.js';
 
 const ACTIVE_STATUSES = new Set(['running', 'queued']);
 const NEEDS_APPROVAL_STATUSES = new Set(['needs_approval', 'pending_approval']);
@@ -33,16 +34,7 @@ export function runsSidebar() {
             return out;
         },
         methods: {
-            statusBadgeClass(status) {
-                if (status === 'succeeded' || status === 'completed' || status === 'approved') {
-                    return 'bg-success';
-                }
-                if (status === 'failed' || status === 'rolled_back') return 'bg-danger';
-                if (status === 'denied') return 'bg-secondary';
-                if (NEEDS_APPROVAL_STATUSES.has(status)) return 'bg-warning text-dark';
-                if (ACTIVE_STATUSES.has(status)) return 'bg-info text-dark';
-                return 'bg-secondary';
-            },
+            statusBadgeClass: statusClass,
             shortId(id) {
                 return (id || '').slice(0, 8);
             },

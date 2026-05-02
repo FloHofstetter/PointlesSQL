@@ -85,6 +85,7 @@ from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
 from pointlessql.web.help import get_help as _get_help
+from pointlessql.web.status_styles import status_class as _status_class
 
 # Configure logging at module import time so it takes effect in every
 # process that serves traffic — the uvicorn --reload worker imports
@@ -125,6 +126,11 @@ _TEMPLATES.env.globals["help"] = _get_help  # pyright: ignore[reportArgumentType
 # templates use ``?v={{ asset_version }}`` instead of hand-edited
 # per-edit strings.
 _TEMPLATES.env.globals["asset_version"] = pointlessql.__version__
+
+# Centralised status → Bootstrap badge class mapping.  Templates
+# call ``{{ status_class(run.status) }}`` instead of hand-rolling
+# {% if status == 'succeeded' %}bg-success{% elif … %} ladders.
+_TEMPLATES.env.globals["status_class"] = _status_class
 
 
 _original_template_response = _TEMPLATES.TemplateResponse

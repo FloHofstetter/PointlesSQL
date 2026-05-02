@@ -5,6 +5,7 @@
  */
 
 import { makeSidebar } from './_base.js';
+import { statusClass } from '../status_styles.js';
 
 function activeFqnFromHash() {
     if (window.location.pathname !== '/branches') return '';
@@ -39,12 +40,7 @@ export function branchesSidebar() {
             return out;
         },
         methods: {
-            statusBadgeClass(status) {
-                if (status === 'active') return 'bg-info text-dark';
-                if (status === 'promoted') return 'bg-success';
-                if (status === 'discarded') return 'bg-secondary';
-                return 'bg-secondary';
-            },
+            statusBadgeClass: statusClass,
         },
     });
 }

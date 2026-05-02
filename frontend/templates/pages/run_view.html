@@ -95,15 +95,7 @@
  <i class="bi bi-file-earmark-code fs-3"></i>
  <h1 class="h4 mb-0 font-monospace">{{ notebook_path }}</h1>
  {% if run %}
- {% if run.status == 'succeeded' %}
- <span class="badge bg-success">{{ run.status }}</span>
- {% elif run.status == 'failed' %}
- <span class="badge bg-danger">{{ run.status }}</span>
- {% elif run.status == 'needs_approval' %}
- <span class="badge bg-warning text-dark">{{ run.status }}</span>
- {% else %}
- <span class="badge bg-info text-dark">{{ run.status }}</span>
- {% endif %}
+ <span class="badge {{ status_class(run.status) }}">{{ run.status }}</span>
  {% endif %}
  </div>
  {% if run and run.tables_touched %}
