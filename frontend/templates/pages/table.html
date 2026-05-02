@@ -150,7 +150,9 @@
     </div>
 
     <div class="tab-pane fade" id="tab-preview" role="tabpanel" aria-labelledby="tab-preview-btn">
-    <div class="card mb-4" x-data="tablePreview()" x-init="load(); loadVersions();">
+    <div class="card mb-4"
+         x-data="tablePreview('{{ catalog_name }}.{{ schema_name }}.{{ table_name }}')"
+         x-init="load(); loadVersions();">
         <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
             <span>Preview</span>
             <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -240,88 +242,11 @@
         </div>
     </div>
 
-    <script>
-    // Sprint 23 — register on ``window`` so ``x-data="tablePreview()"``
-    // evaluates correctly when the page lands via HTMX boost (where
-    // top-level ``function`` declarations in a re-injected ``<script>``
-    // do not always promote to globals reliably).  Same pattern as
-    // ``window.catalogTree`` in components/sidebar.html.
-    window.tablePreview = function () {
-        const FQN = '{{ catalog_name }}.{{ schema_name }}.{{ table_name }}';
-        return {
-            loading: true,
-            ready: false,
-            error: null,
-            errorKind: null,
-            columns: [],
-            rows: [],
-            truncated: false,
-            versions: [],
-            selectedVersion: null,
-            async load() {
-                this.loading = true;
-                this.ready = false;
-                this.error = null;
-                this.errorKind = null;
-                try {
-                    const resp = await fetch('/api/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/preview', {
-                        headers: {'Accept': 'application/json'},
-                    });
-                    const data = await resp.json();
-                    if (!resp.ok || data.error) {
-                        this.error = data.detail || data.error || 'Unable to load preview';
-                        this.errorKind = data.kind || null;
-                    } else {
-                        this.columns = data.columns || [];
-                        this.rows = data.rows || [];
-                        this.truncated = !!data.truncated;
-                        this.ready = true;
-                    }
-                } catch (err) {
-                    this.error = err.message || 'Network error';
-                } finally {
-                    this.loading = false;
-                }
-            },
-            async loadVersions() {
-                try {
-                    const resp = await fetch(`/api/tables/${encodeURIComponent(FQN)}/versions`, {
-                        headers: {'Accept': 'application/json'},
-                    });
-                    if (!resp.ok) return;
-                    const data = await resp.json();
-                    this.versions = data.versions || [];
-                } catch (_err) { /* ignore */ }
-            },
-            async onVersionChange() {
-                if (this.selectedVersion === null || this.selectedVersion === '' || this.selectedVersion === undefined) {
-                    await this.load();
-                    return;
-                }
-                this.loading = true;
-                this.ready = false;
-                this.error = null;
-                try {
-                    const url = `/api/tables/${encodeURIComponent(FQN)}/preview-at-version?version=${this.selectedVersion}&limit=50`;
-                    const resp = await fetch(url, {headers: {'Accept': 'application/json'}});
-                    const data = await resp.json();
-                    if (!resp.ok) {
-                        this.error = data.detail || 'Unable to load historical version';
-                    } else {
-                        this.columns = data.columns || [];
-                        this.rows = (data.rows || []).map(r => this.columns.map(c => r[c]));
-                        this.truncated = data.total > this.rows.length;
-                        this.ready = true;
-                    }
-                } catch (err) {
-                    this.error = err.message || 'Network error';
-                } finally {
-                    this.loading = false;
-                }
-            },
-        };
-    };
-    </script>
+    {# Sprint 23 — ``window.tablePreview`` is registered in
+       ``frontend/js/bootstrap.js`` (loaded as a module before
+       Alpine), so the factory is already on ``window`` when Alpine
+       walks the DOM after an HTMX boost.  No inline ``<script>``
+       block needed here. #}
 
     </div>
 

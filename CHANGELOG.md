@@ -6,16 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- **Preview-card sometimes blank on HTMX-boosted navigation.**
-  ``frontend/templates/pages/table.html`` declared its
-  ``tablePreview()`` Alpine factory as a top-level function
-  inside an inline ``<script>``.  When HTMX boosted into the
-  page and re-injected the script tag, the function did not
-  promote to a global reliably and ``x-data="tablePreview()"``
-  failed to evaluate — leaving the Preview tab empty until the
-  user did a full page reload.  Now registered as
-  ``window.tablePreview = function () { … }`` (same pattern as
-  ``window.catalogTree`` in ``components/sidebar.html``).
+- **Preview-card still sometimes blank on HTMX-boosted
+  navigation.**  The earlier ``window.tablePreview`` rewrite
+  inside the inline ``<script>`` did not fully fix the race:
+  HTMX 2.x re-injects swapped scripts via ``createElement +
+  appendChild`` (async), but ``Alpine.initTree`` runs
+  synchronously inside the ``htmx:afterSwap`` listener — so
+  Alpine could still evaluate ``x-data="tablePreview()"``
+  before the swapped script had executed and assigned the
+  global.  Definitive fix: lift the factory out of the
+  inline ``<script>`` into ``frontend/js/pages/table_preview.js``
+  and import it in ``frontend/js/bootstrap.js`` so the function
+  lives on ``window.tablePreview`` from the very first
+  document load — long before any HTMX boost.  The template
+  now passes the FQN as an x-data argument
+  (``tablePreview('catalog.schema.table')``), so a single
+  registered factory serves any table.
 
 - **Missing-storage hint copy no longer suggests re-seeding the
   demo.**  PointlesSQL catalog data is independent of the demo

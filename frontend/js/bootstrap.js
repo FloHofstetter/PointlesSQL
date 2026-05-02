@@ -106,8 +106,10 @@ import { alertsPage } from './pages/alerts.js';
 import { alertDetail } from './pages/alert_detail.js';
 import { volumeDetail } from './pages/volume_detail.js';
 import { notebookWorkspace } from './pages/notebooks_workspace.js';
+import { tablePreview } from './pages/table_preview.js';
 
 window.alertsPage = alertsPage;
 window.alertDetail = alertDetail;
 window.volumeDetail = volumeDetail;
 window.notebookWorkspace = notebookWorkspace;
+window.tablePreview = tablePreview;
