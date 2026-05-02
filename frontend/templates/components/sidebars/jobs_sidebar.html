@@ -1,0 +1,97 @@
+{#
+   Phase 24.3 — Jobs context-panel.
+
+   Replaces the lone "All jobs" link with a list of scheduled jobs
+   split into two buckets: Active (not paused, top) and Paused
+   (bottom).  Each row shows the job name, the humanized cron
+   expression, and the most-recent run status badge.
+
+   Driven by ``jobsSidebar()`` in
+   ``frontend/js/components/sidebars/jobs_sidebar.js``.
+#}
+<div class="pql-sidebar border-end"
+     x-data="jobsSidebar()"
+     x-init="load()"
+     @htmx:after-swap.window="activeId = ((window.location.pathname.match(/^\/jobs\/(\d+)/) || [])[1] || null) && Number((window.location.pathname.match(/^\/jobs\/(\d+)/) || [])[1])">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <a href="/jobs"
+           class="text-uppercase small fw-semibold text-muted text-decoration-none">
+            Jobs
+        </a>
+        <button class="btn btn-sm btn-link p-0 text-muted"
+                @click="reload()"
+                title="Refresh">
+            <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
+        </button>
+    </div>
+
+    <div class="pql-sidebar-body">
+        <template x-if="error">
+            <div class="alert alert-danger m-2 small" x-text="error"></div>
+        </template>
+
+        <template x-if="!error && items.length === 0 && !loading">
+            <div class="text-muted small p-3">
+                <p class="mb-2">No scheduled jobs.</p>
+                <p class="mb-0 fst-italic">
+                    Create one from
+                    <a href="/jobs/new" class="text-decoration-none">/jobs/new</a>
+                    or via the agent <code>schedule_job</code> tool.
+                </p>
+            </div>
+        </template>
+
+        <template x-if="loading && items.length === 0">
+            <div class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+            </div>
+        </template>
+
+        <template x-if="grouped().active.length > 0">
+            <div>
+                <div class="px-3 pt-2 pb-1 text-uppercase small fw-semibold text-info">
+                    Active
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <template x-for="j in grouped().active" :key="j.id">
+                        <li>
+                            <a :href="'/jobs/' + j.id"
+                               class="pql-context-row"
+                               :class="{ active: isActive(j.id) }"
+                               :title="humanCron(j.cron_expr)">
+                                <i class="bi bi-clock-history flex-shrink-0 text-muted"></i>
+                                <span class="pql-context-row__name" x-text="j.name"></span>
+                                <template x-if="j.last_run_status">
+                                    <span class="badge"
+                                          :class="statusBadgeClass(j.last_run_status)"
+                                          x-text="j.last_run_status"></span>
+                                </template>
+                            </a>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+
+        <template x-if="grouped().paused.length > 0">
+            <div>
+                <div class="px-3 pt-2 pb-1 text-uppercase small fw-semibold text-secondary">
+                    Paused
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <template x-for="j in grouped().paused" :key="j.id">
+                        <li>
+                            <a :href="'/jobs/' + j.id"
+                               class="pql-context-row"
+                               :class="{ active: isActive(j.id) }"
+                               :title="humanCron(j.cron_expr)">
+                                <i class="bi bi-pause-circle flex-shrink-0 text-muted"></i>
+                                <span class="pql-context-row__name text-muted" x-text="j.name"></span>
+                            </a>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+        </template>
+    </div>
+</div>
