@@ -35,10 +35,10 @@ def test_derive_uris_uses_defaults_from_cwd(tmp_path: Path) -> None:
     )
     backend, artifact_root, registry = proc._derive_uris()
 
-    assert backend == "sqlite:///./mlflow.db"
+    assert backend == f"sqlite:///{tmp_path.resolve()}/mlflow.db"
     assert artifact_root == f"file://{tmp_path.resolve()}/mlflow_artifacts"
-    # MLflow's UC-OSS scheme is `uc:` followed by the bare HTTP URL —
-    # NOT `uc-oss:` (see Phase 21.1's uc_oss_proto_diff.md).
+    # MLflow's UC-OSS scheme is ``uc:`` followed by the bare HTTP URL,
+    # not ``uc-oss:``.
     assert registry == "uc:http://127.0.0.1:8080"
 
 

@@ -1,13 +1,15 @@
-"""API tests for the Sprint 27 workspace endpoints.
+"""API tests for the notebooks workspace endpoints.
 
 Covers:
 
 * ``GET /api/notebooks/tree`` — admin-only; returns a nested listing
   with ``parameters_tagged`` flags; skips ``runs/``.
-* ``POST /api/notebooks/upload`` — admin-only; rejects bad filenames,
-  non-JSON bodies, traversal, and existing-file overwrites without
-  the ``overwrite`` flag; writes atomically on the happy path.
 * ``GET /notebooks/workspace`` — admin-only HTML page; non-admins 403.
+
+The upload endpoint that used to live at ``POST /api/notebooks/upload``
+was removed in the agent-first pivot — humans no longer author
+notebooks in the UI; agents drop ``.py`` jupytext files into
+``notebooks/`` and the scheduler executes them.
 """
 
 from __future__ import annotations
@@ -105,107 +107,6 @@ async def test_tree_non_admin_forbidden(workspace_dir: Path) -> None:
     """The tree API is admin-only; non-admins get a 403 envelope."""
     async with _non_admin_client() as client:
         resp = await client.get("/api/notebooks/tree")
-    assert resp.status_code == 403
-
-
-# -- POST /api/notebooks/upload --
-
-
-async def test_upload_happy_path(workspace_dir: Path) -> None:
-    """Admin uploads a valid .ipynb to a fresh path; file lands on disk."""
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/notebooks/upload",
-            files={"file": ("fresh.ipynb", _PARAM_IPYNB, "application/json")},
-            data={"target_path": "fresh.ipynb"},
-        )
-
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body == {"path": "fresh.ipynb", "status": "created"}
-    assert (workspace_dir / "fresh.ipynb").read_bytes() == _PARAM_IPYNB
-    assert not (workspace_dir / "fresh.ipynb.tmp").exists()
-
-
-async def test_upload_rejects_non_ipynb_extension(workspace_dir: Path) -> None:
-    """The server enforces .ipynb on the uploaded filename."""
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/notebooks/upload",
-            files={"file": ("script.py", b"print('hi')", "text/x-python")},
-            data={"target_path": "script.py"},
-        )
-    assert resp.status_code == 422
-    assert ".ipynb" in resp.json()["detail"]
-
-
-async def test_upload_rejects_invalid_json(workspace_dir: Path) -> None:
-    """Uploaded file must parse as JSON; otherwise nothing touches disk."""
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/notebooks/upload",
-            files={
-                "file": (
-                    "corrupt.ipynb",
-                    b"{not valid json",
-                    "application/json",
-                )
-            },
-            data={"target_path": "corrupt.ipynb"},
-        )
-    assert resp.status_code == 422
-    assert not (workspace_dir / "corrupt.ipynb").exists()
-
-
-async def test_upload_rejects_traversal(workspace_dir: Path) -> None:
-    """``..``-prefixed target paths escape the notebooks root → 422."""
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/notebooks/upload",
-            files={"file": ("x.ipynb", _PARAM_IPYNB, "application/json")},
-            data={"target_path": "../escape.ipynb"},
-        )
-    assert resp.status_code == 422
-    assert "escape" in resp.json()["detail"].lower()
-
-
-async def test_upload_rejects_existing_without_overwrite(
-    workspace_dir: Path,
-) -> None:
-    """Repeat upload to the same path errors with a helpful message."""
-    (workspace_dir / "dup.ipynb").write_bytes(_PARAM_IPYNB)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/notebooks/upload",
-            files={"file": ("dup.ipynb", _PARAM_IPYNB, "application/json")},
-            data={"target_path": "dup.ipynb"},
-        )
-    assert resp.status_code == 422
-    assert "overwrite=true" in resp.json()["detail"]
-
-
-async def test_upload_overwrite_replaces_existing(workspace_dir: Path) -> None:
-    """Passing ``overwrite=true`` replaces the existing file atomically."""
-    (workspace_dir / "dup.ipynb").write_bytes(b"{}")
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/notebooks/upload",
-            files={"file": ("dup.ipynb", _PARAM_IPYNB, "application/json")},
-            data={"target_path": "dup.ipynb", "overwrite": "true"},
-        )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "overwritten"
-    assert (workspace_dir / "dup.ipynb").read_bytes() == _PARAM_IPYNB
-
-
-async def test_upload_non_admin_forbidden(workspace_dir: Path) -> None:
-    """Non-admins cannot upload notebooks."""
-    async with _non_admin_client() as client:
-        resp = await client.post(
-            "/api/notebooks/upload",
-            files={"file": ("nope.ipynb", _PARAM_IPYNB, "application/json")},
-            data={"target_path": "nope.ipynb"},
-        )
     assert resp.status_code == 403
 
 

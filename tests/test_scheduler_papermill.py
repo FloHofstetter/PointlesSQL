@@ -26,11 +26,20 @@ from pointlessql.types import UserInfo
 
 @pytest.fixture
 def notebooks_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point the executor at an isolated notebooks directory and seed a stub."""
+    """Point the executor at an isolated notebooks + runs directory and seed a stub.
+
+    The executor instantiates a fresh ``Settings()`` so both ``notebooks_dir``
+    and ``runs_dir`` must be set via env vars; otherwise ``runs_dir`` falls
+    back to the project default ``./notebooks/runs`` which may be root-owned
+    or otherwise unwritable from a clean test environment.
+    """
     root = tmp_path / "notebooks"
     root.mkdir()
+    runs = root / "runs"
+    runs.mkdir()
     (root / "smoke.ipynb").write_text("{}\n")
     monkeypatch.setenv("POINTLESSQL_JUPYTER_NOTEBOOKS_DIR", str(root))
+    monkeypatch.setenv("POINTLESSQL_JUPYTER_RUNS_DIR", str(runs))
     return root
 
 
@@ -291,11 +300,17 @@ def _non_admin_client() -> httpx.AsyncClient:
 
 @pytest.fixture
 def run_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point ``settings.jupyter.notebooks_dir`` at an isolated workspace with a ``runs/``."""
+    """Point ``settings.jupyter`` at an isolated workspace with a ``runs/`` subdir.
+
+    The notebook download/render routes resolve ``runs_dir`` directly from
+    ``app.state.settings.jupyter.runs_dir`` (not from ``notebooks_dir/runs``),
+    so both attributes need to be patched onto the live settings object.
+    """
     nb_root = tmp_path / "notebooks"
     runs = nb_root / "runs"
     runs.mkdir(parents=True)
     monkeypatch.setattr(app.state.settings.jupyter, "notebooks_dir", nb_root)
+    monkeypatch.setattr(app.state.settings.jupyter, "runs_dir", runs)
     return runs
 
 

@@ -232,10 +232,11 @@ async def test_profile_enforces_select(
             email, privilege, resource_type, full_name,
         )
 
-    # Patch check_privilege inside the api/main namespace where the
-    # profile route imported it.
-    from pointlessql.api import main as api_main
-    monkeypatch.setattr(api_main, "check_privilege", deny)
+    # Patch check_privilege at its import site — governance_routes
+    # imports the function directly, so this is where the binding
+    # the profile route resolves against actually lives.
+    from pointlessql.api import governance_routes
+    monkeypatch.setattr(governance_routes, "check_privilege", deny)
 
     async with _non_admin_client() as client:
         res = await client.post("/api/tables/main.sales.orders/profile")
