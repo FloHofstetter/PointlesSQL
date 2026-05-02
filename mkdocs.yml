@@ -108,6 +108,7 @@ nav:
       - Jobs: guides/jobs.md
       - E2E walkthroughs:
           - e2e-walkthroughs/README.md
+          - Grand tour: e2e-walkthroughs/grand-tour.md
           - Getting around:
               - Home: e2e-walkthroughs/home.md
               - Catalog browsing: e2e-walkthroughs/catalog-browsing.md
@@ -120,6 +121,7 @@ nav:
               - Rate limit: e2e-walkthroughs/rate-limit.md
               - OIDC: e2e-walkthroughs/oidc.md
           - Working with data:
+              - Full-stack demo (raw → ML): e2e-walkthroughs/full-stack-demo.md
               - SQL editor: e2e-walkthroughs/sql-editor.md
               - Inline editors: e2e-walkthroughs/inline-editors.md
               - Time travel: e2e-walkthroughs/time-travel.md

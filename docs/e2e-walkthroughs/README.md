@@ -23,6 +23,18 @@ playbooks on top of the same harness (jobs, notebook, OIDC,
 
 ## Playbooks
 
+**Tour-level entry-point.** If you are new to the project, start here —
+it visits every major UI surface in one ~30-minute click-through and
+cross-links to the deep-dive playbooks below for the edge cases:
+
+0. [`grand-tour.md`](grand-tour.md) — single coherent journey through
+   the catalog, lineage (incl. the Phase-15.8 row / column / value
+   axes), SQL editor, jobs, run-detail, ML Registry with the
+   bidirectional inference DAG, branches, dashboards, alerts (incl.
+   the Atom feed), audit cockpit, federation, volumes, and the
+   responsive + theme toggles. Self-bootstraps via
+   `seed-full-stack-demo.py --fresh --demo-rollback --keep-state`.
+
 **Data-surface** (Sprint 22). Run these first, in order — later
 ones reuse users and catalogs created by earlier ones:
 

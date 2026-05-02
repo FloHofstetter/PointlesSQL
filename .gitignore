@@ -62,3 +62,15 @@ mlflow.db
 mlflow.db-shm
 mlflow.db-wal
 mlflow_artifacts/
+
+# Phase 21.5 — MLflow tracking-store + registered-model artifacts
+mlruns/
+model_artifacts/
+
+# Phase-2 full-stack-demo runtime artefacts
+notebooks/full_stack_demo_data/
+
+# Local SQLite store (BUG-grand-09 path anchor still emits these in repo root).
+pointlessql.db
+pointlessql.db-shm
+pointlessql.db-wal
