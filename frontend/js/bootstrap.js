@@ -86,11 +86,11 @@ window.commandPalette = commandPalette;
 
 // Lineage-DAG factory for the Graph sub-tab on /runs/{id}.
 // cytoscape.js + dagre + cytoscape-dagre are loaded LAZILY by the
-// factory itself (``loadCytoscapeOnce()`` inside ``lineage_dag.js``)
+// factory itself (``loadCytoscapeOnce()`` inside the lineage_dag/ bundle)
 // the first time the Graph sub-tab is activated, gated on Bootstrap's
 // ``shown.bs.tab`` event.  No CDN bytes hit the wire on a normal
 // /runs/{id} page load.
-import { lineageDag } from './components/lineage_dag.js';
+import { lineageDag } from './components/lineage_dag/index.js';
 
 window.lineageDag = lineageDag;
 
