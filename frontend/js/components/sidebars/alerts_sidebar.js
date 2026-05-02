@@ -4,7 +4,7 @@
  * Lists configured alerts split into Enabled + Disabled buckets.
  */
 
-const STORAGE_KEY = 'pql.alerts.recent';
+import { makeSidebar } from './_base.js';
 
 function activeSlugFromUrl() {
     const m = window.location.pathname.match(/^\/alerts\/([^/]+)/);
@@ -14,59 +14,25 @@ function activeSlugFromUrl() {
 }
 
 export function alertsSidebar() {
-    return {
-        items: [],
-        loading: false,
-        error: null,
-        activeSlug: activeSlugFromUrl(),
-
-        async load() {
-            try {
-                const cached = sessionStorage.getItem(STORAGE_KEY);
-                if (cached) this.items = JSON.parse(cached);
-            } catch (e) {}
-            await this.fetch();
+    return makeSidebar({
+        endpoint: '/api/alerts',
+        storageKey: 'pql.alerts.recent',
+        itemsPath: (d) => (Array.isArray(d) ? d : (d?.alerts || [])),
+        transform: (list) => {
+            const sorted = list.slice();
+            sorted.sort((a, b) => {
+                const ta = a?.updated_at || a?.created_at || '';
+                const tb = b?.updated_at || b?.created_at || '';
+                return tb.localeCompare(ta);
+            });
+            return sorted;
         },
-
-        async fetch() {
-            this.loading = true;
-            this.error = null;
-            try {
-                const res = await fetch('/api/alerts');
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                const list = Array.isArray(data) ? data : (data?.alerts || []);
-                list.sort((a, b) => {
-                    const ta = a?.updated_at || a?.created_at || '';
-                    const tb = b?.updated_at || b?.created_at || '';
-                    return tb.localeCompare(ta);
-                });
-                this.items = list;
-                try {
-                    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.items));
-                } catch (e) {}
-            } catch (e) {
-                if (!this.items.length) this.error = e.message;
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async reload() {
-            try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
-            this.items = [];
-            await this.fetch();
-        },
-
-        grouped() {
-            return {
-                enabled:  this.items.filter(a => a.is_active).slice(0, 8),
-                disabled: this.items.filter(a => !a.is_active).slice(0, 5),
-            };
-        },
-
-        isActive(slug) {
-            return slug === this.activeSlug;
-        },
-    };
+        cap: null,
+        activeKey: 'activeSlug',
+        activeFromUrl: activeSlugFromUrl,
+        group: (items) => ({
+            enabled:  items.filter((a) => a.is_active).slice(0, 8),
+            disabled: items.filter((a) => !a.is_active).slice(0, 5),
+        }),
+    });
 }

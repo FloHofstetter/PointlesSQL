@@ -7,7 +7,7 @@
  * reach this partial.
  */
 
-const STORAGE_KEY = 'pql.workspace.tree';
+import { makeSidebar } from './_base.js';
 
 function activePathFromUrl() {
     if (window.location.pathname !== '/notebooks/workspace') return '';
@@ -32,63 +32,28 @@ function flattenLeaves(nodes) {
 }
 
 export function workspaceSidebar() {
-    return {
-        items: [],
-        loading: false,
-        error: null,
-        activePath: activePathFromUrl(),
-
-        async load() {
-            try {
-                const cached = sessionStorage.getItem(STORAGE_KEY);
-                if (cached) this.items = JSON.parse(cached);
-            } catch (e) {}
-            await this.fetch();
+    return makeSidebar({
+        endpoint: '/api/notebooks/tree',
+        storageKey: 'pql.workspace.tree',
+        itemsPath: (d) => (Array.isArray(d) ? d : (d?.tree || [])),
+        transform: flattenLeaves,
+        cap: 30,
+        activeKey: 'activePath',
+        activeFromUrl: activePathFromUrl,
+        methods: {
+            leafName(path) {
+                const i = (path || '').lastIndexOf('/');
+                return i >= 0 ? path.slice(i + 1) : path;
+            },
+            parentDir(path) {
+                const i = (path || '').lastIndexOf('/');
+                return i >= 0 ? path.slice(0, i) : '';
+            },
+            formatBadge(format) {
+                if (format === 'py') return 'bg-info text-dark';
+                if (format === 'ipynb') return 'bg-warning text-dark';
+                return 'bg-secondary';
+            },
         },
-
-        async fetch() {
-            this.loading = true;
-            this.error = null;
-            try {
-                const res = await fetch('/api/notebooks/tree');
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
-                const tree = Array.isArray(data) ? data : (data?.tree || []);
-                this.items = flattenLeaves(tree).slice(0, 30);
-                try {
-                    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.items));
-                } catch (e) {}
-            } catch (e) {
-                if (!this.items.length) this.error = e.message;
-            } finally {
-                this.loading = false;
-            }
-        },
-
-        async reload() {
-            try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
-            this.items = [];
-            await this.fetch();
-        },
-
-        leafName(path) {
-            const i = (path || '').lastIndexOf('/');
-            return i >= 0 ? path.slice(i + 1) : path;
-        },
-
-        parentDir(path) {
-            const i = (path || '').lastIndexOf('/');
-            return i >= 0 ? path.slice(0, i) : '';
-        },
-
-        formatBadge(format) {
-            if (format === 'py') return 'bg-info text-dark';
-            if (format === 'ipynb') return 'bg-warning text-dark';
-            return 'bg-secondary';
-        },
-
-        isActive(path) {
-            return path === this.activePath;
-        },
-    };
+    });
 }
