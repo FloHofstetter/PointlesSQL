@@ -45,7 +45,18 @@ logger = logging.getLogger(__name__)
 
 
 VALID_OP_NAMES = frozenset(
-    {"autoload", "merge", "write_table", "sql", "aggregate", "rollback", "train_model"}
+    {
+        "autoload",
+        "merge",
+        "write_table",
+        "sql",
+        "aggregate",
+        "rollback",
+        "train_model",
+        "branch_create",
+        "branch_promote",
+        "branch_discard",
+    }
 )
 
 
