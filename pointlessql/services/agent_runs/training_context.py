@@ -141,6 +141,8 @@ def training_context(
     framework: str = "auto",
     op_name: str = "train_model",
     params: dict[str, Any] | None = None,
+    source_table_fqn: str | None = None,
+    model_fqn: str | None = None,
 ) -> Iterator[TrainingRecorder]:
     """Wrap a training block: enable autolog, capture params/metrics at exit.
 
@@ -148,6 +150,15 @@ def training_context(
     yields a :class:`TrainingRecorder` and runs the block under
     :func:`operation_context` — the audit row lands without
     training-params content.
+
+    BUG-grand-05 / Phase 21.5.5 — when both ``source_table_fqn`` and
+    ``model_fqn`` are set, the wrapper emits **one** training-source
+    edge into ``lineage_row_edges`` so the model-detail Lineage DAG
+    can paint the upstream node (the gold/training source).  The
+    edge uses synthetic ``("1" → "1")`` row-ids because training
+    reads the WHOLE table — per-row identity isn't meaningful at
+    the model-artefact grain.  Mirror of the
+    ``write_table → record_row_edges`` pattern from Phase 15.3.
 
     Args:
         session_factory: SQLAlchemy session factory (required when
@@ -163,6 +174,18 @@ def training_context(
             already in :data:`VALID_OP_NAMES`.
         params: Optional initial params dict.  Defaults to
             ``{"framework": framework}``.
+        source_table_fqn: Optional UC FQN of the gold/training
+            table the model was fit on.  When set together with
+            ``model_fqn`` the wrapper emits a single
+            ``lineage_row_edges`` row anchoring
+            ``source_table_fqn → model_fqn`` on the model-detail
+            Lineage DAG (Phase 21.5.5 contract).  Either alone
+            or both unset → no edge.
+        model_fqn: Optional UC FQN of the registered model the
+            training will produce.  Drives both the audit-row's
+            ``target_table`` and (when paired with
+            ``source_table_fqn``) the lineage edge.  ``None``
+            keeps the audit-row generic.
 
     Yields:
         :class:`TrainingRecorder` exposing ``mlflow_run_id`` once
@@ -185,7 +208,23 @@ def training_context(
         agent_run_id=agent_run_id,
         op_name=op_name,
         params=initial_params,
+        target_table=model_fqn,
     ) as op_recorder:
+        if source_table_fqn and model_fqn:
+            op_recorder.extra_params = {
+                **op_recorder.extra_params,
+                "source_table_fqn": source_table_fqn,
+                "model_fqn": model_fqn,
+            }
+            # BUG-grand-05 / Phase 21.5.5 — single synthetic edge
+            # because training reads the whole table; row-level
+            # provenance is meaningless at the model-artefact grain.
+            op_recorder.pending_lineage_edges = {
+                "source_table": source_table_fqn,
+                "source_row_ids": ["1"],
+                "target_row_ids": ["1"],
+                "source_model_uri": None,
+            }
         rec.op = op_recorder
 
         if mlflow is None or not autolog_active:

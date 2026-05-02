@@ -262,3 +262,95 @@ def test_training_context_pql_method_round_trip(monkeypatch) -> None:
         op = session.query(AgentRunOperation).filter_by(agent_run_id=run_id).one()
     parsed = json.loads(op.training_params_json or "{}")
     assert parsed["params"] == {"depth": "5"}
+
+
+# ---------- BUG-grand-05 — training-source lineage edge ----------
+
+
+def test_training_context_emits_lineage_edge_when_source_and_model_set(
+    monkeypatch,
+) -> None:
+    """Pass ``source_table_fqn`` + ``model_fqn`` → one lineage_row_edges row.
+
+    Mirrors the contract pinned by
+    ``test_inference_lineage.py:test_build_model_lineage_graph_includes_predictions``
+    (lines 210-217): training-source edges must have
+    ``target_table = MODEL_FQN`` for the model-detail Lineage DAG to
+    paint the upstream node.  Pre-grand-tour-fix this row was never
+    written and the upstream half of the DAG stayed empty.
+    """
+    from pointlessql.models import LineageRowEdge
+
+    factory = app.state.session_factory
+    run_id = str(uuid.uuid4())
+    _seed_run(factory, run_id)
+    _stub_mlflow(monkeypatch, params={"alpha": "0.1"}, metrics={"r2": 0.95})
+
+    with tc.training_context(
+        factory,
+        agent_run_id=run_id,
+        source_table_fqn="cat.gold.training_set",
+        model_fqn="cat.models.house_price_lr",
+    ) as rec:
+        assert rec.mlflow_run_id == "mlf-stub"
+
+    with factory() as session:
+        edges = (
+            session.query(LineageRowEdge)
+            .filter(LineageRowEdge.target_table == "cat.models.house_price_lr")
+            .all()
+        )
+        op = session.query(AgentRunOperation).filter_by(agent_run_id=run_id).one()
+
+    assert len(edges) == 1
+    assert edges[0].source_table == "cat.gold.training_set"
+    # Synthetic single-pair grain for model-artefact lineage.
+    assert edges[0].source_row_id == "1"
+    assert edges[0].target_row_id == "1"
+    # source_model_uri stays NULL — that's for inference, not training.
+    assert edges[0].source_model_uri is None
+    # The op row is anchored to the model FQN so the run-detail
+    # Operations tab shows the right target.
+    assert op.target_table == "cat.models.house_price_lr"
+
+
+def test_training_context_no_edge_when_only_source_table_set(monkeypatch) -> None:
+    """Without ``model_fqn``, no edge is emitted (edge needs both ends)."""
+    from pointlessql.models import LineageRowEdge
+
+    factory = app.state.session_factory
+    run_id = str(uuid.uuid4())
+    _seed_run(factory, run_id)
+    _stub_mlflow(monkeypatch, params={}, metrics={})
+
+    with tc.training_context(
+        factory,
+        agent_run_id=run_id,
+        source_table_fqn="cat.gold.training_set",
+    ):
+        pass
+
+    with factory() as session:
+        edges = session.query(LineageRowEdge).all()
+    assert edges == []
+
+
+def test_training_context_no_edge_when_no_source_table(monkeypatch) -> None:
+    """Without ``source_table_fqn``, no edge is emitted (default behaviour)."""
+    from pointlessql.models import LineageRowEdge
+
+    factory = app.state.session_factory
+    run_id = str(uuid.uuid4())
+    _seed_run(factory, run_id)
+    _stub_mlflow(monkeypatch, params={}, metrics={})
+
+    with tc.training_context(
+        factory,
+        agent_run_id=run_id,
+        model_fqn="cat.models.house_price_lr",
+    ):
+        pass
+
+    with factory() as session:
+        edges = session.query(LineageRowEdge).all()
+    assert edges == []

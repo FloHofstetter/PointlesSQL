@@ -404,6 +404,8 @@ class PQL:
         framework: str = "auto",
         op_name: str = "train_model",
         params: Mapping[str, Any] | None = None,
+        source_table_fqn: str | None = None,
+        model_fqn: str | None = None,
     ) -> Any:
         """Wrap a training block so MLflow autolog fires + audit row lands.
 
@@ -419,12 +421,24 @@ class PQL:
         ``training_params_json`` column. Best-effort: works without
         MLflow installed (audit row still lands, snapshot is empty).
 
+        BUG-grand-05 / Phase 21.5.5 — pass both ``source_table_fqn``
+        and ``model_fqn`` to anchor a single training-source edge in
+        ``lineage_row_edges`` so the model-detail Lineage DAG paints
+        the upstream training source.  Either alone or both unset →
+        no edge.
+
         Args:
             framework: Hint for ``mlflow.autolog`` flavor; defaults to
                 ``"auto"``.
             op_name: Audit-row label; defaults to ``"train_model"``.
             params: Optional initial params dict merged into the
                 operation row.
+            source_table_fqn: Optional UC FQN of the gold/training
+                table the model was fit on.
+            model_fqn: Optional UC FQN of the registered model the
+                training will produce.  Drives the audit-row's
+                ``target_table`` and (with ``source_table_fqn``) the
+                training-source lineage edge.
 
         Returns:
             A context manager yielding a
@@ -442,6 +456,8 @@ class PQL:
             framework=framework,
             op_name=op_name,
             params=dict(params) if params is not None else None,
+            source_table_fqn=source_table_fqn,
+            model_fqn=model_fqn,
         )
 
     def rollback(
