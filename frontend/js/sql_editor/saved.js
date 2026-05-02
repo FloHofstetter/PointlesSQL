@@ -13,7 +13,7 @@
  * paths route through ``openSaveModal()`` here.
  */
 
-import { toast } from './api.js';
+import { toast } from '../api.js';
 
 export const savedMethods = {
  async refreshSaved() {

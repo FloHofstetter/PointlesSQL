@@ -143,7 +143,7 @@
     {#-
       BUG-grand-03 follow-up: the importmap MUST be parsed before any
       ES module that imports the bare specifiers below. bootstrap.js
-      (next script tag) imports sql_editor.js, whose dynamic
+      (next script tag) imports the sql_editor bundle, whose dynamic
       import('@codemirror/...') calls in sqlEditor().init() resolve
       through this map. Placing the map in <head> (before bootstrap.js)
       makes it page-agnostic — non-/sql pages don't pay for it (it's

@@ -71,7 +71,7 @@ window.deleteConfirm = deleteConfirm;
 // List table + job-row hover actions + SQL editor.
 import { listTable } from './list_table.js';
 import { jobRowActions } from './job_row_actions.js';
-import { sqlEditor } from './sql_editor.js';
+import { sqlEditor } from './sql_editor/index.js';
 
 window.listTable = listTable;
 window.jobRowActions = jobRowActions;

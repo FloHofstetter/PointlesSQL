@@ -24,10 +24,10 @@
  * ``x-data="sqlEditor"`` attribute.
  */
 
-import { chartMethods } from './sql_editor_chart.js';
-import { executeMethods } from './sql_editor_execute.js';
-import { monacoMethods } from './sql_editor_monaco.js';
-import { savedMethods } from './sql_editor_saved.js';
+import { chartMethods } from './chart.js';
+import { executeMethods } from './execute.js';
+import { monacoMethods } from './monaco.js';
+import { savedMethods } from './saved.js';
 
 export function sqlEditor() {
  return {

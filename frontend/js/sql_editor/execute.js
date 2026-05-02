@@ -14,7 +14,7 @@
  * active. The auto-pick lives in ``sql_editor_chart.js``.
  */
 
-import { toast } from './api.js';
+import { toast } from '../api.js';
 
 export const executeMethods = {
  /** Format a single result cell for text rendering. */
