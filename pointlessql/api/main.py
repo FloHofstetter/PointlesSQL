@@ -481,8 +481,7 @@ _STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"
 
 @app.get("/static/css/style.css", include_in_schema=False)
 async def _style_css() -> Response:
-    """Serve the master stylesheet with the cache-bust token
-    rewritten to ``__version__``.
+    """Serve the master stylesheet with the cache-bust token rewritten to ``__version__``.
 
     Browsers cache ``@import`` URLs independently of their referring
     sheet, so the parent's cache-bust does not propagate.  Rewriting

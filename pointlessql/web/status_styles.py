@@ -15,7 +15,6 @@ neutral gray pill rather than throwing.
 
 from __future__ import annotations
 
-
 STATUS_BADGE_CLASS: dict[str, str] = {
     # Terminal success
     "ok": "success",
