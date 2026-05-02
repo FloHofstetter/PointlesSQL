@@ -1882,18 +1882,40 @@ PointlesSQL
 │   │       carries the new ``lineage_diff`` payload.  Page
 │   │       renders Chart.js bar charts for each lineage axis +
 │   │       four +Δ stat cards on top.
-│   └── Sprint 18.5 — Anomaly highlighting                    ✅
-│       └── ``/api/home/summary`` carries an ``anomalies``
-│           block ({warn, critical}) computed across rejects,
-│           errored_ops, and external_writes.  Home page renders
-│           a yellow/red banner when ≥ 1 metric breaches the
-│           configured σ threshold; ``/runs/{id}`` shows an
-│           anomaly chip at the top with the worst-offender
-│           metric + observed-vs-baseline.  Saved-query alert
-│           thresholds (``alert_threshold_count`` column on
-│           ``saved_audit_queries``) reuse the existing alerts
-│           machinery.  Email digest deferred to Phase 19.2
-│           (Audit-Reviewer-Agent territory).
+│   ├── Sprint 18.5 — Anomaly highlighting                    ✅
+│   │   └── ``/api/home/summary`` carries an ``anomalies``
+│   │       block ({warn, critical}) computed across rejects,
+│   │       errored_ops, and external_writes.  Home page renders
+│   │       a yellow/red banner when ≥ 1 metric breaches the
+│   │       configured σ threshold; ``/runs/{id}`` shows an
+│   │       anomaly chip at the top with the worst-offender
+│   │       metric + observed-vs-baseline.  Saved-query alert
+│   │       thresholds (``alert_threshold_count`` column on
+│   │       ``saved_audit_queries``) reuse the existing alerts
+│   │       machinery.  Email digest deferred to Phase 19.2
+│   │       (Audit-Reviewer-Agent territory).
+│   └── Sprint 18.6 — Anomaly inbox + run-list badge          ✅
+│       └── Phase 18.6+ deepening of the closed cockpit.  Two
+│           new columns on ``agent_runs``
+│           (``anomaly_severity``, ``anomaly_metric``, set by
+│           the run-finish hook + a ``backfill_run_anomalies``
+│           helper) drive a new badge column on the ``/runs``
+│           list.  New ``anomaly_acks`` table (Alembic
+│           ``x4t6u8v0w2y4``) carries the cross-run inbox's
+│           ack/snooze lifecycle; permanent or still-snoozed
+│           acks hide rows from the default inbox view.
+│           Three new endpoints: ``GET /api/audit/inbox``
+│           aggregates anomalies across the run-anomaly metric
+│           pair (rejects + errored_ops by default) and joins
+│           ack state; ``POST /api/audit/anomaly-acks`` +
+│           ``DELETE /api/audit/anomaly-acks/{id}`` manage the
+│           lifecycle.  New HTML page at ``/audit/inbox`` with
+│           filter bar + ack/snooze actions.  All new routes
+│           are auditor-scope (admin cookie passes, supervisor
+│           does not).  Sprints 18.7 (Audit-FTS), 18.8
+│           (reverse-index "runs by table"), 18.9 (cell-level
+│           run-diff), 18.10 (anomaly-memoization, contingent)
+│           queued in the Phase 18.6+ plan.
 │
 ├── Phase 19 — Audit-Reviewer Agent + Grafana             ✅ closed
 │   │

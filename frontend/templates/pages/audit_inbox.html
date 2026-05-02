@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Audit cockpit · anomaly inbox · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/audit/queries" class="text-decoration-none">Audit cockpit</a></li>
+    <li class="breadcrumb-item active">Anomaly inbox</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-bell-fill fs-3"></i>
+    <h1 class="h3 mb-0">Audit cockpit · anomaly inbox</h1>
+</div>
+
+<p class="text-muted">
+    Cross-run anomaly view.  Each row is one bin (metric × time-window)
+    that breached the configured σ threshold.  Acknowledge a row to
+    hide it permanently, or snooze it for a fixed time window.
+    Acked rows reappear on the next cockpit read once their snooze
+    expires.
+</p>
+
+<form id="inbox-filter" class="row g-2 align-items-end mb-3" autocomplete="off">
+    <div class="col-md-2">
+        <label for="inbox-severity" class="form-label small mb-1">Severity</label>
+        <select id="inbox-severity" class="form-select form-select-sm">
+            <option value="all" selected>warn or worse</option>
+            <option value="warn">warn</option>
+            <option value="critical">critical only</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="inbox-metric" class="form-label small mb-1">Metric</label>
+        <select id="inbox-metric" class="form-select form-select-sm">
+            <option value="">run-anomaly metrics</option>
+            {% for m in valid_metrics %}
+            <option value="{{ m }}">{{ m }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="inbox-bin" class="form-label small mb-1">Bin</label>
+        <select id="inbox-bin" class="form-select form-select-sm">
+            {% for b in valid_bins %}
+            <option value="{{ b }}" {% if b == 'day' %}selected{% endif %}>{{ b }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="inbox-since" class="form-label small mb-1">Since (ISO)</label>
+        <input id="inbox-since" type="text" class="form-control form-control-sm font-monospace" placeholder="2026-04-25">
+    </div>
+    <div class="col-md-2">
+        <label for="inbox-table" class="form-label small mb-1">Table FQN</label>
+        <input id="inbox-table" type="text" class="form-control form-control-sm font-monospace" placeholder="catalog.schema.table">
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary flex-fill">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <div class="form-check d-flex align-items-center mb-0">
+            <input class="form-check-input me-2" type="checkbox" id="inbox-include-acked">
+            <label class="form-check-label small" for="inbox-include-acked">acked</label>
+        </div>
+    </div>
+</form>
+
+<div id="inbox-meta" class="small text-muted mb-2"></div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Metric</th>
+                    <th>Bin</th>
+                    <th class="text-end">Observed</th>
+                    <th class="text-end">Baseline μ</th>
+                    <th class="text-end">σ</th>
+                    <th>Ack</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="inbox-rows">
+                <tr><td colspan="8" class="text-center text-muted py-4">Loading…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function () {
+    const sevEl = document.getElementById('inbox-severity');
+    const metricEl = document.getElementById('inbox-metric');
+    const binEl = document.getElementById('inbox-bin');
+    const sinceEl = document.getElementById('inbox-since');
+    const tableEl = document.getElementById('inbox-table');
+    const includeAckedEl = document.getElementById('inbox-include-acked');
+    const formEl = document.getElementById('inbox-filter');
+    const rowsEl = document.getElementById('inbox-rows');
+    const metaEl = document.getElementById('inbox-meta');
+
+    function severityBadge(sev) {
+        const cls = sev === 'critical' ? 'bg-danger' : (sev === 'warn' ? 'bg-warning text-dark' : 'bg-secondary');
+        return `<span class="badge ${cls}">${sev}</span>`;
+    }
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    async function loadInbox() {
+        const params = new URLSearchParams();
+        params.set('severity', sevEl.value);
+        if (metricEl.value) params.set('metric', metricEl.value);
+        params.set('bin', binEl.value);
+        if (sinceEl.value.trim()) params.set('since', sinceEl.value.trim());
+        if (tableEl.value.trim()) params.set('table', tableEl.value.trim());
+        if (includeAckedEl.checked) params.set('include_acked', 'true');
+        rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Loading…</td></tr>';
+        const resp = await fetch('/api/audit/inbox?' + params.toString(), { credentials: 'same-origin' });
+        if (!resp.ok) {
+            rowsEl.innerHTML = `<tr><td colspan="8" class="text-danger py-3">Error ${resp.status}</td></tr>`;
+            metaEl.textContent = '';
+            return;
+        }
+        const data = await resp.json();
+        metaEl.textContent = `${data.anomalies.length} of ${data.total_count} breach(es) — metrics ${data.metrics.join(', ')}, ${data.window_days}d baseline at ${data.threshold_sigma}σ`;
+        if (!data.anomalies.length) {
+            rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No active anomalies for the chosen filters.</td></tr>';
+            return;
+        }
+        rowsEl.innerHTML = data.anomalies.map((a) => {
+            const ackCell = a.ack
+                ? `<span class="text-muted small">acked by ${escapeHtml(a.ack.acked_by)}${a.ack.dismissed_until ? ' until ' + escapeHtml(a.ack.dismissed_until.slice(0, 16)) : ''}</span>`
+                : '<span class="text-muted small">—</span>';
+            const actionCell = a.ack
+                ? `<button class="btn btn-sm btn-outline-secondary" data-action="unack" data-ack-id="${a.ack.id}">Un-ack</button>`
+                : `<button class="btn btn-sm btn-outline-primary" data-action="ack" data-metric="${escapeHtml(a.metric)}" data-bin-iso="${escapeHtml(a.bin_iso)}" data-bin-kind="${escapeHtml(a.bin_kind)}">Ack</button>`;
+            return `<tr>
+                <td>${severityBadge(a.severity)}</td>
+                <td class="font-monospace small">${escapeHtml(a.metric)}</td>
+                <td class="font-monospace small">${escapeHtml(a.bin_iso)}</td>
+                <td class="text-end font-monospace small">${a.observed}</td>
+                <td class="text-end font-monospace small text-muted">${a.baseline_mean}</td>
+                <td class="text-end font-monospace small text-muted">${a.sigma}</td>
+                <td>${ackCell}</td>
+                <td>${actionCell}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    rowsEl.addEventListener('click', async (ev) => {
+        const btn = ev.target.closest('button[data-action]');
+        if (!btn) return;
+        ev.preventDefault();
+        if (btn.dataset.action === 'ack') {
+            const comment = prompt('Optional ack comment (leave blank for none)');
+            const snooze = prompt('Snooze until (ISO 8601, leave blank for permanent ack)');
+            const body = {
+                metric: btn.dataset.metric,
+                bin_iso: btn.dataset.binIso,
+                bin_kind: btn.dataset.binKind,
+            };
+            if (comment) body.comment = comment;
+            if (snooze) body.dismissed_until = snooze;
+            const r = await fetch('/api/audit/anomaly-acks', {
+                method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            if (!r.ok) { alert('Ack failed: ' + r.status); return; }
+            await loadInbox();
+        } else if (btn.dataset.action === 'unack') {
+            const id = btn.dataset.ackId;
+            if (!confirm(`Un-ack #${id}?  The anomaly will reappear in the inbox.`)) return;
+            const r = await fetch(`/api/audit/anomaly-acks/${id}`, {
+                method: 'DELETE', credentials: 'same-origin'
+            });
+            if (!r.ok) { alert('Un-ack failed: ' + r.status); return; }
+            await loadInbox();
+        }
+    });
+
+    formEl.addEventListener('submit', (ev) => { ev.preventDefault(); loadInbox(); });
+    loadInbox();
+})();
+</script>
+{% endblock %}

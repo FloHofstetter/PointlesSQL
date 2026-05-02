@@ -46,6 +46,7 @@ from pointlessql.models.agent_run_audit import (
 )
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
+from pointlessql.models.anomaly import AnomalyAck
 from pointlessql.models.api_keys import ApiKey
 from pointlessql.models.audit import AuditLog
 from pointlessql.models.audit_sinks import SINK_TYPES, AuditSink, GovernanceEvent
@@ -97,6 +98,7 @@ __all__ = [
     "Alert",
     "AlertDestination",
     "AlertEvent",
+    "AnomalyAck",
     "ApiKey",
     "AuditLog",
     "AuditSink",

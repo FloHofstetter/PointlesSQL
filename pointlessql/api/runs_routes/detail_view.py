@@ -22,6 +22,7 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
+from sqlalchemy import select
 
 from pointlessql.api.dependencies import get_uc_client
 from pointlessql.api.runs_routes._loaders import (
@@ -154,13 +155,12 @@ async def _conformance_findings_for_run(
 
 
 def _run_anomaly_chip(request: Request, run_id: str) -> dict[str, Any] | None:
-    """Return an anomaly verdict for the run-detail chip, or ``None``.
+    """Return the run's day-bin anomaly verdict for the run-detail chip.
 
-    Compares the run's reject + errored-op count against the global
-    per-day baseline for the same metrics.  If either metric breaches
-    the configured σ threshold, returns ``{metric, severity,
-    observed, baseline_mean}`` describing the worst offender;
-    otherwise ``None`` so the template renders nothing.
+    Loads the :class:`AgentRun` row and delegates to
+    :func:`audit_aggregator.compute_run_anomaly`, which evaluates
+    reject + errored-op counts against the configured rolling
+    baseline for the run's ``started_at`` day-bin.
 
     Best-effort: any failure logs and returns ``None`` so a broken
     aggregator never breaks the run-detail page.
@@ -170,39 +170,26 @@ def _run_anomaly_chip(request: Request, run_id: str) -> dict[str, Any] | None:
         run_id: ``AgentRun.id`` whose chip to compute.
 
     Returns:
-        Verdict dict or ``None``.
+        Verdict dict ``{metric, severity, observed, baseline_mean,
+        sigma}`` for the worst breach, or ``None`` when nothing
+        breaches the threshold.
     """
     try:
+        from pointlessql.models.agent_runs import AgentRun
         from pointlessql.services import audit_aggregator as agg
 
         settings = request.app.state.settings
         factory = request.app.state.session_factory
-        worst: dict[str, Any] | None = None
-        for metric in ("rejects", "errored_ops"):
-            result = agg.anomalies(
+        with factory() as session:
+            run_row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
+            if run_row is None:
+                return None
+            return agg.compute_run_anomaly(
                 factory,
-                metric=metric,  # type: ignore[arg-type]
+                run_row,
                 window_days=settings.audit.anomaly_baseline_window_days,
                 sigma=settings.audit.anomaly_threshold_sigma,
-                bin_="day",
             )
-            if not result["points"]:
-                continue
-            latest = result["points"][-1]
-            if latest["severity"] == "ok":
-                continue
-            severity_rank = {"warn": 1, "critical": 2}
-            if worst is None or severity_rank[latest["severity"]] > severity_rank.get(
-                worst["severity"], 0
-            ):
-                worst = {
-                    "metric": metric,
-                    "severity": latest["severity"],
-                    "observed": latest["observed"],
-                    "baseline_mean": latest["baseline_mean"],
-                    "sigma": latest["sigma"],
-                }
-        return worst
     except Exception:  # noqa: BLE001 — chip is best-effort
         return None
 

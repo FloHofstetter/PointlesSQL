@@ -50,6 +50,7 @@
  <th data-sort-key="principal">Principal</th>
  <th data-sort-key="agent">Agent</th>
  <th data-sort-key="status">Status</th>
+ <th data-sort-key="anomaly">Anomaly</th>
  <th data-sort-key="cost">Cost est.</th>
  <th data-sort-key="started_at">Started</th>
  <th>Tables touched</th>
@@ -58,7 +59,7 @@
  <tbody>
  {% for run in runs %}
  <tr
- data-search="{{ run.id }} {{ run.principal or '' }} {{ run.agent_id or '' }} {{ run.status }} {{ (run.tables_touched or []) | join(' ') }}"
+ data-search="{{ run.id }} {{ run.principal or '' }} {{ run.agent_id or '' }} {{ run.status }} {% if run.anomaly_severity %}anomaly:{{ run.anomaly_severity }}{% endif %} {{ (run.tables_touched or []) | join(' ') }}"
  data-status="{{ run.status }}"
  data-principal="{{ run.principal or '' }}"
  data-agent="{{ run.agent_id or '' }}"
@@ -66,6 +67,7 @@
  data-sort-principal="{{ run.principal or '' }}"
  data-sort-agent="{{ run.agent_id or '' }}"
  data-sort-status="{{ run.status }}"
+ data-sort-anomaly="{{ run.anomaly_severity or '' }}"
  data-sort-cost="{{ run.cost_est or 0 }}"
  data-sort-started_at="{{ run.started_at or '' }}"
  >
@@ -76,6 +78,17 @@
  <td class="font-monospace small">{{ run.agent_id or "—" }}</td>
  <td>
  <span class="badge {{ status_class(run.status) }}">{{ run.status }}</span>
+ </td>
+ <td>
+ {% if run.anomaly_severity == 'critical' %}
+ <span class="badge bg-danger" title="{{ run.anomaly_metric or '' }}">critical</span>
+ {% elif run.anomaly_severity == 'warn' %}
+ <span class="badge bg-warning text-dark" title="{{ run.anomaly_metric or '' }}">warn</span>
+ {% elif run.anomaly_severity == 'ok' %}
+ <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle">ok</span>
+ {% else %}
+ <span class="text-muted small">—</span>
+ {% endif %}
  </td>
  <td class="font-monospace small text-muted">
  {% if run.cost_est is not none %}{{ run.cost_est }}{% else %}—{% endif %}

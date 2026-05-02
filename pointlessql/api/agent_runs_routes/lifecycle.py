@@ -15,6 +15,7 @@ from fastapi import APIRouter, Body, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
+from pointlessql.api.agent_runs_routes._anomaly_persist import persist_run_anomaly
 from pointlessql.api.agent_runs_routes._serializers import serialize_agent_run
 from pointlessql.api.dependencies import get_user, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
@@ -108,6 +109,7 @@ async def api_deny_agent_run(
         session.commit()
         session.refresh(row)
         session.expunge(row)
+    persist_run_anomaly(request, run_id)
     await audit(
         request,
         "deny_agent_run",

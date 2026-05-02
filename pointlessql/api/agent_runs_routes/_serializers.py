@@ -76,6 +76,8 @@ def serialize_agent_run(row: AgentRun) -> dict[str, Any]:
         "denied_reason": row.denied_reason,
         "runtime_versions": runtime_versions,
         "cost_gate_trigger": cost_gate_trigger,
+        "anomaly_severity": row.anomaly_severity,
+        "anomaly_metric": row.anomaly_metric,
     }
 
 

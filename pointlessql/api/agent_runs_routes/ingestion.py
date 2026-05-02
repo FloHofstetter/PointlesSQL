@@ -20,6 +20,7 @@ from fastapi import APIRouter, Body, Header, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
+from pointlessql.api.agent_runs_routes._anomaly_persist import persist_run_anomaly
 from pointlessql.api.agent_runs_routes._serializers import (
     coerce_cost_est,
     coerce_cost_gate_trigger,
@@ -296,6 +297,7 @@ async def api_finish_agent_run(
         session.commit()
         session.refresh(row)
         session.expunge(row)
+    persist_run_anomaly(request, run_id)
     await audit(
         request,
         "finish_agent_run",

@@ -691,6 +691,146 @@ def anomalies(
     }
 
 
+RUN_ANOMALY_METRICS: tuple[Metric, ...] = ("rejects", "errored_ops")
+"""Metrics evaluated per-run for the inbox + run-list-badge.
+
+Phase 18.6 cache (``agent_runs.anomaly_severity`` +
+``anomaly_metric``) only persists the worst breach across these
+two — the same signals the run-detail anomaly chip used before
+the persistence move.  Expanding this tuple later just requires a
+backfill, not a schema change.
+"""
+
+_SEVERITY_RANK: dict[str, int] = {"ok": 0, "warn": 1, "critical": 2}
+
+
+def compute_run_anomaly(
+    factory: sessionmaker[Session],
+    run_row: AgentRun,
+    *,
+    window_days: int = 7,
+    sigma: float = 2.0,
+) -> dict[str, Any] | None:
+    """Return the worst day-bin anomaly verdict for a run, or ``None``.
+
+    Anchors the verdict on the run's ``started_at`` day-bin and
+    asks :func:`anomalies` for that single bin (with ``window_days``
+    of prior baseline context).  Iterates :data:`RUN_ANOMALY_METRICS`
+    and keeps the highest severity.  Used by both the run-finish
+    hook (which writes the result back into ``agent_runs``) and the
+    run-detail chip (which re-renders the live observation alongside
+    the persisted severity).
+
+    Best-effort: any failure logs and returns ``None`` so a broken
+    aggregator never blocks the calling code path.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        run_row: The :class:`AgentRun` ORM row to evaluate.  Must
+            carry a non-``None`` ``started_at`` — runs without a
+            start timestamp return ``None`` directly.
+        window_days: Rolling-window size in days for the baseline.
+        sigma: σ-multiplier — ``warn`` ≥ this above mean,
+            ``critical`` ≥ ``2 ×`` this.
+
+    Returns:
+        ``{"metric", "severity", "observed", "baseline_mean",
+        "sigma"}`` for the worst breach, or ``None`` when no metric
+        breaches the threshold (or anything failed).
+    """
+    try:
+        anchor: datetime.datetime | None = getattr(run_row, "started_at", None)
+        if anchor is None:
+            return None
+        if anchor.tzinfo is None:
+            anchor = anchor.replace(tzinfo=datetime.UTC)
+        day_start = anchor.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + datetime.timedelta(days=1)
+        worst: dict[str, Any] | None = None
+        for metric in RUN_ANOMALY_METRICS:
+            result = anomalies(
+                factory,
+                metric=metric,
+                window_days=window_days,
+                sigma=sigma,
+                bin_="day",
+                since=day_start,
+                until=day_end,
+            )
+            points = result["points"]
+            if not points:
+                continue
+            point = points[0]
+            if point["severity"] == "ok":
+                continue
+            if worst is None or _SEVERITY_RANK[point["severity"]] > _SEVERITY_RANK.get(
+                worst["severity"], 0
+            ):
+                worst = {
+                    "metric": metric,
+                    "severity": point["severity"],
+                    "observed": point["observed"],
+                    "baseline_mean": point["baseline_mean"],
+                    "sigma": point["sigma"],
+                }
+        return worst
+    except Exception:  # noqa: BLE001 — verdict is best-effort
+        logger.exception("compute_run_anomaly failed for run %s", getattr(run_row, "id", "?"))
+        return None
+
+
+def backfill_run_anomalies(
+    factory: sessionmaker[Session],
+    *,
+    window_days: int = 7,
+    sigma: float = 2.0,
+    limit: int | None = None,
+) -> int:
+    """Recompute and persist anomaly verdicts on terminal runs.
+
+    Walks every :class:`AgentRun` in a terminal status whose
+    ``anomaly_severity`` column is still ``NULL``, calls
+    :func:`compute_run_anomaly`, and writes the result back.  Used
+    once after the Phase-18.6 alembic migration to populate badges
+    for historical runs without coupling the migration itself to
+    the service layer.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        window_days: Rolling-window size in days for the baseline.
+        sigma: σ-multiplier for the warn / critical split.
+        limit: Optional cap on how many runs to process per call —
+            useful for chunked operator-driven backfills on huge
+            audit lakes.  ``None`` processes every NULL row in one
+            session.
+
+    Returns:
+        The number of runs that received a non-``NULL`` verdict.
+    """
+    written = 0
+    with factory() as session:
+        stmt = (
+            select(AgentRun)
+            .where(AgentRun.status.in_(("succeeded", "failed", "denied")))
+            .where(AgentRun.anomaly_severity.is_(None))
+            .order_by(AgentRun.started_at)
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        rows = list(session.scalars(stmt).all())
+        for row in rows:
+            verdict = compute_run_anomaly(
+                factory, row, window_days=window_days, sigma=sigma
+            )
+            if verdict is None:
+                continue
+            row.anomaly_severity = verdict["severity"]
+            row.anomaly_metric = verdict["metric"]
+            written += 1
+        session.commit()
+    return written
+
+
 def _bin_floor_compare_string(since: datetime.datetime, bin_: Bin) -> str:
     """Return a bin-precision prefix string for lexicographic compare.
 

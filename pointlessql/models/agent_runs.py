@@ -102,6 +102,23 @@ class AgentRun(Base):
             because of a cost-gate verdict; ``None`` for runs that
             never hit the gate.  Lets a reviewer see WHY a run was
             blocked without re-running the query.
+        mlflow_run_id: Optional cross-link populated by the
+            ``operation_context`` recorder when an op detects an
+            active MLflow run (added in alembic q7m9o1p3r5t7 so
+            ``/api/runs/{id}/ml-context`` can join to MLflow without
+            a full scan).
+        anomaly_severity: Phase 18.6 — cached anomaly verdict for
+            the run's started-at day-bin (``ok``/``warn``/
+            ``critical``/``NULL``).  Set on terminal transition by
+            the run-finish handler and backfilled by alembic
+            migration ``x4t6u8v0w2y4``.  ``NULL`` when no verdict
+            has been computed yet (ingestion-time row).  Powers the
+            run-list badge column without re-running
+            :func:`audit_aggregator.anomalies` per render.
+        anomaly_metric: The cockpit metric that triggered the
+            verdict in :attr:`anomaly_severity` (currently one of
+            ``rejects`` / ``errored_ops``); ``NULL`` when severity
+            is ``NULL`` or ``ok``.
     """
 
     __tablename__ = "agent_runs"
@@ -137,3 +154,8 @@ class AgentRun(Base):
     # is added in alembic q7m9o1p3r5t7 so /api/runs/{id}/ml-context can
     # join to MLflow without a full scan.
     mlflow_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # Phase 18.6 anomaly cache — set by the run-finish hook and the
+    # alembic backfill in x4t6u8v0w2y4 so the runs-list badge can
+    # render without re-running the aggregator.
+    anomaly_severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    anomaly_metric: Mapped[str | None] = mapped_column(String(64), nullable=True)

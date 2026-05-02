@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 18.6 — anomaly inbox + run-list badge.**  Phase 18.6+
+  deepening of the closed Audit Cockpit.  Two new columns on
+  ``agent_runs`` (``anomaly_severity``, ``anomaly_metric``)
+  cache the day-bin anomaly verdict at run-finish time, driving
+  a new badge column on the ``/runs`` list page without
+  re-running the aggregator per render.  New ``anomaly_acks``
+  table (Alembic ``x4t6u8v0w2y4``) carries the cross-run
+  inbox's ack + snooze lifecycle.  ``GET /api/audit/inbox``
+  aggregates anomalies across the run-anomaly metric pair
+  (rejects + errored_ops, configurable) and joins ack state;
+  ``POST /api/audit/anomaly-acks`` + ``DELETE
+  /api/audit/anomaly-acks/{id}`` manage the lifecycle.  New
+  HTML page at ``/audit/inbox`` with severity / metric / bin
+  filters and Ack-or-Snooze + Un-ack actions.  Auditor scope
+  on all reads + writes (admin cookie passes, supervisor does
+  not).  ``audit_aggregator.compute_run_anomaly`` extracted as
+  the shared verdict source for the run-detail chip, the
+  finish-handler hook, and the ``backfill_run_anomalies``
+  helper that backfills NULL columns on legacy rows.
+
 - **Phase 24 — every rail icon now opens a useful context-panel.**
   Six previously-static or fall-through panels became navigable
   surfaces, mirroring the catalog tree's role for Federation:
