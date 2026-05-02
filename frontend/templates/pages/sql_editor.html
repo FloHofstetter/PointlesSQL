@@ -33,7 +33,10 @@
         background: var(--bs-secondary-bg);
         border-radius: 0.25rem;
         padding: 0.75rem 1rem;
-        max-height: 50vh;
+        /* Tall plans can run >50 lines once every operator's
+           extra_info is rendered; cap loosely so simple plans stay
+           compact but rich plans don't disappear behind a scrollbar. */
+        max-height: min(75vh, 1000px);
         overflow: auto;
     }
     .pql-sql-explain-list { font-size: 0.85rem; }
@@ -308,20 +311,29 @@
                        is missing (older clients, parse failures). #}
                     <template x-if="explainPlan && !explainShowJson">
                         <div class="pql-sql-explain-tree">
-                            <div class="small text-muted mb-3 d-flex flex-wrap gap-3">
+                            <div class="small mb-2 d-flex flex-wrap gap-3">
                                 <span x-show="explainPlan.latency != null">
-                                    <i class="bi bi-stopwatch me-1"></i>Latency:
-                                    <strong x-text="formatTiming(explainPlan.latency)"></strong>
+                                    <i class="bi bi-stopwatch me-1"></i>Latency
+                                    <strong class="ms-1" x-text="formatTiming(explainPlan.latency)"></strong>
                                 </span>
-                                <span x-show="explainPlan.cumulative_cardinality != null">
-                                    <i class="bi bi-list-ol me-1"></i>Rows scanned:
-                                    <strong x-text="explainPlan.cumulative_cardinality"></strong>
-                                </span>
-                                <span x-show="explainPlan.system_peak_buffer_memory != null && explainPlan.system_peak_buffer_memory > 0">
-                                    <i class="bi bi-memory me-1"></i>Peak buffer:
-                                    <strong x-text="formatBytes(explainPlan.system_peak_buffer_memory)"></strong>
-                                </span>
+                                <template x-for="m in rootByteMetrics(explainPlan)" :key="m[0]">
+                                    <span class="text-muted">
+                                        <span x-text="m[0]"></span>
+                                        <strong class="ms-1 text-body" x-text="m[1]"></strong>
+                                    </span>
+                                </template>
                             </div>
+                            <template x-if="rootSubLatencies(explainPlan).length > 0">
+                                <div class="small text-muted mb-3 d-flex flex-wrap gap-3">
+                                    <span class="text-uppercase small" style="letter-spacing: 0.05em;">Sub-latencies:</span>
+                                    <template x-for="s in rootSubLatencies(explainPlan)" :key="s[0]">
+                                        <span>
+                                            <span x-text="s[0]"></span>:
+                                            <span class="font-monospace" x-text="s[1]"></span>
+                                        </span>
+                                    </template>
+                                </div>
+                            </template>
                             <ul class="list-unstyled mb-0 pql-sql-explain-list">
                                 <template x-for="node in flattenPlan(explainPlan, 0)"
                                           :key="node.path">
@@ -337,7 +349,13 @@
                                                   x-text="formatTiming(node.timing)"></span>
                                             <span class="text-muted small"
                                                   x-show="node.cardinality != null && node.cardinality > 0">
-                                                <span x-text="node.cardinality.toLocaleString() + ' rows'"></span>
+                                                <i class="bi bi-arrow-right-short"></i>
+                                                <span x-text="node.cardinality.toLocaleString() + ' rows out'"></span>
+                                            </span>
+                                            <span class="text-muted small"
+                                                  x-show="node.rowsScanned != null && node.rowsScanned > 0">
+                                                <i class="bi bi-arrow-down-short"></i>
+                                                <span x-text="node.rowsScanned.toLocaleString() + ' rows in'"></span>
                                             </span>
                                         </div>
                                         <template x-if="node.details && node.details.length > 0">

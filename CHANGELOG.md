@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **SQL editor: structured EXPLAIN plan tree** — *complete
+  version* surfacing every metric DuckDB returns: per-operator
+  ``cpu_time`` (when distinct from wall-clock ``operator_timing``),
+  ``result_set_size`` in bytes, ``cumulative_cardinality`` (subtree
+  rows produced), ``cumulative_rows_scanned`` (subtree rows
+  scanned), ``operator_rows_scanned`` (when > 0), peak buffer /
+  temp-dir memory, plus every ``extra_info`` entry (no per-node
+  cap; arrays truncated at 8 items).  Header carries Latency
+  + ``rootByteMetrics`` (CPU time, total memory, bytes
+  read/written, result-set size, rows returned, cumulative rows
+  scanned, WAL replay count) + ``rootSubLatencies`` (waiting to
+  attach, attach load, WAL replay, blocked-thread, checkpoint,
+  WAL write, commit-local — only those non-zero).  Tree
+  ``max-height`` loosened to ``min(75vh, 1000px)`` so rich
+  plans don't disappear behind a scrollbar.
+
 - **SQL editor: structured EXPLAIN plan tree** — *polished
   version*.  Replaces the raw ASCII-art tree DuckDB returns from
   ``EXPLAIN ANALYZE`` with a proper indented operator tree
