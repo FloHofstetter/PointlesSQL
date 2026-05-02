@@ -189,11 +189,14 @@
                 }
             });
         })();
-        document.body.addEventListener('htmx:afterSwap', (e) => {
-            if (window.Alpine && e.detail && e.detail.target) {
-                window.Alpine.initTree(e.detail.target);
-            }
-        });
+        // Alpine 3 has its own MutationObserver that picks up DOM
+        // additions and initialises any new ``x-data``/``x-init``
+        // automatically; an explicit ``Alpine.initTree`` here was
+        // a double-init that crashed mid-walk with
+        // ``TypeError: can't convert undefined to object`` and
+        // aborted the entire init for the boosted page —
+        // surfacing as e.g. a blank Preview tab on table-detail.
+        // Trust Alpine's observer; do not call ``initTree``.
         // Phase 23 follow-up — sync the icon-rail's ``.active`` class
         // after every HTMX-boosted navigation.  ``hx-target="#main-
         // content"`` keeps the rail (which lives outside main) frozen

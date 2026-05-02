@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Alpine init crash on every HTMX-boosted page (root cause of
+  the blank Preview tab + every other un-initialised Alpine
+  component).**  ``base.html`` registered an
+  ``htmx:afterSwap`` listener that called
+  ``Alpine.initTree(e.detail.target)`` on every boost.  Alpine 3
+  has its own ``MutationObserver`` (set up in ``Alpine.start()``)
+  that already initialises new DOM additions, so the explicit
+  call was a *double-init*: when Alpine encountered a child it
+  had already begun walking via the observer, the second walk
+  hit ``e._x_doHide`` with stale state and threw
+  ``TypeError: can't convert undefined to object``.  The
+  exception aborted the entire walk → every ``x-data`` on the
+  swapped page (Preview card, table-stats card, tags-editor,
+  permissions-editor, the inline ``{ copied: false }`` chip
+  state) ended up with ``hasStack=false``, rendering blank.
+  Removed the redundant ``initTree`` call; Alpine's observer
+  alone handles boosted swaps cleanly.  Verified live via
+  Playwright: navigate Home → click houses_raw in catalog tree
+  → click Preview tab → 10 rows render immediately.
+
 - **Preview-card still sometimes blank on HTMX-boosted
   navigation.**  The earlier ``window.tablePreview`` rewrite
   inside the inline ``<script>`` did not fully fix the race:
