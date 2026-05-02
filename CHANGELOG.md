@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Icon rail labels truncated under the icons** — bumped
+  ``--pql-icon-rail-width`` from 60 px to 80 px and switched the
+  ``.pql-icon-rail__label`` cap from ``white-space: nowrap`` +
+  ``text-overflow: ellipsis`` to ``white-space: normal`` +
+  ``overflow-wrap: anywhere``.  All twelve labels (Federation,
+  Runs, SQL, Workspace, Jobs, Alerts, Volumes, Dashboards, ML,
+  Models, Branches, Admin) now render in full on a single line.
+  Phase 23 follow-up.
+
+- **Context panel did not switch when changing rail icons** —
+  the contextual side-panel (catalog tree / SQL / Runs / Admin /
+  …) lives outside the ``#main-content`` HTMX target, so a boost
+  navigation only swapped ``<main>`` and the panel kept its
+  previous section.  Added ``hx-select-oob="#pql-context-panel"``
+  to ``<body>`` so HTMX OOB-swaps the panel from the response
+  body on every boost.  Lifted the inline ``catalogTree()``
+  IIFE in ``components/sidebar.html`` into a real ESM module
+  (``frontend/js/pages/catalog_tree.js``) so the factory
+  survives re-injection without depending on inline ``<script>``
+  tags being re-evaluated mid-swap.  Round-trip
+  Federation → SQL → Runs → Federation confirmed via
+  Playwright; Alpine cleanly re-binds the catalog tree (50
+  rows) on return.
+
 ### Added
 
 - **SQL editor: structured EXPLAIN plan tree** — *complete

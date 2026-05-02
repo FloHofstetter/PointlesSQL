@@ -18,15 +18,20 @@
  * Cascade-ordered @imports:
  * ---------------------------------------------------------------- */
 
-@import url("./base.css");                         /* design tokens, font, focus ring */
-@import url("./primitives.css");                   /* .pql-stack, .pql-cluster, .pql-card, .pql-badge */
-@import url("./layout.css");                       /* topbar, shell, sidebar, tree, content */
-@import url("./components/icon_rail.css");         /* Sprint 17.1: 60 px nav-rail */
-@import url("./components/context_panel.css");     /* Sprint 17.1: 240 px contextual panel */
-@import url("./components/breadcrumbs.css");
-@import url("./components/empty_state.css");       /* + error-shell variant */
-@import url("./components/toast.css");
-@import url("./components/command_palette.css");
-@import url("./components/dashboard.css");         /* home dashboard, status dot, onboarding, admin audit */
-@import url("./components/list_table.css");        /* search input, chips, sortable headers, row actions */
-@import url("./responsive.css");                   /* mobile breakpoints, reduced-motion */
+/* Phase 23 follow-up: ?v= query strings force the browser to refetch
+   each sub-file when style.css's parent cache-buster bumps; without
+   these, @import URLs keep their own per-URL cache and never see
+   token / rail-width edits.  Bump the version when any of the files
+   below change in a way users need to see immediately. */
+@import url("./base.css?v=sprint23-rail-80b");                      /* design tokens, font, focus ring */
+@import url("./primitives.css?v=sprint23-rail-80b");                /* .pql-stack, .pql-cluster, .pql-card, .pql-badge */
+@import url("./layout.css?v=sprint23-rail-80b");                    /* topbar, shell, sidebar, tree, content */
+@import url("./components/icon_rail.css?v=sprint23-rail-80b");      /* Sprint 17.1: 60 px nav-rail */
+@import url("./components/context_panel.css?v=sprint23-rail-80b");  /* Sprint 17.1: 240 px contextual panel */
+@import url("./components/breadcrumbs.css?v=sprint23-rail-80b");
+@import url("./components/empty_state.css?v=sprint23-rail-80b");    /* + error-shell variant */
+@import url("./components/toast.css?v=sprint23-rail-80b");
+@import url("./components/command_palette.css?v=sprint23-rail-80b");
+@import url("./components/dashboard.css?v=sprint23-rail-80b");      /* home dashboard, status dot, onboarding, admin audit */
+@import url("./components/list_table.css?v=sprint23-rail-80b");     /* search input, chips, sortable headers, row actions */
+@import url("./responsive.css?v=sprint23-rail-80b");                /* mobile breakpoints, reduced-motion */

@@ -8,7 +8,7 @@
     <link rel="preload" href="/static/fonts/inter-regular.woff2" as="font" type="font/woff2" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="/static/css/style.css" rel="stylesheet">
+    <link href="/static/css/style.css?v=sprint23-rail-80b" rel="stylesheet">
     {% block extra_css %}{% endblock %}
 </head>
 {# Sprint 17.1 — derive active_section from active_page so the
@@ -39,6 +39,7 @@
 <body hx-boost="true"
       hx-target="#main-content"
       hx-select="#main-content"
+      hx-select-oob="#pql-context-panel"
       hx-swap="outerHTML show:window:top"
       {% if list_page is defined and list_page %}data-pql-refresh="1"{% endif %}>
     <nav class="navbar navbar-expand bg-body-tertiary border-bottom px-3 pql-topbar">
@@ -169,7 +170,7 @@
          re-attachments are live before Alpine's x-data walk begins.
          MUST stay before the Alpine CDN script —
          scripts/check-frontend-bootstrap-order.sh asserts the ordering. -->
-    <script type="module" src="/static/js/bootstrap.js?v=sprint23-explain-tree-v4"></script>
+    <script type="module" src="/static/js/bootstrap.js?v=sprint23-context-panel-oob"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
         // Auto-attach the CSRF token from the <meta> tag to every HTMX

@@ -17,7 +17,8 @@
   bootstrap offcanvas drawer; ``components/context_panel.css``
   drops the sticky/border chrome there.
 #}
-<aside class="pql-context-panel" aria-label="Section navigation">
+<aside class="pql-context-panel" aria-label="Section navigation"
+       id="pql-context-panel">
     {% if active_section == 'federation' %}
         {% include "components/sidebar.html" %}
     {% elif active_section == 'dashboards' %}

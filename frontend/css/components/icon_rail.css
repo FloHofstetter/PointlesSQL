@@ -51,7 +51,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 3px;
     width: 100%;
     padding: 0.55rem 0;
     color: var(--bs-secondary-color);
@@ -90,7 +90,11 @@
     letter-spacing: 0.02em;
     text-align: center;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* Phase 23 follow-up: 60 px clipped "Federation" / "Workspace"
+       / "Dashboards" / "Branches".  Allow wrapping; the rail is now
+       80 px wide so the longest single word (Dashboards, 10 chars at
+       0.625 rem) renders on one line, edge cases wrap to two. */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
 }
