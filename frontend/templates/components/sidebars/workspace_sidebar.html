@@ -1,0 +1,76 @@
+{#
+   Phase 24.2 — Workspace context-panel.
+
+   Replaces the lone "Notebooks" link with a flat list of all
+   ``.py`` / ``.ipynb`` notebooks the scheduler can pick up.  Click
+   navigates to ``/notebooks/workspace?path=<path>`` so the file
+   browser opens to that file.  Driven by ``workspaceSidebar()``
+   in ``frontend/js/components/sidebars/workspace_sidebar.js``.
+
+   Tree is admin-only; the rail item is already ``is_admin``-gated.
+#}
+<div class="pql-sidebar border-end"
+     x-data="workspaceSidebar()"
+     x-init="load()"
+     @htmx:after-swap.window="activePath = (window.location.pathname === '/notebooks/workspace' ? new URLSearchParams(window.location.search).get('path') || '' : '')">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <a href="/notebooks/workspace"
+           class="text-uppercase small fw-semibold text-muted text-decoration-none">
+            Workspace
+        </a>
+        <button class="btn btn-sm btn-link p-0 text-muted"
+                @click="reload()"
+                title="Refresh">
+            <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
+        </button>
+    </div>
+
+    <div class="pql-sidebar-body">
+        <template x-if="error">
+            <div class="alert alert-danger m-2 small" x-text="error"></div>
+        </template>
+
+        <template x-if="!error && items.length === 0 && !loading">
+            <div class="text-muted small p-3">
+                <p class="mb-2">No notebooks found.</p>
+                <p class="mb-0 fst-italic">
+                    Drop a <code>.py</code> or <code>.ipynb</code>
+                    file into the configured notebooks directory and
+                    it shows up here automatically.
+                </p>
+            </div>
+        </template>
+
+        <template x-if="loading && items.length === 0">
+            <div class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+            </div>
+        </template>
+
+        <template x-if="items.length > 0">
+            <ul class="list-unstyled mb-0">
+                <template x-for="n in items" :key="n.path">
+                    <li>
+                        <a :href="'/notebooks/workspace?path=' + encodeURIComponent(n.path)"
+                           class="pql-context-row"
+                           :class="{ active: isActive(n.path) }"
+                           :title="n.path">
+                            <i class="bi bi-file-earmark-code flex-shrink-0 text-muted"></i>
+                            <span class="pql-context-row__name" x-text="leafName(n.path)"></span>
+                            <span class="badge"
+                                  :class="formatBadge(n.format)"
+                                  x-text="n.format"></span>
+                        </a>
+                    </li>
+                </template>
+            </ul>
+        </template>
+
+        <template x-if="items.length >= 30">
+            <div class="pql-context-panel__hint mt-2">
+                Showing 30 most-recent files —
+                <a href="/notebooks/workspace" class="text-decoration-none">browse all →</a>
+            </div>
+        </template>
+    </div>
+</div>
