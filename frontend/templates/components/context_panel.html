@@ -26,6 +26,8 @@
         {% include "components/dashboards_sidebar.html" %}
     {% elif active_section == 'runs' %}
         {% include "components/sidebars/runs_sidebar.html" %}
+    {% elif active_section == 'branches' %}
+        {% include "components/sidebars/branches_sidebar.html" %}
     {% elif active_section == 'sql' %}
         <div class="pql-context-panel__header">SQL</div>
         <div class="pql-context-panel__body">

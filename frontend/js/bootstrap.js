@@ -114,6 +114,7 @@ import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
 // a navigable, refresh-aware Alpine factory analogous to
 // catalogTree() above.
 import { runsSidebar } from './components/sidebars/runs_sidebar.js';
+import { branchesSidebar } from './components/sidebars/branches_sidebar.js';
 
 window.alertsPage = alertsPage;
 window.alertDetail = alertDetail;
@@ -123,3 +124,4 @@ window.tablePreview = tablePreview;
 window.catalogTree = catalogTree;
 window.pathFromUrl = pathFromUrl;
 window.runsSidebar = runsSidebar;
+window.branchesSidebar = branchesSidebar;
