@@ -58,62 +58,108 @@ export function sqlEditor() {
 
         // Walk the parsed JSON plan returned by DuckDB's
         // ``enable_profiling='json'`` pragma into a flat list of
-        // ``{ name, timing, cardinality, detail, depth, children, path }``
-        // entries the template iterates over.  Skips the top-level
-        // root (its operator info is empty) and starts at its
-        // children — typically an ``EXPLAIN_ANALYZE`` wrapper, then
-        // the actual plan.
+        // operator entries the template iterates over.
+        //
+        // Skips:
+        //   * The top-level profiling root (no operator_name; just
+        //     query-wide totals shown in the header).
+        //   * The ``EXPLAIN_ANALYZE`` wrapper (instrumentation node,
+        //     not actual query work).
+        //
+        // Each entry carries name, kind (scan / filter / join / agg /
+        // limit / proj / other) for badge colouring, timing, row
+        // cardinality, every extra_info field as a list of
+        // ``[label, value]`` pairs, depth, and child count.
         flattenPlan(node, depth, path = '') {
             if (!node) return [];
             const out = [];
             const children = Array.isArray(node.children) ? node.children : [];
-            // Top-level root (depth 0) has no operator_name; descend
-            // straight into its children at depth 0.
-            if (depth === 0 && !node.operator_name) {
+            const name = node.operator_name || node.operator_type;
+            // Top-level profiling root has no operator_name; descend.
+            if (depth === 0 && !name) {
                 for (let i = 0; i < children.length; i++) {
                     out.push(...this.flattenPlan(children[i], 0, `${i}`));
                 }
                 return out;
             }
-            const name = node.operator_name || node.operator_type || 'UNKNOWN';
+            // EXPLAIN_ANALYZE is the wrapper that adds the profiling
+            // hooks — not actual query work.  Skip it but keep
+            // walking its children at the same depth.
+            if (name === 'EXPLAIN_ANALYZE') {
+                for (let i = 0; i < children.length; i++) {
+                    out.push(...this.flattenPlan(children[i], depth, `${path}.${i}`));
+                }
+                return out;
+            }
             const timing = (typeof node.operator_timing === 'number')
                 ? node.operator_timing : null;
             const card = (typeof node.operator_cardinality === 'number')
                 ? node.operator_cardinality : null;
             const extra = node.extra_info && typeof node.extra_info === 'object'
                 ? node.extra_info : {};
-            // Pick the most informative single line of extra_info to
-            // render inline under the node.  Estimated Cardinality
-            // and Projections are the most-asked-for, so prefer those.
-            let detail = null;
-            if (Array.isArray(extra.Projections) && extra.Projections.length > 0) {
-                detail = 'Projections: ' + extra.Projections.slice(0, 3).join(', ')
-                    + (extra.Projections.length > 3 ? ' …' : '');
-            } else if (typeof extra.__text__ === 'string' && extra.__text__) {
-                detail = extra.__text__;
-            } else {
-                const interesting = ['Filters', 'Conditions', 'Estimated Cardinality', 'Function'];
-                for (const k of interesting) {
-                    if (extra[k] != null) {
-                        const v = Array.isArray(extra[k]) ? extra[k].join(', ') : String(extra[k]);
-                        detail = `${k}: ${v}`;
-                        break;
+            // Capture every extra_info entry the template can render
+            // as a small key/value table under the node.  Keep the
+            // first 4 entries each up to ~3 array items so the row
+            // does not turn into a wall of text.
+            const details = [];
+            for (const [k, v] of Object.entries(extra)) {
+                if (k.startsWith('__')) continue;
+                if (v == null || v === '') continue;
+                let rendered;
+                if (Array.isArray(v)) {
+                    if (v.length === 0) continue;
+                    rendered = v.slice(0, 3).join(', ');
+                    if (v.length > 3) {
+                        rendered += `  (+${v.length - 3} more)`;
                     }
+                } else {
+                    rendered = String(v);
                 }
+                details.push([k, rendered]);
+                if (details.length >= 4) break;
             }
             out.push({
                 name,
+                kind: this._classifyOperator(name),
                 timing,
                 cardinality: card,
-                detail,
+                details,
                 depth,
-                children: children.length,
+                hasChildren: children.length > 0,
                 path,
             });
             for (let i = 0; i < children.length; i++) {
                 out.push(...this.flattenPlan(children[i], depth + 1, `${path}.${i}`));
             }
             return out;
+        },
+
+        // Bucket the DuckDB operator name into one of seven kinds the
+        // CSS uses to colour the badge.  The mapping is approximate
+        // and intentionally forgiving — any unrecognised operator
+        // gets the neutral ``other`` colour.
+        _classifyOperator(name) {
+            if (!name) return 'other';
+            const u = name.toUpperCase();
+            if (u.includes('SCAN')) return 'scan';
+            if (u.includes('FILTER')) return 'filter';
+            if (u.includes('JOIN')) return 'join';
+            if (u.includes('AGG') || u.includes('GROUP')) return 'agg';
+            if (u.includes('LIMIT') || u.includes('TOP_N')) return 'limit';
+            if (u.includes('PROJECT')) return 'proj';
+            if (u.includes('SORT') || u.includes('ORDER')) return 'sort';
+            return 'other';
+        },
+
+        // Format a duration in seconds as either microseconds or
+        // milliseconds, depending on magnitude.  DuckDB returns very
+        // small operator timings (sub-millisecond) for cheap
+        // operations; rounding to ``0.00 ms`` was unhelpful.
+        formatTiming(seconds) {
+            if (seconds == null) return '';
+            if (seconds < 0.001) return `${(seconds * 1_000_000).toFixed(0)} µs`;
+            if (seconds < 1) return `${(seconds * 1000).toFixed(2)} ms`;
+            return `${seconds.toFixed(3)} s`;
         },
 
         // Compact human-readable byte formatting for the plan

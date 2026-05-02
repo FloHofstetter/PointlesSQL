@@ -6,11 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **SQL editor: structured EXPLAIN plan tree.**  Replaces the raw
-  ASCII-art tree DuckDB returns from ``EXPLAIN ANALYZE`` with a
-  proper indented operator tree carrying per-node timing, row
-  cardinality, and inline ``Projections``/``Filters``/``Estimated
-  Cardinality`` details.  ``_sql.py`` flips DuckDB into
+- **SQL editor: structured EXPLAIN plan tree** — *polished
+  version*.  Replaces the raw ASCII-art tree DuckDB returns from
+  ``EXPLAIN ANALYZE`` with a proper indented operator tree
+  carrying per-node timing, row cardinality, and a key/value
+  list of ``Projections``/``Filters``/``Estimated
+  Cardinality``/etc. (every ``extra_info`` entry, capped at 4
+  per node).  Each operator carries a colour-coded badge
+  classified by kind (scan / filter / join / agg / limit /
+  proj / sort / other).  Sub-millisecond timings render as
+  ``µs`` instead of rounding to ``0.00 ms``.  The
+  ``EXPLAIN_ANALYZE`` profiling wrapper is hidden from the
+  tree (it's not real query work) — children render at the
+  parent depth as if it weren't there.  Faint dashed vertical
+  guideline at every indent level marks subtree boundaries.  ``_sql.py`` flips DuckDB into
   ``PRAGMA enable_profiling='json'`` mode so the same EXPLAIN
   call returns a structured profiling JSON tree; the route layer
   parses it and ships it as a new ``explain_plan`` field on the
