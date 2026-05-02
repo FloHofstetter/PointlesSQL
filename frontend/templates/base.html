@@ -132,6 +132,32 @@
          Alpine-race replay fix (commit b830300) burned us on exactly
          this category of bug. -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    {#-
+      BUG-grand-03 follow-up: the importmap MUST be parsed before any
+      ES module that imports the bare specifiers below. bootstrap.js
+      (next script tag) imports sql_editor.js, whose dynamic
+      import('@codemirror/...') calls in sqlEditor().init() resolve
+      through this map. Placing the map in <head> (before bootstrap.js)
+      makes it page-agnostic — non-/sql pages don't pay for it (it's
+      parsed once and ignored if no module asks for the specifier)
+      and /sql doesn't race against the page's extra_js block
+      rendering at the end of <body>. The import-map was originally
+      in pages/sql_editor.html (Sprint 75 Phase 4); moved here on the
+      grand-tour first-replay cleanup.
+    -#}
+    <script type="importmap">
+    {
+      "imports": {
+        "@codemirror/state": "https://esm.sh/@codemirror/state@6.5.2",
+        "@codemirror/view": "https://esm.sh/@codemirror/view@6.37.2?deps=@codemirror/state@6.5.2",
+        "@codemirror/commands": "https://esm.sh/@codemirror/commands@6.8.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.37.2",
+        "@codemirror/language": "https://esm.sh/@codemirror/language@6.11.1?deps=@codemirror/state@6.5.2,@codemirror/view@6.37.2",
+        "@codemirror/lang-sql": "https://esm.sh/@codemirror/lang-sql@6.9.0?deps=@codemirror/state@6.5.2,@codemirror/view@6.37.2,@codemirror/language@6.11.1",
+        "@codemirror/theme-one-dark": "https://esm.sh/@codemirror/theme-one-dark@6.1.3?deps=@codemirror/state@6.5.2,@codemirror/view@6.37.2,@codemirror/language@6.11.1",
+        "@codemirror/autocomplete": "https://esm.sh/@codemirror/autocomplete@6.18.4?deps=@codemirror/state@6.5.2,@codemirror/view@6.37.2"
+      }
+    }
+    </script>
     <!-- Sprint 75 Phase 4: every former IIFE-shape JS file under
          frontend/js/ is now a native ES module imported via
          bootstrap.js, which re-attaches each factory / singleton to
