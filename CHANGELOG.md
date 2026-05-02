@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Friendly soyuz error extraction in the SQL editor.**  Querying
+  a missing catalog used to surface the raw multi-line
+  ``UnexpectedStatus`` dump (``Unexpected status code: 404\n\n
+  Response content:\n{"error_code":"NOT_FOUND","message":"Catalog
+  'X' does not exist","request_id":"…"}``).
+  ``wrap_catalog_errors`` in ``pointlessql/services/unitycatalog/
+  _api.py`` now parses the JSON envelope and uses only the
+  ``message`` field when raising the domain exception (404 →
+  ``CatalogNotFoundError``, 4xx → ``ValidationError``, 5xx →
+  ``CatalogUnavailableError``).  Falls back to the verbose
+  ``str(exc)`` if the body is not parseable JSON or lacks a
+  ``message`` — better verbose than empty.  Tests:
+  ``tests/test_unitycatalog_errors.py`` (NEW, 9 tests).
+
+- **Icon-rail active state + context-panel content stuck on
+  HTMX-boosted navigation.**  Body-level
+  ``hx-target="#main-content"`` only swapped the content area;
+  the icon-rail (``.active`` class) and the 240 px context-panel
+  (renders different children per ``active_section``) lived
+  outside ``#main-content`` and stayed frozen at whatever the
+  initial page render produced.  Symptom: clicking Jobs / Alerts
+  / SQL etc. loaded the new page but the green active highlight
+  stuck on the previous icon, and the context panel kept showing
+  the previous section's tree (the catalog tree never reappeared
+  on federation pages once you'd navigated away).  Fix: switch
+  ``hx-target`` and ``hx-select`` to ``.pql-shell`` so the entire
+  app shell (rail + panel + main) re-renders on every boosted
+  navigation.
+
 ### Added
 
 - **Sprint 23.0 — Contextual help-popover infrastructure + 5 hero

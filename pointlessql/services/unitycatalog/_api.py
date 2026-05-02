@@ -15,6 +15,7 @@ consistent across every API surface.
 from __future__ import annotations
 
 import functools
+import json
 import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
@@ -176,6 +177,30 @@ __all__ = [
 ]
 
 
+def _friendly_soyuz_message(exc: UnexpectedStatus) -> str:
+    r"""Extract the human-readable ``message`` field from a soyuz error body.
+
+    Soyuz's error envelope is consistent: ``{"error_code": "NOT_FOUND",
+    "message": "Catalog 'phase157' does not exist", "request_id": "…"}``.
+    Surfacing only ``message`` gives the SQL-editor and other UI
+    surfaces a one-line error instead of the multi-line
+    ``"Unexpected status code: 404\n\nResponse content: {…raw JSON…}"``
+    that the generated client's ``__str__`` produces.
+
+    Falls back to the raw ``str(exc)`` if the body is not parseable
+    JSON or lacks a ``message`` — better verbose than empty.
+    """
+    try:
+        body = json.loads(exc.content.decode(errors="ignore"))
+    except (ValueError, AttributeError):
+        return str(exc)
+    if isinstance(body, dict):
+        message = body.get("message")
+        if isinstance(message, str) and message.strip():
+            return message
+    return str(exc)
+
+
 def wrap_catalog_errors[T](
     fn: Callable[..., Coroutine[Any, Any, T]],
 ) -> Callable[..., Coroutine[Any, Any, T]]:
@@ -186,7 +211,10 @@ def wrap_catalog_errors[T](
     - soyuz 4xx responses surface as ``ValidationError`` (422) or
       ``CatalogNotFoundError`` (404) depending on the exact status,
       because they describe *user input* that soyuz rejected, not an
-      unreachable catalog server.
+      unreachable catalog server.  The wrapped exception carries the
+      ``message`` field from soyuz's JSON envelope (see
+      :func:`_friendly_soyuz_message`) so the SQL editor and other
+      UI surfaces don't show the raw ``UnexpectedStatus`` dump.
     - soyuz 5xx responses and transport errors (httpx timeouts,
       connection refused, etc.) stay ``CatalogUnavailableError`` (502).
     - ``KeyError`` / ``TypeError`` raised by a generated
@@ -202,11 +230,12 @@ def wrap_catalog_errors[T](
         except UnexpectedStatus as exc:
             logger.warning("soyuz-catalog request failed in %s", fn.__name__, exc_info=True)
             code = exc.status_code
+            detail = _friendly_soyuz_message(exc)
             if code == 404:
-                raise CatalogNotFoundError(str(exc)) from exc
+                raise CatalogNotFoundError(detail) from exc
             if 400 <= code < 500:
-                raise ValidationError(str(exc)) from exc
-            raise CatalogUnavailableError(f"Catalog server unavailable: {exc}") from exc
+                raise ValidationError(detail) from exc
+            raise CatalogUnavailableError(f"Catalog server unavailable: {detail}") from exc
         except httpx.HTTPError as exc:
             logger.warning("soyuz-catalog transport failed in %s", fn.__name__, exc_info=True)
             raise CatalogUnavailableError(f"Catalog server unavailable: {exc}") from exc
