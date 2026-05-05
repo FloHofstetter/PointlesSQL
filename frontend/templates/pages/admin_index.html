@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
+{% block title %}Admin · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-shield-check fs-3"></i>
+        <h1 class="h3 mb-0">Admin</h1>
+    </div>
+    <span class="text-muted small">Operator-only surfaces.</span>
+</div>
+
+<p class="text-muted small mb-4">
+    Tenant-wide administrative tools.  Workspace-local settings live
+    inside each workspace at <code>/workspaces/&lt;slug&gt;</code>.
+</p>
+
+<div class="row g-3">
+    <div class="col-md-6 col-lg-4">
+        <a href="/admin/audit" class="card h-100 text-decoration-none text-body pql-admin-card"
+           data-admin-card="audit-log">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-list-ul fs-4"></i>
+                    <h2 class="h5 mb-0">Audit log</h2>
+                </div>
+                <p class="text-muted small mb-0">
+                    Append-only trail of every admin state-change.
+                    Filter by action, user, target, time window;
+                    export JSON or CSV.
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="/admin/external-writes" class="card h-100 text-decoration-none text-body pql-admin-card"
+           data-admin-card="external-writes">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-exclamation-triangle fs-4"></i>
+                    <h2 class="h5 mb-0">External writes</h2>
+                    {% if unacknowledged_external_writes %}
+                    <span class="badge bg-warning text-dark ms-auto">{{ unacknowledged_external_writes }}</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-0">
+                    Delta commits not attributed to any agent run.
+                    Detection-only; on-demand or periodic scan.
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="/admin/workspaces" class="card h-100 text-decoration-none text-body pql-admin-card"
+           data-admin-card="workspaces">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-folder2-open fs-4"></i>
+                    <h2 class="h5 mb-0">Workspaces</h2>
+                    {% if active_workspaces %}
+                    <span class="badge bg-secondary ms-auto">{{ active_workspaces }}</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-0">
+                    Create / archive workspaces and manage member
+                    roles.  Slugs are immutable once assigned.
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="/admin/audit-sinks" class="card h-100 text-decoration-none text-body pql-admin-card"
+           data-admin-card="audit-sinks">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-broadcast fs-4"></i>
+                    <h2 class="h5 mb-0">Audit sinks</h2>
+                    {% if active_sinks %}
+                    <span class="badge bg-secondary ms-auto">{{ active_sinks }}</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-0">
+                    Forward governance CloudEvents to webhooks, S3, or
+                    AWS CloudTrail.  Optional per-workspace filter.
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="/admin/review-destinations" class="card h-100 text-decoration-none text-body pql-admin-card"
+           data-admin-card="review-destinations">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-bell fs-4"></i>
+                    <h2 class="h5 mb-0">Review destinations</h2>
+                    {% if active_destinations %}
+                    <span class="badge bg-secondary ms-auto">{{ active_destinations }}</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-0">
+                    Webhook fan-out for the Audit-Reviewer agent.
+                    Per-destination minimum severity gate.
+                </p>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

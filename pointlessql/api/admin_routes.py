@@ -1,12 +1,15 @@
-"""Admin audit-log viewer + export.
+"""Admin landing page + audit-log viewer + export.
 
-Owns the two admin-gated routes that surface the ``audit_log``
-table:
+Owns the admin-gated routes that surface the install-global
+operator tooling:
 
-* ``GET /admin/audit`` (HTML) — filterable list view with a
-  1000-row newest-first cap and the same chip-filter Alpine
-  component the ``/jobs`` page uses, so search / sort / mobile
-  stacking come for free.
+* ``GET /admin`` (HTML) — Sprint 33.1 landing card-grid linking
+  to every operator surface.  Cheap to render: aggregates a few
+  COUNT queries, no joins.
+* ``GET /admin/audit`` (HTML) — filterable list view over
+  ``audit_log`` with a 1000-row newest-first cap and the same
+  chip-filter Alpine component the ``/jobs`` page uses, so
+  search / sort / mobile stacking come for free.
 * ``GET /admin/audit/export`` — JSON or CSV stream of the same
   filter surface, capped at 10 000 rows per call.  Operators
   wanting more paginate by shrinking the time window.
@@ -48,6 +51,65 @@ AUDIT_EXPORT_LIMIT = 10_000
 def _templates(request: Request) -> Jinja2Templates:
     """Return the shared Jinja2Templates instance from app state."""
     return request.app.state.templates
+
+
+@router.get("/admin", response_class=HTMLResponse)
+async def admin_index(request: Request) -> HTMLResponse:
+    """Render the Sprint 33.1 admin landing card-grid.
+
+    Aggregates a small set of inexpensive COUNT queries so each
+    card can render a glance-level badge (active workspace count,
+    active sink/destination counts, unacknowledged external-write
+    queue depth).  No joins, no heavy reads — the page must stay
+    fast enough that admins return to it as a hub between tasks.
+    """
+    from sqlalchemy import func
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import Workspace
+    from pointlessql.models.agent_reviews import ReviewDestination
+    from pointlessql.models.audit_sinks import AuditSink
+    from pointlessql.services import external_write_scanner
+
+    require_admin(request)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        active_workspaces = (
+            session.scalar(_select(func.count(Workspace.id)).where(Workspace.archived_at.is_(None)))
+            or 0
+        )
+        active_sinks = (
+            session.scalar(_select(func.count(AuditSink.id)).where(AuditSink.is_active.is_(True)))
+            or 0
+        )
+        active_destinations = (
+            session.scalar(
+                _select(func.count(ReviewDestination.id)).where(
+                    ReviewDestination.is_active.is_(True)
+                )
+            )
+            or 0
+        )
+
+    unacknowledged_external_writes = await asyncio.to_thread(
+        external_write_scanner.count_unacknowledged, factory
+    )
+
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/admin_index.html",
+        {
+            "active_workspaces": active_workspaces,
+            "active_sinks": active_sinks,
+            "active_destinations": active_destinations,
+            "unacknowledged_external_writes": unacknowledged_external_writes,
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 @router.get("/admin/audit", response_class=HTMLResponse)

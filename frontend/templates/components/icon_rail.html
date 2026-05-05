@@ -112,10 +112,10 @@
     {% if current_user is defined and current_user and current_user.is_admin %}
     <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
         <li class="pql-icon-rail__item">
-            <a href="/admin/audit"
+            <a href="/admin"
                data-section="admin"
                class="pql-icon-rail__link{% if active_section == 'admin' %} active{% endif %}"
-               title="Admin (audit log, audit cockpit, external writes)">
+               title="Admin landing — audit log, sinks, destinations, workspaces">
                 <i class="bi bi-shield-check"></i>
                 <span class="pql-icon-rail__label">Admin</span>
             </a>
