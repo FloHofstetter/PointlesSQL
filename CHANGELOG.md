@@ -6,13 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
-- **Phase 28 in progress (2026-05-05)** — soft workspace isolation
-  in the Databricks Unity-Catalog mental model: catalogs stay
-  global, workspaces own audit/jobs/saved-queries/recents.
-  10 sub-sprints planned (28.0 through 28.8), each
-  green-checkpointed for the autonomous run.  Sprint 28.0 (model
-  + middleware + api_keys pin + scheduler resolver) landed first.
-  Plan at ``.claude/plans/ja-plane-phase-28-tidy-feather.md``.
+- **Phase 28 closed (2026-05-05)** — soft workspace isolation in
+  the Databricks Unity-Catalog mental model: catalogs stay global,
+  workspaces own audit/jobs/saved-queries/recents.  9 sub-sprints
+  landed in one autonomous run (28.0 through 28.8).  Single-tenant
+  installs see zero behaviour change — the topbar switcher hides
+  itself when ≤1 workspace exists.  ADR at
+  ``docs/decisions/0008-workspace-soft-isolation.md``; concept doc
+  at ``docs/concepts/workspaces.md``; admin runbook at
+  ``docs/admin/workspace-management.md``.
 
 - **Phase 18.6+ closed (2026-05-05)** — four sub-sprints landed
   (18.6 inbox + run-list badge, 18.7 audit-FTS, 18.8 runs-by-table
@@ -22,6 +24,71 @@ All notable changes to this project will be documented in this file.
   Today's instances stay sub-100ms on the live aggregator.
 
 ### Added
+
+- **Sprint 28.8 — documentation + ADR-0008 + ROADMAP positioning.**
+  New ``docs/concepts/workspaces.md`` (concept), new
+  ``docs/admin/workspace-management.md`` (admin runbook), new
+  ``docs/decisions/0008-workspace-soft-isolation.md`` (ADR
+  recording the seven Phase-28 decisions verbatim).  ROADMAP
+  Phase 28 entry flipped to ✅ with per-sub-sprint detail.
+
+- **Sprint 28.7 — cross-workspace super-admin lens.**  The audit
+  aggregator (``summary`` / ``timeseries`` / ``anomalies``) gained
+  a ``workspace_id`` kwarg; ``None`` skips the filter for the
+  god-eye view.  /api/audit/* routes accept ``?workspace=``
+  (slug | "all"); admin-only when not the caller's resolved
+  workspace.  New ``audit_api_cross_workspace`` value in
+  :data:`VALID_READ_KINDS` so the audit-of-audit pipeline can
+  flag tenant-admin escalations into the cross-workspace lens.
+  Response shape grew ``"workspace"`` + ``"lens_mode"`` fields.
+  6 new pytest cases in ``tests/test_cross_workspace_lens.py``.
+
+- **Sprint 28.6 — admin workspace + member CRUD.**  New module
+  ``pointlessql/api/admin_workspaces_routes.py`` with seven
+  tenant-admin-gated endpoints: list / create / update / archive
+  workspaces, list / add / role-change / remove members.  New
+  HTML page ``/admin/workspaces`` combines list + create form +
+  per-row archive button via Alpine + ``pqlApi.fetch``.  Refuses
+  to archive id=1 (default) — the resolver's fallback floor
+  depends on it always being live.  Mutations log to
+  ``audit_log`` with ``workspace.*`` action prefix.  Alembic
+  ``dd4f6h8j0l2n`` flips ``users.default_workspace_id`` to
+  NOT NULL after a defensive backfill.  12 new pytest cases.
+
+- **Sprint 28.5 — Hermes plugin X-Workspace + wake-gate scoping.**
+  Cross-repo edits in ``~/git/hermes-plugin-pointlessql``:
+  ``PluginConfig.workspace`` reads ``POINTLESSQL_WORKSPACE``
+  (lower-cased + stripped to match server-side slug rules);
+  ``_headers()`` injects ``X-Workspace`` on every PointlesSQL
+  HTTP call, omitted when the env var is unset so the resolver
+  falls through to the api_key's pinned tier.  Server-side
+  ``scripts/audit-wake-gate.py`` honours the same env var so the
+  daily Audit-Reviewer-Agent's pre-anomaly fetch lands in the
+  agent's eventual run-time workspace.  New
+  ``tests/test_cross_workspace_api_key.py`` (4 tests) + plugin's
+  ``tests/test_workspace_header.py`` (5 tests) close the
+  round-trip contract.
+
+- **Sprint 28.4 — UI workspace switcher + base.html plumbing.**
+  New ``POST /auth/switch-workspace`` route writes the
+  ``pql_workspace`` cookie (membership-enforced).  Middleware's
+  ``_read_workspace_slug_from_session`` reads it back as the
+  cookie tier of the resolver chain.  New
+  ``frontend/templates/components/workspace_switcher.html``
+  partial mounted in the topbar; renders only when the user
+  belongs to ≥2 workspaces (single-tenant UX unchanged).
+  ``base.html`` ships three workspace meta tags
+  (``workspace-id``, ``workspace-slug``,
+  ``workspace-primary-catalog``).  ``pqlApi.fetch`` and the
+  HTMX ``htmx:configRequest`` bridge auto-inject ``X-Workspace``
+  on every request.  ``frontend/js/pages/catalog_tree.js``
+  namespaces its sessionStorage tree-cache + localStorage
+  recents-cache by workspace slug, and pre-expands the
+  workspace's ``primary``-pinned catalog on first sidebar load.
+  TemplateResponse wrapper threads ``current_workspace``,
+  ``available_workspaces``, and ``current_workspace_primary_catalog``
+  into every Jinja context.  New help slug
+  ``workspace.what-is-a-workspace``.  9 new pytest cases.
 
 - **Sprint 28.3 — workspace catalog pins (cosmetic) + tree filter.**
   Wires the ``workspace_catalog_pins`` table created (but unused) in

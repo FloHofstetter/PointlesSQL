@@ -100,6 +100,9 @@ nav:
       - Data layers: concepts/data-layers.md
       - PII modes: concepts/pii-modes.md
       - Contextual help: concepts/contextual-help.md
+      - Workspaces: concepts/workspaces.md
+  - Admin:
+      - Workspace management: admin/workspace-management.md
   - Guides:
       - guides/index.md
       - Agent bring-up: guides/agent-bring-up.md
@@ -149,6 +152,7 @@ nav:
               - Rollback: e2e-walkthroughs/rollback.md
               - Operational: e2e-walkthroughs/operational.md
               - Agent drift monitor: e2e-walkthroughs/agent_drift_monitor.md
+              - Multi-workspace setup: e2e-walkthroughs/multi-workspace-setup.md
           - Agents + ML registry:
               - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
               - Models tab: e2e-walkthroughs/models-tab.md
@@ -185,6 +189,7 @@ nav:
       - "ADR-0002 DuckDB-first": decisions/0002-duckdb-first.md
       - "ADR-0003 Delta-branching spike": decisions/0003-delta-branching-spike.md
       - "ADR-0004 Public-flip checklist": decisions/0004-public-flip-checklist.md
+      - "ADR-0008 Workspace soft isolation": decisions/0008-workspace-soft-isolation.md
   - "What's new": changelog.md
 
 # `architecture.excalidraw` and `**/*.json` are copied as static assets

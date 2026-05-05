@@ -3001,19 +3001,21 @@ PointlesSQL
 │   ├── Sprint 23.4 — SQL editor + sidebar rail + settings   ⏳
 │   └── Sprint 23.5 — Polish + doc-link sweep + e2e replay   ⏳
 │
-├── Phase 28 — Workspace isolation (soft, Databricks-style)  🔜 in progress
+├── Phase 28 — Workspace isolation (soft, Databricks-style)  ✅
 │   │
-│   │   Soft tenant boundary over a shared global Unity Catalog.
-│   │   Catalogs and tables stay catalog-scoped (cross-workspace
-│   │   data sharing is a feature: dev workspace reads
-│   │   ``prod.silver.orders`` to bootstrap a sandbox merge);
-│   │   workspaces own audit / jobs / dashboards / saved-queries /
-│   │   recents / alerts / anomaly-acks.  M:M user↔workspace,
-│   │   cosmetic-only catalog pins, switcher hidden when ≤1
-│   │   workspace exists so single-tenant installs see zero
-│   │   behaviour change.  10 sub-sprints, each green-checkpointed
-│   │   for the autonomous run.  Plan in
-│   │   ``.claude/plans/ja-plane-phase-28-tidy-feather.md``.
+│   │   Closed 2026-05-05 across 9 sub-sprints.  Soft tenant
+│   │   boundary over a shared global Unity Catalog.  Catalogs and
+│   │   tables stay catalog-scoped (cross-workspace data sharing
+│   │   is a feature: dev workspace reads ``prod.silver.orders``
+│   │   to bootstrap a sandbox merge); workspaces own audit / jobs
+│   │   / dashboards / saved-queries / recents / alerts /
+│   │   anomaly-acks.  M:M user↔workspace, cosmetic-only catalog
+│   │   pins, switcher hidden when ≤1 workspace exists so single-
+│   │   tenant installs see zero behaviour change.
+│   │
+│   │   ADR: [ADR-0008](docs/decisions/0008-workspace-soft-isolation.md).
+│   │   Concept doc: [docs/concepts/workspaces.md](docs/concepts/workspaces.md).
+│   │   Admin runbook: [docs/admin/workspace-management.md](docs/admin/workspace-management.md).
 │   │
 │   ├── Sprint 28.0 — Workspace model + middleware +              ✅
 │   │   api_keys pin + scheduler resolver.
@@ -3083,17 +3085,61 @@ PointlesSQL
 │   │   cross-workspace catalog access stays free.  Mutations
 │   │   audit-log to ``workspace.pin_added`` /
 │   │   ``workspace.pin_removed``.  6 new pytest cases.
-│   ├── Sprint 28.4 — UI: switcher + base.html plumbing +        ⏳
+│   ├── Sprint 28.4 — UI: switcher + base.html plumbing +        ✅
 │   │   sidebar awareness + single-workspace hide rule.
-│   ├── Sprint 28.5 — Hermes plugin X-Workspace +                ⏳
-│   │   audit-wake-gate scoping.  Cross-repo edit to
-│   │   ``~/git/hermes-plugin-pointlessql``.
-│   ├── Sprint 28.6 — Admin pages: workspace + member CRUD       ⏳
+│   │   ``POST /auth/switch-workspace`` writes the
+│   │   ``pql_workspace`` cookie with membership enforcement;
+│   │   middleware reads it as the cookie tier of the resolver.
+│   │   ``base.html`` ships three workspace meta tags +
+│   │   ``components/workspace_switcher.html`` partial; the
+│   │   switcher hides when the user belongs to ≤1 workspace.
+│   │   ``pqlApi.fetch`` and the HTMX bridge auto-inject
+│   │   ``X-Workspace``.  ``catalog_tree.js`` namespaces its
+│   │   sessionStorage cache + recents by workspace slug and
+│   │   pre-expands the workspace's primary-pinned catalog.
+│   │   New help slug ``workspace.what-is-a-workspace``.
+│   │   9 new pytest cases.
+│   ├── Sprint 28.5 — Hermes plugin X-Workspace +                ✅
+│   │   audit-wake-gate scoping.  Plugin gained
+│   │   ``PluginConfig.workspace`` (read from
+│   │   ``POINTLESSQL_WORKSPACE``); ``_headers()`` injects
+│   │   ``X-Workspace`` on every request.  ``scripts/audit-wake-gate.py``
+│   │   honours the same env var.  Server-side test
+│   │   ``tests/test_cross_workspace_api_key.py`` round-trips the
+│   │   three resolver outcomes (no header → api_key pin;
+│   │   mismatched header → 403 + audit row; matching →
+│   │   passthrough).  Cross-repo edits in
+│   │   ``~/git/hermes-plugin-pointlessql`` (commit ``00eb051``).
+│   │   4 server-side + 5 plugin-side pytest cases.
+│   ├── Sprint 28.6 — Admin pages: workspace + member CRUD       ✅
 │   │   + ``users.default_workspace_id`` flipped to NOT NULL.
-│   ├── Sprint 28.7 — Cross-workspace super-admin lens           ⏳
-│   │   (``?workspace=all``, Grafana ``$workspace`` variable).
-│   └── Sprint 28.8 — Documentation + ADR-0008 + walkthrough     ⏳
-│       + ROADMAP positioning update.
+│   │   New ``pointlessql/api/admin_workspaces_routes.py`` with
+│   │   seven tenant-admin-gated endpoints (list/create/update/
+│   │   archive workspaces; list/add/role-change/remove members)
+│   │   + the ``/admin/workspaces`` HTML page.  Refuses to
+│   │   archive id=1.  Mutations log to ``audit_log`` with
+│   │   ``workspace.*`` action prefix.  Alembic ``dd4f6h8j0l2n``
+│   │   flips the FK column to NOT NULL after a defensive
+│   │   backfill.  12 new pytest cases.
+│   ├── Sprint 28.7 — Cross-workspace super-admin lens           ✅
+│   │   (``?workspace=all``).  ``audit_aggregator.summary`` /
+│   │   ``.timeseries`` / ``.anomalies`` accept a new
+│   │   ``workspace_id`` kwarg; ``None`` skips the filter (god-
+│   │   eye view).  /api/audit/* routes accept ``?workspace=``
+│   │   (slug | "all"); admin-only when not the caller's
+│   │   resolved workspace.  New ``audit_api_cross_workspace``
+│   │   read_kind in ``VALID_READ_KINDS``; ``_record_self``
+│   │   writes that value when the lens lifts the filter so the
+│   │   audit-of-audit pipeline can flag tenant-admin escalations.
+│   │   Grafana ``$workspace`` variable deferred (queued for the
+│   │   public-launch sprint when the dashboard catalog is
+│   │   reviewed end-to-end).  6 new pytest cases.
+│   └── Sprint 28.8 — Documentation + ADR-0008 + ROADMAP         ✅
+│       positioning update.  New ``docs/concepts/workspaces.md``,
+│       ``docs/admin/workspace-management.md``,
+│       ``docs/decisions/0008-workspace-soft-isolation.md``.
+│       ROADMAP entry updated to ✅; CHANGELOG carries a
+│       per-sub-sprint entry.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
