@@ -23,6 +23,54 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 28.1b — workspace_id on lineage / audit_log / governance /
+  query_history (+ FTS5 trigger flip).**  Completes the audit-side
+  workspace cascade.  Adds workspace_id NOT NULL with
+  ``server_default='1'`` to ten tables (Alembic ``bb2d4f6h8j0l``):
+  ``lineage_row_edges``, ``lineage_row_rejects``,
+  ``lineage_column_map``, ``lineage_value_changes``,
+  ``query_history``, ``query_history_tables``, ``audit_log``,
+  ``governance_events``, ``unattributed_writes``, ``anomaly_acks``.
+  Two UNIQUE constraints widen to prefix workspace_id:
+  ``unattributed_writes (workspace_id, table_fqn, delta_version)``
+  so the same Delta commit can fan out to multiple workspaces, and
+  ``anomaly_acks (workspace_id, metric, bin_iso, bin_kind,
+  group_value, group_kind)`` so two workspaces can independently
+  ack the same metric bin.
+
+  Service-layer write paths thread workspace_id through:
+  ``audit.log_action`` accepts a ``workspace_id`` kwarg (defaults to
+  1 for non-HTTP callers); the api ``audit()`` wrapper reads
+  ``request.state.workspace_id``.  ``query_history.record_query``
+  accepts ``workspace_id``; the api ``record_query_async`` wrapper
+  threads it.  ``governance_events.emit_governance_event`` accepts
+  ``workspace_id`` and forwards to ``_persist_event``.
+  ``lineage_edges.record_edges`` / ``record_rejects`` /
+  ``record_column_edges`` / ``record_value_changes`` derive
+  ``workspace_id`` from the parent agent_run_operation by JOIN
+  (one extra SELECT per write; cheap relative to the bulk insert).
+  ``external_write_scanner`` attributes every unattributed Delta
+  commit to workspace=1 (Sprint 28.3 will fan out via catalog pins).
+  ``POST /api/audit/anomaly-acks`` writes the request's resolved
+  workspace_id.
+
+  FTS5 trigger flip: ``query_history`` and ``audit_log`` trigger
+  specs in ``audit_fts`` change from literal ``1`` (the 28.1a
+  placeholder) to ``IFNULL(NEW.workspace_id, 1)``.  Migration
+  drops + recreates the audit_search vtable + 15 triggers using
+  the updated specs so the new column shape is in effect for every
+  subsequent insert.  After 28.1b the entire FTS axis is workspace-
+  isolated end-to-end.
+
+  8 new pytest cases in
+  ``tests/test_lineage_audit_workspace_isolation.py`` covering
+  schema sanity, ``log_action`` workspace passthrough,
+  ``record_query`` workspace passthrough, ``governance_events``
+  emit workspace passthrough, ``anomaly_acks`` UNIQUE constraint
+  widening, ``unattributed_writes`` UNIQUE constraint widening,
+  and ``lineage_row_edges`` workspace inheritance from the parent
+  op.
+
 - **Sprint 28.1a — workspace_id on the audit-trail core + FTS5 surgery.**
   Adds the workspace_id FK column (NOT NULL, server_default='1') to
   the five audit-trail source tables — ``agent_runs``,

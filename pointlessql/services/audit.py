@@ -142,6 +142,7 @@ def log_action(
     *,
     actor_role: str = "user",
     client_ip: str | None = None,
+    workspace_id: int = 1,
 ) -> None:
     """Write a single audit entry.
 
@@ -167,10 +168,16 @@ def log_action(
             for middleware-generated rows).
         client_ip: IPv4 or IPv6 address of the requesting client,
             or ``None`` for background / CLI operations.
+        workspace_id: Phase 28.1b — workspace this action was taken
+            in.  Defaults to ``1`` (seeded default workspace) so
+            non-HTTP callers (CLI, scheduler, fixtures, tests) keep
+            working without explicit threading; HTTP routes pass
+            ``request.state.workspace_id`` for proper isolation.
     """
     encoded = _encode_detail(detail)
     with factory() as session:
         entry = AuditLog(
+            workspace_id=workspace_id,
             user_id=user_id,
             user_email=user_email,
             actor_role=actor_role,

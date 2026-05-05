@@ -61,6 +61,9 @@ class LineageRowEdge(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this edge belongs to (Phase 28.1b).
+            Denormalised from the parent agent_run_operation so
+            workspace-scoped row-trace reads don't need a JOIN.
         run_id: FK to :class:`AgentRun.id` — the run that produced
             this edge.
         op_id: FK to :class:`AgentRunOperation.id` — the specific
@@ -93,9 +96,13 @@ class LineageRowEdge(Base):
         Index("ix_lineage_row_edges_run", "run_id"),
         Index("ix_lineage_row_edges_op", "op_id"),
         Index("ix_lineage_row_edges_source_model_uri", "source_model_uri"),
+        Index("ix_lineage_row_edges_workspace_run", "workspace_id", "run_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
     op_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("agent_run_operations.id"), nullable=False
@@ -118,6 +125,9 @@ class LineageRowReject(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this reject belongs to (Phase
+            28.1b).  Denormalised from the parent
+            agent_run_operation.
         run_id: FK to :class:`AgentRun.id`.
         op_id: FK to :class:`AgentRunOperation.id` — the merge / write
             call that decided to drop this row.
@@ -140,6 +150,7 @@ class LineageRowReject(Base):
         Index("ix_lineage_row_rejects_run", "run_id"),
         Index("ix_lineage_row_rejects_op", "op_id"),
         Index("ix_lineage_row_rejects_source", "source_table", "source_row_id"),
+        Index("ix_lineage_row_rejects_workspace_run", "workspace_id", "run_id"),
         CheckConstraint(
             "reason IN ('on_key_null','schema_mismatch','duplicate_in_source',"
             "'merge_predicate_excluded','other')",
@@ -148,6 +159,9 @@ class LineageRowReject(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
     op_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("agent_run_operations.id"), nullable=False
@@ -177,6 +191,9 @@ class LineageColumnMap(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this column-edge belongs to (Phase
+            28.1b).  Denormalised from the parent
+            agent_run_operation.
         run_id: FK to :class:`AgentRun.id` — the run that produced
             this edge.
         op_id: FK to :class:`AgentRunOperation.id` — the specific
@@ -206,6 +223,7 @@ class LineageColumnMap(Base):
         Index("ix_lineage_column_map_op", "op_id"),
         Index("ix_lineage_column_map_target", "target_table", "target_column"),
         Index("ix_lineage_column_map_source", "source_table", "source_column"),
+        Index("ix_lineage_column_map_workspace_run", "workspace_id", "run_id"),
         CheckConstraint(
             "transform_kind IN ('identity','rename','derived','aggregate',"
             "'unknown_origin','sql_select','sql_function','sql_unknown')",
@@ -214,6 +232,9 @@ class LineageColumnMap(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
     op_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("agent_run_operations.id"), nullable=False
@@ -250,6 +271,9 @@ class LineageValueChange(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this value change belongs to (Phase
+            28.1b).  Denormalised from the parent
+            agent_run_operation.
         run_id: FK to :class:`AgentRun.id` — the run that produced
             this change.
         op_id: FK to :class:`AgentRunOperation.id` — the merge op.
@@ -270,9 +294,13 @@ class LineageValueChange(Base):
         Index("ix_lineage_value_changes_op", "op_id"),
         Index("ix_lineage_value_changes_target_row", "target_table", "target_row_id"),
         Index("ix_lineage_value_changes_target_col", "target_table", "target_column"),
+        Index("ix_lineage_value_changes_workspace_run", "workspace_id", "run_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
     op_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("agent_run_operations.id"), nullable=False

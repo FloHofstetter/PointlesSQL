@@ -105,6 +105,7 @@ async def record_query_async(
     # PQL primitives via the forced audit trail) can pass the run
     # id without depending on request headers.
     resolved_run_id = agent_run_id or effective_agent_run_id(request)
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
     try:
         return await asyncio.to_thread(
             query_history_service.record_query,
@@ -121,6 +122,7 @@ async def record_query_async(
             error_message=error_message,
             request_id=request_id,
             agent_run_id=resolved_run_id,
+            workspace_id=workspace_id,
         )
     except Exception as exc:  # noqa: BLE001 — never mask the query response
         logger.warning("failed to record query_history row: %s", exc)
@@ -182,6 +184,7 @@ async def audit(
         elif isinstance(detail, str) and detail:
             merged["note"] = detail
         detail_payload = merged
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
     await asyncio.to_thread(
         audit_service.log_action,
         factory,
@@ -192,4 +195,5 @@ async def audit(
         detail_payload,
         actor_role=role,
         client_ip=client_ip(request),
+        workspace_id=workspace_id,
     )

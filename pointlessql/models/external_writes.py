@@ -21,7 +21,16 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import BigInteger, DateTime, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -30,15 +39,20 @@ from pointlessql.models.base import Base
 class UnattributedWrite(Base):
     """One Delta-log commit that no ``agent_run_operations`` row claims.
 
-    The ``(table_fqn, delta_version)`` tuple is unique so re-scans
-    are idempotent — the scanner can run as a periodic background
-    task without producing duplicate rows for unchanged history.
-    ``acknowledged_at`` / ``acknowledged_by`` capture the admin
-    review action; ``NULL`` ``acknowledged_at`` is the sidebar-badge
-    counter's filter.
+    The ``(workspace_id, table_fqn, delta_version)`` tuple is unique
+    so re-scans are idempotent and the same commit can fan out to
+    multiple workspaces (one row per workspace whose pinned-or-default
+    catalog covers the FQN).  ``acknowledged_at`` /
+    ``acknowledged_by`` capture the admin review action; ``NULL``
+    ``acknowledged_at`` is the sidebar-badge counter's filter.
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this unattributed-write attribution
+            belongs to (Phase 28.1b).  The scanner fans out one row
+            per workspace whose pinned catalog covers the FQN; if
+            no workspace owns the catalog, attribution falls back to
+            the seeded default workspace (id=1).
         table_fqn: Three-part UC name the commit landed on
             (``catalog.schema.table``).
         delta_version: Numeric Delta version the commit produced.
@@ -59,12 +73,21 @@ class UnattributedWrite(Base):
     __tablename__ = "unattributed_writes"
 
     __table_args__ = (
-        UniqueConstraint("table_fqn", "delta_version", name="uq_unattributed_writes_table_ver"),
+        UniqueConstraint(
+            "workspace_id",
+            "table_fqn",
+            "delta_version",
+            name="uq_unattributed_writes_table_ver",
+        ),
         Index("ix_unattributed_writes_acknowledged_at", "acknowledged_at"),
         Index("ix_unattributed_writes_detected_at", "detected_at"),
+        Index("ix_unattributed_writes_workspace_table", "workspace_id", "table_fqn"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     table_fqn: Mapped[str] = mapped_column(String(512), nullable=False)
     delta_version: Mapped[int] = mapped_column(BigInteger, nullable=False)
     commit_timestamp: Mapped[datetime.datetime | None] = mapped_column(

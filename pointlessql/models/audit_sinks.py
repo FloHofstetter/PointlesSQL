@@ -31,6 +31,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     String,
@@ -118,6 +119,13 @@ class GovernanceEvent(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this governance event belongs to
+            (Phase 28.1b).  Resolved from request.state at insert
+            time.  ``audit_sinks`` themselves stay install-global
+            on purpose — one Slack/webhook/S3 destination per
+            install — but the events fanned out to those sinks
+            carry the workspace context so downstream consumers
+            can filter.
         event_id: CloudEvents ``id`` field, unique across rows.
         event_type: One of the governance event constants exported
             from
@@ -135,6 +143,7 @@ class GovernanceEvent(Base):
     __tablename__ = "governance_events"
     __table_args__ = (
         Index("ix_governance_events_fired", "event_type", "fired_at"),
+        Index("ix_governance_events_workspace_fired", "workspace_id", "fired_at"),
         CheckConstraint(
             "outcome IN ('pending','delivered','delivery_failed','no_destination')",
             name="ck_governance_events_outcome",
@@ -142,6 +151,12 @@ class GovernanceEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id"),
+        nullable=False,
+        server_default="1",
+    )
     event_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     fired_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

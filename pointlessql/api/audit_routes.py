@@ -898,9 +898,7 @@ async def api_create_anomaly_ack(
 
     comment_raw = body.get("comment")
     comment = (
-        str(comment_raw).strip()
-        if isinstance(comment_raw, str) and comment_raw.strip()
-        else None
+        str(comment_raw).strip() if isinstance(comment_raw, str) and comment_raw.strip() else None
     )
 
     factory = request.app.state.session_factory
@@ -913,8 +911,13 @@ async def api_create_anomaly_ack(
             kind_clause = AnomalyAck.group_kind.is_(None)
         else:
             kind_clause = AnomalyAck.group_kind == group_kind
+        # Phase 28.1b — anomaly acks are workspace-scoped.  The
+        # UNIQUE constraint widened to include workspace_id so two
+        # workspaces can independently ack the same metric bin.
+        workspace_id = int(getattr(request.state, "workspace_id", 1))
         existing = session.scalar(
             select(AnomalyAck).where(
+                AnomalyAck.workspace_id == workspace_id,
                 AnomalyAck.metric == metric,
                 AnomalyAck.bin_iso == bin_iso,
                 AnomalyAck.bin_kind == bin_kind,
@@ -927,6 +930,7 @@ async def api_create_anomaly_ack(
                 "anomaly already acknowledged — DELETE the existing ack first to re-acknowledge"
             )
         row = AnomalyAck(
+            workspace_id=workspace_id,
             metric=metric,
             bin_iso=bin_iso,
             bin_kind=bin_kind,

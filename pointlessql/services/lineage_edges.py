@@ -21,11 +21,41 @@ from sqlalchemy import insert, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from pointlessql.models import (
+    AgentRunOperation,
     LineageColumnMap,
     LineageRowEdge,
     LineageRowReject,
     LineageValueChange,
 )
+
+
+def _workspace_id_for_op(session_factory: sessionmaker[Session], op_id: int | None) -> int:
+    """Return the workspace_id of the parent agent_run_operation, or 1.
+
+    Phase 28.1b — every lineage row inherits its workspace from the
+    op that created it.  Best-effort: a missing op_id (or DB hiccup)
+    falls back to the seeded default workspace so a row can still be
+    written rather than dropped.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        op_id: ``agent_run_operations.id`` of the parent op.  ``None``
+            (or unknown id) returns 1.
+
+    Returns:
+        The parent op's ``workspace_id``, or ``1`` on miss.
+    """
+    if op_id is None:
+        return 1
+    try:
+        with session_factory() as session:
+            value = session.scalar(
+                select(AgentRunOperation.workspace_id).where(AgentRunOperation.id == op_id)
+            )
+            return int(value) if value is not None else 1
+    except Exception:  # noqa: BLE001 — fallback path
+        return 1
+
 
 MAX_COLUMN_EDGES_PER_OP = 1000
 
@@ -50,6 +80,7 @@ class ValueChangeCapExceeded(Exception):
     Same best-effort contract as :class:`ColumnEdgeCapExceeded` —
     value-lineage failure must never roll back a Delta merge.
     """
+
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
@@ -282,8 +313,10 @@ def record_edges(
         return None
 
     now = datetime.datetime.now(datetime.UTC)
+    workspace_id = _workspace_id_for_op(session_factory, op_id)
     rows = [
         {
+            "workspace_id": workspace_id,
             "run_id": run_id,
             "op_id": op_id,
             "source_table": source_table,
@@ -345,8 +378,10 @@ def record_rejects(
         return None
 
     now = datetime.datetime.now(datetime.UTC)
+    workspace_id = _workspace_id_for_op(session_factory, op_id)
     rows = [
         {
+            "workspace_id": workspace_id,
             "run_id": run_id,
             "op_id": op_id,
             "source_table": source_table,
@@ -610,8 +645,10 @@ def record_column_edges(
         return ColumnEdgeCapExceeded(msg)
 
     now = datetime.datetime.now(datetime.UTC)
+    workspace_id = _workspace_id_for_op(session_factory, op_id)
     rows = [
         {
+            "workspace_id": workspace_id,
             "run_id": run_id,
             "op_id": op_id,
             "source_table": edge.source_table,
@@ -934,8 +971,10 @@ def record_value_changes(
         changes = new_changes
 
     now = datetime.datetime.now(datetime.UTC)
+    workspace_id = _workspace_id_for_op(session_factory, op_id)
     rows = [
         {
+            "workspace_id": workspace_id,
             "run_id": run_id,
             "op_id": op_id,
             "target_table": change.target_table,

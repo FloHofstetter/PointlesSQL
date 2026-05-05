@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -15,6 +15,11 @@ class AuditLog(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace the action was performed in (Phase
+            28.1b).  Resolved from request.state by
+            :func:`audit.log_action` or supplied explicitly by
+            non-HTTP callers (CLI / scheduler).  Pre-Phase-28 rows
+            backfill to the seeded default workspace (id=1).
         user_id: ID of the user who performed the action (no FK so
             entries survive user deletion).
         user_email: Email snapshot at time of action.
@@ -35,9 +40,13 @@ class AuditLog(Base):
         Index("ix_audit_log_user_created", "user_id", "created_at"),
         Index("ix_audit_log_target_created", "target", "created_at"),
         Index("ix_audit_log_created", "created_at"),
+        Index("ix_audit_log_workspace_created", "workspace_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     user_email: Mapped[str] = mapped_column(String(254), nullable=False)
     actor_role: Mapped[str] = mapped_column(

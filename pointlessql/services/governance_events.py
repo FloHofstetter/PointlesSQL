@@ -110,6 +110,7 @@ def _persist_event(
     fired_at: datetime.datetime,
     envelope: dict[str, Any],
     initial_outcome: str,
+    workspace_id: int = 1,
 ) -> int | None:
     """Insert one ``governance_events`` row and return its primary key.
 
@@ -131,6 +132,7 @@ def _persist_event(
     try:
         with session_factory() as session:
             row = GovernanceEvent(
+                workspace_id=workspace_id,
                 event_id=event_id,
                 event_type=event_type,
                 fired_at=fired_at,
@@ -184,6 +186,7 @@ async def emit_governance_event(
     settings: Settings | None = None,
     fired_at: datetime.datetime | None = None,
     session_factory: sessionmaker[Session] | None = None,
+    workspace_id: int = 1,
 ) -> None:
     """Build the envelope, persist it, and fan it out to every active sink.
 
@@ -239,6 +242,7 @@ async def emit_governance_event(
         fired_at=fired_at,
         envelope=envelope,
         initial_outcome=initial_outcome,
+        workspace_id=workspace_id,
     )
 
     if not fan_out_enabled:

@@ -115,6 +115,10 @@ class QueryHistory(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this query was executed in (Phase
+            28.1b).  FK to :class:`Workspace.id`; resolved from
+            request.state at insert time so cross-workspace
+            ``/queries`` traffic stays isolated.
         user_id: ID of the user who ran the query (no FK so entries
             survive user deletion).
         user_email: Email snapshot at time of run.
@@ -158,6 +162,7 @@ class QueryHistory(Base):
     __table_args__ = (
         Index("ix_query_history_user_started", "user_id", "started_at"),
         Index("ix_query_history_started", "started_at"),
+        Index("ix_query_history_workspace_started", "workspace_id", "started_at"),
         Index(
             "ix_query_history_agent_run_id",
             "agent_run_id",
@@ -167,6 +172,11 @@ class QueryHistory(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.1b — every query-history row is workspace-scoped.
+    # Resolved from request.state at insert time by services.query_history.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     user_email: Mapped[str] = mapped_column(String(254), nullable=False)
     sql_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -196,6 +206,8 @@ class QueryHistoryTable(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this reference belongs to (Phase
+            28.1b).  Denormalised from the parent QueryHistory.
         query_history_id: FK to ``query_history.id``.
         full_name: Dotted UC identifier (``catalog.schema.table``).
         access_type: ``"read"`` or ``"write"``.
@@ -203,9 +215,15 @@ class QueryHistoryTable(Base):
 
     __tablename__ = "query_history_tables"
 
-    __table_args__ = (Index("ix_query_history_tables_full_name", "full_name", "query_history_id"),)
+    __table_args__ = (
+        Index("ix_query_history_tables_full_name", "full_name", "query_history_id"),
+        Index("ix_query_history_tables_workspace_full", "workspace_id", "full_name"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     query_history_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("query_history.id"), nullable=False
     )

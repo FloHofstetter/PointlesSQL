@@ -87,6 +87,7 @@ def record_query(
     request_id: str | None = None,
     agent_run_id: str | None = None,
     read_kind: str = "sql_execute",
+    workspace_id: int = 1,
 ) -> int:
     """Insert a :class:`QueryHistory` row plus its table-reference rows.
 
@@ -125,6 +126,11 @@ def record_query(
             helper passes ``"pql_table"`` / ``"engine_direct"``.
             Validated against :data:`VALID_READ_KINDS` so a typo
             cannot land an unknown value the UI cannot filter on.
+        workspace_id: Phase 28.1b — workspace this query was run in.
+            Defaults to ``1`` (the seeded default workspace) so
+            non-HTTP callers (CLI, scheduler, fixtures) keep working
+            without explicit threading; HTTP routes pass
+            ``request.state.workspace_id`` for proper isolation.
 
     Returns:
         The auto-assigned ``QueryHistory.id`` of the new row (so
@@ -138,6 +144,7 @@ def record_query(
     sanitised_run_id = _sanitise_run_id(agent_run_id)
     with factory() as session:
         entry = QueryHistory(
+            workspace_id=workspace_id,
             user_id=user_id,
             user_email=user_email,
             sql_text=sql_text,
@@ -156,6 +163,7 @@ def record_query(
         for full_name in referenced_tables:
             session.add(
                 QueryHistoryTable(
+                    workspace_id=workspace_id,
                     query_history_id=entry.id,
                     full_name=full_name,
                     access_type="read",

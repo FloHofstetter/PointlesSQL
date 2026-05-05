@@ -154,7 +154,16 @@ def scan_table(
             if version_raw in attributed:
                 continue
             commit_ts = _parse_commit_timestamp(entry)
+            # Phase 28.1b — every unattributed write is attributed to
+            # the seeded default workspace (id=1) for now.  Sprint 28.3
+            # extends this to fan out one row per workspace whose pinned
+            # catalog covers the FQN; until then "default workspace owns
+            # every uncategorised commit" is the right zero-config
+            # answer.  The UNIQUE constraint widened to
+            # (workspace_id, table_fqn, delta_version) so a future
+            # multi-workspace install can keep this fan-out idempotent.
             row = UnattributedWrite(
+                workspace_id=1,
                 table_fqn=table_fqn,
                 delta_version=version_raw,
                 commit_timestamp=commit_ts,
@@ -166,7 +175,8 @@ def scan_table(
                 session.flush()
             except IntegrityError:
                 # Already recorded by an earlier scan — UNIQUE
-                # (table_fqn, delta_version) makes re-scans idempotent.
+                # (workspace_id, table_fqn, delta_version) makes
+                # re-scans idempotent.
                 session.rollback()
                 continue
             inserted.append(

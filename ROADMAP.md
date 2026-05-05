@@ -3050,8 +3050,19 @@ PointlesSQL
 │   │   from NEW.workspace_id (runs/ops/tool_calls) or literal 1
 │   │   (queries/audit_log — flipped in 28.1b).  10 new pytest
 │   │   cases.
-│   ├── Sprint 28.1b — lineage + audit_log + governance +        ⏳
-│   │   query_history get workspace_id.
+│   ├── Sprint 28.1b — lineage + audit_log + governance +        ✅
+│   │   query_history get workspace_id (Alembic
+│   │   ``bb2d4f6h8j0l``).  10 tables: 4 lineage, 2 query_history,
+│   │   audit_log, governance_events, unattributed_writes,
+│   │   anomaly_acks.  Two UNIQUE constraints widened to prefix
+│   │   workspace_id (``unattributed_writes`` + ``anomaly_acks``).
+│   │   ``audit.log_action`` / ``query_history.record_query`` /
+│   │   ``governance_events.emit_governance_event`` thread
+│   │   workspace_id; lineage write paths derive from parent op.
+│   │   ``external_write_scanner`` attributes to ws=1 (28.3 will
+│   │   fan out via pins).  FTS5 triggers for query_history /
+│   │   audit_log flip from literal ``1`` to ``NEW.workspace_id``.
+│   │   8 new pytest cases.
 │   ├── Sprint 28.2 — User-owned + scheduler tables              ⏳
 │   │   (jobs, dashboards, saved_queries, recents, alerts,
 │   │   notebooks).

@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -34,6 +34,11 @@ class AnomalyAck(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this ack belongs to (Phase 28.1b).
+            Two workspaces can independently ack the same metric
+            bin without colliding on the unique constraint
+            (workspace_id is the first column in the new compound
+            uniqueness so the cross-workspace pair is allowed).
         metric: Cockpit metric whose bin was acked (one of the
             :data:`audit_aggregator.VALID_METRICS` values, but stored
             as plain text so a future metric expansion does not require
@@ -60,6 +65,7 @@ class AnomalyAck(Base):
     __tablename__ = "anomaly_acks"
     __table_args__ = (
         UniqueConstraint(
+            "workspace_id",
             "metric",
             "bin_iso",
             "bin_kind",
@@ -71,9 +77,13 @@ class AnomalyAck(Base):
             "ix_anomaly_acks_acked_at",
             "acked_at",
         ),
+        Index("ix_anomaly_acks_workspace_acked", "workspace_id", "acked_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     metric: Mapped[str] = mapped_column(String(64), nullable=False)
     bin_iso: Mapped[str] = mapped_column(String(32), nullable=False)
     bin_kind: Mapped[str] = mapped_column(String(8), nullable=False)
