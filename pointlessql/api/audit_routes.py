@@ -22,7 +22,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, Query, Request
+from fastapi import APIRouter, Body, HTTPException, Query, Request
 from sqlalchemy import func, select
 
 from pointlessql.api._audit_helpers import audit
@@ -35,6 +35,64 @@ from pointlessql.services.query_history import VALID_READ_KINDS, list_queries, r
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["audit"])
+
+
+def _resolve_workspace_lens(request: Request, override: str | None) -> tuple[int | None, str]:
+    """Pick the audit query's workspace filter from the optional override.
+
+    Sprint 28.7 — implements the super-admin lens.  Three outcomes:
+
+    * ``override is None`` (or whitespace-only) — scope to the request's
+      resolved workspace (``request.state.workspace_id``).  The default
+      cockpit experience.
+    * ``override == "all"`` — admin-only.  Returns ``(None, "all")`` to
+      tell :mod:`audit_aggregator` to skip the workspace filter.  Logs
+      a ``read_kind="audit_api_cross_workspace"`` row downstream so
+      the cross-workspace probe is observable.
+    * ``override == "<slug>"`` — admin-only.  Resolves the slug to an
+      ``id`` and scopes to it.  A non-admin caller asking for any
+      workspace other than their resolved one gets a 403.
+
+    Args:
+        request: Incoming FastAPI request.
+        override: Raw ``?workspace=`` query value.
+
+    Returns:
+        ``(workspace_id, mode)`` — ``workspace_id`` is ``None`` for
+        the cross-workspace lens, an int otherwise; ``mode`` is one
+        of ``"current"`` / ``"all"`` / ``"named"`` for telemetry.
+
+    Raises:
+        AuthorizationError: Caller is not a tenant admin and asked
+            for ``"all"`` or a different workspace's slug.
+        ValidationError: Slug doesn't resolve.
+    """
+    cleaned = (override or "").strip()
+    current_id = int(getattr(request.state, "workspace_id", 1) or 1)
+    if not cleaned:
+        return current_id, "current"
+
+    user = getattr(request.state, "user", None)
+    is_admin = bool(user and user.get("is_admin"))
+
+    if cleaned.lower() == "all":
+        if not is_admin:
+            raise HTTPException(status_code=403, detail="?workspace=all requires admin")
+        return None, "all"
+
+    # Slug → id
+    from pointlessql.services import workspaces as workspaces_service
+
+    factory = request.app.state.session_factory
+    ws = workspaces_service.get_workspace_by_slug(factory, slug=cleaned)
+    if ws is None:
+        raise ValidationError(f"workspace {cleaned!r} not found")
+    if ws.id != current_id and not is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="?workspace=<slug> for a different workspace requires admin",
+        )
+    return ws.id, "named"
 
 
 def _parse_iso8601(name: str, value: str | None) -> datetime.datetime | None:
@@ -73,6 +131,7 @@ def _record_self(
     endpoint: str,
     params: dict[str, Any],
     started_at: datetime.datetime,
+    read_kind: str = "audit_api",
 ) -> None:
     """Persist a ``query_history`` row for one ``/api/audit/*`` call.
 
@@ -88,6 +147,10 @@ def _record_self(
             "weirdly-empty result" can be re-traced via the params
             the cockpit caller actually sent).
         started_at: Wall-clock instant the route began handling.
+        read_kind: Sprint 28.7 — defaults to ``"audit_api"``; cross-
+            workspace lens calls pass ``"audit_api_cross_workspace"``
+            so the audit-of-audit aggregation can flag tenant-admin
+            escalations into the god-eye view.
     """
     user = get_user(request)
     finished_at = datetime.datetime.now(datetime.UTC)
@@ -106,7 +169,7 @@ def _record_self(
             duration_ms=int((finished_at - started_at).total_seconds() * 1000),
             referenced_tables=[],
             agent_run_id=None,
-            read_kind="audit_api",
+            read_kind=read_kind,
         )
     except Exception as exc:  # noqa: BLE001 — audit-of-audit must never break the audit response
         logger.warning("audit_api: failed to self-track %s: %s", endpoint, exc)
@@ -120,6 +183,10 @@ async def api_audit_summary(
     principal: str | None = Query(default=None, description="AgentRun.principal filter"),
     agent_id: str | None = Query(default=None, description="AgentRun.agent_id filter"),
     table: str | None = Query(default=None, description="Three-part UC name target"),
+    workspace: str | None = Query(
+        default=None,
+        description="Sprint 28.7 — workspace lens. Slug or 'all'. Admin-only.",
+    ),
 ) -> dict[str, Any]:
     """Single-dict counts of every cockpit metric.
 
@@ -134,15 +201,21 @@ async def api_audit_summary(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Three-part UC name applied to op/lineage metrics.
+        workspace: Sprint 28.7 — workspace lens.  ``None`` (default)
+            scopes to the request's current workspace.  ``"all"``
+            (admin-only) lifts the workspace filter for the
+            super-admin lens.  Any other slug (admin-only) targets
+            that named workspace.
 
     Returns:
         ``{"since", "until", "principal", "agent_id", "table",
-        "counts": {...}}``.
+        "workspace", "lens_mode", "counts": {...}}``.
     """
     require_auditor(request)
     started_at = datetime.datetime.now(datetime.UTC)
     since_dt = _parse_iso8601("since", since)
     until_dt = _parse_iso8601("until", until)
+    workspace_id, lens_mode = _resolve_workspace_lens(request, workspace)
     counts = agg.summary(
         request.app.state.session_factory,
         since=since_dt,
@@ -150,6 +223,7 @@ async def api_audit_summary(
         principal=principal,
         agent_id=agent_id,
         table=table,
+        workspace_id=workspace_id,
     )
     response = {
         "since": since_dt.isoformat() if since_dt else None,
@@ -157,6 +231,8 @@ async def api_audit_summary(
         "principal": principal,
         "agent_id": agent_id,
         "table": table,
+        "workspace": workspace,
+        "lens_mode": lens_mode,
         "counts": counts,
     }
     _record_self(
@@ -168,8 +244,10 @@ async def api_audit_summary(
             "principal": principal,
             "agent_id": agent_id,
             "table": table,
+            "workspace": workspace,
         },
         started_at=started_at,
+        read_kind="audit_api_cross_workspace" if lens_mode == "all" else "audit_api",
     )
     return response
 
@@ -185,6 +263,10 @@ async def api_audit_timeseries(
     principal: str | None = Query(default=None),
     agent_id: str | None = Query(default=None),
     table: str | None = Query(default=None),
+    workspace: str | None = Query(
+        default=None,
+        description="Sprint 28.7 — workspace lens. Slug or 'all'. Admin-only.",
+    ),
 ) -> dict[str, Any]:
     """Time-binned series for one metric, optionally grouped.
 
@@ -200,6 +282,8 @@ async def api_audit_timeseries(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Three-part UC name filter.
+        workspace: Sprint 28.7 — workspace lens.  See
+            :func:`api_audit_summary` for the resolution rules.
 
     Returns:
         ``{"metric", "bin", "group_by", "points": [...]}``.
@@ -219,6 +303,7 @@ async def api_audit_timeseries(
     started_at = datetime.datetime.now(datetime.UTC)
     since_dt = _parse_iso8601("since", since)
     until_dt = _parse_iso8601("until", until)
+    workspace_id, lens_mode = _resolve_workspace_lens(request, workspace)
     response = agg.timeseries(
         request.app.state.session_factory,
         metric=metric,  # type: ignore[arg-type]
@@ -229,7 +314,10 @@ async def api_audit_timeseries(
         principal=principal,
         agent_id=agent_id,
         table=table,
+        workspace_id=workspace_id,
     )
+    response["workspace"] = workspace
+    response["lens_mode"] = lens_mode
     _record_self(
         request,
         endpoint="/api/audit/timeseries",
@@ -242,8 +330,10 @@ async def api_audit_timeseries(
             "principal": principal,
             "agent_id": agent_id,
             "table": table,
+            "workspace": workspace,
         },
         started_at=started_at,
+        read_kind="audit_api_cross_workspace" if lens_mode == "all" else "audit_api",
     )
     return response
 
@@ -260,6 +350,10 @@ async def api_audit_anomalies(
     principal: str | None = Query(default=None),
     agent_id: str | None = Query(default=None),
     table: str | None = Query(default=None),
+    workspace: str | None = Query(
+        default=None,
+        description="Sprint 28.7 — workspace lens. Slug or 'all'. Admin-only.",
+    ),
 ) -> dict[str, Any]:
     """One severity verdict per bin against an N-day rolling baseline.
 
@@ -279,6 +373,8 @@ async def api_audit_anomalies(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Three-part UC name filter.
+        workspace: Sprint 28.7 — workspace lens.  See
+            :func:`api_audit_summary` for the resolution rules.
 
     Returns:
         ``{"metric", "baseline_window_days", "threshold_sigma",
@@ -296,6 +392,7 @@ async def api_audit_anomalies(
     started_at = datetime.datetime.now(datetime.UTC)
     since_dt = _parse_iso8601("since", since)
     until_dt = _parse_iso8601("until", until)
+    workspace_id, lens_mode = _resolve_workspace_lens(request, workspace)
     response = agg.anomalies(
         request.app.state.session_factory,
         metric=metric,  # type: ignore[arg-type]
@@ -307,7 +404,10 @@ async def api_audit_anomalies(
         principal=principal,
         agent_id=agent_id,
         table=table,
+        workspace_id=workspace_id,
     )
+    response["workspace"] = workspace
+    response["lens_mode"] = lens_mode
     _record_self(
         request,
         endpoint="/api/audit/anomalies",
@@ -321,8 +421,10 @@ async def api_audit_anomalies(
             "principal": principal,
             "agent_id": agent_id,
             "table": table,
+            "workspace": workspace,
         },
         started_at=started_at,
+        read_kind="audit_api_cross_workspace" if lens_mode == "all" else "audit_api",
     )
     return response
 

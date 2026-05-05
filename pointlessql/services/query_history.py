@@ -37,7 +37,17 @@ logger = logging.getLogger(__name__)
 _RUN_ID_LENGTH = 36
 
 VALID_READ_KINDS: frozenset[str] = frozenset(
-    {"sql_execute", "pql_table", "pql_table_at_version", "engine_direct", "audit_api"}
+    {
+        "sql_execute",
+        "pql_table",
+        "pql_table_at_version",
+        "engine_direct",
+        "audit_api",
+        # Sprint 28.7 — admin-only cross-workspace lens.  Distinguished
+        # from ``audit_api`` so the audit-of-audit pipeline can flag a
+        # tenant admin escalating into the god-eye view.
+        "audit_api_cross_workspace",
+    }
 )
 
 

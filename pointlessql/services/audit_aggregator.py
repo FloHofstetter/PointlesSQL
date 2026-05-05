@@ -279,6 +279,7 @@ def _apply_audit_filters(
     principal: str | None,
     agent_id: str | None,
     table: str | None,
+    workspace_id: int | None = None,
 ) -> Select[Any]:
     """Apply the cockpit's standard filter set to a SELECT.
 
@@ -309,6 +310,15 @@ def _apply_audit_filters(
         stmt = stmt.where(spec.timestamp_col < until)
     if spec.where is not None:
         stmt = stmt.where(spec.where)
+    # Sprint 28.7 — workspace lens.  Every metric's primary table
+    # carries a NOT NULL workspace_id column from 28.1a/28.1b, so the
+    # filter applies uniformly via ``getattr``.  ``None`` means the
+    # caller (a tenant admin via ?workspace=all) opted into the
+    # cross-workspace lens.
+    if workspace_id is not None:
+        ws_col = getattr(spec.table, "workspace_id", None)
+        if ws_col is not None:
+            stmt = stmt.where(ws_col == workspace_id)
     if table is not None and table.strip() and spec.target_col is not None:
         stmt = stmt.where(spec.target_col == table.strip())
     elif table is not None and table.strip() and spec.target_col is None:
@@ -343,6 +353,7 @@ def _scalar_count(
     principal: str | None,
     agent_id: str | None,
     table: str | None,
+    workspace_id: int | None = None,
 ) -> int:
     """Execute a single-row aggregation and return the integer value.
 
@@ -357,6 +368,9 @@ def _scalar_count(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Target-table filter.
+        workspace_id: Sprint 28.7 — workspace lens.  ``None`` means
+            cross-workspace (admin-only super-admin lens); an int
+            scopes to that workspace.
 
     Returns:
         The integer count, or ``0`` for empty windows.
@@ -371,6 +385,7 @@ def _scalar_count(
         principal=principal,
         agent_id=agent_id,
         table=table,
+        workspace_id=workspace_id,
     )
     raw = session.execute(stmt).scalar()
     return int(raw or 0)
@@ -384,6 +399,7 @@ def summary(
     principal: str | None = None,
     agent_id: str | None = None,
     table: str | None = None,
+    workspace_id: int | None = None,
 ) -> dict[str, int]:
     """Return a single-dict cockpit summary across every metric.
 
@@ -416,6 +432,7 @@ def summary(
                 principal=principal,
                 agent_id=agent_id,
                 table=table,
+                workspace_id=workspace_id,
             )
             for metric in sorted(VALID_METRICS)
         }
@@ -450,6 +467,7 @@ def timeseries(
     agent_id: str | None = None,
     table: str | None = None,
     group_by: GroupBy = "none",
+    workspace_id: int | None = None,
 ) -> dict[str, Any]:
     """Return a time-binned series of one metric, optionally grouped.
 
@@ -510,6 +528,7 @@ def timeseries(
                 principal=principal,
                 agent_id=agent_id,
                 table=table,
+                workspace_id=workspace_id,
             )
             stmt = stmt.group_by(bin_col).order_by(bin_col)
             for ts, value in session.execute(stmt).all():
@@ -528,6 +547,7 @@ def timeseries(
                 principal=principal,
                 agent_id=agent_id,
                 table=table,
+                workspace_id=workspace_id,
             )
             stmt = stmt.group_by(bin_col, group_col).order_by(bin_col, group_col)
             for ts, grp, value in session.execute(stmt).all():
@@ -582,6 +602,7 @@ def anomalies(
     principal: str | None = None,
     agent_id: str | None = None,
     table: str | None = None,
+    workspace_id: int | None = None,
 ) -> dict[str, Any]:
     """Return one anomaly verdict per bin in the requested window.
 
@@ -642,6 +663,7 @@ def anomalies(
         agent_id=agent_id,
         table=table,
         group_by="none",
+        workspace_id=workspace_id,
     )
     raw_points = series["points"]
     out: list[dict[str, Any]] = []
