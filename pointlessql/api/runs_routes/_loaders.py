@@ -41,6 +41,10 @@ from pointlessql.services import output_rendering as output_rendering_service
 def load_runs(request: Request, limit: int = 200) -> list[dict[str, Any]]:
     """Fetch the most recent agent-run rows as serialized dicts.
 
+    Phase 28.1a — scoped to the caller's resolved workspace.
+    The Sprint 28.7 super-admin "All workspaces" lens will skip
+    the filter via a separate code path.
+
     Args:
         request: Incoming FastAPI request.
         limit: Max rows to return; the list page caps at the table
@@ -53,8 +57,14 @@ def load_runs(request: Request, limit: int = 200) -> list[dict[str, Any]]:
     from pointlessql.api.agent_runs_routes import serialize_agent_run
 
     factory = request.app.state.session_factory
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
     with factory() as session:
-        stmt = select(AgentRun).order_by(AgentRun.started_at.desc()).limit(limit)
+        stmt = (
+            select(AgentRun)
+            .where(AgentRun.workspace_id == workspace_id)
+            .order_by(AgentRun.started_at.desc())
+            .limit(limit)
+        )
         rows = list(session.scalars(stmt).all())
         return [serialize_agent_run(row) for row in rows]
 

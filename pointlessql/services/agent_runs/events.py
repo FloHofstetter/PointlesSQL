@@ -151,7 +151,18 @@ def _persist_event(
 
     try:
         with session_factory() as session:
+            # Phase 28.1a — derive workspace_id from the parent run.
+            # avoid circular imports during module load.
+            from sqlalchemy import select as _select
+
+            from pointlessql.models import AgentRun as _AgentRun  # local import to
+
+            workspace_id_value = int(
+                session.scalar(_select(_AgentRun.workspace_id).where(_AgentRun.id == agent_run_id))
+                or 1
+            )
             row = AgentRunEvent(
+                workspace_id=workspace_id_value,
                 agent_run_id=agent_run_id,
                 event_id=event_id,
                 event_type=event_type,

@@ -79,26 +79,38 @@ def record_audit_self(
         logger.warning("audit_api: failed to self-track %s: %s", endpoint, exc)
 
 
-def ensure_run_visible(factory: Any, run_id: str) -> AgentRun:
+def ensure_run_visible(factory: Any, run_id: str, *, workspace_id: int | None = None) -> AgentRun:
     """Return the ``AgentRun`` row for *run_id* or raise 404.
 
     Shared 404-guard for the per-run audit-axis endpoints so a
     Hermes audit-reviewer that cites a stale ``run_id`` gets a
     clean ``CatalogNotFoundError`` rather than a hollow ``rows: []``.
 
+    Phase 28.1a: when *workspace_id* is supplied, runs from a
+    *different* workspace also surface as 404 — cross-workspace
+    audit-axis access is indistinguishable from "no such run" by
+    design (a leak through the error code would tell the caller
+    that a run with that UUID exists somewhere they can't see).
+
     Args:
         factory: Sessionmaker callable from ``app.state``.
         run_id: UUID of the run to load.
+        workspace_id: Caller's resolved workspace.  ``None`` skips
+            the workspace check, which is appropriate for the
+            super-admin cross-workspace lens (Sprint 28.7).
 
     Returns:
         Detached :class:`AgentRun` row.
 
     Raises:
-        CatalogNotFoundError: No run with that id.
+        CatalogNotFoundError: No run with that id, or the run lives
+            in a different workspace than *workspace_id*.
     """
     with factory() as session:
         row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
         if row is None:
+            raise CatalogNotFoundError(f"agent run {run_id!r} not found")
+        if workspace_id is not None and int(row.workspace_id) != int(workspace_id):
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
         session.expunge(row)
     return row

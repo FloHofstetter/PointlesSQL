@@ -23,6 +23,40 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 28.1a — workspace_id on the audit-trail core + FTS5 surgery.**
+  Adds the workspace_id FK column (NOT NULL, server_default='1') to
+  the five audit-trail source tables — ``agent_runs``,
+  ``agent_run_sources``, ``agent_run_operations``, ``agent_run_events``,
+  ``agent_run_tool_calls`` — with compound indexes
+  ``(workspace_id, started_at)`` on agent_runs and
+  ``(workspace_id, agent_run_id)`` on the four child tables (Alembic
+  ``aa1c3e5g7i9k``).  After this migration a workspace-A user CANNOT
+  see workspace-B's runs, sources, operations, lifecycle events, or
+  tool calls — listing routes ``GET /api/agent-runs`` and
+  ``GET /api/agent-runs/operations`` add a workspace filter; per-run
+  audit-axis routes ``/api/agent-runs/{id}/audit/<axis>`` return 404
+  for cross-workspace requests via the extended ``ensure_run_visible``
+  guard (a leak through the error code would tell the caller a UUID
+  exists somewhere they can't see).  ``POST /api/agent-runs`` writes
+  the resolved request workspace onto every new row; the
+  AgentRunOperation / Event / ToolCall write paths denormalise
+  workspace_id from the parent run by JOIN.
+
+  FTS5 ``audit_search`` virtual table rebuilt with a 6th
+  ``workspace_id UNINDEXED`` column.  Triggers for ``agent_runs``,
+  ``agent_run_operations``, and ``agent_run_tool_calls`` populate it
+  from ``NEW.workspace_id``; ``query_history`` and ``audit_log``
+  triggers emit literal ``1`` (their source-table column lands in
+  Sprint 28.1b).  ``audit_fts.search`` accepts a new
+  ``workspace_id`` kwarg; ``GET /api/audit/search`` passes the
+  request's resolved workspace.  Postgres deployments skip the FTS
+  surgery entirely (the vtable is SQLite-only).
+
+  10 new pytest cases in ``tests/test_agent_runs_workspace_isolation.py``
+  covering schema sanity, listing-route isolation, per-run audit
+  cross-workspace 404, ingestion-time workspace_id propagation, and
+  FTS5 result filtering.
+
 - **Sprint 28.0 — workspace foundation (model + middleware + api_keys
   pin + scheduler resolver).**  First sub-sprint of Phase 28 (soft
   workspace isolation, Databricks-style: catalogs stay global,

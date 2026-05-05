@@ -48,6 +48,9 @@ class AgentRunSource(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this source row belongs to (Phase
+            28.1a).  Denormalised from parent :class:`AgentRun` so
+            workspace-scoped reads don't need a JOIN.
         agent_run_id: FK to :class:`AgentRun.id`.  Unique — one
             source per run.
         source_bytes: UTF-8 encoded notebook source verbatim.  No
@@ -59,9 +62,18 @@ class AgentRunSource(Base):
     """
 
     __tablename__ = "agent_run_sources"
-    __table_args__ = (Index("ix_agent_run_sources_sha", "source_sha"),)
+    __table_args__ = (
+        Index("ix_agent_run_sources_sha", "source_sha"),
+        Index("ix_agent_run_sources_workspace_run", "workspace_id", "agent_run_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.1a — denormalised from the parent AgentRun for
+    # efficient workspace-scoped audit reads.  Set in the same
+    # transaction as the parent insert.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     agent_run_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=False, unique=True
     )
@@ -89,6 +101,10 @@ class AgentRunOperation(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this op belongs to (Phase 28.1a).
+            Denormalised from parent :class:`AgentRun` so the
+            forced audit-trail and lineage queries don't need a
+            JOIN to derive scope.
         agent_run_id: FK to :class:`AgentRun.id`.
         ordinal: Monotonic per-run sequence number (1-indexed).
         op_name: One of ``"autoload"`` / ``"merge"`` /
@@ -144,6 +160,11 @@ class AgentRunOperation(Base):
     __table_args__ = (
         UniqueConstraint("agent_run_id", "ordinal", name="uq_agent_run_operations_ordinal"),
         Index("ix_agent_run_operations_run", "agent_run_id"),
+        Index(
+            "ix_agent_run_operations_workspace_run",
+            "workspace_id",
+            "agent_run_id",
+        ),
         CheckConstraint(
             "op_name IN "
             "('autoload','merge','write_table','sql','aggregate','rollback','train_model')",
@@ -152,6 +173,13 @@ class AgentRunOperation(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.1a — denormalised from parent AgentRun for efficient
+    # workspace-scoped audit reads.  All lineage / value-change /
+    # external-write rows that hang off this op derive their workspace
+    # by JOIN, so this is the single canonical column per op.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     agent_run_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=False
     )
@@ -194,6 +222,8 @@ class AgentRunEvent(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this event belongs to (Phase 28.1a).
+            Denormalised from parent :class:`AgentRun`.
         agent_run_id: FK to :class:`AgentRun.id`.
         event_id: CloudEvents ``id`` field (uuid4 hex), unique
             so receivers can dedup across retries.
@@ -210,6 +240,7 @@ class AgentRunEvent(Base):
     __tablename__ = "agent_run_events"
     __table_args__ = (
         Index("ix_agent_run_events_fired", "agent_run_id", "fired_at"),
+        Index("ix_agent_run_events_workspace_run", "workspace_id", "agent_run_id"),
         CheckConstraint(
             "outcome IN ('pending','delivered','delivery_failed','no_destination')",
             name="ck_agent_run_events_outcome",
@@ -217,6 +248,10 @@ class AgentRunEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.1a — denormalised from parent AgentRun.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     agent_run_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=False
     )
@@ -239,6 +274,8 @@ class AgentRunToolCall(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: Workspace this tool call belongs to (Phase
+            28.1a).  Denormalised from parent :class:`AgentRun`.
         agent_run_id: FK to :class:`AgentRun.id`.
         tool_name: Hermes tool name, e.g. ``pql_query`` or
             ``pql_get_table``.
@@ -261,9 +298,18 @@ class AgentRunToolCall(Base):
             "agent_run_id",
             "called_at",
         ),
+        Index(
+            "ix_agent_run_tool_calls_workspace_run",
+            "workspace_id",
+            "agent_run_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.1a — denormalised from parent AgentRun.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     agent_run_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=False
     )

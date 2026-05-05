@@ -12,7 +12,7 @@ from __future__ import annotations
 import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Index, Integer, Numeric, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -59,6 +59,11 @@ class AgentRun(Base):
 
     Attributes:
         id: UUIDv4 string supplied by the runtime on creation.
+        workspace_id: Workspace this run lives in (Phase 28.1a).  FK
+            to :class:`Workspace.id`.  Resolved from the request
+            middleware (X-Workspace header > api_key pin > cookie >
+            user.default > 1) at registration time and never
+            re-assigned.  Backfill = 1 for every pre-Phase-28 row.
         principal: ``X-Principal`` header value, typically the user
             email the agent acts on behalf of.  Nullable so a purely
             background agent can still register.
@@ -127,9 +132,17 @@ class AgentRun(Base):
         Index("ix_agent_runs_started_at", "started_at"),
         Index("ix_agent_runs_principal", "principal"),
         Index("ix_agent_runs_status", "status"),
+        Index("ix_agent_runs_workspace_started", "workspace_id", "started_at"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    # Phase 28.1a: every run lives in exactly one workspace.  The
+    # bootstrap migration backfills existing rows to id=1 and the
+    # column is NOT NULL afterwards so the audit / lineage / cockpit
+    # routes can rely on a non-null workspace filter.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     principal: Mapped[str | None] = mapped_column(String(255), nullable=True)
     agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notebook_path: Mapped[str] = mapped_column(String(1024), nullable=False)

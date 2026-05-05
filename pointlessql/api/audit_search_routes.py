@@ -95,6 +95,10 @@ async def api_audit_search(
         raise ValidationError(f"axis must be one of {sorted(audit_fts.VALID_AXES)}")
     since_dt = _parse_iso8601("since", since)
     until_dt = _parse_iso8601("until", until)
+    # Phase 28.1a — scope the FTS5 result to the caller's resolved
+    # workspace.  Cross-workspace search lands as Sprint 28.7 (super-
+    # admin lens) and explicitly opts in via ``?workspace=all``.
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
     return audit_fts.search(
         request.app.state.session_factory,
         query=q,
@@ -102,6 +106,7 @@ async def api_audit_search(
         since=since_dt,
         until=until_dt,
         limit=limit,
+        workspace_id=workspace_id,
     )
 
 

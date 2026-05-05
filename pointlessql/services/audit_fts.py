@@ -27,9 +27,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 Axis = Literal["runs", "ops", "queries", "tool_calls", "audit_log", "all"]
-VALID_AXES: frozenset[str] = frozenset(
-    {"runs", "ops", "queries", "tool_calls", "audit_log", "all"}
-)
+VALID_AXES: frozenset[str] = frozenset({"runs", "ops", "queries", "tool_calls", "audit_log", "all"})
 
 
 def _is_sqlite(session: Session) -> bool:
@@ -65,7 +63,7 @@ def is_available(factory: sessionmaker[Session]) -> bool:
         return result is not None
 
 
-_FTS_RESERVED = re.compile(r'[^\w._\-\s]', re.UNICODE)
+_FTS_RESERVED = re.compile(r"[^\w._\-\s]", re.UNICODE)
 
 
 def _sanitise_query(query: str) -> str:
@@ -86,6 +84,7 @@ def search(
     since: datetime.datetime | None = None,
     until: datetime.datetime | None = None,
     limit: int = 50,
+    workspace_id: int | None = None,
 ) -> dict[str, Any]:
     """Search the audit lake; returns a JSON-shaped result dict.
 
@@ -103,10 +102,20 @@ def search(
         until: Optional upper bound (exclusive).
         limit: Max rows returned (``rank``-ascending → most
             relevant first).
+        workspace_id: Phase 28.1a — restrict the result to a single
+            workspace's audit corpus.  ``None`` skips the filter and
+            returns matches from every workspace, which is useful
+            for the Sprint 28.7 super-admin lens.  ``query_history``
+            and ``audit_log`` axes always carry ``workspace_id=1``
+            in 28.1a (their source-table column lands in 28.1b),
+            so calls with ``workspace_id != 1`` see no rows from
+            those two axes during the gap.
 
     Returns:
         ``{"available": bool, "query", "axis", "since", "until",
         "limit", "results": [...], "total_count": int}``.
+        Each result carries the new ``workspace_id`` field so the
+        caller can render a per-workspace badge in the cockpit.
         When ``available`` is ``False`` the result list is empty
         and the caller should surface "FTS not provisioned" copy.
 
@@ -123,6 +132,7 @@ def search(
         "since": since.isoformat() if since else None,
         "until": until.isoformat() if until else None,
         "limit": limit,
+        "workspace_id": workspace_id,
         "results": [],
         "total_count": 0,
     }
@@ -139,7 +149,8 @@ def search(
         params: dict[str, Any] = {"query": sanitised, "limit": limit}
         sql_parts: list[str] = [
             "SELECT s.axis, s.entity_id, s.run_id, s.principal, s.table_fqn, "
-            "snippet(audit_search, 5, '<mark>', '</mark>', '…', 16) AS snippet, "
+            "s.workspace_id, "
+            "snippet(audit_search, 6, '<mark>', '</mark>', '…', 16) AS snippet, "
             "rank "
             "FROM audit_search s "
             "WHERE audit_search MATCH :query"
@@ -147,6 +158,9 @@ def search(
         if axis != "all":
             sql_parts.append("AND s.axis = :axis")
             params["axis"] = axis
+        if workspace_id is not None:
+            sql_parts.append("AND s.workspace_id = :workspace_id")
+            params["workspace_id"] = workspace_id
         sql_parts.append("ORDER BY rank LIMIT :limit")
         sql = " ".join(sql_parts)
 
@@ -165,6 +179,7 @@ def search(
                     "run_id": row.run_id or None,
                     "principal": row.principal or None,
                     "table_fqn": row.table_fqn or None,
+                    "workspace_id": int(row.workspace_id) if row.workspace_id is not None else 1,
                     "snippet": row.snippet,
                     "rank": float(row.rank) if row.rank is not None else None,
                 }
@@ -184,17 +199,13 @@ def search(
 
 
 _AXIS_TIMESTAMP_QUERY: dict[str, str] = {
-    "runs": (
-        "SELECT id AS entity_id, started_at "
-        "FROM agent_runs WHERE id IN :ids"
-    ),
+    "runs": ("SELECT id AS entity_id, started_at FROM agent_runs WHERE id IN :ids"),
     "ops": (
         "SELECT CAST(id AS TEXT) AS entity_id, started_at "
         "FROM agent_run_operations WHERE id IN :ids"
     ),
     "queries": (
-        "SELECT CAST(id AS TEXT) AS entity_id, started_at "
-        "FROM query_history WHERE id IN :ids"
+        "SELECT CAST(id AS TEXT) AS entity_id, started_at FROM query_history WHERE id IN :ids"
     ),
     "tool_calls": (
         "SELECT CAST(id AS TEXT) AS entity_id, called_at AS started_at "
@@ -284,6 +295,17 @@ _AUDIT_LOG_TEXT = (
 )
 
 
+#: Phase 28.1a — every spec carries a ``workspace_id_expr`` that
+#: feeds the new ``workspace_id`` UNINDEXED column on
+#: :data:`_VTABLE_SQL`.  Source tables that already have
+#: ``workspace_id`` (Phase 28.1a: ``agent_runs``,
+#: ``agent_run_operations``, ``agent_run_tool_calls``) reference
+#: ``IFNULL(NEW.workspace_id, 1)``.  Source tables that haven't
+#: gained the column yet (``query_history``, ``audit_log`` — to be
+#: backfilled in Sprint 28.1b) write the literal ``1`` so the
+#: existing rows continue to surface in default-workspace searches;
+#: their trigger specs flip to ``IFNULL(NEW.workspace_id, 1)`` in
+#: Sprint 28.1b once those tables grow the column.
 _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
     {
         "table": "agent_runs",
@@ -292,6 +314,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "run_id_expr": "NEW.id",
         "principal_expr": "IFNULL(NEW.principal,'')",
         "table_fqn_expr": "''",
+        "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
         "text_expr": _RUNS_TEXT,
     },
     {
@@ -301,6 +324,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "run_id_expr": "IFNULL(NEW.agent_run_id,'')",
         "principal_expr": "''",
         "table_fqn_expr": "IFNULL(NEW.target_table,'')",
+        "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
         "text_expr": _OPS_TEXT,
     },
     {
@@ -310,6 +334,8 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "run_id_expr": "IFNULL(NEW.agent_run_id,'')",
         "principal_expr": "IFNULL(NEW.user_email,'')",
         "table_fqn_expr": "''",
+        # 28.1b will swap this to IFNULL(NEW.workspace_id, 1).
+        "workspace_id_expr": "1",
         "text_expr": _QUERIES_TEXT,
     },
     {
@@ -319,6 +345,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "run_id_expr": "IFNULL(NEW.agent_run_id,'')",
         "principal_expr": "''",
         "table_fqn_expr": "''",
+        "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
         "text_expr": _TOOL_CALLS_TEXT,
     },
     {
@@ -328,6 +355,8 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "run_id_expr": "''",
         "principal_expr": "IFNULL(NEW.user_email,'')",
         "table_fqn_expr": "IFNULL(NEW.target,'')",
+        # 28.1b will swap this to IFNULL(NEW.workspace_id, 1).
+        "workspace_id_expr": "1",
         "text_expr": _AUDIT_LOG_TEXT,
     },
 )
@@ -340,6 +369,7 @@ CREATE VIRTUAL TABLE audit_search USING fts5(
     run_id UNINDEXED,
     principal UNINDEXED,
     table_fqn UNINDEXED,
+    workspace_id UNINDEXED,
     text,
     tokenize="unicode61 separators '._-'"
 )
@@ -364,18 +394,22 @@ def _trigger_statements(spec: dict[str, str]) -> list[str]:
     run_id_expr = spec["run_id_expr"]
     principal_expr = spec["principal_expr"]
     table_fqn_expr = spec["table_fqn_expr"]
+    workspace_id_expr = spec.get("workspace_id_expr", "1")
     text_expr = spec["text_expr"]
     return [
         f"""
         CREATE TRIGGER audit_search_{axis}_ai AFTER INSERT ON {table}
         BEGIN
-            INSERT INTO audit_search(axis, entity_id, run_id, principal, table_fqn, text)
+            INSERT INTO audit_search(
+                axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+            )
             VALUES (
                 '{axis}',
                 CAST(NEW.{entity_col} AS TEXT),
                 {run_id_expr},
                 {principal_expr},
                 {table_fqn_expr},
+                {workspace_id_expr},
                 {text_expr}
             );
         END
@@ -392,13 +426,16 @@ def _trigger_statements(spec: dict[str, str]) -> list[str]:
         BEGIN
             DELETE FROM audit_search
             WHERE axis = '{axis}' AND entity_id = CAST(OLD.{entity_col} AS TEXT);
-            INSERT INTO audit_search(axis, entity_id, run_id, principal, table_fqn, text)
+            INSERT INTO audit_search(
+                axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+            )
             VALUES (
                 '{axis}',
                 CAST(NEW.{entity_col} AS TEXT),
                 {run_id_expr},
                 {principal_expr},
                 {table_fqn_expr},
+                {workspace_id_expr},
                 {text_expr}
             );
         END
@@ -406,10 +443,18 @@ def _trigger_statements(spec: dict[str, str]) -> list[str]:
     ]
 
 
+#: Phase 28.1a — every SELECT carries the new ``workspace_id``
+#: column.  ``query_history`` and ``audit_log`` haven't gained the
+#: column yet (Sprint 28.1b) so they emit the literal ``1`` to keep
+#: existing rows visible in default-workspace searches; the SELECTs
+#: flip to ``IFNULL(workspace_id, 1)`` in 28.1b.
 _INITIAL_POPULATION_SQL: tuple[str, ...] = (
     """
-    INSERT INTO audit_search(axis, entity_id, run_id, principal, table_fqn, text)
+    INSERT INTO audit_search(
+        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+    )
     SELECT 'runs', id, id, IFNULL(principal,''), '',
+           IFNULL(workspace_id, 1),
            IFNULL(id,'') || ' ' || IFNULL(principal,'') || ' ' ||
            IFNULL(agent_id,'') || ' ' || IFNULL(status,'') || ' ' ||
            IFNULL(denied_reason,'') || ' ' || IFNULL(tables_touched,'') || ' ' ||
@@ -417,29 +462,41 @@ _INITIAL_POPULATION_SQL: tuple[str, ...] = (
     FROM agent_runs
     """,
     """
-    INSERT INTO audit_search(axis, entity_id, run_id, principal, table_fqn, text)
+    INSERT INTO audit_search(
+        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+    )
     SELECT 'ops', CAST(id AS TEXT), IFNULL(agent_run_id,''), '', IFNULL(target_table,''),
+           IFNULL(workspace_id, 1),
            IFNULL(op_name,'') || ' ' || IFNULL(target_table,'') || ' ' ||
            IFNULL(error_message,'') || ' ' || IFNULL(params_json,'')
     FROM agent_run_operations
     """,
     """
-    INSERT INTO audit_search(axis, entity_id, run_id, principal, table_fqn, text)
+    INSERT INTO audit_search(
+        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+    )
     SELECT 'queries', CAST(id AS TEXT), IFNULL(agent_run_id,''), IFNULL(user_email,''), '',
+           1,
            IFNULL(sql_text,'') || ' ' || IFNULL(user_email,'') || ' ' ||
            IFNULL(read_kind,'') || ' ' || IFNULL(status,'')
     FROM query_history
     """,
     """
-    INSERT INTO audit_search(axis, entity_id, run_id, principal, table_fqn, text)
+    INSERT INTO audit_search(
+        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+    )
     SELECT 'tool_calls', CAST(id AS TEXT), IFNULL(agent_run_id,''), '', '',
+           IFNULL(workspace_id, 1),
            IFNULL(tool_name,'') || ' ' || IFNULL(args_json,'') || ' ' ||
            IFNULL(result_summary,'')
     FROM agent_run_tool_calls
     """,
     """
-    INSERT INTO audit_search(axis, entity_id, run_id, principal, table_fqn, text)
+    INSERT INTO audit_search(
+        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+    )
     SELECT 'audit_log', CAST(id AS TEXT), '', IFNULL(user_email,''), IFNULL(target,''),
+           1,
            IFNULL(action,'') || ' ' || IFNULL(target,'') || ' ' ||
            IFNULL(detail,'') || ' ' || IFNULL(user_email,'')
     FROM audit_log

@@ -3034,7 +3034,22 @@ PointlesSQL
 │   │   ``workspace_id``.  New deps ``current_workspace_id``,
 │   │   ``current_workspace``, ``require_workspace_admin``.
 │   │   28 new pytest cases.
-│   ├── Sprint 28.1a — agent_runs + agent_run_* + FTS5 surgery   ⏳
+│   ├── Sprint 28.1a — agent_runs + agent_run_* + FTS5 surgery   ✅
+│   │   workspace_id NOT NULL + server_default=1 added to all 5
+│   │   audit-trail source tables (Alembic ``aa1c3e5g7i9k``);
+│   │   compound indexes ``(workspace_id, started_at)`` and
+│   │   ``(workspace_id, agent_run_id)``.  Listing routes
+│   │   (``/api/agent-runs``, ``/api/agent-runs/operations``)
+│   │   add workspace filter; per-run audit-axis routes return
+│   │   404 for cross-workspace requests via extended
+│   │   ``ensure_run_visible``.  POST /api/agent-runs writes the
+│   │   request's resolved workspace; AgentRunOperation /
+│   │   AgentRunEvent / AgentRunToolCall write paths denormalise
+│   │   from the parent.  FTS5 ``audit_search`` rebuilt with a
+│   │   6th ``workspace_id UNINDEXED`` column; triggers populate
+│   │   from NEW.workspace_id (runs/ops/tool_calls) or literal 1
+│   │   (queries/audit_log — flipped in 28.1b).  10 new pytest
+│   │   cases.
 │   ├── Sprint 28.1b — lineage + audit_log + governance +        ⏳
 │   │   query_history get workspace_id.
 │   ├── Sprint 28.2 — User-owned + scheduler tables              ⏳

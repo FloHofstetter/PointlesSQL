@@ -98,7 +98,9 @@ async def api_record_tool_call(
         run_row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
         if run_row is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
+        # Phase 28.1a — denormalise workspace_id from the parent.
         tool_row = AgentRunToolCall(
+            workspace_id=int(run_row.workspace_id),
             agent_run_id=run_id,
             tool_name=tool_name,
             args_json=args_json,

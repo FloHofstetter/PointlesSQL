@@ -319,11 +319,23 @@ def record_operation(
 
     try:
         with session_factory() as session:
-            run_exists = session.scalar(select(AgentRun.id).where(AgentRun.id == agent_run_id))
+            # Phase 28.1a — derive workspace_id from the parent run.
+            # AgentRunOperation rows are scoped by the same workspace
+            # as their owning AgentRun.  We fetch the parent's
+            # workspace_id once and pass it through; the AuditUnavailableError
+            # below covers the "no such parent" path.
+            parent_row = session.scalar(
+                select(AgentRun.id, AgentRun.workspace_id).where(AgentRun.id == agent_run_id)
+            )
+            run_exists = parent_row
             if run_exists is None:
                 raise AuditUnavailableError(
                     f"agent_run_operations: agent_run_id {agent_run_id!r} is not registered"
                 )
+            parent_workspace_id = int(
+                session.scalar(select(AgentRun.workspace_id).where(AgentRun.id == agent_run_id))
+                or 1
+            )
             next_ordinal = (
                 session.scalar(
                     select(func.coalesce(func.max(AgentRunOperation.ordinal), 0)).where(
@@ -333,6 +345,7 @@ def record_operation(
                 or 0
             ) + 1
             row = AgentRunOperation(
+                workspace_id=parent_workspace_id,
                 agent_run_id=agent_run_id,
                 ordinal=next_ordinal,
                 op_name=op_name,
@@ -838,7 +851,7 @@ def _stamp_audit_marker(session_factory: sessionmaker[Session], *, op_id: int, m
                         raw = parsed.get("markers")
                         if isinstance(raw, list):
                             existing_markers = [str(m) for m in raw]
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     # Corrupted blob — discard and start fresh; we
                     # never lose successful primitive output here, only
                     # the previous warning history.

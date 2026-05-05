@@ -64,7 +64,7 @@ async def api_agent_run_audit_lineage(
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
-    ensure_run_visible(factory, run_id)
+    ensure_run_visible(factory, run_id, workspace_id=int(getattr(request.state, "workspace_id", 1)))
     from pointlessql.api.runs_routes import load_lineage_summary_for_run
 
     payload = load_lineage_summary_for_run(request, run_id, op_id=op_id)
@@ -108,7 +108,7 @@ async def api_agent_run_audit_rejects(
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
-    ensure_run_visible(factory, run_id)
+    ensure_run_visible(factory, run_id, workspace_id=int(getattr(request.state, "workspace_id", 1)))
     from pointlessql.api.runs_routes import load_rejects_for_run
 
     rows = load_rejects_for_run(request, run_id, op_id=op_id)
@@ -179,7 +179,7 @@ async def api_agent_run_audit_value_changes(
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
-    ensure_run_visible(factory, run_id)
+    ensure_run_visible(factory, run_id, workspace_id=int(getattr(request.state, "workspace_id", 1)))
     user = get_user(request)
     cleartext_authorised = bool(user.get("is_admin")) and not mask
     rows: list[dict[str, Any]] = []
@@ -250,7 +250,9 @@ async def api_agent_run_audit_external_writes(
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
-    run_row = ensure_run_visible(factory, run_id)
+    run_row = ensure_run_visible(
+        factory, run_id, workspace_id=int(getattr(request.state, "workspace_id", 1))
+    )
     tables_touched: list[str] = []
     if run_row.tables_touched:
         try:
@@ -313,7 +315,7 @@ async def api_agent_run_audit_column_lineage(
     require_supervisor(request)
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
-    ensure_run_visible(factory, run_id)
+    ensure_run_visible(factory, run_id, workspace_id=int(getattr(request.state, "workspace_id", 1)))
     rows: list[dict[str, Any]] = []
     with factory() as session:
         stmt = (

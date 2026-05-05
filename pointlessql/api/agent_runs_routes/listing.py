@@ -73,9 +73,14 @@ async def api_list_agent_run_operations(
             since_dt = since_dt.replace(tzinfo=UTC)
 
     factory = request.app.state.session_factory
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
     out: list[dict[str, Any]] = []
     with factory() as session:
-        stmt = select(AgentRunOperation).order_by(AgentRunOperation.started_at.desc())
+        stmt = (
+            select(AgentRunOperation)
+            .where(AgentRunOperation.workspace_id == workspace_id)
+            .order_by(AgentRunOperation.started_at.desc())
+        )
         if target is not None and target.strip():
             stmt = stmt.where(AgentRunOperation.target_table == target.strip())
         if errored:
@@ -159,8 +164,14 @@ async def api_list_agent_runs(
             since_dt = since_dt.replace(tzinfo=UTC)
 
     factory = request.app.state.session_factory
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
     with factory() as session:
-        stmt = select(AgentRun).order_by(AgentRun.started_at.desc()).limit(limit)
+        stmt = (
+            select(AgentRun)
+            .where(AgentRun.workspace_id == workspace_id)
+            .order_by(AgentRun.started_at.desc())
+            .limit(limit)
+        )
         if principal is not None and principal.strip():
             stmt = stmt.where(AgentRun.principal == principal.strip())
         if agent_id is not None and agent_id.strip():

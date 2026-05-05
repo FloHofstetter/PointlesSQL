@@ -158,6 +158,13 @@ async def api_create_agent_run(
     else:
         started_at = datetime.now(UTC)
 
+    # Phase 28.1a — every new agent_run lands in the workspace the
+    # request resolved to.  The middleware already attached
+    # request.state.workspace_id (with the X-Workspace > api_key pin
+    # > cookie > user.default > 1 priority chain).  The FK column
+    # cascades to agent_run_sources via explicit assignment.
+    workspace_id_for_run = int(getattr(request.state, "workspace_id", 1))
+
     factory = request.app.state.session_factory
     with factory() as session:
         existing = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
@@ -165,6 +172,7 @@ async def api_create_agent_run(
             raise ValidationError(f"agent run {run_id!r} already registered")
         row = AgentRun(
             id=run_id,
+            workspace_id=workspace_id_for_run,
             principal=principal,
             agent_id=agent_id,
             notebook_path=notebook_path,
@@ -181,6 +189,7 @@ async def api_create_agent_run(
         # pointlessql.db) sees the parent in the same transaction.
         session.flush()
         source_row = AgentRunSource(
+            workspace_id=workspace_id_for_run,
             agent_run_id=run_id,
             source_bytes=source_bytes,
             source_sha=computed_sha,
@@ -252,9 +261,7 @@ async def api_finish_agent_run(
     )
 
     cost_gate_trigger = (
-        coerce_cost_gate_trigger(body["cost_gate_trigger"])
-        if "cost_gate_trigger" in body
-        else None
+        coerce_cost_gate_trigger(body["cost_gate_trigger"]) if "cost_gate_trigger" in body else None
     )
 
     cost_est = coerce_cost_est(body["cost_est"]) if "cost_est" in body else None
