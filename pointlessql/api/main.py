@@ -142,15 +142,82 @@ _TEMPLATES.env.globals["status_class"] = _status_class
 _original_template_response = _TEMPLATES.TemplateResponse
 
 
+def _resolve_workspace_context(request: Request) -> dict[str, Any]:
+    """Build the workspace-scoped Jinja context for one TemplateResponse call.
+
+    Returns a dict with ``current_workspace``, ``available_workspaces``
+    (the list rendered by the topbar switcher), and
+    ``current_workspace_primary_catalog`` (used by the catalog tree
+    to pre-expand on first load).  Every lookup is wrapped in a
+    try/except so a transient DB failure during template render
+    falls back to a blank context rather than 500ing the whole
+    page.
+    """
+    factory = getattr(request.app.state, "session_factory", None)
+    workspace_id = getattr(request.state, "workspace_id", None)
+    user = getattr(request.state, "user", None)
+    if factory is None or workspace_id is None:
+        return {
+            "current_workspace": None,
+            "available_workspaces": [],
+            "current_workspace_primary_catalog": None,
+        }
+    try:
+        from sqlalchemy import select as _select
+
+        from pointlessql.models import Workspace, WorkspaceCatalogPin
+        from pointlessql.services import workspaces as ws_service
+
+        with factory() as session:
+            current = session.get(Workspace, workspace_id)
+            primary_pin = None
+            if current is not None:
+                primary_pin = session.scalar(
+                    _select(WorkspaceCatalogPin).where(
+                        WorkspaceCatalogPin.workspace_id == current.id,
+                        WorkspaceCatalogPin.mode == "primary",
+                    )
+                )
+            if current is not None:
+                session.expunge(current)
+
+        available: list[Any] = []
+        if user is not None and isinstance(user.get("id"), int) and user["id"] > 0:
+            available = ws_service.list_workspaces_for_user(factory, user_id=int(user["id"]))
+
+        return {
+            "current_workspace": current,
+            "available_workspaces": available,
+            "current_workspace_primary_catalog": (
+                primary_pin.catalog_name if primary_pin is not None else None
+            ),
+        }
+    except Exception:  # noqa: BLE001 — template render must not 500 on a workspace-lookup hiccup
+        logger.debug("Failed to resolve workspace context for template", exc_info=True)
+        return {
+            "current_workspace": None,
+            "available_workspaces": [],
+            "current_workspace_primary_catalog": None,
+        }
+
+
 def _template_response_with_user(request: Request, *args: Any, **kwargs: Any) -> Response:
-    """Wrap TemplateResponse to inject ``current_user`` into every context."""
+    """Wrap TemplateResponse to inject user + workspace context."""
     # TemplateResponse(request, name, context) or (name, context, request=request)
     # Starlette 0.37+ signature: TemplateResponse(request, name, context={}, ...)
+    workspace_ctx = _resolve_workspace_context(request)
+    user = getattr(request.state, "user", None)
     if "context" in kwargs:
-        kwargs["context"].setdefault("current_user", getattr(request.state, "user", None))
+        ctx = kwargs["context"]
+        ctx.setdefault("current_user", user)
+        for key, value in workspace_ctx.items():
+            ctx.setdefault(key, value)
     elif len(args) >= 2 and isinstance(args[1], dict):
         mutable = list(args)
-        mutable[1].setdefault("current_user", getattr(request.state, "user", None))
+        ctx = mutable[1]
+        ctx.setdefault("current_user", user)
+        for key, value in workspace_ctx.items():
+            ctx.setdefault(key, value)
         args = tuple(mutable)
     return _original_template_response(request, *args, **kwargs)
 

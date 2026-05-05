@@ -165,6 +165,16 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/mlflow/",
     ),
+    "workspace.what-is-a-workspace": HelpEntry(
+        title="What is a workspace?",
+        body=(
+            "A governance container for runs, jobs, dashboards "
+            "and audit trails. Catalogs stay global — every "
+            "workspace can read any UC catalog — but compliance "
+            "data is workspace-isolated."
+        ),
+        learn_more="/concepts/workspaces/",
+    ),
 }
 
 

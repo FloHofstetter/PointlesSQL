@@ -10,8 +10,10 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from pointlessql.api.middleware import WORKSPACE_COOKIE_NAME
 from pointlessql.services import auth, csrf
 from pointlessql.services import oidc as oidc_service
+from pointlessql.services import workspaces as workspaces_service
 from pointlessql.settings import Settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -179,6 +181,59 @@ async def current_user(request: Request):
     if user is None:
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
     return JSONResponse(user)
+
+
+@router.post("/switch-workspace")
+async def switch_workspace(request: Request, slug: str = Form()):
+    """Persist the user's workspace selection in the ``pql_workspace`` cookie.
+
+    The endpoint validates that the caller is a member of the
+    requested workspace before writing the cookie; non-members get
+    a 403 so a stale dropdown option cannot escalate into a probe
+    of a workspace the user has been removed from.
+
+    Args:
+        request: Incoming FastAPI request.
+        slug: Target workspace slug (form-encoded so the standard
+            HTML ``<form>`` submit + CSRF flow works without
+            JavaScript).
+
+    Returns:
+        303 redirect to ``/`` so the topbar re-renders with the
+        new workspace context.
+
+    Raises:
+        AuthorizationError: When the caller is not authenticated.
+    """
+    user = getattr(request.state, "user", None)
+    if user is None:
+        return JSONResponse({"error": "Not authenticated"}, status_code=401)
+
+    factory = _factory(request)
+    cleaned = slug.strip().lower()
+    ws = workspaces_service.get_workspace_by_slug(factory, slug=cleaned)
+    if ws is None:
+        return JSONResponse(
+            {"error": f"workspace {cleaned!r} does not exist"},
+            status_code=404,
+        )
+    if not workspaces_service.is_member(factory, workspace_id=ws.id, user_id=int(user["id"])):
+        return JSONResponse(
+            {"error": "not a member of that workspace"},
+            status_code=403,
+        )
+
+    settings = _settings(request)
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        WORKSPACE_COOKIE_NAME,
+        cleaned,
+        httponly=True,
+        samesite="lax",
+        max_age=settings.auth.jwt_expiry_hours * 3600,
+        path="/",
+    )
+    return response
 
 
 # ---------------------------------------------------------------------------

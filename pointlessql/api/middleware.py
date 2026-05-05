@@ -47,11 +47,15 @@ from pointlessql.types import UserInfo
 #: precedence rules.
 WORKSPACE_HEADER: str = "x-workspace"
 
-#: Session-cookie field name carrying the user's last selected
-#: workspace slug.  Read by :func:`auth_middleware` and written by
-#: ``POST /auth/switch-workspace`` (Sprint 28.4).  The cookie itself
-#: is the same JWT-bearing ``pql_session`` cookie — the slug rides
-#: alongside the user-id payload in :mod:`pointlessql.services.auth`.
+#: Cookie name carrying the user's last-selected workspace slug.
+#: Written by ``POST /auth/switch-workspace`` (Sprint 28.4) and
+#: read by :func:`_read_workspace_slug_from_session` so the
+#: workspace persists across page navigations without a JWT
+#: re-encode hop.  Kept as a sibling of ``pql_session`` rather
+#: than embedded in the JWT payload because the slug changes more
+#: frequently than auth state and we do not want to invalidate the
+#: session on every switch.
+WORKSPACE_COOKIE_NAME: str = "pql_workspace"
 WORKSPACE_COOKIE_FIELD: str = "current_workspace_slug"
 
 logger = logging.getLogger(__name__)
@@ -214,15 +218,18 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
 
 
 def _read_workspace_slug_from_session(request: Request) -> str | None:
-    """Return the ``current_workspace_slug`` field stashed on the JWT cookie.
+    """Return the slug stashed in the ``pql_workspace`` cookie, if any.
 
-    Sprint 28.0 stores nothing on the cookie yet — the JWT payload
-    only carries ``sub``/``email``/``is_admin``.  Sprint 28.4 will
-    stamp the slug into a separate cookie or extend the JWT
-    payload; until then this hop returns ``None`` so the resolver
-    falls through to the user-default tier.
+    Written by ``POST /auth/switch-workspace`` on every successful
+    workspace switch.  An invalid slug is tolerated upstream — the
+    resolver falls through to the user-default tier rather than
+    raising.
     """
-    return None
+    raw = request.cookies.get(WORKSPACE_COOKIE_NAME)
+    if not raw:
+        return None
+    cleaned = raw.strip()
+    return cleaned or None
 
 
 def _workspace_forbidden(path: str) -> Response:

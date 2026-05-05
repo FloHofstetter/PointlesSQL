@@ -70,6 +70,17 @@ function csrfToken() {
  return meta ? meta.content : '';
 }
 
+// Sprint 28.4: read the active workspace slug off the same meta-tag
+// shape used for the CSRF token.  Auto-attached as ``X-Workspace`` on
+// every pqlApi.fetch() call so workspace-scoped server filters apply
+// uniformly without per-call wiring.  Returns '' (not falsy) when the
+// page didn't render the meta tag (anonymous/error pages); we guard
+// the header injection on a truthy value below.
+function workspaceSlug() {
+ const meta = document.querySelector('meta[name="workspace-slug"]');
+ return meta ? meta.content : '';
+}
+
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 async function apiFetch(url, init) {
@@ -101,6 +112,17 @@ async function apiFetch(url, init) {
  if (!opts.headers['X-CSRF-Token']) {
  opts.headers['X-CSRF-Token'] = token;
  }
+ }
+ }
+
+ // Sprint 28.4: auto-attach X-Workspace on every call (safe + unsafe
+ // verbs alike — GETs need the workspace filter just as much as
+ // mutations). Caller-supplied header wins.
+ const slug = workspaceSlug();
+ if (slug) {
+ opts.headers = Object.assign({}, opts.headers || {});
+ if (!opts.headers['X-Workspace']) {
+ opts.headers['X-Workspace'] = slug;
  }
  }
 
@@ -137,4 +159,4 @@ export const pqlApi = {
 
 // exported so call-sites outside pqlApi can stop hand-rolling
 // ``if (window.pqlToast) window.pqlToast.X(msg)`` guards (14× earlier).
-export { toast, csrfToken };
+export { toast, csrfToken, workspaceSlug };

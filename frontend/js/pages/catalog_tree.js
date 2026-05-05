@@ -9,9 +9,23 @@
  * relying on inline scripts being re-evaluated mid-swap.
  */
 
-const STORAGE_KEY = 'pql.tree';
-const OPEN_KEY = 'pql.tree.open';
-const RECENTS_KEY = 'pql.recentTables';
+// Sprint 28.4: keys are namespaced by workspace slug so a user that
+// switches between workspace-A and workspace-B in the same browser
+// tab gets independent tree caches and recent-tables lists.  The slug
+// is read fresh on every key access — there is no caching at module
+// load — so the meta-tag swap that follows /auth/switch-workspace's
+// reload is picked up without a hard module reload.
+function workspaceSlug() {
+ const meta = document.querySelector('meta[name="workspace-slug"]');
+ return meta && meta.content ? meta.content : 'default';
+}
+const STORAGE_KEY = () => 'pql.tree.' + workspaceSlug();
+const OPEN_KEY = () => 'pql.tree.open.' + workspaceSlug();
+const RECENTS_KEY = () => 'pql.recentTables.' + workspaceSlug();
+function primaryCatalog() {
+ const meta = document.querySelector('meta[name="workspace-primary-catalog"]');
+ return meta && meta.content ? meta.content : '';
+}
 
 export function pathFromUrl() {
  const cat = window.location.pathname.match(
@@ -55,7 +69,7 @@ export function pathFromUrl() {
 
 function loadRecents() {
  try {
- const raw = localStorage.getItem(RECENTS_KEY);
+ const raw = localStorage.getItem(RECENTS_KEY());
  if (!raw) return [];
  const parsed = JSON.parse(raw);
  return Array.isArray(parsed) ? parsed : [];
@@ -90,7 +104,7 @@ export function catalogTree() {
  toggle(key) {
  this.open[key] = !this.open[key];
  try {
- sessionStorage.setItem(OPEN_KEY, JSON.stringify(this.open));
+ sessionStorage.setItem(OPEN_KEY(), JSON.stringify(this.open));
  } catch (e) {}
  },
 
@@ -168,7 +182,7 @@ export function catalogTree() {
  },
  clearRecents() {
  try {
- localStorage.removeItem(RECENTS_KEY);
+ localStorage.removeItem(RECENTS_KEY());
  } catch (e) {}
  this.recents = [];
  fetch('/api/recents', { method: 'DELETE' }).catch(() => {});
@@ -191,9 +205,9 @@ export function catalogTree() {
  async load() {
  let hadOpenState = false;
  try {
- const cached = sessionStorage.getItem(STORAGE_KEY);
+ const cached = sessionStorage.getItem(STORAGE_KEY());
  if (cached) this.tree = JSON.parse(cached);
- const openCached = sessionStorage.getItem(OPEN_KEY);
+ const openCached = sessionStorage.getItem(OPEN_KEY());
  if (openCached) {
  this.open = JSON.parse(openCached);
  hadOpenState = true;
@@ -212,8 +226,15 @@ export function catalogTree() {
  this.activePath.schema
  ] = true;
  }
+ // Sprint 28.4: pre-expand the workspace's primary-pinned
+ // catalog on first load so the sidebar opens at the most
+ // relevant tree node without forcing the user to drill down.
+ const primary = primaryCatalog();
+ if (primary) {
+ this.open['c:' + primary] = true;
+ }
  try {
- sessionStorage.setItem(OPEN_KEY, JSON.stringify(this.open));
+ sessionStorage.setItem(OPEN_KEY(), JSON.stringify(this.open));
  } catch (e) {}
  }
 
@@ -224,7 +245,7 @@ export function catalogTree() {
 
  async reload() {
  try {
- sessionStorage.removeItem(STORAGE_KEY);
+ sessionStorage.removeItem(STORAGE_KEY());
  } catch (e) {}
  this.tree = null;
  await this.fetchTree();
@@ -239,7 +260,7 @@ export function catalogTree() {
  const data = await res.json();
  this.tree = data;
  try {
- sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+ sessionStorage.setItem(STORAGE_KEY(), JSON.stringify(data));
  } catch (e) {}
  } catch (e) {
  if (!this.tree) {
