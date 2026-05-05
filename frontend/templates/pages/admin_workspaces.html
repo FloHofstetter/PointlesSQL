@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Workspaces · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Admin"},
+ {"label": "Workspaces"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-folder2-open fs-3"></i>
+        <h1 class="h3 mb-0">Workspaces</h1>
+    </div>
+    <span class="text-muted small">
+        {{ active_workspaces|length }} active{% if archived_workspaces %}, {{ archived_workspaces|length }} archived{% endif %}
+    </span>
+</div>
+
+<div class="card mb-4" x-data="adminWorkspaces()">
+    <div class="card-header">
+        <strong>Create workspace</strong>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="ws-slug">Slug</label>
+                <input id="ws-slug" type="text" class="form-control form-control-sm"
+                       x-model="form.slug" placeholder="prod-audit"
+                       maxlength="64">
+                <div class="form-text">Lower-case letters / digits / `-` / `_`. Used in URLs and the X-Workspace header.</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small mb-1" for="ws-name">Name</label>
+                <input id="ws-name" type="text" class="form-control form-control-sm"
+                       x-model="form.name" placeholder="Production audit" maxlength="200">
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small mb-1" for="ws-desc">Description (optional)</label>
+                <input id="ws-desc" type="text" class="form-control form-control-sm"
+                       x-model="form.description" maxlength="500">
+            </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+            <button type="button" class="btn btn-primary btn-sm"
+                    :disabled="!form.slug || !form.name || creating"
+                    @click="create()">
+                <span x-show="!creating">Create workspace</span>
+                <span x-show="creating">Creating&hellip;</span>
+            </button>
+            <span x-show="error" class="text-danger small align-self-center" x-text="error"></span>
+        </div>
+    </div>
+</div>
+
+<h2 class="h5 mb-2">Active workspaces</h2>
+<div class="table-responsive mb-4">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Slug</th>
+                <th>Name</th>
+                <th class="text-end">Members</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ws in active_workspaces %}
+            <tr data-ws-id="{{ ws.id }}" data-ws-slug="{{ ws.slug }}">
+                <td><code>{{ ws.slug }}</code></td>
+                <td>{{ ws.name }}{% if ws.description %}<div class="text-muted small">{{ ws.description }}</div>{% endif %}</td>
+                <td class="text-end">{{ member_counts.get(ws.id, 0) }}</td>
+                <td class="text-muted small">{{ ws.created_at.strftime('%Y-%m-%d') if ws.created_at else '—' }}</td>
+                <td>
+                    {% if ws.id != 1 %}
+                    <button type="button" class="btn btn-sm btn-outline-warning"
+                            x-data="archiveButton({{ ws.id }}, {{ ws.slug|tojson }})"
+                            @click="archive()">
+                        <i class="bi bi-archive"></i> Archive
+                    </button>
+                    {% else %}
+                    <span class="badge text-bg-secondary" title="The default workspace cannot be archived.">default</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-muted">No active workspaces.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if archived_workspaces %}
+<h2 class="h5 mb-2 text-muted">Archived</h2>
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Slug</th>
+                <th>Name</th>
+                <th>Archived at</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ws in archived_workspaces %}
+            <tr>
+                <td><code>{{ ws.slug }}</code></td>
+                <td>{{ ws.name }}</td>
+                <td class="text-muted small">{{ ws.archived_at.strftime('%Y-%m-%d %H:%M UTC') if ws.archived_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.adminWorkspaces = function () {
+    return {
+        form: { slug: '', name: '', description: '' },
+        creating: false,
+        error: '',
+
+        async create() {
+            this.error = '';
+            this.creating = true;
+            const body = {
+                slug: this.form.slug.trim(),
+                name: this.form.name.trim(),
+            };
+            if (this.form.description) body.description = this.form.description.trim();
+            const res = await window.pqlApi.fetch('/api/admin/workspaces', {
+                method: 'POST',
+                body: body,
+            });
+            this.creating = false;
+            if (!res.ok) {
+                this.error = res.error || 'Failed to create workspace';
+                return;
+            }
+            window.pqlApi.reloadWithToast('Workspace created.');
+        },
+    };
+};
+
+window.archiveButton = function (workspaceId, slug) {
+    return {
+        async archive() {
+            if (!window.confirm('Archive workspace "' + slug + '"? Data is preserved but the workspace hides from listings.')) {
+                return;
+            }
+            const res = await window.pqlApi.fetch(
+                '/api/admin/workspaces/' + workspaceId + '/archive',
+                { method: 'POST' },
+            );
+            if (!res.ok) return;
+            window.pqlApi.reloadWithToast('Workspace archived.');
+        },
+    };
+};
+</script>
+{% endblock %}

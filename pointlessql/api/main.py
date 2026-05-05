@@ -25,6 +25,9 @@ from pointlessql.api.admin_routes import router as admin_router
 from pointlessql.api.admin_workspace_pins_routes import (
     router as admin_workspace_pins_router,
 )
+from pointlessql.api.admin_workspaces_routes import (
+    router as admin_workspaces_router,
+)
 from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
@@ -546,6 +549,7 @@ app.include_router(admin_router)
 app.include_router(admin_api_keys_router)
 app.include_router(admin_external_writes_router)
 app.include_router(admin_workspace_pins_router)
+app.include_router(admin_workspaces_router)
 app.include_router(review_destinations_router)
 app.include_router(audit_sinks_router)
 app.include_router(ml_router)

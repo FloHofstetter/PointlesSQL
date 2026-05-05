@@ -77,12 +77,13 @@ class User(Base):
     # ``secrets.token_urlsafe``; stays ``NULL`` for users who never
     # access the feed.
     feed_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Phase 28.0: every user pre-seeded into the ``default`` workspace
-    # at migration time.  Stays nullable in 28.0 so the FK column can
-    # be added before workspace_members backfill completes; flipped to
-    # NOT NULL in Sprint 28.6 once the admin UI exists.  The middleware
-    # falls back to id=1 when this is NULL so the request path is safe
-    # even mid-rollout.
-    default_workspace_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("workspaces.id"), nullable=True
+    # Phase 28.6: every user has a default workspace.  28.0 created the
+    # column nullable + bootstrap-backfilled it; 28.6's migration
+    # ``dd4f6h8j0l2n`` flips it to NOT NULL once the admin-UI rollout
+    # is in place.  Server-side default of 1 keeps single-tenant
+    # installs and direct-ORM test fixtures working — every new user
+    # row lands in the seeded ``default`` workspace unless a caller
+    # explicitly names another.
+    default_workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
