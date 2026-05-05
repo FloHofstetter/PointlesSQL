@@ -1916,7 +1916,7 @@ PointlesSQL
 │           (reverse-index "runs by table"), 18.9 (cell-level
 │           run-diff), 18.10 (anomaly-memoization, contingent)
 │           queued in the Phase 18.6+ plan.
-│   └── Sprint 18.7 — Full-text search across audit lake     ✅
+│   ├── Sprint 18.7 — Full-text search across audit lake     ✅
 │       └── New SQLite FTS5 virtual table ``audit_search``
 │           (Alembic ``y5u7v9w1x3z5``) populated by triggers
 │           on ``agent_runs`` / ``agent_run_operations`` /
@@ -1935,6 +1935,21 @@ PointlesSQL
 │           Alembic ``include_object`` filter widens to skip
 │           the FTS5 shadow tables so ``alembic check`` stays
 │           green.
+│   └── Sprint 18.8 — Runs-by-table reverse index            ✅
+│       └── Flips the forward "what did this run touch?"
+│           direction.  New auditor-scope endpoint
+│           ``GET /api/audit/by-table?fqn=…&kind=…``  with
+│           three relationship axes: ``touched`` (declared in
+│           ``AgentRun.tables_touched``), ``written`` (op
+│           ``target_table`` *or* ``lineage_value_changes``
+│           target), ``read`` (referenced via
+│           ``query_history_tables``).  No new schema —
+│           tables_touched JSON containment uses
+│           dialect-portable ``LIKE '%"<fqn>"%'``.  New HTML
+│           page ``/audit/by-table/{fqn:path}`` with three
+│           tabs that fetch on first activation.  Catalog
+│           table-detail page header carries a "Runs that
+│           touched this table" cross-link.
 │
 ├── Phase 19 — Audit-Reviewer Agent + Grafana             ✅ closed
 │   │

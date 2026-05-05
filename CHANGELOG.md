@@ -6,6 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 18.8 — runs-by-table reverse index.**  Flips the
+  forward "what did this run touch?" direction on its head.
+  New auditor-scope ``GET /api/audit/by-table?fqn=…&kind=…``
+  with three relationship axes: ``touched`` (declared in
+  ``AgentRun.tables_touched``), ``written`` (op
+  ``target_table`` *or* ``lineage_value_changes`` target),
+  ``read`` (referenced via ``query_history_tables``).  No
+  new schema — ``tables_touched`` JSON containment uses
+  dialect-portable ``LIKE '%"<fqn>"%'``.  New HTML page
+  ``/audit/by-table/{fqn:path}`` with three lazy-loaded tabs.
+  Catalog table-detail page header carries a "Runs that
+  touched this table" cross-link.
+
 - **Sprint 18.7 — full-text search across the audit lake.**
   New SQLite FTS5 virtual table ``audit_search`` (Alembic
   ``y5u7v9w1x3z5``) indexed by INSERT/UPDATE/DELETE triggers
