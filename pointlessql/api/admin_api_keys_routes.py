@@ -77,7 +77,10 @@ async def api_admin_create_api_key(
 
     Args:
         request: Incoming FastAPI request.
-        body: JSON ``{name: str, supervisor?: bool, auditor?: bool}``.
+        body: JSON ``{name: str, supervisor?: bool, auditor?: bool,
+            workspace_id?: int}``.  ``workspace_id`` defaults to ``1``
+            (the install-default workspace) so single-tenant clients
+            never have to name one.
 
     Returns:
         ``{name, secret, secret_prefix, supervisor, auditor,
@@ -85,7 +88,8 @@ async def api_admin_create_api_key(
         now or lose it.
 
     Raises:
-        ValidationError: ``name`` missing or empty.
+        ValidationError: ``name`` missing or empty, or
+            ``workspace_id`` not a positive int.
     """
     require_admin(request)
     name_raw = body.get("name")
@@ -93,6 +97,9 @@ async def api_admin_create_api_key(
         raise ValidationError("name must be a non-empty string")
     supervisor = bool(body.get("supervisor", False))
     auditor = bool(body.get("auditor", False))
+    workspace_id_raw = body.get("workspace_id", 1)
+    if not isinstance(workspace_id_raw, int) or workspace_id_raw < 1:
+        raise ValidationError("workspace_id must be a positive integer")
     user = get_user(request)
     try:
         row, plaintext = api_keys_service.create_api_key(
@@ -101,6 +108,7 @@ async def api_admin_create_api_key(
             supervisor=supervisor,
             auditor=auditor,
             created_by_user_id=user.get("id") or None,
+            workspace_id=workspace_id_raw,
         )
     except ValueError as exc:
         raise ValidationError(str(exc)) from exc
@@ -108,7 +116,7 @@ async def api_admin_create_api_key(
         request,
         "api_key.created",
         f"api_key:{row.name}",
-        {"supervisor": supervisor, "auditor": auditor},
+        {"supervisor": supervisor, "auditor": auditor, "workspace_id": workspace_id_raw},
     )
     return {
         "name": row.name,

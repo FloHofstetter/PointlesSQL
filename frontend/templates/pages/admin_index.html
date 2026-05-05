@@ -115,5 +115,42 @@
             </div>
         </a>
     </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="/admin/api-keys" class="card h-100 text-decoration-none text-body pql-admin-card"
+           data-admin-card="api-keys">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-key fs-4"></i>
+                    <h2 class="h5 mb-0">API keys</h2>
+                    {% if active_api_keys %}
+                    <span class="badge bg-secondary ms-auto">{{ active_api_keys }}</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted small mb-0">
+                    Bearer tokens for plugin / agent / CLI access.
+                    Plaintext shown once; revoke is soft so audit
+                    attribution survives rotation.
+                </p>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-6 col-lg-4">
+        <a href="/admin/system-info" class="card h-100 text-decoration-none text-body pql-admin-card"
+           data-admin-card="system-info">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-info-circle fs-4"></i>
+                    <h2 class="h5 mb-0">System info</h2>
+                </div>
+                <p class="text-muted small mb-0">
+                    Read-only: PII mode, OIDC group mapping, system_keys
+                    inventory, API-key scope counts.  Configured via
+                    env vars; restart required.
+                </p>
+            </div>
+        </a>
+    </div>
 </div>
 {% endblock %}

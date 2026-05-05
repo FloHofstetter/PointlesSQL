@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}System info · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "System info"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-info-circle fs-3"></i>
+        <h1 class="h3 mb-0">System info</h1>
+    </div>
+    <span class="text-muted small">Read-only.  Configured via env vars.</span>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle me-1"></i>
+    All values on this page are <strong>read-only</strong>.  Most are
+    set via <code>POINTLESSQL_*</code> environment variables and require
+    a process restart to change — wiring an admin form would silently
+    desync from <code>os.environ</code>.  Rotate <code>system_keys</code>
+    rows via SQL or the dedicated CLI; that flow is not exposed here
+    because re-hashing already-stored audit data needs a backfill that
+    a one-click button cannot supply safely.
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card h-100" data-section="pii-mode">
+            <div class="card-header"><strong>PII mode</strong></div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <th class="text-nowrap" style="width: 40%;">Active mode</th>
+                            <td>
+                                <code>{{ pii_mode }}</code>
+                                {% if pii_mode == "store_clear" %}
+                                <span class="badge bg-danger ms-2">cleartext</span>
+                                {% elif pii_mode == "hash_only" %}
+                                <span class="badge bg-success ms-2">hashed</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark ms-2">redacted+logged</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Env override</th>
+                            <td><code>POINTLESSQL_AUDIT_PII_MODE</code></td>
+                        </tr>
+                        <tr>
+                            <th>PII hash secret</th>
+                            <td>
+                                {% if pii_hash_secret_present %}
+                                <span class="badge bg-success">present</span>
+                                {% if pii_hash_secret_created_at %}
+                                <span class="text-muted small ms-1">since {{ pii_hash_secret_created_at[:10] }}</span>
+                                {% endif %}
+                                {% else %}
+                                <span class="badge bg-light text-muted border">missing</span>
+                                <span class="text-muted small ms-1">
+                                    (lazy-generated on first hash_only write)
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Mask in admin views</th>
+                            <td>
+                                {% if pii_mask_default %}
+                                <span class="badge bg-success">on</span>
+                                {% else %}
+                                <span class="badge bg-light text-muted border">off</span>
+                                {% endif %}
+                                <span class="text-muted small ms-1">
+                                    <code>POINTLESSQL_AUDIT_PII_MASK_DEFAULT</code>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100" data-section="api-key-stats">
+            <div class="card-header"><strong>API keys</strong></div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <th class="text-nowrap" style="width: 50%;">Active</th>
+                            <td>{{ api_key_count_active }}</td>
+                        </tr>
+                        <tr>
+                            <th>Revoked (historical)</th>
+                            <td>{{ api_key_count_revoked }}</td>
+                        </tr>
+                        <tr>
+                            <th>Supervisor scope</th>
+                            <td>{{ api_key_count_supervisor }}</td>
+                        </tr>
+                        <tr>
+                            <th>Auditor scope</th>
+                            <td>{{ api_key_count_auditor }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <a class="btn btn-outline-primary btn-sm mt-3" href="/admin/api-keys">
+                    Manage keys <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card" data-section="oidc-mapping">
+            <div class="card-header"><strong>OIDC group → workspace + scope mapping</strong></div>
+            <div class="card-body">
+                <p class="text-muted small mb-2">
+                    Configured via <code>POINTLESSQL_OIDC_GROUP_MAP</code>;
+                    restart required.  Empty list = every OIDC user
+                    lands in the install-default workspace with no
+                    extra scopes.  Phase 29.3.
+                </p>
+                {% if not oidc_enabled %}
+                <div class="alert alert-secondary small mb-0">
+                    OIDC is <strong>disabled</strong>.  Set
+                    <code>POINTLESSQL_OIDC_DISCOVERY_URL</code> and
+                    <code>POINTLESSQL_OIDC_CLIENT_ID</code> to enable
+                    SSO.
+                </div>
+                {% elif not oidc_group_map %}
+                <div class="alert alert-light small mb-0">
+                    No group mappings configured.  Every authenticated
+                    OIDC user lands in workspace
+                    <code>#{{ default_workspace_id }}</code>.
+                </div>
+                {% else %}
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Group</th>
+                            <th>Workspace</th>
+                            <th>Admin</th>
+                            <th>Supervisor</th>
+                            <th>Auditor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group, mapping in oidc_group_map %}
+                        <tr>
+                            <td><code>{{ group }}</code></td>
+                            <td>
+                                {% if mapping.workspace_id is none %}
+                                <span class="text-muted small">— (keep current)</span>
+                                {% else %}
+                                {% set ws = workspace_choices|selectattr("id", "equalto", mapping.workspace_id)|first %}
+                                {% if ws %}
+                                <code>{{ ws.slug }}</code>
+                                <span class="text-muted small">#{{ ws.id }}</span>
+                                {% else %}
+                                <span class="text-muted small">#{{ mapping.workspace_id }}</span>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>{% if mapping.is_admin %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+                            <td>{% if mapping.is_supervisor %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+                            <td>{% if mapping.is_auditor %}<i class="bi bi-check-circle-fill text-success"></i>{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card" data-section="system-keys">
+            <div class="card-header"><strong>System keys</strong></div>
+            <div class="card-body">
+                <p class="text-muted small mb-2">
+                    Install-scoped persistent secrets.  Values never
+                    rendered.  Rotation requires a re-hash backfill —
+                    not a one-click action; rotate via the dedicated
+                    CLI when the privacy story changes.
+                </p>
+                {% if system_keys %}
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>First written</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for k in system_keys %}
+                        <tr>
+                            <td><code>{{ k.name }}</code></td>
+                            <td class="small text-nowrap">{{ k.created_at[:10] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-muted small">
+                    No system_keys rows yet.  The PII hash secret is
+                    generated lazily on the first <code>hash_only</code>
+                    audit write.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

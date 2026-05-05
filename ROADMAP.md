@@ -3605,17 +3605,43 @@ PointlesSQL
 │   │   ``secret_access_key`` cleartext NEVER reach the page,
 │   │   only the literal ``<set>`` marker.
 │   │
-│   └── Sprint 33.3 — Review Destinations UI                    ✅ done
-│       New ``GET /admin/review-destinations`` HTML route; new
-│       template ``admin_review_destinations.html`` with
-│       destination table, inline min-severity dropdown,
-│       HMAC-presence badge (``set`` / ``none``), workspace-filter
-│       chips, active toggle, delete button, and create form.
-│       Reuses the existing ``/api/admin/review-destinations``
-│       JSON CRUD — no new endpoints.  Test suite:
-│       ``test_admin_review_destinations_page.py`` (4 cases) —
-│       load-bearing assertion is that the cleartext HMAC secret
-│       NEVER reaches the page (``has_hmac_secret`` boolean only).
+│   ├── Sprint 33.3 — Review Destinations UI                    ✅ done
+│   │   New ``GET /admin/review-destinations`` HTML route; new
+│   │   template ``admin_review_destinations.html`` with
+│   │   destination table, inline min-severity dropdown,
+│   │   HMAC-presence badge (``set`` / ``none``), workspace-filter
+│   │   chips, active toggle, delete button, and create form.
+│   │   Reuses the existing ``/api/admin/review-destinations``
+│   │   JSON CRUD — no new endpoints.  Test suite:
+│   │   ``test_admin_review_destinations_page.py`` (4 cases) —
+│   │   load-bearing assertion is that the cleartext HMAC secret
+│   │   NEVER reaches the page (``has_hmac_secret`` boolean only).
+│   │
+│   └── Sprint 33.4 — API-Keys UI + System-Info read-only panel ✅ done
+│       Closes the two remaining gaps that the first cut deferred.
+│       New ``GET /admin/api-keys`` HTML route + template
+│       ``admin_api_keys.html``: list (active by default,
+│       ``?include_revoked=1`` flips to history view), create
+│       form (name / supervisor / auditor / workspace dropdown),
+│       plaintext-secret modal after create with
+│       ``navigator.clipboard`` copy fallback, soft-revoke via
+│       browser ``confirm()``.  ``POST /api/admin/api-keys`` JSON
+│       route now also accepts an optional ``workspace_id`` field
+│       (defaults to ``1`` for back-compat); the audit-log entry
+│       carries the chosen workspace.  New ``GET /admin/system-info``
+│       HTML route + template ``admin_system_info.html``: four
+│       read-only sections (PII mode + hash-secret presence,
+│       API-key counts by scope, OIDC group→workspace+scope
+│       mapping with restart-required hint, ``system_keys`` row
+│       inventory).  ``admin_index.html`` gets two new cards
+│       linking to these pages, with active-key-count badge.  9
+│       new pytest cases across ``test_admin_api_keys_page.py``
+│       and ``test_admin_system_info_page.py`` — load-bearing
+│       assertions: the 64-char ``ApiKey.secret_hash`` and the
+│       ``system_keys.value`` cleartext must NEVER reach the
+│       rendered HTML; only the ``secret_prefix`` (8 chars) and
+│       ``present``-badge surface.  Phase 33 now closes with all
+│       four sub-sprints landed.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block title %}API keys · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "API keys"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-key fs-3"></i>
+        <h1 class="h3 mb-0">API keys</h1>
+    </div>
+    <span class="text-muted small">
+        {{ keys|length }} key{{ '' if keys|length == 1 else 's' }}{% if include_revoked %} (incl. revoked){% endif %}
+    </span>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle me-1"></i>
+    Bearer tokens for plugin / agent / CLI access.  Plaintext is shown
+    <strong>once</strong> at creation — there is no way to recover a lost
+    secret.  Revocation is soft so audit attribution
+    (<code>api_key:&lt;name&gt;</code>) keeps resolving after rotation.
+    Each key pins to exactly one workspace and inherits that as the
+    resolved request workspace when no <code>X-Workspace</code> header
+    is supplied.
+</div>
+
+<div class="d-flex justify-content-end mb-2">
+    {% if include_revoked %}
+    <a class="btn btn-outline-secondary btn-sm" href="/admin/api-keys">
+        <i class="bi bi-funnel"></i> Hide revoked
+    </a>
+    {% else %}
+    <a class="btn btn-outline-secondary btn-sm" href="/admin/api-keys?include_revoked=1">
+        <i class="bi bi-funnel"></i> Show revoked
+    </a>
+    {% endif %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Existing keys</strong>
+    </div>
+    {% if keys %}
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Prefix</th>
+                    <th>Scopes</th>
+                    <th>Workspace</th>
+                    <th>Created</th>
+                    <th>Last used</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for k in keys %}
+                <tr data-api-key-name="{{ k.name }}"
+                    x-data="apiKeyRow({{ k.name|tojson }}, {{ (k.revoked_at is not none)|tojson }})">
+                    <td><strong>{{ k.name }}</strong></td>
+                    <td class="font-monospace small">{{ k.secret_prefix }}…</td>
+                    <td class="small">
+                        {% if k.supervisor %}
+                        <span class="badge bg-warning text-dark">supervisor</span>
+                        {% endif %}
+                        {% if k.auditor %}
+                        <span class="badge bg-info text-dark">auditor</span>
+                        {% endif %}
+                        {% if not k.supervisor and not k.auditor %}
+                        <span class="text-muted">agent</span>
+                        {% endif %}
+                    </td>
+                    <td class="small">
+                        {% if k.workspace_slug %}
+                        <code>{{ k.workspace_slug }}</code>
+                        {% else %}
+                        <span class="text-muted">#{{ k.workspace_id }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-nowrap">{{ k.created_at[:10] if k.created_at else '—' }}</td>
+                    <td class="small text-nowrap">{{ k.last_used_at[:10] if k.last_used_at else '—' }}</td>
+                    <td>
+                        {% if k.revoked_at %}
+                        <span class="badge bg-secondary">revoked {{ k.revoked_at[:10] }}</span>
+                        {% else %}
+                        <span class="badge bg-success">active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not k.revoked_at %}
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                :disabled="busy"
+                                @click="revoke()">
+                            Revoke
+                        </button>
+                        {% else %}
+                        <span class="text-muted small">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body text-muted small">
+        No API keys configured.  Create one below to grant Bearer-token
+        access to the plugin or CLI.
+    </div>
+    {% endif %}
+</div>
+
+<div class="card" x-data="apiKeyCreate()">
+    <div class="card-header">
+        <strong>Create new key</strong>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label small mb-1">Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm"
+                       x-model="form.name"
+                       maxlength="64"
+                       placeholder="e.g. ci-bot, audit-reviewer-prod">
+                <div class="form-text">Unique label, max 64 chars.  Used as audit attribution.</div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label small mb-1">Workspace</label>
+                <select class="form-select form-select-sm" x-model.number="form.workspaceId">
+                    {% for ws in workspace_choices %}
+                    <option value="{{ ws.id }}" {% if ws.id == default_workspace_id %}selected{% endif %}>
+                        {{ ws.slug }} ({{ ws.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Bearer requests inherit this as resolved workspace.</div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <div class="form-text mb-1">Scopes</div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" class="form-check-input" id="kk-supervisor"
+                       x-model="form.supervisor">
+                <label class="form-check-label small" for="kk-supervisor">
+                    <code>supervisor</code> — may invoke /api/runs/{id}/summary + diff
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" class="form-check-input" id="kk-auditor"
+                       x-model="form.auditor">
+                <label class="form-check-label small" for="kk-auditor">
+                    <code>auditor</code> — may invoke /api/audit/* aggregates
+                </label>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-primary btn-sm"
+                    :disabled="!canSubmit() || creating"
+                    @click="create()">
+                <span x-show="!creating">Create key</span>
+                <span x-show="creating">Creating&hellip;</span>
+            </button>
+            <span x-show="error" class="text-danger small" x-text="error"></span>
+        </div>
+    </div>
+</div>
+
+{# Plaintext-secret modal: shown once after successful create.  Modal is
+   gated by `:class="{ 'd-block': showSecret }"` not `x-show` —
+   feedback_bootstrap_modal_x_show.md documents the Alpine 3.14 trap
+   where x-show strips inline display:block. #}
+<div class="modal" tabindex="-1"
+     x-data="apiKeyCreatedModal()"
+     x-init="$nextTick(() => { window.__apiKeyModal = $data; })"
+     :class="{ 'd-block': showSecret }"
+     :style="showSecret ? 'background-color: rgba(0,0,0,0.5);' : ''">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-key text-warning"></i>
+                    API key created
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning small mb-3">
+                    <strong>Copy this secret now.</strong>
+                    It is only shown once and cannot be recovered.
+                    Closing this dialog without copying means you will
+                    have to revoke the key and create a new one.
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small mb-1">Name</label>
+                    <div class="font-monospace small" x-text="createdName"></div>
+                </div>
+                <div>
+                    <label class="form-label small mb-1">Plaintext secret</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace"
+                               readonly
+                               :value="createdSecret"
+                               x-ref="secretField">
+                        <button type="button" class="btn btn-outline-primary"
+                                @click="copySecret()">
+                            <i class="bi bi-clipboard"></i>
+                            <span x-text="copyLabel"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm"
+                        @click="dismiss()">
+                    I have copied the secret
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.apiKeyRow = function (name, revoked) {
+    return {
+        name, revoked,
+        busy: false,
+
+        async revoke() {
+            if (!window.confirm('Revoke API key "' + this.name + '"? Bearer requests using this secret will be rejected immediately.')) {
+                return;
+            }
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/api-keys/' + encodeURIComponent(this.name) + '/revoke',
+                { method: 'POST' },
+            );
+            this.busy = false;
+            if (res.ok) {
+                window.pqlApi.reloadWithToast('API key revoked.');
+            } else {
+                window.pqlToast.error(res.error || 'Failed to revoke key.');
+            }
+        },
+    };
+};
+
+window.apiKeyCreate = function () {
+    return {
+        form: {
+            name: '',
+            workspaceId: {{ default_workspace_id }},
+            supervisor: false,
+            auditor: false,
+        },
+        creating: false,
+        error: '',
+
+        canSubmit() {
+            return !!(this.form.name.trim());
+        },
+
+        async create() {
+            this.error = '';
+            this.creating = true;
+            const body = {
+                name: this.form.name.trim(),
+                supervisor: this.form.supervisor,
+                auditor: this.form.auditor,
+                workspace_id: this.form.workspaceId,
+            };
+            const res = await window.pqlApi.fetch('/api/admin/api-keys', {
+                method: 'POST',
+                body,
+            });
+            this.creating = false;
+            if (res.ok) {
+                const modal = window.__apiKeyModal;
+                if (modal) {
+                    modal.show(res.data.name, res.data.secret);
+                }
+                this.form.name = '';
+                this.form.supervisor = false;
+                this.form.auditor = false;
+            } else {
+                this.error = res.error || 'Failed to create key.';
+            }
+        },
+    };
+};
+
+window.apiKeyCreatedModal = function () {
+    return {
+        showSecret: false,
+        createdName: '',
+        createdSecret: '',
+        copyLabel: 'Copy',
+
+        show(name, secret) {
+            this.createdName = name;
+            this.createdSecret = secret;
+            this.copyLabel = 'Copy';
+            this.showSecret = true;
+        },
+
+        async copySecret() {
+            try {
+                await navigator.clipboard.writeText(this.createdSecret);
+                this.copyLabel = 'Copied';
+            } catch (_err) {
+                this.$refs.secretField.select();
+                document.execCommand('copy');
+                this.copyLabel = 'Copied';
+            }
+        },
+
+        dismiss() {
+            this.showSecret = false;
+            this.createdName = '';
+            this.createdSecret = '';
+            window.pqlApi.reloadWithToast('API key created.');
+        },
+    };
+};
+</script>
+{% endblock %}

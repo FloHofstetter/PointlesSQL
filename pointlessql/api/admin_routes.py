@@ -66,7 +66,7 @@ async def admin_index(request: Request) -> HTMLResponse:
     from sqlalchemy import func
     from sqlalchemy import select as _select
 
-    from pointlessql.models import Workspace
+    from pointlessql.models import ApiKey, Workspace
     from pointlessql.models.agent_reviews import ReviewDestination
     from pointlessql.models.audit_sinks import AuditSink
     from pointlessql.services import external_write_scanner
@@ -91,6 +91,9 @@ async def admin_index(request: Request) -> HTMLResponse:
             )
             or 0
         )
+        active_api_keys = (
+            session.scalar(_select(func.count(ApiKey.id)).where(ApiKey.revoked_at.is_(None))) or 0
+        )
 
     unacknowledged_external_writes = await asyncio.to_thread(
         external_write_scanner.count_unacknowledged, factory
@@ -103,6 +106,7 @@ async def admin_index(request: Request) -> HTMLResponse:
             "active_workspaces": active_workspaces,
             "active_sinks": active_sinks,
             "active_destinations": active_destinations,
+            "active_api_keys": active_api_keys,
             "unacknowledged_external_writes": unacknowledged_external_writes,
             "active_page": "admin",
             "active_catalog": None,
@@ -262,6 +266,181 @@ async def admin_audit_sinks_index(request: Request) -> HTMLResponse:
         {
             "sinks": sink_rows,
             "workspace_choices": workspace_choices,
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+@router.get("/admin/api-keys", response_class=HTMLResponse)
+async def admin_api_keys_index(request: Request, include_revoked: bool = False) -> HTMLResponse:
+    """Render the Sprint 33.4 API-keys management page.
+
+    Lists every key (active by default; revoked rows shown when
+    ``include_revoked=1``) joined with its workspace so the UI can
+    label keys by slug rather than opaque integer ID.  Mutations
+    use the existing ``/api/admin/api-keys`` JSON CRUD — nothing
+    new server-side beyond the optional ``workspace_id`` field
+    accepted at create.
+    """
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import ApiKey, Workspace
+
+    require_admin(request)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        stmt = _select(ApiKey).order_by(ApiKey.created_at.desc())
+        if not include_revoked:
+            stmt = stmt.where(ApiKey.revoked_at.is_(None))
+        keys = list(session.scalars(stmt).all())
+        for row in keys:
+            session.expunge(row)
+        workspaces = list(
+            session.scalars(
+                _select(Workspace)
+                .where(Workspace.archived_at.is_(None))
+                .order_by(Workspace.slug.asc())
+            ).all()
+        )
+        for row in workspaces:
+            session.expunge(row)
+
+    workspace_by_id = {w.id: w for w in workspaces}
+    key_rows = []
+    for k in keys:
+        ws = workspace_by_id.get(k.workspace_id)
+        key_rows.append(
+            {
+                "name": k.name,
+                "secret_prefix": k.secret_prefix,
+                "supervisor": bool(k.supervisor),
+                "auditor": bool(k.auditor),
+                "workspace_id": k.workspace_id,
+                "workspace_slug": ws.slug if ws else None,
+                "created_at": k.created_at.isoformat() if k.created_at else "",
+                "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+                "revoked_at": k.revoked_at.isoformat() if k.revoked_at else None,
+            }
+        )
+
+    workspace_choices = [{"id": w.id, "slug": w.slug, "name": w.name} for w in workspaces]
+    default_workspace_id = workspace_choices[0]["id"] if workspace_choices else 1
+
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/admin_api_keys.html",
+        {
+            "keys": key_rows,
+            "include_revoked": include_revoked,
+            "workspace_choices": workspace_choices,
+            "default_workspace_id": default_workspace_id,
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+@router.get("/admin/system-info", response_class=HTMLResponse)
+async def admin_system_info_index(request: Request) -> HTMLResponse:
+    """Render the Sprint 33.4 system-info read-only panel.
+
+    Aggregates four read-only sections: PII mode (active enum +
+    hash-secret presence), API-key counts (active / revoked /
+    supervisor / auditor), OIDC group → workspace + scope mapping
+    (parsed from env at startup), and the ``system_keys`` row
+    inventory (names + ``created_at`` only — values never rendered).
+    Every value is read-only because each control is env-restart-
+    gated; surfacing a writable form here would silently desync
+    from ``os.environ``.
+    """
+    from sqlalchemy import func
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import ApiKey, Workspace
+    from pointlessql.models.system_keys import SystemKey
+
+    require_admin(request)
+    settings = request.app.state.settings
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        active = (
+            session.scalar(_select(func.count(ApiKey.id)).where(ApiKey.revoked_at.is_(None))) or 0
+        )
+        revoked = (
+            session.scalar(_select(func.count(ApiKey.id)).where(ApiKey.revoked_at.is_not(None)))
+            or 0
+        )
+        supervisor = (
+            session.scalar(
+                _select(func.count(ApiKey.id)).where(
+                    ApiKey.supervisor.is_(True), ApiKey.revoked_at.is_(None)
+                )
+            )
+            or 0
+        )
+        auditor = (
+            session.scalar(
+                _select(func.count(ApiKey.id)).where(
+                    ApiKey.auditor.is_(True), ApiKey.revoked_at.is_(None)
+                )
+            )
+            or 0
+        )
+
+        sk_rows = list(session.scalars(_select(SystemKey).order_by(SystemKey.name.asc())).all())
+        for row in sk_rows:
+            session.expunge(row)
+
+        pii_hash_row = next((r for r in sk_rows if r.name == "pii_hash"), None)
+
+        workspaces = list(
+            session.scalars(
+                _select(Workspace)
+                .where(Workspace.archived_at.is_(None))
+                .order_by(Workspace.slug.asc())
+            ).all()
+        )
+        for row in workspaces:
+            session.expunge(row)
+
+    system_keys_view = [
+        {"name": k.name, "created_at": k.created_at.isoformat() if k.created_at else ""}
+        for k in sk_rows
+    ]
+    workspace_choices = [{"id": w.id, "slug": w.slug, "name": w.name} for w in workspaces]
+    default_workspace_id = workspace_choices[0]["id"] if workspace_choices else 1
+
+    oidc_settings = settings.oidc
+    oidc_group_map_items = sorted(oidc_settings.parsed_group_map.items())
+
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/admin_system_info.html",
+        {
+            "pii_mode": settings.audit.pii_mode,
+            "pii_mask_default": settings.audit.pii_mask_default,
+            "pii_hash_secret_present": pii_hash_row is not None,
+            "pii_hash_secret_created_at": (
+                pii_hash_row.created_at.isoformat()
+                if pii_hash_row and pii_hash_row.created_at
+                else None
+            ),
+            "api_key_count_active": active,
+            "api_key_count_revoked": revoked,
+            "api_key_count_supervisor": supervisor,
+            "api_key_count_auditor": auditor,
+            "oidc_enabled": oidc_settings.enabled,
+            "oidc_group_map": oidc_group_map_items,
+            "system_keys": system_keys_view,
+            "workspace_choices": workspace_choices,
+            "default_workspace_id": default_workspace_id,
             "active_page": "admin",
             "active_catalog": None,
             "active_schema": None,

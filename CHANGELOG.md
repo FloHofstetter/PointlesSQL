@@ -6,6 +6,35 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 33.4 closed (2026-05-05)** — Admin Console polish.  Closes
+  the two remaining gaps that Phase 33's first cut deferred as
+  "curl-only stays acceptable" / "out of scope":
+  ``GET /admin/api-keys`` (list + create-with-modal +
+  revoke-with-confirm), ``GET /admin/system-info`` (read-only:
+  PII mode + active hash-secret presence, OIDC group→workspace+
+  scope mapping with restart-required hint, ``system_keys`` row
+  inventory by name + ``created_at`` only, API-key scope counts).
+  Two new cards on ``/admin`` ("API keys", "System info") with the
+  active-key-count badge.  ``POST /api/admin/api-keys`` JSON
+  route now also accepts an optional ``workspace_id`` field
+  (defaults to ``1``) so the UI's workspace chooser is honoured;
+  the audit-log entry carries the chosen workspace.  Two
+  load-bearing assertions in the new test files prove the page
+  never re-leaks a secret: the hashed
+  ``ApiKey.secret_hash`` value (64-char SHA-256 hex) and the
+  ``system_keys.value`` cleartext both must be absent from the
+  rendered HTML — only the literal ``present`` badge + the
+  ``created_at`` date surface.  9 new pytest cases across two new
+  test files (``test_admin_api_keys_page.py``,
+  ``test_admin_system_info_page.py``); the existing 6
+  ``test_admin_api_keys_routes.py`` JSON tests stay unchanged and
+  green.  **Still out of scope** (with rationale): system-keys
+  rotation (sec-critical write needs re-hash backfill, dedicated
+  phase), editable PII-mode / OIDC-mapping forms (both
+  env-restart-gated; a writable UI would silently desync from
+  ``os.environ``).  Net effect: Phase 33 now closes with all four
+  sub-sprints landed; admin-test count goes from 38 → 50 in this
+  session.
 - **Phase 33 closed (2026-05-05)** — Admin Console: every operator
   surface unified behind one ``/admin`` landing.  Three sub-sprints
   + a Mini-Sprint 0 cleanup.  Mini-Sprint 0 retired two stale
