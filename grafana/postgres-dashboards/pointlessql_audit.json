@@ -1063,6 +1063,296 @@
           "sort": "none"
         }
       }
+    },
+    {
+      "id": 16,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "## Phase 19/20 Governance + compliance\n\nAudit retention horizon, FTS index health, audit-export trail, Audit-Reviewer-Agent volume.  Sprint 34.2 (Phase 34 \u2014 Cross-Workspace Observability).",
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        }
+      },
+      "transparent": true
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Audit retention horizon (oldest row, days)",
+      "description": "Age in days of the oldest `audit_log` row.  Compare against `POINTLESSQL_AUDIT_RETENTION_DAYS` (default 365): yellow \u2265 300 days, red \u2265 365 days.  Approaching the cap means the retention sweeper is keeping up; past the cap means it stalled.  Filtered by `$workspace` dropdown.",
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "pointlessql-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "pointlessql-postgres"
+          },
+          "rawSql": "SELECT EXTRACT(epoch FROM NOW() - MIN(created_at)) / 86400.0 AS oldest_age_days FROM audit_log WHERE (0 IN ($workspace) OR audit_log.workspace_id IN ($workspace))",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 365
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "d",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "FTS index lag (rows behind)",
+      "description": "Difference between `audit_log` row count and the FTS-shadow row count (`audit_search` on SQLite, `audit_search_index` on PG).  0 = triggers in sync.  A non-zero value means the FTS-trigger stalled; query latency at /admin/audit/search will degrade until it catches up.  Cross-workspace by design (the FTS index is install-global).  Phase 18.7.",
+      "gridPos": {
+        "x": 8,
+        "y": 51,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "pointlessql-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "pointlessql-postgres"
+          },
+          "rawSql": "SELECT ((SELECT COUNT(*) FROM audit_log) - (SELECT COUNT(*) FROM audit_search_index)) AS fts_lag",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Audit exports issued (selected window)",
+      "description": "Count of `pointlessql.audit_export.issued` governance_events in the dashboard's time window.  Shows compliance evidence is being collected.  Filtered by `$workspace` dropdown.",
+      "gridPos": {
+        "x": 16,
+        "y": 51,
+        "w": 8,
+        "h": 5
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "pointlessql-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "pointlessql-postgres"
+          },
+          "rawSql": "SELECT COUNT(*) AS exports FROM governance_events WHERE event_type='pointlessql.audit_export.issued' AND $__timeFilter(fired_at) AND (0 IN ($workspace) OR workspace_id IN ($workspace))",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      }
+    },
+    {
+      "id": 20,
+      "type": "barchart",
+      "title": "Agent reviews per day (by severity)",
+      "description": "Count of Audit-Reviewer-Agent rows in `agent_reviews` per day, stacked by severity.  Provides volume + worst-case signal for the daily reviewer-bot output (Phase 19).  Filtered by `$workspace` dropdown.",
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 24,
+        "h": 7
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "pointlessql-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "pointlessql-postgres"
+          },
+          "rawSql": "SELECT date(created_at) AS day, severity, COUNT(*) AS reviews FROM agent_reviews WHERE $__timeFilter(created_at) AND (0 IN ($workspace) OR workspace_id IN ($workspace)) GROUP BY 1, 2 ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "lineWidth": 1
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "day",
+        "showValue": "auto",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.97,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
     }
   ],
   "refresh": "30s",

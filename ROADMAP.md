@@ -3643,7 +3643,7 @@ PointlesSQL
 │       ``present``-badge surface.  Phase 33 now closes with all
 │       four sub-sprints landed.
 │
-├── Phase 34 — Cross-Workspace Observability                  ⏳ in progress
+├── Phase 34 — Cross-Workspace Observability                  ✅ closed 2026-05-05
 │   │
 │   │   Phase 19.0 shipped a 10-panel audit dashboard — Phase 14
 │   │   cost-gate, Phase 15.x lineage rejects + value changes,
@@ -3668,23 +3668,45 @@ PointlesSQL
 │   │   distinct IDs so a malformed edit fails the build instead
 │   │   of silently shipping a blank panel-grid.
 │   │
-│   └── Sprint 34.1 — Operator-Pain MVP                          ✅ done
-│       Four new panels in both dashboards (matched IDs 12-15
-│       plus header panel 11).  (1) ``Sink delivery health
-│       (last 1h)``: stat over ``governance_events.outcome``,
-│       red <95% / yellow 95-99% / green ≥99%.  (2) ``Open
-│       anomaly verdicts (7d)``: stat counting ``agent_runs``
-│       rows whose cached ``anomaly_severity`` is ``warn`` or
-│       ``critical`` in the trailing 7 days.  (3) ``Rollbacks
-│       per day``: vertical bar of ``agent_run_events`` filtered
-│       to ``event_type='pointlessql.rollback.executed'``.  (4)
-│       ``Sink errors per day (by event type)``: stacked
-│       vertical bar of ``governance_events.outcome='delivery_
-│       failed'`` per day per event_type.  Markdown header
-│       (panel 11) labels the section as "Phase 28-30 Workspace
-│       governance".  New CI gate at
-│       ``scripts/check-grafana-dashboards.sh`` (~70 LOC) — both
-│       dashboards parse, 15 panels each, distinct IDs.
+│   ├── Sprint 34.1 — Operator-Pain MVP                          ✅ done
+│   │   Four new panels in both dashboards (matched IDs 12-15
+│   │   plus header panel 11).  (1) ``Sink delivery health
+│   │   (last 1h)``: stat over ``governance_events.outcome``,
+│   │   red <95% / yellow 95-99% / green ≥99%.  (2) ``Open
+│   │   anomaly verdicts (7d)``: stat counting ``agent_runs``
+│   │   rows whose cached ``anomaly_severity`` is ``warn`` or
+│   │   ``critical`` in the trailing 7 days.  (3) ``Rollbacks
+│   │   per day``: vertical bar of ``agent_run_events`` filtered
+│   │   to ``event_type='pointlessql.rollback.executed'``.  (4)
+│   │   ``Sink errors per day (by event type)``: stacked
+│   │   vertical bar of ``governance_events.outcome='delivery_
+│   │   failed'`` per day per event_type.  Markdown header
+│   │   (panel 11) labels the section as "Phase 28-30 Workspace
+│   │   governance".  New CI gate at
+│   │   ``scripts/check-grafana-dashboards.sh`` (~70 LOC) — both
+│   │   dashboards parse, 15 panels each, distinct IDs.
+│   │
+│   └── Sprint 34.2 — Governance + Compliance                    ✅ done
+│       Four more panels (matched IDs 17-20 + section header 16)
+│       in both dashboards.  (1) ``Audit retention horizon
+│       (oldest row, days)``: stat over the age of the oldest
+│       ``audit_log`` row, threshold-coloured against the default
+│       ``POINTLESSQL_AUDIT_RETENTION_DAYS=365`` (yellow ≥300,
+│       red ≥365).  SQLite computes via ``julianday('now') -
+│       julianday(MIN(...))``; PG via ``EXTRACT(epoch FROM NOW()
+│       - MIN(...)) / 86400.0``.  (2) ``FTS index lag (rows
+│       behind)``: stat showing ``COUNT(audit_log) -
+│       COUNT(audit_search[_index])``; 0 = triggers in sync.
+│       Cross-workspace by design.  (3) ``Audit exports issued
+│       (selected window)``: stat counting ``governance_events``
+│       rows where ``event_type='pointlessql.audit_export.
+│       issued'``.  (4) ``Agent reviews per day (by severity)``:
+│       full-width stacked bar of ``agent_reviews.created_at``
+│       grouped by severity.  Plan originally listed an OIDC-
+│       login-volume panel but the audit found logins are not
+│       persisted to ``audit_log`` — the slot was redirected to
+│       the audit-export trail panel.  Both dashboards: 20 panels,
+│       distinct IDs, lint-script green.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

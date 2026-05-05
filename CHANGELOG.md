@@ -6,6 +6,41 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 34.2 closed (2026-05-05)** — Governance + Compliance panel
+  set; closes Phase 34 with 8 new panels (4 from 34.1 + 4 from 34.2,
+  matched IDs across SQLite + Postgres dashboards).  Picks for the
+  governance row, all dialect-aware:
+  (1) **Audit retention horizon (oldest row, days)** — stat over
+  ``MIN(audit_log.created_at)`` rendered as days; thresholds at
+  300 (yellow) and 365 (red, the default
+  ``POINTLESSQL_AUDIT_RETENTION_DAYS``).  SQLite uses
+  ``julianday('now') - julianday(MIN(...))``; PG uses
+  ``EXTRACT(epoch FROM NOW() - MIN(...)) / 86400.0``.  Filtered by
+  ``$workspace``.
+  (2) **FTS index lag (rows behind)** — stat showing
+  ``COUNT(audit_log) - COUNT(audit_search[_index])``; 0 = triggers
+  in sync, anything else means the FTS-trigger stalled.  Cross-
+  workspace by design (FTS is install-global).  SQLite reads
+  ``audit_search`` (FTS5 virtual); PG reads ``audit_search_index``
+  (Phase 30 ``hh8j0l2n4p6r``).
+  (3) **Audit exports issued (selected window)** — stat counting
+  ``governance_events`` rows with ``event_type='pointlessql.
+  audit_export.issued'`` in the dashboard's time window, blue
+  threshold (informational, not alertable).  Filtered by
+  ``$workspace``.
+  (4) **Agent reviews per day (by severity)** — full-width stacked
+  vertical bar of ``agent_reviews.created_at`` grouped by
+  ``severity`` (ok / warn / critical).  Filtered by ``$workspace``.
+  Plus a section header (id=16) labelling the row "Phase 19/20
+  Governance + compliance".  Originally the plan included an OIDC-
+  login-volume panel; the audit verified that login events are NOT
+  written to ``audit_log`` (no instrumented login path), so the
+  slot was redirected to the audit-export trail panel — a
+  comparable compliance signal that DOES have data behind it.  Net
+  result: dashboards now have 20 panels each (10 baseline + 5
+  Sprint-34.1 + 5 Sprint-34.2).  Panel-ID space distinct, structural
+  gate (``scripts/check-grafana-dashboards.sh``) green.  Phase 34
+  closes.
 - **Sprint 34.1 closed (2026-05-05)** — Cross-Workspace Observability
   MVP: 4 new operator-pain panels added to both Grafana dashboards
   (SQLite at ``grafana/dashboards/pointlessql_audit.json`` +
