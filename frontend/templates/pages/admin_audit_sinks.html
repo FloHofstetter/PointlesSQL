@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
+{% block title %}Audit sinks · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Audit sinks"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-broadcast fs-3"></i>
+        <h1 class="h3 mb-0">Audit sinks{{ info('admin.audit-sinks') }}</h1>
+    </div>
+    <span class="text-muted small">
+        {{ sinks|length }} sink{{ '' if sinks|length == 1 else 's' }}
+    </span>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle me-1"></i>
+    Forwards governance CloudEvents to webhooks, S3 buckets, or
+    AWS CloudTrail.  Secrets are stored in plaintext at rest and
+    redacted on read; rotate via the row's <em>Edit</em> form.
+    Inactive sinks are skipped by the dispatcher but kept on
+    record so you can re-enable without retyping config.
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Existing sinks</strong>
+    </div>
+    {% if sinks %}
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Config</th>
+                    <th>Event types</th>
+                    <th>Workspace filter</th>
+                    <th class="text-center">Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sinks %}
+                <tr data-sink-id="{{ s.id }}"
+                    x-data="auditSinkRow({{ s.id }}, {{ s.name|tojson }}, {{ s.is_active|tojson }})">
+                    <td><strong>{{ s.name }}</strong></td>
+                    <td>
+                        <span class="badge bg-secondary font-monospace">{{ s.type }}</span>
+                    </td>
+                    <td class="font-monospace small">
+                        {% for k, v in s.config_redacted.items() %}
+                        <div><span class="text-muted">{{ k }}:</span> {{ v }}</div>
+                        {% endfor %}
+                    </td>
+                    <td class="small">
+                        {% if s.event_types %}
+                        {% for evt in s.event_types %}
+                        <code class="d-block">{{ evt }}</code>
+                        {% endfor %}
+                        {% else %}
+                        <span class="text-muted">(every event)</span>
+                        {% endif %}
+                    </td>
+                    <td class="small">
+                        {% if s.workspace_filter %}
+                        {% for ws_id in s.workspace_filter %}
+                        {% set ws = workspace_choices|selectattr("id", "equalto", ws_id)|first %}
+                        <span class="badge bg-light text-dark border">
+                            {% if ws %}{{ ws.slug }}{% else %}#{{ ws_id }}{% endif %}
+                        </span>
+                        {% endfor %}
+                        {% else %}
+                        <span class="text-muted">install-global</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch d-inline-block">
+                            <input type="checkbox" class="form-check-input"
+                                   :checked="isActive"
+                                   :disabled="busy"
+                                   @change="toggleActive($event.target.checked)">
+                        </div>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                :disabled="busy"
+                                @click="test()">
+                            <i class="bi bi-send-check"></i> Test
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                :disabled="busy"
+                                @click="remove()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-broadcast display-4 d-block mb-2"></i>
+        <p class="mb-0">No audit sinks configured.  Add one below to start
+            forwarding governance events.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card mb-4" x-data="auditSinkCreate()">
+    <div class="card-header">
+        <strong>Create sink</strong>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label small mb-1" for="sink-name">Name</label>
+                <input id="sink-name" type="text" class="form-control form-control-sm"
+                       x-model="form.name" maxlength="64" placeholder="prod-webhook">
+                <div class="form-text">Unique across the install.</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="sink-type">Type</label>
+                <select id="sink-type" class="form-select form-select-sm"
+                        x-model="form.type">
+                    <option value="webhook">webhook</option>
+                    <option value="s3">s3</option>
+                    <option value="aws_cloudtrail">aws_cloudtrail</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small mb-1" for="sink-event-types">Event types (comma-separated, optional)</label>
+                <input id="sink-event-types" type="text" class="form-control form-control-sm"
+                       x-model="form.eventTypesRaw"
+                       placeholder="pointlessql.run.completed, pointlessql.audit_export.issued">
+                <div class="form-text">Empty = every event.</div>
+            </div>
+        </div>
+
+        <div class="row g-2 mt-3" x-show="form.type === 'webhook'">
+            <div class="col-md-8">
+                <label class="form-label small mb-1" for="sink-webhook-url">URL</label>
+                <input id="sink-webhook-url" type="url" class="form-control form-control-sm"
+                       x-model="form.webhook.url" placeholder="https://hooks.example.com/abc">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small mb-1" for="sink-webhook-secret">HMAC secret (optional)</label>
+                <input id="sink-webhook-secret" type="password" class="form-control form-control-sm"
+                       x-model="form.webhook.hmac_secret" autocomplete="new-password">
+            </div>
+        </div>
+
+        <div class="row g-2 mt-3" x-show="form.type === 's3'">
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="sink-s3-bucket">Bucket</label>
+                <input id="sink-s3-bucket" type="text" class="form-control form-control-sm"
+                       x-model="form.s3.bucket">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1" for="sink-s3-region">Region</label>
+                <input id="sink-s3-region" type="text" class="form-control form-control-sm"
+                       x-model="form.s3.region" placeholder="eu-central-1">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="sink-s3-prefix">Prefix (optional)</label>
+                <input id="sink-s3-prefix" type="text" class="form-control form-control-sm"
+                       x-model="form.s3.prefix" placeholder="audit/2026/">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small mb-1" for="sink-s3-endpoint">Endpoint URL (optional, MinIO/R2)</label>
+                <input id="sink-s3-endpoint" type="url" class="form-control form-control-sm"
+                       x-model="form.s3.endpoint_url" autocomplete="off">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small mb-1" for="sink-s3-key">Access key ID</label>
+                <input id="sink-s3-key" type="text" class="form-control form-control-sm"
+                       x-model="form.s3.access_key_id" autocomplete="off">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small mb-1" for="sink-s3-secret">Secret access key</label>
+                <input id="sink-s3-secret" type="password" class="form-control form-control-sm"
+                       x-model="form.s3.secret_access_key" autocomplete="new-password">
+            </div>
+        </div>
+
+        <div class="row g-2 mt-3" x-show="form.type === 'aws_cloudtrail'">
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="sink-ct-region">Region</label>
+                <input id="sink-ct-region" type="text" class="form-control form-control-sm"
+                       x-model="form.cloudtrail.region" placeholder="us-east-1">
+            </div>
+            <div class="col-md-9">
+                <label class="form-label small mb-1" for="sink-ct-channel">Channel ARN</label>
+                <input id="sink-ct-channel" type="text" class="form-control form-control-sm"
+                       x-model="form.cloudtrail.channel_arn"
+                       placeholder="arn:aws:cloudtrail:us-east-1:123456789012:channel/abc">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small mb-1" for="sink-ct-key">Access key ID</label>
+                <input id="sink-ct-key" type="text" class="form-control form-control-sm"
+                       x-model="form.cloudtrail.access_key_id" autocomplete="off">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small mb-1" for="sink-ct-secret">Secret access key</label>
+                <input id="sink-ct-secret" type="password" class="form-control form-control-sm"
+                       x-model="form.cloudtrail.secret_access_key" autocomplete="new-password">
+            </div>
+        </div>
+
+        <div class="row g-2 mt-3">
+            <div class="col-md-12">
+                <label class="form-label small mb-1">Workspace filter (optional)</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% for ws in workspace_choices %}
+                    <label class="form-check form-check-inline">
+                        <input type="checkbox" class="form-check-input"
+                               value="{{ ws.id }}"
+                               x-model="form.workspaceFilter">
+                        <span class="form-check-label small"><code>{{ ws.slug }}</code></span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="form-text">Empty = install-global (every workspace).</div>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-primary btn-sm"
+                    :disabled="!canSubmit() || creating"
+                    @click="create()">
+                <span x-show="!creating">Create sink</span>
+                <span x-show="creating">Creating&hellip;</span>
+            </button>
+            <span x-show="error" class="text-danger small" x-text="error"></span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.auditSinkRow = function (sinkId, name, isActive) {
+    return {
+        sinkId, name, isActive,
+        busy: false,
+
+        async toggleActive(checked) {
+            this.busy = true;
+            const res = await window.pqlApi.fetch('/api/admin/audit-sinks/' + this.sinkId, {
+                method: 'PATCH',
+                body: { is_active: checked },
+            });
+            this.busy = false;
+            if (res.ok) {
+                this.isActive = checked;
+                window.pqlToast.success('Sink ' + (checked ? 'activated' : 'deactivated') + '.');
+            } else {
+                this.isActive = !checked;
+                window.pqlToast.error(res.error || 'Failed to update sink.');
+            }
+        },
+
+        async test() {
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/audit-sinks/' + this.sinkId + '/test',
+                { method: 'POST' },
+            );
+            this.busy = false;
+            if (res.ok && res.data && res.data.ok) {
+                window.pqlToast.success('Test envelope delivered to "' + this.name + '".');
+            } else if (res.ok) {
+                window.pqlToast.error('Sink "' + this.name + '" returned an error (see server logs).');
+            } else {
+                window.pqlToast.error(res.error || 'Test request failed.');
+            }
+        },
+
+        async remove() {
+            if (!window.confirm('Delete sink "' + this.name + '"? Historical fan-out lines survive.')) {
+                return;
+            }
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/audit-sinks/' + this.sinkId,
+                { method: 'DELETE' },
+            );
+            this.busy = false;
+            if (res.ok) {
+                window.pqlApi.reloadWithToast('Sink deleted.');
+            } else {
+                window.pqlToast.error(res.error || 'Failed to delete sink.');
+            }
+        },
+    };
+};
+
+window.auditSinkCreate = function () {
+    return {
+        form: {
+            name: '',
+            type: 'webhook',
+            eventTypesRaw: '',
+            workspaceFilter: [],
+            webhook: { url: '', hmac_secret: '' },
+            s3: { bucket: '', region: '', prefix: '', endpoint_url: '', access_key_id: '', secret_access_key: '' },
+            cloudtrail: { region: '', channel_arn: '', access_key_id: '', secret_access_key: '' },
+        },
+        creating: false,
+        error: '',
+
+        canSubmit() {
+            if (!this.form.name.trim()) return false;
+            if (this.form.type === 'webhook') return !!this.form.webhook.url.trim();
+            if (this.form.type === 's3') {
+                const s = this.form.s3;
+                return !!(s.bucket && s.region && s.access_key_id && s.secret_access_key);
+            }
+            if (this.form.type === 'aws_cloudtrail') {
+                const c = this.form.cloudtrail;
+                return !!(c.region && c.channel_arn && c.access_key_id && c.secret_access_key);
+            }
+            return false;
+        },
+
+        _config() {
+            if (this.form.type === 'webhook') {
+                const cfg = { url: this.form.webhook.url.trim() };
+                if (this.form.webhook.hmac_secret) cfg.hmac_secret = this.form.webhook.hmac_secret;
+                return cfg;
+            }
+            if (this.form.type === 's3') {
+                const s = this.form.s3;
+                const cfg = {
+                    bucket: s.bucket.trim(),
+                    region: s.region.trim(),
+                    access_key_id: s.access_key_id.trim(),
+                    secret_access_key: s.secret_access_key,
+                };
+                if (s.prefix) cfg.prefix = s.prefix.trim();
+                if (s.endpoint_url) cfg.endpoint_url = s.endpoint_url.trim();
+                return cfg;
+            }
+            const c = this.form.cloudtrail;
+            return {
+                region: c.region.trim(),
+                channel_arn: c.channel_arn.trim(),
+                access_key_id: c.access_key_id.trim(),
+                secret_access_key: c.secret_access_key,
+            };
+        },
+
+        async create() {
+            this.error = '';
+            this.creating = true;
+            const eventTypes = this.form.eventTypesRaw
+                .split(',')
+                .map(s => s.trim())
+                .filter(Boolean);
+            const body = {
+                name: this.form.name.trim(),
+                type: this.form.type,
+                config: this._config(),
+                is_active: true,
+            };
+            if (eventTypes.length) body.event_types = eventTypes;
+            if (this.form.workspaceFilter.length) {
+                body.workspace_filter = this.form.workspaceFilter.map(x => parseInt(x, 10));
+            }
+            const res = await window.pqlApi.fetch('/api/admin/audit-sinks', {
+                method: 'POST',
+                body,
+            });
+            this.creating = false;
+            if (!res.ok) {
+                this.error = res.error || 'Failed to create sink.';
+                return;
+            }
+            window.pqlApi.reloadWithToast('Sink created.');
+        },
+    };
+};
+</script>
+{% endblock %}
