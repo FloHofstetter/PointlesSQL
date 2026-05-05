@@ -57,7 +57,7 @@ PointlesSQL
 │   │   ```
 │   │
 │
-├── Phase 12.9 — LLM-friendly modularization (full-stack carve-up)  🔜 in progress
+├── Phase 12.9 — LLM-friendly modularization (full-stack carve-up)  ✅ closed 2026-05-05 (Sprint 76–95: 90d40b8)
 │   │
 │   │   Follow-up to Phase 12.8.  The Sprint-75 carve-up brought
 │   │   notebook/main.js from 1547 → 1204 LOC but the file was still
@@ -70,6 +70,15 @@ PointlesSQL
 │   │   service file >400 LOC) and finishes Tranches 2-6 of the
 │   │   original frontend plan.  19-sprint plan documented in
 │   │   [.claude/plans/ich-m-chte-eine-weitere-precious-goose.md](/home/flo/.claude/plans/ich-m-chte-eine-weitere-precious-goose.md).
+│   │
+│   │   **Closed 2026-05-05.**  All 19 sprints (76–95) landed.
+│   │   Frontend is 99.3 % ESM (28 modules / 5852 LOC); the 40-LOC
+│   │   ``help_popovers.js`` IIFE is the only non-ESM file left and
+│   │   is deliberately retained — it re-runs on every
+│   │   ``htmx:afterSwap`` and re-importing it as a module would
+│   │   break the popover-init flow.  ``bootstrap.js`` (132 LOC)
+│   │   stays permanent: Alpine's synchronous x-data DOM-walk needs
+│   │   the bridge from ESM-namespaced factories to ``window.*``.
 │   │
 │   └── Sprint 76 — notebook/main.js → 4 sub-modules + toast helper   ✅ done (pending-commit)
 │       Four sibling modules carved out of main.js + a cross-cutting
@@ -2075,7 +2084,7 @@ PointlesSQL
 │   │       everywhere), audit-of-audit recursion guard, value-
 │   │       change masking default, 404 on stale ``run_id``, and
 │   │       the anomaly bugfix's structural shape.
-│   ├── Sprint 19.2 — Audit-Reviewer-Agent reference run     ⏳ in progress
+│   ├── Sprint 19.2 — Audit-Reviewer-Agent reference run     ✅ closed (995490b)
 │   │   ├── Sprint 19.2.0 — Daily-review Hermes job + auditor   ✅
 │   │   │   key bootstrap.  New ``pointlessql admin
 │   │   │   issue-auditor-key --name=…`` Typer subcommand on
