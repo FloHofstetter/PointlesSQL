@@ -6,6 +6,32 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 34.1 closed (2026-05-05)** — Cross-Workspace Observability
+  MVP: 4 new operator-pain panels added to both Grafana dashboards
+  (SQLite at ``grafana/dashboards/pointlessql_audit.json`` +
+  Postgres at ``grafana/postgres-dashboards/pointlessql_audit.json``,
+  matched IDs).  Each filters by the existing ``$workspace`` template
+  variable.  Panel set, queries against the metadata DB directly:
+  (1) **Sink delivery health (last 1h)** — stat showing
+  ``governance_events`` ``outcome='delivered'`` ratio over the
+  last hour, threshold-coloured (red <95%, yellow 95-99%, green
+  ≥99%); (2) **Open anomaly verdicts (7d)** — stat counting
+  ``agent_runs`` rows whose cached ``anomaly_severity`` is
+  ``warn`` or ``critical`` in the trailing 7 days, threshold-
+  coloured (green=0, yellow≥1, red≥10); (3) **Rollbacks per
+  day** — vertical bar of ``agent_run_events.event_type =
+  'pointlessql.rollback.executed'`` count per day; (4) **Sink
+  errors per day (by event type)** — stacked vertical bar of
+  ``governance_events.outcome='delivery_failed'`` per day,
+  broken out by ``event_type``.  A markdown header panel
+  separates these from the Phase-19 baseline.  Per-dialect
+  queries: SQLite uses ``datetime('now', '-N hours')`` /
+  ``date(fired_at)``; Postgres uses ``NOW() - INTERVAL 'N hour'``
+  / ``::float8`` casts.  New gate ``scripts/check-grafana-
+  dashboards.sh`` parses both JSONs, requires non-empty panels
+  array, asserts each panel has ``id`` + ``type`` + ``title`` +
+  ``gridPos`` plus distinct IDs.  Local result: both dashboards
+  parse, 15 panels each (10 baseline + 5 new), distinct IDs.
 - **Sprint 33.4 closed (2026-05-05)** — Admin Console polish.  Closes
   the two remaining gaps that Phase 33's first cut deferred as
   "curl-only stays acceptable" / "out of scope":
