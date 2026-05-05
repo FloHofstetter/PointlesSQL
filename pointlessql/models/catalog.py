@@ -53,7 +53,13 @@ class Dashboard(Base):
 
     __tablename__ = "dashboards"
 
+    __table_args__ = (Index("ix_dashboards_workspace_owner", "workspace_id", "owner_id"),)
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — every dashboard is workspace-scoped.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     slug: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
@@ -266,9 +272,19 @@ class SavedQuery(Base):
 
     __tablename__ = "saved_queries"
 
-    __table_args__ = (Index("ix_saved_queries_owner_updated", "owner_id", "updated_at"),)
+    __table_args__ = (
+        Index("ix_saved_queries_owner_updated", "owner_id", "updated_at"),
+        Index("ix_saved_queries_workspace_owner", "workspace_id", "owner_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — every saved query is workspace-scoped.  is_shared
+    # still controls cross-user visibility *within* the workspace; the
+    # workspace_id column is a hard isolation boundary that admins
+    # cross only via the Sprint-28.7 super-admin lens.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     slug: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)

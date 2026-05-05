@@ -119,6 +119,7 @@ def create_saved_query(
     description: str | None,
     sql_text: str,
     is_shared: bool = False,
+    workspace_id: int = 1,
 ) -> dict[str, Any]:
     """Insert a new saved-query row.
 
@@ -129,6 +130,9 @@ def create_saved_query(
         description: Optional description.
         sql_text: The SQL to save.  Must be non-empty.
         is_shared: Whether the row is visible to other users.
+        workspace_id: Phase 28.2 — workspace this saved query
+            lives in.  Defaults to ``1`` for non-HTTP callers;
+            HTTP routes pass ``request.state.workspace_id``.
 
     Returns:
         The serialised row as a dict.
@@ -146,6 +150,7 @@ def create_saved_query(
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         row = SavedQuery(
+            workspace_id=workspace_id,
             slug=make_slug(clean_title),
             title=clean_title[:200],
             description=clean_description,

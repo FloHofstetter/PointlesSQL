@@ -53,6 +53,7 @@ class Alert(Base):
     __tablename__ = "alerts"
     __table_args__ = (
         Index("ix_alerts_owner", "owner_id"),
+        Index("ix_alerts_workspace_owner", "workspace_id", "owner_id"),
         CheckConstraint(
             "condition_op IN ('gt','lt','eq','ne')",
             name="ck_alerts_condition_op",
@@ -60,6 +61,10 @@ class Alert(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — every alert lives in exactly one workspace.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     slug: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     saved_query_id: Mapped[int] = mapped_column(
@@ -142,6 +147,7 @@ class AlertEvent(Base):
     __tablename__ = "alert_events"
     __table_args__ = (
         Index("ix_alert_events_fired", "alert_id", "fired_at"),
+        Index("ix_alert_events_workspace_alert", "workspace_id", "alert_id"),
         CheckConstraint(
             "outcome IN ('fired','suppressed','delivery_failed')",
             name="ck_alert_events_outcome",
@@ -149,6 +155,10 @@ class AlertEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — denormalised from parent Alert.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     alert_id: Mapped[int] = mapped_column(Integer, ForeignKey("alerts.id"), nullable=False)
     event_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     fired_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

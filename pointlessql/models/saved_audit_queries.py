@@ -75,22 +75,23 @@ class SavedAuditQuery(Base):
     __table_args__ = (
         Index("ix_saved_audit_queries_owner_updated", "owner_id", "updated_at"),
         Index("ix_saved_audit_queries_starter", "is_starter"),
+        Index("ix_saved_audit_queries_workspace", "workspace_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — workspace-scoped audit-cockpit bookmarks.  Starter
+    # rows seed in workspace=1; future workspaces start with an empty
+    # set their admin can populate (or copy from default).
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     slug: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     sql_text: Mapped[str] = mapped_column(Text, nullable=False)
-    owner_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=True
-    )
+    owner_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     is_shared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_starter: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     alert_threshold_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

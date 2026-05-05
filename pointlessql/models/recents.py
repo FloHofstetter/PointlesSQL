@@ -50,6 +50,7 @@ class RecentTable(Base):
     __tablename__ = "recent_tables"
     __table_args__ = (
         UniqueConstraint(
+            "workspace_id",
             "user_id",
             "table_full_name",
             name="uq_recent_tables_user_table",
@@ -59,9 +60,20 @@ class RecentTable(Base):
             "user_id",
             "last_visited_at",
         ),
+        Index(
+            "ix_recent_tables_workspace_user",
+            "workspace_id",
+            "user_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — recents are per-(workspace, user) so the same user
+    # can have different recents per workspace.  UNIQUE constraint
+    # widens to include workspace_id.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     user_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("users.id", ondelete="CASCADE"),

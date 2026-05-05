@@ -45,8 +45,9 @@ def record_table_visit(
     table_full_name: str,
     *,
     now: datetime.datetime | None = None,
+    workspace_id: int = 1,
 ) -> None:
-    """Upsert a recents row for the (user, table) pair.
+    """Upsert a recents row for the (workspace, user, table) triple.
 
     Uses dialect-specific ``INSERT ... ON CONFLICT DO UPDATE``
     (SQLite + Postgres both support it) so a write is one round
@@ -55,14 +56,18 @@ def record_table_visit(
     ``IntegrityError`` recovery branch.
 
     Bounded growth: when the user has more than
-    :data:`TRIM_THRESHOLD` rows, the oldest are deleted in the
-    same session.
+    :data:`TRIM_THRESHOLD` rows in the workspace, the oldest are
+    deleted in the same session.
 
     Args:
         factory: SQLAlchemy session factory.
         user_id: ``users.id`` — must be > 0.
         table_full_name: ``catalog.schema.table``.
         now: Optional UTC override for tests.
+        workspace_id: Phase 28.2 — workspace this visit was made
+            in.  Defaults to ``1`` (seeded default workspace) so
+            non-HTTP callers keep working; HTTP routes pass
+            ``request.state.workspace_id``.
     """
     if user_id <= 0:
         return
@@ -76,19 +81,23 @@ def record_table_visit(
             dialect_name = session.bind.dialect.name if session.bind else "sqlite"
             insert_fn = pg_insert if dialect_name == "postgresql" else sqlite_insert
             stmt = insert_fn(RecentTable).values(
+                workspace_id=workspace_id,
                 user_id=user_id,
                 table_full_name=table_full_name,
                 last_visited_at=timestamp,
             )
             stmt = stmt.on_conflict_do_update(
-                index_elements=["user_id", "table_full_name"],
+                index_elements=["workspace_id", "user_id", "table_full_name"],
                 set_={"last_visited_at": timestamp},
             )
             session.execute(stmt)
 
             count = session.scalar(
                 select(RecentTable.id)
-                .where(RecentTable.user_id == user_id)
+                .where(
+                    RecentTable.user_id == user_id,
+                    RecentTable.workspace_id == workspace_id,
+                )
                 .order_by(desc(RecentTable.last_visited_at))
                 .offset(TRIM_THRESHOLD)
                 .limit(1)
@@ -97,7 +106,10 @@ def record_table_visit(
                 rows = list(
                     session.scalars(
                         select(RecentTable)
-                        .where(RecentTable.user_id == user_id)
+                        .where(
+                            RecentTable.user_id == user_id,
+                            RecentTable.workspace_id == workspace_id,
+                        )
                         .order_by(desc(RecentTable.last_visited_at))
                         .offset(TRIM_THRESHOLD)
                     )
@@ -119,6 +131,7 @@ def top_recent_tables(
     user_id: int,
     *,
     limit: int = DEFAULT_LIMIT,
+    workspace_id: int | None = None,
 ) -> list[dict[str, object]]:
     """Return the user's N most-recent table visits, newest first.
 
@@ -126,6 +139,11 @@ def top_recent_tables(
         factory: SQLAlchemy session factory.
         user_id: ``users.id``.  Returns ``[]`` for ``user_id<=0``.
         limit: Cap (default 5, matching the sidebar block).
+        workspace_id: Phase 28.2 — restrict to one workspace's
+            recents.  ``None`` returns recents across every
+            workspace the user has visited (used by the Sprint
+            28.7 super-admin lens; the regular sidebar always
+            passes the request's resolved workspace).
 
     Returns:
         List of dicts with ``table_full_name`` and ``last_visited_at``
@@ -135,14 +153,15 @@ def top_recent_tables(
         return []
     try:
         with factory() as session:
-            rows = list(
-                session.scalars(
-                    select(RecentTable)
-                    .where(RecentTable.user_id == user_id)
-                    .order_by(desc(RecentTable.last_visited_at))
-                    .limit(limit)
-                )
+            stmt = (
+                select(RecentTable)
+                .where(RecentTable.user_id == user_id)
+                .order_by(desc(RecentTable.last_visited_at))
+                .limit(limit)
             )
+            if workspace_id is not None:
+                stmt = stmt.where(RecentTable.workspace_id == workspace_id)
+            rows = list(session.scalars(stmt))
             return [
                 {
                     "table_full_name": r.table_full_name,

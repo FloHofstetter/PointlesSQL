@@ -174,9 +174,22 @@ def _load_user_info(session: Session, user_id: int) -> UserInfo | None:
     )
 
 
+def _workspace_id_for_job(session: Session, job_id: int) -> int:
+    """Return the parent job's workspace_id, or 1 on miss.
+
+    Phase 28.2 — JobRun rows denormalise their workspace from the
+    parent Job so the runs-list page can filter without a JOIN.
+    """
+    from pointlessql.models import Job as _Job
+
+    value = session.scalar(select(_Job.workspace_id).where(_Job.id == job_id))
+    return int(value) if value is not None else 1
+
+
 def _start_run(session: Session, job_id: int, trigger: str) -> JobRun:
     """Insert a fresh ``running`` :class:`JobRun` and return it."""
     run = JobRun(
+        workspace_id=_workspace_id_for_job(session, job_id),
         job_id=job_id,
         started_at=_utcnow(),
         status="running",
@@ -192,6 +205,7 @@ def _insert_skipped(session: Session, job_id: int, reason: str) -> JobRun:
     """Insert a ``skipped`` :class:`JobRun` with a trigger of ``scheduled``."""
     now = _utcnow()
     run = JobRun(
+        workspace_id=_workspace_id_for_job(session, job_id),
         job_id=job_id,
         started_at=now,
         finished_at=now,
@@ -221,6 +235,12 @@ def _finish_run(
     session.commit()
 
 
+def _workspace_id_for_job_run(session: Session, job_run_id: int) -> int:
+    """Return the parent JobRun's workspace_id, or 1 on miss."""
+    value = session.scalar(select(JobRun.workspace_id).where(JobRun.id == job_run_id))
+    return int(value) if value is not None else 1
+
+
 def log_job(
     factory: sessionmaker[Session],
     job_run_id: int,
@@ -248,6 +268,7 @@ def log_job(
     with factory() as session:
         session.add(
             JobLog(
+                workspace_id=_workspace_id_for_job_run(session, job_run_id),
                 job_run_id=job_run_id,
                 task_id=task_id,
                 ts=_utcnow(),
@@ -269,6 +290,7 @@ def _create_task_run(
 ) -> TaskRun:
     """Insert a :class:`TaskRun` row for one node in the DAG."""
     tr = TaskRun(
+        workspace_id=_workspace_id_for_job_run(session, job_run_id),
         job_run_id=job_run_id,
         task_id=task_id,
         status=status,

@@ -65,7 +65,14 @@ class Job(Base):
 
     __tablename__ = "jobs"
 
+    __table_args__ = (Index("ix_jobs_workspace_user", "workspace_id", "run_as_user_id"),)
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — every job is workspace-scoped.  Backfilled from
+    # users[run_as_user_id].default_workspace_id at migration time.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     name: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     cron_expr: Mapped[str] = mapped_column(String(120), nullable=False)
     run_as_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
@@ -107,9 +114,17 @@ class JobRun(Base):
     # ``started_at DESC`` so the run-list view's "newest first" sort is
     # an index-only scan; without DESC SQLite would still use the
     # index but pay a reverse-traversal cost on every page load.
-    __table_args__ = (Index("ix_job_runs_job_started", "job_id", text("started_at DESC")),)
+    __table_args__ = (
+        Index("ix_job_runs_job_started", "job_id", text("started_at DESC")),
+        Index("ix_job_runs_workspace_started", "workspace_id", "started_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — denormalised from parent Job for workspace-scoped
+    # listings (admins see only their workspace's job_runs).
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     job_id: Mapped[int] = mapped_column(Integer, ForeignKey("jobs.id"), nullable=False)
     started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
@@ -156,7 +171,13 @@ class JobTask(Base):
 
     __tablename__ = "job_tasks"
 
+    __table_args__ = (Index("ix_job_tasks_workspace_job", "workspace_id", "job_id"),)
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — denormalised from parent Job.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     job_id: Mapped[int] = mapped_column(Integer, ForeignKey("jobs.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
@@ -197,9 +218,16 @@ class TaskRun(Base):
 
     __tablename__ = "task_runs"
 
-    __table_args__ = (Index("ix_task_runs_job_run", "job_run_id"),)
+    __table_args__ = (
+        Index("ix_task_runs_job_run", "job_run_id"),
+        Index("ix_task_runs_workspace_job_run", "workspace_id", "job_run_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — denormalised from parent JobRun.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     job_run_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_runs.id"), nullable=False)
     task_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_tasks.id"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -235,7 +263,13 @@ class JobLog(Base):
 
     __tablename__ = "job_logs"
 
+    __table_args__ = (Index("ix_job_logs_workspace_ts", "workspace_id", "ts"),)
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — denormalised from parent JobRun.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     job_run_id: Mapped[int] = mapped_column(Integer, ForeignKey("job_runs.id"), nullable=False)
     task_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("job_tasks.id", name="fk_job_logs_task_id"), nullable=True

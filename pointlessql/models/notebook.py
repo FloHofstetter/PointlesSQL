@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -70,9 +70,14 @@ class NotebookOutput(Base):
         ),
         Index("ix_notebook_outputs_lookup", "file_path", "content_hash"),
         Index("ix_notebook_outputs_agent_run", "agent_run_id"),
+        Index("ix_notebook_outputs_workspace_path", "workspace_id", "file_path"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Phase 28.2 — every persisted notebook output is workspace-scoped.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     kernel_session_id: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -120,11 +125,22 @@ class NotebookCellRun(Base):
     """
 
     __tablename__ = "notebook_cell_runs"
-    __table_args__ = (Index("ix_notebook_cell_runs_agent_run", "agent_run_id"),)
+    __table_args__ = (
+        Index("ix_notebook_cell_runs_agent_run", "agent_run_id"),
+        Index(
+            "ix_notebook_cell_runs_workspace_session",
+            "workspace_id",
+            "kernel_session_id",
+        ),
+    )
 
     file_path: Mapped[str] = mapped_column(String(1024), primary_key=True)
     content_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     kernel_session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    # Phase 28.2 — every cell-run lifecycle row is workspace-scoped.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
     execution_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     started_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

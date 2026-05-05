@@ -3063,9 +3063,15 @@ PointlesSQL
 │   │   fan out via pins).  FTS5 triggers for query_history /
 │   │   audit_log flip from literal ``1`` to ``NEW.workspace_id``.
 │   │   8 new pytest cases.
-│   ├── Sprint 28.2 — User-owned + scheduler tables              ⏳
-│   │   (jobs, dashboards, saved_queries, recents, alerts,
-│   │   notebooks).
+│   ├── Sprint 28.2 — User-owned + scheduler tables              ✅
+│   │   (Alembic ``cc3e5g7i9k1m``).  13 tables: 5 scheduler,
+│   │   3 catalog/saved-queries, 1 recents (UNIQUE widened to
+│   │   prefix workspace_id), 2 alerts, 2 notebook.  Scheduler
+│   │   tick propagates Job.workspace_id to JobRun / TaskRun /
+│   │   JobLog.  ``recents.record_table_visit`` and
+│   │   ``saved_queries.create_saved_query`` thread workspace_id.
+│   │   Route-side listing filters land as follow-up.  6 new
+│   │   pytest cases.
 │   ├── Sprint 28.3 — Workspace catalog pins (cosmetic) +        ⏳
 │   │   UI default-catalog hint.
 │   ├── Sprint 28.4 — UI: switcher + base.html plumbing +        ⏳

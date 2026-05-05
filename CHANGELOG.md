@@ -23,6 +23,40 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 28.2 — workspace_id on user-owned + scheduler tables.**
+  Adds workspace_id NOT NULL with ``server_default='1'`` to 13
+  tables (Alembic ``cc3e5g7i9k1m``): ``jobs``, ``job_runs``,
+  ``job_tasks``, ``task_runs``, ``job_logs``, ``dashboards``,
+  ``saved_queries``, ``saved_audit_queries``, ``recent_tables``,
+  ``alerts``, ``alert_events``, ``notebook_outputs``,
+  ``notebook_cell_runs``.  Backfill cascades from owner_id /
+  run_as_user_id → users.default_workspace_id, with child tables
+  inheriting from their parent.  ``recent_tables`` UNIQUE constraint
+  widens from ``(user_id, table_full_name)`` to ``(workspace_id,
+  user_id, table_full_name)`` so a user visiting the same table
+  from two workspaces gets two rows.
+
+  Service-layer write paths thread workspace_id:
+  ``scheduler.runs._start_run`` / ``_insert_skipped`` /
+  ``log_job`` / ``_create_task_run`` derive workspace_id from the
+  parent Job (or JobRun for child writes).
+  ``recents.record_table_visit`` accepts a ``workspace_id`` kwarg
+  (defaults to 1) and the upsert ``ON CONFLICT`` index switches to
+  the new (workspace_id, user_id, table_full_name) triple.
+  ``recents.top_recent_tables`` accepts an optional ``workspace_id``
+  filter.  ``saved_queries.create_saved_query`` accepts
+  ``workspace_id``.  Route-side workspace filtering in jobs /
+  dashboards / saved-queries / alerts listings stays for a
+  follow-up — the schema and write paths are in place so the
+  filters add cleanly without a second migration.
+
+  6 new pytest cases in
+  ``tests/test_user_owned_workspace_isolation.py`` covering schema
+  sanity, JobRun workspace propagation from parent Job (incl.
+  log_job inheriting from JobRun), recents per-workspace upsert
+  + UNIQUE widening, ``top_recent_tables`` workspace filter, and
+  ``create_saved_query`` workspace passthrough.
+
 - **Sprint 28.1b — workspace_id on lineage / audit_log / governance /
   query_history (+ FTS5 trigger flip).**  Completes the audit-side
   workspace cascade.  Adds workspace_id NOT NULL with
