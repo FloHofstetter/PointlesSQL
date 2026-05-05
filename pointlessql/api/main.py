@@ -22,6 +22,9 @@ import pointlessql
 from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
 from pointlessql.api.admin_external_writes_routes import router as admin_external_writes_router
 from pointlessql.api.admin_routes import router as admin_router
+from pointlessql.api.admin_workspace_pins_routes import (
+    router as admin_workspace_pins_router,
+)
 from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
@@ -475,6 +478,7 @@ app.include_router(home_router)
 app.include_router(admin_router)
 app.include_router(admin_api_keys_router)
 app.include_router(admin_external_writes_router)
+app.include_router(admin_workspace_pins_router)
 app.include_router(review_destinations_router)
 app.include_router(audit_sinks_router)
 app.include_router(ml_router)
@@ -495,7 +499,8 @@ async def _style_css() -> Response:
     imported sub-sheet at once without a build step.
     """
     body = _STYLE_CSS_PATH.read_text().replace(
-        "?v=ASSET_VERSION", f"?v={pointlessql.__version__}",
+        "?v=ASSET_VERSION",
+        f"?v={pointlessql.__version__}",
     )
     return Response(body, media_type="text/css")
 

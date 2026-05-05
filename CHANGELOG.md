@@ -23,6 +23,28 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 28.3 — workspace catalog pins (cosmetic) + tree filter.**
+  Wires the ``workspace_catalog_pins`` table created (but unused) in
+  Sprint 28.0.  Three new admin-only routes:
+  ``GET /api/admin/workspaces/{id}/pins``,
+  ``POST /api/admin/workspaces/{id}/pins`` (auto-demotes any
+  prior primary when promoting a new one to ``primary`` mode),
+  ``DELETE /api/admin/workspaces/{id}/pins/{catalog_name}``.
+  ``GET /api/tree`` accepts an optional ``primary_only=true``
+  query parameter that filters the returned tree to the active
+  workspace's pinned catalogs.
+
+  No enforcement: pins are *cosmetic*.  Cross-workspace catalog
+  access stays free per the global-catalog decision (ADR-0008
+  shipping in 28.8).  Workspaces with zero pins see the full
+  tree exactly like the pre-Phase-28 UI.  Mutations
+  audit-log to ``workspace.pin_added`` / ``workspace.pin_removed``.
+
+  6 new pytest cases in ``tests/test_workspace_pins.py``: CRUD
+  round-trip with primary-promotion demotion behaviour, malformed
+  mode rejection, 404 on unknown workspace, admin-only enforcement,
+  UNIQUE constraint blocking dup, and the filter logic itself.
+
 - **Sprint 28.2 — workspace_id on user-owned + scheduler tables.**
   Adds workspace_id NOT NULL with ``server_default='1'`` to 13
   tables (Alembic ``cc3e5g7i9k1m``): ``jobs``, ``job_runs``,

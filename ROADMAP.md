@@ -3072,8 +3072,17 @@ PointlesSQL
 │   │   ``saved_queries.create_saved_query`` thread workspace_id.
 │   │   Route-side listing filters land as follow-up.  6 new
 │   │   pytest cases.
-│   ├── Sprint 28.3 — Workspace catalog pins (cosmetic) +        ⏳
-│   │   UI default-catalog hint.
+│   ├── Sprint 28.3 — Workspace catalog pins (cosmetic) +        ✅
+│   │   UI default-catalog hint.  Three admin-only routes
+│   │   wire the ``workspace_catalog_pins`` table (created but
+│   │   unused in 28.0): GET / POST / DELETE
+│   │   ``/api/admin/workspaces/{id}/pins``.  ``GET /api/tree``
+│   │   accepts ``?primary_only=true`` to filter to pinned
+│   │   catalogs.  Promoting a second pin to ``primary`` mode
+│   │   auto-demotes the previous primary.  No enforcement —
+│   │   cross-workspace catalog access stays free.  Mutations
+│   │   audit-log to ``workspace.pin_added`` /
+│   │   ``workspace.pin_removed``.  6 new pytest cases.
 │   ├── Sprint 28.4 — UI: switcher + base.html plumbing +        ⏳
 │   │   sidebar awareness + single-workspace hide rule.
 │   ├── Sprint 28.5 — Hermes plugin X-Workspace +                ⏳
