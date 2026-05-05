@@ -71,15 +71,11 @@ async def _gather_versions_with_mlflow(
 
 
 @router.get("/models/{full_name}", response_class=HTMLResponse, response_model=None)
-async def model_detail_page(
-    full_name: str, request: Request
-) -> HTMLResponse | RedirectResponse:
+async def model_detail_page(full_name: str, request: Request) -> HTMLResponse | RedirectResponse:
     """Render the model-detail page with versions + MLflow context."""
     user = get_user(request)
     if user["id"] == 0:
-        return RedirectResponse(
-            url=f"/auth/login?next=/models/{full_name}", status_code=303
-        )
+        return RedirectResponse(url=f"/auth/login?next=/models/{full_name}", status_code=303)
 
     client = get_uc_client(request)
     model = await client.get_registered_model(full_name)
@@ -162,12 +158,8 @@ async def model_compare_page(
     )
 
     metric_diff = compute_metric_diff(v1_mlflow, v2_mlflow)
-    params_diff_data = params_diff(
-        v1_mlflow.get("params") or {}, v2_mlflow.get("params") or {}
-    )
-    tags_diff_data = tags_diff(
-        v1_mlflow.get("tags") or {}, v2_mlflow.get("tags") or {}
-    )
+    params_diff_data = params_diff(v1_mlflow.get("params") or {}, v2_mlflow.get("params") or {})
+    tags_diff_data = tags_diff(v1_mlflow.get("tags") or {}, v2_mlflow.get("tags") or {})
 
     templates = request.app.state.templates
     return templates.TemplateResponse(

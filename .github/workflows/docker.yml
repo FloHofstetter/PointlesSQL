@@ -123,7 +123,7 @@ jobs:
           build-args: |
             VCS_REF=${{ github.sha }}
             VERSION=${{ github.ref_name }}
-          secrets: |
+          secrets: |  # pragma: allowlist secret
             gh_pat=${{ secrets.SOYUZ_READ_TOKEN }}
           cache-from: type=gha,scope=pointlessql
           cache-to: type=gha,mode=max,scope=pointlessql

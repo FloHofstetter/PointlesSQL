@@ -111,12 +111,15 @@ class TestAuditColumns:
 
 class TestEdgeCases:
     def test_empty_target_yields_empty(self) -> None:
-        assert infer_column_edges(
-            source_columns=["a"],
-            target_columns=[],
-            source_table="main.x.t",
-            target_table="main.y.u",
-        ) == []
+        assert (
+            infer_column_edges(
+                source_columns=["a"],
+                target_columns=[],
+                source_table="main.x.t",
+                target_table="main.y.u",
+            )
+            == []
+        )
 
     def test_source_only_columns_are_skipped(self) -> None:
         # ``b`` exists on source but not target — must NOT appear in

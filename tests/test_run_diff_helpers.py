@@ -117,7 +117,7 @@ def _add_column_edge(
 def test_value_changes_diff_buckets_divergent_and_unique() -> None:
     """Diff isolates divergent vs only-in-a vs only-in-b cells."""
     op_a = _seed_run_with_op(run_id="aaaa1111-aaaa-1111-aaaa-111111111111")
-    op_b = _seed_run_with_op(run_id="bbbb2222-bbbb-2222-bbbb-222222222222")
+    _seed_run_with_op(run_id="bbbb2222-bbbb-2222-bbbb-222222222222")
 
     # Same cell, different new_value → divergent.
     _add_value_change(
@@ -201,7 +201,7 @@ def test_value_changes_diff_buckets_divergent_and_unique() -> None:
 def test_value_changes_diff_masks_unless_revealed() -> None:
     """Default mask hides values; reveal=True passes them through."""
     op = _seed_run_with_op(run_id="cccc3333-cccc-3333-cccc-333333333333")
-    op_b = _seed_run_with_op(run_id="dddd4444-dddd-4444-dddd-444444444444")
+    _seed_run_with_op(run_id="dddd4444-dddd-4444-dddd-444444444444")
     _add_value_change(
         run_id="cccc3333-cccc-3333-cccc-333333333333",
         op_id=op,
@@ -244,7 +244,7 @@ def test_value_changes_diff_masks_unless_revealed() -> None:
 def test_value_changes_diff_top_k_truncates() -> None:
     """top_k=2 truncates a 5-cell divergent set + flags the bucket."""
     op_a = _seed_run_with_op(run_id="eeee5555-eeee-5555-eeee-555555555555")
-    op_b = _seed_run_with_op(run_id="ffff6666-ffff-6666-ffff-666666666666")
+    _seed_run_with_op(run_id="ffff6666-ffff-6666-ffff-666666666666")
     for i in range(5):
         _add_value_change(
             run_id="eeee5555-eeee-5555-eeee-555555555555",
@@ -279,7 +279,7 @@ def test_value_changes_diff_top_k_truncates() -> None:
 def test_column_lineage_diff_categorises_changes() -> None:
     """only-in-a / only-in-b / kind_changed / detail_changed all surface."""
     op_a = _seed_run_with_op(run_id="aaaa9999-aaaa-9999-aaaa-999999999999")
-    op_b = _seed_run_with_op(run_id="bbbb9999-bbbb-9999-bbbb-999999999999")
+    _seed_run_with_op(run_id="bbbb9999-bbbb-9999-bbbb-999999999999")
 
     # Edge identical on both runs (must NOT appear).
     for run_id in (

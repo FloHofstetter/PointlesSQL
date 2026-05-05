@@ -10,6 +10,10 @@ repos:
       - id: end-of-file-fixer
         exclude: ^notebooks/
       - id: check-yaml
+        # mkdocs.yml carries `!!python/name:…` tags for pymdownx
+        # superfences; SafeLoader cannot resolve them so we run with
+        # the unsafe loader (we trust our own YAML files).
+        args: ["--unsafe"]
       - id: check-toml
       - id: check-added-large-files
         args: ["--maxkb=512"]
@@ -34,7 +38,25 @@ repos:
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        exclude: ^(uv\.lock|tests/|frontend/|notebooks/)
+        # Excludes:
+        # - uv.lock — package hashes, never secrets
+        # - tests/, frontend/, notebooks/ — test fixtures and JS deps
+        # - docs/ — examples illustrating env vars / connection strings
+        # - .env.example — documents the env vars (no real values)
+        # - docker-compose*.yml — local-stack passwords, not prod
+        # - pointlessql/alembic/versions/ — revision ids are hex
+        #   high-entropy by design and would re-trigger every migration
+        exclude: |
+          (?x)^(
+            uv\.lock|
+            tests/|
+            frontend/|
+            notebooks/|
+            docs/|
+            \.env\.example|
+            docker-compose.*\.yml|
+            pointlessql/alembic/versions/
+          )
 
   - repo: local
     hooks:

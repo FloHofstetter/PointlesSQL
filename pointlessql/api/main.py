@@ -135,12 +135,12 @@ _TEMPLATES.env.globals["help"] = _get_help  # pyright: ignore[reportArgumentType
 # Asset cache-bust token.  Bumps automatically with every release;
 # templates use ``?v={{ asset_version }}`` instead of hand-edited
 # per-edit strings.
-_TEMPLATES.env.globals["asset_version"] = pointlessql.__version__
+_TEMPLATES.env.globals["asset_version"] = pointlessql.__version__  # pyright: ignore[reportArgumentType]
 
 # Centralised status → Bootstrap badge class mapping.  Templates
 # call ``{{ status_class(run.status) }}`` instead of hand-rolling
 # {% if status == 'succeeded' %}bg-success{% elif … %} ladders.
-_TEMPLATES.env.globals["status_class"] = _status_class
+_TEMPLATES.env.globals["status_class"] = _status_class  # pyright: ignore[reportArgumentType]
 
 
 _original_template_response = _TEMPLATES.TemplateResponse
@@ -594,7 +594,7 @@ _STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"
 
 
 @app.get("/static/css/style.css", include_in_schema=False)
-async def _style_css() -> Response:
+async def _style_css() -> Response:  # pyright: ignore[reportUnusedFunction]
     """Serve the master stylesheet with the cache-bust token rewritten to ``__version__``.
 
     Browsers cache ``@import`` URLs independently of their referring

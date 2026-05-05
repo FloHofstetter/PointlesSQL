@@ -82,9 +82,7 @@ async def test_admin_create_requires_admin() -> None:
 
 @pytest.mark.asyncio
 async def test_admin_update_workspace_renames() -> None:
-    ws = workspaces_service.create_workspace(
-        _factory(), slug="admin-rename", name="original"
-    )
+    ws = workspaces_service.create_workspace(_factory(), slug="admin-rename", name="original")
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://test",
@@ -139,9 +137,7 @@ def _create_extra_user(email: str) -> int:
 
 @pytest.mark.asyncio
 async def test_admin_add_member_by_email() -> None:
-    ws = workspaces_service.create_workspace(
-        _factory(), slug="admin-mem-a", name="MemA"
-    )
+    ws = workspaces_service.create_workspace(_factory(), slug="admin-mem-a", name="MemA")
     extra_email = "extra-member-a@test.com"
     _create_extra_user(extra_email)
     async with httpx.AsyncClient(
@@ -161,9 +157,7 @@ async def test_admin_add_member_by_email() -> None:
 
 @pytest.mark.asyncio
 async def test_admin_change_member_role() -> None:
-    ws = workspaces_service.create_workspace(
-        _factory(), slug="admin-mem-b", name="MemB"
-    )
+    ws = workspaces_service.create_workspace(_factory(), slug="admin-mem-b", name="MemB")
     user_id = _create_extra_user("extra-role@test.com")
     workspaces_service.add_member(_factory(), workspace_id=ws.id, user_id=user_id, role="member")
     async with httpx.AsyncClient(
@@ -181,9 +175,7 @@ async def test_admin_change_member_role() -> None:
 
 @pytest.mark.asyncio
 async def test_admin_remove_member() -> None:
-    ws = workspaces_service.create_workspace(
-        _factory(), slug="admin-mem-c", name="MemC"
-    )
+    ws = workspaces_service.create_workspace(_factory(), slug="admin-mem-c", name="MemC")
     user_id = _create_extra_user("extra-remove@test.com")
     workspaces_service.add_member(_factory(), workspace_id=ws.id, user_id=user_id, role="member")
     async with httpx.AsyncClient(
@@ -191,18 +183,14 @@ async def test_admin_remove_member() -> None:
         base_url="http://test",
         cookies=app.state._test_auth_cookie,
     ) as client:
-        response = await client.delete(
-            f"/api/admin/workspaces/{ws.id}/members/{user_id}"
-        )
+        response = await client.delete(f"/api/admin/workspaces/{ws.id}/members/{user_id}")
     assert response.status_code == 200
     assert response.json()["deleted"] is True
 
 
 @pytest.mark.asyncio
 async def test_admin_list_members_includes_emails() -> None:
-    ws = workspaces_service.create_workspace(
-        _factory(), slug="admin-mem-d", name="MemD"
-    )
+    ws = workspaces_service.create_workspace(_factory(), slug="admin-mem-d", name="MemD")
     user_id = _create_extra_user("extra-list@test.com")
     workspaces_service.add_member(_factory(), workspace_id=ws.id, user_id=user_id, role="member")
     async with httpx.AsyncClient(

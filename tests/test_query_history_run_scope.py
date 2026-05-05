@@ -151,10 +151,7 @@ async def test_sql_execute_tags_history_with_header(monkeypatch) -> None:
         )
     assert response.status_code == 200, response.text
     with factory() as session:
-        row = session.scalar(
-            select(QueryHistory)
-            .where(QueryHistory.agent_run_id == run_id)
-        )
+        row = session.scalar(select(QueryHistory).where(QueryHistory.agent_run_id == run_id))
     assert row is not None
     assert row.sql_text == "SELECT 1"
 

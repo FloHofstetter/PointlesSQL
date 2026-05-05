@@ -192,7 +192,7 @@ def _friendly_soyuz_message(exc: UnexpectedStatus) -> str:
     """
     try:
         body = json.loads(exc.content.decode(errors="ignore"))
-    except (ValueError, AttributeError):
+    except ValueError, AttributeError:
         return str(exc)
     if isinstance(body, dict):
         message = body.get("message")

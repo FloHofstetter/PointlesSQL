@@ -33,9 +33,7 @@ def _make_user(email: str = "alice@example.com") -> int:
 def _wipe_recents(user_id: int) -> None:
     factory = app.state.session_factory
     with factory() as session:
-        rows = session.scalars(
-            select(RecentTable).where(RecentTable.user_id == user_id)
-        ).all()
+        rows = session.scalars(select(RecentTable).where(RecentTable.user_id == user_id)).all()
         for r in rows:
             session.delete(r)
         session.commit()
@@ -66,11 +64,7 @@ class TestRecordTableVisit:
         # Single row, last_visited_at bumped to second.
         factory = app.state.session_factory
         with factory() as session:
-            rows = list(
-                session.scalars(
-                    select(RecentTable).where(RecentTable.user_id == user_id)
-                )
-            )
+            rows = list(session.scalars(select(RecentTable).where(RecentTable.user_id == user_id)))
         assert len(rows) == 1
         # SQLite drops tzinfo on DateTime(timezone=True) columns —
         # compare naïvely on the wall-clock components.
@@ -87,12 +81,8 @@ class TestRecordTableVisit:
     def test_invalid_fqn_no_op(self) -> None:
         user_id = _make_user("recents-3@example.com")
         _wipe_recents(user_id)
-        recents_service.record_table_visit(
-            app.state.session_factory, user_id, "not_three_parts"
-        )
-        assert recents_service.top_recent_tables(
-            app.state.session_factory, user_id
-        ) == []
+        recents_service.record_table_visit(app.state.session_factory, user_id, "not_three_parts")
+        assert recents_service.top_recent_tables(app.state.session_factory, user_id) == []
 
 
 class TestTopRecentTables:
@@ -126,6 +116,4 @@ class TestTopRecentTables:
 
     def test_unknown_user_returns_empty(self) -> None:
         # User-id 999999 has no rows; result is [], not an error.
-        assert (
-            recents_service.top_recent_tables(app.state.session_factory, 999999) == []
-        )
+        assert recents_service.top_recent_tables(app.state.session_factory, 999999) == []

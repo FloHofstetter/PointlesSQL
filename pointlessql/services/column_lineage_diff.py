@@ -107,8 +107,7 @@ def infer_column_edges(
                             target_column=target_column,
                             transform_kind="unknown_origin",
                             transform_detail=(
-                                f"derivation references {source_column!r} "
-                                f"which is not on source"
+                                f"derivation references {source_column!r} which is not on source"
                             ),
                         )
                     )

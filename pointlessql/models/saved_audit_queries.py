@@ -48,6 +48,9 @@ class SavedAuditQuery(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — workspace-
+            scoped audit-cockpit bookmarks.  Starter rows seed in
+            workspace=1.
         slug: URL-visible identifier, unique across all rows.
         title: Human-readable name.
         description: Optional explanation of what the query

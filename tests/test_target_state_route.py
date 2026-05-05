@@ -126,9 +126,7 @@ async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock) -> Non
             run_id="aaaa1111-1111-1111-1111-aaaaaaaaaaa1",
             target=target,
         )
-        response = await client.get(
-            "/api/pql/target-state", params={"table": target}
-        )
+        response = await client.get("/api/pql/target-state", params={"table": target})
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["exists"] is True
@@ -143,9 +141,7 @@ async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock) -> Non
 @pytest.mark.asyncio
 async def test_target_state_rejects_non_three_part_name(uc_mock: MagicMock) -> None:
     async with _admin_client() as client:
-        response = await client.get(
-            "/api/pql/target-state", params={"table": "not.three"}
-        )
+        response = await client.get("/api/pql/target-state", params={"table": "not.three"})
     # ValidationError surfaces as 422 via the app's exception handler.
     assert response.status_code == 422
 
@@ -186,7 +182,5 @@ async def test_operations_filter_errored_only() -> None:
 @pytest.mark.asyncio
 async def test_operations_rejects_bad_since() -> None:
     async with _admin_client() as client:
-        response = await client.get(
-            "/api/agent-runs/operations", params={"since": "yesterday"}
-        )
+        response = await client.get("/api/agent-runs/operations", params={"since": "yesterday"})
     assert response.status_code == 422

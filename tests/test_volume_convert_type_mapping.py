@@ -38,7 +38,8 @@ def test_delta_field_to_uc_defaults_to_string_on_unknown() -> None:
     assert _delta_field_to_uc(_fake_field("struct<x:long>")) == ("STRING", "string")
     # Non-str primitives (shouldn't happen but be defensive).
     assert _delta_field_to_uc(SimpleNamespace(type=SimpleNamespace(type=None))) == (
-        "STRING", "string",
+        "STRING",
+        "string",
     )
 
 

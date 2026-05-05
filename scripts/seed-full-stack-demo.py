@@ -123,9 +123,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--ui-base",
-        default=os.environ.get(
-            "POINTLESSQL_UI_BASE", "http://127.0.0.1:8000"
-        ),
+        default=os.environ.get("POINTLESSQL_UI_BASE", "http://127.0.0.1:8000"),
         help="Base URL of the PointlesSQL web UI for the read-tour.",
     )
     parser.add_argument(
@@ -141,10 +139,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--login-password",
         default=os.environ.get("POINTLESSQL_DEMO_PASSWORD", "demopass1"),
-        help=(
-            "Password for cookie-auth.  Defaults to ``demopass1`` "
-            "alongside --login-email."
-        ),
+        help=("Password for cookie-auth.  Defaults to ``demopass1`` alongside --login-email."),
     )
     parser.add_argument(
         "--skip-routes",
@@ -347,9 +342,7 @@ def _drop_catalog(soyuz: Any, p: Printer) -> None:
         from sqlalchemy import delete
 
         result = session.execute(
-            delete(AutoloadCheckpoint).where(
-                AutoloadCheckpoint.target_table.like(f"{CATALOG}.%")
-            )
+            delete(AutoloadCheckpoint).where(AutoloadCheckpoint.target_table.like(f"{CATALOG}.%"))
         )
         session.commit()
         deleted = result.rowcount  # type: ignore[attr-defined]
@@ -390,9 +383,7 @@ def _ensure_schema(soyuz: Any, schema: str, p: Printer) -> None:
         if exc.status_code != 409:
             raise
         p.info(f"schema {CATALOG}.{schema} exists")
-    Path(f"{WAREHOUSE_ROOT.rstrip('/')}/{CATALOG}/{schema}").mkdir(
-        parents=True, exist_ok=True
-    )
+    Path(f"{WAREHOUSE_ROOT.rstrip('/')}/{CATALOG}/{schema}").mkdir(parents=True, exist_ok=True)
 
 
 # --------------------------------------------------------------------------- #
@@ -421,9 +412,7 @@ def _create_agent_run(label: str) -> str:
                 finished_at=None,
                 notebook_path=f"scripts/seed-full-stack-demo.py::{label}",
                 source_snapshot_sha=None,
-                runtime_versions=json.dumps(
-                    {"python": sys.version.split()[0], "demo": "v1"}
-                ),
+                runtime_versions=json.dumps({"python": sys.version.split()[0], "demo": "v1"}),
             )
         )
         session.commit()
@@ -467,20 +456,14 @@ def _step_bronze(soyuz: Any, p: Printer) -> str:
         target=BRONZE_HOUSES,
         source_system="demo-houses-feed",
     )
-    p.ok(
-        f"{BRONZE_HOUSES} ← {h['rows_ingested']} rows / "
-        f"{h['files_ingested']} file(s)"
-    )
+    p.ok(f"{BRONZE_HOUSES} ← {h['rows_ingested']} rows / {h['files_ingested']} file(s)")
 
     s = pql.autoload(
         source_path=str(sales_dir),
         target=BRONZE_SALES,
         source_system="demo-sales-feed",
     )
-    p.ok(
-        f"{BRONZE_SALES} ← {s['rows_ingested']} rows / "
-        f"{s['files_ingested']} file(s)"
-    )
+    p.ok(f"{BRONZE_SALES} ← {s['rows_ingested']} rows / {s['files_ingested']} file(s)")
 
     _close_agent_run(run_id)
     return run_id
@@ -553,9 +536,7 @@ def _step_silver(soyuz: Any, p: Printer) -> str:
     # A second merge with track_value_changes=True surfaces a real CDF
     # event so the value-changes route returns >0 rows in the read-tour.
     tweaked = silver_df.copy()
-    tweaked.loc[tweaked.index[0], "price"] = (
-        int(tweaked.loc[tweaked.index[0], "price"]) + 1_000
-    )
+    tweaked.loc[tweaked.index[0], "price"] = int(tweaked.loc[tweaked.index[0], "price"]) + 1_000
     pql.merge(
         source=tweaked,
         target=SILVER,
@@ -727,7 +708,7 @@ def _step_train(
     if any(d > tol for d in deltas):
         p.warn(f"coefs drifted >30%: {deltas}")
     else:
-        p.ok(f"coefs within 30% tolerance (deltas={tuple(round(d,2) for d in deltas)})")
+        p.ok(f"coefs within 30% tolerance (deltas={tuple(round(d, 2) for d in deltas)})")
 
     # Find the version we just registered + cross-link it to the agent-run.
     from soyuz_catalog_client.api.model_versions import (
@@ -741,9 +722,7 @@ def _step_train(
 
     if not isinstance(listing, ListModelVersionsResponse):
         raise RuntimeError(f"unexpected list_model_versions response: {listing!r}")
-    version_numbers = [
-        int(v.version) for v in listing.model_versions if isinstance(v.version, int)
-    ]
+    version_numbers = [int(v.version) for v in listing.model_versions if isinstance(v.version, int)]
     if not version_numbers:
         raise RuntimeError(f"No version registered for {MODEL_FQN}")
     latest = max(version_numbers)
@@ -833,13 +812,10 @@ def _step_inference(
     # ``source_model_uri`` on each one) — without it the audit hook
     # short-circuits and the model-detail Lineage DAG can't paint the
     # predictions node downstream of the model.
-    predictions_df = test_df[
-        feature_cols + ["house_id", "price", "_lineage_row_id"]
-    ].copy()
+    predictions_df = test_df[feature_cols + ["house_id", "price", "_lineage_row_id"]].copy()
     predictions_df["predicted_price"] = predicted.round(0).astype(int)
     predictions_df["abs_error"] = np.abs(
-        np.asarray(predictions_df["predicted_price"])
-        - np.asarray(predictions_df["price"])
+        np.asarray(predictions_df["predicted_price"]) - np.asarray(predictions_df["price"])
     )
 
     # First write bootstraps the table; subsequent merges keep upsert
@@ -1224,9 +1200,7 @@ def _step_agent_runs_lifecycle(
     return run_a, run_b, run_c
 
 
-def _step_agent_reviews(
-    http: httpx.Client, go: Any, run_id: str | None, p: Printer
-) -> int | None:
+def _step_agent_reviews(http: httpx.Client, go: Any, run_id: str | None, p: Printer) -> int | None:
     """POST /api/agent-reviews → list/latest/{id} reads happen in read-tour."""
     p.step("Agent reviews — POST /api/agent-reviews + GET /latest")
     now = datetime.now(UTC)
@@ -1305,11 +1279,7 @@ def _step_saved_queries(
         expected_codes=(409,),
     )
     if isinstance(body, dict):
-        sq_slug = (
-            str(body.get("slug"))
-            if isinstance(body.get("slug"), str)
-            else None
-        )
+        sq_slug = str(body.get("slug")) if isinstance(body.get("slug"), str) else None
         raw_id = body.get("id")
         if isinstance(raw_id, int):
             sq_id = raw_id
@@ -1339,11 +1309,7 @@ def _step_saved_queries(
         expected_codes=(409,),
     )
     if isinstance(body, dict):
-        saq_slug = (
-            str(body.get("slug"))
-            if isinstance(body.get("slug"), str)
-            else None
-        )
+        saq_slug = str(body.get("slug")) if isinstance(body.get("slug"), str) else None
     if saq_slug is not None:
         go(http, "GET", f"/api/saved-audit-queries/{saq_slug}")
         go(
@@ -1374,9 +1340,7 @@ def _step_saved_queries(
     return sq_id
 
 
-def _step_dashboards(
-    http: httpx.Client, go: Any, p: Printer, *, keep_state: bool = False
-) -> None:
+def _step_dashboards(http: httpx.Client, go: Any, p: Printer, *, keep_state: bool = False) -> None:
     """Dashboards CRUD + refresh + tree.
 
     When ``keep_state`` is True, the trailing DELETE is skipped so the
@@ -1578,9 +1542,7 @@ def _step_alerts(
         raw = body.get("token") or body.get("feed_token")
         if isinstance(raw, str):
             feed_token = raw
-    rotated = go(
-        http, "POST", "/api/me/feed-token/rotate", headers=_csrf_headers(http)
-    )
+    rotated = go(http, "POST", "/api/me/feed-token/rotate", headers=_csrf_headers(http))
     if isinstance(rotated, dict):
         raw = rotated.get("token") or rotated.get("feed_token")
         if isinstance(raw, str):
@@ -1676,9 +1638,7 @@ def _step_volumes_notebooks(http: httpx.Client, go: Any, p: Printer) -> None:
             resp = None
     if resp is not None:
         ok = 200 <= resp.status_code < 300
-        p.detail(
-            f"{'OK  ' if ok else 'FAIL'} {resp.status_code} POST /api/volumes/{vol_fqn}/files"
-        )
+        p.detail(f"{'OK  ' if ok else 'FAIL'} {resp.status_code} POST /api/volumes/{vol_fqn}/files")
     go(http, "GET", f"/api/volumes/{vol_fqn}/files")
     # `/api/notebooks/inspect` introspects a Papermill .py/.ipynb under
     # the notebooks-dir.  We probe an existing seed notebook; missing
@@ -1874,9 +1834,7 @@ def _step_admin_tools(
     )
 
 
-def _step_federation(
-    http: httpx.Client, go: Any, p: Printer, *, keep_state: bool = False
-) -> None:
+def _step_federation(http: httpx.Client, go: Any, p: Printer, *, keep_state: bool = False) -> None:
     """Federation CRUD — connections / external-locations / credentials.
 
     Backed by best-effort placeholder configs; many production-grade
@@ -2001,12 +1959,16 @@ def _pick_value_change(p: Printer) -> dict[str, Any] | None:
         with factory() as session:
             from sqlalchemy import text
 
-            row = session.execute(
-                text(
-                    "SELECT id, target_table, target_row_id, target_column "
-                    "FROM lineage_value_changes ORDER BY id DESC LIMIT 1"
+            row = (
+                session.execute(
+                    text(
+                        "SELECT id, target_table, target_row_id, target_column "
+                        "FROM lineage_value_changes ORDER BY id DESC LIMIT 1"
+                    )
                 )
-            ).mappings().first()
+                .mappings()
+                .first()
+            )
             return dict(row) if row else None
     except Exception as exc:  # noqa: BLE001 — degrade gracefully
         p.detail(f"value-change pick failed: {exc}")
@@ -2056,9 +2018,7 @@ def _login(args: argparse.Namespace, p: Printer) -> httpx.Client | None:
     # password just didn't match (caller must fix that themselves).
     register_status = _attempt_register(client, args, p)
     if register_status not in (200, 303, 409):
-        p.warn(
-            f"register returned {register_status}; cannot bootstrap demo user"
-        )
+        p.warn(f"register returned {register_status}; cannot bootstrap demo user")
         client.close()
         return None
     if register_status == 409:
@@ -2104,9 +2064,7 @@ def _attempt_login(
         return None
 
 
-def _attempt_register(
-    client: httpx.Client, args: argparse.Namespace, p: Printer
-) -> int:
+def _attempt_register(client: httpx.Client, args: argparse.Namespace, p: Printer) -> int:
     """POST to ``/auth/register`` and return the response status code.
 
     Idempotent in the sense that a 409 (account already exists) is a
@@ -2188,7 +2146,7 @@ def _hit(
     try:
         body = resp.json()
         summary = _summarize_body(body)
-    except (ValueError, json.JSONDecodeError):
+    except ValueError, json.JSONDecodeError:
         body = resp.text[:200]
         summary = body
     p.detail(f"{label} {resp.status_code} {method} {path}  {summary}")
@@ -2421,9 +2379,7 @@ def _step_final_prediction(model: Any, p: Printer) -> int:
     p.step("Final prediction — single inference on a synthetic house")
     sample = np.array([[1800, 3, 8]], dtype=float)
     pred = model.predict(sample)[0]
-    p.ok(
-        f"size=1800sqft, bedrooms=3, age=8yr → predicted price ${int(round(pred)):,}"
-    )
+    p.ok(f"size=1800sqft, bedrooms=3, age=8yr → predicted price ${int(round(pred)):,}")
     p.info(
         f"learned: intercept={model.intercept_:.0f}, "
         f"size_coef={model.coef_[0]:.1f}, bed_coef={model.coef_[1]:.1f}, "
@@ -2529,16 +2485,12 @@ def main(argv: list[str] | None = None) -> int:
         _step_governance(http, go, p)
         run_a, run_b, run_c = _step_agent_runs_lifecycle(http, go, p)
         review_id = _step_agent_reviews(http, go, run_a or inference_run, p)
-        saved_query_id = _step_saved_queries(
-            http, go, history_id, p, keep_state=args.keep_state
-        )
+        saved_query_id = _step_saved_queries(http, go, history_id, p, keep_state=args.keep_state)
         _step_dashboards(http, go, p, keep_state=args.keep_state)
         _step_jobs(http, go, p)
         _step_alerts(http, go, saved_query_id, p, keep_state=args.keep_state)
         _step_volumes_notebooks(http, go, p)
-        _step_admin_tools(
-            http, go, _pick_value_change(p), p, keep_state=args.keep_state
-        )
+        _step_admin_tools(http, go, _pick_value_change(p), p, keep_state=args.keep_state)
         _step_federation(http, go, p, keep_state=args.keep_state)
     elif args.core_only:
         p.info("--core-only → skipping Phase-2 stateful steps")

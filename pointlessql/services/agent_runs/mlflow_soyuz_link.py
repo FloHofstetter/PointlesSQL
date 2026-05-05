@@ -29,7 +29,7 @@ from soyuz_catalog_client.api.model_versions import (
     get_model_version_api_2_1_unity_catalog_models_full_name_versions_version_get as _get_mv,
 )
 from soyuz_catalog_client.api.model_versions import (
-    update_model_version_api_2_1_unity_catalog_models_full_name_versions_version_patch as _update_mv,
+    update_model_version_api_2_1_unity_catalog_models_full_name_versions_version_patch as _update_mv,  # noqa: E501
 )
 from soyuz_catalog_client.models.update_model_version import UpdateModelVersion
 

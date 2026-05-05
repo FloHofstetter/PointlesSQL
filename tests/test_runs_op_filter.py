@@ -22,8 +22,8 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.api.runs_routes import (
-    load_operations_for_run,
     load_lineage_summary_for_run,
+    load_operations_for_run,
     load_rejects_for_run,
 )
 from pointlessql.models import (

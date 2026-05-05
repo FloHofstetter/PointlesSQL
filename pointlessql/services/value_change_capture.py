@@ -75,9 +75,7 @@ def extract_value_changes(
     change_types: list[str] = data["_change_type"]
     row_ids: list[Any] = data[LINEAGE_ROW_ID_COLUMN]
 
-    diff_columns = sorted(
-        column_names - CDF_META_COLUMNS - {LINEAGE_ROW_ID_COLUMN}
-    )
+    diff_columns = sorted(column_names - CDF_META_COLUMNS - {LINEAGE_ROW_ID_COLUMN})
 
     preimages: dict[str, dict[str, Any]] = {}
     postimages: dict[str, dict[str, Any]] = {}

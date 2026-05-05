@@ -47,9 +47,7 @@ def pinned_api_key():
     api_keys_service.invalidate_cache()
     yield token, ws.id
     with factory() as session:
-        session.execute(
-            ApiKey.__table__.delete().where(ApiKey.name == "cross-workspace-test-key")
-        )
+        session.execute(ApiKey.__table__.delete().where(ApiKey.name == "cross-workspace-test-key"))
         session.commit()
     api_keys_service.invalidate_cache()
 

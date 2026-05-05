@@ -52,9 +52,9 @@ async def api_admin_list_pins(request: Request, workspace_id: int) -> dict[str, 
     Returns:
         ``{"workspace_id": int, "pins": [...]}`` newest-first.
 
-    Raises:
-        AuthorizationError: When the caller is not a tenant admin.
-        CatalogNotFoundError: When no workspace has that id.
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin; ``_ensure_workspace`` raises
+    ``CatalogNotFoundError`` when no workspace has that id.
     """
     require_admin(request)
     factory = request.app.state.session_factory
@@ -86,11 +86,13 @@ async def api_admin_create_pin(
     Returns:
         The serialised pin row.
 
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin; ``_ensure_workspace`` raises
+    ``CatalogNotFoundError`` when the workspace does not exist.
+
     Raises:
-        AuthorizationError: When the caller is not a tenant admin.
         ValidationError: When the body is malformed or the
             (workspace_id, catalog_name) tuple is already pinned.
-        CatalogNotFoundError: When the workspace does not exist.
     """
     require_admin(request)
     factory = request.app.state.session_factory
@@ -159,8 +161,9 @@ async def api_admin_delete_pin(
         ``{"deleted": True}`` on success, ``{"deleted": False}`` when
         no matching pin existed.
 
-    Raises:
-        AuthorizationError: When the caller is not a tenant admin.
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin; ``_ensure_workspace`` raises
+    ``CatalogNotFoundError`` when the workspace does not exist.
     """
     require_admin(request)
     factory = request.app.state.session_factory

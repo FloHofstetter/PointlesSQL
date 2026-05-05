@@ -194,9 +194,7 @@ async def test_diff_json_omits_lineage_when_detail_false() -> None:
     a = _seed_run()
     b = _seed_run()
     async with _admin_client() as client:
-        r = await client.get(
-            "/api/agent-runs/diff", params={"a": a, "b": b}
-        )
+        r = await client.get("/api/agent-runs/diff", params={"a": a, "b": b})
     assert r.status_code == 200
     assert "lineage_diff" not in r.json()
 

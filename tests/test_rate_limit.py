@@ -377,9 +377,7 @@ class TestAuditHook:
 
         with factory() as session:
             rows = list(
-                session.scalars(
-                    select(AuditLog).where(AuditLog.action == "rate_limit.blocked")
-                )
+                session.scalars(select(AuditLog).where(AuditLog.action == "rate_limit.blocked"))
             )
         assert rows, "rate_limit.blocked audit row was not written"
         assert any("auth.login" in row.target for row in rows)
@@ -408,8 +406,7 @@ class TestServiceLayer:
 
     def test_bucket_for_is_stable(self):
         assert (
-            rate_limit_service.bucket_for("auth.login", "ip", "1.2.3.4")
-            == "auth.login.ip:1.2.3.4"
+            rate_limit_service.bucket_for("auth.login", "ip", "1.2.3.4") == "auth.login.ip:1.2.3.4"
         )
 
     def test_check_and_record_allows_until_limit(self, _setup_app):

@@ -446,8 +446,7 @@ def _build_aggregate_column_edges(
                             target_column=col,
                             transform_kind="unknown_origin",
                             transform_detail=(
-                                f"derivation references {src_col!r} "
-                                f"which is not on source"
+                                f"derivation references {src_col!r} which is not on source"
                             ),
                         )
                     )
@@ -489,10 +488,7 @@ def _build_aggregate_column_edges(
                             target_table=target,
                             target_column=out_col,
                             transform_kind="derived",
-                            transform_detail=(
-                                f"via {src_col!r} → "
-                                f"{agg_label}({src_col!r})"
-                            ),
+                            transform_detail=(f"via {src_col!r} → {agg_label}({src_col!r})"),
                         )
                     )
                 else:
@@ -504,8 +500,7 @@ def _build_aggregate_column_edges(
                             target_column=out_col,
                             transform_kind="unknown_origin",
                             transform_detail=(
-                                f"derivation references {upstream!r} "
-                                f"which is not on source"
+                                f"derivation references {upstream!r} which is not on source"
                             ),
                         )
                     )

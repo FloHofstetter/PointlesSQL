@@ -22,7 +22,7 @@ Usage:
 
     pointlessql migrate-to-postgres \\
         --source sqlite:////app/data/pointlessql.db \\
-        --target postgresql+psycopg://pointlessql:s3cret@db/pointlessql
+        --target postgresql+psycopg://pointlessql:s3cret@db/pointlessql  # pragma: allowlist secret
 
 The CLI subcommand is registered in :mod:`pointlessql.api.main`'s
 top-level Typer app so the existing ``[project.scripts]``

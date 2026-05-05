@@ -208,7 +208,10 @@ async def test_detail_rejects_bad_align(supervisor_secret: str) -> None:
         response = await c.get(
             "/api/agent-runs/diff",
             params={
-                "a": run_a, "b": run_b, "detail": "true", "align": "fuzzy",
+                "a": run_a,
+                "b": run_b,
+                "detail": "true",
+                "align": "fuzzy",
             },
             headers={"Authorization": f"Bearer {supervisor_secret}"},
         )

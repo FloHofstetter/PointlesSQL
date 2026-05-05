@@ -208,9 +208,7 @@ async def test_home_html_no_banner_when_baseline_steady() -> None:
 
 @pytest.mark.asyncio
 async def test_run_detail_renders_anomaly_chip_on_critical() -> None:
-    today_run = _seed_anomalous_rejects(
-        today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3]
-    )
+    today_run = _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
     async with _admin_client() as client:
         r = await client.get(f"/runs/{today_run}")
     assert r.status_code == 200
@@ -221,9 +219,7 @@ async def test_run_detail_renders_anomaly_chip_on_critical() -> None:
 
 @pytest.mark.asyncio
 async def test_run_detail_no_chip_when_steady() -> None:
-    today_run = _seed_anomalous_rejects(
-        today_count=2, prior_days=[2, 3, 1, 2, 4, 2, 3]
-    )
+    today_run = _seed_anomalous_rejects(today_count=2, prior_days=[2, 3, 1, 2, 4, 2, 3])
     async with _admin_client() as client:
         r = await client.get(f"/runs/{today_run}")
     assert r.status_code == 200

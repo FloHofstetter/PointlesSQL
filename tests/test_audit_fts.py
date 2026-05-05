@@ -154,9 +154,7 @@ def test_search_runs_axis_finds_principal(fts_index: None) -> None:
         tables=["main.silver.orders"],
         notebook="alice/job.py",
     )
-    result = audit_fts.search(
-        app.state.session_factory, query="alice", axis="runs", limit=10
-    )
+    result = audit_fts.search(app.state.session_factory, query="alice", axis="runs", limit=10)
     assert result["available"] is True
     assert result["total_count"] == 1
     assert result["results"][0]["axis"] == "runs"
@@ -171,14 +169,9 @@ def test_search_uc_fqn_matches_component(fts_index: None) -> None:
         tables=["main.silver_pii.orders"],
         notebook="bob/job.py",
     )
-    result = audit_fts.search(
-        app.state.session_factory, query="silver_pii", axis="runs"
-    )
+    result = audit_fts.search(app.state.session_factory, query="silver_pii", axis="runs")
     assert result["available"]
-    assert any(
-        r["entity_id"] == "22222222-2222-2222-2222-222222222222"
-        for r in result["results"]
-    )
+    assert any(r["entity_id"] == "22222222-2222-2222-2222-222222222222" for r in result["results"])
 
 
 def test_search_ops_axis_finds_error_message(fts_index: None) -> None:
@@ -281,9 +274,7 @@ def test_search_all_axis_aggregates(fts_index: None) -> None:
         sql="select finn_distinctive_error",
         user="finn@example.com",
     )
-    result = audit_fts.search(
-        app.state.session_factory, query="finn_distinctive_error", axis="all"
-    )
+    result = audit_fts.search(app.state.session_factory, query="finn_distinctive_error", axis="all")
     assert result["available"]
     axes = {r["axis"] for r in result["results"]}
     assert "ops" in axes
@@ -302,15 +293,10 @@ def test_search_delete_trigger_drops_row(fts_index: None) -> None:
     before = audit_fts.search(factory, query="gina")
     assert before["total_count"] >= 1
     with factory() as session:
-        session.query(AgentRun).filter_by(
-            id="77777777-7777-7777-7777-777777777777"
-        ).delete()
+        session.query(AgentRun).filter_by(id="77777777-7777-7777-7777-777777777777").delete()
         session.commit()
     after = audit_fts.search(factory, query="gina")
-    assert all(
-        r["entity_id"] != "77777777-7777-7777-7777-777777777777"
-        for r in after["results"]
-    )
+    assert all(r["entity_id"] != "77777777-7777-7777-7777-777777777777" for r in after["results"])
 
 
 def test_search_sanitises_reserved_punctuation(fts_index: None) -> None:
@@ -325,9 +311,7 @@ def test_search_sanitises_reserved_punctuation(fts_index: None) -> None:
         tables=["main.bronze.t"],
         notebook="hugo/job.py",
     )
-    result = audit_fts.search(
-        app.state.session_factory, query="hugo)foo*", axis="runs"
-    )
+    result = audit_fts.search(app.state.session_factory, query="hugo)foo*", axis="runs")
     assert result["available"]
     # No exception means sanitisation kicked in.
 

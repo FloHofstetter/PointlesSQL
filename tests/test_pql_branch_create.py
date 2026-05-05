@@ -79,15 +79,11 @@ class TestDeriveBranchStorageRoot:
         )
 
     def test_strips_trailing_slash(self) -> None:
-        assert (
-            _derive_branch_storage_root("/data/", "x")
-            == "/data/_branches/x"
-        )
+        assert _derive_branch_storage_root("/data/", "x") == "/data/_branches/x"
 
     def test_cloud_uri(self) -> None:
         assert (
-            _derive_branch_storage_root("s3://bucket/data", "x")
-            == "s3://bucket/data/_branches/x"
+            _derive_branch_storage_root("s3://bucket/data", "x") == "s3://bucket/data/_branches/x"
         )
 
 
@@ -342,9 +338,7 @@ class TestCreateBranchSchemaOrchestration:
                 "pointlessql.pql._branch.branch_tags.read_branch_tags_sync",
                 return_value=None,
             ),
-            patch(
-                "pointlessql.pql._branch.branch_tags.apply_branch_tags_sync"
-            ) as mock_apply_tags,
+            patch("pointlessql.pql._branch.branch_tags.apply_branch_tags_sync") as mock_apply_tags,
             patch.object(
                 branch_mod,
                 "_list_source_tables",

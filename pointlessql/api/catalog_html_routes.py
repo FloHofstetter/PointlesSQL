@@ -289,9 +289,11 @@ def _columns_with_lineage(full_name: str) -> set[str]:
 
         factory = get_session_factory()
         with factory() as session:
-            stmt = _select(LineageColumnMap.target_column).where(
-                LineageColumnMap.target_table == full_name
-            ).distinct()
+            stmt = (
+                _select(LineageColumnMap.target_column)
+                .where(LineageColumnMap.target_table == full_name)
+                .distinct()
+            )
             return {str(row[0]) for row in session.execute(stmt).all()}
     except Exception:  # noqa: BLE001 — best-effort badge population
         return set()

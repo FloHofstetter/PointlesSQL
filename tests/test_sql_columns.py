@@ -65,10 +65,7 @@ class TestSqlColumnLineage:
 
     def test_cte_chain_resolves_to_table(self) -> None:
         edges = extract_column_lineage(
-            sql=(
-                "WITH x AS (SELECT a FROM main.silver.t) "
-                "SELECT a FROM x"
-            ),
+            sql=("WITH x AS (SELECT a FROM main.silver.t) SELECT a FROM x"),
             schema=SCHEMA,
             output_columns=["a"],
         )

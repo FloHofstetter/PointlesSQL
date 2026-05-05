@@ -141,9 +141,7 @@ async def test_list_filter_by_principal_and_status() -> None:
             run_id="dddd2222-bbbb-bbbb-bbbb-dddddddddddd",
             principal_header="bob@example.com",
         )
-        response = await client.get(
-            "/api/agent-runs", params={"principal": "alice@example.com"}
-        )
+        response = await client.get("/api/agent-runs", params={"principal": "alice@example.com"})
     assert response.status_code == 200, response.text
     runs = response.json()["runs"]
     principals = {r["principal"] for r in runs}
@@ -153,9 +151,7 @@ async def test_list_filter_by_principal_and_status() -> None:
 @pytest.mark.asyncio
 async def test_list_rejects_bad_since() -> None:
     async with _admin_client() as client:
-        response = await client.get(
-            "/api/agent-runs", params={"since": "not-a-date"}
-        )
+        response = await client.get("/api/agent-runs", params={"since": "not-a-date"})
     assert response.status_code == 422
 
 

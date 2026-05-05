@@ -2,7 +2,7 @@
 
 `scripts/seed-full-stack-demo.py` is the local-replay companion to the
 [agent bring-up recipe](../guides/agent-bring-up.md). In one autonomous
-run it walks the entire stack — every PQL primitive, every 
+run it walks the entire stack — every PQL primitive, every
 MLflow ↔ soyuz cross-link, **and 150+ JSON `/api/*` routes** the
 agent / cockpit / models / lineage / branching surfaces are built on —
 and ends with a hard prediction on a synthetic house.

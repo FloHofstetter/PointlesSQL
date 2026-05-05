@@ -168,9 +168,7 @@ async def test_write_table_admin_runs_select_and_writes(
         def __init__(self, **kwargs: Any) -> None:
             captured["init"] = kwargs
 
-        def write_table(
-            self, df: Any, full_name: str, *, mode: str, **kwargs: Any
-        ) -> None:
+        def write_table(self, df: Any, full_name: str, *, mode: str, **kwargs: Any) -> None:
             captured["df_rows"] = int(len(df))
             captured["target"] = full_name
             captured["mode"] = mode

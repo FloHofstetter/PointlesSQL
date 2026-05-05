@@ -204,10 +204,7 @@ class TestAdminAuditContent:
         # Target cells get `font-monospace small` classes; that's how
         # we isolate table content from dropdown/sidebar text.
         assert '<td data-label="Target" class="font-monospace small">catalog:demo</td>' in body
-        assert (
-            '<td data-label="Target" class="font-monospace small">catalog:other</td>'
-            not in body
-        )
+        assert '<td data-label="Target" class="font-monospace small">catalog:other</td>' not in body
         assert (
             '<td data-label="Target" class="font-monospace small">table:demo.sales.orders</td>'
             not in body
@@ -228,14 +225,8 @@ class TestAdminAuditContent:
             resp = await client.get("/admin/audit?since=all&target=other")
         assert resp.status_code == 200
         body = resp.text
-        assert (
-            '<td data-label="Target" class="font-monospace small">catalog:other</td>'
-            in body
-        )
-        assert (
-            '<td data-label="Target" class="font-monospace small">catalog:demo</td>'
-            not in body
-        )
+        assert '<td data-label="Target" class="font-monospace small">catalog:other</td>' in body
+        assert '<td data-label="Target" class="font-monospace small">catalog:demo</td>' not in body
 
 
 class TestAdminAuditExport:
@@ -329,9 +320,7 @@ class TestAdminAuditExport:
             base_url="http://test",
             cookies={auth.COOKIE_NAME: admin_token},
         ) as client:
-            resp = await client.get(
-                "/admin/audit/export?fmt=json&since=all&action=sync_catalog"
-            )
+            resp = await client.get("/admin/audit/export?fmt=json&since=all&action=sync_catalog")
 
         assert resp.status_code == 200
         import json

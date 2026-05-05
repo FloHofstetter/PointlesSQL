@@ -43,13 +43,9 @@ from pointlessql.pql import PQL
 # Configurable via env so Hermes can fan the same notebook across
 # multiple bronze tables without editing the source.
 MONITOR_TARGET = os.environ.get("MONITOR_TARGET", "main.bronze.events")
-QUALITY_HISTORY_TABLE = os.environ.get(
-    "MONITOR_HISTORY_TABLE", "main.ops.quality_history"
-)
+QUALITY_HISTORY_TABLE = os.environ.get("MONITOR_HISTORY_TABLE", "main.ops.quality_history")
 NULL_RATE_THRESHOLD = float(os.environ.get("MONITOR_NULL_RATE_MAX", "0.20"))
-FRESHNESS_THRESHOLD_HOURS = float(
-    os.environ.get("MONITOR_FRESHNESS_MAX_H", "24")
-)
+FRESHNESS_THRESHOLD_HOURS = float(os.environ.get("MONITOR_FRESHNESS_MAX_H", "24"))
 
 pql = PQL()
 

@@ -58,7 +58,7 @@ def _coerce_float(value: Any) -> float | None:
         return None
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -125,15 +125,11 @@ def _key_diff(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
     return {"added": added, "removed": removed, "changed": changed}
 
 
-def params_diff(
-    v1_params: dict[str, Any], v2_params: dict[str, Any]
-) -> dict[str, Any]:
+def params_diff(v1_params: dict[str, Any], v2_params: dict[str, Any]) -> dict[str, Any]:
     """Return the added / removed / changed param keys."""
     return _key_diff(v1_params, v2_params)
 
 
-def tags_diff(
-    v1_tags: dict[str, Any], v2_tags: dict[str, Any]
-) -> dict[str, Any]:
+def tags_diff(v1_tags: dict[str, Any], v2_tags: dict[str, Any]) -> dict[str, Any]:
     """Return the added / removed / changed tag keys."""
     return _key_diff(v1_tags, v2_tags)

@@ -313,7 +313,7 @@ def _frame_column_names(frame: Any) -> list[str]:
     if hasattr(frame, "columns"):
         try:
             return [str(c) for c in frame.columns]
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return []
     return []
 

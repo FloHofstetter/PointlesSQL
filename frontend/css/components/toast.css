@@ -30,4 +30,3 @@
 .pql-toast--success { background: var(--pql-color-success-bg); color: var(--pql-color-success-fg); }
 .pql-toast--error { background: var(--pql-color-danger-bg); color: var(--pql-color-danger-fg); }
 .pql-toast--info { background: var(--pql-color-info-bg); color: var(--pql-color-info-fg); }
-

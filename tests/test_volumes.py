@@ -50,7 +50,8 @@ async def test_upload_file_posts_multipart() -> None:
         captured["principal"] = request.headers.get("x-principal")
         captured["body"] = bytes(request.content)
         return httpx.Response(
-            200, json={"file": {"path": "hello.csv", "size_bytes": 4, "is_dir": False}},
+            200,
+            json={"file": {"path": "hello.csv", "size_bytes": 4, "is_dir": False}},
         )
 
     async with httpx.AsyncClient(transport=_mock_transport(handler)) as client:
@@ -77,15 +78,20 @@ async def test_browse_files_returns_list() -> None:
         assert request.method == "GET"
         return httpx.Response(
             200,
-            json={"files": [
-                {"path": "a.csv", "size_bytes": 10, "is_dir": False},
-                {"path": "b.csv", "size_bytes": 20, "is_dir": False},
-            ]},
+            json={
+                "files": [
+                    {"path": "a.csv", "size_bytes": 10, "is_dir": False},
+                    {"path": "b.csv", "size_bytes": 20, "is_dir": False},
+                ]
+            },
         )
 
     async with httpx.AsyncClient(transport=_mock_transport(handler)) as client:
         files = await vol_service.browse_files(
-            client, "http://soyuz", "main.ops.vol", principal=None,
+            client,
+            "http://soyuz",
+            "main.ops.vol",
+            principal=None,
         )
     assert [f["path"] for f in files] == ["a.csv", "b.csv"]
 
@@ -98,7 +104,10 @@ async def test_delete_file_surfaces_boolean() -> None:
 
     async with httpx.AsyncClient(transport=_mock_transport(handler)) as client:
         ok = await vol_service.delete_file(
-            client, "http://soyuz", "main.ops.vol", "a.csv",
+            client,
+            "http://soyuz",
+            "main.ops.vol",
+            "a.csv",
             principal=None,
         )
     assert ok is True
@@ -114,7 +123,10 @@ async def test_download_file_streams_bytes() -> None:
     received = bytearray()
     async with httpx.AsyncClient(transport=_mock_transport(handler)) as client:
         async for chunk in vol_service.download_file(
-            client, "http://soyuz", "main.ops.vol", "hello.txt",
+            client,
+            "http://soyuz",
+            "main.ops.vol",
+            "hello.txt",
             principal=None,
         ):
             received.extend(chunk)

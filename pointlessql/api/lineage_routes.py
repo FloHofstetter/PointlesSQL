@@ -153,9 +153,7 @@ def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict
     }
 
 
-def _attach_value_changes(
-    factory: Any, step_dicts: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def _attach_value_changes(factory: Any, step_dicts: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Populate the ``value_changes`` key on each step from the metadata DB.
 
     best-effort lookup that runs once per row-trace

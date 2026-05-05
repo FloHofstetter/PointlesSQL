@@ -18,8 +18,7 @@ def test_simple_select_extracts_single_ref() -> None:
 
 def test_join_extracts_both_refs_in_order() -> None:
     refs = extract_table_refs(
-        "SELECT o.* FROM main.sales.orders o "
-        "JOIN main.sales.customers c ON o.cid = c.id"
+        "SELECT o.* FROM main.sales.orders o JOIN main.sales.customers c ON o.cid = c.id"
     )
     assert refs == ["main.sales.orders", "main.sales.customers"]
 
@@ -27,23 +26,17 @@ def test_join_extracts_both_refs_in_order() -> None:
 def test_cte_alias_is_skipped() -> None:
     # The CTE body reads main.sales.orders; the outer SELECT references
     # the alias ``x`` which must not leak into the enforcement list.
-    refs = extract_table_refs(
-        "WITH x AS (SELECT * FROM main.sales.orders) SELECT * FROM x"
-    )
+    refs = extract_table_refs("WITH x AS (SELECT * FROM main.sales.orders) SELECT * FROM x")
     assert refs == ["main.sales.orders"]
 
 
 def test_subquery_reference_is_extracted() -> None:
-    refs = extract_table_refs(
-        "SELECT * FROM (SELECT * FROM main.sales.orders) q"
-    )
+    refs = extract_table_refs("SELECT * FROM (SELECT * FROM main.sales.orders) q")
     assert refs == ["main.sales.orders"]
 
 
 def test_duplicate_references_appear_once() -> None:
-    refs = extract_table_refs(
-        "SELECT a.*, b.* FROM main.sales.orders a, main.sales.orders b"
-    )
+    refs = extract_table_refs("SELECT a.*, b.* FROM main.sales.orders a, main.sales.orders b")
     assert refs == ["main.sales.orders"]
 
 
@@ -88,9 +81,7 @@ def test_prepare_rewrites_three_part_to_quoted_identifier() -> None:
 
 
 def test_prepare_preserves_alias() -> None:
-    prepared = prepare_sql(
-        "SELECT o.id FROM main.sales.orders o WHERE o.id > 0"
-    )
+    prepared = prepare_sql("SELECT o.id FROM main.sales.orders o WHERE o.id > 0")
     assert prepared.refs == ["main.sales.orders"]
     # Alias ``o`` must survive the rewrite so the column reference
     # ``o.id`` still binds at execution time.

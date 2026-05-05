@@ -148,9 +148,7 @@ def validate_sql(sql_text: str) -> set[str]:
     except sgerrors.ParseError as exc:
         raise ValidationError(f"Could not parse SQL: {exc}") from exc
     if not isinstance(parsed, sgexp.Select):
-        raise ValidationError(
-            "Only SELECT statements are allowed in saved audit queries"
-        )
+        raise ValidationError("Only SELECT statements are allowed in saved audit queries")
     referenced: set[str] = set()
     for table_node in parsed.find_all(sgexp.Table):
         name = table_node.name
@@ -160,8 +158,7 @@ def validate_sql(sql_text: str) -> set[str]:
     not_allowed = referenced - AUDIT_READ_ALLOWLIST
     if not_allowed:
         raise ValidationError(
-            "SQL references tables outside the audit allow-list: "
-            + ", ".join(sorted(not_allowed))
+            "SQL references tables outside the audit allow-list: " + ", ".join(sorted(not_allowed))
         )
     return referenced
 
@@ -238,9 +235,7 @@ def list_all(factory: sessionmaker[Session]) -> list[dict[str, Any]]:
         return [serialize(r) for r in rows]
 
 
-def get_by_slug(
-    factory: sessionmaker[Session], slug: str
-) -> dict[str, Any] | None:
+def get_by_slug(factory: sessionmaker[Session], slug: str) -> dict[str, Any] | None:
     """Return one row by slug, or ``None`` when absent.
 
     Args:
@@ -251,9 +246,7 @@ def get_by_slug(
         Serialised dict, or ``None``.
     """
     with factory() as session:
-        row = session.scalar(
-            select(SavedAuditQuery).where(SavedAuditQuery.slug == slug)
-        )
+        row = session.scalar(select(SavedAuditQuery).where(SavedAuditQuery.slug == slug))
         return serialize(row) if row else None
 
 
@@ -289,9 +282,7 @@ def update(
         ValidationError: New SQL fails the allow-list check.
     """
     with factory() as session:
-        row = session.scalar(
-            select(SavedAuditQuery).where(SavedAuditQuery.slug == slug)
-        )
+        row = session.scalar(select(SavedAuditQuery).where(SavedAuditQuery.slug == slug))
         if row is None or row.is_starter:
             return None
         if title is not None:
@@ -306,9 +297,7 @@ def update(
             row.sql_text = sql_text.strip()
         if alert_threshold_count != "__unchanged__":
             row.alert_threshold_count = (
-                int(alert_threshold_count)
-                if alert_threshold_count is not None
-                else None
+                int(alert_threshold_count) if alert_threshold_count is not None else None
             )
         row.updated_at = datetime.datetime.now(datetime.UTC)
         session.commit()
@@ -328,9 +317,7 @@ def delete(factory: sessionmaker[Session], slug: str) -> bool:
         deleted.
     """
     with factory() as session:
-        row = session.scalar(
-            select(SavedAuditQuery).where(SavedAuditQuery.slug == slug)
-        )
+        row = session.scalar(select(SavedAuditQuery).where(SavedAuditQuery.slug == slug))
         if row is None or row.is_starter:
             return False
         session.delete(row)
@@ -420,9 +407,7 @@ def bootstrap_starter_rows(factory: sessionmaker[Session]) -> int:
         dialect_name = session.get_bind().dialect.name
         for spec in starter_rows(dialect_name):
             existing = session.scalar(
-                select(SavedAuditQuery).where(
-                    SavedAuditQuery.slug == spec["slug"]
-                )
+                select(SavedAuditQuery).where(SavedAuditQuery.slug == spec["slug"])
             )
             if existing is not None:
                 continue

@@ -102,9 +102,7 @@ class TestJwtKeyRotation:
         user = auth.register(db_factory, "r@b.com", "Rotator", "pass1234")
         assert user is not None
         legacy = auth.create_jwt(user.id, user.email, user.is_admin, self._OLD_KEY)
-        info = auth.get_current_user(
-            db_factory, legacy, self._NEW_KEY, previous_key=self._OLD_KEY
-        )
+        info = auth.get_current_user(db_factory, legacy, self._NEW_KEY, previous_key=self._OLD_KEY)
         assert info is not None
         assert info["email"] == "r@b.com"
 

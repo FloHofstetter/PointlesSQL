@@ -215,9 +215,7 @@ async def test_get_current_champion_falls_back_to_latest_ready(
     uc_for_promotion: AsyncMock,
 ) -> None:
     """No marker → highest READY version."""
-    champion = await model_promotion.get_current_champion(
-        uc_for_promotion, "cat.sch.model"
-    )
+    champion = await model_promotion.get_current_champion(uc_for_promotion, "cat.sch.model")
     assert champion == 2  # v3 is PENDING, v2 is highest READY
 
 

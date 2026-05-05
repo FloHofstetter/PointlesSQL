@@ -237,7 +237,7 @@ async def run_detail_page(
         if absolute_path.is_file() and absolute_path.is_relative_to(notebooks_dir):
             document = notebook_doc_service.load_document(absolute_path, run_row.notebook_path)
             cells = list(document.cells)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         cells = []
 
     # ``filter_op_ordinal`` is the human-friendly label rendered in

@@ -35,7 +35,7 @@ for the convention rule.
 
 The [REST API reference](../api.md) is hand-written for the
 top-30 most-used routes (auth, runs, models, lineage, write,
-merge, branch, supervisor, auditor) and gets a 
+merge, branch, supervisor, auditor) and gets a
 auto-gen pass for the remaining ~180. The [CLI
 reference](../cli.md) is hand-written too — it's only two
 commands.

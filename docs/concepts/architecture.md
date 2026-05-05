@@ -272,7 +272,7 @@ pointlessql/
 │ ├── api_keys.py # ApiKey
 │ └──...
 ├── alembic/ # 25 migrations squashed → 1 baseline (Sprint Q.5)
-└── settings.py # pydantic-settings, sub-models per 
+└── settings.py # pydantic-settings, sub-models per
 ```
 
 ## Where to read next

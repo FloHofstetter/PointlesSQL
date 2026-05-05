@@ -119,17 +119,13 @@ async def api_pql_training_log(
     mlflow_run_id: str | None = None
     if mlflow_run_id_raw is not None:
         if not isinstance(mlflow_run_id_raw, str) or not mlflow_run_id_raw.strip():
-            raise ValidationError(
-                "mlflow_run_id must be a non-empty string when provided."
-            )
+            raise ValidationError("mlflow_run_id must be a non-empty string when provided.")
         mlflow_run_id = mlflow_run_id_raw.strip()
 
     body_run_id: str | None = None
     if agent_run_id_raw is not None:
         if not isinstance(agent_run_id_raw, str) or not agent_run_id_raw.strip():
-            raise ValidationError(
-                "agent_run_id must be a non-empty string when provided."
-            )
+            raise ValidationError("agent_run_id must be a non-empty string when provided.")
         body_run_id = agent_run_id_raw.strip()
 
     resolved_run_id = body_run_id or effective_agent_run_id(request)
@@ -141,9 +137,7 @@ async def api_pql_training_log(
 
     factory = getattr(request.app.state, "session_factory", None)
     if factory is None:
-        raise ValidationError(
-            "audit DB is not bound; training-log requires a session factory."
-        )
+        raise ValidationError("audit DB is not bound; training-log requires a session factory.")
 
     # Strip non-stringifiable / non-numeric values defensively — we
     # store as JSON, so anything weird gets coerced via ``default=str``.

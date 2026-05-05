@@ -58,9 +58,11 @@ merge_result = pql.merge(
     on=["order_id"],
     strategy="upsert",
 )
-print(f"upsert: inserted={merge_result['num_target_rows_inserted']}, "
-      f"updated={merge_result['num_target_rows_updated']}, "
-      f"copied={merge_result['num_target_rows_copied']}")
+print(
+    f"upsert: inserted={merge_result['num_target_rows_inserted']}, "
+    f"updated={merge_result['num_target_rows_updated']}, "
+    f"copied={merge_result['num_target_rows_copied']}"
+)
 
 # %% [markdown] pql_cell_id="00000000-0000-4000-8000-000000000007"
 # ## Step 3 — silver → gold (daily revenue aggregation)

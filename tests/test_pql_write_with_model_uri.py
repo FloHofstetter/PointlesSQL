@@ -72,9 +72,7 @@ async def test_write_table_threads_source_model_uri(
         def __init__(self, **kwargs: Any) -> None:
             captured["init"] = kwargs
 
-        def write_table(
-            self, df: Any, full_name: str, *, mode: str, **kwargs: Any
-        ) -> None:
+        def write_table(self, df: Any, full_name: str, *, mode: str, **kwargs: Any) -> None:
             captured["target"] = full_name
             captured["mode"] = mode
             captured["kwargs"] = kwargs
@@ -105,9 +103,7 @@ async def test_write_table_rejects_blank_source_model_uri(
 
     class _FakePQL:
         def __init__(self, **kwargs: Any) -> None: ...
-        def write_table(
-            self, df: Any, full_name: str, *, mode: str, **kwargs: Any
-        ) -> None: ...
+        def write_table(self, df: Any, full_name: str, *, mode: str, **kwargs: Any) -> None: ...
 
     monkeypatch.setattr(pql_write_routes, "_build_pql", lambda r, **kw: _FakePQL(**kw))
     async with _admin_client() as client:

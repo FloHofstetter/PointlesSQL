@@ -38,9 +38,7 @@ class TestCdfCreationConfig:
         cfg = cdf_creation_config()
         assert cfg == {CDF_TBLPROP: "true"}
 
-    def test_pasthrough_to_write_deltalake_enables_cdf(
-        self, tmp_path: Path
-    ) -> None:
+    def test_pasthrough_to_write_deltalake_enables_cdf(self, tmp_path: Path) -> None:
         target = tmp_path / "t1"
         deltalake.write_deltalake(
             str(target),
@@ -91,14 +89,10 @@ class TestEnsureCdfEnabled:
         pa.table({"json_col": ['{"a": 1}', '{"b": 2}']}),
     ],
 )
-def test_load_cdf_returns_postimage_after_overwrite(
-    tmp_path: Path, frame: pa.Table
-) -> None:
+def test_load_cdf_returns_postimage_after_overwrite(tmp_path: Path, frame: pa.Table) -> None:
     """Writing the same table twice with CDF on yields CDF events on read."""
     target = tmp_path / "t4"
-    deltalake.write_deltalake(
-        str(target), frame, configuration=cdf_creation_config()
-    )
+    deltalake.write_deltalake(str(target), frame, configuration=cdf_creation_config())
     # Append once — version 1 will have insert events in CDF.
     deltalake.write_deltalake(str(target), frame, mode="append")
 

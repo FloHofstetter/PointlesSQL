@@ -39,6 +39,9 @@ class RecentTable(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — recents
+            are per-(workspace, user); the same user can have
+            different recents per workspace.
         user_id: FK to ``users.id``.  Cascade-delete: removing a user
             also removes their recents (they're personal — no
             shared-state concern).

@@ -54,11 +54,15 @@ def test_update_chart_config_writes_and_reads_back() -> None:
     history_id = _seed_history(user_id=1)
     payload = json.dumps(
         {"type": "bar", "x": "name", "y": "count"},
-        separators=(",", ":"), sort_keys=True,
+        separators=(",", ":"),
+        sort_keys=True,
     )
     row = qh.update_chart_config(
-        factory, history_id,
-        user_id=1, is_admin=True, chart_config=payload,
+        factory,
+        history_id,
+        user_id=1,
+        is_admin=True,
+        chart_config=payload,
     )
     assert row is not None
     assert row["chart_config"] == payload
@@ -71,11 +75,18 @@ def test_update_chart_config_clears_with_none() -> None:
     factory = app.state.session_factory
     history_id = _seed_history(user_id=1)
     qh.update_chart_config(
-        factory, history_id, user_id=1, is_admin=True,
+        factory,
+        history_id,
+        user_id=1,
+        is_admin=True,
         chart_config='{"type":"bar","x":"a","y":"b"}',
     )
     qh.update_chart_config(
-        factory, history_id, user_id=1, is_admin=True, chart_config=None,
+        factory,
+        history_id,
+        user_id=1,
+        is_admin=True,
+        chart_config=None,
     )
     row = qh.get_by_id(factory, history_id, user_id=1, is_admin=True)
     assert row is not None and row["chart_config"] is None
@@ -86,8 +97,10 @@ def test_update_chart_config_non_owner_refused() -> None:
     history_id = _seed_history(user_id=1)
     # Non-admin stranger cannot mutate admin's row.
     result = qh.update_chart_config(
-        factory, history_id,
-        user_id=2, is_admin=False,
+        factory,
+        history_id,
+        user_id=2,
+        is_admin=False,
         chart_config='{"type":"bar","x":"a","y":"b"}',
     )
     assert result is None

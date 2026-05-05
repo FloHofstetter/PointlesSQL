@@ -154,19 +154,11 @@ def upgrade() -> None:
             sa.ForeignKey("users.id"),
             nullable=True,
         ),
-        sa.Column(
-            "is_shared", sa.Boolean(), nullable=False, server_default=sa.text("true")
-        ),
-        sa.Column(
-            "is_starter", sa.Boolean(), nullable=False, server_default=sa.text("false")
-        ),
+        sa.Column("is_shared", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+        sa.Column("is_starter", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("alert_threshold_count", sa.Integer(), nullable=True),
-        sa.Column(
-            "created_at", sa.DateTime(timezone=True), nullable=False
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.UniqueConstraint("slug"),
     )
     with op.batch_alter_table("saved_audit_queries", schema=None) as batch_op:

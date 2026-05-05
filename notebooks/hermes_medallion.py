@@ -59,10 +59,7 @@ CATALOG = os.environ.get("MEDALLION_CATALOG", "main")
 VOLUME_PATH = Path(
     os.environ.get(
         "MEDALLION_VOLUME_PATH",
-        str(
-            Path(__file__).resolve().parent
-            / "hermes_medallion_data"
-        ),
+        str(Path(__file__).resolve().parent / "hermes_medallion_data"),
     )
 )
 BRONZE_TABLE = f"{CATALOG}.bronze.orders_raw"
@@ -89,8 +86,10 @@ bronze_result = pql.autoload(
     source_path=str(VOLUME_PATH),
     target=BRONZE_TABLE,
 )
-print(f"Bronze: {bronze_result['rows_ingested']} rows added across "
-      f"{bronze_result['files_ingested']} file(s)")
+print(
+    f"Bronze: {bronze_result['rows_ingested']} rows added across "
+    f"{bronze_result['files_ingested']} file(s)"
+)
 
 # %% [markdown] pql_cell_id="eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
 # ## Silver — dedup + type via ``pql.merge``
@@ -103,16 +102,10 @@ print(f"Bronze: {bronze_result['rows_ingested']} rows added across "
 import pandas as pd  # noqa: E402 — stays inside the agent's notebook
 
 bronze_df = pql.table(BRONZE_TABLE)
-silver_source = (
-    bronze_df.assign(
-        qty=lambda d: pd.to_numeric(d["qty"], errors="coerce")
-        .fillna(0)
-        .astype(int),
-        unit_price=lambda d: pd.to_numeric(
-            d["unit_price"], errors="coerce"
-        ).fillna(0.0),
-        placed_at=lambda d: pd.to_datetime(d["placed_at"], utc=True),
-    )
+silver_source = bronze_df.assign(
+    qty=lambda d: pd.to_numeric(d["qty"], errors="coerce").fillna(0).astype(int),
+    unit_price=lambda d: pd.to_numeric(d["unit_price"], errors="coerce").fillna(0.0),
+    placed_at=lambda d: pd.to_datetime(d["placed_at"], utc=True),
 )
 # ``pql.merge`` requires the target to exist (Sprint 13.5.2 contract);
 # on the very first run we fall back to ``write_table`` to bootstrap
@@ -139,8 +132,10 @@ try:
         track_rejects=True,
         track_value_changes=True,
     )
-    print(f"Silver: {silver_result.get('num_target_rows_inserted', 0)} inserted, "
-          f"{silver_result.get('num_target_rows_updated', 0)} updated")
+    print(
+        f"Silver: {silver_result.get('num_target_rows_inserted', 0)} inserted, "
+        f"{silver_result.get('num_target_rows_updated', 0)} updated"
+    )
 except Exception as exc:  # noqa: BLE001 — bootstrap path; see comment above
     if "does not exist" not in str(exc):
         raise
@@ -198,23 +193,15 @@ print(
 
 # %% pql_cell_id="55555555-5555-4555-8555-eeeeeeeeeeee"
 silver_for_tweak = pql.table(BRONZE_TABLE)
-silver_for_tweak = (
-    silver_for_tweak.assign(
-        qty=lambda d: pd.to_numeric(d["qty"], errors="coerce")
-        .fillna(0)
-        .astype(int),
-        unit_price=lambda d: pd.to_numeric(
-            d["unit_price"], errors="coerce"
-        ).fillna(0.0),
-        placed_at=lambda d: pd.to_datetime(d["placed_at"], utc=True),
-    )
+silver_for_tweak = silver_for_tweak.assign(
+    qty=lambda d: pd.to_numeric(d["qty"], errors="coerce").fillna(0).astype(int),
+    unit_price=lambda d: pd.to_numeric(d["unit_price"], errors="coerce").fillna(0.0),
+    placed_at=lambda d: pd.to_datetime(d["placed_at"], utc=True),
 )
 # Bump the unit_price of the first order by 0.01 — this is the only
 # cell-level change in the second merge.
 mask = silver_for_tweak["order_id"] == silver_for_tweak["order_id"].iloc[0]
-silver_for_tweak.loc[mask, "unit_price"] = (
-    silver_for_tweak.loc[mask, "unit_price"] + 0.01
-)
+silver_for_tweak.loc[mask, "unit_price"] = silver_for_tweak.loc[mask, "unit_price"] + 0.01
 tweak_result = pql.merge(
     source=silver_for_tweak,
     target=SILVER_TABLE,

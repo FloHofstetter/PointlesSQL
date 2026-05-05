@@ -311,7 +311,7 @@ Monaco surfaces.
 
 **BUG-64-03** (commit TBD). With BUG-64-02 fixed, the editor
 rendered and both pills (Kernel ready / Pyright ready) flipped
-green within 10 s. The first keystroke triggered 
+green within 10 s. The first keystroke triggered
 autosave → ``POST /api/notebook/doc`` writes ``notebooks/scratch.py``
 on disk → uvicorn's dev-mode autoreload watcher saw the file
 change and restarted the entire ASGI process → kernel + Pyright
@@ -419,10 +419,10 @@ markdown cell.
  ``reactiveRoot`` in the closure prevents per-cell click
  handlers from re-entering a dead Alpine instance.)
 
-### What shipped for 
+### What shipped for
 
 - [frontend/js/notebook/cell_types.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_types.js) — registry.
- One descriptor per type (``code``, ``markdown``). 
+ One descriptor per type (``code``, ``markdown``).
  adds ``sql`` here without touching any other module.
 - [frontend/js/notebook/cell_affordances.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/cell_affordances.js)
  — factory for the toolbar and inserter view zones. All DOM
@@ -564,7 +564,7 @@ directory (e.g. ``scratch/one.py`` and ``scratch/two.py``).
  notebook first`` — deleting the open file from underneath the
  editor is a dangling-state hazard we refuse at the UI layer.
 
-### What shipped for 
+### What shipped for
 
 - [pointlessql/services/notebook_workspace.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/services/notebook_workspace.py)
  — added ``resolve_notebook_target``, ``create_empty_notebook``,
@@ -793,7 +793,7 @@ hydration starts from a known state.
  open, the tab strip overflows horizontally with
  ``overflow-x: auto`` — no dropdown overflow menu.
 
-### What shipped for 
+### What shipped for
 
 - [pointlessql/api/main.py](https://github.com/FloHofstetter/PointlesSQL/blob/main/pointlessql/api/main.py) —
  new ``GET /api/notebook/doc`` endpoint returning the same
@@ -959,7 +959,7 @@ bundled Firefox; the Chrome channel is unsupported per the
  relevant earlier-sprint steps (toolbar affordances, file tree
  sidebar, tab bar) and confirm no visual regressions.
 
-### What shipped for 
+### What shipped for
 
 - [frontend/js/notebook/markdown.js](https://github.com/FloHofstetter/PointlesSQL/blob/main/frontend/js/notebook/markdown.js)
  — full rewrite. ``renderMarkdown(src)`` now delegates to a

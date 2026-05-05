@@ -325,9 +325,7 @@ async def promote_version(
 
     target_info = await uc_client.get_model_version(full_name, target_version)
     if not target_info:
-        raise PromotionError(
-            f"version {target_version} of {full_name!r} not found"
-        )
+        raise PromotionError(f"version {target_version} of {full_name!r} not found")
     if target_info.get("status") != "READY":
         raise PromotionError(
             f"version {target_version} is not READY (status={target_info.get('status')!r})"
@@ -335,9 +333,7 @@ async def promote_version(
 
     previous_champion = await get_current_champion(uc_client, full_name)
     if previous_champion == target_version:
-        raise PromotionError(
-            f"version {target_version} is already champion"
-        )
+        raise PromotionError(f"version {target_version} is already champion")
 
     model = await uc_client.get_registered_model(full_name)
     if not model:
@@ -356,9 +352,7 @@ async def promote_version(
     try:
         await uc_client.update_registered_model(full_name, comment=new_comment)
     except Exception as exc:  # noqa: BLE001 — re-raise as PromotionError
-        raise PromotionError(
-            f"soyuz comment PATCH failed for {full_name!r}: {exc}"
-        ) from exc
+        raise PromotionError(f"soyuz comment PATCH failed for {full_name!r}: {exc}") from exc
 
     with factory() as session:
         review_id = _record_promotion_review(
@@ -444,9 +438,7 @@ async def list_promotion_history(
                     "previous_champion": payload.get("previous_champion"),
                     "promoted_by": payload.get("promoted_by"),
                     "reason": payload.get("reason"),
-                    "promoted_at": review.created_at.isoformat()
-                    if review.created_at
-                    else None,
+                    "promoted_at": review.created_at.isoformat() if review.created_at else None,
                 }
             )
     return rows

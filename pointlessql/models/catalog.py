@@ -37,6 +37,8 @@ class Dashboard(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
+            dashboard is workspace-scoped.
         slug: URL-visible identifier, unique across all dashboards.
         title: Human-readable name shown in the list and detail pages.
         description: Optional free-form description.
@@ -258,6 +260,9 @@ class SavedQuery(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — workspace
+            isolation; ``is_shared`` still controls cross-user
+            visibility within the workspace.
         slug: URL-visible identifier, unique across all rows.
         title: Human-readable name shown in the drawer.
         description: Optional free-form description.

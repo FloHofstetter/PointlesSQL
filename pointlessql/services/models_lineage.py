@@ -110,11 +110,7 @@ def aggregate_prediction_tables_for_model(
             .order_by(LineageRowEdge.target_table)
         )
         rows = session.execute(stmt).all()
-    return [
-        {"target_table": row[0], "edge_count": int(row[1])}
-        for row in rows
-        if row[0]
-    ]
+    return [{"target_table": row[0], "edge_count": int(row[1])} for row in rows if row[0]]
 
 
 def build_model_lineage_graph(

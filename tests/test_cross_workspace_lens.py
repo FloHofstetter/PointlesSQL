@@ -55,9 +55,7 @@ def _make_run(workspace_id: int, principal: str = "test-principal") -> str:
 @pytest.fixture
 def two_workspaces_with_runs():
     """Default workspace stays seeded; create a second workspace + one run each."""
-    other = workspaces_service.create_workspace(
-        _factory(), slug="ws-lens-b", name="Lens B"
-    )
+    other = workspaces_service.create_workspace(_factory(), slug="ws-lens-b", name="Lens B")
     run_default = _make_run(workspace_id=1, principal="alice")
     run_other = _make_run(workspace_id=other.id, principal="bob")
     return {
@@ -124,9 +122,7 @@ async def test_summary_named_workspace_admin_only(
         base_url="http://test",
         cookies=app.state._test_non_admin_cookie,
     ) as non_admin:
-        non_admin_resp = await non_admin.get(
-            "/api/audit/summary?workspace=ws-lens-b"
-        )
+        non_admin_resp = await non_admin.get("/api/audit/summary?workspace=ws-lens-b")
     # Non-admin asks for a workspace they're not in → 403.
     assert non_admin_resp.status_code == 403
 
@@ -179,9 +175,7 @@ async def test_anomalies_threads_workspace_filter(
         base_url="http://test",
         cookies=app.state._test_auth_cookie,
     ) as client:
-        response = await client.get(
-            "/api/audit/anomalies?metric=runs&window_days=2"
-        )
+        response = await client.get("/api/audit/anomalies?metric=runs&window_days=2")
     assert response.status_code == 200
     body = response.json()
     assert body["lens_mode"] == "current"

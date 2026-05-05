@@ -1,7 +1,7 @@
 /*
  * PointlesSQL shared fetch helper.
  *
- * Consolidates the try/catch/parse/error-extract pattern that 
+ * Consolidates the try/catch/parse/error-extract pattern that
  * components (editable, properties_editor, tags_editor, permissions_editor,
  * federation) each hand-rolled. Every non-ok response now surfaces a toast
  * via window.pqlToast so mutations fail loudly instead of burying the error

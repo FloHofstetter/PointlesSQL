@@ -32,9 +32,7 @@ def upgrade() -> None:
     """Flip ``users.default_workspace_id`` to NOT NULL after a defensive backfill."""
     bind = op.get_bind()
     bind.execute(
-        sa.text(
-            "UPDATE users SET default_workspace_id = 1 WHERE default_workspace_id IS NULL"
-        )
+        sa.text("UPDATE users SET default_workspace_id = 1 WHERE default_workspace_id IS NULL")
     )
 
     with op.batch_alter_table("users") as batch_op:

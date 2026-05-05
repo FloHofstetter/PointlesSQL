@@ -300,6 +300,9 @@ def _apply_audit_filters(
         table: Filter to rows whose target table matches.  Maps to
             ``target_table`` for ops/lineage and ``table_fqn`` for
             external writes; ignored for run-level metrics.
+        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+            the cross-workspace view (tenant admin only); a concrete id
+            restricts results to that workspace.
 
     Returns:
         The extended SELECT statement.
@@ -418,6 +421,9 @@ def summary(
             possible.
         table: Target-table filter applied to op/lineage metrics
             (``target_table``) and external writes (``table_fqn``).
+        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+            the cross-workspace view (tenant admin only); a concrete id
+            restricts results to that workspace.
 
     Returns:
         Dict with one key per metric in :data:`VALID_METRICS`.
@@ -490,6 +496,9 @@ def timeseries(
             ``"principal"`` produce one series per group.  When the
             metric has no group column (e.g. ``cost_denials`` +
             ``table``) the series collapses to ``"none"``.
+        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+            the cross-workspace view (tenant admin only); a concrete id
+            restricts results to that workspace.
 
     Returns:
         ``{"metric", "bin", "group_by", "points": [...]}``.
@@ -630,6 +639,9 @@ def anomalies(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Target-table filter.
+        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+            the cross-workspace view (tenant admin only); a concrete id
+            restricts results to that workspace.
 
     Returns:
         ``{"metric", "baseline_window_days", "threshold_sigma",
@@ -841,9 +853,7 @@ def backfill_run_anomalies(
             stmt = stmt.limit(limit)
         rows = list(session.scalars(stmt).all())
         for row in rows:
-            verdict = compute_run_anomaly(
-                factory, row, window_days=window_days, sigma=sigma
-            )
+            verdict = compute_run_anomaly(factory, row, window_days=window_days, sigma=sigma)
             if verdict is None:
                 continue
             row.anomaly_severity = verdict["severity"]

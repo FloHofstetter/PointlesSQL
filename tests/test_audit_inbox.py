@@ -181,7 +181,9 @@ async def test_inbox_surfaces_spike_breach() -> None:
     payload = r.json()
     assert payload["total_count"] >= 1
     spike = next(
-        a for a in payload["anomalies"] if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
+        a
+        for a in payload["anomalies"]
+        if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
     )
     assert spike["severity"] in ("warn", "critical")
     assert spike["observed"] >= 200
@@ -206,7 +208,9 @@ async def test_inbox_ack_hides_anomaly_until_unacked() -> None:
     async with _admin_client() as c:
         before = (await c.get("/api/audit/inbox")).json()
         spike = next(
-            a for a in before["anomalies"] if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
+            a
+            for a in before["anomalies"]
+            if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
         )
         ack_resp = await c.post(
             "/api/audit/anomaly-acks",

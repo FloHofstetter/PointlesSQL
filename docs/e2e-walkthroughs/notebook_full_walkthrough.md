@@ -1,4 +1,4 @@
-# Notebook full walkthrough — 
+# Notebook full walkthrough —
 
 Deterministic click-through of every output-rendering + editing
 surface in the native Python notebook editor. Pairs with the

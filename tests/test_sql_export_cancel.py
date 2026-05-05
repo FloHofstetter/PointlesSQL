@@ -94,9 +94,7 @@ async def test_csv_export_roundtrip(orders_delta: str) -> None:
         assert entries, "expected history to have our execution"
         history_id = entries[0]["id"]
 
-        resp = await client.get(
-            f"/api/sql/execute/{history_id}/download?format=csv"
-        )
+        resp = await client.get(f"/api/sql/execute/{history_id}/download?format=csv")
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"].startswith("text/csv")
     assert 'attachment; filename="query-' in resp.headers.get("content-disposition", "")
@@ -117,9 +115,7 @@ async def test_parquet_export_roundtrip(orders_delta: str) -> None:
         entries = (await client.get("/api/queries")).json()
         history_id = entries[0]["id"]
 
-        resp = await client.get(
-            f"/api/sql/execute/{history_id}/download?format=parquet"
-        )
+        resp = await client.get(f"/api/sql/execute/{history_id}/download?format=parquet")
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"] == "application/octet-stream"
     # The bytes should round-trip via pyarrow.parquet.

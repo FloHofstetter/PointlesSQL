@@ -91,11 +91,7 @@ async def api_deny_agent_run(
     """
     require_admin(request)
     reason_raw = body.get("reason")
-    reason = (
-        str(reason_raw).strip()
-        if isinstance(reason_raw, str) and reason_raw.strip()
-        else None
-    )
+    reason = str(reason_raw).strip() if isinstance(reason_raw, str) and reason_raw.strip() else None
     factory = request.app.state.session_factory
     with factory() as session:
         row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))

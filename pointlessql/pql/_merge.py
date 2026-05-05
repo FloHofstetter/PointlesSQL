@@ -120,7 +120,7 @@ def merge_table(
             ``lineage_row_edges`` row produced by this merge carries
             the model provenance.  Effective only when
             ``source_table_fqn`` is also set (the row-edge grain
-            needs a source table to be meaningful).  
+            needs a source table to be meaningful).
             extension mirroring :func:`pointlessql.pql._write.write_table`.
         track_rejects: When ``True``, scan the source frame for
             rows that won't land in the target (NULL ``on`` keys,
@@ -262,8 +262,7 @@ def merge_table(
                         e
                         for e in edges
                         if not (
-                            e.target_column == "_lineage_row_id"
-                            and e.transform_kind == "identity"
+                            e.target_column == "_lineage_row_id" and e.transform_kind == "identity"
                         )
                     ]
                     edges.append(

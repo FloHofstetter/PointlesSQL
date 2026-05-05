@@ -130,20 +130,30 @@ def test_cache_round_trip_evicts_stale_version() -> None:
     full_name = "main.sales.orders"
     initial = {"id": {"column_name": "id", "count": 3}}
     ts.write_cached(
-        factory, full_name=full_name, delta_log_version=1, stats=initial,
+        factory,
+        full_name=full_name,
+        delta_log_version=1,
+        stats=initial,
     )
     cached = ts.read_cached(
-        factory, full_name=full_name, delta_log_version=1,
+        factory,
+        full_name=full_name,
+        delta_log_version=1,
     )
     assert cached is not None
     assert cached[0]["column_name"] == "id"
     # Re-writing at the same version should overwrite (idempotent).
     updated = {"id": {"column_name": "id", "count": 42}}
     ts.write_cached(
-        factory, full_name=full_name, delta_log_version=1, stats=updated,
+        factory,
+        full_name=full_name,
+        delta_log_version=1,
+        stats=updated,
     )
     again = ts.read_cached(
-        factory, full_name=full_name, delta_log_version=1,
+        factory,
+        full_name=full_name,
+        delta_log_version=1,
     )
     assert again is not None
     assert again[0]["stats"]["count"] == 42
@@ -152,12 +162,16 @@ def test_cache_round_trip_evicts_stale_version() -> None:
 def test_delete_cached_removes_every_version() -> None:
     factory = app.state.session_factory
     ts.write_cached(
-        factory, full_name="main.sales.orders",
-        delta_log_version=1, stats={"id": {"count": 1}},
+        factory,
+        full_name="main.sales.orders",
+        delta_log_version=1,
+        stats={"id": {"count": 1}},
     )
     ts.write_cached(
-        factory, full_name="main.sales.orders",
-        delta_log_version=2, stats={"id": {"count": 2}},
+        factory,
+        full_name="main.sales.orders",
+        delta_log_version=2,
+        stats={"id": {"count": 2}},
     )
     removed = ts.delete_cached(factory, "main.sales.orders")
     assert removed >= 2
@@ -217,25 +231,32 @@ async def test_delete_stats_requires_admin(orders_delta: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_profile_enforces_select(
-    orders_delta: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_profile_enforces_select(orders_delta: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """A caller without SELECT on the table is refused at enforcement."""
     app.state.uc_client = _make_uc_mock(orders_delta)
 
     async def deny(
-        client: Any, email: str, is_admin: bool,
-        resource_type: str, full_name: str, privilege: str,
+        client: Any,
+        email: str,
+        is_admin: bool,
+        resource_type: str,
+        full_name: str,
+        privilege: str,
     ) -> None:
         from pointlessql.exceptions import AuthorizationError
+
         raise AuthorizationError(
-            email, privilege, resource_type, full_name,
+            email,
+            privilege,
+            resource_type,
+            full_name,
         )
 
     # Patch check_privilege at its import site — governance_routes
     # imports the function directly, so this is where the binding
     # the profile route resolves against actually lives.
     from pointlessql.api import governance_routes
+
     monkeypatch.setattr(governance_routes, "check_privilege", deny)
 
     async with _non_admin_client() as client:

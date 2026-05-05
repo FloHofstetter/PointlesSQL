@@ -38,6 +38,7 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     # rather than ``request.app.state.session_factory`` — the conftest sets
     # the latter, so monkeypatch the former to delegate.
     import pointlessql.db as _db
+
     monkeypatch.setattr(_db, "get_session_factory", lambda: app.state.session_factory)
     return mock
 

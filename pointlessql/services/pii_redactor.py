@@ -81,7 +81,7 @@ tags in soyuz and rely on the  render-time masking
 instead.
 """
 
-PII_HASH_SECRET_NAME = "pii_hash"
+PII_HASH_SECRET_NAME = "pii_hash"  # pragma: allowlist secret
 """``system_keys.name`` row holding the lazily-generated PII hash secret."""
 
 REDACTED_PLACEHOLDER = "<redacted>"
@@ -131,9 +131,7 @@ def get_or_create_pii_hash_secret(session_factory: sessionmaker[Session]) -> str
             fall back to ``redact_with_audit_log`` mode.
     """
     with session_factory() as session:
-        row = session.scalar(
-            select(SystemKey).where(SystemKey.name == PII_HASH_SECRET_NAME)
-        )
+        row = session.scalar(select(SystemKey).where(SystemKey.name == PII_HASH_SECRET_NAME))
         if row is not None:
             return row.value
         new_secret = _generate_secret_bytes()
@@ -148,9 +146,7 @@ def get_or_create_pii_hash_secret(session_factory: sessionmaker[Session]) -> str
             return new_secret
         except Exception:  # noqa: BLE001 — re-read on UNIQUE conflict
             session.rollback()
-            row = session.scalar(
-                select(SystemKey).where(SystemKey.name == PII_HASH_SECRET_NAME)
-            )
+            row = session.scalar(select(SystemKey).where(SystemKey.name == PII_HASH_SECRET_NAME))
             if row is None:
                 raise
             return row.value

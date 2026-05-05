@@ -101,7 +101,7 @@ already run and the demo user exists.
 
 ### Act 3 — lineage spotlight (4 steps, ~5 min)
 
-This act exercises the row / column / value lineage that 
+This act exercises the row / column / value lineage that
 fixed end-to-end. Pre-15.8 every assert below produced ZERO results
 for `demo_ml.*` despite the primitives being correct in unit tests —
 the silver `PQL.sql` projection was dropping `_lineage_row_id`.
@@ -474,7 +474,7 @@ What this tour intentionally does NOT cover, and where to find it:
  [`config-matrix.md`](config-matrix.md).
 - **Seed-demo coverage script itself** — see
  [`full-stack-demo.md`](full-stack-demo.md) for the 25 steps and
- the post-replay acceptance queries (including the 
+ the post-replay acceptance queries (including the
  lineage gate the spotlight act in this tour visualises).
 
 ## Replay budget

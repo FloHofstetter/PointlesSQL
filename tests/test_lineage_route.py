@@ -64,9 +64,7 @@ async def test_lineage_returns_combined_graph(uc_mock: MagicMock) -> None:
 @pytest.mark.asyncio
 async def test_lineage_rejects_two_part_name(uc_mock: MagicMock) -> None:
     async with _admin_client() as client:
-        response = await client.get(
-            "/api/pql/lineage", params={"table": "main.silver"}
-        )
+        response = await client.get("/api/pql/lineage", params={"table": "main.silver"})
     assert response.status_code == 422
     uc_mock.get_lineage.assert_not_called()
 

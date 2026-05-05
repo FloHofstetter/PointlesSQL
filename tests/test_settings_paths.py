@@ -59,8 +59,7 @@ def test_mlflow_subprocess_default_cwd_anchored(tmp_path, monkeypatch) -> None:
     # The default cwd must NOT pick up the test's tempdir.
     assert proc.cwd != tmp_path
     assert (proc.cwd / "pyproject.toml").is_file(), (
-        "MLflowSubprocess.cwd should resolve to the repo root, "
-        f"got {proc.cwd!r}"
+        f"MLflowSubprocess.cwd should resolve to the repo root, got {proc.cwd!r}"
     )
 
 

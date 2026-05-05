@@ -154,9 +154,7 @@ async def test_two_part_reference_is_rejected(orders_delta: str) -> None:
     assert "catalog.schema.table" in body["detail"]
 
 
-async def test_row_cap_is_applied(
-    orders_delta: str, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_row_cap_is_applied(orders_delta: str, monkeypatch: pytest.MonkeyPatch) -> None:
     # Clamp max_rows to 3 so our 5-row Delta table gets truncated.
     monkeypatch.setattr(app.state.settings.sql, "max_rows", 3)
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
@@ -190,7 +188,7 @@ async def test_sql_editor_page_renders() -> None:
     assert resp.status_code == 200
     assert b'id="pql-sql-editor-root"' in resp.content
     # The SQL tab should be marked active.
-    assert b'active_page' not in resp.content  # server context var, not rendered
+    assert b"active_page" not in resp.content  # server context var, not rendered
 
 
 async def test_explain_mode_returns_plan_and_skips_history(orders_delta: str) -> None:

@@ -62,11 +62,7 @@ async def test_tool_call_persists_row_and_emits_event() -> None:
     factory = app.state.session_factory
     with factory() as session:
         rows = (
-            session.execute(
-                select(AgentRunToolCall).where(
-                    AgentRunToolCall.agent_run_id == run_id
-                )
-            )
+            session.execute(select(AgentRunToolCall).where(AgentRunToolCall.agent_run_id == run_id))
             .scalars()
             .all()
         )
@@ -74,8 +70,7 @@ async def test_tool_call_persists_row_and_emits_event() -> None:
             session.execute(
                 select(AgentRunEvent).where(
                     AgentRunEvent.agent_run_id == run_id,
-                    AgentRunEvent.event_type
-                    == "pointlessql.agent_run.tool_call",
+                    AgentRunEvent.event_type == "pointlessql.agent_run.tool_call",
                 )
             )
             .scalars()
@@ -131,9 +126,7 @@ async def test_tool_call_accepts_dict_args_json() -> None:
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(AgentRunToolCall).where(
-                AgentRunToolCall.agent_run_id == run_id
-            )
+            select(AgentRunToolCall).where(AgentRunToolCall.agent_run_id == run_id)
         ).scalar_one()
     # Dict input gets sorted-JSON-serialised so the trail is
     # diff-friendly across runs.
@@ -157,9 +150,7 @@ async def test_tool_call_clamps_called_at_to_iso() -> None:
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(AgentRunToolCall).where(
-                AgentRunToolCall.agent_run_id == run_id
-            )
+            select(AgentRunToolCall).where(AgentRunToolCall.agent_run_id == run_id)
         ).scalar_one()
     # SQLite drops tzinfo on read; compare wall-clock components.
     assert row.called_at.replace(tzinfo=UTC) == fixed
@@ -179,9 +170,7 @@ async def test_tool_call_truncates_oversized_result_summary() -> None:
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(AgentRunToolCall).where(
-                AgentRunToolCall.agent_run_id == run_id
-            )
+            select(AgentRunToolCall).where(AgentRunToolCall.agent_run_id == run_id)
         ).scalar_one()
     assert row.result_summary is not None
     assert len(row.result_summary) <= 2000
@@ -199,14 +188,9 @@ async def test_run_seed_unaffected_by_tool_call_inserts() -> None:
         )
     factory = app.state.session_factory
     with factory() as session:
-        run = session.execute(
-            select(AgentRun).where(AgentRun.id == run_id)
-        ).scalar_one()
+        run = session.execute(select(AgentRun).where(AgentRun.id == run_id)).scalar_one()
     assert run.status == "queued"
     assert run.finished_at is None
     # SHA still matches the seed source — sanity check that
     # the run row didn't get rewritten by the tool-call branch.
-    assert (
-        run.source_snapshot_sha
-        == hashlib.sha256(b"print('seed')\n").hexdigest()
-    )
+    assert run.source_snapshot_sha == hashlib.sha256(b"print('seed')\n").hexdigest()

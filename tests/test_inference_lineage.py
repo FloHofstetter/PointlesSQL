@@ -106,9 +106,7 @@ def test_record_edges_persists_source_model_uri(auth_cookies) -> None:
     with factory() as session:
         rows = session.query(LineageRowEdge).all()
     assert len(rows) == 2
-    assert {row.source_model_uri for row in rows} == {
-        "models:/cat.sch.smoke_model/3"
-    }
+    assert {row.source_model_uri for row in rows} == {"models:/cat.sch.smoke_model/3"}
 
 
 def test_record_edges_default_source_model_uri_is_null(auth_cookies) -> None:

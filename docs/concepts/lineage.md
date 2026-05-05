@@ -187,7 +187,7 @@ dim table?" without re-running the merge.
 
 ## Limitations
 
-- **External writes are detected, not parsed.** 
+- **External writes are detected, not parsed.**
  added external-write detection: a `pql.write_table` outside an
  agent-run context still records an op-row with
  `agent_run_id="external"`. But the lineage of an external

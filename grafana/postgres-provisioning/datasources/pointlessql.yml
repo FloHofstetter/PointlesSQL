@@ -17,7 +17,7 @@ datasources:
     url: postgres:5432
     user: pointlessql
     secureJsonData:
-      password: pointlessql
+      password: pointlessql  # pragma: allowlist secret
     isDefault: true
     editable: false
     jsonData:

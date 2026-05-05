@@ -116,9 +116,7 @@ def _enumerate_branches(client: Any) -> list[dict[str, Any]]:
         if not isinstance(catalog_name, str):
             continue
         try:
-            schemas_response = list_schemas_api.sync(
-                client=client, catalog_name=catalog_name
-            )
+            schemas_response = list_schemas_api.sync(client=client, catalog_name=catalog_name)
         except Exception:  # noqa: BLE001 — keep enumeration resilient
             logger.warning(
                 "_enumerate_branches: list_schemas failed for catalog=%s",

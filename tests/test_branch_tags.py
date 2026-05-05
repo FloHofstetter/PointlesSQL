@@ -86,9 +86,7 @@ class TestReadBranchTags:
         uc.get_tags.return_value = _as_tag_list({"env": "prod"})  # type: ignore[attr-defined]
         assert await bt.read_branch_tags(uc, "playground.bronze") is None
 
-    async def test_returns_typed_tags_when_complete(
-        self, uc: UnityCatalogClient
-    ) -> None:
+    async def test_returns_typed_tags_when_complete(self, uc: UnityCatalogClient) -> None:
         uc.get_tags.return_value = _as_tag_list(  # type: ignore[attr-defined]
             {
                 bt.TAG_PARENT_SCHEMA: "playground.bronze",
@@ -132,9 +130,7 @@ class TestReadBranchTags:
         with pytest.raises(bt.BranchTagsCorruptError, match="not in"):
             await bt.read_branch_tags(uc, "playground.broken_branch")
 
-    async def test_raises_on_malformed_version_json(
-        self, uc: UnityCatalogClient
-    ) -> None:
+    async def test_raises_on_malformed_version_json(self, uc: UnityCatalogClient) -> None:
         uc.get_tags.return_value = _as_tag_list(  # type: ignore[attr-defined]
             {
                 bt.TAG_PARENT_SCHEMA: "playground.bronze",
@@ -147,9 +143,7 @@ class TestReadBranchTags:
         with pytest.raises(bt.BranchTagsCorruptError, match="not valid JSON"):
             await bt.read_branch_tags(uc, "playground.broken_branch")
 
-    async def test_recognises_pre_promote_backup_tag(
-        self, uc: UnityCatalogClient
-    ) -> None:
+    async def test_recognises_pre_promote_backup_tag(self, uc: UnityCatalogClient) -> None:
         uc.get_tags.return_value = _as_tag_list(  # type: ignore[attr-defined]
             {
                 bt.TAG_PARENT_SCHEMA: "playground.bronze",
@@ -169,9 +163,7 @@ class TestReadBranchTags:
 
 
 class TestSetBranchStatus:
-    async def test_promoted_writes_promoted_at(
-        self, uc: UnityCatalogClient
-    ) -> None:
+    async def test_promoted_writes_promoted_at(self, uc: UnityCatalogClient) -> None:
         await bt.set_branch_status(
             uc, "p.b_branch", bt.STATUS_PROMOTED, timestamp="2026-04-29T14:00:00+00:00"
         )
@@ -181,9 +173,7 @@ class TestSetBranchStatus:
         assert by_key[bt.TAG_PROMOTED_AT]["value"] == "2026-04-29T14:00:00+00:00"
         assert bt.TAG_DISCARDED_AT not in by_key
 
-    async def test_discarded_writes_discarded_at(
-        self, uc: UnityCatalogClient
-    ) -> None:
+    async def test_discarded_writes_discarded_at(self, uc: UnityCatalogClient) -> None:
         await bt.set_branch_status(
             uc, "p.b_branch", bt.STATUS_DISCARDED, timestamp="2026-04-29T15:00:00+00:00"
         )
@@ -192,9 +182,7 @@ class TestSetBranchStatus:
         assert by_key[bt.TAG_STATUS]["value"] == bt.STATUS_DISCARDED
         assert by_key[bt.TAG_DISCARDED_AT]["value"] == "2026-04-29T15:00:00+00:00"
 
-    async def test_active_clears_terminal_timestamps(
-        self, uc: UnityCatalogClient
-    ) -> None:
+    async def test_active_clears_terminal_timestamps(self, uc: UnityCatalogClient) -> None:
         await bt.set_branch_status(uc, "p.b_branch", bt.STATUS_ACTIVE)
         args, _ = uc.update_tags.call_args  # type: ignore[attr-defined]
         ops = {(c["key"], c["op"]) for c in args[2]}

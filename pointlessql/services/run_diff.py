@@ -373,9 +373,7 @@ def _row_count_per_table(factory: sessionmaker[Session], run_id: str) -> dict[st
             .group_by(AgentRunOperation.target_table)
         )
         return {
-            table: int(total)
-            for table, total in session.execute(stmt).all()
-            if table is not None
+            table: int(total) for table, total in session.execute(stmt).all() if table is not None
         }
 
 
@@ -613,12 +611,8 @@ def build_column_lineage_diff(
             ).all()
         )
 
-    by_key_a: dict[_ColumnEdgeKey, LineageColumnMap] = {
-        _column_edge_key(r): r for r in rows_a
-    }
-    by_key_b: dict[_ColumnEdgeKey, LineageColumnMap] = {
-        _column_edge_key(r): r for r in rows_b
-    }
+    by_key_a: dict[_ColumnEdgeKey, LineageColumnMap] = {_column_edge_key(r): r for r in rows_a}
+    by_key_b: dict[_ColumnEdgeKey, LineageColumnMap] = {_column_edge_key(r): r for r in rows_b}
     keys_a = set(by_key_a.keys())
     keys_b = set(by_key_b.keys())
 

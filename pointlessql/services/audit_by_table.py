@@ -171,15 +171,9 @@ def runs_by_table(
 
     with factory() as session:
         if kind == "touched":
-            rows = _by_touched(
-                session, fqn=fqn, since=since, until=until, limit=limit
-            )
+            rows = _by_touched(session, fqn=fqn, since=since, until=until, limit=limit)
         elif kind == "written":
-            rows = _by_written(
-                session, fqn=fqn, since=since, until=until, limit=limit
-            )
+            rows = _by_written(session, fqn=fqn, since=since, until=until, limit=limit)
         else:
-            rows = _by_read(
-                session, fqn=fqn, since=since, until=until, limit=limit
-            )
+            rows = _by_read(session, fqn=fqn, since=since, until=until, limit=limit)
         return [serialize_agent_run(r) for r in rows]

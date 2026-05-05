@@ -186,9 +186,7 @@ def extract_column_lineage(
                 )
             )
             continue
-        leaves = [
-            leaf for child in downstream for leaf in _lineage_leaves(child)
-        ]
+        leaves = [leaf for child in downstream for leaf in _lineage_leaves(child)]
         if not leaves:
             edges.append(
                 ColumnEdgeSpec(

@@ -265,8 +265,7 @@ def test_anomaly_synthetic_spike_is_flagged_critical(now: datetime.datetime) -> 
     # against a zero baseline" classifies as critical.
     run_ids = _seed_runs(now, count=4)
     op_ids = [
-        _seed_op(rid, started_at=now - datetime.timedelta(days=i))
-        for i, rid in enumerate(run_ids)
+        _seed_op(rid, started_at=now - datetime.timedelta(days=i)) for i, rid in enumerate(run_ids)
     ]
     with factory() as s:
         # 50 rejects on the most recent day (i=0 in _seed_runs is "today").
@@ -293,8 +292,7 @@ def test_anomaly_steady_state_is_ok(now: datetime.datetime) -> None:
     factory = app.state.session_factory
     run_ids = _seed_runs(now, count=10)
     op_ids = [
-        _seed_op(rid, started_at=now - datetime.timedelta(days=i))
-        for i, rid in enumerate(run_ids)
+        _seed_op(rid, started_at=now - datetime.timedelta(days=i)) for i, rid in enumerate(run_ids)
     ]
     with factory() as s:
         for rid, oid, i in zip(run_ids, op_ids, range(10), strict=True):
@@ -345,9 +343,7 @@ async def test_summary_route_records_self_in_query_history(now: datetime.datetim
         r = await client.get("/api/audit/summary")
     assert r.status_code == 200
     with factory() as s:
-        rows = list(
-            s.scalars(select(QueryHistory).where(QueryHistory.read_kind == "audit_api"))
-        )
+        rows = list(s.scalars(select(QueryHistory).where(QueryHistory.read_kind == "audit_api")))
     assert len(rows) >= 1
     assert rows[-1].sql_text.startswith("-- audit_api: /api/audit/summary")
 

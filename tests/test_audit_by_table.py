@@ -130,9 +130,7 @@ async def test_kind_touched_finds_declared_table() -> None:
         tables=["main.silver.unrelated"],
     )
     async with _admin_client() as c:
-        r = await c.get(
-            "/api/audit/by-table?fqn=main.silver.orders&kind=touched"
-        )
+        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=touched")
     assert r.status_code == 200, r.text
     payload = r.json()
     ids = {run["id"] for run in payload["runs"]}
@@ -247,8 +245,6 @@ async def test_pagination_limit_respected() -> None:
             tables=["main.silver.orders"],
         )
     async with _admin_client() as c:
-        r = await c.get(
-            "/api/audit/by-table?fqn=main.silver.orders&kind=touched&limit=1"
-        )
+        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=touched&limit=1")
     assert r.status_code == 200
     assert len(r.json()["runs"]) == 1

@@ -33,6 +33,8 @@ class NotebookOutput(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
+            persisted notebook output is workspace-scoped.
         file_path: Notebook path relative to the notebooks dir —
             the same string the editor's URL and the jupytext
             round-trip use.
@@ -110,6 +112,8 @@ class NotebookCellRun(Base):
         file_path: Notebook path relative to the notebooks dir.
         content_hash: Content-hash of the cell's normalized source.
         kernel_session_id: Session UUID (bumps on restart).
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
+            cell run is workspace-scoped.
         execution_count: Jupyter's monotonic counter — ``None``
             while the cell is still running.
         status: ``"running"`` | ``"ok"`` | ``"error"`` |

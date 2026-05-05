@@ -121,9 +121,7 @@ class ModelsMixin:
     @wrap_catalog_errors
     async def get_model_version(self, full_name: str, version: int) -> dict[str, Any]:
         """Return metadata for a single model version."""
-        response = await _get_mv.asyncio(
-            full_name=full_name, version=version, client=self._client
-        )
+        response = await _get_mv.asyncio(full_name=full_name, version=version, client=self._client)
         if response is None:
             return {}
         return response.to_dict()
@@ -156,9 +154,7 @@ class ModelsMixin:
             body.comment = comment
         if new_name is not None:
             body.new_name = new_name
-        response = await _update_rm.asyncio(
-            full_name=full_name, client=self._client, body=body
-        )
+        response = await _update_rm.asyncio(full_name=full_name, client=self._client, body=body)
         if response is None:
             return {}
         return response.to_dict()

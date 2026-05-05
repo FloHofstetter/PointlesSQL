@@ -104,9 +104,7 @@ class TestRfc9457Compliance:
     """Header, body shape, and extension-member correctness."""
 
     async def test_problem_media_type_on_api(self) -> None:
-        app.state.uc_client.get_tree = AsyncMock(
-            side_effect=CatalogUnavailableError("down")
-        )
+        app.state.uc_client.get_tree = AsyncMock(side_effect=CatalogUnavailableError("down"))
         async with _admin_client() as client:
             resp = await client.get("/api/tree")
         assert resp.headers["content-type"].startswith("application/problem+json")
@@ -127,9 +125,7 @@ class TestRfc9457Compliance:
     async def test_authorization_extension_members_in_body(self) -> None:
         """``AuthorizationError`` carries extra context as RFC 9457 extensions."""
         app.state.uc_client.get_tree = AsyncMock(
-            side_effect=AuthorizationError(
-                "user@test.com", "MODIFY", "schema", "cat.sch"
-            )
+            side_effect=AuthorizationError("user@test.com", "MODIFY", "schema", "cat.sch")
         )
         async with _admin_client() as client:
             resp = await client.get("/api/tree")
@@ -141,9 +137,7 @@ class TestRfc9457Compliance:
 
     async def test_domain_validation_error_422(self) -> None:
         """Our own ``ValidationError`` still maps to 422 with the right code."""
-        app.state.uc_client.get_tree = AsyncMock(
-            side_effect=ValidationError("bad name")
-        )
+        app.state.uc_client.get_tree = AsyncMock(side_effect=ValidationError("bad name"))
         async with _admin_client() as client:
             resp = await client.get("/api/tree")
         assert resp.status_code == 422

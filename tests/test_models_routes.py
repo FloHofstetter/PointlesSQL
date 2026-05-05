@@ -200,9 +200,7 @@ async def test_api_get_model_returns_model_plus_versions(
 
 
 @pytest.mark.asyncio
-async def test_api_get_model_404(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
-) -> None:
+async def test_api_get_model_404(uc_with_models: AsyncMock, auth_cookies: dict[str, str]) -> None:
     async with _client(cookies=auth_cookies) as c:
         resp = await c.get("/api/models/cat1.sch1.missing")
     assert resp.status_code == 404

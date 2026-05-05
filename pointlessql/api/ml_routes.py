@@ -137,8 +137,10 @@ async def get_ml_context(request: Request, run_id: str) -> dict[str, Any]:
         ``{"agent_run", "mlflow", "model_versions"}`` — see module
         docstring for semantics.
 
+    The ``require_supervisor`` dependency raises
+    ``AuthorizationError`` when the caller lacks supervisor scope.
+
     Raises:
-        AuthorizationError: When the caller lacks supervisor scope.
         CatalogNotFoundError: When the run id is unknown.
     """
     require_supervisor(request)

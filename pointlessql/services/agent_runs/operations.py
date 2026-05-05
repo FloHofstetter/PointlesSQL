@@ -220,6 +220,10 @@ class OperationRecorder:
             here so :func:`record_operation` writes it onto
             ``agent_run_operations.training_params_json``.  ``None``
             for non-training ops.
+        warnings: Non-fatal side-effect markers stamped by post-commit
+            hooks (lineage emit, edge insert, reject, column, value-
+            change failures).  Persisted into the row's
+            ``warnings_json`` column so ``error_message`` stays clean.
     """
 
     input_sha: str | None = None

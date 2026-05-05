@@ -142,7 +142,8 @@ class TestRecordColumnEdges:
         assert rows == []
 
     def test_check_constraint_rejects_unknown_kind(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         run_id, op_id = _seed_run_op(factory)
         edges = [
@@ -159,7 +160,8 @@ class TestRecordColumnEdges:
         assert isinstance(result, IntegrityError)
 
     def test_unknown_origin_allows_null_source(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         run_id, op_id = _seed_run_op(factory)
         edges = [
@@ -211,7 +213,8 @@ class TestWalkBackColumns:
             s.commit()
 
     def test_no_edges_yields_one_step(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         steps = walk_back_columns(factory, table="main.gold.empty", column="x")
         assert len(steps) == 1
@@ -219,11 +222,10 @@ class TestWalkBackColumns:
         assert steps[0].predecessors == ()
 
     def test_aggregate_fan_in_recurses_first_unique(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
-        run_id, op_id = _seed_run_op(
-            factory, op_name="aggregate", target_table="main.gold.t"
-        )
+        run_id, op_id = _seed_run_op(factory, op_name="aggregate", target_table="main.gold.t")
         # Two source columns feed gold.revenue (aggregate fan-in).
         for source_column in ("qty", "unit_price"):
             self._seed(
@@ -255,7 +257,8 @@ class TestWalkBackColumns:
         assert steps[1].table == "main.silver.t"
 
     def test_unknown_origin_breaks_chain(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         run_id, op_id = _seed_run_op(factory, op_name="autoload")
         self._seed(
@@ -279,11 +282,10 @@ class TestWalkBackColumns:
         assert steps[0].predecessors[0].table is None
 
     def test_two_hop_chain_bronze_to_gold(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
-        run_id, merge_op = _seed_run_op(
-            factory, op_name="merge", target_table="main.silver.t"
-        )
+        run_id, merge_op = _seed_run_op(factory, op_name="merge", target_table="main.silver.t")
         _, agg_op = _seed_run_op(
             factory,
             op_name="aggregate",

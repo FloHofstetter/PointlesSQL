@@ -240,11 +240,7 @@ async def test_reveal_returns_cleartext_and_writes_audit_log() -> None:
     # Audit row landed.
     factory = app.state.session_factory
     with factory() as s:
-        rows = list(
-            s.scalars(
-                select(AuditLog).where(AuditLog.action == "pii.value_revealed")
-            )
-        )
+        rows = list(s.scalars(select(AuditLog).where(AuditLog.action == "pii.value_revealed")))
     assert rows
     assert rows[-1].target == f"{table}.{column}"
 
@@ -266,11 +262,7 @@ async def test_reveal_missed_writes_distinct_audit_action() -> None:
     assert r.json() == {"found": False, "old_value": None, "new_value": None}
     factory = app.state.session_factory
     with factory() as s:
-        rows = list(
-            s.scalars(
-                select(AuditLog).where(AuditLog.action == "pii.value_reveal_missed")
-            )
-        )
+        rows = list(s.scalars(select(AuditLog).where(AuditLog.action == "pii.value_reveal_missed")))
     assert rows
 
 

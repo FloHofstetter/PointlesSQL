@@ -140,9 +140,7 @@ async def api_list_models(
     """
     _require_auth(request)
     client = get_uc_client(request)
-    models = await client.list_registered_models(
-        catalog_name=catalog_name, schema_name=schema_name
-    )
+    models = await client.list_registered_models(catalog_name=catalog_name, schema_name=schema_name)
     if enrich_latest:
         enriched: list[dict[str, Any]] = []
         for model in models:
@@ -188,9 +186,7 @@ async def api_get_model(request: Request, full_name: str) -> dict[str, Any]:
 
 
 @router.get("/api/models/{full_name}/versions/{version}")
-async def api_get_model_version(
-    request: Request, full_name: str, version: int
-) -> dict[str, Any]:
+async def api_get_model_version(request: Request, full_name: str, version: int) -> dict[str, Any]:
     """Return one model version with the matching MLflow context."""
     _require_auth(request)
     client = get_uc_client(request)
@@ -248,9 +244,7 @@ async def api_model_lineage(request: Request, full_name: str) -> dict[str, Any]:
 
 
 @router.get("/api/models/{full_name}/predictions")
-async def api_model_predictions(
-    request: Request, full_name: str
-) -> dict[str, Any]:
+async def api_model_predictions(request: Request, full_name: str) -> dict[str, Any]:
     """Return distinct prediction-tables this model has written into.
 
     backs the "Predictions" sub-card on the

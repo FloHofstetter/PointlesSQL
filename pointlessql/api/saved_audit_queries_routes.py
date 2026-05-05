@@ -146,9 +146,7 @@ async def api_update_saved_audit_query(
             try:
                 threshold_arg = int(raw)
             except (TypeError, ValueError) as exc:
-                raise ValidationError(
-                    "alert_threshold_count must be an integer or null"
-                ) from exc
+                raise ValidationError("alert_threshold_count must be an integer or null") from exc
     row = svc.update(
         request.app.state.session_factory,
         slug,
@@ -217,9 +215,7 @@ async def api_run_saved_audit_query(
         HTTPException: 404 when slug missing.
     """
     require_admin(request)
-    result = svc.execute(
-        request.app.state.session_factory, slug, row_cap=row_cap
-    )
+    result = svc.execute(request.app.state.session_factory, slug, row_cap=row_cap)
     if result is None:
         raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
     return result
@@ -245,9 +241,7 @@ async def api_export_saved_audit_query_csv(
         HTTPException: 404 when slug missing.
     """
     require_admin(request)
-    result = svc.execute(
-        request.app.state.session_factory, slug, row_cap=10_000
-    )
+    result = svc.execute(request.app.state.session_factory, slug, row_cap=10_000)
     if result is None:
         raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
 
@@ -290,9 +284,7 @@ async def api_export_saved_audit_query_json(
         HTTPException: 404 when slug missing.
     """
     require_admin(request)
-    result = svc.execute(
-        request.app.state.session_factory, slug, row_cap=10_000
-    )
+    result = svc.execute(request.app.state.session_factory, slug, row_cap=10_000)
     if result is None:
         raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
 

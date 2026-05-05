@@ -126,6 +126,8 @@ class GroupMapping(BaseModel):
     """One parsed entry from :attr:`OIDCSettings.group_map_raw` (Phase 29.3).
 
     Attributes:
+        model_config: Pydantic configuration; ``frozen=True`` keeps
+            instances immutable so cached parses never mutate.
         workspace_id: Workspace the user lands in when this group
             matches.  ``None`` keeps whatever workspace the user
             already had — useful for "scope-only" mappings that
@@ -226,13 +228,14 @@ class OIDCSettings(BaseSettings):
 
         Side effect: caches the parsed dict on a private attribute so
         :attr:`parsed_group_map` returns it without re-parsing on every
-        login.
+        login.  :func:`_parse_group_map` raises ``ValueError`` on
+        malformed syntax; pydantic-settings re-raises as
+        ``ValidationError`` at ``Settings()`` construction time, which
+        is the fail-loud-at-boot behaviour we want.
 
-        Raises:
-            ValueError: When the group-map syntax is malformed.  The
-                pydantic-settings layer turns this into a clear
-                ``ValidationError`` at ``Settings()`` construction
-                time, exactly the fail-loud-at-boot behaviour we want.
+        Returns:
+            OIDCSettings: ``self`` (model validators must return the
+                instance for pydantic to keep it).
         """
         # Bypass __setattr__'s "frozen" guard via object.__setattr__
         # so the cache write doesn't trip pydantic's immutability.

@@ -105,11 +105,10 @@ class TestWalkBackFanIn:
     """Fan-in (multiple sources → one target) is reflected on the step."""
 
     def test_aggregate_step_carries_all_predecessors(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
-        run_id, op_id = _seed_run_op(
-            factory, op_name="aggregate", target_table="main.gold.t"
-        )
+        run_id, op_id = _seed_run_op(factory, op_name="aggregate", target_table="main.gold.t")
         # Three silver rows fan into one gold row via op_id.
         for sid in ("s1", "s2", "s3"):
             _seed_edge(
@@ -133,11 +132,10 @@ class TestWalkBackFanIn:
         assert {p.op_id for p in steps[0].predecessors} == {op_id}
 
     def test_chain_recursion_picks_oldest(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
-        run_id, op_id = _seed_run_op(
-            factory, op_name="merge", target_table="main.silver.t"
-        )
+        run_id, op_id = _seed_run_op(factory, op_name="merge", target_table="main.silver.t")
         # Two predecessors with different timestamps — oldest wins for recursion.
         old = datetime.datetime(2026, 4, 1, 10, 0, tzinfo=datetime.UTC)
         new = datetime.datetime(2026, 4, 2, 10, 0, tzinfo=datetime.UTC)
@@ -175,7 +173,8 @@ class TestWalkBackFanIn:
         }
 
     def test_no_predecessors_yields_lineage_break(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         # No edges seeded.
         steps = walk_back(factory, table="main.gold.empty", row_id="never")
@@ -187,11 +186,10 @@ class TestWalkBackFanIn:
         assert steps[0].op_id is None
 
     def test_single_predecessor_produces_two_step_chain(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
-        run_id, op_id = _seed_run_op(
-            factory, op_name="merge", target_table="main.silver.t"
-        )
+        run_id, op_id = _seed_run_op(factory, op_name="merge", target_table="main.silver.t")
         _seed_edge(
             factory,
             run_id=run_id,

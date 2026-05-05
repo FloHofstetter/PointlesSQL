@@ -57,9 +57,7 @@ async def test_full_returns_run_and_collections_for_fresh_run() -> None:
 @pytest.mark.asyncio
 async def test_full_returns_404_for_unknown_run() -> None:
     async with _admin_client() as client:
-        response = await client.get(
-            "/api/agent-runs/deadbeef-dead-beef-dead-beefdeadbeef/full"
-        )
+        response = await client.get("/api/agent-runs/deadbeef-dead-beef-dead-beefdeadbeef/full")
     assert response.status_code == 404
 
 

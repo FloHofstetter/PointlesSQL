@@ -97,9 +97,7 @@ def test_record_query_persists_row_and_joined_tables() -> None:
         assert row.row_count == 3
         tables = list(
             session.scalars(
-                select(QueryHistoryTable).where(
-                    QueryHistoryTable.query_history_id == qh_id
-                )
+                select(QueryHistoryTable).where(QueryHistoryTable.query_history_id == qh_id)
             )
         )
         assert [t.full_name for t in tables] == ["main.sales.orders"]
@@ -132,16 +130,26 @@ def test_list_queries_filters_by_user_and_status() -> None:
     # User 1: succeeded, user 2: failed.
     qh.record_query(
         factory,
-        user_id=1, user_email="a@test.com",
-        sql_text="SELECT 1", started_at=now, finished_at=now,
-        status="succeeded", row_count=1, duration_ms=5,
+        user_id=1,
+        user_email="a@test.com",
+        sql_text="SELECT 1",
+        started_at=now,
+        finished_at=now,
+        status="succeeded",
+        row_count=1,
+        duration_ms=5,
         referenced_tables=[],
     )
     qh.record_query(
         factory,
-        user_id=2, user_email="b@test.com",
-        sql_text="SELECT bogus", started_at=now, finished_at=now,
-        status="failed", row_count=None, duration_ms=None,
+        user_id=2,
+        user_email="b@test.com",
+        sql_text="SELECT bogus",
+        started_at=now,
+        finished_at=now,
+        status="failed",
+        row_count=None,
+        duration_ms=None,
         referenced_tables=[],
         error_message="boom",
     )
@@ -158,18 +166,26 @@ def test_list_queries_reverse_lookup_by_table() -> None:
     now = datetime.datetime.now(datetime.UTC)
     qh.record_query(
         factory,
-        user_id=1, user_email="a@test.com",
+        user_id=1,
+        user_email="a@test.com",
         sql_text="SELECT * FROM main.sales.orders",
-        started_at=now, finished_at=now,
-        status="succeeded", row_count=3, duration_ms=5,
+        started_at=now,
+        finished_at=now,
+        status="succeeded",
+        row_count=3,
+        duration_ms=5,
         referenced_tables=["main.sales.orders"],
     )
     qh.record_query(
         factory,
-        user_id=1, user_email="a@test.com",
+        user_id=1,
+        user_email="a@test.com",
         sql_text="SELECT * FROM main.sales.customers",
-        started_at=now, finished_at=now,
-        status="succeeded", row_count=5, duration_ms=7,
+        started_at=now,
+        finished_at=now,
+        status="succeeded",
+        row_count=5,
+        duration_ms=7,
         referenced_tables=["main.sales.customers"],
     )
     all_rows = qh.list_queries(factory, user_id=1)
@@ -200,9 +216,7 @@ async def test_execute_success_writes_history_row(orders_delta: str) -> None:
         assert latest.row_count == 3
         tables = list(
             session.scalars(
-                select(QueryHistoryTable).where(
-                    QueryHistoryTable.query_history_id == latest.id
-                )
+                select(QueryHistoryTable).where(QueryHistoryTable.query_history_id == latest.id)
             )
         )
         assert [t.full_name for t in tables] == ["main.sales.orders"]

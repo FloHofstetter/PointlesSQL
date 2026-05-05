@@ -72,10 +72,7 @@ def test_content_hash_matches_js_reference_vector() -> None:
     # FNV-1a-64 of the empty string normalised is the raw offset basis:
     assert compute_content_hash("") == "cbf29ce484222325"
     # "print('hello')\n" → reference vector.
-    assert (
-        compute_content_hash("print('hello')\n")
-        == compute_content_hash("print('hello')\r\n")
-    )
+    assert compute_content_hash("print('hello')\n") == compute_content_hash("print('hello')\r\n")
 
 
 def test_save_load_roundtrip_clean_grammar(tmp_path: Path) -> None:
@@ -126,11 +123,11 @@ def test_legacy_file_flags_dirty_on_load(tmp_path: Path) -> None:
     """Pre-Sprint-96 ``pql_cell_id="…"`` markers parse + set dirty."""
     legacy = (
         '# %% pql_cell_id="11111111-1111-1111-1111-111111111111"\n'
-        'x = 1\n'
-        '\n'
+        "x = 1\n"
+        "\n"
         '# %% [sql] pql_cell_id="22222222-2222-2222-2222-222222222222"'
         ' result_var="df"\n'
-        'SELECT * FROM t\n'
+        "SELECT * FROM t\n"
     )
     target = tmp_path / "legacy.py"
     target.write_text(legacy)
@@ -147,10 +144,7 @@ def test_legacy_file_flags_dirty_on_load(tmp_path: Path) -> None:
 
 def test_legacy_file_saves_to_clean_grammar(tmp_path: Path) -> None:
     """Loading a legacy file + re-saving strips every UUID from disk."""
-    legacy = (
-        '# %% pql_cell_id="11111111-1111-1111-1111-111111111111"\n'
-        'x = 1\n'
-    )
+    legacy = '# %% pql_cell_id="11111111-1111-1111-1111-111111111111"\nx = 1\n'
     target = tmp_path / "legacy.py"
     target.write_text(legacy)
     doc = load_document(target, "legacy.py")

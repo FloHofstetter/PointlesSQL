@@ -247,9 +247,7 @@ async def test_emit_event_persists_and_updates_outcome(monkeypatch) -> None:
     factory = app.state.session_factory
 
     fake_dispatch = AsyncMock(return_value=True)
-    monkeypatch.setattr(
-        "pointlessql.services.agent_runs.events.dispatch_webhook", fake_dispatch
-    )
+    monkeypatch.setattr("pointlessql.services.agent_runs.events.dispatch_webhook", fake_dispatch)
 
     from pointlessql.settings import Settings
 
@@ -264,9 +262,7 @@ async def test_emit_event_persists_and_updates_outcome(monkeypatch) -> None:
     )
 
     with factory() as session:
-        row = session.scalar(
-            select(AgentRunEvent).where(AgentRunEvent.agent_run_id == run_id)
-        )
+        row = session.scalar(select(AgentRunEvent).where(AgentRunEvent.agent_run_id == run_id))
     assert row is not None
     assert row.outcome == "delivered"
     assert row.event_type == EVENT_TYPE_STARTED
@@ -290,9 +286,7 @@ async def test_emit_event_marks_no_destination_without_url() -> None:
     )
 
     with factory() as session:
-        row = session.scalar(
-            select(AgentRunEvent).where(AgentRunEvent.agent_run_id == run_id)
-        )
+        row = session.scalar(select(AgentRunEvent).where(AgentRunEvent.agent_run_id == run_id))
     assert row is not None
     assert row.outcome == "no_destination"
 

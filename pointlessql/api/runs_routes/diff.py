@@ -70,9 +70,7 @@ async def agent_run_diff_page(
     value_changes_diff = run_diff.build_value_changes_diff(
         factory, run_a_id=a, run_b_id=b, reveal=reveal
     )
-    column_lineage_diff = run_diff.build_column_lineage_diff(
-        factory, run_a_id=a, run_b_id=b
-    )
+    column_lineage_diff = run_diff.build_column_lineage_diff(factory, run_a_id=a, run_b_id=b)
     value_changes_a = sum(lineage_diff["value_change_volume_per_table"]["a"].values())
     value_changes_b = sum(lineage_diff["value_change_volume_per_table"]["b"].values())
     rejects_a = sum(lineage_diff["reject_pattern_shift"]["a"].values())
@@ -94,8 +92,7 @@ async def agent_run_diff_page(
             "value_changes_diff": value_changes_diff,
             "column_lineage_diff": column_lineage_diff,
             "rows_touched_diff": summary_b["rows_touched"] - summary_a["rows_touched"],
-            "errored_ops_diff": summary_b["errored_ops_count"]
-            - summary_a["errored_ops_count"],
+            "errored_ops_diff": summary_b["errored_ops_count"] - summary_a["errored_ops_count"],
             "active_page": "runs",
             "active_catalog": None,
             "active_schema": None,

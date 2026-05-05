@@ -200,10 +200,8 @@ async def switch_workspace(request: Request, slug: str = Form()):
 
     Returns:
         303 redirect to ``/`` so the topbar re-renders with the
-        new workspace context.
-
-    Raises:
-        AuthorizationError: When the caller is not authenticated.
+        new workspace context, or a 401/403/404 ``JSONResponse`` on
+        auth failures.
     """
     user = getattr(request.state, "user", None)
     if user is None:

@@ -39,9 +39,7 @@ async def test_non_admin_cannot_create_or_list() -> None:
     _wipe()
     async with _non_admin_client() as c:
         list_resp = await c.get("/api/admin/api-keys")
-        create_resp = await c.post(
-            "/api/admin/api-keys", json={"name": "evil"}
-        )
+        create_resp = await c.post("/api/admin/api-keys", json={"name": "evil"})
     assert list_resp.status_code == 403
     assert create_resp.status_code == 403
 
@@ -68,9 +66,7 @@ async def test_admin_list_returns_keys_without_plaintext() -> None:
     _wipe()
     async with _admin_client() as c:
         await c.post("/api/admin/api-keys", json={"name": "k1"})
-        await c.post(
-            "/api/admin/api-keys", json={"name": "sup", "supervisor": True}
-        )
+        await c.post("/api/admin/api-keys", json={"name": "sup", "supervisor": True})
         response = await c.get("/api/admin/api-keys")
     assert response.status_code == 200
     keys = response.json()["keys"]

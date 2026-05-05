@@ -6,8 +6,6 @@ routes and the ``GET /api/tree?primary_only=true`` filter.
 
 from __future__ import annotations
 
-from typing import Any
-
 import httpx
 import pytest
 

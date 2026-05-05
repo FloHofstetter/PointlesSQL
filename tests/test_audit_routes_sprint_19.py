@@ -501,9 +501,9 @@ async def test_run_audit_endpoints_record_audit_api_history(
             .order_by(QueryHistory.id.desc())
             .limit(5)
         )
-    assert any(
-        "/api/agent-runs/{run_id}/audit/lineage" in row.sql_text for row in rows
-    ), "audit-of-audit row missing"
+    assert any("/api/agent-runs/{run_id}/audit/lineage" in row.sql_text for row in rows), (
+        "audit-of-audit row missing"
+    )
 
 
 # ---------------------------------------------------------------------------

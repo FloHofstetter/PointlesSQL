@@ -396,9 +396,7 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
     source_model_uri: str | None = None
     if source_model_uri_raw is not None:
         if not isinstance(source_model_uri_raw, str) or not source_model_uri_raw.strip():
-            raise ValidationError(
-                "source_model_uri must be a non-empty string when provided."
-            )
+            raise ValidationError("source_model_uri must be a non-empty string when provided.")
         source_model_uri = source_model_uri_raw.strip()
 
     try:
@@ -524,9 +522,7 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
     source_model_uri: str | None = None
     if source_model_uri_raw is not None:
         if not isinstance(source_model_uri_raw, str) or not source_model_uri_raw.strip():
-            raise ValidationError(
-                "source_model_uri must be a non-empty string when provided."
-            )
+            raise ValidationError("source_model_uri must be a non-empty string when provided.")
         source_model_uri = source_model_uri_raw.strip()
 
     try:

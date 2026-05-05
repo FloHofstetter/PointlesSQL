@@ -98,11 +98,7 @@ def test_validate_sql_allows_join_within_allowlist() -> None:
 def test_bootstrap_seeds_five_starter_rows() -> None:
     factory = app.state.session_factory
     with factory() as s:
-        starters = list(
-            s.scalars(
-                select(SavedAuditQuery).where(SavedAuditQuery.is_starter)
-            )
-        )
+        starters = list(s.scalars(select(SavedAuditQuery).where(SavedAuditQuery.is_starter)))
     assert len(starters) >= 5
     slugs = {r.slug for r in starters}
     assert "rollbacks-last-quarter" in slugs
@@ -184,9 +180,7 @@ async def test_starter_patch_returns_404() -> None:
 @pytest.mark.asyncio
 async def test_starter_delete_returns_404() -> None:
     async with _admin_client() as client:
-        r = await client.delete(
-            "/api/saved-audit-queries/rollbacks-last-quarter"
-        )
+        r = await client.delete("/api/saved-audit-queries/rollbacks-last-quarter")
     assert r.status_code == 404
 
 
@@ -217,9 +211,7 @@ def _seed_one_run() -> None:
 async def test_run_returns_rows_for_starter() -> None:
     _seed_one_run()
     async with _admin_client() as client:
-        r = await client.post(
-            "/api/saved-audit-queries/top-mutating-principals-30d/run"
-        )
+        r = await client.post("/api/saved-audit-queries/top-mutating-principals-30d/run")
     assert r.status_code == 200
     body = r.json()
     assert "columns" in body
@@ -229,9 +221,7 @@ async def test_run_returns_rows_for_starter() -> None:
 @pytest.mark.asyncio
 async def test_run_returns_404_for_missing_slug() -> None:
     async with _admin_client() as client:
-        r = await client.post(
-            "/api/saved-audit-queries/does-not-exist/run"
-        )
+        r = await client.post("/api/saved-audit-queries/does-not-exist/run")
     assert r.status_code == 404
 
 
@@ -239,9 +229,7 @@ async def test_run_returns_404_for_missing_slug() -> None:
 async def test_csv_export_streams_rows() -> None:
     _seed_one_run()
     async with _admin_client() as client:
-        r = await client.get(
-            "/api/saved-audit-queries/top-mutating-principals-30d/export.csv"
-        )
+        r = await client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.csv")
     assert r.status_code == 200
     assert "text/csv" in r.headers["content-type"]
     assert "attachment" in r.headers["content-disposition"]
@@ -254,9 +242,7 @@ async def test_csv_export_streams_rows() -> None:
 async def test_json_export_streams_payload() -> None:
     _seed_one_run()
     async with _admin_client() as client:
-        r = await client.get(
-            "/api/saved-audit-queries/top-mutating-principals-30d/export.json"
-        )
+        r = await client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.json")
     assert r.status_code == 200
     assert "application/json" in r.headers["content-type"]
     body = json.loads(r.text)
@@ -267,17 +253,11 @@ async def test_json_export_streams_payload() -> None:
 @pytest.mark.asyncio
 async def test_csv_export_writes_audit_log() -> None:
     async with _admin_client() as client:
-        await client.get(
-            "/api/saved-audit-queries/top-mutating-principals-30d/export.csv"
-        )
+        await client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.csv")
     factory = app.state.session_factory
     with factory() as s:
         rows = list(
-            s.scalars(
-                select(AuditLog).where(
-                    AuditLog.action == "saved_audit_query.exported"
-                )
-            )
+            s.scalars(select(AuditLog).where(AuditLog.action == "saved_audit_query.exported"))
         )
     assert rows, "expected an audit_log row of action saved_audit_query.exported"
     assert rows[-1].target.startswith("saved_audit_query:")

@@ -265,14 +265,10 @@ def _parse_tag_list(
     try:
         decoded: Any = json.loads(raw_versions) if isinstance(raw_versions, str) else None
     except json.JSONDecodeError as exc:
-        msg = (
-            f"schema {schema_fqn!r}: {TAG_PARENT_VERSION_AT_CREATE} is not valid JSON: {exc}"
-        )
+        msg = f"schema {schema_fqn!r}: {TAG_PARENT_VERSION_AT_CREATE} is not valid JSON: {exc}"
         raise BranchTagsCorruptError(msg) from exc
     if not isinstance(decoded, dict):
-        msg = (
-            f"schema {schema_fqn!r}: {TAG_PARENT_VERSION_AT_CREATE} did not decode to a dict"
-        )
+        msg = f"schema {schema_fqn!r}: {TAG_PARENT_VERSION_AT_CREATE} did not decode to a dict"
         raise BranchTagsCorruptError(msg)
     typed_versions: dict[str, int] = {}
     decoded_dict = cast(dict[Any, Any], decoded)

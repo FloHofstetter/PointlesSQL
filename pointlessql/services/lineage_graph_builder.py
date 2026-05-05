@@ -21,6 +21,7 @@ or op) returns ``{"nodes": [], "edges": [], …}`` so the frontend
 can render a clean empty-state instead of having to special-case
 the absence of either table.
 """
+
 from __future__ import annotations
 
 from typing import Any, cast
@@ -105,9 +106,9 @@ def build_lineage_graph(
         if op_id_value in op_meta:
             return
         row = session.execute(
-            select(
-                AgentRunOperation.ordinal, AgentRunOperation.op_name
-            ).where(AgentRunOperation.id == op_id_value)
+            select(AgentRunOperation.ordinal, AgentRunOperation.op_name).where(
+                AgentRunOperation.id == op_id_value
+            )
         ).first()
         if row is None:
             # Defensive: an orphan edge without an op should not
@@ -118,14 +119,11 @@ def build_lineage_graph(
 
     with factory() as session:
         # --- row edges -------------------------------------------------
-        row_stmt = (
-            select(
-                LineageRowEdge.source_table,
-                LineageRowEdge.target_table,
-                LineageRowEdge.op_id,
-            )
-            .where(LineageRowEdge.run_id == run_id)
-        )
+        row_stmt = select(
+            LineageRowEdge.source_table,
+            LineageRowEdge.target_table,
+            LineageRowEdge.op_id,
+        ).where(LineageRowEdge.run_id == run_id)
         if op_id is not None:
             row_stmt = row_stmt.where(LineageRowEdge.op_id == op_id)
         row_count_by_key: dict[tuple[str, str, int], int] = {}
@@ -151,9 +149,7 @@ def build_lineage_graph(
         )
         if op_id is not None:
             col_stmt = col_stmt.where(LineageColumnMap.op_id == op_id)
-        for src, src_col, tgt, tgt_col, kind, op_id_value in session.execute(
-            col_stmt
-        ).all():
+        for src, src_col, tgt, tgt_col, kind, op_id_value in session.execute(col_stmt).all():
             _ensure_op_meta(session, int(op_id_value))
             # Some column-map rows have ``source_table = NULL`` (the
             # ``unknown_origin`` transform_kind).  Those don't anchor

@@ -133,7 +133,7 @@ jobs:
         image: postgres:17-alpine
         env:
           POSTGRES_USER: pointlessql
-          POSTGRES_PASSWORD: pointlessql
+          POSTGRES_PASSWORD: pointlessql  # pragma: allowlist secret
           POSTGRES_DB: pointlessql
         ports:
           - 5432:5432
@@ -143,8 +143,8 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     env:
-      TEST_DATABASE_URL: postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql
-      POINTLESSQL_DB_URL: postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql
+      TEST_DATABASE_URL: postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql  # pragma: allowlist secret
+      POINTLESSQL_DB_URL: postgresql+psycopg://pointlessql:pointlessql@localhost:5432/pointlessql  # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v4
       - name: Configure git for private soyuz-catalog pull

@@ -167,9 +167,7 @@ class TestPromoteBranchSchema:
                 return_value=_table_info(str(events_dir)),
             ),
             patch.object(branch_mod, "_rename_schema", side_effect=_fake_rename),
-            patch(
-                "pointlessql.pql._branch.branch_tags.set_branch_status_sync"
-            ) as mock_set_status,
+            patch("pointlessql.pql._branch.branch_tags.set_branch_status_sync") as mock_set_status,
             patch(
                 "pointlessql.pql._branch.branch_tags.mark_pre_promote_backup_sync"
             ) as mock_mark_backup,

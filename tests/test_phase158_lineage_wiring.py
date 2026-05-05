@@ -380,16 +380,11 @@ def test_pql_sql_logs_when_lineage_row_id_dropped_at_select(
 
     assert "_lineage_row_id" not in {c["name"] for c in result.columns}
     assert any(
-        "PQL.sql: query projects no _lineage_row_id" in rec.getMessage()
-        for rec in caplog.records
+        "PQL.sql: query projects no _lineage_row_id" in rec.getMessage() for rec in caplog.records
     )
 
     with factory() as session:
-        op = (
-            session.query(AgentRunOperation)
-            .filter(AgentRunOperation.agent_run_id == run_id)
-            .one()
-        )
+        op = session.query(AgentRunOperation).filter(AgentRunOperation.agent_run_id == run_id).one()
     assert '"lineage_row_id_dropped_at_select": true' in (op.params_json or "")
 
 
@@ -424,16 +419,11 @@ def test_pql_sql_does_not_log_when_lineage_row_id_projected(
     monkeypatch.setenv("POINTLESSQL_AGENT_RUN_ID", run_id)
     with caplog.at_level(logging.INFO, logger="pointlessql.pql._sql"):
         PQL.sql(
-            (
-                "SELECT house_id, _lineage_row_id "
-                "FROM phase158.bronze.houses"
-            ),
+            ("SELECT house_id, _lineage_row_id FROM phase158.bronze.houses"),
             approved_tables=approved,
         )
 
-    assert not any(
-        "lineage_row_id" in rec.getMessage() for rec in caplog.records
-    )
+    assert not any("lineage_row_id" in rec.getMessage() for rec in caplog.records)
 
 
 # ---------- 15.8.4 CDF ordering regression ----------

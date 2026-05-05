@@ -49,7 +49,13 @@ class TestBuildAggregateFrame:
     def src(self) -> pd.DataFrame:
         return pd.DataFrame(
             {
-                "placed_day": ["2026-04-01", "2026-04-01", "2026-04-02", "2026-04-02", "2026-04-01"],
+                "placed_day": [
+                    "2026-04-01",
+                    "2026-04-01",
+                    "2026-04-02",
+                    "2026-04-02",
+                    "2026-04-01",
+                ],
                 "product": ["widget", "widget", "gadget", "gadget", "gadget"],
                 "qty": [3, 5, 2, 4, 1],
                 "_lineage_row_id": ["s1", "s2", "s3", "s4", "s5"],
@@ -85,19 +91,13 @@ class TestBuildAggregateFrame:
             aggs={"units_sold": ("qty", "sum")},
         )
         # ``(2026-04-01, widget)`` group has source rows s1 + s2.
-        widget_group = next(
-            (tid, sids) for tid, sids in groups if "s1" in sids
-        )
+        widget_group = next((tid, sids) for tid, sids in groups if "s1" in sids)
         assert sorted(widget_group[1]) == ["s1", "s2"]
         # ``(2026-04-02, gadget)`` group has s3 + s4.
-        gadget_group = next(
-            (tid, sids) for tid, sids in groups if "s3" in sids
-        )
+        gadget_group = next((tid, sids) for tid, sids in groups if "s3" in sids)
         assert sorted(gadget_group[1]) == ["s3", "s4"]
         # ``(2026-04-01, gadget)`` is a singleton (s5 only).
-        single_group = next(
-            (tid, sids) for tid, sids in groups if sids == ["s5"]
-        )
+        single_group = next((tid, sids) for tid, sids in groups if sids == ["s5"])
         assert single_group[1] == ["s5"]
 
     def test_aggregation_is_correct(self, src: pd.DataFrame) -> None:

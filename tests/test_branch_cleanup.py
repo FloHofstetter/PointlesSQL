@@ -148,9 +148,7 @@ class TestCleanupOldBranches:
                 "pointlessql.services.branch_cleanup.branch_tags.read_branch_tags_sync",
                 side_effect=_fake_read,
             ),
-            patch(
-                "pointlessql.services.branch_cleanup.discard_branch_schema"
-            ) as mock_discard,
+            patch("pointlessql.services.branch_cleanup.discard_branch_schema") as mock_discard,
         ):
             mock_catalogs.sync.return_value = catalogs_response
             mock_schemas.sync.return_value = schemas_response

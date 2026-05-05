@@ -85,6 +85,7 @@ def mlflow_available() -> bool:
         bool: True if ``import mlflow`` succeeds, else False.
     """
     import importlib.util
+
     return importlib.util.find_spec("mlflow") is not None
 
 
@@ -99,15 +100,17 @@ class MLflowSubprocess:
     outlive the spawning context (so we own a PID file in case the
     parent crashes mid-run).
 
-    Attributes:
-        settings: The :class:`MLflowSettings` used to derive URIs and
-            the bind port.
-        soyuz_url: The base URL of the running soyuz-catalog server,
-            used to construct the registry URI when none is set
-            explicitly.
-        cwd: Process CWD used to anchor relative URI defaults.
-        proc: The :class:`asyncio.subprocess.Process` once started,
-            or ``None`` until :meth:`start` succeeds.
+    Args:
+        settings: MLflow-specific configuration block; drives the
+            URI defaults and the bind port.
+        soyuz_url: Base URL of the running soyuz-catalog server
+            (e.g. ``http://127.0.0.1:8080``); used to construct the
+            registry URI when ``settings.registry_uri`` is ``None``.
+        cwd: Working directory for relative-path URI defaults;
+            defaults to the project root (``Path.cwd()`` is overridden
+            so the tracking DB and artifact root land in the same
+            place no matter which directory the server was started
+            from).
     """
 
     def __init__(
@@ -116,15 +119,6 @@ class MLflowSubprocess:
         soyuz_url: str,
         cwd: Path | None = None,
     ) -> None:
-        """Initialize the subprocess manager.
-
-        Args:
-            settings: MLflow-specific configuration block.
-            soyuz_url: Base URL of soyuz (e.g. ``http://127.0.0.1:8080``);
-                used when ``settings.registry_uri`` is None.
-            cwd: Working directory for relative-path URI defaults;
-                defaults to ``Path.cwd()``.
-        """
         self.settings = settings
         self.soyuz_url = soyuz_url
         # BUG-grand-09 — anchor relative-path defaults to the repo
@@ -142,12 +136,10 @@ class MLflowSubprocess:
             tuple[str, str, str]: ``(backend_store_uri, artifact_root, registry_uri)``.
         """
         backend = (
-            self.settings.backend_store_uri
-            or f"sqlite:///{(self.cwd / 'mlflow.db').resolve()}"
+            self.settings.backend_store_uri or f"sqlite:///{(self.cwd / 'mlflow.db').resolve()}"
         )
         artifact_root = (
-            self.settings.artifact_root
-            or f"file://{(self.cwd / 'mlflow_artifacts').resolve()}"
+            self.settings.artifact_root or f"file://{(self.cwd / 'mlflow_artifacts').resolve()}"
         )
         # MLflow's UC-OSS scheme is `uc:` followed by the bare HTTP URL,
         # not `uc-oss:` (see uc_oss_rest_store.py + 's diff).
@@ -228,7 +220,7 @@ class MLflowSubprocess:
                     if resp.status_code == 200:
                         _logger.info("MLflow subprocess healthy on port %d", self.settings.port)
                         return
-                except (httpx.ConnectError, httpx.ReadTimeout):
+                except httpx.ConnectError, httpx.ReadTimeout:
                     pass
                 await asyncio.sleep(_HEALTH_POLL_S)
         raise MLflowStartupError(

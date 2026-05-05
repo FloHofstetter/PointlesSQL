@@ -37,6 +37,9 @@ class Job(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
+            job is workspace-scoped; backfilled at migration time
+            from ``users[run_as_user_id].default_workspace_id``.
         name: Unique human-readable name shown in the UI.
         cron_expr: 5-field cron expression evaluated by ``croniter``.
         run_as_user_id: FK to ``users.id`` — the scheduler builds an
@@ -100,6 +103,9 @@ class JobRun(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
+            denormalised from parent :class:`Job` for workspace-
+            scoped run listings.
         job_id: FK to ``jobs.id``.
         started_at: Timestamp when the executor was invoked.
         finished_at: Timestamp when the executor returned, or ``None``
@@ -147,6 +153,8 @@ class JobTask(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
+            denormalised from parent :class:`Job`.
         job_id: FK to ``jobs.id``.
         name: Human-readable task name, unique within the parent job.
         order: Ordinal within the job. Still written so existing rows
@@ -203,6 +211,8 @@ class TaskRun(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
+            denormalised from parent :class:`JobRun`.
         job_run_id: FK to ``job_runs.id`` — the parent run.
         task_id: FK to ``job_tasks.id`` — which node of the DAG.
         status: ``pending``, ``running``, ``succeeded``, ``failed``,
@@ -253,6 +263,8 @@ class JobLog(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
+            denormalised from parent :class:`JobRun`.
         job_run_id: FK to ``job_runs.id``.
         task_id: FK to ``job_tasks.id``, or ``None`` for run-scoped
             entries (lifecycle events that are not tied to one task).

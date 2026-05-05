@@ -34,6 +34,8 @@ class Alert(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
+            alert lives in exactly one workspace.
         slug: URL-safe identifier (unique across tenants).
         title: Human-readable name shown in the UI.
         saved_query_id: FK to :class:`SavedQuery` that produces the
@@ -134,6 +136,8 @@ class AlertEvent(Base):
 
     Attributes:
         id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`.  Denormalised from the
+            parent :class:`Alert` for workspace-scoped queries.
         alert_id: FK to :class:`Alert`.
         event_id: CloudEvents ``id`` (uuid4 hex, unique).
         fired_at: Timestamp the executor evaluated the condition.

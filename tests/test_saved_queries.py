@@ -74,9 +74,7 @@ def test_non_admin_cannot_see_private_peer_query() -> None:
         is_shared=False,
     )
     # Non-admin lookup by slug should return None, not the row.
-    got = sq.get_by_slug(
-        factory, row["slug"], user_id=_non_admin_id(), is_admin=False
-    )
+    got = sq.get_by_slug(factory, row["slug"], user_id=_non_admin_id(), is_admin=False)
     assert got is None
     # Listing for the non-admin does NOT include this slug.
     visible = sq.list_visible(factory, user_id=_non_admin_id(), is_admin=False)
@@ -118,15 +116,11 @@ def test_non_owner_cannot_update_or_delete() -> None:
     assert updated is None
 
     # DELETE by non-owner: returns False.
-    deleted = sq.delete_by_slug(
-        factory, row["slug"], user_id=_non_admin_id(), is_admin=False
-    )
+    deleted = sq.delete_by_slug(factory, row["slug"], user_id=_non_admin_id(), is_admin=False)
     assert deleted is False
 
     # Original row still exists.
-    fresh = sq.get_by_slug(
-        factory, row["slug"], user_id=_admin_id(), is_admin=True
-    )
+    fresh = sq.get_by_slug(factory, row["slug"], user_id=_admin_id(), is_admin=True)
     assert fresh is not None
     assert fresh["title"] == "Admin only"
 

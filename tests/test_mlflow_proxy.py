@@ -7,7 +7,8 @@ server.
 
 from __future__ import annotations
 
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import httpx
 import pytest
@@ -73,6 +74,7 @@ async def test_authenticated_request_proxies_and_injects_user_header(
     mock_upstream: dict[str, Any],
 ) -> None:
     """Auth'd request forwards method, path, and X-MLflow-User."""
+
     class _StubProc:
         pass
 

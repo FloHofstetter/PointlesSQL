@@ -258,11 +258,7 @@ def _refs_with_lineage_row_id(
         if len(parts) != 3:
             continue
         catalog_name, schema_name, table_name = parts
-        cols = (
-            schema_dict.get(catalog_name, {})
-            .get(schema_name, {})
-            .get(table_name, {})
-        )
+        cols = schema_dict.get(catalog_name, {}).get(schema_name, {}).get(table_name, {})
         if LINEAGE_ROW_ID_COLUMN in cols:
             sources.append(ref)
     return sources

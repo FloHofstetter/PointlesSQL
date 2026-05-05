@@ -130,24 +130,24 @@ primitives end-to-end:
  cloud-storage discard / promote is documented out-of-scope
  for v1.
 
-**ML registry**. Replay these after the 
+**ML registry**. Replay these after the
 audit-foundation lifespan-config is in place
 (`POINTLESSQL_MLFLOW_ENABLED=1`) and at least one trained
 model lives in soyuz:
 
 15. [`models-tab.md`](models-tab.md) — browse +
  compare-view replay.
-16. [`models-promotion.md`](models-promotion.md) — 
+16. [`models-promotion.md`](models-promotion.md) —
  promote a challenger to champion through the modal,
  confirm marker on soyuz + `agent_reviews` row +
  `pointlessql.model.promoted` envelope.
-17. [`inference-lineage.md`](inference-lineage.md) — 
+17. [`inference-lineage.md`](inference-lineage.md) —
  `pql.write_table(..., source_model_uri=...)` writes inference
  edges, the model-detail Lineage tab paints both the
  upstream (`trained_from`) and downstream (`inferred_to`)
  halves of the bidirectional DAG, the Predictions card
  surfaces the target-table edge counts.
-18. [`agent-ml-registry.md`](agent-ml-registry.md) — 
+18. [`agent-ml-registry.md`](agent-ml-registry.md) —
  cross-repo closure. An agent connected through
  `hermes-plugin-pointlessql` exercises the eight new ML-
  Registry tools end-to-end (browse → log-training → write

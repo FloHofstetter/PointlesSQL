@@ -855,10 +855,7 @@ def discard_branch_schema(
         )
         raise BranchNotFoundError(msg)
     if tags.status == STATUS_PROMOTED:
-        msg = (
-            f"cannot discard branch {branch_schema_fqn!r}: "
-            f"status='promoted' (promotion is final)"
-        )
+        msg = f"cannot discard branch {branch_schema_fqn!r}: status='promoted' (promotion is final)"
         raise BranchInUseError(msg)
     if tags.status == STATUS_DISCARDED:
         logger.warning(
@@ -867,9 +864,11 @@ def discard_branch_schema(
         )
         return
 
-    storage_root = _resolve_storage_root(existing, branch_schema_fqn) if isinstance(
-        existing, SchemaInfo
-    ) else None
+    storage_root = (
+        _resolve_storage_root(existing, branch_schema_fqn)
+        if isinstance(existing, SchemaInfo)
+        else None
+    )
 
     from pointlessql.db import get_session_factory
 

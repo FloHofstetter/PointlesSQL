@@ -4,7 +4,7 @@ Exercises the per-IP and per-email rate limiter on the
 `/auth/*` surface. The limiter is a fixed-window counter backed by
 `rate_limit_events` in PointlesSQL's own Alembic DB — no Redis, no
 new runtime dependency — and every reject writes a
-`rate_limit.blocked` row to `audit_log` so the 
+`rate_limit.blocked` row to `audit_log` so the
 `/admin/audit` viewer surfaces the brake at work.
 
 ## Preconditions

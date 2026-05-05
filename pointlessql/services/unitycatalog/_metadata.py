@@ -205,9 +205,7 @@ class MetadataMixin:
         return data.get("tables", data.get("identifiers", []))
 
     @wrap_catalog_errors
-    async def list_volumes(
-        self, catalog_name: str, schema_name: str
-    ) -> list[dict[str, Any]]:
+    async def list_volumes(self, catalog_name: str, schema_name: str) -> list[dict[str, Any]]:
         """Return all volumes inside a schema.
 
         Calls the soyuz ``/api/2.1/unity-catalog/volumes`` endpoint

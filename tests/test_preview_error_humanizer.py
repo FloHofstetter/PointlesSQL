@@ -24,7 +24,7 @@ class TestHumanizePreviewError:
 
     def test_missing_storage_path_with_file_uri_extracts_path(self) -> None:
         exc = Exception(
-            'Invalid table location: file:///var/lake/orders Error: '
+            "Invalid table location: file:///var/lake/orders Error: "
             'Os { code: 2, kind: NotFound, message: "No such file or directory" }'
         )
         detail, kind = humanize_preview_error(exc)
@@ -44,7 +44,7 @@ class TestHumanizePreviewError:
         production data, not seeded fixtures.
         """
         exc = Exception(
-            'Invalid table location: file:///var/lake/orders Error: '
+            "Invalid table location: file:///var/lake/orders Error: "
             'Os { code: 2, kind: NotFound, message: "No such file or directory" }'
         )
         detail, _kind = humanize_preview_error(exc)
@@ -54,9 +54,7 @@ class TestHumanizePreviewError:
         assert "scripts/" not in lowered, f"hint mentions a script path: {detail!r}"
 
     def test_missing_storage_path_without_file_uri_falls_to_generic_text(self) -> None:
-        exc = Exception(
-            'Storage error: NotFound — No such file or directory'
-        )
+        exc = Exception("Storage error: NotFound — No such file or directory")
         detail, kind = humanize_preview_error(exc)
         assert kind == "missing_storage"
         assert "missing on disk" in detail.lower()
@@ -85,7 +83,7 @@ class TestHumanizePreviewError:
     )
     def test_path_extraction_preserves_unicode_and_dashes(self, path: str) -> None:
         exc = Exception(
-            f'Invalid table location: file://{path} '
+            f"Invalid table location: file://{path} "
             'Error: Os { code: 2, kind: NotFound, message: "No such file or directory" }'
         )
         detail, kind = humanize_preview_error(exc)

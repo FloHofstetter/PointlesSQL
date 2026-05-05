@@ -145,7 +145,8 @@ class TestRecordValueChanges:
         assert rows == []
 
     def test_text_column_accepts_long_value(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         """``old_value`` / ``new_value`` are ``Text`` — no 500-char cap."""
         run_id, op_id = _seed_run_op(factory)
@@ -200,7 +201,8 @@ class TestFetchValueChangesForRow:
     """``fetch_value_changes_for_row`` filters and orders the change list."""
 
     def test_returns_all_columns_for_row(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         run_id, op_id = _seed_run_op(factory)
         record_value_changes(
@@ -223,7 +225,8 @@ class TestFetchValueChangesForRow:
         assert {r.target_column for r in rows} == {"qty", "unit_price"}
 
     def test_column_filter_narrows_to_one_cell(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         run_id, op_id = _seed_run_op(factory)
         record_value_changes(
@@ -247,7 +250,8 @@ class TestFetchValueChangesForRow:
         assert rows[0].new_value == "2.51"
 
     def test_unknown_row_returns_empty(
-        self, factory: sessionmaker  # type: ignore[type-arg]
+        self,
+        factory: sessionmaker,  # type: ignore[type-arg]
     ) -> None:
         rows = fetch_value_changes_for_row(
             factory,

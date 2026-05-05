@@ -128,8 +128,10 @@ async def api_admin_create_workspace(
     Returns:
         Serialized workspace row.
 
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin.
+
     Raises:
-        AuthorizationError: When the caller is not a tenant admin.
         ValidationError: When the slug is malformed or already
             exists, or the name is missing / too long.
     """
@@ -183,9 +185,11 @@ async def api_admin_update_workspace(
     Returns:
         The updated workspace row.
 
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin; ``_ensure_workspace`` raises
+    ``CatalogNotFoundError`` when no workspace has that id.
+
     Raises:
-        AuthorizationError: When the caller is not a tenant admin.
-        CatalogNotFoundError: When no workspace has that id.
         ValidationError: When the body is empty or a name is
             longer than 200 chars.
     """
@@ -227,9 +231,7 @@ async def api_admin_update_workspace(
 
 
 @router.post("/api/admin/workspaces/{workspace_id}/archive")
-async def api_admin_archive_workspace(
-    request: Request, workspace_id: int
-) -> dict[str, Any]:
+async def api_admin_archive_workspace(request: Request, workspace_id: int) -> dict[str, Any]:
     """Soft-archive *workspace_id*.
 
     Refuses to archive the seeded ``default`` workspace (id=1) — the
@@ -242,9 +244,11 @@ async def api_admin_archive_workspace(
     Returns:
         The archived workspace row.
 
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin; ``_ensure_workspace`` raises
+    ``CatalogNotFoundError`` when the workspace does not exist.
+
     Raises:
-        AuthorizationError: When the caller is not a tenant admin.
-        CatalogNotFoundError: When the workspace does not exist.
         ValidationError: When asked to archive id=1.
     """
     require_admin(request)
@@ -277,9 +281,7 @@ async def api_admin_archive_workspace(
 
 
 @router.get("/api/admin/workspaces/{workspace_id}/members")
-async def api_admin_list_members(
-    request: Request, workspace_id: int
-) -> dict[str, Any]:
+async def api_admin_list_members(request: Request, workspace_id: int) -> dict[str, Any]:
     """Return every member of *workspace_id* with their joined email."""
     require_admin(request)
     factory = request.app.state.session_factory
@@ -293,9 +295,7 @@ async def api_admin_list_members(
                 .order_by(User.email.asc())
             ).all()
         )
-    members = [
-        _serialize_member(member, user_email=email) for member, email in rows
-    ]
+    members = [_serialize_member(member, user_email=email) for member, email in rows]
     return {"workspace_id": workspace_id, "members": members}
 
 
@@ -320,8 +320,10 @@ async def api_admin_add_member(
     Returns:
         Serialized member row.
 
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin.
+
     Raises:
-        AuthorizationError: When the caller is not a tenant admin.
         ValidationError: When the body is malformed.
         CatalogNotFoundError: When the workspace or user does not
             exist.
@@ -346,13 +348,9 @@ async def api_admin_add_member(
             target_user_id = user.id
             target_email = user.email
         elif isinstance(user_email_raw, str) and user_email_raw.strip():
-            user = session.scalar(
-                select(User).where(User.email == user_email_raw.strip().lower())
-            )
+            user = session.scalar(select(User).where(User.email == user_email_raw.strip().lower()))
             if user is None:
-                raise CatalogNotFoundError(
-                    f"user email={user_email_raw!r} not found"
-                )
+                raise CatalogNotFoundError(f"user email={user_email_raw!r} not found")
             target_user_id = user.id
             target_email = user.email
         else:
@@ -392,8 +390,10 @@ async def api_admin_update_member_role(
     Returns:
         Updated member row.
 
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin.
+
     Raises:
-        AuthorizationError: When the caller is not a tenant admin.
         CatalogNotFoundError: When the membership does not exist.
         ValidationError: When the role is invalid.
     """
@@ -444,8 +444,8 @@ async def api_admin_remove_member(
     Returns:
         ``{"deleted": bool}`` — ``False`` when no membership existed.
 
-    Raises:
-        AuthorizationError: When the caller is not a tenant admin.
+    The ``require_admin`` dependency raises ``AuthorizationError`` if
+    the caller is not a tenant admin.
     """
     require_admin(request)
     factory = request.app.state.session_factory
@@ -519,9 +519,7 @@ async def admin_workspaces_page(request: Request):
             member_counts[ws.id] = len(
                 list(
                     session.scalars(
-                        select(WorkspaceMember.id).where(
-                            WorkspaceMember.workspace_id == ws.id
-                        )
+                        select(WorkspaceMember.id).where(WorkspaceMember.workspace_id == ws.id)
                     ).all()
                 )
             )

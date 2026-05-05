@@ -48,7 +48,7 @@ def _parse_iso8601(value: str) -> datetime.datetime | None:
     """
     try:
         return datetime.datetime.fromisoformat(value)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
@@ -110,9 +110,7 @@ def cleanup_old_branches(
         "enabled": bool}``.  Stable shape for telemetry.
     """
     if not settings.branch.auto_cleanup_enabled:
-        logger.info(
-            "cleanup_old_branches: skipped (auto_cleanup_enabled=False)"
-        )
+        logger.info("cleanup_old_branches: skipped (auto_cleanup_enabled=False)")
         return {"deleted": 0, "skipped": 0, "errored": 0, "enabled": False}
 
     reference = now or datetime.datetime.now(datetime.UTC)
@@ -134,9 +132,7 @@ def cleanup_old_branches(
         if not isinstance(catalog_name, str):
             continue
         try:
-            schemas_response = list_schemas_api.sync(
-                client=client, catalog_name=catalog_name
-            )
+            schemas_response = list_schemas_api.sync(client=client, catalog_name=catalog_name)
         except Exception:  # noqa: BLE001 — keep loop going
             logger.warning(
                 "cleanup_old_branches: list_schemas failed for catalog=%s",
@@ -167,9 +163,7 @@ def cleanup_old_branches(
                 continue
             if tags is None:
                 continue
-            if not _is_eligible_for_cleanup(
-                tags, now=reference, retention_days=retention_days
-            ):
+            if not _is_eligible_for_cleanup(tags, now=reference, retention_days=retention_days):
                 skipped += 1
                 continue
             try:

@@ -123,9 +123,7 @@ def test_create_and_verify_roundtrip() -> None:
     assert row.name == "hermes"
     assert row.secret_prefix == plaintext[:8]
 
-    entry = api_keys_service.verify_bearer(
-        f"Bearer {plaintext}", app.state.session_factory
-    )
+    entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is not None
     assert entry.name == "hermes"
     assert entry.supervisor is False
@@ -134,19 +132,13 @@ def test_create_and_verify_roundtrip() -> None:
 
 def test_revoke_blocks_subsequent_verifies() -> None:
     _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="rotateme"
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="rotateme")
+    assert (
+        api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory) is not None
     )
-    assert api_keys_service.verify_bearer(
-        f"Bearer {plaintext}", app.state.session_factory
-    ) is not None
-    assert api_keys_service.revoke_api_key(
-        app.state.session_factory, name="rotateme"
-    )
+    assert api_keys_service.revoke_api_key(app.state.session_factory, name="rotateme")
     # Cache invalidation makes the revoke take effect immediately.
-    assert api_keys_service.verify_bearer(
-        f"Bearer {plaintext}", app.state.session_factory
-    ) is None
+    assert api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory) is None
     _wipe_api_keys()
 
 
@@ -155,9 +147,7 @@ def test_supervisor_scope_propagates_to_entry() -> None:
     _, plaintext = api_keys_service.create_api_key(
         app.state.session_factory, name="sup", supervisor=True
     )
-    entry = api_keys_service.verify_bearer(
-        f"Bearer {plaintext}", app.state.session_factory
-    )
+    entry = api_keys_service.verify_bearer(f"Bearer {plaintext}", app.state.session_factory)
     assert entry is not None and entry.supervisor is True
     _wipe_api_keys()
 
@@ -168,9 +158,7 @@ def test_verify_bearer_short_circuits_without_factory() -> None:
 
 def test_verify_bearer_ignores_non_bearer_schemes() -> None:
     _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="hermes"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="hermes")
     factory = app.state.session_factory
     assert api_keys_service.verify_bearer(f"Basic {plaintext}", factory) is None
     assert api_keys_service.verify_bearer(plaintext, factory) is None
@@ -188,9 +176,7 @@ def test_verify_bearer_ignores_non_bearer_schemes() -> None:
 def gate_secret() -> Iterator[str]:
     """Provision a single Bearer-eligible key and yield its plaintext."""
     _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="hermes"
-    )
+    _, plaintext = api_keys_service.create_api_key(app.state.session_factory, name="hermes")
     try:
         yield plaintext
     finally:
@@ -256,9 +242,7 @@ async def test_bearer_creates_audit_row_with_api_key_name(
     factory = app.state.session_factory
     with factory() as session:
         rows = (
-            session.execute(
-                select(AuditLog).where(AuditLog.target == f"agent_run:{run_id}")
-            )
+            session.execute(select(AuditLog).where(AuditLog.target == f"agent_run:{run_id}"))
             .scalars()
             .all()
         )
@@ -307,9 +291,7 @@ async def test_gate_disabled_ignores_bearer_header(auth_cookies) -> None:
     """When the api_keys table is empty, Bearer requests are unauthorised."""
     _wipe_api_keys()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://t"
-    ) as c:
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
         response = await c.get(
             "/api/agent-runs",
             headers={"Authorization": "Bearer some-random-secret"},

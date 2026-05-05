@@ -160,7 +160,7 @@ can also be replayed by Claude Code via
 
 ## Out of scope (defer to later sprints)
 
-- Tag editing on registered_model securables (Soyuz 
+- Tag editing on registered_model securables (Soyuz
  excludes `registered_model` from `TagSecurableType`).
 - Champion/challenger promotion UI.
 - Inference lineage from a model to downstream prediction tables

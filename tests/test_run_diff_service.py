@@ -66,9 +66,7 @@ def test_ordinal_alignment_zips_with_padding() -> None:
         _op(ordinal=2, op_name="merge", target="main.silver.orders"),
         _op(ordinal=3, op_name="write_table", target="main.gold.orders_summary"),
     ]
-    diff = build_detail_diff(
-        ops_a=ops_a, ops_b=ops_b, tool_calls_a=[], tool_calls_b=[]
-    )
+    diff = build_detail_diff(ops_a=ops_a, ops_b=ops_b, tool_calls_a=[], tool_calls_b=[])
     assert diff["align"] == "ordinal"
     assert len(diff["operations_diff"]) == 3
     # The third slot is unpaired on the A side.
@@ -101,7 +99,8 @@ def test_content_alignment_robust_to_insertion() -> None:
         align="content",
     )
     matched = [
-        slot for slot in diff["operations_diff"]
+        slot
+        for slot in diff["operations_diff"]
         if slot["a_op"] is not None and slot["b_op"] is not None
     ]
     assert len(matched) == 2
@@ -131,9 +130,7 @@ def test_per_op_diff_emits_relevant_fields_only() -> None:
             params={"strategy": "scd2", "on": ["id"], "cutover": "2026-01-01"},
         )
     ]
-    diff = build_detail_diff(
-        ops_a=ops_a, ops_b=ops_b, tool_calls_a=[], tool_calls_b=[]
-    )
+    diff = build_detail_diff(ops_a=ops_a, ops_b=ops_b, tool_calls_a=[], tool_calls_b=[])
     pair = diff["operations_diff"][0]
     assert "op_name_diff" not in pair  # same name
     assert "target_table_diff" not in pair  # same target
@@ -152,25 +149,15 @@ def test_tool_call_args_json_diff_walks_top_level_keys() -> None:
             args_json='{"sql": "SELECT 1", "max_rows": 50}',
         )
     ]
-    diff = build_detail_diff(
-        ops_a=[], ops_b=[], tool_calls_a=calls_a, tool_calls_b=calls_b
-    )
+    diff = build_detail_diff(ops_a=[], ops_b=[], tool_calls_a=calls_a, tool_calls_b=calls_b)
     pair = diff["tool_calls_diff"][0]
     assert pair["args_diff"]["added"] == ["max_rows"]
 
 
 def test_truncation_flag_set_when_cap_exceeded() -> None:
-    ops_a = [
-        _op(ordinal=i, op_name="write_table", target=f"t.s.t{i}")
-        for i in range(1, 5)
-    ]
-    ops_b = [
-        _op(ordinal=i, op_name="write_table", target=f"t.s.t{i}")
-        for i in range(1, 5)
-    ]
-    diff = build_detail_diff(
-        ops_a=ops_a, ops_b=ops_b, tool_calls_a=[], tool_calls_b=[], cap=2
-    )
+    ops_a = [_op(ordinal=i, op_name="write_table", target=f"t.s.t{i}") for i in range(1, 5)]
+    ops_b = [_op(ordinal=i, op_name="write_table", target=f"t.s.t{i}") for i in range(1, 5)]
+    diff = build_detail_diff(ops_a=ops_a, ops_b=ops_b, tool_calls_a=[], tool_calls_b=[], cap=2)
     assert diff["truncated"]["operations"] is True
     assert len(diff["operations_diff"]) == 2
     assert diff["truncated"]["tool_calls"] is False
