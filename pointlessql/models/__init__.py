@@ -23,6 +23,10 @@ below
   AgentRunEvent — FK to AgentRun)
 * ``autoload`` (AutoloadCheckpoint — no model FKs, scoped per
   target_table)
+* ``workspaces`` (Workspace, WorkspaceMember, WorkspaceCatalogPin —
+  Phase-28 governance container; ``users.default_workspace_id`` and
+  ``api_keys.workspace_id`` FKs are added in the same Sprint-28.0
+  migration so this module imports last)
 
 honours every cross-module FK without resorting to circular imports.
 The Alembic env.py keeps doing ``from pointlessql.models import Base``
@@ -87,6 +91,13 @@ from pointlessql.models.scheduler import (
 )
 from pointlessql.models.sync import SyncRun
 from pointlessql.models.system_keys import SystemKey
+from pointlessql.models.workspaces import (
+    WORKSPACE_PIN_MODES,
+    WORKSPACE_ROLES,
+    Workspace,
+    WorkspaceCatalogPin,
+    WorkspaceMember,
+)
 
 __all__ = [
     "AgentReview",
@@ -136,4 +147,9 @@ __all__ = [
     "TaskRun",
     "UnattributedWrite",
     "User",
+    "WORKSPACE_PIN_MODES",
+    "WORKSPACE_ROLES",
+    "Workspace",
+    "WorkspaceCatalogPin",
+    "WorkspaceMember",
 ]

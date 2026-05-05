@@ -38,7 +38,21 @@ from pointlessql.api.rate_limit_middleware import (
 from pointlessql.logging_config import request_id_var
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth as auth_service
+from pointlessql.services import workspaces as workspaces_service
 from pointlessql.types import UserInfo
+
+#: Header carrying the active workspace slug for non-cookie callers
+#: (Hermes plugin, ops curl, CI scripts).  See
+#: :func:`pointlessql.services.workspaces.resolve_workspace_id` for
+#: precedence rules.
+WORKSPACE_HEADER: str = "x-workspace"
+
+#: Session-cookie field name carrying the user's last selected
+#: workspace slug.  Read by :func:`auth_middleware` and written by
+#: ``POST /auth/switch-workspace`` (Sprint 28.4).  The cookie itself
+#: is the same JWT-bearing ``pql_session`` cookie — the slug rides
+#: alongside the user-id payload in :mod:`pointlessql.services.auth`.
+WORKSPACE_COOKIE_FIELD: str = "current_workspace_slug"
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +85,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     ``request.state.api_key_name`` keeps the audit attribution and
     ``request.state.api_key_supervisor`` exposes the supervisor
     scope flag for ``require_supervisor``;
-    ``request.state.api_key_auditor`` exposes the 
+    ``request.state.api_key_auditor`` exposes the
     auditor scope flag for ``require_auditor``.
 
     Cookie auth still wins when both are present so a human in a
@@ -102,6 +116,7 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     # :func:`api_keys_service.bootstrap_from_env` at startup.  Cache
     # TTL inside :func:`verify_bearer` keeps the hot path off the DB
     # except on miss.
+    api_key_workspace_id: int | None = None
     if getattr(request.state, "user", None) is None:
         factory = getattr(request.app.state, "session_factory", None)
         entry = api_keys_service.verify_bearer(
@@ -112,12 +127,77 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
             request.state.api_key_name = entry.name
             request.state.api_key_supervisor = entry.supervisor
             request.state.api_key_auditor = entry.auditor
+            request.state.api_key_workspace_id = entry.workspace_id
+            api_key_workspace_id = entry.workspace_id
             request.state.user = UserInfo(
                 id=0,
                 email=f"api_key:{entry.name}",
                 display_name=entry.name,
                 is_admin=False,
             )
+
+    # Phase 28.0: resolve the active workspace for the request.  The
+    # resolver tolerates every absence (no factory, no user, no
+    # header, fresh install) and floors at the seeded ``default``
+    # workspace (id=1) so the request pipeline never observes a
+    # missing workspace.  Membership enforcement happens *after* the
+    # resolution so we can write a meaningful audit-log row when an
+    # authenticated user names a workspace they don't belong to.
+    factory = getattr(request.app.state, "session_factory", None)
+    user_state = getattr(request.state, "user", None)
+    user_id_for_resolve = (
+        int(user_state["id"])
+        if user_state is not None and isinstance(user_state.get("id"), int) and user_state["id"] > 0
+        else None
+    )
+    header_value = request.headers.get(WORKSPACE_HEADER)
+    cookie_value = _read_workspace_slug_from_session(request)
+    workspace_id, workspace_source = workspaces_service.resolve_workspace_id(
+        factory,
+        user_id=user_id_for_resolve,
+        header_value=header_value,
+        cookie_value=cookie_value,
+        api_key_workspace_id=api_key_workspace_id,
+    )
+    request.state.workspace_id = workspace_id
+    request.state.workspace_source = workspace_source
+
+    # Mismatch enforcement: an explicit X-Workspace header for a
+    # workspace the authenticated user is NOT a member of is a
+    # 403, audit-logged with ``workspace.context_mismatch`` so the
+    # cross-workspace probe is observable in the cockpit.  The
+    # check skips when there is no factory (lifespan not wired) or
+    # no header (fall-through path is already safe).  API-key-only
+    # callers are gated by ``api_key_workspace_id`` matching the
+    # header-resolved id — the pin IS the membership for Bearer
+    # auth.
+    if (
+        header_value
+        and header_value.strip()
+        and factory is not None
+        and workspace_source == "header"
+    ):
+        if api_key_workspace_id is not None:
+            if workspace_id != api_key_workspace_id:
+                _audit_workspace_mismatch(
+                    factory,
+                    actor=user_state,
+                    requested_slug=header_value.strip(),
+                    resolved_id=workspace_id,
+                    api_key_workspace_id=api_key_workspace_id,
+                )
+                return _workspace_forbidden(path)
+        elif user_id_for_resolve is not None and not workspaces_service.is_member(
+            factory, workspace_id=workspace_id, user_id=user_id_for_resolve
+        ):
+            _audit_workspace_mismatch(
+                factory,
+                actor=user_state,
+                requested_slug=header_value.strip(),
+                resolved_id=workspace_id,
+                api_key_workspace_id=None,
+            )
+            return _workspace_forbidden(path)
 
     # Public paths pass through regardless of auth.
     if any(path.startswith(p) for p in PUBLIC_PREFIXES):
@@ -131,6 +211,67 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
     if path.startswith("/api/"):
         return JSONResponse({"error": "Not authenticated"}, status_code=401)
     return RedirectResponse(url="/auth/login", status_code=303)
+
+
+def _read_workspace_slug_from_session(request: Request) -> str | None:
+    """Return the ``current_workspace_slug`` field stashed on the JWT cookie.
+
+    Sprint 28.0 stores nothing on the cookie yet — the JWT payload
+    only carries ``sub``/``email``/``is_admin``.  Sprint 28.4 will
+    stamp the slug into a separate cookie or extend the JWT
+    payload; until then this hop returns ``None`` so the resolver
+    falls through to the user-default tier.
+    """
+    return None
+
+
+def _workspace_forbidden(path: str) -> Response:
+    """Return a 403 in the right format for the request's path family."""
+    if path.startswith("/api/"):
+        return JSONResponse({"error": "workspace.context_mismatch"}, status_code=403)
+    return JSONResponse(
+        {"error": "workspace.context_mismatch"},
+        status_code=403,
+    )
+
+
+def _audit_workspace_mismatch(
+    factory: Any,
+    *,
+    actor: UserInfo | None,
+    requested_slug: str,
+    resolved_id: int,
+    api_key_workspace_id: int | None,
+) -> None:
+    """Record a single ``workspace.context_mismatch`` audit row.
+
+    Wraps the audit-log INSERT in a try/except because the audit
+    surface is non-critical to the auth gate — a swallowed audit
+    write is preferable to a 500 from the middleware itself.
+    """
+    try:
+        from pointlessql.services import audit as audit_service
+
+        actor_id = int(actor["id"]) if actor and "id" in actor else 0
+        actor_email = actor.get("email", "") if actor else ""
+        audit_service.log_action(
+            factory,
+            actor_id,
+            actor_email,
+            "workspace.context_mismatch",
+            f"workspace:{requested_slug}",
+            detail={
+                "requested_slug": requested_slug,
+                "resolved_workspace_id": resolved_id,
+                "api_key_workspace_id": api_key_workspace_id,
+            },
+            actor_role="system",
+        )
+    except Exception:  # noqa: BLE001 — auditing must never break auth
+        logger.debug(
+            "Failed to write workspace.context_mismatch audit row",
+            exc_info=True,
+        )
 
 
 async def request_id_middleware(request: Request, call_next: Any) -> Response:

@@ -39,7 +39,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import app
-from pointlessql.models import Base
+from pointlessql.models import Base, User, Workspace, WorkspaceMember
 from pointlessql.pql.pql import PQL
 from pointlessql.services import auth, csrf
 from pointlessql.services.soyuz_client import make_soyuz_client
@@ -97,13 +97,22 @@ def _auth_db():
     # Ensure secret_key is always set.
     app.state.settings.auth.secret_key = _TEST_SECRET  # type: ignore[attr-defined]
 
+    # Phase 28.0: seed the default workspace + membership rows.  The
+    # production-side bootstrap migration creates these; tests build
+    # the schema with ``Base.metadata.create_all`` so we re-create the
+    # seed manually here.  Every existing fixture user becomes a
+    # member of the default workspace with role mirroring is_admin.
+    _seed_default_workspace(factory)
+
     # Create a test user (admin — first user bootstrap) and attach cookie.
     auth.register(factory, "test@test.com", "Test User", "password123")
+    _add_user_to_default_workspace(factory, "test@test.com", role="admin")
     token = auth.login(factory, "test@test.com", "password123", _TEST_SECRET)
     app.state._test_auth_cookie = {auth.COOKIE_NAME: token}
 
     # Create a second, non-admin user for enforcement tests.
     auth.register(factory, "nonadmin@test.com", "Non Admin", "password123")
+    _add_user_to_default_workspace(factory, "nonadmin@test.com", role="member")
     non_admin_token = auth.login(factory, "nonadmin@test.com", "password123", _TEST_SECRET)
     app.state._test_non_admin_cookie = {auth.COOKIE_NAME: non_admin_token}
 
@@ -113,6 +122,61 @@ def _auth_db():
     # in-memory SQLite engines are discarded on dispose anyway).
     Base.metadata.drop_all(engine)
     engine.dispose()
+
+
+def _seed_default_workspace(factory: Any) -> None:
+    """Insert the ``id=1, slug='default'`` row tests rely on.
+
+    Mirrors the Sprint-28.0 bootstrap migration's seed step.  The
+    production code path runs alembic; the test path bypasses
+    alembic (Base.metadata.create_all is faster) so this helper
+    keeps the two paths semantically equivalent.
+    """
+    import datetime
+
+    with factory() as session:
+        existing = session.get(Workspace, 1)
+        if existing is not None:
+            return
+        session.add(
+            Workspace(
+                id=1,
+                slug="default",
+                name="Default workspace",
+                description="Test-fixture seed (Sprint 28.0).",
+                created_at=datetime.datetime.now(datetime.UTC),
+            )
+        )
+        session.commit()
+
+
+def _add_user_to_default_workspace(factory: Any, email: str, *, role: str) -> None:
+    """Add the user named *email* as a member of workspace id=1."""
+    import datetime
+
+    with factory() as session:
+        user = session.query(User).filter(User.email == email.lower()).first()
+        if user is None:
+            return
+        user.default_workspace_id = 1
+        existing = (
+            session.query(WorkspaceMember)
+            .filter(
+                WorkspaceMember.workspace_id == 1,
+                WorkspaceMember.user_id == user.id,
+            )
+            .first()
+        )
+        if existing is None:
+            session.add(
+                WorkspaceMember(
+                    workspace_id=1,
+                    user_id=user.id,
+                    role=role,
+                    created_at=datetime.datetime.now(datetime.UTC),
+                )
+            )
+        session.commit()
 
 
 @pytest.fixture

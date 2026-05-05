@@ -53,6 +53,13 @@ class ApiKey(Base):
             successful auth.  Updated by the middleware on each
             cache-miss verification — not transactionally critical
             (a swallowed UPDATE is fine).
+        workspace_id: Workspace this key pins to (Phase 28.0).  The
+            bootstrap migration backfills every existing key to the
+            seeded ``default`` workspace (id=1); admin-issued keys
+            land on the workspace selected at creation time.  The
+            middleware uses this as the resolved workspace for
+            Bearer-authed requests when no ``X-Workspace`` header
+            is supplied.
     """
 
     __tablename__ = "api_keys"
@@ -76,4 +83,15 @@ class ApiKey(Base):
     )
     last_used_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # Phase 28.0: every key pins to exactly one workspace.  The
+    # bootstrap migration backfills existing rows to the default
+    # workspace (id=1) and the column is NOT NULL after backfill so
+    # subsequent sub-sprints (28.3 catalog enforcement, 28.5 plugin)
+    # never have to defend against an unscoped key.  Carved out of
+    # Sprint 28.5's plan-shape into 28.0 to eliminate the cross-sprint
+    # hazard where 28.3's catalog filter would trip api_key auth
+    # before the column existed.
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

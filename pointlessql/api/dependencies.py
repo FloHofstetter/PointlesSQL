@@ -12,6 +12,8 @@ from __future__ import annotations
 from fastapi import Request
 
 from pointlessql.exceptions import AuthorizationError
+from pointlessql.models import Workspace
+from pointlessql.services import workspaces as workspaces_service
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
 
@@ -173,6 +175,128 @@ def require_auditor(request: Request) -> None:
         privilege="auditor",
         securable_type="system",
         full_name="audit_read",
+    )
+
+
+def current_workspace_id(request: Request) -> int:
+    """Return the active workspace id resolved by :func:`auth_middleware`.
+
+    Sprint 28.0 attaches ``request.state.workspace_id`` on every
+    request via :func:`pointlessql.services.workspaces.resolve_workspace_id`.
+    Routes that need to scope SQL by workspace pull the id through
+    this dependency instead of reading the request state directly so
+    the contract stays grep-able and a future swap-out (e.g. flipping
+    to a typed dataclass) only touches one helper.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The active workspace id, defaulting to
+        :data:`workspaces_service.DEFAULT_WORKSPACE_ID` when the
+        middleware did not run (e.g. unit tests bypassing it).
+    """
+    value = getattr(request.state, "workspace_id", None)
+    if isinstance(value, int) and value > 0:
+        return value
+    return workspaces_service.DEFAULT_WORKSPACE_ID
+
+
+def current_workspace(request: Request) -> Workspace:
+    """Return the active :class:`Workspace` row resolved for this request.
+
+    Convenience for HTML routes that want the slug / name in the
+    rendered template.  Always returns a row — when the seeded
+    default is missing (development-time anomaly) we synthesise a
+    transient placeholder rather than raise, because the request
+    pipeline must not 500 on a startup edge case.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The detached :class:`Workspace` row.
+    """
+    factory = getattr(request.app.state, "session_factory", None)
+    workspace_id = current_workspace_id(request)
+    if factory is None:
+        return _placeholder_workspace(workspace_id)
+    row = workspaces_service.get_workspace(factory, workspace_id=workspace_id)
+    if row is None:
+        return _placeholder_workspace(workspace_id)
+    return row
+
+
+def _placeholder_workspace(workspace_id: int) -> Workspace:
+    """Synthesise a detached :class:`Workspace` row for safe template fallback.
+
+    The pipeline must never 500 on a missing-default-workspace edge
+    case (e.g. tests that bypass the seed migration).  This stand-in
+    carries the resolved id and the conventional slug so templates
+    that surface ``workspace.slug`` show something coherent.
+    """
+    import datetime
+
+    placeholder = Workspace(
+        id=workspace_id,
+        slug=workspaces_service.DEFAULT_WORKSPACE_SLUG,
+        name="Default workspace",
+        description=None,
+        created_at=datetime.datetime.now(datetime.UTC),
+        archived_at=None,
+    )
+    return placeholder
+
+
+def require_workspace_admin(request: Request) -> None:
+    """Raise :class:`AuthorizationError` unless the caller is admin in this workspace.
+
+    Tenant-wide admins (``users.is_admin = True``) always pass —
+    they are strictly stronger than workspace-local admins so the
+    cross-workspace lens (Sprint 28.7) and admin CRUD (Sprint 28.6)
+    don't need to special-case themselves.  Workspace-local admins
+    pass too via the :class:`WorkspaceMember.role` lookup.  Bearer
+    keys never carry a per-workspace role today; admin UI pages are
+    cookie-only by convention so this check refuses Bearer auth
+    entirely.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Raises:
+        AuthorizationError: When the caller is neither a tenant
+            admin nor a workspace-local admin.
+    """
+    user = get_user(request)
+    if user.get("is_admin"):
+        return
+    user_id = user.get("id", 0)
+    if not user_id:
+        raise AuthorizationError(
+            principal=user.get("email", ""),
+            privilege="workspace.admin",
+            securable_type="workspace",
+            full_name="workspace",
+        )
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise AuthorizationError(
+            principal=user.get("email", ""),
+            privilege="workspace.admin",
+            securable_type="workspace",
+            full_name="workspace",
+        )
+    workspace_id = current_workspace_id(request)
+    role = workspaces_service.get_membership_role(
+        factory, workspace_id=workspace_id, user_id=int(user_id)
+    )
+    if role == "admin":
+        return
+    raise AuthorizationError(
+        principal=user.get("email", ""),
+        privilege="workspace.admin",
+        securable_type="workspace",
+        full_name=f"workspace:{workspace_id}",
     )
 
 

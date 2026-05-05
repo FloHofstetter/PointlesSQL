@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 28 in progress (2026-05-05)** — soft workspace isolation
+  in the Databricks Unity-Catalog mental model: catalogs stay
+  global, workspaces own audit/jobs/saved-queries/recents.
+  10 sub-sprints planned (28.0 through 28.8), each
+  green-checkpointed for the autonomous run.  Sprint 28.0 (model
+  + middleware + api_keys pin + scheduler resolver) landed first.
+  Plan at ``.claude/plans/ja-plane-phase-28-tidy-feather.md``.
+
 - **Phase 18.6+ closed (2026-05-05)** — four sub-sprints landed
   (18.6 inbox + run-list badge, 18.7 audit-FTS, 18.8 runs-by-table
   reverse index, 18.9 cell + column-lineage diff).  Sprint 18.10
@@ -14,6 +22,33 @@ All notable changes to this project will be documented in this file.
   Today's instances stay sub-100ms on the live aggregator.
 
 ### Added
+
+- **Sprint 28.0 — workspace foundation (model + middleware + api_keys
+  pin + scheduler resolver).**  First sub-sprint of Phase 28 (soft
+  workspace isolation, Databricks-style: catalogs stay global,
+  workspaces own audit/jobs/saved-queries/recents).  Three new tables
+  ``workspaces`` / ``workspace_members`` / ``workspace_catalog_pins``
+  (Alembic ``z6w8a0b2c4d6``) plus FK columns on ``users``
+  (``default_workspace_id``, nullable in 28.0, NOT NULL in 28.6) and
+  ``api_keys`` (``workspace_id``, NOT NULL with backfill to id=1 —
+  carved out of original 28.5 scope to eliminate the cross-sprint
+  hazard where 28.3's catalog filter would trip Bearer-auth before
+  the column existed).  Bootstrap migration seeds workspace
+  ``id=1, slug='default'`` and adds every existing user as a member
+  with role mirroring ``is_admin``.  New service module
+  ``pointlessql/services/workspaces.py`` exposes CRUD primitives plus
+  the non-HTTP ``resolve_workspace_id`` entry point shared by the
+  middleware, scheduler tick, CLI, and test fixtures.  Middleware
+  attaches ``request.state.workspace_id`` after auth resolution and
+  403s ``workspace.context_mismatch`` (audit-logged) when an
+  authenticated user names a workspace they don't belong to.  New
+  ``current_workspace_id`` / ``current_workspace`` /
+  ``require_workspace_admin`` dependencies in ``api/dependencies.py``.
+  ``KeyEntry`` carries ``workspace_id`` so Bearer-authed requests
+  inherit the key's pinned workspace.  Single-tenant installs see
+  zero behaviour change — every existing row backfills to the
+  default workspace and the UI stays identical until a second
+  workspace is created in 28.6.  28 new pytest cases.
 
 - **Sprint 18.9 — cell-level + column-lineage diff in run-vs-run.**
   ``GET /api/agent-runs/diff?detail=true`` and the

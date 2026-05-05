@@ -46,11 +46,19 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class KeyEntry:
-    """The fields the middleware needs to authorise a Bearer request."""
+    """The fields the middleware needs to authorise a Bearer request.
+
+    ``workspace_id`` arrived in Sprint 28.0: every API key now pins
+    to exactly one workspace, and Bearer-authed requests inherit
+    that workspace as their resolved context.  Existing keys
+    backfill to the default workspace (id=1) by the bootstrap
+    migration so this attribute is always populated.
+    """
 
     name: str
     supervisor: bool
     auditor: bool = False
+    workspace_id: int = 1
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +201,7 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
                     supervisor=supervisor,
                     auditor=auditor,
                     created_at=datetime.now(UTC),
+                    workspace_id=1,
                 )
             )
             inserted += 1
@@ -216,6 +225,7 @@ def create_api_key(
     supervisor: bool = False,
     auditor: bool = False,
     created_by_user_id: int | None = None,
+    workspace_id: int = 1,
 ) -> tuple[ApiKey, str]:
     """Generate + persist a fresh Bearer-token credential.
 
@@ -232,6 +242,11 @@ def create_api_key(
            .  Independent of ``supervisor``.
         created_by_user_id: Admin who created the key.  ``None`` for
             CLI-provisioned or env-var-bootstrapped keys.
+        workspace_id: Workspace the key pins to.  Defaults to the
+            seeded ``default`` workspace (id=1) so single-tenant
+            installs and existing automation keep working without
+            naming a workspace explicitly.  Sprint 28.6's admin UI
+            exposes a chooser at creation time.
 
     Returns:
         ``(row, plaintext_secret)``.  The row is detached after
@@ -261,6 +276,7 @@ def create_api_key(
             auditor=auditor,
             created_at=datetime.now(UTC),
             created_by_user_id=created_by_user_id,
+            workspace_id=workspace_id,
         )
         session.add(row)
         session.commit()
@@ -364,6 +380,7 @@ def verify_bearer(
             name=row.name,
             supervisor=bool(row.supervisor),
             auditor=bool(row.auditor),
+            workspace_id=int(row.workspace_id),
         )
         # Best-effort last-used update — failures don't affect auth.
         try:

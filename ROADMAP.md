@@ -3001,6 +3001,59 @@ PointlesSQL
 │   ├── Sprint 23.4 — SQL editor + sidebar rail + settings   ⏳
 │   └── Sprint 23.5 — Polish + doc-link sweep + e2e replay   ⏳
 │
+├── Phase 28 — Workspace isolation (soft, Databricks-style)  🔜 in progress
+│   │
+│   │   Soft tenant boundary over a shared global Unity Catalog.
+│   │   Catalogs and tables stay catalog-scoped (cross-workspace
+│   │   data sharing is a feature: dev workspace reads
+│   │   ``prod.silver.orders`` to bootstrap a sandbox merge);
+│   │   workspaces own audit / jobs / dashboards / saved-queries /
+│   │   recents / alerts / anomaly-acks.  M:M user↔workspace,
+│   │   cosmetic-only catalog pins, switcher hidden when ≤1
+│   │   workspace exists so single-tenant installs see zero
+│   │   behaviour change.  10 sub-sprints, each green-checkpointed
+│   │   for the autonomous run.  Plan in
+│   │   ``.claude/plans/ja-plane-phase-28-tidy-feather.md``.
+│   │
+│   ├── Sprint 28.0 — Workspace model + middleware +              ✅
+│   │   api_keys pin + scheduler resolver.
+│   │   New tables ``workspaces``, ``workspace_members``,
+│   │   ``workspace_catalog_pins`` (Alembic ``z6w8a0b2c4d6``).
+│   │   FK columns on ``users.default_workspace_id`` (nullable
+│   │   in 28.0, NOT NULL in 28.6) and ``api_keys.workspace_id``
+│   │   (NOT NULL with backfill to id=1 — carved out of original
+│   │   28.5 scope to eliminate cross-sprint hazard).  Bootstrap
+│   │   migration seeds workspace ``id=1, slug='default'`` and
+│   │   adds every existing user as a member with role mirroring
+│   │   ``is_admin``.  Service module ``services/workspaces.py``
+│   │   exposes CRUD + non-HTTP ``resolve_workspace_id`` shared
+│   │   by middleware, scheduler, CLI, fixtures.  Middleware
+│   │   attaches ``request.state.workspace_id`` and 403s
+│   │   ``workspace.context_mismatch`` (audit-logged) on
+│   │   cross-workspace probes.  ``KeyEntry`` carries
+│   │   ``workspace_id``.  New deps ``current_workspace_id``,
+│   │   ``current_workspace``, ``require_workspace_admin``.
+│   │   28 new pytest cases.
+│   ├── Sprint 28.1a — agent_runs + agent_run_* + FTS5 surgery   ⏳
+│   ├── Sprint 28.1b — lineage + audit_log + governance +        ⏳
+│   │   query_history get workspace_id.
+│   ├── Sprint 28.2 — User-owned + scheduler tables              ⏳
+│   │   (jobs, dashboards, saved_queries, recents, alerts,
+│   │   notebooks).
+│   ├── Sprint 28.3 — Workspace catalog pins (cosmetic) +        ⏳
+│   │   UI default-catalog hint.
+│   ├── Sprint 28.4 — UI: switcher + base.html plumbing +        ⏳
+│   │   sidebar awareness + single-workspace hide rule.
+│   ├── Sprint 28.5 — Hermes plugin X-Workspace +                ⏳
+│   │   audit-wake-gate scoping.  Cross-repo edit to
+│   │   ``~/git/hermes-plugin-pointlessql``.
+│   ├── Sprint 28.6 — Admin pages: workspace + member CRUD       ⏳
+│   │   + ``users.default_workspace_id`` flipped to NOT NULL.
+│   ├── Sprint 28.7 — Cross-workspace super-admin lens           ⏳
+│   │   (``?workspace=all``, Grafana ``$workspace`` variable).
+│   └── Sprint 28.8 — Documentation + ADR-0008 + walkthrough     ⏳
+│       + ROADMAP positioning update.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

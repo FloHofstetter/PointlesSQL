@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -29,6 +29,13 @@ class User(Base):
         oidc_subject: The ``sub`` claim from the OIDC provider.
         feed_token: Opaque token authenticating pull-feed requests;
             ``None`` until the user first hits the feed-token endpoint.
+        default_workspace_id: Workspace the user lands in when neither
+            an ``X-Workspace`` header nor a ``current_workspace_slug``
+            cookie field overrides it (Phase 28.0).  Backfilled to the
+            seeded ``default`` workspace (id=1) by the bootstrap
+            migration; stays nullable in 28.0 so the FK column can
+            co-exist with legacy code paths, then flipped to NOT NULL
+            in Sprint 28.6 once the admin UI exposes a chooser.
     """
 
     __tablename__ = "users"
@@ -70,3 +77,12 @@ class User(Base):
     # ``secrets.token_urlsafe``; stays ``NULL`` for users who never
     # access the feed.
     feed_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Phase 28.0: every user pre-seeded into the ``default`` workspace
+    # at migration time.  Stays nullable in 28.0 so the FK column can
+    # be added before workspace_members backfill completes; flipped to
+    # NOT NULL in Sprint 28.6 once the admin UI exists.  The middleware
+    # falls back to id=1 when this is NULL so the request path is safe
+    # even mid-rollout.
+    default_workspace_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=True
+    )
