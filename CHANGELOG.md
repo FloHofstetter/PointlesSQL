@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 18.7 — full-text search across the audit lake.**
+  New SQLite FTS5 virtual table ``audit_search`` (Alembic
+  ``y5u7v9w1x3z5``) indexed by INSERT/UPDATE/DELETE triggers
+  on ``agent_runs``, ``agent_run_operations``,
+  ``query_history``, ``agent_run_tool_calls``, ``audit_log``.
+  Tokenizer is ``unicode61 separators '._-'`` so UC FQNs
+  match component-wise.  New auditor-scope endpoint
+  ``GET /api/audit/search?q=…&axis=…`` returns ranked
+  snippets; new HTML page ``/audit/search`` calls it via
+  fetch.  Postgres deployments skip the migration and the
+  route returns ``available=false`` (a tsvector replacement
+  is deferred).  Service ``audit_fts`` exposes
+  ``install_index`` (test fixtures) + ``rebuild_index``
+  (emergency recovery).  Alembic ``include_object`` widens
+  to skip the FTS5 shadow tables.
+
 - **Sprint 18.6 — anomaly inbox + run-list badge.**  Phase 18.6+
   deepening of the closed Audit Cockpit.  Two new columns on
   ``agent_runs`` (``anomaly_severity``, ``anomaly_metric``)

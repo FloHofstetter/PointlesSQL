@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Audit cockpit · search · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/audit/queries" class="text-decoration-none">Audit cockpit</a></li>
+    <li class="breadcrumb-item active">Search</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-4">
+    <i class="bi bi-search fs-3"></i>
+    <h1 class="h3 mb-0">Audit cockpit · search</h1>
+</div>
+
+{% if not fts_available %}
+<div class="alert alert-warning">
+    <strong>Full-text search not provisioned.</strong>
+    Phase 18.7's <code>audit_search</code> virtual table is SQLite-only
+    and the current backend doesn't expose it.  Postgres support is
+    deferred — a tsvector replacement lands in a later sprint.
+</div>
+{% else %}
+<p class="text-muted">
+    Free-text search across runs, ops, queries, tool calls, and audit log.
+    Tokenizer keeps <code>.</code> / <code>_</code> / <code>-</code> as
+    separators, so <code>main.silver.orders</code> matches a query for
+    <code>silver</code>.  Click a result to open the source row.
+</p>
+
+<form id="search-form" class="row g-2 align-items-end mb-3" autocomplete="off">
+    <div class="col-md-6">
+        <label for="search-q" class="form-label small mb-1">Query</label>
+        <input id="search-q" type="text" class="form-control form-control-sm font-monospace"
+               placeholder="e.g. silver.orders OR pql_query OR schema_mismatch" required>
+    </div>
+    <div class="col-md-2">
+        <label for="search-axis" class="form-label small mb-1">Axis</label>
+        <select id="search-axis" class="form-select form-select-sm">
+            {% for ax in valid_axes %}
+            <option value="{{ ax }}" {% if ax == 'all' %}selected{% endif %}>{{ ax }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="search-since" class="form-label small mb-1">Since (ISO)</label>
+        <input id="search-since" type="text" class="form-control form-control-sm font-monospace" placeholder="2026-04-25">
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-sm btn-primary w-100">
+            <i class="bi bi-search"></i> Search
+        </button>
+    </div>
+</form>
+
+<div id="search-meta" class="small text-muted mb-2"></div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Axis</th>
+                    <th>Run</th>
+                    <th>Entity</th>
+                    <th>Snippet</th>
+                    <th class="text-end">Rank</th>
+                </tr>
+            </thead>
+            <tbody id="search-rows">
+                <tr><td colspan="5" class="text-center text-muted py-4">Enter a query above to search.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function () {
+    const qEl = document.getElementById('search-q');
+    const axisEl = document.getElementById('search-axis');
+    const sinceEl = document.getElementById('search-since');
+    const formEl = document.getElementById('search-form');
+    const rowsEl = document.getElementById('search-rows');
+    const metaEl = document.getElementById('search-meta');
+
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    // Snippet text is server-side trusted (only <mark> tags injected by FTS5);
+    // pass through as-is.
+    function snippetHtml(snippet) {
+        if (!snippet) return '';
+        return snippet;
+    }
+
+    function rowLink(axis, entityId, runId) {
+        if (axis === 'runs' && entityId) return `/runs/${encodeURIComponent(entityId)}`;
+        if (axis === 'ops' && runId) return `/runs/${encodeURIComponent(runId)}?op_id=${encodeURIComponent(entityId)}#tab-ops`;
+        if (axis === 'queries' && runId) return `/runs/${encodeURIComponent(runId)}#tab-audit`;
+        if (axis === 'tool_calls' && runId) return `/runs/${encodeURIComponent(runId)}#tab-audit`;
+        if (axis === 'audit_log') return '/audit/queries';
+        return '#';
+    }
+
+    async function runSearch(ev) {
+        if (ev) ev.preventDefault();
+        const q = qEl.value.trim();
+        if (!q) return;
+        const params = new URLSearchParams({q, axis: axisEl.value, limit: '100'});
+        if (sinceEl.value.trim()) params.set('since', sinceEl.value.trim());
+        rowsEl.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Searching…</td></tr>';
+        const resp = await fetch('/api/audit/search?' + params.toString(), { credentials: 'same-origin' });
+        if (!resp.ok) {
+            rowsEl.innerHTML = `<tr><td colspan="5" class="text-danger py-3">Error ${resp.status}</td></tr>`;
+            metaEl.textContent = '';
+            return;
+        }
+        const data = await resp.json();
+        if (!data.available) {
+            metaEl.textContent = 'FTS not provisioned — empty result.';
+            rowsEl.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">FTS not provisioned.</td></tr>';
+            return;
+        }
+        metaEl.textContent = `${data.total_count} result(s) for "${data.query}" on axis=${data.axis}`;
+        if (!data.results.length) {
+            rowsEl.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No matches.</td></tr>';
+            return;
+        }
+        rowsEl.innerHTML = data.results.map((r) => {
+            const link = rowLink(r.axis, r.entity_id, r.run_id);
+            const target = r.run_id || r.entity_id || '—';
+            return `<tr>
+                <td><span class="badge bg-secondary">${escapeHtml(r.axis)}</span></td>
+                <td class="font-monospace small text-muted">${escapeHtml((r.run_id || '').slice(0, 8))}</td>
+                <td><a href="${link}" class="font-monospace small text-decoration-none">${escapeHtml(r.entity_id)}</a></td>
+                <td class="small">${snippetHtml(r.snippet)}</td>
+                <td class="text-end font-monospace small text-muted">${r.rank !== null ? r.rank.toFixed(2) : '—'}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    formEl.addEventListener('submit', runSearch);
+})();
+</script>
+{% endif %}
+{% endblock %}

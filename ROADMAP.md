@@ -1894,7 +1894,7 @@ PointlesSQL
 │   │       ``saved_audit_queries``) reuse the existing alerts
 │   │       machinery.  Email digest deferred to Phase 19.2
 │   │       (Audit-Reviewer-Agent territory).
-│   └── Sprint 18.6 — Anomaly inbox + run-list badge          ✅
+│   ├── Sprint 18.6 — Anomaly inbox + run-list badge          ✅
 │       └── Phase 18.6+ deepening of the closed cockpit.  Two
 │           new columns on ``agent_runs``
 │           (``anomaly_severity``, ``anomaly_metric``, set by
@@ -1916,6 +1916,25 @@ PointlesSQL
 │           (reverse-index "runs by table"), 18.9 (cell-level
 │           run-diff), 18.10 (anomaly-memoization, contingent)
 │           queued in the Phase 18.6+ plan.
+│   └── Sprint 18.7 — Full-text search across audit lake     ✅
+│       └── New SQLite FTS5 virtual table ``audit_search``
+│           (Alembic ``y5u7v9w1x3z5``) populated by triggers
+│           on ``agent_runs`` / ``agent_run_operations`` /
+│           ``query_history`` / ``agent_run_tool_calls`` /
+│           ``audit_log``.  Tokenizer is
+│           ``unicode61 separators '._-'`` so UC FQNs match
+│           component-wise (a search for ``silver`` matches
+│           ``main.silver.orders``).  New auditor-scope
+│           endpoint ``GET /api/audit/search?q=…&axis=…``
+│           returns ranked snippets; new HTML page
+│           ``/audit/search`` calls it via fetch.  Postgres
+│           deployments skip the migration and the route
+│           returns ``available=false`` with no rows.  Service
+│           module exposes ``install_index`` (used by tests) +
+│           ``rebuild_index`` (emergency recovery hook).
+│           Alembic ``include_object`` filter widens to skip
+│           the FTS5 shadow tables so ``alembic check`` stays
+│           green.
 │
 ├── Phase 19 — Audit-Reviewer Agent + Grafana             ✅ closed
 │   │

@@ -25,6 +25,15 @@ _SQLITE_EXPRESSION_INDEX_ALLOWLIST = frozenset(
     }
 )
 
+# Phase 18.7 creates a SQLite FTS5 virtual table ``audit_search``
+# that spawns five internal shadow tables (``audit_search_data``,
+# ``audit_search_idx``, ``audit_search_content``,
+# ``audit_search_docsize``, ``audit_search_config``).  None of them
+# are ORM-defined; autogenerate reports them as "extra" and would
+# propose drops on every check.  Filter the family out by name
+# prefix so ``alembic check`` stays green.
+_FTS_TABLE_PREFIXES: tuple[str, ...] = ("audit_search",)
+
 
 def _include_object(
     obj: Any,
@@ -46,6 +55,12 @@ def _include_object(
         ``False`` to exclude the object from diff; ``True`` otherwise.
     """
     if type_ == "index" and name in _SQLITE_EXPRESSION_INDEX_ALLOWLIST:
+        return False
+    if (
+        type_ == "table"
+        and name is not None
+        and any(name.startswith(prefix) for prefix in _FTS_TABLE_PREFIXES)
+    ):
         return False
     return True
 
