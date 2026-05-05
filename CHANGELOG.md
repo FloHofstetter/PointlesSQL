@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Notes
+
+- **Phase 18.6+ closed (2026-05-05)** — four sub-sprints landed
+  (18.6 inbox + run-list badge, 18.7 audit-FTS, 18.8 runs-by-table
+  reverse index, 18.9 cell + column-lineage diff).  Sprint 18.10
+  (anomaly-verdict cache) deferred per plan: contingent on a
+  real ≥10⁴-run lake breaching ``/audit/inbox`` p95 > 2s.
+  Today's instances stay sub-100ms on the live aggregator.
+
 ### Added
 
 - **Sprint 18.9 — cell-level + column-lineage diff in run-vs-run.**

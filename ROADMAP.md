@@ -1950,7 +1950,7 @@ PointlesSQL
 │           tabs that fetch on first activation.  Catalog
 │           table-detail page header carries a "Runs that
 │           touched this table" cross-link.
-│   └── Sprint 18.9 — Cell-level + column-lineage diff       ✅
+│   ├── Sprint 18.9 — Cell-level + column-lineage diff       ✅
 │       └── ``GET /api/agent-runs/diff?detail=true`` and the
 │           ``/runs/{a}/diff/{b}`` HTML page gain two new
 │           payload sections: ``value_changes_diff`` (per
@@ -1966,6 +1966,15 @@ PointlesSQL
 │           unchanged.  No new schema — both helpers query
 │           existing ``lineage_value_changes`` /
 │           ``lineage_column_map``.
+│   └── Sprint 18.10 — Anomaly memoization                   🧊 deferred
+│       └── Plan-marked contingent on a perf measurement:
+│           land only when ``/audit/inbox`` or
+│           ``/audit/anomalies`` p95 breaks 2s on a real
+│           ≥10⁴-run audit lake.  Today's instances stay well
+│           below that threshold (live aggregator returns
+│           sub-100ms on the fixture suite), so the cache
+│           table + cron rebuild is left as a sketch.  Re-open
+│           when a deployment reports the breach.
 │
 ├── Phase 19 — Audit-Reviewer Agent + Grafana             ✅ closed
 │   │
