@@ -114,6 +114,12 @@ def main() -> int:
 
     since, until = _yesterday_window()
     headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    # Sprint 28.5 — workspace re-target.  The same env var the plugin
+    # uses; honoured here so the wake-gate's anomaly query lands in
+    # the same workspace the daily Audit-Reviewer-Agent will run in.
+    workspace = os.environ.get("POINTLESSQL_WORKSPACE", "").strip().lower()
+    if workspace:
+        headers["X-Workspace"] = workspace
     with httpx.Client(base_url=base_url, headers=headers) as client:
         verdicts = [_verdict_for_metric(client, m, since, until) for m in _METRICS]
 

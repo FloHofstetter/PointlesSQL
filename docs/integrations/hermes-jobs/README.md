@@ -66,6 +66,25 @@ no per-job env overlay in Hermes, so all cron jobs in the same
 Hermes install share the same auditor key. If you need separate keys
 per job, add a Hermes-side feature first.
 
+## Workspace scoping (Sprint 28.5)
+
+Multi-workspace installs add one more env var:
+
+```bash
+POINTLESSQL_WORKSPACE=prod-audit
+```
+
+The plugin reads it once at session start and forwards the slug as
+`X-Workspace` on every PointlesSQL HTTP call.  The wake-gate at
+`scripts/audit-wake-gate.py` honours the same env var so the
+pre-anomaly fetch lands in the same workspace the agent will run in.
+
+When unset, PointlesSQL falls back to the API key's pinned workspace
+(`api_keys.workspace_id`, set when the auditor key was minted).  Set
+it explicitly only when you need one shared key to fan out to several
+workspaces — the more common single-workspace install relies on the
+api-key pin alone.
+
 ## Prompt design notes
 
 - The prompt always pins the time window the agent should review.
