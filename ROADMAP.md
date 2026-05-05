@@ -3552,6 +3552,71 @@ PointlesSQL
 │       lint / format errors (102 files) are unchanged — none
 │       introduced by Phase 32.
 │
+├── Phase 33 — Admin Console                                   ✅ closed 2026-05-05
+│   │
+│   │   Bundle every operator-only screen behind one ``/admin``
+│   │   landing.  Pre-Phase-33 the admin surface was three
+│   │   isolated routes (``/admin/audit``, ``/admin/external-writes``,
+│   │   ``/admin/workspaces``) plus six API-only surfaces with no
+│   │   chrome (audit-sinks CRUD, review-destinations CRUD,
+│   │   api-keys CRUD, system-keys, PII-mode, OIDC group mapping).
+│   │   A single icon-rail pill pointed at the audit log; admins
+│   │   reaching audit sinks or review destinations had to curl.
+│   │   Phase 33 ships the landing + chrome for the two highest-
+│   │   value gaps; the rest stays out of scope per the planning
+│   │   trade-off table (system-keys rotation = security-sensitive
+│   │   write, PII-mode + OIDC = env-restart-gated, API-keys =
+│   │   curl-only acceptable, Playwright = chrome-only).
+│   │
+│   │   Mini-Sprint 0 retired two stale ROADMAP markers (Sprint
+│   │   19.2 and Phase 12.9) that were already complete in code
+│   │   but flagged ⏳/🔜.  Sub-sprints 33.1 / 33.2 / 33.3 deliver
+│   │   the landing, audit-sinks UI, and review-destinations UI;
+│   │   12 new pytest cases gate the templates.
+│   │
+│   ├── Mini-Sprint 0 — stale-marker cleanup                    ✅ done
+│   │   ROADMAP edit only.  Sprint 19.2 ⏳ → ✅ (995490b);
+│   │   Phase 12.9 🔜 → ✅ 2026-05-05 (Sprint 76–95: 90d40b8)
+│   │   with closing note explaining ``help_popovers.js`` IIFE
+│   │   retention + ``bootstrap.js`` permanence.
+│   │
+│   ├── Sprint 33.1 — Admin Landing + Nav-Chrome                ✅ done
+│   │   New ``GET /admin`` route in ``api/admin_routes.py`` with
+│   │   five-card grid (audit log, external writes, workspaces,
+│   │   audit sinks, review destinations); cards surface
+│   │   active-count badges via inexpensive COUNT queries.  New
+│   │   template ``frontend/templates/pages/admin_index.html``;
+│   │   icon-rail retargeted from ``/admin/audit`` → ``/admin``;
+│   │   the three pre-existing admin pages back-link via the
+│   │   "Admin" breadcrumb.  Test suite: ``test_admin_index.py``
+│   │   (4 cases — anonymous redirect, non-admin 403, all five
+│   │   card markers + hrefs assert, rail-retarget assertion).
+│   │
+│   ├── Sprint 33.2 — Audit Sinks UI                            ✅ done
+│   │   New ``GET /admin/audit-sinks`` HTML route; new template
+│   │   ``admin_audit_sinks.html`` with full sink table (redacted
+│   │   config preview), per-row test/delete/active-toggle
+│   │   actions, type-conditional create form (webhook / s3 /
+│   │   aws_cloudtrail) with workspace-filter chip selector.
+│   │   Reuses the existing ``/api/admin/audit-sinks`` JSON CRUD
+│   │   (Phase 19.1 / 29.2) — no new server endpoints.  Test
+│   │   suite: ``test_admin_audit_sinks_page.py`` (4 cases) —
+│   │   load-bearing assertion is that ``hmac_secret`` and
+│   │   ``secret_access_key`` cleartext NEVER reach the page,
+│   │   only the literal ``<set>`` marker.
+│   │
+│   └── Sprint 33.3 — Review Destinations UI                    ✅ done
+│       New ``GET /admin/review-destinations`` HTML route; new
+│       template ``admin_review_destinations.html`` with
+│       destination table, inline min-severity dropdown,
+│       HMAC-presence badge (``set`` / ``none``), workspace-filter
+│       chips, active toggle, delete button, and create form.
+│       Reuses the existing ``/api/admin/review-destinations``
+│       JSON CRUD — no new endpoints.  Test suite:
+│       ``test_admin_review_destinations_page.py`` (4 cases) —
+│       load-bearing assertion is that the cleartext HMAC secret
+│       NEVER reaches the page (``has_hmac_secret`` boolean only).
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

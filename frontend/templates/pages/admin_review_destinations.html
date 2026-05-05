@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
+{% block title %}Review destinations · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "Review destinations"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-bell fs-3"></i>
+        <h1 class="h3 mb-0">Review destinations</h1>
+    </div>
+    <span class="text-muted small">
+        {{ destinations|length }} destination{{ '' if destinations|length == 1 else 's' }}
+    </span>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle me-1"></i>
+    Webhook fan-out for the Audit-Reviewer agent.  Each destination
+    has a minimum-severity gate — <code>warn</code> destinations skip
+    <code>ok</code> reviews, <code>critical</code> destinations skip
+    everything except critical.  Optional HMAC-SHA256 signs every
+    request body with the configured secret; see
+    <a href="/static/docs/integrations/agent-review-webhooks.html"
+       hx-boost="false">the webhook spec</a> for the exact header format.
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Existing destinations</strong>
+    </div>
+    {% if destinations %}
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Webhook URL</th>
+                    <th>Min severity</th>
+                    <th>HMAC</th>
+                    <th>Workspace filter</th>
+                    <th class="text-center">Active</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in destinations %}
+                <tr data-destination-id="{{ d.id }}"
+                    x-data="reviewDestRow({{ d.id }}, {{ d.name|tojson }}, {{ d.is_active|tojson }}, {{ d.min_severity|tojson }})">
+                    <td><strong>{{ d.name }}</strong></td>
+                    <td class="font-monospace small text-truncate" style="max-width: 320px;"
+                        :title="webhookUrl">
+                        {{ d.webhook_url }}
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm"
+                                style="max-width: 7rem;"
+                                :disabled="busy"
+                                @change="updateSeverity($event.target.value)">
+                            {% for sev in severities %}
+                            <option value="{{ sev }}" {% if sev == d.min_severity %}selected{% endif %}>{{ sev }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td class="text-center">
+                        {% if d.has_hmac_secret %}
+                        <span class="badge bg-success">set</span>
+                        {% else %}
+                        <span class="badge bg-light text-muted border">none</span>
+                        {% endif %}
+                    </td>
+                    <td class="small">
+                        {% if d.workspace_filter %}
+                        {% for ws_id in d.workspace_filter %}
+                        {% set ws = workspace_choices|selectattr("id", "equalto", ws_id)|first %}
+                        <span class="badge bg-light text-dark border">
+                            {% if ws %}{{ ws.slug }}{% else %}#{{ ws_id }}{% endif %}
+                        </span>
+                        {% endfor %}
+                        {% else %}
+                        <span class="text-muted">install-global</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch d-inline-block">
+                            <input type="checkbox" class="form-check-input"
+                                   :checked="isActive"
+                                   :disabled="busy"
+                                   @change="toggleActive($event.target.checked)">
+                        </div>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                                :disabled="busy"
+                                @click="remove()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-bell-slash display-4 d-block mb-2"></i>
+        <p class="mb-0">No review destinations configured.  Add one below to
+            start fanning out audit reviews.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card mb-4" x-data="reviewDestCreate()">
+    <div class="card-header">
+        <strong>Create destination</strong>
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label small mb-1" for="dest-name">Name</label>
+                <input id="dest-name" type="text" class="form-control form-control-sm"
+                       x-model="form.name" maxlength="64" placeholder="ops-slack">
+            </div>
+            <div class="col-md-5">
+                <label class="form-label small mb-1" for="dest-url">Webhook URL</label>
+                <input id="dest-url" type="url" class="form-control form-control-sm"
+                       x-model="form.webhookUrl"
+                       placeholder="https://hooks.slack.com/services/…">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1" for="dest-severity">Min severity</label>
+                <select id="dest-severity" class="form-select form-select-sm"
+                        x-model="form.minSeverity">
+                    {% for sev in severities %}
+                    <option value="{{ sev }}">{{ sev }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">&nbsp;</label>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="dest-active"
+                           x-model="form.isActive">
+                    <label class="form-check-label small" for="dest-active">Active</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-2 mt-3">
+            <div class="col-md-6">
+                <label class="form-label small mb-1" for="dest-secret">HMAC secret (optional)</label>
+                <input id="dest-secret" type="password" class="form-control form-control-sm"
+                       x-model="form.hmacSecret" autocomplete="new-password">
+                <div class="form-text">Signs request bodies via HMAC-SHA256.</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small mb-1">Workspace filter (optional)</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    {% for ws in workspace_choices %}
+                    <label class="form-check form-check-inline">
+                        <input type="checkbox" class="form-check-input"
+                               value="{{ ws.id }}"
+                               x-model="form.workspaceFilter">
+                        <span class="form-check-label small"><code>{{ ws.slug }}</code></span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="form-text">Empty = install-global.</div>
+            </div>
+        </div>
+
+        <div class="mt-3 d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-primary btn-sm"
+                    :disabled="!canSubmit() || creating"
+                    @click="create()">
+                <span x-show="!creating">Create destination</span>
+                <span x-show="creating">Creating&hellip;</span>
+            </button>
+            <span x-show="error" class="text-danger small" x-text="error"></span>
+            <span x-show="createdSecret" class="text-success small ms-auto">
+                <i class="bi bi-key"></i> Saved.  Cleartext secret was returned once — copy from network log if needed.
+            </span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.reviewDestRow = function (destId, name, isActive, minSeverity) {
+    return {
+        destId, name, isActive, minSeverity,
+        busy: false,
+
+        get webhookUrl() {
+            return this.$el ? this.$el.querySelector('td.font-monospace')?.textContent.trim() : '';
+        },
+
+        async toggleActive(checked) {
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/review-destinations/' + this.destId,
+                { method: 'PATCH', body: { is_active: checked } },
+            );
+            this.busy = false;
+            if (res.ok) {
+                this.isActive = checked;
+                window.pqlToast.success('Destination ' + (checked ? 'activated' : 'deactivated') + '.');
+            } else {
+                this.isActive = !checked;
+                window.pqlToast.error(res.error || 'Failed to update destination.');
+            }
+        },
+
+        async updateSeverity(value) {
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/review-destinations/' + this.destId,
+                { method: 'PATCH', body: { min_severity: value } },
+            );
+            this.busy = false;
+            if (res.ok) {
+                this.minSeverity = value;
+                window.pqlToast.success('Min severity set to ' + value + '.');
+            } else {
+                window.pqlToast.error(res.error || 'Failed to update destination.');
+            }
+        },
+
+        async remove() {
+            if (!window.confirm('Delete destination "' + this.name + '"? Historical fan-out lines survive.')) {
+                return;
+            }
+            this.busy = true;
+            const res = await window.pqlApi.fetch(
+                '/api/admin/review-destinations/' + this.destId,
+                { method: 'DELETE' },
+            );
+            this.busy = false;
+            if (res.ok) {
+                window.pqlApi.reloadWithToast('Destination deleted.');
+            } else {
+                window.pqlToast.error(res.error || 'Failed to delete destination.');
+            }
+        },
+    };
+};
+
+window.reviewDestCreate = function () {
+    return {
+        form: {
+            name: '',
+            webhookUrl: '',
+            hmacSecret: '',
+            minSeverity: 'warn',
+            isActive: true,
+            workspaceFilter: [],
+        },
+        creating: false,
+        error: '',
+        createdSecret: false,
+
+        canSubmit() {
+            return !!(this.form.name.trim() && this.form.webhookUrl.trim());
+        },
+
+        async create() {
+            this.error = '';
+            this.creating = true;
+            const body = {
+                name: this.form.name.trim(),
+                webhook_url: this.form.webhookUrl.trim(),
+                min_severity: this.form.minSeverity,
+                is_active: this.form.isActive,
+            };
+            if (this.form.hmacSecret) body.hmac_secret = this.form.hmacSecret;
+            if (this.form.workspaceFilter.length) {
+                body.workspace_filter = this.form.workspaceFilter.map(x => parseInt(x, 10));
+            }
+            const res = await window.pqlApi.fetch('/api/admin/review-destinations', {
+                method: 'POST',
+                body,
+            });
+            this.creating = false;
+            if (!res.ok) {
+                this.error = res.error || 'Failed to create destination.';
+                return;
+            }
+            this.createdSecret = !!body.hmac_secret;
+            window.pqlApi.reloadWithToast('Destination created.');
+        },
+    };
+};
+</script>
+{% endblock %}

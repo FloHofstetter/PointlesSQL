@@ -6,6 +6,43 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 33 closed (2026-05-05)** — Admin Console: every operator
+  surface unified behind one ``/admin`` landing.  Three sub-sprints
+  + a Mini-Sprint 0 cleanup.  Mini-Sprint 0 retired two stale
+  ROADMAP markers (Sprint 19.2 ``⏳ in progress`` → ``✅ closed
+  (995490b)``; Phase 12.9 ``🔜 in progress`` → ``✅ closed
+  2026-05-05 (Sprint 76–95: 90d40b8)`` with a closing note that
+  documents why ``help_popovers.js`` deliberately stays IIFE and
+  why ``bootstrap.js`` is a permanent fixture).  33.1 introduces
+  ``GET /admin`` with a five-card grid (audit log, external
+  writes, workspaces, audit sinks, review destinations) and
+  retargets the icon-rail's admin pill from ``/admin/audit`` to
+  ``/admin``; the three existing admin pages now back-link via
+  ``Admin → /admin`` in the breadcrumb so the landing becomes the
+  canonical hub.  33.2 ships ``GET /admin/audit-sinks``: list of
+  every sink with its redacted config, type-conditional create
+  form (webhook / s3 / aws_cloudtrail), per-row active toggle,
+  test-envelope button (``/api/admin/audit-sinks/{id}/test``),
+  delete button, and workspace-filter chip selector — the
+  underlying JSON CRUD has been live since Phase 19.1 / 29.2; only
+  the chrome was missing.  33.3 ships
+  ``GET /admin/review-destinations`` with the same shape: list of
+  destinations with min-severity dropdown, HMAC-secret presence
+  badge (cleartext **never** reaches the page), workspace-filter
+  chips, active toggle, delete button, and inline create form.
+  Twelve new pytest cases across three new test files
+  (``test_admin_index.py``, ``test_admin_audit_sinks_page.py``,
+  ``test_admin_review_destinations_page.py``) verify auth gates,
+  HTML rendering, and secret-redaction; the existing JSON-route
+  tests stay unchanged and green.  **Out of scope for Phase 33**:
+  System-keys rotation UI (security-sensitive write needs
+  dedicated phase), PII-mode / OIDC-group-mapping editing
+  (env-restart-gated; UI would lie), API-keys HTML wrapper
+  (curl-only stays acceptable), Playwright smoke (route-level
+  pytest sufficient for chrome).  Net effect: full SQLite suite
+  ``1467 passed, 6 skipped`` (+ 12 over Phase 32's 1455), no
+  regressions in any of the 33 admin / audit-sinks / review-dest
+  tests.
 - **Phase 32 closed (2026-05-05)** — PG test quality cleanup, no
   quality loss.  Once Phase 31 made the PG suite runnable
   end-to-end (~7 minutes), it surfaced **45 pre-existing PG
