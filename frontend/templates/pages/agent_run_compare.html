@@ -100,6 +100,20 @@
             <span class="badge bg-secondary ms-1">{{ detail.tool_calls_diff | length }}</span>
         </button>
     </li>
+    {% if value_changes_diff is defined and value_changes_diff %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-cells-btn" data-bs-toggle="tab" data-bs-target="#tab-cells" type="button" role="tab">
+            <i class="bi bi-grid-3x3 me-1"></i>Cells
+        </button>
+    </li>
+    {% endif %}
+    {% if column_lineage_diff is defined and column_lineage_diff %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-column-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-column-lineage" type="button" role="tab">
+            <i class="bi bi-bezier2 me-1"></i>Column lineage
+        </button>
+    </li>
+    {% endif %}
 </ul>
 
 <div class="tab-content">
@@ -178,6 +192,137 @@
             </div>
         </div>
     </div>
+
+    {% if value_changes_diff is defined and value_changes_diff %}
+    <div class="tab-pane fade" id="tab-cells" role="tabpanel">
+        <p class="text-muted small mb-2">
+            Per-table cell-level diff over <code>lineage_value_changes</code>.
+            Capped at <code>{{ value_changes_diff.top_k }}</code> rows per
+            (table, op_id, axis) — wider drill-downs live at
+            <a href="/audit/queries">/audit/queries</a>.
+            {% if value_changes_diff.masked %}<strong>Cells are masked</strong> — admin reveal lives at <code>POST /api/audit/pii/reveal</code>.{% endif %}
+        </p>
+        {% if not value_changes_diff.tables %}
+        <div class="card"><div class="card-body text-muted small fst-italic">No value-change cells captured for either run.</div></div>
+        {% endif %}
+        {% for table in value_changes_diff.tables %}
+        <div class="card mb-3">
+            <div class="card-header d-flex align-items-center gap-2">
+                <code>{{ table.target_table }}</code>
+                <span class="badge bg-secondary ms-1">op #{{ table.op_id }}</span>
+                {% if table.truncated %}<span class="badge bg-warning text-dark ms-auto">truncated</span>{% endif %}
+            </div>
+            {% if table.divergent_cells %}
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0 small font-monospace">
+                    <thead>
+                        <tr>
+                            <th>Row</th>
+                            <th>Column</th>
+                            <th>A new value</th>
+                            <th>B new value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cell in table.divergent_cells %}
+                        <tr>
+                            <td class="text-muted">{{ cell.row_id }}</td>
+                            <td>{{ cell.column }}</td>
+                            <td>{{ cell.a_new_value or "—" }}</td>
+                            <td>{{ cell.b_new_value or "—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% if table.a_only or table.b_only %}
+            <div class="card-body small text-muted">
+                {% if table.a_only %}<div>{{ table.a_only|length }} cell(s) only in A</div>{% endif %}
+                {% if table.b_only %}<div>{{ table.b_only|length }} cell(s) only in B</div>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if column_lineage_diff is defined and column_lineage_diff %}
+    <div class="tab-pane fade" id="tab-column-lineage" role="tabpanel">
+        <p class="text-muted small mb-2">
+            Edge identity is
+            <code>(op_id, source_table, source_column, target_table, target_column)</code>.
+            Edges with the same identity but a different
+            <code>transform_kind</code> or <code>transform_detail</code>
+            land in the <em>Changed</em> column.
+        </p>
+        <div class="row g-3">
+            <div class="col-12 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        Only in A
+                        <span class="badge bg-warning text-dark ms-1">{{ column_lineage_diff.edges_only_in_a|length }}</span>
+                    </div>
+                    <ul class="list-group list-group-flush small font-monospace">
+                        {% for edge in column_lineage_diff.edges_only_in_a %}
+                        <li class="list-group-item">
+                            <span class="badge bg-secondary">op #{{ edge.op_id }}</span>
+                            {{ edge.source_table or "?" }}.{{ edge.source_column or "?" }}
+                            → {{ edge.target_table }}.{{ edge.target_column }}
+                            <span class="text-muted ms-1">({{ edge.transform_kind }})</span>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted fst-italic">—</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        Changed
+                        <span class="badge bg-info text-dark ms-1">{{ column_lineage_diff.edges_changed|length }}</span>
+                    </div>
+                    <ul class="list-group list-group-flush small font-monospace">
+                        {% for change in column_lineage_diff.edges_changed %}
+                        <li class="list-group-item">
+                            <span class="badge bg-secondary">op #{{ change.a.op_id }}</span>
+                            {{ change.a.source_table or "?" }}.{{ change.a.source_column or "?" }}
+                            → {{ change.a.target_table }}.{{ change.a.target_column }}
+                            <div class="mt-1 text-muted">
+                                {% if change.kind_changed %}kind: {{ change.a.transform_kind }} → {{ change.b.transform_kind }}{% endif %}
+                                {% if change.detail_changed %}detail changed{% endif %}
+                            </div>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted fst-italic">—</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="col-12 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        Only in B
+                        <span class="badge bg-success ms-1">{{ column_lineage_diff.edges_only_in_b|length }}</span>
+                    </div>
+                    <ul class="list-group list-group-flush small font-monospace">
+                        {% for edge in column_lineage_diff.edges_only_in_b %}
+                        <li class="list-group-item">
+                            <span class="badge bg-secondary">op #{{ edge.op_id }}</span>
+                            {{ edge.source_table or "?" }}.{{ edge.source_column or "?" }}
+                            → {{ edge.target_table }}.{{ edge.target_column }}
+                            <span class="text-muted ms-1">({{ edge.transform_kind }})</span>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted fst-italic">—</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <div class="tab-pane fade" id="tab-tools" role="tabpanel">
         <div class="card"><div class="card-body p-0">

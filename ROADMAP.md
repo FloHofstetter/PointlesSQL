@@ -1935,7 +1935,7 @@ PointlesSQL
 │           Alembic ``include_object`` filter widens to skip
 │           the FTS5 shadow tables so ``alembic check`` stays
 │           green.
-│   └── Sprint 18.8 — Runs-by-table reverse index            ✅
+│   ├── Sprint 18.8 — Runs-by-table reverse index            ✅
 │       └── Flips the forward "what did this run touch?"
 │           direction.  New auditor-scope endpoint
 │           ``GET /api/audit/by-table?fqn=…&kind=…``  with
@@ -1950,6 +1950,22 @@ PointlesSQL
 │           tabs that fetch on first activation.  Catalog
 │           table-detail page header carries a "Runs that
 │           touched this table" cross-link.
+│   └── Sprint 18.9 — Cell-level + column-lineage diff       ✅
+│       └── ``GET /api/agent-runs/diff?detail=true`` and the
+│           ``/runs/{a}/diff/{b}`` HTML page gain two new
+│           payload sections: ``value_changes_diff`` (per
+│           ``(target_table, op_id)`` bucket of divergent
+│           cells, only-in-a, only-in-b — capped at top_k=50,
+│           PII-masked unless admin) and ``column_lineage_diff``
+│           (edge identity ``(op_id, source_table,
+│           source_column, target_table, target_column)`` →
+│           three buckets: only-in-a, changed
+│           transform_kind/detail, only-in-b).  Two new
+│           sub-tabs on the run-compare page render them; the
+│           JSON shape feeds the Hermes ``pql_diff_runs`` tool
+│           unchanged.  No new schema — both helpers query
+│           existing ``lineage_value_changes`` /
+│           ``lineage_column_map``.
 │
 ├── Phase 19 — Audit-Reviewer Agent + Grafana             ✅ closed
 │   │

@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Sprint 18.9 — cell-level + column-lineage diff in run-vs-run.**
+  ``GET /api/agent-runs/diff?detail=true`` and the
+  ``/runs/{a}/diff/{b}`` HTML page now also carry
+  ``value_changes_diff`` (per ``(target_table, op_id)`` bucket of
+  divergent cells / only-in-a / only-in-b cells; capped at
+  ``top_k=50`` per axis with a ``truncated`` flag; PII-masked
+  unless admin) and ``column_lineage_diff`` (edge identity
+  ``(op_id, source_table, source_column, target_table,
+  target_column)`` partitioned into only-in-a / changed
+  transform_kind-or-detail / only-in-b buckets).  Two new sub-tabs
+  on the run-compare page render the new payloads.  No new schema
+  — both helpers query existing ``lineage_value_changes`` /
+  ``lineage_column_map`` rows.
+
 - **Sprint 18.8 — runs-by-table reverse index.**  Flips the
   forward "what did this run touch?" direction on its head.
   New auditor-scope ``GET /api/audit/by-table?fqn=…&kind=…``

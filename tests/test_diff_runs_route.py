@@ -138,6 +138,43 @@ async def test_detail_returns_operations_diff_when_flag_set(
 
 
 @pytest.mark.asyncio
+async def test_detail_includes_value_changes_and_column_lineage_diff(
+    supervisor_secret: str,
+) -> None:
+    """Phase 18.9 — detail=true now also carries cell + column-lineage diff."""
+    transport = httpx.ASGITransport(app=app)
+    run_a = "1111aaab-1111-1111-1111-aaaaaaab1111"
+    run_b = "2222bbbc-2222-2222-2222-bbbbbbbc2222"
+    async with _admin_client() as cookie_client:
+        await _seed_run(cookie_client, run_id=run_a)
+        await _seed_run(cookie_client, run_id=run_b)
+        _add_op(
+            run_id=run_a,
+            op_name="merge",
+            target="main.silver.orders",
+            rows_affected=1,
+        )
+        _add_op(
+            run_id=run_b,
+            op_name="merge",
+            target="main.silver.orders",
+            rows_affected=1,
+        )
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+        response = await c.get(
+            "/api/agent-runs/diff",
+            params={"a": run_a, "b": run_b, "detail": "true"},
+            headers={"Authorization": f"Bearer {supervisor_secret}"},
+        )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert "value_changes_diff" in payload
+    assert "column_lineage_diff" in payload
+    assert "tables" in payload["value_changes_diff"]
+    assert "edges_only_in_a" in payload["column_lineage_diff"]
+
+
+@pytest.mark.asyncio
 async def test_detail_omitted_when_flag_unset(supervisor_secret: str) -> None:
     transport = httpx.ASGITransport(app=app)
     run_a = "3333cccc-3333-3333-3333-cccccccc3333"
@@ -155,6 +192,8 @@ async def test_detail_omitted_when_flag_unset(supervisor_secret: str) -> None:
     payload = response.json()
     assert "operations_diff" not in payload
     assert "tool_calls_diff" not in payload
+    assert "value_changes_diff" not in payload
+    assert "column_lineage_diff" not in payload
 
 
 @pytest.mark.asyncio
