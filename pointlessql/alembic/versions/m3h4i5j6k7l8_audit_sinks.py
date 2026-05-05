@@ -32,7 +32,7 @@ def upgrade() -> None:
             "is_active",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("1"),
+            server_default=sa.text("true"),
         ),
         sa.Column("event_types_json", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),

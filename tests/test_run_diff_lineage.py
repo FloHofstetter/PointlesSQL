@@ -65,6 +65,7 @@ def _seed_run(
                 finished_at=now,
             )
         )
+        s.flush()
         s.add(
             AgentRunSource(
                 agent_run_id=run_id,

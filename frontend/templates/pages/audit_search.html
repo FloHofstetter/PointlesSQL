@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}Audit cockpit · search · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -18,9 +19,11 @@
 {% if not fts_available %}
 <div class="alert alert-warning">
     <strong>Full-text search not provisioned.</strong>
-    Phase 18.7's <code>audit_search</code> virtual table is SQLite-only
-    and the current backend doesn't expose it.  Postgres support is
-    deferred — a tsvector replacement lands in a later sprint.
+    The audit-lake FTS surface hasn't been installed on this
+    backend yet.  Run <code>uv run alembic upgrade head</code>
+    to apply the migration, or call
+    <code>audit_fts.install_index(session_factory)</code> from
+    a shell.
 </div>
 {% else %}
 <p class="text-muted">
@@ -32,7 +35,7 @@
 
 <form id="search-form" class="row g-2 align-items-end mb-3" autocomplete="off">
     <div class="col-md-6">
-        <label for="search-q" class="form-label small mb-1">Query</label>
+        <label for="search-q" class="form-label small mb-1">Query{{ info('audit.fts-query-syntax') }}</label>
         <input id="search-q" type="text" class="form-control form-control-sm font-monospace"
                placeholder="e.g. silver.orders OR pql_query OR schema_mismatch" required>
     </div>

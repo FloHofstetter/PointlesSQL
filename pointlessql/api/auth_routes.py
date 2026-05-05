@@ -267,6 +267,7 @@ async def sso_redirect(request: Request):
         state,
         nonce,
         code_challenge,
+        scope=settings.oidc.scope,
     )
 
     cookie_value = oidc_service.sign_state_cookie(
@@ -352,6 +353,8 @@ async def oidc_callback(request: Request):
     # Map claims to local user.
     email = userinfo.get("email") or userinfo.get("preferred_username", "")
     display_name = userinfo.get("name") or userinfo.get("preferred_username") or email
+    raw_groups = userinfo.get(settings.oidc.groups_claim_name, [])
+    groups: list[str] = [str(g) for g in raw_groups] if isinstance(raw_groups, list) else []
 
     try:
         user = oidc_service.find_or_create_oidc_user(
@@ -360,6 +363,8 @@ async def oidc_callback(request: Request):
             userinfo["sub"],
             email,
             display_name,
+            groups=groups,
+            group_map=settings.oidc.parsed_group_map,
         )
     except oidc_service.OIDCError as exc:
         return RedirectResponse(

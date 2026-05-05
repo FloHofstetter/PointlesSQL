@@ -76,6 +76,7 @@ def _seed_anomalous_rejects(*, today_count: int, prior_days: list[int]) -> str:
                     finished_at=now - datetime.timedelta(days=offset),
                 )
             )
+            s.flush()
             op = AgentRunOperation(
                 agent_run_id=rid,
                 ordinal=1,
@@ -112,6 +113,7 @@ def _seed_anomalous_rejects(*, today_count: int, prior_days: list[int]) -> str:
                 finished_at=now,
             )
         )
+        s.flush()
         s.add(
             AgentRunSource(
                 agent_run_id=today_run_id,

@@ -13,6 +13,7 @@ display / patch / delete.
 from __future__ import annotations
 
 import datetime
+import json
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
@@ -21,6 +22,7 @@ from sqlalchemy import select
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+from pointlessql.models import Workspace
 from pointlessql.models.agent_reviews import REVIEW_SEVERITIES, ReviewDestination
 
 router = APIRouter(tags=["admin-review-destinations"])
@@ -38,9 +40,23 @@ def _serialize(row: ReviewDestination) -> dict[str, Any]:
 
     Returns:
         ``{id, name, webhook_url, has_hmac_secret, is_active,
-        min_severity, created_at}``.  ``hmac_secret`` itself is
-        never returned post-create.
+        min_severity, workspace_filter, created_at}``.  ``hmac_secret``
+        itself is never returned post-create.  ``workspace_filter`` is
+        ``None`` for install-global destinations or a list of
+        workspace IDs (Phase 29.2).
     """
+    workspace_filter: list[int] | None
+    if row.workspace_filter:
+        try:
+            decoded = json.loads(row.workspace_filter)
+        except json.JSONDecodeError:
+            decoded = None
+        if isinstance(decoded, list) and decoded:
+            workspace_filter = [int(x) for x in decoded]
+        else:
+            workspace_filter = None
+    else:
+        workspace_filter = None
     return {
         "id": row.id,
         "name": row.name,
@@ -48,6 +64,7 @@ def _serialize(row: ReviewDestination) -> dict[str, Any]:
         "has_hmac_secret": bool(row.hmac_secret),
         "is_active": bool(row.is_active),
         "min_severity": row.min_severity,
+        "workspace_filter": workspace_filter,
         "created_at": row.created_at.astimezone(datetime.UTC).isoformat(),
     }
 
@@ -79,6 +96,43 @@ def _validate_min_severity(value: Any) -> str:
     if not isinstance(value, str) or value.strip() not in REVIEW_SEVERITIES:
         raise ValidationError(f"min_severity must be one of {sorted(REVIEW_SEVERITIES)}")
     return value.strip()
+
+
+def _validate_workspace_filter(
+    value: Any,
+    *,
+    known_workspace_ids: set[int],
+) -> list[int] | None:
+    """Return *value* as a list of int workspace IDs, or ``None``.
+
+    Args:
+        value: Caller-supplied filter.  ``None`` or empty list →
+            install-global semantics (return ``None``).  Otherwise a
+            list of ints; each must already exist in ``workspaces``.
+        known_workspace_ids: Set of IDs that exist at validation time
+            — pre-fetched once per request to bound DB hits.
+
+    Returns:
+        Normalised sorted list of unique ints, or ``None`` for the
+        install-global default.
+
+    Raises:
+        ValidationError: On bad shape or unknown workspace IDs.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValidationError("workspace_filter must be a list of integers or null")
+    if not value:
+        return None
+    out: set[int] = set()
+    for item in value:
+        if isinstance(item, bool) or not isinstance(item, int):
+            raise ValidationError("workspace_filter entries must be integers")
+        if item not in known_workspace_ids:
+            raise ValidationError(f"workspace_filter references unknown workspace_id={item}")
+        out.add(item)
+    return sorted(out)
 
 
 @router.get("/api/admin/review-destinations")
@@ -138,12 +192,17 @@ async def api_admin_create_review_destination(
         existing = session.scalar(select(ReviewDestination).where(ReviewDestination.name == name))
         if existing is not None:
             raise ValidationError(f"review_destination with name {name!r} already exists")
+        known_ws = set(session.scalars(select(Workspace.id)).all())
+        workspace_filter = _validate_workspace_filter(
+            body.get("workspace_filter"), known_workspace_ids=known_ws
+        )
         row = ReviewDestination(
             name=name,
             webhook_url=webhook_url,
             hmac_secret=hmac_secret,
             is_active=is_active,
             min_severity=min_severity,
+            workspace_filter=json.dumps(workspace_filter) if workspace_filter else None,
             created_at=now,
         )
         session.add(row)
@@ -188,6 +247,12 @@ async def api_admin_update_review_destination(
                 if not isinstance(raw, str) or len(raw) > _MAX_SECRET:
                     raise ValidationError(f"hmac_secret must be a string ≤ {_MAX_SECRET} chars")
                 row.hmac_secret = raw
+        if "workspace_filter" in body:
+            known_ws = set(session.scalars(select(Workspace.id)).all())
+            ws_filter = _validate_workspace_filter(
+                body["workspace_filter"], known_workspace_ids=known_ws
+            )
+            row.workspace_filter = json.dumps(ws_filter) if ws_filter else None
         session.commit()
         session.refresh(row)
         session.expunge(row)

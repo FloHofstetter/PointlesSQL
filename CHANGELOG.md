@@ -6,6 +6,144 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 32 closed (2026-05-05)** — PG test quality cleanup, no
+  quality loss.  Once Phase 31 made the PG suite runnable
+  end-to-end (~7 minutes), it surfaced **45 pre-existing PG
+  failures**.  Phase 32 closes them all in one autonomous run:
+  PG suite goes from **45 failed → 0 failed** (1457 / 1457 pass,
+  4 skip, 9 deselect).  Three sub-sprints: 32.0 inserts
+  ``session.flush()`` between parent ``add()`` and child ``add()``
+  in 11 fixtures across 10 test files — the SQLAlchemy unit-of-work
+  topo-sort doesn't reliably order cross-class inserts on PG when
+  no ``relationship()`` is declared (production is unaffected, it
+  commits parent and child in separate transactions); the same
+  pass also widens ``query_history.read_kind`` from ``VARCHAR(20)``
+  to ``VARCHAR(32)`` (alembic ``ii9k1m3o5q7s``, batch-mode on
+  SQLite for table-recreate + drift-clean, plain ALTER on PG)
+  because Sprint 28.7's ``audit_api_cross_workspace`` (25 chars)
+  was silently truncating on PG, and rewrites
+  ``test_fts_vtable_carries_workspace_id_column`` to be
+  dialect-aware (PG inspects the ``audit_search_index`` table from
+  Sprint 30.1's FTS migration; SQLite still uses ``PRAGMA
+  table_info(audit_search)``).  32.1 makes the
+  ``saved_audit_queries`` migration ``j0e1f2a3b4c5`` dialect-aware:
+  the four ``datetime('now', '-N days')`` SQLite-only fragments in
+  ``STARTER_ROWS`` become ``NOW() - INTERVAL 'N days'`` on PG via
+  a ``starter_rows(dialect_name)`` helper, and ``services/saved_audit_queries.py``'s
+  ``bootstrap_starter_rows`` plumbs the session's dialect through.
+  A new alembic migration ``jj0l2n4p6r8u`` repairs already-deployed
+  PG installs in place via ``UPDATE saved_audit_queries SET
+  sql_text = REPLACE(...)`` (no-op on SQLite).  32.2 verifies the
+  killer gate (``1457 passed`` on PG, ``1455 passed`` on SQLite,
+  ``alembic check`` clean, ``pyright`` clean on touched files) and
+  closes the phase with this entry plus the ROADMAP and memory
+  updates.  Production was untouched in 32.0 (test fixtures only),
+  fixed correctly in 32.1 (real seed-SQL bug), and the ``read_kind``
+  widening removes a real PG-only truncation that was silently
+  failing on every cross-workspace audit-summary read.
+- **Phase 31 closed (2026-05-05)** — Test-suite speed
+  optimisation, no quality loss.  The full SQLite suite went from
+  ~30 minutes to **~68 seconds** (≈27×), and the PG suite from
+  the aborted ~3 hour single-worker run down to roughly 7
+  minutes.  All 1455 tests still run; no test was dropped or
+  marked slow.  Six sub-sprints: 31.0 ships the baseline bench
+  script (``scripts/bench_test_suite.sh`` → ``.bench/<ts>-<backend>.txt``);
+  31.1 monkey-patches ``pointlessql.services.auth._hasher`` to
+  ``BcryptHasher(rounds=4)`` at conftest-import time, dropping
+  per-test bcrypt cost from ~1.0 s to ~64 ms (algorithm + cookie
+  format unchanged, production untouched); 31.2 splits the
+  conftest's autouse fixture into a session-scope ``_test_engine``
+  (one ``Base.metadata.create_all`` per worker, dropped on session
+  exit) plus a function-scope ``_auth_db`` that does a per-test
+  ``TRUNCATE TABLE … RESTART IDENTITY CASCADE`` on PG and a
+  reverse-FK ``DELETE FROM …`` cascade on SQLite, then re-seeds
+  the workspace + admin/non-admin users from a hash cached at
+  module import — eliminating ~90 DDL statements per test (the
+  single biggest cost on PG); 31.3 adds a
+  ``POINTLESSQL_TEST_LIFESPAN_FAST=1`` env var that
+  ``pointlessql.api.main._lifespan`` honours by short-circuiting
+  the alembic-upgrade-on-default-URL ``init_db`` and the audit /
+  lineage / external-writes / branch-cleanup background asyncio
+  tasks (production startup is untouched — the env var is only set
+  inside the test process).  31.4 flips ``-n auto`` on for the
+  SQLite CI lane via ``.github/workflows/test.yml`` and ships
+  [`docs/development/test-suite.md`](docs/development/test-suite.md)
+  documenting the bench script, the env var, and the safe-edit
+  rules; PG xdist is deferred (workers can't share a live PG
+  database without per-worker DB provisioning).  31.5 closes the
+  phase with the CHANGELOG / ROADMAP / memory entry.  ``ruff``,
+  ``ruff format --check``, ``pyright``, and ``mkdocs build
+  --strict`` all clean on Phase-31-touched files (the four
+  pre-existing pyright errors in ``conftest.py`` and the lint
+  errors elsewhere in the repo are unchanged).
+- **Phase 30 closed (2026-05-05)** — Postgres production-readiness
+  for the audit lake.  Six sub-sprints close the cliffs that
+  stood between "swap a URL and pray" and "production default".
+  30.0 adds a CI Postgres lane in ``.github/workflows/test.yml``
+  spinning up ``postgres:17-alpine``, teaches ``alembic env.py``
+  to honour ``POINTLESSQL_DB_URL`` for shell-driven runs, and
+  fixes three pre-existing dialect bugs that broke
+  ``alembic upgrade head`` against fresh PG (literal
+  ``DEFAULT 0``/``1`` boolean defaults in 28.1a / 29.3 / 13.11
+  / 18 migrations, plus the Phase-18.7 ``audit_search``
+  migration's time-travel import of the workspace-aware
+  ``audit_fts`` module — the migration now inlines a snapshot of
+  the original SQL).  30.1 ships the PG-side full-text search
+  (alembic ``hh8j0l2n4p6r``: ``audit_search_index`` table with a
+  generated ``tsvector`` + GIN index, five PL/pgSQL trigger
+  sets) so ``/api/audit/search`` returns ``available=true`` on PG
+  with the same ``(snippet, rank)`` envelope; ``audit_fts.py``
+  becomes a dialect router behind unchanged public surface.  30.2
+  swaps Grafana onto the built-in PostgreSQL datasource via a new
+  ``docker-compose.grafana.postgres.yml`` overlay + a
+  dialect-clean dashboard JSON in ``grafana/postgres-dashboards/``
+  (Panel 5's reject-rate baseline rewritten with PG
+  ``INTERVAL '7 days'`` arithmetic).  30.3 ships the
+  ``pointlessql migrate-to-postgres`` CLI: refuses non-empty
+  targets, runs alembic upgrade head, bulk-copies tables in a
+  hard-coded FK-respecting order, syncs PG sequences past the
+  largest copied id, rebuilds the FTS index, and verifies row
+  counts plus a 1%-sample-hash for tables ≥100 rows.  30.4 adds
+  four pool / timeout knobs to ``DatabaseSettings`` (``pool_size``,
+  ``max_overflow``, ``pool_recycle_seconds``, ``statement_timeout_ms``)
+  + a per-connection ``SET statement_timeout`` event listener +
+  the ``docs/admin/postgres-deployment.md`` ops playbook
+  (autovacuum hints for ``lineage_row_edges`` /
+  ``agent_run_tool_calls`` / ``lineage_value_changes``, backup
+  via ``pg_dump --format=custom``, monitoring signals).  30.5
+  ships ``scripts/seed_audit_lake.py`` (deterministic synthetic
+  load at 10 k / 100 k / 1 M scales, runs against either
+  backend) + the ``docs/admin/performance.md`` baseline
+  template.  Phase 19.0.1's deferral is closed — Postgres is
+  now a first-class deployment target; SQLite stays the laptop
+  default per the Decision-C dual-track pick.
+
+- **Phase 29 closed (2026-05-05)** — workspace polish pass.  Five
+  sub-sprints fix the cross-cutting tenancy gaps left after Phase
+  28 shipped soft isolation: 29.1 routes audit-sinks per workspace
+  via a new ``workspace_filter`` JSON column on ``audit_sinks``;
+  29.2 mirrors the same shape on ``review_destinations`` plus adds
+  ``agent_reviews.workspace_id`` so reviews carry the routing key;
+  29.3 wires OIDC group → workspace + scope mapping via the new
+  ``POINTLESSQL_OIDC_GROUP_MAP_RAW`` env var (parser fails loud on
+  malformed input; ``users.is_supervisor`` / ``is_auditor`` /
+  ``oidc_groups_json`` columns let session-cookie callers hold the
+  scopes API keys already could); 29.4 adds a ``$workspace``
+  template variable to the Grafana audit dashboard with the
+  ``(0 IN ($workspace) OR <table>.workspace_id IN ($workspace))``
+  predicate pattern so "All" stays the default.  Three alembic
+  migrations (``ee5g7i9k1m3o``, ``ff6h8j0l2n4p``, ``gg7i9k1m3o5q``);
+  ``system_keys`` deliberately stays install-global so PII anomaly
+  aggregation still aligns across tenants.
+
+- **Phase 23 closed (2026-05-05)** — contextual help-popovers
+  rolled out across the entire UI.  ~40 new slugs land across
+  catalog tree + table-detail (23.1), models index + detail
+  (23.2), audit cockpit + branches + home (23.3), SQL editor +
+  admin (23.4), plus a doc-link sweep + registry/template
+  cross-check (23.5).  Phase 23 closes with ~50 popovers
+  total, every "Learn more →" pointing at a real mkdocs page.
+
 - **Phase 28 closed (2026-05-05)** — soft workspace isolation in
   the Databricks Unity-Catalog mental model: catalogs stay global,
   workspaces own audit/jobs/saved-queries/recents.  9 sub-sprints
@@ -24,6 +162,186 @@ All notable changes to this project will be documented in this file.
   Today's instances stay sub-100ms on the live aggregator.
 
 ### Added
+
+- **Sprint 30.5 — Phase 30 performance baseline + close-out.**
+  ``scripts/seed_audit_lake.py`` seeds deterministic synthetic
+  audit-lake data at 10k / 100k / 1M scales against either
+  backend (``POINTLESSQL_DB_URL``-driven).
+  ``docs/admin/performance.md`` ships as a measurement template:
+  the operator runs the seed + their own queries on their
+  hardware and fills in the table.  ``mkdocs build --strict``
+  passes with the new admin pages.
+
+- **Sprint 30.4 — production tuning + ops docs.**
+  ``DatabaseSettings`` grew four PG-aware fields:
+  ``pool_size`` (5), ``max_overflow`` (10),
+  ``pool_recycle_seconds`` (1800),
+  ``statement_timeout_ms`` (30 000).  ``init_db()`` threads
+  pool sizing into ``create_engine`` for PG and registers a
+  per-connection ``SET statement_timeout`` event listener
+  mirroring the existing SQLite-PRAGMA hook.
+  ``docs/admin/postgres-deployment.md`` (~3 pages) covers the
+  pool-sizing formula for a 4-worker fleet, autovacuum hints
+  for the high-churn audit tables, backup/restore via
+  ``pg_dump --format=custom`` and ``pg_restore --jobs=4``, and
+  the monitoring signals operators should alert on.
+  ``docs/reference/configuration.md`` documents the four new
+  env vars.
+
+- **Sprint 30.3 — ``pointlessql migrate-to-postgres`` CLI.**
+  New ``pointlessql/cli/migrate_to_postgres.py`` module wired
+  into the existing Typer surface.  Validates dialects (refuses
+  non-SQLite source / non-PG target), runs ``alembic upgrade
+  head`` against the target, refuses to overwrite a target with
+  rows beyond the bootstrap workspace, bulk-copies in a
+  hard-coded FK-respecting order via SQLAlchemy core (streamed
+  ``--batch-size`` chunks), syncs every PG ``serial`` sequence
+  past the largest copied id, rebuilds the Sprint-30.1 FTS
+  index from the freshly-copied source rows, and verifies
+  per-table row counts plus a 1%-sample-hash for tables with
+  ≥100 rows.  ``--dry-run`` skips writes and prints the plan +
+  source row counts.  Three unit tests (validation + dry-run);
+  two ``@pytest.mark.postgres`` round-trip / refuse-non-empty
+  tests run in the 30.0 PG CI lane.
+
+- **Sprint 30.2 — Grafana on Postgres.**
+  New ``docker-compose.grafana.postgres.yml`` overlay swaps the
+  unsigned ``frser-sqlite-datasource`` plugin for Grafana's
+  built-in PostgreSQL datasource.  Provisioning split into
+  ``grafana/postgres-provisioning/`` (datasources +
+  dashboards) and dialect-clean dashboard JSON shipped at
+  ``grafana/postgres-dashboards/pointlessql_audit.json``.  Panel
+  5's rolling 7-day reject baseline rewritten from SQLite
+  ``date(d.day, '-7 days')`` modifier syntax to PG
+  ``INTERVAL '7 days'`` arithmetic; ``COUNT(*)::float8`` and
+  ``cost_est::float8`` casts replace ``CAST(... AS REAL)`` so the
+  rendered numbers come back without REAL-cast drift on PG.
+  Datasource UID ``pointlessql-postgres`` keeps panels stable
+  across reprovisioning.  The two Grafana overlays
+  (``docker-compose.grafana.yml`` for SQLite,
+  ``docker-compose.grafana.postgres.yml`` for PG) are mutually
+  exclusive.  ``docs/integrations/grafana.md`` gains a "Running
+  with Postgres" section and drops the Phase-19.0.1 deferral
+  prose.
+
+- **Sprint 30.1 — Postgres FTS via tsvector + GIN.**
+  New alembic ``hh8j0l2n4p6r_audit_search_pg_fts`` (PG-only;
+  SQLite no-ops) creates ``audit_search_index`` with a
+  generated ``tsvector`` column and a GIN index on it.  Five
+  PL/pgSQL trigger functions (one per source axis: ``runs``,
+  ``ops``, ``queries``, ``tool_calls``, ``audit_log``) keep the
+  index in sync with INSERT / UPDATE / DELETE on the source
+  tables.  ``pointlessql/services/audit_fts.py`` refactored
+  into a dialect router: ``is_available``, ``search``,
+  ``install_index``, ``rebuild_index`` keep their public
+  signatures; SQLite path is unchanged, PG path uses
+  ``WHERE text_search @@ plainto_tsquery('simple', :query)`` +
+  ``ts_rank`` ordering + ``ts_headline('simple', text_corpus,
+  …, 'StartSel=<mark>, StopSel=</mark>')`` snippet rendering.
+  Both backends return the same ``(snippet, rank,
+  workspace_id, …)`` rowshape; ``/api/audit/search`` no longer
+  returns ``available=false`` on PG.  The
+  ``audit_search.html`` template's "FTS not provisioned" copy
+  drops the SQLite-specific deferral language.
+
+- **Sprint 30.0 — CI Postgres lane + dialect drift fence.**
+  ``.github/workflows/test.yml`` grew a parallel ``postgres``
+  job that spins up ``postgres:17-alpine`` as a service and
+  re-runs the full pytest suite against PG via
+  ``TEST_DATABASE_URL``.  ``pointlessql/alembic/env.py`` now
+  honours ``POINTLESSQL_DB_URL`` so shell-driven
+  ``alembic upgrade head`` no longer hits the hard-coded
+  SQLite path in ``alembic.ini``.  ``tests/conftest.py``'s
+  ``_seed_default_workspace`` helper bumps the PG
+  ``workspaces_id_seq`` past the explicit ``id=1`` insert so
+  subsequent INSERTs don't collide.  Three pre-existing
+  dialect bugs fixed: ``BOOLEAN DEFAULT 0`` literals replaced
+  with ``DEFAULT false`` / ``true`` (PG rejects integer-vs-
+  boolean type mismatch) in ``j0e1f2a3b4c5``,
+  ``k1f2a3b4c5d6``, ``gg7i9k1m3o5q``, ``l2g3a4b5c6d7``,
+  ``m3h4i5j6k7l8`` migrations + ``api_keys.auditor`` and
+  ``users.is_supervisor`` / ``is_auditor`` model defaults.  The
+  Phase-18.7 ``y5u7v9w1x3z5_audit_search_fts`` and Phase-28's
+  ``aa1c3e5g7i9k`` / ``bb2d4f6h8j0l`` migrations now inline
+  the FTS5 SQL as a chronological snapshot rather than
+  importing from the live ``audit_fts`` module — the live
+  module evolved past the schema state at those migration
+  points and replaying on a fresh DB tripped "no such column:
+  workspace_id".  Result: ``alembic upgrade head`` runs clean
+  on a fresh DB on both SQLite and PG; ``alembic check``
+  reports no drift on either.
+
+- **Sprint 29.5 — Phase 29 polish + close-out.**  ``ruff format``
+  + ``ruff check`` clean across every Phase-29-touched file;
+  ``alembic check`` confirms zero ORM↔migration drift across the
+  three new migrations; ``mkdocs build --strict`` passes with the
+  new ``docs/admin/oidc-group-map.md`` page wired into the Admin
+  nav and the new "Filtering by workspace" section on
+  ``docs/integrations/grafana.md``.
+
+- **Sprint 29.4 — Grafana ``$workspace`` template variable.**
+  ``grafana/dashboards/pointlessql_audit.json`` grew a multi-select
+  ``workspace`` query variable populated from the ``workspaces``
+  table.  Each panel SQL grew a guard predicate
+  ``AND (0 IN ($workspace) OR <table>.workspace_id IN ($workspace))``
+  so ``allValue=0`` maps to a true short-circuit (full cross-
+  workspace view) while specific picks filter via
+  ``IN``.  The smoke-test panel ("Datasource health") stays global
+  on purpose.  ``docs/integrations/grafana.md`` documents the
+  filter behaviour, the ``var-workspace=<id>`` URL override, and
+  why Grafana queries don't generate audit-of-audit trails.
+
+- **Sprint 29.3 — OIDC group → workspace + scope mapping.**  New
+  alembic ``gg7i9k1m3o5q_user_scope_columns`` adds
+  ``users.is_supervisor`` / ``is_auditor`` (mirrors
+  ``ApiKey.supervisor`` / ``auditor`` on the session-cookie path)
+  and ``users.oidc_groups_json`` (audit-visibility snapshot of the
+  most recent groups claim).  ``OIDCSettings`` gains
+  ``scope`` / ``groups_claim_name`` / ``group_map_raw`` env vars
+  with a fail-loud parser at settings construction; the
+  authorize-URL builder now threads the configured scope through.
+  ``find_or_create_oidc_user`` extracts the groups claim, unions
+  scope grants across every matching mapping, picks the first
+  matching ``ws=`` as the user's ``default_workspace_id``, and
+  re-resolves on every login so IdP group changes propagate
+  without a manual refresh.  ``require_supervisor`` /
+  ``require_auditor`` now honour the new ``is_supervisor`` /
+  ``is_auditor`` flags on the session-cookie path while keeping
+  the asymmetric privilege ladder (auditor passes
+  ``require_supervisor``; supervisor does NOT pass
+  ``require_auditor``).  New
+  ``docs/admin/oidc-group-map.md`` documents the env-var format,
+  worked example, and limitations.  20 new pytest tests at
+  ``tests/test_oidc_group_map.py``.
+
+- **Sprint 29.2 — Per-workspace review-destination routing.**  New
+  alembic ``ff6h8j0l2n4p_review_destination_workspace_filter`` adds
+  ``agent_reviews.workspace_id`` (FK to ``workspaces``, defaults to
+  install-default 1) plus the ``review_destinations.workspace_filter``
+  JSON column.  ``dispatch_review`` reads ``review.workspace_id``
+  off the row and consults the destination filter — null filter
+  preserves install-global semantics; ``[1]`` excludes
+  ``workspace_id=2``.  ``POST /api/agent-reviews`` now reads
+  ``request.state.workspace_id`` to populate ``AgentReview.workspace_id``.
+  ``POST`` / ``PATCH`` on ``/api/admin/review-destinations``
+  validate that listed workspace IDs exist (rejects unknown IDs
+  with 400 so a typo never silently blackholes deliveries).  6 new
+  pytest tests at
+  ``tests/test_review_destination_workspace_filter.py``.
+
+- **Sprint 29.1 — Per-workspace audit-sink routing.**  New
+  alembic ``ee5g7i9k1m3o_audit_sink_workspace_filter`` adds
+  ``audit_sinks.workspace_filter`` (JSON-encoded list of allowed
+  workspace IDs; ``NULL`` keeps install-global fan-out for
+  back-compat).  ``dispatch_to_sinks`` gained an optional
+  ``workspace_id`` kwarg; ``emit_governance_event`` threads its
+  workspace context through.  The synthetic
+  ``/api/admin/audit-sinks/{id}/test`` flow keeps bypassing both
+  the event-type and workspace filters so admins can ping a sink
+  without picking a tenant.  ``POST`` / ``PATCH`` validate listed
+  workspace IDs against the live ``workspaces`` table; ``GET``
+  returns the new field on every row.  6 new pytest tests at
+  ``tests/test_audit_sink_workspace_filter.py``.
 
 - **Sprint 28.8 — documentation + ADR-0008 + ROADMAP positioning.**
   New ``docs/concepts/workspaces.md`` (concept), new
@@ -587,6 +905,78 @@ All notable changes to this project will be documented in this file.
   navigation.
 
 ### Added
+
+- **Sprint 23.5 — Phase 23 polish + doc-link sweep.**  Closes
+  Phase 23.  No new copy.  ``pointlessql/web/help.py`` —
+  re-targeted eight stale ``learn_more`` paths
+  (``/concepts/agent-runs/`` →
+  ``/concepts/agent-supervision/``; ``/concepts/operations/`` →
+  ``/concepts/agent-supervision/``; ``/concepts/model-promotion/``
+  → ``/concepts/audit-trail/``; ``/concepts/delta-branching/`` →
+  ``/concepts/architecture/``; ``/concepts/notebooks/`` →
+  ``None``; ``/concepts/jobs/`` → ``/guides/jobs/``;
+  ``/concepts/alerts/`` → ``None``; ``/concepts/mlflow/`` →
+  ``/concepts/architecture/``) so every "Learn more" link lands
+  on a real mkdocs page.  ``tests/test_help_registry.py`` — two
+  new sweep tests (``test_every_template_slug_resolves_in_registry``,
+  ``test_every_registry_slug_used_in_some_template``) that
+  cross-check the ~50-slug registry against ``info('<slug>')``
+  calls in templates so a stale slug or a typo surfaces in CI.
+
+- **Sprint 23.4 — SQL editor + admin help popovers (10 slugs).**
+  Three SQL anchors (``sql.run-modes`` on the editor header,
+  ``sql.saved-queries`` on the Save button, ``sql.cost-gate`` on
+  the Explain button) plus seven admin anchors covering external
+  writes (``admin.external-writes-review``), audit sinks
+  (``admin.audit-sinks``), workspace pins
+  (``admin.workspace-pins``), api-key scopes / system keys /
+  rate-limit tiers on the Credentials page
+  (``admin.api-key-scopes``, ``admin.system-keys``,
+  ``admin.rate-limit-tiers``), and agent reviews on the review
+  detail page (``admin.agent-reviews``).  Pinned by
+  ``test_sprint_23_4_sql_admin_anchors_present``.
+
+- **Sprint 23.3 — Audit cockpit + branches + home help popovers
+  (12 slugs).**  Twelve new anchors light up the supervision
+  surfaces: ``audit.what-is-an-anomaly`` /
+  ``audit.severity-warn-vs-critical`` / ``audit.anomaly-actions``
+  on the inbox header / severity filter / Ack column;
+  ``audit.fts-query-syntax`` on the FTS Query input;
+  ``audit.principal-summary`` on the by-table Principal column;
+  ``audit.cross-workspace-lens`` and ``audit.read-kind`` on the
+  saved-queries cockpit page; ``branches.preview-tab`` /
+  ``branches.promote-vs-discard`` / ``branches.cleanup-loop`` on
+  the branch-detail Preview button / Danger-zone header /
+  Strategy field; ``home.what-is-the-cockpit`` and
+  ``home.anomaly-cards`` on the home page Welcome heading and
+  anomaly banner.  Pinned by
+  ``test_sprint_23_3_audit_branches_home_anchors_present``.
+
+- **Sprint 23.2 — Models index + detail help popovers (6 slugs).**
+  Six new anchors across the model-registry surface:
+  ``models.what-is-the-registry`` on the ``/models`` page header,
+  ``models.versions-table`` on the new card-header inside the
+  Versions tab, ``models.linked-hermes-runs`` on the Overview
+  cross-link card, ``models.inference-lineage`` on the
+  Prediction-tables card inside the Lineage tab,
+  ``models.mlflow-vs-pointlessql`` on the MLflow tab intro line,
+  and ``models.compare-versions`` on the v1↔v2 compare-page
+  header.  Pinned by ``test_sprint_23_2_models_anchors_present``.
+
+- **Sprint 23.1 — Catalog + table-detail help popovers (8 slugs).**
+  Eight new ``bi-info-circle`` anchors land where a newcomer first
+  meets table-shape concepts: the sidebar **Catalog** heading
+  (``catalog.what-is-a-catalog``), the schema-detail page header
+  (``schemas.what-is-a-schema``), and five spots on the
+  table-detail page — Type badge / Properties card
+  (``tables.external-vs-managed``,
+  ``tables.comments-vs-properties``), Preview card + "View at"
+  selector (``tables.row-lineage-badge``,
+  ``tables.time-travel-button``), Columns card + Column-statistics
+  card (``tables.column-trace-badge``,
+  ``tables.column-statistics``).  Plus the Type column header on
+  the schema-detail tables list.  ``tests/test_help_registry.py``
+  pins the eight slugs so a rename surfaces in CI.
 
 - **Sprint 23.0 — Contextual help-popover infrastructure + 5 hero
   anchors.**  Small `bi-info-circle` buttons next to high-value

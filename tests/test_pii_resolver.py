@@ -170,6 +170,7 @@ def _seed_value_change() -> tuple[str, int, str, str, str, str, str]:
                 finished_at=now,
             )
         )
+        s.flush()
         op = AgentRunOperation(
             agent_run_id=run_id,
             ordinal=1,

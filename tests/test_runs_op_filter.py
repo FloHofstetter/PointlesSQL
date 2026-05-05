@@ -70,6 +70,7 @@ def _seed_run_with_two_ops(
             finished_at=now,
         )
         s.add(run)
+        s.flush()
         # Source row — required so /runs/{id} doesn't 404.
         s.add(
             AgentRunSource(

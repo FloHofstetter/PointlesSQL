@@ -197,7 +197,7 @@ class QueryHistory(Base):
     request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     chart_config: Mapped[str | None] = mapped_column(Text, nullable=True)
     agent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    read_kind: Mapped[str] = mapped_column(String(20), nullable=False, server_default="sql_execute")
+    read_kind: Mapped[str] = mapped_column(String(32), nullable=False, server_default="sql_execute")
 
 
 class QueryHistoryTable(Base):

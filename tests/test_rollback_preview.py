@@ -70,6 +70,7 @@ def _seed_run_op(
                 started_at=now,
             )
         )
+        session.flush()
         op = AgentRunOperation(
             agent_run_id=run_id,
             ordinal=1,
@@ -386,6 +387,7 @@ def _seed_multi_op_via_app(
                 started_at=now,
             )
         )
+        session.flush()
         for ordinal, before, after, op_name in ops:
             session.add(
                 AgentRunOperation(

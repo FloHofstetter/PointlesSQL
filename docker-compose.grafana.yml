@@ -10,10 +10,12 @@
 # writes, top-mutating principals, cost-gate denials, tool-call
 # latency, EXPLAIN-cost histogram).
 #
-# SQLite-only.  Postgres deployments are deferred to Sprint 19.0.1
-# because dialect divergence (no ``percentile_cont`` / ``date_trunc``
-# in SQLite) makes a templated dual-mode dashboard cost more than
-# the XS sizing of this sprint allows.
+# SQLite path.  Postgres deployments use docker-compose.grafana.postgres.yml
+# instead — Sprint 30.2 ships a separate overlay with Grafana's
+# built-in PG datasource and a dialect-clean dashboard JSON, since
+# the frser-sqlite-datasource ``rawQueryText`` field doesn't
+# translate to the PG datasource's ``rawSql`` field at the JSON
+# level.  The two overlays are mutually exclusive.
 #
 # Anonymous viewer is enabled so ``http://localhost:3000`` lands on
 # the dashboard with no login.  Admin password (default ``admin``)

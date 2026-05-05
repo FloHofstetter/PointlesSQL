@@ -1,0 +1,42 @@
+# Compose override — Grafana audit dashboard on Postgres (Sprint 30.2).
+#
+# Usage:
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.postgres.yml \
+#     -f docker-compose.grafana.postgres.yml up -d
+#
+# Replaces the SQLite Grafana wiring from docker-compose.grafana.yml
+# with Grafana's built-in PostgreSQL datasource (no third-party
+# plugin needed) and a dialect-clean dashboard JSON.  The two
+# overlays are mutually exclusive — picking PG drops the
+# frser-sqlite-datasource plugin and the SQLite file mount.
+#
+# The PG dashboard ships in grafana/postgres-dashboards/ and the
+# matching datasource provisioning lives in
+# grafana/postgres-provisioning/datasources/.  See
+# docs/integrations/grafana.md for the operator playbook.
+
+services:
+  grafana:
+    image: grafana/grafana-oss:latest
+    environment:
+      # Built-in PG datasource — no plugin install needed.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+    ports:
+      - "${GRAFANA_HOST_PORT:-3000}:3000"
+    volumes:
+      - ./grafana/postgres-provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/postgres-dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pointlessql:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  grafana_data:

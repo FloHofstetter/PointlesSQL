@@ -171,6 +171,8 @@ def _load_user_info(session: Session, user_id: int) -> UserInfo | None:
         email=user.email,
         display_name=user.display_name,
         is_admin=user.is_admin,
+        is_supervisor=bool(user.is_supervisor),
+        is_auditor=bool(user.is_auditor),
     )
 
 

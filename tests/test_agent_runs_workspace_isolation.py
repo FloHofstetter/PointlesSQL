@@ -348,15 +348,27 @@ async def test_audit_search_route_uses_request_workspace(
 
 
 def test_fts_vtable_carries_workspace_id_column() -> None:
-    """The audit_search vtable has workspace_id as a 6th UNINDEXED column."""
-    from sqlalchemy import text as _text
+    """The audit_search vtable / index table has workspace_id as a column.
+
+    SQLite uses an FTS5 vtable named ``audit_search``; PG uses a
+    plain ``audit_search_index`` table with a tsvector + GIN index
+    (Phase 30, migration ``hh8j…``).  Both ship workspace_id.
+    """
+    from sqlalchemy import inspect as _inspect
 
     from pointlessql.services import audit_fts as _audit_fts
 
     _audit_fts.install_index(_factory())
     with _factory()() as session:
-        result = session.execute(_text("PRAGMA table_info(audit_search)")).all()
-    cols = [r[1] for r in result]
+        bind = session.get_bind()
+        if bind.dialect.name == "postgresql":
+            insp = _inspect(bind)
+            cols = [c["name"] for c in insp.get_columns("audit_search_index")]
+        else:
+            from sqlalchemy import text as _text
+
+            result = session.execute(_text("PRAGMA table_info(audit_search)")).all()
+            cols = [r[1] for r in result]
     assert "workspace_id" in cols
 
 

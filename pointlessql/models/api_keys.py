@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -72,7 +72,7 @@ class ApiKey(Base):
     secret_prefix: Mapped[str] = mapped_column(String(8), nullable=False)
     supervisor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     auditor: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="0"
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_by_user_id: Mapped[int | None] = mapped_column(

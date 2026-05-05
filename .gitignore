@@ -74,3 +74,10 @@ notebooks/full_stack_demo_data/
 pointlessql.db
 pointlessql.db-shm
 pointlessql.db-wal
+
+# Local agent / IDE state — Claude Code workspace, never committed.
+.claude/
+
+# Phase 31 local benchmarking output — ``scripts/bench_test_suite.sh``
+# writes timestamped wall-clock files here.  Per-machine, never committed.
+.bench/

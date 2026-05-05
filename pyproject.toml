@@ -115,6 +115,12 @@ pydocstyle.convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+# Phase 31.1/31.3 — ``tests/conftest.py`` sets env vars and rebinds
+# the bcrypt hasher *before* importing the application, which trips
+# the "imports at top of file" / "import block sorting" rules even
+# though the ordering is load-bearing.  E402 + I001 are silenced for
+# the conftest only; the real conftest body still gets full lint.
+"tests/conftest.py" = ["D", "E402", "I001"]
 # Notebooks use jupytext percent format with markdown cells carrying
 # the prose — module-level Python docstrings would duplicate the
 # first markdown cell.  Sprint 13.5's agent_drift_monitor.py is the

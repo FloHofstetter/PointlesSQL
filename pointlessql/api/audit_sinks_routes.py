@@ -35,15 +35,14 @@ from sqlalchemy import select
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+from pointlessql.models import Workspace
 from pointlessql.models.audit_sinks import SINK_TYPES, AuditSink, GovernanceEvent
 
 router = APIRouter(tags=["admin-audit-sinks"])
 
 _MAX_NAME = 64
 _MAX_CONFIG_BYTES = 8192
-_SENSITIVE_KEYS: frozenset[str] = frozenset(
-    {"hmac_secret", "secret_access_key", "session_token"}
-)
+_SENSITIVE_KEYS: frozenset[str] = frozenset({"hmac_secret", "secret_access_key", "session_token"})
 
 
 def _redact_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -72,7 +71,9 @@ def _serialize(row: AuditSink) -> dict[str, Any]:
 
     Returns:
         ``{id, name, type, config (redacted), is_active,
-        event_types, created_at}``.
+        event_types, workspace_filter, created_at}``.
+        ``workspace_filter`` is ``None`` for install-global sinks
+        (the default) or a list of workspace IDs (Phase 29.1).
     """
     try:
         cfg = json.loads(row.config_json or "{}")
@@ -82,6 +83,18 @@ def _serialize(row: AuditSink) -> dict[str, Any]:
         event_types = json.loads(row.event_types_json) if row.event_types_json else []
     except json.JSONDecodeError:
         event_types = []
+    workspace_filter: list[int] | None
+    if row.workspace_filter:
+        try:
+            decoded_ws = json.loads(row.workspace_filter)
+        except json.JSONDecodeError:
+            decoded_ws = None
+        if isinstance(decoded_ws, list) and decoded_ws:
+            workspace_filter = [int(x) for x in decoded_ws]
+        else:
+            workspace_filter = None
+    else:
+        workspace_filter = None
     return {
         "id": row.id,
         "name": row.name,
@@ -89,6 +102,7 @@ def _serialize(row: AuditSink) -> dict[str, Any]:
         "config": _redact_config(cfg if isinstance(cfg, dict) else {}),
         "is_active": bool(row.is_active),
         "event_types": event_types if isinstance(event_types, list) else [],
+        "workspace_filter": workspace_filter,
         "created_at": row.created_at.astimezone(datetime.UTC).isoformat(),
     }
 
@@ -146,9 +160,7 @@ def _validate_config(value: Any, *, sink_type: str) -> dict[str, Any]:
     }[sink_type]
     missing = [k for k in required if not decoded.get(k)]
     if missing:
-        raise ValidationError(
-            f"{sink_type} config requires non-empty {sorted(missing)} keys"
-        )
+        raise ValidationError(f"{sink_type} config requires non-empty {sorted(missing)} keys")
     return decoded
 
 
@@ -164,6 +176,43 @@ def _validate_event_types(value: Any) -> list[str]:
             raise ValidationError("event_types entries must be non-empty strings")
         out.append(item.strip())
     return out
+
+
+def _validate_workspace_filter(
+    value: Any,
+    *,
+    known_workspace_ids: set[int],
+) -> list[int] | None:
+    """Return *value* as a list of int workspace IDs, or ``None``.
+
+    Args:
+        value: Caller-supplied filter.  ``None`` or an empty list →
+            install-global semantics (return ``None``).  Otherwise a
+            list of ints; each must already exist in ``workspaces``.
+        known_workspace_ids: Set of IDs that exist at validation time
+            — admin pre-fetched once per request to bound DB hits.
+
+    Returns:
+        Normalised list of unique ints (sorted), or ``None`` when the
+        caller asked for the install-global default.
+
+    Raises:
+        ValidationError: On bad shape or unknown workspace IDs.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValidationError("workspace_filter must be a list of integers or null")
+    if not value:
+        return None
+    out: set[int] = set()
+    for item in value:
+        if isinstance(item, bool) or not isinstance(item, int):
+            raise ValidationError("workspace_filter entries must be integers")
+        if item not in known_workspace_ids:
+            raise ValidationError(f"workspace_filter references unknown workspace_id={item}")
+        out.add(item)
+    return sorted(out)
 
 
 @router.get("/api/admin/audit-sinks")
@@ -210,12 +259,17 @@ async def api_admin_create_audit_sink(
         existing = session.scalar(select(AuditSink).where(AuditSink.name == name))
         if existing is not None:
             raise ValidationError(f"audit_sink with name {name!r} already exists")
+        known_ws = set(session.scalars(select(Workspace.id)).all())
+        workspace_filter = _validate_workspace_filter(
+            body.get("workspace_filter"), known_workspace_ids=known_ws
+        )
         row = AuditSink(
             name=name,
             type=sink_type,
             config_json=json.dumps(config),
             is_active=is_active,
             event_types_json=json.dumps(event_types) if event_types else None,
+            workspace_filter=json.dumps(workspace_filter) if workspace_filter else None,
             created_at=now,
         )
         session.add(row)
@@ -226,7 +280,12 @@ async def api_admin_create_audit_sink(
         request,
         "audit_sink.created",
         f"audit_sink:{row.name}",
-        {"type": sink_type, "is_active": is_active, "event_types": event_types},
+        {
+            "type": sink_type,
+            "is_active": is_active,
+            "event_types": event_types,
+            "workspace_filter": workspace_filter,
+        },
     )
     return _serialize(row)
 
@@ -255,6 +314,12 @@ async def api_admin_update_audit_sink(
         if "event_types" in body:
             event_types = _validate_event_types(body["event_types"])
             row.event_types_json = json.dumps(event_types) if event_types else None
+        if "workspace_filter" in body:
+            known_ws = set(session.scalars(select(Workspace.id)).all())
+            ws_filter = _validate_workspace_filter(
+                body["workspace_filter"], known_workspace_ids=known_ws
+            )
+            row.workspace_filter = json.dumps(ws_filter) if ws_filter else None
         if "config" in body:
             existing_cfg: dict[str, Any] = {}
             try:

@@ -87,7 +87,7 @@
  <dt class="col-sm-3 text-muted">Full name</dt>
  <dd class="col-sm-9 font-monospace">{{ catalog_name }}.{{ schema_name }}.{{ table.name }}</dd>
 
- <dt class="col-sm-3 text-muted">Type</dt>
+ <dt class="col-sm-3 text-muted">Type{{ info('tables.external-vs-managed') }}</dt>
  <dd class="col-sm-9"><span class="badge bg-primary">{{ table.table_type }}</span></dd>
 
  <dt class="col-sm-3 text-muted">Format</dt>
@@ -116,7 +116,7 @@
 
  {% if table.properties %}
  <div class="card mb-4">
- <div class="card-header">Properties</div>
+ <div class="card-header">Properties{{ info('tables.comments-vs-properties') }}</div>
  <div class="card-body p-0">
  <table class="table table-sm mb-0">
  <tbody>
@@ -159,10 +159,10 @@
  x-data="tablePreview('{{ catalog_name }}.{{ schema_name }}.{{ table_name }}')"
  x-init="load(); loadVersions();">
  <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
- <span>Preview</span>
+ <span>Preview{{ info('tables.row-lineage-badge') }}</span>
  <div class="d-flex align-items-center gap-2 flex-wrap">
  <label class="text-muted small mb-0" for="version-select-{{ table_name }}">
- <i class="bi bi-clock-history me-1"></i>View at
+ <i class="bi bi-clock-history me-1"></i>View at{{ info('tables.time-travel-button') }}
  </label>
  <select id="version-select-{{ table_name }}"
  class="form-select form-select-sm"
@@ -260,7 +260,7 @@
  <div class="card"
  {% if _col_search %}x-data="listTable({searchPlaceholder: 'Search columns…', initialSort: {key: 'position', dir: 'asc'}, mobileSort: true})"{% endif %}>
  <div class="card-header d-flex align-items-center justify-content-between">
- <span>Columns</span>
+ <span>Columns{{ info('tables.column-trace-badge') }}</span>
  <span class="text-muted small">{{ table.columns|length }} total</span>
  </div>
  {% if _col_search %}
@@ -324,7 +324,7 @@
 
  <div class="card mt-4" x-data="tableStats()" x-init="init()">
  <div class="card-header d-flex align-items-center justify-content-between">
- <span>Column statistics</span>
+ <span>Column statistics{{ info('tables.column-statistics') }}</span>
  <div class="d-flex gap-2 align-items-center">
  <span class="text-muted small"
  x-show="deltaVersion !== null"

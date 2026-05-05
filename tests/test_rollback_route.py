@@ -116,6 +116,7 @@ def _seed_run_op(
                 started_at=now,
             )
         )
+        session.flush()
         op = AgentRunOperation(
             agent_run_id=run_id,
             ordinal=1,

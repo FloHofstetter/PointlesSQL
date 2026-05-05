@@ -94,12 +94,61 @@ def _hash_url(url: str) -> str:
     return "sha256:" + hashlib.sha256(url.encode("utf-8")).hexdigest()
 
 
-def _select_destinations(session: Session, *, severity: str) -> list[ReviewDestination]:
-    """Return active destinations whose min_severity gate passes for *severity*.
+def _decode_workspace_filter(dest: ReviewDestination) -> set[int] | None:
+    """Decode the optional workspace-id allow-list (Phase 29.2).
+
+    Args:
+        dest: ORM row to read.
+
+    Returns:
+        ``None`` when every workspace's reviews fire this destination
+        (the install-global default), else a set of allowed
+        ``workspace_id`` ints.  Malformed JSON, empty list, or null
+        column all map to ``None`` so a typo never silently
+        blackholes deliveries — fail-open for routing.
+    """
+    raw = dest.workspace_filter
+    if not raw:
+        return None
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning(
+            "review_destinations[%s].workspace_filter is not valid JSON; allowing all workspaces",
+            dest.id,
+        )
+        return None
+    if not isinstance(decoded, list) or not decoded:
+        return None
+    out: set[int] = set()
+    for item in decoded:
+        try:
+            out.add(int(item))
+        except TypeError, ValueError:
+            logger.warning(
+                "review_destinations[%s].workspace_filter entry %r is not an int; ignoring",
+                dest.id,
+                item,
+            )
+    return out or None
+
+
+def _select_destinations(
+    session: Session,
+    *,
+    severity: str,
+    workspace_id: int | None = None,
+) -> list[ReviewDestination]:
+    """Return active destinations whose severity + workspace filter pass.
 
     Args:
         session: Open SQLAlchemy session.
         severity: The review's severity (``ok`` / ``warn`` / ``critical``).
+        workspace_id: Workspace the review belongs to.  When supplied,
+            destinations with a non-null ``workspace_filter`` that
+            excludes this id are skipped (Phase 29.2).  ``None``
+            disables workspace filtering (used by callers with
+            install-global semantics).
 
     Returns:
         Detached destination rows in primary-key order.
@@ -112,7 +161,16 @@ def _select_destinations(session: Session, *, severity: str) -> list[ReviewDesti
             .order_by(ReviewDestination.id.asc())
         ).all()
     )
-    return [r for r in rows if _SEVERITY_RANK[r.min_severity] <= review_rank]
+    out: list[ReviewDestination] = []
+    for row in rows:
+        if _SEVERITY_RANK[row.min_severity] > review_rank:
+            continue
+        if workspace_id is not None:
+            allow_ws = _decode_workspace_filter(row)
+            if allow_ws is not None and workspace_id not in allow_ws:
+                continue
+        out.append(row)
+    return out
 
 
 async def dispatch_review(
@@ -141,7 +199,9 @@ async def dispatch_review(
         if review is None:
             raise ValueError(f"AgentReview id={review_id} not found")
         envelope = build_envelope(review)
-        destinations = _select_destinations(session, severity=review.severity)
+        destinations = _select_destinations(
+            session, severity=review.severity, workspace_id=int(review.workspace_id)
+        )
 
     log: list[dict[str, Any]] = []
     for dest in destinations:

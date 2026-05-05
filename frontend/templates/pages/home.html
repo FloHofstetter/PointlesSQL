@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}PointlesSQL{% endblock %}
 
 {% block content %}
@@ -30,7 +31,7 @@
             metric{{ "s" if summary.anomalies.warn != 1 else "" }} above
             <strong>1σ</strong> baseline today.
             {% endif %}
-            <span class="ms-2 small text-muted">anomaly highlighting</span>
+            <span class="ms-2 small text-muted">anomaly highlighting{{ info('home.anomaly-cards') }}</span>
         </div>
         <a href="/audit/queries" class="btn btn-sm btn-outline-dark flex-shrink-0 text-nowrap">
             <i class="bi bi-shield-check me-1"></i>Open audit cockpit
@@ -63,7 +64,7 @@
     {% endif %}
 
     <header class="pql-stack pql-stack--tight">
-        <h1 class="h3 m-0">Welcome, {{ summary.user.display_name }}</h1>
+        <h1 class="h3 m-0">Welcome, {{ summary.user.display_name }}{{ info('home.what-is-the-cockpit') }}</h1>
         <p class="text-muted m-0">
             Jump back in — recent activity across your PointlesSQL workspace.
         </p>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}Compare v{{ v1.version }} vs v{{ v2.version }} · {{ model_full_name }}{% endblock %}
 
 {% set breadcrumbs = [
@@ -14,7 +15,7 @@
     <i class="bi bi-bar-chart fs-3"></i>
     <h1 class="h3 mb-0">
         {{ model_full_name }}
-        <small class="text-muted">v{{ v1.version }} ↔ v{{ v2.version }}</small>
+        <small class="text-muted">v{{ v1.version }} ↔ v{{ v2.version }}</small>{{ info('models.compare-versions') }}
     </h1>
 </div>
 

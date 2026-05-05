@@ -1,10 +1,11 @@
+{% from "_macros/help_icon.html" import info %}
 <aside class="pql-sidebar border-end"
  x-data="catalogTree()"
  x-init="load()"
  @htmx:after-swap.window="activePath = pathFromUrl()"
  @pql:recent-tables-changed.window="recents = $event.detail.items">
  <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
- <span class="text-uppercase small fw-semibold text-muted">Catalog</span>
+ <span class="text-uppercase small fw-semibold text-muted">Catalog{{ info('catalog.what-is-a-catalog') }}</span>
  <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
  <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
  </button>

@@ -31,9 +31,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.exceptions import PointlessSQLError
-from pointlessql.models import User
+from pointlessql.models import User, Workspace
 from pointlessql.services.auth import is_first_user
-from pointlessql.settings import Settings
+from pointlessql.settings import GroupMapping, Settings
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +184,8 @@ def build_authorize_url(
     state: str,
     nonce: str,
     code_challenge: str,
+    *,
+    scope: str = "openid email profile",
 ) -> str:
     """Build the provider's authorization URL for a PKCE flow.
 
@@ -194,6 +196,11 @@ def build_authorize_url(
         state: Random state parameter for CSRF protection.
         nonce: Random nonce bound into the id_token.
         code_challenge: PKCE S256 code challenge.
+        scope: Space-separated OAuth2 scope string.  Defaults to the
+            pre-29.3 baseline (``"openid email profile"``); pass
+            :attr:`OIDCSettings.scope` to opt into the configurable
+            value (Phase 29.3) without forcing every existing caller
+            to thread it through.
 
     Returns:
         str: Full authorization URL with query parameters.
@@ -202,7 +209,7 @@ def build_authorize_url(
         "response_type": "code",
         "client_id": client_id,
         "redirect_uri": redirect_uri,
-        "scope": "openid email profile",
+        "scope": scope,
         "state": state,
         "nonce": nonce,
         "code_challenge": code_challenge,
@@ -310,12 +317,70 @@ async def fetch_userinfo(
 # ---------------------------------------------------------------------------
 
 
+def _resolve_group_mapping(
+    factory: sessionmaker[Session],
+    groups: list[str],
+    group_map: dict[str, GroupMapping],
+) -> tuple[int | None, bool, bool, bool]:
+    """Apply :attr:`OIDCSettings.parsed_group_map` to *groups* (Phase 29.3).
+
+    Args:
+        factory: SQLAlchemy session factory — used to verify the
+            mapped workspace exists before honouring the override.
+        groups: Group claim values from the IdP (already coerced to
+            ``list[str]``).  May be empty when the IdP omits the
+            claim.
+        group_map: Parsed mapping table from
+            :attr:`OIDCSettings.parsed_group_map`.
+
+    Returns:
+        ``(workspace_id, is_admin, is_supervisor, is_auditor)`` —
+        the union of every matching group's grant.
+        ``workspace_id is None`` means "leave the user's existing
+        ``default_workspace_id`` alone".  A mapped workspace ID that
+        doesn't resolve in the DB falls through to ``None`` and logs
+        a warning so federation never silently drops a user into a
+        ghost tenant.
+    """
+    if not groups or not group_map:
+        return (None, False, False, False)
+    matched = [group_map[g] for g in groups if g in group_map]
+    if not matched:
+        return (None, False, False, False)
+
+    is_admin = any(m.is_admin for m in matched)
+    is_supervisor = any(m.is_supervisor for m in matched)
+    is_auditor = any(m.is_auditor for m in matched)
+
+    workspace_id: int | None = None
+    for m in matched:
+        if m.workspace_id is not None:
+            workspace_id = m.workspace_id
+            break
+
+    if workspace_id is not None:
+        with factory() as session:
+            ws = session.get(Workspace, workspace_id)
+            if ws is None:
+                logger.warning(
+                    "OIDC group_map references workspace_id=%d which does not exist; "
+                    "falling back to default_workspace_id",
+                    workspace_id,
+                )
+                workspace_id = None
+
+    return (workspace_id, is_admin, is_supervisor, is_auditor)
+
+
 def find_or_create_oidc_user(
     factory: sessionmaker[Session],
     provider: str,
     subject: str,
     email: str,
     display_name: str,
+    *,
+    groups: list[str] | None = None,
+    group_map: dict[str, GroupMapping] | None = None,
 ) -> User:
     """Find an existing OIDC user or create/link one.
 
@@ -328,12 +393,28 @@ def find_or_create_oidc_user(
     The first user ever created becomes admin (same bootstrap rule as
     local registration).
 
+    Phase 29.3 — when *groups* + *group_map* are supplied, the
+    function additionally:
+
+    * Persists the groups list to ``oidc_groups_json`` for audit
+      visibility (snapshotted on every login so a stale mapping ages
+      out naturally).
+    * Routes the user to the workspace named in the first matching
+      mapping (overrides the default_workspace_id).
+    * Unions the ``admin / supervisor / auditor`` scope flags from
+      every matching mapping.
+
     Args:
         factory: SQLAlchemy session factory.
         provider: OIDC discovery URL acting as provider identifier.
         subject: The ``sub`` claim from the provider.
         email: Email from the provider's userinfo.
         display_name: Display name from the provider's userinfo.
+        groups: Optional groups-claim values; an empty list or
+            ``None`` skips the mapping step.  Phase 29.3.
+        group_map: Optional mapping from
+            :attr:`OIDCSettings.parsed_group_map`.  ``None`` when the
+            install hasn't configured the feature.  Phase 29.3.
 
     Returns:
         User: The matched or newly created user.
@@ -343,6 +424,11 @@ def find_or_create_oidc_user(
     """
     email = email.strip().lower()
     display_name = display_name.strip() or email
+    groups_clean = [str(g).strip() for g in (groups or []) if str(g).strip()]
+    groups_json: str | None = json.dumps(groups_clean) if groups_clean else None
+    ws_override, group_admin, group_supervisor, group_auditor = _resolve_group_mapping(
+        factory, groups_clean, group_map or {}
+    )
 
     with factory() as session:
         # 1. Existing OIDC identity
@@ -352,9 +438,16 @@ def find_or_create_oidc_user(
             .first()
         )
         if user is not None:
-            # Refresh profile from provider
+            # Refresh profile + group-derived state from provider.
             user.email = email
             user.display_name = display_name
+            user.oidc_groups_json = groups_json
+            if ws_override is not None:
+                user.default_workspace_id = ws_override
+            user.is_supervisor = group_supervisor
+            user.is_auditor = group_auditor
+            if group_admin:
+                user.is_admin = True
             session.commit()
             session.refresh(user)
             logger.info("OIDC login: existing user id=%d", user.id)
@@ -366,6 +459,13 @@ def find_or_create_oidc_user(
             user.oidc_provider = provider
             user.oidc_subject = subject
             user.display_name = display_name
+            user.oidc_groups_json = groups_json
+            if ws_override is not None:
+                user.default_workspace_id = ws_override
+            user.is_supervisor = group_supervisor
+            user.is_auditor = group_auditor
+            if group_admin:
+                user.is_admin = True
             session.commit()
             session.refresh(user)
             logger.info("OIDC login: linked to existing user id=%d", user.id)
@@ -377,10 +477,14 @@ def find_or_create_oidc_user(
             email=email,
             display_name=display_name,
             password_hash=None,
-            is_admin=first_user,
+            is_admin=first_user or group_admin,
+            is_supervisor=group_supervisor,
+            is_auditor=group_auditor,
             created_at=datetime.datetime.now(datetime.UTC),
             oidc_provider=provider,
             oidc_subject=subject,
+            oidc_groups_json=groups_json,
+            default_workspace_id=ws_override or 1,
         )
         try:
             session.add(new_user)

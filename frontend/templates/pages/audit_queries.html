@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}Audit cockpit · saved queries · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -11,14 +12,14 @@
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4">
     <i class="bi bi-shield-check fs-3"></i>
-    <h1 class="h3 mb-0">Audit cockpit · saved queries</h1>
+    <h1 class="h3 mb-0">Audit cockpit · saved queries{{ info('audit.cross-workspace-lens') }}</h1>
 </div>
 
 <p class="text-muted">
     Admin-scoped SQL workbench against the audit tables.  Starter
     queries cover the most common compliance and
     on-call questions; create your own for project-specific
-    drill-downs.  Every run is logged in <code>query_history</code>;
+    drill-downs.  Every run is logged in <code>query_history</code>{{ info('audit.read-kind') }};
     every export writes an <code>audit_log</code> row.
 </p>
 

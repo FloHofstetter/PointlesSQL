@@ -1,0 +1,30 @@
+# Auto-provisioned Grafana datasource for PointlesSQL's Postgres
+# metadata DB (Sprint 30.2).  Uses the built-in PostgreSQL plugin
+# that ships with Grafana — no third-party plugin needed.
+#
+# Deliberately uses a different ``uid`` from the SQLite datasource
+# (``pointlessql-sqlite``) so panels that reference the SQLite UID
+# stay tied to that backend; the PG dashboard JSON references this
+# UID instead.
+
+apiVersion: 1
+
+datasources:
+  - name: PointlesSQL (Postgres)
+    uid: pointlessql-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: pointlessql
+    secureJsonData:
+      password: pointlessql
+    isDefault: true
+    editable: false
+    jsonData:
+      database: pointlessql
+      sslmode: disable
+      maxOpenConns: 10
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      postgresVersion: 1700
+      timescaledb: false

@@ -138,6 +138,8 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                 email=f"api_key:{entry.name}",
                 display_name=entry.name,
                 is_admin=False,
+                is_supervisor=entry.supervisor,
+                is_auditor=entry.auditor,
             )
 
     # Phase 28.0: resolve the active workspace for the request.  The

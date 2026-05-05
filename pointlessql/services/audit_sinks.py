@@ -93,6 +93,46 @@ def _decode_event_filter(sink: AuditSink) -> set[str] | None:
     return {str(item) for item in decoded}
 
 
+def _decode_workspace_filter(sink: AuditSink) -> set[int] | None:
+    """Decode the optional workspace-id allow-list (Phase 29.1).
+
+    Args:
+        sink: ORM row to read.
+
+    Returns:
+        ``None`` when every workspace's events fire the sink (the
+        install-global default), else a set of allowed
+        ``workspace_id`` ints.  An empty list, malformed JSON, or
+        null column all map to ``None`` so an admin's typo never
+        silently blackholes events — fail-open for routing, fail-loud
+        only for delivery.
+    """
+    raw = sink.workspace_filter
+    if not raw:
+        return None
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning(
+            "audit_sinks[%s].workspace_filter is not valid JSON; allowing all workspaces",
+            sink.id,
+        )
+        return None
+    if not isinstance(decoded, list) or not decoded:
+        return None
+    out: set[int] = set()
+    for item in decoded:
+        try:
+            out.add(int(item))
+        except TypeError, ValueError:
+            logger.warning(
+                "audit_sinks[%s].workspace_filter entry %r is not an int; ignoring",
+                sink.id,
+                item,
+            )
+    return out or None
+
+
 async def _dispatch_webhook(
     sink: AuditSink,
     envelope: dict[str, Any],
@@ -146,7 +186,7 @@ async def _dispatch_s3(
     fired_at = envelope.get("time", datetime.datetime.now(datetime.UTC).isoformat())
     try:
         when = datetime.datetime.fromisoformat(fired_at)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         when = datetime.datetime.now(datetime.UTC)
     event_type = envelope.get("type", "unknown")
     event_id = envelope.get("id", "no-id")
@@ -228,10 +268,7 @@ async def _dispatch_cloudtrail(
     channel_arn = cfg.get("channel_arn")
     access_key_id = cfg.get("access_key_id")
     secret_access_key = cfg.get("secret_access_key")
-    if not all(
-        isinstance(v, str) and v
-        for v in (channel_arn, access_key_id, secret_access_key)
-    ):
+    if not all(isinstance(v, str) and v for v in (channel_arn, access_key_id, secret_access_key)):
         logger.warning(
             "audit_sinks[%s] cloudtrail config missing channel_arn / credentials",
             sink.id,
@@ -314,28 +351,40 @@ async def dispatch_one(
     return False
 
 
-def _select_active_sinks(session: Session, *, event_type: str) -> list[AuditSink]:
-    """Return active sinks whose event-type filter passes for *event_type*.
+def _select_active_sinks(
+    session: Session,
+    *,
+    event_type: str,
+    workspace_id: int | None = None,
+) -> list[AuditSink]:
+    """Return active sinks whose event-type + workspace filter passes.
 
     Args:
         session: Open SQLAlchemy session.
         event_type: CloudEvents ``type`` of the envelope being fanned out.
+        workspace_id: Workspace the originating event belongs to.
+            ``None`` skips workspace filtering entirely (used by the
+            synthetic ``/api/admin/audit-sinks/{id}/test`` flow which
+            bypasses both filters).  Phase 29.1.
 
     Returns:
         Detached sink rows in primary-key order.
     """
     rows = list(
         session.scalars(
-            select(AuditSink)
-            .where(AuditSink.is_active.is_(True))
-            .order_by(AuditSink.id.asc())
+            select(AuditSink).where(AuditSink.is_active.is_(True)).order_by(AuditSink.id.asc())
         ).all()
     )
     out: list[AuditSink] = []
     for row in rows:
-        allow = _decode_event_filter(row)
-        if allow is None or event_type in allow:
-            out.append(row)
+        allow_event = _decode_event_filter(row)
+        if allow_event is not None and event_type not in allow_event:
+            continue
+        if workspace_id is not None:
+            allow_ws = _decode_workspace_filter(row)
+            if allow_ws is not None and workspace_id not in allow_ws:
+                continue
+        out.append(row)
     for row in out:
         session.expunge(row)
     return out
@@ -345,14 +394,21 @@ async def dispatch_to_sinks(
     session_factory: _SessionFactory | sessionmaker[Session],
     envelope: dict[str, Any],
     *,
+    workspace_id: int | None = None,
     client: httpx.AsyncClient | None = None,
 ) -> list[dict[str, Any]]:
-    """Fan *envelope* out to every active sink that allows its event_type.
+    """Fan *envelope* out to every active sink that allows it.
 
     Args:
         session_factory: Sessionmaker callable.
         envelope: CloudEvents 1.0 dict.  Must include ``type`` and
             ``id``.
+        workspace_id: Workspace the originating event belongs to.
+            When supplied, sinks with a non-null ``workspace_filter``
+            that excludes this id are skipped (Phase 29.1).  ``None``
+            disables workspace filtering — used by callers that
+            already speak install-global semantics (notably the
+            synthetic test envelope endpoint).
         client: Optional pre-built httpx client (used by tests; the
             S3 / CloudTrail dispatchers reuse it for SigV4 PUT/POST).
 
@@ -363,7 +419,7 @@ async def dispatch_to_sinks(
     """
     event_type = str(envelope.get("type", ""))
     with session_factory() as session:
-        sinks = _select_active_sinks(session, event_type=event_type)
+        sinks = _select_active_sinks(session, event_type=event_type, workspace_id=workspace_id)
     log: list[dict[str, Any]] = []
     for sink in sinks:
         ok = False

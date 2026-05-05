@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -24,9 +24,20 @@ class User(Base):
         password_hash: Bcrypt-hashed password string, or ``None`` for
             OIDC-only users.
         is_admin: Whether the user has administrator privileges.
+        is_supervisor: Phase 29.3 — whether the user has supervisor
+            scope (governs Family-B routes: run summary, run diff,
+            runs-by-principal).  Granted by an OIDC group mapping;
+            re-resolved on every login.  Mirrors :class:`ApiKey`
+            ``supervisor`` for the session-cookie auth path.
+        is_auditor: Phase 29.3 — whether the user has auditor scope
+            (governs tenant-wide ``/api/audit/*`` aggregates).  Same
+            grant + refresh shape as :attr:`is_supervisor`.
         created_at: Timestamp when the user was created.
         oidc_provider: OIDC discovery URL that authenticated this user.
         oidc_subject: The ``sub`` claim from the OIDC provider.
+        oidc_groups_json: Phase 29.3 — JSON-encoded snapshot of the
+            groups claim from the most recent OIDC login.  Audit-
+            visibility only; authz never reads it at runtime.
         feed_token: Opaque token authenticating pull-feed requests;
             ``None`` until the user first hits the feed-token endpoint.
         default_workspace_id: Workspace the user lands in when neither
@@ -69,9 +80,20 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(200), nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_supervisor: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    is_auditor: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     oidc_provider: Mapped[str | None] = mapped_column(String(500), nullable=True)
     oidc_subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Phase 29.3: snapshot of the groups claim from the most recent OIDC
+    # login. Audit-visibility only — authz reads ``is_supervisor`` /
+    # ``is_auditor`` flags, never this column.  ``None`` for users who
+    # never logged in via OIDC, or whose IdP doesn't surface a groups
+    # claim (we re-resolve on every login, so a missing claim leaves
+    # the column unchanged).
+    oidc_groups_json: Mapped[str | None] = mapped_column(Text(), nullable=True)
     # Opaque token used to authenticate pull-feed requests
     # (Atom + JSON Feed).  Materialised lazily on first feed GET via
     # ``secrets.token_urlsafe``; stays ``NULL`` for users who never

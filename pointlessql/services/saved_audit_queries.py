@@ -407,15 +407,18 @@ def bootstrap_starter_rows(factory: sessionmaker[Session]) -> int:
         Count of newly inserted rows.
     """
     # Re-export from the migration module so the canonical list of
-    # starter specs lives in exactly one place.
+    # starter specs lives in exactly one place.  Sprint 32.1 — the
+    # spec list is now a function call so the SQL can pick the
+    # right dialect (SQLite vs Postgres) for the date arithmetic.
     from pointlessql.alembic.versions.j0e1f2a3b4c5_saved_audit_queries import (
-        STARTER_ROWS,
+        starter_rows,
     )
 
     now = datetime.datetime.now(datetime.UTC)
     inserted = 0
     with factory() as session:
-        for spec in STARTER_ROWS:
+        dialect_name = session.get_bind().dialect.name
+        for spec in starter_rows(dialect_name):
             existing = session.scalar(
                 select(SavedAuditQuery).where(
                     SavedAuditQuery.slug == spec["slug"]

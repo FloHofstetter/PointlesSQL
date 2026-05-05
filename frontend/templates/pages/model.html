@@ -74,7 +74,7 @@
             </div>
             <div class="col-md-6">
                 <div class="card mb-3">
-                    <div class="card-header">Linked Hermes runs</div>
+                    <div class="card-header">Linked Hermes runs{{ info('models.linked-hermes-runs') }}</div>
                     <div class="card-body small">
                         {% set linked = versions | selectattr("link_marker") | list %}
                         {% if linked %}
@@ -112,6 +112,9 @@
     <div class="tab-pane fade" id="tab-versions" role="tabpanel"
          x-data="modelVersions()">
         <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <span>Versions{{ info('models.versions-table') }}</span>
+            </div>
             <div class="table-responsive">
                 <table class="table table-sm table-hover mb-0">
                     <thead>
@@ -234,7 +237,7 @@
             <div class="card mt-3" x-show="loaded && predictions.length > 0">
                 <div class="card-header">
                     <i class="bi bi-arrow-down-right-circle me-1 text-primary"></i>
-                    Prediction tables
+                    Prediction tables{{ info('models.inference-lineage') }}
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0">
@@ -260,6 +263,9 @@
 
     {# MLflow #}
     <div class="tab-pane fade" id="tab-mlflow" role="tabpanel">
+        <p class="text-muted small mb-2">
+            Embedded MLflow Tracking UI for this model.{{ info('models.mlflow-vs-pointlessql') }}
+        </p>
         {% if mlflow_running %}
         <div class="card">
             <div class="card-body p-0" style="height: calc(100vh - 320px); min-height: 480px;">

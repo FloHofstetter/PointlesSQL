@@ -58,6 +58,12 @@ class AgentReview(Base):
         run_id: FK to :class:`AgentRun`.  Nullable because the review
             itself runs as an agent_run, but historical imports +
             replays may not have a corresponding registered run.
+        workspace_id: Workspace the review belongs to (Phase 29.2).
+            Resolved from ``request.state.workspace_id`` at insert
+            time.  ``review_destinations.workspace_filter`` consults
+            this to scope fan-out per tenant; the default value of
+            ``1`` keeps install-global routing for any caller that
+            hasn't been threaded through yet.
         kind: Discriminator — ``audit_review`` for
             the  daily anomaly review, ``model_promotion``
             for a champion/challenger swap.  Defaults to
@@ -80,6 +86,7 @@ class AgentReview(Base):
         Index("ix_agent_reviews_period_end", "period_end"),
         Index("ix_agent_reviews_severity", "severity"),
         Index("ix_agent_reviews_kind", "kind"),
+        Index("ix_agent_reviews_workspace_period", "workspace_id", "period_end"),
         CheckConstraint(
             "severity IN ('ok','warn','critical')",
             name="ck_agent_reviews_severity",
@@ -94,9 +101,13 @@ class AgentReview(Base):
     run_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("agent_runs.id"), nullable=True
     )
-    kind: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default="audit_review"
+    workspace_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id"),
+        nullable=False,
+        server_default="1",
     )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, server_default="audit_review")
     period_start: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     period_end: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -129,6 +140,13 @@ class ReviewDestination(Base):
             dispatcher.
         min_severity: Lowest severity that triggers fan-out for this
             destination.  ``ok`` < ``warn`` < ``critical``.
+        workspace_filter: Optional JSON-encoded list of workspace IDs
+            this destination serves (Phase 29.2).  ``None`` keeps
+            install-global fan-out — every workspace's reviews fire
+            this destination.  ``[1]`` restricts to reviews whose
+            ``workspace_id`` matches.  Mirrors the same shape on
+            :class:`pointlessql.models.audit_sinks.AuditSink` for
+            consistency at the admin surface.
         created_at: Insert timestamp.
     """
 
@@ -148,4 +166,5 @@ class ReviewDestination(Base):
     hmac_secret: Mapped[str | None] = mapped_column(String(256), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     min_severity: Mapped[str] = mapped_column(String(16), nullable=False, default="warn")
+    workspace_filter: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -50,6 +50,8 @@ def user_info() -> UserInfo:
         email="runner@test.com",
         display_name="Runner",
         is_admin=False,
+        is_supervisor=False,
+        is_auditor=False,
     )
 
 

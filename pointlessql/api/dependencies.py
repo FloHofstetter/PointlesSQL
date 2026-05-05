@@ -81,7 +81,14 @@ def get_user(request: Request) -> UserInfo:
     """
     user: UserInfo | None = getattr(request.state, "user", None)
     if user is None:
-        return UserInfo(id=0, email="", display_name="", is_admin=False)
+        return UserInfo(
+            id=0,
+            email="",
+            display_name="",
+            is_admin=False,
+            is_supervisor=False,
+            is_auditor=False,
+        )
     return user
 
 
@@ -135,6 +142,13 @@ def require_supervisor(request: Request) -> None:
     user = get_user(request)
     if user.get("is_admin"):
         return
+    # Phase 29.3: OIDC-group-derived flags on the User row let
+    # session-cookie callers reach Family-B routes without minting an
+    # API key.  Both flags pass — same asymmetric ladder as the
+    # API-key path: an auditor's read-only mandate covers per-run
+    # inspection, not just tenant-wide aggregates.
+    if user.get("is_supervisor") or user.get("is_auditor"):
+        return
     raise AuthorizationError(
         principal=user.get("email", ""),
         privilege="supervisor",
@@ -169,6 +183,12 @@ def require_auditor(request: Request) -> None:
         return
     user = get_user(request)
     if user.get("is_admin"):
+        return
+    # Phase 29.3: OIDC-group-derived auditor flag lets a session user
+    # read tenant-wide aggregates.  ``is_supervisor`` deliberately
+    # does NOT pass here — supervisor scope is run-scoped and would
+    # leak data the auditor mandate is the right shape for.
+    if user.get("is_auditor"):
         return
     raise AuthorizationError(
         principal=user.get("email", ""),

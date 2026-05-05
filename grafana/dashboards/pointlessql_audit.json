@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "PointlesSQL audit + lineage dashboard. Reads the metadata SQLite DB directly. Sprint 19.0 quick-win (no Phase 18 audit-API dependency).",
+  "description": "PointlesSQL audit + lineage dashboard. Reads the metadata SQLite DB directly. Sprint 19.0 quick-win (no Phase 18 audit-API dependency). Phase 29.4 added the `$workspace` template variable so a single dashboard serves every tenant.",
   "editable": false,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -30,7 +30,7 @@
       "gridPos": {"x": 0, "y": 0, "w": 24, "h": 3},
       "options": {
         "mode": "markdown",
-        "content": "# PointlesSQL Audit\n\nReads `/data/pointlessql/pointlessql.db` (SQLite) directly. Postgres deployments: see Sprint 19.0.1.  \nPanels cover Phase 14 (cost-gate, external writes) + Phase 15.x (rejects, value changes) + Phase 13.11 (tool calls). No agent code, no API — just the audit tables.",
+        "content": "# PointlesSQL Audit\n\nReads `/data/pointlessql/pointlessql.db` (SQLite) directly. Postgres deployments: see Sprint 19.0.1.  \nPanels cover Phase 14 (cost-gate, external writes) + Phase 15.x (rejects, value changes) + Phase 13.11 (tool calls). No agent code, no API — just the audit tables.\n\nUse the **workspace** dropdown above to filter every panel to one or more tenants. Selecting **All** keeps the global cross-workspace view.",
         "code": {"language": "plaintext", "showLineNumbers": false, "showMiniMap": false}
       },
       "transparent": true
@@ -39,7 +39,7 @@
       "id": 2,
       "type": "stat",
       "title": "Datasource health (agent_runs row count)",
-      "description": "Smoke test — if this shows 'No data' the SQLite mount is wrong, not the dashboard.",
+      "description": "Smoke test — if this shows 'No data' the SQLite mount is wrong, not the dashboard. Intentionally cross-workspace; the workspace dropdown does NOT filter this panel.",
       "gridPos": {"x": 0, "y": 3, "w": 6, "h": 5},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -81,7 +81,7 @@
       "id": 3,
       "type": "stat",
       "title": "External writes (unack)",
-      "description": "Unattributed Delta commits (writes that bypassed PQL). Alert ≥1.",
+      "description": "Unattributed Delta commits (writes that bypassed PQL). Alert ≥1. Filtered by `$workspace` dropdown (Phase 29.4).",
       "gridPos": {"x": 6, "y": 3, "w": 6, "h": 5},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -89,8 +89,8 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "table",
-          "rawQueryText": "SELECT COALESCE(COUNT(*), 0) AS unack FROM unattributed_writes WHERE acknowledged_at IS NULL",
-          "queryText": "SELECT COALESCE(COUNT(*), 0) AS unack FROM unattributed_writes WHERE acknowledged_at IS NULL",
+          "rawQueryText": "SELECT COALESCE(COUNT(*), 0) AS unack FROM unattributed_writes WHERE acknowledged_at IS NULL AND (0 IN ($workspace) OR unattributed_writes.workspace_id IN ($workspace))",
+          "queryText": "SELECT COALESCE(COUNT(*), 0) AS unack FROM unattributed_writes WHERE acknowledged_at IS NULL AND (0 IN ($workspace) OR unattributed_writes.workspace_id IN ($workspace))",
           "timeColumns": []
         }
       ],
@@ -123,7 +123,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "Cost-gate denials per day",
-      "description": "Runs blocked by the EXPLAIN-cost gate (Phase 14). status='denied' AND cost_gate_trigger NOT NULL.",
+      "description": "Runs blocked by the EXPLAIN-cost gate (Phase 14). status='denied' AND cost_gate_trigger NOT NULL. Filtered by `$workspace` dropdown.",
       "gridPos": {"x": 12, "y": 3, "w": 12, "h": 5},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -131,8 +131,8 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "time series",
-          "rawQueryText": "SELECT date(started_at) AS time, COUNT(*) AS denials FROM agent_runs WHERE status='denied' AND cost_gate_trigger IS NOT NULL AND $__timeFilter(started_at) GROUP BY date(started_at) ORDER BY 1",
-          "queryText": "SELECT date(started_at) AS time, COUNT(*) AS denials FROM agent_runs WHERE status='denied' AND cost_gate_trigger IS NOT NULL AND $__timeFilter(started_at) GROUP BY date(started_at) ORDER BY 1",
+          "rawQueryText": "SELECT date(started_at) AS time, COUNT(*) AS denials FROM agent_runs WHERE status='denied' AND cost_gate_trigger IS NOT NULL AND $__timeFilter(started_at) AND (0 IN ($workspace) OR agent_runs.workspace_id IN ($workspace)) GROUP BY date(started_at) ORDER BY 1",
+          "queryText": "SELECT date(started_at) AS time, COUNT(*) AS denials FROM agent_runs WHERE status='denied' AND cost_gate_trigger IS NOT NULL AND $__timeFilter(started_at) AND (0 IN ($workspace) OR agent_runs.workspace_id IN ($workspace)) GROUP BY date(started_at) ORDER BY 1",
           "timeColumns": ["time"]
         }
       ],
@@ -161,7 +161,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "Runs per day",
-      "description": "All agent_runs grouped by start date, regardless of status.",
+      "description": "All agent_runs grouped by start date, regardless of status. Filtered by `$workspace` dropdown.",
       "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -169,8 +169,8 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "time series",
-          "rawQueryText": "SELECT date(started_at) AS time, COUNT(*) AS runs FROM agent_runs WHERE $__timeFilter(started_at) GROUP BY date(started_at) ORDER BY 1",
-          "queryText": "SELECT date(started_at) AS time, COUNT(*) AS runs FROM agent_runs WHERE $__timeFilter(started_at) GROUP BY date(started_at) ORDER BY 1",
+          "rawQueryText": "SELECT date(started_at) AS time, COUNT(*) AS runs FROM agent_runs WHERE $__timeFilter(started_at) AND (0 IN ($workspace) OR agent_runs.workspace_id IN ($workspace)) GROUP BY date(started_at) ORDER BY 1",
+          "queryText": "SELECT date(started_at) AS time, COUNT(*) AS runs FROM agent_runs WHERE $__timeFilter(started_at) AND (0 IN ($workspace) OR agent_runs.workspace_id IN ($workspace)) GROUP BY date(started_at) ORDER BY 1",
           "timeColumns": ["time"]
         }
       ],
@@ -200,7 +200,7 @@
       "id": 6,
       "type": "timeseries",
       "title": "Reject-rate vs 7-day baseline",
-      "description": "Daily rejects (lineage_row_rejects) plus a 7-day trailing average baseline. Spikes above baseline warrant a look.",
+      "description": "Daily rejects (lineage_row_rejects) plus a 7-day trailing average baseline. Spikes above baseline warrant a look. Filtered by `$workspace` dropdown.",
       "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -208,16 +208,16 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "time series",
-          "rawQueryText": "SELECT date(created_at) AS time, COUNT(*) AS rejects FROM lineage_row_rejects WHERE $__timeFilter(created_at) GROUP BY date(created_at) ORDER BY 1",
-          "queryText": "SELECT date(created_at) AS time, COUNT(*) AS rejects FROM lineage_row_rejects WHERE $__timeFilter(created_at) GROUP BY date(created_at) ORDER BY 1",
+          "rawQueryText": "SELECT date(created_at) AS time, COUNT(*) AS rejects FROM lineage_row_rejects WHERE $__timeFilter(created_at) AND (0 IN ($workspace) OR lineage_row_rejects.workspace_id IN ($workspace)) GROUP BY date(created_at) ORDER BY 1",
+          "queryText": "SELECT date(created_at) AS time, COUNT(*) AS rejects FROM lineage_row_rejects WHERE $__timeFilter(created_at) AND (0 IN ($workspace) OR lineage_row_rejects.workspace_id IN ($workspace)) GROUP BY date(created_at) ORDER BY 1",
           "timeColumns": ["time"]
         },
         {
           "refId": "B",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "time series",
-          "rawQueryText": "SELECT d.day AS time, (SELECT CAST(COUNT(*) AS REAL) / 7.0 FROM lineage_row_rejects r WHERE date(r.created_at) > date(d.day, '-7 days') AND date(r.created_at) <= date(d.day)) AS baseline_7d_avg FROM (SELECT DISTINCT date(created_at) AS day FROM lineage_row_rejects WHERE $__timeFilter(created_at)) d ORDER BY 1",
-          "queryText": "SELECT d.day AS time, (SELECT CAST(COUNT(*) AS REAL) / 7.0 FROM lineage_row_rejects r WHERE date(r.created_at) > date(d.day, '-7 days') AND date(r.created_at) <= date(d.day)) AS baseline_7d_avg FROM (SELECT DISTINCT date(created_at) AS day FROM lineage_row_rejects WHERE $__timeFilter(created_at)) d ORDER BY 1",
+          "rawQueryText": "SELECT d.day AS time, (SELECT CAST(COUNT(*) AS REAL) / 7.0 FROM lineage_row_rejects r WHERE date(r.created_at) > date(d.day, '-7 days') AND date(r.created_at) <= date(d.day) AND (0 IN ($workspace) OR r.workspace_id IN ($workspace))) AS baseline_7d_avg FROM (SELECT DISTINCT date(created_at) AS day FROM lineage_row_rejects WHERE $__timeFilter(created_at) AND (0 IN ($workspace) OR lineage_row_rejects.workspace_id IN ($workspace))) d ORDER BY 1",
+          "queryText": "SELECT d.day AS time, (SELECT CAST(COUNT(*) AS REAL) / 7.0 FROM lineage_row_rejects r WHERE date(r.created_at) > date(d.day, '-7 days') AND date(r.created_at) <= date(d.day) AND (0 IN ($workspace) OR r.workspace_id IN ($workspace))) AS baseline_7d_avg FROM (SELECT DISTINCT date(created_at) AS day FROM lineage_row_rejects WHERE $__timeFilter(created_at) AND (0 IN ($workspace) OR lineage_row_rejects.workspace_id IN ($workspace))) d ORDER BY 1",
           "timeColumns": ["time"]
         }
       ],
@@ -256,7 +256,7 @@
       "id": 7,
       "type": "timeseries",
       "title": "Value-change volume per table",
-      "description": "lineage_value_changes grouped by target_table per day. Threshold ≥1000/day per table flagged red.",
+      "description": "lineage_value_changes grouped by target_table per day. Threshold ≥1000/day per table flagged red. Filtered by `$workspace` dropdown.",
       "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -264,8 +264,8 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "time series",
-          "rawQueryText": "SELECT date(created_at) AS time, target_table, COUNT(*) AS changes FROM lineage_value_changes WHERE $__timeFilter(created_at) GROUP BY date(created_at), target_table ORDER BY 1",
-          "queryText": "SELECT date(created_at) AS time, target_table, COUNT(*) AS changes FROM lineage_value_changes WHERE $__timeFilter(created_at) GROUP BY date(created_at), target_table ORDER BY 1",
+          "rawQueryText": "SELECT date(created_at) AS time, target_table, COUNT(*) AS changes FROM lineage_value_changes WHERE $__timeFilter(created_at) AND (0 IN ($workspace) OR lineage_value_changes.workspace_id IN ($workspace)) GROUP BY date(created_at), target_table ORDER BY 1",
+          "queryText": "SELECT date(created_at) AS time, target_table, COUNT(*) AS changes FROM lineage_value_changes WHERE $__timeFilter(created_at) AND (0 IN ($workspace) OR lineage_value_changes.workspace_id IN ($workspace)) GROUP BY date(created_at), target_table ORDER BY 1",
           "timeColumns": ["time"]
         }
       ],
@@ -301,7 +301,7 @@
       "id": 8,
       "type": "barchart",
       "title": "Top mutating principals (rows written)",
-      "description": "Sum of rows_affected for merge/write_table operations, grouped by principal.",
+      "description": "Sum of rows_affected for merge/write_table operations, grouped by principal. Filtered by `$workspace` dropdown.",
       "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -309,8 +309,8 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "table",
-          "rawQueryText": "SELECT COALESCE(r.principal, '<unknown>') AS principal, COALESCE(SUM(o.rows_affected), 0) AS total_rows FROM agent_runs r JOIN agent_run_operations o ON o.agent_run_id = r.id WHERE o.op_name IN ('merge', 'write_table') AND $__timeFilter(r.started_at) GROUP BY r.principal ORDER BY total_rows DESC LIMIT 10",
-          "queryText": "SELECT COALESCE(r.principal, '<unknown>') AS principal, COALESCE(SUM(o.rows_affected), 0) AS total_rows FROM agent_runs r JOIN agent_run_operations o ON o.agent_run_id = r.id WHERE o.op_name IN ('merge', 'write_table') AND $__timeFilter(r.started_at) GROUP BY r.principal ORDER BY total_rows DESC LIMIT 10",
+          "rawQueryText": "SELECT COALESCE(r.principal, '<unknown>') AS principal, COALESCE(SUM(o.rows_affected), 0) AS total_rows FROM agent_runs r JOIN agent_run_operations o ON o.agent_run_id = r.id WHERE o.op_name IN ('merge', 'write_table') AND $__timeFilter(r.started_at) AND (0 IN ($workspace) OR r.workspace_id IN ($workspace)) GROUP BY r.principal ORDER BY total_rows DESC LIMIT 10",
+          "queryText": "SELECT COALESCE(r.principal, '<unknown>') AS principal, COALESCE(SUM(o.rows_affected), 0) AS total_rows FROM agent_runs r JOIN agent_run_operations o ON o.agent_run_id = r.id WHERE o.op_name IN ('merge', 'write_table') AND $__timeFilter(r.started_at) AND (0 IN ($workspace) OR r.workspace_id IN ($workspace)) GROUP BY r.principal ORDER BY total_rows DESC LIMIT 10",
           "timeColumns": []
         }
       ],
@@ -345,7 +345,7 @@
       "id": 9,
       "type": "table",
       "title": "Tool-call latency per tool (p50 / p99)",
-      "description": "Per-tool wall-clock latency from agent_run_tool_calls. Percentiles computed via Grafana 'Reduce → percentile' transform.",
+      "description": "Per-tool wall-clock latency from agent_run_tool_calls. Percentiles computed via Grafana 'Reduce → percentile' transform. Filtered by `$workspace` dropdown.",
       "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -353,8 +353,8 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "table",
-          "rawQueryText": "SELECT tool_name, duration_ms FROM agent_run_tool_calls WHERE duration_ms IS NOT NULL AND $__timeFilter(called_at)",
-          "queryText": "SELECT tool_name, duration_ms FROM agent_run_tool_calls WHERE duration_ms IS NOT NULL AND $__timeFilter(called_at)",
+          "rawQueryText": "SELECT tool_name, duration_ms FROM agent_run_tool_calls WHERE duration_ms IS NOT NULL AND $__timeFilter(called_at) AND (0 IN ($workspace) OR agent_run_tool_calls.workspace_id IN ($workspace))",
+          "queryText": "SELECT tool_name, duration_ms FROM agent_run_tool_calls WHERE duration_ms IS NOT NULL AND $__timeFilter(called_at) AND (0 IN ($workspace) OR agent_run_tool_calls.workspace_id IN ($workspace))",
           "timeColumns": []
         }
       ],
@@ -425,7 +425,7 @@
       "id": 10,
       "type": "histogram",
       "title": "EXPLAIN cost estimate (cost_est) histogram",
-      "description": "Distribution of Phase-14 cost-gate estimates across runs. Spike on the right tail = expensive runs about to hit the gate.",
+      "description": "Distribution of Phase-14 cost-gate estimates across runs. Spike on the right tail = expensive runs about to hit the gate. Filtered by `$workspace` dropdown.",
       "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
       "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
       "targets": [
@@ -433,8 +433,8 @@
           "refId": "A",
           "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
           "queryType": "table",
-          "rawQueryText": "SELECT CAST(cost_est AS REAL) AS cost FROM agent_runs WHERE cost_est IS NOT NULL AND $__timeFilter(started_at)",
-          "queryText": "SELECT CAST(cost_est AS REAL) AS cost FROM agent_runs WHERE cost_est IS NOT NULL AND $__timeFilter(started_at)",
+          "rawQueryText": "SELECT CAST(cost_est AS REAL) AS cost FROM agent_runs WHERE cost_est IS NOT NULL AND $__timeFilter(started_at) AND (0 IN ($workspace) OR agent_runs.workspace_id IN ($workspace))",
+          "queryText": "SELECT CAST(cost_est AS REAL) AS cost FROM agent_runs WHERE cost_est IS NOT NULL AND $__timeFilter(started_at) AND (0 IN ($workspace) OR agent_runs.workspace_id IN ($workspace))",
           "timeColumns": []
         }
       ],
@@ -462,12 +462,33 @@
   "refresh": "30s",
   "schemaVersion": 39,
   "tags": ["pointlessql", "audit", "lineage"],
-  "templating": {"list": []},
+  "templating": {
+    "list": [
+      {
+        "name": "workspace",
+        "label": "Workspace",
+        "description": "Filter every panel except the datasource-health smoke test by one or more workspace IDs. 'All' (the default) keeps the cross-workspace view. Phase 29.4.",
+        "type": "query",
+        "datasource": {"type": "frser-sqlite-datasource", "uid": "pointlessql-sqlite"},
+        "query": "SELECT name AS __text, id AS __value FROM workspaces ORDER BY name",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "0",
+        "current": {"selected": false, "text": "All", "value": "$__all"},
+        "options": [],
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "hide": 0
+      }
+    ]
+  },
   "time": {"from": "now-30d", "to": "now"},
   "timepicker": {},
   "timezone": "",
   "title": "PointlesSQL Audit",
   "uid": "pointlessql-audit",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }

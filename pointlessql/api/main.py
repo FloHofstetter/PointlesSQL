@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -239,12 +240,33 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.delta.engine,
         settings.logging.format,
     )
-    soyuz = make_soyuz_client(settings)
-    app.state.uc_client = UnityCatalogClient(soyuz)
-    app.state.settings = settings
+
+    # Phase 31.3 — when the test conftest pre-wires ``app.state``
+    # (engine, session_factory, uc_client stubs), running the full
+    # production lifespan re-overwrites all of it: ``init_db`` runs
+    # ``alembic upgrade head`` against the on-disk default URL,
+    # ``make_soyuz_client`` clobbers stubbed UC clients, and the
+    # background tasks tick uselessly.  ``POINTLESSQL_TEST_LIFESPAN_FAST=1``
+    # short-circuits everything the conftest has already set up,
+    # leaving real production startup untouched.  Tests that need
+    # the full lifespan (alembic verification, UC-client real
+    # http path, etc.) simply unset the env var.
+    fast_test_lifespan = os.environ.get("POINTLESSQL_TEST_LIFESPAN_FAST") == "1"
+
+    if not fast_test_lifespan:
+        soyuz = make_soyuz_client(settings)
+        app.state.uc_client = UnityCatalogClient(soyuz)
+    elif not hasattr(app.state, "uc_client") or app.state.uc_client is None:
+        soyuz = make_soyuz_client(settings)
+        app.state.uc_client = UnityCatalogClient(soyuz)
+
+    app.state.settings = (
+        getattr(app.state, "settings", None) if fast_test_lifespan else None
+    ) or settings
     app.state.templates = _TEMPLATES
-    init_db(settings.db.url)
-    app.state.session_factory = get_session_factory()
+    if not fast_test_lifespan or not hasattr(app.state, "session_factory"):
+        init_db(settings.db.url)
+        app.state.session_factory = get_session_factory()
 
     # API keys are persisted in the ``api_keys`` table.  The env
     # var ``POINTLESSQL_API_KEYS`` stays valid as a *bootstrap* path
@@ -253,12 +275,13 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # any declared ``name:secret[:supervisor]`` pairs into the DB on
     # startup.  Existing rows are left untouched (DB is the single
     # source of truth once the table is populated).
-    inserted = api_keys_service.bootstrap_from_env(app.state.session_factory)
-    if inserted:
-        logger.info("Bootstrapped %d API key(s) from POINTLESSQL_API_KEYS", inserted)
+    if not fast_test_lifespan:
+        inserted = api_keys_service.bootstrap_from_env(app.state.session_factory)
+        if inserted:
+            logger.info("Bootstrapped %d API key(s) from POINTLESSQL_API_KEYS", inserted)
 
     scheduler: scheduler_service.Scheduler | None = None
-    if settings.scheduler.enabled:
+    if settings.scheduler.enabled and not fast_test_lifespan:
         scheduler = scheduler_service.Scheduler(app.state.session_factory, settings)
         scheduler.start()
     app.state.scheduler = scheduler
@@ -268,17 +291,19 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # compete with the job scheduler; swallows its own errors via
     # ``cleanup_old_entries`` so a transient DB hiccup never takes
     # the lifespan down.
-    audit_task = asyncio.create_task(
-        _audit_retention_loop(app.state.session_factory, settings),
-        name="audit-retention",
-    )
+    audit_task: asyncio.Task[None] | None = None
+    if not fast_test_lifespan:
+        audit_task = asyncio.create_task(
+            _audit_retention_loop(app.state.session_factory, settings),
+            name="audit-retention",
+        )
 
     # Periodic external-write scanner.  Disabled by default
     # (``scan_interval_seconds == 0``); admins opt in via
     # ``POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS``.  The
     # admin page's "Run scan now" button works regardless.
     external_writes_task: asyncio.Task[None] | None = None
-    if settings.external_writes.scan_interval_seconds > 0:
+    if settings.external_writes.scan_interval_seconds > 0 and not fast_test_lifespan:
         external_writes_task = asyncio.create_task(
             _external_writes_loop(app.state.session_factory, app.state.uc_client, settings),
             name="external-writes-scan",
@@ -291,14 +316,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # thresholds the loop also short-circuits.
     lineage_pruner_task: asyncio.Task[None] | None = None
     retention = settings.audit.lineage_retention
-    if any(
-        v is not None and v > 0
-        for v in (
-            retention.row_edges_days,
-            retention.row_rejects_days,
-            retention.column_map_days,
-            retention.value_changes_days,
+    if (
+        any(
+            v is not None and v > 0
+            for v in (
+                retention.row_edges_days,
+                retention.row_rejects_days,
+                retention.column_map_days,
+                retention.value_changes_days,
+            )
         )
+        and not fast_test_lifespan
     ):
         lineage_pruner_task = asyncio.create_task(
             _lineage_pruner_loop(app.state.session_factory, settings),
@@ -309,10 +337,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # (``branch.auto_cleanup_enabled=False``); the loop body itself
     # short-circuits when disabled, so we always start it but it's a
     # cheap no-op until the operator flips the flag.
-    branch_cleanup_task: asyncio.Task[None] = asyncio.create_task(
-        _branch_cleanup_loop(app.state.uc_client, settings),
-        name="branch-cleanup",
-    )
+    branch_cleanup_task: asyncio.Task[None] | None = None
+    if not fast_test_lifespan:
+        branch_cleanup_task = asyncio.create_task(
+            _branch_cleanup_loop(app.state.uc_client, settings),
+            name="branch-cleanup",
+        )
 
     #  MLflow Tracking subprocess.  Optional — only spawned
     # when ``settings.mlflow.enabled`` AND the optional ``mlflow``
@@ -342,9 +372,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         if app.state.mlflow_subprocess is not None:
             await app.state.mlflow_subprocess.stop()
-        audit_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await audit_task
+        if audit_task is not None:
+            audit_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await audit_task
         if external_writes_task is not None:
             external_writes_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -353,12 +384,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             lineage_pruner_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await lineage_pruner_task
-        branch_cleanup_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await branch_cleanup_task
+        if branch_cleanup_task is not None:
+            branch_cleanup_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await branch_cleanup_task
         if scheduler is not None:
             await scheduler.stop()
-        await app.state.uc_client.aclose()
+        if not fast_test_lifespan and app.state.uc_client is not None:
+            await app.state.uc_client.aclose()
 
 
 async def _audit_retention_loop(
@@ -705,3 +738,48 @@ def _admin_issue_auditor_key(  # pyright: ignore[reportUnusedFunction]
     typer.echo("")
     typer.echo("token (shown once — save it now):")
     typer.echo(plaintext)
+
+
+@cli.command("migrate-to-postgres")
+def _migrate_to_postgres_cmd(  # pyright: ignore[reportUnusedFunction]
+    source: str = typer.Option(
+        ...,
+        "--source",
+        help="SQLAlchemy URL of the existing SQLite metadata DB.",
+    ),
+    target: str = typer.Option(
+        ...,
+        "--target",
+        help="SQLAlchemy URL of the empty Postgres metadata DB.",
+    ),
+    batch_size: int = typer.Option(
+        1000,
+        "--batch-size",
+        help="Rows per INSERT batch when streaming source rows.",
+        min=1,
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Read source row counts but skip writes; exit cleanly.",
+    ),
+) -> None:
+    """Bulk-copy a SQLite PointlesSQL deployment to Postgres.
+
+    Refuses to overwrite a non-empty target.  Runs ``alembic
+    upgrade head`` against the target first so the schema chain
+    matches.  Streams source rows in ``--batch-size`` chunks,
+    syncs PG sequences past the largest copied id, rebuilds the
+    Sprint-30.1 FTS index, and verifies row counts (with a
+    sample-hash for tables ≥ 100 rows).
+    """
+    from pointlessql.cli import migrate_to_postgres as mtp
+
+    code = mtp.cli_entrypoint(
+        source_url=source,
+        target_url=target,
+        batch_size=batch_size,
+        dry_run=dry_run,
+    )
+    if code != 0:
+        raise typer.Exit(code=code)

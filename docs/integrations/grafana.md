@@ -39,18 +39,89 @@ read-only (the dashboard JSON ships in the same overlay).
 
 Walkthrough: [dashboards.md](../e2e-walkthroughs/dashboards.md).
 
+## Filtering by workspace
+
+Phase 29.4 added a `$workspace` template variable at the top of the
+audit dashboard. The dropdown is populated from the `workspaces`
+table at dashboard load and is **multi-select** + has the **All**
+option toggled by default — every panel keeps its global
+cross-workspace view until an admin actively scopes down.
+
+How the filter is implemented:
+
+- The variable's `allValue` is the literal string `0` (no real
+  workspace ever has id 0). Every panel SQL grows a guard predicate
+  shaped like:
+
+  ```sql
+  AND (0 IN ($workspace) OR <table>.workspace_id IN ($workspace))
+  ```
+
+  When **All** is selected, `$workspace` interpolates to `0` and the
+  left disjunct short-circuits the predicate to true — full global
+  view. When specific workspaces are picked, the right disjunct
+  filters the rows to those IDs.
+
+- The **Datasource health (agent_runs row count)** smoke test stays
+  global on purpose — its job is to verify the metadata DB mount
+  is attached, not to surface real audit numbers. The workspace
+  dropdown does not filter it.
+
+- The audit-of-audit trail for cross-workspace reads (the
+  `audit_api_cross_workspace` `read_kind` recorded on the
+  `?workspace=all` query-param path) is **not** affected by Grafana
+  use, because Grafana queries the metadata DB directly rather
+  than going through `/api/audit/...`. Operators who need the
+  audit trail must use the in-app cockpit instead.
+
+To default a viewer to a single workspace, edit their personal
+dashboard URL with `?var-workspace=<id>`; Grafana will respect it
+across page reloads.
+
+## Running with Postgres
+
+PointlesSQL deployments using the Postgres metadata backend
+(see [Postgres deployment](../admin/postgres-deployment.md))
+plug into a different Grafana wiring. Sprint 30.2 ships a
+parallel overlay that swaps the SQLite plugin for Grafana's
+built-in PostgreSQL datasource and provisions a dialect-clean
+dashboard JSON:
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.postgres.yml \
+  -f docker-compose.grafana.postgres.yml up -d
+```
+
+Differences from the SQLite overlay:
+
+- **No third-party plugin.** Grafana's built-in
+  `postgres` datasource is used; the
+  `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` env var is not
+  needed.
+- **Dialect-clean SQL.** Panel 5 (the rolling 7-day reject
+  baseline) uses PG `INTERVAL '7 days'` arithmetic instead of
+  SQLite's `date(d.day, '-7 days')` modifier. Every other
+  panel's SQL is portable across both backends.
+- **Different datasource UID.** The PG dashboard binds to UID
+  `pointlessql-postgres`; the SQLite dashboard binds to UID
+  `pointlessql-sqlite`. Mixing the two overlays at once would
+  collide on the dashboard slug, so pick exactly one.
+- **No SQLite file mount.** The PG overlay drops the SQLite
+  bind mount entirely — Grafana reaches Postgres over the
+  compose network.
+
+The two overlays are mutually exclusive. Operators picking
+Postgres should not also pass `-f docker-compose.grafana.yml`.
+
 ## Why SQLite, not Prometheus
 
 Prometheus is a metrics store; the audit cockpit needs *event
 data* (one row per run / op / promotion / rollback) plus
-metric-shaped aggregates over those. Reading SQLite directly
-gives the dashboards full row-level detail when an operator
-clicks into a panel.
-
-The trade-off: scaling Grafana onto a Postgres backend (Phase
-19.0.1 in ROADMAP) requires a `frser-postgres-datasource` swap
-and re-pointing the panel queries. The path is sketched in the
-roadmap but not implemented.
+metric-shaped aggregates over those. Reading the metadata DB
+directly (whichever backend it sits on) gives the dashboards
+full row-level detail when an operator clicks into a panel.
 
 ## Known gotchas
 

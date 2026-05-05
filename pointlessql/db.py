@@ -57,6 +57,10 @@ def init_db(url: str) -> Engine:
     """Create the engine, run migrations, and configure the session factory.
 
     Called once during application startup (FastAPI lifespan).
+    Pool sizing + statement timeout are read from
+    :class:`pointlessql.settings.DatabaseSettings` (Sprint 30.4) so
+    operators can tune long-running PG deployments without code
+    changes.  SQLite ignores the PG-only knobs.
 
     Args:
         url: SQLAlchemy database URL.
@@ -67,6 +71,7 @@ def init_db(url: str) -> Engine:
     global _engine, _session_factory  # noqa: PLW0603
 
     is_sqlite = url.startswith("sqlite")
+    is_postgres = url.startswith("postgresql") or url.startswith("postgres+")
 
     if is_sqlite and not url.endswith(":memory:"):
         db_path = url.split("///", 1)[-1]
@@ -76,7 +81,26 @@ def init_db(url: str) -> Engine:
     if is_sqlite:
         connect_args["check_same_thread"] = False
 
-    _engine = sa_create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+    # Sprint 30.4 — read pool sizing + timeout out of settings so
+    # operators can tune via env vars.  We re-instantiate the
+    # ``DatabaseSettings`` object here rather than threading it
+    # through ``init_db``'s signature so the function stays
+    # backward-compatible with older call-sites that pass the URL
+    # explicitly.
+    from pointlessql.settings import DatabaseSettings  # noqa: PLC0415
+
+    db_settings = DatabaseSettings()
+
+    engine_kwargs: dict[str, object] = {
+        "connect_args": connect_args,
+        "pool_pre_ping": True,
+    }
+    if is_postgres:
+        engine_kwargs["pool_size"] = db_settings.pool_size
+        engine_kwargs["max_overflow"] = db_settings.max_overflow
+        engine_kwargs["pool_recycle"] = db_settings.pool_recycle_seconds
+
+    _engine = sa_create_engine(url, **engine_kwargs)
 
     if is_sqlite:
 
@@ -87,6 +111,17 @@ def init_db(url: str) -> Engine:
             cursor = dbapi_conn.cursor()  # type: ignore[union-attr]
             cursor.execute("PRAGMA journal_mode=WAL")  # type: ignore[union-attr]
             cursor.execute("PRAGMA foreign_keys=ON")  # type: ignore[union-attr]
+            cursor.close()  # type: ignore[union-attr]
+
+    if is_postgres and db_settings.statement_timeout_ms > 0:
+        timeout_ms = int(db_settings.statement_timeout_ms)
+
+        @event.listens_for(_engine, "connect")
+        def _set_pg_statement_timeout(  # pyright: ignore[reportUnusedFunction]
+            dbapi_conn: object, _rec: object
+        ) -> None:
+            cursor = dbapi_conn.cursor()  # type: ignore[union-attr]
+            cursor.execute(f"SET statement_timeout = {timeout_ms}")  # type: ignore[union-attr]
             cursor.close()  # type: ignore[union-attr]
 
     _run_migrations(url)

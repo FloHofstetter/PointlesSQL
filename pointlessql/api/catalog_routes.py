@@ -71,8 +71,9 @@ async def api_tree(
     if factory is None:
         return tree
     workspace_id = int(getattr(request.state, "workspace_id", 1))
-    from pointlessql.models import WorkspaceCatalogPin
     from sqlalchemy import select
+
+    from pointlessql.models import WorkspaceCatalogPin
 
     with factory() as session:
         pinned = {

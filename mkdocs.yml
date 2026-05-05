@@ -103,6 +103,9 @@ nav:
       - Workspaces: concepts/workspaces.md
   - Admin:
       - Workspace management: admin/workspace-management.md
+      - OIDC group map: admin/oidc-group-map.md
+      - Postgres deployment: admin/postgres-deployment.md
+      - Performance baseline: admin/performance.md
   - Guides:
       - guides/index.md
       - Agent bring-up: guides/agent-bring-up.md
@@ -183,6 +186,7 @@ nav:
   - Development:
       - development/index.md
       - Design tokens: development/design-tokens.md
+      - Test suite: development/test-suite.md
   - Decisions:
       - decisions/index.md
       - "ADR-0001 Notebook editor": decisions/0001-notebook-editor.md

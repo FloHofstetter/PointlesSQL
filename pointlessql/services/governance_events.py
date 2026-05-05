@@ -123,6 +123,11 @@ def _persist_event(
         initial_outcome: Either ``"pending"`` (will be updated by the
             dispatcher) or ``"no_destination"`` (terminal, no
             dispatch attempted).
+        workspace_id: Workspace this governance event belongs to.
+            Defaults to the install-default workspace (id=1) for
+            callers that haven't yet been threaded through; Phase
+            29.1 routes still treat this as the routing key when
+            consulting :class:`AuditSink.workspace_filter`.
 
     Returns:
         The new row's primary key, or ``None`` when the insert
@@ -212,6 +217,11 @@ async def emit_governance_event(
         session_factory: SQLAlchemy session factory.  When ``None``
             the function is a logged no-op (used by unit tests that
             drive the envelope builder in isolation).
+        workspace_id: Workspace the originating event belongs to;
+            persisted to ``governance_events.workspace_id`` and
+            threaded into :func:`dispatch_to_sinks` so a sink with a
+            non-null ``workspace_filter`` only fires for matching
+            workspaces (Phase 29.1).
     """
     if event_type not in GOVERNANCE_EVENT_TYPES:
         logger.warning("emit_governance_event: ignoring unknown event_type %r", event_type)
@@ -248,7 +258,7 @@ async def emit_governance_event(
     if not fan_out_enabled:
         return
 
-    log = await dispatch_to_sinks(session_factory, envelope)
+    log = await dispatch_to_sinks(session_factory, envelope, workspace_id=workspace_id)
 
     if row_id is None:
         return

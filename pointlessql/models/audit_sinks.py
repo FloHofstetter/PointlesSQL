@@ -82,6 +82,12 @@ class AuditSink(Base):
             to receive.  ``None`` or ``"[]"`` means *every* event
             type fires the sink — easiest setup for "log everything"
             destinations like a compliance archive bucket.
+        workspace_filter: Optional JSON-encoded list of workspace
+            IDs the sink serves.  ``None`` (the default) preserves
+            install-global behaviour: every workspace's events fire
+            the sink.  ``[1, 2]`` restricts the sink to events whose
+            ``workspace_id`` matches one of the listed values.
+            Phase 29.1.
         created_at: Insert timestamp.
     """
 
@@ -101,6 +107,7 @@ class AuditSink(Base):
     config_json: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     event_types_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    workspace_filter: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

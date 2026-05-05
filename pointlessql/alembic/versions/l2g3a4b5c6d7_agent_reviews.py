@@ -73,7 +73,7 @@ def upgrade() -> None:
             "is_active",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("1"),
+            server_default=sa.text("true"),
         ),
         sa.Column(
             "min_severity",

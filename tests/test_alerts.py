@@ -103,8 +103,14 @@ def test_build_cloudevent_has_mandatory_fields() -> None:
 async def test_dispatch_webhook_signs_body_and_returns_true_on_2xx(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    envelope = {"specversion": "1.0", "id": "abc", "source": "/a", "type": "t",
-                "time": "2026-04-18T12:00:00+00:00", "data": {}}
+    envelope = {
+        "specversion": "1.0",
+        "id": "abc",
+        "source": "/a",
+        "type": "t",
+        "time": "2026-04-18T12:00:00+00:00",
+        "data": {},
+    }
     secret = "shhhh-secret"
     captured: dict[str, Any] = {}
 
@@ -127,9 +133,7 @@ async def test_dispatch_webhook_signs_body_and_returns_true_on_2xx(
     expected_body = alert_dispatcher.canonicalise_envelope(envelope)
     assert captured["body"] == expected_body
     assert captured["ctype"] == "application/cloudevents+json"
-    expected_sig = "sha256=" + hmac.new(
-        secret.encode(), expected_body, hashlib.sha256
-    ).hexdigest()
+    expected_sig = "sha256=" + hmac.new(secret.encode(), expected_body, hashlib.sha256).hexdigest()
     assert captured["sig"] == expected_sig
 
 
@@ -151,8 +155,14 @@ async def test_dispatch_webhook_retries_on_5xx_then_fails(
     async with httpx.AsyncClient(transport=transport) as client:
         ok = await alert_dispatcher.dispatch_webhook(
             "https://example.test/hook",
-            {"specversion": "1.0", "id": "a", "source": "/a", "type": "t",
-             "time": "2026-04-18T12:00:00+00:00", "data": {}},
+            {
+                "specversion": "1.0",
+                "id": "a",
+                "source": "/a",
+                "type": "t",
+                "time": "2026-04-18T12:00:00+00:00",
+                "data": {},
+            },
             client=client,
         )
     assert ok is False
@@ -177,8 +187,14 @@ async def test_dispatch_webhook_4xx_is_permanent_failure(
     async with httpx.AsyncClient(transport=transport) as client:
         ok = await alert_dispatcher.dispatch_webhook(
             "https://example.test/hook",
-            {"specversion": "1.0", "id": "a", "source": "/a", "type": "t",
-             "time": "2026-04-18T12:00:00+00:00", "data": {}},
+            {
+                "specversion": "1.0",
+                "id": "a",
+                "source": "/a",
+                "type": "t",
+                "time": "2026-04-18T12:00:00+00:00",
+                "data": {},
+            },
             client=client,
         )
     assert ok is False
@@ -191,16 +207,21 @@ async def test_dispatch_webhook_4xx_is_permanent_failure(
 def test_render_atom_has_required_structure() -> None:
     events = [
         {
-            "id": 1, "alert_id": 10,
-            "alert_slug": "daily-orders", "alert_title": "Daily orders",
+            "id": 1,
+            "alert_id": 10,
+            "alert_slug": "daily-orders",
+            "alert_title": "Daily orders",
             "event_id": "abc123",
             "fired_at": "2026-04-18T12:00:00+00:00",
-            "row_count": 42, "outcome": "fired",
+            "row_count": 42,
+            "outcome": "fired",
             "payload_json": '{"specversion":"1.0","id":"abc123"}',
         },
     ]
     xml = alert_feeds.render_atom(
-        events, user_email="flo@test.com", base_url="http://test",
+        events,
+        user_email="flo@test.com",
+        base_url="http://test",
     )
     # Starts with an XML prolog and parses.
     assert xml.startswith("<?xml ")
@@ -216,16 +237,21 @@ def test_render_atom_has_required_structure() -> None:
 def test_render_json_feed_has_version_and_items() -> None:
     events = [
         {
-            "id": 1, "alert_id": 10,
-            "alert_slug": "daily-orders", "alert_title": "Daily orders",
+            "id": 1,
+            "alert_id": 10,
+            "alert_slug": "daily-orders",
+            "alert_title": "Daily orders",
             "event_id": "abc123",
             "fired_at": "2026-04-18T12:00:00+00:00",
-            "row_count": 42, "outcome": "fired",
+            "row_count": 42,
+            "outcome": "fired",
             "payload_json": '{"specversion":"1.0","id":"abc123"}',
         },
     ]
     feed = alert_feeds.render_json_feed(
-        events, user_email="flo@test.com", base_url="http://test",
+        events,
+        user_email="flo@test.com",
+        base_url="http://test",
     )
     assert feed["version"].startswith("https://jsonfeed.org/version/1.")
     assert feed["items"][0]["id"] == "abc123"
@@ -240,13 +266,23 @@ def test_create_alert_requires_title_and_valid_op() -> None:
     saved_query_id = _make_saved_query(owner_id=1)
     with pytest.raises(ValidationError):
         alerts_service.create_alert(
-            factory, owner_id=1, title="", saved_query_id=saved_query_id,
-            cron_expr="*/5 * * * *", condition_op="gt", threshold=0,
+            factory,
+            owner_id=1,
+            title="",
+            saved_query_id=saved_query_id,
+            cron_expr="*/5 * * * *",
+            condition_op="gt",
+            threshold=0,
         )
     with pytest.raises(ValidationError):
         alerts_service.create_alert(
-            factory, owner_id=1, title="Ok", saved_query_id=saved_query_id,
-            cron_expr="*/5 * * * *", condition_op="between", threshold=0,
+            factory,
+            owner_id=1,
+            title="Ok",
+            saved_query_id=saved_query_id,
+            cron_expr="*/5 * * * *",
+            condition_op="between",
+            threshold=0,
         )
 
 
@@ -254,12 +290,19 @@ def test_create_and_fetch_alert_round_trip() -> None:
     factory = app.state.session_factory
     saved_query_id = _make_saved_query(owner_id=1)
     row = alerts_service.create_alert(
-        factory, owner_id=1, title="Daily orders",
-        saved_query_id=saved_query_id, cron_expr="*/10 * * * *",
-        condition_op="gt", threshold=100,
+        factory,
+        owner_id=1,
+        title="Daily orders",
+        saved_query_id=saved_query_id,
+        cron_expr="*/10 * * * *",
+        condition_op="gt",
+        threshold=100,
     )
     got = alerts_service.get_by_slug(
-        factory, row["slug"], user_id=1, is_admin=True,
+        factory,
+        row["slug"],
+        user_id=1,
+        is_admin=True,
     )
     assert got is not None
     assert got["title"] == "Daily orders"
@@ -271,58 +314,103 @@ def test_non_owner_cannot_see_or_mutate_alert() -> None:
     factory = app.state.session_factory
     saved_query_id = _make_saved_query(owner_id=1)
     row = alerts_service.create_alert(
-        factory, owner_id=1, title="Admin alert",
-        saved_query_id=saved_query_id, cron_expr="*/5 * * * *",
-        condition_op="gt", threshold=0,
+        factory,
+        owner_id=1,
+        title="Admin alert",
+        saved_query_id=saved_query_id,
+        cron_expr="*/5 * * * *",
+        condition_op="gt",
+        threshold=0,
     )
     # Non-admin user_id=2 should not see admin's row.
-    assert alerts_service.get_by_slug(
-        factory, row["slug"], user_id=2, is_admin=False,
-    ) is None
+    assert (
+        alerts_service.get_by_slug(
+            factory,
+            row["slug"],
+            user_id=2,
+            is_admin=False,
+        )
+        is None
+    )
     # … and cannot mutate it either.
-    assert alerts_service.update_by_slug(
-        factory, row["slug"], user_id=2, is_admin=False,
-        is_active=False,
-    ) is None
-    assert alerts_service.delete_by_slug(
-        factory, row["slug"], user_id=2, is_admin=False,
-    ) is False
+    assert (
+        alerts_service.update_by_slug(
+            factory,
+            row["slug"],
+            user_id=2,
+            is_admin=False,
+            is_active=False,
+        )
+        is None
+    )
+    assert (
+        alerts_service.delete_by_slug(
+            factory,
+            row["slug"],
+            user_id=2,
+            is_admin=False,
+        )
+        is False
+    )
 
 
 def test_add_and_remove_webhook_destination() -> None:
     factory = app.state.session_factory
     saved_query_id = _make_saved_query(owner_id=1)
     row = alerts_service.create_alert(
-        factory, owner_id=1, title="With dest",
-        saved_query_id=saved_query_id, cron_expr="*/5 * * * *",
-        condition_op="gt", threshold=0,
+        factory,
+        owner_id=1,
+        title="With dest",
+        saved_query_id=saved_query_id,
+        cron_expr="*/5 * * * *",
+        condition_op="gt",
+        threshold=0,
     )
     dest = alerts_service.add_destination(
-        factory, row["slug"], user_id=1, is_admin=True,
-        kind="webhook", webhook_url="https://example.test/h",
+        factory,
+        row["slug"],
+        user_id=1,
+        is_admin=True,
+        kind="webhook",
+        webhook_url="https://example.test/h",
         hmac_secret="shhh",
     )
     assert dest is not None
     assert dest["kind"] == "webhook"
     assert dest["has_hmac"] is True
     # Deletion round-trip.
-    assert alerts_service.delete_destination(
-        factory, row["slug"], dest["id"], user_id=1, is_admin=True,
-    ) is True
+    assert (
+        alerts_service.delete_destination(
+            factory,
+            row["slug"],
+            dest["id"],
+            user_id=1,
+            is_admin=True,
+        )
+        is True
+    )
 
 
 def test_webhook_destination_requires_url() -> None:
     factory = app.state.session_factory
     saved_query_id = _make_saved_query(owner_id=1)
     row = alerts_service.create_alert(
-        factory, owner_id=1, title="Needs url",
-        saved_query_id=saved_query_id, cron_expr="*/5 * * * *",
-        condition_op="gt", threshold=0,
+        factory,
+        owner_id=1,
+        title="Needs url",
+        saved_query_id=saved_query_id,
+        cron_expr="*/5 * * * *",
+        condition_op="gt",
+        threshold=0,
     )
     with pytest.raises(ValidationError):
         alerts_service.add_destination(
-            factory, row["slug"], user_id=1, is_admin=True,
-            kind="webhook", webhook_url="",
+            factory,
+            row["slug"],
+            user_id=1,
+            is_admin=True,
+            kind="webhook",
+            webhook_url="",
         )
 
 
@@ -397,7 +485,8 @@ async def test_stranger_cannot_fetch_alert_by_slug() -> None:
                 "title": "Admin only",
                 "saved_query_id": saved_query_id,
                 "cron_expr": "*/5 * * * *",
-                "condition_op": "gt", "threshold": 0,
+                "condition_op": "gt",
+                "threshold": 0,
             },
         )
         slug = create.json()["slug"]
@@ -421,9 +510,13 @@ async def test_alert_check_executor_fires_and_records_event(
     saved_query_id = _make_saved_query(owner_id=1, title="Exec test")
     factory = app.state.session_factory
     alert_row = alerts_service.create_alert(
-        factory, owner_id=1, title="Exec alert",
+        factory,
+        owner_id=1,
+        title="Exec alert",
         saved_query_id=saved_query_id,
-        cron_expr="*/5 * * * *", condition_op="gt", threshold=0,
+        cron_expr="*/5 * * * *",
+        condition_op="gt",
+        threshold=0,
     )
     alert_id = int(alert_row["id"])
 
@@ -435,7 +528,8 @@ async def test_alert_check_executor_fires_and_records_event(
         return _FakePrepared()
 
     def fake_sql(
-        _sql: str, *,
+        _sql: str,
+        *,
         approved_tables: dict[str, str],
         max_rows: int,
         conn: Any = None,
@@ -469,9 +563,7 @@ async def test_alert_check_executor_fires_and_records_event(
     # the test's app.state factory without going through init_db.
     from pointlessql import db as pql_db
 
-    monkeypatch.setattr(
-        pql_db, "get_session_factory", lambda: app.state.session_factory
-    )
+    monkeypatch.setattr(pql_db, "get_session_factory", lambda: app.state.session_factory)
 
     # Force dispatcher to a no-op so no outbound HTTP traffic.
     async def fake_dispatch(*_a: Any, **_kw: Any) -> bool:
@@ -485,7 +577,14 @@ async def test_alert_check_executor_fires_and_records_event(
     uc_client = AsyncMock()
     await scheduler_module._alert_check_executor(
         job_run_id=0,
-        user_info=UserInfo(email="test@test.com", is_admin=True),
+        user_info=UserInfo(
+            id=0,
+            email="test@test.com",
+            display_name="test",
+            is_admin=True,
+            is_supervisor=False,
+            is_auditor=False,
+        ),
         config={"alert_id": alert_id},
         uc_client=uc_client,
     )

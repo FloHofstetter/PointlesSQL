@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Captured at module import time — before any papermill ``chdir`` can
@@ -78,6 +78,22 @@ class DatabaseSettings(BaseSettings):
     # location is needed (Docker volumes, multi-tenant installs).
     url: str = f"sqlite:///{_PROJECT_ROOT / 'pointlessql.db'}"
 
+    # Sprint 30.4 — pool sizing.  Ignored on SQLite (StaticPool
+    # by default for ``:memory:``, or a tiny QueuePool for file
+    # DBs); applied to QueuePool on Postgres.
+    pool_size: int = 5
+    max_overflow: int = 10
+    # Recycle connections every N seconds to dodge MITM proxies and
+    # PG ``idle_in_transaction_session_timeout`` settings.  30 min
+    # default — see docs/admin/postgres-deployment.md for tuning.
+    pool_recycle_seconds: int = 1800
+
+    # PG-only.  Applied per-connection via a SET statement_timeout
+    # event listener; SQLite has no equivalent and ignores this.
+    # 30 s default fits the cockpit's p95 budget; bump for ad-hoc
+    # report queries.
+    statement_timeout_ms: int = 30000
+
 
 class AuthSettings(BaseSettings):
     """JWT signing and session lifetime.
@@ -106,6 +122,29 @@ class AuthSettings(BaseSettings):
     jwt_expiry_hours: int = 168  # 7 days
 
 
+class GroupMapping(BaseModel):
+    """One parsed entry from :attr:`OIDCSettings.group_map_raw` (Phase 29.3).
+
+    Attributes:
+        workspace_id: Workspace the user lands in when this group
+            matches.  ``None`` keeps whatever workspace the user
+            already had — useful for "scope-only" mappings that
+            don't move the user between tenants.
+        is_admin: Whether matching this group grants admin scope.
+        is_supervisor: Whether matching this group grants supervisor
+            scope (mirrors :class:`ApiKey.supervisor`).
+        is_auditor: Whether matching this group grants auditor scope
+            (mirrors :class:`ApiKey.auditor`).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    workspace_id: int | None = None
+    is_admin: bool = False
+    is_supervisor: bool = False
+    is_auditor: bool = False
+
+
 class OIDCSettings(BaseSettings):
     """OpenID Connect (opt-in) provider configuration.
 
@@ -113,6 +152,14 @@ class OIDCSettings(BaseSettings):
     ``discovery_url`` (the provider's ``.well-known/openid-configuration``
     URL) and ``client_id`` to enable the SSO login path.  The
     ``client_secret`` may be omitted for PKCE-only public clients.
+
+    Phase 29.3 adds optional group → workspace + scope mapping.  Set
+    ``POINTLESSQL_OIDC_GROUP_MAP`` to a string like
+    ``admins:ws=1,scopes=admin;data-team:ws=2,scopes=supervisor``
+    and the OIDC login flow will route users into the named workspace
+    and grant the listed scopes.  Format errors fail loud at settings
+    construction so a typo in the env var never silently grants the
+    wrong privileges.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_OIDC_")
@@ -121,6 +168,39 @@ class OIDCSettings(BaseSettings):
     client_id: str | None = None
     client_secret: str | None = None
     http_timeout_seconds: float = 10.0
+    scope: str = "openid email profile"
+    """Space-separated OAuth2 scopes requested at the authorize step.
+
+    The default omits ``groups`` for back-compat with installs that
+    rely on the install-default workspace.  Set to
+    ``"openid email profile groups"`` (or your IdP's equivalent claim
+    scope) to flow group memberships into the login mapper.  Phase
+    29.3.
+    """
+    groups_claim_name: str = "groups"
+    """Userinfo claim that carries the user's IdP group list.
+
+    Different providers surface this under different keys:
+    ``cognito:groups`` for AWS Cognito, ``roles`` for Keycloak in some
+    configurations, ``groups`` for Okta and Auth0.  Override via
+    ``POINTLESSQL_OIDC_GROUPS_CLAIM_NAME`` if the default doesn't
+    match.  Phase 29.3.
+    """
+    group_map_raw: str = ""
+    """Group → workspace + scope mapping, semicolon-separated.
+
+    Empty string disables the feature (every OIDC user lands in the
+    install-default workspace with no extra scopes — pre-29.3
+    behaviour).  Format::
+
+        group_a:ws=1,scopes=admin;group_b:ws=2,scopes=supervisor|auditor
+
+    ``ws=`` is optional (mapping then only grants scopes, leaves the
+    user's default workspace alone).  ``scopes=`` accepts a
+    pipe-separated subset of ``admin|supervisor|auditor`` or the empty
+    string.  A typo at any layer raises ``RuntimeError`` at settings
+    construction.  Phase 29.3.
+    """
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -139,6 +219,121 @@ class OIDCSettings(BaseSettings):
                 are set to non-empty strings.
         """
         return bool(self.discovery_url) and bool(self.client_id)
+
+    @model_validator(mode="after")
+    def _validate_group_map(self) -> OIDCSettings:
+        """Parse :attr:`group_map_raw` early so typos surface at startup.
+
+        Side effect: caches the parsed dict on a private attribute so
+        :attr:`parsed_group_map` returns it without re-parsing on every
+        login.
+
+        Raises:
+            ValueError: When the group-map syntax is malformed.  The
+                pydantic-settings layer turns this into a clear
+                ``ValidationError`` at ``Settings()`` construction
+                time, exactly the fail-loud-at-boot behaviour we want.
+        """
+        # Bypass __setattr__'s "frozen" guard via object.__setattr__
+        # so the cache write doesn't trip pydantic's immutability.
+        parsed = _parse_group_map(self.group_map_raw)
+        object.__setattr__(self, "_parsed_group_map", parsed)
+        return self
+
+    @property
+    def parsed_group_map(self) -> dict[str, GroupMapping]:
+        """Return the cached :attr:`group_map_raw` lookup table.
+
+        Empty dict when the env var is unset / empty.  Each key is an
+        IdP group name; the value is the parsed
+        :class:`GroupMapping`.  Phase 29.3.
+        """
+        return getattr(self, "_parsed_group_map", {})
+
+
+_VALID_SCOPES: frozenset[str] = frozenset({"admin", "supervisor", "auditor"})
+
+
+def _parse_group_map(raw: str) -> dict[str, GroupMapping]:
+    """Parse :attr:`OIDCSettings.group_map_raw` into a typed dict.
+
+    Format (semicolon-separated entries; per entry comma-separated
+    fields)::
+
+        group_name:ws=N,scopes=admin|supervisor|auditor;next_group:...
+
+    Both ``ws=`` and ``scopes=`` are optional; an entry with neither
+    is degenerate and rejected.  Whitespace around tokens is tolerated.
+
+    Args:
+        raw: The env-var value verbatim.
+
+    Returns:
+        Dict keyed by group name, value is a :class:`GroupMapping`.
+
+    Raises:
+        ValueError: On unparseable syntax, unknown scope name, or
+            non-integer workspace ID.  Settings construction
+            propagates this as a ``ValidationError``.
+    """
+    if not raw or not raw.strip():
+        return {}
+    out: dict[str, GroupMapping] = {}
+    for entry in raw.split(";"):
+        chunk = entry.strip()
+        if not chunk:
+            continue
+        if ":" not in chunk:
+            raise ValueError(f"OIDC group_map entry {chunk!r}: expected 'group:ws=N,scopes=...'")
+        group_name, _, body = chunk.partition(":")
+        group_name = group_name.strip()
+        if not group_name:
+            raise ValueError(f"OIDC group_map entry {chunk!r}: empty group name")
+        ws_id: int | None = None
+        scopes: set[str] = set()
+        for field in body.split(","):
+            token = field.strip()
+            if not token:
+                continue
+            key, eq, val = token.partition("=")
+            if not eq:
+                raise ValueError(
+                    f"OIDC group_map[{group_name!r}]: field {token!r} must be 'key=value'"
+                )
+            key = key.strip()
+            val = val.strip()
+            if key == "ws":
+                try:
+                    ws_id = int(val)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"OIDC group_map[{group_name!r}]: ws={val!r} must be int"
+                    ) from exc
+            elif key == "scopes":
+                if val == "":
+                    continue
+                for scope in val.split("|"):
+                    scope_clean = scope.strip()
+                    if scope_clean not in _VALID_SCOPES:
+                        raise ValueError(
+                            f"OIDC group_map[{group_name!r}]: unknown scope {scope_clean!r}; "
+                            f"must be one of {sorted(_VALID_SCOPES)}"
+                        )
+                    scopes.add(scope_clean)
+            else:
+                raise ValueError(
+                    f"OIDC group_map[{group_name!r}]: unknown field {key!r}; "
+                    "expected 'ws' or 'scopes'"
+                )
+        if ws_id is None and not scopes:
+            raise ValueError(f"OIDC group_map[{group_name!r}]: must set ws=, scopes=, or both")
+        out[group_name] = GroupMapping(
+            workspace_id=ws_id,
+            is_admin="admin" in scopes,
+            is_supervisor="supervisor" in scopes,
+            is_auditor="auditor" in scopes,
+        )
+    return out
 
 
 class LoggingSettings(BaseSettings):

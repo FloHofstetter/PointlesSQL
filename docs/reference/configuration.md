@@ -38,9 +38,17 @@ agent_runs, lineage, scheduler state. Reads
 | Variable | Default | Description |
 |---|---|---|
 | `POINTLESSQL_DB_URL` | `sqlite:///./pointlessql.db` | SQLAlchemy URL. Use `postgresql+psycopg://...` for the Postgres mode. |
+| `POINTLESSQL_DB_POOL_SIZE` | `5` | Persistent connections per worker. Sprint 30.4. PG-only. |
+| `POINTLESSQL_DB_MAX_OVERFLOW` | `10` | Burst capacity above `pool_size`. PG-only. |
+| `POINTLESSQL_DB_POOL_RECYCLE_SECONDS` | `1800` | Drop a connection if it's been alive longer than this — sidesteps idle-timeout drops on managed PG. |
+| `POINTLESSQL_DB_STATEMENT_TIMEOUT_MS` | `30000` | PG `statement_timeout` per connection (ms). `0` disables. PG-only. |
 
 The Lakehouse metadata is owned by `soyuz-catalog`, never written
 here directly.
+
+For production tuning of pool sizing, autovacuum hints, and the
+backup/restore playbook, see
+[Postgres deployment](../admin/postgres-deployment.md).
 
 ## Auth
 

@@ -28,7 +28,12 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import desc, select
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user, require_admin, require_auditor
+from pointlessql.api.dependencies import (
+    current_workspace_id,
+    get_user,
+    require_admin,
+    require_auditor,
+)
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models.agent_reviews import REVIEW_SEVERITIES, AgentReview
 from pointlessql.services import output_rendering as output_rendering_service
@@ -54,6 +59,7 @@ def _row_to_dict(row: AgentReview) -> dict[str, Any]:
     return {
         "id": row.id,
         "run_id": row.run_id,
+        "workspace_id": int(row.workspace_id),
         "period_start": row.period_start.astimezone(datetime.UTC).isoformat(),
         "period_end": row.period_end.astimezone(datetime.UTC).isoformat(),
         "severity": row.severity,
@@ -143,9 +149,11 @@ async def api_post_agent_review(
 
     factory = request.app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)
+    workspace_id = current_workspace_id(request)
     with factory() as session:
         row = AgentReview(
             run_id=run_id_clean,
+            workspace_id=workspace_id,
             period_start=period_start,
             period_end=period_end,
             severity=severity,

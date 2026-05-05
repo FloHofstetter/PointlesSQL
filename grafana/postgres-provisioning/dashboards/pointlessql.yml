@@ -1,0 +1,18 @@
+# Auto-provisioned dashboard provider for the Postgres-backed
+# audit dashboard (Sprint 30.2).  Loads JSON dashboards from
+# /var/lib/grafana/dashboards (the volume the compose overlay
+# binds to ./grafana/postgres-dashboards).
+
+apiVersion: 1
+
+providers:
+  - name: pointlessql-postgres
+    orgId: 1
+    folder: PointlesSQL
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

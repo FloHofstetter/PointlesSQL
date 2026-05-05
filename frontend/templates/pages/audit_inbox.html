@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}Audit cockpit · anomaly inbox · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -12,7 +13,7 @@
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4">
     <i class="bi bi-bell-fill fs-3"></i>
-    <h1 class="h3 mb-0">Audit cockpit · anomaly inbox</h1>
+    <h1 class="h3 mb-0">Audit cockpit · anomaly inbox{{ info('audit.what-is-an-anomaly') }}</h1>
 </div>
 
 <p class="text-muted">
@@ -25,7 +26,7 @@
 
 <form id="inbox-filter" class="row g-2 align-items-end mb-3" autocomplete="off">
     <div class="col-md-2">
-        <label for="inbox-severity" class="form-label small mb-1">Severity</label>
+        <label for="inbox-severity" class="form-label small mb-1">Severity{{ info('audit.severity-warn-vs-critical') }}</label>
         <select id="inbox-severity" class="form-select form-select-sm">
             <option value="all" selected>warn or worse</option>
             <option value="warn">warn</option>
@@ -81,7 +82,7 @@
                     <th class="text-end">Observed</th>
                     <th class="text-end">Baseline μ</th>
                     <th class="text-end">σ</th>
-                    <th>Ack</th>
+                    <th>Ack{{ info('audit.anomaly-actions') }}</th>
                     <th></th>
                 </tr>
             </thead>

@@ -1,5 +1,6 @@
 """Alembic environment configuration for embedded migrations."""
 
+import os
 from typing import Any
 
 from alembic import context
@@ -8,6 +9,16 @@ from sqlalchemy import engine_from_config, pool
 from pointlessql.models import Base
 
 target_metadata = Base.metadata
+
+# Sprint 30.0 — let operators run ``alembic`` from the shell against
+# whatever backend ``POINTLESSQL_DB_URL`` points at, the same way the
+# runtime ``init_db()`` overrides ``sqlalchemy.url`` programmatically.
+# Without this, ``alembic upgrade head`` always hits the SQLite path
+# baked into ``alembic.ini``, which makes CI Postgres lanes and ad-hoc
+# PG migrations needlessly painful.
+_url_override = os.environ.get("POINTLESSQL_DB_URL")
+if _url_override:
+    context.config.set_main_option("sqlalchemy.url", _url_override)
 
 # SQLite cannot reflect ``CREATE INDEX … (col DESC)`` from PRAGMA, so
 # autogenerate sees the index without DESC on the DB side and with
@@ -25,13 +36,16 @@ _SQLITE_EXPRESSION_INDEX_ALLOWLIST = frozenset(
     }
 )
 
-# Phase 18.7 creates a SQLite FTS5 virtual table ``audit_search``
-# that spawns five internal shadow tables (``audit_search_data``,
+# Phase 18.7 + Sprint 30.1 — both FTS surfaces are created via raw
+# SQL in their migrations rather than as ORM-defined tables, because
+# the SQLite FTS5 vtable spawns shadow tables (``audit_search_data``,
 # ``audit_search_idx``, ``audit_search_content``,
-# ``audit_search_docsize``, ``audit_search_config``).  None of them
-# are ORM-defined; autogenerate reports them as "extra" and would
-# propose drops on every check.  Filter the family out by name
-# prefix so ``alembic check`` stays green.
+# ``audit_search_docsize``, ``audit_search_config``) that
+# SQLAlchemy can't model, and the Postgres ``audit_search_index``
+# carries a generated tsvector column whose dialect-specific
+# expression alembic autogenerate would re-render as drift.
+# Filtering the family out by name prefix keeps ``alembic check``
+# green on both backends.
 _FTS_TABLE_PREFIXES: tuple[str, ...] = ("audit_search",)
 
 

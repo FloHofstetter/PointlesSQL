@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}{{ branch_schema_fqn }} · Branch · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -35,7 +36,7 @@
                 <dl class="row mb-0 small">
                     <dt class="col-sm-5">Parent schema</dt>
                     <dd class="col-sm-7 font-monospace">{{ tags.parent_schema }}</dd>
-                    <dt class="col-sm-5">Strategy</dt>
+                    <dt class="col-sm-5">Strategy{{ info('branches.cleanup-loop') }}</dt>
                     <dd class="col-sm-7"><code>{{ tags.strategy }}</code></dd>
                     <dt class="col-sm-5">Created at</dt>
                     <dd class="col-sm-7">{{ tags.created_at }}</dd>
@@ -137,7 +138,7 @@
         },
      }'>
     <div class="card-header bg-danger-subtle text-danger-emphasis">
-        <i class="bi bi-exclamation-triangle me-1"></i>Danger zone
+        <i class="bi bi-exclamation-triangle me-1"></i>Danger zone{{ info('branches.promote-vs-discard') }}
     </div>
     <div class="card-body">
         <div class="d-flex gap-2 flex-wrap mb-3">
@@ -145,7 +146,7 @@
                     x-on:click="previewPromote()"
                     x-bind:disabled="previewing">
                 <span x-show="previewing" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
-                Preview promote
+                Preview promote{{ info('branches.preview-tab') }}
             </button>
             <button class="btn btn-primary btn-sm"
                     x-on:click="promote()"

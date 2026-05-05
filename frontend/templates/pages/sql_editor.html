@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
 {% block title %}SQL · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -168,7 +169,7 @@
  <div class="d-flex align-items-center justify-content-between mb-3">
  <div class="d-flex align-items-center gap-2">
  <i class="bi bi-code-square fs-3"></i>
- <h1 class="h3 mb-0">SQL</h1>
+ <h1 class="h3 mb-0">SQL{{ info('sql.run-modes') }}</h1>
  </div>
  <div class="text-muted small" x-show="lastRun" x-cloak>
  <span x-text="lastRun ? lastRun.summary : ''"></span>
@@ -205,12 +206,12 @@
  @click="run({ explain: true })"
  :disabled="running"
  title="EXPLAIN ANALYZE">
- <i class="bi bi-diagram-3"></i> Explain
+ <i class="bi bi-diagram-3"></i> Explain{{ info('sql.cost-gate') }}
  </button>
  <button type="button"
  class="btn btn-outline-secondary btn-sm"
  @click="openSaveModal()">
- <i class="bi bi-bookmark-plus"></i> Save
+ <i class="bi bi-bookmark-plus"></i> Save{{ info('sql.saved-queries') }}
  </button>
  <span class="text-muted small align-self-center ms-2">
  <kbd>Cmd</kbd>+<kbd>Enter</kbd> run · <kbd>Cmd</kbd>+<kbd>S</kbd> save

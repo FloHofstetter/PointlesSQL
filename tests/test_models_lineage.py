@@ -10,7 +10,7 @@ import httpx
 import pytest
 
 from pointlessql.api.main import app
-from pointlessql.models import AgentRun, LineageRowEdge
+from pointlessql.models import AgentRun, AgentRunOperation, LineageRowEdge
 from pointlessql.services.models_lineage import (
     aggregate_source_tables_for_runs,
     build_model_lineage_graph,
@@ -42,11 +42,23 @@ def _seed_run_with_edges(
             started_at=now,
         )
         session.add(run)
+        session.flush()
+        op = AgentRunOperation(
+            agent_run_id=run_id,
+            ordinal=1,
+            op_name="merge",
+            params_json="{}",
+            target_table="cat1.sch1.smoke_model",
+            started_at=now,
+            finished_at=now,
+        )
+        session.add(op)
+        session.flush()
         for src in source_tables:
             session.add(
                 LineageRowEdge(
                     run_id=run_id,
-                    op_id=1,
+                    op_id=op.id,
                     source_table=src,
                     source_row_id="r-1",
                     target_table="cat1.sch1.smoke_model",
