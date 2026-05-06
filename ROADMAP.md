@@ -4385,31 +4385,45 @@ PointlesSQL
 │           Admin CRUD + freshness JSON live under
 │           ``/api/admin/expected-producers``.  13 pytest cases.
 │
-├── Phase 41 — Sprint 17.6 promote: Lineage sub-panes         ⏳ queued
+├── Phase 41 — Sprint 17.6 promote: Lineage sub-panes         ✅ done
 │   │
-│   │   The "embed Row / Column / Value drill-downs as
-│   │   sub-panes inside the Lineage top-tab on ``/runs/{id}``"
-│   │   sprint that's been ``⏳ queued`` since Phase 17.  Original
-│   │   defer reason: "until usage data shows the page-flip is
-│   │   the real bottleneck".  Promoted to its own phase here so
-│   │   it doesn't get lost behind the bigger Phase-39/40
-│   │   feature pillars; conceptually it's the smallest of the
-│   │   three "next" tracks (~1 sprint, pure UX consolidation,
-│   │   no new backend).  Pick this one when the AI-native /
-│   │   federation pillars are blocked or when a short-session
-│   │   slot opens.
+│   │   Three new drill-down sub-pills (Row trace / Column trace /
+│   │   Value changes) now sit next to the existing Summary +
+│   │   Graph pills inside the Lineage top-tab on
+│   │   ``/runs/{id}``.  Pure UX consolidation: each sub-pill
+│   │   wraps an existing JSON endpoint
+│   │   (``/api/lineage/row-trace``, ``/api/lineage/column-trace``,
+│   │   ``/api/lineage/value-changes``); no new SQL surface.  The
+│   │   standalone ``/catalogs/.../rows/{id}/trace`` and
+│   │   ``/catalogs/.../columns/{name}/trace`` pages stay
+│   │   route-mounted for direct-link compatibility.  Deep-link
+│   │   plumbing — Summary "Trace target row" button + Graph
+│   │   side-panel "Trace this column" button — flips the active
+│   │   pill via Bootstrap-Tab JS and stuffs the picker via three
+│   │   custom window events (``pql:trace-row`` /
+│   │   ``pql:trace-column`` / ``pql:trace-value``).
 │   │
-│   └── Sprint 41.1 — embed lineage drill-downs as sub-panes  ⏳
-│           Move the contents of
-│           ``/catalogs/.../rows/{id}/trace`` (row trace),
-│           ``/catalogs/.../columns/{name}/trace`` (column
-│           trace), and the value-changes panel into Lineage
-│           top-tab sub-pills next to the existing
-│           Summary / Graph entries on ``/runs/{id}``.
-│           Trade-off accepted: +JS bundle weight in the
-│           run-detail page in exchange for fewer page-flips
-│           for the audit-reviewer persona.  Behaviour-equivalent
-│           routes stay in place for direct-link compatibility.
+│   └── Sprint 41.1 — embed lineage drill-downs as sub-panes  ✅
+│           Three new tab-panes inside
+│           [`partials/_run_tab_lineage.html`](frontend/templates/partials/_run_tab_lineage.html);
+│           three Alpine factories
+│           (``rowTracePane`` / ``columnTracePane`` /
+│           ``valueChangesPane``) ship in
+│           [`components/lineage_panes.js`](frontend/js/components/lineage_panes.js)
+│           and register on ``window`` via
+│           [`bootstrap.js`](frontend/js/bootstrap.js).  The
+│           ``load_lineage_summary_for_run`` loader gained one
+│           ``func.min(LineageRowEdge.target_row_id)`` column
+│           (``sample_target_row_id``) so the Summary "Trace"
+│           button can deep-link concretely; the new key is
+│           additive in
+│           ``GET /api/agent-runs/{id}/audit/lineage``.  3 new
+│           pytest cases (loader extension, sub-pill mount,
+│           deep-link button attrs); browser replay against the
+│           rebuilt e2e container confirmed zero console errors
+│           + end-to-end fetch (Summary → Row trace pane → 2
+│           steps loaded from
+│           ``/api/lineage/row-trace``).
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

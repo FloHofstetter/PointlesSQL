@@ -6,6 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 41 — Sprint 17.6 promote: Lineage sub-panes closed.**
+  Single-sprint UX-consolidation phase post the
+  "plane phase 41 komplett aus" plan.  Three new drill-down
+  sub-pills (Row trace / Column trace / Value changes) live next
+  to the existing Summary + Graph pills inside the Lineage
+  top-tab on ``/runs/{id}``.  Each pane wraps one of the
+  existing ``GET /api/lineage/{row-trace,column-trace,
+  value-changes}`` endpoints; no new SQL surface, no new routes.
+  The standalone ``/catalogs/.../rows/{id}/trace`` and
+  ``/catalogs/.../columns/{name}/trace`` pages stay
+  route-mounted for direct-link compatibility.  New file
+  ``frontend/js/components/lineage_panes.js`` carries the three
+  Alpine factories (``rowTracePane`` / ``columnTracePane`` /
+  ``valueChangesPane``) plus a ``bindLineageTraceButtons()`` one-shot
+  initialiser that exposes ``window.pqlLineageTraceRow / Column /
+  Value`` helpers and event-delegates clicks on
+  ``button[data-pql-trace-row="1"]``.  Three custom window events
+  (``pql:trace-row`` / ``pql:trace-column`` / ``pql:trace-value``)
+  stitch Summary "Trace target row" buttons + Graph side-panel
+  "Trace this column" buttons into the corresponding sub-pill,
+  flipping the active tab via Bootstrap 5's ``Tab.show()`` JS
+  API and pre-populating the picker.  ``load_lineage_summary_for_run``
+  gained one ``func.min(LineageRowEdge.target_row_id)`` column
+  (``sample_target_row_id``) so Summary deep-links carry a
+  representative row id; the new key flows through to
+  ``GET /api/agent-runs/{id}/audit/lineage`` additively.  3
+  pytest cases (loader, HTML mount, deep-link button attrs); 138
+  pre-existing run-detail / lineage tests stay green.  Browser
+  replay against the rebuilt e2e container confirmed zero
+  console errors and end-to-end Summary-click → Row-trace-pane
+  fetch.
+
 - **Phase 40 — Lakehouse Federation reads (OpenLineage) closed.**
   Four sub-sprints landed in one autonomous session post the
   "plane phase 40 aus" plan; Sprint 40.2 (foreign-Delta CDF tail
