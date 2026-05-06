@@ -3997,7 +3997,18 @@ PointlesSQL
 │   │       model writes are reverted because tests failed, never
 │   │       as a side-effect of the run itself.
 │   │
-│   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ Playwright
+│   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ upstream
+│           Phase 38.2 (2026-05-06) verified the mashumaro
+│           upstream blocker against the latest pins:
+│           ``dbt-duckdb 1.10.1`` + ``dbt-core 1.11.8`` +
+│           ``mashumaro 3.14`` on Python 3.14.4 still raises
+│           ``UnserializableField: Field "schema" of type
+│           Optional[str] in JSONObjectSchema``.  The
+│           ``[dbt]`` extra is gated in ``pyproject.toml``;
+│           re-pick when upstream mashumaro releases a
+│           Python-3.14-compatible version that resolves
+│           ``Optional[str]`` in the unpacker compiler.
+│           No PointlesSQL-side workaround possible.
 │
 ├── Phase 37 — Playwright coverage refresh (post-22/23)     ✅
 │   │

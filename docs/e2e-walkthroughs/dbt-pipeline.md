@@ -139,12 +139,22 @@ exercise the iframe path:
    docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
      exec pointlessql uv pip install dbt-duckdb
    ```
-   - **Caveat:** `dbt-duckdb 1.9 + Python 3.14` has a known
-     `mashumaro.UnserializableField` import error. If pip
-     install fails or `import dbt.cli.main` raises non-
-     ImportError, this entire Part C is skipped — the e2e
-     stack tracks Python 3.14 and the dbt-duckdb gate is in
-     `pyproject.toml [project.optional-dependencies] dbt`.
+   - **Caveat (verified 2026-05-06, Phase 38.2 feasibility):**
+     even the latest `dbt-duckdb 1.10.1 + dbt-core 1.11.8 +
+     mashumaro 3.14 + Python 3.14.4` combo still hits the
+     `mashumaro.UnserializableField` import error.  Trace:
+     `Field "schema" of type Optional[str] in JSONObjectSchema
+     is not serializable` raised from
+     `mashumaro/mixins/dict.py:25` while `dbt_common/
+     dataclass_schema.py:15` imports `mashumaro.jsonschema`.
+     Root cause is mashumaro's unpacker compiler not handling
+     `Optional[str]` annotations under Python 3.14 — neither
+     `dbt-core` nor `dbt-duckdb` ship a workaround as of
+     2026-05-06.  Until upstream mashumaro releases a
+     Python-3.14-compatible version, this entire Part C is
+     skipped — the e2e stack tracks Python 3.14 and the
+     dbt-duckdb gate is in `pyproject.toml
+     [project.optional-dependencies] dbt`.
 
 2. **Compile the in-repo sample project**.
    ```bash
