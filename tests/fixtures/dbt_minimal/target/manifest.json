@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "project_name": "pql_test"
+  },
+  "nodes": {
+    "model.pql_test.bronze_raw": {
+      "unique_id": "model.pql_test.bronze_raw",
+      "resource_type": "model",
+      "name": "bronze_raw",
+      "package_name": "pql_test",
+      "database": "main",
+      "schema": "bronze",
+      "alias": "bronze_raw",
+      "relation_name": "main.bronze.bronze_raw",
+      "config": {"materialized": "table"},
+      "depends_on": {"nodes": [], "macros": []}
+    },
+    "model.pql_test.silver_clean": {
+      "unique_id": "model.pql_test.silver_clean",
+      "resource_type": "model",
+      "name": "silver_clean",
+      "package_name": "pql_test",
+      "database": "main",
+      "schema": "silver",
+      "alias": "silver_clean",
+      "relation_name": "main.silver.silver_clean",
+      "config": {"materialized": "incremental"},
+      "depends_on": {"nodes": ["model.pql_test.bronze_raw"], "macros": []}
+    },
+    "test.pql_test.not_null_silver_clean_id.abc123": {
+      "unique_id": "test.pql_test.not_null_silver_clean_id.abc123",
+      "resource_type": "test",
+      "name": "not_null_silver_clean_id",
+      "package_name": "pql_test",
+      "database": "main",
+      "schema": "dbt_test__audit",
+      "alias": "not_null_silver_clean_id",
+      "config": {"severity": "error"},
+      "depends_on": {"nodes": ["model.pql_test.silver_clean"], "macros": []}
+    },
+    "test.pql_test.unique_silver_clean_id.def456": {
+      "unique_id": "test.pql_test.unique_silver_clean_id.def456",
+      "resource_type": "test",
+      "name": "unique_silver_clean_id",
+      "package_name": "pql_test",
+      "database": "main",
+      "schema": "dbt_test__audit",
+      "alias": "unique_silver_clean_id",
+      "config": {"severity": "warn"},
+      "depends_on": {"nodes": ["model.pql_test.silver_clean"], "macros": []}
+    }
+  },
+  "sources": {},
+  "macros": {},
+  "parent_map": {
+    "model.pql_test.bronze_raw": [],
+    "model.pql_test.silver_clean": ["model.pql_test.bronze_raw"]
+  },
+  "child_map": {
+    "model.pql_test.bronze_raw": ["model.pql_test.silver_clean"],
+    "model.pql_test.silver_clean": []
+  }
+}

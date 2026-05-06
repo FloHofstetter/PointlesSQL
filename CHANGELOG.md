@@ -6,6 +6,28 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 36.2 — on-demand ``dbt run/test/compile`` + manifest
+  bridge.**  Three new POST routes — ``/api/dbt/compile`` (auth-
+  only), ``/api/dbt/run`` and ``/api/dbt/test`` (supervisor scope) —
+  plus an admin-only ``/api/dbt/deps`` for package installs.  The
+  shared ``services/dbt_executor.py`` spawns dbt as an async
+  subprocess with a configurable timeout, captures stdout/stderr
+  with a 256 KiB-per-stream cap, and never raises on non-zero exit
+  codes (those land on ``DBTRunResult.exit_code``).  The shared
+  ``services/dbt_bridge.py`` parses ``target/manifest.json`` +
+  ``target/run_results.json`` and emits one ``agent_run_operations``
+  row per executed model or test (op_names ``dbt_model`` / ``dbt_test``
+  added to ``VALID_OP_NAMES`` + the SQL CHECK via alembic
+  ``kk1m3o5q7s9v``).  ``params_json`` captures the manifest-side
+  fields (``unique_id``, ``materialization``, ``execution_time``,
+  ``severity``, ``depends_on``) so a reviewer can see why each row
+  exists without joining back to the manifest.  Routes that auto-
+  create an ``AgentRun`` (``agent_id="dbt-cli"``) finish it on exit;
+  caller-supplied run ids stay caller-managed.  Failure visibility
+  for tests + severity enforcement land in 36.3 / 36.5.  19 new
+  unit + integration tests; pyright budget bumped 522 → 528 to
+  cover the JSON-parse cascade in dbt_bridge.
+
 - **Sprint 36.1 — dbt-docs subprocess + reverse-proxy** (Phase 36
   start).  Mirrors the MLflow integration: ``DBTSettings`` block
   (``POINTLESSQL_DBT_*`` env prefix, default ``docs_port=5002``,

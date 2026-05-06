@@ -56,6 +56,11 @@ VALID_OP_NAMES = frozenset(
         "branch_create",
         "branch_promote",
         "branch_discard",
+        # dbt-bridge ops (Phase 36).  ``dbt_model`` covers run /
+        # snapshot / seed (anything that materialises a relation);
+        # ``dbt_test`` covers test executions.
+        "dbt_model",
+        "dbt_test",
     }
 )
 

@@ -3824,7 +3824,7 @@ PointlesSQL
 │   │   demand CLI mode (analog MLflow), dbt-tests +
 │   │   dbt-expectations + dbt-utils as Quality stack.
 │   │
-│   ├── Sprint 36.1 — dbt subprocess + settings + reverse-proxy  ⏳
+│   ├── Sprint 36.1 — dbt subprocess + settings + reverse-proxy  ✅
 │   │       New ``DBTSettings`` block in settings.py
 │   │       (``POINTLESSQL_DBT_*`` env-prefix, default
 │   │       ``project_dir=dbt_project/``, ``docs_port=5002``).
@@ -3845,7 +3845,19 @@ PointlesSQL
 │   │       14 new unit tests (8 subprocess + 6 proxy).  Bridge
 │   │       code lands in 36.2; 36.1 is pure infrastructure.
 │   │
-│   ├── Sprint 36.2 — dbt run/test on-demand + manifest bridge   📅 queued
+│   ├── Sprint 36.2 — dbt run/test on-demand + manifest bridge   ✅
+│   │       Three new POST routes (compile / run / test) plus an
+│   │       admin-only deps route.  ``services/dbt_executor.py``
+│   │       wraps the dbt CLI as an async subprocess with timeout
+│   │       and 256 KiB output cap; ``services/dbt_bridge.py``
+│   │       parses ``manifest.json`` + ``run_results.json`` and
+│   │       emits one ``agent_run_operations`` row per executed
+│   │       model + test (new op_names ``dbt_model`` / ``dbt_test``,
+│   │       alembic ``kk1m3o5q7s9v`` extends the CHECK).  Routes
+│   │       auto-create an ``AgentRun`` (``agent_id="dbt-cli"``)
+│   │       when no caller-supplied run id is present.  19 new
+│   │       tests; pyright budget 522 → 528 for JSON parse cascade.
+│   │
 │   ├── Sprint 36.3 — test-failure → rejects + expectation axis  📅 queued
 │   ├── Sprint 36.4 — Cockpit /dbt index + run-view sub-tab     ⏸ Playwright
 │   ├── Sprint 36.5 — severity enforcement + rollback bridge    📅 queued

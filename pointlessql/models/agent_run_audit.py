@@ -166,7 +166,9 @@ class AgentRunOperation(Base):
         ),
         CheckConstraint(
             "op_name IN "
-            "('autoload','merge','write_table','sql','aggregate','rollback','train_model')",
+            "('autoload','merge','write_table','sql','aggregate','rollback',"
+            "'train_model','branch_create','branch_promote','branch_discard',"
+            "'dbt_model','dbt_test')",
             name="ck_agent_run_operations_op_name",
         ),
     )

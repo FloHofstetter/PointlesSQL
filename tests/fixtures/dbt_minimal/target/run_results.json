@@ -1,0 +1,40 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v6.json",
+    "project_name": "pql_test"
+  },
+  "results": [
+    {
+      "unique_id": "model.pql_test.bronze_raw",
+      "status": "success",
+      "execution_time": 0.34,
+      "message": "OK created table model main.bronze.bronze_raw",
+      "thread_id": "Thread-1",
+      "adapter_response": {"_message": "OK", "rows_affected": 100, "code": "SELECT 100"}
+    },
+    {
+      "unique_id": "model.pql_test.silver_clean",
+      "status": "success",
+      "execution_time": 1.21,
+      "message": "OK created incremental table model main.silver.silver_clean",
+      "thread_id": "Thread-1",
+      "adapter_response": {"_message": "OK", "rows_affected": 95, "code": "MERGE 95"}
+    },
+    {
+      "unique_id": "test.pql_test.not_null_silver_clean_id.abc123",
+      "status": "pass",
+      "execution_time": 0.12,
+      "message": null,
+      "thread_id": "Thread-1",
+      "adapter_response": {}
+    },
+    {
+      "unique_id": "test.pql_test.unique_silver_clean_id.def456",
+      "status": "fail",
+      "execution_time": 0.18,
+      "message": "Got 3 results, configured to fail if != 0",
+      "thread_id": "Thread-1",
+      "adapter_response": {}
+    }
+  ]
+}
