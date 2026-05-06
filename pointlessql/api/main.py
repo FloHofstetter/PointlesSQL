@@ -55,6 +55,7 @@ from pointlessql.api.home_routes import router as home_router
 from pointlessql.api.jobs_routes import (
     router as jobs_router,
 )
+from pointlessql.api.lineage_inbound_routes import router as lineage_inbound_router
 from pointlessql.api.lineage_routes import router as lineage_router
 from pointlessql.api.middleware import register_middleware
 from pointlessql.api.ml_routes import router as ml_router
@@ -598,6 +599,7 @@ app.include_router(audit_by_table_router)
 app.include_router(saved_audit_queries_router)
 app.include_router(volumes_router)
 app.include_router(lineage_router)
+app.include_router(lineage_inbound_router)
 app.include_router(time_travel_router)
 app.include_router(governance_router)
 app.include_router(notebooks_router)
