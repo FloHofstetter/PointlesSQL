@@ -1,0 +1,54 @@
+<div class="card mb-4">
+ <div class="card-header"><i class="bi bi-info-circle me-1"></i>Run metadata</div>
+ <div class="card-body small">
+ <dl class="row mb-0">
+ <dt class="col-3 col-md-2">Principal</dt>
+ <dd class="col-9 col-md-10 font-monospace">{{ run.principal or "—" }}</dd>
+ <dt class="col-3 col-md-2">Agent</dt>
+ <dd class="col-9 col-md-10 font-monospace">{{ run.agent_id or "—" }}</dd>
+ <dt class="col-3 col-md-2">Started</dt>
+ <dd class="col-9 col-md-10 font-monospace">{{ run.started_at or "—" }}</dd>
+ <dt class="col-3 col-md-2">Finished</dt>
+ <dd class="col-9 col-md-10 font-monospace">{{ run.finished_at or "—" }}</dd>
+ {% if run.cost_est is not none %}
+ <dt class="col-3 col-md-2">Cost estimate</dt>
+ <dd class="col-9 col-md-10">{{ run.cost_est }}</dd>
+ {% endif %}
+ {% if run.tables_touched %}
+ <dt class="col-3 col-md-2">Tables touched</dt>
+ <dd class="col-9 col-md-10">
+ {% for full_name in run.tables_touched %}
+ <a href="/catalogs/{{ full_name.split('.')[0] }}/{{ full_name.split('.')[1] }}/{{ full_name.split('.')[2] }}"
+ class="badge bg-secondary text-decoration-none font-monospace me-1 mb-1">{{ full_name }}</a>
+ {% endfor %}
+ </dd>
+ {% endif %}
+ {% if run.approved_by %}
+ <dt class="col-3 col-md-2">Approved by</dt>
+ <dd class="col-9 col-md-10 font-monospace">{{ run.approved_by }} <span class="text-muted">at {{ run.approved_at }}</span></dd>
+ {% endif %}
+ {% if run.denied_reason %}
+ <dt class="col-3 col-md-2">Denied reason</dt>
+ <dd class="col-9 col-md-10">{{ run.denied_reason }}</dd>
+ {% endif %}
+ {% if run.cost_gate_trigger %}
+ <dt class="col-3 col-md-2">Cost-gate trigger</dt>
+ <dd class="col-9 col-md-10" x-data="{ open: false }">
+ <div class="small">
+ <span class="badge bg-warning text-dark me-2">{{ run.cost_gate_trigger.engine or "duckdb" }}</span>
+ estimated cost
+ <span class="font-monospace">{{ run.cost_gate_trigger.estimated_cost }}</span>
+ &gt; threshold
+ <span class="font-monospace">{{ run.cost_gate_trigger.threshold }}</span>
+ <button type="button" class="btn btn-sm btn-outline-secondary ms-2"
+ @click="open = !open"
+ x-text="open ? 'Hide EXPLAIN' : 'Show EXPLAIN'">Show EXPLAIN</button>
+ </div>
+ <pre class="bg-body-tertiary border rounded p-2 mt-2 small mb-0"
+ :class="{ 'd-block': open, 'd-none': !open }"
+ style="max-height: 360px; overflow: auto;">{{ run.cost_gate_trigger.explain | tojson(indent=2) }}</pre>
+ </dd>
+ {% endif %}
+ </dl>
+ </div>
+</div>

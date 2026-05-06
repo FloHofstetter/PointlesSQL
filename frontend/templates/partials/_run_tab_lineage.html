@@ -1,0 +1,182 @@
+ <div class="tab-pane fade" id="top-lineage" role="tabpanel" aria-labelledby="top-lineage-btn">
+ <ul class="nav nav-pills mb-3 small" id="lineageSubTabs" role="tablist">
+ <li class="nav-item" role="presentation">
+ <button class="nav-link active" id="tab-lineage-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-lineage" type="button" role="tab"
+ aria-controls="tab-lineage" aria-selected="true">
+ <i class="bi bi-list-ul me-1"></i>Summary
+ {% if lineage_summary and lineage_summary.total_edges %}<span class="badge bg-secondary ms-1">{{ lineage_summary.total_edges }}</span>{% endif %}
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ {# Graph sub-tab. Cytoscape.js is loaded
+ from CDN in the extra_js block below; the lineageDag()
+ Alpine factory ships in frontend/js/components/
+ lineage_dag.js (ESM, attached to window via
+ bootstrap.js). #}
+ <button class="nav-link" id="tab-lineage-graph-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-lineage-graph" type="button" role="tab"
+ aria-controls="tab-lineage-graph" aria-selected="false">
+ <i class="bi bi-diagram-3 me-1"></i>Graph
+ </button>
+ </li>
+ </ul>
+ <div class="tab-content">
+ <div class="tab-pane fade show active" id="tab-lineage" role="tabpanel" aria-labelledby="tab-lineage-btn">
+ {% if lineage_summary and lineage_summary.rows %}
+ <div class="card">
+ <div class="card-header small text-muted">
+ {{ lineage_summary.total_edges }} per-row lineage edge{% if lineage_summary.total_edges != 1 %}s{% endif %}
+ across {{ lineage_summary.rows | length }} operation{% if lineage_summary.rows | length != 1 %}s{% endif %}
+ </div>
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>#</th>
+ <th>Op</th>
+ <th>Source</th>
+ <th>Target</th>
+ <th class="text-end">Edges</th>
+ <th></th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for row in lineage_summary.rows %}
+ <tr>
+ <td>{{ row.ordinal }}</td>
+ <td><span class="badge bg-info text-dark">{{ row.op_name }}</span></td>
+ <td class="font-monospace">
+ {% if row.source_table %}{{ row.source_table }}{% else %}<span class="text-muted">—</span>{% endif %}
+ </td>
+ <td class="font-monospace">{{ row.target_table or "—" }}</td>
+ <td class="text-end">{{ row.edge_count }}</td>
+ <td class="text-end">
+ {% if row.target_table and "." in row.target_table %}
+ {% set parts = row.target_table.split(".") %}
+ {% if parts|length == 3 %}
+ <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}#lineage"
+ class="btn btn-sm btn-outline-secondary"
+ title="Open the lineage card for {{ row.target_table }}">
+ <i class="bi bi-diagram-3"></i>
+ </a>
+ {% endif %}
+ {% endif %}
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No per-row lineage edges recorded for this run. Edges are
+ written by <code>pql.merge</code> (and <code>pql.write_table</code>)
+ when the source frame carries a <code>_lineage_row_id</code>
+ column AND the call declares <code>source_table_fqn</code>.
+ Bronze autoloads inject the column for free; downstream
+ merges propagate it through chain.
+ </div>
+ {% endif %}
+ </div>
+
+ {# Graph sub-pane. Lazy-renders cytoscape
+ only after the user toggles the Graph sub-tab AND
+ (via x-init guard inside the factory) the cytoscape
+ library is loaded. Mount point + side-panel layout
+ share the same flex container so the graph fills the
+ available width while the side-panel stays a fixed
+ 320 px column. #}
+ <div class="tab-pane fade" id="tab-lineage-graph" role="tabpanel" aria-labelledby="tab-lineage-graph-btn">
+ <div x-data="lineageDag({ runId: '{{ run.id }}', opId: {% if filter_op_id %}{{ filter_op_id }}{% else %}null{% endif %} })"
+ x-init="init()">
+ <template x-if="loading">
+ <div class="text-muted small p-3">
+ <span class="spinner-border spinner-border-sm me-1"></span>Loading lineage graph…
+ </div>
+ </template>
+ <template x-if="!loading && error">
+ <div class="alert alert-danger small" x-text="error"></div>
+ </template>
+ <template x-if="!loading && !error && nodes.length === 0">
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No lineage edges recorded for this run. Edges land
+ in the graph when <code>pql.merge</code> /
+ <code>pql.write_table</code> / <code>pql.aggregate</code>
+ run with a source table that carries
+ <code>_lineage_row_id</code>.
+ </div>
+ </template>
+ <div class="d-flex flex-column flex-lg-row gap-3"
+ x-show="!loading && !error && nodes.length > 0" x-cloak>
+ <div class="flex-grow-1 border rounded"
+ style="min-height: 480px; background: #0b1020;">
+ <div x-ref="canvas" style="width: 100%; height: 480px;"></div>
+ </div>
+ <aside class="flex-shrink-0 border rounded p-3 small"
+ style="width: 320px; max-width: 100%; background: var(--bs-body-bg);">
+ <div class="d-flex justify-content-between align-items-center mb-2">
+ <span class="fw-semibold text-uppercase text-muted small">Selection</span>
+ <button type="button" class="btn btn-sm btn-link p-0"
+ @click="clearSelection()"
+ x-show="selectedEdgeId || selectedColumn" x-cloak>
+ Clear
+ </button>
+ </div>
+ <template x-if="!selectedEdgeId && !selectedColumn">
+ <div class="text-muted small">
+ Click a node to highlight its incident
+ edges, an edge to inspect its column
+ pairs, or a column name in the side panel
+ to highlight every edge that touches it.
+ </div>
+ </template>
+ <template x-if="selectedEdgeId && currentEdge()">
+ <div>
+ <div class="font-monospace small text-muted mb-2"
+ x-text="currentEdge().source + ' → ' + currentEdge().target"></div>
+ <div class="mb-2">
+ op #<span x-text="currentEdge().op_ordinal"></span>
+ <span class="badge bg-info text-dark ms-1" x-text="currentEdge().op_name"></span>
+ </div>
+ <div class="mb-2 text-muted">
+ <span x-text="currentEdge().row_edge_count"></span>
+ row edge<span x-show="currentEdge().row_edge_count !== 1">s</span>
+ </div>
+ <div class="text-uppercase text-muted small mt-3 mb-1">Column pairs</div>
+ <ul class="list-unstyled mb-0" style="max-height: 280px; overflow-y: auto;">
+ <template x-for="pair in currentEdge().column_pairs" :key="(pair.source_column || '*') + '__' + pair.target_column + '__' + pair.transform_kind">
+ <li class="py-1 border-bottom">
+ <div class="d-flex align-items-center gap-1">
+ <button type="button" class="btn btn-link btn-sm p-0 font-monospace"
+ :title="'Highlight every edge that touches ' + (pair.source_column || pair.target_column)"
+ @click="selectColumn(pair.source_column || pair.target_column)"
+ x-text="(pair.source_column || '∅') + ' → ' + pair.target_column"></button>
+ </div>
+ <div class="small text-muted" x-text="pair.transform_kind"></div>
+ </li>
+ </template>
+ </ul>
+ </div>
+ </template>
+ <template x-if="selectedColumn">
+ <div>
+ <div class="text-uppercase text-muted small mb-1">Highlighted column</div>
+ <code x-text="selectedColumn.column"></code>
+ <div class="small text-muted mt-2">
+ Every edge whose column pairs touch
+ this column is highlighted simultaneously
+ (upstream + downstream).
+ </div>
+ </div>
+ </template>
+ </aside>
+ </div>
+ </div>
+ </div>
+
+ </div>
+ </div>

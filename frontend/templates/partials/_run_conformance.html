@@ -1,0 +1,35 @@
+{% if conformance_findings is defined and conformance_findings %}
+<div class="card mb-4">
+ <div class="card-header"><i class="bi bi-shield-check me-1"></i>Medallion conformance <span class="text-muted small">({{ conformance_findings | length }} findings)</span></div>
+ <div class="card-body small p-0">
+ <table class="table table-sm mb-0">
+ <thead>
+ <tr>
+ <th>Severity</th>
+ <th>Layer</th>
+ <th>Table</th>
+ <th>Finding</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for finding in conformance_findings %}
+ <tr>
+ <td>
+ {% if finding.severity == 'error' %}
+ <span class="badge bg-danger" title="{{ finding.code }}">{{ finding.severity }}</span>
+ {% elif finding.severity == 'warning' %}
+ <span class="badge bg-warning text-dark" title="{{ finding.code }}">{{ finding.severity }}</span>
+ {% else %}
+ <span class="badge bg-info text-dark" title="{{ finding.code }}">{{ finding.severity }}</span>
+ {% endif %}
+ </td>
+ <td><span class="badge bg-secondary">{{ finding.layer }}</span></td>
+ <td class="font-monospace">{{ finding.table_full_name }}</td>
+ <td>{{ finding.message }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+</div>
+{% endif %}

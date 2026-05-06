@@ -1,0 +1,139 @@
+ <div class="tab-pane fade" id="top-audit" role="tabpanel" aria-labelledby="top-audit-btn">
+ <ul class="nav nav-pills mb-3 small" id="auditSubTabs" role="tablist">
+ <li class="nav-item" role="presentation">
+ <button class="nav-link active" id="tab-tool-calls-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-tool-calls" type="button" role="tab"
+ aria-controls="tab-tool-calls" aria-selected="true">
+ <i class="bi bi-tools me-1"></i>Tool calls
+ {% if tool_calls %}<span class="badge bg-secondary ms-1">{{ tool_calls | length }}</span>{% endif %}
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-audit-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-audit" type="button" role="tab"
+ aria-controls="tab-audit" aria-selected="false">
+ <i class="bi bi-journal-text me-1"></i>Audit log
+ {% if audit_entries %}<span class="badge bg-secondary ms-1">{{ audit_entries | length }}</span>{% endif %}
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-external-writes-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-external-writes" type="button" role="tab"
+ aria-controls="tab-external-writes" aria-selected="false">
+ <i class="bi bi-exclamation-octagon me-1"></i>External writes
+ {% if unattributed_writes %}<span class="badge bg-warning text-dark ms-1">{{ unattributed_writes | length }}</span>{% endif %}
+ </button>
+ </li>
+ </ul>
+ <div class="tab-content">
+ <div class="tab-pane fade show active" id="tab-tool-calls" role="tabpanel" aria-labelledby="tab-tool-calls-btn">
+ {% if tool_calls %}
+ <div class="card">
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>Called</th>
+ <th>Tool</th>
+ <th>Args</th>
+ <th>Result summary</th>
+ <th>Duration</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for tc in tool_calls %}
+ <tr>
+ <td class="font-monospace text-muted">{{ tc.called_at or "&mdash;" | safe }}</td>
+ <td><span class="badge bg-secondary text-uppercase">{{ tc.tool_name }}</span></td>
+ <td class="font-monospace small">
+ <code title="{{ tc.args_json }}">{{ tc.args_json[:120] }}{% if tc.args_json | length > 120 %}…{% endif %}</code>
+ </td>
+ <td class="font-monospace small">
+ {% if tc.result_summary %}
+ <code title="{{ tc.result_summary }}">{{ tc.result_summary[:120] }}{% if tc.result_summary | length > 120 %}…{% endif %}</code>
+ {% else %}
+ <span class="text-muted">&mdash;</span>
+ {% endif %}
+ </td>
+ <td class="font-monospace text-muted">{{ tc.duration_ms ~ ' ms' if tc.duration_ms is not none else "&mdash;" | safe }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No tool calls recorded for this run. Tool calls are persisted by the
+ <code>hermes-plugin-pointlessql</code> <code>post_tool_call</code> hook for any tool
+ whose name starts with <code>pql_</code> ().
+ </div>
+ {% endif %}
+ </div>
+
+ <div class="tab-pane fade" id="tab-audit" role="tabpanel" aria-labelledby="tab-audit-btn">
+ {% if audit_entries %}
+ <div class="card">
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small">
+ <thead>
+ <tr>
+ <th>When</th>
+ <th>Actor</th>
+ <th>Action</th>
+ <th>Detail</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for entry in audit_entries %}
+ <tr>
+ <td class="font-monospace text-muted">{{ entry.created_at or "&mdash;" | safe }}</td>
+ <td class="font-monospace">{{ entry.actor_email or "&mdash;" | safe }} <span class="text-muted">({{ entry.actor_role or "?" }})</span></td>
+ <td><span class="badge bg-secondary">{{ entry.action }}</span></td>
+ <td class="font-monospace small text-muted">{{ entry.detail or "&mdash;" | safe }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No audit-log entries scoped to this run.
+ </div>
+ {% endif %}
+ </div>
+ <div class="tab-pane fade" id="tab-external-writes" role="tabpanel" aria-labelledby="tab-external-writes-btn">
+ {% if unattributed_writes %}
+ <div class="alert alert-warning d-flex align-items-start justify-content-between mb-3" role="status">
+ <div class="small">
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ <strong>{{ unattributed_writes | length }}</strong> unattributed Delta commit{% if unattributed_writes | length != 1 %}s{% endif %}
+ detected on table{% if unattributed_writes | length != 1 %}s{% endif %} this run touched —
+ writes that bypassed every PQL primitive.
+ {% set _shown = unattributed_writes[:5] %}
+ <ul class="mb-0 mt-1 small font-monospace">
+ {% for w in _shown %}
+ <li>{{ w.table_fqn }} @ v{{ w.delta_version }} ({{ w.commit_timestamp or w.detected_at }})</li>
+ {% endfor %}
+ {% if unattributed_writes | length > 5 %}
+ <li class="text-muted">… {{ unattributed_writes | length - 5 }} more</li>
+ {% endif %}
+ </ul>
+ </div>
+ <a href="/admin/external-writes" class="btn btn-sm btn-outline-warning ms-3 flex-shrink-0">
+ <i class="bi bi-box-arrow-up-right me-1"></i>Review
+ </a>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No Delta commits without an attributing PQL operation were
+ detected for the tables this run touched.
+ </div>
+ {% endif %}
+ </div>
+ </div>
+ </div>
