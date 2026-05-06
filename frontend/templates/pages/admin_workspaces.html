@@ -78,7 +78,7 @@
                 <td>
                     {% if ws.id != 1 %}
                     <button type="button" class="btn btn-sm btn-outline-warning"
-                            x-data="archiveButton({{ ws.id }}, {{ ws.slug|tojson }})"
+                            x-data='archiveButton({{ ws.id }}, {{ ws.slug|tojson }})'
                             @click="archive()">
                         <i class="bi bi-archive"></i> Archive
                     </button>

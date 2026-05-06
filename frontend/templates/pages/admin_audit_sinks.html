@@ -50,7 +50,7 @@
             <tbody>
                 {% for s in sinks %}
                 <tr data-sink-id="{{ s.id }}"
-                    x-data="auditSinkRow({{ s.id }}, {{ s.name|tojson }}, {{ s.is_active|tojson }})">
+                    x-data='auditSinkRow({{ s.id }}, {{ s.name|tojson }}, {{ s.is_active|tojson }})'>
                     <td><strong>{{ s.name }}</strong></td>
                     <td>
                         <span class="badge bg-secondary font-monospace">{{ s.type }}</span>

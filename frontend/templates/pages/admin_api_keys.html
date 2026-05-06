@@ -64,7 +64,7 @@
             <tbody>
                 {% for k in keys %}
                 <tr data-api-key-name="{{ k.name }}"
-                    x-data="apiKeyRow({{ k.name|tojson }}, {{ (k.revoked_at is not none)|tojson }})">
+                    x-data='apiKeyRow({{ k.name|tojson }}, {{ (k.revoked_at is not none)|tojson }})'>
                     <td><strong>{{ k.name }}</strong></td>
                     <td class="font-monospace small">{{ k.secret_prefix }}…</td>
                     <td class="small">

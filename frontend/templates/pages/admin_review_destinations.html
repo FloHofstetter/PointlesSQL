@@ -52,7 +52,7 @@
             <tbody>
                 {% for d in destinations %}
                 <tr data-destination-id="{{ d.id }}"
-                    x-data="reviewDestRow({{ d.id }}, {{ d.name|tojson }}, {{ d.is_active|tojson }}, {{ d.min_severity|tojson }})">
+                    x-data='reviewDestRow({{ d.id }}, {{ d.name|tojson }}, {{ d.is_active|tojson }}, {{ d.min_severity|tojson }})'>
                     <td><strong>{{ d.name }}</strong></td>
                     <td class="font-monospace small text-truncate" style="max-width: 320px;"
                         :title="webhookUrl">
