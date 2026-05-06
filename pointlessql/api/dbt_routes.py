@@ -40,6 +40,7 @@ from pointlessql.models.agent_runs import (
     AgentRun,
 )
 from pointlessql.services.dbt_bridge import (
+    DBTNodeResult,
     emit_operations_for_dbt_run,
     emit_test_failure_rejects,
     merge_manifest_and_results,
@@ -48,6 +49,12 @@ from pointlessql.services.dbt_bridge import (
     summarise,
 )
 from pointlessql.services.dbt_executor import DBTExecutionError, DBTExecutor, DBTRunResult
+from pointlessql.services.governance_events import (
+    EVENT_TYPE_DBT_RUN_COMPLETED,
+    EVENT_TYPE_DBT_TEST_FAILED,
+    EVENT_TYPE_DBT_TEST_WARNED,
+    emit_governance_event,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +151,106 @@ def _result_payload(result: DBTRunResult, agent_run_id: str | None) -> dict[str,
     }
 
 
+def _classify_severity(nodes: list[DBTNodeResult]) -> tuple[int, int]:
+    """Return ``(error_failures, warn_failures)`` from a node list.
+
+    A *failure* is a test (``resource_type='test'``) or model
+    (``resource_type='model'``) with ``status='fail'`` or
+    ``'error'``.  Tests with ``severity='warn'`` count as warn-
+    failures even when their status says ``fail`` — dbt records
+    every test that returned > 0 rows as ``status='fail'`` and
+    leaves the *consequence* to the consumer (us).
+
+    Args:
+        nodes: Per-node results.
+
+    Returns:
+        Tuple of (error-severity failure count, warn-severity
+        failure count).
+    """
+    err = 0
+    warn = 0
+    for n in nodes:
+        is_failure = n.status in {"error", "fail"}
+        if not is_failure:
+            continue
+        if n.severity == "warn":
+            warn += 1
+        else:
+            err += 1
+    return err, warn
+
+
+async def _emit_dbt_events(
+    request: Request,
+    *,
+    agent_run_id: str,
+    op_kind: str,
+    result: DBTRunResult,
+    nodes: list[DBTNodeResult],
+    err_failures: int,
+    warn_failures: int,
+) -> None:
+    """Fire the per-run + per-test CloudEvents.
+
+    One ``run.completed`` always; one ``test.failed`` per error-
+    severity failing test and one ``test.warned`` per warn-severity
+    failing test.  Emits sequentially so a flaky sink doesn't break
+    the audit trail.
+
+    Args:
+        request: Incoming request (for settings + session factory +
+            workspace).
+        agent_run_id: The owning AgentRun id.
+        op_kind: ``"run"`` or ``"test"`` for the run.completed payload.
+        result: Executor outcome.
+        nodes: Per-node results.
+        err_failures: Count of error-severity failures.
+        warn_failures: Count of warn-severity failures.
+    """
+    settings = request.app.state.settings
+    factory = request.app.state.session_factory
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
+    common: dict[str, Any] = {
+        "agent_run_id": agent_run_id,
+        "op_kind": op_kind,
+        "exit_code": result.exit_code,
+        "duration_seconds": result.duration_seconds,
+        "err_failures": err_failures,
+        "warn_failures": warn_failures,
+    }
+    await emit_governance_event(
+        EVENT_TYPE_DBT_RUN_COMPLETED,
+        common,
+        settings=settings,
+        session_factory=factory,
+        workspace_id=workspace_id,
+    )
+    for node in nodes:
+        if node.status not in {"error", "fail"}:
+            continue
+        if node.resource_type != "test":
+            continue
+        event_type = (
+            EVENT_TYPE_DBT_TEST_WARNED if node.severity == "warn" else EVENT_TYPE_DBT_TEST_FAILED
+        )
+        payload = {
+            "agent_run_id": agent_run_id,
+            "unique_id": node.unique_id,
+            "relation_name": node.relation_name,
+            "severity": node.severity,
+            "message": node.message,
+            "depends_on": node.depends_on,
+        }
+        await emit_governance_event(
+            event_type,
+            payload,
+            settings=settings,
+            session_factory=factory,
+            workspace_id=workspace_id,
+        )
+
+
 async def _emit_audit_for_run(
     request: Request,
     *,
@@ -195,10 +302,6 @@ async def _emit_audit_for_run(
         logger.error("dbt bridge failed to emit operations: %s", exc)
         raise HTTPException(status_code=500, detail=f"audit emit failed: {exc}") from exc
 
-    # Sprint 36.3 — every failing test becomes one row in
-    # ``lineage_row_rejects`` so the cockpit's reject view + the
-    # ``expectation_failure`` anomaly metric pick it up alongside
-    # merge-time rejects.
     rejects_inserted = emit_test_failure_rejects(
         factory,
         agent_run_id=agent_run_id,
@@ -207,6 +310,7 @@ async def _emit_audit_for_run(
     )
 
     summary = summarise(agent_run_id, nodes)
+    err_failures, warn_failures = _classify_severity(nodes)
     return {
         "nodes": [asdict(n) for n in summary.nodes],
         "ok": summary.ok_count,
@@ -214,6 +318,9 @@ async def _emit_audit_for_run(
         "warn": summary.warn_count,
         "skipped": summary.skipped_count,
         "rejects_inserted": rejects_inserted,
+        "err_failures": err_failures,
+        "warn_failures": warn_failures,
+        "_nodes_internal": nodes,
     }
 
 
@@ -336,13 +443,31 @@ async def _run_or_test(
         result=result,
     )
 
+    nodes_internal: list[DBTNodeResult] = bridge.pop("_nodes_internal", [])
+    err_failures = int(bridge.get("err_failures", 0))
+    warn_failures = int(bridge.get("warn_failures", 0))
+
+    # Severity enforcement: only error-severity failures fail the run.
+    # Warn-severity failures still let the run land as 'succeeded' but
+    # fire an anomaly via the test.warned CloudEvent.
+    succeeded_by_severity = result.exit_code == 0 and err_failures == 0
     if owned:
         _finish_owned_run(
             request,
             agent_run_id,
-            succeeded=(result.exit_code == 0 and bridge["fail"] == 0),
+            succeeded=succeeded_by_severity,
             exit_code=result.exit_code,
         )
+
+    await _emit_dbt_events(
+        request,
+        agent_run_id=agent_run_id,
+        op_kind=op_kind,
+        result=result,
+        nodes=nodes_internal,
+        err_failures=err_failures,
+        warn_failures=warn_failures,
+    )
 
     await audit(
         request,
@@ -353,6 +478,8 @@ async def _run_or_test(
             "exit_code": result.exit_code,
             "ok": bridge["ok"],
             "fail": bridge["fail"],
+            "err_failures": err_failures,
+            "warn_failures": warn_failures,
         },
     )
     return {**_result_payload(result, agent_run_id=agent_run_id), "summary": bridge}

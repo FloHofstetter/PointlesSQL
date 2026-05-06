@@ -51,6 +51,15 @@ EVENT_TYPE_LINEAGE_PRUNED = "pointlessql.lineage.pruned"
 EVENT_TYPE_BRANCH_CREATED = "pointlessql.branch.created.v1"
 EVENT_TYPE_BRANCH_PROMOTED = "pointlessql.branch.promoted.v1"
 EVENT_TYPE_BRANCH_DISCARDED = "pointlessql.branch.discarded.v1"
+# dbt-bridge events (Phase 36 Sprint 36.5).  ``run.completed`` fires
+# at the end of every ``/api/dbt/run`` and ``/api/dbt/test`` so a
+# subscriber can render run-level summaries; ``test.failed`` fires
+# once per failing error-severity test (these block the run);
+# ``test.warned`` fires once per failing warn-severity test (the
+# run still succeeds — the cockpit's anomaly inbox is the surface).
+EVENT_TYPE_DBT_RUN_COMPLETED = "pointlessql.dbt.run.completed"
+EVENT_TYPE_DBT_TEST_FAILED = "pointlessql.dbt.test.failed"
+EVENT_TYPE_DBT_TEST_WARNED = "pointlessql.dbt.test.warned"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_EXTERNAL_WRITE,
@@ -61,6 +70,9 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_BRANCH_CREATED,
     EVENT_TYPE_BRANCH_PROMOTED,
     EVENT_TYPE_BRANCH_DISCARDED,
+    EVENT_TYPE_DBT_RUN_COMPLETED,
+    EVENT_TYPE_DBT_TEST_FAILED,
+    EVENT_TYPE_DBT_TEST_WARNED,
 )
 
 

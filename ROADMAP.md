@@ -3874,7 +3874,21 @@ PointlesSQL
 │   │       4 new tests; pre-commit chain green.
 │   │
 │   ├── Sprint 36.4 — Cockpit /dbt index + run-view sub-tab     ⏸ Playwright
-│   ├── Sprint 36.5 — severity enforcement + rollback bridge    📅 queued
+│   ├── Sprint 36.5 — severity enforcement + dbt CloudEvents    ✅
+│   │       Three new governance event types
+│   │       (``pointlessql.dbt.run.completed`` always,
+│   │       ``pointlessql.dbt.test.failed`` per error-severity
+│   │       failing test, ``pointlessql.dbt.test.warned`` per
+│   │       warn-severity failing test).  ``_classify_severity``
+│   │       splits dbt failures by severity; auto-created runs
+│   │       finish as ``failed`` only when ``err_failures > 0`` —
+│   │       warn-severity failures still let the run land as
+│   │       ``succeeded`` and ride out via the anomaly inbox.
+│   │       Auto-rollback path (rolling back tested-against models
+│   │       on error-severity failure) deferred to a follow-up;
+│   │       ``pql.rollback``'s four refusal modes need careful
+│   │       gating that exceeds this sprint's scope.  7 new tests.
+│   │
 │   ├── Sprint 36.6 — plugin tools (hermes-plugin-pointlessql)  📅 queued
 │   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ Playwright
 │

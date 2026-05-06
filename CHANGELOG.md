@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 36.5 — severity enforcement + dbt CloudEvents.**  Three
+  new governance event types: ``pointlessql.dbt.run.completed``
+  fires once per ``/api/dbt/run`` and ``/api/dbt/test`` invocation;
+  ``pointlessql.dbt.test.failed`` fires once per error-severity
+  failing test (these are the run-failing ones);
+  ``pointlessql.dbt.test.warned`` fires once per warn-severity
+  failing test (run still succeeds — anomaly-only).  New
+  ``_classify_severity`` helper buckets failures by severity; auto-
+  created runs finish as ``failed`` only when ``err_failures > 0``,
+  so a project with ``severity: warn`` tests keeps deploying while
+  the cockpit's anomaly inbox surfaces the warning.  Auto-rollback
+  on error-severity failure (``pql.rollback`` per affected model)
+  is deferred — the four refusal modes in ``RollbackError`` need
+  per-test gating that exceeds this sprint's scope.  7 new tests
+  cover both the classifier and the end-to-end event emission.
+
 - **Sprint 36.3 — dbt test-failure → lineage_row_rejects +
   ``expectation_failures`` anomaly axis.**  ``REJECT_REASONS`` +
   the SQL CHECK constraint on ``lineage_row_rejects`` gain
