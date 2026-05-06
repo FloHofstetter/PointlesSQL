@@ -243,6 +243,9 @@ async def table_detail(
         MANAGE_GRANTS,
     )
     lineage_columns = _columns_with_lineage(full_name)
+    external_producers = _external_producers_for_table(
+        full_name, session_factory=request.app.state.session_factory
+    )
     return _templates(request).TemplateResponse(
         request,
         "pages/table.html",
@@ -256,6 +259,7 @@ async def table_detail(
             "effective": effective,
             "lineage": lineage,
             "lineage_columns": lineage_columns,
+            "external_producers": external_producers,
             "can_manage": can_manage,
             "is_admin": user.get("is_admin", False),
             "error": error,
@@ -297,3 +301,72 @@ def _columns_with_lineage(full_name: str) -> set[str]:
             return {str(row[0]) for row in session.execute(stmt).all()}
     except Exception:  # noqa: BLE001 — best-effort badge population
         return set()
+
+
+def _external_producers_for_table(
+    full_name: str, *, session_factory: Any
+) -> list[dict[str, Any]]:
+    """Return the Phase-40 external producers writing into *full_name*.
+
+    Walks ``lineage_column_map`` for rows with ``producer IS NOT NULL``
+    targeting *full_name*, groups by producer, and returns one row per
+    producer with the distinct source-table list and the latest
+    ``created_at``.  Used by the table-detail "External producers"
+    block on the lineage card.
+
+    Best-effort: a DB hiccup or schema drift yields an empty list so
+    a federation-not-set-up install still renders the page cleanly.
+
+    Args:
+        full_name: Three-part UC name of the table.
+        session_factory: SQLAlchemy session factory bound to the
+            metadata DB.  Threaded in by the route so unit tests
+            can pass the conftest-built factory directly.
+
+    Returns:
+        List of ``{producer, source_tables, last_seen_at}`` dicts,
+        ordered by ``last_seen_at DESC``.  Empty when no inbound
+        edges target this table.
+    """
+    try:
+        from sqlalchemy import func as _func
+        from sqlalchemy import select as _select
+
+        from pointlessql.models import LineageColumnMap
+
+        with session_factory() as session:
+            stmt = (
+                _select(
+                    LineageColumnMap.producer,
+                    LineageColumnMap.source_table,
+                    _func.max(LineageColumnMap.created_at).label("last_seen_at"),
+                )
+                .where(
+                    LineageColumnMap.target_table == full_name,
+                    LineageColumnMap.producer.is_not(None),
+                )
+                .group_by(LineageColumnMap.producer, LineageColumnMap.source_table)
+            )
+            grouped: dict[str, dict[str, Any]] = {}
+            for row in session.execute(stmt).all():
+                producer = str(row[0])
+                source = str(row[1]) if row[1] is not None else ""
+                seen = row[2]
+                slot = grouped.setdefault(
+                    producer,
+                    {"producer": producer, "source_tables": [], "last_seen_at": seen},
+                )
+                if source and source not in slot["source_tables"]:
+                    slot["source_tables"].append(source)
+                if seen is not None and (
+                    slot["last_seen_at"] is None or seen > slot["last_seen_at"]
+                ):
+                    slot["last_seen_at"] = seen
+            out = list(grouped.values())
+            out.sort(
+                key=lambda r: (r["last_seen_at"] is None, r["last_seen_at"]),
+                reverse=True,
+            )
+            return out
+    except Exception:  # noqa: BLE001 — best-effort populate
+        return []

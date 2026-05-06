@@ -8,6 +8,10 @@
  table_columns — optional list of column names on the rendered table.
  When ``_lineage_row_id`` is present, the card shows a
  hint linking to the row-trace UI.
+ external_producers — optional list of dicts of shape
+ {producer, source_tables[], last_seen_at}.  Phase 40 inbound
+ OpenLineage events emit these.  Rendered as an amber-badged block
+ below the internal up/down-stream sections.
 #}
 {% set upstream = (lineage or {}).get("upstream", {}) %}
 {% set downstream = (lineage or {}).get("downstream", {}) %}
@@ -50,7 +54,7 @@
  </span>
  </div>
  <div class="card-body p-0">
- {% if not up_nodes and not down_nodes %}
+ {% if not up_nodes and not down_nodes and not external_producers %}
  <div class="p-3 text-muted small fst-italic">No lineage data available.</div>
  {% else %}
 
@@ -94,6 +98,42 @@
  </div>
  {% endif %}
 
+ {% endif %}
+
+ {% if external_producers %}
+ <hr class="my-0">
+ <div class="p-3">
+ <h6 class="text-muted small text-uppercase mb-3">
+ <i class="bi bi-broadcast-pin me-1"></i>External producers
+ <span class="badge bg-warning text-dark ms-1" title="Phase 40 inbound OpenLineage edges">{{ external_producers|length }}</span>
+ </h6>
+ <ul class="list-unstyled mb-0 ps-2 border-start border-warning">
+ {% for prod in external_producers %}
+ <li class="d-flex flex-column gap-1 py-1">
+ <span class="d-inline-flex align-items-center gap-2">
+ <span class="badge bg-warning text-dark lineage-node-external">{{ prod.producer }}</span>
+ {% if prod.last_seen_at %}
+ <span class="text-muted small" title="Last inbound event">{{ prod.last_seen_at.isoformat() if prod.last_seen_at.isoformat is defined else prod.last_seen_at }}</span>
+ {% endif %}
+ </span>
+ {% if prod.source_tables %}
+ <span class="text-muted small ps-3">
+ sources:
+ {% for src in prod.source_tables %}
+ <code class="ms-1">{{ src }}</code>{% if not loop.last %},{% endif %}
+ {% endfor %}
+ </span>
+ {% endif %}
+ </li>
+ {% endfor %}
+ </ul>
+ <div class="text-muted small fst-italic mt-2">
+ <span class="badge bg-info text-dark">internal</span>
+ ·
+ <span class="badge bg-warning text-dark">external producer</span>
+ — external rows arrive via <code>POST /api/lineage/openlineage</code>.
+ </div>
+ </div>
  {% endif %}
  </div>
  {% if table_columns and "_lineage_row_id" in table_columns %}
