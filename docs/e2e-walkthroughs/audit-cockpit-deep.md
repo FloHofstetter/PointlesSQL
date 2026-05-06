@@ -202,6 +202,31 @@ this one drives the human cockpit via the browser.
      201 with `{slug, name, ...}`. Slug is generated from the
      name. Run it to verify execution.
 
+## Verification log
+
+- **2026-05-06 — data-path verified end-to-end (Phase 38.3).**
+  Replayed against `seed-broken-run.py` + a partial
+  `seed-full-stack-demo.py` run (mlflow/sklearn extras absent
+  in the e2e venv, so `_step_train` bails — bronze/silver/gold
+  steps complete and seed enough activity for the cockpit).
+  Verified live in Firefox via Playwright MCP, 0 console errors:
+  - Part A — `/audit/inbox` shows "2 of 2 breach(es) — metrics
+    rejects, errored_ops, 7d baseline at 2σ"; severity / metric /
+    bin filters render; htmx target swaps without TypeError
+    (BUG-37-04 fix verified as a side-effect).
+  - Part B — `GET /api/audit/search?q=customer` returns
+    `available: true`; `q=silver` returns 1 hit (custom tokenizer
+    matches inside FQN path segments).
+  - Part C — `/audit/by-table/demo.incidents.broken_orders`
+    serves the populated cockpit branch (heading flips to "Runs
+    that touched …", Touched tab counter reads "2 run(s)
+    touched …"); empty-path branch (BUG-37-05 picker route)
+    not re-checked but covered by the Phase 37.1 close.
+  - Part D — `GET /api/saved-audit-queries` returns all 5
+    starter slugs; `POST /api/saved-audit-queries/top-mutating-
+    principals-30d/run` returns `{rows: [..], columns:
+    ['principal', 'rows_written']}` (status 200, 2 rows).
+
 ## Found bugs
 
 - **BUG-37-04** ✅ Fixed — root cause was an unguarded
