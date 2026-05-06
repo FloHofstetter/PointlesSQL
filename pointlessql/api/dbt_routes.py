@@ -26,6 +26,7 @@ import logging
 import uuid
 from dataclasses import asdict
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Query, Request
@@ -45,6 +46,7 @@ from pointlessql.models.lineage import LineageRowReject
 from pointlessql.services.dbt_bridge import (
     DBTNodeResult,
     as_dict,
+    capture_delta_versions,
     emit_operations_for_dbt_run,
     emit_test_failure_rejects,
     merge_manifest_and_results,
@@ -257,11 +259,78 @@ async def _emit_dbt_events(
         )
 
 
+def _model_relations_from_manifest_path(manifest_path: Path) -> list[str]:
+    """Read ``manifest_path`` and return every model node's ``relation_name``.
+
+    Best-effort: missing or unparseable manifest yields an empty list.
+    Used by :func:`_capture_pre_run_versions` to identify which
+    targets to read Delta versions for *before* dbt mutates them.
+
+    Args:
+        manifest_path: Path to ``target/manifest.json``.
+
+    Returns:
+        Deduplicated list of qualified relation names; empty when
+        no manifest exists yet (typical on a fresh project).
+    """
+    if not manifest_path.is_file():
+        return []
+    try:
+        manifest = parse_manifest(manifest_path)
+    except FileNotFoundError, ValueError:
+        return []
+    nodes = as_dict(manifest.get("nodes"))
+    out: list[str] = []
+    for raw_node in nodes.values():
+        node = as_dict(raw_node)
+        if node.get("resource_type") != "model":
+            continue
+        rel = node.get("relation_name")
+        if isinstance(rel, str) and rel:
+            out.append(rel)
+    return list(dict.fromkeys(out))
+
+
+def _capture_pre_run_versions(
+    request: Request,
+    manifest_path: Path,
+) -> dict[str, int | None]:
+    """Capture Delta versions for every model relation *before* dbt runs.
+
+    The pre-version map drives ``delta_version_before`` on the
+    emitted ``dbt_model`` ops, which is what ``pql.rollback`` needs
+    to restore the prior state.  Without this, every dbt-targeted
+    rollback fails with ``RollbackInvalid`` because the bridge would
+    have written ``None``.
+
+    Best-effort: a missing manifest, a missing app-state UC client,
+    or any per-relation failure all map to an empty / partial dict.
+
+    Args:
+        request: Incoming FastAPI request (carries ``app.state.uc_client``).
+        manifest_path: Path to ``target/manifest.json`` from the
+            *previous* compile / run.  ``None`` (file-missing) is
+            handled gracefully.
+
+    Returns:
+        ``{relation: version|None}`` covering every model relation
+        in the manifest.
+    """
+    relations = _model_relations_from_manifest_path(manifest_path)
+    if not relations:
+        return {}
+    uc_client = getattr(request.app.state, "uc_client", None)
+    if uc_client is None:
+        return {}
+    return capture_delta_versions(uc_client._client, relations)  # noqa: SLF001
+
+
 async def _emit_audit_for_run(
     request: Request,
     *,
     agent_run_id: str,
     result: DBTRunResult,
+    pre_versions: dict[str, int | None] | None = None,
 ) -> dict[str, Any]:
     """Parse manifest + run_results and emit ``agent_run_operations`` rows.
 
@@ -269,6 +338,10 @@ async def _emit_audit_for_run(
         request: Incoming request (for the session factory).
         agent_run_id: Owning run id.
         result: Executor outcome with manifest + run_results paths.
+        pre_versions: Map of ``{relation: delta_version_before}`` captured
+            before dbt ran (via :func:`_capture_pre_run_versions`).
+            ``None`` (default) keeps ``delta_version_before`` as ``None``
+            on every emitted op — the pre-Sprint-36.D shape.
 
     Returns:
         Summary dict with counts and per-node payload (used by the
@@ -295,6 +368,22 @@ async def _emit_audit_for_run(
         return {"nodes": [], "ok": 0, "fail": 0, "warn": 0, "skipped": 0}
 
     nodes = merge_manifest_and_results(manifest, results)
+
+    # Capture post-run versions for every model relation that landed
+    # this run.  Combined with pre_versions (passed in by the caller),
+    # this populates ``delta_version_before`` / ``delta_version_after``
+    # on each emitted op so ``pql.rollback`` has the version anchors
+    # it needs.  Best-effort: targets missing from soyuz or written
+    # to non-Delta storage map to None and rollback then refuses with
+    # ``RollbackInvalid`` for those (the correct conservative path).
+    post_relations = sorted({n.relation_name for n in nodes if n.relation_name})
+    uc_client = getattr(request.app.state, "uc_client", None)
+    post_versions: dict[str, int | None] = (
+        capture_delta_versions(uc_client._client, post_relations)  # noqa: SLF001
+        if uc_client is not None and post_relations
+        else {}
+    )
+
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
     try:
@@ -303,6 +392,8 @@ async def _emit_audit_for_run(
             agent_run_id=agent_run_id,
             nodes=nodes,
             started_at=started_at,
+            pre_versions=pre_versions,
+            post_versions=post_versions,
         )
     except AuditUnavailableError as exc:
         logger.error("dbt bridge failed to emit operations: %s", exc)
@@ -578,6 +669,20 @@ async def _run_or_test(
         owned = True
 
     executor = _executor(request)
+
+    # Capture pre-run Delta versions for every model in the existing
+    # manifest *before* dbt mutates anything.  Combined with the
+    # post-run capture inside ``_emit_audit_for_run``, this populates
+    # ``delta_version_before`` / ``delta_version_after`` on each
+    # emitted ``dbt_model`` op — the anchors ``pql.rollback`` needs
+    # to undo a dbt-driven write.  Best-effort: a fresh project
+    # without a manifest yields an empty map.
+    pre_versions = await asyncio.to_thread(
+        _capture_pre_run_versions,
+        request,
+        executor.manifest_path,
+    )
+
     try:
         if op_kind == "run":
             result = await executor.run(
@@ -595,6 +700,7 @@ async def _run_or_test(
         request,
         agent_run_id=agent_run_id,
         result=result,
+        pre_versions=pre_versions,
     )
 
     nodes_internal: list[DBTNodeResult] = bridge.pop("_nodes_internal", [])

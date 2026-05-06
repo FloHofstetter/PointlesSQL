@@ -6,6 +6,48 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 36.D — dbt bridge captures Delta versions for rollback
+  anchors.**  Closes the production-side gap surfaced after 36.C
+  landed: ``pql.rollback`` was refusing every dbt-driven rollback
+  with ``RollbackInvalid`` because the bridge wrote
+  ``delta_version_before=None`` / ``delta_version_after=None`` on
+  every ``dbt_model`` op (the gate reads ``before is None`` as
+  "this op created the table" → drop is out of v1 scope).  Auto-
+  rollback (36.C) was therefore an API hull, not a working feature.
+
+  New ``services/dbt_bridge.capture_delta_versions(uc_client,
+  relations) -> {relation: version|None}`` helper looks up each
+  relation's soyuz-catalog ``storage_location`` and reads
+  :class:`deltalake.DeltaTable.version()`.  Best-effort: catalog
+  miss, missing location, non-Delta target, or transport hiccup
+  all map to ``None`` so a partial capture (some Delta-backed,
+  some DuckDB-native) keeps the rollback gate honest per row.
+
+  ``/api/dbt/{run,test}`` now runs the helper twice:
+  pre-execution (against the existing manifest, populating
+  ``delta_version_before``) and post-execution (against the
+  freshly-written manifest, populating ``delta_version_after``).
+  ``emit_operations_for_dbt_run`` accepts new ``pre_versions`` /
+  ``post_versions`` keyword args and stamps each ``dbt_model``
+  row's columns from those maps.  ``dbt_test`` rows never pull
+  from the maps — tests don't materialise targets.
+
+  Limitation, documented in the helper docstring: dbt-duckdb's
+  default ``table`` materialisation writes DuckDB-native tables,
+  not Delta — for those, ``DeltaTable(loc)`` raises and the
+  relation maps to ``None``.  Auto-rollback continues to fail for
+  pure-DuckDB targets; the fix is meaningful for projects that
+  opt into the Delta materialisation adapter or write through
+  PointlesSQL's PQL primitives.
+
+  3 new pytest cases:
+  ``test_capture_delta_versions_returns_none_for_unresolvable_relations``
+  exercises the except clause; the bridge test
+  ``test_emit_operations_populates_delta_versions_from_pre_post_maps``
+  asserts the maps land on the persisted rows; the route-level
+  ``test_run_populates_delta_versions_when_capture_succeeds``
+  proves the wiring end-to-end through ``/api/dbt/run``.
+
 - **Phase 36 Restabschluss — Stream A backend close (sub-sprints
   36.A / 36.B / 36.C).**  Closes the gaps that 36.1–36.6 deferred
   inside individual sprints, leaving only the Playwright-gated UI

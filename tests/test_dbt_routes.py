@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -122,6 +123,86 @@ async def test_run_non_admin_lacks_supervisor_scope(
         resp = await c.post("/api/dbt/run", json={})
     # AuthorizationError is mapped to 403 by the global exception handler.
     assert resp.status_code in {401, 403}
+
+
+@pytest.mark.asyncio
+async def test_run_populates_delta_versions_when_capture_succeeds(
+    auth_cookies: dict[str, str],
+    stub_executor: None,  # noqa: ARG001
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When ``capture_delta_versions`` returns versions, ops carry them.
+
+    Stubs the bridge's capture path (so we don't need a real soyuz
+    catalog or Delta table) and points ``settings.dbt.project_dir``
+    at the bundled fixture so the pre-run manifest read finds the
+    same two model relations the bridge sees post-run.  Confirms the
+    persisted ``dbt_model`` rows carry ``delta_version_before`` (7)
+    and ``delta_version_after`` (8) end-to-end through ``/api/dbt/run``.
+    """
+    from pointlessql.api import dbt_routes
+    from pointlessql.models import AgentRunOperation
+
+    # Point project_dir at the fixture so post-capture sees the right
+    # relations (pre-capture is mocked below, so its lookup of
+    # executor.manifest_path is overridden directly).
+    fixture_root = _FIXTURE_DIR.parent  # tests/fixtures/dbt_minimal
+    original_project_dir = app.state.settings.dbt.project_dir
+    app.state.settings.dbt.project_dir = fixture_root
+
+    # Stub the pre-run capture: the test app has no ``uc_client``
+    # attached, so the real ``_capture_pre_run_versions`` would always
+    # return ``{}``.  Patching the route-level helper directly lets us
+    # assert the wiring without spinning up a real soyuz client.
+    def _stub_pre(_request: Any, _manifest_path: Any) -> dict[str, int | None]:
+        return {
+            "main.bronze.bronze_raw": 7,
+            "main.silver.silver_clean": 7,
+        }
+
+    def _stub_post(_client: Any, relations: list[str]) -> dict[str, int | None]:
+        return {rel: 8 for rel in relations}
+
+    monkeypatch.setattr(dbt_routes, "_capture_pre_run_versions", _stub_pre)
+    monkeypatch.setattr(dbt_routes, "capture_delta_versions", _stub_post)
+
+    # Set a sentinel uc_client so the post-capture path inside
+    # ``_emit_audit_for_run`` doesn't short-circuit on the
+    # ``getattr(..., None)`` guard.
+    sentinel_client: Any = type("_StubUCClient", (), {"_client": object()})()
+    original_uc_client = getattr(app.state, "uc_client", None)
+    app.state.uc_client = sentinel_client
+
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://t", cookies=auth_cookies
+        ) as c:
+            resp = await c.post("/api/dbt/run", json={})
+    finally:
+        app.state.settings.dbt.project_dir = original_project_dir
+        if original_uc_client is None:
+            del app.state.uc_client
+        else:
+            app.state.uc_client = original_uc_client
+
+    assert resp.status_code == 200
+    run_id = resp.json()["agent_run_id"]
+
+    factory = app.state.session_factory
+    with factory() as session:
+        ops = list(
+            session.scalars(
+                select(AgentRunOperation)
+                .where(AgentRunOperation.agent_run_id == run_id)
+                .where(AgentRunOperation.op_name == "dbt_model"),
+            ),
+        )
+
+    assert len(ops) == 2  # bronze + silver from the fixture manifest
+    for op in ops:
+        assert op.delta_version_before == 7
+        assert op.delta_version_after == 8
 
 
 @pytest.mark.asyncio

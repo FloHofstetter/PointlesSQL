@@ -30,6 +30,7 @@ from pointlessql.models import AgentRunOperation
 from pointlessql.models.agent_runs import STATUS_RUNNING, AgentRun
 from pointlessql.services.dbt_bridge import (
     DBTNodeResult,
+    capture_delta_versions,
     emit_operations_for_dbt_run,
     merge_manifest_and_results,
     parse_manifest,
@@ -198,3 +199,92 @@ def test_emit_operations_raises_when_parent_run_unknown(
             nodes=nodes,
             started_at=datetime.now(UTC),
         )
+
+
+def test_emit_operations_populates_delta_versions_from_pre_post_maps(
+    app_session_factory: Any,
+) -> None:
+    """``pre_versions`` / ``post_versions`` land on the dbt_model rows.
+
+    Tests don't get versions even when their relation_name is set —
+    only ``resource_type='model'`` rows pull from the maps.  Models
+    whose relation isn't in the maps stay at ``None`` so a partial
+    capture (some Delta-backed, some DuckDB-native) keeps the
+    rollback gate honest per row.
+    """
+    run_id = _register_parent_run(app_session_factory)
+    m = parse_manifest(_MANIFEST)
+    rs = parse_run_results(_RESULTS)
+    nodes = merge_manifest_and_results(m, rs)
+
+    pre = {"main.bronze.bronze_raw": 4}
+    # silver_clean intentionally absent → version_before stays None.
+    post = {"main.bronze.bronze_raw": 5, "main.silver.silver_clean": 9}
+
+    emit_operations_for_dbt_run(
+        app_session_factory,
+        agent_run_id=run_id,
+        nodes=nodes,
+        started_at=datetime.now(UTC),
+        pre_versions=pre,
+        post_versions=post,
+    )
+
+    with app_session_factory() as session:
+        ops = list(
+            session.scalars(
+                select(AgentRunOperation).where(AgentRunOperation.agent_run_id == run_id),
+            ),
+        )
+    by_target = {(o.op_name, o.target_table): o for o in ops}
+
+    bronze = by_target[("dbt_model", "main.bronze.bronze_raw")]
+    assert bronze.delta_version_before == 4
+    assert bronze.delta_version_after == 5
+
+    silver = by_target[("dbt_model", "main.silver.silver_clean")]
+    assert silver.delta_version_before is None  # not in pre map
+    assert silver.delta_version_after == 9
+
+    # dbt_test rows never pull from the maps even when the fixture
+    # gives them a relation_name (dbt_test__audit.<test>).
+    test_rows = [o for o in ops if o.op_name == "dbt_test"]
+    assert all(t.delta_version_before is None for t in test_rows)
+    assert all(t.delta_version_after is None for t in test_rows)
+
+
+def test_capture_delta_versions_returns_none_for_unresolvable_relations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Best-effort capture — every failure mode maps to ``None``.
+
+    Mocks the soyuz lookup to raise ``httpx.HTTPError`` so
+    :func:`capture_delta_versions` exercises its except clause and
+    still returns one entry per input relation.  We never want a
+    flaky catalog or a non-Delta target to blow up the dbt route's
+    audit emit — the version map is best-effort metadata.
+    """
+    import httpx
+    from soyuz_catalog_client.api.tables import (
+        get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
+    )
+
+    def _boom(*_args: Any, **_kwargs: Any) -> Any:
+        raise httpx.HTTPError("simulated unreachable catalog")
+
+    monkeypatch.setattr(_get_table, "sync", _boom)
+
+    # The soyuz client object is never actually consumed because the
+    # ``_get_table.sync`` stub raises before reading from it; we just
+    # need *something* with the expected shape to satisfy the type
+    # signature.
+    sentinel_client: Any = object()
+
+    out = capture_delta_versions(
+        sentinel_client,
+        ["main.bronze.bronze_raw", "main.silver.silver_clean"],
+    )
+    assert out == {
+        "main.bronze.bronze_raw": None,
+        "main.silver.silver_clean": None,
+    }

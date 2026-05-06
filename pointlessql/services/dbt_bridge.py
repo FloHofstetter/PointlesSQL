@@ -38,6 +38,7 @@ from pointlessql.services.agent_runs.operations import record_operation
 from pointlessql.services.lineage.rows import record_rejects
 
 if TYPE_CHECKING:
+    from soyuz_catalog_client import Client
     from sqlalchemy.orm import Session, sessionmaker
 
 _logger = logging.getLogger(__name__)
@@ -187,6 +188,77 @@ def as_list(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value  # type: ignore[reportUnknownVariableType]
     return []
+
+
+def capture_delta_versions(
+    uc_client: Client,
+    relations: list[str],
+) -> dict[str, int | None]:
+    """Read the current Delta version for each ``relations`` entry.
+
+    Per relation, looks up the soyuz-catalog ``storage_location`` then
+    opens it with :class:`deltalake.DeltaTable` and calls ``.version()``.
+    Best-effort: any failure (catalog miss, missing
+    ``storage_location``, target isn't a Delta table, network error)
+    maps to ``None`` rather than raising.
+
+    The intended caller is the dbt route flow (see
+    :func:`pointlessql.api.dbt_routes._run_or_test`), which captures
+    versions twice — pre-execution and post-execution — to populate
+    each emitted ``dbt_model`` op's ``delta_version_before`` and
+    ``delta_version_after`` columns.  Without those, ``pql.rollback``
+    refuses every dbt-targeted rollback with ``RollbackInvalid``
+    because it interprets ``delta_version_before is None`` as "this
+    op created the table" (drop is out of v1 scope).
+
+    Limitation: dbt-duckdb's default ``table`` materialisation writes
+    DuckDB-native tables, *not* Delta.  For those, ``DeltaTable(loc)``
+    raises and the relation maps to ``None`` — auto-rollback continues
+    to fail for them.  The capture path is most useful for projects
+    that opt into the Delta materialisation adapter.
+
+    Args:
+        uc_client: Configured ``soyuz_catalog_client.Client``.
+        relations: List of qualified UC names (``"catalog.schema.table"``).
+            Duplicates are deduplicated client-side; the function does
+            not preserve input order.
+
+    Returns:
+        ``{relation: version_int_or_None}`` keyed by the *input*
+        relation strings.  Every relation that was passed in appears
+        in the output.
+    """
+    # Lazy imports keep the bridge import-light; the deltalake +
+    # soyuz_catalog_client packages are heavyweight and only needed
+    # in the auto-rollback / rollback path.
+    import httpx  # noqa: PLC0415 — narrow scope
+    from deltalake import DeltaTable  # noqa: PLC0415
+    from soyuz_catalog_client.api.tables import (  # noqa: PLC0415
+        get_table_api_2_1_unity_catalog_tables_full_name_get as _get_table,
+    )
+    from soyuz_catalog_client.models.table_info import TableInfo  # noqa: PLC0415
+    from soyuz_catalog_client.types import Unset  # noqa: PLC0415
+
+    out: dict[str, int | None] = {}
+    for relation in dict.fromkeys(relations):  # dedupe, preserve order
+        version: int | None = None
+        try:
+            response = _get_table.sync(client=uc_client, full_name=relation)
+            if isinstance(response, TableInfo):
+                location = response.storage_location
+                if location and not isinstance(location, Unset):
+                    dt = DeltaTable(str(location))
+                    version = int(dt.version())
+        except (httpx.HTTPError, OSError, ValueError, RuntimeError) as exc:
+            # Common failure modes: catalog miss, non-Delta path,
+            # missing _delta_log directory, transport hiccup.  Best-
+            # effort: log + continue with None so the rest of the
+            # capture finishes.
+            _logger.debug("capture_delta_versions: %s skipped: %s", relation, exc)
+        except Exception as exc:  # noqa: BLE001 — defensive last-resort
+            _logger.debug("capture_delta_versions: %s unexpected failure: %s", relation, exc)
+        out[relation] = version
+    return out
 
 
 def project_models(manifest: dict[str, Any]) -> list[dict[str, Any]]:
@@ -424,6 +496,8 @@ def emit_operations_for_dbt_run(
     agent_run_id: str,
     nodes: list[DBTNodeResult],
     started_at: datetime.datetime,
+    pre_versions: dict[str, int | None] | None = None,
+    post_versions: dict[str, int | None] | None = None,
 ) -> list[int]:
     """Insert one ``agent_run_operations`` row per node.
 
@@ -438,6 +512,13 @@ def emit_operations_for_dbt_run(
       ``materialization``, ``execution_time``, ``severity``,
       ``depends_on``) so a reviewer can see *why* the row exists
       without joining back to the manifest.
+    - ``delta_version_before`` / ``delta_version_after`` from
+      ``pre_versions`` / ``post_versions`` when supplied — populated
+      for ``dbt_model`` rows whose ``relation_name`` resolves to a
+      Delta-backed soyuz target.  ``None`` for non-Delta materialised
+      tables (the most common dbt-duckdb default) and for ``dbt_test``
+      rows; ``pql.rollback`` then refuses with ``RollbackInvalid`` for
+      those, which is the correct behaviour (drop is out of v1 scope).
 
     Args:
         session_factory: Bound SQLAlchemy session factory.
@@ -449,6 +530,14 @@ def emit_operations_for_dbt_run(
             (only ``execution_time``), so every row uses the same
             start anchor and ``finished_at = started_at +
             execution_time`` for shape consistency.
+        pre_versions: Optional ``{relation: version|None}`` captured
+            *before* the dbt invocation via
+            :func:`capture_delta_versions`.  Drives
+            ``delta_version_before``.  ``None`` (default) leaves every
+            row's ``delta_version_before`` as ``None`` — preserves the
+            pre-Sprint-36.D shape.
+        post_versions: Optional ``{relation: version|None}`` captured
+            *after* the dbt invocation.  Drives ``delta_version_after``.
 
     Returns:
         list[int]: The auto-assigned ``agent_run_operations.id`` values
@@ -459,6 +548,8 @@ def emit_operations_for_dbt_run(
             insert fails.  Strict-mode contract from
             :func:`pointlessql.services.agent_runs.operations.record_operation`.
     """
+    pre = pre_versions or {}
+    post = post_versions or {}
     op_ids: list[int] = []
     cumulative = started_at
     for node in nodes:
@@ -478,6 +569,15 @@ def emit_operations_for_dbt_run(
             "depends_on": node.depends_on,
             "severity": node.severity,
         }
+        # Only models materialise into Delta tables; tests produce no
+        # writable target, so version capture would be meaningless for
+        # them even if a relation_name shows up.
+        if node.resource_type == "test" or node.relation_name is None:
+            version_before: int | None = None
+            version_after: int | None = None
+        else:
+            version_before = pre.get(node.relation_name)
+            version_after = post.get(node.relation_name)
         try:
             op_id = record_operation(
                 session_factory,
@@ -487,8 +587,8 @@ def emit_operations_for_dbt_run(
                 target_table=node.relation_name,
                 input_sha=None,
                 rows_affected=node.rows_affected,
-                delta_version_before=None,
-                delta_version_after=None,
+                delta_version_before=version_before,
+                delta_version_after=version_after,
                 started_at=started_at,
                 finished_at=finished,
                 error_message=node.message if is_failure else None,

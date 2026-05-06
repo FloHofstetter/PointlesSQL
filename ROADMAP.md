@@ -3947,6 +3947,26 @@ PointlesSQL
 │   │       with model relation, severity, and op id).  Closes
 │   │       the trigger → inspect loop.
 │   │
+│   ├── Sprint 36.D — dbt bridge captures Delta versions       ✅
+│   │       (Phase-36 Restabschluss) Closes the production-side
+│   │       gap surfaced after 36.C landed: every dbt-driven
+│   │       rollback was refused with ``RollbackInvalid`` because
+│   │       the bridge wrote ``delta_version_before=None``.  New
+│   │       :func:`capture_delta_versions` reads each relation's
+│   │       soyuz-catalog ``storage_location`` + opens it with
+│   │       :class:`deltalake.DeltaTable` to capture the version;
+│   │       best-effort, returns ``None`` for non-Delta targets.
+│   │       ``/api/dbt/{run,test}`` calls it twice (pre-execution
+│   │       + post-execution) and the bridge stamps each
+│   │       ``dbt_model`` op's ``delta_version_before`` /
+│   │       ``delta_version_after`` columns from the maps.
+│   │       Limitation: dbt-duckdb's default ``table``
+│   │       materialisation writes DuckDB-native tables, not
+│   │       Delta — for those, the version stays ``None`` and
+│   │       auto-rollback still refuses (the correct conservative
+│   │       path).  Meaningful for projects that opt into the
+│   │       Delta materialisation adapter or write through PQL.
+│   │
 │   ├── Sprint 36.C — auto-rollback on error-severity test     ✅
 │   │       (Phase-36 Restabschluss) ``POST /api/dbt/test`` accepts
 │   │       a new ``auto_rollback: bool`` body parameter (default
