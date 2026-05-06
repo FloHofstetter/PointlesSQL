@@ -3780,10 +3780,13 @@ PointlesSQL
 │   │       as code-quality cleanup.  Lesson: type annotations
 │   │       can't save us from third-party stub gaps.
 │   │
-│   ├── Sprint 35.6 — ``cdf_table`` parameter typing         ⏳ planned
-│   │       Add explicit ``cdf_table: pa.Table`` parameter +
-│   │       return-type to ``services/value_change_capture.py``;
-│   │       ~18 cascaded warnings collapse.
+│   ├── Sprint 35.6 — ``cdf_table`` parameter typing         ✅ closed 2026-05-06
+│   │       Annotated locals (``column_names: set[str]``,
+│   │       ``data: dict[str, list[Any]]``, ``diff_columns:
+│   │       list[str]``, ``row_id_raw: Any``) in
+│   │       ``value_change_capture.py``.  Per-file: 22 → 13
+│   │       warnings (-9); global: 531 → 522 (-9).  Plan estimated
+│   │       18 — pyarrow ``list[Any]`` indexing stops cascading.
 │   │
 │   ├── Sprint 35.7 — ``_frame_to_arrow`` ``@overload``      ⏳ planned
 │   │       Replace ``frame: Any`` with ``@overload`` per

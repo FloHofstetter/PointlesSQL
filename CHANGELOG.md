@@ -6,6 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 35.6 closed (2026-05-06)** — Type-hardening:
+  ``services/value_change_capture.py`` got explicit annotations on
+  the locals where pyright lost type information: ``column_names:
+  set[str]``, ``data: dict[str, list[Any]]``, ``diff_columns:
+  list[str]``, ``row_id_raw: Any``.  Plan estimated ≥18 fewer
+  warnings; **actual is 9** — pyright stays uncertain on
+  ``data[col][i]`` indexing patterns even with the dict typed,
+  because the inner ``list[Any]`` indexing yields ``Any`` which
+  pyright then flags as "partially unknown" downstream.  Global
+  pyright drops from 531 → 522 warnings (-9).  Per-file warnings
+  in ``value_change_capture.py``: 22 → 13.  16 lineage-value tests
+  green; ruff + pydoclint clean.
+
 - **Sprint 35.5 closed (2026-05-06)** — Architectural cleanup: hoist
   every lazy ``import deltalake`` from function bodies to module
   top in ``pql/_merge.py`` (3 lazy imports), ``pql/_autoload.py``

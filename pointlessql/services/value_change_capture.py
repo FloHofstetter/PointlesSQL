@@ -67,20 +67,20 @@ def extract_value_changes(
     if cdf_table.num_rows == 0:
         return []
 
-    column_names = set(cdf_table.schema.names)
+    column_names: set[str] = set(cdf_table.schema.names)
     if "_change_type" not in column_names or LINEAGE_ROW_ID_COLUMN not in column_names:
         return []
 
-    data = cdf_table.to_pydict()
+    data: dict[str, list[Any]] = cdf_table.to_pydict()
     change_types: list[str] = data["_change_type"]
     row_ids: list[Any] = data[LINEAGE_ROW_ID_COLUMN]
 
-    diff_columns = sorted(column_names - CDF_META_COLUMNS - {LINEAGE_ROW_ID_COLUMN})
+    diff_columns: list[str] = sorted(column_names - CDF_META_COLUMNS - {LINEAGE_ROW_ID_COLUMN})
 
     preimages: dict[str, dict[str, Any]] = {}
     postimages: dict[str, dict[str, Any]] = {}
     for i, change_type in enumerate(change_types):
-        row_id_raw = row_ids[i]
+        row_id_raw: Any = row_ids[i]
         if row_id_raw is None:
             continue
         row_id = str(row_id_raw)
