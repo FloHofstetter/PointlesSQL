@@ -69,28 +69,71 @@
  {% elif active_section == 'mlflow' %}
  {% include "components/sidebars/mlflow_sidebar.html" %}
  {% elif active_section == 'admin' %}
+ {% set _admin_path = request.url.path if request else '' %}
  <div class="pql-context-panel__header">Admin</div>
  <div class="pql-context-panel__body">
  <ul class="pql-context-panel__list">
  <li>
+ <a href="/admin"
+ class="pql-context-panel__link{% if _admin_path == '/admin' %} active{% endif %}">
+ <i class="bi bi-grid"></i>
+ <span>Overview</span>
+ </a>
+ </li>
+ <li>
  <a href="/admin/audit"
- class="pql-context-panel__link{% if active_page is defined and active_page == 'admin_audit' %} active{% endif %}">
+ class="pql-context-panel__link{% if _admin_path == '/admin/audit' %} active{% endif %}">
  <i class="bi bi-journal-text"></i>
  <span>Audit log</span>
  </a>
  </li>
  <li>
  <a href="/audit/queries"
- class="pql-context-panel__link{% if active_page is defined and active_page == 'audit' %} active{% endif %}">
+ class="pql-context-panel__link{% if _admin_path.startswith('/audit') %} active{% endif %}">
  <i class="bi bi-shield-check"></i>
  <span>Audit cockpit</span>
  </a>
  </li>
  <li>
  <a href="/admin/external-writes"
- class="pql-context-panel__link{% if active_page is defined and active_page == 'admin' %} active{% endif %}">
+ class="pql-context-panel__link{% if _admin_path == '/admin/external-writes' %} active{% endif %}">
  <i class="bi bi-exclamation-octagon"></i>
  <span>External writes</span>
+ </a>
+ </li>
+ <li>
+ <a href="/admin/workspaces"
+ class="pql-context-panel__link{% if _admin_path.startswith('/admin/workspaces') %} active{% endif %}">
+ <i class="bi bi-folder2-open"></i>
+ <span>Workspaces</span>
+ </a>
+ </li>
+ <li>
+ <a href="/admin/audit-sinks"
+ class="pql-context-panel__link{% if _admin_path == '/admin/audit-sinks' %} active{% endif %}">
+ <i class="bi bi-broadcast"></i>
+ <span>Audit sinks</span>
+ </a>
+ </li>
+ <li>
+ <a href="/admin/review-destinations"
+ class="pql-context-panel__link{% if _admin_path == '/admin/review-destinations' %} active{% endif %}">
+ <i class="bi bi-bell"></i>
+ <span>Review destinations</span>
+ </a>
+ </li>
+ <li>
+ <a href="/admin/api-keys"
+ class="pql-context-panel__link{% if _admin_path == '/admin/api-keys' %} active{% endif %}">
+ <i class="bi bi-key"></i>
+ <span>API keys</span>
+ </a>
+ </li>
+ <li>
+ <a href="/admin/system-info"
+ class="pql-context-panel__link{% if _admin_path == '/admin/system-info' %} active{% endif %}">
+ <i class="bi bi-info-circle"></i>
+ <span>System info</span>
  </a>
  </li>
  </ul>

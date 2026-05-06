@@ -113,6 +113,37 @@ async def api_audit_by_table(
     }
 
 
+@router.get("/audit/by-table", response_class=HTMLResponse)
+async def html_audit_by_table_picker(request: Request) -> HTMLResponse:
+    """Render the table-picker variant when no FQN is in the URL.
+
+    Without an FQN there is nothing to query — firing the loaders
+    against an empty path was the source of BUG-37-05 (three
+    user-visible "Error 422" messages on page load).  This entry
+    renders an FQN input form instead so the user can pick a
+    target without seeing the chrome's broken loaders.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        Rendered ``pages/audit_by_table.html`` with ``table_fqn=""``.
+    """
+    require_auditor(request)
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/audit_by_table.html",
+        {
+            "active_page": "audit",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+            "table_fqn": "",
+            "kinds": [],
+        },
+    )
+
+
 @router.get("/audit/by-table/{fqn:path}", response_class=HTMLResponse)
 async def html_audit_by_table(request: Request, fqn: str) -> HTMLResponse:
     """Render the reverse-index page for one table.
@@ -128,9 +159,24 @@ async def html_audit_by_table(request: Request, fqn: str) -> HTMLResponse:
         fqn: Three-part UC identifier from the URL.
 
     Returns:
-        Rendered ``pages/audit_by_table.html``.
+        Rendered ``pages/audit_by_table.html``; redirects empty
+        ``fqn`` (e.g. ``/audit/by-table/``) to the picker so the
+        chrome's loaders don't fire against an empty path.
     """
     require_auditor(request)
+    if not fqn or not fqn.strip():
+        return _templates(request).TemplateResponse(
+            request,
+            "pages/audit_by_table.html",
+            {
+                "active_page": "audit",
+                "active_catalog": None,
+                "active_schema": None,
+                "active_table": None,
+                "table_fqn": "",
+                "kinds": [],
+            },
+        )
     return _templates(request).TemplateResponse(
         request,
         "pages/audit_by_table.html",

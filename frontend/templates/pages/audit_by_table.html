@@ -13,7 +13,11 @@
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4">
     <i class="bi bi-table fs-3"></i>
+    {% if table_fqn %}
     <h1 class="h3 mb-0">Runs that touched <code class="font-monospace">{{ table_fqn }}</code></h1>
+    {% else %}
+    <h1 class="h3 mb-0">Runs by table</h1>
+    {% endif %}
 </div>
 
 <p class="text-muted">
@@ -23,6 +27,39 @@
     ops + value-changes; <strong>read</strong> joins through
     <code>query_history</code>.  Click a row to drill into the run-detail.
 </p>
+
+{% if not table_fqn %}
+<form id="bytable-picker" class="row g-2 align-items-end mb-3" autocomplete="off">
+    <div class="col-md-8">
+        <label for="bytable-fqn" class="form-label small mb-1">Table FQN</label>
+        <input id="bytable-fqn" type="text"
+               class="form-control form-control-sm font-monospace"
+               placeholder="catalog.schema.table" required>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-sm btn-primary w-100">
+            <i class="bi bi-arrow-right"></i> Open
+        </button>
+    </div>
+</form>
+<div class="alert alert-info small">
+    Enter a three-part UC name above, or pick a table from the
+    catalog tree on the left and the run-detail page will offer a
+    "Runs by table" link for that FQN.
+</div>
+<script>
+(function () {
+    const formEl = document.getElementById('bytable-picker');
+    const inputEl = document.getElementById('bytable-fqn');
+    formEl.addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const fqn = inputEl.value.trim();
+        if (!fqn) return;
+        window.location.assign('/audit/by-table/' + encodeURI(fqn));
+    });
+})();
+</script>
+{% else %}
 
 <ul class="nav nav-tabs mb-3" id="bytableTabs" role="tablist">
     {% for kind in kinds %}
@@ -126,4 +163,5 @@
     activateKind(KINDS[0]);
 })();
 </script>
+{% endif %}
 {% endblock %}
