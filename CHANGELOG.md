@@ -6,6 +6,36 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 35.2 closed (2026-05-06)** — Targeted modularization: split
+  ``pointlessql/services/lineage_edges.py`` (1137 LOC) into a
+  per-stream ``pointlessql/services/lineage/`` subpackage.
+  ``_types.py`` keeps the shared dataclasses (``PredecessorRef``,
+  ``LineageStep``, ``ColumnEdgeSpec``, ``ColumnPredecessorRef``,
+  ``ColumnTraceStep``, ``ValueChangeSpec``), exception sentinels
+  (``ColumnEdgeCapExceeded``, ``ValueChangeCapExceeded``), per-op
+  caps (``MAX_COLUMN_EDGES_PER_OP``, ``MAX_VALUE_CHANGES_PER_OP``),
+  the deterministic-id helpers (``synth_target_row_id``,
+  ``synth_aggregate_target_row_id``), and the workspace-id resolver
+  (``workspace_id_for_op``, dropped leading ``_`` since cross-module).
+  ``rows.py`` owns ``record_edges`` / ``record_rejects`` /
+  ``walk_back`` / ``fetch_target_row_predecessors`` /
+  ``fetch_source_row_descendants`` / ``count_edges_for_op`` and the
+  bronze ``lookup_bronze_source_file`` helper used by the row-trace
+  UI.  ``columns.py`` owns the column-level analogs
+  (``record_column_edges`` / ``walk_back_columns`` /
+  ``fetch_target_column_predecessors`` /
+  ``count_column_edges_for_op``).  ``values.py`` owns
+  ``record_value_changes`` (with the ``hash_only`` /
+  ``redact_with_audit_log`` PII hook), ``count_value_changes_for_op``,
+  ``fetch_value_changes_for_row``.  ``lineage_edges.py`` becomes a
+  60-LOC re-export shim that keeps every old import path working
+  (12 import sites across PQL primitives, lineage routes, agent-run
+  operations, run-detail loaders, value-change-capture, sql parser,
+  column-lineage diff, plus 4 test files).  Behaviour byte-identical;
+  58 lineage tests + full 1478 SQLite suite green.  Pyright errors
+  stay 0, warnings unchanged at 531; ruff + pydoclint clean.  No-net-LOC:
+  ~1137 LOC moved across 5 files.
+
 - **Sprint 35.1 closed (2026-05-06)** — Targeted modularization: split
   ``pointlessql/pql/_branch.py`` (1310 LOC) into a per-workflow
   ``pointlessql/pql/branch/`` subpackage.  ``_common.py`` keeps the

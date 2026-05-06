@@ -3737,12 +3737,16 @@ PointlesSQL
 │   │       byte-identical, 81 branch tests stay green, full
 │   │       1478-test SQLite suite passes.
 │   │
-│   ├── Sprint 35.2 — Split ``services/lineage_edges.py``    ⏳ next
-│   │       1137 LOC → ``services/lineage/`` subpackage with
-│   │       ``rows.py`` (row edges + rejects + walk_back),
-│   │       ``columns.py`` (column edges + traces), ``values.py``
-│   │       (value-change capture).  ``lineage_edges.py`` becomes
-│   │       a re-export shim.
+│   ├── Sprint 35.2 — Split ``services/lineage_edges.py``    ✅ closed 2026-05-06
+│   │       1137 LOC → ``services/lineage/`` subpackage:
+│   │       ``_types.py`` (dataclasses + exceptions + caps +
+│   │       synth helpers + workspace-id resolver), ``rows.py``
+│   │       (record_edges / record_rejects / walk_back / lookups),
+│   │       ``columns.py`` (column-level analogs), ``values.py``
+│   │       (record_value_changes with PII redaction hook).  Shim
+│   │       at ``lineage_edges.py`` re-exports every old symbol;
+│   │       12 import sites + 7 test files keep working unchanged.
+│   │       58 lineage tests + 1478 SQLite suite green.
 │   │
 │   ├── Sprint 35.3 — Split ``services/audit_fts.py``        ⏳ planned
 │   │       973 LOC → ``_audit_fts_sqlite.py`` (FTS5 virtual table
