@@ -66,6 +66,7 @@ from pointlessql.models.catalog import (
     SavedQuery,
     TableStats,
 )
+from pointlessql.models.expected_lineage_inbound import ExpectedLineageInbound
 from pointlessql.models.external_writes import UnattributedWrite
 from pointlessql.models.lineage import (
     REJECT_REASONS,
@@ -126,6 +127,7 @@ __all__ = [
     "Base",
     "BranchAuditLog",
     "Dashboard",
+    "ExpectedLineageInbound",
     "GovernanceEvent",
     "Job",
     "JobLog",

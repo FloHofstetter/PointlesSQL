@@ -21,6 +21,9 @@ from fastapi.templating import Jinja2Templates
 
 import pointlessql
 from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
+from pointlessql.api.admin_expected_producers_routes import (
+    router as admin_expected_producers_router,
+)
 from pointlessql.api.admin_external_writes_routes import router as admin_external_writes_router
 from pointlessql.api.admin_routes import router as admin_router
 from pointlessql.api.admin_workspace_pins_routes import (
@@ -616,6 +619,7 @@ app.include_router(dashboards_router)
 app.include_router(home_router)
 app.include_router(admin_router)
 app.include_router(admin_api_keys_router)
+app.include_router(admin_expected_producers_router)
 app.include_router(admin_external_writes_router)
 app.include_router(admin_workspace_pins_router)
 app.include_router(admin_workspaces_router)
