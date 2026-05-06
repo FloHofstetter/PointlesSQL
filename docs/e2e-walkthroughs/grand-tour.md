@@ -50,6 +50,12 @@ already run and the demo user exists.
  the agent-review card (latest verdict, severity badge).
  - Assert: top-right user menu shows `demo@local` and an admin
  badge (first-user bootstrap).
+ - Note: the topbar workspace switcher (Phase 28) is **hidden**
+ on the seeded stack because only the bootstrap `default`
+ workspace exists. To see it, create a second workspace via
+ `/admin/workspaces` first; the switcher then renders as a
+ folder-icon dropdown next to the catalog tile. See
+ `multi-workspace-setup.md` for the full flow.
 
 3. **Open the command palette** with Cmd+K (Mac) or Ctrl+K.
  - Action: press the chord, type `houses_with_sales`, hit Enter.
@@ -325,12 +331,16 @@ the same DAG as the upstream training source.
 
 ### Act 10 — Audit cockpit (5 steps, ~5 min)
 
-1. **Admin audit log**.
- - Action: click the gear icon → Admin audit
- (`/admin/audit`, admin-only).
+1. **Admin landing → audit log**.
+ - Action: click the gear icon in the icon-rail. Lands on `/admin`
+ (Phase 33 landing) — a 5-card grid of admin surfaces:
+ Audit log, External writes, Workspaces, Audit sinks, Review
+ destinations. Click "Audit log" (or directly `/admin/audit`).
  - Assert: paginated table of audit events; filter chips for
  `since`, `action`, `principal`, `target` are present. Click any
  event to see its expanded JSON details panel.
+ - Note: the `/admin` landing also exposes API keys + System info
+ cards; deep-dive in `admin-console.md` (Wave 1).
 
 2. **Saved audit queries**.
  - Action: navigate to `/audit/queries` (admin-only).
@@ -408,12 +418,15 @@ the same DAG as the upstream training source.
  is always present.
 
 3. **Audit-sinks (admin)**.
- - Action: click the gear icon → Audit sinks (or directly
- `/admin/audit-sinks`).
+ - Action: click the gear icon → Admin landing (`/admin`) → "Audit
+ sinks" card (or directly `/admin/audit-sinks`).
  - Assert: at least one sink configured (`phase2-sink-<ts>`,
  preserved by `--keep-state`), webhook URL pointing at
  `127.0.0.1:9999/sink`, status `inactive`. The "Test" button
  surfaces a 5xx error envelope (expected — there's no listener).
+ - Assert: the `<set>` redaction marker shows for the row's
+ HMAC secret column — the cleartext is never in the rendered
+ HTML (load-bearing assertion shared with `audit-sinks.md`).
 
 [deep-dive: [`federation.md`](federation.md),
 [`foreign-catalog-sync.md`](foreign-catalog-sync.md),
