@@ -58,6 +58,7 @@ from pointlessql.models.auth import User
 from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.models.base import Base
 from pointlessql.models.branch_audit import BRANCH_ACTIONS, BranchAuditLog
+from pointlessql.models.cdf_tail import CdfTailEvent, CdfTailSubscription
 from pointlessql.models.catalog import (
     Dashboard,
     QueryHistory,
@@ -126,6 +127,8 @@ __all__ = [
     "BRANCH_ACTIONS",
     "Base",
     "BranchAuditLog",
+    "CdfTailEvent",
+    "CdfTailSubscription",
     "Dashboard",
     "ExpectedLineageInbound",
     "GovernanceEvent",

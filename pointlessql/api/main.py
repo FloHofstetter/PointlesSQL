@@ -21,6 +21,7 @@ from fastapi.templating import Jinja2Templates
 
 import pointlessql
 from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
+from pointlessql.api.admin_cdf_tail_routes import router as admin_cdf_tail_router
 from pointlessql.api.admin_expected_producers_routes import (
     router as admin_expected_producers_router,
 )
@@ -321,6 +322,18 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="external-writes-scan",
         )
 
+    # CDF tail worker (Phase 40.5 — pull-modell to complement the
+    # 40.1 push-modell).  Disabled by default
+    # (``interval_seconds == 0``); admins opt in via
+    # ``POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS`` after registering
+    # one or more subscriptions.
+    cdf_tail_task: asyncio.Task[None] | None = None
+    if settings.cdf_tail.interval_seconds > 0 and not fast_test_lifespan:
+        cdf_tail_task = asyncio.create_task(
+            _cdf_tail_loop(app.state.session_factory, app.state.uc_client, settings),
+            name="cdf-tail",
+        )
+
     #  lineage retention pruner.  Runs as its own
     # asyncio task next to the audit-retention loop — the existing
     # scheduler is built around per-user JobExecutor callbacks that
@@ -418,6 +431,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             external_writes_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await external_writes_task
+        if cdf_tail_task is not None:
+            cdf_tail_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await cdf_tail_task
         if lineage_pruner_task is not None:
             lineage_pruner_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -500,6 +517,45 @@ async def _external_writes_loop(
                 )
         except Exception:  # noqa: BLE001 — scanner loop must survive everything
             logger.exception("external_writes: scan tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _cdf_tail_loop(
+    factory: Any,
+    uc: Any,
+    settings: Settings,
+) -> None:
+    """Periodic CDF tail across active subscriptions.
+
+    Active only when
+    ``POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS`` is explicitly non-zero
+    AND at least one :class:`CdfTailSubscription` row has
+    ``is_active=True``.  Same opt-in discipline as the external-write
+    scanner: zero-config installs see no extra Delta IO.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the rest of
+            the app.
+        uc: ``UnityCatalogClient`` used to resolve each
+            subscription's ``storage_location`` per tick.
+        settings: Snapshotted :class:`Settings` — only
+            ``cdf_tail.interval_seconds`` and
+            ``cdf_tail.history_limit`` are read.
+    """
+    from pointlessql.services import cdf_tail
+
+    interval = max(60, settings.cdf_tail.interval_seconds)
+    history_limit = settings.cdf_tail.history_limit
+    while True:
+        try:
+            inserted = await cdf_tail.tail_all(factory, uc, history_limit=history_limit)
+            if inserted:
+                logger.info("cdf_tail: tick recorded %d new event(s)", inserted)
+        except Exception:  # noqa: BLE001 — tail loop must survive everything
+            logger.exception("cdf_tail: tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:
@@ -619,6 +675,7 @@ app.include_router(dashboards_router)
 app.include_router(home_router)
 app.include_router(admin_router)
 app.include_router(admin_api_keys_router)
+app.include_router(admin_cdf_tail_router)
 app.include_router(admin_expected_producers_router)
 app.include_router(admin_external_writes_router)
 app.include_router(admin_workspace_pins_router)

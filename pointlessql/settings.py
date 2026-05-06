@@ -611,6 +611,27 @@ class ExternalWritesSettings(BaseSettings):
     history_limit: int = 200
 
 
+class CDFTailSettings(BaseSettings):
+    """CDF tail subscription worker configuration.
+
+    Reads ``POINTLESSQL_CDF_TAIL_*`` environment variables.  The
+    Phase-40.5 background worker periodically reads
+    ``DeltaTable.load_cdf()`` per active
+    :class:`CdfTailSubscription` and INSERT-OR-IGNOREs every CDF row
+    into ``cdf_tail_events``.
+
+    ``interval_seconds`` defaults to ``0`` (disabled) — same opt-in
+    discipline as :class:`ExternalWritesSettings`.  ``history_limit``
+    caps the per-tick commit-version range so a long-idle
+    subscription doesn't spike memory on its first catch-up tick.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_CDF_TAIL_")
+
+    interval_seconds: int = 0
+    history_limit: int = 200
+
+
 class BranchSettings(BaseSettings):
     """Delta-Branching strategy + auto-cleanup configuration.
 
@@ -742,6 +763,7 @@ class Settings(BaseSettings):
     agent_runs: AgentRunsSettings = Field(default_factory=AgentRunsSettings)
     audit_stream: AuditStreamSettings = Field(default_factory=AuditStreamSettings)
     external_writes: ExternalWritesSettings = Field(default_factory=ExternalWritesSettings)
+    cdf_tail: CDFTailSettings = Field(default_factory=CDFTailSettings)
     branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
