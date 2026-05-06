@@ -914,7 +914,13 @@ async def api_dbt_coverage(request: Request) -> dict[str, Any]:
 @router.get("/api/dbt/test-failures")
 async def api_dbt_test_failures(
     request: Request,
-    agent_run_id: str = Query(description="agent_runs.id whose failures to list"),
+    agent_run_id: str | None = Query(
+        default=None,
+        description=(
+            "agent_runs.id whose failures to list; omit for recent "
+            "failures across all dbt runs"
+        ),
+    ),
     limit: int = Query(default=100, ge=1, le=500),
 ) -> dict[str, Any]:
     """Return the dbt-test failures for one agent run.
@@ -931,11 +937,13 @@ async def api_dbt_test_failures(
 
     Args:
         request: Incoming FastAPI request.
-        agent_run_id: UUID of the run whose failures to list.
+        agent_run_id: UUID of the run whose failures to list.  When
+            omitted, returns recent failures across every dbt-cli
+            run for the cockpit's "Test failures" tab.
         limit: Hard row cap (1-500, default 100).
 
     Returns:
-        ``{"agent_run_id": str, "row_count": int, "rows": [...]}``.
+        ``{"agent_run_id": str | None, "row_count": int, "rows": [...]}``.
 
     Raises:
         HTTPException: When the caller lacks supervisor / auditor scope
@@ -945,14 +953,25 @@ async def api_dbt_test_failures(
     factory = request.app.state.session_factory
     rows: list[dict[str, Any]] = []
     with factory() as session:
-        stmt = (
-            select(LineageRowReject, AgentRunOperation)
-            .join(AgentRunOperation, AgentRunOperation.id == LineageRowReject.op_id)
-            .where(LineageRowReject.run_id == agent_run_id)
-            .where(LineageRowReject.reason == "expectation_failed")
-            .order_by(LineageRowReject.id.asc())
-            .limit(limit)
-        )
+        if agent_run_id is not None:
+            stmt = (
+                select(LineageRowReject, AgentRunOperation)
+                .join(AgentRunOperation, AgentRunOperation.id == LineageRowReject.op_id)
+                .where(LineageRowReject.run_id == agent_run_id)
+                .where(LineageRowReject.reason == "expectation_failed")
+                .order_by(LineageRowReject.id.asc())
+                .limit(limit)
+            )
+        else:
+            stmt = (
+                select(LineageRowReject, AgentRunOperation)
+                .join(AgentRunOperation, AgentRunOperation.id == LineageRowReject.op_id)
+                .join(AgentRun, AgentRun.id == LineageRowReject.run_id)
+                .where(LineageRowReject.reason == "expectation_failed")
+                .where(AgentRun.agent_id == "dbt-cli")
+                .order_by(LineageRowReject.id.desc())
+                .limit(limit)
+            )
         for reject, op in session.execute(stmt).all():
             params: dict[str, Any] = {}
             if op.params_json:
@@ -970,6 +989,7 @@ async def api_dbt_test_failures(
                     "severity": str(severity),
                     "message": reject.detail,
                     "op_id": op.id,
+                    "agent_run_id": reject.run_id,
                     "rejected_at": reject.created_at.isoformat() if reject.created_at else None,
                 },
             )
@@ -978,3 +998,56 @@ async def api_dbt_test_failures(
         "row_count": len(rows),
         "rows": rows,
     }
+
+
+@router.get("/api/dbt/runs")
+async def api_dbt_runs(
+    request: Request,
+    limit: int = Query(default=20, ge=1, le=200),
+) -> dict[str, Any]:
+    """Return recent dbt-cli :class:`AgentRun` rows.
+
+    Drives the dbt cockpit's Recent-runs sub-tab.  Filters
+    ``AgentRun`` by ``agent_id == 'dbt-cli'`` (the value
+    :func:`_create_owned_run` writes for auto-spawned dbt runs)
+    and orders newest-first.  Bypassing /api/runs avoids the
+    workspace-cap of 200 unrelated runs drowning out the dbt
+    timeline.
+
+    Args:
+        request: Incoming FastAPI request.
+        limit: Hard row cap (1–200, default 20).
+
+    Returns:
+        ``{"row_count": int, "runs": [{...}, ...]}``.
+
+    Raises:
+        HTTPException: 401 when the request is anonymous.
+    """
+    user = get_user(request)
+    if user["id"] == 0:
+        raise HTTPException(status_code=401, detail="auth required")
+    factory = request.app.state.session_factory
+    workspace_id = int(getattr(request.state, "workspace_id", 1))
+    runs: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(AgentRun)
+            .where(AgentRun.workspace_id == workspace_id)
+            .where(AgentRun.agent_id == "dbt-cli")
+            .order_by(AgentRun.started_at.desc())
+            .limit(limit)
+        )
+        for row in session.scalars(stmt).all():
+            runs.append(
+                {
+                    "id": row.id,
+                    "principal": row.principal,
+                    "notebook_path": row.notebook_path,
+                    "status": row.status,
+                    "exit_code": row.exit_code,
+                    "started_at": row.started_at.isoformat() if row.started_at else None,
+                    "finished_at": row.finished_at.isoformat() if row.finished_at else None,
+                },
+            )
+    return {"row_count": len(runs), "runs": runs}

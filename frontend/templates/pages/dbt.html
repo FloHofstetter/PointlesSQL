@@ -10,36 +10,293 @@
     <h1 class="h3 mb-0">dbt Pipelines</h1>
 </div>
 
-{% if dbt_running %}
-<div class="card dbt-frame-card">
-    <div class="card-body p-0" style="height: calc(100vh - 220px); min-height: 480px;">
-        <iframe src="/dbt-docs/"
-                class="w-100 h-100 border-0"
-                title="dbt docs UI"
-                allow="clipboard-write"></iframe>
+<div class="row g-3 mb-3" id="dbt-summary-row">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted text-uppercase small mb-1">Models</div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span class="fs-3 fw-semibold" id="dbt-summary-models">—</span>
+                    <span class="small text-muted" id="dbt-summary-models-hint"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted text-uppercase small mb-1">Tests</div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span class="fs-3 fw-semibold" id="dbt-summary-tests">—</span>
+                    <span class="small text-muted" id="dbt-summary-tests-hint"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted text-uppercase small mb-1">Test coverage</div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <span class="fs-3 fw-semibold" id="dbt-summary-coverage">—</span>
+                    <span class="small text-muted" id="dbt-summary-coverage-hint"></span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-{% else %}
-<div class="alert alert-warning" role="alert">
-    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>dbt-docs not running</h5>
-    <p class="mb-1">
-        The embedded dbt-docs subprocess is not running.  This is normal
-        on a fresh install — there is no compiled dbt project yet.
-    </p>
-    <ul class="mb-2 small">
-        <li>Install the optional <code>[dbt]</code> extra:
-            <code>pip install pointlessql[dbt]</code>
-            (or <code>uv sync --extra dbt</code> for development).</li>
-        <li>Place your dbt project under <code>dbt_project/</code>
-            (or override <code>POINTLESSQL_DBT_PROJECT_DIR</code>).</li>
-        <li>Run <code>dbt compile</code> once to generate
-            <code>target/manifest.json</code>.</li>
-        <li>Restart PointlesSQL — the subprocess starts during the
-            FastAPI lifespan hook.</li>
-    </ul>
-    <p class="mb-0 small text-muted">
-        See <code>pointlessql/services/dbt_subprocess.py</code> for the lifespan hook.
-    </p>
+
+<ul class="nav nav-tabs mb-3" id="dbtTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="dbt-pipeline-btn"
+                data-bs-toggle="tab" data-bs-target="#dbt-pipeline"
+                type="button" role="tab">
+            <i class="bi bi-bezier2 me-1"></i> Pipeline docs
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="dbt-runs-btn"
+                data-bs-toggle="tab" data-bs-target="#dbt-runs"
+                data-tab="runs"
+                type="button" role="tab">
+            <i class="bi bi-activity me-1"></i> Recent runs
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="dbt-failures-btn"
+                data-bs-toggle="tab" data-bs-target="#dbt-failures"
+                data-tab="failures"
+                type="button" role="tab">
+            <i class="bi bi-exclamation-octagon me-1"></i> Test failures
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="dbt-pipeline" role="tabpanel">
+        {% if dbt_running %}
+        <div class="card dbt-frame-card">
+            <div class="card-body p-0" style="height: calc(100vh - 360px); min-height: 420px;">
+                <iframe src="/dbt-docs/"
+                        class="w-100 h-100 border-0"
+                        title="dbt docs UI"
+                        allow="clipboard-write"></iframe>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>dbt-docs not running</h5>
+            <p class="mb-1">
+                The embedded dbt-docs subprocess is not running.  This is normal
+                on a fresh install — there is no compiled dbt project yet.
+            </p>
+            <ul class="mb-2 small">
+                <li>Install the optional <code>[dbt]</code> extra:
+                    <code>pip install pointlessql[dbt]</code>
+                    (or <code>uv sync --extra dbt</code> for development).</li>
+                <li>Place your dbt project under <code>dbt_project/</code>
+                    (or override <code>POINTLESSQL_DBT_PROJECT_DIR</code>).</li>
+                <li>Run <code>dbt compile</code> once to generate
+                    <code>target/manifest.json</code>.</li>
+                <li>Restart PointlesSQL — the subprocess starts during the
+                    FastAPI lifespan hook.</li>
+            </ul>
+            <p class="mb-0 small text-muted">
+                See <code>pointlessql/services/dbt_subprocess.py</code> for the lifespan hook.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="tab-pane fade" id="dbt-runs" role="tabpanel">
+        <div class="small text-muted mb-2" id="dbt-runs-meta">Loading…</div>
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Principal</th>
+                            <th>Path</th>
+                            <th>Status</th>
+                            <th class="text-end">Exit</th>
+                            <th>Started</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbt-runs-rows">
+                        <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="dbt-failures" role="tabpanel">
+        <div class="small text-muted mb-2" id="dbt-failures-meta">Loading…</div>
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Test</th>
+                            <th>Model</th>
+                            <th>Severity</th>
+                            <th>Message</th>
+                            <th>Run</th>
+                            <th>When</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbt-failures-rows">
+                        <tr><td colspan="6" class="text-center text-muted py-4">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
-{% endif %}
+
+<script>
+(function () {
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        return String(text).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[c]);
+    }
+
+    function statusBadge(s) {
+        const cls = s === 'succeeded' ? 'bg-success'
+            : (s === 'failed' ? 'bg-danger'
+            : (s === 'running' ? 'bg-info text-dark' : 'bg-secondary'));
+        return `<span class="badge ${cls}">${escapeHtml(s || '—')}</span>`;
+    }
+
+    function severityBadge(sev) {
+        if (sev === 'warn') return '<span class="badge bg-warning text-dark">warn</span>';
+        return '<span class="badge bg-danger">error</span>';
+    }
+
+    async function loadSummary() {
+        const elModels = document.getElementById('dbt-summary-models');
+        const elModelsHint = document.getElementById('dbt-summary-models-hint');
+        const elTests = document.getElementById('dbt-summary-tests');
+        const elTestsHint = document.getElementById('dbt-summary-tests-hint');
+        const elCov = document.getElementById('dbt-summary-coverage');
+        const elCovHint = document.getElementById('dbt-summary-coverage-hint');
+
+        let manifestModels = null;
+        let totalTests = null;
+        try {
+            const r = await fetch('/api/dbt/manifest', { credentials: 'same-origin' });
+            if (r.ok) {
+                const data = await r.json();
+                manifestModels = (data.models || []).length;
+                totalTests = (data.models || []).reduce((acc, m) => acc + (m.tests || []).length, 0);
+                elModels.textContent = String(manifestModels);
+                elTests.textContent = String(totalTests);
+                if (data.manifest_generated_at) {
+                    elModelsHint.textContent = 'manifest from ' + data.manifest_generated_at.slice(0, 16);
+                }
+            } else if (r.status === 404) {
+                elModels.textContent = '—';
+                elModelsHint.textContent = 'no manifest yet';
+                elTests.textContent = '—';
+            } else {
+                elModelsHint.textContent = 'HTTP ' + r.status;
+            }
+        } catch (e) {
+            elModelsHint.textContent = 'fetch error';
+        }
+
+        try {
+            const r = await fetch('/api/dbt/coverage', { credentials: 'same-origin' });
+            if (r.ok) {
+                const data = await r.json();
+                const ratio = (data.ratio * 100).toFixed(1);
+                elCov.textContent = ratio + '%';
+                elCovHint.textContent = `${data.models_with_tests}/${data.models_total} tested`;
+            } else if (r.status === 404) {
+                elCov.textContent = '—';
+                elCovHint.textContent = 'no manifest yet';
+            } else {
+                elCov.textContent = '—';
+                elCovHint.textContent = 'HTTP ' + r.status;
+            }
+        } catch (e) {
+            elCovHint.textContent = 'fetch error';
+        }
+    }
+
+    async function loadRuns() {
+        const rowsEl = document.getElementById('dbt-runs-rows');
+        const metaEl = document.getElementById('dbt-runs-meta');
+        try {
+            const r = await fetch('/api/dbt/runs?limit=20', { credentials: 'same-origin' });
+            if (!r.ok) {
+                metaEl.textContent = 'Error ' + r.status;
+                rowsEl.innerHTML = `<tr><td colspan="6" class="text-danger py-3">Error ${r.status}</td></tr>`;
+                return;
+            }
+            const data = await r.json();
+            metaEl.textContent = `${data.row_count} recent dbt run(s) — agent_id="dbt-cli"`;
+            if (!data.runs.length) {
+                rowsEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No dbt runs yet.  Trigger one via <code>POST /api/dbt/run</code> or via Hermes.</td></tr>';
+                return;
+            }
+            rowsEl.innerHTML = data.runs.map((run) => `<tr>
+                <td><a href="/runs/${encodeURIComponent(run.id)}" class="font-monospace small text-decoration-none">${escapeHtml(run.id.slice(0, 8))}</a></td>
+                <td class="font-monospace small">${escapeHtml(run.principal || '—')}</td>
+                <td class="font-monospace small text-muted">${escapeHtml(run.notebook_path || '—')}</td>
+                <td>${statusBadge(run.status)}</td>
+                <td class="text-end font-monospace small">${run.exit_code === null || run.exit_code === undefined ? '—' : run.exit_code}</td>
+                <td class="font-monospace small text-muted">${escapeHtml(run.started_at || '—')}</td>
+            </tr>`).join('');
+        } catch (e) {
+            metaEl.textContent = 'fetch error';
+            rowsEl.innerHTML = `<tr><td colspan="6" class="text-danger py-3">Fetch error: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    }
+
+    async function loadFailures() {
+        const rowsEl = document.getElementById('dbt-failures-rows');
+        const metaEl = document.getElementById('dbt-failures-meta');
+        try {
+            const r = await fetch('/api/dbt/test-failures?limit=50', { credentials: 'same-origin' });
+            if (!r.ok) {
+                metaEl.textContent = 'Error ' + r.status;
+                rowsEl.innerHTML = `<tr><td colspan="6" class="text-danger py-3">Error ${r.status}</td></tr>`;
+                return;
+            }
+            const data = await r.json();
+            metaEl.textContent = `${data.row_count} recent test failure(s) across all dbt runs`;
+            if (!data.rows.length) {
+                rowsEl.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No dbt test failures recorded.</td></tr>';
+                return;
+            }
+            rowsEl.innerHTML = data.rows.map((row) => `<tr>
+                <td class="font-monospace small">${escapeHtml(row.test_unique_id || '—')}</td>
+                <td class="font-monospace small">${escapeHtml(row.model_relation || '—')}</td>
+                <td>${severityBadge(row.severity)}</td>
+                <td class="small">${escapeHtml(row.message || '')}</td>
+                <td>${row.agent_run_id ? `<a href="/runs/${encodeURIComponent(row.agent_run_id)}" class="font-monospace small text-decoration-none">${escapeHtml(row.agent_run_id.slice(0, 8))}</a>` : '—'}</td>
+                <td class="font-monospace small text-muted">${escapeHtml(row.rejected_at || '—')}</td>
+            </tr>`).join('');
+        } catch (e) {
+            metaEl.textContent = 'fetch error';
+            rowsEl.innerHTML = `<tr><td colspan="6" class="text-danger py-3">Fetch error: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    }
+
+    const loaded = { runs: false, failures: false };
+    document.querySelectorAll('#dbtTabs .nav-link[data-tab]').forEach((btn) => {
+        btn.addEventListener('shown.bs.tab', () => {
+            const tab = btn.dataset.tab;
+            if (tab === 'runs' && !loaded.runs) { loaded.runs = true; loadRuns(); }
+            if (tab === 'failures' && !loaded.failures) { loaded.failures = true; loadFailures(); }
+        });
+    });
+
+    loadSummary();
+})();
+</script>
 {% endblock %}
