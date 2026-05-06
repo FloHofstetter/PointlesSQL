@@ -110,7 +110,16 @@ def _params_diff(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
 
 
 def _diff_op_pair(op_a: AgentRunOperation | None, op_b: AgentRunOperation | None) -> dict[str, Any]:
-    """Per-slot diff between aligned operation rows."""
+    """Per-slot diff between aligned operation rows.
+
+    Compares ``op_name``, ``target_table``, ``rows_affected``,
+    ``delta_version_after`` and the parsed ``params`` blob;
+    side-effect-only fields like ``started_at`` carry no signal
+    for "did this run produce the same data?" and are skipped.
+    A ``None`` slot on either side returns the existing op
+    payload unchanged so the UI can render it as an "extra slot"
+    badge without inferring missing data.
+    """
     a_dict = _serialize_op(op_a) if op_a is not None else None
     b_dict = _serialize_op(op_b) if op_b is not None else None
     diff: dict[str, Any] = {"a_op": a_dict, "b_op": b_dict}
@@ -141,7 +150,15 @@ def _diff_op_pair(op_a: AgentRunOperation | None, op_b: AgentRunOperation | None
 def _diff_tool_call_pair(
     call_a: AgentRunToolCall | None, call_b: AgentRunToolCall | None
 ) -> dict[str, Any]:
-    """Per-slot diff between aligned tool-call rows."""
+    """Per-slot diff between aligned tool-call rows.
+
+    ``args_diff`` falls back to a length comparison when either
+    side's ``args_json`` does not parse as a dict — non-dict
+    payloads have no canonical key/value structure so a deeper
+    diff would be misleading.  ``result_summary_diff`` reports
+    only lengths, never the full string, so the diff route stays
+    safe for auditor-scope viewers.
+    """
     a_dict = _serialize_tool_call(call_a) if call_a is not None else None
     b_dict = _serialize_tool_call(call_b) if call_b is not None else None
     diff: dict[str, Any] = {"a_call": a_dict, "b_call": b_dict}
@@ -186,7 +203,15 @@ def _diff_tool_call_pair(
 def _ordinal_align_ops(
     ops_a: list[AgentRunOperation], ops_b: list[AgentRunOperation]
 ) -> list[tuple[AgentRunOperation | None, AgentRunOperation | None]]:
-    """Zip ops_a and ops_b by index; pad the shorter side with ``None``."""
+    """Zip ops_a and ops_b by index; pad the shorter side with ``None``.
+
+    The right strategy when the two runs are deterministic replays
+    of the same notebook — ordinal N on both sides should be the
+    same op.  When the order can drift (e.g. parallel runs of an
+    agent), :func:`_content_align_ops` is the better default; the
+    caller picks via the ``align`` parameter on
+    :func:`build_detail_diff`.
+    """
     n = max(len(ops_a), len(ops_b))
     pairs: list[tuple[AgentRunOperation | None, AgentRunOperation | None]] = []
     for i in range(n):
@@ -237,7 +262,13 @@ def _content_align_ops(
 def _ordinal_align_tool_calls(
     calls_a: list[AgentRunToolCall], calls_b: list[AgentRunToolCall]
 ) -> list[tuple[AgentRunToolCall | None, AgentRunToolCall | None]]:
-    """Zip tool-call lists by index; pad the shorter side with ``None``."""
+    """Zip tool-call lists by index; pad the shorter side with ``None``.
+
+    Mirror of :func:`_ordinal_align_ops` for tool-call rows.
+    Appropriate when the agents are deterministic replays of the
+    same prompt; for divergent runs prefer
+    :func:`_content_align_tool_calls`.
+    """
     n = max(len(calls_a), len(calls_b))
     pairs: list[tuple[AgentRunToolCall | None, AgentRunToolCall | None]] = []
     for i in range(n):
@@ -250,7 +281,14 @@ def _ordinal_align_tool_calls(
 def _content_align_tool_calls(
     calls_a: list[AgentRunToolCall], calls_b: list[AgentRunToolCall]
 ) -> list[tuple[AgentRunToolCall | None, AgentRunToolCall | None]]:
-    """Greedy ``tool_name`` match on call-order distance."""
+    """Greedy ``tool_name`` match on call-order distance.
+
+    Pairs each A-side call with the closest unused B-side call of
+    the same ``tool_name``, where "closest" is the absolute
+    difference in list index.  Calls without a partner land as
+    half-pairs at the end (A's leftovers first, then B's) so the
+    UI can render them as "extra calls on one side".
+    """
     used_b: set[int] = set()
     pairs: list[tuple[AgentRunToolCall | None, AgentRunToolCall | None]] = []
     for i_a, call_a in enumerate(calls_a):
@@ -565,7 +603,14 @@ _ColumnEdgeKey = tuple[int, str, str, str, str]
 
 
 def _column_edge_key(row: LineageColumnMap) -> _ColumnEdgeKey:
-    """Composite identity used to align two runs' column-lineage rows."""
+    """Composite identity used to align two runs' column-lineage rows.
+
+    The 5-tuple ``(op_id, source_table, source_column, target_table,
+    target_column)`` is what makes one column-lineage edge
+    distinguishable from another.  Including ``op_id`` rather than
+    just the column-pair prevents two distinct ops touching the
+    same columns from collapsing into one alignment slot.
+    """
     return (
         row.op_id,
         row.source_table or "",

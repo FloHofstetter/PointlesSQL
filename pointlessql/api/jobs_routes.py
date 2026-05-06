@@ -230,7 +230,14 @@ def load_job_or_404(request: Request, job_id: int) -> Any:
 
 
 def require_job_owner_or_admin(request: Request, job: Any) -> None:
-    """Raise :class:`AuthorizationError` if the user can't mutate *job*."""
+    """Raise :class:`AuthorizationError` if the user can't mutate *job*.
+
+    Admins always pass; otherwise the caller's user id must match
+    ``job.run_as_user_id`` — the field the scheduler uses to build
+    the per-run X-Principal header.  This keeps job-mutating routes
+    aligned with run-time identity so a user can never edit a job
+    that runs as someone else.
+    """
     user = get_user(request)
     if user.get("is_admin"):
         return
@@ -464,7 +471,15 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
 
 @router.post("/api/jobs/{job_id}/run")
 async def api_run_job(request: Request, job_id: int) -> dict[str, Any]:
-    """Manually trigger a run of *job_id* (admin or owner only)."""
+    """Manually trigger a run of *job_id* (admin or owner only).
+
+    Calls into the same :func:`scheduler_service.execute_run` path
+    the cron tick uses, but stamps ``trigger="manual"`` so the run
+    list can badge interactive launches separately from scheduled
+    ones.  Records ``run_job`` in ``audit_log`` so a "why did this
+    job run outside the schedule?" question has a tamper-evident
+    answer.
+    """
     job = load_job_or_404(request, job_id)
     require_job_owner_or_admin(request, job)
     settings: Settings = request.app.state.settings
@@ -476,7 +491,14 @@ async def api_run_job(request: Request, job_id: int) -> dict[str, Any]:
 
 @router.get("/api/jobs/{job_id}/tasks")
 async def api_list_job_tasks(request: Request, job_id: int) -> list[dict[str, Any]]:
-    """Return the :class:`JobTask` DAG nodes for *job_id*."""
+    """Return the :class:`JobTask` DAG nodes for *job_id*.
+
+    Routes through :func:`load_job_or_404` first so non-admins
+    cannot enumerate the DAG of a job they could not have
+    triggered themselves.  The list is ordered by primary key so
+    the DAG renders in insertion order even when ``order`` is
+    ignored by the walker.
+    """
     from sqlalchemy import select as _select
 
     from pointlessql.models import JobTask as JobTaskModel
@@ -493,7 +515,14 @@ async def api_list_job_tasks(request: Request, job_id: int) -> list[dict[str, An
 
 @router.get("/api/jobs/{job_id}/runs/{run_id}/tasks")
 async def api_list_task_runs(request: Request, job_id: int, run_id: int) -> list[dict[str, Any]]:
-    """Return per-task state rows for one :class:`JobRun`."""
+    """Return per-task state rows for one :class:`JobRun`.
+
+    The route gates on the parent job (via
+    :func:`load_job_or_404`), then filters task runs by
+    ``job_run_id`` so a caller can never read another job's task
+    state by guessing a *run_id*.  Ordered by primary key so the
+    DAG view stays stable across renders.
+    """
     from sqlalchemy import select as _select
 
     from pointlessql.models import TaskRun as TaskRunModel
@@ -661,7 +690,14 @@ async def job_run_compare(
 
 @router.post("/api/jobs/{job_id}/pause")
 async def api_pause_job(request: Request, job_id: int) -> dict[str, Any]:
-    """Pause *job_id* (admin or owner only)."""
+    """Pause *job_id* (admin or owner only).
+
+    Flips ``Job.is_paused = True`` so the next scheduler tick
+    skips the job; in-flight runs are not interrupted (paused is
+    a "no new launches" flag, not a stop signal).  Audit-logs the
+    transition so a paused production job leaves a tamper-evident
+    record of who paused it and when.
+    """
     from pointlessql.models import Job as JobModel
 
     job = load_job_or_404(request, job_id)
@@ -681,7 +717,14 @@ async def api_pause_job(request: Request, job_id: int) -> dict[str, Any]:
 
 @router.post("/api/jobs/{job_id}/unpause")
 async def api_unpause_job(request: Request, job_id: int) -> dict[str, Any]:
-    """Resume *job_id* (admin or owner only)."""
+    """Resume *job_id* (admin or owner only).
+
+    Flips ``Job.is_paused = False`` so the next scheduler tick
+    becomes eligible to launch a run.  Does not retroactively
+    trigger missed cron ticks — only the next one matching the
+    expression fires.  Audit-logs the resume so paired pause /
+    resume events are visible together in ``audit_log``.
+    """
     from pointlessql.models import Job as JobModel
 
     job = load_job_or_404(request, job_id)
@@ -701,7 +744,14 @@ async def api_unpause_job(request: Request, job_id: int) -> dict[str, Any]:
 
 @router.get("/jobs", response_class=HTMLResponse)
 async def jobs_index(request: Request) -> HTMLResponse:
-    """List every job visible to the current user."""
+    """List every job visible to the current user.
+
+    Visibility mirrors :func:`load_job_or_404`: admins see every
+    job, others see only jobs whose ``run_as_user_id`` matches
+    them.  The latest run per job is fetched via
+    :func:`latest_run_per_job` in a single query so the page does
+    not fan out to one round-trip per row.
+    """
     from sqlalchemy import select as _select
 
     from pointlessql.models import Job as JobModel
@@ -735,7 +785,15 @@ async def jobs_index(request: Request) -> HTMLResponse:
 
 @router.get("/jobs/{job_id}", response_class=HTMLResponse)
 async def job_detail(request: Request, job_id: int) -> HTMLResponse:
-    """Render job detail with task list, latest task statuses, and run history."""
+    """Render job detail with task list, latest task statuses, and run history.
+
+    Visibility goes through :func:`load_job_or_404` so non-owners
+    get a 404 rather than an authorization error (no information
+    leak about whether the id exists).  The run-history pane caps
+    at the 20 most-recent runs to keep the page snappy on long-
+    running jobs; deeper history is reachable through the
+    ``/api/jobs/{id}/runs`` JSON endpoint.
+    """
     from sqlalchemy import select as _select
 
     from pointlessql.models import JobRun as JobRunModel
