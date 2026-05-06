@@ -60,6 +60,13 @@ EVENT_TYPE_BRANCH_DISCARDED = "pointlessql.branch.discarded.v1"
 EVENT_TYPE_DBT_RUN_COMPLETED = "pointlessql.dbt.run.completed"
 EVENT_TYPE_DBT_TEST_FAILED = "pointlessql.dbt.test.failed"
 EVENT_TYPE_DBT_TEST_WARNED = "pointlessql.dbt.test.warned"
+# Phase 36 Restabschluss — fired when /api/dbt/test resolves at least
+# one error-severity failure under the ``auto_rollback`` flag and
+# walks the run's ``dbt_model`` ops calling ``pql.rollback`` for each.
+# Payload carries every target attempted plus the per-target outcome
+# (succeeded vs. refused) so the cockpit can render the auto-undo
+# decision next to the failing tests that triggered it.
+EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED = "pointlessql.dbt.auto_rollback.executed"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_EXTERNAL_WRITE,
@@ -73,6 +80,7 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DBT_RUN_COMPLETED,
     EVENT_TYPE_DBT_TEST_FAILED,
     EVENT_TYPE_DBT_TEST_WARNED,
+    EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
 )
 
 

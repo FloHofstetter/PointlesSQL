@@ -169,8 +169,7 @@ async def test_seed_run_test_emits_expected_node_results(
     # Five tests defined in schema.yml: not_null(id), unique(id),
     # not_null(amount), accepted_values(status), relationships.
     assert len(test_nodes) == 5, (
-        f"expected 5 dbt tests, got {len(test_nodes)}: "
-        f"{[n.unique_id for n in test_nodes]}"
+        f"expected 5 dbt tests, got {len(test_nodes)}: {[n.unique_id for n in test_nodes]}"
     )
     assert all(n.status == "pass" for n in test_nodes), (
         "every shipped test passes against the orders.csv seed; "

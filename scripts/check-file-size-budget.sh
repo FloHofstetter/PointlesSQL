@@ -46,6 +46,13 @@ ALLOWLIST=(
     # Operation recorder + lineage post-commit hooks tightly coupled
     # via the operation_context contract.
     "pointlessql/services/agent_runs/operations.py"
+    # Cohesive dbt orchestration surface — Phase 36 (subprocess CLI
+    # invocation + manifest read-only accessors + audit emit +
+    # severity enforcement + auto-rollback).  Manifest projection
+    # already lives in services/dbt_bridge.py; what remains here is
+    # one file's worth of route handlers that share the
+    # ``_run_or_test`` pipeline state.
+    "pointlessql/api/dbt_routes.py"
 )
 
 is_allowed() {

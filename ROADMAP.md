@@ -3903,7 +3903,68 @@ PointlesSQL
 │   │       green.  The 3 read-only tools sketched in the plan
 │   │       (list_models / show_lineage / get_test_failures) need
 │   │       new manifest-introspection endpoints on the
-│   │       PointlesSQL side and are deferred.
+│   │       PointlesSQL side and are deferred — picked back up in
+│   │       sub-sprint 36.B below.
+│   │
+│   ├── Sprint 36.A — sample dbt project + integration test    ✅
+│   │       (Phase-36 Restabschluss) A 3-model / 5-test demo
+│   │       project lands at ``dbt_project/`` (bronze → silver →
+│   │       gold pipeline plus ``not_null`` / ``unique`` /
+│   │       ``accepted_values`` / ``relationships`` tests against
+│   │       a 10-row CSV seed); ``tests/test_dbt_real_subprocess.py``
+│   │       (``@pytest.mark.integration``) runs real ``dbt
+│   │       compile`` + a full ``dbt seed → run → test`` against
+│   │       the project, asserts against the bridge's
+│   │       :func:`merge_manifest_and_results` projection, and skips
+│   │       cleanly when ``dbt-duckdb`` isn't importable for the
+│   │       running interpreter (Python-3.14 + dbt-duckdb-1.9
+│   │       currently raises ``mashumaro.UnserializableField``
+│   │       during CLI module import).  New
+│   │       :meth:`DBTExecutor.seed` lets the test (and future
+│   │       agent flows) materialise CSV seeds without reaching
+│   │       into ``_run``.
+│   │
+│   ├── Sprint 36.B — read-only manifest API + plugin tools    ✅
+│   │       (Phase-36 Restabschluss) Three new GET routes:
+│   │       ``/api/dbt/manifest`` projects ``target/manifest.json``
+│   │       to a model summary with attached tests (any
+│   │       authenticated user); ``/api/dbt/coverage`` reports the
+│   │       test-coverage ratio + untested-model list;
+│   │       ``/api/dbt/test-failures`` joins
+│   │       ``lineage_row_rejects`` (where
+│   │       ``reason='expectation_failed'``) with
+│   │       ``agent_run_operations`` (supervisor or auditor scope)
+│   │       and returns one row per failing test.  The
+│   │       manifest-projection logic moves to
+│   │       :mod:`pointlessql.services.dbt_bridge` (``as_dict`` /
+│   │       ``as_list`` / ``project_models``) so the plugin's
+│   │       ``pql_dbt_show_lineage`` reuses the same projection.
+│   │       Three new Hermes tools land plugin-side:
+│   │       ``pql_dbt_list_models`` (no-arg manifest summary),
+│   │       ``pql_dbt_show_lineage`` (parents/children walk,
+│   │       accepts ``unique_id`` or short name), and
+│   │       ``pql_dbt_get_test_failures`` (per-run failing tests
+│   │       with model relation, severity, and op id).  Closes
+│   │       the trigger → inspect loop.
+│   │
+│   ├── Sprint 36.C — auto-rollback on error-severity test     ✅
+│   │       (Phase-36 Restabschluss) ``POST /api/dbt/test`` accepts
+│   │       a new ``auto_rollback: bool`` body parameter (default
+│   │       ``False``).  When set and the run has at least one
+│   │       error-severity failing test, the route walks every
+│   │       ``dbt_model`` op in the run (newest-first) and invokes
+│   │       ``pql.rollback`` for each — collecting per-target
+│   │       outcomes (``succeeded`` vs. ``failed``) into the
+│   │       response envelope's new ``auto_rollback`` block.
+│   │       Per-target refusals (``RollbackStale``,
+│   │       ``RollbackInvalid``, …) land in ``failed`` rather than
+│   │       aborting the sweep — auto-rollback is best-effort by
+│   │       design.  A new
+│   │       ``pointlessql.dbt.auto_rollback.executed`` CloudEvent
+│   │       fires once per attempted unwind with the aggregate
+│   │       counts.  Auto-rollback fires *only* on the test path:
+│   │       model writes are reverted because tests failed, never
+│   │       as a side-effect of the run itself.
 │   │
 │   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ Playwright
 │
