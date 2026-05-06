@@ -8,6 +8,7 @@ import shutil
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 # Disable optional integrations whose subprocess startup would otherwise
 # kick in during the FastAPI lifespan triggered by ``TestClient(app)``.
@@ -302,6 +303,19 @@ def _auth_db(  # pyright: ignore[reportUnusedFunction]
     admin_id, non_admin_id = _seed_test_users(factory)
 
     app.state.session_factory = factory
+
+    # Sprint 13.x onwards (UC mutations / lineage / external-write
+    # cross-refs) read ``app.state.uc_client`` from
+    # ``runs_routes._loaders``, ``soyuz_audit``, and friends.  Tests
+    # that need real UC behaviour overwrite this with their own
+    # ``MagicMock(spec=UnityCatalogClient)`` (see e.g.
+    # ``test_error_handlers``); a default MagicMock here keeps the
+    # render path crash-free for the majority of tests that don't
+    # touch UC at all.  The ``soyuz_audit.fetch_for_run`` swallow-
+    # all-exceptions block neutralises any unexpected awaitable
+    # mismatches.
+    if not hasattr(app.state, "uc_client") or app.state.uc_client is None:
+        app.state.uc_client = MagicMock()
 
     # Ensure templates are always available (set in lifespan normally).
     from pointlessql.api.main import _TEMPLATES
