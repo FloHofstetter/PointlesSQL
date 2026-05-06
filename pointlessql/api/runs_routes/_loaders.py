@@ -33,6 +33,7 @@ from pointlessql.models import (
     NotebookCellRun,
     NotebookOutput,
     QueryHistory,
+    RewriteAttempt,
 )
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services import output_rendering as output_rendering_service
@@ -653,4 +654,56 @@ def load_cell_runs_for_run(
                 "duration_ms": duration_ms,
                 "status": row.status,
             }
+    return out
+
+
+def load_rewrite_attempts_for_run(
+    request: Request,
+    run_id: str,
+) -> list[dict[str, Any]]:
+    """Return all ``rewrite_attempts`` rows for *run_id*, oldest first.
+
+    Surfaces the Phase-39 explain-first rewrite-loop trace in the
+    Operations top-tab's "Rewrites" sub-pane.  Rows are ordered by
+    ``attempt_no`` ASC so the loop reads top-to-bottom in submission
+    order.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID string of the owning run.
+
+    Returns:
+        List of dicts with ``attempt_no``, ``verdict``, hashes, costs,
+        cost-delta (when both costs are set), reason, and an ISO
+        ``created_at`` timestamp.
+    """
+    factory = request.app.state.session_factory
+    out: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(RewriteAttempt)
+            .where(RewriteAttempt.agent_run_id == run_id)
+            .order_by(RewriteAttempt.attempt_no)
+        )
+        for row in session.scalars(stmt).all():
+            cost_delta: int | None
+            if row.rewritten_cost is not None:
+                cost_delta = int(row.original_cost) - int(row.rewritten_cost)
+            else:
+                cost_delta = None
+            out.append(
+                {
+                    "attempt_no": row.attempt_no,
+                    "verdict": row.verdict,
+                    "original_sql_hash": row.original_sql_hash,
+                    "rewritten_sql_hash": row.rewritten_sql_hash,
+                    "original_cost": int(row.original_cost),
+                    "rewritten_cost": (
+                        int(row.rewritten_cost) if row.rewritten_cost is not None else None
+                    ),
+                    "cost_delta": cost_delta,
+                    "reason": row.reason,
+                    "created_at": (row.created_at.isoformat() if row.created_at else None),
+                }
+            )
     return out

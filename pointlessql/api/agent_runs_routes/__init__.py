@@ -24,6 +24,9 @@ from pointlessql.api.agent_runs_routes.audit import router as _audit_router
 from pointlessql.api.agent_runs_routes.ingestion import router as _ingestion_router
 from pointlessql.api.agent_runs_routes.lifecycle import router as _lifecycle_router
 from pointlessql.api.agent_runs_routes.listing import router as _listing_router
+from pointlessql.api.agent_runs_routes.rewrite_attempts import (
+    router as _rewrite_attempts_router,
+)
 from pointlessql.api.agent_runs_routes.summary import router as _summary_router
 from pointlessql.api.agent_runs_routes.tools import router as _tools_router
 
@@ -34,6 +37,7 @@ router.include_router(_lifecycle_router)
 router.include_router(_summary_router)
 router.include_router(_tools_router)
 router.include_router(_audit_router)
+router.include_router(_rewrite_attempts_router)
 
 __all__ = [
     "_load_run_summary_bundle",

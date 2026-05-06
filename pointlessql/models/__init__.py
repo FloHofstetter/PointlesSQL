@@ -81,6 +81,14 @@ from pointlessql.models.notebook import (
     NotebookOutput,
 )
 from pointlessql.models.recents import RecentTable
+from pointlessql.models.rewrite_attempts import (
+    REWRITE_VERDICTS,
+    VERDICT_AUTO_REWRITE_FAILED,
+    VERDICT_AUTO_REWRITE_SUCCEEDED,
+    VERDICT_HUMAN_APPROVAL_REQUIRED,
+    VERDICT_ORIGINAL_APPROVED,
+    RewriteAttempt,
+)
 from pointlessql.models.saved_audit_queries import SavedAuditQuery
 from pointlessql.models.scheduler import (
     Job,
@@ -137,7 +145,13 @@ __all__ = [
     "REVIEW_SEVERITIES",
     "RateLimitEvent",
     "RecentTable",
+    "REWRITE_VERDICTS",
     "ReviewDestination",
+    "RewriteAttempt",
+    "VERDICT_AUTO_REWRITE_FAILED",
+    "VERDICT_AUTO_REWRITE_SUCCEEDED",
+    "VERDICT_HUMAN_APPROVAL_REQUIRED",
+    "VERDICT_ORIGINAL_APPROVED",
     "SINK_TYPES",
     "SavedAuditQuery",
     "SavedQuery",
