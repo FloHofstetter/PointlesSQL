@@ -3810,7 +3810,7 @@ PointlesSQL
 │           errors).  Both wired into ``.pre-commit-config.yaml``
 │           and the ``test.yml`` lint+type job.  Closes Phase 35.
 │
-├── Phase 36 — Declarative Pipelines + Expectations          ⏳ in progress
+├── Phase 36 — Declarative Pipelines + Expectations          ✅ closed 2026-05-06
 │   │
 │   │   Integrate dbt-duckdb (de-facto declarative pipeline
 │   │   engine) and dbt-tests + dbt-expectations + dbt-utils
@@ -4000,18 +4000,34 @@ PointlesSQL
 │   │       model writes are reverted because tests failed, never
 │   │       as a side-effect of the run itself.
 │   │
-│   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ upstream
-│           Phase 38.2 (2026-05-06) verified the mashumaro
-│           upstream blocker against the latest pins:
-│           ``dbt-duckdb 1.10.1`` + ``dbt-core 1.11.8`` +
-│           ``mashumaro 3.14`` on Python 3.14.4 still raises
-│           ``UnserializableField: Field "schema" of type
-│           Optional[str] in JSONObjectSchema``.  The
-│           ``[dbt]`` extra is gated in ``pyproject.toml``;
-│           re-pick when upstream mashumaro releases a
-│           Python-3.14-compatible version that resolves
-│           ``Optional[str]`` in the unpacker compiler.
-│           No PointlesSQL-side workaround possible.
+│   └── Sprint 36.7 — end-to-end walkthrough + close            ✅ closed 2026-05-06
+│           Walkthrough replayed end-to-end against the e2e
+│           stack: ``dbt compile`` + ``dbt docs generate``
+│           land ``manifest.json`` + ``catalog.json``, the
+│           lifespan subprocess spawns ``dbt docs serve``,
+│           the Phase-36.4 cockpit chrome populates with
+│           ``models=3 / tests=6 / coverage=66.7%``, both
+│           ``/api/dbt/runs`` + ``/api/dbt/test-failures``
+│           lazy-load on tab activation with the documented
+│           empty-state messages.  0 console errors on
+│           ``/dbt`` after ``dbt docs generate`` lands the
+│           catalog file.
+│
+│           **Mashumaro/Python-3.14 unblock.** Phase 38.2
+│           had verified the ``mashumaro 3.14`` upstream
+│           blocker against the latest pins; the GitHub-issue
+│           dbt-labs/dbt-core#12098 pointed at ``mashumaro
+│           3.17`` as the fix.  ``dbt-core 1.11`` declares
+│           ``mashumaro<3.15``, but force-installing
+│           ``mashumaro==3.17`` runs clean against
+│           ``dbt-core 1.11.8`` + ``dbt-adapters 1.22.10``.
+│           The override now lives in ``pyproject.toml``
+│           ``[tool.uv] override-dependencies`` so
+│           ``uv sync --extra dbt`` produces a working
+│           environment on Python 3.14 without manual
+│           intervention.  Walkthrough Part C carries the
+│           ad-hoc ``pip install --no-deps mashumaro==3.17``
+│           recipe for the in-place upgrade path.
 │
 ├── Phase 37 — Playwright coverage refresh (post-22/23)     ✅
 │   │

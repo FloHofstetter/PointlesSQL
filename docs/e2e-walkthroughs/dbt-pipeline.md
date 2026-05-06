@@ -129,58 +129,100 @@ to document the consumer contract.
    - Assert: 200 (admin) or 403 (non-admin / non-supervisor).
      The signed-in admin@pql.test passes.
 
-### Part C — Optional: enable the dbt-docs subprocess (4 steps)
+### Part C — enable the dbt-docs subprocess (5 steps)
 
-The default e2e Docker image does not install `[dbt]`. To
-exercise the iframe path:
+The default e2e Docker image does not install `[dbt]`. The
+project also carries a `[tool.uv] override-dependencies` for
+`mashumaro>=3.17` (Phase 36.7 close, 2026-05-06) — without
+that override `dbt-core <=1.11`'s `mashumaro<3.15` upper bound
+clashes with mashumaro 3.17's Python-3.14 fix
+(dbt-labs/dbt-core#12098).
 
-1. **Install dbt-duckdb in the running container**.
+1. **Install the `[dbt]` extra into the venv**.
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
-     exec pointlessql uv pip install dbt-duckdb
+     exec -T pointlessql /opt/venv/bin/python -m pip install dbt-duckdb
    ```
-   - **Caveat (verified 2026-05-06, Phase 38.2 feasibility):**
-     even the latest `dbt-duckdb 1.10.1 + dbt-core 1.11.8 +
-     mashumaro 3.14 + Python 3.14.4` combo still hits the
-     `mashumaro.UnserializableField` import error.  Trace:
-     `Field "schema" of type Optional[str] in JSONObjectSchema
-     is not serializable` raised from
-     `mashumaro/mixins/dict.py:25` while `dbt_common/
-     dataclass_schema.py:15` imports `mashumaro.jsonschema`.
-     Root cause is mashumaro's unpacker compiler not handling
-     `Optional[str]` annotations under Python 3.14 — neither
-     `dbt-core` nor `dbt-duckdb` ship a workaround as of
-     2026-05-06.  Until upstream mashumaro releases a
-     Python-3.14-compatible version, this entire Part C is
-     skipped — the e2e stack tracks Python 3.14 and the
-     dbt-duckdb gate is in `pyproject.toml
-     [project.optional-dependencies] dbt`.
+   - Note: `pip install` lands in the running venv at
+     `/opt/venv`. Restarting the container with `--build`
+     would re-resolve via `uv sync` and pick up the
+     `override-dependencies` automatically; the in-place
+     `pip install` here is the faster ad-hoc path.
 
-2. **Compile the in-repo sample project**.
+2. **Force-upgrade mashumaro to 3.17 (Python 3.14 unblock)**.
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
-     exec -w /app pointlessql dbt compile --project-dir dbt_project
+     exec -T pointlessql /opt/venv/bin/python -m pip install \
+       --upgrade --no-deps mashumaro==3.17
    ```
-   - Assert: exits 0; `dbt_project/target/manifest.json`
-     exists. The 3-model demo (`bronze_raw`, `silver_clean`,
+   - `--no-deps` skips re-resolving dbt-core's transitive pins.
+   - Verified runtime-clean against `dbt-core 1.11.8` +
+     `dbt-adapters 1.22.10` on 2026-05-06.
+   - Sanity:
+     ```bash
+     docker compose ... exec -T pointlessql /opt/venv/bin/python \
+       -c "import dbt.cli.main; print('OK')"
+     ```
+     should print `OK` instead of `UnserializableField: Field
+     "schema" of type Optional[str] in JSONObjectSchema is
+     not serializable`.
+
+3. **Compile the in-repo sample project**.
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+     exec -w /app -T pointlessql /opt/venv/bin/dbt compile \
+       --project-dir dbt_project --profiles-dir dbt_project/profiles
+   docker compose ... exec -w /tmp/dbt_project -T pointlessql \
+     /opt/venv/bin/dbt docs generate --profiles-dir profiles
+   ```
+   - Assert: both exit 0; `dbt_project/target/manifest.json`
+     and `dbt_project/target/catalog.json` exist. The
+     3-model demo (`bronze_raw`, `silver_clean`,
      `gold_summary`) plus 5 tests from
      `dbt_project/models/schema.yml` are now compiled.
+   - Without `catalog.json` the dbt-docs SPA throws an alert
+     dialog on every page load — `dbt docs generate` is what
+     produces it.
 
-3. **Restart PointlesSQL so the subprocess starts**.
+4. **Restart PointlesSQL so the subprocess starts**.
    ```bash
    docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
      restart pointlessql
    ```
 
-4. **Reload `/dbt`**.
+5. **Reload `/dbt`**.
    - Action: `browser_navigate('http://127.0.0.1:8000/dbt')`.
    - Assert: warning card is gone; `<iframe src="/dbt-docs/">`
      is present. Iframe loads dbt's own SPA — assert the iframe
      has non-zero dimensions and the `/dbt-docs/` HTTP request
      in the network panel returns 200.
+   - Phase-36.4 chrome populates from manifest:
+     - `#dbt-summary-models` reads `3`
+     - `#dbt-summary-tests` reads `6`
+     - `#dbt-summary-coverage` reads `66.7%`
+   - Click **Recent runs** sub-tab → `/api/dbt/runs` lazy-fires;
+     empty-state on a fresh stack reads "0 recent dbt run(s) —
+     `agent_id="dbt-cli"`".
+   - Click **Test failures** sub-tab → `/api/dbt/test-failures`
+     lazy-fires; empty-state reads "0 recent test failure(s)
+     across all dbt runs".
    - Note: dbt-docs is a third-party SPA; its internal selectors
      are out of scope for this playbook. Stick to chrome-page
      assertions and iframe-existence.
+
+## Verification log
+
+- **2026-05-06 — Sprint 36.7 close, end-to-end verified.**
+  Replayed Part C end-to-end against the e2e stack (dbt-core
+  1.11.8 + dbt-duckdb 1.10.1 + mashumaro 3.17 [override] +
+  Python 3.14.4): `dbt compile` and `dbt docs generate` both
+  exit 0, the lifespan-spawned `dbt docs serve` subprocess
+  comes up, the cockpit chrome populates with `models=3 /
+  tests=6 / coverage=66.7%`, and both `/api/dbt/runs` +
+  `/api/dbt/test-failures` lazy-load on tab activation with
+  empty-state messages. 0 console errors on `/dbt` itself
+  (dbt-docs SPA's missing-catalog modal goes away after
+  step 3's `dbt docs generate`).
 
 ## Found bugs
 

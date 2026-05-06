@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 36.7 — dbt end-to-end walkthrough + Phase 36 close.**
+  Phase 36 closes ✅ in the same session Phase 38.2 had marked
+  it ``⏸ upstream``.  Trigger was the dbt-labs/dbt-core#12098
+  link surfaced via web search: ``mashumaro 3.17`` carries the
+  Python-3.14 ``Optional[str]`` fix.  ``dbt-core 1.11`` still
+  declares ``mashumaro<3.15``, but force-installing 3.17 runs
+  clean against ``dbt-core 1.11.8`` + ``dbt-adapters 1.22.10``.
+  The override now lives in ``pyproject.toml`` as
+  ``[tool.uv] override-dependencies = ["mashumaro[msgpack]>=3.17"]``
+  so ``uv sync --extra dbt`` produces a working environment on
+  Python 3.14 without manual intervention.  Walkthrough
+  ``dbt-pipeline.md`` Part C grew from 4 steps to 5 (added the
+  ``pip install --no-deps mashumaro==3.17`` step + the
+  ``dbt docs generate`` step that lands ``catalog.json``).
+  End-to-end verified live in Firefox via Playwright MCP: the
+  Phase-36.4 cockpit chrome populates with ``models=3 /
+  tests=6 / coverage=66.7%``, both Recent runs + Test failures
+  sub-tabs lazy-load with empty-state messages, 0 console
+  errors on ``/dbt``.  Drop the override once dbt-core ships
+  a release that bumps its own pin.
+
 - **Phase 38 — Sprint-Sweep (35.4 close + 36.7 defer + cockpit
   data-path).**  One autonomous session post the "plane die
   restliche aufgaben aus" plan.  Three sub-sprints, three
