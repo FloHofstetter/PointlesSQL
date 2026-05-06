@@ -6,6 +6,40 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 38 — Sprint-Sweep (35.4 close + 36.7 defer + cockpit
+  data-path).**  One autonomous session post the "plane die
+  restliche aufgaben aus" plan.  Three sub-sprints, three
+  commits.  Sprint 38.1 closes the deferred Sprint 35.4: the
+  1467-LOC ``run_view.html`` is now a 229-LOC parent +
+  eight partials in ``frontend/templates/partials/_run_*.html``
+  (header, metadata, conformance, approval form, four tab
+  panes).  Behaviour-equivalent; verified end-to-end via
+  Playwright MCP — all four top-tabs and 13 sub-tabs render
+  with 0 console errors, the URL-hash deeplink activator
+  promotes both parent and leaf tabs, and the ``rollbackPanel``
+  Alpine factory binds cleanly with the ``:class="{ 'd-block':
+  modalOpen }"`` modal toggle preserved (BUG-67-01-class
+  regression check).  Sprint 38.2 ran the upfront feasibility
+  check for Sprint 36.7 (dbt end-to-end walkthrough) and
+  confirmed the upstream blocker still holds: ``dbt-duckdb
+  1.10.1`` + ``dbt-core 1.11.8`` + ``mashumaro 3.14`` on
+  Python 3.14.4 still raises ``UnserializableField: Field
+  "schema" of type Optional[str] in JSONObjectSchema`` at
+  import time — root cause is mashumaro's unpacker compiler
+  not handling ``Optional[str]`` annotations under Python
+  3.14, with no downstream workaround.  Sprint 36.7 status
+  flipped from ``⏸ Playwright`` to ``⏸ upstream``;
+  ``dbt-pipeline.md`` Part C Caveat now records the exact
+  pins + trace + verification date.  Sprint 38.3 verified
+  the data path of the Phase-37 ``audit-cockpit-deep.md``
+  walkthrough against ``seed-broken-run.py`` + a partial
+  ``seed-full-stack-demo.py`` run: ``/audit/inbox`` shows
+  "2 of 2 breach(es)", ``/api/audit/search?q=silver`` returns
+  1 hit (custom tokenizer), ``/audit/by-table/demo.incidents.broken_orders``
+  serves the populated cockpit ("2 run(s) touched …"), and
+  the ``top-mutating-principals-30d`` starter query returns
+  200 with 2 rows.
+
 - **Phase 37.1 — Phase-37 BUG sweep.**  Closes the five open
   BUG-37-NN tickets surfaced during the Phase-37 walkthrough
   replay.  BUG-37-04 (HTMX null-deref on

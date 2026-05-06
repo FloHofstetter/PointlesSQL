@@ -3759,16 +3759,19 @@ PointlesSQL
 │   │       exposes the same module name so all import sites keep
 │   │       working.  25 audit-fts tests + 1478 SQLite suite green.
 │   │
-│   ├── Sprint 35.4 — Extract ``run_view.html`` partials     ⏸ deferred
-│   │       1467 LOC → 7 includes (header / metadata / conformance
-│   │       / approval-form / 4 tab partials).  **Deferred from the
-│   │       autonomous Stream-A run because the plan flagged the
-│   │       browser-playbook replay as mandatory** — Alpine
-│   │       ``x-data`` scope changes need a live ``audit-reviewer-
-│   │       daily.md`` replay (memory rule
-│   │       ``feedback_run_playbook_as_gate.md``).  Re-pick when a
-│   │       Playwright MCP session can be launched alongside the
-│   │       refactor.  Stream-B / 35.8 do not depend on this.
+│   ├── Sprint 35.4 — Extract ``run_view.html`` partials     ✅ closed 2026-05-06
+│   │       1467 LOC → 229-LOC parent + 8 partials in
+│   │       ``frontend/templates/partials/_run_*.html``.  Closed
+│   │       in Phase 38.1 (``8364faf``); Stream-A had deferred
+│   │       this on the browser-playbook gate
+│   │       (``feedback_run_playbook_as_gate.md``).  The actual
+│   │       gate ended up being a run-detail Playwright replay
+│   │       (the original plan had pointed at
+│   │       ``audit-reviewer-daily.md``, which is a Hermes-cron
+│   │       runbook with no browser surface, so the gate was
+│   │       pivoted in-flight).  Verification covered all four
+│   │       top-tabs, 13 sub-tabs, the URL-hash deeplink
+│   │       activator, and the ``rollbackPanel`` Alpine factory.
 │   │
 │   ├── Sprint 35.5 — Module-level deltalake imports         ✅ closed 2026-05-06
 │   │       Hoisted 13 lazy ``import deltalake`` from function
@@ -4155,6 +4158,64 @@ PointlesSQL
 │           omitted).  Sprint 36.4 flipped from ``⏸ Playwright``
 │           to ``✅`` since the chrome the playbook called
 │           for is now in main.
+│
+├── Phase 38 — Sprint-Sweep (35.4 close + 36.7 defer + cockpit) ✅
+│   │
+│   │   One autonomous session post the "plane die restliche
+│   │   aufgaben aus" plan.  Three sub-sprints, three commits
+│   │   on top of the Phase-37.1 line.  Closes Phase 35
+│   │   completely; Phase 36 stays ``⏳ in progress`` on a
+│   │   cleanly-documented upstream blocker.
+│   │
+│   ├── Sprint 38.1 ✅ — close Sprint 35.4 (run_view.html split).
+│   │       1467 LOC → 229 LOC parent + 8 partials in
+│   │       ``frontend/templates/partials/_run_*.html``
+│   │       (header, metadata, conformance, approval form,
+│   │       four tab panes).  Behaviour-equivalent.  Verified
+│   │       end-to-end via Playwright MCP against
+│   │       ``seed-broken-run.py`` + a partial
+│   │       ``seed-full-stack-demo.py`` run: all four top-tabs
+│   │       and 13 sub-tabs render with 0 console errors;
+│   │       URL-hash deeplink (``#tab-external-writes``)
+│   │       activates BOTH parent + leaf via the inline
+│   │       activator; ``rollbackPanel`` Alpine factory binds
+│   │       cleanly with three pre-picked targets and the
+│   │       ``:class="{ 'd-block': modalOpen }"`` modal toggle
+│   │       preserved (BUG-67-01-class regression check).
+│   │       Phase 35 closes here.
+│   │
+│   ├── Sprint 38.2 ⏸ — Sprint 36.7 stays deferred (upstream).
+│   │       Ran the upfront feasibility check from the plan:
+│   │       ``dbt-duckdb 1.10.1`` + ``dbt-core 1.11.8`` +
+│   │       ``mashumaro 3.14`` on Python 3.14.4 still raises
+│   │       ``UnserializableField: Field "schema" of type
+│   │       Optional[str] in JSONObjectSchema`` at import time.
+│   │       Root cause is mashumaro's unpacker compiler not
+│   │       handling ``Optional[str]`` annotations under
+│   │       Python 3.14; no workaround available downstream.
+│   │       ``docs/e2e-walkthroughs/dbt-pipeline.md`` Part C
+│   │       Caveat updated with the exact pins + trace +
+│   │       verification date so the next contributor knows
+│   │       whether the upstream picture has changed.
+│   │       Sprint 36.7 status flipped from ``⏸ Playwright`` to
+│   │       ``⏸ upstream``.  Phase 36 stays ``⏳ in progress``.
+│   │
+│   └── Sprint 38.3 ✅ — data-path replay of audit-cockpit-deep.
+│           Phase-37 Wave 2 had verified the chrome path
+│           against ``seed-e2e.py``; this sub-sprint exercises
+│           the four cockpit axes against real audit activity.
+│           ``/audit/inbox`` shows "2 of 2 breach(es) — metrics
+│           rejects, errored_ops, 7d baseline at 2σ" from the
+│           seed-broken-run fixture.  ``/api/audit/search?q=silver``
+│           returns 1 hit (custom tokenizer matches FQN path
+│           segments).  ``/audit/by-table/demo.incidents.broken_orders``
+│           heading reads "Runs that touched …", Touched tab
+│           counter "2 run(s) touched …".  All 5 starter
+│           queries seeded; ``top-mutating-principals-30d``
+│           ``POST /run`` returns 200 with 2 rows + columns
+│           ``principal, rows_written``.  0 console errors
+│           throughout.  ``audit-cockpit-deep.md`` carries a
+│           "Verification log" entry stamped 2026-05-06.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
