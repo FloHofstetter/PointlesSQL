@@ -4354,13 +4354,11 @@ PointlesSQL
 │   │       inbound traffic.  Tolerates OL 2.x facets forward-
 │   │       compat (``extra="allow"``).  8 pytest cases.
 │   │
-│   ├── Sprint 40.2 — soyuz federated-table CDF tail          ⏭ deferred to Phase 40.5
-│   │       Plan-phase trim 2026-05-06: push-modell (40.1) is
-│   │       the MVP.  Pull-modell (CDF tail of foreign Delta
-│   │       tables) carries cloud-storage credential complexity
-│   │       and waits for a concrete legacy-ETL producer to
-│   │       request it.  Original sketch preserved in the
-│   │       Phase-40 plan file.
+│   ├── Sprint 40.2 — soyuz federated-table CDF tail          ✅ closed via Phase 40.5
+│   │       Plan-phase trim 2026-05-06 deferred this to Phase 40.5;
+│   │       2026-05-07 Phase 40.5 landed the implementation as a
+│   │       single sprint.  See Phase 40.5 below for execution
+│   │       detail.
 │   │
 │   ├── Sprint 40.3 — table-detail merged lineage card        ✅ done (28eb537)
 │   │       ``catalog_html_routes.table_detail`` joins a new
@@ -4424,6 +4422,51 @@ PointlesSQL
 │           + end-to-end fetch (Summary → Row trace pane → 2
 │           steps loaded from
 │           ``/api/lineage/row-trace``).
+│
+├── Phase 40.5 — Foreign-Delta CDF tail (pull-modell)        ✅ done
+│   │
+│   │   Closes the deferred Sprint-40.2 sketch as a single
+│   │   sprint.  Admins register one
+│   │   :class:`CdfTailSubscription` per Delta table whose
+│   │   Change Data Feed they want PointlesSQL to tail; the new
+│   │   ``_cdf_tail_loop`` worker reads
+│   │   ``DeltaTable.load_cdf(starting_version=last+1)`` per
+│   │   active subscription and INSERT-OR-IGNOREs every CDF row
+│   │   into a new ``cdf_tail_events`` table.  Re-tails are
+│   │   idempotent thanks to UNIQUE
+│   │   ``(table_full_name, delta_version, row_id, change_type)``.
+│   │
+│   │   Anti-goal preserved: **no new credential surface**.  The
+│   │   worker reuses whatever path/credentials soyuz's
+│   │   ``storage_location`` already exposes; tables behind cloud
+│   │   credentials we don't have stay un-tail-able and the
+│   │   worker stamps a ``last_error`` row rather than failing
+│   │   the whole tick.  Disabled by default
+│   │   (``POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS=0``); admins
+│   │   opt in after registering subscriptions.
+│   │
+│   └── Sprint 40.5.1 — subscription registry + worker + admin CRUD
+│           Alembic ``qq7t9v1x3z5b`` adds
+│           ``cdf_tail_subscriptions`` (registry,
+│           ``UNIQUE(workspace_id, table_full_name)``) and
+│           ``cdf_tail_events`` (capture log, ``UNIQUE`` on the
+│           4-tuple above).  ``services/cdf_tail.py`` exposes
+│           ``tail_subscription`` (sync, scoped to one row) +
+│           ``tail_all`` (async walker that resolves
+│           ``storage_location`` via ``uc.get_table`` per tick
+│           + stamps ``last_error`` on failure).
+│           ``api/admin_cdf_tail_routes.py`` exposes admin CRUD
+│           under ``/api/admin/cdf-subscriptions``
+│           (GET / POST / toggle / DELETE) plus a manual
+│           ``POST /run-now`` so admins can drive a tail without
+│           flipping the loop interval.  New
+│           :class:`CDFTailSettings` (``interval_seconds`` /
+│           ``history_limit``) joins the root settings tree;
+│           ``_cdf_tail_loop`` registers in the lifespan next to
+│           the external-writes scanner with the same
+│           opt-in / cancel-on-shutdown discipline.  9 pytest
+│           cases (3 service unit, 3 ``tail_all`` integration,
+│           3 admin CRUD).
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

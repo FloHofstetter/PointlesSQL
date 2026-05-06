@@ -6,6 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 40.5 — Foreign-Delta CDF tail (pull-modell) closed.**
+  Closes the deferred Sprint-40.2 sketch as a single sprint.
+  New Alembic ``qq7t9v1x3z5b`` adds ``cdf_tail_subscriptions``
+  (opt-in registry, ``UNIQUE(workspace_id, table_full_name)``)
+  and ``cdf_tail_events`` (capture log, ``UNIQUE`` on
+  ``(table_full_name, delta_version, row_id, change_type)``)
+  so re-tails are idempotent.  ``services/cdf_tail.py`` exposes
+  ``tail_subscription`` (sync) + ``tail_all`` (async walker that
+  resolves ``storage_location`` via ``uc.get_table`` per tick
+  and stamps ``last_error`` on failure).  Admin CRUD lives under
+  ``/api/admin/cdf-subscriptions`` (GET / POST / toggle / DELETE)
+  plus a manual ``POST /run-now``.  New ``CDFTailSettings``
+  (``POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS`` /
+  ``..._HISTORY_LIMIT``) joins the root settings tree; the
+  ``_cdf_tail_loop`` worker registers in the lifespan next to
+  the external-writes scanner with the same opt-in
+  (``interval_seconds == 0`` → off) + cancel-on-shutdown
+  discipline.  Anti-goal "no new credential surface" preserved:
+  the worker reuses whatever soyuz's ``storage_location`` already
+  exposes; un-readable tables stamp ``last_error`` rather than
+  failing the whole tick.  9 pytest cases.  Also closes a stale
+  fixture gap — the autouse conftest now stubs
+  ``app.state.uc_client`` with a default ``MagicMock`` so any
+  test rendering ``/runs/{id}`` (which now reads UC mutations
+  via ``soyuz_audit.fetch_for_run``) doesn't crash on a missing
+  attribute.  ``test_run_detail_renders_operations_and_source_tabs``
+  is back to green; full pytest sweep 1587/1587.
 - **Phase 41 — Sprint 17.6 promote: Lineage sub-panes closed.**
   Single-sprint UX-consolidation phase post the
   "plane phase 41 komplett aus" plan.  Three new drill-down
