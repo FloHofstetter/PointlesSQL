@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 36.6 — Hermes plugin: dbt-pipeline trigger tools.**
+  Three new tools land in ``hermes-plugin-pointlessql``:
+  ``pql_dbt_compile`` (read-only manifest refresh, any user),
+  ``pql_dbt_run`` (materialise models, supervisor scope),
+  ``pql_dbt_test`` (evaluate tests, supervisor scope).  Each forwards
+  ``POINTLESSQL_AGENT_RUN_ID`` via the ``X-Agent-Run-Id`` header so
+  the dbt subprocess's emitted operations attribute under the same
+  forced-audit-trail run as the rest of the agent's work; absent
+  the env var, PointlesSQL auto-creates a run keyed to the calling
+  user's email.  Per-test failure rejects (one
+  ``lineage_row_rejects`` per failing test) are surfaced via the
+  existing ``pql_query_rejects`` auditor tool.  The plan's three
+  read-only tools (``pql_dbt_list_models`` /
+  ``pql_dbt_show_lineage`` / ``pql_dbt_get_test_failures``) need
+  new manifest-introspection endpoints on the PointlesSQL side
+  and are deferred to a follow-up sprint.
+
 - **Sprint 36.5 — severity enforcement + dbt CloudEvents.**  Three
   new governance event types: ``pointlessql.dbt.run.completed``
   fires once per ``/api/dbt/run`` and ``/api/dbt/test`` invocation;

@@ -3889,7 +3889,22 @@ PointlesSQL
 │   │       ``pql.rollback``'s four refusal modes need careful
 │   │       gating that exceeds this sprint's scope.  7 new tests.
 │   │
-│   ├── Sprint 36.6 — plugin tools (hermes-plugin-pointlessql)  📅 queued
+│   ├── Sprint 36.6 — plugin tools (hermes-plugin-pointlessql)  ✅
+│   │       Three new Hermes tools land in
+│   │       ``~/git/hermes-plugin-pointlessql``: ``pql_dbt_compile``
+│   │       (read-only), ``pql_dbt_run`` (supervisor scope),
+│   │       ``pql_dbt_test`` (supervisor scope).  Each forwards
+│   │       ``POINTLESSQL_AGENT_RUN_ID`` via ``X-Agent-Run-Id`` so
+│   │       the dbt subprocess's operations attribute under the
+│   │       same forced-audit-trail run as the rest of the agent's
+│   │       work.  ``PointlessClient`` gains matching ``dbt_compile``
+│   │       / ``dbt_run`` / ``dbt_test`` methods.  6 new tool tests +
+│   │       updated ``register_all`` expected-set; 113 plugin tests
+│   │       green.  The 3 read-only tools sketched in the plan
+│   │       (list_models / show_lineage / get_test_failures) need
+│   │       new manifest-introspection endpoints on the
+│   │       PointlesSQL side and are deferred.
+│   │
 │   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ Playwright
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
