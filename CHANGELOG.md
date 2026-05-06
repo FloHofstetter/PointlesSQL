@@ -6,6 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 36.3 — dbt test-failure → lineage_row_rejects +
+  ``expectation_failures`` anomaly axis.**  ``REJECT_REASONS`` +
+  the SQL CHECK constraint on ``lineage_row_rejects`` gain
+  ``expectation_failed`` (alembic ``ll2n4p6r8t0w``).
+  ``services/dbt_bridge.emit_test_failure_rejects`` walks the
+  per-node results paired with their ``agent_run_operations.id``
+  values and inserts one reject row per failing dbt test
+  (``status='fail'``).  ``source_row_id`` is the test's
+  ``unique_id``, ``detail`` carries dbt's failure message verbatim.
+  Per-row extraction (one reject per failing data row) is deferred
+  — capturing those needs ``dbt test --store-failures`` plus a
+  follow-up SELECT against ``dbt_test__audit.<test_name>``.
+  ``services/audit_aggregator`` gains an ``expectation_failures``
+  metric: a row-level WHERE filter on
+  ``lineage_row_rejects.reason`` that lets the cockpit show
+  dbt-side data-quality failures separately from merge-time
+  rejects.  ``/api/dbt/run`` and ``/api/dbt/test`` summaries now
+  carry ``rejects_inserted``.  4 new tests, all green.
+
 - **Sprint 36.2 — on-demand ``dbt run/test/compile`` + manifest
   bridge.**  Three new POST routes — ``/api/dbt/compile`` (auth-
   only), ``/api/dbt/run`` and ``/api/dbt/test`` (supervisor scope) —

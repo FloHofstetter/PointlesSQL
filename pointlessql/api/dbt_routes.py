@@ -41,6 +41,7 @@ from pointlessql.models.agent_runs import (
 )
 from pointlessql.services.dbt_bridge import (
     emit_operations_for_dbt_run,
+    emit_test_failure_rejects,
     merge_manifest_and_results,
     parse_manifest,
     parse_run_results,
@@ -184,7 +185,7 @@ async def _emit_audit_for_run(
     started_at = datetime.now(UTC)
     factory = request.app.state.session_factory
     try:
-        emit_operations_for_dbt_run(
+        op_ids = emit_operations_for_dbt_run(
             factory,
             agent_run_id=agent_run_id,
             nodes=nodes,
@@ -194,6 +195,17 @@ async def _emit_audit_for_run(
         logger.error("dbt bridge failed to emit operations: %s", exc)
         raise HTTPException(status_code=500, detail=f"audit emit failed: {exc}") from exc
 
+    # Sprint 36.3 — every failing test becomes one row in
+    # ``lineage_row_rejects`` so the cockpit's reject view + the
+    # ``expectation_failure`` anomaly metric pick it up alongside
+    # merge-time rejects.
+    rejects_inserted = emit_test_failure_rejects(
+        factory,
+        agent_run_id=agent_run_id,
+        nodes=nodes,
+        op_ids=op_ids,
+    )
+
     summary = summarise(agent_run_id, nodes)
     return {
         "nodes": [asdict(n) for n in summary.nodes],
@@ -201,6 +213,7 @@ async def _emit_audit_for_run(
         "fail": summary.fail_count,
         "warn": summary.warn_count,
         "skipped": summary.skipped_count,
+        "rejects_inserted": rejects_inserted,
     }
 
 

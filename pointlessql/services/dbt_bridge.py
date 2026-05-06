@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any
 
 from pointlessql.exceptions import AuditUnavailableError
 from pointlessql.services.agent_runs.operations import record_operation
+from pointlessql.services.lineage.rows import record_rejects
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
@@ -245,6 +246,70 @@ def _op_name_for_node(resource_type: str) -> str:
     if resource_type == "test":
         return "dbt_test"
     return "dbt_model"
+
+
+def emit_test_failure_rejects(
+    session_factory: sessionmaker[Session],
+    *,
+    agent_run_id: str,
+    nodes: list[DBTNodeResult],
+    op_ids: list[int],
+) -> int:
+    """Insert one ``lineage_row_rejects`` row per failing dbt test.
+
+    Walks the (node, op_id) pairs in lockstep and emits a reject row
+    for every node whose ``resource_type=='test'`` and ``status=='fail'``.
+    The reject row's ``source_row_id`` is the test's ``unique_id`` so
+    the row-trace UI can link from failure to test definition; its
+    ``detail`` carries dbt's failure message verbatim.
+
+    Per-row extraction (one reject per failing data row, with the
+    real ``_lineage_row_id``) is deferred — it would require ``dbt
+    test --store-failures`` and a follow-up SELECT against
+    ``dbt_test__audit.<test_name>``.  This sprint emits a single
+    aggregate reject per test instead.
+
+    Args:
+        session_factory: Bound SQLAlchemy session factory.
+        agent_run_id: The owning :class:`AgentRun` id.
+        nodes: Per-node results in the same order as ``op_ids``.
+        op_ids: ``agent_run_operations.id`` values returned by
+            :func:`emit_operations_for_dbt_run`, paired with
+            ``nodes``.
+
+    Returns:
+        Count of reject rows inserted.  Zero when no test failed.
+
+    Raises:
+        ValueError: If ``nodes`` and ``op_ids`` differ in length —
+            the bridge requires a 1:1 pairing for correct attribution.
+    """
+    if len(nodes) != len(op_ids):
+        raise ValueError("nodes and op_ids must be the same length")
+    inserted = 0
+    for node, op_id in zip(nodes, op_ids, strict=True):
+        if node.resource_type != "test" or node.status != "fail":
+            continue
+        # The reject's ``source_table`` is the dbt_test__audit relation
+        # where ``--store-failures`` would persist the failing rows;
+        # for plain ``dbt test`` runs this is the relation the cockpit
+        # links to even though no rows exist there yet.
+        source_table = node.relation_name or node.unique_id
+        record_rejects(
+            session_factory,
+            run_id=agent_run_id,
+            op_id=op_id,
+            source_table=source_table,
+            rejects=[
+                (
+                    node.unique_id,
+                    "expectation_failed",
+                    node.message,
+                ),
+            ],
+        )
+        inserted += 1
+    return inserted
 
 
 def emit_operations_for_dbt_run(

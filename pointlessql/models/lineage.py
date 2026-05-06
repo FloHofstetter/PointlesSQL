@@ -42,6 +42,12 @@ REJECT_REASONS = (
     "duplicate_in_source",
     "merge_predicate_excluded",
     "other",
+    # dbt-bridge expectation failure (Phase 36).  Emitted by
+    # ``services/dbt_bridge.py`` when a dbt test reports
+    # ``status=fail`` — one reject row per failing test (per-row
+    # extraction would require ``--store-failures`` and a follow-up
+    # query against ``dbt_test__audit.<name>``; deferred).
+    "expectation_failed",
 )
 
 TRANSFORM_KINDS = (
@@ -153,7 +159,7 @@ class LineageRowReject(Base):
         Index("ix_lineage_row_rejects_workspace_run", "workspace_id", "run_id"),
         CheckConstraint(
             "reason IN ('on_key_null','schema_mismatch','duplicate_in_source',"
-            "'merge_predicate_excluded','other')",
+            "'merge_predicate_excluded','other','expectation_failed')",
             name="ck_lineage_row_rejects_reason",
         ),
     )

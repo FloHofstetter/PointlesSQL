@@ -64,6 +64,7 @@ Metric = Literal[
     "rows_written",
     "value_changes",
     "rejects",
+    "expectation_failures",
     "external_writes",
     "cost_denials",
     "tool_calls",
@@ -82,6 +83,7 @@ VALID_METRICS: frozenset[str] = frozenset(
         "rows_written",
         "value_changes",
         "rejects",
+        "expectation_failures",
         "external_writes",
         "cost_denials",
         "tool_calls",
@@ -179,6 +181,21 @@ def _metric_spec(metric: Metric) -> _MetricSpec:
             target_col=LineageRowReject.source_table,
             run_id_col=LineageRowReject.run_id,
             where=None,
+            measure=func.count(LineageRowReject.id),
+            requires_run_join=False,
+        )
+    if metric == "expectation_failures":
+        # Sprint 36.3 — rejects with reason ``expectation_failed`` are
+        # the dbt-bridge's per-test-failure markers.  Same table as
+        # ``rejects`` with a row-level filter so the cockpit can show
+        # dbt-side data-quality failures separately from merge-time
+        # rejects (which carry the engine-level ``on_key_null`` etc.).
+        return _MetricSpec(
+            table=LineageRowReject,
+            timestamp_col=LineageRowReject.created_at,
+            target_col=LineageRowReject.source_table,
+            run_id_col=LineageRowReject.run_id,
+            where=LineageRowReject.reason == "expectation_failed",
             measure=func.count(LineageRowReject.id),
             requires_run_join=False,
         )

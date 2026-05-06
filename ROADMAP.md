@@ -3858,7 +3858,21 @@ PointlesSQL
 │   │       when no caller-supplied run id is present.  19 new
 │   │       tests; pyright budget 522 → 528 for JSON parse cascade.
 │   │
-│   ├── Sprint 36.3 — test-failure → rejects + expectation axis  📅 queued
+│   ├── Sprint 36.3 — test-failure → rejects + expectation axis  ✅
+│   │       ``REJECT_REASONS`` + the SQL CHECK gain
+│   │       ``expectation_failed`` (alembic ``ll2n4p6r8t0w``).
+│   │       ``services/dbt_bridge.emit_test_failure_rejects`` walks
+│   │       (node, op_id) pairs in lockstep and inserts one
+│   │       ``lineage_row_rejects`` row per failing dbt test
+│   │       (``status='fail'``).  Per-row extraction (one reject per
+│   │       failing data row) is deferred — dbt needs ``--store-
+│   │       failures`` for that.  Audit aggregator gains an
+│   │       ``expectation_failures`` axis: a row-level filter on
+│   │       the reject table so the cockpit can show dbt-side data-
+│   │       quality failures separately from merge-time rejects.
+│   │       ``/api/dbt/run`` summary carries ``rejects_inserted``.
+│   │       4 new tests; pre-commit chain green.
+│   │
 │   ├── Sprint 36.4 — Cockpit /dbt index + run-view sub-tab     ⏸ Playwright
 │   ├── Sprint 36.5 — severity enforcement + rollback bridge    📅 queued
 │   ├── Sprint 36.6 — plugin tools (hermes-plugin-pointlessql)  📅 queued
