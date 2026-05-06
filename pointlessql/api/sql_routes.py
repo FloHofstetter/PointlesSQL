@@ -647,8 +647,11 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
         CatalogNotFoundError: Referenced table unknown to
             soyuz-catalog or has no ``storage_location``.
     """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
+    import uuid as _uuid
+
     from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
     from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.services.agent_runs import operation_context
     from pointlessql.services.sql import run_explain
 
     settings: Settings = request.app.state.settings
@@ -659,94 +662,129 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     if not query:
         raise SQLExecutionError("The 'sql' query parameter must be a non-empty string.")
 
-    try:
-        prepared = prepare_sql(query)
-    except SQLParseError as exc:
-        raise SQLExecutionError(str(exc)) from exc
+    # Phase 39: per-run audit. If the caller is an agent (X-Agent-Run-Id
+    # set), the explain attempt is recorded as an ``sql_explain``
+    # operation row so an auditor can see what the agent saw before
+    # deciding to execute or rewrite. Malformed UUIDs are silently
+    # demoted to "no run id" so a typo doesn't 500 — the install-wide
+    # ``audit_log`` row below still fires.
+    run_id_raw = request.headers.get("X-Agent-Run-Id")
+    run_id: str | None = None
+    if run_id_raw:
+        try:
+            run_id = str(_uuid.UUID(run_id_raw))
+        except ValueError:
+            logger.debug("explain: malformed X-Agent-Run-Id %r — skipping per-run audit", run_id_raw)
+    factory = getattr(request.app.state, "session_factory", None) if run_id else None
 
-    client = get_uc_client(request)
-    user = get_user(request)
-    email = effective_principal(request) or user.get("email", "")
-    is_admin = user.get("is_admin", False)
+    sql_hash = short_sql_hash(query)
+    with operation_context(
+        factory,
+        agent_run_id=run_id,
+        op_name="sql_explain",
+        params={"sql_hash": sql_hash},
+        target_table=None,
+    ) as recorder:
+        try:
+            prepared = prepare_sql(query)
+        except SQLParseError as exc:
+            raise SQLExecutionError(str(exc)) from exc
 
-    approved: dict[str, str] = {}
-    for full_name in prepared.refs:
-        parts = full_name.split(".")
-        if len(parts) != 3:
-            raise SQLExecutionError(
-                f"Internal error: expected 3-part name, got {full_name!r}.",
-            )
-        table_info = await client.get_table(parts[0], parts[1], parts[2])
-        if not table_info:
-            raise CatalogNotFoundError(f"Table not found: {full_name!r}")
-        storage_location = table_info.get("storage_location")
-        if not isinstance(storage_location, str) or not storage_location:
-            raise CatalogNotFoundError(
-                f"Table {full_name!r} has no storage_location on soyuz-catalog.",
-            )
-        await check_privilege(client, email, is_admin, "table", full_name, SELECT)
-        approved[full_name] = storage_location
+        recorder.extra_params["referenced_tables"] = list(prepared.refs)
 
-    try:
-        result = await asyncio.to_thread(run_explain, prepared.rewritten_sql, approved)
-    except ValueError as exc:
-        raise SQLExecutionError(str(exc)) from exc
+        client = get_uc_client(request)
+        user = get_user(request)
+        email = effective_principal(request) or user.get("email", "")
+        is_admin = user.get("is_admin", False)
 
-    threshold = max(0, int(settings.sql.cost_gate_threshold_rows))
-    needs_approval = threshold > 0 and result.cost.cost > threshold
+        approved: dict[str, str] = {}
+        for full_name in prepared.refs:
+            parts = full_name.split(".")
+            if len(parts) != 3:
+                raise SQLExecutionError(
+                    f"Internal error: expected 3-part name, got {full_name!r}.",
+                )
+            table_info = await client.get_table(parts[0], parts[1], parts[2])
+            if not table_info:
+                raise CatalogNotFoundError(f"Table not found: {full_name!r}")
+            storage_location = table_info.get("storage_location")
+            if not isinstance(storage_location, str) or not storage_location:
+                raise CatalogNotFoundError(
+                    f"Table {full_name!r} has no storage_location on soyuz-catalog.",
+                )
+            await check_privilege(client, email, is_admin, "table", full_name, SELECT)
+            approved[full_name] = storage_location
 
-    await audit(
-        request,
-        "query.explained",
-        f"query:{short_sql_hash(query)}",
-        {
-            "tables": result.referenced_tables,
-            "cost": result.cost.cost,
-            "needs_approval": needs_approval,
-        },
-    )
-    response: dict[str, Any] = {
-        "plan": result.plan,
-        "cost": {
-            "max_cardinality": result.cost.max_cardinality,
-            "join_depth": result.cost.join_depth,
-            "cost": result.cost.cost,
-            "explanation": result.cost.explanation,
-        },
-        "needs_approval": needs_approval,
-        "threshold": threshold,
-        "referenced_tables": result.referenced_tables,
-    }
-    if needs_approval:
-        response["cost_gate_trigger"] = {
-            "explain": result.plan,
-            "estimated_cost": result.cost.cost,
-            "threshold": threshold,
-            "engine": "duckdb",
-            "referenced_tables": result.referenced_tables,
-        }
-        from pointlessql.services.governance_events import (
-            EVENT_TYPE_COST_GATE_DENIED,
-            emit_governance_event,
+        try:
+            result = await asyncio.to_thread(run_explain, prepared.rewritten_sql, approved)
+        except ValueError as exc:
+            raise SQLExecutionError(str(exc)) from exc
+
+        threshold = max(0, int(settings.sql.cost_gate_threshold_rows))
+        needs_approval = threshold > 0 and result.cost.cost > threshold
+
+        recorder.extra_params.update(
+            {
+                "cost": result.cost.cost,
+                "max_cardinality": result.cost.max_cardinality,
+                "join_depth": result.cost.join_depth,
+                "threshold": threshold,
+                "needs_approval": needs_approval,
+            }
         )
 
-        factory = getattr(request.app.state, "session_factory", None)
-        try:
-            await emit_governance_event(
+        await audit(
+            request,
+            "query.explained",
+            f"query:{sql_hash}",
+            {
+                "tables": result.referenced_tables,
+                "cost": result.cost.cost,
+                "needs_approval": needs_approval,
+            },
+        )
+        response: dict[str, Any] = {
+            "plan": result.plan,
+            "cost": {
+                "max_cardinality": result.cost.max_cardinality,
+                "join_depth": result.cost.join_depth,
+                "cost": result.cost.cost,
+                "explanation": result.cost.explanation,
+            },
+            "needs_approval": needs_approval,
+            "threshold": threshold,
+            "referenced_tables": result.referenced_tables,
+        }
+        if needs_approval:
+            response["cost_gate_trigger"] = {
+                "explain": result.plan,
+                "estimated_cost": result.cost.cost,
+                "threshold": threshold,
+                "engine": "duckdb",
+                "referenced_tables": result.referenced_tables,
+            }
+            from pointlessql.services.governance_events import (
                 EVENT_TYPE_COST_GATE_DENIED,
-                {
-                    "principal": email,
-                    "estimated_cost": result.cost.cost,
-                    "threshold": threshold,
-                    "referenced_tables": result.referenced_tables,
-                    "query_hash": short_sql_hash(query),
-                },
-                settings=settings,
-                session_factory=factory,
+                emit_governance_event,
             )
-        except Exception:  # noqa: BLE001 — emit must never raise
-            logger.exception("cost_gate.denied emit failed for %s", short_sql_hash(query))
-    return response
+
+            event_factory = getattr(request.app.state, "session_factory", None)
+            try:
+                await emit_governance_event(
+                    EVENT_TYPE_COST_GATE_DENIED,
+                    {
+                        "principal": email,
+                        "estimated_cost": result.cost.cost,
+                        "threshold": threshold,
+                        "referenced_tables": result.referenced_tables,
+                        "query_hash": sql_hash,
+                    },
+                    settings=settings,
+                    session_factory=event_factory,
+                )
+            except Exception:  # noqa: BLE001 — emit must never raise
+                logger.exception("cost_gate.denied emit failed for %s", sql_hash)
+        return response
 
 
 @router.get("/sql", response_class=HTMLResponse)

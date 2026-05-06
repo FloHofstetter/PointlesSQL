@@ -108,7 +108,10 @@ class AgentRunOperation(Base):
         ordinal: Monotonic per-run sequence number (1-indexed).
         op_name: One of ``"autoload"`` / ``"merge"`` /
             ``"write_table"`` / ``"sql"`` / ``"aggregate"`` /
-            ``"rollback"`` / ``"train_model"``.  CHECK-constrained.
+            ``"rollback"`` / ``"train_model"`` /
+            ``"branch_create"`` / ``"branch_promote"`` /
+            ``"branch_discard"`` / ``"dbt_model"`` /
+            ``"dbt_test"`` / ``"sql_explain"``.  CHECK-constrained.
         params_json: JSON-encoded primitive arguments.  Excludes
             DataFrame contents — only call shape and stats.
         target_table: ``"catalog.schema.table"`` for writes; ``None``
@@ -168,7 +171,7 @@ class AgentRunOperation(Base):
             "op_name IN "
             "('autoload','merge','write_table','sql','aggregate','rollback',"
             "'train_model','branch_create','branch_promote','branch_discard',"
-            "'dbt_model','dbt_test')",
+            "'dbt_model','dbt_test','sql_explain')",
             name="ck_agent_run_operations_op_name",
         ),
     )

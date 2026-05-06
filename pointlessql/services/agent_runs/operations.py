@@ -61,6 +61,11 @@ VALID_OP_NAMES = frozenset(
         # ``dbt_test`` covers test executions.
         "dbt_model",
         "dbt_test",
+        # Phase 39: pre-flight EXPLAIN call from an agent run.  Records
+        # that the LLM looked at a query's plan + cost-gate verdict
+        # before deciding whether to execute or rewrite.  No data
+        # written; ``target_table`` and ``rows_affected`` stay NULL.
+        "sql_explain",
     }
 )
 
