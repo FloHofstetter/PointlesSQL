@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 39 — Agent EXPLAIN-driven self-rewrite loop closed.**
+  Four sub-sprints landed in one autonomous session.  The Hermes
+  plugin's ``pql_query`` tool now hits ``GET /api/sql/explain``
+  before ``POST /api/sql/execute``.  When the cost-gate verdict
+  says ``needs_approval=True`` the tool returns a structured
+  ``cost_gate_denied`` envelope carrying the EXPLAIN tree + a
+  rewrite hint so the LLM can revise and retry.  Per-run state
+  on the client tracks attempts + the original SQL hash; at
+  attempt 4 the envelope flips to ``human_approval_required``
+  and the plugin POSTs one ``rewrite_attempts`` row to PointlesSQL.
+  A subsequent successful rewrite writes a second
+  ``auto_rewrite_succeeded`` row.  Sprint 39.1 plumbed the
+  per-run audit (new ``op_name='sql_explain'`` op rows when
+  ``X-Agent-Run-Id`` is set, Alembic ``mm3o5q7s9u1x``).
+  Sprint 39.2 added the ``rewrite_attempts`` table + route
+  + run-detail "Rewrites" sub-pane on the Operations top-tab
+  (Alembic ``nn4p6r8t0v2y``).  Sprint 39.3 wired the plugin loop
+  (cross-repo commit ``576c5dc`` in ``hermes-plugin-pointlessql``).
+  Sprint 39.4 added the
+  ``docs/e2e-walkthroughs/explain-rewrite.md`` playbook (49th)
+  and Grafana panel id 21 ("Rewrite savings — averted cost-gate
+  denials per week") in both the SQLite and Postgres audit
+  dashboards.  Audit POSTs are fail-soft so an older
+  PointlesSQL server lacking the route doesn't crash the agent
+  turn.  Pyright + file-size + Grafana-lint budgets all hold;
+  10 new pytest cases on the PointlesSQL side, 5 on the
+  plugin side.
+
 - **Roadmap — three queued feature pillars after Phase 38.**
   Records the next forward-motion candidates surfaced after the
   Phase-38 sprint sweep closed everything carryable from the

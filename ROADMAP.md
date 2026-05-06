@@ -4235,53 +4235,74 @@ PointlesSQL
 │           throughout.  ``audit-cockpit-deep.md`` carries a
 │           "Verification log" entry stamped 2026-05-06.
 │
-├── Phase 39 — Agent EXPLAIN-driven self-rewrite loop       ⏳ queued
+├── Phase 39 — Agent EXPLAIN-driven self-rewrite loop      ✅ closed 2026-05-06
 │   │
-│   │   The Phase-13 sketch that never landed (memory
-│   │   ``project_phase13_explain_agent_loop.md``).  Agents read
-│   │   DuckDB ``EXPLAIN (FORMAT JSON)`` for the SQL they're
-│   │   about to issue, see the cost-gate's verdict in advance,
-│   │   and self-rewrite the query before submission instead of
-│   │   bouncing off ``cost_gate_trigger`` and waiting for human
-│   │   approval.  The plumbing is already mostly there — the
-│   │   cost-gate already runs EXPLAIN on the path, and the
-│   │   ``cost_gate_trigger`` field on AgentRun captures the
-│   │   plan.  This phase exposes the EXPLAIN bytes earlier in
-│   │   the loop (pre-execution tool call) and adds a "rewrite-
-│   │   reason" field to ``agent_run_operations`` so the audit
-│   │   trail captures why a query was rewritten.
+│   │   AI-native-lakehouse differentiator landed in one
+│   │   autonomous session: agents see DuckDB
+│   │   ``EXPLAIN (FORMAT JSON)`` + cost-gate verdict before
+│   │   they execute, rewrite SQL when the cost-gate denies,
+│   │   and only escalate to human approval after three
+│   │   failed attempts.  Each loop resolution is captured in
+│   │   the new ``rewrite_attempts`` table for end-to-end
+│   │   auditor inspection.  Fits the
+│   │   ``project_ai_native_vision.md`` "supervision surface,
+│   │   not cheaper Databricks" pitch directly.
 │   │
-│   │   **Why it matters strategically:** This is the most
-│   │   concretely-demoable AI-native-lakehouse differentiator
-│   │   the project has — agent rewrites SQL live, cost-gate
-│   │   fires less, audit captures before/after.  Direct fit
-│   │   with ``project_ai_native_vision.md`` ("supervision
-│   │   surface, not cheaper Databricks").
+│   │   **Cross-repo drop:** PointlesSQL commits ``e413f42`` /
+│   │   ``49aba6c`` / ``305d9e4``; ``hermes-plugin-pointlessql``
+│   │   commit ``576c5dc``.  Two new Alembic migrations
+│   │   (``mm3o5q7s9u1x`` op_name + ``nn4p6r8t0v2y`` table).
 │   │
-│   ├── Sprint 39.1 — pre-flight ``pql_explain`` tool         ⏳
-│   │       Plugin tool returns ``{plan, estimated_cost,
-│   │       cost_gate_verdict}`` for an arbitrary SQL string
-│   │       without executing it.  Adds the ``X-Cost-Gate-
-│   │       Preview`` audit row.
+│   ├── Sprint 39.1 — per-run sql_explain audit row           ✅ done (e413f42)
+│   │       ``pql_explain`` tool + ``GET /api/sql/explain``
+│   │       endpoint already shipped Phase 14; the Phase-39
+│   │       gap was the per-run audit.  Endpoint now writes
+│   │       one ``agent_run_operations.op_name='sql_explain'``
+│   │       row per call when ``X-Agent-Run-Id`` is set.
+│   │       Migration ``mm3o5q7s9u1x`` extends the op_name
+│   │       CHECK; malformed UUIDs in the header are silently
+│   │       demoted to "no run" so a typo doesn't 500.
 │   │
-│   ├── Sprint 39.2 — rewrite-attempt audit                   ⏳
-│   │       New ``rewrite_attempts`` table: each row links to
-│   │       the AgentRun + before/after SQL hash + EXPLAIN
-│   │       cost delta.  Run-detail UI surfaces a "rewrites"
-│   │       sub-tab inside the existing Operations top-tab.
+│   ├── Sprint 39.2 — rewrite_attempts table + Rewrites sub-tab  ✅ done (49aba6c)
+│   │       New ``rewrite_attempts`` table (Alembic
+│   │       ``nn4p6r8t0v2y``) with ``(agent_run_id, attempt_no)``
+│   │       UNIQUE + verdict CHECK in
+│   │       ``{auto_rewrite_succeeded, auto_rewrite_failed,
+│   │       human_approval_required, original_approved}``.
+│   │       New ``POST /api/agent-runs/{id}/rewrite-attempt``
+│   │       route accepts the plugin envelope, enforces
+│   │       workspace match, returns 409-class on duplicate
+│   │       attempts.  Run-detail Operations top-tab gets a
+│   │       new "Rewrites" sub-pane with verdict badges +
+│   │       Δ-cost colour coding.
 │   │
-│   ├── Sprint 39.3 — Hermes plugin integration              ⏳
-│   │       Reflexive rewrite loop in the plugin's
-│   │       ``post_tool_call`` hook: when ``pql_sql`` /
-│   │       ``pql_merge`` / ``pql_write_table`` get a cost-
-│   │       gate-deny, the plugin auto-feeds the EXPLAIN back
-│   │       into the LLM with a rewrite prompt; cap at 3
-│   │       attempts, then fall through to human approval.
+│   ├── Sprint 39.3 — explain-first plugin rewrite loop       ✅ done (576c5dc)
+│   │       ``hermes-plugin-pointlessql`` ``pql_query`` tool
+│   │       now hits ``/api/sql/explain`` before
+│   │       ``/api/sql/execute``.  On ``needs_approval=True``
+│   │       the tool returns a structured
+│   │       ``{ok:false, error:'cost_gate_denied', explain,
+│   │       hint, attempt_no}`` envelope so the LLM sees the
+│   │       plan + a rewrite hint.  Per-run state on the
+│   │       client tracks attempts + the original SQL hash;
+│   │       at attempt 4 the envelope flips to
+│   │       ``human_approval_required`` and a
+│   │       ``rewrite_attempts`` row is POSTed.  A subsequent
+│   │       successful rewrite writes a second
+│   │       ``auto_rewrite_succeeded`` row.  Audit POSTs are
+│   │       fail-soft so an older PointlesSQL server lacking
+│   │       the route doesn't crash the agent turn.
 │   │
-│   └── Sprint 39.4 — walkthrough + cockpit-card             ⏳
-│           ``docs/e2e-walkthroughs/explain-rewrite.md`` plus
-│           a "Rewrite savings" Grafana panel showing
-│           cost-gate-denials averted per week.
+│   └── Sprint 39.4 — walkthrough + Grafana panel 21         ✅ done (305d9e4)
+│           ``docs/e2e-walkthroughs/explain-rewrite.md`` is
+│           the 49th playbook (Parts A-D: trip, rewrite,
+│           UI inspection, three-attempt escalation).
+│           Grafana panel id 21 ("Rewrite savings — averted
+│           cost-gate denials per week") added to both the
+│           SQLite and Postgres audit dashboards with
+│           dialect-aware queries against
+│           ``rewrite_attempts``.  CLAUDE.md walkthrough
+│           count bumped 48 → 49.
 │
 ├── Phase 40 — Lakehouse Federation reads (OpenLineage / CDF)  ⏳ queued
 │   │
