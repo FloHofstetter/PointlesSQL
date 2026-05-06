@@ -35,6 +35,7 @@ import logging
 from pathlib import Path
 from typing import Any, Literal
 
+import deltalake
 import httpx
 import pyarrow as pa
 from soyuz_catalog_client import Client
@@ -284,8 +285,6 @@ def _build_autoload_column_edges(
     from pointlessql.services.lineage_edges import ColumnEdgeSpec
 
     try:
-        import deltalake
-
         schema = deltalake.DeltaTable(target_location).schema()
         delta_columns = [field.name for field in schema.fields]
     except Exception:  # noqa: BLE001 — best-effort metadata read
@@ -633,8 +632,6 @@ def _append_to_delta(target_location: str, arrow_table: pa.Table) -> None:
         target_location: Delta table storage URI.
         arrow_table: Augmented data to append.
     """
-    import deltalake
-
     deltalake.write_deltalake(target_location, arrow_table, mode="append")
 
 

@@ -3770,12 +3770,15 @@ PointlesSQL
 │   │       Playwright MCP session can be launched alongside the
 │   │       refactor.  Stream-B / 35.8 do not depend on this.
 │   │
-│   ├── Sprint 35.5 — Module-level deltalake imports         ⏳ planned
-│   │       Hoist lazy ``import deltalake`` from function bodies
-│   │       to module top in ``_merge.py``, ``_autoload.py``,
-│   │       ``engine.py``, ``_cdf.py``.  Add ``DeltaTable`` /
-│   │       ``pa.Table`` annotations on locals where pyright can't
-│   │       infer.  Target: ≥40 fewer warnings.
+│   ├── Sprint 35.5 — Module-level deltalake imports         ✅ closed 2026-05-06
+│   │       Hoisted 13 lazy ``import deltalake`` from function
+│   │       bodies to module top in ``_merge.py``, ``_autoload.py``,
+│   │       ``engine.py``, ``_cdf.py``.  Plan estimated ≥40 fewer
+│   │       pyright warnings — **actual is 0**: deltalake's stubs
+│   │       are fine, the warnings are from incomplete pyarrow
+│   │       stubs that the hoist can't reach.  Hoist still valuable
+│   │       as code-quality cleanup.  Lesson: type annotations
+│   │       can't save us from third-party stub gaps.
 │   │
 │   ├── Sprint 35.6 — ``cdf_table`` parameter typing         ⏳ planned
 │   │       Add explicit ``cdf_table: pa.Table`` parameter +

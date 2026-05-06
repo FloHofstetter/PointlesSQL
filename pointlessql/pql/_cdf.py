@@ -31,10 +31,8 @@ This module wraps two operations:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    pass
+import deltalake
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +79,6 @@ def ensure_cdf_enabled(target_location: str) -> bool:
         reach the table or the alter failed — e.g. the path doesn't
         exist or deltalake raised at open time.
     """
-    try:
-        import deltalake
-    except ImportError:  # pragma: no cover — deltalake is a hard dep
-        logger.info("ensure_cdf_enabled: deltalake import failed")
-        return False
-
     try:
         dt = deltalake.DeltaTable(target_location)
     except Exception as exc:  # noqa: BLE001 — best-effort

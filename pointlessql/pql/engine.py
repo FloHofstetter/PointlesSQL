@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
+import deltalake
+
 if TYPE_CHECKING:
     import duckdb
     import pandas as pd
@@ -81,8 +83,6 @@ class PandasEngine:
         Returns:
             The table contents as a pandas DataFrame.
         """
-        import deltalake
-
         dt = deltalake.DeltaTable(storage_location)
         return dt.to_pandas()
 
@@ -104,8 +104,6 @@ class PandasEngine:
             storage_location: Filesystem path or URI of the Delta table.
             mode: Write mode passed to ``deltalake.write_deltalake``.
         """
-        import deltalake
-
         if mode == "overwrite":
             deltalake.write_deltalake(storage_location, frame, mode=mode, schema_mode="overwrite")
         else:
@@ -181,8 +179,6 @@ def register_delta_view(
             used verbatim as the view identifier.
         storage_location: Filesystem path or URI of the Delta table.
     """
-    import deltalake
-
     dt = deltalake.DeltaTable(storage_location)
     arrow_dataset = dt.to_pyarrow_dataset()
     conn.register(full_name, arrow_dataset)
@@ -210,8 +206,6 @@ class DuckDBEngine:
         Returns:
             A DuckDB relation backed by the Delta table's Arrow data.
         """
-        import deltalake
-
         dt = deltalake.DeltaTable(storage_location)
         arrow_dataset = dt.to_pyarrow_dataset()
         return self._conn.from_arrow(arrow_dataset)
@@ -227,8 +221,6 @@ class DuckDBEngine:
             storage_location: Filesystem path or URI of the Delta table.
             mode: Write mode passed to ``deltalake.write_deltalake``.
         """
-        import deltalake
-
         arrow_table = frame.arrow()
         if mode == "overwrite":
             deltalake.write_deltalake(
@@ -305,7 +297,6 @@ class PolarsEngine:
         Returns:
             The table contents as a Polars DataFrame.
         """
-        import deltalake
         import polars as pl
 
         dt = deltalake.DeltaTable(storage_location)
@@ -324,8 +315,6 @@ class PolarsEngine:
             storage_location: Filesystem path or URI of the Delta table.
             mode: Write mode passed to ``deltalake.write_deltalake``.
         """
-        import deltalake
-
         if mode == "overwrite":
             deltalake.write_deltalake(
                 storage_location, frame.to_arrow(), mode=mode, schema_mode="overwrite"

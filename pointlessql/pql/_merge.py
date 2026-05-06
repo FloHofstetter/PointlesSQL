@@ -37,6 +37,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Literal, cast
 
+import deltalake
 import httpx
 import pyarrow as pa
 from soyuz_catalog_client import Client
@@ -338,8 +339,6 @@ def _capture_value_changes(
     # — no post-merge ALTER needed here.
 
     try:
-        import deltalake
-
         from pointlessql.services.value_change_capture import extract_value_changes
 
         dt = deltalake.DeltaTable(target_location)
@@ -638,8 +637,6 @@ def _do_upsert(target_location: str, arrow_source: pa.Table, on: list[str]) -> d
     Returns:
         ``{"strategy": "upsert", **deltalake_merge_stats}``.
     """
-    import deltalake
-
     dt = deltalake.DeltaTable(target_location)
     predicate = " AND ".join(f"target.{col} = source.{col}" for col in on)
     stats = (
@@ -674,8 +671,6 @@ def _do_scd2(target_location: str, arrow_source: pa.Table, on: list[str]) -> dic
     Returns:
         ``{"strategy": "scd2", "rows_appended": int, "close_stats": {...}}``.
     """
-    import deltalake
-
     now = datetime.now(UTC)
     augmented = _augment_for_scd2(arrow_source, now)
 

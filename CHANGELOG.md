@@ -6,6 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 35.5 closed (2026-05-06)** — Architectural cleanup: hoist
+  every lazy ``import deltalake`` from function bodies to module
+  top in ``pql/_merge.py`` (3 lazy imports), ``pql/_autoload.py``
+  (2 lazy imports), ``pql/engine.py`` (7 lazy imports), and
+  ``pql/_cdf.py`` (1 lazy + the ``try / except ImportError`` guard
+  was dead code since deltalake is a hard dep).  **Plan estimated
+  ≥40 fewer pyright warnings; actual is 0** — ``deltalake``'s
+  signatures already had type hints, and pyright's "Type is
+  partially unknown" warnings come from pyarrow's
+  ``pa.dataset.Dataset`` stubs being incomplete, not from the
+  imports being lazy.  The hoist remains valuable as code-quality
+  cleanup (Python-level architecture, fewer per-call imports) even
+  without the warning reduction.  Lesson recorded in
+  ``feedback_pyright_pyarrow_stubs.md``: third-party-API-heavy
+  modules need either custom ``.pyi`` stubs or accepted warnings;
+  Python type annotations alone don't move the needle.  Verification:
+  1478 SQLite tests green, ruff + pyright + pydoclint clean (0
+  errors / 531 warnings, unchanged).
+
 - **Sprint 35.4 deferred (2026-05-06)** — Extracting
   ``run_view.html`` (1467 LOC) into tab partials needs a live
   browser-playbook replay (``audit-reviewer-daily.md``) before
