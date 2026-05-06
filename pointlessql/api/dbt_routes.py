@@ -27,25 +27,29 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin, require_supervisor
 from pointlessql.exceptions import AuditUnavailableError
+from pointlessql.models.agent_run_audit import AgentRunOperation
 from pointlessql.models.agent_runs import (
     STATUS_FAILED,
     STATUS_RUNNING,
     STATUS_SUCCEEDED,
     AgentRun,
 )
+from pointlessql.models.lineage import LineageRowReject
 from pointlessql.services.dbt_bridge import (
     DBTNodeResult,
+    as_dict,
     emit_operations_for_dbt_run,
     emit_test_failure_rejects,
     merge_manifest_and_results,
     parse_manifest,
     parse_run_results,
+    project_models,
     summarise,
 )
 from pointlessql.services.dbt_executor import DBTExecutionError, DBTExecutor, DBTRunResult
@@ -482,6 +486,7 @@ async def _run_or_test(
             "warn_failures": warn_failures,
         },
     )
+
     return {**_result_payload(result, agent_run_id=agent_run_id), "summary": bridge}
 
 
@@ -518,3 +523,182 @@ async def api_dbt_test(
         JSON envelope with executor result + per-test summary.
     """
     return await _run_or_test(request, body=body, op_kind="test")
+
+
+# ----- read-only manifest accessors (Phase 36 Restabschluss) ---------
+
+
+def _load_manifest_or_404(request: Request) -> dict[str, Any]:
+    """Read ``target/manifest.json`` for the configured project.
+
+    Centralises the 404 path: every read-only route that walks the
+    manifest hits this helper so the "compile first" hint is worded
+    consistently.
+
+    Args:
+        request: Incoming FastAPI request (provides settings).
+
+    Returns:
+        Parsed manifest dict.
+
+    Raises:
+        HTTPException: 404 when no manifest is on disk yet (typical
+            on a fresh checkout — the agent should call
+            ``POST /api/dbt/compile`` first); 500 when the file
+            exists but isn't parseable JSON (corrupted target dir).
+    """
+    # Reuse the executor's path-resolution so manifest lookup matches
+    # the path dbt actually wrote to (handles relative project_dir).
+    manifest_path = _executor(request).manifest_path
+    if not manifest_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "no dbt manifest on disk yet — call POST /api/dbt/compile "
+                "(or POST /api/dbt/run) first to materialise "
+                "target/manifest.json"
+            ),
+        )
+    try:
+        return parse_manifest(manifest_path)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"manifest.json is not parseable JSON: {exc}",
+        ) from exc
+
+
+@router.get("/api/dbt/manifest")
+async def api_dbt_manifest(request: Request) -> dict[str, Any]:
+    """Return the model + test summary from ``target/manifest.json``.
+
+    Read-only.  Available to any authenticated user — the manifest
+    only carries SQL source + dependency metadata, no row data.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"manifest_generated_at": str | None, "models": [...]}``
+        with one entry per model.
+
+    Raises:
+        HTTPException: 401 when the request is anonymous, 404 when
+            the manifest is not on disk yet, 500 when it is corrupted.
+    """
+    user = get_user(request)
+    if user["id"] == 0:
+        raise HTTPException(status_code=401, detail="auth required")
+    manifest = _load_manifest_or_404(request)
+    metadata = as_dict(manifest.get("metadata"))
+    generated_at = metadata.get("generated_at")
+    return {
+        "manifest_generated_at": str(generated_at) if generated_at else None,
+        "models": project_models(manifest),
+    }
+
+
+@router.get("/api/dbt/coverage")
+async def api_dbt_coverage(request: Request) -> dict[str, Any]:
+    """Return the test-coverage ratio for the dbt project.
+
+    Coverage is the share of models that have ≥1 test defined.  Drives
+    a cockpit metric in 36.4 (UI) and an agent self-check in 36.B
+    plugin tools.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"models_total": int, "models_with_tests": int,
+        "ratio": float, "untested": list[str]}``.  ``ratio`` is
+        ``0.0`` when there are no models (avoids a zero-division
+        500).
+
+    Raises:
+        HTTPException: 401 when anonymous, 404 when no manifest.
+    """
+    user = get_user(request)
+    if user["id"] == 0:
+        raise HTTPException(status_code=401, detail="auth required")
+    manifest = _load_manifest_or_404(request)
+    models = project_models(manifest)
+    total = len(models)
+    with_tests = sum(1 for m in models if m["tests"])
+    untested = [str(m["unique_id"]) for m in models if not m["tests"]]
+    ratio = (with_tests / total) if total else 0.0
+    return {
+        "models_total": total,
+        "models_with_tests": with_tests,
+        "ratio": round(ratio, 4),
+        "untested": untested,
+    }
+
+
+@router.get("/api/dbt/test-failures")
+async def api_dbt_test_failures(
+    request: Request,
+    agent_run_id: str = Query(description="agent_runs.id whose failures to list"),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> dict[str, Any]:
+    """Return the dbt-test failures for one agent run.
+
+    Joins ``lineage_row_rejects`` (where ``reason='expectation_failed'``)
+    with ``agent_run_operations`` so each row carries the failing
+    test's ``unique_id``, the model relation it ran against, dbt's
+    failure message, and the owning op id for cross-link.
+
+    Supervisor or auditor scope required: per-run audit-axis routes
+    follow the same asymmetric ladder as the rest of
+    ``/api/agent-runs/{id}/audit/*`` (see :func:`require_supervisor`
+    docstring).
+
+    Args:
+        request: Incoming FastAPI request.
+        agent_run_id: UUID of the run whose failures to list.
+        limit: Hard row cap (1-500, default 100).
+
+    Returns:
+        ``{"agent_run_id": str, "row_count": int, "rows": [...]}``.
+
+    Raises:
+        HTTPException: When the caller lacks supervisor / auditor scope
+            (raised by :func:`require_supervisor`).
+    """  # noqa: DOC502 — HTTPException raised inside require_supervisor
+    require_supervisor(request)
+    factory = request.app.state.session_factory
+    rows: list[dict[str, Any]] = []
+    with factory() as session:
+        stmt = (
+            select(LineageRowReject, AgentRunOperation)
+            .join(AgentRunOperation, AgentRunOperation.id == LineageRowReject.op_id)
+            .where(LineageRowReject.run_id == agent_run_id)
+            .where(LineageRowReject.reason == "expectation_failed")
+            .order_by(LineageRowReject.id.asc())
+            .limit(limit)
+        )
+        for reject, op in session.execute(stmt).all():
+            params: dict[str, Any] = {}
+            if op.params_json:
+                try:
+                    import json as _json
+
+                    params = as_dict(_json.loads(op.params_json))
+                except ValueError, TypeError:
+                    params = {}
+            severity = params.get("severity") or "error"
+            rows.append(
+                {
+                    "test_unique_id": reject.source_row_id,
+                    "model_relation": op.target_table,
+                    "severity": str(severity),
+                    "message": reject.detail,
+                    "op_id": op.id,
+                    "rejected_at": reject.created_at.isoformat() if reject.created_at else None,
+                },
+            )
+    return {
+        "agent_run_id": agent_run_id,
+        "row_count": len(rows),
+        "rows": rows,
+    }

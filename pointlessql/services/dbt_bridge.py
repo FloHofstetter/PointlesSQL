@@ -156,6 +156,112 @@ def parse_run_results(path: Path) -> list[dict[str, Any]]:
     return out
 
 
+def as_dict(value: Any) -> dict[str, Any]:
+    """Narrow an ``Any``-typed manifest field to a typed dict.
+
+    The dbt manifest is parsed as raw JSON so every nested lookup
+    starts as ``Any``.  Channelling all ``isinstance``-based
+    narrowing through this single helper keeps callers free of
+    ``reportUnknownVariableType`` cascades.
+
+    Args:
+        value: Result of a ``manifest.get(...)`` call.
+
+    Returns:
+        The same dict when ``value`` is a dict, else an empty dict.
+    """
+    if isinstance(value, dict):
+        return value  # type: ignore[reportUnknownVariableType]
+    return {}
+
+
+def as_list(value: Any) -> list[Any]:
+    """Narrow an ``Any``-typed manifest field to a typed list.
+
+    Args:
+        value: Result of a ``manifest.get(...)`` call.
+
+    Returns:
+        The same list when ``value`` is a list, else an empty list.
+    """
+    if isinstance(value, list):
+        return value  # type: ignore[reportUnknownVariableType]
+    return []
+
+
+def project_models(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    """Project the manifest's nodes table down to a model-only summary.
+
+    Filters on ``resource_type='model'``, joins each model with the
+    tests that reference it via the test node's ``depends_on``, and
+    returns a stable JSON-shaped list.  Used by ``/api/dbt/manifest``
+    + ``/api/dbt/coverage`` and reused by the plugin's
+    ``pql_dbt_show_lineage`` tool, so we keep one canonical
+    projection rather than two slightly different ones.
+
+    Args:
+        manifest: Parsed manifest dict.
+
+    Returns:
+        list[dict[str, Any]]: One entry per model, ordered by
+            ``unique_id`` for deterministic output.
+    """
+    nodes = as_dict(manifest.get("nodes"))
+
+    # Index tests by the model unique_ids they reference.  We walk
+    # the test's own ``depends_on.nodes`` rather than ``parent_map``
+    # because the latter is sometimes truncated in hand-written
+    # fixtures while ``depends_on`` is part of every node's stable
+    # schema.
+    tests_by_model: dict[str, list[dict[str, Any]]] = {}
+    for test_id, raw_node in nodes.items():
+        node = as_dict(raw_node)
+        if node.get("resource_type") != "test":
+            continue
+        config = as_dict(node.get("config"))
+        severity = str(config.get("severity") or "error")
+        test_meta = as_dict(node.get("test_metadata"))
+        test_name = str(test_meta.get("name") or node.get("name") or "")
+        column = str(node.get("column_name") or "") or None
+        # Tests that ref multiple models get attached to every parent.
+        for parent_id in as_list(as_dict(node.get("depends_on")).get("nodes")):
+            if not isinstance(parent_id, str):
+                continue
+            tests_by_model.setdefault(parent_id, []).append(
+                {
+                    "unique_id": test_id,
+                    "name": test_name,
+                    "column": column,
+                    "severity": severity,
+                },
+            )
+
+    out: list[dict[str, Any]] = []
+    for unique_id, raw_node in nodes.items():
+        node = as_dict(raw_node)
+        if node.get("resource_type") != "model":
+            continue
+        config = as_dict(node.get("config"))
+        columns_dict = as_dict(node.get("columns"))
+        column_names = sorted(str(c) for c in columns_dict.keys())
+        depends_on = [str(d) for d in as_list(as_dict(node.get("depends_on")).get("nodes")) if d]
+        out.append(
+            {
+                "unique_id": unique_id,
+                "name": str(node.get("name") or ""),
+                "schema": str(node.get("schema") or "") or None,
+                "database": str(node.get("database") or "") or None,
+                "relation_name": node.get("relation_name") or None,
+                "materialization": str(config.get("materialized") or "") or None,
+                "depends_on": depends_on,
+                "columns": column_names,
+                "tests": tests_by_model.get(unique_id, []),
+            },
+        )
+    out.sort(key=lambda m: str(m["unique_id"]))
+    return out
+
+
 def _node_relation_name(node: dict[str, Any]) -> str | None:
     """Pull the qualified ``database.schema.alias`` from a node entry.
 
