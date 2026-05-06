@@ -166,12 +166,10 @@ all three sink types.
   asserted the rendered HTML contained the right tokens but
   never executed the page's Alpine layer.
 
-- **BUG-37-02** — admin sidebar (the icon-rail context-panel on
-  every `/admin/*` page) lists only "Audit log", "Audit cockpit",
-  and "External writes" but is missing entries for "Audit sinks",
-  "Review destinations", "API keys", "Workspaces", and "System
-  info" — yet those pages exist and this playbook exercises one
-  of them. Filed for the Wave 1 `admin-console.md` walkthrough to
-  surface a fix in
-  [pointlessql/api/dependencies.py](../../pointlessql/api/dependencies.py)
-  or the relevant context-panel partial; do not block Wave 0a.
+- **BUG-37-02** ✅ Fixed — admin sidebar in
+  [`components/context_panel.html`](../../frontend/templates/components/context_panel.html)
+  now lists Overview / Audit log / Audit cockpit / External
+  writes / Workspaces / Audit sinks / Review destinations /
+  API keys / System info, with active highlighting driven by
+  `request.url.path`. See `admin-console.md` Found-bugs for
+  the full fix note.

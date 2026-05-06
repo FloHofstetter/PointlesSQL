@@ -123,13 +123,15 @@ this one drives the human cockpit via the browser.
 
 ### Part C — By-table reverse index (4 steps)
 
-1. **Path parameter is required**.
+1. **Empty path renders the FQN picker (BUG-37-05 fix)**.
    - Action: `browser_navigate('http://127.0.0.1:8000/audit/by-table')`.
-   - Assert: page renders WITH chrome (heading reads "Runs that
-     touched", but no FQN). The three tabs (Touched / Written /
-     Read) render their `Loading…` placeholders followed by
-     `Error 422` because the API gets an empty `fqn` query
-     parameter. **BUG-37-05** filed for Found-bugs.
+   - Assert: heading reads "Runs by table" (no trailing FQN);
+     the page exposes an `<input id="bytable-fqn">` plus an
+     "Open" button instead of the touched/written/read tab
+     chrome.  No 422 errors fire (`kinds=[]` server-side).
+   - Action: enter `main.silver.orders`, click Open.
+   - Assert: navigation to `/audit/by-table/main.silver.orders`
+     and the chrome populates.
 
 2. **Land on the by-table page with an FQN**.
    - Action: navigate to
@@ -202,26 +204,22 @@ this one drives the human cockpit via the browser.
 
 ## Found bugs
 
-- **BUG-37-04** — `/audit/inbox` page-load logs an HTMX
-  `TypeError: can't access property "includes", o is null`
-  in the browser console (htmx.org@2.0.3). Page renders
-  correctly and is interactive — likely a benign timing
-  issue around an `hx-trigger` reading a not-yet-mounted
-  attribute, but the noisy console is a regression class.
-  Filed; reproducer is "navigate to `/audit/inbox` and
-  read `browser_console_messages level=error`". Fix likely
-  in either the inbox HTML's `hx-trigger="load"` wiring or
-  the inline IIFE that fires on DOMContentLoaded.
+- **BUG-37-04** ✅ Fixed — root cause was an unguarded
+  `o.includes("?")` call in htmx 2.0.3 (`o` was `null` for
+  certain page-load synthetic GETs). Fixed by upgrading
+  the CDN pin to htmx 2.0.6, which adds the
+  `if (o == null || o === "") o = location.href` guard
+  before `.includes`. Verified: zero console errors on
+  `/audit/inbox`, `/audit/search`, `/alerts`.
 
-- **BUG-37-05** — `/audit/by-table` (no path param) renders
-  the chrome but the three tab loaders fire with empty
-  `fqn=` query strings, getting `422` from the API and
-  showing user-visible `Error 422` text. Expected: either
-  redirect to `/audit/by-table/` with an empty-state picker
-  ("choose a table"), or block the request in JS until an
-  FQN is set. Filed; fix location is the inline IIFE in
-  [`pages/audit_by_table.html`](../../frontend/templates/pages/audit_by_table.html)
-  (read `FQN === ''` and skip the loaders).
+- **BUG-37-05** ✅ Fixed — `/audit/by-table` now serves a
+  picker form (FQN input + "Open" button) instead of
+  rendering the tab chrome. The route handler short-
+  circuits on empty `fqn`, returning `kinds=[]` so no
+  loaders fire, and the template renders the picker
+  branch. The historical `/audit/by-table/{fqn:path}`
+  route still serves a populated cockpit when an FQN is
+  in the URL.
 
 ## Cleanup
 

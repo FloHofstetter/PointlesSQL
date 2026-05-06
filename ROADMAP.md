@@ -3873,7 +3873,18 @@ PointlesSQL
 │   │       ``/api/dbt/run`` summary carries ``rejects_inserted``.
 │   │       4 new tests; pre-commit chain green.
 │   │
-│   ├── Sprint 36.4 — Cockpit /dbt index + run-view sub-tab     ⏸ Playwright
+│   ├── Sprint 36.4 — Cockpit /dbt index + run-view sub-tab     ✅
+│   │       Landed alongside BUG-37-06 fix: manifest summary
+│   │       card-row (model count + test count + coverage
+│   │       ratio) above a 3-tab nav (Pipeline docs / Recent
+│   │       runs / Test failures).  New ``GET /api/dbt/runs``
+│   │       lists the 20 newest ``agent_id='dbt-cli'``
+│   │       AgentRun rows; existing
+│   │       ``GET /api/dbt/test-failures`` had its
+│   │       ``agent_run_id`` query param made optional so the
+│   │       cockpit can show recent failures across every run
+│   │       (each row links back to ``/runs/{id}``).
+│   │
 │   ├── Sprint 36.5 — severity enforcement + dbt CloudEvents    ✅
 │   │       Three new governance event types
 │   │       (``pointlessql.dbt.run.completed`` always,
@@ -4074,6 +4085,65 @@ PointlesSQL
 │           with the 5 new entries.  CLAUDE.md playbook count
 │           refreshed to 48.  CHANGELOG + this ROADMAP entry
 │           record the wave.
+│
+├── Phase 37.1 — Phase-37 BUG sweep (post-walkthrough fix)    ✅
+│   │
+│   │   One-shot fix sweep that closed the five open BUG-37-NN
+│   │   tickets surfaced during the Phase-37 live replay.
+│   │   Verified end-to-end via Playwright MCP: zero console
+│   │   errors across ``/audit/inbox``, ``/audit/search``,
+│   │   ``/alerts``, ``/audit/by-table``, ``/admin``, and
+│   │   ``/dbt`` after the fixes landed.
+│   │
+│   ├── BUG-37-02 ✅ — admin context-panel completed.
+│   │       [components/context_panel.html](frontend/templates/components/context_panel.html)
+│   │       admin section now lists all nine entries
+│   │       (Overview, Audit log, Audit cockpit, External
+│   │       writes, Workspaces, Audit sinks, Review
+│   │       destinations, API keys, System info).  Active
+│   │       highlighting driven by ``request.url.path`` so
+│   │       no backend ``active_page`` plumbing churn.
+│   │
+│   ├── BUG-37-03 ✅ — duplicate Admin link removed.
+│   │       Mobile-only [components/nav_links.html](frontend/templates/components/nav_links.html)
+│   │       Admin entry was a Bootstrap dropdown with
+│   │       ``href="#"`` shell over a single ``/admin/audit``
+│   │       child link.  Replaced with a direct ``/admin``
+│   │       link; both desktop icon-rail and mobile drawer
+│   │       now point at the same destination.
+│   │
+│   ├── BUG-37-04 ✅ — htmx 2.0.3 → 2.0.6 CDN bump.
+│   │       Root cause was an unguarded ``o.includes("?")``
+│   │       in htmx 2.0.3's GET-request constructor; certain
+│   │       boost-eligible page-loads synthesised a request
+│   │       with a null URL.  htmx 2.0.6 added the
+│   │       ``if (o == null || o === "") o = location.href``
+│   │       guard before the call.  One-line edit in
+│   │       [base.html](frontend/templates/base.html).
+│   │
+│   ├── BUG-37-05 ✅ — empty-FQN picker for /audit/by-table.
+│   │       Added a ``GET /audit/by-table`` (no path
+│   │       parameter) handler in
+│   │       [api/audit_by_table_routes.py](pointlessql/api/audit_by_table_routes.py)
+│   │       that renders ``kinds=[]``; the template now
+│   │       serves an FQN input + Open button on the empty
+│   │       branch, blocking the three 422-firing tab
+│   │       loaders.  ``/audit/by-table/{fqn:path}`` with
+│   │       a real FQN keeps the historical tab cockpit.
+│   │
+│   └── BUG-37-06 ✅ — Phase-36.4 dbt cockpit chrome.
+│           [pages/dbt.html](frontend/templates/pages/dbt.html)
+│           grew a 3-card summary row + 3-tab nav (Pipeline
+│           docs / Recent runs / Test failures) plus the
+│           wiring JS.  Backend additions:
+│           ``GET /api/dbt/runs`` (new, lists 20 newest
+│           ``agent_id='dbt-cli'`` AgentRuns) and
+│           ``GET /api/dbt/test-failures`` made
+│           ``agent_run_id`` optional (returns 50 most
+│           recent failures across all dbt runs when
+│           omitted).  Sprint 36.4 flipped from ``⏸ Playwright``
+│           to ``✅`` since the chrome the playbook called
+│           for is now in main.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

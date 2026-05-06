@@ -115,15 +115,13 @@ dedicated deep-dive playbook before Phase 37 Wave 4.
 
 ## Found bugs
 
-- **BUG-37-04** (generalised) — every page that fires an HTMX
-  load-event on mount logs the same `TypeError: can't access
-  property "includes", o is null` error from htmx.org@2.0.3.
-  `/audit/inbox` (Wave 2), `/audit/search` (Wave 2), and
-  `/alerts` (this wave) all reproduce it. Page is interactive
-  and visible state is correct; the noisy console is the
-  observable. Filed as a single bug class spanning all three
-  pages; fix likely a shared HTMX-init defensive guard or an
-  `hx-trigger` reading a not-yet-mounted target attribute.
+- **BUG-37-04** ✅ Fixed — the htmx 2.0.3 `o.includes("?")`
+  null-deref happened on every boost-eligible page that
+  htmx synthesised a load-time GET for. Fix was a one-line
+  CDN pin bump to htmx 2.0.6, which wraps the call in
+  `if (o == null || o === "") o = location.href` before
+  the `.includes`. Verified zero errors on `/audit/inbox`,
+  `/audit/search`, `/alerts`, `/audit/by-table`, `/dbt`.
 
 ## Cleanup
 

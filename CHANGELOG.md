@@ -6,6 +6,30 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 37.1 — Phase-37 BUG sweep.**  Closes the five open
+  BUG-37-NN tickets surfaced during the Phase-37 walkthrough
+  replay.  BUG-37-04 (HTMX null-deref on
+  ``/audit/inbox`` / ``/audit/search`` / ``/alerts``
+  page-load) fixed via a CDN pin bump from htmx 2.0.3 to
+  2.0.6, which added the ``if (o == null || o === "") …``
+  guard before the offending ``o.includes("?")`` call.
+  BUG-37-05 (``/audit/by-table`` empty path renders three
+  user-visible ``Error 422`` rows from the tab loaders)
+  fixed by adding a no-FQN handler that serves an FQN
+  picker form instead of the tab chrome.  BUG-37-02 (admin
+  context-panel missing five entries) and BUG-37-03
+  (mobile-drawer Admin link with ``href="#"``) fixed in
+  ``components/context_panel.html`` and
+  ``components/nav_links.html``.  BUG-37-06 (Phase-36.4
+  dbt cockpit chrome missing) closed by landing the
+  manifest summary card-row + 3-tab nav (Pipeline docs /
+  Recent runs / Test failures) on ``/dbt`` plus a new
+  ``GET /api/dbt/runs`` route and the ``agent_run_id``
+  query param made optional on ``GET /api/dbt/test-failures``.
+  Sprint 36.4 flipped from ``⏸ Playwright`` to ``✅``.
+  All five fixes verified end-to-end via Playwright MCP
+  (zero console errors across the touched pages).
+
 - **Phase 37 — Playwright coverage refresh (post-Phase-22/23).**
   Brings ``docs/e2e-walkthroughs/`` back to complete UI
   coverage after Phase 14, 17, 18.6+, 28, 33, and 36 features

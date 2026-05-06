@@ -208,22 +208,21 @@ nav-from-landing flow is exercised end-to-end.
 
 ## Found bugs
 
-- **BUG-37-02** — admin sidebar (the icon-rail context-panel on
-  every `/admin/*` page) lists only Audit log / Audit cockpit /
-  External writes. It is missing entries for Audit sinks,
-  Review destinations, API keys, Workspaces, and System info —
-  yet this playbook visits every one of them. Filed; the fix
-  belongs in either
-  [pointlessql/api/dependencies.py](../../pointlessql/api/dependencies.py)
-  (where context-panel data is assembled) or the partial that
-  renders it.
+- **BUG-37-02** ✅ Fixed — admin sidebar in
+  [`components/context_panel.html`](../../frontend/templates/components/context_panel.html)
+  now lists nine entries: Overview, Audit log, Audit cockpit,
+  External writes, Workspaces, Audit sinks, Review
+  destinations, API keys, System info. Active highlighting
+  driven by `request.url.path` so each admin sub-page lights
+  the correct entry without backend route changes.
 
-- **BUG-37-03** — the `Admin` link in the icon-rail's secondary
-  list (`/admin`) is the right destination, but the icon-rail's
-  *primary* list at the top has an `Admin` listitem with
-  `href="#"` (does nothing). Expected: either the primary
-  Admin link goes to `/admin` too, or the duplicate is removed.
-  Filed for follow-up.
+- **BUG-37-03** ✅ Fixed — the lone duplicate Admin link with
+  `href="#"` lived in
+  [`components/nav_links.html`](../../frontend/templates/components/nav_links.html)
+  (rendered in the mobile offcanvas drawer). Replaced the
+  dropdown shell with a direct link to `/admin`. The
+  desktop icon-rail's footer-list Admin link already points
+  at `/admin`; both surfaces now agree.
 
 ## Cleanup
 

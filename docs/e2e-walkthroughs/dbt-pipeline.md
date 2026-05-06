@@ -3,23 +3,25 @@
 Exercises the dbt cockpit at `/dbt`:
 
 - [`dbt.html`](../../frontend/templates/pages/dbt.html)
-  — chrome page (icon-rail + breadcrumbs) wrapping a single
-  iframe at `/dbt-docs/` (the reverse-proxy from
-  [pointlessql/api/dbt_proxy.py](../../pointlessql/api/dbt_proxy.py))
-- The two states the page renders:
+  — chrome page (icon-rail + breadcrumbs) with three sub-tabs
+  (Pipeline docs / Recent runs / Test failures) and a manifest
+  summary card row at the top (model count, test count,
+  coverage ratio).  Sprint 36.4 chrome landed via the BUG-37-06
+  fix.
+- The Pipeline-docs sub-tab still has the two states that
+  predate the chrome work:
   - **`dbt_running == True`**: iframe to `/dbt-docs/` (dbt's
     own SPA, served by the lifespan-managed subprocess in
     [pointlessql/services/dbt_subprocess.py](../../pointlessql/services/dbt_subprocess.py))
   - **`dbt_running == False`**: warning card with the install
     + compile + restart instructions
-
-Phase 36 Stream A (subprocess + reverse-proxy + manifest API +
-auto-rollback) landed in commits `95b5296..b9562dd`.  Stream B
-(36.4 cockpit chrome — manifest summary card + test-failures
-table + run-view sub-tab) is still **paused** (ROADMAP Sprint
-36.4 is `⏸ Playwright`).  This playbook covers the iframe-only
-chrome that exists today; the missing 36.4 chrome is filed as
-BUG-37-06 with explicit fix locations.
+- Recent-runs sub-tab fetches `/api/dbt/runs` (newest 20
+  AgentRun rows where `agent_id='dbt-cli'`) and links each to
+  `/runs/{id}`.
+- Test-failures sub-tab fetches `/api/dbt/test-failures`
+  (without `agent_run_id`, returns the 50 most recent
+  `lineage_row_rejects` rows joined to `agent_run_operations`
+  across all dbt runs).
 
 ## Preconditions
 
@@ -84,9 +86,11 @@ BUG-37-06 with explicit fix locations.
 ### Part B — dbt API surface (read-only, exists today) (5 steps)
 
 The Phase 36.B routes work even when the subprocess is down —
-they read `target/manifest.json` directly from disk. Step 5
-exercises them programmatically since the cockpit chrome that
-would surface them in the UI hasn't landed yet (see BUG-37-06).
+they read `target/manifest.json` directly from disk. The
+cockpit's manifest summary card-row + Recent-runs +
+Test-failures sub-tabs (Phase 37.1, BUG-37-06 fix) consume
+these routes; this section exercises them programmatically
+to document the consumer contract.
 
 1. **Manifest endpoint — 404 on a fresh stack**.
    - Action:
@@ -170,33 +174,22 @@ exercise the iframe path:
 
 ## Found bugs
 
-- **BUG-37-06** — Phase 36.4 cockpit chrome is missing. The
-  current `/dbt` page is iframe-only when running, warning-card-
-  only when not. Sprint 36.B added three read-only API routes
-  (`/api/dbt/manifest`, `/coverage`, `/test-failures`) that
-  exist with no UI surfacing them. The 36.4 plan calls for:
-  - **Manifest summary card** above the iframe: model count,
-    test count, coverage ratio. Source of truth:
-    `GET /api/dbt/manifest` + `/coverage`.
-  - **Test-failures table** below the iframe (or as a sub-tab):
-    last 50 rows from `lineage_row_rejects` filtered to
-    `reason='expectation_failed'` joined to
-    `agent_run_operations` for the `dbt_test` op_id.
-  - **Run-view sub-tab** linking each compile/run/test invocation
-    to its `agent_run_id` on the `/runs/{id}` page (which already
-    has dbt-aware tabs from Sprint 36.5).
-
-  Filed at:
-  - HTML wrapper: [`frontend/templates/pages/dbt.html`](../../frontend/templates/pages/dbt.html)
-    — add card-row above the iframe for the summary, card-row
-    below for failures.
-  - JS data fetch: new `<script>` block calling the three API
-    routes on page-load.  No backend additions needed — the
-    routes are already complete from 36.B.
-
-  Filed for the next D3a session.  This playbook in current
-  form covers everything that exists today plus the API
-  surface that the missing chrome would consume.
+- **BUG-37-06** ✅ Fixed — Phase 36.4 chrome landed:
+  - Manifest summary card-row above the tab nav (model count,
+    test count, coverage ratio); fetched from
+    `/api/dbt/manifest` + `/api/dbt/coverage`.
+  - Three sub-tabs (Pipeline docs / Recent runs / Test
+    failures); pipeline tab keeps the iframe-or-warning
+    rendering, the other two lazy-load their data on tab
+    activation.
+  - Recent runs links each row to `/runs/{id}`; relies on
+    a new `GET /api/dbt/runs` endpoint that filters
+    AgentRun by `agent_id='dbt-cli'`.
+  - Test failures uses the existing `/api/dbt/test-failures`
+    route, now with `agent_run_id` optional — when omitted,
+    returns the 50 most recent failures across all dbt
+    runs, including the `agent_run_id` per row for
+    cross-link.
 
 ## Cleanup
 
