@@ -74,7 +74,10 @@
                         {% if k.auditor %}
                         <span class="badge bg-info text-dark">auditor</span>
                         {% endif %}
-                        {% if not k.supervisor and not k.auditor %}
+                        {% if k.lineage_inbound %}
+                        <span class="badge bg-success">lineage_inbound</span>
+                        {% endif %}
+                        {% if not k.supervisor and not k.auditor and not k.lineage_inbound %}
                         <span class="text-muted">agent</span>
                         {% endif %}
                     </td>
@@ -160,6 +163,13 @@
                        x-model="form.auditor">
                 <label class="form-check-label small" for="kk-auditor">
                     <code>auditor</code> — may invoke /api/audit/* aggregates
+                </label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input type="checkbox" class="form-check-input" id="kk-lineage-inbound"
+                       x-model="form.lineageInbound">
+                <label class="form-check-label small" for="kk-lineage-inbound">
+                    <code>lineage_inbound</code> — may POST OpenLineage events to /api/lineage/openlineage
                 </label>
             </div>
         </div>
@@ -263,6 +273,7 @@ window.apiKeyCreate = function () {
             workspaceId: {{ default_workspace_id }},
             supervisor: false,
             auditor: false,
+            lineageInbound: false,
         },
         creating: false,
         error: '',
@@ -278,6 +289,7 @@ window.apiKeyCreate = function () {
                 name: this.form.name.trim(),
                 supervisor: this.form.supervisor,
                 auditor: this.form.auditor,
+                lineage_inbound: this.form.lineageInbound,
                 workspace_id: this.form.workspaceId,
             };
             const res = await window.pqlApi.fetch('/api/admin/api-keys', {
@@ -293,6 +305,7 @@ window.apiKeyCreate = function () {
                 this.form.name = '';
                 this.form.supervisor = false;
                 this.form.auditor = false;
+                this.form.lineageInbound = false;
             } else {
                 this.error = res.error || 'Failed to create key.';
             }

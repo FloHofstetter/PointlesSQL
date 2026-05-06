@@ -69,14 +69,17 @@ class PredecessorRef:
     Attributes:
         table: Fully-qualified UC name of the source row.
         row_id: ``_lineage_row_id`` value on the source row.
-        op_id: ``agent_run_operations.id`` that produced this edge.
+        op_id: ``agent_run_operations.id`` that produced this edge,
+            or ``None`` for edges ingested from external producers via
+            ``POST /api/lineage/openlineage`` (Phase 40).
         run_id: PointlesSQL run UUID associated with the edge, or
-            ``None`` when the join row is missing.
+            ``None`` when the join row is missing OR when the edge was
+            ingested from an external producer.
     """
 
     table: str
     row_id: str
-    op_id: int
+    op_id: int | None
     run_id: str | None
 
 
@@ -140,9 +143,11 @@ class ColumnPredecessorRef:
             ``None`` for ``unknown_origin`` edges.
         column: Source column name, or ``None`` for
             ``unknown_origin`` edges.
-        op_id: ``agent_run_operations.id`` that produced this edge.
+        op_id: ``agent_run_operations.id`` that produced this edge,
+            or ``None`` for edges ingested from external producers via
+            ``POST /api/lineage/openlineage`` (Phase 40).
         run_id: PointlesSQL run UUID, or ``None`` when the join row
-            is missing.
+            is missing OR when the edge was ingested externally.
         transform_kind: How the source feeds the target.
         transform_detail: Optional context (see
             :class:`ColumnEdgeSpec`).
@@ -150,7 +155,7 @@ class ColumnPredecessorRef:
 
     table: str | None
     column: str | None
-    op_id: int
+    op_id: int | None
     run_id: str | None
     transform_kind: str
     transform_detail: str | None

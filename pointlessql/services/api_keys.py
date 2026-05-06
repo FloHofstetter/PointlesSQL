@@ -57,6 +57,7 @@ class KeyEntry:
     name: str
     supervisor: bool
     auditor: bool = False
+    lineage_inbound: bool = False
     workspace_id: int = 1
 
 
@@ -97,26 +98,27 @@ def invalidate_cache() -> None:
 # ---------------------------------------------------------------------------
 
 
-def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool]]:
-    """Parse ``POINTLESSQL_API_KEYS`` env value into ``{name: (secret, supervisor, auditor)}``.
+def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool, bool]]:
+    """Parse ``POINTLESSQL_API_KEYS`` env value.
 
     Format:
 
     - ``name:secret`` — non-privileged agent key (legacy default).
     - ``name:secret:supervisor`` — supervisor scope.
     - ``name:secret:auditor`` — auditor scope.
+    - ``name:secret:lineage_inbound`` — Phase-40 federation scope.
 
     Anything else as the third token raises so a typo can't silently
     grant a privileged scope.  A single env entry maps to exactly one
-    scope; a key needing both scopes is provisioned via the admin
+    scope; a key needing multiple scopes is provisioned via the admin
     JSON CRUD instead.
 
     Args:
         raw: The raw env-var value, or ``None`` when unset.
 
     Returns:
-        Mapping ``{name: (secret, supervisor, auditor)}``.  Empty
-        when *raw* is missing or whitespace-only.
+        Mapping ``{name: (secret, supervisor, auditor, lineage_inbound)}``.
+        Empty when *raw* is missing or whitespace-only.
 
     Raises:
         ValueError: When a pair lacks a colon, has empty name/secret,
@@ -125,7 +127,7 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool]]:
     """
     if raw is None or not raw.strip():
         return {}
-    out: dict[str, tuple[str, bool, bool]] = {}
+    out: dict[str, tuple[str, bool, bool, bool]] = {}
     for chunk in raw.replace(",", "\n").splitlines():
         pair = chunk.strip()
         if not pair:
@@ -134,8 +136,9 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool]]:
         if len(parts) < 2 or len(parts) > 3:
             raise ValueError(
                 f"POINTLESSQL_API_KEYS entry {pair!r} must be in "
-                f"'name:secret', 'name:secret:supervisor', or "
-                f"'name:secret:auditor' form"
+                f"'name:secret', 'name:secret:supervisor', "
+                f"'name:secret:auditor', or "
+                f"'name:secret:lineage_inbound' form"
             )
         name = parts[0].strip()
         secret = parts[1].strip()
@@ -143,20 +146,24 @@ def parse_keys(raw: str | None) -> dict[str, tuple[str, bool, bool]]:
             raise ValueError(f"POINTLESSQL_API_KEYS entry {pair!r} has an empty name or secret")
         supervisor = False
         auditor = False
+        lineage_inbound = False
         if len(parts) == 3:
             scope = parts[2].strip().lower()
             if scope == "supervisor":
                 supervisor = True
             elif scope == "auditor":
                 auditor = True
+            elif scope == "lineage_inbound":
+                lineage_inbound = True
             else:
                 raise ValueError(
                     f"POINTLESSQL_API_KEYS entry {pair!r} has unknown "
-                    f"scope {scope!r} — only 'supervisor' and 'auditor' are recognised"
+                    f"scope {scope!r} — only 'supervisor', 'auditor', "
+                    f"and 'lineage_inbound' are recognised"
                 )
         if name in out:
             raise ValueError(f"POINTLESSQL_API_KEYS entry name {name!r} is duplicated")
-        out[name] = (secret, supervisor, auditor)
+        out[name] = (secret, supervisor, auditor, lineage_inbound)
     return out
 
 
@@ -189,7 +196,7 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
     inserted = 0
     with session_factory() as session:
         existing_names = {n for (n,) in session.execute(select(ApiKey.name)).all()}
-        for name, (secret, supervisor, auditor) in parsed.items():
+        for name, (secret, supervisor, auditor, lineage_inbound) in parsed.items():
             if name in existing_names:
                 continue
             session.add(
@@ -199,6 +206,7 @@ def bootstrap_from_env(session_factory: _SessionFactory, env: dict[str, str] | N
                     secret_prefix=secret[:8],
                     supervisor=supervisor,
                     auditor=auditor,
+                    lineage_inbound=lineage_inbound,
                     created_at=datetime.now(UTC),
                     workspace_id=1,
                 )
@@ -223,6 +231,7 @@ def create_api_key(
     name: str,
     supervisor: bool = False,
     auditor: bool = False,
+    lineage_inbound: bool = False,
     created_by_user_id: int | None = None,
     workspace_id: int = 1,
 ) -> tuple[ApiKey, str]:
@@ -237,8 +246,11 @@ def create_api_key(
         name: Unique label (max 64 chars).
         supervisor: When ``True``, the key may invoke supervisor-scope
             routes.
-        auditor: When ``True``, the key may invoke audit-read routes
-           .  Independent of ``supervisor``.
+        auditor: When ``True``, the key may invoke audit-read routes.
+            Independent of ``supervisor``.
+        lineage_inbound: When ``True``, the key may POST OpenLineage
+            events to ``/api/lineage/openlineage``.  Independent of
+            the other scopes.
         created_by_user_id: Admin who created the key.  ``None`` for
             CLI-provisioned or env-var-bootstrapped keys.
         workspace_id: Workspace the key pins to.  Defaults to the
@@ -273,6 +285,7 @@ def create_api_key(
             secret_prefix=plaintext[:8],
             supervisor=supervisor,
             auditor=auditor,
+            lineage_inbound=lineage_inbound,
             created_at=datetime.now(UTC),
             created_by_user_id=created_by_user_id,
             workspace_id=workspace_id,
@@ -379,6 +392,7 @@ def verify_bearer(
             name=row.name,
             supervisor=bool(row.supervisor),
             auditor=bool(row.auditor),
+            lineage_inbound=bool(getattr(row, "lineage_inbound", False)),
             workspace_id=int(row.workspace_id),
         )
         # Best-effort last-used update — failures don't affect auth.

@@ -611,8 +611,13 @@ def _column_edge_key(row: LineageColumnMap) -> _ColumnEdgeKey:
     just the column-pair prevents two distinct ops touching the
     same columns from collapsing into one alignment slot.
     """
+    # Run-scoped diffs only ever see rows from local agent runs, so
+    # ``op_id`` is always non-NULL in this code path.  The Phase-40
+    # nullability on the column allows external-producer rows that
+    # are explicitly filtered out before this helper runs; coerce
+    # ``None`` to 0 defensively in case a future caller drifts.
     return (
-        row.op_id,
+        int(row.op_id) if row.op_id is not None else 0,
         row.source_table or "",
         row.source_column or "",
         row.target_table,

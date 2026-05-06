@@ -103,21 +103,36 @@ class LineageRowEdge(Base):
         Index("ix_lineage_row_edges_op", "op_id"),
         Index("ix_lineage_row_edges_source_model_uri", "source_model_uri"),
         Index("ix_lineage_row_edges_workspace_run", "workspace_id", "run_id"),
+        Index("ix_lineage_row_edges_producer", "producer"),
+        Index("ix_lineage_row_edges_target_producer", "target_table", "producer"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
-    run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
-    op_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("agent_run_operations.id"), nullable=False
+    # Phase-40: ``run_id`` and ``op_id`` are nullable for edges
+    # ingested from external producers via
+    # ``POST /api/lineage/openlineage``.  Local PQL inserts always
+    # populate both.  Read paths that filter by ``run_id`` naturally
+    # ignore inbound rows; table-scoped reads pick up both.
+    run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("agent_runs.id"), nullable=True
+    )
+    op_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("agent_run_operations.id"), nullable=True
     )
     source_table: Mapped[str] = mapped_column(String(255), nullable=False)
     source_row_id: Mapped[str] = mapped_column(String(64), nullable=False)
     target_table: Mapped[str] = mapped_column(String(255), nullable=False)
     target_row_id: Mapped[str] = mapped_column(String(64), nullable=False)
     source_model_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Phase-40: ``producer`` is the OpenLineage ``job.namespace`` of
+    # an inbound event; ``NULL`` denotes "produced by this install".
+    # ``external_event_id`` carries the OL ``run.runId`` for inbound
+    # de-dupe and is ``NULL`` for locally-emitted edges.
+    producer: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    external_event_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -230,6 +245,8 @@ class LineageColumnMap(Base):
         Index("ix_lineage_column_map_target", "target_table", "target_column"),
         Index("ix_lineage_column_map_source", "source_table", "source_column"),
         Index("ix_lineage_column_map_workspace_run", "workspace_id", "run_id"),
+        Index("ix_lineage_column_map_producer", "producer"),
+        Index("ix_lineage_column_map_target_producer", "target_table", "producer"),
         CheckConstraint(
             "transform_kind IN ('identity','rename','derived','aggregate',"
             "'unknown_origin','sql_select','sql_function','sql_unknown')",
@@ -241,9 +258,13 @@ class LineageColumnMap(Base):
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
-    run_id: Mapped[str] = mapped_column(String(36), ForeignKey("agent_runs.id"), nullable=False)
-    op_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("agent_run_operations.id"), nullable=False
+    # Phase-40: nullable for inbound-only edges; same rationale as
+    # :class:`LineageRowEdge`.
+    run_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("agent_runs.id"), nullable=True
+    )
+    op_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("agent_run_operations.id"), nullable=True
     )
     source_table: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source_column: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -251,6 +272,8 @@ class LineageColumnMap(Base):
     target_column: Mapped[str] = mapped_column(String(255), nullable=False)
     transform_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     transform_detail: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    producer: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    external_event_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 

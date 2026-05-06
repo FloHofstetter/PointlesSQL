@@ -198,6 +198,39 @@ def require_auditor(request: Request) -> None:
     )
 
 
+def require_lineage_inbound(request: Request) -> None:
+    """Raise :class:`AuthorizationError` if the caller lacks lineage_inbound scope.
+
+    Phase 40: ``POST /api/lineage/openlineage`` is the inbound
+    lineage ingestion route.  Federation producers (Kafka-Connect,
+    Airflow, dbt-cloud, peer PointlesSQL installs) carry a
+    Bearer key minted with ``lineage_inbound=True``.  Supervisor /
+    auditor scopes deliberately do **not** pass — they grant read
+    access to existing audit data, which is orthogonal to the right
+    to *write* federated lineage edges.  Cookie-authenticated admins
+    pass: admin is strictly stronger.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Raises:
+        AuthorizationError: When the caller is neither an admin
+            nor authenticated via a Bearer key with the
+            lineage_inbound flag set.
+    """
+    if getattr(request.state, "api_key_lineage_inbound", False):
+        return
+    user = get_user(request)
+    if user.get("is_admin"):
+        return
+    raise AuthorizationError(
+        principal=user.get("email", ""),
+        privilege="lineage_inbound",
+        securable_type="system",
+        full_name="lineage_inbound",
+    )
+
+
 def current_workspace_id(request: Request) -> int:
     """Return the active workspace id resolved by :func:`auth_middleware`.
 

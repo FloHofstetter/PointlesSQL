@@ -108,7 +108,7 @@ def _predecessor_to_dict(
         ``run_id`` keys.  ``op_name`` is ``None`` when the join row
         is missing (deleted run, FK orphan).
     """
-    meta = op_meta.get(pred.op_id)
+    meta = op_meta.get(pred.op_id) if pred.op_id is not None else None
     return {
         "table": pred.table,
         "row_id": pred.row_id,
@@ -339,7 +339,8 @@ def _collect_op_ids(steps: list[LineageStep]) -> set[int]:
         if step.op_id is not None:
             ids.add(step.op_id)
         for pred in step.predecessors:
-            ids.add(pred.op_id)
+            if pred.op_id is not None:
+                ids.add(pred.op_id)
     return ids
 
 
@@ -478,7 +479,7 @@ def _column_predecessor_to_dict(
         Dict with ``table`` / ``column`` / ``op_id`` / ``op_name`` /
         ``run_id`` / ``transform_kind`` / ``transform_detail`` keys.
     """
-    meta = op_meta.get(pred.op_id)
+    meta = op_meta.get(pred.op_id) if pred.op_id is not None else None
     return {
         "table": pred.table,
         "column": pred.column,
@@ -531,7 +532,8 @@ def _collect_column_op_ids(steps: list[ColumnTraceStep]) -> set[int]:
         if step.op_id is not None:
             ids.add(step.op_id)
         for pred in step.predecessors:
-            ids.add(pred.op_id)
+            if pred.op_id is not None:
+                ids.add(pred.op_id)
     return ids
 
 
