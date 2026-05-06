@@ -3748,12 +3748,16 @@ PointlesSQL
 │   │       12 import sites + 7 test files keep working unchanged.
 │   │       58 lineage tests + 1478 SQLite suite green.
 │   │
-│   ├── Sprint 35.3 — Split ``services/audit_fts.py``        ⏳ planned
-│   │       973 LOC → ``_audit_fts_sqlite.py`` (FTS5 virtual table
-│   │       + triggers, ~210 LOC), ``_audit_fts_postgres.py``
-│   │       (tsvector + GIN + PL/pgSQL triggers, ~300 LOC), public
-│   │       facade keeps ``is_available`` / ``search`` /
-│   │       ``install_index`` / ``rebuild_index``.
+│   ├── Sprint 35.3 — Split ``services/audit_fts.py``        ✅ closed 2026-05-06
+│   │       973 LOC → ``services/audit_fts/`` package:
+│   │       ``__init__.py`` (public API + dispatcher + sanitiser
+│   │       + time-filter), ``_sqlite.py`` (~330 LOC FTS5 DDL +
+│   │       triggers + MATCH search + rebuild), ``_postgres.py``
+│   │       (~330 LOC tsvector + GIN + PL/pgSQL triggers +
+│   │       ts_rank search + ts_headline snippets + rebuild).
+│   │       Old ``audit_fts.py`` removed; package's ``__init__.py``
+│   │       exposes the same module name so all import sites keep
+│   │       working.  25 audit-fts tests + 1478 SQLite suite green.
 │   │
 │   ├── Sprint 35.4 — Extract ``run_view.html`` partials     ⏳ planned
 │   │       1467 LOC → 7 includes (header / metadata / conformance

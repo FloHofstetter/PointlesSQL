@@ -6,6 +6,32 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 35.3 closed (2026-05-06)** — Targeted modularization: split
+  ``pointlessql/services/audit_fts.py`` (973 LOC) per dialect into a
+  ``pointlessql/services/audit_fts/`` package.  ``__init__.py`` keeps
+  the public surface (``is_available`` / ``search`` /
+  ``install_index`` / ``rebuild_index``), the dialect dispatcher,
+  the query sanitiser, the time-filter post-processor, and the
+  ``Axis`` / ``VALID_AXES`` typing.  ``_sqlite.py`` (~330 LOC) owns
+  the FTS5 virtual-table DDL, the per-source trigger generation
+  (5 ``CREATE TRIGGER`` axes × 3 events each), the ``MATCH``-based
+  search, and the rebuild path.  ``_postgres.py`` (~330 LOC) owns
+  the ``audit_search_index`` table layout, the per-axis PL/pgSQL
+  upsert + delete trigger functions, the ``ts_rank`` /
+  ``plainto_tsquery`` search with ``ts_headline`` snippets, and the
+  same rebuild path.  Cross-dialect parity helpers
+  (``_merge_pg_marks`` for snippet-mark normalization) live with
+  the PG layer.  ``services/audit_fts.py`` was deleted (replaced by
+  the package); all three importing call sites
+  (``audit_search_routes``, ``cli/migrate_to_postgres``, two test
+  files) keep their ``from pointlessql.services import audit_fts``
+  pattern unchanged because the package's ``__init__.py`` exposes
+  the same name.  Behaviour byte-identical — refactor only.
+  Verification: 25 audit-fts tests green
+  (``test_audit_fts`` + ``test_agent_runs_workspace_isolation``);
+  1478 SQLite suite tests pass; pyright errors stay 0, warnings
+  unchanged at 531; ruff + pydoclint clean.
+
 - **Sprint 35.2 closed (2026-05-06)** — Targeted modularization: split
   ``pointlessql/services/lineage_edges.py`` (1137 LOC) into a
   per-stream ``pointlessql/services/lineage/`` subpackage.
