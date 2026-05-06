@@ -249,6 +249,25 @@ class DBTExecutor:
         """
         return await self._run("deps")
 
+    async def seed(self, models: list[str] | None = None) -> DBTRunResult:
+        """Run ``dbt seed`` to materialise CSV seeds as duckdb tables.
+
+        Models that ``ref()`` a seed (e.g. the sample project's
+        ``bronze_raw`` referencing ``orders.csv``) need this to have
+        run at least once before ``dbt run`` will succeed.
+
+        Args:
+            models: Optional ``--select`` filter list of seed names.
+
+        Returns:
+            DBTRunResult: Exit code + output; ``run_results.json``
+                receives one entry per executed seed.
+        """
+        args: list[str] = ["seed"]
+        if models:
+            args += ["--select", " ".join(models)]
+        return await self._run(*args)
+
     async def run(
         self,
         models: list[str] | None = None,

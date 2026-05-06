@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: bronze_raw
+    description: "Typed copy of the raw orders seed."
+    columns:
+      - name: id
+        description: "Stable order identifier."
+        tests:
+          - not_null
+          - unique
+      - name: amount
+        description: "Order amount in EUR; bronze keeps zero-amount rows for audit."
+        tests:
+          - not_null
+      - name: status
+        description: "Lifecycle state of the order."
+        tests:
+          - accepted_values:
+              values: ['pending', 'completed', 'cancelled']
+
+  - name: silver_clean
+    description: "Bronze rows with non-zero amount."
+    columns:
+      - name: id
+        description: "Foreign key to bronze_raw.id."
+        tests:
+          - relationships:
+              to: ref('bronze_raw')
+              field: id
+
+  - name: gold_summary
+    description: "Per-status aggregate of cleaned orders."

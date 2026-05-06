@@ -1,0 +1,11 @@
+id,amount,status
+1,49.95,pending
+2,12.00,completed
+3,250.00,completed
+4,7.50,cancelled
+5,99.99,pending
+6,0.00,cancelled
+7,150.00,completed
+8,33.33,pending
+9,8.99,completed
+10,75.00,completed

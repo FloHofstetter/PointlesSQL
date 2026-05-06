@@ -1,0 +1,7 @@
+pointlessql_demo:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('POINTLESSQL_DBT_DEMO_DUCKDB', '/tmp/pointlessql_dbt_demo.duckdb') }}"
+      threads: 1

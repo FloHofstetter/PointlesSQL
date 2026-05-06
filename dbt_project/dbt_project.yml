@@ -1,0 +1,18 @@
+name: pointlessql_demo
+version: 1.0.0
+config-version: 2
+
+profile: pointlessql_demo
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  pointlessql_demo:
+    +materialized: table
+
+seeds:
+  pointlessql_demo:
+    +quote_columns: false
