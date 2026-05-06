@@ -3,7 +3,7 @@
 Single point of contact between the on-disk ``.py`` notebook source
 of truth and the HTTP layer that serves cells to the client.
 
-Three invariants (ADR 0001):
+Three invariants:
 
 * **On-disk format is jupytext Percent.** Every cell boundary is a
   ``# %%`` marker (or one of the aliases jupytext parses: ``# ---``,

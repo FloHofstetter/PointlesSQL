@@ -1,15 +1,14 @@
 """Best-effort emission of OpenLineage events to soyuz-catalog.
 
- .  Every successful PQL primitive call inside an
-agent run emits one ``OpenLineage`` ``RunEvent`` to soyuz so the
-table-level lineage graph (``soyuz_catalog.lineage_runs`` +
-``lineage_edges``, see soyuz  / ADR-0008) auto-populates.
-The cross-reference lives in the ``runId`` field — soyuz strips
-hyphens to derive ``LineageRun.id``, so a 36-char PointlesSQL
-``agent_run_id`` becomes the 32-char soyuz primary key without any
-extra mapping table.
+Every successful PQL primitive call inside an agent run emits one
+``OpenLineage`` ``RunEvent`` to soyuz so the table-level lineage
+graph (``soyuz_catalog.lineage_runs`` + ``lineage_edges``)
+auto-populates.  The cross-reference lives in the ``runId`` field
+— soyuz strips hyphens to derive ``LineageRun.id``, so a 36-char
+PointlesSQL ``agent_run_id`` becomes the 32-char soyuz primary key
+without any extra mapping table.
 
- extends emission with two optional output facets:
+Emission also carries two optional output facets:
 
 * ``columnLineage`` — OpenLineage 1.x standard.  Built from the
    ``LineageColumnMap`` rows for the same op.

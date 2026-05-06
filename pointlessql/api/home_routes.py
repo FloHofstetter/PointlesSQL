@@ -208,9 +208,8 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
             # ``<template x-for>`` inside ``<svg>`` doesn't work —
             # ``<template>.content`` is HTML-namespaced so inner
             # ``<rect>`` elements get parsed as unknown HTML, leaving
-            # the bars unbound (BUG-32-01 found during a playbook
-            # replay). Moving the branch here keeps the template a
-            # plain Jinja ``{% for %}`` loop.
+            # the bars unbound. Moving the branch here keeps the
+            # template a plain Jinja ``{% for %}`` loop.
             for bucket in days:
                 rate = bucket["rate"]
                 if rate is None:

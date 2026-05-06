@@ -200,9 +200,9 @@ class ValueChangeSpec:
 def workspace_id_for_op(session_factory: sessionmaker[Session], op_id: int | None) -> int:
     """Return the workspace_id of the parent agent_run_operation, or 1.
 
-    Phase 28.1b — every lineage row inherits its workspace from the
-    op that created it.  Best-effort: a missing op_id (or DB hiccup)
-    falls back to the seeded default workspace so a row can still be
+    Every lineage row inherits its workspace from the op that
+    created it.  Best-effort: a missing op_id (or DB hiccup) falls
+    back to the seeded default workspace so a row can still be
     written rather than dropped.
 
     Args:

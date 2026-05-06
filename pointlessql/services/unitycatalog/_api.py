@@ -206,7 +206,7 @@ def wrap_catalog_errors[T](
 ) -> Callable[..., Coroutine[Any, Any, T]]:
     """Wrap an async method so transport + client errors become domain exceptions.
 
-    Mapping (BUG-22-01 + BUG-22-02):
+    Mapping:
 
     - soyuz 4xx responses surface as ``ValidationError`` (422) or
       ``CatalogNotFoundError`` (404) depending on the exact status,

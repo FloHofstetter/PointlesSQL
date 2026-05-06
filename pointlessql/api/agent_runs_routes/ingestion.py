@@ -158,8 +158,8 @@ async def api_create_agent_run(
     else:
         started_at = datetime.now(UTC)
 
-    # Phase 28.1a — every new agent_run lands in the workspace the
-    # request resolved to.  The middleware already attached
+    # Every new agent_run lands in the workspace the request
+    # resolved to.  The middleware already attached
     # request.state.workspace_id (with the X-Workspace > api_key pin
     # > cookie > user.default > 1 priority chain).  The FK column
     # cascades to agent_run_sources via explicit assignment.

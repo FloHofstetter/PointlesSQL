@@ -48,8 +48,8 @@ class SavedAuditQuery(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — workspace-
-            scoped audit-cockpit bookmarks.  Starter rows seed in
+        workspace_id: FK to :class:`Workspace`.  Workspace-scoped
+            audit-cockpit bookmarks.  Starter rows seed in
             workspace=1.
         slug: URL-visible identifier, unique across all rows.
         title: Human-readable name.
@@ -82,9 +82,9 @@ class SavedAuditQuery(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — workspace-scoped audit-cockpit bookmarks.  Starter
-    # rows seed in workspace=1; future workspaces start with an empty
-    # set their admin can populate (or copy from default).
+    # Workspace-scoped audit-cockpit bookmarks.  Starter rows seed in
+    # workspace=1; future workspaces start with an empty set their
+    # admin can populate (or copy from default).
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

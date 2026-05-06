@@ -3,9 +3,9 @@
 Owns the admin-gated routes that surface the install-global
 operator tooling:
 
-* ``GET /admin`` (HTML) — Sprint 33.1 landing card-grid linking
-  to every operator surface.  Cheap to render: aggregates a few
-  COUNT queries, no joins.
+* ``GET /admin`` (HTML) — landing card-grid linking to every
+  operator surface.  Cheap to render: aggregates a few COUNT
+  queries, no joins.
 * ``GET /admin/audit`` (HTML) — filterable list view over
   ``audit_log`` with a 1000-row newest-first cap and the same
   chip-filter Alpine component the ``/jobs`` page uses, so
@@ -55,7 +55,7 @@ def _templates(request: Request) -> Jinja2Templates:
 
 @router.get("/admin", response_class=HTMLResponse)
 async def admin_index(request: Request) -> HTMLResponse:
-    """Render the Sprint 33.1 admin landing card-grid.
+    """Render the admin landing card-grid.
 
     Aggregates a small set of inexpensive COUNT queries so each
     card can render a glance-level badge (active workspace count,
@@ -118,7 +118,7 @@ async def admin_index(request: Request) -> HTMLResponse:
 
 @router.get("/admin/review-destinations", response_class=HTMLResponse)
 async def admin_review_destinations_index(request: Request) -> HTMLResponse:
-    """Render the Sprint 33.3 review-destinations management page.
+    """Render the review-destinations management page.
 
     Reads the full ``review_destinations`` table plus the workspace
     list (so the workspace-filter chips can show slugs rather than
@@ -192,7 +192,7 @@ async def admin_review_destinations_index(request: Request) -> HTMLResponse:
 
 @router.get("/admin/audit-sinks", response_class=HTMLResponse)
 async def admin_audit_sinks_index(request: Request) -> HTMLResponse:
-    """Render the Sprint 33.2 audit-sinks management page.
+    """Render the audit-sinks management page.
 
     Reads the full ``audit_sinks`` table plus the workspace list
     (so the workspace-filter chips can show slugs rather than
@@ -276,7 +276,7 @@ async def admin_audit_sinks_index(request: Request) -> HTMLResponse:
 
 @router.get("/admin/api-keys", response_class=HTMLResponse)
 async def admin_api_keys_index(request: Request, include_revoked: bool = False) -> HTMLResponse:
-    """Render the Sprint 33.4 API-keys management page.
+    """Render the API-keys management page.
 
     Lists every key (active by default; revoked rows shown when
     ``include_revoked=1``) joined with its workspace so the UI can
@@ -348,7 +348,7 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
 
 @router.get("/admin/system-info", response_class=HTMLResponse)
 async def admin_system_info_index(request: Request) -> HTMLResponse:
-    """Render the Sprint 33.4 system-info read-only panel.
+    """Render the system-info read-only panel.
 
     Aggregates four read-only sections: PII mode (active enum +
     hash-secret presence), API-key counts (active / revoked /

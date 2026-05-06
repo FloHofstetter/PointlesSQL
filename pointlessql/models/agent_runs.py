@@ -59,11 +59,11 @@ class AgentRun(Base):
 
     Attributes:
         id: UUIDv4 string supplied by the runtime on creation.
-        workspace_id: Workspace this run lives in (Phase 28.1a).  FK
-            to :class:`Workspace.id`.  Resolved from the request
+        workspace_id: Workspace this run lives in.  FK to
+            :class:`Workspace.id`.  Resolved from the request
             middleware (X-Workspace header > api_key pin > cookie >
             user.default > 1) at registration time and never
-            re-assigned.  Backfill = 1 for every pre-Phase-28 row.
+            re-assigned.  Backfill = 1 for every legacy row.
         principal: ``X-Principal`` header value, typically the user
             email the agent acts on behalf of.  Nullable so a purely
             background agent can still register.
@@ -112,13 +112,13 @@ class AgentRun(Base):
             active MLflow run (added in alembic q7m9o1p3r5t7 so
             ``/api/runs/{id}/ml-context`` can join to MLflow without
             a full scan).
-        anomaly_severity: Phase 18.6 — cached anomaly verdict for
-            the run's started-at day-bin (``ok``/``warn``/
-            ``critical``/``NULL``).  Set on terminal transition by
-            the run-finish handler and backfilled by alembic
-            migration ``x4t6u8v0w2y4``.  ``NULL`` when no verdict
-            has been computed yet (ingestion-time row).  Powers the
-            run-list badge column without re-running
+        anomaly_severity: Cached anomaly verdict for the run's
+            started-at day-bin (``ok``/``warn``/``critical``/
+            ``NULL``).  Set on terminal transition by the run-finish
+            handler and backfilled by alembic migration
+            ``x4t6u8v0w2y4``.  ``NULL`` when no verdict has been
+            computed yet (ingestion-time row).  Powers the run-list
+            badge column without re-running
             :func:`audit_aggregator.anomalies` per render.
         anomaly_metric: The cockpit metric that triggered the
             verdict in :attr:`anomaly_severity` (currently one of
@@ -136,10 +136,10 @@ class AgentRun(Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    # Phase 28.1a: every run lives in exactly one workspace.  The
-    # bootstrap migration backfills existing rows to id=1 and the
-    # column is NOT NULL afterwards so the audit / lineage / cockpit
-    # routes can rely on a non-null workspace filter.
+    # Every run lives in exactly one workspace.  The bootstrap
+    # migration backfills existing rows to id=1 and the column is
+    # NOT NULL afterwards so the audit / lineage / cockpit routes
+    # can rely on a non-null workspace filter.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -167,8 +167,8 @@ class AgentRun(Base):
     # is added in alembic q7m9o1p3r5t7 so /api/runs/{id}/ml-context can
     # join to MLflow without a full scan.
     mlflow_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    # Phase 18.6 anomaly cache — set by the run-finish hook and the
-    # alembic backfill in x4t6u8v0w2y4 so the runs-list badge can
-    # render without re-running the aggregator.
+    # Anomaly cache — set by the run-finish hook and the alembic
+    # backfill in x4t6u8v0w2y4 so the runs-list badge can render
+    # without re-running the aggregator.
     anomaly_severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
     anomaly_metric: Mapped[str | None] = mapped_column(String(64), nullable=True)

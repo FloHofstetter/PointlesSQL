@@ -1,4 +1,4 @@
-"""Admin CRUD for workspaces, members, and the soft-archive flow (Phase 28.6).
+"""Admin CRUD for workspaces, members, and the soft-archive flow.
 
 Six tenant-admin-gated JSON endpoints + one HTML cockpit page:
 

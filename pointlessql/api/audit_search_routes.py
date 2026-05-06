@@ -1,4 +1,4 @@
-"""HTML + JSON cockpit for cross-axis audit search (Phase 18.7).
+"""HTML + JSON cockpit for cross-axis audit search.
 
 ``GET /api/audit/search`` returns the FTS5 result as JSON for
 machine + Hermes consumers.  ``GET /audit/search`` renders the
@@ -64,9 +64,9 @@ async def api_audit_search(
     """Free-text search across the audit lake.
 
     Backed by SQLite FTS5 on a single virtual table populated by
-    triggers (Phase 18.7 alembic migration ``y5u7v9w1x3z5``).
-    Postgres deployments return ``available=false`` because the
-    migration is SQLite-only.
+    triggers (alembic migration ``y5u7v9w1x3z5``).  Postgres
+    deployments return ``available=false`` because the migration
+    is SQLite-only.
 
     Args:
         request: Incoming FastAPI request.
@@ -95,9 +95,9 @@ async def api_audit_search(
         raise ValidationError(f"axis must be one of {sorted(audit_fts.VALID_AXES)}")
     since_dt = _parse_iso8601("since", since)
     until_dt = _parse_iso8601("until", until)
-    # Phase 28.1a — scope the FTS5 result to the caller's resolved
-    # workspace.  Cross-workspace search lands as Sprint 28.7 (super-
-    # admin lens) and explicitly opts in via ``?workspace=all``.
+    # Scope the FTS5 result to the caller's resolved workspace.
+    # Cross-workspace search via the super-admin lens explicitly
+    # opts in through ``?workspace=all``.
     workspace_id = int(getattr(request.state, "workspace_id", 1))
     return audit_fts.search(
         request.app.state.session_factory,

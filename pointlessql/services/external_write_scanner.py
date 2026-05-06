@@ -154,12 +154,12 @@ def scan_table(
             if version_raw in attributed:
                 continue
             commit_ts = _parse_commit_timestamp(entry)
-            # Phase 28.1b — every unattributed write is attributed to
-            # the seeded default workspace (id=1) for now.  Sprint 28.3
-            # extends this to fan out one row per workspace whose pinned
-            # catalog covers the FQN; until then "default workspace owns
-            # every uncategorised commit" is the right zero-config
-            # answer.  The UNIQUE constraint widened to
+            # Every unattributed write is attributed to the seeded
+            # default workspace (id=1) for now.  A future change can
+            # fan out one row per workspace whose pinned catalog
+            # covers the FQN; until then "default workspace owns every
+            # uncategorised commit" is the right zero-config answer.
+            # The UNIQUE constraint widened to
             # (workspace_id, table_fqn, delta_version) so a future
             # multi-workspace install can keep this fan-out idempotent.
             row = UnattributedWrite(

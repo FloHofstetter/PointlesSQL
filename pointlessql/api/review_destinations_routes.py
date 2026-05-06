@@ -43,7 +43,7 @@ def _serialize(row: ReviewDestination) -> dict[str, Any]:
         min_severity, workspace_filter, created_at}``.  ``hmac_secret``
         itself is never returned post-create.  ``workspace_filter`` is
         ``None`` for install-global destinations or a list of
-        workspace IDs (Phase 29.2).
+        workspace IDs.
     """
     workspace_filter: list[int] | None
     if row.workspace_filter:

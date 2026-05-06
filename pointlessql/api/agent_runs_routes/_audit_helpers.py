@@ -86,18 +86,18 @@ def ensure_run_visible(factory: Any, run_id: str, *, workspace_id: int | None = 
     Hermes audit-reviewer that cites a stale ``run_id`` gets a
     clean ``CatalogNotFoundError`` rather than a hollow ``rows: []``.
 
-    Phase 28.1a: when *workspace_id* is supplied, runs from a
-    *different* workspace also surface as 404 — cross-workspace
-    audit-axis access is indistinguishable from "no such run" by
-    design (a leak through the error code would tell the caller
-    that a run with that UUID exists somewhere they can't see).
+    When *workspace_id* is supplied, runs from a *different*
+    workspace also surface as 404 — cross-workspace audit-axis
+    access is indistinguishable from "no such run" by design (a leak
+    through the error code would tell the caller that a run with
+    that UUID exists somewhere they can't see).
 
     Args:
         factory: Sessionmaker callable from ``app.state``.
         run_id: UUID of the run to load.
         workspace_id: Caller's resolved workspace.  ``None`` skips
             the workspace check, which is appropriate for the
-            super-admin cross-workspace lens (Sprint 28.7).
+            super-admin cross-workspace lens.
 
     Returns:
         Detached :class:`AgentRun` row.

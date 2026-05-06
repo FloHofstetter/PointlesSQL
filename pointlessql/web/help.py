@@ -175,8 +175,8 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/workspaces/",
     ),
-    # Sprint 23.1 — Catalog tree + table-detail.  Eight popovers
-    # that demystify the lineage / time-travel / column-statistics
+    # Catalog tree + table-detail popovers — eight entries that
+    # demystify the lineage / time-travel / column-statistics
     # surfaces a newcomer hits the moment they open a table.
     "catalog.what-is-a-catalog": HelpEntry(
         title="What is a catalog?",
@@ -254,9 +254,9 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/audit-trail/",
     ),
-    # Sprint 23.2 — Models index + detail.  Six anchors covering
-    # the registry, versions table, inference lineage, MLflow
-    # boundary and the compare-versions page.
+    # Models index + detail popovers — six anchors covering the
+    # registry, versions table, inference lineage, MLflow boundary
+    # and the compare-versions page.
     "models.what-is-the-registry": HelpEntry(
         title="What is the model registry?",
         body=(
@@ -317,9 +317,9 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/audit-trail/",
     ),
-    # Sprint 23.3 — Branches detail + audit cockpit + home.  The
-    # audit cockpit is the biggest single rollout target — anomaly
-    # cards, severities, FTS syntax, principal heatmap and the
+    # Branches detail + audit cockpit + home popovers.  The audit
+    # cockpit is the biggest rollout target — anomaly cards,
+    # severities, FTS syntax, principal heatmap and the
     # cross-workspace lens all currently muted.
     "audit.what-is-an-anomaly": HelpEntry(
         title="What is an anomaly?",
@@ -441,9 +441,9 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/audit-trail/",
     ),
-    # Sprint 23.4 — SQL editor + admin + settings.  Three SQL
-    # popovers, seven admin popovers covering the governance
-    # surfaces a tenant admin actually has to operate.
+    # SQL editor + admin + settings popovers.  Three SQL popovers
+    # plus seven admin popovers covering the governance surfaces a
+    # tenant admin actually has to operate.
     "sql.run-modes": HelpEntry(
         title="SQL run modes",
         body=(

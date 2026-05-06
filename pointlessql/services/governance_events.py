@@ -221,7 +221,7 @@ async def emit_governance_event(
             persisted to ``governance_events.workspace_id`` and
             threaded into :func:`dispatch_to_sinks` so a sink with a
             non-null ``workspace_filter`` only fires for matching
-            workspaces (Phase 29.1).
+            workspaces.
     """
     if event_type not in GOVERNANCE_EVENT_TYPES:
         logger.warning("emit_governance_event: ignoring unknown event_type %r", event_type)

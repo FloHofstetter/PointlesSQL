@@ -1,4 +1,4 @@
-"""Reverse-index ``runs by table`` queries (Phase 18.8).
+"""Reverse-index ``runs by table`` queries.
 
 The forward direction "what did this run touch?" is served by
 :attr:`AgentRun.tables_touched` and the per-op ``target_table``

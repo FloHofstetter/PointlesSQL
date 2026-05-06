@@ -8,13 +8,11 @@ write that bypassed every PQL primitive (raw
 ``deltalake.write_deltalake()``, Spark, ``cp`` of parquet, foreign
 tools).
 
- closes that blind spot detection-side.  The
-:mod:`pointlessql.services.external_write_scanner` walks
-``DeltaTable.history()`` per UC table and INSERT-OR-IGNOREs into
-``unattributed_writes`` for every commit not matched by an
-``agent_run_operations`` row.  Detection-only — no storage-level
-hard-block (that lives+ if a real customer asks; see
-``project_full_autonomous_audit_critical_path.md``).
+The :mod:`pointlessql.services.external_write_scanner` closes that
+blind spot detection-side: it walks ``DeltaTable.history()`` per UC
+table and INSERT-OR-IGNOREs into ``unattributed_writes`` for every
+commit not matched by an ``agent_run_operations`` row.  Detection-
+only — no storage-level hard-block ships with this module.
 """
 
 from __future__ import annotations
@@ -49,10 +47,10 @@ class UnattributedWrite(Base):
     Attributes:
         id: Auto-incremented primary key.
         workspace_id: Workspace this unattributed-write attribution
-            belongs to (Phase 28.1b).  The scanner fans out one row
-            per workspace whose pinned catalog covers the FQN; if
-            no workspace owns the catalog, attribution falls back to
-            the seeded default workspace (id=1).
+            belongs to.  The scanner fans out one row per workspace
+            whose pinned catalog covers the FQN; if no workspace
+            owns the catalog, attribution falls back to the seeded
+            default workspace (id=1).
         table_fqn: Three-part UC name the commit landed on
             (``catalog.schema.table``).
         delta_version: Numeric Delta version the commit produced.

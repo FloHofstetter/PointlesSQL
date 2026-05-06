@@ -1,9 +1,9 @@
 """Per-notebook ipykernel subprocess manager for the native editor.
 
 One ipykernel subprocess runs per ``(user_id, notebook_path)`` pair
-(ADR 0001 "kernel identity" decision: VSCode-style, not Jupyter-
-classic-style-per-tab). Two browser tabs of the same ``.py`` share
-one kernel, one namespace, one ``kernel_session_id``.
+— a VSCode-style identity model rather than Jupyter-classic-style-
+per-tab.  Two browser tabs of the same ``.py`` share one kernel,
+one namespace, one ``kernel_session_id``.
 
 The package is composed of three sibling modules:
 

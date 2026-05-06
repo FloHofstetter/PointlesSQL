@@ -1,7 +1,7 @@
 """Cross-run anomaly inbox state.
 
-Phase 18.6 turns the per-run anomaly chip into a cross-run inbox by
-persisting two pieces of state:
+Turns the per-run anomaly chip into a cross-run inbox by persisting
+two pieces of state:
 
 * The verdict itself (``severity``/``metric``) lives as two columns
   on :class:`AgentRun` so the run-list page can paint a badge
@@ -34,11 +34,11 @@ class AnomalyAck(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this ack belongs to (Phase 28.1b).
-            Two workspaces can independently ack the same metric
-            bin without colliding on the unique constraint
-            (workspace_id is the first column in the new compound
-            uniqueness so the cross-workspace pair is allowed).
+        workspace_id: Workspace this ack belongs to.  Two workspaces
+            can independently ack the same metric bin without
+            colliding on the unique constraint (workspace_id is the
+            first column in the compound uniqueness so the
+            cross-workspace pair is allowed).
         metric: Cockpit metric whose bin was acked (one of the
             :data:`audit_aggregator.VALID_METRICS` values, but stored
             as plain text so a future metric expansion does not require

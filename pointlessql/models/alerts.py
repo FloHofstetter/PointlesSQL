@@ -34,8 +34,8 @@ class Alert(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
-            alert lives in exactly one workspace.
+        workspace_id: FK to :class:`Workspace`.  Every alert lives
+            in exactly one workspace.
         slug: URL-safe identifier (unique across tenants).
         title: Human-readable name shown in the UI.
         saved_query_id: FK to :class:`SavedQuery` that produces the
@@ -63,7 +63,7 @@ class Alert(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — every alert lives in exactly one workspace.
+    # Every alert lives in exactly one workspace.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -159,7 +159,7 @@ class AlertEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — denormalised from parent Alert.
+    # Denormalised from parent Alert.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

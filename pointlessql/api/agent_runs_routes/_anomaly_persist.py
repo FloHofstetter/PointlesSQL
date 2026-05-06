@@ -1,13 +1,13 @@
 """Run-finish hook: persist the anomaly verdict onto ``agent_runs``.
 
-Phase 18.6 caches the per-run day-bin anomaly severity onto two
-columns on :class:`AgentRun` so the runs-list page can paint its
-badge without re-running :func:`audit_aggregator.anomalies` per
-render.  The hook runs after every terminal status transition
-(both the runtime-driven ``/api/agent-runs/{run_id}/finish`` and
-the admin-driven ``/api/agent-runs/{run_id}/deny``), in its own
-session so a verdict-compute failure cannot roll back the
-status transition itself.
+Caches the per-run day-bin anomaly severity onto two columns on
+:class:`AgentRun` so the runs-list page can paint its badge
+without re-running :func:`audit_aggregator.anomalies` per render.
+The hook runs after every terminal status transition (both the
+runtime-driven ``/api/agent-runs/{run_id}/finish`` and the
+admin-driven ``/api/agent-runs/{run_id}/deny``), in its own
+session so a verdict-compute failure cannot roll back the status
+transition itself.
 """
 
 from __future__ import annotations

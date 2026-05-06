@@ -11,10 +11,9 @@ class UserInfo(TypedDict):
     Built by :func:`pointlessql.services.auth.get_current_user` and
     attached to ``request.state.user`` by the auth middleware.
 
-    Phase 29.3 added ``is_supervisor`` and ``is_auditor`` so OIDC
-    group → scope mappings flow into ``require_supervisor`` /
-    ``require_auditor`` for session-cookie callers without requiring
-    a parallel API key.
+    ``is_supervisor`` and ``is_auditor`` let OIDC group → scope
+    mappings flow into ``require_supervisor`` / ``require_auditor``
+    for session-cookie callers without requiring a parallel API key.
     """
 
     id: int

@@ -1,8 +1,8 @@
 """Authorization enforcement for PointlesSQL.
 
-soyuz-catalog stores permission grants but does not enforce them
-(ADR-0005). PointlesSQL is the enforcement layer — this module
-checks effective permissions before each operation.
+soyuz-catalog stores permission grants but does not enforce them.
+PointlesSQL is the enforcement layer — this module checks effective
+permissions before each operation.
 """
 
 from __future__ import annotations

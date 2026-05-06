@@ -1,9 +1,9 @@
 """One ipykernel subprocess wrapped as :class:`KernelSession`.
 
 One ipykernel subprocess runs per ``(user_id, notebook_path)`` pair
-(ADR 0001 "kernel identity" decision: VSCode-style, not Jupyter-
-classic-style-per-tab). Two browser tabs of the same ``.py`` share
-one kernel, one namespace, one ``kernel_session_id``.
+— a VSCode-style identity model rather than Jupyter-classic-style-
+per-tab.  Two browser tabs of the same ``.py`` share one kernel,
+one namespace, one ``kernel_session_id``.
 
 This module owns the lifecycle + ZMQ pump tasks; the registry
 that maps ``(user_id, path) → KernelSession`` lives in

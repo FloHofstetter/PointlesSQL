@@ -95,7 +95,7 @@ def _hash_url(url: str) -> str:
 
 
 def _decode_workspace_filter(dest: ReviewDestination) -> set[int] | None:
-    """Decode the optional workspace-id allow-list (Phase 29.2).
+    """Decode the optional workspace-id allow-list.
 
     Args:
         dest: ORM row to read.
@@ -146,9 +146,9 @@ def _select_destinations(
         severity: The review's severity (``ok`` / ``warn`` / ``critical``).
         workspace_id: Workspace the review belongs to.  When supplied,
             destinations with a non-null ``workspace_filter`` that
-            excludes this id are skipped (Phase 29.2).  ``None``
-            disables workspace filtering (used by callers with
-            install-global semantics).
+            excludes this id are skipped.  ``None`` disables
+            workspace filtering (used by callers with install-global
+            semantics).
 
     Returns:
         Detached destination rows in primary-key order.

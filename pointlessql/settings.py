@@ -22,7 +22,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # ``Settings()`` instantiation (e.g. fresh settings built inside a
 # papermill worker that is racing another papermill's ``os.chdir``)
 # resolves to the same absolute path as the scheduler's startup-time
-# settings (BUG-28-02).
+# settings.
 _STARTUP_CWD = Path.cwd()
 
 # Repository root — derived from the location of this module on disk
@@ -30,7 +30,7 @@ _STARTUP_CWD = Path.cwd()
 # launched from.  ``settings.py`` lives at ``<repo>/pointlessql/``;
 # parent.parent is therefore ``<repo>/``.  Operators who want the
 # legacy CWD-relative behaviour can still override every default
-# via the matching env var (BUG-grand-09).
+# via the matching env var.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -72,15 +72,15 @@ class DatabaseSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_DB_")
 
-    # BUG-grand-09 — anchored to the repo root so the default DB
-    # location is stable no matter which CWD the server was started
-    # from.  Override via ``POINTLESSQL_DB_URL`` when a different
-    # location is needed (Docker volumes, multi-tenant installs).
+    # Anchored to the repo root so the default DB location is stable
+    # no matter which CWD the server was started from.  Override via
+    # ``POINTLESSQL_DB_URL`` when a different location is needed
+    # (Docker volumes, multi-tenant installs).
     url: str = f"sqlite:///{_PROJECT_ROOT / 'pointlessql.db'}"
 
-    # Sprint 30.4 — pool sizing.  Ignored on SQLite (StaticPool
-    # by default for ``:memory:``, or a tiny QueuePool for file
-    # DBs); applied to QueuePool on Postgres.
+    # Pool sizing.  Ignored on SQLite (StaticPool by default for
+    # ``:memory:``, or a tiny QueuePool for file DBs); applied to
+    # QueuePool on Postgres.
     pool_size: int = 5
     max_overflow: int = 10
     # Recycle connections every N seconds to dodge MITM proxies and
@@ -123,7 +123,7 @@ class AuthSettings(BaseSettings):
 
 
 class GroupMapping(BaseModel):
-    """One parsed entry from :attr:`OIDCSettings.group_map_raw` (Phase 29.3).
+    """One parsed entry from :attr:`OIDCSettings.group_map_raw`.
 
     Attributes:
         model_config: Pydantic configuration; ``frozen=True`` keeps
@@ -155,7 +155,7 @@ class OIDCSettings(BaseSettings):
     URL) and ``client_id`` to enable the SSO login path.  The
     ``client_secret`` may be omitted for PKCE-only public clients.
 
-    Phase 29.3 adds optional group → workspace + scope mapping.  Set
+    Optional group → workspace + scope mapping is also supported: set
     ``POINTLESSQL_OIDC_GROUP_MAP`` to a string like
     ``admins:ws=1,scopes=admin;data-team:ws=2,scopes=supervisor``
     and the OIDC login flow will route users into the named workspace
@@ -176,8 +176,7 @@ class OIDCSettings(BaseSettings):
     The default omits ``groups`` for back-compat with installs that
     rely on the install-default workspace.  Set to
     ``"openid email profile groups"`` (or your IdP's equivalent claim
-    scope) to flow group memberships into the login mapper.  Phase
-    29.3.
+    scope) to flow group memberships into the login mapper.
     """
     groups_claim_name: str = "groups"
     """Userinfo claim that carries the user's IdP group list.
@@ -186,14 +185,13 @@ class OIDCSettings(BaseSettings):
     ``cognito:groups`` for AWS Cognito, ``roles`` for Keycloak in some
     configurations, ``groups`` for Okta and Auth0.  Override via
     ``POINTLESSQL_OIDC_GROUPS_CLAIM_NAME`` if the default doesn't
-    match.  Phase 29.3.
+    match.
     """
     group_map_raw: str = ""
     """Group → workspace + scope mapping, semicolon-separated.
 
     Empty string disables the feature (every OIDC user lands in the
-    install-default workspace with no extra scopes — pre-29.3
-    behaviour).  Format::
+    install-default workspace with no extra scopes).  Format::
 
         group_a:ws=1,scopes=admin;group_b:ws=2,scopes=supervisor|auditor
 
@@ -201,7 +199,7 @@ class OIDCSettings(BaseSettings):
     user's default workspace alone).  ``scopes=`` accepts a
     pipe-separated subset of ``admin|supervisor|auditor`` or the empty
     string.  A typo at any layer raises ``RuntimeError`` at settings
-    construction.  Phase 29.3.
+    construction.
     """
 
     @computed_field  # type: ignore[prop-decorator]
@@ -213,8 +211,7 @@ class OIDCSettings(BaseSettings):
         passed through a docker-compose ``${VAR:-}`` fallback) should
         count as "not configured" — truthy check catches both ``None``
         and ``""`` so the SSO button stays hidden and ``/auth/sso``
-        does not attempt a discovery call with an empty URL
-        (BUG-23-01).
+        does not attempt a discovery call with an empty URL.
 
         Returns:
             bool: ``True`` iff both ``discovery_url`` and ``client_id``
@@ -249,7 +246,7 @@ class OIDCSettings(BaseSettings):
 
         Empty dict when the env var is unset / empty.  Each key is an
         IdP group name; the value is the parsed
-        :class:`GroupMapping`.  Phase 29.3.
+        :class:`GroupMapping`.
         """
         return getattr(self, "_parsed_group_map", {})
 
@@ -391,7 +388,7 @@ class JupyterSettings(BaseSettings):
     ``.resolve()`` calls are CWD-independent — critical because
     Papermill's ``cwd=`` argument does a process-wide ``os.chdir``
     that races with concurrent ``Path("notebooks").resolve()`` calls
-    in other papermill runs and the workspace service (BUG-28-02).
+    in other papermill runs and the workspace service.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_JUPYTER_")
@@ -416,9 +413,9 @@ class JupyterSettings(BaseSettings):
         to :data:`_STARTUP_CWD` (captured at module import, before any
         papermill tick can run) pins the absolute path at a value
         that's invariant across concurrent ``Settings()`` constructions
-        in papermill workers (BUG-28-02). ``resolve()`` on an already-
-        absolute path does not consult the current CWD, so the output
-        is deterministic.
+        in papermill workers. ``resolve()`` on an already-absolute path
+        does not consult the current CWD, so the output is
+        deterministic.
 
         Args:
             value: The raw path value from env or default.
@@ -623,7 +620,7 @@ class BranchSettings(BaseSettings):
     * ``cloud_strategy`` — how :func:`pql.branch` handles a parent
       schema whose ``storage_root`` is on object storage (``s3://``,
       ``gs://``, ``abfss://``, ``wasbs://``).  Cloud has no symlink
-      primitive so the zero-copy ideal from ADR-0003 is unavailable
+      primitive so the zero-copy local-FS path is unavailable
       there.  ``"error"`` (the default) refuses cloud branching
       outright; ``"deep_copy"`` opts into the bigger storage cost so
       branching works everywhere.  Local FS always uses the

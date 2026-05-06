@@ -412,7 +412,7 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
         session.add(job)
         # Flush-only, not commit: if DAG validation below fails, the
         # ``with factory() as session:`` context closes without commit
-        # and the job row never lands in the DB (BUG-23-02).
+        # and the job row never lands in the DB.
         session.flush()
 
         if tasks_payload:

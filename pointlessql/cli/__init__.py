@@ -1,4 +1,4 @@
-"""Operational CLI helpers (Sprint 30+).
+"""Operational CLI helpers.
 
 Currently houses :mod:`pointlessql.cli.migrate_to_postgres` — the
 operator-facing one-shot tool for porting an existing SQLite

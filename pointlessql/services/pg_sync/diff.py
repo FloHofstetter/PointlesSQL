@@ -122,9 +122,8 @@ def _columns_payload(pg_tbl: PgTable) -> list[dict[str, Any]]:
 
     ``type_json`` is a minimal JSON shape — name, type, nullable,
     empty metadata — because soyuz stores it verbatim on write and
-    round-trips it on read (ADR-0009). Keeping the JSON compact
-    avoids surprising anyone grepping the UC table for column
-    annotations.
+    round-trips it on read.  Keeping the JSON compact avoids
+    surprising anyone grepping the UC table for column annotations.
     """
     import json as _json
 

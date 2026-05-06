@@ -37,9 +37,9 @@ class Job(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
-            job is workspace-scoped; backfilled at migration time
-            from ``users[run_as_user_id].default_workspace_id``.
+        workspace_id: FK to :class:`Workspace`.  Every job is
+            workspace-scoped; backfilled at migration time from
+            ``users[run_as_user_id].default_workspace_id``.
         name: Unique human-readable name shown in the UI.
         cron_expr: 5-field cron expression evaluated by ``croniter``.
         run_as_user_id: FK to ``users.id`` — the scheduler builds an
@@ -71,7 +71,7 @@ class Job(Base):
     __table_args__ = (Index("ix_jobs_workspace_user", "workspace_id", "run_as_user_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — every job is workspace-scoped.  Backfilled from
+    # Every job is workspace-scoped.  Backfilled from
     # users[run_as_user_id].default_workspace_id at migration time.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
@@ -103,9 +103,8 @@ class JobRun(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
-            denormalised from parent :class:`Job` for workspace-
-            scoped run listings.
+        workspace_id: FK to :class:`Workspace`.  Denormalised from
+            parent :class:`Job` for workspace-scoped run listings.
         job_id: FK to ``jobs.id``.
         started_at: Timestamp when the executor was invoked.
         finished_at: Timestamp when the executor returned, or ``None``
@@ -126,8 +125,8 @@ class JobRun(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — denormalised from parent Job for workspace-scoped
-    # listings (admins see only their workspace's job_runs).
+    # Denormalised from parent Job for workspace-scoped listings
+    # (admins see only their workspace's job_runs).
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -153,8 +152,8 @@ class JobTask(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
-            denormalised from parent :class:`Job`.
+        workspace_id: FK to :class:`Workspace`.  Denormalised from
+            parent :class:`Job`.
         job_id: FK to ``jobs.id``.
         name: Human-readable task name, unique within the parent job.
         order: Ordinal within the job. Still written so existing rows
@@ -182,7 +181,7 @@ class JobTask(Base):
     __table_args__ = (Index("ix_job_tasks_workspace_job", "workspace_id", "job_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — denormalised from parent Job.
+    # Denormalised from parent Job.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -211,8 +210,8 @@ class TaskRun(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
-            denormalised from parent :class:`JobRun`.
+        workspace_id: FK to :class:`Workspace`.  Denormalised from
+            parent :class:`JobRun`.
         job_run_id: FK to ``job_runs.id`` — the parent run.
         task_id: FK to ``job_tasks.id`` — which node of the DAG.
         status: ``pending``, ``running``, ``succeeded``, ``failed``,
@@ -234,7 +233,7 @@ class TaskRun(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — denormalised from parent JobRun.
+    # Denormalised from parent JobRun.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -263,8 +262,8 @@ class JobLog(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 —
-            denormalised from parent :class:`JobRun`.
+        workspace_id: FK to :class:`Workspace`.  Denormalised from
+            parent :class:`JobRun`.
         job_run_id: FK to ``job_runs.id``.
         task_id: FK to ``job_tasks.id``, or ``None`` for run-scoped
             entries (lifecycle events that are not tied to one task).
@@ -278,7 +277,7 @@ class JobLog(Base):
     __table_args__ = (Index("ix_job_logs_workspace_ts", "workspace_id", "ts"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — denormalised from parent JobRun.
+    # Denormalised from parent JobRun.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

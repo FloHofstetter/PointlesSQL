@@ -179,8 +179,8 @@ def _load_user_info(session: Session, user_id: int) -> UserInfo | None:
 def _workspace_id_for_job(session: Session, job_id: int) -> int:
     """Return the parent job's workspace_id, or 1 on miss.
 
-    Phase 28.2 — JobRun rows denormalise their workspace from the
-    parent Job so the runs-list page can filter without a JOIN.
+    JobRun rows denormalise their workspace from the parent Job
+    so the runs-list page can filter without a JOIN.
     """
     from pointlessql.models import Job as _Job
 

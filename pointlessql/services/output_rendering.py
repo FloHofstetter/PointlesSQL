@@ -182,7 +182,7 @@ def _render_mime_bundle(data: dict[str, Any]) -> RenderedOutput:
     """Pick the richest representation from a mime bundle.
 
     Priority mirrors the historical browser renderer:
-    ``text/markdown`` (BUG-98-02) → ``text/html`` →
+    ``text/markdown`` → ``text/html`` →
     ``image/svg+xml`` → ``image/png`` → ``image/jpeg`` →
     ``application/json`` → ``text/plain``. ``ipywidgets`` placeholder
     is rendered as a notice card — live widget rendering is not

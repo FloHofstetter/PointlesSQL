@@ -64,8 +64,8 @@ async def agent_run_diff_page(
         align="content",
     )
     lineage_diff = run_diff.build_lineage_diff(factory, run_a_id=a, run_b_id=b)
-    # Phase 18.9 — cell-level + column-lineage edge diff.  Cleartext
-    # cells require admin; everyone else sees masked placeholders.
+    # Cell-level + column-lineage edge diff.  Cleartext cells
+    # require admin; everyone else sees masked placeholders.
     reveal = bool(get_user(request).get("is_admin"))
     value_changes_diff = run_diff.build_value_changes_diff(
         factory, run_a_id=a, run_b_id=b, reveal=reveal

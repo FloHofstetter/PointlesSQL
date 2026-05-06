@@ -48,11 +48,10 @@ logger = logging.getLogger(__name__)
 class KeyEntry:
     """The fields the middleware needs to authorise a Bearer request.
 
-    ``workspace_id`` arrived in Sprint 28.0: every API key now pins
-    to exactly one workspace, and Bearer-authed requests inherit
-    that workspace as their resolved context.  Existing keys
-    backfill to the default workspace (id=1) by the bootstrap
-    migration so this attribute is always populated.
+    Every API key pins to exactly one workspace, and Bearer-authed
+    requests inherit that workspace as their resolved context.
+    Existing keys backfill to the default workspace (id=1) by the
+    bootstrap migration so this attribute is always populated.
     """
 
     name: str
@@ -245,8 +244,8 @@ def create_api_key(
         workspace_id: Workspace the key pins to.  Defaults to the
             seeded ``default`` workspace (id=1) so single-tenant
             installs and existing automation keep working without
-            naming a workspace explicitly.  Sprint 28.6's admin UI
-            exposes a chooser at creation time.
+            naming a workspace explicitly.  The admin UI exposes a
+            chooser at creation time.
 
     Returns:
         ``(row, plaintext_secret)``.  The row is detached after

@@ -323,7 +323,7 @@ def record_operation(
 
     try:
         with session_factory() as session:
-            # Phase 28.1a — derive workspace_id from the parent run.
+            # Derive workspace_id from the parent run.
             # AgentRunOperation rows are scoped by the same workspace
             # as their owning AgentRun.  We fetch the parent's
             # workspace_id once and pass it through; the AuditUnavailableError

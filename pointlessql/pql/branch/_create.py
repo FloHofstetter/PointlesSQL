@@ -3,7 +3,7 @@
 Owns :func:`create_branch_schema` plus the table-cloning helpers and the
 ``pointlessql.branch.created.v1`` CloudEvent.
 
-Hybrid storage strategy (ADR-0003):
+Hybrid storage strategy:
 
 * Local filesystem (``file://`` or absolute path): symlink each parquet
   inside the branch's storage prefix, then synth a Delta log

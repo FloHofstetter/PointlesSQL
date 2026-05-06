@@ -15,11 +15,11 @@ class AuditLog(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace the action was performed in (Phase
-            28.1b).  Resolved from request.state by
-            :func:`audit.log_action` or supplied explicitly by
-            non-HTTP callers (CLI / scheduler).  Pre-Phase-28 rows
-            backfill to the seeded default workspace (id=1).
+        workspace_id: Workspace the action was performed in.
+            Resolved from request.state by :func:`audit.log_action`
+            or supplied explicitly by non-HTTP callers (CLI /
+            scheduler).  Legacy rows backfill to the seeded default
+            workspace (id=1).
         user_id: ID of the user who performed the action (no FK so
             entries survive user deletion).
         user_email: Email snapshot at time of action.

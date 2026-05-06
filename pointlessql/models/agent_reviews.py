@@ -58,12 +58,12 @@ class AgentReview(Base):
         run_id: FK to :class:`AgentRun`.  Nullable because the review
             itself runs as an agent_run, but historical imports +
             replays may not have a corresponding registered run.
-        workspace_id: Workspace the review belongs to (Phase 29.2).
-            Resolved from ``request.state.workspace_id`` at insert
-            time.  ``review_destinations.workspace_filter`` consults
-            this to scope fan-out per tenant; the default value of
-            ``1`` keeps install-global routing for any caller that
-            hasn't been threaded through yet.
+        workspace_id: Workspace the review belongs to.  Resolved
+            from ``request.state.workspace_id`` at insert time.
+            ``review_destinations.workspace_filter`` consults this
+            to scope fan-out per tenant; the default value of ``1``
+            keeps install-global routing for any caller that hasn't
+            been threaded through yet.
         kind: Discriminator — ``audit_review`` for
             the  daily anomaly review, ``model_promotion``
             for a champion/challenger swap.  Defaults to
@@ -141,9 +141,9 @@ class ReviewDestination(Base):
         min_severity: Lowest severity that triggers fan-out for this
             destination.  ``ok`` < ``warn`` < ``critical``.
         workspace_filter: Optional JSON-encoded list of workspace IDs
-            this destination serves (Phase 29.2).  ``None`` keeps
-            install-global fan-out — every workspace's reviews fire
-            this destination.  ``[1]`` restricts to reviews whose
+            this destination serves.  ``None`` keeps install-global
+            fan-out — every workspace's reviews fire this
+            destination.  ``[1]`` restricts to reviews whose
             ``workspace_id`` matches.  Mirrors the same shape on
             :class:`pointlessql.models.audit_sinks.AuditSink` for
             consistency at the admin surface.

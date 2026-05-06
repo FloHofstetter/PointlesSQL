@@ -130,9 +130,9 @@ def create_saved_query(
         description: Optional description.
         sql_text: The SQL to save.  Must be non-empty.
         is_shared: Whether the row is visible to other users.
-        workspace_id: Phase 28.2 — workspace this saved query
-            lives in.  Defaults to ``1`` for non-HTTP callers;
-            HTTP routes pass ``request.state.workspace_id``.
+        workspace_id: Workspace this saved query lives in.
+            Defaults to ``1`` for non-HTTP callers; HTTP routes
+            pass ``request.state.workspace_id``.
 
     Returns:
         The serialised row as a dict.

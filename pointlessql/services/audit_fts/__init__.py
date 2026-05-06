@@ -1,19 +1,19 @@
 """Free-text search across the audit lake (per-dialect split).
 
-The audit cockpit's ``GET /api/audit/search`` is dialect-portable
-since Sprint 30.1: a SQLite FTS5 virtual table on SQLite, a
-Postgres ``tsvector + GIN`` index on Postgres, both hidden behind
-the same :func:`search` entry point so the route layer doesn't
-have to care about backend specifics.
+The audit cockpit's ``GET /api/audit/search`` is dialect-portable:
+a SQLite FTS5 virtual table on SQLite, a Postgres ``tsvector +
+GIN`` index on Postgres, both hidden behind the same :func:`search`
+entry point so the route layer doesn't have to care about backend
+specifics.
 
-Layout summary (Sprint 35.3):
+Layout summary:
 
-* :mod:`._sqlite` — Phase-18.7 alembic ``y5u7v9w1x3z5`` creates a
-  single ``audit_search`` virtual table with five trigger-maintained
-  axes (``runs``, ``ops``, ``queries``, ``tool_calls``,
-  ``audit_log``).  All SQLite-side DDL + SQL generation lives here.
-* :mod:`._postgres` — Sprint-30.1 alembic ``hh8j0l2n4p6r`` creates
-  an ``audit_search_index`` table with a GIN index over a generated
+* :mod:`._sqlite` — alembic ``y5u7v9w1x3z5`` creates a single
+  ``audit_search`` virtual table with five trigger-maintained axes
+  (``runs``, ``ops``, ``queries``, ``tool_calls``, ``audit_log``).
+  All SQLite-side DDL + SQL generation lives here.
+* :mod:`._postgres` — alembic ``hh8j0l2n4p6r`` creates an
+  ``audit_search_index`` table with a GIN index over a generated
   ``tsvector`` column, fed by five PL/pgSQL trigger functions.
 
 Both surfaces return the same ``(axis, entity_id, run_id,
@@ -114,9 +114,9 @@ def search(
         until: Optional upper bound (exclusive).
         limit: Max rows returned (``rank``-ordered, most relevant
             first).
-        workspace_id: Phase 28 — restrict to a single workspace's
-            audit corpus.  ``None`` skips the filter (super-admin
-            cross-workspace lens).
+        workspace_id: Restrict to a single workspace's audit corpus.
+            ``None`` skips the filter (super-admin cross-workspace
+            lens).
 
     Returns:
         ``{"available", "query", "axis", "since", "until", "limit",

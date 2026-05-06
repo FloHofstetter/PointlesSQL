@@ -1,10 +1,10 @@
 """Audit-Read API backbone.
 
-Three read-only JSON endpoints over the audit data lake.  Every
-later 18.x sprint (cross-axis navigation, PII masking, saved
-queries, run-diff, anomaly highlighting) and every 19.x consumer
-(Hermes audit-read tools, Audit-Reviewer-Agent, Grafana panels)
-reads through this surface so the WHERE-clause logic lives in one
+Three read-only JSON endpoints over the audit data lake.  All the
+cockpit cross-axis navigation, PII masking, saved queries,
+run-diff, and anomaly highlighting — plus the Hermes audit-read
+tools, the Audit-Reviewer-Agent, and the Grafana panels — read
+through this surface so the WHERE-clause logic lives in one
 place.
 
 Self-tracking — every successful call inserts a synthetic
@@ -40,7 +40,7 @@ router = APIRouter(tags=["audit"])
 def _resolve_workspace_lens(request: Request, override: str | None) -> tuple[int | None, str]:
     """Pick the audit query's workspace filter from the optional override.
 
-    Sprint 28.7 — implements the super-admin lens.  Three outcomes:
+    Implements the super-admin lens.  Three outcomes:
 
     * ``override is None`` (or whitespace-only) — scope to the request's
       resolved workspace (``request.state.workspace_id``).  The default
@@ -147,9 +147,9 @@ def _record_self(
             "weirdly-empty result" can be re-traced via the params
             the cockpit caller actually sent).
         started_at: Wall-clock instant the route began handling.
-        read_kind: Sprint 28.7 — defaults to ``"audit_api"``; cross-
-            workspace lens calls pass ``"audit_api_cross_workspace"``
-            so the audit-of-audit aggregation can flag tenant-admin
+        read_kind: Defaults to ``"audit_api"``; cross-workspace
+            lens calls pass ``"audit_api_cross_workspace"`` so the
+            audit-of-audit aggregation can flag tenant-admin
             escalations into the god-eye view.
     """
     user = get_user(request)
@@ -185,7 +185,7 @@ async def api_audit_summary(
     table: str | None = Query(default=None, description="Three-part UC name target"),
     workspace: str | None = Query(
         default=None,
-        description="Sprint 28.7 — workspace lens. Slug or 'all'. Admin-only.",
+        description="Workspace lens. Slug or 'all'. Admin-only.",
     ),
 ) -> dict[str, Any]:
     """Single-dict counts of every cockpit metric.
@@ -201,11 +201,11 @@ async def api_audit_summary(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Three-part UC name applied to op/lineage metrics.
-        workspace: Sprint 28.7 — workspace lens.  ``None`` (default)
-            scopes to the request's current workspace.  ``"all"``
-            (admin-only) lifts the workspace filter for the
-            super-admin lens.  Any other slug (admin-only) targets
-            that named workspace.
+        workspace: Workspace lens.  ``None`` (default) scopes to the
+            request's current workspace.  ``"all"`` (admin-only)
+            lifts the workspace filter for the super-admin lens.
+            Any other slug (admin-only) targets that named
+            workspace.
 
     Returns:
         ``{"since", "until", "principal", "agent_id", "table",
@@ -265,7 +265,7 @@ async def api_audit_timeseries(
     table: str | None = Query(default=None),
     workspace: str | None = Query(
         default=None,
-        description="Sprint 28.7 — workspace lens. Slug or 'all'. Admin-only.",
+        description="Workspace lens. Slug or 'all'. Admin-only.",
     ),
 ) -> dict[str, Any]:
     """Time-binned series for one metric, optionally grouped.
@@ -282,7 +282,7 @@ async def api_audit_timeseries(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Three-part UC name filter.
-        workspace: Sprint 28.7 — workspace lens.  See
+        workspace: Workspace lens.  See
             :func:`api_audit_summary` for the resolution rules.
 
     Returns:
@@ -352,7 +352,7 @@ async def api_audit_anomalies(
     table: str | None = Query(default=None),
     workspace: str | None = Query(
         default=None,
-        description="Sprint 28.7 — workspace lens. Slug or 'all'. Admin-only.",
+        description="Workspace lens. Slug or 'all'. Admin-only.",
     ),
 ) -> dict[str, Any]:
     """One severity verdict per bin against an N-day rolling baseline.
@@ -373,7 +373,7 @@ async def api_audit_anomalies(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Three-part UC name filter.
-        workspace: Sprint 28.7 — workspace lens.  See
+        workspace: Workspace lens.  See
             :func:`api_audit_summary` for the resolution rules.
 
     Returns:
@@ -1013,9 +1013,9 @@ async def api_create_anomaly_ack(
             kind_clause = AnomalyAck.group_kind.is_(None)
         else:
             kind_clause = AnomalyAck.group_kind == group_kind
-        # Phase 28.1b — anomaly acks are workspace-scoped.  The
-        # UNIQUE constraint widened to include workspace_id so two
-        # workspaces can independently ack the same metric bin.
+        # Anomaly acks are workspace-scoped — the UNIQUE constraint
+        # includes workspace_id so two workspaces can independently
+        # ack the same metric bin.
         workspace_id = int(getattr(request.state, "workspace_id", 1))
         existing = session.scalar(
             select(AnomalyAck).where(

@@ -196,11 +196,10 @@ def build_authorize_url(
         state: Random state parameter for CSRF protection.
         nonce: Random nonce bound into the id_token.
         code_challenge: PKCE S256 code challenge.
-        scope: Space-separated OAuth2 scope string.  Defaults to the
-            pre-29.3 baseline (``"openid email profile"``); pass
-            :attr:`OIDCSettings.scope` to opt into the configurable
-            value (Phase 29.3) without forcing every existing caller
-            to thread it through.
+        scope: Space-separated OAuth2 scope string.  Defaults to
+            ``"openid email profile"``; pass :attr:`OIDCSettings.scope`
+            to opt into the configurable value without forcing every
+            existing caller to thread it through.
 
     Returns:
         str: Full authorization URL with query parameters.
@@ -322,7 +321,7 @@ def _resolve_group_mapping(
     groups: list[str],
     group_map: dict[str, GroupMapping],
 ) -> tuple[int | None, bool, bool, bool]:
-    """Apply :attr:`OIDCSettings.parsed_group_map` to *groups* (Phase 29.3).
+    """Apply :attr:`OIDCSettings.parsed_group_map` to *groups*.
 
     Args:
         factory: SQLAlchemy session factory — used to verify the
@@ -393,8 +392,8 @@ def find_or_create_oidc_user(
     The first user ever created becomes admin (same bootstrap rule as
     local registration).
 
-    Phase 29.3 — when *groups* + *group_map* are supplied, the
-    function additionally:
+    When *groups* + *group_map* are supplied, the function
+    additionally:
 
     * Persists the groups list to ``oidc_groups_json`` for audit
       visibility (snapshotted on every login so a stale mapping ages
@@ -411,10 +410,10 @@ def find_or_create_oidc_user(
         email: Email from the provider's userinfo.
         display_name: Display name from the provider's userinfo.
         groups: Optional groups-claim values; an empty list or
-            ``None`` skips the mapping step.  Phase 29.3.
+            ``None`` skips the mapping step.
         group_map: Optional mapping from
             :attr:`OIDCSettings.parsed_group_map`.  ``None`` when the
-            install hasn't configured the feature.  Phase 29.3.
+            install hasn't configured the feature.
 
     Returns:
         User: The matched or newly created user.

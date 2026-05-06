@@ -1,4 +1,4 @@
-"""HTML + JSON cockpit for "runs by table" reverse-index (Phase 18.8).
+"""HTML + JSON cockpit for "runs by table" reverse-index.
 
 Forward direction lives on the run-detail page (its
 ``tables_touched`` row).  This module flips the question: given a

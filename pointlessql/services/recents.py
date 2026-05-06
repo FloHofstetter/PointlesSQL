@@ -64,9 +64,9 @@ def record_table_visit(
         user_id: ``users.id`` — must be > 0.
         table_full_name: ``catalog.schema.table``.
         now: Optional UTC override for tests.
-        workspace_id: Phase 28.2 — workspace this visit was made
-            in.  Defaults to ``1`` (seeded default workspace) so
-            non-HTTP callers keep working; HTTP routes pass
+        workspace_id: Workspace this visit was made in.  Defaults
+            to ``1`` (seeded default workspace) so non-HTTP callers
+            keep working; HTTP routes pass
             ``request.state.workspace_id``.
     """
     if user_id <= 0:
@@ -139,11 +139,10 @@ def top_recent_tables(
         factory: SQLAlchemy session factory.
         user_id: ``users.id``.  Returns ``[]`` for ``user_id<=0``.
         limit: Cap (default 5, matching the sidebar block).
-        workspace_id: Phase 28.2 — restrict to one workspace's
-            recents.  ``None`` returns recents across every
-            workspace the user has visited (used by the Sprint
-            28.7 super-admin lens; the regular sidebar always
-            passes the request's resolved workspace).
+        workspace_id: Restrict to one workspace's recents.  ``None``
+            returns recents across every workspace the user has
+            visited (used by the super-admin lens; the regular
+            sidebar always passes the request's resolved workspace).
 
     Returns:
         List of dicts with ``table_full_name`` and ``last_visited_at``

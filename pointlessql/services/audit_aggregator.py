@@ -300,7 +300,7 @@ def _apply_audit_filters(
         table: Filter to rows whose target table matches.  Maps to
             ``target_table`` for ops/lineage and ``table_fqn`` for
             external writes; ignored for run-level metrics.
-        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+        workspace_id: Workspace lens.  ``None`` opts into
             the cross-workspace view (tenant admin only); a concrete id
             restricts results to that workspace.
 
@@ -313,11 +313,10 @@ def _apply_audit_filters(
         stmt = stmt.where(spec.timestamp_col < until)
     if spec.where is not None:
         stmt = stmt.where(spec.where)
-    # Sprint 28.7 — workspace lens.  Every metric's primary table
-    # carries a NOT NULL workspace_id column from 28.1a/28.1b, so the
-    # filter applies uniformly via ``getattr``.  ``None`` means the
-    # caller (a tenant admin via ?workspace=all) opted into the
-    # cross-workspace lens.
+    # Workspace lens.  Every metric's primary table carries a NOT
+    # NULL workspace_id column, so the filter applies uniformly via
+    # ``getattr``.  ``None`` means the caller (a tenant admin via
+    # ?workspace=all) opted into the cross-workspace lens.
     if workspace_id is not None:
         ws_col = getattr(spec.table, "workspace_id", None)
         if ws_col is not None:
@@ -371,9 +370,9 @@ def _scalar_count(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Target-table filter.
-        workspace_id: Sprint 28.7 — workspace lens.  ``None`` means
-            cross-workspace (admin-only super-admin lens); an int
-            scopes to that workspace.
+        workspace_id: Workspace lens.  ``None`` means cross-workspace
+            (admin-only super-admin lens); an int scopes to that
+            workspace.
 
     Returns:
         The integer count, or ``0`` for empty windows.
@@ -421,7 +420,7 @@ def summary(
             possible.
         table: Target-table filter applied to op/lineage metrics
             (``target_table``) and external writes (``table_fqn``).
-        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+        workspace_id: Workspace lens.  ``None`` opts into
             the cross-workspace view (tenant admin only); a concrete id
             restricts results to that workspace.
 
@@ -496,7 +495,7 @@ def timeseries(
             ``"principal"`` produce one series per group.  When the
             metric has no group column (e.g. ``cost_denials`` +
             ``table``) the series collapses to ``"none"``.
-        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+        workspace_id: Workspace lens.  ``None`` opts into
             the cross-workspace view (tenant admin only); a concrete id
             restricts results to that workspace.
 
@@ -639,7 +638,7 @@ def anomalies(
         principal: ``AgentRun.principal`` filter.
         agent_id: ``AgentRun.agent_id`` filter.
         table: Target-table filter.
-        workspace_id: Workspace lens (Sprint 28.7).  ``None`` opts into
+        workspace_id: Workspace lens.  ``None`` opts into
             the cross-workspace view (tenant admin only); a concrete id
             restricts results to that workspace.
 
@@ -728,11 +727,10 @@ def anomalies(
 RUN_ANOMALY_METRICS: tuple[Metric, ...] = ("rejects", "errored_ops")
 """Metrics evaluated per-run for the inbox + run-list-badge.
 
-Phase 18.6 cache (``agent_runs.anomaly_severity`` +
-``anomaly_metric``) only persists the worst breach across these
-two — the same signals the run-detail anomaly chip used before
-the persistence move.  Expanding this tuple later just requires a
-backfill, not a schema change.
+The cache (``agent_runs.anomaly_severity`` + ``anomaly_metric``)
+only persists the worst breach across these two — the same signals
+the run-detail anomaly chip uses.  Expanding this tuple later just
+requires a backfill, not a schema change.
 """
 
 _SEVERITY_RANK: dict[str, int] = {"ok": 0, "warn": 1, "critical": 2}
@@ -825,9 +823,9 @@ def backfill_run_anomalies(
     Walks every :class:`AgentRun` in a terminal status whose
     ``anomaly_severity`` column is still ``NULL``, calls
     :func:`compute_run_anomaly`, and writes the result back.  Used
-    once after the Phase-18.6 alembic migration to populate badges
-    for historical runs without coupling the migration itself to
-    the service layer.
+    once after the anomaly-cache alembic migration to populate
+    badges for historical runs without coupling the migration
+    itself to the service layer.
 
     Args:
         factory: SQLAlchemy session factory.

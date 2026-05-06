@@ -142,11 +142,11 @@ def require_supervisor(request: Request) -> None:
     user = get_user(request)
     if user.get("is_admin"):
         return
-    # Phase 29.3: OIDC-group-derived flags on the User row let
-    # session-cookie callers reach Family-B routes without minting an
-    # API key.  Both flags pass — same asymmetric ladder as the
-    # API-key path: an auditor's read-only mandate covers per-run
-    # inspection, not just tenant-wide aggregates.
+    # OIDC-group-derived flags on the User row let session-cookie
+    # callers reach Family-B routes without minting an API key.  Both
+    # flags pass — same asymmetric ladder as the API-key path: an
+    # auditor's read-only mandate covers per-run inspection, not just
+    # tenant-wide aggregates.
     if user.get("is_supervisor") or user.get("is_auditor"):
         return
     raise AuthorizationError(
@@ -184,10 +184,10 @@ def require_auditor(request: Request) -> None:
     user = get_user(request)
     if user.get("is_admin"):
         return
-    # Phase 29.3: OIDC-group-derived auditor flag lets a session user
-    # read tenant-wide aggregates.  ``is_supervisor`` deliberately
-    # does NOT pass here — supervisor scope is run-scoped and would
-    # leak data the auditor mandate is the right shape for.
+    # OIDC-group-derived auditor flag lets a session user read
+    # tenant-wide aggregates.  ``is_supervisor`` deliberately does
+    # NOT pass here — supervisor scope is run-scoped and would leak
+    # data the auditor mandate is the right shape for.
     if user.get("is_auditor"):
         return
     raise AuthorizationError(
@@ -201,8 +201,9 @@ def require_auditor(request: Request) -> None:
 def current_workspace_id(request: Request) -> int:
     """Return the active workspace id resolved by :func:`auth_middleware`.
 
-    Sprint 28.0 attaches ``request.state.workspace_id`` on every
-    request via :func:`pointlessql.services.workspaces.resolve_workspace_id`.
+    The auth middleware attaches ``request.state.workspace_id`` on
+    every request via
+    :func:`pointlessql.services.workspaces.resolve_workspace_id`.
     Routes that need to scope SQL by workspace pull the id through
     this dependency instead of reading the request state directly so
     the contract stays grep-able and a future swap-out (e.g. flipping
@@ -273,8 +274,8 @@ def require_workspace_admin(request: Request) -> None:
 
     Tenant-wide admins (``users.is_admin = True``) always pass —
     they are strictly stronger than workspace-local admins so the
-    cross-workspace lens (Sprint 28.7) and admin CRUD (Sprint 28.6)
-    don't need to special-case themselves.  Workspace-local admins
+    cross-workspace lens and admin CRUD don't need to special-case
+    themselves.  Workspace-local admins
     pass too via the :class:`WorkspaceMember.role` lookup.  Bearer
     keys never carry a per-workspace role today; admin UI pages are
     cookie-only by convention so this check refuses Bearer auth

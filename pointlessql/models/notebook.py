@@ -18,8 +18,8 @@ class NotebookOutput(Base):
     (or a page reload) replays the outputs without a 90-second
     ``pql.read_table()`` redo.
 
-    Keyed by ``(file_path, content_hash, kernel_session_id, output_index)``
-    per ADR 0001 — ``kernel_session_id`` lets us keep pre- and
+    Keyed by ``(file_path, content_hash, kernel_session_id,
+    output_index)`` so ``kernel_session_id`` lets us keep pre- and
     post-restart histories side by side for free (a future iteration
     can surface "previous session" as a toggle without a schema
     change).  The frontend renders by reading the whole
@@ -33,8 +33,8 @@ class NotebookOutput(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
-            persisted notebook output is workspace-scoped.
+        workspace_id: FK to :class:`Workspace`.  Every persisted
+            notebook output is workspace-scoped.
         file_path: Notebook path relative to the notebooks dir —
             the same string the editor's URL and the jupytext
             round-trip use.
@@ -76,7 +76,7 @@ class NotebookOutput(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — every persisted notebook output is workspace-scoped.
+    # Every persisted notebook output is workspace-scoped.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -112,8 +112,8 @@ class NotebookCellRun(Base):
         file_path: Notebook path relative to the notebooks dir.
         content_hash: Content-hash of the cell's normalized source.
         kernel_session_id: Session UUID (bumps on restart).
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
-            cell run is workspace-scoped.
+        workspace_id: FK to :class:`Workspace`.  Every cell run is
+            workspace-scoped.
         execution_count: Jupyter's monotonic counter — ``None``
             while the cell is still running.
         status: ``"running"`` | ``"ok"`` | ``"error"`` |
@@ -141,7 +141,7 @@ class NotebookCellRun(Base):
     file_path: Mapped[str] = mapped_column(String(1024), primary_key=True)
     content_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
     kernel_session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    # Phase 28.2 — every cell-run lifecycle row is workspace-scoped.
+    # Every cell-run lifecycle row is workspace-scoped.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

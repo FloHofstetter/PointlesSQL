@@ -21,11 +21,10 @@ def effective_options(
 ) -> dict[str, Any]:
     """Merge connection options with secrets read from a Credential.
 
-    The sprint contract: options with keys matching
-    ``(?i)pass|secret|key|token`` are read from the bound Credential's
-    ``additional_properties`` (the generated client's catch-all for
-    non-spec fields — see ADR-0013 in soyuz-catalog). Non-secret
-    options stay on the Connection's ``options`` dict. Missing
+    Options with keys matching ``(?i)pass|secret|key|token`` are
+    read from the bound Credential's ``additional_properties`` (the
+    generated client's catch-all for non-spec fields).  Non-secret
+    options stay on the Connection's ``options`` dict.  Missing
     Credential falls back to ``options`` so a local dev Postgres can
     skip the ceremony entirely.
 

@@ -1,14 +1,13 @@
 """Workspace primitives — soft tenant boundary over a shared catalog.
 
-PointlesSQL's Phase-28 isolation model treats a *workspace* as a
+PointlesSQL's workspace isolation model treats a *workspace* as a
 governance / audit container that floats *above* the Unity Catalog
 namespace.  Catalogs themselves stay global so cross-workspace data
 sharing (dev workspace reading ``prod.silver.orders`` to bootstrap a
 sandbox merge) keeps working without any new code — UC privileges
-already gate it.  Every PointlesSQL-owned table that today represents
-per-user / per-run / global-audit state grows a ``workspace_id`` FK
-in subsequent sub-sprints; **this module only ships the three
-foundation tables** the rest of Phase 28 hangs off:
+already gate it.  Every PointlesSQL-owned table that represents
+per-user / per-run / global-audit state carries a ``workspace_id`` FK
+that hangs off the three foundation tables this module ships:
 
 * :class:`Workspace` — the container itself.  Has a stable ``slug``
   for URL / header use plus a human ``name``.  Soft-archived via
@@ -51,7 +50,7 @@ class Workspace(Base):
     """One tenant-style governance container.
 
     A fresh install always carries one workspace (``id=1, slug='default'``)
-    seeded by the Sprint-28.0 migration so single-tenant deployments stay
+    seeded by the bootstrap migration so single-tenant deployments stay
     behaviour-identical: every existing audit / job / saved-query row
     backfills to the default workspace and the UI hides the switcher
     until a second workspace is created.
@@ -129,11 +128,11 @@ class WorkspaceCatalogPin(Base):
     """A cosmetic catalog default for one workspace's sidebar.
 
     Pins are a UX hint, never an enforcement boundary — the global-
-    catalog decision (Phase-28 ADR-0008) means every workspace can
-    query every catalog subject to UC privileges.  A workspace with
-    no pins shows the full catalog tree exactly like the pre-Phase-28
-    UI; a workspace with pins simply pre-expands its ``primary`` and
-    surfaces ``pinned`` siblings in a compact listing.
+    catalog decision means every workspace can query every catalog
+    subject to UC privileges.  A workspace with no pins shows the
+    full catalog tree unchanged; a workspace with pins pre-expands
+    its ``primary`` and surfaces ``pinned`` siblings in a compact
+    listing.
 
     Attributes:
         id: Auto-incremented primary key.

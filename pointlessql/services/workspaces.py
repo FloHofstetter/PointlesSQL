@@ -4,8 +4,7 @@ Three discrete responsibilities:
 
 1. **CRUD primitives** (:func:`create_workspace`, :func:`add_member`,
    :func:`list_workspaces_for_user`, :func:`get_workspace_by_slug`)
-   used by the admin UI in Sprint 28.6 and the bootstrap seed in
-   the Sprint-28.0 migration.
+   used by the admin UI and the bootstrap seed migration.
 
 2. **The non-HTTP context resolver** :func:`resolve_workspace_id`
    that the auth middleware, the scheduler tick loop, the CLI, and
@@ -49,9 +48,9 @@ from pointlessql.models import (
 
 logger = logging.getLogger(__name__)
 
-#: Reserved workspace id always present after the Sprint-28.0
-#: bootstrap migration.  Used as the ultimate-fallback floor so the
-#: request pipeline never sees ``workspace_id == None``.
+#: Reserved workspace id always present after the bootstrap
+#: migration.  Used as the ultimate-fallback floor so the request
+#: pipeline never sees ``workspace_id == None``.
 DEFAULT_WORKSPACE_ID: int = 1
 DEFAULT_WORKSPACE_SLUG: str = "default"
 
@@ -226,11 +225,11 @@ def list_workspaces_for_user(
 ) -> list[Workspace]:
     """Return every active workspace *user_id* is a member of.
 
-    Used by the switcher dropdown (Sprint 28.4) and by the
-    middleware to validate ``X-Workspace`` requests.  Tenant-wide
-    admins (``users.is_admin = True``) still see only their explicit
-    memberships here; the cross-workspace lens (Sprint 28.7) is a
-    separate route that explicitly opts into the god-eye view.
+    Used by the switcher dropdown and by the middleware to validate
+    ``X-Workspace`` requests.  Tenant-wide admins
+    (``users.is_admin = True``) still see only their explicit
+    memberships here; the cross-workspace lens is a separate route
+    that explicitly opts into the god-eye view.
 
     Args:
         session_factory: Sessionmaker callable.
@@ -323,7 +322,7 @@ def resolve_workspace_id(
     CLI, and test fixtures.  Resolution priority::
 
         explicit X-Workspace header (slug)
-            → API-key's pinned workspace_id (Sprint 28.0 column)
+            → API-key's pinned workspace_id
                 → session-cookie current_workspace_slug
                     → user.default_workspace_id
                         → DEFAULT_WORKSPACE_ID (=1)

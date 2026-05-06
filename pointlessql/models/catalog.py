@@ -37,8 +37,8 @@ class Dashboard(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — every
-            dashboard is workspace-scoped.
+        workspace_id: FK to :class:`Workspace`.  Every dashboard is
+            workspace-scoped.
         slug: URL-visible identifier, unique across all dashboards.
         title: Human-readable name shown in the list and detail pages.
         description: Optional free-form description.
@@ -58,7 +58,7 @@ class Dashboard(Base):
     __table_args__ = (Index("ix_dashboards_workspace_owner", "workspace_id", "owner_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — every dashboard is workspace-scoped.
+    # Every dashboard is workspace-scoped.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -123,10 +123,10 @@ class QueryHistory(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this query was executed in (Phase
-            28.1b).  FK to :class:`Workspace.id`; resolved from
-            request.state at insert time so cross-workspace
-            ``/queries`` traffic stays isolated.
+        workspace_id: Workspace this query was executed in.  FK to
+            :class:`Workspace.id`; resolved from request.state at
+            insert time so cross-workspace ``/queries`` traffic
+            stays isolated.
         user_id: ID of the user who ran the query (no FK so entries
             survive user deletion).
         user_email: Email snapshot at time of run.
@@ -180,8 +180,8 @@ class QueryHistory(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.1b — every query-history row is workspace-scoped.
-    # Resolved from request.state at insert time by services.query_history.
+    # Every query-history row is workspace-scoped.  Resolved from
+    # request.state at insert time by services.query_history.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -214,8 +214,8 @@ class QueryHistoryTable(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this reference belongs to (Phase
-            28.1b).  Denormalised from the parent QueryHistory.
+        workspace_id: Workspace this reference belongs to.
+            Denormalised from the parent QueryHistory.
         query_history_id: FK to ``query_history.id``.
         full_name: Dotted UC identifier (``catalog.schema.table``).
         access_type: ``"read"`` or ``"write"``.
@@ -260,9 +260,9 @@ class SavedQuery(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — workspace
-            isolation; ``is_shared`` still controls cross-user
-            visibility within the workspace.
+        workspace_id: FK to :class:`Workspace`.  Workspace isolation;
+            ``is_shared`` still controls cross-user visibility within
+            the workspace.
         slug: URL-visible identifier, unique across all rows.
         title: Human-readable name shown in the drawer.
         description: Optional free-form description.
@@ -283,10 +283,10 @@ class SavedQuery(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — every saved query is workspace-scoped.  is_shared
-    # still controls cross-user visibility *within* the workspace; the
+    # Every saved query is workspace-scoped.  is_shared still
+    # controls cross-user visibility *within* the workspace; the
     # workspace_id column is a hard isolation boundary that admins
-    # cross only via the Sprint-28.7 super-admin lens.
+    # cross only via the super-admin lens.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

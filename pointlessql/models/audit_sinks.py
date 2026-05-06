@@ -87,7 +87,6 @@ class AuditSink(Base):
             install-global behaviour: every workspace's events fire
             the sink.  ``[1, 2]`` restricts the sink to events whose
             ``workspace_id`` matches one of the listed values.
-            Phase 29.1.
         created_at: Insert timestamp.
     """
 
@@ -126,9 +125,9 @@ class GovernanceEvent(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this governance event belongs to
-            (Phase 28.1b).  Resolved from request.state at insert
-            time.  ``audit_sinks`` themselves stay install-global
+        workspace_id: Workspace this governance event belongs to.
+            Resolved from request.state at insert time.
+            ``audit_sinks`` themselves stay install-global
             on purpose — one Slack/webhook/S3 destination per
             install — but the events fanned out to those sinks
             carry the workspace context so downstream consumers

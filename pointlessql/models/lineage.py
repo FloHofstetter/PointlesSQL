@@ -61,9 +61,9 @@ class LineageRowEdge(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this edge belongs to (Phase 28.1b).
-            Denormalised from the parent agent_run_operation so
-            workspace-scoped row-trace reads don't need a JOIN.
+        workspace_id: Workspace this edge belongs to.  Denormalised
+            from the parent agent_run_operation so workspace-scoped
+            row-trace reads don't need a JOIN.
         run_id: FK to :class:`AgentRun.id` — the run that produced
             this edge.
         op_id: FK to :class:`AgentRunOperation.id` — the specific

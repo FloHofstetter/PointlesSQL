@@ -1,4 +1,4 @@
-r"""SQLite → Postgres metadata-DB migration (Sprint 30.3).
+r"""SQLite → Postgres metadata-DB migration.
 
 One-shot bulk-copy from a fresh SQLite PointlesSQL deployment to a
 fresh Postgres target.  Intentionally narrow scope:
@@ -11,8 +11,8 @@ fresh Postgres target.  Intentionally narrow scope:
   rows in batches via SQLAlchemy core.
 * Syncs Postgres sequences past the largest copied id so
   subsequent INSERTs don't collide.
-* Rebuilds the Postgres FTS index (Sprint 30.1) from the freshly-
-  copied source rows.
+* Rebuilds the Postgres FTS index from the freshly-copied source
+  rows.
 * Verifies row counts per table; emits a sample-hash comparison
   for tables larger than 100 rows.
 
@@ -361,7 +361,7 @@ def _hash_rows(rows: Iterable[Any]) -> str:
 
 
 def _rebuild_pg_fts(target_engine: Engine) -> None:
-    """Rebuild the Sprint-30.1 FTS index from the freshly-copied source rows."""
+    """Rebuild the FTS index from the freshly-copied source rows."""
     from sqlalchemy.orm import sessionmaker  # noqa: PLC0415
 
     from pointlessql.services import audit_fts  # noqa: PLC0415

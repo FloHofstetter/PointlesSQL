@@ -89,9 +89,9 @@ async def api_agent_runs_diff(
         errored_ops_diff, tables_only_in_a, tables_only_in_b,
         tables_in_both, status_diff}``.  When ``detail=True`` adds
         ``operations_diff``, ``tool_calls_diff``, ``align``,
-        ``truncated``, ``lineage_diff`` (volume), and (Phase 18.9)
+        ``truncated``, ``lineage_diff`` (volume),
         ``value_changes_diff`` (cell-level, PII-masked unless
-        admin) + ``column_lineage_diff`` (edge-level
+        admin) and ``column_lineage_diff`` (edge-level
         only-in-a / only-in-b / changed buckets).
 
         :func:`require_supervisor` raises :class:`AuthorizationError`
@@ -138,9 +138,9 @@ async def api_agent_runs_diff(
             run_a_id=a,
             run_b_id=b,
         )
-        # Phase 18.9 — cell-level value diff + column-lineage edge diff.
-        # Cleartext cells require admin; auditor-scope callers see
-        # masked placeholders even on the diff route, mirroring the
+        # Cell-level value diff + column-lineage edge diff.  Cleartext
+        # cells require admin; auditor-scope callers see masked
+        # placeholders even on the diff route, mirroring the
         # /audit/value-changes contract.
         user = get_user(request)
         reveal = bool(user.get("is_admin"))

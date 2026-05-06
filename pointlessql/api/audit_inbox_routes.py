@@ -1,4 +1,4 @@
-"""HTML cockpit for the cross-run anomaly inbox (Phase 18.6).
+"""HTML cockpit for the cross-run anomaly inbox.
 
 Renders ``pages/audit_inbox.html`` against the same backbone the
 ``GET /api/audit/inbox`` endpoint exposes.  The page does its own

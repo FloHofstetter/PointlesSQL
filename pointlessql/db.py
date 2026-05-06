@@ -58,9 +58,9 @@ def init_db(url: str) -> Engine:
 
     Called once during application startup (FastAPI lifespan).
     Pool sizing + statement timeout are read from
-    :class:`pointlessql.settings.DatabaseSettings` (Sprint 30.4) so
-    operators can tune long-running PG deployments without code
-    changes.  SQLite ignores the PG-only knobs.
+    :class:`pointlessql.settings.DatabaseSettings` so operators can
+    tune long-running PG deployments without code changes.  SQLite
+    ignores the PG-only knobs.
 
     Args:
         url: SQLAlchemy database URL.
@@ -81,12 +81,11 @@ def init_db(url: str) -> Engine:
     if is_sqlite:
         connect_args["check_same_thread"] = False
 
-    # Sprint 30.4 — read pool sizing + timeout out of settings so
-    # operators can tune via env vars.  We re-instantiate the
-    # ``DatabaseSettings`` object here rather than threading it
-    # through ``init_db``'s signature so the function stays
-    # backward-compatible with older call-sites that pass the URL
-    # explicitly.
+    # Read pool sizing + timeout out of settings so operators can
+    # tune via env vars.  We re-instantiate the ``DatabaseSettings``
+    # object here rather than threading it through ``init_db``'s
+    # signature so the function stays backward-compatible with older
+    # call-sites that pass the URL explicitly.
     from pointlessql.settings import DatabaseSettings  # noqa: PLC0415
 
     db_settings = DatabaseSettings()

@@ -1,4 +1,4 @@
-"""Admin CRUD for ``workspace_catalog_pins`` (Phase 28.3).
+"""Admin CRUD for ``workspace_catalog_pins``.
 
 Pins are *cosmetic* — they shape the sidebar tree's initial
 expansion (``GET /api/tree?primary_only=true``) but never restrict

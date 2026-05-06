@@ -73,7 +73,7 @@ def _serialize(row: AuditSink) -> dict[str, Any]:
         ``{id, name, type, config (redacted), is_active,
         event_types, workspace_filter, created_at}``.
         ``workspace_filter`` is ``None`` for install-global sinks
-        (the default) or a list of workspace IDs (Phase 29.1).
+        (the default) or a list of workspace IDs.
     """
     try:
         cfg = json.loads(row.config_json or "{}")

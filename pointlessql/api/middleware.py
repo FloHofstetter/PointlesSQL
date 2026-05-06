@@ -48,8 +48,8 @@ from pointlessql.types import UserInfo
 WORKSPACE_HEADER: str = "x-workspace"
 
 #: Cookie name carrying the user's last-selected workspace slug.
-#: Written by ``POST /auth/switch-workspace`` (Sprint 28.4) and
-#: read by :func:`_read_workspace_slug_from_session` so the
+#: Written by ``POST /auth/switch-workspace`` and read by
+#: :func:`_read_workspace_slug_from_session` so the
 #: workspace persists across page navigations without a JWT
 #: re-encode hop.  Kept as a sibling of ``pql_session`` rather
 #: than embedded in the JWT payload because the slug changes more
@@ -142,13 +142,13 @@ async def auth_middleware(request: Request, call_next: Any) -> Response:
                 is_auditor=entry.auditor,
             )
 
-    # Phase 28.0: resolve the active workspace for the request.  The
-    # resolver tolerates every absence (no factory, no user, no
-    # header, fresh install) and floors at the seeded ``default``
-    # workspace (id=1) so the request pipeline never observes a
-    # missing workspace.  Membership enforcement happens *after* the
-    # resolution so we can write a meaningful audit-log row when an
-    # authenticated user names a workspace they don't belong to.
+    # Resolve the active workspace for the request.  The resolver
+    # tolerates every absence (no factory, no user, no header, fresh
+    # install) and floors at the seeded ``default`` workspace (id=1)
+    # so the request pipeline never observes a missing workspace.
+    # Membership enforcement happens *after* the resolution so we can
+    # write a meaningful audit-log row when an authenticated user
+    # names a workspace they don't belong to.
     factory = getattr(request.app.state, "session_factory", None)
     user_state = getattr(request.state, "user", None)
     user_id_for_resolve = (

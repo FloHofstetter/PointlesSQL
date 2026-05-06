@@ -231,9 +231,9 @@ def _merge_pg_marks(snippet: str | None) -> str | None:
     r"""Merge adjacent ``</mark>SEP<mark>`` patterns into one mark span.
 
     PG's ``ts_headline`` highlights individual tsquery matches.
-    With Sprint-30.1's pre-replacement of ``[._@\\-]+``, a
-    user-typed ``customer_marker_xyz`` matches three separate
-    tokens, so the rendered snippet looks like
+    With the pre-replacement of ``[._@\\-]+``, a user-typed
+    ``customer_marker_xyz`` matches three separate tokens, so the
+    rendered snippet looks like
     ``<mark>customer</mark>_<mark>marker</mark>_<mark>xyz</mark>``.
     SQLite FTS5's ``snippet()`` returns
     ``<mark>customer_marker_xyz</mark>`` instead — the entire

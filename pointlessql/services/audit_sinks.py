@@ -94,7 +94,7 @@ def _decode_event_filter(sink: AuditSink) -> set[str] | None:
 
 
 def _decode_workspace_filter(sink: AuditSink) -> set[int] | None:
-    """Decode the optional workspace-id allow-list (Phase 29.1).
+    """Decode the optional workspace-id allow-list.
 
     Args:
         sink: ORM row to read.
@@ -365,7 +365,7 @@ def _select_active_sinks(
         workspace_id: Workspace the originating event belongs to.
             ``None`` skips workspace filtering entirely (used by the
             synthetic ``/api/admin/audit-sinks/{id}/test`` flow which
-            bypasses both filters).  Phase 29.1.
+            bypasses both filters).
 
     Returns:
         Detached sink rows in primary-key order.
@@ -405,10 +405,10 @@ async def dispatch_to_sinks(
             ``id``.
         workspace_id: Workspace the originating event belongs to.
             When supplied, sinks with a non-null ``workspace_filter``
-            that excludes this id are skipped (Phase 29.1).  ``None``
-            disables workspace filtering — used by callers that
-            already speak install-global semantics (notably the
-            synthetic test envelope endpoint).
+            that excludes this id are skipped.  ``None`` disables
+            workspace filtering — used by callers that already speak
+            install-global semantics (notably the synthetic test
+            envelope endpoint).
         client: Optional pre-built httpx client (used by tests; the
             S3 / CloudTrail dispatchers reuse it for SigV4 PUT/POST).
 

@@ -39,9 +39,9 @@ class RecentTable(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: FK to :class:`Workspace`.  Sprint 28 — recents
-            are per-(workspace, user); the same user can have
-            different recents per workspace.
+        workspace_id: FK to :class:`Workspace`.  Recents are
+            per-(workspace, user); the same user can have different
+            recents per workspace.
         user_id: FK to ``users.id``.  Cascade-delete: removing a user
             also removes their recents (they're personal — no
             shared-state concern).
@@ -71,9 +71,9 @@ class RecentTable(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.2 — recents are per-(workspace, user) so the same user
-    # can have different recents per workspace.  UNIQUE constraint
-    # widens to include workspace_id.
+    # Recents are per-(workspace, user) so the same user can have
+    # different recents per workspace.  UNIQUE constraint widens to
+    # include workspace_id.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

@@ -43,8 +43,8 @@ VALID_READ_KINDS: frozenset[str] = frozenset(
         "pql_table_at_version",
         "engine_direct",
         "audit_api",
-        # Sprint 28.7 — admin-only cross-workspace lens.  Distinguished
-        # from ``audit_api`` so the audit-of-audit pipeline can flag a
+        # Admin-only cross-workspace lens.  Distinguished from
+        # ``audit_api`` so the audit-of-audit pipeline can flag a
         # tenant admin escalating into the god-eye view.
         "audit_api_cross_workspace",
     }
@@ -136,11 +136,11 @@ def record_query(
             helper passes ``"pql_table"`` / ``"engine_direct"``.
             Validated against :data:`VALID_READ_KINDS` so a typo
             cannot land an unknown value the UI cannot filter on.
-        workspace_id: Phase 28.1b — workspace this query was run in.
-            Defaults to ``1`` (the seeded default workspace) so
-            non-HTTP callers (CLI, scheduler, fixtures) keep working
-            without explicit threading; HTTP routes pass
-            ``request.state.workspace_id`` for proper isolation.
+        workspace_id: Workspace this query was run in.  Defaults to
+            ``1`` (the seeded default workspace) so non-HTTP callers
+            (CLI, scheduler, fixtures) keep working without explicit
+            threading; HTTP routes pass ``request.state.workspace_id``
+            for proper isolation.
 
     Returns:
         The auto-assigned ``QueryHistory.id`` of the new row (so

@@ -456,8 +456,8 @@ def build_value_changes_diff(
 ) -> dict[str, Any]:
     """Cell-level diff of :class:`LineageValueChange` rows across two runs.
 
-    Phase 18.9 — extends :func:`build_lineage_diff` (volumes only)
-    with the actual diverging cells.  For every (target_table,
+    Extends :func:`build_lineage_diff` (volumes only) with the
+    actual diverging cells.  For every (target_table,
     op_id, row_id, column) cell present in *both* runs, compares
     ``new_value``: equal pairs drop, divergent pairs surface as a
     single row in ``divergent_cells`` of the corresponding table

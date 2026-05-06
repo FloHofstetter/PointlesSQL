@@ -48,8 +48,8 @@ class AgentRunSource(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this source row belongs to (Phase
-            28.1a).  Denormalised from parent :class:`AgentRun` so
+        workspace_id: Workspace this source row belongs to.
+            Denormalised from parent :class:`AgentRun` so
             workspace-scoped reads don't need a JOIN.
         agent_run_id: FK to :class:`AgentRun.id`.  Unique — one
             source per run.
@@ -68,7 +68,7 @@ class AgentRunSource(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.1a — denormalised from the parent AgentRun for
+    # Denormalised from the parent AgentRun for
     # efficient workspace-scoped audit reads.  Set in the same
     # transaction as the parent insert.
     workspace_id: Mapped[int] = mapped_column(
@@ -101,10 +101,9 @@ class AgentRunOperation(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this op belongs to (Phase 28.1a).
-            Denormalised from parent :class:`AgentRun` so the
-            forced audit-trail and lineage queries don't need a
-            JOIN to derive scope.
+        workspace_id: Workspace this op belongs to.  Denormalised
+            from parent :class:`AgentRun` so the forced audit-trail
+            and lineage queries don't need a JOIN to derive scope.
         agent_run_id: FK to :class:`AgentRun.id`.
         ordinal: Monotonic per-run sequence number (1-indexed).
         op_name: One of ``"autoload"`` / ``"merge"`` /
@@ -147,7 +146,7 @@ class AgentRunOperation(Base):
             versions, GPU list when torch is installed).  Cached
             once per PointlesSQL process so the hot path stays
             cheap.  ``None`` when capture failed at start-up.
-        warnings_json: BUG-grand-08 — JSON blob with a ``markers``
+        warnings_json: JSON blob with a ``markers``
             sub-key listing non-fatal post-commit failures
             (lineage emit / edges / rejects / column / value).
             ``error_message`` stays reserved for "the primitive
@@ -173,7 +172,7 @@ class AgentRunOperation(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.1a — denormalised from parent AgentRun for efficient
+    # Denormalised from parent AgentRun for efficient
     # workspace-scoped audit reads.  All lineage / value-change /
     # external-write rows that hang off this op derive their workspace
     # by JOIN, so this is the single canonical column per op.
@@ -204,8 +203,8 @@ class AgentRunOperation(Base):
     # advisory hardware/library fingerprint
     # (Python version, top-level package versions, GPU list).
     env_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # BUG-grand-08 — non-fatal side-effect markers (lineage emit /
-    # edge insert / reject / column / value-change failures).  JSON:
+    # Non-fatal side-effect markers (lineage emit / edge insert /
+    # reject / column / value-change failures).  JSON:
     # ``{"markers": [str, ...]}``.  ``error_message`` stays reserved
     # for "the primitive itself raised".
     warnings_json: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -222,8 +221,8 @@ class AgentRunEvent(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this event belongs to (Phase 28.1a).
-            Denormalised from parent :class:`AgentRun`.
+        workspace_id: Workspace this event belongs to.  Denormalised
+            from parent :class:`AgentRun`.
         agent_run_id: FK to :class:`AgentRun.id`.
         event_id: CloudEvents ``id`` field (uuid4 hex), unique
             so receivers can dedup across retries.
@@ -248,7 +247,7 @@ class AgentRunEvent(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.1a — denormalised from parent AgentRun.
+    # Denormalised from parent AgentRun.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
@@ -274,8 +273,8 @@ class AgentRunToolCall(Base):
 
     Attributes:
         id: Auto-incremented primary key.
-        workspace_id: Workspace this tool call belongs to (Phase
-            28.1a).  Denormalised from parent :class:`AgentRun`.
+        workspace_id: Workspace this tool call belongs to.
+            Denormalised from parent :class:`AgentRun`.
         agent_run_id: FK to :class:`AgentRun.id`.
         tool_name: Hermes tool name, e.g. ``pql_query`` or
             ``pql_get_table``.
@@ -306,7 +305,7 @@ class AgentRunToolCall(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    # Phase 28.1a — denormalised from parent AgentRun.
+    # Denormalised from parent AgentRun.
     workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )

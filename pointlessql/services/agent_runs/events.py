@@ -151,7 +151,7 @@ def _persist_event(
 
     try:
         with session_factory() as session:
-            # Phase 28.1a — derive workspace_id from the parent run.
+            # Derive workspace_id from the parent run.
             # avoid circular imports during module load.
             from sqlalchemy import select as _select
 

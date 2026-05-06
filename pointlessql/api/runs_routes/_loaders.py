@@ -41,9 +41,9 @@ from pointlessql.services import output_rendering as output_rendering_service
 def load_runs(request: Request, limit: int = 200) -> list[dict[str, Any]]:
     """Fetch the most recent agent-run rows as serialized dicts.
 
-    Phase 28.1a — scoped to the caller's resolved workspace.
-    The Sprint 28.7 super-admin "All workspaces" lens will skip
-    the filter via a separate code path.
+    Scoped to the caller's resolved workspace.  The super-admin
+    "All workspaces" lens skips the filter via a separate code
+    path.
 
     Args:
         request: Incoming FastAPI request.

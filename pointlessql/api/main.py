@@ -241,10 +241,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         settings.logging.format,
     )
 
-    # Phase 31.3 — when the test conftest pre-wires ``app.state``
-    # (engine, session_factory, uc_client stubs), running the full
-    # production lifespan re-overwrites all of it: ``init_db`` runs
-    # ``alembic upgrade head`` against the on-disk default URL,
+    # When the test conftest pre-wires ``app.state`` (engine,
+    # session_factory, uc_client stubs), running the full production
+    # lifespan re-overwrites all of it: ``init_db`` runs ``alembic
+    # upgrade head`` against the on-disk default URL,
     # ``make_soyuz_client`` clobbers stubbed UC clients, and the
     # background tasks tick uselessly.  ``POINTLESSQL_TEST_LIFESPAN_FAST=1``
     # short-circuits everything the conftest has already set up,
@@ -658,10 +658,10 @@ def _run_dev_server() -> None:
     settings = Settings()
     # Why: uvicorn's reload watcher defaults to the whole working directory.
     # That includes ``notebooks/``, so the editor's autosave triggers a server
-    # reload — kernel + Pyright WebSockets get torn down mid-typing
-    # (BUG-64-03). Pinning reload_dirs to the source trees keeps autosave
-    # invisible to the watcher; SQLite files (.db) and Delta tables
-    # (notebooks/, /tmp) stay outside scope.
+    # reload — kernel + Pyright WebSockets get torn down mid-typing.  Pinning
+    # reload_dirs to the source trees keeps autosave invisible to the watcher;
+    # SQLite files (.db) and Delta tables (notebooks/, /tmp) stay outside
+    # scope.
     project_root = Path(__file__).resolve().parent.parent
     uvicorn.run(
         "pointlessql.api.main:app",
@@ -770,8 +770,8 @@ def _migrate_to_postgres_cmd(  # pyright: ignore[reportUnusedFunction]
     upgrade head`` against the target first so the schema chain
     matches.  Streams source rows in ``--batch-size`` chunks,
     syncs PG sequences past the largest copied id, rebuilds the
-    Sprint-30.1 FTS index, and verifies row counts (with a
-    sample-hash for tables ≥ 100 rows).
+    PG-side FTS index, and verifies row counts (with a sample-hash
+    for tables ≥ 100 rows).
     """
     from pointlessql.cli import migrate_to_postgres as mtp
 

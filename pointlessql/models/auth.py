@@ -24,29 +24,27 @@ class User(Base):
         password_hash: Bcrypt-hashed password string, or ``None`` for
             OIDC-only users.
         is_admin: Whether the user has administrator privileges.
-        is_supervisor: Phase 29.3 — whether the user has supervisor
-            scope (governs Family-B routes: run summary, run diff,
+        is_supervisor: Whether the user has supervisor scope
+            (governs Family-B routes: run summary, run diff,
             runs-by-principal).  Granted by an OIDC group mapping;
             re-resolved on every login.  Mirrors :class:`ApiKey`
             ``supervisor`` for the session-cookie auth path.
-        is_auditor: Phase 29.3 — whether the user has auditor scope
-            (governs tenant-wide ``/api/audit/*`` aggregates).  Same
-            grant + refresh shape as :attr:`is_supervisor`.
+        is_auditor: Whether the user has auditor scope (governs
+            tenant-wide ``/api/audit/*`` aggregates).  Same grant
+            + refresh shape as :attr:`is_supervisor`.
         created_at: Timestamp when the user was created.
         oidc_provider: OIDC discovery URL that authenticated this user.
         oidc_subject: The ``sub`` claim from the OIDC provider.
-        oidc_groups_json: Phase 29.3 — JSON-encoded snapshot of the
-            groups claim from the most recent OIDC login.  Audit-
-            visibility only; authz never reads it at runtime.
+        oidc_groups_json: JSON-encoded snapshot of the groups claim
+            from the most recent OIDC login.  Audit-visibility only;
+            authz never reads it at runtime.
         feed_token: Opaque token authenticating pull-feed requests;
             ``None`` until the user first hits the feed-token endpoint.
         default_workspace_id: Workspace the user lands in when neither
             an ``X-Workspace`` header nor a ``current_workspace_slug``
-            cookie field overrides it (Phase 28.0).  Backfilled to the
-            seeded ``default`` workspace (id=1) by the bootstrap
-            migration; stays nullable in 28.0 so the FK column can
-            co-exist with legacy code paths, then flipped to NOT NULL
-            in Sprint 28.6 once the admin UI exposes a chooser.
+            cookie field overrides it.  Backfilled to the seeded
+            ``default`` workspace (id=1) by the bootstrap migration;
+            flipped to NOT NULL once the admin UI exposed a chooser.
     """
 
     __tablename__ = "users"
@@ -87,8 +85,8 @@ class User(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     oidc_provider: Mapped[str | None] = mapped_column(String(500), nullable=True)
     oidc_subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    # Phase 29.3: snapshot of the groups claim from the most recent OIDC
-    # login. Audit-visibility only — authz reads ``is_supervisor`` /
+    # Snapshot of the groups claim from the most recent OIDC login.
+    # Audit-visibility only — authz reads ``is_supervisor`` /
     # ``is_auditor`` flags, never this column.  ``None`` for users who
     # never logged in via OIDC, or whose IdP doesn't surface a groups
     # claim (we re-resolve on every login, so a missing claim leaves
@@ -99,12 +97,12 @@ class User(Base):
     # ``secrets.token_urlsafe``; stays ``NULL`` for users who never
     # access the feed.
     feed_token: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Phase 28.6: every user has a default workspace.  28.0 created the
-    # column nullable + bootstrap-backfilled it; 28.6's migration
-    # ``dd4f6h8j0l2n`` flips it to NOT NULL once the admin-UI rollout
-    # is in place.  Server-side default of 1 keeps single-tenant
-    # installs and direct-ORM test fixtures working — every new user
-    # row lands in the seeded ``default`` workspace unless a caller
+    # Every user has a default workspace.  Originally nullable +
+    # bootstrap-backfilled, then flipped to NOT NULL via migration
+    # ``dd4f6h8j0l2n`` once the admin-UI rollout was in place.
+    # Server-side default of 1 keeps single-tenant installs and
+    # direct-ORM test fixtures working — every new user row lands
+    # in the seeded ``default`` workspace unless a caller
     # explicitly names another.
     default_workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"

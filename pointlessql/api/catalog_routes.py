@@ -52,16 +52,16 @@ async def api_tree(
 ) -> list[dict[str, object]]:
     """Return the full catalog/schema/table tree for the sidebar.
 
-    Phase 28.3 — when *primary_only* is ``True``, the result is
-    filtered to the catalogs the active workspace has pinned
-    (any pin mode counts).  ``False`` (the default) keeps the
-    legacy behaviour of returning every catalog visible to the UC
-    client, so single-tenant installs see no behaviour change.
+    When *primary_only* is ``True``, the result is filtered to the
+    catalogs the active workspace has pinned (any pin mode counts).
+    ``False`` (the default) keeps the legacy behaviour of returning
+    every catalog visible to the UC client, so single-tenant installs
+    see no behaviour change.
 
     The pin filter is purely cosmetic: queries against unpinned
     catalogs still work end-to-end via the SQL editor and pql
-    primitives — Sprint 28.3 only shapes the sidebar tree's
-    initial expansion.
+    primitives — this only shapes the sidebar tree's initial
+    expansion.
     """
     client = get_uc_client(request)
     tree = await client.get_tree()
