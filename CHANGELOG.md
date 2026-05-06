@@ -6,6 +6,35 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 40 — Lakehouse Federation reads (OpenLineage) closed.**
+  Four sub-sprints landed in one autonomous session post the
+  "plane phase 40 aus" plan; Sprint 40.2 (foreign-Delta CDF tail
+  worker) was deliberately deferred to Phase 40.5 at plan time.
+  Sprint 40.0 (Alembic ``oo5q7s9u1x3z``) relaxed ``run_id`` /
+  ``op_id`` to nullable on ``lineage_row_edges`` /
+  ``lineage_column_map`` and added ``producer`` +
+  ``external_event_id`` columns; ``api_keys.lineage_inbound``
+  added a third API-key scope independent of supervisor /
+  auditor.  Sprint 40.1 added ``POST /api/lineage/openlineage``,
+  the inbound surface — external producers (Kafka-Connect,
+  Airflow, dbt-cloud, peer PointlesSQL installs) push OpenLineage
+  1.x ``RunEvent`` envelopes that normalise into the existing
+  shadow tables tagged with ``producer = event.job.namespace``,
+  with idempotency on ``(producer, external_event_id, ...)``
+  composite keys and forward-compat ``extra="allow"`` on the
+  Pydantic models.  Sprint 40.3 wired an "External producers"
+  block into ``components/lineage_card.html`` on the table-detail
+  page, rendered with amber Bootstrap badges to visually
+  distinguish federated edges from internal ones.  Sprint 40.4
+  added ``expected_lineage_inbound`` (Alembic ``pp6r8t0v2x4z``)
+  + ``services/lineage_freshness.py`` (compute, alert-candidate
+  selection, ``stamp_alerted``, CloudEvents envelope) + the
+  ``/api/admin/expected-producers`` CRUD surface.  Pyright budget
+  bumped 528 → 559 (inbound parser walks ``Any``-typed JSON,
+  same shape as the Phase-36.2 dbt-bridge bump).  27 new pytest
+  cases (8 inbound, 6 table-detail aggregator, 13 freshness +
+  CRUD) all green.
+
 - **Phase 39 — Agent EXPLAIN-driven self-rewrite loop closed.**
   Four sub-sprints landed in one autonomous session.  The Hermes
   plugin's ``pql_query`` tool now hits ``GET /api/sql/explain``

@@ -4304,48 +4304,86 @@ PointlesSQL
 │           ``rewrite_attempts``.  CLAUDE.md walkthrough
 │           count bumped 48 → 49.
 │
-├── Phase 40 — Lakehouse Federation reads (OpenLineage / CDF)  ⏳ queued
+├── Phase 40 — Lakehouse Federation reads (OpenLineage)        ✅ done
 │   │
 │   │   PointlesSQL today emits OpenLineage events outbound
 │   │   (Phase 15 PQL→soyuz facets) and registers Delta tables
 │   │   for federated writes (soyuz Lakehouse Federation).
-│   │   This phase closes the loop on the read side: consume
-│   │   external systems' events into the audit lake, tail
-│   │   their CDF / change-feed when available, and surface
-│   │   the merged lineage graph on table-detail pages.
+│   │   This phase closed the loop on the read side: external
+│   │   producers POST OpenLineage events to PointlesSQL, edges
+│   │   normalise into the existing shadow tables tagged with a
+│   │   ``producer``, and the table-detail lineage card surfaces
+│   │   the merged graph plus a per-producer freshness widget
+│   │   driven by an admin-registered expectation table.
 │   │
-│   │   **Why it matters strategically:** User flag — "essential
-│   │   for federation".  Without inbound lineage consumption
-│   │   the federation story is one-way (we federate writes
-│   │   out, but our audit graph stops at the soyuz boundary
-│   │   and can't follow lineage from external producers).
-│   │   Closes a real moat-line vs. DBX Unity Catalog Lineage,
-│   │   which is single-source.
+│   │   **Strategic frame:** User flag — "essentiell für
+│   │   federation".  Closes the inbound half of the audit-
+│   │   graph story, vs DBX Unity Catalog Lineage which is
+│   │   single-source.  Sprint 40.2 (CDF tail of foreign Delta
+│   │   tables) was deliberately deferred to Phase 40.5 at plan
+│   │   time — push-modell (40.1) is the MVP; pull-modell waits
+│   │   for a concrete legacy-ETL producer to ask.
 │   │
-│   ├── Sprint 40.1 — OpenLineage inbound endpoint            ⏳
-│   │       ``POST /api/lineage/openlineage`` accepts the
-│   │       OpenLineage 1.x event envelope, normalises into
-│   │       ``lineage_row_edges`` / ``lineage_column_map``
-│   │       with ``producer`` set to the originating namespace.
-│   │       Auth: dedicated API-key scope ``lineage_inbound``.
+│   ├── Sprint 40.0 — prep migration + lineage_inbound scope ✅ done (0a23222)
+│   │       Alembic ``oo5q7s9u1x3z`` relaxes ``run_id`` /
+│   │       ``op_id`` to nullable on ``lineage_row_edges`` /
+│   │       ``lineage_column_map`` and adds ``producer`` +
+│   │       ``external_event_id`` columns.  ``api_keys.lineage_inbound``
+│   │       boolean scope, env-var bootstrap, admin CRUD, and
+│   │       admin-page badge column all carry the new flag.
+│   │       ``require_lineage_inbound`` guard added.  Knock-on
+│   │       type changes: ``PredecessorRef.op_id`` and
+│   │       ``ColumnPredecessorRef.op_id`` become ``int | None``
+│   │       to match the schema; run-scoped diffs narrow
+│   │       defensively.
 │   │
-│   ├── Sprint 40.2 — soyuz federated-table CDF tail          ⏳
-│   │       Background worker subscribes to Delta CDF feeds
-│   │       on registered foreign-catalog tables; emits
-│   │       synthetic ``read`` operations into the local audit
-│   │       trail.  Reuses the Phase-15.7 CDF-bootstrap
-│   │       infrastructure.
+│   ├── Sprint 40.1 — OpenLineage inbound endpoint            ✅ done (83b3e37)
+│   │       ``POST /api/lineage/openlineage`` accepts an
+│   │       OpenLineage 1.x ``RunEvent`` envelope, normalises
+│   │       ``inputs`` / ``outputs`` / ``columnLineage`` facets
+│   │       into ``lineage_column_map`` rows tagged with
+│   │       ``producer = event.job.namespace`` and
+│   │       ``external_event_id = event.run.runId``.  Custom
+│   │       ``pointlessql.lineage.row`` output facet emits row-
+│   │       level edges.  Auth via the new ``lineage_inbound``
+│   │       scope; workspace scoping comes from the API key.
+│   │       Idempotent on ``(producer, external_event_id, ...)``
+│   │       composite keys; a CloudEvents envelope of type
+│   │       ``pointlessql.lineage.inbound.received`` fans out via
+│   │       ``dispatch_to_sinks`` so Grafana / inbox sinks see
+│   │       inbound traffic.  Tolerates OL 2.x facets forward-
+│   │       compat (``extra="allow"``).  8 pytest cases.
 │   │
-│   ├── Sprint 40.3 — table-detail merged lineage card        ⏳
-│   │       Lineage card on ``/catalogs/{cat}/{schema}/{table}``
-│   │       merges inbound (40.1) + outbound (Phase 15) edges
-│   │       into a single graph view.  External producers
-│   │       render with a distinct node colour.
+│   ├── Sprint 40.2 — soyuz federated-table CDF tail          ⏭ deferred to Phase 40.5
+│   │       Plan-phase trim 2026-05-06: push-modell (40.1) is
+│   │       the MVP.  Pull-modell (CDF tail of foreign Delta
+│   │       tables) carries cloud-storage credential complexity
+│   │       and waits for a concrete legacy-ETL producer to
+│   │       request it.  Original sketch preserved in the
+│   │       Phase-40 plan file.
 │   │
-│   └── Sprint 40.4 — alerts on cross-system lineage breaks   ⏳
-│           Alert rule type ``lineage_break``: fires when an
-│           expected upstream feed stops emitting for >N
-│           minutes, surfaces in the Phase-19.0 inbox.
+│   ├── Sprint 40.3 — table-detail merged lineage card        ✅ done (28eb537)
+│   │       ``catalog_html_routes.table_detail`` joins a new
+│   │       ``_external_producers_for_table`` aggregator into
+│   │       the template context.  ``components/lineage_card.html``
+│   │       grows an "External producers" block below the
+│   │       internal up/down-stream sections, rendered with
+│   │       amber Bootstrap badges + a dotted ``border-warning``.
+│   │       Empty-state widens to also require zero external
+│   │       producers.  6 pytest cases.
+│   │
+│   └── Sprint 40.4 — expected-producer registry + freshness  ✅ done (20400f0)
+│           Alembic ``pp6r8t0v2x4z`` adds ``expected_lineage_inbound``
+│           with a UNIQUE on
+│           ``(workspace_id, target_table_full_name, producer)``.
+│           ``services/lineage_freshness.py`` exposes
+│           ``compute_freshness`` (per-row verdicts:
+│           ``fresh`` / ``stale`` / ``never_seen`` / ``inactive``),
+│           ``select_alert_candidates`` (cooldown-aware filter),
+│           ``stamp_alerted``, and ``fresh_envelope`` (CloudEvents
+│           ``pointlessql.lineage.freshness.stale`` builder).
+│           Admin CRUD + freshness JSON live under
+│           ``/api/admin/expected-producers``.  13 pytest cases.
 │
 ├── Phase 41 — Sprint 17.6 promote: Lineage sub-panes         ⏳ queued
 │   │
