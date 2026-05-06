@@ -1814,18 +1814,20 @@ PointlesSQL
 │   │       at q.length≥2 with client-side fallback on error.
 │   │       7 new pytest cases.
 │   │
-│   └── Sprint 17.6 — Lineage trace sub-panes                  ⏳ queued
+│   └── Sprint 17.6 — Lineage trace sub-panes                  ⏳ promoted to Phase 41
 │       └── The Sprint-15 Row trace, Sprint-15.6 Column trace,
 │       │   and Sprint-15.7 Value-changes drill-downs live on
 │       │   separate ``/catalogs/.../trace`` pages today.
-│       │   This sprint embeds them as additional sub-panes of
-│       │   the Lineage top-tab on ``/runs/{id}``, so a
-│       │   reviewer can flip Summary → Graph → Row → Column →
-│       │   Values without leaving the run-detail page.  Trade-
-│       │   off: more JS shipping in the run-detail bundle vs
-│       │   fewer page-flips for the audit-reviewer persona.
-│       │   Defer until usage data shows the page-flip is the
-│       │   real bottleneck.
+│       │   Promoted out of Phase 17 into its own ``Phase 41``
+│       │   below so it doesn't get lost behind the Phase-39 /
+│       │   Phase-40 feature pillars.  Trade-off (more JS in
+│       │   the run-detail bundle vs fewer page-flips for the
+│       │   audit-reviewer persona) is accepted in the new
+│       │   phase entry.  Original defer rationale ("until
+│       │   usage data shows the page-flip is the real
+│       │   bottleneck") was over-cautious — keeping the
+│       │   sub-pane work parked indefinitely behind a usage-
+│       │   data signal that nobody is collecting.
 │
 ├── Phase 18 — Audit Cockpit                              ✅ closed
 │   │
@@ -4232,6 +4234,123 @@ PointlesSQL
 │           ``principal, rows_written``.  0 console errors
 │           throughout.  ``audit-cockpit-deep.md`` carries a
 │           "Verification log" entry stamped 2026-05-06.
+│
+├── Phase 39 — Agent EXPLAIN-driven self-rewrite loop       ⏳ queued
+│   │
+│   │   The Phase-13 sketch that never landed (memory
+│   │   ``project_phase13_explain_agent_loop.md``).  Agents read
+│   │   DuckDB ``EXPLAIN (FORMAT JSON)`` for the SQL they're
+│   │   about to issue, see the cost-gate's verdict in advance,
+│   │   and self-rewrite the query before submission instead of
+│   │   bouncing off ``cost_gate_trigger`` and waiting for human
+│   │   approval.  The plumbing is already mostly there — the
+│   │   cost-gate already runs EXPLAIN on the path, and the
+│   │   ``cost_gate_trigger`` field on AgentRun captures the
+│   │   plan.  This phase exposes the EXPLAIN bytes earlier in
+│   │   the loop (pre-execution tool call) and adds a "rewrite-
+│   │   reason" field to ``agent_run_operations`` so the audit
+│   │   trail captures why a query was rewritten.
+│   │
+│   │   **Why it matters strategically:** This is the most
+│   │   concretely-demoable AI-native-lakehouse differentiator
+│   │   the project has — agent rewrites SQL live, cost-gate
+│   │   fires less, audit captures before/after.  Direct fit
+│   │   with ``project_ai_native_vision.md`` ("supervision
+│   │   surface, not cheaper Databricks").
+│   │
+│   ├── Sprint 39.1 — pre-flight ``pql_explain`` tool         ⏳
+│   │       Plugin tool returns ``{plan, estimated_cost,
+│   │       cost_gate_verdict}`` for an arbitrary SQL string
+│   │       without executing it.  Adds the ``X-Cost-Gate-
+│   │       Preview`` audit row.
+│   │
+│   ├── Sprint 39.2 — rewrite-attempt audit                   ⏳
+│   │       New ``rewrite_attempts`` table: each row links to
+│   │       the AgentRun + before/after SQL hash + EXPLAIN
+│   │       cost delta.  Run-detail UI surfaces a "rewrites"
+│   │       sub-tab inside the existing Operations top-tab.
+│   │
+│   ├── Sprint 39.3 — Hermes plugin integration              ⏳
+│   │       Reflexive rewrite loop in the plugin's
+│   │       ``post_tool_call`` hook: when ``pql_sql`` /
+│   │       ``pql_merge`` / ``pql_write_table`` get a cost-
+│   │       gate-deny, the plugin auto-feeds the EXPLAIN back
+│   │       into the LLM with a rewrite prompt; cap at 3
+│   │       attempts, then fall through to human approval.
+│   │
+│   └── Sprint 39.4 — walkthrough + cockpit-card             ⏳
+│           ``docs/e2e-walkthroughs/explain-rewrite.md`` plus
+│           a "Rewrite savings" Grafana panel showing
+│           cost-gate-denials averted per week.
+│
+├── Phase 40 — Lakehouse Federation reads (OpenLineage / CDF)  ⏳ queued
+│   │
+│   │   PointlesSQL today emits OpenLineage events outbound
+│   │   (Phase 15 PQL→soyuz facets) and registers Delta tables
+│   │   for federated writes (soyuz Lakehouse Federation).
+│   │   This phase closes the loop on the read side: consume
+│   │   external systems' events into the audit lake, tail
+│   │   their CDF / change-feed when available, and surface
+│   │   the merged lineage graph on table-detail pages.
+│   │
+│   │   **Why it matters strategically:** User flag — "essential
+│   │   for federation".  Without inbound lineage consumption
+│   │   the federation story is one-way (we federate writes
+│   │   out, but our audit graph stops at the soyuz boundary
+│   │   and can't follow lineage from external producers).
+│   │   Closes a real moat-line vs. DBX Unity Catalog Lineage,
+│   │   which is single-source.
+│   │
+│   ├── Sprint 40.1 — OpenLineage inbound endpoint            ⏳
+│   │       ``POST /api/lineage/openlineage`` accepts the
+│   │       OpenLineage 1.x event envelope, normalises into
+│   │       ``lineage_row_edges`` / ``lineage_column_map``
+│   │       with ``producer`` set to the originating namespace.
+│   │       Auth: dedicated API-key scope ``lineage_inbound``.
+│   │
+│   ├── Sprint 40.2 — soyuz federated-table CDF tail          ⏳
+│   │       Background worker subscribes to Delta CDF feeds
+│   │       on registered foreign-catalog tables; emits
+│   │       synthetic ``read`` operations into the local audit
+│   │       trail.  Reuses the Phase-15.7 CDF-bootstrap
+│   │       infrastructure.
+│   │
+│   ├── Sprint 40.3 — table-detail merged lineage card        ⏳
+│   │       Lineage card on ``/catalogs/{cat}/{schema}/{table}``
+│   │       merges inbound (40.1) + outbound (Phase 15) edges
+│   │       into a single graph view.  External producers
+│   │       render with a distinct node colour.
+│   │
+│   └── Sprint 40.4 — alerts on cross-system lineage breaks   ⏳
+│           Alert rule type ``lineage_break``: fires when an
+│           expected upstream feed stops emitting for >N
+│           minutes, surfaces in the Phase-19.0 inbox.
+│
+├── Phase 41 — Sprint 17.6 promote: Lineage sub-panes         ⏳ queued
+│   │
+│   │   The "embed Row / Column / Value drill-downs as
+│   │   sub-panes inside the Lineage top-tab on ``/runs/{id}``"
+│   │   sprint that's been ``⏳ queued`` since Phase 17.  Original
+│   │   defer reason: "until usage data shows the page-flip is
+│   │   the real bottleneck".  Promoted to its own phase here so
+│   │   it doesn't get lost behind the bigger Phase-39/40
+│   │   feature pillars; conceptually it's the smallest of the
+│   │   three "next" tracks (~1 sprint, pure UX consolidation,
+│   │   no new backend).  Pick this one when the AI-native /
+│   │   federation pillars are blocked or when a short-session
+│   │   slot opens.
+│   │
+│   └── Sprint 41.1 — embed lineage drill-downs as sub-panes  ⏳
+│           Move the contents of
+│           ``/catalogs/.../rows/{id}/trace`` (row trace),
+│           ``/catalogs/.../columns/{name}/trace`` (column
+│           trace), and the value-changes panel into Lineage
+│           top-tab sub-pills next to the existing
+│           Summary / Graph entries on ``/runs/{id}``.
+│           Trade-off accepted: +JS bundle weight in the
+│           run-detail page in exchange for fewer page-flips
+│           for the audit-reviewer persona.  Behaviour-equivalent
+│           routes stay in place for direct-link compatibility.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

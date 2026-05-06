@@ -6,6 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Roadmap — three queued feature pillars after Phase 38.**
+  Records the next forward-motion candidates surfaced after the
+  Phase-38 sprint sweep closed everything carryable from the
+  cleanup track.  Phase 39 (Agent EXPLAIN-driven self-rewrite
+  loop) revives the Phase-13 EXPLAIN-loop sketch — agents read
+  ``EXPLAIN (FORMAT JSON)`` pre-execution, see the cost-gate
+  verdict, and self-rewrite SQL before submission instead of
+  bouncing off ``cost_gate_trigger``.  Phase 40 (Lakehouse
+  Federation reads — OpenLineage / CDF) closes the inbound side
+  of the federation story: today PointlesSQL emits OpenLineage
+  outbound and registers federated tables via soyuz, but the
+  audit-graph stops at the soyuz boundary on read; this phase
+  adds an OpenLineage inbound endpoint, a CDF tail worker, and
+  a merged-lineage card on table-detail pages.  Phase 41 promotes
+  Sprint 17.6 (lineage trace sub-panes) out of the Phase-17
+  sub-tree into its own phase so the smallest UX-only track
+  doesn't get lost behind the two larger feature pillars.  No
+  order enforcement between 39 / 40 / 41 — all three carry ``⏳``.
+
 - **Sprint 36.7 — dbt end-to-end walkthrough + Phase 36 close.**
   Phase 36 closes ✅ in the same session Phase 38.2 had marked
   it ``⏸ upstream``.  Trigger was the dbt-labs/dbt-core#12098
