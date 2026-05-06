@@ -154,6 +154,52 @@ model lives in soyuz:
  inference → promote) — fully HTTP-only, no PointlesSQL
  imports on the agent side.
 
+**Phase 37 — admin + audit cockpit + dbt**.  Five new
+playbooks (one rewritten + four new) closing coverage gaps
+that opened in Phase 14, 17, 18.6+, 28, 33, and 36.  Replay
+them after `auth.md` (admin user must exist + be signed in):
+
+19. [`admin-console.md`](admin-console.md) — Phase-33
+ admin landing 7-card grid + ``/admin/external-writes``
+ (Phase 14) + ``/admin/api-keys`` (with the plaintext-
+ secret modal + load-bearing
+ secret-not-in-outerHTML assertion) + ``/admin/review-
+ destinations`` + ``/admin/system-info``.  ``/admin/audit-
+ sinks`` and ``/admin/workspaces`` cross-link out to the
+ dedicated playbooks.
+20. [`audit-cockpit-deep.md`](audit-cockpit-deep.md) — the
+ four Phase-18.6 → 18.x cockpit pages: anomaly inbox +
+ FTS search (Sprint 18.7's custom path-segment tokenizer
+ verified) + by-table reverse index +
+ saved audit queries workbench.  Distinguishes "chrome"
+ path (works on ``seed-e2e.py``) from "data" path (needs
+ ``seed-full-stack-demo.py --demo-rollback --keep-state``).
+21. [`run-comparisons.md`](run-comparisons.md) — both
+ compare surfaces in one playbook: the structured 6-tab
+ audit run-diff at ``/runs/{a}/diff/{b}`` (Sprint 18.4)
+ with Chart.js bars + the side-by-side jobs run-compare
+ at ``/jobs/{job_id}/runs/{a}/compare?with={b}``
+ (Sprint 12.x).  Carries the Phase-18 prior-art mitigation
+ for Chart.js async render against hidden tab-panes.
+22. [`alerts.md`](alerts.md) — alert list + detail +
+ destination CRUD with HMAC redaction + the per-user
+ ``/alerts/feed.atom`` + ``/alerts/feed.json`` pull feed
+ URLs.  Cross-link in from grand-tour Act 9.
+23. [`dbt-pipeline.md`](dbt-pipeline.md) — Phase-36 dbt
+ cockpit at ``/dbt`` covering both states (iframe to
+ ``/dbt-docs/`` + warning card when subprocess is
+ down).  The Phase-36.B read-only API surface
+ (``/api/dbt/manifest``, ``/coverage``, ``/test-failures``)
+ is exercised programmatically pending the still-paused
+ Phase-36.4 chrome work (filed as BUG-37-06).
+
+[`audit-sinks.md`](audit-sinks.md) was rewritten from a
+curl-only operational runbook into a UI-driven walkthrough
+during Phase-37 Wave 0a — the original "no UI yet" caveat is
+gone.  Wave 0a also surfaced BUG-37-01 (Alpine ``x-data``
+attribute escaping on four admin row templates), fixed in
+``a744b52``.
+
 ## Stack start
 
 ```bash

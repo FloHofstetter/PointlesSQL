@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 37 — Playwright coverage refresh (post-Phase-22/23).**
+  Brings ``docs/e2e-walkthroughs/`` back to complete UI
+  coverage after Phase 14, 17, 18.6+, 28, 33, and 36 features
+  landed pages without dedicated playbooks.  Wave 0a rewrites
+  ``audit-sinks.md`` from a curl-only operational runbook into
+  a UI-driven walkthrough (Phase 33.2 added the admin page that
+  the original playbook said didn't exist) — surfacing
+  BUG-37-01 (Alpine ``x-data`` attribute escaping on four admin
+  row templates, fixed in ``a744b52``).  Wave 0b applies three
+  surgical updates to ``grand-tour.md`` for Phase-28 workspace
+  switcher and Phase-33 admin landing.  Wave 1 lands
+  ``admin-console.md`` covering the Phase-33 landing 7-card
+  grid + 5 sub-pages (the API-keys plaintext-secret modal
+  carries the strongest redaction property: the secret lives
+  in the ``<input>``'s ``.value`` DOM property only and is
+  never serialised into ``outerHTML``).  Wave 2 lands
+  ``audit-cockpit-deep.md`` for the four Phase-18.6 → 18.x
+  cockpit pages.  Wave 3 lands ``run-comparisons.md`` covering
+  both compare surfaces (audit run-diff + jobs run-compare).
+  Wave 4 lands ``alerts.md``.  Wave 5 lands ``dbt-pipeline.md``
+  via the D3b path — covers the iframe-only chrome that exists
+  today + files BUG-37-06 for the still-paused Phase-36.4
+  cockpit chrome (manifest summary card + test-failures table
+  + run-view sub-tab).  Five additional bugs filed during live
+  replay (BUG-37-02 through 06).  README index updated with
+  the five new entries; CLAUDE.md playbook count refreshed
+  to 48.
+
 - **Sprint 36.D — dbt bridge captures Delta versions for rollback
   anchors.**  Closes the production-side gap surfaced after 36.C
   landed: ``pql.rollback`` was refusing every dbt-driven rollback

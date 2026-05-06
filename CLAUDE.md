@@ -204,11 +204,12 @@ covers all current and recently-closed work.
 
 ## Replaying the e2e walkthroughs
 
-`docs/e2e-walkthroughs/` holds eleven deterministic Markdown
-playbooks (five data-surface from Sprint 22, five orchestration
-+ operational from Sprint 23, one packaging/clean-machine-install
-from Sprint 40). Each one can be replayed by a human with a
-browser or by Claude Code through the `mcp__playwright__browser_*`
+`docs/e2e-walkthroughs/` holds 48 deterministic Markdown
+playbooks covering every UI surface PointlesSQL ships
+(catalog browsing, lineage, run-detail, ML registry,
+branches, audit cockpit, federation, admin console, dbt,
+etc.). Each one can be replayed by a human with a browser
+or by Claude Code through the `mcp__playwright__browser_*`
 tool family. The Sprint 23
 orchestration + operational playbooks use host env overlays
 (`POINTLESSQL_JUPYTER_ENABLED`, `POINTLESSQL_LOG_FORMAT`,

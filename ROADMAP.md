@@ -3988,6 +3988,93 @@ PointlesSQL
 │   │
 │   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ Playwright
 │
+├── Phase 37 — Playwright coverage refresh (post-22/23)     ✅
+│   │
+│   │   Brings ``docs/e2e-walkthroughs/`` back to complete UI
+│   │   coverage after Phase 14, 17, 18.6+, 28, 33, and 36
+│   │   landed pages without dedicated playbooks.  Six waves,
+│   │   one fix-commit + 6 doc-commits.  6 BUG-37-NN filed; 1
+│   │   fixed in same session.
+│   │
+│   ├── Wave 0a — refresh ``audit-sinks.md``                    ✅
+│   │       Rewrote from curl-only operational runbook to UI-
+│   │       driven 6-step walkthrough (Phase 33.2 added the
+│   │       admin page that the original playbook said didn't
+│   │       exist).  Surfaced + fixed BUG-37-01 in ``a744b52``:
+│   │       Alpine ``x-data`` attribute escaping on four admin
+│   │       row templates (``audit_sinks``, ``review_destinations``,
+│   │       ``workspaces``, ``api_keys``) — JSON-encoded string
+│   │       inside double-quoted HTML attribute broke the
+│   │       parser.  All four page's per-row Alpine bindings
+│   │       (toggle / Test / Delete / Revoke) were dead before
+│   │       the fix.  Pytest never executed the Alpine layer.
+│   │
+│   ├── Wave 0b — refresh ``grand-tour.md``                     ✅
+│   │       Three surgical updates: workspace-switcher Note in
+│   │       Act 1, admin landing flow in Act 10, redaction-
+│   │       marker assertion in Act 12.  Acts 4/5/6/13 already
+│   │       covered Phase 17 (icon-rail + four-tab run-detail).
+│   │
+│   ├── Wave 1 — new ``admin-console.md``                       ✅
+│   │       Phase-33 admin landing 7-card grid + 5 sub-pages
+│   │       (``api-keys``, ``review-destinations``,
+│   │       ``system-info``, ``external-writes``).  ~30 steps.
+│   │       The api-keys plaintext-secret modal carries the
+│   │       strongest redaction property in the whole codebase:
+│   │       secret lives in the ``<input>`` ``.value`` DOM
+│   │       property only, never serialised into ``outerHTML``
+│   │       (Alpine ``:value`` binding does not write through
+│   │       to the HTML attribute).  Page-source view literally
+│   │       cannot leak a freshly-issued secret.  BUG-37-02 +
+│   │       BUG-37-03 filed (admin sidebar incomplete + icon-
+│   │       rail duplicate Admin link).
+│   │
+│   ├── Wave 2 — new ``audit-cockpit-deep.md``                  ✅
+│   │       Phase-18.6 → 18.x cockpit: anomaly inbox + FTS
+│   │       search + by-table reverse index + saved queries
+│   │       workbench.  18 steps split into chrome path
+│   │       (``seed-e2e.py``) vs data path (``seed-full-stack-
+│   │       demo.py --demo-rollback``).  BUG-37-04 (HTMX null-
+│   │       property TypeError on ``/audit/inbox`` page-load) +
+│   │       BUG-37-05 (``/audit/by-table`` empty path renders
+│   │       ``Error 422`` text in tab loaders) filed.
+│   │
+│   ├── Wave 3 — new ``run-comparisons.md``                     ✅
+│   │       Single playbook for both compare surfaces — audit
+│   │       run-diff at ``/runs/{a}/diff/{b}`` (6-tab Chart.js
+│   │       structured) + jobs run-compare at
+│   │       ``/jobs/{id}/runs/{a}/compare?with={b}`` (side-by-
+│   │       side notebook iframes).  Carries the Phase-18
+│   │       prior-art Chart.js async-render mitigation (``shown.
+│   │       bs.tab`` + ``browser_wait_for``).
+│   │
+│   ├── Wave 4 — new ``alerts.md``                              ✅
+│   │       Alert list + detail + destination CRUD + ``/alerts/
+│   │       feed.atom`` + ``/alerts/feed.json`` per-user pull
+│   │       feeds.  9 steps.  Generalised BUG-37-04 to a 3-page
+│   │       bug class (``/audit/inbox``, ``/audit/search``,
+│   │       ``/alerts``).
+│   │
+│   ├── Wave 5 — new ``dbt-pipeline.md`` (D3b path)             ✅
+│   │       Walkthrough for ``/dbt`` covering both states (iframe
+│   │       to ``/dbt-docs/`` + warning card when subprocess is
+│   │       down).  Plan's preferred D3a (build 36.4 chrome
+│   │       first) was de-scoped under session-time constraint;
+│   │       D3b path: write playbook against today's iframe-only
+│   │       chrome + file BUG-37-06 with explicit fix locations
+│   │       for the missing manifest summary card / test-failures
+│   │       table / run-view sub-tab.  Phase-36.B read-only API
+│   │       surface (``/api/dbt/manifest``, ``/coverage``,
+│   │       ``/test-failures``) exercised programmatically as
+│   │       documentation of the consumer contract the missing
+│   │       chrome would use.  Sprint 36.4 stays ``⏸ Playwright``.
+│   │
+│   └── Wave 6 — README + CLAUDE.md + ROADMAP wrap-up           ✅
+│           ``docs/e2e-walkthroughs/README.md`` index updated
+│           with the 5 new entries.  CLAUDE.md playbook count
+│           refreshed to 48.  CHANGELOG + this ROADMAP entry
+│           record the wave.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to
