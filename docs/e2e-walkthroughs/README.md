@@ -192,6 +192,14 @@ them after `auth.md` (admin user must exist + be signed in):
  (``/api/dbt/manifest``, ``/coverage``, ``/test-failures``)
  is exercised programmatically pending the still-paused
  Phase-36.4 chrome work (filed as BUG-37-06).
+24. [`explain-rewrite.md`](explain-rewrite.md) — Phase-39 agent
+ EXPLAIN-driven self-rewrite loop.  Hermes plugin's
+ ``pql_query`` calls ``GET /api/sql/explain`` first; on
+ ``cost_gate_denied`` the LLM rewrites and retries (cap 3),
+ then escalates to ``human_approval_required``.  Run-detail
+ carries a "Rewrites" sub-tab on the Operations top-tab and
+ the audit Grafana dashboard gets panel 21 ("Rewrite savings —
+ averted cost-gate denials per week").
 
 [`audit-sinks.md`](audit-sinks.md) was rewritten from a
 curl-only operational runbook into a UI-driven walkthrough

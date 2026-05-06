@@ -1399,6 +1399,81 @@
           "sort": "none"
         }
       }
+    },
+    {
+      "id": 21,
+      "type": "barchart",
+      "title": "Rewrite savings \u2014 averted cost-gate denials per week",
+      "description": "Phase 39 explain-first rewrite loop. Sum of (original_cost - rewritten_cost) over rewrite_attempts where verdict='auto_rewrite_succeeded'. Higher bars = more cost averted by agent self-rewrites.",
+      "gridPos": {
+        "x": 0,
+        "y": 63,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "frser-sqlite-datasource",
+        "uid": "pointlessql-sqlite"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "frser-sqlite-datasource",
+            "uid": "pointlessql-sqlite"
+          },
+          "queryType": "table",
+          "rawQueryText": "SELECT date(created_at, 'weekday 0', '-6 days') AS time, COUNT(*) AS rewrites, CAST(SUM(original_cost - COALESCE(rewritten_cost, 0)) AS REAL) AS cost_saved FROM rewrite_attempts WHERE verdict='auto_rewrite_succeeded' AND $__timeFilter(created_at) AND (0 IN ($workspace) OR rewrite_attempts.workspace_id IN ($workspace)) GROUP BY 1 ORDER BY 1",
+          "queryText": "SELECT date(created_at, 'weekday 0', '-6 days') AS time, COUNT(*) AS rewrites, CAST(SUM(original_cost - COALESCE(rewritten_cost, 0)) AS REAL) AS cost_saved FROM rewrite_attempts WHERE verdict='auto_rewrite_succeeded' AND $__timeFilter(created_at) AND (0 IN ($workspace) OR rewrite_attempts.workspace_id IN ($workspace)) GROUP BY 1 ORDER BY 1",
+          "timeColumns": [
+            "time"
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "lineWidth": 1,
+            "fillOpacity": 80
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "0",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.97,
+        "barRadius": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
     }
   ],
   "refresh": "30s",
