@@ -94,6 +94,33 @@ import { lineageDag } from './components/lineage_dag/index.js';
 
 window.lineageDag = lineageDag;
 
+// Lineage drill-down sub-pane factories (Phase 41 / Sprint 41.1).
+// Three panes — Row trace / Column trace / Value changes — sit
+// next to the existing Summary + Graph sub-pills inside the
+// Lineage top-tab on /runs/{id}.  Each pane wraps one of the
+// existing GET /api/lineage/{row-trace,column-trace,value-changes}
+// endpoints; deep-linked via the pql:trace-{row,column,value}
+// custom events fired from Summary "Trace" buttons + the Graph
+// side-panel column-pair "Trace this column" button.
+import {
+    rowTracePane,
+    columnTracePane,
+    valueChangesPane,
+    bindLineageTraceButtons,
+} from './components/lineage_panes.js';
+
+window.rowTracePane = rowTracePane;
+window.columnTracePane = columnTracePane;
+window.valueChangesPane = valueChangesPane;
+
+// One-shot wiring for the Summary "Trace target row" buttons +
+// the three window.pqlLineageTrace* helper functions.  Idempotent.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindLineageTraceButtons, { once: true });
+} else {
+    bindLineageTraceButtons();
+}
+
 // Page-template factories.  Each was previously an inline
 // ``<script>`` IIFE inside its pages/*.html file; lifting them here
 // means a single shared import graph and the synchronous-window-

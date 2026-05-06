@@ -20,6 +20,31 @@
  <i class="bi bi-diagram-3 me-1"></i>Graph
  </button>
  </li>
+ <li class="nav-item" role="presentation">
+ {# Row trace sub-pill (Phase 41 / Sprint 41.1).  Reuses
+ GET /api/lineage/row-trace; deep-linked via the
+ ``pql:trace-row`` window event from Summary buttons or
+ the Graph side-panel.  Cold-start: text-input fallback. #}
+ <button class="nav-link" id="tab-lineage-row-trace-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-lineage-row-trace" type="button" role="tab"
+ aria-controls="tab-lineage-row-trace" aria-selected="false">
+ <i class="bi bi-record-circle me-1"></i>Row trace
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-lineage-column-trace-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-lineage-column-trace" type="button" role="tab"
+ aria-controls="tab-lineage-column-trace" aria-selected="false">
+ <i class="bi bi-columns-gap me-1"></i>Column trace
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-lineage-value-changes-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-lineage-value-changes" type="button" role="tab"
+ aria-controls="tab-lineage-value-changes" aria-selected="false">
+ <i class="bi bi-arrow-left-right me-1"></i>Value changes
+ </button>
+ </li>
  </ul>
  <div class="tab-content">
  <div class="tab-pane fade show active" id="tab-lineage" role="tabpanel" aria-labelledby="tab-lineage-btn">
@@ -52,6 +77,16 @@
  <td class="font-monospace">{{ row.target_table or "—" }}</td>
  <td class="text-end">{{ row.edge_count }}</td>
  <td class="text-end">
+ {% if row.target_table and row.sample_target_row_id %}
+ <button type="button"
+ class="btn btn-sm btn-outline-primary me-1"
+ title="Trace this op's target row inside the Row trace sub-pill"
+ data-pql-trace-row="1"
+ data-table="{{ row.target_table }}"
+ data-row-id="{{ row.sample_target_row_id }}">
+ <i class="bi bi-record-circle"></i>
+ </button>
+ {% endif %}
  {% if row.target_table and "." in row.target_table %}
  {% set parts = row.target_table.split(".") %}
  {% if parts|length == 3 %}
@@ -155,6 +190,11 @@
  :title="'Highlight every edge that touches ' + (pair.source_column || pair.target_column)"
  @click="selectColumn(pair.source_column || pair.target_column)"
  x-text="(pair.source_column || '∅') + ' → ' + pair.target_column"></button>
+ <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1 ms-auto"
+ :title="'Trace ' + currentEdge().target + '.' + pair.target_column + ' in the Column trace sub-pill'"
+ @click="window.pqlLineageTraceColumn(currentEdge().target, pair.target_column)">
+ <i class="bi bi-bezier2"></i>
+ </button>
  </div>
  <div class="small text-muted" x-text="pair.transform_kind"></div>
  </li>
@@ -175,6 +215,291 @@
  </template>
  </aside>
  </div>
+ </div>
+ </div>
+
+ {# Row trace sub-pane (Phase 41 / Sprint 41.1).
+ Hits the existing GET /api/lineage/row-trace endpoint;
+ deep-linked via the pql:trace-row window event fired
+ from Summary "Trace target row" buttons.  Cold-start
+ fallback: two text inputs + Trace button. #}
+ <div class="tab-pane fade" id="tab-lineage-row-trace" role="tabpanel" aria-labelledby="tab-lineage-row-trace-btn">
+ <div x-data="rowTracePane()" x-init="init()">
+ <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
+ <div class="col-md-5">
+ <label class="form-label small" for="row-trace-table">Table (3-part FQN)</label>
+ <input id="row-trace-table" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="catalog.schema.table" x-model="table">
+ </div>
+ <div class="col-md-5">
+ <label class="form-label small" for="row-trace-row-id"><code>_lineage_row_id</code></label>
+ <input id="row-trace-row-id" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="row id to trace" x-model="rowId">
+ </div>
+ <div class="col-md-2">
+ <button type="submit" class="btn btn-sm btn-primary w-100"
+ :disabled="loading || !table || !rowId">
+ <span x-show="!loading"><i class="bi bi-search me-1"></i>Trace</span>
+ <span x-show="loading"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</span>
+ </button>
+ </div>
+ </form>
+ <template x-if="error">
+ <div class="alert alert-danger small" x-text="error"></div>
+ </template>
+ <template x-if="!loaded && !error && !loading">
+ <div class="alert alert-info small mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ Pick a row from <strong>Summary</strong> (the
+ <i class="bi bi-record-circle"></i> button on each op row) or
+ the <strong>Graph</strong> side-panel, or paste a
+ <code>(table, _lineage_row_id)</code> pair above and
+ click <em>Trace</em>.  The standalone
+ <code>/catalogs/.../rows/{row_id}/trace</code> page
+ stays bookmarkable for direct links.
+ </div>
+ </template>
+ <template x-if="loaded && !error && steps.length === 0">
+ <div class="alert alert-warning small mb-0">
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ No <code>lineage_row_edges</code> rows reference this
+ <code>_lineage_row_id</code>.
+ </div>
+ </template>
+ <template x-if="loaded && !error && steps.length > 0">
+ <ol class="list-group list-group-flush list-group-numbered border rounded">
+ <template x-for="step in steps" :key="step.depth + '__' + step.row_id">
+ <li class="list-group-item">
+ <div class="d-flex flex-column gap-1 small">
+ <div class="d-flex align-items-center gap-2">
+ <span class="badge bg-secondary" x-text="'depth ' + step.depth"></span>
+ <span class="font-monospace text-break" x-text="step.table"></span>
+ <span x-show="step.op_name" class="badge bg-info text-dark"
+ :title="'op_id=' + step.op_id"
+ x-text="step.op_name"></span>
+ <span x-show="step.predecessors && step.predecessors.length > 1"
+ class="badge bg-warning text-dark"
+ :title="'fan-in — multiple source rows fed this output'"
+ x-text="'fan-in × ' + step.predecessors.length"></span>
+ </div>
+ <div class="text-muted font-monospace text-break">
+ <code>_lineage_row_id</code> = <span x-text="step.row_id"></span>
+ </div>
+ <div x-show="step.source_file" class="small">
+ <i class="bi bi-file-earmark-text me-1"></i>
+ Source file: <span class="font-monospace" x-text="step.source_file"></span>
+ </div>
+ <details x-show="step.predecessors && step.predecessors.length > 0">
+ <summary class="text-muted">
+ <span x-text="'Predecessors (' + step.predecessors.length + ')'"></span>
+ </summary>
+ <ul class="list-unstyled ms-3 mb-0 mt-1">
+ <template x-for="pred in step.predecessors" :key="pred.table + '__' + pred.row_id">
+ <li class="font-monospace text-break">
+ <i class="bi bi-arrow-90deg-left me-1"></i>
+ <span x-text="pred.table + ' / ' + (pred.row_id || '').slice(0, 16) + '…'"></span>
+ <span x-show="pred.op_name && pred.op_id !== step.op_id"
+ class="badge bg-light text-dark border ms-1"
+ x-text="pred.op_name"></span>
+ </li>
+ </template>
+ </ul>
+ </details>
+ <details x-show="step.value_changes && step.value_changes.length > 0">
+ <summary class="text-muted">
+ <i class="bi bi-pencil-square me-1"></i>
+ <span x-text="'Value changes (' + step.value_changes.length + ')'"></span>
+ </summary>
+ <ul class="list-unstyled ms-3 mb-0 mt-1">
+ <template x-for="change in step.value_changes" :key="change.run_id + '__' + change.op_id + '__' + change.target_column">
+ <li class="font-monospace text-break">
+ <span class="badge bg-light text-dark border" x-text="change.target_column"></span>
+ <span class="text-muted">·</span>
+ <span x-text="change.display_old !== undefined ? change.display_old : (change.old_value === null ? 'NULL' : change.old_value)"></span>
+ <i class="bi bi-arrow-right mx-1"></i>
+ <span x-text="change.display_new !== undefined ? change.display_new : (change.new_value === null ? 'NULL' : change.new_value)"></span>
+ </li>
+ </template>
+ </ul>
+ </details>
+ </div>
+ </li>
+ </template>
+ </ol>
+ </template>
+ </div>
+ </div>
+
+ {# Column trace sub-pane.  Hits GET /api/lineage/column-trace.
+ Deep-linked via pql:trace-column from Graph side-panel
+ column-pair "Trace this column" buttons. #}
+ <div class="tab-pane fade" id="tab-lineage-column-trace" role="tabpanel" aria-labelledby="tab-lineage-column-trace-btn">
+ <div x-data="columnTracePane()" x-init="init()">
+ <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
+ <div class="col-md-5">
+ <label class="form-label small" for="column-trace-table">Table (3-part FQN)</label>
+ <input id="column-trace-table" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="catalog.schema.table" x-model="table">
+ </div>
+ <div class="col-md-5">
+ <label class="form-label small" for="column-trace-column">Column</label>
+ <input id="column-trace-column" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="column name" x-model="column">
+ </div>
+ <div class="col-md-2">
+ <button type="submit" class="btn btn-sm btn-primary w-100"
+ :disabled="loading || !table || !column">
+ <span x-show="!loading"><i class="bi bi-search me-1"></i>Trace</span>
+ <span x-show="loading"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</span>
+ </button>
+ </div>
+ </form>
+ <template x-if="error">
+ <div class="alert alert-danger small" x-text="error"></div>
+ </template>
+ <template x-if="!loaded && !error && !loading">
+ <div class="alert alert-info small mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ Pick a column from the <strong>Graph</strong> side-panel
+ (the <i class="bi bi-bezier2"></i> button on each column
+ pair) or paste a <code>(table, column)</code> pair above
+ and click <em>Trace</em>.  The standalone
+ <code>/catalogs/.../columns/{column}/trace</code> page
+ stays bookmarkable for direct links.
+ </div>
+ </template>
+ <template x-if="loaded && !error && steps.length === 0">
+ <div class="alert alert-warning small mb-0">
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ No <code>lineage_column_map</code> rows reference this column.
+ </div>
+ </template>
+ <template x-if="loaded && !error && steps.length > 0">
+ <ol class="list-group list-group-flush list-group-numbered border rounded">
+ <template x-for="step in steps" :key="step.depth + '__' + step.table + '__' + step.column">
+ <li class="list-group-item">
+ <div class="d-flex flex-column gap-1 small">
+ <div class="d-flex align-items-center gap-2">
+ <span class="badge bg-secondary" x-text="'depth ' + step.depth"></span>
+ <span class="font-monospace text-break" x-text="step.table"></span>
+ <span class="badge bg-light text-dark border font-monospace" x-text="step.column"></span>
+ <span x-show="step.op_name" class="badge bg-info text-dark"
+ :title="'op_id=' + step.op_id"
+ x-text="step.op_name"></span>
+ </div>
+ <details x-show="step.predecessors && step.predecessors.length > 0" open>
+ <summary class="text-muted">
+ <span x-text="'Derived from ' + step.predecessors.length + ' source column(s)'"></span>
+ </summary>
+ <ul class="list-unstyled ms-3 mb-0 mt-1">
+ <template x-for="pred in step.predecessors" :key="(pred.table || '') + '__' + (pred.column || '')">
+ <li class="font-monospace text-break">
+ <i class="bi bi-arrow-90deg-left me-1"></i>
+ <span x-text="(pred.table || 'unknown') + '.' + (pred.column || '?')"></span>
+ <span class="badge bg-light text-dark border ms-1" x-text="pred.transform_kind || '—'"></span>
+ <span x-show="pred.transform_detail"
+ class="text-muted small ms-1"
+ x-text="pred.transform_detail"></span>
+ </li>
+ </template>
+ </ul>
+ </details>
+ </div>
+ </li>
+ </template>
+ </ol>
+ </template>
+ </div>
+ </div>
+
+ {# Value changes sub-pane.  Hits GET /api/lineage/value-changes.
+ Deep-linked via pql:trace-value (currently no caller fires
+ this directly; users paste table+row_id+column or arrive
+ from a Row-trace step's value-changes details). #}
+ <div class="tab-pane fade" id="tab-lineage-value-changes" role="tabpanel" aria-labelledby="tab-lineage-value-changes-btn">
+ <div x-data="valueChangesPane()" x-init="init()">
+ <form class="row g-2 align-items-end mb-3" @submit.prevent="fetch()">
+ <div class="col-md-4">
+ <label class="form-label small" for="value-changes-table">Table (3-part FQN)</label>
+ <input id="value-changes-table" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="catalog.schema.table" x-model="table">
+ </div>
+ <div class="col-md-3">
+ <label class="form-label small" for="value-changes-row-id"><code>_lineage_row_id</code></label>
+ <input id="value-changes-row-id" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="row id" x-model="rowId">
+ </div>
+ <div class="col-md-3">
+ <label class="form-label small" for="value-changes-column">Column (optional)</label>
+ <input id="value-changes-column" type="text" class="form-control form-control-sm font-monospace"
+ placeholder="filter to one column" x-model="column">
+ </div>
+ <div class="col-md-2">
+ <button type="submit" class="btn btn-sm btn-primary w-100"
+ :disabled="loading || !table || !rowId">
+ <span x-show="!loading"><i class="bi bi-search me-1"></i>Trace</span>
+ <span x-show="loading"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</span>
+ </button>
+ </div>
+ </form>
+ <template x-if="error">
+ <div class="alert alert-danger small" x-text="error"></div>
+ </template>
+ <template x-if="!loaded && !error && !loading">
+ <div class="alert alert-info small mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ Enter <code>(table, _lineage_row_id)</code> and (optionally)
+ a column to see the chronological pre-image / post-image
+ history.  Values are PII-masked at the API boundary for
+ non-admin readers; the standalone
+ <code>/catalogs/.../rows/{row_id}/trace</code> page exposes
+ the same data with admin-only reveal buttons.
+ </div>
+ </template>
+ <template x-if="loaded && !error && changes.length === 0">
+ <div class="alert alert-warning small mb-0">
+ <i class="bi bi-exclamation-triangle me-1"></i>
+ No <code>lineage_value_changes</code> rows match this
+ <code>(table, _lineage_row_id)</code> pair.  Value-changes
+ are recorded only when <code>pql.merge(strategy='upsert',
+ track_value_changes=True)</code> is set.
+ </div>
+ </template>
+ <template x-if="loaded && !error && changes.length > 0">
+ <div class="card">
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>Run</th>
+ <th>Op</th>
+ <th>Column</th>
+ <th>Old</th>
+ <th></th>
+ <th>New</th>
+ <th>At</th>
+ </tr>
+ </thead>
+ <tbody>
+ <template x-for="change in changes" :key="change.run_id + '__' + change.op_id + '__' + change.target_column + '__' + change.created_at">
+ <tr>
+ <td class="font-monospace small text-break"
+ x-text="(change.run_id || '').slice(0, 8) + '…'"></td>
+ <td x-text="change.op_id"></td>
+ <td><span class="badge bg-light text-dark border font-monospace" x-text="change.target_column"></span></td>
+ <td class="font-monospace text-break"
+ x-text="change.old_value === null ? 'NULL' : change.old_value"></td>
+ <td class="text-muted"><i class="bi bi-arrow-right"></i></td>
+ <td class="font-monospace text-break"
+ x-text="change.new_value === null ? 'NULL' : change.new_value"></td>
+ <td class="small text-muted text-nowrap" x-text="change.created_at"></td>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </template>
  </div>
  </div>
 

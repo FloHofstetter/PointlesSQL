@@ -181,8 +181,12 @@ def load_lineage_summary_for_run(
     Returns:
         Dict shaped ``{"total_edges": int, "rows": [{
         "ordinal": int, "op_name": str, "source_table": str,
-        "target_table": str, "edge_count": int}, ...]}`` ready to
-        feed the run-detail Lineage tab.
+        "target_table": str, "edge_count": int,
+        "sample_target_row_id": str | None}, ...]}`` ready to
+        feed the run-detail Lineage tab.  ``sample_target_row_id``
+        is an arbitrary representative row id for the (op, target)
+        group — used by the Lineage sub-pills to deep-link a
+        "Trace target row" click into the Row-trace pane.
     """
     from sqlalchemy import func
 
@@ -200,6 +204,7 @@ def load_lineage_summary_for_run(
                 AgentRunOperation.target_table,
                 LineageRowEdge.source_table,
                 func.count(LineageRowEdge.id).label("edge_count"),
+                func.min(LineageRowEdge.target_row_id).label("sample_target_row_id"),
             )
             .join(LineageRowEdge, LineageRowEdge.op_id == AgentRunOperation.id)
             .where(AgentRunOperation.agent_run_id == run_id)
@@ -224,6 +229,7 @@ def load_lineage_summary_for_run(
                     "target_table": row[3],
                     "source_table": row[4],
                     "edge_count": edge_count,
+                    "sample_target_row_id": row[6],
                 }
             )
     return {"total_edges": total, "rows": rows}
