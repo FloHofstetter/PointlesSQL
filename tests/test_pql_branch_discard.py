@@ -11,7 +11,6 @@ from deltalake import write_deltalake
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.types import UNSET
 
-from pointlessql.pql import _branch as branch_mod
 from pointlessql.pql._branch import (
     _delete_branch_storage,
     discard_branch_schema,
@@ -20,6 +19,7 @@ from pointlessql.pql._branch_errors import (
     BranchInUseError,
     BranchNotFoundError,
 )
+from pointlessql.pql.branch import _discard as branch_mod
 from pointlessql.services.branch_tags import (
     STATUS_ACTIVE,
     STATUS_DISCARDED,
@@ -208,8 +208,8 @@ class TestDiscardBranchSchema:
             patch(
                 "pointlessql.services.unitycatalog._api._delete_schema.sync"
             ) as mock_delete_schema,
-            patch.object(branch_mod, "_emit_branch_event") as mock_emit,
-            patch.object(branch_mod, "_record_branch_audit_log") as mock_audit,
+            patch.object(branch_mod, "emit_branch_event") as mock_emit,
+            patch.object(branch_mod, "record_branch_audit_log") as mock_audit,
         ):
             discard_branch_schema(
                 client=client,

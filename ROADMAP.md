@@ -3708,6 +3708,83 @@ PointlesSQL
 │       the audit-export trail panel.  Both dashboards: 20 panels,
 │       distinct IDs, lint-script green.
 │
+├── Phase 35 — Targeted modularization + type-hardening     ⏳ in progress
+│   │
+│   │   Code-quality phase opened 2026-05-06 after Phase 34 closed.
+│   │   Two streams: (A) split the three big-and-mixed-concerns
+│   │   files (``pql/_branch.py`` 1310, ``services/lineage_edges.py``
+│   │   1137, ``services/audit_fts.py`` 973) into per-workflow
+│   │   subpackages + extract ``run_view.html`` (1467) tab partials,
+│   │   (B) drive pyright warnings from 531 toward ≤443 by typing
+│   │   ``deltalake.DeltaTable`` returns + the ``cdf_table``
+│   │   parameter + the polymorphic ``_frame_to_arrow`` dispatcher.
+│   │   Out-of-scope: ``audit_routes`` / ``audit_aggregator`` /
+│   │   ``operations.py`` (cohesive by audit), zero-warning push,
+│   │   soyuz-client stubs.  Final sub-sprint adds CI gates so the
+│   │   gains don't decay.
+│   │
+│   ├── Sprint 35.1 — Split ``pql/_branch.py``               ✅ closed 2026-05-06
+│   │       ``pointlessql/pql/branch/`` package: ``_common.py``
+│   │       (soyuz refs + URI/schema/audit/event helpers),
+│   │       ``_create.py`` (creation + cloning), ``_discard.py``
+│   │       (discard + storage cleanup), ``_promote.py`` (atomic
+│   │       rename promote + version-equality conflict gate +
+│   │       dry-run preview).  Cross-module helpers dropped leading
+│   │       underscore so ``reportPrivateUsage`` stays clean;
+│   │       module-internal helpers keep theirs.  ``_branch.py``
+│   │       reduced to a 60-LOC re-export shim.  Tests update one
+│   │       import-line + 5 patch-target renames; behaviour
+│   │       byte-identical, 81 branch tests stay green, full
+│   │       1478-test SQLite suite passes.
+│   │
+│   ├── Sprint 35.2 — Split ``services/lineage_edges.py``    ⏳ next
+│   │       1137 LOC → ``services/lineage/`` subpackage with
+│   │       ``rows.py`` (row edges + rejects + walk_back),
+│   │       ``columns.py`` (column edges + traces), ``values.py``
+│   │       (value-change capture).  ``lineage_edges.py`` becomes
+│   │       a re-export shim.
+│   │
+│   ├── Sprint 35.3 — Split ``services/audit_fts.py``        ⏳ planned
+│   │       973 LOC → ``_audit_fts_sqlite.py`` (FTS5 virtual table
+│   │       + triggers, ~210 LOC), ``_audit_fts_postgres.py``
+│   │       (tsvector + GIN + PL/pgSQL triggers, ~300 LOC), public
+│   │       facade keeps ``is_available`` / ``search`` /
+│   │       ``install_index`` / ``rebuild_index``.
+│   │
+│   ├── Sprint 35.4 — Extract ``run_view.html`` partials     ⏳ planned
+│   │       1467 LOC → 7 includes (header / metadata / conformance
+│   │       / approval-form / 4 tab partials).  Mandatory browser
+│   │       playbook replay (``audit-reviewer-daily.md``) before
+│   │       commit — Alpine ``x-data`` scope changes need
+│   │       browser verification per memory rule.
+│   │
+│   ├── Sprint 35.5 — Module-level deltalake imports         ⏳ planned
+│   │       Hoist lazy ``import deltalake`` from function bodies
+│   │       to module top in ``_merge.py``, ``_autoload.py``,
+│   │       ``engine.py``, ``_cdf.py``.  Add ``DeltaTable`` /
+│   │       ``pa.Table`` annotations on locals where pyright can't
+│   │       infer.  Target: ≥40 fewer warnings.
+│   │
+│   ├── Sprint 35.6 — ``cdf_table`` parameter typing         ⏳ planned
+│   │       Add explicit ``cdf_table: pa.Table`` parameter +
+│   │       return-type to ``services/value_change_capture.py``;
+│   │       ~18 cascaded warnings collapse.
+│   │
+│   ├── Sprint 35.7 — ``_frame_to_arrow`` ``@overload``      ⏳ planned
+│   │       Replace ``frame: Any`` with ``@overload`` per
+│   │       supported input type (pandas DataFrame, polars
+│   │       DataFrame, DuckDB relation).  ~30-40 warnings fall
+│   │       out across ``_merge.py`` + ``engine.py``.  Stop on
+│   │       first runtime bug surfaced by the narrowing — fix at
+│   │       source, then resume.
+│   │
+│   └── Sprint 35.8 — File-size + warning budget CI          ⏳ planned
+│           ``scripts/check-file-size-budget.sh`` (no
+│           ``pointlessql/**.py`` >800 LOC outside the allowlist)
+│           and ``scripts/check-pyright-budget.sh`` (warning
+│           count never regresses).  Wired into pre-commit and
+│           the CI workflow.  Closes Phase 35.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

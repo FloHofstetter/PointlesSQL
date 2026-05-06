@@ -6,6 +6,35 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 35.1 closed (2026-05-06)** — Targeted modularization: split
+  ``pointlessql/pql/_branch.py`` (1310 LOC) into a per-workflow
+  ``pointlessql/pql/branch/`` subpackage.  ``_common.py`` keeps the
+  soyuz-API references + shared helpers (URI classification, schema
+  lookup, audit-log + CloudEvent emission); ``_create.py`` owns the
+  create flow + table-cloning helpers; ``_discard.py`` owns the
+  discard flow + storage cleanup; ``_promote.py`` owns the
+  pointer-swap promote + dry-run preview + version-equality conflict
+  gate.  ``_branch.py`` is now a thin re-export shim
+  (``# pyright: reportPrivateUsage=false`` to silence intentional
+  private-symbol exposure for tests).  Cross-module helpers in
+  ``_common.py`` dropped their leading underscore
+  (``classify_storage_scheme``, ``uri_to_local_path``,
+  ``derive_branch_storage_root``, ``split_two_part``,
+  ``ensure_source_schema``, ``resolve_storage_root``,
+  ``emit_branch_event``, ``record_branch_audit_log``,
+  ``rename_schema``); module-internal helpers
+  (``_clone_table_local``, ``_pick_strategy``,
+  ``_check_promotion_conflicts``, ``_delete_branch_storage``, etc.)
+  keep theirs.  Test imports updated: ``from pointlessql.pql import
+  _branch as branch_mod`` → ``from pointlessql.pql.branch import
+  _create as branch_mod`` (and similar for discard / promote);
+  ``patch.object(branch_mod, "_emit_branch_event")`` →
+  ``patch.object(branch_mod, "emit_branch_event")``, etc.  Behaviour
+  is byte-identical — refactor only.  All 81 branch tests still
+  green; 1478 SQLite suite tests pass; pyright errors stay 0,
+  warnings unchanged at 531.  No-net-LOC: ~1310 LOC moved across 5
+  files (shim + 4 workflow modules).
+
 - **Sprint 34.2 closed (2026-05-05)** — Governance + Compliance panel
   set; closes Phase 34 with 8 new panels (4 from 34.1 + 4 from 34.2,
   matched IDs across SQLite + Postgres dashboards).  Picks for the

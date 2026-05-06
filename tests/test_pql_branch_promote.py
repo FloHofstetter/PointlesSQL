@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from soyuz_catalog_client.models.table_info import TableInfo
 
-from pointlessql.pql import _branch as branch_mod
 from pointlessql.pql._branch import (
     _check_promotion_conflicts,
     preview_promote_conflicts,
@@ -19,6 +18,7 @@ from pointlessql.pql._branch_errors import (
     BranchNotFoundError,
     BranchPromotionConflictError,
 )
+from pointlessql.pql.branch import _promote as branch_mod
 from pointlessql.services.branch_tags import (
     STATUS_ACTIVE,
     STATUS_PROMOTED,
@@ -166,13 +166,13 @@ class TestPromoteBranchSchema:
                 "sync",
                 return_value=_table_info(str(events_dir)),
             ),
-            patch.object(branch_mod, "_rename_schema", side_effect=_fake_rename),
+            patch.object(branch_mod, "rename_schema", side_effect=_fake_rename),
             patch("pointlessql.pql._branch.branch_tags.set_branch_status_sync") as mock_set_status,
             patch(
                 "pointlessql.pql._branch.branch_tags.mark_pre_promote_backup_sync"
             ) as mock_mark_backup,
-            patch.object(branch_mod, "_record_branch_audit_log") as mock_audit,
-            patch.object(branch_mod, "_emit_branch_event") as mock_emit,
+            patch.object(branch_mod, "record_branch_audit_log") as mock_audit,
+            patch.object(branch_mod, "emit_branch_event") as mock_emit,
         ):
             result = promote_branch_schema(
                 client=client,
@@ -227,7 +227,7 @@ class TestPromoteBranchSchema:
                 "sync",
                 return_value=_table_info(str(events_dir)),
             ),
-            patch.object(branch_mod, "_rename_schema") as mock_rename,
+            patch.object(branch_mod, "rename_schema") as mock_rename,
         ):
             with pytest.raises(BranchPromotionConflictError):
                 promote_branch_schema(
