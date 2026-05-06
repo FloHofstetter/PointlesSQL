@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Docstring overhaul (2026-05-06)** — Two-stream cleanup pass over
+  ``pointlessql/`` docstrings and inline code comments.  Stream A
+  stripped 220+ project-history references (``Phase X``, ``Sprint Y``,
+  ``ADR-NNNN``, ``BUG-NN-NN``, parenthesized variants) that described
+  *when* a piece of code was written rather than *what* it does or
+  *why* — those tokens age the moment the next phase ships.  Stream B
+  added Why-bodies to three high-summary-only modules: 15 of 22
+  routes in ``api/federation_routes.py`` (audit + soyuz-outage
+  handling), 8 of 12 helpers in ``api/jobs_routes.py`` (visibility
+  + scheduler-effect notes), and 6 of 10 helpers in
+  ``services/run_diff.py`` (alignment-strategy + diff-shape
+  rationale).  Globally, summary-only ratio drops from 22.8% to
+  17.7%; ``alembic/versions/*`` migration docstrings stay as-is
+  (legitimately time-locked records).  All gates green: pydoclint
+  0 violations, ruff clean, pyright 0/522 unchanged, full SQLite
+  suite 1478 passed / 6 skipped.
+
 - **Sprint 35.8 closed (2026-05-06)** — Two CI regression guards
   added so the Phase-35 modularization + type-hardening don't
   decay over time.  ``scripts/check-file-size-budget.sh`` (~75
