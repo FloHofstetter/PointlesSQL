@@ -3759,12 +3759,16 @@ PointlesSQL
 │   │       exposes the same module name so all import sites keep
 │   │       working.  25 audit-fts tests + 1478 SQLite suite green.
 │   │
-│   ├── Sprint 35.4 — Extract ``run_view.html`` partials     ⏳ planned
+│   ├── Sprint 35.4 — Extract ``run_view.html`` partials     ⏸ deferred
 │   │       1467 LOC → 7 includes (header / metadata / conformance
-│   │       / approval-form / 4 tab partials).  Mandatory browser
-│   │       playbook replay (``audit-reviewer-daily.md``) before
-│   │       commit — Alpine ``x-data`` scope changes need
-│   │       browser verification per memory rule.
+│   │       / approval-form / 4 tab partials).  **Deferred from the
+│   │       autonomous Stream-A run because the plan flagged the
+│   │       browser-playbook replay as mandatory** — Alpine
+│   │       ``x-data`` scope changes need a live ``audit-reviewer-
+│   │       daily.md`` replay (memory rule
+│   │       ``feedback_run_playbook_as_gate.md``).  Re-pick when a
+│   │       Playwright MCP session can be launched alongside the
+│   │       refactor.  Stream-B / 35.8 do not depend on this.
 │   │
 │   ├── Sprint 35.5 — Module-level deltalake imports         ⏳ planned
 │   │       Hoist lazy ``import deltalake`` from function bodies

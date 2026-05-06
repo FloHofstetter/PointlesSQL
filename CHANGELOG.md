@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 35.4 deferred (2026-05-06)** — Extracting
+  ``run_view.html`` (1467 LOC) into tab partials needs a live
+  browser-playbook replay (``audit-reviewer-daily.md``) before
+  commit per the Phase-35 plan's mandatory verification gate.
+  Alpine ``x-data`` scope changes can pass server-side tests but
+  break the side-panel factory in the browser (memory rule:
+  ``feedback_run_playbook_as_gate.md``).  Re-pick when a
+  Playwright MCP session is up alongside the refactor.  Stream-B
+  / 35.8 do not depend on this — proceeding without 35.4.
+
 - **Sprint 35.3 closed (2026-05-06)** — Targeted modularization: split
   ``pointlessql/services/audit_fts.py`` (973 LOC) per dialect into a
   ``pointlessql/services/audit_fts/`` package.  ``__init__.py`` keeps
