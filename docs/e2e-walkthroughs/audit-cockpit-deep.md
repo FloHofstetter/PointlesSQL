@@ -1,0 +1,233 @@
+# Audit cockpit deepening walkthrough
+
+End-to-end exercise of the Phase 18.6 → 18.x audit cockpit
+surfaces that grew on top of the Sprint 19 daily Audit-Reviewer
+loop:
+
+- [`audit_inbox.html`](../../frontend/templates/pages/audit_inbox.html)
+  — Sprint 18.6 anomaly inbox (cross-run cross-metric σ-breach
+  feed)
+- [`audit_search.html`](../../frontend/templates/pages/audit_search.html)
+  — Sprint 18.7 FTS over runs / ops / queries / tool_calls /
+  audit_log
+- [`audit_by_table.html`](../../frontend/templates/pages/audit_by_table.html)
+  — Sprint 18.8 reverse index (which runs touched / wrote /
+  read a given table)
+- [`audit_queries.html`](../../frontend/templates/pages/audit_queries.html)
+  — Sprint 18.x admin SQL workbench against the audit tables
+  (5 seeded starter queries + custom CRUD)
+
+This is the "auditor's morning" companion to
+[`audit-reviewer-daily.md`](audit-reviewer-daily.md): that one
+drives the LLM-mediated review loop via API + cron;
+this one drives the human cockpit via the browser.
+
+## Preconditions
+
+- Stack up via `docker compose -f docker-compose.yml -f
+  docker-compose.e2e.yml up -d`.
+- Seed: `seed-e2e.py` is enough for the **chrome** of every
+  page. To exercise the **data** paths (anomaly rows, FTS hits,
+  reverse-index rows), use
+  ```bash
+  docker compose -f docker-compose.yml -f docker-compose.e2e.yml \
+    exec pointlessql python /app/scripts/seed-full-stack-demo.py \
+    --fresh --demo-rollback --keep-state
+  ```
+  which seeds rejects, errored ops, external writes, and ~150
+  agent runs across all five FTS axes.
+- [`auth.md`](auth.md) ran first — admin session cookie present.
+- Playwright MCP Firefox lock-file gotcha: see CLAUDE.md
+  line 227-235 — `rm` the stale lock symlink if Firefox launch
+  fails immediately after `<launched>`.
+
+## Walkthrough
+
+### Part A — Anomaly inbox (5 steps)
+
+1. **Land on the inbox**.
+   - Action: `browser_navigate('http://127.0.0.1:8000/audit/inbox')`.
+   - Assert: title `Audit cockpit · anomaly inbox`. Page header
+     reads "Audit cockpit · anomaly inbox". Filter bar has 5
+     dropdowns (Severity, Metric, Bin, Since, Table FQN) plus
+     a "Refresh" button and an "include acked" toggle.
+
+2. **Empty-state placeholder** (clean stack).
+   - Assert: counter line reads
+     `0 of 0 breach(es) — metrics rejects, errored_ops, 7d
+     baseline at 2σ`. The list shows "No active anomalies for
+     the chosen filters." This text is load-bearing — Sprint
+     18.6's anomaly engine returns an empty list, not 404, when
+     no metric breaches σ.
+
+3. **Cycle severity filter**.
+   - Action: pick `critical only` from the Severity dropdown.
+   - Assert: page re-renders (htmx swap on `inbox-list-target`).
+     Empty-state placeholder still shows; counter updates to
+     reflect the narrower filter window.
+
+4. **Verify ack/snooze affordance** (when data is present).
+   - With `--demo-rollback` seed: each anomaly row has an Ack
+     button and a Snooze dropdown (1h / 6h / 24h / 7d).
+   - Action: click Ack on any row.
+   - Assert (network): `POST /api/audit/anomaly/{id}/ack`
+     returns 200; row hides immediately. Toggle "include acked"
+     to confirm it reappears, marked acked.
+
+5. **Cross-link from home banner**.
+   - Action: navigate to `/`.
+   - Assert: when the inbox has at least one breach, the
+     home page renders an anomaly chip in the latest-runs
+     banner; clicking it lands on `/audit/inbox` with the
+     matching severity pre-selected.
+
+### Part B — Audit search (4 steps)
+
+1. **Land on the FTS page**.
+   - Action: `browser_navigate('http://127.0.0.1:8000/audit/search')`.
+   - Assert: title `Audit cockpit · search`. Filter bar has a
+     search box, axis dropdown (`all` / `runs` / `ops` /
+     `queries` / `tool_calls` / `audit_log`), Since picker, and
+     a Search button. Empty list placeholder reads "Enter a
+     query above to search."
+
+2. **Verify FTS availability** (not a precondition the page
+   asserts visually — a clean SQLite stack always has FTS5):
+   - Action:
+     ```js
+     async () => (await (await fetch('/api/audit/search?q=test',
+       {credentials:'same-origin'})).json()).available
+     ```
+   - Assert: `true`. SQLite ships with FTS5; if this returns
+     `false`, Phase 18.7's `audit_fts.py` rebuild migration
+     (`y5u7v9w1x3z5_audit_search_fts`) didn't run.
+
+3. **Submit a query** (data path; needs the full-stack seed).
+   - Action: type `customer` into the search box, leave axis =
+     `all`, click Search.
+   - Assert: result table shows rows projected from each
+     matched axis with columns Axis / Run / Entity / Snippet /
+     Rank. Snippets carry `<mark>` highlights around the
+     matched term.
+
+4. **Tokenizer separator behaviour**.
+   - The page header says: "Tokenizer keeps . / _ / - as
+     separators, so `main.silver.orders` matches a query for
+     `silver`."
+   - Action: search for `silver` against the full-stack seed.
+   - Assert: hits include `main.silver.orders` (and any other
+     three-part FQN containing `silver`). This is Sprint 18.7's
+     custom-tokenizer load-bearing assertion — the default FTS5
+     tokenizer would only match `silver` against the literal
+     bareword, not as a path segment.
+
+### Part C — By-table reverse index (4 steps)
+
+1. **Path parameter is required**.
+   - Action: `browser_navigate('http://127.0.0.1:8000/audit/by-table')`.
+   - Assert: page renders WITH chrome (heading reads "Runs that
+     touched", but no FQN). The three tabs (Touched / Written /
+     Read) render their `Loading…` placeholders followed by
+     `Error 422` because the API gets an empty `fqn` query
+     parameter. **BUG-37-05** filed for Found-bugs.
+
+2. **Land on the by-table page with an FQN**.
+   - Action: navigate to
+     `/audit/by-table/main.silver.orders` (or any FQN seeded by
+     `seed-full-stack-demo.py`).
+   - Assert: title flips to `Audit · runs by main.silver.orders`.
+     Heading reads "Runs that touched main.silver.orders". Three
+     tabs (Touched / Written / Read) load asynchronously.
+
+3. **Touched tab — empty stack**.
+   - Action: stay on the default Touched tab.
+   - Assert: counter line reads `0 run(s) touched
+     main.silver.orders` (clean seed-e2e seed has no agent runs)
+     OR a list of run rows with ID, Principal, Status, Anomaly,
+     Started columns (full-stack seed). Both states are
+     legitimate.
+
+4. **Switch tabs** (idempotent loader).
+   - Action: click "Written", then "Read".
+   - Assert: each tab loads its own data once; subsequent
+     re-clicks do not re-fetch (the page's `loaded` Set guards
+     against duplicate API calls).
+
+### Part D — Saved audit queries (5 steps)
+
+1. **Land on the queries workbench**.
+   - Action: `browser_navigate('http://127.0.0.1:8000/audit/queries')`.
+   - Assert: title `Audit cockpit · saved queries`. Header card
+     describes the workbench mandate: every run logged in
+     `query_history`, every export writes an `audit_log` row.
+
+2. **Verify 5 seeded starter queries are present**.
+   - Action:
+     ```js
+     async () => (await (await fetch('/api/saved-audit-queries',
+       {credentials:'same-origin'})).json())
+     ```
+   - Assert: `saved_audit_queries` array length ≥ 5 with these
+     `slug`s present:
+     - `top-mutating-principals-30d`
+     - `unacknowledged-external-writes`
+     - `cost-gate-denials-this-week`
+     - `rollbacks-last-quarter`
+     - `pii-writes-last-90d`
+     Each has `is_starter: true`. The dialect-aware seed (Sprint
+     32 — see `feedback_alembic_check_blind_spot.md` memory)
+     ensures these land on both SQLite and Postgres.
+
+3. **Run a starter query**.
+   - Action: click "Run" on `top-mutating-principals-30d`.
+   - Assert (network): `POST /api/saved-audit-queries/{slug}/run`
+     returns 200 with `{rows, columns}`. Page renders the result
+     table inline. On a clean seed-e2e the rows are typically
+     empty (no agent runs yet); seed-full-stack-demo populates
+     it.
+
+4. **Export to CSV / JSON**.
+   - Action: click the CSV button on the same row.
+   - Assert (network): `GET .../export.csv` returns 200 with
+     `Content-Type: text/csv` and a `Content-Disposition`
+     attachment header. The audit log gets a new row of
+     `action=export_audit_query, target=saved_audit_query:<slug>`.
+
+5. **Create a custom saved query** (admin-only).
+   - Action: from the "Create new query" form, fill Name = `my
+     custom query`, SQL = `SELECT 1 AS one`, click Save.
+   - Assert (network): `POST /api/saved-audit-queries` returns
+     201 with `{slug, name, ...}`. Slug is generated from the
+     name. Run it to verify execution.
+
+## Found bugs
+
+- **BUG-37-04** — `/audit/inbox` page-load logs an HTMX
+  `TypeError: can't access property "includes", o is null`
+  in the browser console (htmx.org@2.0.3). Page renders
+  correctly and is interactive — likely a benign timing
+  issue around an `hx-trigger` reading a not-yet-mounted
+  attribute, but the noisy console is a regression class.
+  Filed; reproducer is "navigate to `/audit/inbox` and
+  read `browser_console_messages level=error`". Fix likely
+  in either the inbox HTML's `hx-trigger="load"` wiring or
+  the inline IIFE that fires on DOMContentLoaded.
+
+- **BUG-37-05** — `/audit/by-table` (no path param) renders
+  the chrome but the three tab loaders fire with empty
+  `fqn=` query strings, getting `422` from the API and
+  showing user-visible `Error 422` text. Expected: either
+  redirect to `/audit/by-table/` with an empty-state picker
+  ("choose a table"), or block the request in JS until an
+  FQN is set. Filed; fix location is the inline IIFE in
+  [`pages/audit_by_table.html`](../../frontend/templates/pages/audit_by_table.html)
+  (read `FQN === ''` and skip the loaders).
+
+## Cleanup
+
+```bash
+# Delete the custom saved query (uses the same auto-generated slug)
+curl -sS -X DELETE \
+  http://127.0.0.1:8000/api/saved-audit-queries/my-custom-query \
+  -b cookies.txt
+```
