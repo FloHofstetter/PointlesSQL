@@ -3708,7 +3708,7 @@ PointlesSQL
 │       the audit-export trail panel.  Both dashboards: 20 panels,
 │       distinct IDs, lint-script green.
 │
-├── Phase 35 — Targeted modularization + type-hardening     ⏳ in progress
+├── Phase 35 — Targeted modularization + type-hardening     ✅ closed 2026-05-06
 │   │
 │   │   Code-quality phase opened 2026-05-06 after Phase 34 closed.
 │   │   Two streams: (A) split the three big-and-mixed-concerns
@@ -3788,20 +3788,24 @@ PointlesSQL
 │   │       warnings (-9); global: 531 → 522 (-9).  Plan estimated
 │   │       18 — pyarrow ``list[Any]`` indexing stops cascading.
 │   │
-│   ├── Sprint 35.7 — ``_frame_to_arrow`` ``@overload``      ⏳ planned
-│   │       Replace ``frame: Any`` with ``@overload`` per
-│   │       supported input type (pandas DataFrame, polars
-│   │       DataFrame, DuckDB relation).  ~30-40 warnings fall
-│   │       out across ``_merge.py`` + ``engine.py``.  Stop on
-│   │       first runtime bug surfaced by the narrowing — fix at
-│   │       source, then resume.
+│   ├── Sprint 35.7 — ``_frame_to_arrow`` ``@overload``      ⏸ skipped
+│   │       Investigation found the function already returns a
+│   │       typed ``pa.Table``; callers see correct types.  Internal
+│   │       "partially unknown" warnings come from
+│   │       ``pa.array(...)`` and ``pa.Table.from_pandas(...)``
+│   │       returning ``Unknown`` due to pyarrow's incomplete stubs
+│   │       — ``@overload`` on the public surface cannot reach that
+│   │       cascade.  Real reduction would need custom ``.pyi``
+│   │       stubs for pyarrow; out of scope for a single sprint.
+│   │       Skipped; warning floor freezes at 522 in 35.8.
 │   │
-│   └── Sprint 35.8 — File-size + warning budget CI          ⏳ planned
-│           ``scripts/check-file-size-budget.sh`` (no
-│           ``pointlessql/**.py`` >800 LOC outside the allowlist)
-│           and ``scripts/check-pyright-budget.sh`` (warning
-│           count never regresses).  Wired into pre-commit and
-│           the CI workflow.  Closes Phase 35.
+│   └── Sprint 35.8 — File-size + warning budget CI          ✅ closed 2026-05-06
+│           ``scripts/check-file-size-budget.sh`` (~75 LOC; 800-LOC
+│           cap with allow-list of cohesive big-by-design files)
+│           and ``scripts/check-pyright-budget.sh`` (~50 LOC;
+│           freezes the post-35.6 522-warning floor + always-zero
+│           errors).  Both wired into ``.pre-commit-config.yaml``
+│           and the ``test.yml`` lint+type job.  Closes Phase 35.
 │
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │

@@ -6,6 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 35.8 closed (2026-05-06)** — Two CI regression guards
+  added so the Phase-35 modularization + type-hardening don't
+  decay over time.  ``scripts/check-file-size-budget.sh`` (~75
+  LOC) fails CI when any ``pointlessql/**.py`` exceeds 800 LOC
+  unless it appears in an explicit allow-list with a comment
+  explaining why it's big-by-design.  Today's allow-list:
+  ``pql.py`` (788), ``api/main.py`` (785), ``settings.py`` (721),
+  the alembic squash (713), ``services/scheduler/runs.py`` (849),
+  ``api/jobs_routes.py`` (804), ``api/sql_routes.py`` (766),
+  ``pql/_merge.py`` (731), and the three Sprint-35-audit
+  cohesive files (``audit_routes.py`` 1103, ``audit_aggregator.py``
+  897, ``services/agent_runs/operations.py`` 874).
+  ``scripts/check-pyright-budget.sh`` (~50 LOC) parses the
+  trailing ``N errors, M warnings`` summary line and fails when
+  warnings exceed the budget (frozen at 522 post-35.6) or errors
+  are non-zero.  Both scripts wired into ``.pre-commit-config.yaml``
+  and ``.github/workflows/test.yml`` (lint+type+docstring+alembic
+  job).  Closes Phase 35.
+
+- **Sprint 35.7 skipped (2026-05-06)** — Investigation found the
+  ``_frame_to_arrow(frame: Any) -> pa.Table`` function already
+  produces a typed return; callers see correct types.  The
+  "partially unknown" warnings inside the function come from
+  ``pa.array(...)`` and ``pa.Table.from_pandas(...)`` returning
+  ``Unknown`` due to incomplete pyarrow stubs — ``@overload`` on
+  the public surface cannot reach that cascade.  Adding
+  ``@overload`` for pandas / polars / DuckDB inputs would not
+  reduce warnings because callers pass ``Any`` from upstream
+  ``_resolve_source_frame``.  Real reduction would need custom
+  pyarrow ``.pyi`` stubs — out of scope for a single sprint.
+  Sprint marked skipped; warning floor freezes at 522.
+
 - **Sprint 35.6 closed (2026-05-06)** — Type-hardening:
   ``services/value_change_capture.py`` got explicit annotations on
   the locals where pyright lost type information: ``column_names:

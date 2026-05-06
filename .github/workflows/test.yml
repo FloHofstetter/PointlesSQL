@@ -60,6 +60,16 @@ jobs:
         run: uv run ruff check .
       - name: Pyright
         run: uv run pyright
+      - name: Pyright warning-floor budget (Sprint 35.8)
+        # Sprint 35.8 freezes the post-Phase-35 warning count so future
+        # work cannot silently regress.  Errors must always be 0;
+        # warnings cap is set in scripts/check-pyright-budget.sh.
+        run: bash scripts/check-pyright-budget.sh
+      - name: File-size budget (Sprint 35.8)
+        # Sprint 35.8 prevents new pointlessql/**.py files from
+        # exceeding 800 LOC.  Files that are big-by-design are listed
+        # explicitly in scripts/check-file-size-budget.sh's allowlist.
+        run: bash scripts/check-file-size-budget.sh
       - name: Pydoclint (Google style)
         run: uv run pydoclint --style=google pointlessql/
       - name: Alembic — no autogen drift

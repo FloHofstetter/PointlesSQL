@@ -67,3 +67,15 @@ repos:
         pass_filenames: false
         types: [python]
         files: ^pointlessql/
+      - id: file-size-budget
+        name: pointlessql file-size budget
+        entry: bash scripts/check-file-size-budget.sh
+        language: system
+        pass_filenames: false
+        files: ^pointlessql/.*\.py$
+      - id: pyright-warning-budget
+        name: pyright warning-floor budget
+        entry: bash scripts/check-pyright-budget.sh
+        language: system
+        pass_filenames: false
+        files: ^pointlessql/
