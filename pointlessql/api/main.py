@@ -43,6 +43,8 @@ from pointlessql.api.catalog_html_routes import router as catalog_html_router
 from pointlessql.api.catalog_routes import router as catalog_router
 from pointlessql.api.conventions_routes import router as conventions_router
 from pointlessql.api.dashboards_routes import router as dashboards_router
+from pointlessql.api.dbt_html_routes import router as dbt_html_router
+from pointlessql.api.dbt_proxy import router as dbt_proxy_router
 from pointlessql.api.dependencies import (
     require_admin as _require_admin,
 )
@@ -86,6 +88,11 @@ from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import audit as audit_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import scheduler as scheduler_service
+from pointlessql.services.dbt_subprocess import (
+    DBTStartupError,
+    DBTSubprocess,
+    dbt_duckdb_available,
+)
 from pointlessql.services.mlflow_subprocess import (
     MLflowStartupError,
     MLflowSubprocess,
@@ -363,6 +370,30 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
                 exc,
             )
 
+    # dbt-docs subprocess.  Optional — only spawned when
+    # ``settings.dbt.enabled`` is true, ``dbt-duckdb`` is installed
+    # *and* the project has a compiled ``target/manifest.json``.  The
+    # last condition keeps a fresh repo (no compiled project yet) from
+    # logging a startup error: we just leave the subprocess unstarted
+    # and let the ``/dbt`` page render a "compile first" hint.
+    app.state.dbt_subprocess = None
+    if settings.dbt.enabled and dbt_duckdb_available():
+        dbt_proc = DBTSubprocess(settings.dbt)
+        if dbt_proc.project_ready():
+            try:
+                await dbt_proc.start()
+                app.state.dbt_subprocess = dbt_proc
+            except DBTStartupError as exc:
+                logger.warning(
+                    "dbt-docs subprocess failed to start; /dbt tab unavailable: %s",
+                    exc,
+                )
+        else:
+            logger.info(
+                "dbt-docs subprocess skipped: %s missing — run `dbt compile` first",
+                dbt_proc.manifest_path,
+            )
+
     # The browser notebook editor was retired; a future
     # :class:`KernelRegistry` on ``app.state`` will serve as the
     # execution backend for the ``agent_run`` scheduler kind.
@@ -372,6 +403,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         if app.state.mlflow_subprocess is not None:
             await app.state.mlflow_subprocess.stop()
+        if app.state.dbt_subprocess is not None:
+            await app.state.dbt_subprocess.stop()
         if audit_task is not None:
             audit_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -588,6 +621,8 @@ app.include_router(audit_sinks_router)
 app.include_router(ml_router)
 app.include_router(mlflow_html_router)
 app.include_router(mlflow_proxy_router)
+app.include_router(dbt_html_router)
+app.include_router(dbt_proxy_router)
 app.include_router(models_router)
 app.include_router(models_html_router)
 _STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"

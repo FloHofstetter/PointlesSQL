@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 36.1 — dbt-docs subprocess + reverse-proxy** (Phase 36
+  start).  Mirrors the MLflow integration: ``DBTSettings`` block
+  (``POINTLESSQL_DBT_*`` env prefix, default ``docs_port=5002``,
+  ``project_dir=dbt_project/``), ``services/dbt_subprocess.py``
+  with async spawn of ``dbt docs serve`` + HTTP health-poll + PID
+  file + SIGTERM-then-SIGKILL shutdown, ``api/dbt_proxy.py``
+  reverse-proxy at ``/dbt-docs/`` with ``X-DBT-User`` header
+  injection, ``api/dbt_html_routes.py`` chrome page at ``/dbt``
+  plus icon-rail entry.  Pre-flight ``project_ready()`` check
+  skips the spawn when no compiled ``target/manifest.json``
+  exists, so a freshly-cloned repo logs a friendly info message
+  instead of a noisy startup error.  Optional extra ``[dbt]``
+  adds ``dbt-duckdb >= 1.9, < 2.0`` (``dbt-expectations`` and
+  ``dbt-utils`` are dbt packages installed via ``dbt deps``,
+  not pip).  14 new unit tests (8 subprocess + 6 proxy);
+  pre-commit chain green, pyright budget unchanged at 522/0.
+
 - **Docstring overhaul (2026-05-06)** — Two-stream cleanup pass over
   ``pointlessql/`` docstrings and inline code comments.  Stream A
   stripped 220+ project-history references (``Phase X``, ``Sprint Y``,

@@ -3807,6 +3807,51 @@ PointlesSQL
 │           errors).  Both wired into ``.pre-commit-config.yaml``
 │           and the ``test.yml`` lint+type job.  Closes Phase 35.
 │
+├── Phase 36 — Declarative Pipelines + Expectations          ⏳ in progress
+│   │
+│   │   Integrate dbt-duckdb (de-facto declarative pipeline
+│   │   engine) and dbt-tests + dbt-expectations + dbt-utils
+│   │   (de-facto data-quality test suite) into the existing
+│   │   forced-audit / lineage / anomaly stack.  PointlesSQL
+│   │   contributes the *bridge layer*, not the engine: dbt
+│   │   manifest + run_results parse → ``agent_run_operations``
+│   │   rows + ``lineage_row_edges`` + ``lineage_row_rejects``
+│   │   (with a new ``expectation_failed`` reject reason) +
+│   │   ``expectation_failure`` axis in the Anomaly Inbox.
+│   │   Plan: [.claude/plans/ja-plane-phase-28-tidy-feather.md]
+│   │   (../.claude/plans/ja-plane-phase-28-tidy-feather.md).
+│   │   Picks: integrate dbt (not reinvent), Subprocess + on-
+│   │   demand CLI mode (analog MLflow), dbt-tests +
+│   │   dbt-expectations + dbt-utils as Quality stack.
+│   │
+│   ├── Sprint 36.1 — dbt subprocess + settings + reverse-proxy  ⏳
+│   │       New ``DBTSettings`` block in settings.py
+│   │       (``POINTLESSQL_DBT_*`` env-prefix, default
+│   │       ``project_dir=dbt_project/``, ``docs_port=5002``).
+│   │       New ``services/dbt_subprocess.py`` mirrors
+│   │       ``mlflow_subprocess.py``: async spawn of
+│   │       ``dbt docs serve``, HTTP health-poll on the SPA root,
+│   │       PID file, SIGTERM-then-SIGKILL shutdown.  Pre-flight
+│   │       ``project_ready()`` check skips the spawn (and the
+│   │       attendant noise) when no compiled manifest exists yet.
+│   │       New ``api/dbt_proxy.py`` reverse-proxy at
+│   │       ``/dbt-docs/{path:path}`` with auth gate +
+│   │       ``X-DBT-User`` header injection.  New
+│   │       ``api/dbt_html_routes.py`` chrome page at ``/dbt`` with
+│   │       icon-rail entry (``bi-bezier2``).  Optional extra
+│   │       ``[dbt]`` adds ``dbt-duckdb >= 1.9, < 2.0`` (the dbt
+│   │       packages ``dbt-expectations`` / ``dbt-utils`` install
+│   │       via ``dbt deps`` from ``packages.yml``, not pip).
+│   │       14 new unit tests (8 subprocess + 6 proxy).  Bridge
+│   │       code lands in 36.2; 36.1 is pure infrastructure.
+│   │
+│   ├── Sprint 36.2 — dbt run/test on-demand + manifest bridge   📅 queued
+│   ├── Sprint 36.3 — test-failure → rejects + expectation axis  📅 queued
+│   ├── Sprint 36.4 — Cockpit /dbt index + run-view sub-tab     ⏸ Playwright
+│   ├── Sprint 36.5 — severity enforcement + rollback bridge    📅 queued
+│   ├── Sprint 36.6 — plugin tools (hermes-plugin-pointlessql)  📅 queued
+│   └── Sprint 36.7 — end-to-end walkthrough + close            ⏸ Playwright
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

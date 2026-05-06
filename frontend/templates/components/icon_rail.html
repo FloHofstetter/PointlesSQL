@@ -97,6 +97,15 @@
                 <span class="pql-icon-rail__label">ML</span>
             </a>
         </li>
+        <li class="pql-icon-rail__item">
+            <a href="/dbt"
+               data-section="dbt"
+               class="pql-icon-rail__link{% if active_section == 'dbt' %} active{% endif %}"
+               title="dbt Pipelines">
+                <i class="bi bi-bezier2"></i>
+                <span class="pql-icon-rail__label">dbt</span>
+            </a>
+        </li>
         {% if current_user is defined and current_user and current_user.is_admin %}
         <li class="pql-icon-rail__item">
             <a href="/branches"

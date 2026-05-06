@@ -658,6 +658,35 @@ class ConventionsSettings(BaseSettings):
     path: Path | None = None
 
 
+class DBTSettings(BaseSettings):
+    """Embedded ``dbt docs serve`` subprocess + reverse-proxy configuration.
+
+    Reads ``POINTLESSQL_DBT_*`` environment variables.  When
+    ``enabled=True`` and the optional ``dbt-duckdb`` package is
+    installed (``pip install pointlessql[dbt]``), the FastAPI
+    ``lifespan`` spawns ``dbt docs serve`` on ``docs_port`` *if* the
+    project has a compiled ``target/manifest.json``.  Without a
+    manifest we log info and leave the subprocess unstarted so the
+    ``/dbt`` page renders a friendly hint rather than a noisy error.
+
+    The subprocess is independent of the on-demand
+    ``/api/dbt/run|test|compile`` endpoints (Sprint 36.2): those
+    spawn ``dbt`` as one-shot CLI invocations and write
+    ``target/manifest.json`` themselves.  Once the first compile has
+    landed, the docs subprocess becomes startable on the next
+    PointlesSQL restart.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_DBT_")
+
+    enabled: bool = True
+    docs_port: int = 5002
+    project_dir: Path = Path("dbt_project")
+    profiles_dir: Path = Path("dbt_project/profiles")
+    target: str = "dev"
+    timeout_seconds: int = 600
+
+
 class MLflowSettings(BaseSettings):
     """Embedded MLflow Tracking subprocess + reverse-proxy configuration.
 
@@ -716,3 +745,4 @@ class Settings(BaseSettings):
     branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
+    dbt: DBTSettings = Field(default_factory=DBTSettings)

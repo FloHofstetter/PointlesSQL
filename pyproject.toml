@@ -61,6 +61,12 @@ dependencies = [
 ml = [
     "mlflow >= 3.11, < 3.12",
 ]
+dbt = [
+    "dbt-duckdb >= 1.9, < 2.0",
+]
+# Note: ``dbt-expectations`` and ``dbt-utils`` are dbt *packages*
+# (Jinja macros), not Python wheels.  They are declared in the user's
+# ``packages.yml`` and installed via ``dbt deps``, not via pip.
 
 [dependency-groups]
 dev = [
