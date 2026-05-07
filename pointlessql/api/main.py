@@ -326,6 +326,19 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="external-writes-scan",
         )
 
+    # Phase 50.4 — data-product freshness scanner.  Same opt-in
+    # discipline as the external-write scanner: zero-config installs
+    # see no extra Delta IO.  Activated by setting
+    # ``POINTLESSQL_DATA_PRODUCTS_SCAN_INTERVAL_SECONDS`` non-zero.
+    data_product_freshness_task: asyncio.Task[None] | None = None
+    if settings.data_products.scan_interval_seconds > 0 and not fast_test_lifespan:
+        data_product_freshness_task = asyncio.create_task(
+            _data_product_freshness_loop(
+                app.state.session_factory, app.state.uc_client, settings
+            ),
+            name="data-product-freshness",
+        )
+
     # CDF tail worker (Phase 40.5 — pull-modell to complement the
     # 40.1 push-modell).  Disabled by default
     # (``interval_seconds == 0``); admins opt in via
@@ -439,6 +452,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             cdf_tail_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await cdf_tail_task
+        if data_product_freshness_task is not None:
+            data_product_freshness_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await data_product_freshness_task
         if lineage_pruner_task is not None:
             lineage_pruner_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -521,6 +538,56 @@ async def _external_writes_loop(
                 )
         except Exception:  # noqa: BLE001 — scanner loop must survive everything
             logger.exception("external_writes: scan tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _data_product_freshness_loop(
+    factory: Any,
+    uc: Any,
+    settings: Settings,
+) -> None:
+    """Periodic SLA scan across cached data products.
+
+    Active only when
+    ``POINTLESSQL_DATA_PRODUCTS_SCAN_INTERVAL_SECONDS`` is explicitly
+    non-zero — same opt-in discipline as the external-write scanner.
+    Per tick, walks every :class:`DataProduct` row whose
+    ``sla_minutes`` is set, observes the latest write timestamp via
+    ``DeltaTable.history()``, and emits a
+    ``pointlessql.data_product.sla_violated`` CloudEvent when the age
+    exceeds the SLA.  ``last_alerted_at`` suppresses re-alerts within
+    ``re_alert_suppress_minutes``.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the rest of
+            the app.
+        uc: ``UnityCatalogClient`` used to enumerate the product's
+            tables (storage locations).
+        settings: Snapshotted :class:`Settings` — only
+            ``data_products.scan_interval_seconds`` and
+            ``data_products.re_alert_suppress_minutes`` are read.
+    """
+    from pointlessql.services import data_product_freshness_scanner
+
+    interval = max(60, settings.data_products.scan_interval_seconds)
+    suppress = settings.data_products.re_alert_suppress_minutes
+    while True:
+        try:
+            emitted = await data_product_freshness_scanner.scan_all(
+                factory,
+                uc,
+                re_alert_suppress_minutes=suppress,
+            )
+            if emitted:
+                logger.info(
+                    "data_product_freshness: tick emitted %d sla_violated event(s)",
+                    emitted,
+                )
+        except Exception:  # noqa: BLE001 — scanner loop must survive everything
+            logger.exception("data_product_freshness: scan tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:

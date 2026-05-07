@@ -68,6 +68,13 @@ EVENT_TYPE_DBT_TEST_WARNED = "pointlessql.dbt.test.warned"
 # (succeeded vs. refused) so the cockpit can render the auto-undo
 # decision next to the failing tests that triggered it.
 EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED = "pointlessql.dbt.auto_rollback.executed"
+# Phase 50.4 — fired by the data-product freshness scanner when a
+# product whose contract declares ``sla_minutes`` has not received
+# a write across any of its tables for longer than the SLA permits.
+# Payload carries (workspace_id, catalog, schema, name, sla_minutes,
+# last_write_at_iso, age_minutes) so subscribers can route alerts to
+# the steward and render age in their preferred timezone.
+EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED = "pointlessql.data_product.sla_violated"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_EXTERNAL_WRITE,
@@ -82,6 +89,7 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DBT_TEST_FAILED,
     EVENT_TYPE_DBT_TEST_WARNED,
     EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
+    EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED,
 )
 
 
