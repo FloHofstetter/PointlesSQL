@@ -40,6 +40,7 @@ from sqlalchemy import (
     select,
 )
 
+from pointlessql.enums import RunStatus
 from pointlessql.models import (
     AgentRun,
     AgentRunOperation,
@@ -860,7 +861,7 @@ def backfill_run_anomalies(
     with factory() as session:
         stmt = (
             select(AgentRun)
-            .where(AgentRun.status.in_(("succeeded", "failed", "denied")))
+            .where(AgentRun.status.in_((RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.DENIED)))
             .where(AgentRun.anomaly_severity.is_(None))
             .order_by(AgentRun.started_at)
         )

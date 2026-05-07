@@ -25,6 +25,7 @@ from fastapi import Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import get_user
+from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services.query_history import record_query
@@ -68,12 +69,12 @@ def record_audit_self(
             sql_text=sql_text,
             started_at=started_at,
             finished_at=finished_at,
-            status="succeeded",
+            status=QueryStatus.SUCCEEDED,
             row_count=None,
             duration_ms=int((finished_at - started_at).total_seconds() * 1000),
             referenced_tables=[],
             agent_run_id=None,
-            read_kind="audit_api",
+            read_kind=ReadKind.AUDIT_API,
         )
     except Exception:  # noqa: BLE001 — audit-of-audit must never break the audit response
         logger.exception("audit_api: failed to self-track %s", endpoint)

@@ -20,6 +20,7 @@ from typing import Any
 from fastapi import Request
 
 from pointlessql.api.dependencies import client_ip, effective_principal, get_user
+from pointlessql.enums import QueryStatus
 from pointlessql.identifiers import RunId
 from pointlessql.services import audit as audit_service
 from pointlessql.services import query_history as query_history_service
@@ -57,7 +58,7 @@ async def record_query_async(
     sql_text: str,
     started_at: datetime,
     finished_at: datetime,
-    status: str,
+    status: QueryStatus,
     row_count: int | None,
     duration_ms: int | None,
     referenced_tables: list[str],

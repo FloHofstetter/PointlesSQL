@@ -37,6 +37,7 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.enums import QueryStatus
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -123,7 +124,7 @@ def read_table_at_version(
             full_name=full_name,
             started_at=started_at,
             finished_at=finished_at,
-            status="failed",
+            status=QueryStatus.FAILED,
             row_count=None,
             duration_ms=duration_ms,
             error_message=f"version={version}: {exc!r}",
@@ -135,7 +136,7 @@ def read_table_at_version(
         full_name=full_name,
         started_at=started_at,
         finished_at=finished_at,
-        status="succeeded",
+        status=QueryStatus.SUCCEEDED,
         row_count=int(result.shape[0]) if hasattr(result, "shape") else None,
         duration_ms=duration_ms,
         error_message=None,
@@ -193,7 +194,7 @@ def read_table_at_timestamp(
             full_name=full_name,
             started_at=started_at,
             finished_at=finished_at,
-            status="failed",
+            status=QueryStatus.FAILED,
             row_count=None,
             duration_ms=duration_ms,
             error_message=f"timestamp={when.isoformat()}: {exc!r}",
@@ -205,7 +206,7 @@ def read_table_at_timestamp(
         full_name=full_name,
         started_at=started_at,
         finished_at=finished_at,
-        status="succeeded",
+        status=QueryStatus.SUCCEEDED,
         row_count=int(result.shape[0]) if hasattr(result, "shape") else None,
         duration_ms=duration_ms,
         error_message=None,
@@ -218,7 +219,7 @@ def _record(
     full_name: str,
     started_at: datetime.datetime,
     finished_at: datetime.datetime,
-    status: str,
+    status: QueryStatus,
     row_count: int | None,
     duration_ms: int | None,
     error_message: str | None,

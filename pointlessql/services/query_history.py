@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import desc, func, select
 
+from pointlessql.enums import QueryStatus
 from pointlessql.identifiers import QueryHistoryId, RunId
 from pointlessql.models import QueryHistory, QueryHistoryTable
 
@@ -90,7 +91,7 @@ def record_query(
     sql_text: str,
     started_at: datetime.datetime,
     finished_at: datetime.datetime,
-    status: str,
+    status: QueryStatus,
     row_count: int | None,
     duration_ms: int | None,
     referenced_tables: list[str],

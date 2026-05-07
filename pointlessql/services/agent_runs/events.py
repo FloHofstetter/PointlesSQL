@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
+from pointlessql.enums import RunStatus
 from pointlessql.models import AgentRunEvent
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.audit_sinks import dispatch_to_sinks
@@ -71,9 +72,9 @@ def event_type_for_status(status: str) -> str | None:
         The matching CloudEvents ``type``, or ``None`` when no event
         should fire for that status.
     """
-    if status == "succeeded":
+    if status == RunStatus.SUCCEEDED:
         return EVENT_TYPE_COMPLETED
-    if status == "failed":
+    if status == RunStatus.FAILED:
         return EVENT_TYPE_FAILED
     return None
 

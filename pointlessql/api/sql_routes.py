@@ -37,6 +37,7 @@ from pointlessql.api.dependencies import (
     get_uc_client,
     get_user,
 )
+from pointlessql.enums import QueryStatus
 from pointlessql.identifiers import RunId
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.settings import Settings
@@ -337,7 +338,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         # ``parsed_refs``; enforcement failures carry the
         # references extracted before the check raised.
         finished_at = datetime.now(UTC)
-        status = "cancelled" if (cancelled or timed_out) else "failed"
+        status = QueryStatus.CANCELLED if (cancelled or timed_out) else QueryStatus.FAILED
         if not explain:
             await record_query_async(
                 request,
@@ -367,7 +368,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
             sql_text=query,
             started_at=started_at,
             finished_at=finished_at,
-            status="succeeded",
+            status=QueryStatus.SUCCEEDED,
             row_count=result.row_count,
             duration_ms=result.duration_ms,
             referenced_tables=result.referenced_tables,

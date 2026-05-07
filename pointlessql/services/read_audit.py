@@ -34,6 +34,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+from pointlessql.enums import QueryStatus
 from pointlessql.identifiers import RunId
 from pointlessql.services.query_history import record_query
 
@@ -65,7 +66,7 @@ def record_read(
     principal: str | None = None,
     started_at: datetime.datetime,
     finished_at: datetime.datetime,
-    status: str = "succeeded",
+    status: QueryStatus = QueryStatus.SUCCEEDED,
     row_count: int | None = None,
     duration_ms: int | None = None,
     error_message: str | None = None,

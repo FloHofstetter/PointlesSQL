@@ -33,6 +33,7 @@ from pointlessql.api.dependencies import (
     require_auditor,
 )
 from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
+from pointlessql.enums import QueryStatus
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     PermissionDeniedError,
@@ -171,7 +172,7 @@ def _record_self(
             sql_text=sql_text,
             started_at=started_at,
             finished_at=finished_at,
-            status="succeeded",
+            status=QueryStatus.SUCCEEDED,
             row_count=None,
             duration_ms=int((finished_at - started_at).total_seconds() * 1000),
             referenced_tables=[],

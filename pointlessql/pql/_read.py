@@ -15,6 +15,7 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.enums import QueryStatus
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -83,7 +84,7 @@ def read_table(
             full_name=full_name,
             started_at=started_at,
             finished_at=finished_at,
-            status="failed",
+            status=QueryStatus.FAILED,
             row_count=None,
             duration_ms=duration_ms,
             error_message=repr(exc),
@@ -95,7 +96,7 @@ def read_table(
         full_name=full_name,
         started_at=started_at,
         finished_at=finished_at,
-        status="succeeded",
+        status=QueryStatus.SUCCEEDED,
         row_count=None,
         duration_ms=duration_ms,
         error_message=None,
@@ -108,7 +109,7 @@ def _record(
     full_name: str,
     started_at: datetime.datetime,
     finished_at: datetime.datetime,
-    status: str,
+    status: QueryStatus,
     row_count: int | None,
     duration_ms: int | None,
     error_message: str | None,

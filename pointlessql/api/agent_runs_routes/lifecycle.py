@@ -18,6 +18,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.agent_runs_routes._anomaly_persist import persist_run_anomaly
 from pointlessql.api.agent_runs_routes._serializers import serialize_agent_run
 from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.enums import RunStatus
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models.agent_runs import AgentRun
 
@@ -53,9 +54,9 @@ async def api_approve_agent_run(
         row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
         if row is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
-        if row.status != "needs_approval":
+        if row.status != RunStatus.NEEDS_APPROVAL:
             raise ValidationError(f"agent run {run_id!r} is {row.status!r}, cannot approve")
-        row.status = "approved"
+        row.status = RunStatus.APPROVED
         row.approved_by = user["email"]
         row.approved_at = datetime.now(UTC)
         session.commit()
@@ -97,9 +98,9 @@ async def api_deny_agent_run(
         row = session.scalar(select(AgentRun).where(AgentRun.id == run_id))
         if row is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
-        if row.status != "needs_approval":
+        if row.status != RunStatus.NEEDS_APPROVAL:
             raise ValidationError(f"agent run {run_id!r} is {row.status!r}, cannot deny")
-        row.status = "denied"
+        row.status = RunStatus.DENIED
         row.denied_reason = reason
         row.finished_at = datetime.now(UTC)
         session.commit()
