@@ -6,6 +6,30 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 49c — TableFqn validation type closed.**  Introduces
+  ``pointlessql/table_fqn.py`` with a ``str``-subclass validation
+  type for ``catalog.schema.table`` UC identifiers.
+  ``TableFqn.parse(s)`` validates + raises ``ValidationError`` on
+  malformed input; ``TableFqn.from_parts(c, s, t)`` skips
+  validation for callers that already split the components.  Two
+  byte-for-byte duplicate ``_split_three_part`` validators in
+  ``api/pql_introspect_routes.py`` + ``api/pql_write_routes.py``
+  consolidated into the single type.  13 producer sites
+  (f-string FQN constructions in api/, services/, pql/) wrapped
+  via ``TableFqn.from_parts``.  ``services/external_write_scanner``
+  signatures fully typed end-to-end as a Step C reference example;
+  remaining ~36 consumer signatures stay on plain ``str`` for
+  incremental migration in future phases.  Anti-goal preserved:
+  ``Mapped[str]`` columns on the 7 model classes carrying FQN
+  semantics stay unchanged (``TableFqn`` is-a ``str`` so SQLAlchemy
+  reads/writes the underlying string transparently).  Pyright
+  budget unchanged at 497.  10 new ``tests/test_table_fqn.py``
+  sanity tests pin the contract: subclass identity, JSON round-
+  trip, f-string interpolation, parse/from_parts factories,
+  segment properties, equality with plain ``str``.  3 commits:
+  ``feat(types)`` (additive), ``chore(types)`` (migration),
+  ``docs(roadmap)`` (close).
+
 - **Phase 49b — Service-File Splits closed.**  Two oversize service
   files migrated into Phase-35-style per-axis subpackages.
   ``services/agent_runs/operations.py`` (929 LOC) → six-file

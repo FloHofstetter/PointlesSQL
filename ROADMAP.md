@@ -4935,6 +4935,37 @@ PointlesSQL
 │           ``test_cloudevents_registry_matches_legacy_constants``
 │           pins both halves byte-for-byte.
 │
+├── Phase 49c — TableFqn validation type ✅ done
+│   │
+│   │   Adds ``pointlessql/table_fqn.py`` with a ``str``-subclass
+│   │   validation type for UC three-part identifiers.  Factory
+│   │   methods: ``parse()`` (validates) + ``from_parts()`` (no
+│   │   validation, for already-split components).  Anti-goal
+│   │   preserved: ``Mapped[str]`` columns absorb ``TableFqn``
+│   │   transparently (str subclass), wire format identical, no
+│   │   alembic.  Pyright budget unchanged at 497.  10 sanity
+│   │   tests pin the contract.
+│   │
+│   ├── Sprint 49c.1 — Add ``pointlessql/table_fqn.py`` plus
+│   │       ``tests/test_table_fqn.py`` (10 cases pinning subclass
+│   │       identity, JSON round-trip, f-string interpolation,
+│   │       parse / from_parts contract).  Purely additive — no
+│   │       callsite migrated yet.
+│   │
+│   └── Sprint 49c.2 — Migrate consumers + producers.  Step A
+│           kills the two byte-for-byte duplicate
+│           ``_split_three_part`` validators in
+│           ``api/pql_introspect_routes.py`` +
+│           ``api/pql_write_routes.py``; their callers now invoke
+│           ``TableFqn.parse(...).parts()`` directly.  Step B wraps
+│           13 f-string FQN producers across api/, services/, pql/
+│           via ``TableFqn.from_parts(...)``.  Step C annotates
+│           the highest-value service-layer signatures
+│           (``services/external_write_scanner`` reference); the
+│           remaining ~36 consumer signatures stay on plain ``str``
+│           for incremental migration in future phases (each is an
+│           isolated patch since ``TableFqn`` is-a ``str``).
+│
 ├── Phase 49b — Service-File Splits ✅ done
 │   │
 │   │   Two oversize service files migrated into Phase-35-style
