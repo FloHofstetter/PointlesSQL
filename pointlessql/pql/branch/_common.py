@@ -39,6 +39,7 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.enums import BranchAction
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.services import branch_tags
 from pointlessql.settings import Settings
@@ -259,7 +260,7 @@ def record_branch_audit_log(
     *,
     branch_schema_fqn: str,
     parent_schema_fqn: str | None,
-    action: str,
+    action: BranchAction,
     run_id: str | None,
     payload: dict[str, Any] | None = None,
 ) -> None:

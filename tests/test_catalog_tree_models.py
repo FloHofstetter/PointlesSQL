@@ -16,7 +16,6 @@ import pytest
 from pointlessql.api.main import app
 
 
-
 @pytest.fixture
 def uc_with_models(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
     # Force ``get_uc_client`` to fall through to ``app.state.uc_client``

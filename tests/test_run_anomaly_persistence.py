@@ -18,7 +18,6 @@ from pointlessql.models import AgentRun, AgentRunOperation, LineageRowReject
 from pointlessql.services import audit_aggregator as agg
 
 
-
 def _seed_baseline() -> None:
     """Insert a quiet baseline of one reject per day for 7 prior days."""
     factory = app.state.session_factory

@@ -17,7 +17,6 @@ from pointlessql.services.models_lineage import (
 )
 
 
-
 def _seed_run_with_edges(factory, run_id: str, source_tables: list[str]) -> None:
     """Insert an AgentRun + a LineageRowEdge per source table."""
     import datetime as _dt

@@ -19,6 +19,7 @@ from typing import Any, Literal
 
 from soyuz_catalog_client import Client
 
+from pointlessql.enums import OpName
 from pointlessql.pql._aggregate import AggregateMode, AggSpec, aggregate_table
 from pointlessql.pql._autoload import AutoloadFormat, autoload_files
 from pointlessql.pql._branch import (
@@ -401,7 +402,7 @@ class PQL:
         self,
         *,
         framework: str = "auto",
-        op_name: str = "train_model",
+        op_name: OpName = OpName.TRAIN_MODEL,
         params: Mapping[str, Any] | None = None,
         source_table_fqn: str | None = None,
         model_fqn: str | None = None,

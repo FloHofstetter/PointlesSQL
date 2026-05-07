@@ -28,7 +28,6 @@ from pointlessql.services.model_promotion import (
 )
 
 
-
 def test_serialize_promotion_marker_roundtrip() -> None:
     """A serialized marker parses back to the same payload."""
     promoted_at = datetime.datetime(2026, 4, 30, 12, 0, tzinfo=datetime.UTC)

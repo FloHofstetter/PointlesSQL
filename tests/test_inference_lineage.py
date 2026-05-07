@@ -24,7 +24,6 @@ from pointlessql.services.models_lineage import (
 )
 
 
-
 def _seed_run_and_op(factory, run_id: str) -> int:
     """Insert one ``AgentRun`` + one ``AgentRunOperation`` for FK linkage."""
     now = _dt.datetime.now(_dt.UTC)

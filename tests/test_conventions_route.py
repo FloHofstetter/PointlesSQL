@@ -13,7 +13,6 @@ import pytest
 from pointlessql.api.main import app
 
 
-
 @pytest.mark.asyncio
 async def test_conventions_returns_yaml_and_doc_excerpt(admin_client: httpx.AsyncClient) -> None:
     response = await admin_client.get("/api/conventions")

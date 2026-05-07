@@ -10,8 +10,6 @@ from pointlessql.exceptions import ValidationError
 from pointlessql.services import saved_queries as sq
 
 
-
-
 def _admin_id() -> int:
     return 1  # conftest.py registers admin first → id=1
 

@@ -9,9 +9,6 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from pointlessql.api.main import app
-
-
 
 async def _seed_run(client: httpx.AsyncClient, run_id: str) -> None:
     response = await client.post(

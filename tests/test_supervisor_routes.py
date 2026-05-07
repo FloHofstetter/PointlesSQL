@@ -10,7 +10,6 @@ surface for ``api_keys`` has its own test file
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Iterator
 
 import httpx
 import pytest

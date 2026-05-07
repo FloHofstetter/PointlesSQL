@@ -22,6 +22,7 @@ from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -101,7 +102,7 @@ def write_table(
     with operation_context(
         factory,
         agent_run_id=cast(RunId | None, agent_run_id),
-        op_name="write_table",
+        op_name=OpName.WRITE_TABLE,
         params={"full_name": full_name, "mode": mode},
         target_table=full_name,
     ) as recorder:

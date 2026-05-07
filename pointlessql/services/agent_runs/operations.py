@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
+from pointlessql.enums import OpName
 from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import AuditUnavailableError, PointlessSQLError
 from pointlessql.identifiers import OpId, RunId
@@ -293,7 +294,7 @@ def record_operation(
     session_factory: sessionmaker[Session],
     *,
     agent_run_id: RunId,
-    op_name: str,
+    op_name: OpName,
     params: dict[str, Any],
     target_table: str | None,
     input_sha: str | None,
@@ -435,7 +436,7 @@ def operation_context(
     session_factory: sessionmaker[Session] | None,
     *,
     agent_run_id: RunId | None,
-    op_name: str,
+    op_name: OpName,
     params: dict[str, Any],
     target_table: str | None = None,
 ) -> Iterator[OperationRecorder]:
@@ -628,13 +629,13 @@ def _emit_lineage_after_commit(
             ``track_value_changes`` opt-in collected; populates the
             valueChange facet.
     """
-    if op_name == "rollback":
+    if op_name == OpName.ROLLBACK:
         return
     inputs: list[str] = []
     outputs: list[str] = []
     if target_table:
         outputs = [target_table]
-    if op_name == "sql":
+    if op_name == OpName.SQL:
         refs = params.get("referenced_tables")
         if isinstance(refs, list):
             inputs = [str(r) for r in refs if isinstance(r, str)]

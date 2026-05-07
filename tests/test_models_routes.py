@@ -15,8 +15,6 @@ import pytest
 
 from pointlessql.api.main import app
 
-
-
 _LINK_MARKER = json.dumps(
     {
         "_pql_link": {

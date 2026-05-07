@@ -25,8 +25,6 @@ from pointlessql.services.agent_runs import (
     record_operation,
 )
 
-
-
 # ---------------------------------------------------------------------------
 # POST /api/agent-runs strict mode
 # ---------------------------------------------------------------------------

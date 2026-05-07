@@ -27,6 +27,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Request
 
 from pointlessql.api._audit_helpers import audit, effective_agent_run_id
+from pointlessql.enums import OpName
 from pointlessql.exceptions import ValidationError
 from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.operations import (
@@ -115,7 +116,7 @@ async def api_pql_training_log(
         raise ValidationError(
             f"op_name must be one of {sorted(VALID_OP_NAMES)!r}.",
         )
-    op_name: str = op_name_raw
+    op_name: OpName = OpName(op_name_raw)
 
     mlflow_run_id: str | None = None
     if mlflow_run_id_raw is not None:

@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from pointlessql.api.main import app
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 

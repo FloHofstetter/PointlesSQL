@@ -16,8 +16,6 @@ from pointlessql.services.models_compare import (
     tags_diff,
 )
 
-
-
 # ---------- pure-function diff helpers ----------
 
 

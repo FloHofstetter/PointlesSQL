@@ -12,8 +12,6 @@ from pointlessql.api.main import app
 from pointlessql.services import query_history as qh
 
 
-
-
 def _seed_history(*, user_id: int) -> int:
     """Insert a single history row and return its id."""
     factory = app.state.session_factory

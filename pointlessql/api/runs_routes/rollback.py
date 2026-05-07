@@ -32,6 +32,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_admin,
 )
+from pointlessql.enums import OpName
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import AgentRunOperation
 from pointlessql.models.agent_runs import AgentRun
@@ -357,7 +358,7 @@ def _finalise_rollback_run(
         op = session.scalar(
             select(AgentRunOperation)
             .where(AgentRunOperation.agent_run_id == run_id)
-            .where(AgentRunOperation.op_name == "rollback")
+            .where(AgentRunOperation.op_name == OpName.ROLLBACK)
             .order_by(AgentRunOperation.ordinal.desc())
             .limit(1)
         )

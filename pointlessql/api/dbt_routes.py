@@ -34,6 +34,7 @@ from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin, require_supervisor
+from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     AuditUnavailableError,
     AuthenticationError,
@@ -577,7 +578,7 @@ async def _auto_rollback_on_error(
         rows = session.scalars(
             select(AgentRunOperation)
             .where(AgentRunOperation.agent_run_id == agent_run_id)
-            .where(AgentRunOperation.op_name == "dbt_model")
+            .where(AgentRunOperation.op_name == OpName.DBT_MODEL)
             .where(AgentRunOperation.target_table.is_not(None))
             .order_by(AgentRunOperation.ordinal.desc()),
         ).all()

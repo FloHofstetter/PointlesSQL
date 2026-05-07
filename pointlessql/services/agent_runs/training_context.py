@@ -46,6 +46,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
+from pointlessql.enums import OpName
 from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.operations import (
@@ -142,7 +143,7 @@ def training_context(
     *,
     agent_run_id: str | None,
     framework: str = "auto",
-    op_name: str = "train_model",
+    op_name: OpName = OpName.TRAIN_MODEL,
     params: dict[str, Any] | None = None,
     source_table_fqn: str | None = None,
     model_fqn: str | None = None,

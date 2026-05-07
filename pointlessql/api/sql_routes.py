@@ -37,7 +37,7 @@ from pointlessql.api.dependencies import (
     get_uc_client,
     get_user,
 )
-from pointlessql.enums import QueryStatus
+from pointlessql.enums import OpName, QueryStatus
 from pointlessql.identifiers import RunId
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.settings import Settings
@@ -683,7 +683,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     with operation_context(
         factory,
         agent_run_id=cast(RunId | None, run_id),
-        op_name="sql_explain",
+        op_name=OpName.SQL_EXPLAIN,
         params={"sql_hash": sql_hash},
         target_table=None,
     ) as recorder:

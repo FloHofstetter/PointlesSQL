@@ -39,6 +39,7 @@ from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 from sqlalchemy import select
 
+from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -154,7 +155,7 @@ def rollback_table(
     with operation_context(
         factory,
         agent_run_id=cast(RunId | None, agent_run_id),
-        op_name="rollback",
+        op_name=OpName.ROLLBACK,
         params={
             "target": target,
             "rolled_back_run": before_run,

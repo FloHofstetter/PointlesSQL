@@ -19,8 +19,6 @@ from pointlessql.services import alert_dispatcher, alert_feeds
 from pointlessql.services import alerts as alerts_service
 
 
-
-
 def _make_saved_query(*, owner_id: int, title: str = "Fixture Q") -> int:
     """Insert a saved query for alert FKs; return the new id."""
     from pointlessql.services import saved_queries as sq_service

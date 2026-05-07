@@ -18,7 +18,6 @@ from pointlessql.models import CdfTailSubscription
 from pointlessql.services import workspaces as workspaces_service
 
 
-
 def _seed_subscription(
     *,
     table: str,

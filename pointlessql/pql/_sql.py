@@ -15,6 +15,7 @@ import os
 import time
 from typing import Any, cast
 
+from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     SQLExecutionError,
     ValidationError,
@@ -102,7 +103,7 @@ def run_sql(
     with operation_context(
         factory,
         agent_run_id=cast(RunId | None, effective_run_id),
-        op_name="sql",
+        op_name=OpName.SQL,
         params={
             "query": query[:1024],
             "max_rows": max_rows,

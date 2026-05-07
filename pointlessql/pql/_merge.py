@@ -47,6 +47,7 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -197,7 +198,7 @@ def merge_table(
     with operation_context(
         factory,
         agent_run_id=cast(RunId | None, agent_run_id),
-        op_name="merge",
+        op_name=OpName.MERGE,
         params={"target": target, "on": list(on), "strategy": strategy},
         target_table=target,
     ) as recorder:

@@ -5,9 +5,6 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from pointlessql.api.main import app
-
-
 
 @pytest.mark.asyncio
 async def test_primitives_returns_five_entries_with_signature_and_doc(admin_client: httpx.AsyncClient) -> None:

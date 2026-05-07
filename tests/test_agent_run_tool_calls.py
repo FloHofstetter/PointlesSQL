@@ -18,7 +18,6 @@ from pointlessql.api.main import app
 from pointlessql.models import AgentRun, AgentRunEvent, AgentRunToolCall
 
 
-
 async def _seed_run(client: httpx.AsyncClient, run_id: str) -> None:
     """POST a strict agent_runs row so subsequent tool-call POSTs succeed."""
     response = await client.post(

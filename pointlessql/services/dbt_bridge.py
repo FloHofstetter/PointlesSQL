@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from pointlessql.enums import OpName
 from pointlessql.exceptions import AuditUnavailableError
 from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.operations import record_operation
@@ -419,7 +420,7 @@ def merge_manifest_and_results(
     return out
 
 
-def _op_name_for_node(resource_type: str) -> str:
+def _op_name_for_node(resource_type: str) -> OpName:
     """Map dbt resource_type → PointlesSQL op_name.
 
     Snapshots and seeds map to ``dbt_model`` because they materialise
@@ -427,8 +428,8 @@ def _op_name_for_node(resource_type: str) -> str:
     because they read but never write data.
     """
     if resource_type == "test":
-        return "dbt_test"
-    return "dbt_model"
+        return OpName.DBT_TEST
+    return OpName.DBT_MODEL
 
 
 def emit_test_failure_rejects(

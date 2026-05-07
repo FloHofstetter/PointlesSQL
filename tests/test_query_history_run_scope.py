@@ -13,7 +13,6 @@ from pointlessql.models import AgentRun, QueryHistory
 from pointlessql.services import query_history as query_history_service
 
 
-
 def _create_run(run_id: str) -> str:
     """Insert an :class:`AgentRun` fixture row."""
     factory = app.state.session_factory

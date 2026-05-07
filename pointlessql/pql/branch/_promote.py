@@ -19,6 +19,7 @@ from soyuz_catalog_client import Client
 from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.enums import BranchAction, OpName
 from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.identifiers import RunId
 from pointlessql.pql._branch_errors import (
@@ -196,7 +197,7 @@ def promote_branch_schema(
     with operation_context(
         factory,
         agent_run_id=RunId(agent_run_id) if agent_run_id else None,
-        op_name="branch_promote",
+        op_name=OpName.BRANCH_PROMOTE,
         params={
             "branch_schema": branch_schema_fqn,
             "parent_schema": parent_fqn,
@@ -249,7 +250,7 @@ def promote_branch_schema(
     record_branch_audit_log(
         branch_schema_fqn=branch_schema_fqn,
         parent_schema_fqn=parent_fqn,
-        action="promote",
+        action=BranchAction.PROMOTE,
         run_id=agent_run_id,
         payload={
             "backup": backup_fqn,

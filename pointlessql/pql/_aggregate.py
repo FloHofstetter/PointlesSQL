@@ -44,6 +44,7 @@ from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
@@ -190,7 +191,7 @@ def aggregate_table(
     with operation_context(
         factory,
         agent_run_id=cast(RunId | None, agent_run_id),
-        op_name="aggregate",
+        op_name=OpName.AGGREGATE,
         params={
             "target": target,
             "group_by": list(group_by),

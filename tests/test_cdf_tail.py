@@ -17,7 +17,6 @@ from pointlessql.pql._cdf import cdf_creation_config
 from pointlessql.services import cdf_tail
 
 
-
 def _seed_subscription(
     *,
     table_full_name: str = "demo.silver.orders",

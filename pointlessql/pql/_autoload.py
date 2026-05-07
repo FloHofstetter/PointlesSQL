@@ -53,6 +53,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.conventions import ConventionsConfig, load_conventions
+from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
@@ -159,7 +160,7 @@ def autoload_files(
     with operation_context(
         audit_factory,
         agent_run_id=cast(RunId | None, agent_run_id),
-        op_name="autoload",
+        op_name=OpName.AUTOLOAD,
         params={
             "source_path": str(source_path),
             "target": target,
