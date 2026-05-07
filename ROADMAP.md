@@ -4887,6 +4887,72 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 50 — Native Data-Product support ✅ done
+│   │
+│   │   Every UC schema can opt-in to product status by committing
+│   │   a ``pointlessql.yaml`` file in the data-team repo declaring
+│   │   steward, SemVer version, freshness-SLA and per-table schema
+│   │   contract.  Yaml is canonical; git-blame is the audit log.
+│   │   ``pql.write/merge`` enforces the contract before any Delta
+│   │   IO (fail-loud ``DataProductContractViolation`` on breaking
+│   │   diffs); a background scanner emits ``sla_violated``
+│   │   CloudEvents when freshness drifts past the declared SLA.
+│   │   Workspace-scoped ``/data-products`` UI + 5 plugin tools
+│   │   surface discovery, contract inspection, live-diff and
+│   │   compliance history.  Pyright budget unchanged at 497.
+│   │
+│   ├── Sprint 50.1 — Foundation.  ``pointlessql/data_products/``
+│   │       package: 11-type column-spec Pydantic model,
+│   │       ``DataProductRef(str)`` validation type,
+│   │       ``DataProductError`` family (4 subclasses), yaml
+│   │       loader with idempotent UPSERT + steward-FK
+│   │       resolution.  Two ORM tables (``data_products`` +
+│   │       ``data_product_contract_events``) via Alembic
+│   │       ``rr8u0w2y4a6c``.  4 ``ErrorCode`` members,
+│   │       ``DataProductsSettings`` env-prefix.  23 new tests.
+│   │
+│   ├── Sprint 50.3 — Enforcement.  Pure-functional
+│   │       ``ContractDiffResult`` core + engine-tuples /
+│   │       Delta-schema adapters (canonicalises
+│   │       int64/long, float64/double, decimal* aliases).
+│   │       Pre-write hooks in ``pql/_write.py`` +
+│   │       ``pql/_merge.py`` raise
+│   │       ``DataProductContractViolation`` *before* Delta IO
+│   │       on breaking diffs.  ``pending_contract_event`` on
+│   │       ``OperationRecorder`` + post-commit hook persist
+│   │       one event row per check; exception path also
+│   │       persists so refused attempts show up in the audit
+│   │       trail.  15 new tests.
+│   │
+│   ├── Sprint 50.4 — Freshness Scanner.  Background loop walks
+│   │       SLA-bearing products, observes latest write via
+│   │       ``DeltaTable.history()``, emits
+│   │       ``pointlessql.data_product.sla_violated`` CloudEvent
+│   │       on stale ages.  ``last_alerted_at`` re-alert
+│   │       suppression (default 60 min).  Opt-in via
+│   │       ``POINTLESSQL_DATA_PRODUCTS_SCAN_INTERVAL_SECONDS≥60``.
+│   │       New EVENT_TYPE registered in governance-events
+│   │       registry.  5 new tests.
+│   │
+│   ├── Sprint 50.2 — Web UI.  ``/data-products`` index +
+│   │       ``/data-products/{cat}/{schema}`` 5-tab detail
+│   │       (Overview / Contract / Diff / Lineage / Compliance)
+│   │       with cytoscape mini-DAG via lineage_row_edges.
+│   │       Five JSON endpoints (list/detail/diff/lineage/
+│   │       admin-reload).  Icon-rail entry between SQL and
+│   │       Dashboards.  11 new tests.
+│   │
+│   └── Sprint 50.5 — Plugin tools.  Five new LLM-callable Hermes
+│           tools (``pql_list_data_products``,
+│           ``pql_get_data_product``,
+│           ``pql_get_data_product_contract``,
+│           ``pql_check_contract_compliance``,
+│           ``pql_data_product_compliance_history``) all wired
+│           into ``register_all`` so any keyed agent can use
+│           them.  Plugin client gains four
+│           ``/api/data-products/*`` methods.  7 new plugin
+│           tests.
+│
 ├── Phase 48 — Primitive-Obsession StrEnum Sweep ✅ done
 │   │
 │   │   Replaces the 9 enum-shaped string columns and 17

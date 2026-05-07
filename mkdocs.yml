@@ -101,6 +101,7 @@ nav:
       - PII modes: concepts/pii-modes.md
       - Contextual help: concepts/contextual-help.md
       - Workspaces: concepts/workspaces.md
+      - Data products: concepts/data-products.md
   - Admin:
       - Workspace management: admin/workspace-management.md
       - OIDC group map: admin/oidc-group-map.md

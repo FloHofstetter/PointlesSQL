@@ -6,6 +6,88 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 50 — Native Data-Product support closed.**  PointlesSQL
+  now treats any UC schema as an opt-in data product when its
+  data team commits a ``pointlessql.yaml`` declaring steward,
+  SemVer version, freshness-SLA and per-table schema contract.
+  Yaml is canonical; git-blame is the audit log.  Six surfaces
+  shipped across five sub-sprints:
+
+  - **50.1 — Foundation.**  New ``pointlessql/data_products/``
+    package: ``DataProductColumnSpec``/``TableContract``/
+    ``Contract`` Pydantic models (11 column types),
+    ``DataProductRef(str)`` validation type (mirrors Phase-49c
+    TableFqn), four ``DataProductError`` subclasses (RFC 9457
+    integration), yaml loader with idempotent UPSERT +
+    steward-FK resolution against ``users``.  Two new ORM
+    tables (``data_products`` + ``data_product_contract_events``)
+    via Alembic ``rr8u0w2y4a6c``.  4 new ``ErrorCode`` members,
+    ``DataProductsSettings`` under env prefix
+    ``POINTLESSQL_DATA_PRODUCTS_*``.
+
+  - **50.3 — Enforcement.**  Pure-functional
+    ``ContractDiffResult`` core in ``data_products/_diff.py``
+    + two adapters (engine-tuples for pre-write, Delta-schema
+    for live diff).  Type canonicalisation collapses
+    ``int64``↔``long`` / ``float64``↔``double`` / ``decimal*``
+    aliases.  ``check_contract_for_write`` resolves workspace
+    from ``agent_run_id``, looks up the cached contract,
+    classifies into ``compliant`` / ``schema_drift_warning`` /
+    ``violated`` / ``no_contract``.  Pre-write hooks in
+    ``pql/_write.py`` + ``pql/_merge.py`` raise
+    ``DataProductContractViolation`` *before* any Delta IO
+    when the diff is breaking.  ``OperationRecorder.
+    pending_contract_event`` tuple +
+    ``record_contract_event_after_commit`` post-commit hook
+    persist one event row per check; the exception path also
+    persists so the audit trail shows refused attempts.
+
+  - **50.4 — Freshness Scanner.**  Background loop walks every
+    cached ``DataProduct`` whose ``sla_minutes`` is set,
+    observes the latest write timestamp via
+    ``DeltaTable.history()`` per UC table, emits one
+    ``pointlessql.data_product.sla_violated`` CloudEvent
+    when the age exceeds the SLA.  ``last_alerted_at`` is
+    stamped after each emit; the re-alert window (default 60
+    min via ``re_alert_suppress_minutes``) suppresses event
+    storms.  Opt-in via
+    ``POINTLESSQL_DATA_PRODUCTS_SCAN_INTERVAL_SECONDS≥60``.
+    New ``EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED`` registered
+    in the governance-events registry.
+
+  - **50.2 — Web UI.**  ``/data-products`` index +
+    ``/data-products/{catalog}/{schema}`` 5-tab detail page
+    (Overview / Contract / Diff / Lineage / Compliance), with
+    cytoscape mini-DAG of producers/consumers via
+    ``lineage_row_edges``.  Five JSON endpoints:
+    ``GET /api/data-products`` (workspace-scoped list),
+    ``GET /api/data-products/{cat}/{schema}`` (detail incl.
+    last-50 events), ``GET /.../diff`` (live yaml↔Delta diff
+    per table), ``GET /.../lineage`` (cytoscape graph),
+    ``POST /.../reload`` (admin-gated yaml re-load).
+    Icon-rail entry between SQL and Dashboards.
+
+  - **50.5 — Plugin tools.**  Five new LLM-callable Hermes
+    tools in ``hermes-plugin-pointlessql``:
+    ``pql_list_data_products``, ``pql_get_data_product``,
+    ``pql_get_data_product_contract`` (lighter contract-only
+    surface), ``pql_check_contract_compliance`` (live diff),
+    ``pql_data_product_compliance_history`` (recent events
+    with per-call limit).  All five wired into ``register_all``
+    so any keyed agent can use them; plugin client gains four
+    new methods hitting ``/api/data-products/*``.
+
+  Pyright budget unchanged at 497.  PointlesSQL test suite
+  gained 31 new tests (10 ref-validation + 13 loader + 15
+  enforcement + 5 scanner + 11 routes); plugin gained 7 new
+  tests.  ``Mapped[str]`` columns stay unchanged —
+  ``DataProductRef`` is-a ``str`` so SQLAlchemy absorbs it
+  transparently.  Anti-goals preserved: no DLT-bundle-
+  generator (PointlesSQL **is** the platform), no
+  ``Mapped[NewType-or-subclass]`` on models, no domain-
+  specific RBAC ladder (Workspace + scope surface gates
+  everything).
+
 - **Phase 49c — TableFqn validation type closed.**  Introduces
   ``pointlessql/table_fqn.py`` with a ``str``-subclass validation
   type for ``catalog.schema.table`` UC identifiers.
