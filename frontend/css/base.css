@@ -1,7 +1,10 @@
 /* ---------------------------------------------------------------
  * Design tokens — foundation.
- * Full reference in docs/design-tokens.md. Light-mode overrides
- * live further down; no toggle is wired yet.
+ * Full reference in docs/design-tokens.md.  Light-mode overrides
+ * live further down; the toggle is wired via the inline init +
+ * dropdown-handler in ``frontend/templates/base.html`` (Phase 54.2,
+ * Bootstrap 5.3 color-modes API).  Default is ``auto`` (follows
+ * ``prefers-color-scheme``); user picks persist in localStorage.
  * ------------------------------------------------------------- */
 :root {
  --pointless-accent: #76b900;
