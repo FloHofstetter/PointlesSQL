@@ -4935,6 +4935,26 @@ PointlesSQL
 │           ``test_cloudevents_registry_matches_legacy_constants``
 │           pins both halves byte-for-byte.
 │
+├── Phase 49a — Repo-wide Lint-Sweep ✅ done
+│   │
+│   │   Single-sprint cleanup of pre-existing ruff E501 + pydoclint
+│   │   DOC502 / DOC503 / DOC601 / DOC603 violations accumulated
+│   │   since Phase 35.  119 ruff hits (mostly test-function
+│   │   signatures) cleared via ``uv run ruff format``; 36
+│   │   pydoclint hits cleared by aligning Raises sections with
+│   │   the centralised-handler typed-error pattern (HTTPException
+│   │   → typed errors like ``AuthenticationError`` /
+│   │   ``ResourceNotFoundError`` / ``ValidationError``) and by
+│   │   filling in missing class-attribute lines for
+│   │   ``ApiKey.lineage_inbound`` / ``LineageRowEdge.producer`` /
+│   │   ``LineageColumnMap.producer`` / ``RollbackAmbiguous`` /
+│   │   ``RollbackStale`` (and their ``external_event_id`` /
+│   │   ``status_code`` / ``error_code`` siblings).  Pyright
+│   │   budget unchanged at 497.  1686 tests pass.  Two
+│   │   commits: ``chore(format)`` (68-file reformat sweep) +
+│   │   ``chore(docs)`` (12-file docstring alignment).  No
+│   │   behaviour change.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

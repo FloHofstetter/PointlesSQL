@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 49a — Repo-wide Lint-Sweep closed.**  Two-commit cleanup
+  pass clearing pre-existing ruff E501 + pydoclint
+  DOC502 / DOC503 / DOC601 / DOC603 violations accumulated since
+  Phase 35.  119 ruff hits cleared via ``uv run ruff format``
+  (68 files reformatted, mostly test-function signatures wrapped
+  to satisfy the 100-char limit); 36 pydoclint hits cleared by
+  realigning Raises sections from the framework-rendered
+  ``HTTPException`` view to the body-literal typed-error view
+  (``AuthenticationError`` / ``ResourceNotFoundError`` /
+  ``ValidationError`` / etc.) and by filling in missing
+  ``Attributes:`` lines for newer ``Mapped[]`` columns
+  (``ApiKey.lineage_inbound``, ``LineageRowEdge.producer`` /
+  ``.external_event_id``, ``LineageColumnMap.producer`` /
+  ``.external_event_id``) plus the explicit ``status_code`` /
+  ``error_code`` class vars on ``RollbackAmbiguous`` /
+  ``RollbackStale``.  Pyright budget unchanged at 497.  1686
+  tests pass.  Pre-commit was bypassed on the originating
+  commits — running ``ruff format`` repo-wide once removes the
+  accumulated drift in one pass.
+
 - **Phase 48 — Primitive-Obsession StrEnum Sweep closed.**
   Five-sub-sprint refactor (1 additive + 4 batch migrations + 1
   CloudEvents registry) in one autonomous run.  Introduces nine
