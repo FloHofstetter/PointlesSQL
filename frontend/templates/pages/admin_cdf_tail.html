@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
+{% block title %}CDF subscriptions · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Admin", "href": "/admin"},
+    {"label": "CDF subscriptions"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-down-up fs-3"></i>
+        <h1 class="h3 mb-0">CDF subscriptions{{ info('admin.cdf-tail') }}</h1>
+        {% if with_errors_total %}
+        <span class="badge bg-warning text-dark">{{ with_errors_total }} with last_error</span>
+        {% else %}
+        <span class="badge bg-success">all healthy</span>
+        {% endif %}
+    </div>
+    <span class="text-muted small">
+        {{ entries|length }} subscription{{ '' if entries|length == 1 else 's' }} shown
+    </span>
+</div>
+
+<div class="alert alert-info small">
+    <i class="bi bi-info-circle me-1"></i>
+    Pull-modell.  Lists per-table opt-ins where PointlesSQL periodically
+    reads <code>DeltaTable.load_cdf()</code> and persists every CDF row
+    into <code>cdf_tail_events</code>.  Counterpart to push-modell
+    OpenLineage ingestion.  See
+    <code>POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS</code> for the
+    background-loop opt-in; the "Run tail now" button works regardless.
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" action="/admin/cdf-subscriptions">
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-6 col-md-5">
+                    <label class="form-label small mb-1" for="f-table">Table FQN contains</label>
+                    <input id="f-table" name="table_fqn_like" type="text"
+                           class="form-control form-control-sm"
+                           value="{{ table_fqn_like }}" placeholder="main.silver.…">
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" name="only_active"
+                               id="f-only-active" value="true"
+                               {% if only_active %}checked{% endif %}>
+                        <label class="form-check-label small" for="f-only-active">Active only</label>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-md-4 text-end">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-funnel me-1"></i>Apply
+                    </button>
+                    <a href="/admin/cdf-subscriptions" class="btn btn-outline-secondary btn-sm">Reset</a>
+                </div>
+            </div>
+        </form>
+        <hr class="my-3">
+        <form method="post" action="/api/admin/cdf-subscriptions/run-now" hx-boost="false"
+              onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerText='Tailing…';">
+            <button type="submit" class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-arrow-clockwise me-1"></i>Run tail now
+            </button>
+            <span class="text-muted small ms-2">Walks every active subscription; idempotent thanks to (table, version, row_id, change_type) UNIQUE.</span>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Register new subscription</div>
+    <div class="card-body">
+        <form method="post" action="/api/admin/cdf-subscriptions" hx-boost="false"
+              data-cdf-tail-create-form>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small mb-1" for="new-table">Table full name</label>
+                    <input id="new-table" name="table_full_name" type="text"
+                           class="form-control form-control-sm font-monospace" required
+                           placeholder="catalog.schema.table">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="new-row-id">Row-id column</label>
+                    <input id="new-row-id" name="row_id_column" type="text"
+                           class="form-control form-control-sm font-monospace" required
+                           placeholder="id">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1" for="new-producer">Producer label (optional)</label>
+                    <input id="new-producer" name="producer_label" type="text"
+                           class="form-control form-control-sm font-monospace"
+                           placeholder="cdf-tail:catalog.schema.table">
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if not entries %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-inboxes display-4 d-block mb-2"></i>
+        <p class="mb-2">No subscriptions registered.</p>
+        <p class="small mb-0">Register one above to start capturing foreign-Delta CDF events.</p>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Table</th>
+                        <th>Row-id col</th>
+                        <th>Producer label</th>
+                        <th>Active</th>
+                        <th>Last v</th>
+                        <th>Last tailed</th>
+                        <th>Last error</th>
+                        <th class="pe-3 text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in entries %}
+                    <tr {% if not s.is_active %}class="text-muted"{% endif %}>
+                        <td class="ps-3 font-monospace small">{{ s.table_full_name }}</td>
+                        <td class="font-monospace small">{{ s.row_id_column }}</td>
+                        <td class="font-monospace small">{{ s.producer_label }}</td>
+                        <td>
+                            {% if s.is_active %}
+                            <span class="badge bg-success">active</span>
+                            {% else %}
+                            <span class="badge bg-secondary">paused</span>
+                            {% endif %}
+                        </td>
+                        <td class="font-monospace small">
+                            {% if s.last_version_processed is not none %}{{ s.last_version_processed }}{% else %}—{% endif %}
+                        </td>
+                        <td class="font-monospace small">{{ s.last_tailed_at or "—" }}</td>
+                        <td class="small" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;">
+                            {% if s.last_error %}
+                            <code class="text-danger" title="{{ s.last_error }}">
+                                {{ s.last_error[:80] }}{% if s.last_error|length > 80 %}…{% endif %}
+                            </code>
+                            {% else %}
+                            <span class="text-success">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="pe-3 text-end">
+                            <form method="post" action="/api/admin/cdf-subscriptions/{{ s.id }}/toggle"
+                                  hx-boost="false" class="d-inline">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                    {% if s.is_active %}
+                                    <i class="bi bi-pause"></i> Pause
+                                    {% else %}
+                                    <i class="bi bi-play"></i> Resume
+                                    {% endif %}
+                                </button>
+                            </form>
+                            <form method="post" action="/api/admin/cdf-subscriptions/{{ s.id }}"
+                                  hx-boost="false" class="d-inline"
+                                  data-cdf-tail-delete-form
+                                  onsubmit="if(!confirm('Delete subscription for {{ s.table_full_name }}?  This also deletes all captured cdf_tail_events.')) return false;">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ csp_nonce }}">
+    // Tiny shim: convert <form method="post"> + <input name="_method" value="DELETE">
+    // pairs into actual fetch DELETE calls, then reload.  Pattern matches what
+    // admin_audit_sinks.html does for non-GET HTML form deletes.
+    document.addEventListener('submit', function (ev) {
+        var form = ev.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (!form.hasAttribute('data-cdf-tail-delete-form')) return;
+        var methodInput = form.querySelector('input[name="_method"]');
+        if (!methodInput || methodInput.value.toUpperCase() !== 'DELETE') return;
+        ev.preventDefault();
+        fetch(form.action, { method: 'DELETE', credentials: 'same-origin' })
+            .then(function (r) {
+                if (r.ok) {
+                    window.location.reload();
+                } else {
+                    r.text().then(function (t) {
+                        alert('Delete failed: ' + (t || r.status));
+                    });
+                }
+            })
+            .catch(function (err) { alert('Delete failed: ' + err); });
+    });
+
+    // Convert the create-form POST to JSON so the existing /api/admin/cdf-subscriptions
+    // body-parser (FastAPI Body(...)) accepts it.
+    document.addEventListener('submit', function (ev) {
+        var form = ev.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        if (!form.hasAttribute('data-cdf-tail-create-form')) return;
+        ev.preventDefault();
+        var fd = new FormData(form);
+        var payload = {};
+        fd.forEach(function (v, k) { if (v) payload[k] = v; });
+        fetch(form.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        }).then(function (r) {
+            if (r.ok) {
+                window.location.reload();
+            } else {
+                r.text().then(function (t) {
+                    alert('Create failed: ' + (t || r.status));
+                });
+            }
+        }).catch(function (err) { alert('Create failed: ' + err); });
+    });
+</script>
+{% endblock %}

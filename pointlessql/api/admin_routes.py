@@ -66,7 +66,7 @@ async def admin_index(request: Request) -> HTMLResponse:
     from sqlalchemy import func
     from sqlalchemy import select as _select
 
-    from pointlessql.models import ApiKey, Workspace
+    from pointlessql.models import ApiKey, CdfTailSubscription, Workspace
     from pointlessql.models.agent_reviews import ReviewDestination
     from pointlessql.models.audit_sinks import AuditSink
     from pointlessql.services import external_write_scanner
@@ -94,6 +94,22 @@ async def admin_index(request: Request) -> HTMLResponse:
         active_api_keys = (
             session.scalar(_select(func.count(ApiKey.id)).where(ApiKey.revoked_at.is_(None))) or 0
         )
+        active_cdf_subscriptions = (
+            session.scalar(
+                _select(func.count(CdfTailSubscription.id)).where(
+                    CdfTailSubscription.is_active.is_(True)
+                )
+            )
+            or 0
+        )
+        cdf_subscriptions_with_errors = (
+            session.scalar(
+                _select(func.count(CdfTailSubscription.id)).where(
+                    CdfTailSubscription.last_error.is_not(None)
+                )
+            )
+            or 0
+        )
 
     unacknowledged_external_writes = await asyncio.to_thread(
         external_write_scanner.count_unacknowledged, factory
@@ -107,6 +123,8 @@ async def admin_index(request: Request) -> HTMLResponse:
             "active_sinks": active_sinks,
             "active_destinations": active_destinations,
             "active_api_keys": active_api_keys,
+            "active_cdf_subscriptions": active_cdf_subscriptions,
+            "cdf_subscriptions_with_errors": cdf_subscriptions_with_errors,
             "unacknowledged_external_writes": unacknowledged_external_writes,
             "active_page": "admin",
             "active_catalog": None,

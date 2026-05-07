@@ -21,7 +21,9 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Body, Request
-from sqlalchemy import select
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from pointlessql.api._audit_helpers import audit
@@ -32,6 +34,72 @@ from pointlessql.models import CdfTailSubscription
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["admin", "cdf-tail"])
+
+
+def _templates(request: Request) -> Jinja2Templates:
+    """Return the shared Jinja2Templates instance from app state."""
+    return request.app.state.templates
+
+
+@router.get("/admin/cdf-subscriptions", response_class=HTMLResponse)
+async def admin_cdf_subscriptions_index(
+    request: Request,
+    table_fqn_like: str | None = None,
+    only_active: bool = False,
+) -> HTMLResponse:
+    """Render the CDF tail subscriptions admin page.
+
+    Args:
+        request: Incoming FastAPI request.
+        table_fqn_like: Optional substring filter on ``table_full_name``.
+        only_active: When True, omits paused subscriptions.
+
+    Returns:
+        The rendered HTML page.
+    """
+    require_admin(request)
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    cleaned_like = (
+        table_fqn_like.strip()
+        if isinstance(table_fqn_like, str) and table_fqn_like.strip()
+        else None
+    )
+    with factory() as session:
+        stmt = select(CdfTailSubscription).where(
+            CdfTailSubscription.workspace_id == workspace_id
+        )
+        if only_active:
+            stmt = stmt.where(CdfTailSubscription.is_active.is_(True))
+        if cleaned_like:
+            stmt = stmt.where(CdfTailSubscription.table_full_name.like(f"%{cleaned_like}%"))
+        rows = list(
+            session.scalars(stmt.order_by(CdfTailSubscription.created_at.desc())).all()
+        )
+        entries = [_serialize(r) for r in rows]
+        with_errors = (
+            session.scalar(
+                select(func.count(CdfTailSubscription.id)).where(
+                    CdfTailSubscription.workspace_id == workspace_id,
+                    CdfTailSubscription.last_error.is_not(None),
+                )
+            )
+            or 0
+        )
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/admin_cdf_tail.html",
+        {
+            "entries": entries,
+            "table_fqn_like": cleaned_like or "",
+            "only_active": only_active,
+            "with_errors_total": with_errors,
+            "active_page": "admin",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 def _serialize(row: CdfTailSubscription) -> dict[str, Any]:

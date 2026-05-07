@@ -484,6 +484,17 @@ HELP: dict[str, HelpEntry] = {
         ),
         learn_more="/concepts/audit-trail/",
     ),
+    "admin.cdf-tail": HelpEntry(
+        title="Foreign-Delta CDF tail",
+        body=(
+            "Pull-modell capture of Change-Data-Feed events on "
+            "foreign Delta tables that do not emit OpenLineage. "
+            "Admins register one subscription per table; a "
+            "background loop reads new CDF versions and stores "
+            "one row per change in <code>cdf_tail_events</code>."
+        ),
+        learn_more="/concepts/audit-trail/",
+    ),
     "admin.audit-sinks": HelpEntry(
         title="Audit sinks",
         body=(

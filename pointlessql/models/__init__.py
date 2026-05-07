@@ -58,7 +58,6 @@ from pointlessql.models.auth import User
 from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.models.base import Base
 from pointlessql.models.branch_audit import BRANCH_ACTIONS, BranchAuditLog
-from pointlessql.models.cdf_tail import CdfTailEvent, CdfTailSubscription
 from pointlessql.models.catalog import (
     Dashboard,
     QueryHistory,
@@ -67,6 +66,7 @@ from pointlessql.models.catalog import (
     SavedQuery,
     TableStats,
 )
+from pointlessql.models.cdf_tail import CdfTailEvent, CdfTailSubscription
 from pointlessql.models.expected_lineage_inbound import ExpectedLineageInbound
 from pointlessql.models.external_writes import UnattributedWrite
 from pointlessql.models.lineage import (
