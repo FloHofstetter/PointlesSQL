@@ -121,3 +121,56 @@ def test_strenum_member_equals_string_literal() -> None:
     assert RunStatus.RUNNING == "running"
     assert OpName.WRITE_TABLE == "write_table"
     assert AuditSinkType.S3 == "s3"
+
+
+def test_cloudevents_registry_matches_legacy_constants() -> None:
+    """Every constant in :mod:`cloudevents.types` matches the legacy literal.
+
+    Sprint 48.3 introduced ``pointlessql.services.cloudevents.types``
+    as the single registry for CloudEvents ``type`` literals.  The
+    legacy ``EVENT_TYPE_*`` constants on
+    :mod:`services.agent_runs.events` and
+    :mod:`services.governance_events` keep working for back-compat.
+    These tests pin both halves to the same byte-for-byte values so
+    the wire format cannot drift.
+    """
+    from pointlessql.services import cloudevents
+    from pointlessql.services.agent_runs.events import (
+        EVENT_TYPE_COMPLETED,
+        EVENT_TYPE_FAILED,
+        EVENT_TYPE_ROLLBACK_EXECUTED,
+        EVENT_TYPE_STARTED,
+        EVENT_TYPE_TOOL_CALL,
+    )
+    from pointlessql.services.governance_events import (
+        EVENT_TYPE_AUDIT_EXPORT_ISSUED,
+        EVENT_TYPE_BRANCH_CREATED,
+        EVENT_TYPE_BRANCH_DISCARDED,
+        EVENT_TYPE_BRANCH_PROMOTED,
+        EVENT_TYPE_COST_GATE_DENIED,
+        EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
+        EVENT_TYPE_DBT_RUN_COMPLETED,
+        EVENT_TYPE_DBT_TEST_FAILED,
+        EVENT_TYPE_DBT_TEST_WARNED,
+        EVENT_TYPE_EXTERNAL_WRITE,
+        EVENT_TYPE_LINEAGE_PRUNED,
+        EVENT_TYPE_POLICY_VIOLATION,
+    )
+
+    assert cloudevents.AGENT_RUN_STARTED == EVENT_TYPE_STARTED
+    assert cloudevents.AGENT_RUN_COMPLETED == EVENT_TYPE_COMPLETED
+    assert cloudevents.AGENT_RUN_FAILED == EVENT_TYPE_FAILED
+    assert cloudevents.AGENT_RUN_TOOL_CALL == EVENT_TYPE_TOOL_CALL
+    assert cloudevents.ROLLBACK_EXECUTED == EVENT_TYPE_ROLLBACK_EXECUTED
+    assert cloudevents.EXTERNAL_WRITE_DETECTED == EVENT_TYPE_EXTERNAL_WRITE
+    assert cloudevents.POLICY_VIOLATED == EVENT_TYPE_POLICY_VIOLATION
+    assert cloudevents.COST_GATE_DENIED == EVENT_TYPE_COST_GATE_DENIED
+    assert cloudevents.AUDIT_EXPORT_ISSUED == EVENT_TYPE_AUDIT_EXPORT_ISSUED
+    assert cloudevents.LINEAGE_PRUNED == EVENT_TYPE_LINEAGE_PRUNED
+    assert cloudevents.BRANCH_CREATED_V1 == EVENT_TYPE_BRANCH_CREATED
+    assert cloudevents.BRANCH_PROMOTED_V1 == EVENT_TYPE_BRANCH_PROMOTED
+    assert cloudevents.BRANCH_DISCARDED_V1 == EVENT_TYPE_BRANCH_DISCARDED
+    assert cloudevents.DBT_RUN_COMPLETED == EVENT_TYPE_DBT_RUN_COMPLETED
+    assert cloudevents.DBT_TEST_FAILED == EVENT_TYPE_DBT_TEST_FAILED
+    assert cloudevents.DBT_TEST_WARNED == EVENT_TYPE_DBT_TEST_WARNED
+    assert cloudevents.DBT_AUTO_ROLLBACK_EXECUTED == EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED
