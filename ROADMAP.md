@@ -4468,6 +4468,58 @@ PointlesSQL
 │           cases (3 service unit, 3 ``tail_all`` integration,
 │           3 admin CRUD).
 │
+├── Phase 40.6 — CDF Tail UI integration                  ✅ done
+│   │
+│   │   Phase-40.5 capture surfaced.  Three thin sprints turn
+│   │   the CDF-tail backend from "API-only" into a fully
+│   │   browsable + agent-readable governance surface.  No new
+│   │   tables, no new credential surface — just admin UI,
+│   │   table-detail tab, two auditor-scope plugin tools, and
+│   │   one new auditor-scope read endpoint.  Anti-goal:
+│   │   row-trace fold-in of CDF events stays deferred; CDF
+│   │   events are a separate boundary from
+│   │   ``lineage_row_edges`` and forcing them into walkback
+│   │   semantics is a Phase-40.7 concern with its own scope.
+│   │
+│   ├── Sprint 40.6.1 — Admin subscriptions HTML page
+│   │       New ``GET /admin/cdf-subscriptions`` HTML route on
+│   │       ``api/admin_cdf_tail_routes.py``; new
+│   │       ``frontend/templates/pages/admin_cdf_tail.html``
+│   │       (CRUD + ``Run tail now`` + table-FQN substring
+│   │       filter + only-active toggle).  Admin landing
+│   │       (``api/admin_routes.py``) extended with two new
+│   │       COUNTs (``active_cdf_subscriptions`` +
+│   │       ``cdf_subscriptions_with_errors``) so the new
+│   │       8th card on ``/admin`` carries badges.  Help-icon
+│   │       slug ``admin.cdf-tail`` registered.  4 pytest
+│   │       cases.
+│   ├── Sprint 40.6.2 — Table-detail "CDF events" tab
+│   │       ``api/catalog_html_routes.py`` loader extended with
+│   │       two best-effort helpers
+│   │       (``_cdf_subscription_for_table`` +
+│   │       ``_cdf_recent_events_for_table``, both
+│   │       workspace-scoped) and a 7th tab on
+│   │       ``frontend/templates/pages/table.html`` that mounts
+│   │       ONLY when a subscription exists for the rendered
+│   │       table.  Tables without a subscription still show 6
+│   │       tabs; no empty-tab visual noise.  2 pytest cases
+│   │       (visibility + recent-events render).
+│   └── Sprint 40.6.3 — Plugin tools + auditor-scope read endpoints
+│           Two new auditor-scope endpoints in
+│           ``api/audit_routes.py``:
+│           ``GET /api/audit/cdf-subscriptions`` (workspace-scoped
+│           list) and ``GET /api/audit/cdf-events`` (per-table
+│           events with ``limit`` 1..500).  Two new plugin tools
+│           in ``hermes-plugin-pointlessql`` registered in
+│           ``register_auditor_tools``:
+│           ``pql_list_cdf_subscriptions`` +
+│           ``pql_recent_cdf_events_for_table``.  Mutation
+│           tools deliberately not registered — admins register
+│           via the admin UI, not from agent flows.  3 pytest
+│           cases server-side + 6 plugin-side.  New 50th
+│           walkthrough at
+│           ``docs/e2e-walkthroughs/admin-cdf-tail.md``.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

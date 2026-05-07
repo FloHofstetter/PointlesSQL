@@ -6,6 +6,30 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 40.6 — CDF Tail UI integration closed.**  Three thin
+  sprints turn the Phase-40.5 capture surface into a fully
+  browsable + agent-readable governance surface.  Sprint 40.6.1
+  ships the admin subscriptions page at
+  ``/admin/cdf-subscriptions`` (CRUD + ``Run tail now`` +
+  table-FQN filter + only-active toggle) and adds an 8th card
+  to the admin landing with active-count + with-errors badges.
+  Sprint 40.6.2 mounts a 7th "CDF events" tab on the
+  table-detail page, gated server-side on
+  ``cdf_subscription is not None`` so tables without a
+  subscription still show 6 tabs.  Sprint 40.6.3 ships two new
+  auditor-scope read endpoints
+  (``GET /api/audit/cdf-subscriptions`` +
+  ``GET /api/audit/cdf-events``) and two new plugin tools
+  (``pql_list_cdf_subscriptions`` +
+  ``pql_recent_cdf_events_for_table``).  No new Alembic
+  migrations, no new credential surface — the UI just
+  surfaces what 40.5 captured.  9 new pytest cases
+  PointlesSQL-side + 6 plugin-side.  50th end-to-end
+  walkthrough at ``docs/e2e-walkthroughs/admin-cdf-tail.md``.
+  Anti-goal kept: row-trace fold-in of CDF events stays
+  deferred — they're a different boundary from
+  ``lineage_row_edges`` and forcing the merge needs its own
+  Phase 40.7 scope.
 - **Phase 40.5 — Foreign-Delta CDF tail (pull-modell) closed.**
   Closes the deferred Sprint-40.2 sketch as a single sprint.
   New Alembic ``qq7t9v1x3z5b`` adds ``cdf_tail_subscriptions``

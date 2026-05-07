@@ -200,6 +200,12 @@ them after `auth.md` (admin user must exist + be signed in):
  carries a "Rewrites" sub-tab on the Operations top-tab and
  the audit Grafana dashboard gets panel 21 ("Rewrite savings —
  averted cost-gate denials per week").
+25. [`admin-cdf-tail.md`](admin-cdf-tail.md) — Phase-40.6
+ foreign-Delta CDF tail subscriptions admin page +
+ table-detail "CDF events" tab + auditor-scope plugin tools.
+ Pull-modell counterpart to push-modell OpenLineage; per-table
+ opt-in registry + idempotent ``DeltaTable.load_cdf()``-driven
+ capture.
 
 [`audit-sinks.md`](audit-sinks.md) was rewritten from a
 curl-only operational runbook into a UI-driven walkthrough

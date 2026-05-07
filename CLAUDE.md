@@ -204,7 +204,7 @@ covers all current and recently-closed work.
 
 ## Replaying the e2e walkthroughs
 
-`docs/e2e-walkthroughs/` holds 49 deterministic Markdown
+`docs/e2e-walkthroughs/` holds 50 deterministic Markdown
 playbooks covering every UI surface PointlesSQL ships
 (catalog browsing, lineage, run-detail, ML registry,
 branches, audit cockpit, federation, admin console, dbt,

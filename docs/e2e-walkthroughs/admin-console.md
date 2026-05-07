@@ -36,15 +36,15 @@ nav-from-landing flow is exercised end-to-end.
    - Assert: page title `Admin · PointlesSQL`. Heading reads
      "Admin". Right-aligned hint reads "Operator-only surfaces.".
 
-2. **Verify all 7 cards in the grid** (load-bearing — the grand
-   tour Act 10 says 5 cards but the actual count is 7 once API
-   keys + System info are included).
+2. **Verify all 8 cards in the grid** (load-bearing — the count
+   grew from 7 to 8 in Phase 40.6 with the addition of the CDF
+   subscriptions card).
    - Action:
      ```js
      () => Array.from(document.querySelectorAll('a.pql-admin-card[data-admin-card]'))
        .map(a => ({slug: a.getAttribute('data-admin-card'), href: a.getAttribute('href')}))
      ```
-   - Assert: returns an array of length 7 with these slug→href
+   - Assert: returns an array of length 8 with these slug→href
      pairs in this order:
      - `audit-log` → `/admin/audit`
      - `external-writes` → `/admin/external-writes`
@@ -52,6 +52,7 @@ nav-from-landing flow is exercised end-to-end.
      - `audit-sinks` → `/admin/audit-sinks`
      - `review-destinations` → `/admin/review-destinations`
      - `api-keys` → `/admin/api-keys`
+     - `cdf-subscriptions` → `/admin/cdf-subscriptions`
      - `system-info` → `/admin/system-info`
 
 3. **Confirm active-count badges**.
