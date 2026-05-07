@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from fastapi import APIRouter, Body, File, Form, Request, UploadFile
@@ -384,7 +384,7 @@ async def api_convert_volume_file_to_delta(
 
     dt = deltalake.DeltaTable(str(delta_dir))
     schema_fields = dt.schema().fields
-    columns = []
+    columns: list[dict[str, Any]] = []
     for position, field in enumerate(schema_fields):
         type_name, type_text = delta_field_to_uc(field)
         columns.append(
@@ -468,7 +468,14 @@ async def volumes_page(request: Request) -> HTMLResponse:
                     if resp.status_code != 200:
                         continue
                     data = resp.json()
-                    for v in data.get("volumes") or []:
+                    raw_volumes: list[dict[str, Any]] = []
+                    if isinstance(data, dict):
+                        data_dict = cast(dict[str, Any], data)
+                        raw_volumes = cast(
+                            list[dict[str, Any]],
+                            data_dict.get("volumes") or [],
+                        )
+                    for v in raw_volumes:
                         volumes.append(
                             {
                                 "full_name": v.get("full_name"),
