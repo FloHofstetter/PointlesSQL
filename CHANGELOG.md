@@ -6,6 +6,41 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 54 — UI overhaul implementation (M = Modernize) closed.**
+  Implements the Phase-53 ``ui-overhaul-proposal.md`` Size-M
+  recommendation in six sub-sprints.  The plan-phase code-audit
+  reduced the actionable set significantly: ``frontend/css/`` has
+  no ``.btn-outline-*`` opacity override, UUID format is dashed
+  consistently, the all-zeros SHA-256 sentinel is never written,
+  ``runs_list.html`` is responsive-table-only without mobile-card
+  rendering, and three of the "walkthrough doc drift" entries
+  pointed at the right URLs already.  Sprint 54.1 flips
+  ``hide_sidebar=False`` on error templates so 403/404/500 keep
+  the icon-rail.  Sprint 54.2 wires the long-prepared color-modes
+  toggle: anti-FOUC inline init in ``<head>``, 3-button dropdown
+  (Light / Dark / Auto, ``data-bs-theme-value``), delegated click
+  handler that persists via ``localStorage.pql.theme`` and
+  re-applies on OS prefer-changes when in ``auto``.  New users
+  default to ``auto``.  Sprint 54.3 lands a Bootstrap 5.3
+  ``pagination`` macro (``_macros/pagination.html``) plus a
+  ``paginate_url`` Jinja global and adopts both on
+  ``/admin/audit`` (truncation flag → real ``offset``-based
+  pager backed by a separate ``COUNT(*)``).  ``/runs``,
+  ``/audit/queries``, ``/audit/search`` deferred — they interact
+  with Alpine ``listTable`` filtering or fetch-driven JS rendering
+  and need a UX pass.  Sprint 54.4 converts four 8-10-line
+  ``.alert-info`` headers on ``/admin/audit-sinks``,
+  ``/admin/api-keys``, ``/admin/system-info``,
+  ``/admin/external-writes`` to collapsed-by-default
+  ``accordion-flush`` "What is this page?" blocks; copy
+  preserved verbatim.  Sprint 54.5 fixes BUG-53-01 (help-icon
+  popover ``|safe`` → ``|e`` so the attribute boundary stays
+  balanced), adds the missing BUG-53-09 ``/agent-reviews`` list
+  page (paginated via the 54.3 macro), and rounds out the
+  compare-runs nav-tabs with count badges on Lineage / Rejects /
+  Cells / Column lineage (previously only Operations + Tool
+  calls had badges).  Six commits local-only.
+
 - **Phase 53 — Full replay sweep + Bootstrap UI overhaul
   evaluation closed.**  Diagnose-only phase; no UI code changes.
   Sprint A fetched 10 Bootstrap 5.3 docs/example pages (dashboard,

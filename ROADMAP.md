@@ -4887,6 +4887,97 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 54 — UI overhaul implementation (M = Modernize) ✅ done 2026-05-08
+│   │
+│   │   Implements the Phase-53 ``ui-overhaul-proposal.md`` Size-M
+│   │   recommendation in six sub-sprints, autonomous session post
+│   │   the "mache jetzt einen Plan die gefundenen Sachen alle
+│   │   umzusetzen" plan.  The plan-phase code-audit reduced the
+│   │   actionable set from "10 bugs + 10 visual-debt patterns"
+│   │   down to the items that turned out to be real after
+│   │   verifying against the codebase — several Phase-53 findings
+│   │   were false alarms (no ``.btn-outline-*`` opacity override
+│   │   exists in CSS; UUID format is consistent; Sentinel SHA-256
+│   │   is never written; ``runs_list.html`` has no mobile-card
+│   │   rendering; three of the "walkthrough doc drift" entries
+│   │   were already pointing at the right URLs).
+│   │
+│   │   Sprint 54.1 — Error pages keep the sidebar.  The Phase-53
+│   │   diagnosis ("templates do not extend base.html") was wrong;
+│   │   the templates extend correctly but ``error_handlers.py:302``
+│   │   hard-coded ``hide_sidebar=True``.  Flipped to ``False`` so
+│   │   403/404/500 keep the icon-rail; the ``pql-error-shell``
+│   │   content-class still centers the empty card.  Pre-existing
+│   │   CSS comment refreshed.
+│   │
+│   │   Sprint 54.2 — Color-modes toggle (Bootstrap 5.3).  The CSS
+│   │   under ``:root[data-bs-theme="light"]`` was already shipping
+│   │   since Phase 17; only the toggle UI + JS were missing.
+│   │   Three pieces: anti-FOUC inline init script in ``<head>``
+│   │   reads ``localStorage.pql.theme`` + ``prefers-color-scheme``
+│   │   before any CSS parses, a 3-button dropdown
+│   │   (Light / Dark / Auto) in the topbar marked with
+│   │   ``data-bs-theme-value``, and a delegated click handler at
+│   │   the body end that persists user picks and re-applies on OS
+│   │   prefer-changes when in ``auto``.  Default for new users is
+│   │   ``auto`` (Bootstrap-canonical).
+│   │
+│   │   Sprint 54.3 — Pagination component on /admin/audit.  New
+│   │   ``frontend/templates/_macros/pagination.html`` macro
+│   │   (Bootstrap-5.3 ``<nav><ul.pagination>``, 7-button window
+│   │   with ellipsis on overflow, ``Showing N–M of T``).  New
+│   │   ``paginate_url`` Jinja global preserves filter chips while
+│   │   overriding ``offset``.  ``/admin/audit`` switches from a
+│   │   ``LIMIT+1`` truncation flag to a real ``offset``-based
+│   │   pager backed by a separate ``COUNT(*)``.  ``/runs``,
+│   │   ``/audit/queries``, ``/audit/search`` deferred — they
+│   │   interact with client-side Alpine ``listTable`` filtering or
+│   │   fetch-driven JS rendering and need a UX pass, not a one-
+│   │   template adoption.
+│   │
+│   │   Sprint 54.4 — Accordion on four admin info-headers.
+│   │   Replaced 8-10-line verbose ``.alert-info`` blocks under
+│   │   ``/admin/audit-sinks``, ``/admin/api-keys``,
+│   │   ``/admin/system-info``, ``/admin/external-writes`` with
+│   │   collapsed-by-default ``accordion-flush`` "What is this
+│   │   page?" toggles.  All copy preserved verbatim inside the
+│   │   accordion body.  Distinct accordion ids per page so a
+│   │   hypothetical combined view would not collide on
+│   │   ``data-bs-target``.
+│   │
+│   │   Sprint 54.5 — Small bugs + compare-runs badges.  BUG-53-01:
+│   │   ``_macros/help_icon.html`` was using ``|safe`` on the
+│   │   popover content attribute, letting any ``"`` close the
+│   │   attribute early — switched to ``|e`` so the round-trip
+│   │   stays balanced.  BUG-53-09: new admin-gated GET
+│   │   ``/agent-reviews`` route + ``pages/agent_reviews_list.html``
+│   │   template (paginated via the 54.3 macro).  Sprint 54.5a:
+│   │   compare-runs nav-tabs gain count badges on Lineage /
+│   │   Rejects / Cells / Column lineage (previously only Operations
+│   │   + Tool calls had them); ``runs_routes/diff.py`` now computes
+│   │   four new ``*_diff_count`` context vars.  Stale
+│   │   ``/jobs/new`` link in ``jobs_sidebar.html`` and stale
+│   │   ``/sql-editor`` URL in three docs (sql-editor.md /
+│   │   grand-tour.md / e2e-walkthroughs/README.md) corrected.
+│   │
+│   │   Sprint 54.6 — Phase close (this entry).  ROADMAP +
+│   │   CHANGELOG + memory entry.
+│   │
+│   │   Drops (from Phase-53 list, false-alarms verified during
+│   │   plan-phase audit):
+│   │   - Pattern 1 outline-button opacity (no override in CSS).
+│   │   - Pattern 6 UUID-format (consistent dashed everywhere).
+│   │   - Pattern 7 Sentinel-SHA-256 filter (never written).
+│   │   - Pattern 3 mobile-card ``<dl>`` (runs_list.html has no
+│   │     mobile-card rendering — responsive table only).
+│   │   - BUG-53-03 ``/workspace`` (icon-rail link points at the
+│   │     real ``/notebooks/workspace`` admin file browser).
+│   │   - BUG-53-04 / -05 / -10 walkthrough drift (admin-audit.md /
+│   │     data_products.md / foreign-catalog-sync.md were already
+│   │     using the correct URLs).
+│   │
+│   │   Push gate: standard manual.  Six commits local-only.
+│
 ├── Phase 53 — Full replay sweep + Bootstrap UI overhaul evaluation ✅ done 2026-05-07
 │   │
 │   │   Diagnose-only phase (no implementation).  Three deliverables
