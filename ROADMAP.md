@@ -4520,6 +4520,76 @@ PointlesSQL
 │           walkthrough at
 │           ``docs/e2e-walkthroughs/admin-cdf-tail.md``.
 │
+├── Phase 44 — Structured logging + traceback preservation ✅ done
+│   │
+│   │   Code-quality continuation closing four gaps in the logging
+│   │   surface: ``JSONFormatter`` ignored ``extra={...}`` (half-
+│   │   done structured logs), 36 broad-except sites lost
+│   │   tracebacks via ``logger.warning("foo: %s", exc)``, 47
+│   │   silent broad-excepts had no opt-out marker, zero
+│   │   third-party loggers were quieted.  Six commits in one
+│   │   autonomous run; no Alembic, no breaking change.
+│   │
+│   ├── Sprint 44.1 — ``extra={...}`` propagation in JSONFormatter
+│   │       New ``_RESERVED_LOGRECORD_ATTRS`` filter set + new
+│   │       ``_harvest_extras()`` helper.  ``JSONFormatter.format``
+│   │       projects every non-reserved, non-``_``-prefixed
+│   │       ``record.__dict__`` key into the JSON envelope as a
+│   │       top-level field.  Base fields always merged AFTER
+│   │       extras so the envelope shape stays stable.  8 pytest
+│   │       cases; legacy seven-field shape preserved when caller
+│   │       passes no ``extra=``.
+│   │
+│   ├── Sprint 44.2 — Convert lossy broad-except + AST lint test
+│   │       28 Bucket-C sites (``logger.warning("...", exc)``)
+│   │       converted to ``logger.exception("...")``.  Subset
+│   │       changed to ``logger.<level>(..., exc_info=True)`` where
+│   │       the original level was ``DEBUG`` or ``INFO`` (so
+│   │       traceback lands at the same level, no surprise volume
+│   │       jump).  Bucket-D silent sites (``pass`` /
+│   │       ``return None``) got ``# bare-broad-ok: <reason>``
+│   │       allowlist comments.  New
+│   │       ``tests/test_no_lossy_broad_except.py`` AST-walks every
+│   │       broad-except in the project and asserts each handler
+│   │       (a) preserves the traceback, (b) re-raises, or
+│   │       (c) carries the allowlist marker in the body /
+│   │       preceding lines.  Lint covers both lossy logs and
+│   │       silent-without-marker.
+│   │
+│   ├── Sprint 44.3 — Retrofit high-value sites to use extra={...}
+│   │       Nine sites converted: scheduler runs (``job_id`` /
+│   │       ``run_id`` / ``kind``), soyuz-lineage emit (``run_id``
+│   │       / ``op_name``), ml-context (``agent_run_id`` /
+│   │       ``mlflow_run_id``), training-context (``framework`` /
+│   │       ``mlflow_run_id``), notebook render (``run_id``),
+│   │       alert dispatcher (``webhook_url`` / ``status_code`` /
+│   │       ``attempt``), audit self-track (``endpoint``),
+│   │       read-audit (``read_kind`` / ``table_fqn``).  Existing
+│   │       159 logger calls migrate opportunistically.  3 pytest
+│   │       cases pin the contract.
+│   │
+│   ├── Sprint 44.4 — Quiet noisy third-party loggers
+│   │       New ``_THIRD_PARTY_DEFAULTS`` constant in
+│   │       ``logging_config.py`` (httpx / httpcore / urllib3 /
+│   │       sqlalchemy.engine → WARNING; mlflow / dbt / papermill →
+│   │       INFO).  ``configure_logging`` accepts a
+│   │       ``third_party_levels`` override map; when global
+│   │       ``POINTLESSQL_LOG_LEVEL=DEBUG`` is set the defaults are
+│   │       bypassed entirely.  Settings expose
+│   │       ``LoggingSettings.third_party_levels`` (env var
+│   │       ``POINTLESSQL_LOG_THIRD_PARTY_LEVELS``).  4 pytest
+│   │       cases.
+│   │
+│   └── Sprint 44.5 — Enable ruff BLE001 + fix missing-noqa sites
+│           Added ``"BLE"`` to ``[tool.ruff.lint] select`` so future
+│           broad-except regressions are caught at the linter
+│           layer (in addition to the AST lint from 44.2).  Two
+│           sites surfaced (``api/home_routes.py``,
+│           ``pql/branch/_promote.py``) and got
+│           ``# noqa: BLE001 — <reason>`` markers.  Note: the AST
+│           lint from 44.2 is the real-quality gate; ruff BLE001 is
+│           the cosmetic-consistency gate.
+│
 ├── Phase 43 — Error envelope + exception hierarchy unification ✅ done
 │   │
 │   │   Code-quality overhaul on the API error path.  Three

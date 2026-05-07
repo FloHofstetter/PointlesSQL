@@ -6,6 +6,40 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 44 — Structured logging + traceback preservation
+  closed.**  Five sub-sprints in one autonomous run.  Four gaps
+  closed: ``JSONFormatter`` ignored ``extra={...}`` (half-done
+  structured logs); 36 lossy broad-except sites
+  (``logger.warning("op failed: %s", exc)``) dropped tracebacks;
+  47 silent broad-except sites had no opt-out marker (deliberate
+  best-effort renders weren't distinguishable from accidental
+  silent failures); zero third-party loggers were quieted (httpx
+  / urllib3 / sqlalchemy.engine debug noise drowning the
+  application's own structured lines).  No Alembic.  Wire format
+  strictly additive (legacy seven-field JSON envelope preserved
+  when caller passes no ``extra=``).  16 new pytest cases.
+  Pyright budget unchanged at 559/559.  Sprint 44.1 added
+  ``_harvest_extras`` + ``_RESERVED_LOGRECORD_ATTRS`` so caller-
+  supplied ``extra={"run_id": "..."}`` lands as top-level JSON
+  keys; reserved attrs stay filtered.  Sprint 44.2 converted lossy
+  Bucket-C logs (``logger.warning("...", exc)`` → ``logger.exception("...")``,
+  ``logger.debug("...", exc)`` → ``logger.debug("...", exc_info=True)``)
+  and added ``# bare-broad-ok: <reason>`` allowlist comments to
+  silent Bucket-D sites; new AST-based
+  ``tests/test_no_lossy_broad_except.py`` enforces both
+  invariants.  Sprint 44.3 retrofitted nine high-value sites
+  (scheduler / soyuz-lineage / ml-context / training-context /
+  notebook-render / alert-dispatcher / audit self-track /
+  read-audit) to use ``extra={...}`` so Grafana/Loki can key off
+  ``run_id`` / ``op_name`` / ``webhook_url`` etc.  Sprint 44.4
+  added per-library quieting (``httpx`` / ``urllib3`` /
+  ``sqlalchemy.engine`` → WARNING; ``mlflow`` / ``dbt`` /
+  ``papermill`` → INFO) with override via
+  ``POINTLESSQL_LOG_THIRD_PARTY_LEVELS`` env var.  Global
+  ``POINTLESSQL_LOG_LEVEL=DEBUG`` bypasses the quieting entirely.
+  Sprint 44.5 added ``"BLE"`` to ``[tool.ruff.lint] select`` and
+  closed two missing-noqa sites — the linter now catches
+  broad-except regressions in addition to the AST quality lint.
 - **Phase 43 — Error envelope + exception hierarchy unification
   closed.**  Five sub-sprints in one autonomous run.  Three
   asymmetries closed: zero-enum-for-error-codes, three orphan
