@@ -75,8 +75,8 @@ def record_audit_self(
             agent_run_id=None,
             read_kind="audit_api",
         )
-    except Exception as exc:  # noqa: BLE001 — audit-of-audit must never break the audit response
-        logger.warning("audit_api: failed to self-track %s: %s", endpoint, exc)
+    except Exception:  # noqa: BLE001 — audit-of-audit must never break the audit response
+        logger.exception("audit_api: failed to self-track %s", endpoint)
 
 
 def ensure_run_visible(factory: Any, run_id: str, *, workspace_id: int | None = None) -> AgentRun:

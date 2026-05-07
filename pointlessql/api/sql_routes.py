@@ -320,8 +320,8 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
             timed_out = True
             try:
                 conn.interrupt()
-            except Exception as exc:  # noqa: BLE001 — diagnostic only
-                logger.debug("conn.interrupt() after timeout raised: %s", exc)
+            except Exception:  # noqa: BLE001 — diagnostic only
+                logger.debug("conn.interrupt() after timeout raised", exc_info=True)
             raise SQLExecutionError(
                 f"Query exceeded {timeout_s}s timeout and was cancelled.",
             ) from None
@@ -355,8 +355,8 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         if conn is not None:
             try:
                 conn.close()
-            except Exception as exc:  # noqa: BLE001 — diagnostic
-                logger.debug("conn.close() raised: %s", exc)
+            except Exception:  # noqa: BLE001 — diagnostic
+                logger.debug("conn.close() raised", exc_info=True)
 
     finished_at = datetime.now(UTC)
     history_id: int | None = None
@@ -463,8 +463,8 @@ async def api_sql_cancel(request: Request, query_id: str) -> Response:
     if conn is not None:
         try:
             conn.interrupt()
-        except Exception as exc:  # noqa: BLE001 — diagnostic only
-            logger.warning("conn.interrupt() raised on cancel: %s", exc)
+        except Exception:  # noqa: BLE001 — diagnostic only
+            logger.exception("conn.interrupt() raised on cancel")
     await audit(request, "query.cancelled", f"query_id:{query_id}", None)
     return Response(status_code=204)
 

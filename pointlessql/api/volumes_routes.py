@@ -439,19 +439,19 @@ async def volumes_page(request: Request) -> HTMLResponse:
     volumes: list[dict[str, Any]] = []
     try:
         catalogs = await uc_client.list_catalogs()
-    except Exception as exc:  # noqa: BLE001 — tolerate a broken soyuz
-        logger.warning("volumes page: list_catalogs failed: %s", exc)
+    except Exception:  # noqa: BLE001 — tolerate a broken soyuz
+        logger.exception("volumes page: list_catalogs failed")
         catalogs = []
     user = get_user(request)
     async with httpx.AsyncClient() as http_client:
         for cat in catalogs or []:
             try:
                 schemas = await uc_client.list_schemas(cat["name"])
-            except Exception as exc:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 logger.debug(
-                    "volumes page: list_schemas %s failed: %s",
+                    "volumes page: list_schemas %s failed",
                     cat.get("name"),
-                    exc,
+                    exc_info=True,
                 )
                 continue
             for sch in schemas or []:
@@ -479,8 +479,8 @@ async def volumes_page(request: Request) -> HTMLResponse:
                                 "volume_type": v.get("volume_type"),
                             },
                         )
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("volumes page: fetch failed: %s", exc)
+                except Exception:  # noqa: BLE001
+                    logger.debug("volumes page: fetch failed", exc_info=True)
     return _templates(request).TemplateResponse(
         request,
         "pages/volumes.html",

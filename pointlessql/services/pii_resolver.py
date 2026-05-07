@@ -107,8 +107,8 @@ async def is_column_pii(
             return cached[1]
     try:
         tags = await uc.get_tags("column", full_name)
-    except Exception as exc:  # noqa: BLE001 — masking must never break a render
-        logger.warning("pii_resolver: get_tags(column, %s) failed: %s", full_name, exc)
+    except Exception:  # noqa: BLE001 — masking must never break a render
+        logger.exception("pii_resolver: get_tags(column, %s) failed", full_name)
         return False
     is_pii = False
     if isinstance(tags, list):

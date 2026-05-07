@@ -437,7 +437,7 @@ def run_table_preview(settings: Settings, principal: str, full_name: str) -> dic
         frame = pql.table(full_name)
         df = preview_head(frame, PREVIEW_ROW_LIMIT + 1)
     except Exception as exc:  # noqa: BLE001 — degrade preview card
-        logger.warning("table preview failed for %s: %s", full_name, exc)
+        logger.exception("table preview failed for %s", full_name)
         detail, kind = humanize_preview_error(exc)
         return {"error": "preview_unavailable", "detail": detail, "kind": kind}
     truncated = len(df) > PREVIEW_ROW_LIMIT

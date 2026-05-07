@@ -221,5 +221,9 @@ def emit_event_sync(
         _ingest.sync(client=client, body=body)
         return None
     except Exception as exc:  # noqa: BLE001 — best-effort, all failures returned to caller
-        logger.info("soyuz lineage emit failed for run=%s op=%s: %s", run_id, op_name, exc)
+        logger.info(
+            "soyuz lineage emit failed",
+            exc_info=exc,
+            extra={"run_id": run_id, "op_name": op_name},
+        )
         return exc

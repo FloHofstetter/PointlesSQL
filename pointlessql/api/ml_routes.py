@@ -51,6 +51,10 @@ def _fetch_mlflow_run(mlflow_run_id: str) -> dict[str, Any]:
         client = mlflow.MlflowClient()
         run = client.get_run(mlflow_run_id)
     except Exception as exc:  # noqa: BLE001 - never raise into the aggregator
+        _logger.exception(
+            "ml-context: MLflow lookup failed",
+            extra={"mlflow_run_id": mlflow_run_id},
+        )
         return {"error": f"MLflow lookup failed: {exc}"}
     info = run.info
     return {
@@ -120,8 +124,11 @@ def _fetch_linked_model_versions(agent_run_id: str) -> list[dict[str, Any]]:
                     }
                 )
         return results
-    except Exception as exc:  # noqa: BLE001 - degrade gracefully
-        _logger.warning("ml-context: soyuz scan failed for run %s: %s", agent_run_id, exc)
+    except Exception:  # noqa: BLE001 - degrade gracefully
+        _logger.exception(
+            "ml-context: soyuz scan failed",
+            extra={"agent_run_id": agent_run_id},
+        )
         return []
 
 

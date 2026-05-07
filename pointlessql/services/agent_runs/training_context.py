@@ -101,11 +101,10 @@ def _enable_autolog(mlflow: Any, framework: str) -> bool:
             return True
         flavor.autolog(disable_for_unsupported_versions=True)
         return True
-    except Exception as exc:  # noqa: BLE001 — best-effort capture
-        _logger.warning(
-            "training_context: autolog enable failed (framework=%s): %s",
-            framework,
-            exc,
+    except Exception:  # noqa: BLE001 — best-effort capture
+        _logger.exception(
+            "training_context: autolog enable failed",
+            extra={"framework": framework},
         )
         return False
 
@@ -128,8 +127,11 @@ def _capture_run_data(mlflow: Any, run_id: str) -> dict[str, Any]:
             "params": dict(run.data.params),
             "metrics": dict(run.data.metrics),
         }
-    except Exception as exc:  # noqa: BLE001 — best-effort capture
-        _logger.warning("training_context: get_run(%s) failed: %s", run_id, exc)
+    except Exception:  # noqa: BLE001 — best-effort capture
+        _logger.exception(
+            "training_context: get_run failed",
+            extra={"mlflow_run_id": run_id},
+        )
         return {}
 
 
@@ -236,6 +238,7 @@ def training_context(
         try:
             active = mlflow.active_run()
         except Exception:  # noqa: BLE001 — defensive
+            # bare-broad-ok: active_run() probe is silent in nested setup
             active = None
 
         run_ctx = mlflow.start_run(nested=active is not None)

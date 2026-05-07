@@ -106,13 +106,12 @@ def record_value_changes(
         if pii_mode == "hash_only" and not secret:
             try:
                 secret = get_or_create_pii_hash_secret(session_factory)
-            except Exception as exc:  # noqa: BLE001 — fall back to redact
-                logger.warning(
-                    "pii_redactor: secret generation failed (run=%s op=%s): %s; "
+            except Exception:  # noqa: BLE001 — fall back to redact
+                logger.exception(
+                    "pii_redactor: secret generation failed (run=%s op=%s); "
                     "falling back to redact_with_audit_log mode for this op",
                     run_id,
                     op_id,
-                    exc,
                 )
                 pii_mode = "redact_with_audit_log"
 

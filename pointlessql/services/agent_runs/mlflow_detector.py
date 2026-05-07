@@ -37,8 +37,8 @@ def get_mlflow_module() -> Any | None:
         return None
     try:
         return importlib.import_module("mlflow")
-    except Exception as exc:  # noqa: BLE001 - defensive against broken installs
-        _logger.warning("mlflow import failed; cross-link disabled: %s", exc)
+    except Exception:  # noqa: BLE001 - defensive against broken installs
+        _logger.exception("mlflow import failed; cross-link disabled")
         return None
 
 
@@ -58,7 +58,8 @@ def detect_mlflow_run_id() -> str | None:
         return None
     try:
         active = mlflow.active_run()
-    except Exception:  # noqa: BLE001 - never let detection raise into the recorder
+    except Exception:  # noqa: BLE001 — never let detection raise into the recorder
+        # bare-broad-ok: detection must be silent (called per-op, hot path)
         return None
     if active is None:
         return None

@@ -78,6 +78,7 @@ def _snapshot_packages() -> dict[str, str]:
     try:
         from importlib.metadata import distributions
     except Exception:  # noqa: BLE001 — best-effort
+        # bare-broad-ok: env-snapshot returns empty on importlib hiccup
         return {}
     try:
         result: dict[str, str] = {}
@@ -86,6 +87,7 @@ def _snapshot_packages() -> dict[str, str]:
                 name = dist.metadata["Name"]
                 version = dist.version
             except Exception:  # noqa: BLE001
+                # bare-broad-ok: per-distribution metadata read can fail
                 continue
             if name and version:
                 result[name] = version
@@ -109,6 +111,7 @@ def _snapshot_gpu() -> list[dict[str, Any]] | None:
 
         torch = importlib.import_module("torch")
     except Exception:  # noqa: BLE001 — torch is an optional extra
+        # bare-broad-ok: torch missing → no GPU block
         return None
     try:
         if not torch.cuda.is_available():
@@ -125,6 +128,7 @@ def _snapshot_gpu() -> list[dict[str, Any]] | None:
                     }
                 )
             except Exception:  # noqa: BLE001 — per-device best-effort
+                # bare-broad-ok: per-device probe is silent on driver failure
                 continue
         return result
     except Exception:  # noqa: BLE001 — best-effort

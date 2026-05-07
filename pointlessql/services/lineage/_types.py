@@ -227,6 +227,7 @@ def workspace_id_for_op(session_factory: sessionmaker[Session], op_id: int | Non
             )
             return int(value) if value is not None else 1
     except Exception:  # noqa: BLE001 — fallback path
+        # bare-broad-ok: defaults to default-workspace on lookup failure
         return 1
 
 

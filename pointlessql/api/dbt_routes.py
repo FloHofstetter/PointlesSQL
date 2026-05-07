@@ -605,6 +605,8 @@ async def _auto_rollback_on_error(
                 },
             )
         except Exception as exc:  # noqa: BLE001 — refusal-tolerant by design
+            # bare-broad-ok: refusal info is captured into failed[] for the
+            # response payload; per-target rollback continues for siblings
             failed.append(
                 {
                     "target": target,

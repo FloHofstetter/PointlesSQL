@@ -257,6 +257,7 @@ def is_available(session: Session) -> bool:
             text("SELECT to_regclass('public.audit_search_index') IS NOT NULL AS exists")
         ).first()
     except Exception:  # noqa: BLE001 — best-effort probe
+        # bare-broad-ok: missing table means FTS is unavailable
         return False
     return bool(result and result[0])
 

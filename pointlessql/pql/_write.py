@@ -285,6 +285,7 @@ def safe_delta_version(location: str) -> int | None:
 
         return int(deltalake.DeltaTable(location).version())
     except Exception:  # noqa: BLE001 — version reads are best-effort
+        # bare-broad-ok: version probe returns None on Delta absent / corrupt
         return None
 
 

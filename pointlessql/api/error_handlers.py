@@ -72,6 +72,7 @@ def _json_safe(value: Any) -> Any:
         try:
             return value.decode("utf-8", errors="replace")[:500]
         except Exception:  # noqa: BLE001 — fall through to repr
+            # bare-broad-ok: decode is best-effort; repr fallback below
             pass
     if isinstance(value, dict):
         return {

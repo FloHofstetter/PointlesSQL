@@ -220,7 +220,7 @@ def promote_branch_schema(
                 )
                 try:
                     rename_schema(client, backup_fqn, parent_name)
-                except Exception:
+                except Exception:  # noqa: BLE001 — promotion-revert must surface every failure
                     logger.exception(
                         "promote_branch_schema: revert ALSO failed; manual "
                         "intervention needed (backup=%s, branch=%s)",
@@ -340,6 +340,7 @@ def preview_promote_conflicts(
             dt = DeltaTable(location)
             actual_version = int(dt.version())
         except Exception as exc:  # noqa: BLE001 — diagnostic-only path
+            # bare-broad-ok: failure detail surfaces in conflicts payload
             conflicts.append(
                 {
                     "table": table_name,

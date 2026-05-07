@@ -228,6 +228,7 @@ def is_available(session: Session) -> bool:
             text("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_search'")
         ).first()
     except Exception:  # noqa: BLE001 — best-effort probe
+        # bare-broad-ok: missing virtual table means FTS is unavailable
         return False
     return result is not None
 

@@ -237,6 +237,7 @@ def _record(
 
         factory = get_session_factory()
     except Exception:  # noqa: BLE001 — DB might not be initialised
+        # bare-broad-ok: read-audit lazy-init may raise pre-startup
         factory = None
     record_read(
         factory,

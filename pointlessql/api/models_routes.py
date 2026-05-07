@@ -95,6 +95,7 @@ def fetch_mlflow_context(run_id: str | None) -> dict[str, Any]:
         client = mlflow.MlflowClient()
         run = client.get_run(run_id)
     except Exception as exc:  # noqa: BLE001 - degrade gracefully
+        _logger.exception("models: MLflow get_run(%s) failed", run_id)
         return {"error": f"MLflow lookup failed: {exc}"}
     info = run.info
     return {

@@ -74,7 +74,10 @@ def render_run_notebook(runs_dir: Path, run_id: int, *, exclude_input: bool = Fa
         exporter = HTMLExporter(template_name="lab", exclude_input=exclude_input)
         body, _resources = exporter.from_filename(str(ipynb_path))  # type: ignore[no-untyped-call]
     except Exception as exc:  # noqa: BLE001 — nbconvert surfaces Jinja/template errors as bare Exception
-        logger.exception("nbconvert failed rendering run %d", run_id)
+        logger.exception(
+            "nbconvert failed rendering run",
+            extra={"run_id": run_id},
+        )
         raise NotebookRenderError(f"Failed to render run {run_id} notebook: {exc}") from exc
 
     body_str: str = body if isinstance(body, str) else str(body)

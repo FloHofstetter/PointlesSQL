@@ -124,8 +124,8 @@ async def record_query_async(
             agent_run_id=resolved_run_id,
             workspace_id=workspace_id,
         )
-    except Exception as exc:  # noqa: BLE001 — never mask the query response
-        logger.warning("failed to record query_history row: %s", exc)
+    except Exception:  # noqa: BLE001 — never mask the query response
+        logger.exception("failed to record query_history row")
         return None
 
 

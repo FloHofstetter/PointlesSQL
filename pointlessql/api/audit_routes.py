@@ -178,8 +178,11 @@ def _record_self(
             agent_run_id=None,
             read_kind=read_kind,
         )
-    except Exception as exc:  # noqa: BLE001 — audit-of-audit must never break the audit response
-        logger.warning("audit_api: failed to self-track %s: %s", endpoint, exc)
+    except Exception:  # noqa: BLE001 — audit-of-audit must never break the audit response
+        logger.exception(
+            "audit_api: failed to self-track",
+            extra={"endpoint": endpoint},
+        )
 
 
 @router.get("/api/audit/summary", responses=STANDARD_ERROR_RESPONSES)

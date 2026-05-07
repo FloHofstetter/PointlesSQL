@@ -347,11 +347,11 @@ def _capture_value_changes(
             ending_version=version_after,
         )
         cdf_arrow = pa.table(cdf_reader.read_all())
-    except Exception as exc:  # noqa: BLE001 — best-effort
+    except Exception:  # noqa: BLE001 — best-effort
         logger.info(
-            "value-change capture: load_cdf failed for %s: %s",
+            "value-change capture: load_cdf failed for %s",
             target_location,
-            exc,
+            exc_info=True,
         )
         return None
 

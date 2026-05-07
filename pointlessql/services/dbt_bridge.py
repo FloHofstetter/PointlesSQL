@@ -255,8 +255,12 @@ def capture_delta_versions(
             # effort: log + continue with None so the rest of the
             # capture finishes.
             _logger.debug("capture_delta_versions: %s skipped: %s", relation, exc)
-        except Exception as exc:  # noqa: BLE001 — defensive last-resort
-            _logger.debug("capture_delta_versions: %s unexpected failure: %s", relation, exc)
+        except Exception:  # noqa: BLE001 — defensive last-resort
+            _logger.debug(
+                "capture_delta_versions: %s unexpected failure",
+                relation,
+                exc_info=True,
+            )
         out[relation] = version
     return out
 

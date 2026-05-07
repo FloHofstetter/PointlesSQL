@@ -133,6 +133,7 @@ async def _conformance_findings_for_run(
         try:
             table_info = await client.get_table(parts[0], parts[1], parts[2])
         except Exception:  # noqa: BLE001 — passive surface, never raise into the route
+            # bare-broad-ok: medallion-chip is best-effort UI hint
             continue
         if not table_info:
             continue
@@ -192,6 +193,7 @@ def _run_anomaly_chip(request: Request, run_id: str) -> dict[str, Any] | None:
                 sigma=settings.audit.anomaly_threshold_sigma,
             )
     except Exception:  # noqa: BLE001 — chip is best-effort
+        # bare-broad-ok: anomaly chip renders absent on aggregator failure
         return None
 
 

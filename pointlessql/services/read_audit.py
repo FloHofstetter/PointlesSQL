@@ -123,11 +123,9 @@ def record_read(
             agent_run_id=_resolve_run_id(agent_run_id),
             read_kind=read_kind,
         )
-    except Exception as exc:  # noqa: BLE001 — audit must never break the read
-        logger.warning(
-            "read_audit: failed to record %s read of %r: %s",
-            read_kind,
-            table_fqn,
-            exc,
+    except Exception:  # noqa: BLE001 — audit must never break the read
+        logger.exception(
+            "read_audit: failed to record",
+            extra={"read_kind": read_kind, "table_fqn": table_fqn},
         )
         return None

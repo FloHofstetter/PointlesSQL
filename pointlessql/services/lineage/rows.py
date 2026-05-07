@@ -382,6 +382,7 @@ def lookup_bronze_source_file(*, table: str, row_id: str, storage_location: str)
         dt = deltalake.DeltaTable(storage_location)
         dataset = dt.to_pyarrow_dataset()
     except Exception:  # noqa: BLE001 — best-effort lookup
+        # bare-broad-ok: source-file enrichment skipped on Delta open failure
         return None
 
     conn: Any = duckdb.connect()
@@ -397,7 +398,12 @@ def lookup_bronze_source_file(*, table: str, row_id: str, storage_location: str)
         value = row[0]
         return str(value) if value is not None else None
     except Exception:  # noqa: BLE001 — column may be missing on older bronze tables
-        logger.debug("lookup_bronze_source_file failed for %s row_id=%s", table, row_id)
+        logger.debug(
+            "lookup_bronze_source_file failed for %s row_id=%s",
+            table,
+            row_id,
+            exc_info=True,
+        )
         return None
     finally:
         conn.close()

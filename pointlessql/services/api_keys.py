@@ -403,7 +403,11 @@ def verify_bearer(
             session.commit()
         except Exception:  # noqa: BLE001 — auditing is non-critical
             session.rollback()
-            logger.debug("Failed to update last_used_at for api_key %s", row.name)
+            logger.debug(
+                "Failed to update last_used_at for api_key %s",
+                row.name,
+                exc_info=True,
+            )
 
     _resolve_cache[digest] = (entry, now + _CACHE_TTL_SECONDS)
     return entry

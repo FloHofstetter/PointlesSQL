@@ -130,6 +130,7 @@ async def _read_delta_version(request: Request, target: str) -> int | None:
 
         return safe_delta_version(location)
     except Exception:  # noqa: BLE001 — preview route is best-effort
+        # bare-broad-ok: preview returns None on Delta-history hiccup
         return None
 
 
@@ -182,6 +183,7 @@ def _load_intervening_writes(
                 for row in rows
             ]
     except Exception:  # noqa: BLE001 — preview is best-effort
+        # bare-broad-ok: intervening-writes panel renders empty on DB hiccup
         return []
 
 
@@ -324,6 +326,7 @@ def _mark_rollback_run_failed(
             row.denied_reason = message[:500]
             session.commit()
     except Exception:  # noqa: BLE001 — best-effort run-marker
+        # bare-broad-ok: failure of failure-marker write is silent on purpose
         return
 
 

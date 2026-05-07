@@ -364,7 +364,11 @@ async def _enrich_with_source_file(request: Request, steps: list[LineageStep]) -
     except CatalogNotFoundError, CatalogUnavailableError:
         return steps
     except Exception:  # noqa: BLE001 — best-effort enrichment
-        logger.debug("row-trace: failed to resolve storage_location for %s", deepest.table)
+        logger.debug(
+            "row-trace: failed to resolve storage_location for %s",
+            deepest.table,
+            exc_info=True,
+        )
         return steps
 
     storage_location = info.get("storage_location") if info else None

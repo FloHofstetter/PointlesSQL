@@ -361,6 +361,7 @@ def record_operation(
 
             env_snapshot = cached_env_snapshot()
         except Exception:  # noqa: BLE001 — env-snapshot is advisory
+            # bare-broad-ok: env-snapshot is metadata-only; absence is acceptable
             env_snapshot = None
 
     try:

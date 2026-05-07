@@ -196,11 +196,10 @@ def compute_stats(
                     top_k_ceiling=top_k_ceiling,
                 )
             except Exception as exc:  # noqa: BLE001 — per-column isolation
-                logger.warning(
-                    "table_stats: column %s.%s profile failed: %s",
+                logger.exception(
+                    "table_stats: column %s.%s profile failed",
                     full_name,
                     name,
-                    exc,
                 )
                 result[name] = {
                     "column_name": name,
@@ -212,8 +211,8 @@ def compute_stats(
         if should_close:
             try:
                 conn.close()
-            except Exception as exc:  # noqa: BLE001 — diagnostic
-                logger.debug("table_stats: conn.close raised: %s", exc)
+            except Exception:  # noqa: BLE001 — diagnostic
+                logger.debug("table_stats: conn.close raised", exc_info=True)
 
 
 def write_cached(

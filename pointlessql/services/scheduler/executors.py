@@ -496,8 +496,8 @@ async def _alert_check_executor(
     finally:
         try:
             conn.close()
-        except Exception as exc:  # noqa: BLE001 — diagnostic only
-            logger.debug("alert %s: conn.close raised: %s", alert_slug, exc)
+        except Exception:  # noqa: BLE001 — diagnostic only
+            logger.debug("alert %s: conn.close raised", alert_slug, exc_info=True)
 
     if not alerts_service.evaluate_condition(result.row_count, condition_op, threshold):
         return

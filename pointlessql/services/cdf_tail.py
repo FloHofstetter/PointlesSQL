@@ -168,18 +168,17 @@ def _read_cdf_rows(
 
     try:
         dt = deltalake.DeltaTable(storage_location)
-    except Exception as exc:  # noqa: BLE001 — Delta absent / permission denied / corrupt
-        logger.warning(
-            "cdf_tail: could not open Delta table at %r: %s",
+    except Exception:  # noqa: BLE001 — Delta absent / permission denied / corrupt
+        logger.exception(
+            "cdf_tail: could not open Delta table at %r",
             storage_location,
-            exc,
         )
         return []
 
     try:
         latest_version = int(dt.version())
-    except Exception as exc:  # noqa: BLE001 — Delta runtime error
-        logger.warning("cdf_tail: dt.version() failed for %r: %s", storage_location, exc)
+    except Exception:  # noqa: BLE001 — Delta runtime error
+        logger.exception("cdf_tail: dt.version() failed for %r", storage_location)
         return []
 
     if latest_version < starting_version:
@@ -193,13 +192,12 @@ def _read_cdf_rows(
             ending_version=ending_version,
         )
         cdf_arrow: pa.Table = pa.table(cdf_reader.read_all())  # pyright: ignore[reportUnknownMemberType,reportUnknownVariableType]
-    except Exception as exc:  # noqa: BLE001 — CDF disabled / range invalid / read error
-        logger.warning(
-            "cdf_tail: load_cdf failed for %r [%d..%d]: %s",
+    except Exception:  # noqa: BLE001 — CDF disabled / range invalid / read error
+        logger.exception(
+            "cdf_tail: load_cdf failed for %r [%d..%d]",
             storage_location,
             starting_version,
             ending_version,
-            exc,
         )
         return []
 
@@ -388,6 +386,7 @@ async def tail_all(
         try:
             table_info = await uc.get_table(catalog, schema, table)
         except Exception as exc:  # noqa: BLE001 — UC lookup is best-effort
+            # bare-broad-ok: failure is captured into the subscription's last_error
             _stamp_error(factory, sub_id, f"uc.get_table failed: {exc}")
             continue
         storage_location = table_info.get("storage_location") if table_info else None

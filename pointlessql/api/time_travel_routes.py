@@ -183,6 +183,7 @@ def _frame_rows_to_dicts(frame: Any, limit: int) -> tuple[list[dict[str, Any]], 
                 try:
                     normalised[str(key)] = value.item()
                 except Exception:  # noqa: BLE001 — non-numpy types fall through
+                    # bare-broad-ok: ``.item()`` may raise on non-scalar; str() is fallback
                     normalised[str(key)] = str(value)
             else:
                 normalised[str(key)] = value

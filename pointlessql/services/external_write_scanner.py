@@ -132,12 +132,11 @@ def scan_table(
     try:
         table = deltalake.DeltaTable(storage_location)
         history = table.history(limit=history_limit)
-    except Exception as exc:  # noqa: BLE001 — Delta absent / permission denied / corrupt
-        logger.warning(
-            "external_write_scanner: could not read history for %r at %r: %s",
+    except Exception:  # noqa: BLE001 — Delta absent / permission denied / corrupt
+        logger.exception(
+            "external_write_scanner: could not read history for %r at %r",
             table_fqn,
             storage_location,
-            exc,
         )
         return []
 

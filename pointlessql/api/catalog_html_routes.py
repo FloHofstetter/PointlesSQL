@@ -317,6 +317,7 @@ def _columns_with_lineage(full_name: str) -> set[str]:
             )
             return {str(row[0]) for row in session.execute(stmt).all()}
     except Exception:  # noqa: BLE001 — best-effort badge population
+        # bare-broad-ok: catalog page must not block on metadata-DB hiccup
         return set()
 
 
@@ -386,6 +387,7 @@ def _external_producers_for_table(
             )
             return out
     except Exception:  # noqa: BLE001 — best-effort populate
+        # bare-broad-ok: external-producers panel renders empty on DB hiccup
         return []
 
 
@@ -433,6 +435,7 @@ def _cdf_subscription_for_table(
                 "last_error": row.last_error,
             }
     except Exception:  # noqa: BLE001 — best-effort populate
+        # bare-broad-ok: CDF subscription card renders absent on DB hiccup
         return None
 
 
@@ -482,4 +485,5 @@ def _cdf_recent_events_for_table(
                 for r in rows
             ]
     except Exception:  # noqa: BLE001 — best-effort populate
+        # bare-broad-ok: CDF events tab renders empty on DB hiccup
         return []

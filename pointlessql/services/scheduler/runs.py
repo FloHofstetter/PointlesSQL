@@ -418,6 +418,7 @@ async def _run_one_task(
             except PointlessSQLError as exc:
                 last_error = exc.detail
             except Exception as exc:  # noqa: BLE001 — executor boundary
+                # bare-broad-ok: error captured into last_error for retry loop
                 last_error = str(exc)
             else:
                 log_job(
@@ -675,7 +676,11 @@ async def _execute_run_core(
         try:
             uc_client = UnityCatalogClient.for_principal(settings, user_info["email"])
         except PointlessSQLError as exc:
-            logger.warning("scheduler: job %d principal client failed: %s", job_id, exc.detail)
+            logger.warning(
+                "scheduler: principal client failed: %s",
+                exc.detail,
+                extra={"job_id": job_id, "run_id": run_id},
+            )
             log_job(factory, run_id, None, "ERROR", exc.detail)
             with factory() as session:
                 _finish_run(session, run_id, "failed", exc.detail)
@@ -685,7 +690,11 @@ async def _execute_run_core(
             try:
                 ok, err = await _run_dag(factory, registry, tasks, run_id, user_info, uc_client)
             except ValidationError as exc:
-                logger.warning("scheduler: job %d DAG invalid: %s", job_id, exc.detail)
+                logger.warning(
+                    "scheduler: DAG invalid: %s",
+                    exc.detail,
+                    extra={"job_id": job_id, "run_id": run_id},
+                )
                 log_job(factory, run_id, None, "ERROR", exc.detail)
                 with factory() as session:
                     _finish_run(session, run_id, "failed", exc.detail)
@@ -711,13 +720,20 @@ async def _execute_run_core(
             )
             await executor(run_id, user_info, config, uc_client)
         except PointlessSQLError as exc:
-            logger.warning("scheduler: job %d (%s) failed: %s", job_id, kind, exc.detail)
+            logger.warning(
+                "scheduler: single-task job failed: %s",
+                exc.detail,
+                extra={"job_id": job_id, "run_id": run_id, "kind": kind},
+            )
             log_job(factory, run_id, None, "ERROR", exc.detail)
             with factory() as session:
                 _finish_run(session, run_id, "failed", exc.detail)
             return _detached_run(factory, run_id)
         except Exception as exc:  # noqa: BLE001 — scheduler must not crash
-            logger.exception("scheduler: job %d (%s) raised unexpectedly", job_id, kind)
+            logger.exception(
+                "scheduler: single-task job raised unexpectedly",
+                extra={"job_id": job_id, "run_id": run_id, "kind": kind},
+            )
             log_job(factory, run_id, None, "ERROR", str(exc))
             with factory() as session:
                 _finish_run(session, run_id, "failed", str(exc))
@@ -803,13 +819,8 @@ async def _post_failure_webhook(
             await client.post(url, json=payload, timeout=_WEBHOOK_TIMEOUT_SECONDS)
     except httpx.HTTPError as exc:
         logger.warning("scheduler: on_failure_url webhook to %s failed: %s", url, exc)
-    except Exception as exc:  # noqa: BLE001 — webhook boundary
-        logger.warning(
-            "scheduler: on_failure_url webhook to %s raised %s: %s",
-            url,
-            type(exc).__name__,
-            exc,
-        )
+    except Exception:  # noqa: BLE001 — webhook boundary
+        logger.exception("scheduler: on_failure_url webhook to %s raised", url)
 
 
 async def _emit_run_telemetry(

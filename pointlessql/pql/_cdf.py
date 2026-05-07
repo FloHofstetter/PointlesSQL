@@ -81,21 +81,21 @@ def ensure_cdf_enabled(target_location: str) -> bool:
     """
     try:
         dt = deltalake.DeltaTable(target_location)
-    except Exception as exc:  # noqa: BLE001 — best-effort
+    except Exception:  # noqa: BLE001 — best-effort
         logger.info(
-            "ensure_cdf_enabled: cannot open Delta table at %s: %s",
+            "ensure_cdf_enabled: cannot open Delta table at %s",
             target_location,
-            exc,
+            exc_info=True,
         )
         return False
 
     try:
         config = dict(dt.metadata().configuration or {})
-    except Exception as exc:  # noqa: BLE001 — best-effort
+    except Exception:  # noqa: BLE001 — best-effort
         logger.info(
-            "ensure_cdf_enabled: metadata() failed for %s: %s",
+            "ensure_cdf_enabled: metadata() failed for %s",
             target_location,
-            exc,
+            exc_info=True,
         )
         return False
 
@@ -105,10 +105,10 @@ def ensure_cdf_enabled(target_location: str) -> bool:
     try:
         dt.alter.set_table_properties(cdf_creation_config())
         return True
-    except Exception as exc:  # noqa: BLE001 — best-effort
+    except Exception:  # noqa: BLE001 — best-effort
         logger.info(
-            "ensure_cdf_enabled: set_table_properties failed for %s: %s",
+            "ensure_cdf_enabled: set_table_properties failed for %s",
             target_location,
-            exc,
+            exc_info=True,
         )
         return False

@@ -405,12 +405,14 @@ def load_operations_for_run(
 
             column_edge_counts = count_column_edges_for_op(factory, op_ids)
         except Exception:  # noqa: BLE001 — best-effort badge population
+            # bare-broad-ok: column-edge badge renders 0 on metadata-DB hiccup
             column_edge_counts = {}
         try:
             from pointlessql.services.lineage_edges import count_value_changes_for_op
 
             value_change_counts = count_value_changes_for_op(factory, op_ids)
         except Exception:  # noqa: BLE001 — best-effort badge population
+            # bare-broad-ok: value-change badge renders 0 on metadata-DB hiccup
             value_change_counts = {}
 
     for row in rows:

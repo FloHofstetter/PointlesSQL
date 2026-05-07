@@ -102,18 +102,16 @@ async def dispatch_webhook(
             except (httpx.TransportError, httpx.TimeoutException) as exc:
                 last_error = exc
                 logger.warning(
-                    "alert webhook transport error attempt=%d url=%s: %s",
-                    attempt + 1,
-                    url,
-                    exc,
+                    "alert webhook transport error",
+                    exc_info=exc,
+                    extra={"webhook_url": url, "attempt": attempt + 1},
                 )
             else:
                 if 200 <= response.status_code < 300:
                     return True
                 logger.warning(
-                    "alert webhook %s returned HTTP %d",
-                    url,
-                    response.status_code,
+                    "alert webhook returned non-2xx",
+                    extra={"webhook_url": url, "status_code": response.status_code},
                 )
                 if response.status_code < 500:
                     # 4xx is a permanent failure; don't retry.
@@ -122,7 +120,11 @@ async def dispatch_webhook(
                 await _sleep(delay)
                 delay *= 2
         if last_error is not None:
-            logger.error("alert webhook %s exhausted retries: %s", url, last_error)
+            logger.error(
+                "alert webhook exhausted retries",
+                exc_info=last_error,
+                extra={"webhook_url": url},
+            )
         return False
     finally:
         if should_close:

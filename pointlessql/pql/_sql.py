@@ -229,6 +229,7 @@ def _build_schema_dict(
         try:
             cols = conn.execute(f'DESCRIBE "{ref}"').fetchall()
         except Exception:  # noqa: BLE001 — best-effort introspection
+            # bare-broad-ok: introspection skipped on DESCRIBE failure
             continue
         cat = schema.setdefault(catalog_name, {})
         sch = cat.setdefault(schema_name, {})

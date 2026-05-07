@@ -175,6 +175,7 @@ def extract_column_lineage(
         try:
             root = _sqlglot_lineage(col_name, ast, schema=dict(schema), dialect="duckdb")
         except Exception:  # noqa: BLE001 — sqlglot raises various errors on unresolved refs
+            # bare-broad-ok: unresolved column produces sql_unknown edge
             edges.append(
                 ColumnEdgeSpec(
                     source_table=None,
@@ -320,6 +321,7 @@ def _classify_root_expression(root_expr: Any) -> tuple[str, str | None]:
     try:
         rendered = inner.sql(dialect="duckdb")
     except Exception:  # noqa: BLE001 — best-effort label
+        # bare-broad-ok: rendering failure → no transform-label populated
         rendered = None
     return "sql_function", rendered
 

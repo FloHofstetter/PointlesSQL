@@ -61,8 +61,8 @@ async def fetch_for_run(
             "/audit-log",
             params={"agent_run_id": agent_run_id, "limit": limit},
         )
-    except Exception as exc:  # noqa: BLE001 — never break the run-detail render
-        logger.warning("soyuz_audit: GET /audit-log raised: %s", exc)
+    except Exception:  # noqa: BLE001 — never break the run-detail render
+        logger.exception("soyuz_audit: GET /audit-log raised")
         return []
     if resp.status_code == 404:
         # Old soyuz without the audit endpoint — treat as no data.

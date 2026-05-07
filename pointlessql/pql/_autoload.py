@@ -288,6 +288,7 @@ def _build_autoload_column_edges(
         schema = deltalake.DeltaTable(target_location).schema()
         delta_columns = [field.name for field in schema.fields]
     except Exception:  # noqa: BLE001 — best-effort metadata read
+        # bare-broad-ok: column-edge derivation skipped on Delta read failure
         return []
 
     audit_set = set(audit_columns)
