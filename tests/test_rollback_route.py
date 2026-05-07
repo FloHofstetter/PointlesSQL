@@ -138,7 +138,7 @@ def _seed_run_op(
 async def test_admin_required(
     silver_path: Path,
     factory: sessionmaker,  # type: ignore[type-arg]
-    non_admin_cookies: dict[str, str],
+    non_admin_client: httpx.AsyncClient,
 ) -> None:
     _bootstrap_silver(silver_path)
     run_id, _op = _seed_run_op(
@@ -147,38 +147,32 @@ async def test_admin_required(
         delta_version_before=0,
         delta_version_after=0,
     )
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
-        resp = await c.post(
-            f"/api/runs/{run_id}/rollback",
-            json={"target": "main.silver.orders"},
-            cookies=non_admin_cookies,
-        )
+    resp = await non_admin_client.post(
+        f"/api/runs/{run_id}/rollback",
+        json={"target": "main.silver.orders"},
+    )
     assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_missing_target_returns_422(auth_cookies: dict[str, str]) -> None:
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
-        resp = await c.post(
-            f"/api/runs/{uuid.uuid4()}/rollback",
-            json={},
-            cookies=auth_cookies,
-        )
+async def test_missing_target_returns_422(admin_client: httpx.AsyncClient) -> None:
+    resp = await admin_client.post(
+        f"/api/runs/{uuid.uuid4()}/rollback",
+        json={},
+    )
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_target_not_found_returns_404(
     silver_path: Path,
-    auth_cookies: dict[str, str],
+    admin_client: httpx.AsyncClient,
 ) -> None:
     _bootstrap_silver(silver_path)
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
-        resp = await c.post(
-            f"/api/runs/{uuid.uuid4()}/rollback",
-            json={"target": "main.silver.orders"},
-            cookies=auth_cookies,
-        )
+    resp = await admin_client.post(
+        f"/api/runs/{uuid.uuid4()}/rollback",
+        json={"target": "main.silver.orders"},
+    )
     assert resp.status_code == 404
 
 
@@ -186,7 +180,7 @@ async def test_target_not_found_returns_404(
 async def test_invalid_creation_op_returns_422(
     silver_path: Path,
     factory: sessionmaker,  # type: ignore[type-arg]
-    auth_cookies: dict[str, str],
+    admin_client: httpx.AsyncClient,
 ) -> None:
     _bootstrap_silver(silver_path)
     run_id, _op = _seed_run_op(
@@ -196,12 +190,10 @@ async def test_invalid_creation_op_returns_422(
         delta_version_before=None,
         delta_version_after=0,
     )
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
-        resp = await c.post(
-            f"/api/runs/{run_id}/rollback",
-            json={"target": "main.silver.orders"},
-            cookies=auth_cookies,
-        )
+    resp = await admin_client.post(
+        f"/api/runs/{run_id}/rollback",
+        json={"target": "main.silver.orders"},
+    )
     assert resp.status_code == 422
     assert "drop" in resp.text.lower()
 
@@ -210,7 +202,7 @@ async def test_invalid_creation_op_returns_422(
 async def test_stale_returns_409(
     silver_path: Path,
     factory: sessionmaker,  # type: ignore[type-arg]
-    auth_cookies: dict[str, str],
+    admin_client: httpx.AsyncClient,
 ) -> None:
     v0 = _bootstrap_silver(silver_path)
     v1 = _append_to_silver(silver_path, order_id="D", unit_price=5.0)
@@ -223,12 +215,10 @@ async def test_stale_returns_409(
     # Move past the targeted op via a second unrelated append.
     _append_to_silver(silver_path, order_id="E", unit_price=6.0)
 
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
-        resp = await c.post(
-            f"/api/runs/{run_id}/rollback",
-            json={"target": "main.silver.orders"},
-            cookies=auth_cookies,
-        )
+    resp = await admin_client.post(
+        f"/api/runs/{run_id}/rollback",
+        json={"target": "main.silver.orders"},
+    )
     assert resp.status_code == 409
     assert "stale" in resp.text.lower()
     body = resp.json()
@@ -244,7 +234,7 @@ async def test_stale_returns_409(
 async def test_happy_path_spawns_rollback_run_and_emits_event(
     silver_path: Path,
     factory: sessionmaker,  # type: ignore[type-arg]
-    auth_cookies: dict[str, str],
+    admin_client: httpx.AsyncClient,
 ) -> None:
     v0 = _bootstrap_silver(silver_path)
     v1 = _append_to_silver(silver_path, order_id="D", unit_price=5.0)
@@ -255,12 +245,10 @@ async def test_happy_path_spawns_rollback_run_and_emits_event(
         delta_version_after=v1,
     )
 
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
-        resp = await c.post(
-            f"/api/runs/{run_id}/rollback",
-            json={"target": "main.silver.orders"},
-            cookies=auth_cookies,
-        )
+    resp = await admin_client.post(
+        f"/api/runs/{run_id}/rollback",
+        json={"target": "main.silver.orders"},
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["rolled_back_run_id"] == run_id

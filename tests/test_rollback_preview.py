@@ -240,51 +240,39 @@ class TestRollbackPreviewRoute:
     """End-to-end: HTTP shape, admin gating, multi-op ambiguity."""
 
     @pytest.mark.asyncio
-    async def test_admin_required(self, non_admin_cookies: dict[str, str]) -> None:
+    async def test_admin_required(self, non_admin_client: httpx.AsyncClient) -> None:
         run_id, _op = _seed_run_op_via_app(target="main.silver.orders")
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://t"
-        ) as c:
-            resp = await c.get(
-                f"/api/runs/{run_id}/rollback-preview",
-                params={"target": "main.silver.orders"},
-                cookies=non_admin_cookies,
-            )
+        resp = await non_admin_client.get(
+            f"/api/runs/{run_id}/rollback-preview",
+            params={"target": "main.silver.orders"},
+        )
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
     async def test_unknown_run_target_returns_404(
         self,
-        auth_cookies: dict[str, str],
+        admin_client: httpx.AsyncClient,
     ) -> None:
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://t"
-        ) as c:
-            resp = await c.get(
-                f"/api/runs/{uuid.uuid4()}/rollback-preview",
-                params={"target": "main.silver.nope"},
-                cookies=auth_cookies,
-            )
+        resp = await admin_client.get(
+            f"/api/runs/{uuid.uuid4()}/rollback-preview",
+            params={"target": "main.silver.nope"},
+        )
         assert resp.status_code == 404
 
     @pytest.mark.asyncio
     async def test_single_op_payload_shape(
         self,
-        auth_cookies: dict[str, str],
+        admin_client: httpx.AsyncClient,
     ) -> None:
         run_id, op_id = _seed_run_op_via_app(
             target="main.silver.orders",
             delta_version_before=0,
             delta_version_after=1,
         )
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://t"
-        ) as c:
-            resp = await c.get(
-                f"/api/runs/{run_id}/rollback-preview",
-                params={"target": "main.silver.orders"},
-                cookies=auth_cookies,
-            )
+        resp = await admin_client.get(
+            f"/api/runs/{run_id}/rollback-preview",
+            params={"target": "main.silver.orders"},
+        )
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body["run_id"] == run_id
@@ -302,7 +290,7 @@ class TestRollbackPreviewRoute:
     @pytest.mark.asyncio
     async def test_invalid_creation_op_returns_422(
         self,
-        auth_cookies: dict[str, str],
+        admin_client: httpx.AsyncClient,
     ) -> None:
         run_id, _op = _seed_run_op_via_app(
             target="main.silver.orders",
@@ -310,21 +298,17 @@ class TestRollbackPreviewRoute:
             delta_version_before=None,
             delta_version_after=0,
         )
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://t"
-        ) as c:
-            resp = await c.get(
-                f"/api/runs/{run_id}/rollback-preview",
-                params={"target": "main.silver.orders"},
-                cookies=auth_cookies,
-            )
+        resp = await admin_client.get(
+            f"/api/runs/{run_id}/rollback-preview",
+            params={"target": "main.silver.orders"},
+        )
         assert resp.status_code == 422
         assert "rollback would mean dropping" in resp.text
 
     @pytest.mark.asyncio
     async def test_multi_op_returns_candidates(
         self,
-        auth_cookies: dict[str, str],
+        admin_client: httpx.AsyncClient,
     ) -> None:
         run_id = _seed_multi_op_via_app(
             target="main.silver.orders",
@@ -333,14 +317,10 @@ class TestRollbackPreviewRoute:
                 (2, 1, 2, "merge"),
             ],
         )
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://t"
-        ) as c:
-            resp = await c.get(
-                f"/api/runs/{run_id}/rollback-preview",
-                params={"target": "main.silver.orders"},
-                cookies=auth_cookies,
-            )
+        resp = await admin_client.get(
+            f"/api/runs/{run_id}/rollback-preview",
+            params={"target": "main.silver.orders"},
+        )
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body["op_id"] is None

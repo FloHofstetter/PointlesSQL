@@ -28,14 +28,6 @@ from pointlessql.services.model_promotion import (
 )
 
 
-def _client(**kwargs) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        follow_redirects=False,
-        **kwargs,
-    )
-
 
 def test_serialize_promotion_marker_roundtrip() -> None:
     """A serialized marker parses back to the same payload."""
@@ -221,7 +213,7 @@ async def test_get_current_champion_falls_back_to_latest_ready(
 
 @pytest.mark.asyncio
 async def test_promote_version_writes_marker_and_review(
-    uc_for_promotion: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_promotion: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     """Successful promote: marker patched, review row inserted, event built."""
     factory = app.state.session_factory
@@ -322,27 +314,25 @@ async def test_promote_blocks_when_version_missing(
 
 @pytest.mark.asyncio
 async def test_promote_endpoint_requires_supervisor(
-    uc_for_promotion: AsyncMock, non_admin_cookies: dict[str, str]
+    uc_for_promotion: AsyncMock, non_admin_client: httpx.AsyncClient
 ) -> None:
     """A non-admin cookie user is rejected at the supervisor gate."""
-    async with _client(cookies=non_admin_cookies) as c:
-        resp = await c.post(
-            "/api/models/cat.sch.model/promote",
-            json={"target_version": 1, "reason": "test"},
-        )
+    resp = await non_admin_client.post(
+        "/api/models/cat.sch.model/promote",
+        json={"target_version": 1, "reason": "test"},
+    )
     assert resp.status_code in (401, 403)
 
 
 @pytest.mark.asyncio
 async def test_promote_endpoint_admin_succeeds(
-    uc_for_promotion: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_promotion: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     """Admin cookie passes ``require_supervisor`` and gets the event."""
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.post(
-            "/api/models/cat.sch.model/promote",
-            json={"target_version": 1, "reason": "rollback"},
-        )
+    resp = await admin_client.post(
+        "/api/models/cat.sch.model/promote",
+        json={"target_version": 1, "reason": "rollback"},
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["champion_version"] == 1
@@ -352,17 +342,16 @@ async def test_promote_endpoint_admin_succeeds(
 
 @pytest.mark.asyncio
 async def test_get_promotion_endpoint_returns_history(
-    uc_for_promotion: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_promotion: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     """After promote, GET /promotion shows champion + history."""
-    async with _client(cookies=auth_cookies) as c:
-        post = await c.post(
-            "/api/models/cat.sch.model/promote",
-            json={"target_version": 1, "reason": "test"},
-        )
-        assert post.status_code == 200, post.text
+    post = await admin_client.post(
+        "/api/models/cat.sch.model/promote",
+        json={"target_version": 1, "reason": "test"},
+    )
+    assert post.status_code == 200, post.text
 
-        resp = await c.get("/api/models/cat.sch.model/promotion")
+    resp = await admin_client.get("/api/models/cat.sch.model/promotion")
     assert resp.status_code == 200
     body = resp.json()
     assert body["champion_version"] == 1
@@ -373,14 +362,13 @@ async def test_get_promotion_endpoint_returns_history(
 
 @pytest.mark.asyncio
 async def test_promote_endpoint_422_on_validation_error(
-    uc_for_promotion: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_promotion: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     """Promoting the current champion → 422 ``promotion_error``."""
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.post(
-            "/api/models/cat.sch.model/promote",
-            json={"target_version": 2, "reason": "no-op"},
-        )
+    resp = await admin_client.post(
+        "/api/models/cat.sch.model/promote",
+        json={"target_version": 2, "reason": "no-op"},
+    )
     # Phase 43.3: PromotionError is now a PointlessSQLError(422); the
     # centralised handler renders it as ``promotion_error``.
     assert resp.status_code == 422
