@@ -475,18 +475,27 @@ async def admin_audit_index(
     user: str | None = None,
     target: str | None = None,
     since: Literal["24h", "7d", "30d", "all"] = "7d",
+    offset: int = 0,
 ) -> HTMLResponse:
     """Render the admin audit-log viewer.
 
     Reads from the ``audit_log`` table (written append-only by
-    every admin state-change via :func:`audit`) and shows the
-    newest :data:`ADMIN_AUDIT_LIMIT` rows matching the requested
-    filters. Admin-gated because the log carries cross-user activity
-    that a non-admin principal must not see. Re-uses the ``/jobs``
+    every admin state-change via :func:`audit`) and shows
+    :data:`ADMIN_AUDIT_LIMIT` rows per page matching the requested
+    filters.  Admin-gated because the log carries cross-user activity
+    that a non-admin principal must not see.  Re-uses the ``/jobs``
     ``listTable`` Alpine component for search and chip filtering so
     the page inherits sorting, search, and mobile stacking without
     new frontend primitives.
+
+    Phase 54.3 turned the previous single-shot truncation cap into a
+    real ``offset``-based pagination: a separate ``COUNT(*)`` query
+    drives the page-link footer (Bootstrap 5.3 ``pagination``
+    component via ``_macros/pagination.html``).  The client-side
+    filter chips operate on the visible page only — same trade-off
+    as ``/runs``.
     """
+    from sqlalchemy import func as _func
     from sqlalchemy import select as _select
 
     from pointlessql.models import AuditLog as AuditLogModel
@@ -495,30 +504,34 @@ async def admin_audit_index(
     current_user = get_user(request)
     factory = request.app.state.session_factory
 
+    if offset < 0:
+        offset = 0
+
     since_delta = ADMIN_AUDIT_SINCE_WINDOWS[since]
     since_cutoff = datetime.now(UTC) - since_delta if since_delta is not None else None
 
-    stmt = _select(AuditLogModel).order_by(AuditLogModel.created_at.desc())
+    base = _select(AuditLogModel)
     if since_cutoff is not None:
-        stmt = stmt.where(AuditLogModel.created_at >= since_cutoff)
+        base = base.where(AuditLogModel.created_at >= since_cutoff)
     if action:
-        stmt = stmt.where(AuditLogModel.action == action)
+        base = base.where(AuditLogModel.action == action)
     if user:
-        stmt = stmt.where(AuditLogModel.user_email.ilike(f"%{user}%"))
+        base = base.where(AuditLogModel.user_email.ilike(f"%{user}%"))
     if target:
-        stmt = stmt.where(AuditLogModel.target.ilike(f"%{target}%"))
-    # Fetch one extra row so we can tell the page whether the
-    # ``ADMIN_AUDIT_LIMIT`` cap hid older history.
-    stmt = stmt.limit(ADMIN_AUDIT_LIMIT + 1)
+        base = base.where(AuditLogModel.target.ilike(f"%{target}%"))
+
+    count_stmt = _select(_func.count()).select_from(base.subquery())
+    page_stmt = (
+        base.order_by(AuditLogModel.created_at.desc())
+        .offset(offset)
+        .limit(ADMIN_AUDIT_LIMIT)
+    )
 
     with factory() as session:
-        rows = list(session.scalars(stmt).all())
+        total = int(session.scalar(count_stmt) or 0)
+        rows = list(session.scalars(page_stmt).all())
         for row in rows:
             session.expunge(row)
-
-    truncated = len(rows) > ADMIN_AUDIT_LIMIT
-    if truncated:
-        rows = rows[:ADMIN_AUDIT_LIMIT]
 
     entries = [
         {
@@ -536,7 +549,7 @@ async def admin_audit_index(
     ]
     # Distinct action list for the server-side filter dropdown.
     # Derived from the currently-loaded page so new actions show up
-    # automatically; the 1000-row cap keeps this cheap.
+    # automatically; the per-page cap keeps this cheap.
     distinct_actions = sorted({e["action"] for e in entries})
 
     return _templates(request).TemplateResponse(
@@ -549,7 +562,8 @@ async def admin_audit_index(
             "filter_user": user or "",
             "filter_target": target or "",
             "filter_since": since,
-            "truncated": truncated,
+            "total": total,
+            "offset": offset,
             "row_limit": ADMIN_AUDIT_LIMIT,
             "current_user_id": current_user.get("id"),
             "current_user_email": current_user.get("email"),

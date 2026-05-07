@@ -1,0 +1,92 @@
+{#
+ Bootstrap 5.3 ``pagination`` component for server-rendered list pages.
+
+ Usage:
+
+ {% from "_macros/pagination.html" import paginate %}
+ {{ paginate(total=total, offset=offset, limit=limit, base_url=request.url.path, query_params=request.query_params, aria_label='Audit log results') }}
+
+ Renders nothing when ``total <= limit`` (single page).  Otherwise
+ emits a ``<nav><ul.pagination>`` with Previous / Next + numeric
+ page links centred under the table.  Page links carry the existing
+ query string so filters survive navigation; the macro overrides
+ only the ``offset`` parameter.
+
+ Args:
+     total: Total row count (server-side filtered).
+     offset: Current 0-based offset.
+     limit: Rows-per-page.
+     base_url: Path the page is served from (without query string).
+         Use ``request.url.path``.
+     query_params: ``request.query_params`` so filter chips survive.
+     aria_label: Screen-reader label for the surrounding ``<nav>``.
+
+ The window of numeric page-buttons keeps a maximum of seven
+ entries (current ± 2 plus first/last with ellipsis on overflow)
+ so wide result sets do not produce a 50-button row.
+#}
+{% macro paginate(total, offset, limit, base_url, query_params, aria_label='Pagination') -%}
+{%- if total > limit -%}
+{%- set total_pages = ((total - 1) // limit) + 1 -%}
+{%- set current_page = (offset // limit) + 1 -%}
+{%- set window_low = (current_page - 2) if (current_page - 2) > 1 else 1 -%}
+{%- set window_high = (current_page + 2) if (current_page + 2) < total_pages else total_pages -%}
+<nav aria-label="{{ aria_label }}" class="mt-3">
+    <ul class="pagination justify-content-center mb-0">
+        {# Previous #}
+        {%- set prev_offset = (current_page - 2) * limit -%}
+        <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
+            <a class="page-link"
+               href="{% if current_page > 1 %}{{ paginate_url(base_url, query_params, prev_offset) }}{% else %}#{% endif %}"
+               aria-label="Previous"
+               {% if current_page == 1 %}tabindex="-1" aria-disabled="true"{% endif %}>
+                &laquo;
+            </a>
+        </li>
+        {# Leading ellipsis + page 1 #}
+        {%- if window_low > 1 -%}
+        <li class="page-item">
+            <a class="page-link" href="{{ paginate_url(base_url, query_params, 0) }}">1</a>
+        </li>
+        {%- if window_low > 2 -%}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {%- endif -%}
+        {%- endif -%}
+        {# Window of page numbers #}
+        {%- for page in range(window_low, window_high + 1) -%}
+        <li class="page-item {% if page == current_page %}active{% endif %}">
+            {%- if page == current_page -%}
+            <span class="page-link" aria-current="page">{{ page }}</span>
+            {%- else -%}
+            <a class="page-link" href="{{ paginate_url(base_url, query_params, (page - 1) * limit) }}">{{ page }}</a>
+            {%- endif -%}
+        </li>
+        {%- endfor -%}
+        {# Trailing ellipsis + last page #}
+        {%- if window_high < total_pages -%}
+        {%- if window_high < total_pages - 1 -%}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+        {%- endif -%}
+        <li class="page-item">
+            <a class="page-link" href="{{ paginate_url(base_url, query_params, (total_pages - 1) * limit) }}">{{ total_pages }}</a>
+        </li>
+        {%- endif -%}
+        {# Next #}
+        {%- set next_offset = current_page * limit -%}
+        <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
+            <a class="page-link"
+               href="{% if current_page < total_pages %}{{ paginate_url(base_url, query_params, next_offset) }}{% else %}#{% endif %}"
+               aria-label="Next"
+               {% if current_page == total_pages %}tabindex="-1" aria-disabled="true"{% endif %}>
+                &raquo;
+            </a>
+        </li>
+    </ul>
+    <div class="text-center text-muted small mt-2">
+        {%- set window_first = offset + 1 -%}
+        {%- set window_last = (offset + limit) if (offset + limit) < total else total -%}
+        Showing {{ window_first }}–{{ window_last }} of {{ total }}
+    </div>
+</nav>
+{%- endif -%}
+{%- endmacro %}

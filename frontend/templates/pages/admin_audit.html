@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/pagination.html" import paginate %}
 {% block title %}Audit log · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -16,8 +17,13 @@
  <h1 class="h3 mb-0">Audit log{{ info('admin.audit-sinks') }}</h1>
  </div>
  <span class="text-muted small">
- {{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }}
- shown
+ {%- if total > 0 -%}
+ {%- set page_first = offset + 1 -%}
+ {%- set page_last = (offset + entries|length) -%}
+ {{ page_first }}–{{ page_last }} of {{ total }} entr{{ 'y' if total == 1 else 'ies' }}
+ {%- else -%}
+ 0 entries
+ {%- endif -%}
  </span>
 </div>
 
@@ -82,15 +88,6 @@
  </div>
 </form>
 
-{% if truncated %}
-<div class="alert alert-info d-flex align-items-center py-2" role="alert">
- <i class="bi bi-info-circle me-2"></i>
- <div class="small mb-0">
- Showing the most recent {{ row_limit }} entries — narrow the
- window or add filters to see older rows.
- </div>
-</div>
-{% endif %}
 
 <div class="card">
  <div class="card-body p-0">
@@ -198,4 +195,13 @@
  {% endif %}
  </div>
 </div>
+
+{{ paginate(
+    total=total,
+    offset=offset,
+    limit=row_limit,
+    base_url=request.url.path,
+    query_params=request.query_params,
+    aria_label='Audit log pagination'
+) }}
 {% endblock %}

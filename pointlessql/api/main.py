@@ -166,6 +166,40 @@ _TEMPLATES.env.globals["asset_version"] = pointlessql.__version__  # pyright: ig
 _TEMPLATES.env.globals["status_class"] = _status_class  # pyright: ignore[reportArgumentType]
 
 
+def _paginate_url(base_url: str, query_params: Any, offset: int) -> str:
+    """Return ``base_url`` plus ``query_params`` with ``offset`` overridden.
+
+    Used by ``frontend/templates/_macros/pagination.html`` to build
+    page-link hrefs without losing in-flight filter chips.
+
+    Args:
+        base_url: Path the page is served from (e.g. ``request.url.path``).
+        query_params: Starlette ``QueryParams`` (or any iterable of
+            ``(key, value)``).  Pre-existing ``offset`` keys are dropped.
+        offset: New offset value.
+
+    Returns:
+        ``"path?offset=N&filter=foo"`` style URL.
+    """
+    from urllib.parse import urlencode
+
+    items: list[tuple[str, str]] = []
+    if query_params is not None:
+        if hasattr(query_params, "multi_items"):
+            iterator = query_params.multi_items()
+        else:
+            iterator = list(query_params)
+        for key, val in iterator:
+            if key == "offset":
+                continue
+            items.append((str(key), str(val)))
+    items.append(("offset", str(offset)))
+    return f"{base_url}?{urlencode(items)}"
+
+
+_TEMPLATES.env.globals["paginate_url"] = _paginate_url  # pyright: ignore[reportArgumentType]
+
+
 _original_template_response = _TEMPLATES.TemplateResponse
 
 
