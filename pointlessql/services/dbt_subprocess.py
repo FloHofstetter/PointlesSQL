@@ -36,6 +36,8 @@ from pathlib import Path
 
 import httpx
 
+from pointlessql.error_codes import ErrorCode
+from pointlessql.exceptions import PointlessSQLError
 from pointlessql.settings import DBTSettings
 
 _logger = logging.getLogger(__name__)
@@ -46,8 +48,20 @@ _HEALTH_POLL_S = 0.5
 _SHUTDOWN_GRACE_S = 5.0
 
 
-class DBTStartupError(RuntimeError):
-    """Raised when the dbt-docs subprocess fails to come up healthy."""
+class DBTStartupError(PointlessSQLError, RuntimeError):
+    """Raised when the dbt-docs subprocess fails to come up healthy.
+
+    Dual-parents :class:`PointlessSQLError` (so the centralised
+    handler renders it as a 503) and :class:`RuntimeError` (so
+    legacy ``except RuntimeError`` clauses continue to catch).
+
+    Attributes:
+        status_code: Always 503 — startup failure is operational.
+        error_code: Always ``ErrorCode.DBT_STARTUP_ERROR``.
+    """
+
+    status_code: int = 503
+    error_code: ErrorCode = ErrorCode.DBT_STARTUP_ERROR
 
 
 @functools.lru_cache(maxsize=1)

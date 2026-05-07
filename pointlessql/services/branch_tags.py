@@ -41,6 +41,9 @@ from soyuz_catalog_client.models.update_tags_tags_securable_type_full_name_patch
     UpdateTagsTagsSecurableTypeFullNamePatchSecurableType,
 )
 
+from pointlessql.error_codes import ErrorCode
+from pointlessql.exceptions import PointlessSQLError
+
 if TYPE_CHECKING:
     from soyuz_catalog_client import Client
 
@@ -96,8 +99,14 @@ class BranchTags:
     is_pre_promote_backup: bool = False
 
 
-class BranchTagsCorruptError(Exception):
+class BranchTagsCorruptError(PointlessSQLError):
     """One or more required branch tags are missing or malformed.
+
+    Reparented from :class:`Exception` to :class:`PointlessSQLError`
+    so the centralised handler can surface it as 500
+    ``branch_tags_corrupt`` if it ever escapes a service-layer
+    catch (it normally stays internal — the read primitives map it
+    to a friendly UI banner).
 
     Raised by :func:`read_branch_tags` (and its sync sibling) when a
     schema carries some branch tags but not the full required set,
@@ -105,7 +114,15 @@ class BranchTagsCorruptError(Exception):
     type.  Callers should treat this as a hard failure — not as
     "branch not found" — because silent recovery would mask a
     partial-write or external tampering.
+
+    Attributes:
+        status_code: Always 500 — the schema is in an inconsistent
+            state; investigation is required.
+        error_code: Always ``ErrorCode.BRANCH_TAGS_CORRUPT``.
     """
+
+    status_code: int = 500
+    error_code: ErrorCode = ErrorCode.BRANCH_TAGS_CORRUPT
 
 
 def _now_iso() -> str:

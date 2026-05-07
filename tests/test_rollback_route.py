@@ -207,7 +207,7 @@ async def test_invalid_creation_op_returns_422(
 
 
 @pytest.mark.asyncio
-async def test_stale_returns_422(
+async def test_stale_returns_409(
     silver_path: Path,
     factory: sessionmaker,  # type: ignore[type-arg]
     auth_cookies: dict[str, str],
@@ -229,8 +229,15 @@ async def test_stale_returns_422(
             json={"target": "main.silver.orders"},
             cookies=auth_cookies,
         )
-    assert resp.status_code == 422
+    assert resp.status_code == 409
     assert "stale" in resp.text.lower()
+    body = resp.json()
+    assert body["code"] == "rollback_stale"
+    # The third unrelated append is not recorded as an agent_run_operation,
+    # so intervening_op_count stays at 0 — staleness is detected by the
+    # current_version > expected_version check alone.
+    assert body["current_version"] > body["expected_version"]
+    assert "intervening_op_count" in body
 
 
 @pytest.mark.asyncio

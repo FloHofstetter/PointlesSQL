@@ -26,18 +26,33 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from pointlessql.error_codes import ErrorCode
+from pointlessql.exceptions import PointlessSQLError
 from pointlessql.settings import DBTSettings
 
 _logger = logging.getLogger(__name__)
 
 
-class DBTExecutionError(RuntimeError):
+class DBTExecutionError(PointlessSQLError, RuntimeError):
     """Raised when a dbt CLI invocation cannot be spawned at all.
 
     Differentiates from a non-zero exit code, which is captured on
     :class:`DBTRunResult.exit_code` and lets the caller surface a
     structured result instead of an exception.
+
+    Dual-parents :class:`PointlessSQLError` (centralised handler
+    renders it as 503) and :class:`RuntimeError` (legacy ``except
+    RuntimeError`` keeps catching).
+
+    Attributes:
+        status_code: Always 503 — the dbt CLI is part of the
+            request path; an inability to spawn it is operational
+            unavailability, not a client error.
+        error_code: Always ``ErrorCode.DBT_EXECUTION_ERROR``.
     """
+
+    status_code: int = 503
+    error_code: ErrorCode = ErrorCode.DBT_EXECUTION_ERROR
 
 
 @dataclass

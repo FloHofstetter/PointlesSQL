@@ -41,12 +41,14 @@ from typing import Any
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from pointlessql.error_codes import ErrorCode
+from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import AuditLog
 
 logger = logging.getLogger(__name__)
 
 
-class AuditIntegrityError(Exception):
+class AuditIntegrityError(PointlessSQLError):
     """Raised when a caller tries to mutate an :class:`AuditLog` row.
 
     ``AuditLog`` is append-only. ``UPDATE`` is never allowed.
@@ -55,7 +57,18 @@ class AuditIntegrityError(Exception):
     sweep. Every other ``session.delete(audit_entry)`` or
     ``session.commit()`` after an in-place attribute assignment
     raises this error.
+
+    Reparented from :class:`Exception` to :class:`PointlessSQLError`
+    so the centralised handler renders integrity violations as 500
+    ``audit_integrity_error`` if they ever escape an internal catch.
+
+    Attributes:
+        status_code: Always 500.
+        error_code: Always ``ErrorCode.AUDIT_INTEGRITY_ERROR``.
     """
+
+    status_code: int = 500
+    error_code: ErrorCode = ErrorCode.AUDIT_INTEGRITY_ERROR
 
 
 _audit_mutation_allowed: ContextVar[bool] = ContextVar("_audit_mutation_allowed", default=False)

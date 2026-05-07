@@ -32,7 +32,8 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from pointlessql.exceptions import AuditUnavailableError
+from pointlessql.error_codes import ErrorCode
+from pointlessql.exceptions import AuditUnavailableError, PointlessSQLError
 from pointlessql.models import AgentRun, AgentRunOperation
 from pointlessql.services.agent_runs.mlflow_detector import detect_mlflow_run_id
 
@@ -70,7 +71,7 @@ VALID_OP_NAMES = frozenset(
 )
 
 
-class RollbackError(Exception):
+class RollbackError(PointlessSQLError):
     """Base class for ``pql.rollback`` failures.
 
     Subclasses encode the four refusal modes the rollback primitive
@@ -79,7 +80,14 @@ class RollbackError(Exception):
     subclass guarantees no Delta state has been mutated — the
     ``DeltaTable.restore(...)`` call is gated on all four checks
     passing first.
+
+    Reparented from :class:`Exception` so the centralised
+    :class:`PointlessSQLError` handler picks every refusal up
+    automatically (no inline ``except`` translation at the route).
     """
+
+    status_code: int = 422
+    error_code: ErrorCode = ErrorCode.ROLLBACK_ERROR
 
 
 class RollbackTargetNotFound(RollbackError):
@@ -89,6 +97,9 @@ class RollbackTargetNotFound(RollbackError):
     unknown to the registry.  The caller should treat this as a
     user error (likely mistyped FQN or wrong run id).
     """
+
+    status_code: int = 404
+    error_code: ErrorCode = ErrorCode.ROLLBACK_TARGET_NOT_FOUND
 
 
 class RollbackAmbiguous(RollbackError):
@@ -106,6 +117,9 @@ class RollbackAmbiguous(RollbackError):
             by ``ordinal``.
     """
 
+    status_code: int = 409
+    error_code: ErrorCode = ErrorCode.ROLLBACK_AMBIGUOUS
+
     def __init__(self, candidates: list[AgentRunOperation]) -> None:
         ordinals = [c.ordinal for c in candidates]
         super().__init__(
@@ -113,6 +127,10 @@ class RollbackAmbiguous(RollbackError):
             f"pass op_ordinal=N to pick"
         )
         self.candidates = candidates
+
+    def extension_members(self) -> dict[str, Any] | None:
+        """Surface candidate ordinals as RFC 9457 extension members."""
+        return {"candidate_ordinals": [c.ordinal for c in self.candidates]}
 
 
 class RollbackInvalid(RollbackError):
@@ -122,6 +140,9 @@ class RollbackInvalid(RollbackError):
     dropping the table — that is a different primitive
     (``pql.drop_table``) and is out of v1 scope.
     """
+
+    status_code: int = 422
+    error_code: ErrorCode = ErrorCode.ROLLBACK_INVALID
 
 
 class RollbackStale(RollbackError):
@@ -146,6 +167,9 @@ class RollbackStale(RollbackError):
             targeted op's.
     """
 
+    status_code: int = 409
+    error_code: ErrorCode = ErrorCode.ROLLBACK_STALE
+
     def __init__(
         self,
         *,
@@ -162,6 +186,14 @@ class RollbackStale(RollbackError):
         self.current_version = current_version
         self.expected_version = expected_version
         self.intervening_op_count = intervening_op_count
+
+    def extension_members(self) -> dict[str, Any] | None:
+        """Surface staleness-check fields as RFC 9457 extension members."""
+        return {
+            "current_version": self.current_version,
+            "expected_version": self.expected_version,
+            "intervening_op_count": self.intervening_op_count,
+        }
 
 
 @dataclass

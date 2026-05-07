@@ -26,19 +26,33 @@ from sqlglot.errors import ParseError
 from sqlglot.expressions.core import Expression
 from sqlglot.lineage import lineage as _sqlglot_lineage
 
+from pointlessql.error_codes import ErrorCode
+from pointlessql.exceptions import ValidationError
+
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
 
     from pointlessql.services.lineage_edges import ColumnEdgeSpec
 
 
-class SQLParseError(ValueError):
+class SQLParseError(ValidationError):
     """Raised when the SQL cannot be parsed or is out-of-scope.
 
-    Distinguished from :class:`pointlessql.exceptions.ValidationError`
-    so the route handler can map it specifically to HTTP 400 without
-    scanning the message text.
+    Subclass of :class:`ValidationError` (was :class:`ValueError`)
+    so it inherits the 422 status_code and the
+    :class:`PointlessSQLError` envelope path.  The dedicated
+    ``sql_parse_error`` code lets dashboards filter SQL syntax
+    failures separately from generic validation errors.
+
+    Note: ``ValidationError`` itself dual-inherits :class:`ValueError`,
+    so ``except ValueError`` continues to catch :class:`SQLParseError`.
+
+    Attributes:
+        error_code: Always ``ErrorCode.SQL_PARSE_ERROR``. ``status_code``
+            inherits 422 from :class:`ValidationError`.
     """
+
+    error_code: ErrorCode = ErrorCode.SQL_PARSE_ERROR
 
 
 @dataclass(frozen=True)

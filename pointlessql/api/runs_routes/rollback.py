@@ -368,40 +368,6 @@ def _finalise_rollback_run(
     return op_id
 
 
-def _refusal_to_http_error(exc: Exception) -> Exception:
-    """Translate a rollback refusal into the centralised HTTP error.
-
-    All four refusal classes are :class:`Exception` subclasses but
-    not :class:`PointlessSQLError`, so the centralised handler
-    would 500 them.  Map them to the existing domain errors so the
-    response shape stays consistent with the rest of the API.
-
-    Args:
-        exc: A raised :class:`RollbackError` subclass.
-
-    Returns:
-        A :class:`PointlessSQLError` ready to be re-raised.
-    """
-    if isinstance(exc, RollbackAmbiguous):
-        ords = [c.ordinal for c in exc.candidates]
-        return ValidationError(
-            f"rollback ambiguous: run touched target with ordinals {ords}; "
-            "pass op_ordinal to disambiguate"
-        )
-    if isinstance(exc, RollbackStale):
-        return ValidationError(
-            f"rollback stale: current_version={exc.current_version} "
-            f"expected={exc.expected_version} "
-            f"intervening_op_count={exc.intervening_op_count}; "
-            "pass allow_force=true to overwrite intervening writes"
-        )
-    if isinstance(exc, RollbackInvalid):
-        return ValidationError(str(exc))
-    if isinstance(exc, RollbackTargetNotFound):
-        return CatalogNotFoundError(str(exc))
-    return exc
-
-
 @router.post("/api/runs/{run_id}/rollback")
 async def api_run_rollback(
     request: Request,
@@ -413,13 +379,16 @@ async def api_run_rollback(
     Spawns a brand-new ``agent_runs`` row to host the rollback op,
     invokes :func:`pointlessql.pql._rollback.rollback_table` under
     that run id, and returns the new run id + the version delta on
-    success.  Refusal modes from the primitive map to HTTP errors:
+    success.  Refusal modes from the primitive each carry their own
+    HTTP status + error code via the centralised handler:
 
-    * ``RollbackTargetNotFound`` → 404 ``CatalogNotFoundError``.
-    * ``RollbackAmbiguous`` → 409 with ``op_candidates`` payload.
-    * ``RollbackInvalid`` → 422 ``ValidationError``.
-    * ``RollbackStale`` → 409 with ``current_version`` /
-      ``expected_version`` / ``intervening_op_count`` payload.
+    * ``RollbackTargetNotFound`` → 404 ``rollback_target_not_found``.
+    * ``RollbackAmbiguous`` → 409 ``rollback_ambiguous`` with
+      ``candidate_ordinals`` extension payload.
+    * ``RollbackInvalid`` → 422 ``rollback_invalid``.
+    * ``RollbackStale`` → 409 ``rollback_stale`` with
+      ``current_version`` / ``expected_version`` /
+      ``intervening_op_count`` extension payload.
 
     On any refusal the spawned rollback run is marked ``failed``
     with ``finished_at`` set so the audit trail records both the
@@ -508,8 +477,12 @@ async def api_run_rollback(
     try:
         result = await asyncio.to_thread(_run_rollback)
     except (RollbackAmbiguous, RollbackStale, RollbackInvalid, RollbackTargetNotFound) as exc:
+        # Each refusal class is now a PointlessSQLError subclass with
+        # its own status_code / error_code; the centralised handler
+        # picks them up directly. We only need to mark the spawned
+        # rollback run as failed before re-raising.
         _mark_rollback_run_failed(factory, run_id=new_run_id, message=repr(exc))
-        raise _refusal_to_http_error(exc) from exc
+        raise
     except Exception:
         _mark_rollback_run_failed(factory, run_id=new_run_id, message="rollback raised")
         raise
