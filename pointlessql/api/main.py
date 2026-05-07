@@ -26,6 +26,7 @@ from pointlessql.api.admin_expected_producers_routes import (
     router as admin_expected_producers_router,
 )
 from pointlessql.api.admin_external_writes_routes import router as admin_external_writes_router
+from pointlessql.api.admin_repos_routes import router as admin_repos_router
 from pointlessql.api.admin_routes import router as admin_router
 from pointlessql.api.admin_workspace_pins_routes import (
     router as admin_workspace_pins_router,
@@ -826,6 +827,7 @@ app.include_router(admin_api_keys_router)
 app.include_router(admin_cdf_tail_router)
 app.include_router(admin_expected_producers_router)
 app.include_router(admin_external_writes_router)
+app.include_router(admin_repos_router)
 app.include_router(admin_workspace_pins_router)
 app.include_router(admin_workspaces_router)
 app.include_router(review_destinations_router)
