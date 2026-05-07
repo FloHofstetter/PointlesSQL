@@ -92,6 +92,7 @@ from pointlessql.api.volumes_routes import (
 from pointlessql.api.volumes_routes import (
     router as volumes_router,
 )
+from pointlessql.api.webhook_routes import router as webhook_router
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.logging_config import configure_logging
 from pointlessql.services import api_keys as api_keys_service
@@ -355,6 +356,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="cdf-tail",
         )
 
+    # Phase 51.4 — workspace-repos sync cron.  Opt-in
+    # default-disabled (``sync_interval_seconds == 0``).  When
+    # active, the loop pulls every stale repo every interval; the
+    # webhook receiver still triggers immediate syncs regardless.
+    workspace_repos_task: asyncio.Task[None] | None = None
+    if settings.workspace_repos.sync_interval_seconds > 0 and not fast_test_lifespan:
+        workspace_repos_task = asyncio.create_task(
+            _workspace_repos_sync_loop(app.state.session_factory, settings),
+            name="workspace-repos-sync",
+        )
+
     #  lineage retention pruner.  Runs as its own
     # asyncio task next to the audit-retention loop — the existing
     # scheduler is built around per-user JobExecutor callbacks that
@@ -460,6 +472,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             data_product_freshness_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await data_product_freshness_task
+        if workspace_repos_task is not None:
+            workspace_repos_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await workspace_repos_task
         if lineage_pruner_task is not None:
             lineage_pruner_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -674,6 +690,63 @@ async def _lineage_pruner_loop(
             return
 
 
+async def _workspace_repos_sync_loop(
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Periodic workspace-repo sync (Phase 51.4).
+
+    Active only when
+    ``POINTLESSQL_REPOS_SYNC_INTERVAL_SECONDS`` is non-zero — same
+    opt-in discipline as every other Phase-13.x+ scanner.  Each
+    tick lists the repos whose ``last_synced_at`` is older than
+    the configured cadence (or ``NULL``) and pulls them
+    sequentially.  Per-repo failures are recorded on the row
+    itself; the loop never aborts because of a single bad upstream.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the rest of
+            the app.
+        settings: Snapshotted :class:`Settings` — only
+            ``workspace_repos.*`` is read.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    from pointlessql.services.workspace_repos import (
+        build_post_pull_loader_hook,
+        list_repos_due_for_sync,
+        sync_repo,
+    )
+
+    interval = max(60, settings.workspace_repos.sync_interval_seconds)
+    base_dir = settings.workspace_repos.base_dir
+    hook = build_post_pull_loader_hook(factory, settings=settings)
+    while True:
+        try:
+            cutoff = datetime.now(UTC) - timedelta(seconds=interval)
+            for repo in list_repos_due_for_sync(factory, cutoff=cutoff):
+                try:
+                    await sync_repo(
+                        factory,
+                        repo_id=repo.id,
+                        base_dir=base_dir,
+                        trigger="cron",
+                        actor_user_id=None,
+                        on_post_pull=hook,
+                    )
+                except Exception:  # noqa: BLE001 — per-repo failure isolation
+                    # bare-broad-ok: sync persists the failure on the row;
+                    # the loop must continue to the next repo regardless.
+                    logger.exception("workspace_repos: cron sync of %s raised", repo.id)
+        except Exception:  # noqa: BLE001 — outer-loop guard
+            # bare-broad-ok: never let an unforeseen error kill the loop.
+            logger.exception("workspace_repos: cron tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
 async def _branch_cleanup_loop(
     uc: Any,
     settings: Settings,
@@ -767,6 +840,7 @@ app.include_router(models_router)
 app.include_router(models_html_router)
 app.include_router(data_products_router)
 app.include_router(data_products_html_router)
+app.include_router(webhook_router)
 _STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"
 
 

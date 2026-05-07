@@ -29,7 +29,7 @@ from fastapi.responses import HTMLResponse, Response
 from pointlessql.services import csrf
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-_EXEMPT_PREFIXES = ("/api/", "/static/")
+_EXEMPT_PREFIXES = ("/api/", "/static/", "/webhook/git/")
 _EXEMPT_PATHS = frozenset({"/healthz"})
 # Content types whose body we parse to extract the ``csrf_token`` form
 # field. Every other content type (e.g. ``application/json``) is only

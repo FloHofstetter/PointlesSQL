@@ -74,6 +74,11 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     "/healthz",
     "/alerts/feed.atom",
     "/alerts/feed.json",
+    # Phase 51.4: inbound webhook receiver.  Authentication is the
+    # HMAC-SHA-256 signature on the body verified inside the route
+    # handler; the path itself is unauthenticated so external git
+    # hosts can call it without an API key.
+    "/webhook/git/",
 )
 
 
