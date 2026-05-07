@@ -30,6 +30,7 @@ import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import User, Workspace
 from pointlessql.services.auth import is_first_user
@@ -59,11 +60,11 @@ class OIDCError(PointlessSQLError):
 
     Attributes:
         status_code: Always 401.
-        error_code: Always ``"oidc_error"``.
+        error_code: Always ``ErrorCode.OIDC_ERROR``.
     """
 
     status_code: int = 401
-    error_code: str = "oidc_error"
+    error_code: ErrorCode = ErrorCode.OIDC_ERROR
 
 
 # ---------------------------------------------------------------------------

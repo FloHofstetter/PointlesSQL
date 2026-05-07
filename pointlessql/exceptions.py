@@ -8,25 +8,43 @@ error handler serializes into a consistent JSON envelope.
 
 from __future__ import annotations
 
+from typing import Any
+
+from pointlessql.error_codes import ErrorCode
+
 
 class PointlessSQLError(Exception):
     """Base exception for all PointlesSQL domain errors.
 
     Attributes:
         status_code: Suggested HTTP status code for API responses.
-        error_code: Machine-readable error identifier (e.g.
-            ``"catalog_unavailable"``).
+        error_code: Machine-readable error identifier from
+            :class:`ErrorCode`.
 
     Args:
         detail: Human-readable explanation of the error.
     """
 
     status_code: int = 500
-    error_code: str = "internal_error"
+    error_code: ErrorCode = ErrorCode.INTERNAL_ERROR
 
     def __init__(self, detail: str) -> None:
         self.detail = detail
         super().__init__(detail)
+
+    def extension_members(self) -> dict[str, Any] | None:
+        """Return RFC 9457 extension members merged into the envelope.
+
+        Subclasses override to surface structured context fields
+        (table names, version numbers, candidate ids, …) alongside
+        the standard ``status``/``code``/``detail`` triple.  Default
+        ``None`` means the envelope carries only the standard fields.
+
+        Returns:
+            A dict of extension-member name → JSON-encodable value,
+            or ``None`` when the exception has no structured extras.
+        """
+        return None
 
 
 class CatalogUnavailableError(PointlessSQLError):
@@ -34,11 +52,11 @@ class CatalogUnavailableError(PointlessSQLError):
 
     Attributes:
         status_code: Always 502.
-        error_code: Always ``"catalog_unavailable"``.
+        error_code: Always ``ErrorCode.CATALOG_UNAVAILABLE``.
     """
 
     status_code: int = 502
-    error_code: str = "catalog_unavailable"
+    error_code: ErrorCode = ErrorCode.CATALOG_UNAVAILABLE
 
 
 class CatalogNotFoundError(PointlessSQLError):
@@ -46,11 +64,11 @@ class CatalogNotFoundError(PointlessSQLError):
 
     Attributes:
         status_code: Always 404.
-        error_code: Always ``"catalog_not_found"``.
+        error_code: Always ``ErrorCode.CATALOG_NOT_FOUND``.
     """
 
     status_code: int = 404
-    error_code: str = "catalog_not_found"
+    error_code: ErrorCode = ErrorCode.CATALOG_NOT_FOUND
 
 
 class AuthenticationError(PointlessSQLError):
@@ -58,11 +76,11 @@ class AuthenticationError(PointlessSQLError):
 
     Attributes:
         status_code: Always 401.
-        error_code: Always ``"authentication_error"``.
+        error_code: Always ``ErrorCode.AUTHENTICATION_ERROR``.
     """
 
     status_code: int = 401
-    error_code: str = "authentication_error"
+    error_code: ErrorCode = ErrorCode.AUTHENTICATION_ERROR
 
 
 class AuthorizationError(PointlessSQLError):
@@ -70,7 +88,7 @@ class AuthorizationError(PointlessSQLError):
 
     Attributes:
         status_code: Always 403.
-        error_code: Always ``"authorization_error"``.
+        error_code: Always ``ErrorCode.AUTHORIZATION_ERROR``.
 
     Args:
         principal: Email of the user that was denied.
@@ -80,7 +98,7 @@ class AuthorizationError(PointlessSQLError):
     """
 
     status_code: int = 403
-    error_code: str = "authorization_error"
+    error_code: ErrorCode = ErrorCode.AUTHORIZATION_ERROR
 
     def __init__(
         self,
@@ -96,17 +114,52 @@ class AuthorizationError(PointlessSQLError):
         detail = f"{principal} lacks {privilege} on {securable_type} '{full_name}'"
         super().__init__(detail)
 
+    def extension_members(self) -> dict[str, Any] | None:
+        """Surface privilege/securable triple as RFC 9457 extension members."""
+        return {
+            "required_privilege": self.privilege,
+            "securable_type": self.securable_type,
+            "full_name": self.full_name,
+        }
+
+
+class PermissionDeniedError(AuthorizationError):
+    """Raised when caller has insufficient privilege without a securable to name.
+
+    Sibling of :class:`AuthorizationError` for the call sites where
+    we know the principal is denied but cannot enrich with a specific
+    privilege/securable triple — for example, "auditor scope required"
+    on a route guard, or a coarse admin-only check.  Skipping
+    :class:`AuthorizationError`'s structured ctor keeps the
+    isinstance hierarchy intact (``except AuthorizationError`` still
+    catches) without forcing the caller to invent a securable.
+    """
+
+    error_code: ErrorCode = ErrorCode.PERMISSION_DENIED
+
+    def __init__(self, detail: str = "Access denied") -> None:
+        Exception.__init__(self, detail)
+        self.detail = detail
+        self.principal = ""
+        self.privilege = ""
+        self.securable_type = ""
+        self.full_name = ""
+
+    def extension_members(self) -> dict[str, Any] | None:
+        """Coarse 403s carry no structured context — keep the envelope clean."""
+        return None
+
 
 class EngineError(PointlessSQLError):
     """Raised when a Delta Lake or compute-engine operation fails.
 
     Attributes:
         status_code: Always 500.
-        error_code: Always ``"engine_error"``.
+        error_code: Always ``ErrorCode.ENGINE_ERROR``.
     """
 
     status_code: int = 500
-    error_code: str = "engine_error"
+    error_code: ErrorCode = ErrorCode.ENGINE_ERROR
 
 
 class ValidationError(PointlessSQLError, ValueError):
@@ -118,11 +171,11 @@ class ValidationError(PointlessSQLError, ValueError):
 
     Attributes:
         status_code: Always 422.
-        error_code: Always ``"validation_error"``.
+        error_code: Always ``ErrorCode.VALIDATION_ERROR``.
     """
 
     status_code: int = 422
-    error_code: str = "validation_error"
+    error_code: ErrorCode = ErrorCode.VALIDATION_ERROR
 
 
 class SchedulerError(PointlessSQLError):
@@ -138,11 +191,11 @@ class SchedulerError(PointlessSQLError):
 
     Attributes:
         status_code: Always 500.
-        error_code: Always ``"scheduler_error"``.
+        error_code: Always ``ErrorCode.SCHEDULER_ERROR``.
     """
 
     status_code: int = 500
-    error_code: str = "scheduler_error"
+    error_code: ErrorCode = ErrorCode.SCHEDULER_ERROR
 
 
 class NotebookRenderError(PointlessSQLError):
@@ -158,11 +211,11 @@ class NotebookRenderError(PointlessSQLError):
 
     Attributes:
         status_code: Always 500.
-        error_code: Always ``"notebook_render_error"``.
+        error_code: Always ``ErrorCode.NOTEBOOK_RENDER_ERROR``.
     """
 
     status_code: int = 500
-    error_code: str = "notebook_render_error"
+    error_code: ErrorCode = ErrorCode.NOTEBOOK_RENDER_ERROR
 
 
 class PQLWriteError(EngineError):
@@ -175,11 +228,11 @@ class PQLWriteError(EngineError):
     failure.
 
     Attributes:
-        error_code: Always ``"pql_write_error"``. ``status_code``
+        error_code: Always ``ErrorCode.PQL_WRITE_ERROR``. ``status_code``
             inherits ``500`` from :class:`EngineError`.
     """
 
-    error_code: str = "pql_write_error"
+    error_code: ErrorCode = ErrorCode.PQL_WRITE_ERROR
 
 
 class AuditUnavailableError(PointlessSQLError):
@@ -198,11 +251,11 @@ class AuditUnavailableError(PointlessSQLError):
             request path; without it the operation cannot be
             served safely, so a transient infrastructure problem
             is the most accurate framing.
-        error_code: Always ``"audit_unavailable"``.
+        error_code: Always ``ErrorCode.AUDIT_UNAVAILABLE``.
     """
 
     status_code: int = 503
-    error_code: str = "audit_unavailable"
+    error_code: ErrorCode = ErrorCode.AUDIT_UNAVAILABLE
 
 
 class SQLExecutionError(PointlessSQLError):
@@ -216,8 +269,45 @@ class SQLExecutionError(PointlessSQLError):
 
     Attributes:
         status_code: Always 400.
-        error_code: Always ``"sql_execution_error"``.
+        error_code: Always ``ErrorCode.SQL_EXECUTION_ERROR``.
     """
 
     status_code: int = 400
-    error_code: str = "sql_execution_error"
+    error_code: ErrorCode = ErrorCode.SQL_EXECUTION_ERROR
+
+
+class ResourceNotFoundError(PointlessSQLError):
+    """Raised when a non-catalog resource (run, op, subscription, ...) is missing.
+
+    Sibling of :class:`CatalogNotFoundError` for resources that live
+    in PointlesSQL's own metadata DB rather than soyuz-catalog —
+    agent runs, anomaly acks, audit-sink configs, CDF subscriptions,
+    and so on.  Keeping a distinct code from ``catalog_not_found``
+    lets dashboards filter "operator-DB miss" vs "lakehouse miss".
+
+    Attributes:
+        status_code: Always 404.
+        error_code: Always ``ErrorCode.RESOURCE_NOT_FOUND``.
+    """
+
+    status_code: int = 404
+    error_code: ErrorCode = ErrorCode.RESOURCE_NOT_FOUND
+
+
+class ConflictError(PointlessSQLError):
+    """Raised when an operation conflicts with the current resource state.
+
+    Examples: re-acknowledging an already-acked anomaly, registering a
+    duplicate audit-sink slug, queuing a CDF subscription whose target
+    table already has an active subscription.  Maps to HTTP 409 so
+    clients can distinguish "you cannot do this right now" (retryable
+    after a state change) from validation errors (retryable after a
+    payload change).
+
+    Attributes:
+        status_code: Always 409.
+        error_code: Always ``ErrorCode.CONFLICT``.
+    """
+
+    status_code: int = 409
+    error_code: ErrorCode = ErrorCode.CONFLICT

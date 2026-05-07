@@ -27,7 +27,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from pointlessql.exceptions import AuthorizationError, PointlessSQLError
+from pointlessql.error_codes import ErrorCode
+from pointlessql.exceptions import PointlessSQLError
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ def _wants_htmx_toast(request: Request) -> bool:
 def _problem_body(
     *,
     status_code: int,
-    error_code: str,
+    error_code: str | ErrorCode,
     detail: str,
     request_id: str | None,
     extra: dict[str, Any] | None = None,
@@ -181,7 +182,7 @@ def _problem_body(
 def _problem_json(
     *,
     status_code: int,
-    error_code: str,
+    error_code: str | ErrorCode,
     detail: str,
     request_id: str | None,
     extra: dict[str, Any] | None = None,
@@ -211,7 +212,7 @@ def _problem_json(
 def _problem_toast(
     *,
     status_code: int,
-    error_code: str,
+    error_code: str | ErrorCode,
     detail: str,
     request_id: str | None,
 ) -> Response:
@@ -253,7 +254,7 @@ def _render_error_page(
     request: Request,
     status_code: int,
     *,
-    error_code: str,
+    error_code: str | ErrorCode,
     message: str,
     request_id: str | None,
     extra: dict[str, Any] | None = None,
@@ -314,7 +315,7 @@ def _dispatch(
     request: Request,
     *,
     status_code: int,
-    error_code: str,
+    error_code: str | ErrorCode,
     detail: str,
     extra: dict[str, Any] | None = None,
 ) -> Response:
@@ -377,10 +378,11 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _handle_pointlessql_error(  # pyright: ignore[reportUnusedFunction]
         request: Request, exc: PointlessSQLError
     ) -> Response:
-        # Authorization denials are expected traffic, not anomalies —
-        # don't warn on them. Every other domain error gets a single
-        # warning line so ops can grep for domain failures in one place.
-        if not isinstance(exc, AuthorizationError):
+        # Authorization denials (403s) are expected traffic, not
+        # anomalies — don't warn on them. Every other domain error
+        # gets a single warning line so ops can grep for domain
+        # failures in one place.
+        if exc.status_code != 403:
             logger.warning(
                 "handled domain error: %s (%s)",
                 exc.error_code,
@@ -388,13 +390,7 @@ def register_error_handlers(app: FastAPI) -> None:
                 exc_info=exc,
             )
 
-        extra: dict[str, Any] | None = None
-        if isinstance(exc, AuthorizationError):
-            extra = {
-                "required_privilege": exc.privilege,
-                "securable_type": exc.securable_type,
-                "full_name": exc.full_name,
-            }
+        extra = exc.extension_members()
 
         return _dispatch(
             request,
@@ -421,7 +417,7 @@ def register_error_handlers(app: FastAPI) -> None:
         return _dispatch(
             request,
             status_code=422,
-            error_code="validation_error",
+            error_code=ErrorCode.VALIDATION_ERROR,
             detail="Request validation failed",
             extra={"errors": errors},
         )
@@ -455,6 +451,6 @@ def register_error_handlers(app: FastAPI) -> None:
         return _dispatch(
             request,
             status_code=500,
-            error_code="internal_error",
+            error_code=ErrorCode.INTERNAL_ERROR,
             detail="An unexpected error occurred.",
         )

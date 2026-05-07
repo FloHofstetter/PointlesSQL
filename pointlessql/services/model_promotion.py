@@ -31,6 +31,7 @@ import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
+from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import AgentReview
 
@@ -47,7 +48,17 @@ EVENT_TYPE_MODEL_PROMOTED = "pointlessql.model.promoted"
 
 
 class PromotionError(PointlessSQLError):
-    """Raised when a champion/challenger swap cannot be applied."""
+    """Raised when a champion/challenger swap cannot be applied.
+
+    Attributes:
+        status_code: Always 422 — promotion is rejected because the
+            challenger isn't ready or the marker patch fails on the
+            soyuz side, both client-resolvable conditions.
+        error_code: Always ``ErrorCode.PROMOTION_ERROR``.
+    """
+
+    status_code: int = 422
+    error_code: ErrorCode = ErrorCode.PROMOTION_ERROR
 
 
 def parse_promotion_marker(comment: str | None) -> dict[str, Any] | None:
