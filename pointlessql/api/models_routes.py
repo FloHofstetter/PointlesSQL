@@ -349,9 +349,10 @@ async def api_promote_model(
         "review_id", "event"}`` on success.
 
     Raises:
-        HTTPException: 400 when validation fails (version not READY,
-            already champion, missing reason); 502 when soyuz rejects
-            the comment PATCH.
+        CatalogUnavailableError: 502 when soyuz rejects the comment
+            PATCH that pins the new champion marker.
+        model_promotion.PromotionError: 422 when validation fails
+            (version not READY, already champion, missing reason).
     """
     require_supervisor(request)
     user = get_user(request)

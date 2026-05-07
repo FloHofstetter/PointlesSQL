@@ -42,6 +42,11 @@ class ApiKey(Base):
             run-supervision so the daily Audit-Reviewer-Agent can be
             issued an auditor key without inheriting supervisor
             privileges (or admin's PII-reveal).
+        lineage_inbound: When ``True``, the key may invoke
+            ``POST /api/lineage/openlineage``.  Independent of
+            ``supervisor`` / ``auditor`` so a federation-only key
+            can land lineage events without seeing run audit
+            telemetry.
         created_at: Timestamp the key was created.
         created_by_user_id: Admin who created the key, or ``None``
             for env-var-bootstrapped keys + CLI-provisioned keys.

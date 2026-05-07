@@ -125,10 +125,11 @@ async def api_lineage_openlineage_inbound(
         replay caller sees its retry was idempotent.
 
     Raises:
-        AuthorizationError: When the caller lacks the
-            ``lineage_inbound`` scope.
         ValidationError: When the event body fails OL 1.x parsing
-            (missing ``eventTime`` / ``run.runId`` / ``job.namespace``).
+            (missing ``eventTime`` / ``run.runId`` /
+            ``job.namespace``).  ``AuthorizationError`` (when the
+            caller lacks the ``lineage_inbound`` scope) propagates
+            from :func:`require_lineage_inbound`.
     """
     require_lineage_inbound(request)
     workspace_id = current_workspace_id(request)

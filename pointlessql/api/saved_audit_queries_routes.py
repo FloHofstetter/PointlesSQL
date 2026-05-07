@@ -105,7 +105,7 @@ async def api_get_saved_audit_query(request: Request, slug: str) -> dict[str, An
         Serialised row.
 
     Raises:
-        HTTPException: 404 when slug does not exist.
+        ResourceNotFoundError: 404 when slug does not exist.
     """
     require_admin(request)
     row = svc.get_by_slug(request.app.state.session_factory, slug)
@@ -133,8 +133,10 @@ async def api_update_saved_audit_query(
         Serialised row.
 
     Raises:
-        HTTPException: 404 when slug missing or row is a starter.
-        ValidationError: Provided SQL outside the allow-list.
+        ResourceNotFoundError: 404 when slug missing or row is a
+            starter.
+        ValidationError: Provided SQL outside the allow-list, or
+            ``alert_threshold_count`` not coercible to an integer.
     """
     require_admin(request)
     threshold_arg: int | None | str = "__unchanged__"
@@ -178,7 +180,8 @@ async def api_delete_saved_audit_query(request: Request, slug: str) -> dict[str,
         ``{"deleted": True}``.
 
     Raises:
-        HTTPException: 404 when slug missing or row is a starter.
+        ResourceNotFoundError: 404 when slug missing or row is a
+            starter.
     """
     require_admin(request)
     deleted = svc.delete(request.app.state.session_factory, slug)
@@ -212,7 +215,7 @@ async def api_run_saved_audit_query(
         "referenced_tables"}``.
 
     Raises:
-        HTTPException: 404 when slug missing.
+        ResourceNotFoundError: 404 when slug missing.
     """
     require_admin(request)
     result = svc.execute(request.app.state.session_factory, slug, row_cap=row_cap)
@@ -238,7 +241,7 @@ async def api_export_saved_audit_query_csv(
         slug as filename.
 
     Raises:
-        HTTPException: 404 when slug missing.
+        ResourceNotFoundError: 404 when slug missing.
     """
     require_admin(request)
     result = svc.execute(request.app.state.session_factory, slug, row_cap=10_000)
@@ -281,7 +284,7 @@ async def api_export_saved_audit_query_json(
         ``application/json`` streaming response.
 
     Raises:
-        HTTPException: 404 when slug missing.
+        ResourceNotFoundError: 404 when slug missing.
     """
     require_admin(request)
     result = svc.execute(request.app.state.session_factory, slug, row_cap=10_000)

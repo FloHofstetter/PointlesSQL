@@ -60,8 +60,11 @@ async def mlflow_proxy(path: str, request: Request) -> Response:
             headers preserved. Anonymous callers get a 401 instead.
 
     Raises:
-        HTTPException: 401 for anonymous, 503 if the MLflow subprocess
-            never came up healthy at startup.
+        AuthenticationError: 401 when the request is anonymous.
+        MLflowStartupError: 503 if the MLflow subprocess never came
+            up healthy at startup.
+        HTTPException: 502 on upstream HTTP error from the MLflow
+            subprocess.
     """
     user: UserInfo = get_user(request)
     if user["id"] == 0:

@@ -114,6 +114,11 @@ class RollbackAmbiguous(RollbackError):
     exposes the ``ordinal`` / ``delta_version_before`` /
     ``delta_version_after`` triple the caller needs to pick.
 
+    Attributes:
+        status_code: HTTP 409 — surfaced via the FastAPI handler.
+        error_code: :data:`ErrorCode.ROLLBACK_AMBIGUOUS` for the
+            problem-detail envelope.
+
     Args:
         candidates: The list of matching operation rows ordered
             by ``ordinal``.
@@ -156,6 +161,11 @@ class RollbackStale(RollbackError):
     ``self.expected_version`` / ``self.intervening_op_count``
     carry the staleness-check result for the UI confirmation
     dialog.
+
+    Attributes:
+        status_code: HTTP 409 — surfaced via the FastAPI handler.
+        error_code: :data:`ErrorCode.ROLLBACK_STALE` for the
+            problem-detail envelope.
 
     Args:
         current_version: ``DeltaTable.version()`` at the moment

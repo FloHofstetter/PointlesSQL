@@ -464,7 +464,7 @@ async def api_row_trace(
         as "lineage break".
 
     Raises:
-        HTTPException: 400 when ``row_id`` is empty.
+        ValidationError: 400 when ``row_id`` is empty.
     """
     if not row_id:
         raise ValidationError("row_id is required")
@@ -632,7 +632,7 @@ async def api_column_trace(
         ``{"table", "column", "steps": [...]}``.
 
     Raises:
-        HTTPException: 400 when ``column`` is empty.
+        ValidationError: 400 when ``column`` is empty.
     """
     if not column:
         raise ValidationError("column is required")
@@ -725,7 +725,7 @@ async def api_value_changes(
         "created_at"}, ...]}`` ordered by ``created_at`` ascending.
 
     Raises:
-        HTTPException: 400 when ``row_id`` is empty.
+        ValidationError: 400 when ``row_id`` is empty.
     """
     if not row_id:
         raise ValidationError("row_id is required")

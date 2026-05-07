@@ -354,7 +354,8 @@ async def _emit_audit_for_run(
         callers to build their HTTP response).
 
     Raises:
-        HTTPException: 500 when the bridge cannot emit operation rows.
+        AuditUnavailableError: 503 when the bridge cannot emit
+            operation rows.
     """
     if not result.run_results_path.is_file():
         # Compile failure → no run_results.json on disk.  Nothing to
@@ -446,8 +447,10 @@ async def api_dbt_compile(
         JSON envelope with executor result + (empty) bridge summary.
 
     Raises:
-        HTTPException: 401 when the request is anonymous, 503 when
-            the dbt CLI cannot be spawned.
+        AuthenticationError: 401 when the request is anonymous.
+            ``DBTExecutionError`` (503 when the dbt CLI cannot be
+            spawned) is rendered by the centralised handler — no
+            inline raise.
     """
     user = get_user(request)
     if user["id"] == 0:
@@ -475,9 +478,6 @@ async def api_dbt_deps(
 
     Returns:
         JSON envelope with executor result.
-
-    Raises:
-        HTTPException: 503 when the dbt CLI cannot be spawned.
     """
     require_admin(request)
     executor = _executor(request)
@@ -657,8 +657,8 @@ async def _run_or_test(
         JSON envelope with executor result + bridge summary.
 
     Raises:
-        HTTPException: 503 when dbt cannot be spawned; 500 when the
-            bridge cannot emit audit rows.
+        DBTExecutionError: 503 when dbt cannot be spawned (rendered
+            by the centralised handler).
     """
     require_supervisor(request)
     user = get_user(request)
@@ -826,10 +826,11 @@ def _load_manifest_or_404(request: Request) -> dict[str, Any]:
         Parsed manifest dict.
 
     Raises:
-        HTTPException: 404 when no manifest is on disk yet (typical
-            on a fresh checkout — the agent should call
-            ``POST /api/dbt/compile`` first); 500 when the file
-            exists but isn't parseable JSON (corrupted target dir).
+        ResourceNotFoundError: 404 when no manifest is on disk yet
+            (typical on a fresh checkout — the agent should call
+            ``POST /api/dbt/compile`` first).
+        EngineError: 500 when the file exists but isn't parseable
+            JSON (corrupted target dir).
     """
     # Reuse the executor's path-resolution so manifest lookup matches
     # the path dbt actually wrote to (handles relative project_dir).
@@ -861,8 +862,10 @@ async def api_dbt_manifest(request: Request) -> dict[str, Any]:
         with one entry per model.
 
     Raises:
-        HTTPException: 401 when the request is anonymous, 404 when
-            the manifest is not on disk yet, 500 when it is corrupted.
+        AuthenticationError: 401 when the request is anonymous.
+            ``ResourceNotFoundError`` (404 no manifest) and
+            ``EngineError`` (500 corrupted) propagate from
+            :func:`_load_manifest_or_404`.
     """
     user = get_user(request)
     if user["id"] == 0:
@@ -894,7 +897,9 @@ async def api_dbt_coverage(request: Request) -> dict[str, Any]:
         500).
 
     Raises:
-        HTTPException: 401 when anonymous, 404 when no manifest.
+        AuthenticationError: 401 when the request is anonymous.
+            ``ResourceNotFoundError`` (404 no manifest) propagates
+            from :func:`_load_manifest_or_404`.
     """
     user = get_user(request)
     if user["id"] == 0:
@@ -1023,7 +1028,7 @@ async def api_dbt_runs(
         ``{"row_count": int, "runs": [{...}, ...]}``.
 
     Raises:
-        HTTPException: 401 when the request is anonymous.
+        AuthenticationError: 401 when the request is anonymous.
     """
     user = get_user(request)
     if user["id"] == 0:

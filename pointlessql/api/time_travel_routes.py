@@ -65,10 +65,12 @@ async def _resolve_storage(request: Request, full_name: str) -> str:
         ValidationError: 422 when ``full_name`` isn't 3-part.
         ResourceNotFoundError: 404 when the table has no
             ``storage_location`` registered.
-        CatalogNotFoundError: 404 when the table doesn't exist on
-            soyuz.
-        CatalogUnavailableError: 502 when soyuz is unreachable.
-        AuthorizationError: 403 when the user lacks ``SELECT``.
+
+    Note:
+        ``CatalogNotFoundError`` (404) / ``CatalogUnavailableError``
+        (502) propagate from :meth:`UnityCatalogClient.get_table`;
+        ``AuthorizationError`` (403) propagates from
+        :func:`check_privilege`.
     """
     user = get_user(request)
     uc = get_uc_client(request)
@@ -107,9 +109,9 @@ async def api_table_versions(request: Request, full_name: str) -> dict[str, Any]
         run_id}]}``.
 
     Raises:
-        HTTPException: 4xx / 5xx surfaces from
-            :func:`_resolve_storage` or a Delta history-read
-            failure.
+        EngineError: 500 when the Delta history read fails (table
+            absent / corrupt).  4xx / 5xx errors from
+            :func:`_resolve_storage` propagate.
     """
     storage = await _resolve_storage(request, full_name)
     try:
@@ -210,8 +212,9 @@ async def api_table_preview_at_version(
         ``{full_name, version, columns, rows, total}``.
 
     Raises:
-        HTTPException: 4xx / 5xx surfaces from
-            :func:`_resolve_storage` or a Delta load failure.
+        ValidationError: 422 when the Delta load fails (version
+            absent / table corrupt).  4xx / 5xx errors from
+            :func:`_resolve_storage` propagate.
     """
     from pointlessql.api.catalog_routes import humanize_preview_error
 
@@ -260,9 +263,10 @@ async def api_row_at_version(
         ``{table, version, row_id, found, row}``.
 
     Raises:
-        HTTPException: 4xx / 5xx surfaces from
-            :func:`_resolve_storage` or a Delta load failure;
-            403 from :func:`require_admin`.
+        ValidationError: 422 when the Delta load fails (version
+            absent / table corrupt).  ``AuthorizationError`` (403)
+            propagates from :func:`require_admin`; 4xx / 5xx errors
+            from :func:`_resolve_storage` propagate.
     """
     require_admin(request)
     storage = await _resolve_storage(request, table)

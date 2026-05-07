@@ -50,8 +50,11 @@ async def dbt_proxy(path: str, request: Request) -> Response:
             subprocess gets 503.
 
     Raises:
-        HTTPException: 401 anonymous, 503 subprocess down, 502 on
-            upstream HTTP error.
+        AuthenticationError: 401 when the request is anonymous.
+        DBTStartupError: 503 when the dbt-docs subprocess is not
+            running.
+        HTTPException: 502 on upstream HTTP error from the dbt-docs
+            subprocess.
     """
     user: UserInfo = get_user(request)
     if user["id"] == 0:

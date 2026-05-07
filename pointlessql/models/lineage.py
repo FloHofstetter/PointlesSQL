@@ -91,6 +91,13 @@ class LineageRowEdge(Base):
             this carries the ``models:/cat.sch.model/<version>`` URI
             of the originating registered-model version.  ``None``
             for ordinary table-to-table writes / merges.
+        producer: OpenLineage ``job.namespace`` of an inbound event.
+            ``None`` denotes "produced by this install" (i.e. local
+            PQL writes / merges).  Set on edges ingested via
+            ``POST /api/lineage/openlineage``.
+        external_event_id: OpenLineage ``run.runId`` of an inbound
+            event, used for inbound de-dupe.  ``None`` for
+            locally-emitted edges.
         created_at: Wall-clock timestamp the edge row was inserted.
     """
 
@@ -234,6 +241,11 @@ class LineageColumnMap(Base):
             string ``"audit"`` for ``unknown_origin`` audit columns,
             and the string ``"synth_target_row_id"`` for the synthesised
             ``_lineage_row_id`` cross-stage edge.
+        producer: OpenLineage ``job.namespace`` of an inbound event.
+            ``None`` for locally-emitted column edges.  Mirrors
+            :attr:`LineageRowEdge.producer`.
+        external_event_id: OpenLineage ``run.runId`` of an inbound
+            event for de-dupe.  ``None`` for locally-emitted edges.
         created_at: Wall-clock timestamp the row was inserted.
     """
 

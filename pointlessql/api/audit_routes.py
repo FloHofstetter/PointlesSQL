@@ -74,8 +74,9 @@ def _resolve_workspace_lens(request: Request, override: str | None) -> tuple[int
         of ``"current"`` / ``"all"`` / ``"named"`` for telemetry.
 
     Raises:
-        HTTPException: 403 when the caller is not a tenant admin and
-            asked for ``"all"`` or a different workspace's slug.
+        PermissionDeniedError: 403 when the caller is not a tenant
+            admin and asked for ``"all"`` or a different workspace's
+            slug.
         ValidationError: Slug doesn't resolve.
     """
     cleaned = (override or "").strip()
