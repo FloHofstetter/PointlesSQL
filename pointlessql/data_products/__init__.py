@@ -23,6 +23,16 @@ Entry points:
 
 from __future__ import annotations
 
+from pointlessql.data_products._diff import (
+    ActualColumn,
+    ContractDiffResult,
+    diff_contract_against_delta_table,
+    diff_contract_against_engine_columns,
+)
+from pointlessql.data_products._enforce import (
+    EnforcementResult,
+    check_contract_for_write,
+)
 from pointlessql.data_products._errors import (
     DataProductContractViolation,
     DataProductError,
@@ -43,6 +53,8 @@ from pointlessql.data_products._schema import (
 )
 
 __all__ = [
+    "ActualColumn",
+    "ContractDiffResult",
     "DataProductColumnSpec",
     "DataProductContract",
     "DataProductContractViolation",
@@ -52,6 +64,10 @@ __all__ = [
     "DataProductSchemaDrift",
     "DataProductTableContract",
     "DataProductYamlInvalid",
+    "EnforcementResult",
+    "check_contract_for_write",
+    "diff_contract_against_delta_table",
+    "diff_contract_against_engine_columns",
     "load_contract",
     "load_contracts_from_paths",
     "parse_yaml",

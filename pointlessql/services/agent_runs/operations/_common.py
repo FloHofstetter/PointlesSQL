@@ -101,6 +101,15 @@ class OperationRecorder:
             hooks (lineage emit, edge insert, reject, column, value-
             change failures).  Persisted into the row's
             ``warnings_json`` column so ``error_message`` stays clean.
+        pending_contract_event: Phase-50 hook — when the data-product
+            enforcement check fired (see
+            :func:`pointlessql.data_products.check_contract_for_write`)
+            the primitive stashes a tuple of
+            ``(outcome, details, data_product_id)`` here.  The post-
+            commit hook persists one ``data_product_contract_events``
+            row keyed on the just-inserted ``op_id``.  ``None`` means
+            "no enforcement attempted" — the post-commit hook is a
+            no-op then.
     """
 
     input_sha: str | None = None
@@ -121,6 +130,11 @@ class OperationRecorder:
     # column / value-change failures).  Persisted into the row's
     # ``warnings_json`` column so ``error_message`` stays clean.
     warnings: list[str] = field(default_factory=list)
+    # Phase 50 — populated by the data-product enforcement service.
+    # Tuple of (outcome, details, data_product_id) where outcome is
+    # one of CONTRACT_EVENT_OUTCOMES.  None means "enforcement not
+    # checked" (interactive PQL or feature disabled).
+    pending_contract_event: tuple[str, dict[str, Any], int | None] | None = None
 
 
 def serialise_warnings(markers: list[str]) -> str | None:

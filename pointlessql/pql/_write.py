@@ -183,6 +183,33 @@ def write_table(
                     if edges:
                         recorder.pending_column_edges = edges
 
+        # Phase 50.3 — data-product contract enforcement.  Resolves
+        # the cached contract for ``catalog.schema``, diffs the to-
+        # be-written frame against the table contract, and either
+        # stamps the recorder for the post-commit event or raises a
+        # ``DataProductContractViolation`` *before* any Delta IO so
+        # the bad write never lands.
+        if agent_run_id is not None and factory is not None:
+            from pointlessql.data_products import check_contract_for_write
+
+            enforcement = check_contract_for_write(
+                factory=factory,
+                agent_run_id=agent_run_id,
+                catalog=catalog,
+                schema=schema,
+                table=table,
+                df_columns=engine.columns_info(df),
+                mode=mode,
+            )
+            if enforcement.outcome != "no_contract":
+                recorder.pending_contract_event = (
+                    enforcement.outcome,
+                    enforcement.details,
+                    enforcement.data_product_id,
+                )
+            if enforcement.violation is not None:
+                raise enforcement.violation
+
         try:
             if not table_exists:
                 location = derive_storage_location(client, catalog, schema, table)

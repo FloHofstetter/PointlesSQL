@@ -222,6 +222,40 @@ def merge_table(
             except TypeError:
                 recorder.input_sha = None
 
+        # Phase 50.3 — data-product contract enforcement.  Same shape
+        # as in ``pql/_write.py``: resolve the cached contract for the
+        # target's schema, diff the arrow source's schema against the
+        # table contract, and either stamp the recorder for the post-
+        # commit event or raise a ``DataProductContractViolation``
+        # *before* the merge runs so the bad write never lands.
+        if agent_run_id is not None and factory is not None:
+            from pointlessql.data_products import check_contract_for_write
+
+            target_catalog, target_schema, target_table = parse_full_name(target)
+            arrow_columns: list[tuple[str, str, str, bool]] = []
+            for field in arrow_source.schema:  # pyright: ignore[reportUnknownVariableType,reportUnknownMemberType]
+                fname = cast(str, field.name)  # pyright: ignore[reportUnknownMemberType]
+                ftype = str(field.type)  # pyright: ignore[reportUnknownArgumentType,reportUnknownMemberType]
+                fnullable = cast(bool, field.nullable)  # pyright: ignore[reportUnknownMemberType]
+                arrow_columns.append((fname, ftype.upper(), ftype, fnullable))
+            enforcement = check_contract_for_write(
+                factory=factory,
+                agent_run_id=agent_run_id,
+                catalog=target_catalog,
+                schema=target_schema,
+                table=target_table,
+                df_columns=arrow_columns,
+                mode=strategy,
+            )
+            if enforcement.outcome != "no_contract":
+                recorder.pending_contract_event = (
+                    enforcement.outcome,
+                    enforcement.details,
+                    enforcement.data_product_id,
+                )
+            if enforcement.violation is not None:
+                raise enforcement.violation
+
         if strategy == "upsert":
             stats = _do_upsert(target_location, arrow_source, on)
         else:

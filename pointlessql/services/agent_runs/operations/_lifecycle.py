@@ -32,6 +32,9 @@ from pointlessql.services.agent_runs.operations._common import (
     OperationRecorder,
     serialise_warnings,
 )
+from pointlessql.services.agent_runs.operations._contract_events import (
+    record_contract_event_after_commit,
+)
 from pointlessql.services.agent_runs.operations._lineage import (
     emit_lineage_after_commit,
     record_column_edges_after_commit,
@@ -250,8 +253,9 @@ def operation_context(
         error_message = repr(exc)
         finished_at = datetime.datetime.now(datetime.UTC)
         merged_params = {**params, **recorder.extra_params}
+        failed_op_id: OpId | None = None
         try:
-            record_operation(
+            failed_op_id = record_operation(
                 session_factory,
                 agent_run_id=agent_run_id,
                 op_name=op_name,
@@ -273,6 +277,17 @@ def operation_context(
                 "while handling primitive exception",
                 agent_run_id,
                 op_name,
+            )
+        # Phase 50.3 — even on the failure path we want the contract
+        # event row when the recorder stamped one (e.g. pql.write
+        # raised DataProductContractViolation before any IO).  Other
+        # post-commit hooks stay success-path only because their
+        # state requires the underlying op to have actually completed.
+        if failed_op_id is not None and recorder.pending_contract_event is not None:
+            record_contract_event_after_commit(
+                session_factory,
+                op_id=failed_op_id,
+                pending=recorder.pending_contract_event,
             )
         raise
 
@@ -330,4 +345,9 @@ def operation_context(
         op_id=op_id,
         agent_run_id=agent_run_id,
         pending=recorder.pending_value_changes,
+    )
+    record_contract_event_after_commit(
+        session_factory,
+        op_id=op_id,
+        pending=recorder.pending_contract_event,
     )
