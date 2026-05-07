@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import datetime
 import json
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Body, Request
 from sqlalchemy import select
@@ -43,6 +43,28 @@ router = APIRouter(tags=["admin-audit-sinks"])
 _MAX_NAME = 64
 _MAX_CONFIG_BYTES = 8192
 _SENSITIVE_KEYS: frozenset[str] = frozenset({"hmac_secret", "secret_access_key", "session_token"})
+
+
+def _loads_obj(raw: str | None) -> dict[str, Any]:
+    """Decode *raw* JSON into a dict; return ``{}`` on parse error or non-object."""
+    if not raw:
+        return {}
+    try:
+        decoded: Any = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return cast(dict[str, Any], decoded) if isinstance(decoded, dict) else {}
+
+
+def _loads_list(raw: str | None) -> list[Any]:
+    """Decode *raw* JSON into a list; return ``[]`` on parse error or non-array."""
+    if not raw:
+        return []
+    try:
+        decoded: Any = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    return cast(list[Any], decoded) if isinstance(decoded, list) else []
 
 
 def _redact_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -75,33 +97,19 @@ def _serialize(row: AuditSink) -> dict[str, Any]:
         ``workspace_filter`` is ``None`` for install-global sinks
         (the default) or a list of workspace IDs.
     """
-    try:
-        cfg = json.loads(row.config_json or "{}")
-    except json.JSONDecodeError:
-        cfg = {}
-    try:
-        event_types = json.loads(row.event_types_json) if row.event_types_json else []
-    except json.JSONDecodeError:
-        event_types = []
-    workspace_filter: list[int] | None
-    if row.workspace_filter:
-        try:
-            decoded_ws = json.loads(row.workspace_filter)
-        except json.JSONDecodeError:
-            decoded_ws = None
-        if isinstance(decoded_ws, list) and decoded_ws:
-            workspace_filter = [int(x) for x in decoded_ws]
-        else:
-            workspace_filter = None
-    else:
-        workspace_filter = None
+    cfg = _loads_obj(row.config_json or "{}")
+    event_types = _loads_list(row.event_types_json)
+    ws_decoded = _loads_list(row.workspace_filter)
+    workspace_filter: list[int] | None = (
+        [int(x) for x in ws_decoded] if ws_decoded else None
+    )
     return {
         "id": row.id,
         "name": row.name,
         "type": row.type,
-        "config": _redact_config(cfg if isinstance(cfg, dict) else {}),
+        "config": _redact_config(cfg),
         "is_active": bool(row.is_active),
-        "event_types": event_types if isinstance(event_types, list) else [],
+        "event_types": event_types,
         "workspace_filter": workspace_filter,
         "created_at": row.created_at.astimezone(datetime.UTC).isoformat(),
     }
@@ -139,18 +147,20 @@ def _validate_config(value: Any, *, sink_type: str) -> dict[str, Any]:
     Raises:
         ValidationError: On bad shape or missing required keys.
     """
+    decoded: Any
     if isinstance(value, str):
         try:
             decoded = json.loads(value)
         except json.JSONDecodeError as exc:
             raise ValidationError(f"config must be valid JSON: {exc}") from exc
     elif isinstance(value, dict):
-        decoded = value
+        decoded = cast(Any, value)
     else:
         raise ValidationError("config must be a JSON object or a JSON-encoded string")
     if not isinstance(decoded, dict):
         raise ValidationError("config must decode to a JSON object")
-    serialised = json.dumps(decoded)
+    decoded_dict = cast(dict[str, Any], decoded)
+    serialised = json.dumps(decoded_dict)
     if len(serialised.encode("utf-8")) > _MAX_CONFIG_BYTES:
         raise ValidationError(f"config must be ≤ {_MAX_CONFIG_BYTES} bytes serialised")
     required = {
@@ -158,10 +168,10 @@ def _validate_config(value: Any, *, sink_type: str) -> dict[str, Any]:
         "s3": ("bucket", "region", "access_key_id", "secret_access_key"),
         "aws_cloudtrail": ("region", "channel_arn", "access_key_id", "secret_access_key"),
     }[sink_type]
-    missing = [k for k in required if not decoded.get(k)]
+    missing = [k for k in required if not decoded_dict.get(k)]
     if missing:
         raise ValidationError(f"{sink_type} config requires non-empty {sorted(missing)} keys")
-    return decoded
+    return decoded_dict
 
 
 def _validate_event_types(value: Any) -> list[str]:
@@ -170,8 +180,9 @@ def _validate_event_types(value: Any) -> list[str]:
         return []
     if not isinstance(value, list):
         raise ValidationError("event_types must be a list of strings")
+    items = cast(list[Any], value)
     out: list[str] = []
-    for item in value:
+    for item in items:
         if not isinstance(item, str) or not item.strip():
             raise ValidationError("event_types entries must be non-empty strings")
         out.append(item.strip())
@@ -205,8 +216,9 @@ def _validate_workspace_filter(
         raise ValidationError("workspace_filter must be a list of integers or null")
     if not value:
         return None
+    items = cast(list[Any], value)
     out: set[int] = set()
-    for item in value:
+    for item in items:
         if isinstance(item, bool) or not isinstance(item, int):
             raise ValidationError("workspace_filter entries must be integers")
         if item not in known_workspace_ids:
@@ -321,13 +333,7 @@ async def api_admin_update_audit_sink(
             )
             row.workspace_filter = json.dumps(ws_filter) if ws_filter else None
         if "config" in body:
-            existing_cfg: dict[str, Any] = {}
-            try:
-                decoded = json.loads(row.config_json or "{}")
-                if isinstance(decoded, dict):
-                    existing_cfg = decoded
-            except json.JSONDecodeError:
-                existing_cfg = {}
+            existing_cfg = _loads_obj(row.config_json or "{}")
             patch = body["config"]
             if patch is None:
                 merged: dict[str, Any] = {}
@@ -342,9 +348,11 @@ async def api_admin_update_audit_sink(
         session.expunge(row)
     redacted_changes = {k: v for k, v in body.items() if k != "config"}
     if "config" in body:
-        redacted_changes["config_keys_changed"] = sorted(
-            list((body["config"] or {}).keys()) if isinstance(body["config"], dict) else []
-        )
+        config_patch = body["config"]
+        config_keys: list[str] = []
+        if isinstance(config_patch, dict):
+            config_keys = sorted(cast(dict[str, Any], config_patch).keys())
+        redacted_changes["config_keys_changed"] = config_keys
     await audit(
         request,
         "audit_sink.updated",
