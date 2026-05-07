@@ -18,13 +18,16 @@ hard-coded" while the configuration model stays predictable.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
 from pointlessql.conventions._defaults import DEFAULT_CONVENTIONS
 from pointlessql.conventions._schema import ConventionsConfig
 from pointlessql.settings import Settings
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
 
 
 def load_conventions(
@@ -95,3 +98,69 @@ def load_conventions(
     merged: dict[str, Any] = DEFAULT_CONVENTIONS.model_dump()
     merged.update(overrides)
     return ConventionsConfig.model_validate(merged)
+
+
+def load_conventions_for_workspace(
+    factory: sessionmaker[Session],
+    *,
+    workspace_id: int,
+    settings: Settings | None = None,
+) -> ConventionsConfig:
+    """Load Medallion conventions for *workspace_id*, repo-aware.
+
+    Phase 51.2 — same shallow-merge contract as
+    :func:`load_conventions`, but the candidate yaml path is
+    resolved as:
+
+    1. ``settings.conventions.path`` (the legacy env-driven path).
+    2. The first ``pointlessql.yaml`` discovered inside one of the
+       *workspace*'s synced repos when (1) is unset.
+
+    The "first repo wins" rule is deliberate — conventions are
+    install-default-style configuration, not per-repo state.  Two
+    repos shipping conflicting conventions yamls are a config
+    error the admin should resolve at the team-process level; we
+    don't try to merge them.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        workspace_id: Workspace whose repos to scan when no
+            env-path is configured.
+        settings: Optional :class:`Settings` override.
+
+    Returns:
+        The validated :class:`ConventionsConfig`.
+    """
+    # Local import to keep this module's import graph independent
+    # of git/secrets/workspace_repos for the legacy-only path.
+    from pointlessql.git import discover_repo_yaml_files
+
+    resolved_settings = settings or Settings()
+
+    if resolved_settings.conventions.path is not None:
+        return load_conventions(settings=resolved_settings)
+
+    base_dir = getattr(resolved_settings.workspace_repos, "base_dir", None)
+    globs = getattr(
+        resolved_settings.workspace_repos, "yaml_search_globs", ()
+    )
+    if base_dir is None:
+        return DEFAULT_CONVENTIONS
+    matches = discover_repo_yaml_files(
+        factory,
+        workspace_id=workspace_id,
+        base_dir=Path(base_dir),
+        globs=tuple(globs),
+    )
+    for candidate in matches:
+        # Conventions yaml shares the file name with the data-product
+        # yaml; we accept any pointlessql.yaml whose top level is a
+        # mapping that does NOT start with the data_product wrapper.
+        try:
+            with candidate.open("r", encoding="utf-8") as fh:
+                raw: Any = yaml.safe_load(fh)
+        except (yaml.YAMLError, OSError):
+            continue
+        if isinstance(raw, dict) and "data_product" not in raw:
+            return load_conventions(path=candidate, settings=resolved_settings)
+    return DEFAULT_CONVENTIONS

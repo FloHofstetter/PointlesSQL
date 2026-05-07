@@ -457,6 +457,68 @@ def _pick_secret_for_provider(
     return None
 
 
+def build_post_pull_loader_hook(
+    factory: sessionmaker[Session],
+    *,
+    settings: object | None = None,
+) -> Any:
+    """Return a post-pull hook that re-runs the workspace yaml loaders.
+
+    The hook signature matches :func:`sync_repo`'s ``on_post_pull``
+    contract: ``(workspace_id, slug, head_sha) -> dict``.  After a
+    successful clone or pull the hook re-runs the workspace-scoped
+    loaders for data products and conventions; counts of UPSERTed
+    contracts are returned in a dict that ``sync_repo`` merges into
+    :class:`SyncOutcome.extra` (and surfaces on
+    ``loaded_data_products`` / ``loaded_conventions`` typed
+    attributes).
+
+    Loader errors are swallowed inside ``sync_repo`` already — the
+    hook itself prefers to surface a structured ``error`` field
+    rather than raise so the sync is recorded as ``ok=True`` even
+    when one yaml is malformed (the loader stamps a row in the
+    DataProductYamlInvalid path on its own).
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Optional :class:`Settings` override.  Default
+            builds a fresh ``Settings()``.
+
+    Returns:
+        Callable suitable for ``sync_repo(on_post_pull=...)``.
+    """
+    # Local imports keep workspace_repos.py free of yaml/loader
+    # transitive deps for callers that just want CRUD.
+    from pointlessql.conventions import load_conventions_for_workspace
+    from pointlessql.data_products import load_contracts_for_workspace
+
+    def _hook(workspace_id: int, slug: str, head_sha: str | None) -> dict[str, Any]:
+        del slug, head_sha  # Not used today; future hooks may correlate.
+        out: dict[str, Any] = {}
+        try:
+            contracts = load_contracts_for_workspace(
+                factory, workspace_id=workspace_id, settings=settings
+            )
+            out["loaded_data_products"] = len(contracts)
+        except Exception as exc:  # noqa: BLE001 — loader errors stamp via the loader
+            # bare-broad-ok: loader already raises a domain error and the
+            # sync log records the diagnostic; we don't want a single bad
+            # yaml to mark the sync itself as failed.
+            out["data_products_loader_error"] = repr(exc)
+
+        try:
+            load_conventions_for_workspace(factory, workspace_id=workspace_id)
+            # The conventions loader is a config singleton — there is no
+            # "row count" to report, just whether it ran.
+            out["loaded_conventions"] = 1
+        except Exception as exc:  # noqa: BLE001 — same reasoning
+            # bare-broad-ok: see data-products branch above.
+            out["conventions_loader_error"] = repr(exc)
+        return out
+
+    return _hook
+
+
 async def sync_repo(
     factory: sessionmaker[Session],
     *,

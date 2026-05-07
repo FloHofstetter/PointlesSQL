@@ -249,3 +249,85 @@ def load_contracts_from_paths(
             )
         )
     return contracts
+
+
+def load_contracts_for_workspace(
+    factory: sessionmaker[Session],
+    *,
+    workspace_id: int,
+    settings: object | None = None,
+    now: datetime.datetime | None = None,
+) -> list[DataProductContract]:
+    """Load every ``pointlessql.yaml`` discovered for *workspace_id*.
+
+    Phase 51.2 — combines two yaml sources:
+
+    1. Env-configured ``settings.data_products.yaml_search_paths``
+       (the legacy Phase-50 path).  Treated as workspace-agnostic;
+       admins point this at machine-local directories.
+    2. Repo-discovered yaml: every successfully-synced
+       :class:`WorkspaceRepo` row in *workspace_id* contributes
+       matches against
+       ``settings.workspace_repos.yaml_search_globs``.
+
+    The two sets are deduplicated by absolute path and sorted in
+    ``(env-path-then-repo, alpha)`` order so re-running against an
+    unchanged on-disk state always returns the same sequence.
+    Idempotent — every yaml is parsed and UPSERTed; unchanged
+    files no-op via the SHA-256-hash check inside
+    :func:`load_contract`.
+
+    Args:
+        factory: SQLAlchemy session factory.  Required (unlike
+            :func:`load_contracts_from_paths`) because the repo
+            discovery walks ``WorkspaceRepo`` rows.
+        workspace_id: Workspace owning the discovered repos.
+        settings: Optional :class:`pointlessql.settings.Settings`
+            override (pure-test inject).  Default builds a fresh
+            ``Settings()`` reading the env.
+        now: Override for the ``last_loaded_at`` timestamp.
+
+    Returns:
+        List of successfully-loaded contracts.
+
+    The function imports :class:`Settings` lazily to keep this
+    module's import surface unchanged for the Phase-50 paths that
+    don't go through the workspace-scoped helper.
+    """
+    # Local import to avoid a top-level dependency on settings/git
+    # for callers that only use load_contract / load_contracts_from_paths.
+    from pointlessql.git import discover_repo_yaml_files
+    from pointlessql.settings import Settings
+
+    resolved_settings = settings if settings is not None else Settings()
+    # Cast helps pyright understand the attribute access.
+    dp_paths = list(getattr(resolved_settings.data_products, "yaml_search_paths", []))  # type: ignore[union-attr]
+    repos_settings = getattr(resolved_settings, "workspace_repos", None)
+    base_dir = getattr(repos_settings, "base_dir", None)
+    globs = getattr(repos_settings, "yaml_search_globs", ())
+
+    seen: set[Path] = set()
+    paths: list[Path] = []
+    for raw in dp_paths:
+        candidate = Path(raw)
+        target = candidate if candidate.is_file() else candidate / "pointlessql.yaml"
+        if target.exists() and target not in seen:
+            seen.add(target.resolve())
+            paths.append(target)
+    if base_dir is not None:
+        for repo_yaml in discover_repo_yaml_files(
+            factory,
+            workspace_id=workspace_id,
+            base_dir=Path(base_dir),
+            globs=tuple(globs),
+        ):
+            if repo_yaml not in seen:
+                seen.add(repo_yaml)
+                paths.append(repo_yaml)
+
+    return load_contracts_from_paths(
+        paths,
+        factory=factory,
+        workspace_id=workspace_id,
+        now=now,
+    )

@@ -42,6 +42,7 @@ from pointlessql.data_products._errors import (
 )
 from pointlessql.data_products._loader import (
     load_contract,
+    load_contracts_for_workspace,
     load_contracts_from_paths,
     parse_yaml,
 )
@@ -69,6 +70,7 @@ __all__ = [
     "diff_contract_against_delta_table",
     "diff_contract_against_engine_columns",
     "load_contract",
+    "load_contracts_for_workspace",
     "load_contracts_from_paths",
     "parse_yaml",
 ]

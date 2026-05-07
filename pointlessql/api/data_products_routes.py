@@ -34,7 +34,7 @@ from pointlessql.api.dependencies import (
 from pointlessql.data_products import (
     DataProductContract,
     diff_contract_against_delta_table,
-    load_contracts_from_paths,
+    load_contracts_for_workspace,
 )
 from pointlessql.data_products._diff import ContractDiffResult
 from pointlessql.exceptions import ResourceNotFoundError
@@ -402,26 +402,28 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     settings: Settings = request.app.state.settings
-    paths = settings.data_products.yaml_search_paths
-    if not paths:
-        # bare-http-ok: pure-config error; the operator hasn't set the
-        # search paths yet so there's no domain exception to map to.
+    contracts = load_contracts_for_workspace(
+        factory,
+        workspace_id=workspace_id,
+        settings=settings,
+        now=datetime.datetime.now(datetime.UTC),
+    )
+    env_paths = list(settings.data_products.yaml_search_paths)
+    if not contracts and not env_paths:
+        # bare-http-ok: nothing was discoverable; surface a config hint
+        # rather than a silent empty success so the admin learns to
+        # either populate the env path or sync at least one repo.
         raise HTTPException(
             status_code=400,
             detail=(
-                "data_products.yaml_search_paths is empty; set "
-                "POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS to a "
-                "comma-separated list of directories or yaml files."
+                "no data-product yaml found.  Either set "
+                "data_products.yaml_search_paths "
+                "(POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS) to a "
+                "directory or yaml file, or register and sync a "
+                "workspace_repo whose tree contains pointlessql.yaml."
             ),
         )
-
-    contracts = load_contracts_from_paths(
-        list(paths),
-        factory=factory,
-        workspace_id=workspace_id,
-        now=datetime.datetime.now(datetime.UTC),
-    )
     return {
         "loaded": len(contracts),
-        "paths": [str(p) for p in paths],
+        "env_paths": [str(p) for p in env_paths],
     }

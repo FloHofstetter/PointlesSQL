@@ -21,7 +21,10 @@ package codifies lives in ``docs/adr/0002-duckdb-first.md``.
 from __future__ import annotations
 
 from pointlessql.conventions._defaults import DEFAULT_CONVENTIONS
-from pointlessql.conventions._loader import load_conventions
+from pointlessql.conventions._loader import (
+    load_conventions,
+    load_conventions_for_workspace,
+)
 from pointlessql.conventions._schema import ConventionsConfig, LayerConvention
 
 __all__ = [
@@ -29,4 +32,5 @@ __all__ = [
     "DEFAULT_CONVENTIONS",
     "LayerConvention",
     "load_conventions",
+    "load_conventions_for_workspace",
 ]

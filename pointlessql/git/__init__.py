@@ -44,6 +44,7 @@ from pointlessql.git._provider import (
     WebhookVerification,
 )
 from pointlessql.git._resolver import KNOWN_PROVIDER_KINDS, resolve_provider
+from pointlessql.git._search_paths import discover_repo_yaml_files
 
 __all__ = [
     "CheckResult",
@@ -61,5 +62,6 @@ __all__ = [
     "WorkspaceRepoError",
     "WorkspaceRepoUnknownProvider",
     "WorkspaceRepoWebhookInvalid",
+    "discover_repo_yaml_files",
     "resolve_provider",
 ]
