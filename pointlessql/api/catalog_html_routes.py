@@ -24,7 +24,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import get_uc_client, get_user
+from pointlessql.api.dependencies import current_workspace_id, get_uc_client, get_user
 from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services.authorization import (
@@ -246,6 +246,21 @@ async def table_detail(
     external_producers = _external_producers_for_table(
         full_name, session_factory=request.app.state.session_factory
     )
+    workspace_id = current_workspace_id(request)
+    cdf_subscription = _cdf_subscription_for_table(
+        full_name,
+        workspace_id=workspace_id,
+        session_factory=request.app.state.session_factory,
+    )
+    cdf_recent_events = (
+        _cdf_recent_events_for_table(
+            full_name,
+            workspace_id=workspace_id,
+            session_factory=request.app.state.session_factory,
+        )
+        if cdf_subscription is not None
+        else []
+    )
     return _templates(request).TemplateResponse(
         request,
         "pages/table.html",
@@ -260,6 +275,8 @@ async def table_detail(
             "lineage": lineage,
             "lineage_columns": lineage_columns,
             "external_producers": external_producers,
+            "cdf_subscription": cdf_subscription,
+            "cdf_recent_events": cdf_recent_events,
             "can_manage": can_manage,
             "is_admin": user.get("is_admin", False),
             "error": error,
@@ -368,5 +385,101 @@ def _external_producers_for_table(
                 reverse=True,
             )
             return out
+    except Exception:  # noqa: BLE001 — best-effort populate
+        return []
+
+
+def _cdf_subscription_for_table(
+    full_name: str, *, workspace_id: int, session_factory: Any
+) -> dict[str, Any] | None:
+    """Return the CDF tail subscription for *full_name* if any.
+
+    Workspace-scoped lookup: only returns the subscription that
+    belongs to the rendering user's current workspace.
+
+    Args:
+        full_name: Three-part UC name of the table.
+        workspace_id: Resolved workspace id from the request.
+        session_factory: SQLAlchemy session factory bound to the
+            metadata DB.
+
+    Returns:
+        Serialised subscription dict or ``None`` when no
+        subscription exists.  Best-effort: returns ``None`` on any
+        DB hiccup so the page still renders.
+    """
+    try:
+        from sqlalchemy import select as _select
+
+        from pointlessql.models import CdfTailSubscription
+
+        with session_factory() as session:
+            row = session.scalars(
+                _select(CdfTailSubscription).where(
+                    CdfTailSubscription.workspace_id == workspace_id,
+                    CdfTailSubscription.table_full_name == full_name,
+                )
+            ).first()
+            if row is None:
+                return None
+            return {
+                "id": row.id,
+                "table_full_name": row.table_full_name,
+                "row_id_column": row.row_id_column,
+                "producer_label": row.producer_label,
+                "is_active": bool(row.is_active),
+                "last_version_processed": row.last_version_processed,
+                "last_tailed_at": row.last_tailed_at.isoformat() if row.last_tailed_at else None,
+                "last_error": row.last_error,
+            }
+    except Exception:  # noqa: BLE001 — best-effort populate
+        return None
+
+
+def _cdf_recent_events_for_table(
+    full_name: str, *, workspace_id: int, session_factory: Any, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Return up to *limit* most-recent captured CDF events for *full_name*.
+
+    Args:
+        full_name: Three-part UC name of the table.
+        workspace_id: Resolved workspace id from the request.
+        session_factory: SQLAlchemy session factory.
+        limit: Hard cap on returned rows (newest first).
+
+    Returns:
+        List of serialised event dicts ordered by ``created_at DESC``.
+        Empty list on any DB hiccup or when no events exist yet.
+    """
+    try:
+        from sqlalchemy import select as _select
+
+        from pointlessql.models import CdfTailEvent
+
+        with session_factory() as session:
+            rows = list(
+                session.scalars(
+                    _select(CdfTailEvent)
+                    .where(
+                        CdfTailEvent.workspace_id == workspace_id,
+                        CdfTailEvent.table_full_name == full_name,
+                    )
+                    .order_by(CdfTailEvent.created_at.desc())
+                    .limit(limit)
+                ).all()
+            )
+            return [
+                {
+                    "id": r.id,
+                    "delta_version": r.delta_version,
+                    "row_id": r.row_id,
+                    "change_type": r.change_type,
+                    "commit_timestamp": r.commit_timestamp.isoformat()
+                    if r.commit_timestamp
+                    else None,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in rows
+            ]
     except Exception:  # noqa: BLE001 — best-effort populate
         return []
