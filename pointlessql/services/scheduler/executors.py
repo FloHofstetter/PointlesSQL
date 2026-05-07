@@ -146,6 +146,83 @@ _papermill_env_lock = threading.Lock()
 _PAPERMILL_INPUT_SUFFIXES = frozenset({".ipynb", ".py"})
 
 
+_REPO_PREFIX = "repo:"
+"""Prefix marking a repo-backed notebook path (Phase 51.3).
+
+Format: ``repo:<workspace_id>:<slug>/<rel-path>.py``.  The
+resolver maps this to
+``<settings.workspace_repos.base_dir>/<workspace_id>/<slug>/<rel-path>.py``
+and reads the file read-only.  Write attempts go through the
+notebook-write path which checks for the prefix and refuses
+(notebooks in repos are git-canonical; edits go via PR).
+"""
+
+
+def _resolve_repo_notebook_path(spec: str) -> Path:
+    """Resolve a ``repo:<ws>:<slug>/<rel>.py`` spec to an absolute path.
+
+    Args:
+        spec: Notebook-path spec carrying the :data:`_REPO_PREFIX`.
+
+    Returns:
+        Absolute path inside the resolved clone dir.
+
+    Raises:
+        ValidationError: Spec format invalid, suffix unsupported,
+            traversal attempted, or file missing on disk.
+    """
+    # Local import to avoid a top-level dependency on settings/git
+    # for callers that never use the repo-prefix path.
+    from pointlessql.settings import Settings
+
+    body = spec[len(_REPO_PREFIX):]
+    # Split on the first slash to separate the "<workspace_id>:<slug>"
+    # head from the relative path tail.
+    if "/" not in body:
+        raise ValidationError(
+            f"repo notebook spec must be 'repo:<workspace_id>:<slug>/<path>': {spec!r}"
+        )
+    head, rel = body.split("/", 1)
+    if ":" not in head:
+        raise ValidationError(
+            f"repo notebook spec must be 'repo:<workspace_id>:<slug>/<path>': {spec!r}"
+        )
+    workspace_id_str, slug = head.split(":", 1)
+    if not workspace_id_str.isdigit() or not slug:
+        raise ValidationError(
+            f"repo notebook spec carries a non-numeric workspace_id or empty slug: {spec!r}"
+        )
+    if not rel:
+        raise ValidationError(f"repo notebook spec is missing the relative path: {spec!r}")
+    candidate = Path(rel)
+    if candidate.is_absolute():
+        raise ValidationError(
+            f"repo notebook spec relative path must not be absolute: {spec!r}"
+        )
+    if candidate.suffix not in _PAPERMILL_INPUT_SUFFIXES:
+        raise ValidationError(
+            f"repo notebook spec must end in .ipynb or .py: {spec!r}"
+        )
+
+    settings = Settings()
+    base_dir = settings.workspace_repos.base_dir
+    clone_dir = (base_dir / workspace_id_str / slug).resolve()
+    if not clone_dir.exists():
+        raise ValidationError(
+            f"repo clone directory does not exist; sync the repo first: {clone_dir!s}"
+        )
+    resolved = (clone_dir / candidate).resolve()
+    try:
+        resolved.relative_to(clone_dir)
+    except ValueError as exc:
+        raise ValidationError(
+            f"repo notebook spec {spec!r} escapes its clone directory"
+        ) from exc
+    if not resolved.is_file():
+        raise ValidationError(f"repo notebook not found: {spec!r}")
+    return resolved
+
+
 def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
     """Resolve *notebook_path* under *notebooks_dir*, rejecting traversal.
 
@@ -154,9 +231,18 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
     temporary ``.ipynb`` before papermill runs it, so callers
     upstream can pass either format transparently.
 
+    Phase 51.3 — when *notebook_path* starts with the
+    :data:`_REPO_PREFIX` it is resolved against the workspace-repo
+    clone dir instead of *notebooks_dir*.  Repo-backed notebooks
+    are read-only; the resolver returns the absolute path but the
+    notebook-write surface refuses spec strings carrying the
+    prefix.
+
     Args:
         notebooks_dir: Absolute root directory the notebook must live under.
-        notebook_path: Relative path supplied in the job config.
+        notebook_path: Relative path supplied in the job config, or a
+            ``repo:<workspace_id>:<slug>/<rel>.py`` spec for repo-backed
+            notebooks (Phase 51.3).
 
     Returns:
         The resolved absolute path to the input notebook.
@@ -168,6 +254,8 @@ def resolve_notebook_path(notebooks_dir: Path, notebook_path: str) -> Path:
     """
     if not notebook_path:
         raise ValidationError("papermill job config 'notebook_path' must be a non-empty string")
+    if notebook_path.startswith(_REPO_PREFIX):
+        return _resolve_repo_notebook_path(notebook_path)
     candidate = Path(notebook_path)
     if candidate.is_absolute():
         raise ValidationError(

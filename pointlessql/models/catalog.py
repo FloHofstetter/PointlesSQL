@@ -51,11 +51,22 @@ class Dashboard(Base):
             dashboard.
         created_at: Timestamp when the dashboard was created.
         updated_at: Timestamp of the most recent mutation.
+        source: Discriminator picked at insert time.  ``'ui'`` for
+            rows created via the admin pages (the legacy default);
+            ``'repo:<slug>'`` for rows materialised by the Phase
+            51.3 yaml loader from a ``pointlessql.yaml`` shipped
+            inside a synced workspace_repo.
+        repo_yaml_path: Absolute filesystem path of the
+            originating yaml when ``source`` carries the
+            ``repo:`` prefix; ``None`` otherwise.
     """
 
     __tablename__ = "dashboards"
 
-    __table_args__ = (Index("ix_dashboards_workspace_owner", "workspace_id", "owner_id"),)
+    __table_args__ = (
+        Index("ix_dashboards_workspace_owner", "workspace_id", "owner_id"),
+        Index("ix_dashboards_source", "source"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # Every dashboard is workspace-scoped.
@@ -72,6 +83,10 @@ class Dashboard(Base):
     owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="ui", server_default="ui"
+    )
+    repo_yaml_path: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class RateLimitEvent(Base):
@@ -273,6 +288,13 @@ class SavedQuery(Base):
             admins do.
         created_at: Timestamp when the row was saved.
         updated_at: Timestamp of the most recent mutation.
+        source: Discriminator picked at insert time.  ``'ui'`` for
+            rows saved through the editor (the legacy default);
+            ``'repo:<slug>'`` for rows materialised by the Phase
+            51.3 yaml loader.
+        repo_yaml_path: Absolute filesystem path of the
+            originating yaml when ``source`` carries the
+            ``repo:`` prefix; ``None`` otherwise.
     """
 
     __tablename__ = "saved_queries"
@@ -280,6 +302,7 @@ class SavedQuery(Base):
     __table_args__ = (
         Index("ix_saved_queries_owner_updated", "owner_id", "updated_at"),
         Index("ix_saved_queries_workspace_owner", "workspace_id", "owner_id"),
+        Index("ix_saved_queries_source", "source"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -298,6 +321,10 @@ class SavedQuery(Base):
     is_shared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="ui", server_default="ui"
+    )
+    repo_yaml_path: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class TableStats(Base):
