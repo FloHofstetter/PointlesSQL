@@ -1,5 +1,7 @@
 # dbt Pipelines walkthrough
 
+> **Mode:** `browser` · **Phase:** 36 · **Surface:** /dbt cockpit + iframe
+
 Exercises the dbt cockpit at `/dbt`:
 
 - [`dbt.html`](../../frontend/templates/pages/dbt.html)
@@ -209,6 +211,29 @@ clashes with mashumaro 3.17's Python-3.14 fix
    - Note: dbt-docs is a third-party SPA; its internal selectors
      are out of scope for this playbook. Stick to chrome-page
      assertions and iframe-existence.
+
+## Playwright MCP script
+
+Browser replay for the `/dbt` cockpit (both states):
+
+1. `browser_navigate('http://127.0.0.1:8000/dbt')`
+   — assert the page renders chrome (header, breadcrumbs).
+2. **Subprocess-up state:**
+   `browser_evaluate('() => document.querySelector("iframe[src*=\"/dbt-docs/\"]") !== null')`
+   — assert `true`; the embedded iframe loaded.
+3. `browser_evaluate('() => document.querySelector(".dbt-coverage-card .badge").innerText')`
+   — assert it reads a non-empty coverage percentage.
+4. `browser_evaluate('() => fetch("/api/dbt/manifest").then(r => r.json())')`
+   — assert response contains `models` array.
+5. `browser_evaluate('() => fetch("/api/dbt/coverage").then(r => r.json())')`
+   — assert response has key `models_with_tests`.
+6. `browser_evaluate('() => fetch("/api/dbt/test-failures").then(r => r.json())')`
+   — assert key `failures` is an array (empty if no failures).
+7. **Subprocess-down state:** stop the dbt subprocess, reload —
+   `browser_evaluate('() => document.querySelector(".alert-warning") !== null')`
+   — assert the warning card is visible; iframe is absent.
+8. `browser_navigate('http://127.0.0.1:8000/admin')`
+   — assert the dbt admin tile reflects the down status.
 
 ## Verification log
 

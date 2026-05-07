@@ -6,6 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 52 — Playwright walkthrough completion pass closed.**
+  Pure-documentation pass; no code changes.  Audited the 51-file
+  e2e walkthrough corpus, found 17 zero-coverage and 13 thin
+  playbooks, plus 4 templates with no walkthrough at all.
+  Sprint A: tagged every walkthrough with a ``> **Mode:**``
+  block (browser / hybrid / hermes / curl) and rewrote the
+  README inventory into a 4-table grouping.  Sprint B: wrote 3
+  new walkthroughs for the missing templates (``volumes.md``,
+  ``model-compare.md``, ``agent-review-detail.md``).  Sprint C:
+  appended condensed ``## Playwright MCP script`` sections to 11
+  zero-coverage playbooks; Sprint D: bumped 12 thin playbooks to
+  ≥ 5 explicit ``browser_*`` MCP calls.  Sprint E: smoke-replayed
+  the 5 gold-standard playbooks against the live stack — all
+  five render 200; 2 selector bugs in the new MCP scripts
+  surfaced and were fixed in the same edit (BUG-41-01,
+  BUG-41-02).  Final corpus: 54 walkthroughs, 40 ``Mode:
+  browser``, 8 hybrid, 6 hermes, 1 curl.  ``mkdocs build
+  --strict`` warning count unchanged at 18.
+
 - **Phase 51 — Git-backed workspaces closed.**  Workspaces can
   now register 1..n git repositories whose contents feed the
   yaml loaders (data products + conventions) and the asset

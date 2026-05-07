@@ -1,5 +1,7 @@
 # Operational walkthrough
 
+> **Mode:** `browser` · **Phase:** 9 · **Surface:** /healthz + /metrics + X-Request-ID
+
 Exercises the cross-cutting operational surface: the public
 `/healthz` probe, the admin-gated Prometheus `/metrics` endpoint,
 the `/403` error page rendered by the central error handler, and

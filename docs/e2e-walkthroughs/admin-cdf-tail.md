@@ -1,5 +1,7 @@
 # Admin CDF subscriptions walkthrough
 
+> **Mode:** `browser` · **Phase:** 40.6 · **Surface:** /admin/cdf-tail + table CDF tab
+
 End-to-end exercise of the Phase 40.6 foreign-Delta CDF tail UI:
 admin landing card → `/admin/cdf-subscriptions` registry CRUD →
 `Run tail now` trigger → table-detail "CDF events" tab. Mirror
@@ -135,6 +137,29 @@ still appears but with no events.
      `pql_recent_cdf_events_for_table(table="demo.silver.orders", limit=10)`.
    - Assert: returns the subscription block + up to 10 newest
      events, matching the table-detail pane.
+
+## Playwright MCP script
+
+Browser replay for the admin page + table-detail CDF events tab:
+
+1. `browser_navigate('http://127.0.0.1:8000/admin/cdf-tail')`
+   — assert page renders the subscriptions table.
+2. `browser_click("Add subscription")`
+   — `browser_wait_for(".modal.show")`.
+3. `browser_fill_form([{name:"target_table", value:"pg_mirror.public.events"}, {name:"poll_interval_seconds", value:"60"}])`,
+   `browser_click("Save")` — assert new row appears.
+4. `browser_navigate('http://127.0.0.1:8000/catalogs/pg_mirror/schemas/public/tables/events')`
+   — assert the table-detail page exposes a `CDF events` tab.
+5. `browser_click("CDF events")`
+   — `browser_wait_for(".cdf-event-row")` — assert ≥ 1 row.
+6. `browser_evaluate('() => document.querySelectorAll(".cdf-event-row [data-op]")[0].dataset.op')`
+   — assert one of `insert`, `update_preimage`,
+   `update_postimage`, `delete`.
+7. `browser_navigate('http://127.0.0.1:8000/admin/cdf-tail')`,
+   `browser_click("Pause")` (on the row from step 3) — assert
+   status pill flips to `paused`.
+8. `browser_click("Resume")` — assert status flips back to
+   `active`.
 
 ## Out-of-scope (deliberate)
 

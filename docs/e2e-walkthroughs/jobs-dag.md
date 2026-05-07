@@ -1,5 +1,7 @@
 # Jobs + DAG walkthrough
 
+> **Mode:** `browser` · **Phase:** 11 · **Surface:** /jobs + DAG editor + run-detail
+
 Exercises the scheduler surface: single-task job create + Run-now,
 DAG create via the JSON-textarea modal, retry + fail-skip propagation,
 Pause / Resume, the per-task log panel, and a cross-feature smoke run

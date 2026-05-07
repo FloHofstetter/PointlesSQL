@@ -1,5 +1,7 @@
 # Data Products — yaml-declared UC schemas
 
+> **Mode:** `hybrid` · **Phase:** 50 · **Surface:** yaml reload (curl) + `/data-products` browse + 5-tab detail
+
 Replays the Phase-50 happy path: a data team commits a
 `pointlessql.yaml` declaring their schema as a data product;
 PointlesSQL caches it; subsequent `pql.write` calls are
@@ -129,6 +131,29 @@ a `violated` event row with `details.missing_columns =
    `pointlessql.data_product.sla_violated` CloudEvent; the
    product's `last_alerted_at` is stamped to suppress repeat
    alerts within `re_alert_suppress_minutes` (default 60).
+
+## Playwright MCP script
+
+Browser-only verifications after the curl reload completes:
+
+1. `browser_navigate('http://127.0.0.1:8000/data-products')`
+   — assert one card with title `main.sales_gold`,
+   `v1.0.0` badge, `SLA 60 min`, `mailto:alice@example.com`.
+2. `browser_click(".data-product-card a")`
+   — URL becomes `/data-products/main/sales_gold`; assert 5
+   tabs: Overview / Contract / Tables / Compliance / Activity.
+3. `browser_click("Contract")` — assert the `orders` table
+   row carries the `PK badge` for `order_id` and a 4-column
+   types table.
+4. `browser_click("Tables")` — assert one row whose `Status`
+   pill reads `OK` (or whatever the freshness state is).
+5. `browser_click("Compliance")` — assert the cell
+   `track_value_changes` shows the right boolean from the seed.
+6. `browser_click("Activity")` — assert the most-recent
+   ingestion row carries the agent-run id from the
+   `pointlessql.data_product.compliant_write` event.
+7. `browser_evaluate('() => fetch("/api/data-products").then(r => r.json())')`
+   — assert the JSON keys match what the cards rendered.
 
 ## Anti-goals
 

@@ -1,5 +1,7 @@
 # Notebook jobs walkthrough
 
+> **Mode:** `browser` · **Phase:** 12.6 · **Surface:** Schedule notebook as job
+
 Exercises the Papermill executor: create-job modal with
 `kind=papermill`, a single-notebook Run-now that writes the executed
 output under `notebooks/runs/{run_id}.ipynb`, the "Open in JupyterLab"

@@ -1,5 +1,7 @@
 # Hermes-Medallion walkthrough
 
+> **Mode:** `hybrid` · **Phase:** 13.7 · **Surface:** Hermes session + run-detail
+
 **** — closes + 13.5. Replay this
 playbook to verify a real Hermes agent (running in its own
 sandbox) authors a three-layer Medallion lakehouse from a CSV

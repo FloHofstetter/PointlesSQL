@@ -1,5 +1,7 @@
 # OIDC walkthrough
 
+> **Mode:** `browser` · **Phase:** 9 · **Surface:** OIDC SSO sidecar pass
+
 Exercises the OAuth2 authorization-code + PKCE flow against the
 `ghcr.io/navikt/mock-oauth2-server` sidecar added to
 `docker-compose.e2e.yml`. Two passes: off (SSO button absent) and

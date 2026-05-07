@@ -1,5 +1,7 @@
 # Audit-stream sinks walkthrough
 
+> **Mode:** `browser` · **Phase:** 20 · **Surface:** /admin/audit-sinks CRUD
+
 Exercises the admin Audit-sinks UI at `/admin/audit-sinks`: create
 a webhook sink with HMAC secret, verify secret redaction in the
 rendered HTML, fire a synthetic test envelope, toggle the sink
@@ -142,6 +144,30 @@ The redaction assertion in step 3 also covers `secret_access_key`
 and `session_token` — the `_redact_config` helper in
 `audit_sinks_routes.py` shares one set of sensitive keys across
 all three sink types.
+
+## Playwright MCP script
+
+Browser replay for the three sink kinds (webhook / S3 / CloudTrail):
+
+1. `browser_navigate('http://127.0.0.1:8000/admin/audit-sinks')`
+   — assert the sinks table renders.
+2. `browser_click("Add sink")`
+   — `browser_wait_for(".modal.show")`.
+3. `browser_select_option(role="combobox", value="webhook")`,
+   `browser_fill_form([{name:"name", value:"phase41-test"}, {name:"url", value:"https://example.com/hook"}])`,
+   `browser_click("Save")` — assert new row visible.
+4. `browser_evaluate('() => document.querySelectorAll("table tbody tr [data-secret]").length')`
+   — assert 0 (no plaintext secrets in the table).
+5. `browser_click(".bi-three-dots")` (kebab on the new row),
+   `browser_click("Test delivery")` — assert toast `Test sent`.
+6. `browser_navigate('http://127.0.0.1:8000/admin/audit-sinks/phase41-test')`
+   — assert detail page shows redacted `aws_secret_access_key`,
+   `hmac_secret`, `bearer_token`, `session_token` keys.
+7. `browser_click("Rotate HMAC")` — assert plaintext value is
+   shown exactly once in a `.plaintext-once` block.
+8. `browser_click("Delete")`,
+   `browser_handle_dialog(accept=true)`
+   — assert row disappears from the table.
 
 ## Found bugs
 

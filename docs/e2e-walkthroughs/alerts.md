@@ -1,5 +1,7 @@
 # Alerts walkthrough
 
+> **Mode:** `browser` · **Phase:** 18.x · **Surface:** /alerts + /alerts/{id}
+
 End-to-end exercise of the alert subscription surfaces:
 
 - [`alerts.html`](../../frontend/templates/pages/alerts.html)
@@ -112,6 +114,30 @@ dedicated deep-dive playbook before Phase 37 Wave 4.
    - To exercise the fire path, switch the alert's saved query
      to one that always returns ≥ 1 row, or seed external
      writes via `seed-full-stack-demo.py --demo-rollback`.
+
+## Playwright MCP script
+
+Condensed browser replay for the alert lifecycle:
+
+1. `browser_navigate('http://127.0.0.1:8000/alerts')`
+   — assert the page renders the alerts table.
+2. `browser_click("Create alert")`
+   — `browser_wait_for(".modal.show")`.
+3. `browser_fill_form([{name:"slug", value:"phase37-test-alert"}, {name:"name", value:"Test alert"}])`
+   then `browser_click("Save")` — assert table now has a row with
+   slug `phase37-test-alert`.
+4. `browser_navigate('http://127.0.0.1:8000/alerts/phase37-test-alert')`
+   — assert detail page header and tabs render.
+5. `browser_click("Destinations")`,
+   `browser_click("Add destination")`,
+   `browser_fill_form([{name:"url", value:"https://example.com/hook"}, {name:"hmac_secret", value:"s3cr3t"}])`,
+   `browser_click("Save")` — assert destination row appears with
+   masked HMAC.
+6. `browser_evaluate('() => fetch("/alerts/feed.atom").then(r => ({status: r.status, ct: r.headers.get("Content-Type")}))')`
+   — assert `status === 200` and content-type is
+   `application/atom+xml`.
+7. `browser_evaluate('() => fetch("/alerts/feed.json").then(r => r.json())')`
+   — assert response has key `items` (array).
 
 ## Found bugs
 

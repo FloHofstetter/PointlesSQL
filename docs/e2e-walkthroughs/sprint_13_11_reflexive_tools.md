@@ -1,5 +1,7 @@
 # Reflexive supervision tools walkthrough
 
+> **Mode:** `hermes` · **Phase:** 13.11 · **Surface:** Hermes reflexive tools
+
 ** close-out replay.** This playbook proves the five
 sub-sprints of actually close the read-loop the
 2026-04-25 walkthrough surfaced — three bugs in that demo all
@@ -310,6 +312,32 @@ Expected on the run-detail page:
 - **Operations** tab is empty for these synthetic runs (we
  didn't fire `pql.merge` for real). For a real Hermes-Medallion
  replay it carries the per-primitive trail from.
+
+## Playwright MCP script
+
+Browser-only verifications for the reflexive-tool surfaces (the
+plugin tool calls live in the Hermes session above; these MCP
+verbs cover the run-detail UI parts):
+
+1. `browser_navigate('http://127.0.0.1:8000/runs')`
+   — assert run rows for `RUN_A` and `RUN_B` are both visible.
+2. `browser_navigate('http://127.0.0.1:8000/runs/<RUN_A>')`
+   — `browser_evaluate('() => document.querySelector(".tab-pane.active").id')`
+   — assert it equals `tab-source`.
+3. `browser_click("Operations")` (top tab)
+   — assert the Operations panel renders (may be empty for the
+   synthetic seed).
+4. `browser_navigate('http://127.0.0.1:8000/runs/<RUN_A>/diff/<RUN_B>')`
+   — assert the audit run-diff page renders 6 tabs.
+5. `browser_evaluate('() => document.querySelectorAll(".diff-row").length')`
+   — assert ≥ 1 diff row across the tabs.
+6. `browser_evaluate('() => fetch("/api/runs/<RUN_A>/summary", {headers: {"Authorization": "Bearer supkey-secret-32-bytes-or-longer"}}).then(r => r.json())')`
+   — assert response has top-level keys `status`, `duration_ms`,
+   `op_count`, `tool_call_count`, `denied_reason`.
+7. `browser_evaluate('() => JSON.stringify(<resp from step 6>).indexOf("cost_gate_threshold")')`
+   — assert `=== -1` (load-bearing: the threshold MUST NOT leak
+   to the auditor scope; this is the same gate the curl block
+   below covers).
 
 ## Bug check — `cost_gate_threshold` MUST NOT leak
 

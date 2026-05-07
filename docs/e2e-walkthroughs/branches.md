@@ -1,5 +1,7 @@
 # Delta-Branching walkthrough
 
+> **Mode:** `hybrid` · **Phase:** 16.5 · **Surface:** Notebook + /branches UI
+
 Exercises the zero-copy branching primitives end-to-end:
 create a branch, write to it, prove the parent stays untouched,
 preview a promotion, deliberately break it with a competing parent
@@ -187,6 +189,36 @@ This walkthrough is **driven from a notebook + a browser** (Phase
 - Assert: server log shows `branch_cleanup: {'deleted': 1,
  'skipped': N, 'errored': 0, 'enabled': True}`. Browser →
  `/branches` no longer lists `bronze_cleanup_test`.
+
+## Playwright MCP script
+
+Condensed browser-only replay for the steps above. Each line maps
+1:1 to a numbered prose step; the notebook cells stay in the
+notebook (run them in a separate Jupyter / `uv run python`
+context first).
+
+1. `browser_navigate('http://127.0.0.1:8000/catalogs/playground')`
+   — assert `events` table visible.
+2. `browser_navigate('http://127.0.0.1:8000/branches')`
+   — `browser_evaluate('() => document.querySelectorAll("table tbody tr").length')` ≥ 1.
+3. `browser_navigate('http://127.0.0.1:8000/branches/playground.bronze_branch_42')`
+   — assert page header carries the branch FQN.
+4. `browser_click("Preview promote")`
+   — `browser_wait_for(".alert-success")` → text matches `No conflicts`.
+5. (After parent-write step in notebook)
+   `browser_navigate('http://127.0.0.1:8000/branches/playground.bronze_branch_42')`,
+   `browser_click("Preview promote")`,
+   `browser_wait_for(".alert-warning")` → text matches `conflicts`.
+6. `browser_click("Discard")`
+   — handle the confirm dialog with
+   `browser_handle_dialog(accept=true)`.
+7. `browser_navigate('http://127.0.0.1:8000/branches/playground.bronze_branch_43')`,
+   `browser_click("Promote")` → confirm.
+8. `browser_navigate('http://127.0.0.1:8000/branches')`
+   — assert one row with status `promoted` AND one row tagged
+   `backup`.
+9. `browser_navigate('http://127.0.0.1:8000/branches/playground.bronze_branch_43')`
+   — `browser_evaluate('() => document.querySelectorAll(".audit-log .row").length')` ≥ 2.
 
 ## BUGs surfaced
 

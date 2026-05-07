@@ -1,5 +1,7 @@
 # Multi-workspace setup walkthrough
 
+> **Mode:** `browser` · **Phase:** 29 · **Surface:** /admin/workspaces CRUD
+
 End-to-end exercise for the Phase-28 workspace surface: create a
 second workspace, add a member, switch between them in the UI,
 verify isolation, and exercise the cross-workspace lens.
@@ -115,6 +117,39 @@ verify isolation, and exercise the cross-workspace lens.
         --cookie /tmp/nonadmin
       ```
     - Assert: HTTP 403 with detail `"?workspace=all requires admin"`.
+
+## Playwright MCP script
+
+Condensed browser replay (curl member-add stays as a shell call
+above):
+
+1. `browser_navigate('http://127.0.0.1:8000/admin/workspaces')`
+   — assert table renders the seeded `default` workspace.
+2. `browser_fill_form([{name: "slug", value: "sandbox-a"}, {name: "name", value: "Sandbox A"}])`
+   — fill out the create form.
+3. `browser_click("Create workspace")`
+   — `browser_wait_for("Workspace created.")` (toast); assert
+   `sandbox-a` appears in the table with `Members = 1`.
+4. **(curl member-add via shell, then)**
+   `browser_navigate('http://127.0.0.1:8000/admin/audit')`
+   — assert the latest row's `action` column reads
+   `workspace.member_added`.
+5. `browser_click(".workspace-switcher")` (topbar dropdown)
+   — assert it lists both `default` and `Sandbox A`.
+6. `browser_click("Sandbox A")`
+   — assert URL becomes `/?workspace=2` (or equivalent
+   workspace-scoped redirect); the topbar pill shows
+   `Sandbox A`.
+7. `browser_navigate('http://127.0.0.1:8000/runs')`
+   — assert no rows visible (the existing runs belong to the
+   `default` workspace; isolation guarantee).
+8. `browser_click(".workspace-switcher")`,
+   `browser_click("default")`
+   — assert URL becomes `/?workspace=1`; runs reappear.
+9. `browser_navigate('http://127.0.0.1:8000/admin/workspaces')`,
+   `browser_click("Sandbox A")` (row link)
+   — assert detail page shows the pinned `main` catalog with
+   `mode = primary`.
 
 ## Cleanup
 

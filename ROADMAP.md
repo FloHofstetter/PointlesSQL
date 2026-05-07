@@ -4887,6 +4887,37 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 52 — Playwright walkthrough completion pass ✅ done 2026-05-07
+│   │
+│   │   Audit + repair of the e2e walkthrough corpus.  Added a
+│   │   ``> **Mode:**`` tag to all 51 walkthroughs (browser /
+│   │   hybrid / hermes / curl); rewrote the README inventory
+│   │   into a 4-table grouping by mode; wrote 3 new walkthroughs
+│   │   for templates that had no playbook
+│   │   (``volumes.md`` / ``model-compare.md`` /
+│   │   ``agent-review-detail.md``); appended condensed
+│   │   ``## Playwright MCP script`` sections to 11 zero-coverage
+│   │   walkthroughs (branches / rollback / time-travel /
+│   │   inference-lineage / models-tab / notebook-full /
+│   │   error-handling / full-stack-demo / contextual-panels /
+│   │   multi-workspace-setup / data_products) and to 12 thin
+│   │   walkthroughs (alerts / packaging / admin-console /
+│   │   admin-cdf-tail / audit-sinks / explain-rewrite /
+│   │   run-comparisons / grand-tour / dbt-pipeline / list-polish
+│   │   / sprint_13_11_reflexive_tools / agent_drift_monitor /
+│   │   audit-cockpit-deep).  Smoke-replayed the 5 gold-standard
+│   │   playbooks (auth / home / catalog-browsing /
+│   │   audit-cockpit-deep / run-comparisons) — all five render
+│   │   200 against the live stack; 2 selector bugs in the new
+│   │   MCP scripts surfaced + fixed in the same edit
+│   │   (BUG-41-01 / BUG-41-02).  Total: 54 walkthroughs in the
+│   │   corpus, 40 in ``Mode: browser``, 8 hybrid, 6 hermes,
+│   │   1 curl.  No code changes — pure documentation pass.
+│   │
+│   │   Push gate: standard manual.  ``mkdocs build --strict``
+│   │   warning count unchanged at 18 (all pre-existing
+│   │   cross-repo links).
+│
 ├── Phase 51 — Git-backed workspaces ✅ done
 │   │
 │   │   Workspaces gain a 1..n git-repo registry; clones land at

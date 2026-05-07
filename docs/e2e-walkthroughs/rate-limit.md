@@ -1,5 +1,7 @@
 # Auth rate-limiting walkthrough
 
+> **Mode:** `browser` · **Phase:** 9 · **Surface:** Rate-limit middleware UI
+
 Exercises the per-IP and per-email rate limiter on the
 `/auth/*` surface. The limiter is a fixed-window counter backed by
 `rate_limit_events` in PointlesSQL's own Alembic DB — no Redis, no

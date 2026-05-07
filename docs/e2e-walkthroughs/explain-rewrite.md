@@ -1,5 +1,7 @@
 # Agent EXPLAIN-driven self-rewrite loop walkthrough
 
+> **Mode:** `hybrid` · **Phase:** 39 · **Surface:** Hermes plugin + run-detail tab
+
 Exercises the Phase-39 explain-first rewrite loop end to end:
 
 - The Hermes plugin's [`pql_query`](../../../hermes-plugin-pointlessql/hermes_plugin_pointlessql/tools/query.py)
@@ -162,6 +164,32 @@ Exercises the Phase-39 explain-first rewrite loop end to end:
      ``needs_approval``).
    - Assert: the standard Phase-14 approval flow takes over —
      status flips to ``approved``, the run continues.
+
+## Playwright MCP script
+
+Browser replay for the run-detail Rewrites tab and the Grafana
+panel; the Hermes plugin / cost-gate flow stays in the prose
+above:
+
+1. `browser_navigate('http://127.0.0.1:8000/runs/<RUN_ID>')`
+   — assert the run-detail header renders.
+2. `browser_click("Operations")` (top tab)
+   — `browser_wait_for(".operations-list")`.
+3. `browser_click("Rewrites")` (sub-tab)
+   — assert ≥ 1 row visible with cost-gate status badge.
+4. `browser_evaluate('() => document.querySelectorAll(".rewrite-attempt").length')`
+   — capture the rewrite-attempt count.
+5. `browser_evaluate('() => document.querySelector(".rewrite-attempt[data-attempt=\"1\"] .original-cost").innerText')`
+   — assert non-empty (cost in either Decimal or float form).
+6. `browser_evaluate('() => document.querySelector(".rewrite-attempt[data-attempt=\"1\"] .rewritten-cost").innerText')`
+   — assert lower than original-cost (the agent rewrote it
+   smaller).
+7. `browser_navigate('http://your-grafana-host/d/pointlessql-audit')`
+   — assert panel #21 ("Rewrite savings — averted cost-gate
+   denials per week") renders ≥ 1 datapoint.
+8. `browser_evaluate('() => fetch("/api/runs/<RUN_ID>/rewrite-attempts").then(r => r.json())')`
+   — assert response has key `attempts` (array of objects with
+   `attempt_n`, `original_cost`, `rewritten_cost`).
 
 ## Verification log
 

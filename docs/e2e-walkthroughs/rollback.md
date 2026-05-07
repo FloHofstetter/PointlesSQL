@@ -1,5 +1,7 @@
 # Rollback walkthrough
 
+> **Mode:** `browser` · **Phase:** 16 · **Surface:** /runs/{id} admin rollback card
+
 **** — closes (First-Class Rollback). Replay
 this playbook to verify the audit→action loop in headful Firefox:
 admin clicks a Rollback button on `/runs/{id}`, the modal renders
@@ -163,6 +165,39 @@ preview returns. A quick smoke that the API mappings hold:
  is true and the run actually wrote a target via merge / write_
  table / autoload / aggregate. `pql.sql`-only runs have no
  rollback targets.
+
+## Playwright MCP script
+
+Browser-only replay for the happy-path + stale path. The DB / API
+probes stay as shell snippets above — the browser steps are:
+
+1. `browser_navigate('http://127.0.0.1:8000/runs/<RUN_A_ID>')`
+   — assert the red "Rollback this run" card is visible (admin
+   only; non-admin sessions see no card).
+2. `browser_select_option(role="combobox", value="main.silver.orders")`
+   — pick the target table from the dropdown.
+3. `browser_click("Preview rollback…")`
+   — `browser_wait_for("Run rollback")` (modal opens).
+4. `browser_evaluate('() => document.querySelector(".rollback-target-version").innerText')`
+   — assert it matches the `delta_version_before` from the
+   preview API.
+5. `browser_click("Run rollback")`
+   — assert URL becomes `/runs/<NEW_RUN_ID>` and status badge
+   reads `succeeded`.
+6. `browser_click("Operations")` (tab)
+   — assert one row whose `op_name` cell reads `rollback` and
+   `delta_version_after = delta_version_before + 1`.
+7. **Stale path** —
+   `browser_navigate('http://127.0.0.1:8000/runs/<RUN_A_ID>')`
+   after a second notebook replay, then
+   `browser_click("Preview rollback…")` — assert the ⚠ stale
+   warning panel is visible and the `Run rollback` button is
+   disabled.
+8. `browser_click(".form-check-input")` (the staleness checkbox)
+   — assert `Run rollback` becomes enabled.
+9. `browser_click("Run rollback")` — assert the spawned run's
+   `params_json.allow_force` is `true` (DB probe in shell block
+   above).
 
 ## Bug tail
 

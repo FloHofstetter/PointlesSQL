@@ -1,5 +1,7 @@
 # Audit-Reviewer-Agent daily-review walkthrough
 
+> **Mode:** `hermes` · **Phase:** 19 · **Surface:** Hermes cron + sink delivery
+
 Exercises the reference Hermes cron: a daily 06:00 UTC
 agent run that summarises yesterday's PointlesSQL audit activity and
 delivers Markdown to a configured sink.

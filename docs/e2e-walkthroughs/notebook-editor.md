@@ -1,5 +1,7 @@
 # Native notebook editor walkthrough
 
+> **Mode:** `browser` · **Phase:** 12.10 · **Surface:** Native .py notebook editor
+
 Verifies the Monaco-based notebook editor end-to-end —
 load + save round-trip, kernel execute, output persistence across
 page reload, kernel restart, Pyright LSP (completion + hover),

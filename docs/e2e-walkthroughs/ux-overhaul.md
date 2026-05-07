@@ -1,5 +1,7 @@
 # UX overhaul walkthrough
 
+> **Mode:** `browser` · **Phase:** 17 · **Surface:** Sidebar + theme + density overhaul
+
 's UX-overhaul pass — exercises the keyboard-shortcut registry,
 the shared `pqlApi` fetch + toast flow, and the new
 `prefers-reduced-motion` + global `:focus-visible` contract. Stack stays

@@ -1,5 +1,7 @@
 # Federation walkthrough
 
+> **Mode:** `browser` · **Phase:** 1 · **Surface:** /connections + /external-locations + /credentials
+
 Exercises the Lakehouse Federation pages (connections, external
 locations, credentials): list + detail + create modal + the
 `deleteConfirm` component. All federation routes are

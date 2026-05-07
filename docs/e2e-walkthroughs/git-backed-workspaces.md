@@ -1,5 +1,7 @@
 # Git-Backed Workspaces — register, sync, render
 
+> **Mode:** `curl` · **Phase:** 51 · **Surface:** Admin JSON API + webhook
+
 Replays the Phase-51 happy path: a data team commits
 `pointlessql.yaml` to their repo; an admin registers the URL
 through the JSON API; a sync materialises the data product +

@@ -21,6 +21,100 @@ playbooks. adds five **orchestration + operational**
 playbooks on top of the same harness (jobs, notebook, OIDC,
 `/metrics`, config matrix) — closing.
 
+## Inventory (full)
+
+54 walkthroughs total. Each one carries a `> **Mode:**` tag in
+its first content block; this section is the grep-friendly
+index. Counts auto-generated 2026-05-07.
+
+### `Mode: browser` — Playwright MCP replay (40)
+
+Reload `auth.md` first; later ones reuse seeded users + catalog.
+
+| Walkthrough | Surface | Phase |
+|---|---|---|
+| [`auth.md`](auth.md) | `/login`, `/register`, redirect-to-login | 9 |
+| [`home.md`](home.md) | `/` landing, sparkline, recent-cards | 1 |
+| [`catalog-browsing.md`](catalog-browsing.md) | `/catalogs/*` + sidebar tree | 1 |
+| [`grand-tour.md`](grand-tour.md) | 30-min single-coherent UI tour | 0 |
+| [`inline-editors.md`](inline-editors.md) | editable / props / tags / perms / lineage cards | 1 |
+| [`federation.md`](federation.md) | `/connections`, `/external-locations`, `/credentials` | 1 |
+| [`foreign-catalog-sync.md`](foreign-catalog-sync.md) | foreign-catalog modal + sync history | 1 |
+| [`jobs-dag.md`](jobs-dag.md) | `/jobs` + DAG editor + run-detail | 11 |
+| [`notebook-editor.md`](notebook-editor.md) | native `.py` notebook editor | 12.10 |
+| [`notebook-jobs.md`](notebook-jobs.md) | schedule notebook as job | 12.6 |
+| [`notebook_full_walkthrough.md`](notebook_full_walkthrough.md) | `.py` notebook full lifecycle | 12.10 |
+| [`oidc.md`](oidc.md) | OIDC SSO sidecar | 9 |
+| [`operational.md`](operational.md) | `/healthz`, `/metrics`, `X-Request-ID` | 9 |
+| [`csrf.md`](csrf.md) | CSRF cookie + token refresh | 9 |
+| [`rate-limit.md`](rate-limit.md) | rate-limit middleware UI | 9 |
+| [`error-handling.md`](error-handling.md) | 403 / 404 / 500 pages | 9 |
+| [`mobile.md`](mobile.md) | mobile breakpoint + drawer | 17 |
+| [`command-palette.md`](command-palette.md) | Ctrl-K palette overlay | 17 |
+| [`contextual-panels.md`](contextual-panels.md) | sidebar context-panel | 17 |
+| [`ux-overhaul.md`](ux-overhaul.md) | sidebar + theme + density | 17 |
+| [`list-polish.md`](list-polish.md) | sticky headers, density toggles | 17 |
+| [`sql-editor.md`](sql-editor.md) | `/sql-editor` + saved queries | 12 |
+| [`dashboards.md`](dashboards.md) | `/dashboards`, `/dashboards/{id}` | 12.5 |
+| [`alerts.md`](alerts.md) | `/alerts` + destinations + Atom feed | 18.x |
+| [`rollback.md`](rollback.md) | `/runs/{id}` admin rollback card | 16 |
+| [`time-travel.md`](time-travel.md) | `/admin/audit/by-table` row-at-version | 20 |
+| [`run-comparisons.md`](run-comparisons.md) | `/runs/a/diff/b` + `/jobs/.../compare` | 18.4 |
+| [`audit-cockpit-deep.md`](audit-cockpit-deep.md) | `/audit/inbox` + search + by-table + queries | 18.6+ |
+| [`audit-sinks.md`](audit-sinks.md) | `/admin/audit-sinks` CRUD | 20 |
+| [`admin-audit.md`](admin-audit.md) | `/admin/audit` | 29 |
+| [`admin-cdf-tail.md`](admin-cdf-tail.md) | `/admin/cdf-tail` + table CDF tab | 40.6 |
+| [`admin-console.md`](admin-console.md) | `/admin/*` 7-card landing | 33 |
+| [`multi-workspace-setup.md`](multi-workspace-setup.md) | `/admin/workspaces` CRUD | 29 |
+| [`models-tab.md`](models-tab.md) | `/models` + 5-tab detail | 21.5 |
+| [`model-compare.md`](model-compare.md) | `/models/{fqn}/compare?v1=&v2=` | 21 |
+| [`agent-review-detail.md`](agent-review-detail.md) | `/agent-reviews/{id}` | 19 |
+| [`volumes.md`](volumes.md) | `/volumes` + `/volumes/{fqn}` upload + convert | 12.5 |
+| [`dbt-pipeline.md`](dbt-pipeline.md) | `/dbt` cockpit + iframe | 36 |
+| [`branches.md`](branches.md) | `/branches`, `/branches/{fqn}` (notebook + UI) | 16.5 |
+
+### `Mode: hybrid` — notebook / CLI + browser (8)
+
+Browser steps are present but only after a notebook or CLI
+prelude completes. Replay needs both contexts.
+
+| Walkthrough | Surface | Phase |
+|---|---|---|
+| [`hermes_medallion.md`](hermes_medallion.md) | Hermes session + run-detail (the "done moment") | 13.7 |
+| [`agent_drift_monitor.md`](agent_drift_monitor.md) | notebook + `/runs/{id}` | 13.x |
+| [`inference-lineage.md`](inference-lineage.md) | notebook + run-detail Graph tab | 21.7 |
+| [`full-stack-demo.md`](full-stack-demo.md) | seed + multi-page UI | 12+ |
+| [`config-matrix.md`](config-matrix.md) | env overlays + UI smoke | 23 |
+| [`explain-rewrite.md`](explain-rewrite.md) | Hermes plugin + run-detail Rewrites tab | 39 |
+| [`packaging.md`](packaging.md) | docker CLI + home-page smoke | 10 |
+| [`data_products.md`](data_products.md) | yaml reload + `/data-products` browse | 50 |
+
+### `Mode: hermes` — Hermes / operational, no browser (6)
+
+Pure agent-runtime or ops-runbook playbooks. Do not load
+Playwright MCP for these — they call the Hermes CLI or curl
+endpoints directly.
+
+| Walkthrough | Surface | Phase |
+|---|---|---|
+| [`audit-reviewer-daily.md`](audit-reviewer-daily.md) | Hermes cron + sink delivery | 19 |
+| [`compliance-bot.md`](compliance-bot.md) | Hermes one-shot persona | 19 |
+| [`incident-responder.md`](incident-responder.md) | Hermes one-shot persona | 19 |
+| [`agent-ml-registry.md`](agent-ml-registry.md) | Hermes plugin tools | 21 |
+| [`models-promotion.md`](models-promotion.md) | Hermes plugin promote-tool | 21 |
+| [`sprint_13_11_reflexive_tools.md`](sprint_13_11_reflexive_tools.md) | Hermes reflexive tools | 13.11 |
+
+### `Mode: curl` — JSON API, no UI (1)
+
+Phase-51 yaml-canonical surface. The admin pages here are
+JSON-only by design — there is no HTML UI to drive.
+
+| Walkthrough | Surface | Phase |
+|---|---|---|
+| [`git-backed-workspaces.md`](git-backed-workspaces.md) | `/api/admin/repos` + webhook | 51 |
+
+---
+
 ## Playbooks
 
 **Tour-level entry-point.** If you are new to the project, start here —

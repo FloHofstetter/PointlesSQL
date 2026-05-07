@@ -1,5 +1,7 @@
 # Inline-editors walkthrough
 
+> **Mode:** `browser` · **Phase:** 1 · **Surface:** editable / properties / tags / permissions / lineage cards
+
 Exercises every interactive editing Alpine component on the
 catalog / schema / table detail pages: `editable`,
 `properties_editor`, `tags_editor`, `permissions_card`

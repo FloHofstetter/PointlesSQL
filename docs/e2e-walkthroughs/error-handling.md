@@ -1,5 +1,7 @@
 # Error-handling walkthrough
 
+> **Mode:** `browser` · **Phase:** 9 · **Surface:** 403 + 404 + 500 pages
+
 Exercises the RFC 9457 error envelope and the HTMX toast
 bridge. Every non-OK response in PointlesSQL flows through one of
 three renderers — `application/problem+json` JSON, an `HX-Trigger`
@@ -137,6 +139,35 @@ extension members.
 - One or more `authorization_error` / `catalog_unavailable` log
  lines visible in `docker compose logs pointlessql` for the
  request IDs you used.
+
+## Playwright MCP script
+
+The seven prose steps mix curl + browser interactions. The
+browser-only condensed replay (run alice's session in a
+separate Firefox profile or after a logout):
+
+1. `browser_navigate('http://127.0.0.1:8000/auth/login')` and
+   sign in as `alice@pql.test`.
+2. `browser_navigate('http://127.0.0.1:8000/connections')`
+   — assert HTTP 403 via
+   `browser_network_requests()` (look for the document
+   request); page renders the "Access denied" 403 card with
+   `required_privilege` and `securable_type` visible.
+3. From the home page,
+   `browser_evaluate('() => htmx.ajax("GET", "/connections", {target: "#main-content", swap: "innerHTML"})')`
+   — assert the toast root (`#pql-toast-root`) gains a
+   `.pql-toast--error` node and the URL bar stays at `/`.
+4. `browser_evaluate('() => fetch("/connections", {headers: {"HX-Request": "true", "HX-Boosted": "true"}}).then(r => ({status: r.status, ct: r.headers.get("Content-Type")}))')`
+   — assert `status === 403` and Content-Type is `text/html`.
+5. `browser_evaluate('() => fetch("/connections", {headers: {"Accept": "application/json"}}).then(r => ({status: r.status, ct: r.headers.get("Content-Type")}))')`
+   — assert Content-Type is `application/problem+json`.
+6. `browser_navigate('http://127.0.0.1:8000/api/tree')` after
+   stopping soyuz-catalog — assert the page (or the JSON body)
+   carries `code: catalog_unavailable` with a 502.
+7. **Request-id thread:** any browser-driven call with a custom
+   `X-Request-ID: err-playbook-N` header — assert
+   `browser_network_requests()` echoes the same id back in the
+   response and the problem body matches.
 
 ## Replay log
 

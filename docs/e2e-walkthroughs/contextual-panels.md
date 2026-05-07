@@ -1,5 +1,7 @@
 # Contextual side-panels walkthrough
 
+> **Mode:** `browser` · **Phase:** 17 · **Surface:** Sidebar context-panel
+
 Exercises the context-panels: the 240-px sidebar to the
 right of the icon-rail. Each rail icon now opens its own
 navigable list (catalog tree for Federation, runs/branches/
@@ -147,6 +149,43 @@ Firefox.
 | **L4** | Boost-navigation between sections swaps the context-panel via OOB; no `htmx:swapError` events |
 | **L5** | Refresh button clears `sessionStorage` and re-fetches |
 | **L6** | `uv run pytest tests/test_help_registry.py -q` passes — every slug resolves and obeys the length caps |
+
+## Playwright MCP script
+
+Condensed cross-section replay — exercises every rail icon's
+panel in one pass:
+
+1. `browser_navigate('http://127.0.0.1:8000/connections')`
+   — assert
+   `browser_evaluate('() => document.querySelector("#pql-context-panel .panel-header").innerText')`
+   contains `CATALOG`.
+2. `browser_click(".rail-icon[aria-label='Runs']")`
+   — URL → `/runs`; panel header reads `Runs`; ≥ 1 row visible.
+3. `browser_click(".panel-header .info-icon")`
+   — `browser_wait_for(".popover")` → title contains
+   `Runs panel`; `browser_press_key("Escape")` to dismiss.
+4. `browser_click(".rail-icon[aria-label='Branches']")`
+   — URL → `/branches`; admin-only — assert visible.
+5. `browser_click(".rail-icon[aria-label='Workspace']")`
+   — URL → `/notebooks/workspace`.
+6. `browser_click(".rail-icon[aria-label='Jobs']")`
+   — URL → `/jobs`.
+7. `browser_click(".rail-icon[aria-label='Alerts']")`
+   — URL → `/alerts`.
+8. `browser_click(".rail-icon[aria-label='ML']")`
+   — URL → `/ml`; panel header `MLflow`; ≥ 1 model row.
+9. `browser_click(".panel-row:first")` (on any panel)
+   — assert the navigated row gets the
+   `.panel-row--active` accent border.
+10. `browser_click(".rail-icon[aria-label='Federation']")`
+    then `browser_click(".rail-icon[aria-label='Runs']")` then
+    `browser_click(".rail-icon[aria-label='Federation']")`
+    — assert no `htmx:swapError` in
+    `browser_console_messages()`; sidebar tree retains its
+    expand/collapse state from sessionStorage.
+11. `browser_click(".panel-header .bi-arrow-clockwise")`
+    — `browser_evaluate('() => sessionStorage.getItem("pql.contextPanel.runs")')`
+    is null after the click; new fetch repopulates rows.
 
 ## Bugs and fixes
 

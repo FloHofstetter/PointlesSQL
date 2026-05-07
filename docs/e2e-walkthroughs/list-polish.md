@@ -1,5 +1,7 @@
 # List-page polish walkthrough
 
+> **Mode:** `browser` · **Phase:** 17 · **Surface:** List-page polish (sticky headers, density)
+
 Covers the list-page polish: client-side search, sortable
 column headers, filter chips, cron humanization, "last run" column
 on `/jobs` (status dot + relative time), and hover quick-actions on
@@ -163,6 +165,32 @@ and the toast-then-reload cadence for row mutations.
  did not break.
  - Action: `browser_evaluate('typeof window.pqlRelativeTime')`.
  - Assert: returns `"function"`.
+
+## Playwright MCP script
+
+Browser replay for the list-page polish (sticky headers, density
+toggle, relative-time formatter):
+
+1. `browser_navigate('http://127.0.0.1:8000/jobs')`
+   — assert table renders with the jobs list.
+2. `browser_evaluate('() => document.querySelector("table thead").getBoundingClientRect().top')`
+   — capture initial top; scroll the table body via
+   `browser_press_key("End")`; re-evaluate — assert the
+   `<thead>`'s `top` stayed at 0 (sticky header).
+3. `browser_click(".density-toggle")`
+   — assert the table's `data-density` flips between `comfy`
+   and `compact`.
+4. `browser_evaluate('() => Array.from(document.querySelectorAll(".relative-time")).map(n => n.innerText)')`
+   — assert at least one ends with `ago` (relative-time
+   formatter is wired).
+5. `browser_evaluate('() => typeof window.pqlRelativeTime')`
+   — assert `"function"` (helper is exposed for re-use).
+6. `browser_navigate('http://127.0.0.1:8000/runs')`
+   — repeat steps 2-4 on the runs list (same convention).
+7. `browser_navigate('http://127.0.0.1:8000/alerts')`
+   — repeat steps 2-4 on the alerts list.
+8. `browser_evaluate('() => document.querySelector("[data-density]").dataset.density === sessionStorage.getItem("pql.density")')`
+   — assert density preference persists across navigations.
 
 ## Found bugs
 

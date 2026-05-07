@@ -1,5 +1,7 @@
 # Grand Tour — the whole product in one walkthrough
 
+> **Mode:** `browser` · **Phase:** 0 · **Surface:** 30-min single-coherent UI tour
+
 A single 30-40 minute click-through that visits every major UI
 surface PointlesSQL ships: catalog browsing, lineage row+column+value
 trace, SQL editor, jobs, run-detail audit tabs, ML Registry with the
@@ -489,6 +491,41 @@ What this tour intentionally does NOT cover, and where to find it:
  [`full-stack-demo.md`](full-stack-demo.md) for the 25 steps and
  the post-replay acceptance queries (including the
  lineage gate the spotlight act in this tour visualises).
+
+## Playwright MCP script
+
+The grand tour is intentionally long (~30 min). The condensed
+MCP-verb summary covers the 9 acts; each line is one
+representative MCP call from the act's prose:
+
+1. `browser_navigate('http://127.0.0.1:8000/')` — Act 1: home.
+2. `browser_click(".rail-icon[aria-label='Federation']")`,
+   `browser_navigate('http://127.0.0.1:8000/catalogs/demo')`
+   — Act 2: catalog browse.
+3. `browser_click(".lineage-row-id-link:first")`,
+   `browser_evaluate('() => document.querySelector(".cytoscape-canvas")')`
+   — Act 3: row trace.
+4. `browser_navigate('http://127.0.0.1:8000/sql-editor')`,
+   `browser_type(role="textbox", text="SELECT 1")`,
+   `browser_press_key("F5")` — Act 4: SQL editor.
+5. `browser_navigate('http://127.0.0.1:8000/jobs')`,
+   `browser_click("td a:first")` — Act 5: jobs.
+6. `browser_navigate('http://127.0.0.1:8000/models')`,
+   `browser_click(".cytoscape-canvas")` — Act 6: ML registry +
+   bidirectional DAG.
+7. `browser_navigate('http://127.0.0.1:8000/branches')`,
+   `browser_navigate('http://127.0.0.1:8000/dashboards')`
+   — Act 7: branches + dashboards.
+8. `browser_navigate('http://127.0.0.1:8000/alerts')`,
+   `browser_evaluate('() => fetch("/alerts/feed.atom").then(r => r.headers.get("Content-Type"))')`
+   — Act 8: alerts + Atom feed.
+9. `browser_navigate('http://127.0.0.1:8000/audit/inbox')`,
+   `browser_navigate('http://127.0.0.1:8000/connections')`,
+   `browser_navigate('http://127.0.0.1:8000/volumes')`,
+   `browser_press_key("Mod+k")`,
+   `browser_evaluate('() => document.documentElement.dataset.theme')`
+   — Act 9: audit cockpit + federation + volumes + responsive +
+   theme toggle.
 
 ## Replay budget
 

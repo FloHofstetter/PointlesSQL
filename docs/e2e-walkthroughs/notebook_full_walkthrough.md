@@ -1,5 +1,7 @@
 # Notebook full walkthrough —
 
+> **Mode:** `browser` · **Phase:** 12.10 · **Surface:** .py notebook full lifecycle
+
 Deterministic click-through of every output-rendering + editing
 surface in the native Python notebook editor. Pairs with the
  (UUID-free marker grammar) and (manual-edit
@@ -154,6 +156,37 @@ bundled chrome-for-testing works too). Screenshots land under
  - Assert: cell source has no ``\ufeff`` prefix and no
  literal ``\r``. Immediate save rewrites the file as
  LF-only UTF-8.
+
+## Playwright MCP script
+
+Condensed kernel-replay. Each numbered step in the prose flows
+through these MCP verbs. Run-cell assertions check the output
+zone for the expected mime-bundle render.
+
+1. `browser_navigate('http://127.0.0.1:8000/notebook/editor?path=sprint98_walkthrough.py')`
+   — `browser_wait_for("Kernel ready")`.
+2. `browser_evaluate('() => window.monaco.editor.getEditors()[0].getModel().setValue("# %%\\nprint(\\"hello world\\")\\n")')`
+   then `browser_click("Run cell")`
+   — `browser_wait_for(".output-zone")` → text matches
+   `hello world`; status pill flips to `ok`.
+3. `browser_evaluate('() => window.monaco.editor.getEditors()[0].getModel().setValue("# %%\\nimport pandas as pd\\npd.DataFrame({\\"a\\":[1,2,3],\\"b\\":[\\"x\\",\\"y\\",\\"z\\"]})")')`,
+   `browser_click("Run cell")`
+   — assert `.output-zone table thead th` contains both
+   `a` and `b`.
+4. `browser_press_key("Escape")` then `browser_press_key("a")`
+   (insert cell above) — assert two cells exist.
+5. `browser_press_key("Escape")` then `browser_press_key("d", count=2)`
+   (delete cell) — assert one cell remains.
+6. `browser_click(".kernel-restart-btn")`
+   — `browser_wait_for("Kernel ready")` again.
+7. `browser_evaluate('() => document.querySelector(".variable-explorer .pql-row")')`
+   — after a `x = 42` cell run, assert the variable-explorer
+   row exists.
+8. `browser_click(".insert-from-catalog-btn")`
+   — `browser_wait_for(".modal.show")`; assert the modal lists
+   ≥ 1 schema.
+9. `browser_press_key("Escape")` (close modal)
+   — assert modal is gone.
 
 ## Bug tail
 

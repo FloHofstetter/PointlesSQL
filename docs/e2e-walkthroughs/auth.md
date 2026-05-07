@@ -1,5 +1,7 @@
 # Auth walkthrough
 
+> **Mode:** `browser` · **Phase:** 9 · **Surface:** /login + /register + redirect-to-login
+
 Covers the auth surface end-to-end: first-user-bootstrap admin
 registration, second-user non-admin registration, login, logout,
 the `/auth/me` JSON endpoint, the redirect-to-login middleware,

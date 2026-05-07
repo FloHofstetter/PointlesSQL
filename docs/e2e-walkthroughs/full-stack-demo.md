@@ -1,5 +1,7 @@
 # Full-stack demo: raw CSV → ML + every JSON API in ~30 seconds
 
+> **Mode:** `hybrid` · **Phase:** 12+ · **Surface:** Notebook + multi-page UI
+
 `scripts/seed-full-stack-demo.py` is the local-replay companion to the
 [agent bring-up recipe](../guides/agent-bring-up.md). In one autonomous
 run it walks the entire stack — every PQL primitive, every
@@ -246,6 +248,37 @@ The contract: every count > 0. If `silver` is 0 the demo's
 not, the in-step re-merge or its CDF bootstrap is broken. If
 `pred_with_model_uri` is 0 but `predictions` is not, the
 inference-step `source_model_uri` plumbing has regressed.
+
+## Playwright MCP script
+
+The seed script does the heavy lifting (CSV → bronze → silver →
+gold → train → predict → 150-route smoke). The browser-only
+verifications:
+
+1. `browser_navigate('http://127.0.0.1:8000/')`
+   — assert the home page shows the most recent agent run
+   (matches the seed's last printed run-id).
+2. `browser_navigate('http://127.0.0.1:8000/runs')`
+   — assert ≥ 22 rows visible (one per numbered step in the
+   default mode).
+3. `browser_click("td a")` (latest run row)
+   — URL becomes `/runs/<id>`; status badge reads
+   `succeeded`; Operations tab shows ≥ 12 op rows.
+4. `browser_click("Lineage")` — `browser_wait_for(".cytoscape-canvas")`;
+   assert ≥ 5 nodes (bronze, silver, gold, model, predictions).
+5. `browser_navigate('http://127.0.0.1:8000/catalogs/demo_ml/schemas/silver/tables/houses_with_sales')`
+   — assert the table-detail page renders the row preview.
+6. `browser_click("Value-changes")`
+   — assert ≥ 1 row (the `track_value_changes=True` flip from
+   step 4 of the seed).
+7. `browser_navigate('http://127.0.0.1:8000/models/demo_ml.models.house_price')`
+   — assert ≥ 1 ModelVersion in the Versions tab.
+8. `browser_click("Lineage")`
+   — assert green `trained_from` AND blue `inferred_to` edges
+   are both present.
+9. `browser_navigate('http://127.0.0.1:8000/branches')`
+   — assert one row tagged `promoted` with the `gold__staging`
+   prefix; one row tagged `backup`.
 
 ## Routes deliberately NOT exercised
 

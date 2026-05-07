@@ -1,5 +1,7 @@
 # Models browse walkthrough
 
+> **Mode:** `browser` · **Phase:** 21.5 · **Surface:** /models + 5-tab detail
+
 Exercises the registered-models browse surface
 end-to-end: surface a registered model in the sidebar tree and the
 top-level `/models` index, drill into the detail page, render the
@@ -157,6 +159,46 @@ can also be replayed by Claude Code via
 - Action: log out (top-right user menu). Browse to
  `/models/pql_test.mlflow_smoke.smoke_model`.
 - Assert: the auth middleware redirects to `/auth/login` (303).
+
+## Playwright MCP script
+
+Condensed browser replay for the eleven prose steps:
+
+1. `browser_navigate('http://127.0.0.1:8000/')`,
+   `browser_click(".rail-icon[aria-label='Models']")`
+   — assert URL becomes `/models` and the active rail icon is
+   highlighted.
+2. `browser_evaluate('() => Array.from(document.querySelectorAll("table thead th")).map(n => n.innerText)')`
+   — assert columns `Full Name`, `Owner`, `Latest Version`,
+   `Status`, `Linked Runs`, `Updated`.
+3. `browser_select_option(role="combobox", value="pql_test")`
+   — table shrinks; reset to "All catalogs" and assert other
+   rows reappear.
+4. `browser_navigate('http://127.0.0.1:8000/')` then
+   `browser_click("pql_test")` (sidebar tree),
+   `browser_click("mlflow_smoke")`,
+   `browser_click("smoke_model")`
+   — URL becomes
+   `/models/pql_test.mlflow_smoke.smoke_model`.
+5. `browser_type(placeholder="Search…", text="smoke")`
+   — assert the result list contains a `kind=model` row with
+   `bi-box-seam` icon.
+6. `browser_navigate('http://127.0.0.1:8000/models/pql_test.mlflow_smoke.smoke_model')`
+   — assert the tab bar exposes Overview / Versions / Lineage /
+   MLflow / Permissions.
+7. `browser_click("Versions")`
+   — assert ≥ 1 row has a "Top Metrics" cell with a `metric=value`
+   substring.
+8. `browser_click("Compare")` (on v1 row),
+   `browser_click("Compare")` (on v2 row)
+   — URL becomes
+   `/models/pql_test.mlflow_smoke.smoke_model/compare?v1=1&v2=2`.
+9. `browser_click("← Back")` — returns to model detail.
+10. `browser_click("Lineage")` — `browser_wait_for(".cytoscape-canvas")`.
+11. `browser_click("MLflow")` — assert iframe `src` ends with
+    `/mlflow/#/models/pql_test.mlflow_smoke.smoke_model`.
+12. **Anonymous:** logout + navigate the same URL — assert
+    `browser_navigate` ends on `/auth/login`.
 
 ## Out of scope (defer to later sprints)
 

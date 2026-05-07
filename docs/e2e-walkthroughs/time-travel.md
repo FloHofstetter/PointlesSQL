@@ -1,5 +1,7 @@
 # Time-travel value-query walkthrough
 
+> **Mode:** `browser` · **Phase:** 20 · **Surface:** /admin/audit/by-table row-at-version
+
 Exercises the time-travel surface: a table-detail
 "view at version N" picker plus a row-trace "at this Delta version,
 what did this row look like" admin-only lookup. Builds on the
@@ -61,6 +63,35 @@ what did this row look like" admin-only lookup. Builds on the
 
  Logged in as a non-admin, the card is not rendered at all
  (the lookup endpoint also gates on `require_admin`).
+
+## Playwright MCP script
+
+Condensed replay. The five prose steps map to:
+
+1. `browser_navigate('http://127.0.0.1:8000/catalogs/main/schemas/silver/tables/orders')`
+   — assert the Preview card has a `View at:` dropdown next to
+   the row count.
+2. `browser_click(".view-at-version-dropdown")`,
+   `browser_select_option(role="combobox", value="0")`
+   — preview pane re-fetches via
+   `/api/tables/main.silver.orders/preview-at-version?version=0&limit=50`.
+   `browser_network_requests()` should show that GET returning
+   200.
+3. `browser_select_option(role="combobox", value="current")`
+   — preview reverts to live view.
+4. `browser_click(".lineage-row-id-link:first")`
+   — URL becomes
+   `/catalogs/main/schemas/silver/tables/orders/rows/{row_id}/trace`.
+5. **Admin-only:**
+   `browser_evaluate('() => document.querySelector(".row-at-version-card") !== null')`
+   → `true`;
+   `browser_type(role="spinbutton", value="0")`,
+   `browser_click("Look up")`
+   — assert either a 2-column key/value table OR the muted
+   "Row was not present at v0" notice.
+6. **Non-admin gate:** repeat step 5 logged in as
+   `user@pql.test` — `browser_evaluate('() => document.querySelector(".row-at-version-card")')`
+   returns `null` (card is server-side-omitted, not just hidden).
 
 ## Notes
 

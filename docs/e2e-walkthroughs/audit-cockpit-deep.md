@@ -1,5 +1,7 @@
 # Audit cockpit deepening walkthrough
 
+> **Mode:** `browser` · **Phase:** 18.6+ · **Surface:** /audit/inbox + /audit/search + /audit/by-table + /audit/queries
+
 End-to-end exercise of the Phase 18.6 → 18.x audit cockpit
 surfaces that grew on top of the Sprint 19 daily Audit-Reviewer
 loop:
@@ -239,8 +241,45 @@ Point-in-time state — the next successful tick clears it.
      re-run after fixing the table) is admin-only and lives
      there.
 
+## Playwright MCP script
+
+Browser replay for the four cockpit pages:
+
+1. `browser_navigate('http://127.0.0.1:8000/audit/inbox')`
+   — `browser_wait_for("table tbody tr")`; assert ≥ 1 anomaly
+   row.
+2. `browser_click(".anomaly-row[data-state='open']:first")`
+   — assert URL becomes `/audit/inbox?focus=<anomaly_id>`;
+   detail panel slides in.
+3. `browser_click("Acknowledge")` — assert toast and the row
+   flips state from `open` to `acknowledged`.
+4. `browser_navigate('http://127.0.0.1:8000/audit/search')`
+   — type into the placeholder-bearing input
+   `placeholder="e.g. silver.orders OR pql_query OR schema_mismatch"`
+   (no `role=searchbox` — see BUG-41-01),
+   `browser_press_key("Enter")` — assert ≥ 1 match in the
+   results.
+5. `browser_evaluate('() => document.querySelectorAll(".audit-result-row").length')`
+   — capture the result count for sanity.
+6. `browser_navigate('http://127.0.0.1:8000/audit/by-table/main.silver.orders')`
+   — assert the reverse-index card lists the latest writes
+   to that table.
+7. `browser_navigate('http://127.0.0.1:8000/audit/queries')`
+   — assert ≥ 1 saved query is visible.
+8. `browser_click(".saved-query-row:first .run-button")`
+   — `browser_wait_for(".query-result-table")`; assert ≥ 1 row.
+9. `browser_click("Save query as…")`,
+   `browser_fill_form([{name:"slug", value:"phase41-test-q"}])`,
+   `browser_click("Save")` — assert new row appears in the
+   workbench list.
+
 ## Verification log
 
+- **2026-05-07 — Phase 41 smoke replay.** `/audit/inbox`,
+  `/audit/search`, `/audit/queries` all render. Inbox shows
+  2 of 2 breaches against `seed-full-stack-demo` data. Search
+  page renders an `<input type="text">` (NOT `role="searchbox"`)
+  — see BUG-41-01.
 - **2026-05-06 — data-path verified end-to-end (Phase 38.3).**
   Replayed against `seed-broken-run.py` + a partial
   `seed-full-stack-demo.py` run (mlflow/sklearn extras absent
@@ -265,6 +304,15 @@ Point-in-time state — the next successful tick clears it.
     ['principal', 'rows_written']}` (status 200, 2 rows).
 
 ## Found bugs
+
+- **BUG-41-01** ✅ Fixed in same edit — Sprint-D MCP script
+  used `browser_type(role="searchbox", …)` which doesn't match;
+  the actual element is `<input type="text"
+  placeholder="e.g. silver.orders …">` with no
+  `role=searchbox`. Selector should be by placeholder text.
+  Surfaced 2026-05-07 during Phase 41 smoke replay.
+
+
 
 - **BUG-37-04** ✅ Fixed — root cause was an unguarded
   `o.includes("?")` call in htmx 2.0.3 (`o` was `null` for

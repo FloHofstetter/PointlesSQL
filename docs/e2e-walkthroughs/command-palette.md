@@ -1,5 +1,7 @@
 # Command palette walkthrough
 
+> **Mode:** `browser` · **Phase:** 17 · **Surface:** Ctrl-K palette overlay
+
 Covers the global command palette: navbar trigger, Cmd+K
 keyboard activation, debounced `GET /api/search` aggregation across
 catalogs / schemas / tables / federation / jobs / dashboards /

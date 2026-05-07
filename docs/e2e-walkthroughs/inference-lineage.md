@@ -1,5 +1,7 @@
 # E2E walkthrough — Inference-Lineage
 
+> **Mode:** `hybrid` · **Phase:** 21.7 · **Surface:** Notebook + run-detail Graph tab
+
 This playbook validates the `models:/{fqn}/{version}` inference-
 lineage path: the model-detail Lineage DAG must show source-tables
 upstream (, solid green `trained_from`) **and**
@@ -119,6 +121,28 @@ If a model accidentally writes back into its own registered-model
 FQN (rare; usually a misconfigured `target`), the bidirectional
 graph silently skips the would-be self-loop edge. The log lines
 remain visible in `lineage_row_edges`.
+
+## Playwright MCP script
+
+Browser-only replay (the seed cells and curl probes stay in the
+notebook / shell):
+
+1. `browser_navigate('http://127.0.0.1:8000/models/pql_test.mlflow_smoke.smoke_model')`
+   — assert the page renders the model header.
+2. `browser_click("Lineage")` (tab)
+   — `browser_wait_for(".cytoscape-canvas")` (≤ 5 s).
+3. `browser_evaluate('() => cy.nodes().length')`
+   — assert ≥ 3 nodes (model, source table, prediction table).
+4. `browser_evaluate('() => cy.edges("[label = \\"trained_from\\"]").length')`
+   — assert ≥ 1 (upstream edge).
+5. `browser_evaluate('() => cy.edges("[label = \\"inferred_to\\"]").length')`
+   — assert ≥ 1 (downstream edge).
+6. `browser_evaluate('() => Array.from(document.querySelectorAll(".legend-item")).map(n => n.innerText)')`
+   — assert it contains both `Sources trained_from` and
+   `Predictions inferred_to`.
+7. `browser_evaluate('() => fetch("/api/models/pql_test.mlflow_smoke.smoke_model/predictions").then(r => r.json())')`
+   — assert `.predictions[0].edge_count` ≥ 3 (matches the seed
+   write).
 
 ## Known limitations
 

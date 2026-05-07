@@ -1,5 +1,7 @@
 # Admin console walkthrough
 
+> **Mode:** `browser` · **Phase:** 33 · **Surface:** /admin/* landing + 7 cards
+
 End-to-end exercise of every page reachable from the Phase 33
 admin landing at `/admin`: the 7-card landing index, the
 `/admin/external-writes` scanner (Phase 14), the
@@ -206,6 +208,31 @@ nav-from-landing flow is exercised end-to-end.
      SHA-256 hashes from the `api_keys.secret_hash` or
      `system_keys.value` columns may appear in the rendered DOM.
      The page should display only counts, prefixes, and labels.
+
+## Playwright MCP script
+
+Replay through the 7-card admin landing + the four sub-pages:
+
+1. `browser_navigate('http://127.0.0.1:8000/admin')`
+   — `browser_evaluate('() => document.querySelectorAll(".admin-card").length')` ≥ 7.
+2. `browser_click("API keys")`
+   — URL becomes `/admin/api-keys`.
+3. `browser_click("Generate new key")`
+   — `browser_wait_for(".modal.show")`;
+   `browser_fill_form([{name:"label", value:"phase41-test"}])`,
+   `browser_click("Save")`.
+4. `browser_evaluate('() => document.querySelector(".plaintext-secret").innerText.length')`
+   — assert ≥ 32 (base64 secret visible exactly once).
+5. `browser_evaluate('() => document.body.outerHTML.indexOf("<the-plaintext-secret>")')`
+   after a reload — assert `=== -1` (load-bearing: secret is NOT
+   in any subsequent page render).
+6. `browser_navigate('http://127.0.0.1:8000/admin/external-writes')`
+   — assert page renders and has a settings form.
+7. `browser_navigate('http://127.0.0.1:8000/admin/review-destinations')`
+   — assert page renders the destinations table.
+8. `browser_navigate('http://127.0.0.1:8000/admin/system-info')`
+   — `browser_evaluate('() => document.querySelector(".info-row[data-key=\"db_revision\"]").innerText')`
+   — assert it returns a 12-char alembic hash.
 
 ## Found bugs
 

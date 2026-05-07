@@ -150,6 +150,7 @@ nav:
               - Jobs DAG: e2e-walkthroughs/jobs-dag.md
           - Audit + lineage:
               - Admin audit: e2e-walkthroughs/admin-audit.md
+              - Agent review detail: e2e-walkthroughs/agent-review-detail.md
               - Audit sinks: e2e-walkthroughs/audit-sinks.md
               - Audit reviewer daily: e2e-walkthroughs/audit-reviewer-daily.md
               - Compliance bot: e2e-walkthroughs/compliance-bot.md
@@ -159,9 +160,11 @@ nav:
               - Agent drift monitor: e2e-walkthroughs/agent_drift_monitor.md
               - Multi-workspace setup: e2e-walkthroughs/multi-workspace-setup.md
               - Git-backed workspaces: e2e-walkthroughs/git-backed-workspaces.md
+              - Volumes: e2e-walkthroughs/volumes.md
           - Agents + ML registry:
               - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
               - Models tab: e2e-walkthroughs/models-tab.md
+              - Model compare: e2e-walkthroughs/model-compare.md
               - Models promotion: e2e-walkthroughs/models-promotion.md
               - Inference lineage: e2e-walkthroughs/inference-lineage.md
               - Reflexive tools: e2e-walkthroughs/sprint_13_11_reflexive_tools.md

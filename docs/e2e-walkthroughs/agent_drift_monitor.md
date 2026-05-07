@@ -1,5 +1,7 @@
 # Agent: Drift-Monitor walkthrough
 
+> **Mode:** `hybrid` · **Phase:** 13.x · **Surface:** Notebook + /runs/{id}
+
 **** — replay this playbook to verify the Drift-Monitor
 agent end-to-end: a Hermes-style external runtime registers an
 agent run, fires the `notebooks/agent_drift_monitor.py` notebook,
@@ -179,6 +181,30 @@ fired (or if the bronze table is genuinely stale), a third
 envelope of type `pointlessql.agent_run.failed` arrives —
 that one carries the `breaches` list in `data` for the
 subscriber to ticket / Slack-notify.
+
+## Playwright MCP script
+
+Browser-only verifications for the run-detail surfaces (the
+notebook + curl preamble stays as prose above):
+
+1. `browser_navigate('http://127.0.0.1:8000/runs')`
+   — assert the latest row is the agent-drift-monitor synthetic
+   run.
+2. `browser_click("td a:first")` — URL becomes `/runs/<id>`.
+3. `browser_evaluate('() => document.querySelector(".conformance-card .badge").innerText')`
+   — assert it reads `BREACH` (the drift demo seeds a breach).
+4. `browser_click("Operations")` (top tab) — assert ≥ 1
+   `pql.write_table` op row.
+5. `browser_evaluate('() => Array.from(document.querySelectorAll(".tables-touched-chip")).map(n => n.innerText)')`
+   — assert array contains `ops.quality_history`.
+6. `browser_evaluate('() => document.querySelector("[data-attribution=x-principal]").innerText')`
+   — assert non-empty (X-Principal-forwarded identity).
+7. `browser_evaluate('() => fetch("/api/agent-runs?limit=1").then(r => r.json())')`
+   — assert the latest run has `kind` matching the drift-monitor
+   axis.
+8. `browser_navigate('http://127.0.0.1:8000/audit/inbox')`
+   — assert the drift breach is visible as an anomaly row with
+   the matching run-id.
 
 ## Cleanup
 

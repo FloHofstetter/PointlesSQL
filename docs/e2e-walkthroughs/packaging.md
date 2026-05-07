@@ -1,5 +1,7 @@
 # Packaging / clean-machine install walkthrough
 
+> **Mode:** `hybrid` · **Phase:** 10 · **Surface:** Docker CLI + home-page smoke
+
 Covers the contract: a user with a fresh workstation
 (no `git clone`, no `../soyuz-catalog` sibling, no ssh key
 against `github.com`) can install the PointlesSQL stack by logging
