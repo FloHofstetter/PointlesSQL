@@ -115,7 +115,11 @@ from pointlessql.web.status_styles import status_class as _status_class
 # this module but does not go through cli(). Idempotent; subsequent
 # calls replace our own handlers without disturbing pytest's caplog.
 _startup_settings = Settings()
-configure_logging(_startup_settings.logging.level, _startup_settings.logging.format)
+configure_logging(
+    _startup_settings.logging.level,
+    _startup_settings.logging.format,
+    third_party_levels=_startup_settings.logging.third_party_levels,
+)
 
 logger = logging.getLogger(__name__)
 

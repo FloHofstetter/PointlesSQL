@@ -342,13 +342,19 @@ class LoggingSettings(BaseSettings):
     Reads ``POINTLESSQL_LOG_*`` environment variables.  ``level`` is a
     Python logging-level name (``DEBUG``, ``INFO``, …).  ``format``
     controls whether log records render as human-readable text or
-    single-line JSON for ingestion.
+    single-line JSON for ingestion.  ``third_party_levels`` overrides
+    the per-library default suppression installed by
+    :func:`pointlessql.logging_config.configure_logging` —
+    ``POINTLESSQL_LOG_THIRD_PARTY_LEVELS='{"httpx":"DEBUG"}'`` lifts
+    the default WARNING gate for one upstream when debugging a
+    transport issue.
     """
 
     model_config = SettingsConfigDict(env_prefix="POINTLESSQL_LOG_")
 
     level: str = "INFO"
     format: Literal["text", "json"] = "text"
+    third_party_levels: dict[str, str] = {}
 
 
 class RateLimitSettings(BaseSettings):
