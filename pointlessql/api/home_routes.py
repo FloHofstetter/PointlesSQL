@@ -25,7 +25,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -195,7 +195,8 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
                     .where(JobRunModel.status.in_(["succeeded", "failed"]))
                 )
                 for started_at, status in session.execute(spark_stmt).all():
-                    idx = (started_at.date() - start_day).days
+                    started_at_dt = cast(datetime, started_at)
+                    idx = (started_at_dt.date() - start_day).days
                     if 0 <= idx < 7:
                         bucket = days[idx]
                         bucket["total"] += 1
@@ -478,7 +479,8 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                         "score": cat_score,
                     },
                 )
-            for schema in cat.get("schemas") or []:
+            schemas_raw = cast(list[dict[str, Any]], cat.get("schemas") or [])
+            for schema in schemas_raw:
                 s_name = str(schema.get("name") or "")
                 s_score = score_match(needle, s_name)
                 if s_score is not None:
@@ -492,7 +494,8 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             "score": s_score,
                         },
                     )
-                for table in schema.get("tables") or []:
+                tables_raw = cast(list[dict[str, Any]], schema.get("tables") or [])
+                for table in tables_raw:
                     t_name = str(table.get("name") or "")
                     t_score = score_match(needle, t_name)
                     if t_score is None:
@@ -632,7 +635,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                         },
                     )
                 elif kind == "dir":
-                    children = node.get("children") or []
+                    children = cast(list[dict[str, Any]], node.get("children") or [])
                     _walk(children)
 
         _walk(tree)
