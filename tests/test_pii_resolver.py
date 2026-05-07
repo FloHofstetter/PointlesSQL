@@ -26,20 +26,6 @@ def _reset_pii_cache() -> None:
     pii_resolver.invalidate_all()
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 # ---------------------------------------------------------------------
@@ -201,36 +187,34 @@ def _seed_value_change() -> tuple[str, int, str, str, str, str, str]:
 
 
 @pytest.mark.asyncio
-async def test_reveal_endpoint_admin_only() -> None:
+async def test_reveal_endpoint_admin_only(non_admin_client: httpx.AsyncClient) -> None:
     run_id, op_id, table, row_id, column, *_ = _seed_value_change()
-    async with _non_admin_client() as client:
-        r = await client.post(
-            "/api/audit/pii/reveal",
-            json={
-                "run_id": run_id,
-                "op_id": op_id,
-                "table": table,
-                "row_id": row_id,
-                "column": column,
-            },
-        )
+    r = await non_admin_client.post(
+        "/api/audit/pii/reveal",
+        json={
+            "run_id": run_id,
+            "op_id": op_id,
+            "table": table,
+            "row_id": row_id,
+            "column": column,
+        },
+    )
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_reveal_returns_cleartext_and_writes_audit_log() -> None:
+async def test_reveal_returns_cleartext_and_writes_audit_log(admin_client: httpx.AsyncClient) -> None:
     run_id, op_id, table, row_id, column, old_value, new_value = _seed_value_change()
-    async with _admin_client() as client:
-        r = await client.post(
-            "/api/audit/pii/reveal",
-            json={
-                "run_id": run_id,
-                "op_id": op_id,
-                "table": table,
-                "row_id": row_id,
-                "column": column,
-            },
-        )
+    r = await admin_client.post(
+        "/api/audit/pii/reveal",
+        json={
+            "run_id": run_id,
+            "op_id": op_id,
+            "table": table,
+            "row_id": row_id,
+            "column": column,
+        },
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["found"] is True
@@ -246,18 +230,17 @@ async def test_reveal_returns_cleartext_and_writes_audit_log() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reveal_missed_writes_distinct_audit_action() -> None:
-    async with _admin_client() as client:
-        r = await client.post(
-            "/api/audit/pii/reveal",
-            json={
-                "run_id": str(uuid.uuid4()),
-                "op_id": 9999,
-                "table": "cat.sch.t",
-                "row_id": "ghost",
-                "column": "email",
-            },
-        )
+async def test_reveal_missed_writes_distinct_audit_action(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.post(
+        "/api/audit/pii/reveal",
+        json={
+            "run_id": str(uuid.uuid4()),
+            "op_id": 9999,
+            "table": "cat.sch.t",
+            "row_id": "ghost",
+            "column": "email",
+        },
+    )
     assert r.status_code == 200
     assert r.json() == {"found": False, "old_value": None, "new_value": None}
     factory = app.state.session_factory
@@ -267,10 +250,9 @@ async def test_reveal_missed_writes_distinct_audit_action() -> None:
 
 
 @pytest.mark.asyncio
-async def test_reveal_validates_required_fields() -> None:
-    async with _admin_client() as client:
-        r = await client.post(
-            "/api/audit/pii/reveal",
-            json={"run_id": "", "op_id": 1, "table": "", "row_id": "", "column": ""},
-        )
+async def test_reveal_validates_required_fields(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.post(
+        "/api/audit/pii/reveal",
+        json={"run_id": "", "op_id": 1, "table": "", "row_id": "", "column": ""},
+    )
     assert r.status_code == 422

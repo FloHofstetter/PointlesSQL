@@ -31,13 +31,6 @@ def _stub_uc_client() -> None:
     app.state.uc_client = client
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 @pytest.fixture
 def run_id() -> str:
@@ -60,7 +53,7 @@ def run_id() -> str:
     return rid
 
 
-async def test_post_rewrite_attempt_creates_row(run_id: str) -> None:
+async def test_post_rewrite_attempt_creates_row(run_id: str, admin_client: httpx.AsyncClient) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "abc123def456",
@@ -70,11 +63,10 @@ async def test_post_rewrite_attempt_creates_row(run_id: str) -> None:
         "verdict": "auto_rewrite_succeeded",
         "reason": "Added LIMIT 1000 to bound the scan.",
     }
-    async with _admin_client() as client:
-        resp = await client.post(
-            f"/api/agent-runs/{run_id}/rewrite-attempt",
-            json=body,
-        )
+    resp = await admin_client.post(
+        f"/api/agent-runs/{run_id}/rewrite-attempt",
+        json=body,
+    )
     assert resp.status_code == 200, resp.text
     payload = resp.json()
     assert payload["attempt_no"] == 1
@@ -99,7 +91,7 @@ async def test_post_rewrite_attempt_creates_row(run_id: str) -> None:
     assert row.reason == "Added LIMIT 1000 to bound the scan."
 
 
-async def test_post_rewrite_attempt_human_escalation_no_rewrite(run_id: str) -> None:
+async def test_post_rewrite_attempt_human_escalation_no_rewrite(run_id: str, admin_client: httpx.AsyncClient) -> None:
     """human_approval_required can omit rewritten_sql_hash and rewritten_cost."""
     body = {
         "attempt_no": 4,
@@ -107,11 +99,10 @@ async def test_post_rewrite_attempt_human_escalation_no_rewrite(run_id: str) -> 
         "original_cost": 5_000_000,
         "verdict": "human_approval_required",
     }
-    async with _admin_client() as client:
-        resp = await client.post(
-            f"/api/agent-runs/{run_id}/rewrite-attempt",
-            json=body,
-        )
+    resp = await admin_client.post(
+        f"/api/agent-runs/{run_id}/rewrite-attempt",
+        json=body,
+    )
     assert resp.status_code == 200, resp.text
     factory: Any = app.state.session_factory
     with factory() as session:
@@ -122,27 +113,26 @@ async def test_post_rewrite_attempt_human_escalation_no_rewrite(run_id: str) -> 
     assert row.rewritten_cost is None
 
 
-async def test_post_rewrite_attempt_duplicate_returns_4xx(run_id: str) -> None:
+async def test_post_rewrite_attempt_duplicate_returns_4xx(run_id: str, admin_client: httpx.AsyncClient) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "a",
         "original_cost": 1,
         "verdict": "original_approved",
     }
-    async with _admin_client() as client:
-        first = await client.post(
-            f"/api/agent-runs/{run_id}/rewrite-attempt",
-            json=body,
-        )
-        assert first.status_code == 200
-        second = await client.post(
-            f"/api/agent-runs/{run_id}/rewrite-attempt",
-            json=body,
-        )
+    first = await admin_client.post(
+        f"/api/agent-runs/{run_id}/rewrite-attempt",
+        json=body,
+    )
+    assert first.status_code == 200
+    second = await admin_client.post(
+        f"/api/agent-runs/{run_id}/rewrite-attempt",
+        json=body,
+    )
     assert second.status_code >= 400
 
 
-async def test_post_rewrite_attempt_unknown_run_returns_404() -> None:
+async def test_post_rewrite_attempt_unknown_run_returns_404(admin_client: httpx.AsyncClient) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "a",
@@ -150,30 +140,28 @@ async def test_post_rewrite_attempt_unknown_run_returns_404() -> None:
         "verdict": "original_approved",
     }
     bogus = str(uuid.uuid4())
-    async with _admin_client() as client:
-        resp = await client.post(
-            f"/api/agent-runs/{bogus}/rewrite-attempt",
-            json=body,
-        )
+    resp = await admin_client.post(
+        f"/api/agent-runs/{bogus}/rewrite-attempt",
+        json=body,
+    )
     assert resp.status_code == 404
 
 
-async def test_post_rewrite_attempt_invalid_verdict(run_id: str) -> None:
+async def test_post_rewrite_attempt_invalid_verdict(run_id: str, admin_client: httpx.AsyncClient) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "a",
         "original_cost": 1,
         "verdict": "made_it_up",
     }
-    async with _admin_client() as client:
-        resp = await client.post(
-            f"/api/agent-runs/{run_id}/rewrite-attempt",
-            json=body,
-        )
+    resp = await admin_client.post(
+        f"/api/agent-runs/{run_id}/rewrite-attempt",
+        json=body,
+    )
     assert resp.status_code >= 400
 
 
-async def test_run_detail_renders_rewrites_subtab(run_id: str) -> None:
+async def test_run_detail_renders_rewrites_subtab(run_id: str, admin_client: httpx.AsyncClient) -> None:
     """The run-view page renders the new Rewrites sub-tab with the rows."""
     factory: Any = app.state.session_factory
     with factory() as session:
@@ -193,8 +181,7 @@ async def test_run_detail_renders_rewrites_subtab(run_id: str) -> None:
         )
         session.commit()
 
-    async with _admin_client() as client:
-        resp = await client.get(f"/runs/{run_id}")
+    resp = await admin_client.get(f"/runs/{run_id}")
     assert resp.status_code == 200, resp.text
     body = resp.text
     assert "tab-rewrites-btn" in body

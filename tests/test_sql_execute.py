@@ -63,29 +63,14 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
 
 
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
-
-
-async def test_admin_executes_query_and_sees_rows(orders_delta: str) -> None:
+async def test_admin_executes_query_and_sees_rows(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["referenced_tables"] == ["main.sales.orders"]
@@ -95,17 +80,16 @@ async def test_admin_executes_query_and_sees_rows(orders_delta: str) -> None:
     assert body["rows"][0] == [1, "a"]
 
 
-async def test_non_admin_without_select_is_denied(orders_delta: str) -> None:
+async def test_non_admin_without_select_is_denied(orders_delta: str, non_admin_client: httpx.AsyncClient) -> None:
     # empty effective perms → check_privilege should raise 403.
     app.state.uc_client = _make_uc_mock(
         storage_location=orders_delta,
         effective=[],
     )
-    async with _non_admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT * FROM main.sales.orders"},
-        )
+    resp = await non_admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT * FROM main.sales.orders"},
+    )
     assert resp.status_code == 403
     body = resp.json()
     assert body["code"] == "authorization_error"
@@ -113,100 +97,93 @@ async def test_non_admin_without_select_is_denied(orders_delta: str) -> None:
     assert body["required_privilege"] == "SELECT"
 
 
-async def test_non_admin_with_select_grant_succeeds(orders_delta: str) -> None:
+async def test_non_admin_with_select_grant_succeeds(orders_delta: str, non_admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(
         storage_location=orders_delta,
         effective=[{"principal": "nonadmin@test.com", "privileges": ["SELECT"]}],
     )
-    async with _non_admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT COUNT(*) AS n FROM main.sales.orders"},
-        )
+    resp = await non_admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT COUNT(*) AS n FROM main.sales.orders"},
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["rows"] == [[5]]
 
 
-async def test_malformed_sql_returns_400_problem_json(orders_delta: str) -> None:
+async def test_malformed_sql_returns_400_problem_json(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELEC * FROM x"},
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELEC * FROM x"},
+    )
     assert resp.status_code == 400
     assert resp.headers["content-type"].startswith("application/problem+json")
     body = resp.json()
     assert body["code"] == "sql_execution_error"
 
 
-async def test_two_part_reference_is_rejected(orders_delta: str) -> None:
+async def test_two_part_reference_is_rejected(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT * FROM sales.orders"},
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT * FROM sales.orders"},
+    )
     assert resp.status_code == 400
     body = resp.json()
     assert body["code"] == "sql_execution_error"
     assert "catalog.schema.table" in body["detail"]
 
 
-async def test_row_cap_is_applied(orders_delta: str, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_row_cap_is_applied(orders_delta: str, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
     # Clamp max_rows to 3 so our 5-row Delta table gets truncated.
     monkeypatch.setattr(app.state.settings.sql, "max_rows", 3)
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["row_count"] == 3
     assert body["truncated"] is True
 
 
-async def test_select_with_no_tables_succeeds() -> None:
+async def test_select_with_no_tables_succeeds(admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location="/nonexistent")
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT 1 AS n"},
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT 1 AS n"},
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["rows"] == [[1]]
     assert body["referenced_tables"] == []
 
 
-async def test_sql_editor_page_renders() -> None:
-    async with _admin_client() as client:
-        resp = await client.get("/sql")
+async def test_sql_editor_page_renders(admin_client: httpx.AsyncClient) -> None:
+    resp = await admin_client.get("/sql")
     assert resp.status_code == 200
     assert b'id="pql-sql-editor-root"' in resp.content
     # The SQL tab should be marked active.
     assert b"active_page" not in resp.content  # server context var, not rendered
 
 
-async def test_explain_mode_returns_plan_and_skips_history(orders_delta: str) -> None:
+async def test_explain_mode_returns_plan_and_skips_history(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     # Capture history row count before the EXPLAIN call so we can
     # assert it did NOT grow (Sprint-53 decision: EXPLAIN is
     # diagnostic, not recorded).
-    async with _admin_client() as client:
-        before = (await client.get("/api/queries")).json()
-        before_count = len(before)
+    before = (await admin_client.get("/api/queries")).json()
+    before_count = len(before)
 
-        resp = await client.post(
-            "/api/sql/execute",
-            json={
-                "sql": "SELECT id FROM main.sales.orders",
-                "explain": True,
-            },
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={
+            "sql": "SELECT id FROM main.sales.orders",
+            "explain": True,
+        },
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["is_explain"] is True
@@ -214,6 +191,5 @@ async def test_explain_mode_returns_plan_and_skips_history(orders_delta: str) ->
     # Plans are non-empty for a real query.
     assert body["explain_text"]
 
-    async with _admin_client() as client:
-        after = (await client.get("/api/queries")).json()
+    after = (await admin_client.get("/api/queries")).json()
     assert len(after) == before_count, "EXPLAIN must not write to query_history"

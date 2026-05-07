@@ -82,24 +82,10 @@ def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 class TestCreateCatalogRoute:
-    async def test_admin_can_create_foreign_catalog(self) -> None:
+    async def test_admin_can_create_foreign_catalog(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock()
         payload = {
             "name": "pg_cat",
@@ -107,43 +93,39 @@ class TestCreateCatalogRoute:
             "connection_name": "my_pg",
             "options": {"database": "analytics"},
         }
-        async with _admin_client() as client:
-            resp = await client.post("/api/catalogs", json=payload)
+        resp = await admin_client.post("/api/catalogs", json=payload)
         assert resp.status_code == 200
         data = resp.json()
         assert data["connection_name"] == "my_pg"
         app.state.uc_client.create_catalog.assert_awaited_once_with(payload)
 
-    async def test_admin_can_create_managed_catalog(self) -> None:
+    async def test_admin_can_create_managed_catalog(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock()
         app.state.uc_client.create_catalog = AsyncMock(return_value=_MANAGED_CATALOG)
-        async with _admin_client() as client:
-            resp = await client.post("/api/catalogs", json={"name": "m"})
+        resp = await admin_client.post("/api/catalogs", json={"name": "m"})
         assert resp.status_code == 200
         assert resp.json()["type"] == "MANAGED"
 
-    async def test_non_admin_forbidden(self) -> None:
+    async def test_non_admin_forbidden(self, non_admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock()
-        async with _non_admin_client() as client:
-            resp = await client.post(
-                "/api/catalogs",
-                json={
-                    "name": "pg_cat",
-                    "type": "FOREIGN",
-                    "connection_name": "my_pg",
-                },
-            )
+        resp = await non_admin_client.post(
+            "/api/catalogs",
+            json={
+                "name": "pg_cat",
+                "type": "FOREIGN",
+                "connection_name": "my_pg",
+            },
+        )
         assert resp.status_code == 403
         # create_catalog must never be called for a non-admin.
         app.state.uc_client.create_catalog.assert_not_awaited()
 
 
 class TestPatchOptions:
-    async def test_inline_options_edit_forwards_dict(self) -> None:
+    async def test_inline_options_edit_forwards_dict(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock(catalog=_FOREIGN_CATALOG)
         new_options = {"database": "analytics", "schema_filter": "reporting"}
-        async with _admin_client() as client:
-            resp = await client.patch("/api/catalogs/pg_cat", json={"options": new_options})
+        resp = await admin_client.patch("/api/catalogs/pg_cat", json={"options": new_options})
         assert resp.status_code == 200
         app.state.uc_client.update_catalog.assert_awaited_once_with(
             "pg_cat", {"options": new_options}
@@ -151,10 +133,9 @@ class TestPatchOptions:
 
 
 class TestCatalogDetailHtml:
-    async def test_foreign_badge_and_card_render(self) -> None:
+    async def test_foreign_badge_and_card_render(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock(catalog=_FOREIGN_CATALOG)
-        async with _admin_client() as client:
-            resp = await client.get("/catalogs/pg_cat")
+        resp = await admin_client.get("/catalogs/pg_cat")
         assert resp.status_code == 200
         text = resp.text
         # Card shows the bound connection link.
@@ -168,10 +149,9 @@ class TestCatalogDetailHtml:
         # shows up in every catalog's HTML regardless of type.
         assert "FOREIGN</span>" in text
 
-    async def test_managed_catalog_has_no_foreign_card(self) -> None:
+    async def test_managed_catalog_has_no_foreign_card(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock(catalog=_MANAGED_CATALOG)
-        async with _admin_client() as client:
-            resp = await client.get("/catalogs/managed_cat")
+        resp = await admin_client.get("/catalogs/managed_cat")
         assert resp.status_code == 200
         text = resp.text
         # The card's Alpine component is the unique marker — the sidebar
@@ -183,12 +163,11 @@ class TestCatalogDetailHtml:
 
 
 class TestHomePageModal:
-    async def test_admin_sees_create_button_and_connection_options(self) -> None:
+    async def test_admin_sees_create_button_and_connection_options(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock(
             connections=[{"name": "my_pg", "connection_type": "POSTGRESQL"}]
         )
-        async with _admin_client() as client:
-            resp = await client.get("/")
+        resp = await admin_client.get("/")
         assert resp.status_code == 200
         text = resp.text
         assert "Create foreign catalog" in text
@@ -197,10 +176,9 @@ class TestHomePageModal:
         assert "my_pg" in text
         assert "POSTGRESQL" in text
 
-    async def test_non_admin_has_no_create_button(self) -> None:
+    async def test_non_admin_has_no_create_button(self, non_admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock()
-        async with _non_admin_client() as client:
-            resp = await client.get("/")
+        resp = await non_admin_client.get("/")
         assert resp.status_code == 200
         assert "Create foreign catalog" not in resp.text
         assert "createForeignCatalogModal" not in resp.text

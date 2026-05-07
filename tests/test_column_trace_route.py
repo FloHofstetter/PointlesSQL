@@ -43,13 +43,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_column_map_chain() -> tuple[str, int, int]:
     """Insert a 2-hop column-map chain bronze.qty → silver.qty → gold.units_sold."""
@@ -119,13 +112,12 @@ def _seed_column_map_chain() -> tuple[str, int, int]:
 
 
 @pytest.mark.asyncio
-async def test_column_trace_walks_back_two_hops(uc_mock: MagicMock) -> None:
+async def test_column_trace_walks_back_two_hops(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
     _seed_column_map_chain()
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/lineage/column-trace",
-            params={"table": "main.gold.t", "column": "units_sold"},
-        )
+    response = await admin_client.get(
+        "/api/lineage/column-trace",
+        params={"table": "main.gold.t", "column": "units_sold"},
+    )
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["table"] == "main.gold.t"
@@ -140,13 +132,12 @@ async def test_column_trace_walks_back_two_hops(uc_mock: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_column_trace_unknown_column_returns_lone_step(uc_mock: MagicMock) -> None:
+async def test_column_trace_unknown_column_returns_lone_step(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
     _seed_column_map_chain()
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/lineage/column-trace",
-            params={"table": "main.gold.t", "column": "does_not_exist"},
-        )
+    response = await admin_client.get(
+        "/api/lineage/column-trace",
+        params={"table": "main.gold.t", "column": "does_not_exist"},
+    )
     assert response.status_code == 200, response.text
     payload = response.json()
     assert len(payload["steps"]) == 1
@@ -154,12 +145,11 @@ async def test_column_trace_unknown_column_returns_lone_step(uc_mock: MagicMock)
 
 
 @pytest.mark.asyncio
-async def test_column_trace_rejects_empty_column(uc_mock: MagicMock) -> None:
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/lineage/column-trace",
-            params={"table": "main.gold.t", "column": ""},
-        )
+async def test_column_trace_rejects_empty_column(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.get(
+        "/api/lineage/column-trace",
+        params={"table": "main.gold.t", "column": ""},
+    )
     # Phase 43.3: ``column is required`` is a ValidationError (422),
     # not the legacy bare-string HTTPException(400).
     assert response.status_code == 422

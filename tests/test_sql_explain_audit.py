@@ -58,13 +58,6 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_run(workspace_id: int = 1) -> str:
     """Insert one minimal AgentRun and return its UUID."""
@@ -98,17 +91,16 @@ def _ops_for_run(run_id: str) -> list[AgentRunOperation]:
         )
 
 
-async def test_explain_with_agent_run_writes_per_run_audit(orders_delta: str) -> None:
+async def test_explain_with_agent_run_writes_per_run_audit(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     """X-Agent-Run-Id header → one sql_explain ops row with cost details."""
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     run_id = _seed_run()
 
-    async with _admin_client() as client:
-        resp = await client.get(
-            "/api/sql/explain",
-            params={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
-            headers={"X-Agent-Run-Id": run_id},
-        )
+    resp = await admin_client.get(
+        "/api/sql/explain",
+        params={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
+        headers={"X-Agent-Run-Id": run_id},
+    )
 
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -134,32 +126,30 @@ async def test_explain_with_agent_run_writes_per_run_audit(orders_delta: str) ->
     assert "threshold" in params
 
 
-async def test_explain_without_header_writes_no_per_run_audit(orders_delta: str) -> None:
+async def test_explain_without_header_writes_no_per_run_audit(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     """No X-Agent-Run-Id → no agent_run_operations row, only audit_log."""
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     run_id = _seed_run()  # exists, but caller doesn't reference it
 
-    async with _admin_client() as client:
-        resp = await client.get(
-            "/api/sql/explain",
-            params={"sql": "SELECT id, name FROM main.sales.orders"},
-        )
+    resp = await admin_client.get(
+        "/api/sql/explain",
+        params={"sql": "SELECT id, name FROM main.sales.orders"},
+    )
 
     assert resp.status_code == 200, resp.text
     ops = _ops_for_run(run_id)
     assert ops == [], "interactive call must not write agent_run_operations rows"
 
 
-async def test_explain_with_malformed_run_id_still_succeeds(orders_delta: str) -> None:
+async def test_explain_with_malformed_run_id_still_succeeds(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     """Bad UUID demoted to no-op for audit; explain itself still 200s."""
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
 
-    async with _admin_client() as client:
-        resp = await client.get(
-            "/api/sql/explain",
-            params={"sql": "SELECT id FROM main.sales.orders"},
-            headers={"X-Agent-Run-Id": "not-a-uuid"},
-        )
+    resp = await admin_client.get(
+        "/api/sql/explain",
+        params={"sql": "SELECT id FROM main.sales.orders"},
+        headers={"X-Agent-Run-Id": "not-a-uuid"},
+    )
 
     assert resp.status_code == 200, resp.text
     # No matching run, and no row was attempted.  Sweep all ops:
@@ -169,17 +159,16 @@ async def test_explain_with_malformed_run_id_still_succeeds(orders_delta: str) -
     assert rows == []
 
 
-async def test_explain_failure_inside_run_records_error_row(orders_delta: str) -> None:
+async def test_explain_failure_inside_run_records_error_row(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     """SQL parse failure with X-Agent-Run-Id → ops row carries error_message."""
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     run_id = _seed_run()
 
-    async with _admin_client() as client:
-        resp = await client.get(
-            "/api/sql/explain",
-            params={"sql": "this is not sql"},
-            headers={"X-Agent-Run-Id": run_id},
-        )
+    resp = await admin_client.get(
+        "/api/sql/explain",
+        params={"sql": "this is not sql"},
+        headers={"X-Agent-Run-Id": run_id},
+    )
 
     assert resp.status_code >= 400  # parse failure surfaces as SQLExecutionError
 

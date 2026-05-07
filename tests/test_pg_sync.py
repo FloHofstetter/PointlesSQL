@@ -492,20 +492,6 @@ def test_list_recent_runs_most_recent_first(metadata_factory: Any) -> None:
 # -- Route tests --
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 @pytest.fixture(autouse=True)
@@ -519,13 +505,12 @@ def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class TestSyncRoute:
-    async def test_non_admin_forbidden(self) -> None:
+    async def test_non_admin_forbidden(self, non_admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = MagicMock(spec=UnityCatalogClient)
-        async with _non_admin_client() as client:
-            resp = await client.post("/api/catalogs/pg_cat/sync")
+        resp = await non_admin_client.post("/api/catalogs/pg_cat/sync")
         assert resp.status_code == 403
 
-    async def test_admin_sync_happy_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_admin_sync_happy_path(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
         uc.get_catalog = AsyncMock(
             return_value={
@@ -554,23 +539,21 @@ class TestSyncRoute:
             ),
         )
 
-        async with _admin_client() as client:
-            resp = await client.post("/api/catalogs/pg_cat/sync")
+        resp = await admin_client.post("/api/catalogs/pg_cat/sync")
 
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "succeeded"
         assert data["added_count"] == 2  # schema + table
 
-    async def test_sync_non_foreign_catalog_denied(self) -> None:
+    async def test_sync_non_foreign_catalog_denied(self, admin_client: httpx.AsyncClient) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
         uc.get_catalog = AsyncMock(return_value={"name": "managed_cat", "type": "MANAGED"})
         app.state.uc_client = uc
-        async with _admin_client() as client:
-            resp = await client.post("/api/catalogs/managed_cat/sync")
+        resp = await admin_client.post("/api/catalogs/managed_cat/sync")
         assert resp.status_code == 403
 
-    async def test_audit_log_written(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_audit_log_written(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
         uc.get_catalog = AsyncMock(return_value={"name": "pg_cat", "connection_name": "pg1"})
         uc.get_connection = AsyncMock(return_value={"name": "pg1", "options": {"host": "h"}})
@@ -586,8 +569,7 @@ class TestSyncRoute:
             lambda: _StubIntrospector(PostgresSnapshot(tables=())),
         )
 
-        async with _admin_client() as client:
-            resp = await client.post("/api/catalogs/pg_cat/sync")
+        resp = await admin_client.post("/api/catalogs/pg_cat/sync")
         assert resp.status_code == 200
 
         # Audit entry landed on the shared test factory.
@@ -605,7 +587,7 @@ class TestSyncRoute:
 
 
 class TestCatalogDetailHistory:
-    async def test_history_card_renders_runs(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_history_card_renders_runs(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
         import datetime
 
         uc = MagicMock(spec=UnityCatalogClient)
@@ -648,8 +630,7 @@ class TestCatalogDetailHistory:
             )
             session.commit()
 
-        async with _admin_client() as client:
-            resp = await client.get("/catalogs/pg_cat")
+        resp = await admin_client.get("/catalogs/pg_cat")
         assert resp.status_code == 200
         text = resp.text
         assert "Sync history" in text

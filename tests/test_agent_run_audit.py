@@ -26,13 +26,6 @@ from pointlessql.services.agent_runs import (
 )
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 # ---------------------------------------------------------------------------
 # POST /api/agent-runs strict mode
@@ -40,50 +33,47 @@ def _admin_client() -> httpx.AsyncClient:
 
 
 @pytest.mark.asyncio
-async def test_post_agent_run_requires_source() -> None:
-    async with _admin_client() as client:
-        response = await client.post(
-            "/api/agent-runs",
-            json={
-                "id": "11111111-1111-1111-1111-111111111111",
-                "notebook_path": "demo/run.py",
-                "runtime_versions": {"python": "3.14.0"},
-            },
-        )
+async def test_post_agent_run_requires_source(admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.post(
+        "/api/agent-runs",
+        json={
+            "id": "11111111-1111-1111-1111-111111111111",
+            "notebook_path": "demo/run.py",
+            "runtime_versions": {"python": "3.14.0"},
+        },
+    )
     assert response.status_code == 422
     assert "source" in response.text.lower()
 
 
 @pytest.mark.asyncio
-async def test_post_agent_run_requires_runtime_versions() -> None:
-    async with _admin_client() as client:
-        response = await client.post(
-            "/api/agent-runs",
-            json={
-                "id": "22222222-2222-2222-2222-222222222222",
-                "notebook_path": "demo/run.py",
-                "source": "print('hi')\n",
-            },
-        )
+async def test_post_agent_run_requires_runtime_versions(admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.post(
+        "/api/agent-runs",
+        json={
+            "id": "22222222-2222-2222-2222-222222222222",
+            "notebook_path": "demo/run.py",
+            "source": "print('hi')\n",
+        },
+    )
     assert response.status_code == 422
     assert "runtime_versions" in response.text.lower()
 
 
 @pytest.mark.asyncio
-async def test_post_agent_run_persists_source() -> None:
+async def test_post_agent_run_persists_source(admin_client: httpx.AsyncClient) -> None:
     source = "import pql\npql.PQL().table('main.bronze.foo')\n"
     expected_sha = hashlib.sha256(source.encode("utf-8")).hexdigest()
     run_id = "33333333-3333-3333-3333-333333333333"
-    async with _admin_client() as client:
-        response = await client.post(
-            "/api/agent-runs",
-            json={
-                "id": run_id,
-                "notebook_path": "demo/run.py",
-                "source": source,
-                "runtime_versions": {"python": "3.14.0", "deltalake": "1.5.0"},
-            },
-        )
+    response = await admin_client.post(
+        "/api/agent-runs",
+        json={
+            "id": run_id,
+            "notebook_path": "demo/run.py",
+            "source": source,
+            "runtime_versions": {"python": "3.14.0", "deltalake": "1.5.0"},
+        },
+    )
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["id"] == run_id
@@ -101,18 +91,17 @@ async def test_post_agent_run_persists_source() -> None:
 
 
 @pytest.mark.asyncio
-async def test_post_agent_run_rejects_sha_mismatch() -> None:
-    async with _admin_client() as client:
-        response = await client.post(
-            "/api/agent-runs",
-            json={
-                "id": "44444444-4444-4444-4444-444444444444",
-                "notebook_path": "demo/run.py",
-                "source": "print('hi')\n",
-                "source_snapshot_sha": "0" * 64,
-                "runtime_versions": {"python": "3.14.0"},
-            },
-        )
+async def test_post_agent_run_rejects_sha_mismatch(admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.post(
+        "/api/agent-runs",
+        json={
+            "id": "44444444-4444-4444-4444-444444444444",
+            "notebook_path": "demo/run.py",
+            "source": "print('hi')\n",
+            "source_snapshot_sha": "0" * 64,
+            "runtime_versions": {"python": "3.14.0"},
+        },
+    )
     assert response.status_code == 422
     assert "source_snapshot_sha mismatch" in response.text
 
@@ -297,36 +286,35 @@ async def test_emit_event_marks_no_destination_without_url() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_detail_renders_operations_and_source_tabs() -> None:
+async def test_run_detail_renders_operations_and_source_tabs(admin_client: httpx.AsyncClient) -> None:
     run_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
     source = "import pql\n"
-    async with _admin_client() as client:
-        post = await client.post(
-            "/api/agent-runs",
-            json={
-                "id": run_id,
-                "notebook_path": "demo/x.py",
-                "source": source,
-                "runtime_versions": {"python": "3.14.0"},
-            },
-        )
-        assert post.status_code == 200, post.text
-        # Add one operation row for visibility.
-        record_operation(
-            app.state.session_factory,
-            agent_run_id=run_id,
-            op_name="sql",
-            params={"query": "SELECT 1"},
-            target_table=None,
-            input_sha=None,
-            rows_affected=1,
-            delta_version_before=None,
-            delta_version_after=None,
-            started_at=datetime.datetime.now(datetime.UTC),
-            finished_at=datetime.datetime.now(datetime.UTC),
-            error_message=None,
-        )
-        page = await client.get(f"/runs/{run_id}")
+    post = await admin_client.post(
+        "/api/agent-runs",
+        json={
+            "id": run_id,
+            "notebook_path": "demo/x.py",
+            "source": source,
+            "runtime_versions": {"python": "3.14.0"},
+        },
+    )
+    assert post.status_code == 200, post.text
+    # Add one operation row for visibility.
+    record_operation(
+        app.state.session_factory,
+        agent_run_id=run_id,
+        op_name="sql",
+        params={"query": "SELECT 1"},
+        target_table=None,
+        input_sha=None,
+        rows_affected=1,
+        delta_version_before=None,
+        delta_version_after=None,
+        started_at=datetime.datetime.now(datetime.UTC),
+        finished_at=datetime.datetime.now(datetime.UTC),
+        error_message=None,
+    )
+    page = await admin_client.get(f"/runs/{run_id}")
     assert page.status_code == 200
     body = page.text
     assert 'id="tab-ops-btn"' in body

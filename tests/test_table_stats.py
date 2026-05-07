@@ -42,20 +42,6 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 def _make_uc_mock(storage_location: str) -> MagicMock:
@@ -191,47 +177,44 @@ def test_read_delta_log_version_reads_a_real_table(orders_delta: str) -> None:
 @pytest.mark.asyncio
 async def test_profile_and_stats_round_trip_for_admin(
     orders_delta: str,
-) -> None:
+    admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(orders_delta)
     full_name = "main.sales.orders"
-    async with _admin_client() as client:
-        profile = await client.post(f"/api/tables/{full_name}/profile")
-        assert profile.status_code == 200
-        body = profile.json()
-        assert body["full_name"] == full_name
-        assert body["delta_log_version"] == 0
-        assert body["cached"] is False
-        names = [c["column_name"] for c in body["columns"]]
-        assert set(names) == {"id", "category", "amount"}
+    profile = await admin_client.post(f"/api/tables/{full_name}/profile")
+    assert profile.status_code == 200
+    body = profile.json()
+    assert body["full_name"] == full_name
+    assert body["delta_log_version"] == 0
+    assert body["cached"] is False
+    names = [c["column_name"] for c in body["columns"]]
+    assert set(names) == {"id", "category", "amount"}
 
-        # Second call: cache hit with cached=True.
-        profile2 = await client.post(f"/api/tables/{full_name}/profile")
-        assert profile2.status_code == 200
-        assert profile2.json()["cached"] is True
+    # Second call: cache hit with cached=True.
+    profile2 = await admin_client.post(f"/api/tables/{full_name}/profile")
+    assert profile2.status_code == 200
+    assert profile2.json()["cached"] is True
 
-        # GET /stats returns the cached columns.
-        stats_resp = await client.get(f"/api/tables/{full_name}/stats")
-        assert stats_resp.status_code == 200
-        assert len(stats_resp.json()["columns"]) == 3
+    # GET /stats returns the cached columns.
+    stats_resp = await admin_client.get(f"/api/tables/{full_name}/stats")
+    assert stats_resp.status_code == 200
+    assert len(stats_resp.json()["columns"]) == 3
 
 
 @pytest.mark.asyncio
-async def test_delete_stats_requires_admin(orders_delta: str) -> None:
+async def test_delete_stats_requires_admin(orders_delta: str, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(orders_delta)
     full_name = "main.sales.orders"
     # Admin populates + clears.
-    async with _admin_client() as client:
-        await client.post(f"/api/tables/{full_name}/profile")
-        clear = await client.delete(f"/api/tables/{full_name}/stats")
-        assert clear.status_code == 204
+    await admin_client.post(f"/api/tables/{full_name}/profile")
+    clear = await admin_client.delete(f"/api/tables/{full_name}/stats")
+    assert clear.status_code == 204
     # Non-admin DELETE is 403 even when there are no cached rows.
-    async with _non_admin_client() as client:
-        forbidden = await client.delete(f"/api/tables/{full_name}/stats")
-        assert forbidden.status_code == 403
+    forbidden = await non_admin_client.delete(f"/api/tables/{full_name}/stats")
+    assert forbidden.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_profile_enforces_select(orders_delta: str, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_profile_enforces_select(orders_delta: str, monkeypatch: pytest.MonkeyPatch, non_admin_client: httpx.AsyncClient) -> None:
     """A caller without SELECT on the table is refused at enforcement."""
     app.state.uc_client = _make_uc_mock(orders_delta)
 
@@ -259,17 +242,15 @@ async def test_profile_enforces_select(orders_delta: str, monkeypatch: pytest.Mo
 
     monkeypatch.setattr(governance_routes, "check_privilege", deny)
 
-    async with _non_admin_client() as client:
-        res = await client.post("/api/tables/main.sales.orders/profile")
+    res = await non_admin_client.post("/api/tables/main.sales.orders/profile")
     assert res.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_profile_404_when_table_missing() -> None:
+async def test_profile_404_when_table_missing(admin_client: httpx.AsyncClient) -> None:
     client_mock = MagicMock(spec=UnityCatalogClient)
     client_mock.get_table = AsyncMock(return_value=None)
     client_mock.get_effective_permissions = AsyncMock(return_value=[])
     app.state.uc_client = client_mock
-    async with _admin_client() as client:
-        res = await client.post("/api/tables/no.such.table/profile")
+    res = await admin_client.post("/api/tables/no.such.table/profile")
     assert res.status_code == 404

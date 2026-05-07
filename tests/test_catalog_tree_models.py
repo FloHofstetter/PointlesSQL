@@ -16,14 +16,6 @@ import pytest
 from pointlessql.api.main import app
 
 
-def _client(**kwargs) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        follow_redirects=False,
-        **kwargs,
-    )
-
 
 @pytest.fixture
 def uc_with_models(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
@@ -80,10 +72,9 @@ def uc_with_models(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 @pytest.mark.asyncio
 async def test_api_tree_includes_models_per_schema(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/tree")
+    resp = await admin_client.get("/api/tree")
     assert resp.status_code == 200
     body = resp.json()
     assert body[0]["name"] == "cat1"
@@ -95,10 +86,9 @@ async def test_api_tree_includes_models_per_schema(
 
 @pytest.mark.asyncio
 async def test_tree_search_finds_models_by_substring(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/tree/search?q=smoke")
+    resp = await admin_client.get("/api/tree/search?q=smoke")
     assert resp.status_code == 200
     body = resp.json()
     matches = body["matches"]
@@ -107,10 +97,9 @@ async def test_tree_search_finds_models_by_substring(
 
 @pytest.mark.asyncio
 async def test_tree_search_does_not_match_table_when_only_model_matches(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/tree/search?q=smoke_model")
+    resp = await admin_client.get("/api/tree/search?q=smoke_model")
     assert resp.status_code == 200
     body = resp.json()
     kinds = {m["kind"] for m in body["matches"]}

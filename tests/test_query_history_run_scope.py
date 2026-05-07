@@ -13,13 +13,6 @@ from pointlessql.models import AgentRun, QueryHistory
 from pointlessql.services import query_history as query_history_service
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _create_run(run_id: str) -> str:
     """Insert an :class:`AgentRun` fixture row."""
@@ -123,7 +116,7 @@ def test_list_queries_filters_by_agent_run_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_sql_execute_tags_history_with_header(monkeypatch) -> None:
+async def test_sql_execute_tags_history_with_header(monkeypatch, admin_client: httpx.AsyncClient) -> None:
     factory = app.state.session_factory
     run_id = _create_run("45678901-4567-4567-4567-456789012345")
 
@@ -143,12 +136,11 @@ async def test_sql_execute_tags_history_with_header(monkeypatch) -> None:
     )
     monkeypatch.setattr(sql_routes_mod, "run_sql_sync", lambda *a, **k: fake_result)
 
-    async with _admin_client() as client:
-        response = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT 1"},
-            headers={"X-Agent-Run-Id": run_id},
-        )
+    response = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT 1"},
+        headers={"X-Agent-Run-Id": run_id},
+    )
     assert response.status_code == 200, response.text
     with factory() as session:
         row = session.scalar(select(QueryHistory).where(QueryHistory.agent_run_id == run_id))
@@ -162,7 +154,7 @@ async def test_sql_execute_tags_history_with_header(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_queries_page_filter_by_agent_run_id() -> None:
+async def test_queries_page_filter_by_agent_run_id(admin_client: httpx.AsyncClient) -> None:
     factory = app.state.session_factory
     run_id = _create_run("56789012-5678-5678-5678-567890123456")
     started = datetime.datetime.now(datetime.UTC)
@@ -192,8 +184,7 @@ async def test_queries_page_filter_by_agent_run_id() -> None:
         referenced_tables=[],
         agent_run_id=None,
     )
-    async with _admin_client() as client:
-        response = await client.get(f"/queries?agent_run_id={run_id}")
+    response = await admin_client.get(f"/queries?agent_run_id={run_id}")
     assert response.status_code == 200
     body = response.text
     assert "SELECT in_run" in body
@@ -207,35 +198,34 @@ async def test_queries_page_filter_by_agent_run_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_detail_renders_queries_tab() -> None:
+async def test_run_detail_renders_queries_tab(admin_client: httpx.AsyncClient) -> None:
     run_id = "67890123-6789-6789-6789-678901234567"
     factory = app.state.session_factory
-    async with _admin_client() as client:
-        post = await client.post(
-            "/api/agent-runs",
-            json={
-                "id": run_id,
-                "notebook_path": "demo/x.py",
-                "source": "import pql\n",
-                "runtime_versions": {"python": "3.14.0"},
-            },
-        )
-        assert post.status_code == 200, post.text
-        started = datetime.datetime.now(datetime.UTC)
-        query_history_service.record_query(
-            factory,
-            user_id=1,
-            user_email="t@test.com",
-            sql_text="SELECT visible_in_tab",
-            started_at=started,
-            finished_at=started,
-            status="succeeded",
-            row_count=1,
-            duration_ms=2,
-            referenced_tables=[],
-            agent_run_id=run_id,
-        )
-        page = await client.get(f"/runs/{run_id}")
+    post = await admin_client.post(
+        "/api/agent-runs",
+        json={
+            "id": run_id,
+            "notebook_path": "demo/x.py",
+            "source": "import pql\n",
+            "runtime_versions": {"python": "3.14.0"},
+        },
+    )
+    assert post.status_code == 200, post.text
+    started = datetime.datetime.now(datetime.UTC)
+    query_history_service.record_query(
+        factory,
+        user_id=1,
+        user_email="t@test.com",
+        sql_text="SELECT visible_in_tab",
+        started_at=started,
+        finished_at=started,
+        status="succeeded",
+        row_count=1,
+        duration_ms=2,
+        referenced_tables=[],
+        agent_run_id=run_id,
+    )
+    page = await admin_client.get(f"/runs/{run_id}")
     assert page.status_code == 200
     body = page.text
     assert 'id="tab-queries-btn"' in body

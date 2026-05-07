@@ -59,42 +59,27 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 # -- Export (real Delta, short queries — safe) ---------------------
 
 
-async def test_csv_export_roundtrip(orders_delta: str) -> None:
+async def test_csv_export_roundtrip(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        # Seed history by executing once.
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
-        )
-        assert resp.status_code == 200, resp.text
+    # Seed history by executing once.
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT id, name FROM main.sales.orders ORDER BY id"},
+    )
+    assert resp.status_code == 200, resp.text
 
-        # Look up the most recent history row.
-        resp = await client.get("/api/queries")
-        entries = resp.json()
-        assert entries, "expected history to have our execution"
-        history_id = entries[0]["id"]
+    # Look up the most recent history row.
+    resp = await admin_client.get("/api/queries")
+    entries = resp.json()
+    assert entries, "expected history to have our execution"
+    history_id = entries[0]["id"]
 
-        resp = await client.get(f"/api/sql/execute/{history_id}/download?format=csv")
+    resp = await admin_client.get(f"/api/sql/execute/{history_id}/download?format=csv")
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"].startswith("text/csv")
     assert 'attachment; filename="query-' in resp.headers.get("content-disposition", "")
@@ -104,18 +89,17 @@ async def test_csv_export_roundtrip(orders_delta: str) -> None:
     assert len(body) == 6
 
 
-async def test_parquet_export_roundtrip(orders_delta: str) -> None:
+async def test_parquet_export_roundtrip(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT id FROM main.sales.orders"},
-        )
-        assert resp.status_code == 200, resp.text
-        entries = (await client.get("/api/queries")).json()
-        history_id = entries[0]["id"]
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT id FROM main.sales.orders"},
+    )
+    assert resp.status_code == 200, resp.text
+    entries = (await admin_client.get("/api/queries")).json()
+    history_id = entries[0]["id"]
 
-        resp = await client.get(f"/api/sql/execute/{history_id}/download?format=parquet")
+    resp = await admin_client.get(f"/api/sql/execute/{history_id}/download?format=parquet")
     assert resp.status_code == 200, resp.text
     assert resp.headers["content-type"] == "application/octet-stream"
     # The bytes should round-trip via pyarrow.parquet.
@@ -124,24 +108,22 @@ async def test_parquet_export_roundtrip(orders_delta: str) -> None:
     assert table.num_rows == 5
 
 
-async def test_export_404_for_missing_history(orders_delta: str) -> None:
+async def test_export_404_for_missing_history(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.get("/api/sql/execute/999999/download?format=csv")
+    resp = await admin_client.get("/api/sql/execute/999999/download?format=csv")
     assert resp.status_code == 404
 
 
-async def test_export_re_enforces_select(orders_delta: str) -> None:
+async def test_export_re_enforces_select(orders_delta: str, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
     # Admin seeds a history row (admin bypass is in effect).
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT id FROM main.sales.orders"},
-        )
-        assert resp.status_code == 200, resp.text
-        entries = (await client.get("/api/queries")).json()
-        history_id = entries[0]["id"]
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT id FROM main.sales.orders"},
+    )
+    assert resp.status_code == 200, resp.text
+    entries = (await admin_client.get("/api/queries")).json()
+    history_id = entries[0]["id"]
 
     # Non-admin with no SELECT grant should not be able to download —
     # but first, they cannot even see the history row (owner = admin).
@@ -150,15 +132,14 @@ async def test_export_re_enforces_select(orders_delta: str) -> None:
         storage_location=orders_delta,
         effective=[],
     )
-    async with _non_admin_client() as other:
-        resp = await other.get(f"/api/sql/execute/{history_id}/download?format=csv")
+    resp = await non_admin_client.get(f"/api/sql/execute/{history_id}/download?format=csv")
     assert resp.status_code == 404  # collapsed with "not found"
 
 
 # -- Cancel (mocked conn — safe, no real blocking query) -----------
 
 
-async def test_cancel_calls_interrupt_on_registered_conn() -> None:
+async def test_cancel_calls_interrupt_on_registered_conn(admin_client: httpx.AsyncClient) -> None:
     # Register a mock conn directly in the app-state registry,
     # then hit the cancel endpoint.  Neither the route nor the
     # test ever runs a real DuckDB query in this path.
@@ -166,42 +147,38 @@ async def test_cancel_calls_interrupt_on_registered_conn() -> None:
     registry: dict[str, Any] = {"test-qid-123": mock_conn}
     app.state._live_queries = registry
 
-    async with _admin_client() as client:
-        resp = await client.post("/api/sql/execute/test-qid-123/cancel")
+    resp = await admin_client.post("/api/sql/execute/test-qid-123/cancel")
     assert resp.status_code == 204
     mock_conn.interrupt.assert_called_once()
 
 
-async def test_cancel_unknown_qid_is_idempotent() -> None:
+async def test_cancel_unknown_qid_is_idempotent(admin_client: httpx.AsyncClient) -> None:
     app.state._live_queries = {}
-    async with _admin_client() as client:
-        resp = await client.post("/api/sql/execute/never-existed/cancel")
+    resp = await admin_client.post("/api/sql/execute/never-existed/cancel")
     # Unknown → 204 by design so the client is idempotent with
     # the actual execute response race.
     assert resp.status_code == 204
 
 
-async def test_cancel_swallows_interrupt_raising() -> None:
+async def test_cancel_swallows_interrupt_raising(admin_client: httpx.AsyncClient) -> None:
     # Some backends could raise from interrupt(); the endpoint
     # must not 500 on that — audit + 204 and move on.
     mock_conn = MagicMock()
     mock_conn.interrupt.side_effect = RuntimeError("mock backend died")
     app.state._live_queries = {"flaky-qid": mock_conn}
-    async with _admin_client() as client:
-        resp = await client.post("/api/sql/execute/flaky-qid/cancel")
+    resp = await admin_client.post("/api/sql/execute/flaky-qid/cancel")
     assert resp.status_code == 204
 
 
-async def test_execute_returns_query_id_in_response(orders_delta: str) -> None:
+async def test_execute_returns_query_id_in_response(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={
-                "sql": "SELECT id FROM main.sales.orders LIMIT 1",
-                "query_id": "client-chose-this",
-            },
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={
+            "sql": "SELECT id FROM main.sales.orders LIMIT 1",
+            "query_id": "client-chose-this",
+        },
+    )
     assert resp.status_code == 200, resp.text
     body = resp.json()
     # Server echoes the client-supplied query_id so the Cancel

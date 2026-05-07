@@ -17,13 +17,6 @@ from pointlessql.pql._cdf import cdf_creation_config
 from pointlessql.services import cdf_tail
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_subscription(
     *,
@@ -187,70 +180,67 @@ class TestAdminCdfSubscriptions:
     """``/api/admin/cdf-subscriptions`` happy path + scoping."""
 
     @pytest.mark.asyncio
-    async def test_create_list_toggle_delete_round_trip(self) -> None:
-        async with _admin_client() as c:
-            create = await c.post(
-                "/api/admin/cdf-subscriptions",
-                json={
-                    "table_full_name": "demo.silver.orders",
-                    "row_id_column": "id",
-                },
-            )
-            assert create.status_code == 200, create.text
-            payload = create.json()
-            assert payload["table_full_name"] == "demo.silver.orders"
-            assert payload["producer_label"] == "cdf-tail:demo.silver.orders"
-            assert payload["is_active"] is True
-            assert payload["last_version_processed"] is None
-            sub_id = payload["id"]
+    async def test_create_list_toggle_delete_round_trip(self, admin_client: httpx.AsyncClient) -> None:
+        create = await admin_client.post(
+            "/api/admin/cdf-subscriptions",
+            json={
+                "table_full_name": "demo.silver.orders",
+                "row_id_column": "id",
+            },
+        )
+        assert create.status_code == 200, create.text
+        payload = create.json()
+        assert payload["table_full_name"] == "demo.silver.orders"
+        assert payload["producer_label"] == "cdf-tail:demo.silver.orders"
+        assert payload["is_active"] is True
+        assert payload["last_version_processed"] is None
+        sub_id = payload["id"]
 
-            listing = await c.get("/api/admin/cdf-subscriptions")
-            assert listing.status_code == 200
-            ids = [r["id"] for r in listing.json()["subscriptions"]]
-            assert sub_id in ids
+        listing = await admin_client.get("/api/admin/cdf-subscriptions")
+        assert listing.status_code == 200
+        ids = [r["id"] for r in listing.json()["subscriptions"]]
+        assert sub_id in ids
 
-            toggle = await c.post(
-                f"/api/admin/cdf-subscriptions/{sub_id}/toggle"
-            )
-            assert toggle.status_code == 200
-            assert toggle.json()["is_active"] is False
+        toggle = await admin_client.post(
+            f"/api/admin/cdf-subscriptions/{sub_id}/toggle"
+        )
+        assert toggle.status_code == 200
+        assert toggle.json()["is_active"] is False
 
-            delete = await c.delete(
-                f"/api/admin/cdf-subscriptions/{sub_id}"
-            )
-            assert delete.status_code == 200
-            assert delete.json() == {"id": sub_id, "deleted": True}
+        delete = await admin_client.delete(
+            f"/api/admin/cdf-subscriptions/{sub_id}"
+        )
+        assert delete.status_code == 200
+        assert delete.json() == {"id": sub_id, "deleted": True}
 
     @pytest.mark.asyncio
-    async def test_create_rejects_invalid_payload(self) -> None:
-        async with _admin_client() as c:
-            missing_row_id = await c.post(
-                "/api/admin/cdf-subscriptions",
-                json={"table_full_name": "demo.silver.orders"},
-            )
-            two_part = await c.post(
-                "/api/admin/cdf-subscriptions",
-                json={"table_full_name": "demo.orders", "row_id_column": "id"},
-            )
+    async def test_create_rejects_invalid_payload(self, admin_client: httpx.AsyncClient) -> None:
+        missing_row_id = await admin_client.post(
+            "/api/admin/cdf-subscriptions",
+            json={"table_full_name": "demo.silver.orders"},
+        )
+        two_part = await admin_client.post(
+            "/api/admin/cdf-subscriptions",
+            json={"table_full_name": "demo.orders", "row_id_column": "id"},
+        )
         assert missing_row_id.status_code == 422
         assert two_part.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_rejects_duplicate(self) -> None:
-        async with _admin_client() as c:
-            first = await c.post(
-                "/api/admin/cdf-subscriptions",
-                json={
-                    "table_full_name": "demo.silver.dupes",
-                    "row_id_column": "id",
-                },
-            )
-            second = await c.post(
-                "/api/admin/cdf-subscriptions",
-                json={
-                    "table_full_name": "demo.silver.dupes",
-                    "row_id_column": "id",
-                },
-            )
+    async def test_create_rejects_duplicate(self, admin_client: httpx.AsyncClient) -> None:
+        first = await admin_client.post(
+            "/api/admin/cdf-subscriptions",
+            json={
+                "table_full_name": "demo.silver.dupes",
+                "row_id_column": "id",
+            },
+        )
+        second = await admin_client.post(
+            "/api/admin/cdf-subscriptions",
+            json={
+                "table_full_name": "demo.silver.dupes",
+                "row_id_column": "id",
+            },
+        )
         assert first.status_code == 200
         assert second.status_code == 422

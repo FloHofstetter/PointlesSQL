@@ -8,18 +8,10 @@ import pytest
 from pointlessql.api.main import app
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 @pytest.mark.asyncio
-async def test_primitives_returns_five_entries_with_signature_and_doc() -> None:
-    async with _admin_client() as client:
-        response = await client.get("/api/pql/primitives")
+async def test_primitives_returns_five_entries_with_signature_and_doc(admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.get("/api/pql/primitives")
     assert response.status_code == 200, response.text
     payload = response.json()
     primitives = payload["primitives"]
@@ -42,7 +34,7 @@ async def test_primitives_returns_five_entries_with_signature_and_doc() -> None:
 
 
 @pytest.mark.asyncio
-async def test_autoload_signature_carries_source_path_kwarg() -> None:
+async def test_autoload_signature_carries_source_path_kwarg(admin_client: httpx.AsyncClient) -> None:
     """Regression test for the live-walkthrough bug.
 
     The 2026-04-25 demo failed because the human reviewer typed
@@ -51,8 +43,7 @@ async def test_autoload_signature_carries_source_path_kwarg() -> None:
     the real kwarg name to a confused agent — so make sure the
     signature we return contains it.
     """
-    async with _admin_client() as client:
-        response = await client.get("/api/pql/primitives")
+    response = await admin_client.get("/api/pql/primitives")
     assert response.status_code == 200
     autoload = response.json()["primitives"]["autoload"]
     assert "source_path" in autoload["signature"]

@@ -12,20 +12,6 @@ from pointlessql.api.main import app
 from pointlessql.services import query_history as qh
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 def _seed_history(*, user_id: int) -> int:
@@ -112,60 +98,56 @@ def test_update_chart_config_non_owner_refused() -> None:
 
 
 @pytest.mark.asyncio
-async def test_patch_chart_config_round_trip_for_owner() -> None:
+async def test_patch_chart_config_round_trip_for_owner(admin_client: httpx.AsyncClient) -> None:
     history_id = _seed_history(user_id=1)
-    async with _admin_client() as client:
-        patch = await client.patch(
-            f"/api/queries/{history_id}/chart-config",
-            json={"chart_config": {"type": "line", "x": "day", "y": "count"}},
-        )
-        assert patch.status_code == 200
-        body = patch.json()
-        # Server canonicalises with sorted keys + compact separators.
-        assert body["chart_config"] == '{"type":"line","x":"day","y":"count"}'
-        # GET by id returns the same payload.
-        got = await client.get(f"/api/queries/{history_id}")
-        assert got.status_code == 200
-        assert got.json()["chart_config"] == '{"type":"line","x":"day","y":"count"}'
+    patch = await admin_client.patch(
+        f"/api/queries/{history_id}/chart-config",
+        json={"chart_config": {"type": "line", "x": "day", "y": "count"}},
+    )
+    assert patch.status_code == 200
+    body = patch.json()
+    # Server canonicalises with sorted keys + compact separators.
+    assert body["chart_config"] == '{"type":"line","x":"day","y":"count"}'
+    # GET by id returns the same payload.
+    got = await admin_client.get(f"/api/queries/{history_id}")
+    assert got.status_code == 200
+    assert got.json()["chart_config"] == '{"type":"line","x":"day","y":"count"}'
 
 
 @pytest.mark.asyncio
-async def test_patch_chart_config_null_clears() -> None:
+async def test_patch_chart_config_null_clears(admin_client: httpx.AsyncClient) -> None:
     history_id = _seed_history(user_id=1)
-    async with _admin_client() as client:
-        await client.patch(
-            f"/api/queries/{history_id}/chart-config",
-            json={"chart_config": {"type": "bar", "x": "a", "y": "b"}},
-        )
-        cleared = await client.patch(
-            f"/api/queries/{history_id}/chart-config",
-            json={"chart_config": None},
-        )
-        assert cleared.status_code == 200
-        assert cleared.json()["chart_config"] is None
+    await admin_client.patch(
+        f"/api/queries/{history_id}/chart-config",
+        json={"chart_config": {"type": "bar", "x": "a", "y": "b"}},
+    )
+    cleared = await admin_client.patch(
+        f"/api/queries/{history_id}/chart-config",
+        json={"chart_config": None},
+    )
+    assert cleared.status_code == 200
+    assert cleared.json()["chart_config"] is None
 
 
 @pytest.mark.asyncio
-async def test_patch_chart_config_invalid_payload_is_400() -> None:
+async def test_patch_chart_config_invalid_payload_is_400(admin_client: httpx.AsyncClient) -> None:
     history_id = _seed_history(user_id=1)
-    async with _admin_client() as client:
-        res = await client.patch(
-            f"/api/queries/{history_id}/chart-config",
-            json={"chart_config": "bar"},
-        )
-        # ValidationError is mapped to 422 by the central error handler.
-        assert res.status_code == 422
+    res = await admin_client.patch(
+        f"/api/queries/{history_id}/chart-config",
+        json={"chart_config": "bar"},
+    )
+    # ValidationError is mapped to 422 by the central error handler.
+    assert res.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_get_and_patch_by_stranger_returns_404() -> None:
+async def test_get_and_patch_by_stranger_returns_404(non_admin_client: httpx.AsyncClient) -> None:
     # Admin (user_id=1) creates the row; non-admin (user_id=2) probes it.
     history_id = _seed_history(user_id=1)
-    async with _non_admin_client() as client:
-        missing = await client.get(f"/api/queries/{history_id}")
-        assert missing.status_code == 404
-        patch = await client.patch(
-            f"/api/queries/{history_id}/chart-config",
-            json={"chart_config": {"type": "pie", "x": "a", "y": "b"}},
-        )
-        assert patch.status_code == 404
+    missing = await non_admin_client.get(f"/api/queries/{history_id}")
+    assert missing.status_code == 404
+    patch = await non_admin_client.patch(
+        f"/api/queries/{history_id}/chart-config",
+        json={"chart_config": {"type": "pie", "x": "a", "y": "b"}},
+    )
+    assert patch.status_code == 404

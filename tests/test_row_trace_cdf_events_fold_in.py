@@ -43,13 +43,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_edge_and_events(
     *,
@@ -110,17 +103,16 @@ def _seed_edge_and_events(
 
 
 @pytest.mark.asyncio
-async def test_walk_back_attaches_cdf_events_to_step(uc_mock: MagicMock) -> None:
+async def test_walk_back_attaches_cdf_events_to_step(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
     """Walkback emits ``cdf_events`` per step ordered by ``delta_version``."""
     table = "demo.silver.tracked_fold_in"
     row_id = "row-fold-001"
     _seed_edge_and_events(table=table, row_id=row_id, versions=[3, 7, 11])
 
-    async with _admin_client() as client:
-        resp = await client.get(
-            "/api/lineage/row-trace",
-            params={"table": table, "row_id": row_id},
-        )
+    resp = await admin_client.get(
+        "/api/lineage/row-trace",
+        params={"table": table, "row_id": row_id},
+    )
     assert resp.status_code == 200, resp.text
     payload = resp.json()
     steps = payload["steps"]
@@ -136,7 +128,7 @@ async def test_walk_back_attaches_cdf_events_to_step(uc_mock: MagicMock) -> None
 @pytest.mark.asyncio
 async def test_walk_back_steps_without_cdf_events_get_empty_list(
     uc_mock: MagicMock,
-) -> None:
+    admin_client: httpx.AsyncClient) -> None:
     """Step without matching CDF events still has the ``cdf_events`` key."""
     table = "demo.silver.no_cdf_yet"
     row_id = "row-no-cdf-001"
@@ -156,18 +148,17 @@ async def test_walk_back_steps_without_cdf_events_get_empty_list(
         )
         session.commit()
 
-    async with _admin_client() as client:
-        resp = await client.get(
-            "/api/lineage/row-trace",
-            params={"table": table, "row_id": row_id},
-        )
+    resp = await admin_client.get(
+        "/api/lineage/row-trace",
+        params={"table": table, "row_id": row_id},
+    )
     assert resp.status_code == 200, resp.text
     head = resp.json()["steps"][0]
     assert head["cdf_events"] == []
 
 
 @pytest.mark.asyncio
-async def test_walk_back_workspace_isolation(uc_mock: MagicMock) -> None:
+async def test_walk_back_workspace_isolation(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
     """CDF events from a different workspace must not leak into the trace."""
     table = "demo.silver.cross_ws"
     row_id = "row-cross-ws-001"
@@ -180,11 +171,10 @@ async def test_walk_back_workspace_isolation(uc_mock: MagicMock) -> None:
         table=table, row_id=row_id, versions=[42], workspace_id=other_ws_id
     )
 
-    async with _admin_client() as client:
-        resp = await client.get(
-            "/api/lineage/row-trace",
-            params={"table": table, "row_id": row_id},
-        )
+    resp = await admin_client.get(
+        "/api/lineage/row-trace",
+        params={"table": table, "row_id": row_id},
+    )
     assert resp.status_code == 200, resp.text
     steps = resp.json()["steps"]
     if steps:

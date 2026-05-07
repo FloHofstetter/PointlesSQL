@@ -44,34 +44,19 @@ def _app_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 class TestHtmxFragmentToast:
     """Non-boosted HTMX fragment requests get an ``HX-Trigger`` toast."""
 
-    async def test_htmx_fragment_receives_trigger_header(self) -> None:
+    async def test_htmx_fragment_receives_trigger_header(self, non_admin_client: httpx.AsyncClient) -> None:
         """Non-admin on ``/connections`` + ``HX-Request: true`` → toast trigger.
 
         ``_require_admin`` raises :class:`AuthorizationError` before any
         DB-backed code runs, so this path is independent of the home-
         page ``jobs`` query that ``test_api_errors`` needs.
         """
-        async with _non_admin_client() as client:
-            resp = await client.get("/connections", headers={"HX-Request": "true"})
+        resp = await non_admin_client.get("/connections", headers={"HX-Request": "true"})
         # htmx suppresses the swap on non-2xx, but the HX-Trigger header
         # must fire so the browser-side listener shows a toast.
         assert resp.status_code == 403
@@ -86,13 +71,12 @@ class TestHtmxFragmentToast:
         # do not want to ship an HTML page as the toast body.
         assert resp.content == b""
 
-    async def test_boosted_navigation_falls_back_to_html_page(self) -> None:
+    async def test_boosted_navigation_falls_back_to_html_page(self, non_admin_client: httpx.AsyncClient) -> None:
         """``HX-Boosted: true`` callers get the branded HTML error page."""
-        async with _non_admin_client() as client:
-            resp = await client.get(
-                "/connections",
-                headers={"HX-Request": "true", "HX-Boosted": "true"},
-            )
+        resp = await non_admin_client.get(
+            "/connections",
+            headers={"HX-Request": "true", "HX-Boosted": "true"},
+        )
         # Boosted navigations do not get the HX-Trigger shortcut; they
         # get the branded HTML shell so htmx can swap #main-content.
         assert "HX-Trigger" not in resp.headers
@@ -103,43 +87,39 @@ class TestHtmxFragmentToast:
 class TestRfc9457Compliance:
     """Header, body shape, and extension-member correctness."""
 
-    async def test_problem_media_type_on_api(self) -> None:
+    async def test_problem_media_type_on_api(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client.get_tree = AsyncMock(side_effect=CatalogUnavailableError("down"))
-        async with _admin_client() as client:
-            resp = await client.get("/api/tree")
+        resp = await admin_client.get("/api/tree")
         assert resp.headers["content-type"].startswith("application/problem+json")
 
-    async def test_problem_media_type_when_accept_json(self) -> None:
+    async def test_problem_media_type_when_accept_json(self, non_admin_client: httpx.AsyncClient) -> None:
         """Non-API paths honour ``Accept: application/json`` too."""
-        async with _non_admin_client() as client:
-            resp = await client.get(
-                "/connections",
-                headers={"accept": "application/json"},
-            )
+        resp = await non_admin_client.get(
+            "/connections",
+            headers={"accept": "application/json"},
+        )
         assert resp.headers["content-type"].startswith("application/problem+json")
         body = resp.json()
         # Core RFC 9457 members must all be present.
         assert set(body).issuperset({"type", "title", "status", "detail", "code"})
         assert body["type"] == "about:blank"
 
-    async def test_authorization_extension_members_in_body(self) -> None:
+    async def test_authorization_extension_members_in_body(self, admin_client: httpx.AsyncClient) -> None:
         """``AuthorizationError`` carries extra context as RFC 9457 extensions."""
         app.state.uc_client.get_tree = AsyncMock(
             side_effect=AuthorizationError("user@test.com", "MODIFY", "schema", "cat.sch")
         )
-        async with _admin_client() as client:
-            resp = await client.get("/api/tree")
+        resp = await admin_client.get("/api/tree")
         body = resp.json()
         assert body["code"] == "authorization_error"
         assert body["required_privilege"] == "MODIFY"
         assert body["securable_type"] == "schema"
         assert body["full_name"] == "cat.sch"
 
-    async def test_domain_validation_error_422(self) -> None:
+    async def test_domain_validation_error_422(self, admin_client: httpx.AsyncClient) -> None:
         """Our own ``ValidationError`` still maps to 422 with the right code."""
         app.state.uc_client.get_tree = AsyncMock(side_effect=ValidationError("bad name"))
-        async with _admin_client() as client:
-            resp = await client.get("/api/tree")
+        resp = await admin_client.get("/api/tree")
         assert resp.status_code == 422
         body = resp.json()
         assert body["code"] == "validation_error"

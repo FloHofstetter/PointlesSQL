@@ -47,13 +47,6 @@ def _stub_uc_client(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_anomalous_rejects(*, today_count: int, prior_days: list[int]) -> str:
     """Insert one run per prior day + a sentinel today, with the
@@ -155,9 +148,8 @@ def _seed_anomalous_rejects(*, today_count: int, prior_days: list[int]) -> str:
 
 
 @pytest.mark.asyncio
-async def test_home_summary_includes_anomalies_block() -> None:
-    async with _admin_client() as client:
-        r = await client.get("/api/home/summary")
+async def test_home_summary_includes_anomalies_block(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.get("/api/home/summary")
     assert r.status_code == 200
     body = r.json()
     assert "anomalies" in body
@@ -166,10 +158,9 @@ async def test_home_summary_includes_anomalies_block() -> None:
 
 
 @pytest.mark.asyncio
-async def test_home_summary_anomalies_critical_for_synthetic_spike() -> None:
+async def test_home_summary_anomalies_critical_for_synthetic_spike(admin_client: httpx.AsyncClient) -> None:
     _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    async with _admin_client() as client:
-        r = await client.get("/api/home/summary")
+    r = await admin_client.get("/api/home/summary")
     body = r.json()
     # Today has 50 rejects against a calm baseline.  Aggregator
     # marks that "critical" given the >2σ rule.
@@ -182,10 +173,9 @@ async def test_home_summary_anomalies_critical_for_synthetic_spike() -> None:
 
 
 @pytest.mark.asyncio
-async def test_home_html_renders_anomaly_banner_on_critical() -> None:
+async def test_home_html_renders_anomaly_banner_on_critical(admin_client: httpx.AsyncClient) -> None:
     _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    async with _admin_client() as client:
-        r = await client.get("/")
+    r = await admin_client.get("/")
     assert r.status_code == 200
     body = r.text
     assert "anomaly highlighting" in body
@@ -193,10 +183,9 @@ async def test_home_html_renders_anomaly_banner_on_critical() -> None:
 
 
 @pytest.mark.asyncio
-async def test_home_html_no_banner_when_baseline_steady() -> None:
+async def test_home_html_no_banner_when_baseline_steady(admin_client: httpx.AsyncClient) -> None:
     _seed_anomalous_rejects(today_count=2, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    async with _admin_client() as client:
-        r = await client.get("/")
+    r = await admin_client.get("/")
     assert r.status_code == 200
     assert "anomaly highlighting" not in r.text
 
@@ -207,10 +196,9 @@ async def test_home_html_no_banner_when_baseline_steady() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_detail_renders_anomaly_chip_on_critical() -> None:
+async def test_run_detail_renders_anomaly_chip_on_critical(admin_client: httpx.AsyncClient) -> None:
     today_run = _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    async with _admin_client() as client:
-        r = await client.get(f"/runs/{today_run}")
+    r = await admin_client.get(f"/runs/{today_run}")
     assert r.status_code == 200
     body = r.text
     assert "anomaly chip" in body
@@ -218,9 +206,8 @@ async def test_run_detail_renders_anomaly_chip_on_critical() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_detail_no_chip_when_steady() -> None:
+async def test_run_detail_no_chip_when_steady(admin_client: httpx.AsyncClient) -> None:
     today_run = _seed_anomalous_rejects(today_count=2, prior_days=[2, 3, 1, 2, 4, 2, 3])
-    async with _admin_client() as client:
-        r = await client.get(f"/runs/{today_run}")
+    r = await admin_client.get(f"/runs/{today_run}")
     assert r.status_code == 200
     assert "anomaly chip" not in r.text

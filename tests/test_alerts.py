@@ -19,20 +19,6 @@ from pointlessql.services import alert_dispatcher, alert_feeds
 from pointlessql.services import alerts as alerts_service
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 def _make_saved_query(*, owner_id: int, title: str = "Fixture Q") -> int:
@@ -418,81 +404,75 @@ def test_webhook_destination_requires_url() -> None:
 
 
 @pytest.mark.asyncio
-async def test_api_create_list_delete_alert_round_trip() -> None:
+async def test_api_create_list_delete_alert_round_trip(admin_client: httpx.AsyncClient) -> None:
     saved_query_id = _make_saved_query(owner_id=1, title="via HTTP")
-    async with _admin_client() as client:
-        create = await client.post(
-            "/api/alerts",
-            json={
-                "title": "API alert",
-                "saved_query_id": saved_query_id,
-                "cron_expr": "*/5 * * * *",
-                "condition_op": "gt",
-                "threshold": 0,
-            },
-        )
-        assert create.status_code == 200
-        slug = create.json()["slug"]
-        listing = await client.get("/api/alerts")
-        assert listing.status_code == 200
-        slugs = [a["slug"] for a in listing.json()]
-        assert slug in slugs
-        deletion = await client.delete(f"/api/alerts/{slug}")
-        assert deletion.status_code == 204
+    create = await admin_client.post(
+        "/api/alerts",
+        json={
+            "title": "API alert",
+            "saved_query_id": saved_query_id,
+            "cron_expr": "*/5 * * * *",
+            "condition_op": "gt",
+            "threshold": 0,
+        },
+    )
+    assert create.status_code == 200
+    slug = create.json()["slug"]
+    listing = await admin_client.get("/api/alerts")
+    assert listing.status_code == 200
+    slugs = [a["slug"] for a in listing.json()]
+    assert slug in slugs
+    deletion = await admin_client.delete(f"/api/alerts/{slug}")
+    assert deletion.status_code == 204
 
 
 @pytest.mark.asyncio
-async def test_feed_atom_rejects_bad_token() -> None:
-    async with _admin_client() as client:
-        res = await client.get("/alerts/feed.atom", params={"token": "nope"})
-        assert res.status_code == 401
+async def test_feed_atom_rejects_bad_token(admin_client: httpx.AsyncClient) -> None:
+    res = await admin_client.get("/alerts/feed.atom", params={"token": "nope"})
+    assert res.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_feed_atom_roundtrip_with_valid_token() -> None:
+async def test_feed_atom_roundtrip_with_valid_token(admin_client: httpx.AsyncClient) -> None:
     # Admin requests their feed token, then fetches the feed.
-    async with _admin_client() as client:
-        token_res = await client.get("/api/me/feed-token")
-        assert token_res.status_code == 200
-        token = token_res.json()["token"]
-        assert token
-        feed = await client.get("/alerts/feed.atom", params={"token": token})
-        assert feed.status_code == 200
-        assert "application/atom+xml" in feed.headers.get("content-type", "")
-        root = ET.fromstring(feed.text)
-        assert root.tag.endswith("feed")
+    token_res = await admin_client.get("/api/me/feed-token")
+    assert token_res.status_code == 200
+    token = token_res.json()["token"]
+    assert token
+    feed = await admin_client.get("/alerts/feed.atom", params={"token": token})
+    assert feed.status_code == 200
+    assert "application/atom+xml" in feed.headers.get("content-type", "")
+    root = ET.fromstring(feed.text)
+    assert root.tag.endswith("feed")
 
 
 @pytest.mark.asyncio
-async def test_feed_json_roundtrip_with_valid_token() -> None:
-    async with _admin_client() as client:
-        token_res = await client.get("/api/me/feed-token")
-        token = token_res.json()["token"]
-        feed = await client.get("/alerts/feed.json", params={"token": token})
-        assert feed.status_code == 200
-        data = feed.json()
-        assert data["version"].startswith("https://jsonfeed.org/")
-        assert isinstance(data["items"], list)
+async def test_feed_json_roundtrip_with_valid_token(admin_client: httpx.AsyncClient) -> None:
+    token_res = await admin_client.get("/api/me/feed-token")
+    token = token_res.json()["token"]
+    feed = await admin_client.get("/alerts/feed.json", params={"token": token})
+    assert feed.status_code == 200
+    data = feed.json()
+    assert data["version"].startswith("https://jsonfeed.org/")
+    assert isinstance(data["items"], list)
 
 
 @pytest.mark.asyncio
-async def test_stranger_cannot_fetch_alert_by_slug() -> None:
+async def test_stranger_cannot_fetch_alert_by_slug(admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
     saved_query_id = _make_saved_query(owner_id=1, title="Stranger test")
-    async with _admin_client() as client:
-        create = await client.post(
-            "/api/alerts",
-            json={
-                "title": "Admin only",
-                "saved_query_id": saved_query_id,
-                "cron_expr": "*/5 * * * *",
-                "condition_op": "gt",
-                "threshold": 0,
-            },
-        )
-        slug = create.json()["slug"]
-    async with _non_admin_client() as client:
-        res = await client.get(f"/api/alerts/{slug}")
-        assert res.status_code == 404
+    create = await admin_client.post(
+        "/api/alerts",
+        json={
+            "title": "Admin only",
+            "saved_query_id": saved_query_id,
+            "cron_expr": "*/5 * * * *",
+            "condition_op": "gt",
+            "threshold": 0,
+        },
+    )
+    slug = create.json()["slug"]
+    res = await non_admin_client.get(f"/api/alerts/{slug}")
+    assert res.status_code == 404
 
 
 # -- scheduler executor ------------------------------------------------------

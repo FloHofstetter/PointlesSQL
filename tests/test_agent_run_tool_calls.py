@@ -18,13 +18,6 @@ from pointlessql.api.main import app
 from pointlessql.models import AgentRun, AgentRunEvent, AgentRunToolCall
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 async def _seed_run(client: httpx.AsyncClient, run_id: str) -> None:
     """POST a strict agent_runs row so subsequent tool-call POSTs succeed."""
@@ -41,19 +34,18 @@ async def _seed_run(client: httpx.AsyncClient, run_id: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_tool_call_persists_row_and_emits_event() -> None:
+async def test_tool_call_persists_row_and_emits_event(admin_client: httpx.AsyncClient) -> None:
     run_id = "aaaaaaaa-1111-1111-1111-aaaaaaaaaaaa"
-    async with _admin_client() as client:
-        await _seed_run(client, run_id)
-        response = await client.post(
-            f"/api/agent-runs/{run_id}/tool-call",
-            json={
-                "tool_name": "pql_query",
-                "args_json": '{"sql": "SELECT 1"}',
-                "result_summary": '{"ok": true, "rows": [[1]]}',
-                "duration_ms": 7,
-            },
-        )
+    await _seed_run(admin_client, run_id)
+    response = await admin_client.post(
+        f"/api/agent-runs/{run_id}/tool-call",
+        json={
+            "tool_name": "pql_query",
+            "args_json": '{"sql": "SELECT 1"}',
+            "result_summary": '{"ok": true, "rows": [[1]]}',
+            "duration_ms": 7,
+        },
+    )
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["id"] == run_id  # CloudEvent-source key
@@ -87,41 +79,38 @@ async def test_tool_call_persists_row_and_emits_event() -> None:
 
 
 @pytest.mark.asyncio
-async def test_tool_call_rejects_missing_tool_name() -> None:
+async def test_tool_call_rejects_missing_tool_name(admin_client: httpx.AsyncClient) -> None:
     run_id = "bbbbbbbb-1111-1111-1111-bbbbbbbbbbbb"
-    async with _admin_client() as client:
-        await _seed_run(client, run_id)
-        response = await client.post(
-            f"/api/agent-runs/{run_id}/tool-call",
-            json={"args_json": "{}"},
-        )
+    await _seed_run(admin_client, run_id)
+    response = await admin_client.post(
+        f"/api/agent-runs/{run_id}/tool-call",
+        json={"args_json": "{}"},
+    )
     assert response.status_code == 422
     assert "tool_name" in response.text.lower()
 
 
 @pytest.mark.asyncio
-async def test_tool_call_404_for_unknown_run() -> None:
-    async with _admin_client() as client:
-        response = await client.post(
-            "/api/agent-runs/no-such-run/tool-call",
-            json={"tool_name": "pql_query"},
-        )
+async def test_tool_call_404_for_unknown_run(admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.post(
+        "/api/agent-runs/no-such-run/tool-call",
+        json={"tool_name": "pql_query"},
+    )
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_tool_call_accepts_dict_args_json() -> None:
+async def test_tool_call_accepts_dict_args_json(admin_client: httpx.AsyncClient) -> None:
     """Plugin sends ``args_json`` as a dict; route serialises it."""
     run_id = "cccccccc-1111-1111-1111-cccccccccccc"
-    async with _admin_client() as client:
-        await _seed_run(client, run_id)
-        response = await client.post(
-            f"/api/agent-runs/{run_id}/tool-call",
-            json={
-                "tool_name": "pql_get_table",
-                "args_json": {"full_name": "main.gold.orders"},
-            },
-        )
+    await _seed_run(admin_client, run_id)
+    response = await admin_client.post(
+        f"/api/agent-runs/{run_id}/tool-call",
+        json={
+            "tool_name": "pql_get_table",
+            "args_json": {"full_name": "main.gold.orders"},
+        },
+    )
     assert response.status_code == 200
     factory = app.state.session_factory
     with factory() as session:
@@ -134,18 +123,17 @@ async def test_tool_call_accepts_dict_args_json() -> None:
 
 
 @pytest.mark.asyncio
-async def test_tool_call_clamps_called_at_to_iso() -> None:
+async def test_tool_call_clamps_called_at_to_iso(admin_client: httpx.AsyncClient) -> None:
     run_id = "dddddddd-1111-1111-1111-dddddddddddd"
     fixed = datetime(2026, 4, 25, 12, 30, tzinfo=UTC)
-    async with _admin_client() as client:
-        await _seed_run(client, run_id)
-        response = await client.post(
-            f"/api/agent-runs/{run_id}/tool-call",
-            json={
-                "tool_name": "pql_query",
-                "called_at": fixed.isoformat(),
-            },
-        )
+    await _seed_run(admin_client, run_id)
+    response = await admin_client.post(
+        f"/api/agent-runs/{run_id}/tool-call",
+        json={
+            "tool_name": "pql_query",
+            "called_at": fixed.isoformat(),
+        },
+    )
     assert response.status_code == 200, response.text
     factory = app.state.session_factory
     with factory() as session:
@@ -157,15 +145,14 @@ async def test_tool_call_clamps_called_at_to_iso() -> None:
 
 
 @pytest.mark.asyncio
-async def test_tool_call_truncates_oversized_result_summary() -> None:
+async def test_tool_call_truncates_oversized_result_summary(admin_client: httpx.AsyncClient) -> None:
     run_id = "eeeeeeee-1111-1111-1111-eeeeeeeeeeee"
     huge = "x" * 5000
-    async with _admin_client() as client:
-        await _seed_run(client, run_id)
-        response = await client.post(
-            f"/api/agent-runs/{run_id}/tool-call",
-            json={"tool_name": "pql_query", "result_summary": huge},
-        )
+    await _seed_run(admin_client, run_id)
+    response = await admin_client.post(
+        f"/api/agent-runs/{run_id}/tool-call",
+        json={"tool_name": "pql_query", "result_summary": huge},
+    )
     assert response.status_code == 200
     factory = app.state.session_factory
     with factory() as session:
@@ -177,15 +164,14 @@ async def test_tool_call_truncates_oversized_result_summary() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_seed_unaffected_by_tool_call_inserts() -> None:
+async def test_run_seed_unaffected_by_tool_call_inserts(admin_client: httpx.AsyncClient) -> None:
     """A successful tool-call POST does not flip the parent run state."""
     run_id = "ffffffff-1111-1111-1111-ffffffffffff"
-    async with _admin_client() as client:
-        await _seed_run(client, run_id)
-        await client.post(
-            f"/api/agent-runs/{run_id}/tool-call",
-            json={"tool_name": "pql_query"},
-        )
+    await _seed_run(admin_client, run_id)
+    await admin_client.post(
+        f"/api/agent-runs/{run_id}/tool-call",
+        json={"tool_name": "pql_query"},
+    )
     factory = app.state.session_factory
     with factory() as session:
         run = session.execute(select(AgentRun).where(AgentRun.id == run_id)).scalar_one()

@@ -42,13 +42,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_value_changes() -> tuple[str, int]:
     """Insert one merge op + two value-change rows on (silver.orders, row-A)."""
@@ -108,13 +101,12 @@ def _seed_value_changes() -> tuple[str, int]:
 
 
 @pytest.mark.asyncio
-async def test_value_changes_returns_two_changes(uc_mock: MagicMock) -> None:
+async def test_value_changes_returns_two_changes(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
     _seed_value_changes()
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/lineage/value-changes",
-            params={"table": "main.silver.orders", "row_id": "row-A"},
-        )
+    response = await admin_client.get(
+        "/api/lineage/value-changes",
+        params={"table": "main.silver.orders", "row_id": "row-A"},
+    )
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["table"] == "main.silver.orders"
@@ -129,17 +121,16 @@ async def test_value_changes_returns_two_changes(uc_mock: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_value_changes_column_filter_narrows(uc_mock: MagicMock) -> None:
+async def test_value_changes_column_filter_narrows(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
     _seed_value_changes()
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/lineage/value-changes",
-            params={
-                "table": "main.silver.orders",
-                "row_id": "row-A",
-                "column": "unit_price",
-            },
-        )
+    response = await admin_client.get(
+        "/api/lineage/value-changes",
+        params={
+            "table": "main.silver.orders",
+            "row_id": "row-A",
+            "column": "unit_price",
+        },
+    )
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["column"] == "unit_price"
@@ -148,23 +139,21 @@ async def test_value_changes_column_filter_narrows(uc_mock: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
-async def test_value_changes_unknown_row_returns_empty(uc_mock: MagicMock) -> None:
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/lineage/value-changes",
-            params={"table": "main.silver.orders", "row_id": "never-existed"},
-        )
+async def test_value_changes_unknown_row_returns_empty(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.get(
+        "/api/lineage/value-changes",
+        params={"table": "main.silver.orders", "row_id": "never-existed"},
+    )
     assert response.status_code == 200, response.text
     assert response.json()["changes"] == []
 
 
 @pytest.mark.asyncio
-async def test_value_changes_rejects_empty_row_id(uc_mock: MagicMock) -> None:
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/lineage/value-changes",
-            params={"table": "main.silver.orders", "row_id": ""},
-        )
+async def test_value_changes_rejects_empty_row_id(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.get(
+        "/api/lineage/value-changes",
+        params={"table": "main.silver.orders", "row_id": ""},
+    )
     # Phase 43.3: ``row_id is required`` is a ValidationError (422).
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"

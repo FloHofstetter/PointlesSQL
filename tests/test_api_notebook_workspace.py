@@ -43,20 +43,6 @@ _PARAM_IPYNB = json.dumps(
 ).encode()
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 @pytest.fixture
@@ -71,14 +57,13 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 # -- GET /api/notebooks/tree --
 
 
-async def test_tree_returns_nested_listing(workspace_dir: Path) -> None:
+async def test_tree_returns_nested_listing(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Happy path: nested folders + top-level notebooks surface in the JSON."""
     (workspace_dir / "pipelines").mkdir()
     (workspace_dir / "pipelines" / "etl.ipynb").write_bytes(_PARAM_IPYNB)
     (workspace_dir / "top.ipynb").write_bytes(_PARAM_IPYNB)
 
-    async with _admin_client() as client:
-        resp = await client.get("/api/notebooks/tree")
+    resp = await admin_client.get("/api/notebooks/tree")
 
     assert resp.status_code == 200
     data = resp.json()
@@ -89,41 +74,37 @@ async def test_tree_returns_nested_listing(workspace_dir: Path) -> None:
     assert dirs[0]["children"][0]["parameters_tagged"] is True
 
 
-async def test_tree_excludes_runs_dir(workspace_dir: Path) -> None:
+async def test_tree_excludes_runs_dir(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """The executor's ``runs/`` output folder must not leak into the tree."""
     (workspace_dir / "runs").mkdir()
     (workspace_dir / "runs" / "99.ipynb").write_bytes(_PARAM_IPYNB)
     (workspace_dir / "real.ipynb").write_bytes(_PARAM_IPYNB)
 
-    async with _admin_client() as client:
-        resp = await client.get("/api/notebooks/tree")
+    resp = await admin_client.get("/api/notebooks/tree")
 
     names = [n["name"] for n in resp.json()]
     assert "runs" not in names
     assert "real.ipynb" in names
 
 
-async def test_tree_non_admin_forbidden(workspace_dir: Path) -> None:
+async def test_tree_non_admin_forbidden(workspace_dir: Path, non_admin_client: httpx.AsyncClient) -> None:
     """The tree API is admin-only; non-admins get a 403 envelope."""
-    async with _non_admin_client() as client:
-        resp = await client.get("/api/notebooks/tree")
+    resp = await non_admin_client.get("/api/notebooks/tree")
     assert resp.status_code == 403
 
 
 # -- GET /notebooks/workspace HTML page --
 
 
-async def test_workspace_page_admin_renders(workspace_dir: Path) -> None:
+async def test_workspace_page_admin_renders(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Admins get the workspace HTML page with the upload card markup."""
-    async with _admin_client() as client:
-        resp = await client.get("/notebooks/workspace")
+    resp = await admin_client.get("/notebooks/workspace")
     assert resp.status_code == 200
     assert "Notebook workspace" in resp.text
     assert "notebookWorkspace()" in resp.text
 
 
-async def test_workspace_page_non_admin_forbidden(workspace_dir: Path) -> None:
+async def test_workspace_page_non_admin_forbidden(workspace_dir: Path, non_admin_client: httpx.AsyncClient) -> None:
     """Non-admins bounce off the workspace page."""
-    async with _non_admin_client() as client:
-        resp = await client.get("/notebooks/workspace")
+    resp = await non_admin_client.get("/notebooks/workspace")
     assert resp.status_code == 403

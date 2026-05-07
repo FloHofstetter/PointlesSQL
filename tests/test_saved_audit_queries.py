@@ -34,20 +34,6 @@ def _seed_starters() -> None:
     svc.bootstrap_starter_rows(app.state.session_factory)
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 # ---------------------------------------------------------------------
@@ -118,69 +104,63 @@ def test_bootstrap_is_idempotent() -> None:
 
 
 @pytest.mark.asyncio
-async def test_list_route_admin_only() -> None:
-    async with _non_admin_client() as client:
-        r = await client.get("/api/saved-audit-queries")
+async def test_list_route_admin_only(non_admin_client: httpx.AsyncClient) -> None:
+    r = await non_admin_client.get("/api/saved-audit-queries")
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_list_route_returns_starters_first() -> None:
-    async with _admin_client() as client:
-        r = await client.get("/api/saved-audit-queries")
+async def test_list_route_returns_starters_first(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.get("/api/saved-audit-queries")
     assert r.status_code == 200
     rows = r.json()["saved_audit_queries"]
     assert rows[0]["is_starter"] is True
 
 
 @pytest.mark.asyncio
-async def test_create_then_get_then_delete_roundtrip() -> None:
-    async with _admin_client() as client:
-        create = await client.post(
-            "/api/saved-audit-queries",
-            json={
-                "title": "My audit",
-                "description": "test",
-                "sql_text": "SELECT id FROM agent_runs LIMIT 1",
-            },
-        )
-        assert create.status_code == 200
-        slug = create.json()["slug"]
-        get = await client.get(f"/api/saved-audit-queries/{slug}")
-        assert get.status_code == 200
-        delete = await client.delete(f"/api/saved-audit-queries/{slug}")
-        assert delete.status_code == 200
-        get_again = await client.get(f"/api/saved-audit-queries/{slug}")
-        assert get_again.status_code == 404
+async def test_create_then_get_then_delete_roundtrip(admin_client: httpx.AsyncClient) -> None:
+    create = await admin_client.post(
+        "/api/saved-audit-queries",
+        json={
+            "title": "My audit",
+            "description": "test",
+            "sql_text": "SELECT id FROM agent_runs LIMIT 1",
+        },
+    )
+    assert create.status_code == 200
+    slug = create.json()["slug"]
+    get = await admin_client.get(f"/api/saved-audit-queries/{slug}")
+    assert get.status_code == 200
+    delete = await admin_client.delete(f"/api/saved-audit-queries/{slug}")
+    assert delete.status_code == 200
+    get_again = await admin_client.get(f"/api/saved-audit-queries/{slug}")
+    assert get_again.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_create_rejects_unlisted_table() -> None:
-    async with _admin_client() as client:
-        r = await client.post(
-            "/api/saved-audit-queries",
-            json={
-                "title": "broken",
-                "sql_text": "SELECT * FROM delta_tables",
-            },
-        )
+async def test_create_rejects_unlisted_table(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.post(
+        "/api/saved-audit-queries",
+        json={
+            "title": "broken",
+            "sql_text": "SELECT * FROM delta_tables",
+        },
+    )
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_starter_patch_returns_404() -> None:
-    async with _admin_client() as client:
-        r = await client.patch(
-            "/api/saved-audit-queries/rollbacks-last-quarter",
-            json={"title": "tampered"},
-        )
+async def test_starter_patch_returns_404(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.patch(
+        "/api/saved-audit-queries/rollbacks-last-quarter",
+        json={"title": "tampered"},
+    )
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_starter_delete_returns_404() -> None:
-    async with _admin_client() as client:
-        r = await client.delete("/api/saved-audit-queries/rollbacks-last-quarter")
+async def test_starter_delete_returns_404(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.delete("/api/saved-audit-queries/rollbacks-last-quarter")
     assert r.status_code == 404
 
 
@@ -208,10 +188,9 @@ def _seed_one_run() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_returns_rows_for_starter() -> None:
+async def test_run_returns_rows_for_starter(admin_client: httpx.AsyncClient) -> None:
     _seed_one_run()
-    async with _admin_client() as client:
-        r = await client.post("/api/saved-audit-queries/top-mutating-principals-30d/run")
+    r = await admin_client.post("/api/saved-audit-queries/top-mutating-principals-30d/run")
     assert r.status_code == 200
     body = r.json()
     assert "columns" in body
@@ -219,17 +198,15 @@ async def test_run_returns_rows_for_starter() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_returns_404_for_missing_slug() -> None:
-    async with _admin_client() as client:
-        r = await client.post("/api/saved-audit-queries/does-not-exist/run")
+async def test_run_returns_404_for_missing_slug(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.post("/api/saved-audit-queries/does-not-exist/run")
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_csv_export_streams_rows() -> None:
+async def test_csv_export_streams_rows(admin_client: httpx.AsyncClient) -> None:
     _seed_one_run()
-    async with _admin_client() as client:
-        r = await client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.csv")
+    r = await admin_client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.csv")
     assert r.status_code == 200
     assert "text/csv" in r.headers["content-type"]
     assert "attachment" in r.headers["content-disposition"]
@@ -239,10 +216,9 @@ async def test_csv_export_streams_rows() -> None:
 
 
 @pytest.mark.asyncio
-async def test_json_export_streams_payload() -> None:
+async def test_json_export_streams_payload(admin_client: httpx.AsyncClient) -> None:
     _seed_one_run()
-    async with _admin_client() as client:
-        r = await client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.json")
+    r = await admin_client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.json")
     assert r.status_code == 200
     assert "application/json" in r.headers["content-type"]
     body = json.loads(r.text)
@@ -251,9 +227,8 @@ async def test_json_export_streams_payload() -> None:
 
 
 @pytest.mark.asyncio
-async def test_csv_export_writes_audit_log() -> None:
-    async with _admin_client() as client:
-        await client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.csv")
+async def test_csv_export_writes_audit_log(admin_client: httpx.AsyncClient) -> None:
+    await admin_client.get("/api/saved-audit-queries/top-mutating-principals-30d/export.csv")
     factory = app.state.session_factory
     with factory() as s:
         rows = list(

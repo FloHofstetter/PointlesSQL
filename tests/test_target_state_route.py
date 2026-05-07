@@ -34,13 +34,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 async def _seed_run_with_op(
     client: httpx.AsyncClient,
@@ -96,12 +89,11 @@ async def _seed_run_with_op(
 @pytest.mark.asyncio
 async def test_target_state_returns_exists_false_when_uc_404s(
     uc_mock: MagicMock,
-) -> None:
+    admin_client: httpx.AsyncClient) -> None:
     uc_mock.get_table.side_effect = CatalogNotFoundError("nope")
-    async with _admin_client() as client:
-        response = await client.get(
-            "/api/pql/target-state", params={"table": "main.silver.orders_missing"}
-        )
+    response = await admin_client.get(
+        "/api/pql/target-state", params={"table": "main.silver.orders_missing"}
+    )
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["table"] == "main.silver.orders_missing"
@@ -111,7 +103,7 @@ async def test_target_state_returns_exists_false_when_uc_404s(
 
 
 @pytest.mark.asyncio
-async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock) -> None:
+async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
     target = "main.silver.orders_state"
     uc_mock.get_table.return_value = {
         "name": "orders_state",
@@ -120,13 +112,12 @@ async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock) -> Non
             {"name": "ts", "type_text": "TIMESTAMP", "nullable": True, "comment": None},
         ],
     }
-    async with _admin_client() as client:
-        await _seed_run_with_op(
-            client,
-            run_id="aaaa1111-1111-1111-1111-aaaaaaaaaaa1",
-            target=target,
-        )
-        response = await client.get("/api/pql/target-state", params={"table": target})
+    await _seed_run_with_op(
+        admin_client,
+        run_id="aaaa1111-1111-1111-1111-aaaaaaaaaaa1",
+        target=target,
+    )
+    response = await admin_client.get("/api/pql/target-state", params={"table": target})
     assert response.status_code == 200, response.text
     payload = response.json()
     assert payload["exists"] is True
@@ -139,9 +130,8 @@ async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock) -> Non
 
 
 @pytest.mark.asyncio
-async def test_target_state_rejects_non_three_part_name(uc_mock: MagicMock) -> None:
-    async with _admin_client() as client:
-        response = await client.get("/api/pql/target-state", params={"table": "not.three"})
+async def test_target_state_rejects_non_three_part_name(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.get("/api/pql/target-state", params={"table": "not.three"})
     # ValidationError surfaces as 422 via the app's exception handler.
     assert response.status_code == 422
 
@@ -152,25 +142,24 @@ async def test_target_state_rejects_non_three_part_name(uc_mock: MagicMock) -> N
 
 
 @pytest.mark.asyncio
-async def test_operations_filter_errored_only() -> None:
+async def test_operations_filter_errored_only(admin_client: httpx.AsyncClient) -> None:
     target = "main.silver.flaky"
-    async with _admin_client() as client:
-        # one ok, one errored — same target
-        await _seed_run_with_op(
-            client,
-            run_id="bbbb1111-2222-3333-4444-bbbbbbbbbbb1",
-            target=target,
-        )
-        await _seed_run_with_op(
-            client,
-            run_id="bbbb1111-2222-3333-4444-bbbbbbbbbbb2",
-            target=target,
-            error_message="Delta concurrent transaction",
-        )
-        response = await client.get(
-            "/api/agent-runs/operations",
-            params={"target": target, "errored": "true"},
-        )
+    # one ok, one errored — same target
+    await _seed_run_with_op(
+        admin_client,
+        run_id="bbbb1111-2222-3333-4444-bbbbbbbbbbb1",
+        target=target,
+    )
+    await _seed_run_with_op(
+        admin_client,
+        run_id="bbbb1111-2222-3333-4444-bbbbbbbbbbb2",
+        target=target,
+        error_message="Delta concurrent transaction",
+    )
+    response = await admin_client.get(
+        "/api/agent-runs/operations",
+        params={"target": target, "errored": "true"},
+    )
     assert response.status_code == 200, response.text
     ops = response.json()["operations"]
     assert len(ops) == 1
@@ -180,7 +169,6 @@ async def test_operations_filter_errored_only() -> None:
 
 
 @pytest.mark.asyncio
-async def test_operations_rejects_bad_since() -> None:
-    async with _admin_client() as client:
-        response = await client.get("/api/agent-runs/operations", params={"since": "yesterday"})
+async def test_operations_rejects_bad_since(admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.get("/api/agent-runs/operations", params={"since": "yesterday"})
     assert response.status_code == 422

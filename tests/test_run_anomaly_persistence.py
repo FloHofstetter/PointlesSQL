@@ -18,13 +18,6 @@ from pointlessql.models import AgentRun, AgentRunOperation, LineageRowReject
 from pointlessql.services import audit_aggregator as agg
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_baseline() -> None:
     """Insert a quiet baseline of one reject per day for 7 prior days."""
@@ -122,17 +115,16 @@ def _add_spike_run(*, run_id: str, reject_count: int) -> None:
 
 
 @pytest.mark.asyncio
-async def test_finish_handler_persists_anomaly_severity() -> None:
+async def test_finish_handler_persists_anomaly_severity(admin_client: httpx.AsyncClient) -> None:
     """``POST /api/agent-runs/{run_id}/finish`` writes the verdict."""
     _seed_baseline()
     run_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
     _add_spike_run(run_id=run_id, reject_count=200)
 
-    async with _admin_client() as c:
-        r = await c.post(
-            f"/api/agent-runs/{run_id}/finish",
-            json={"status": "succeeded"},
-        )
+    r = await admin_client.post(
+        f"/api/agent-runs/{run_id}/finish",
+        json={"status": "succeeded"},
+    )
     assert r.status_code == 200, r.text
 
     factory = app.state.session_factory
@@ -143,7 +135,7 @@ async def test_finish_handler_persists_anomaly_severity() -> None:
 
 
 @pytest.mark.asyncio
-async def test_finish_handler_quiet_run_marks_ok() -> None:
+async def test_finish_handler_quiet_run_marks_ok(admin_client: httpx.AsyncClient) -> None:
     """A quiet run finishing keeps ``anomaly_severity='ok'``."""
     run_id = "00000000-0000-0000-0000-000000000001"
     factory = app.state.session_factory
@@ -161,11 +153,10 @@ async def test_finish_handler_quiet_run_marks_ok() -> None:
         )
         session.commit()
 
-    async with _admin_client() as c:
-        r = await c.post(
-            f"/api/agent-runs/{run_id}/finish",
-            json={"status": "succeeded"},
-        )
+    r = await admin_client.post(
+        f"/api/agent-runs/{run_id}/finish",
+        json={"status": "succeeded"},
+    )
     assert r.status_code == 200, r.text
 
     with factory() as session:
@@ -197,18 +188,17 @@ def test_backfill_run_anomalies_fills_existing_rows() -> None:
 
 
 @pytest.mark.asyncio
-async def test_runs_list_serializer_exposes_anomaly_fields() -> None:
+async def test_runs_list_serializer_exposes_anomaly_fields(admin_client: httpx.AsyncClient) -> None:
     """``GET /api/runs`` includes anomaly_severity + anomaly_metric."""
     _seed_baseline()
     run_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
     _add_spike_run(run_id=run_id, reject_count=200)
 
-    async with _admin_client() as c:
-        await c.post(
-            f"/api/agent-runs/{run_id}/finish",
-            json={"status": "succeeded"},
-        )
-        r = await c.get("/api/runs")
+    await admin_client.post(
+        f"/api/agent-runs/{run_id}/finish",
+        json={"status": "succeeded"},
+    )
+    r = await admin_client.get("/api/runs")
     assert r.status_code == 200
     runs = r.json()["runs"]
     target = next(run for run in runs if run["id"] == run_id)
@@ -217,15 +207,14 @@ async def test_runs_list_serializer_exposes_anomaly_fields() -> None:
 
 
 @pytest.mark.asyncio
-async def test_runs_list_html_renders_badge() -> None:
+async def test_runs_list_html_renders_badge(admin_client: httpx.AsyncClient) -> None:
     """``GET /runs`` renders the anomaly badge column."""
     _seed_baseline()
     run_id = "ddddddee-eeee-eeee-eeee-eeeeeeeeeeee"
     _add_spike_run(run_id=run_id, reject_count=200)
 
-    async with _admin_client() as c:
-        await c.post(f"/api/agent-runs/{run_id}/finish", json={"status": "succeeded"})
-        r = await c.get("/runs")
+    await admin_client.post(f"/api/agent-runs/{run_id}/finish", json={"status": "succeeded"})
+    r = await admin_client.get("/runs")
     assert r.status_code == 200
     assert ">Anomaly</th>" in r.text
     assert "data-sort-anomaly=" in r.text

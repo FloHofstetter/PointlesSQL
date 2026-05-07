@@ -255,25 +255,17 @@ def test_stamp_alerted_updates_last_alerted_at() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 @pytest.mark.asyncio
-async def test_admin_register_then_list_expected_producer() -> None:
-    async with _admin_client() as client:
-        create = await client.post(
-            "/api/admin/expected-producers",
-            json={
-                "target_table_full_name": "main.silver.events",
-                "producer": "kafka.events.us-east",
-                "max_silence_minutes": 15,
-            },
-        )
+async def test_admin_register_then_list_expected_producer(admin_client: httpx.AsyncClient) -> None:
+    create = await admin_client.post(
+        "/api/admin/expected-producers",
+        json={
+            "target_table_full_name": "main.silver.events",
+            "producer": "kafka.events.us-east",
+            "max_silence_minutes": 15,
+        },
+    )
     assert create.status_code == 200, create.text
     row = create.json()
     assert row["target_table_full_name"] == "main.silver.events"
@@ -281,8 +273,7 @@ async def test_admin_register_then_list_expected_producer() -> None:
     assert row["max_silence_minutes"] == 15
     assert row["is_active"] is True
 
-    async with _admin_client() as client:
-        listing = await client.get("/api/admin/expected-producers")
+    listing = await admin_client.get("/api/admin/expected-producers")
     assert listing.status_code == 200
     rows = listing.json()["expectations"]
     assert len(rows) == 1
@@ -290,62 +281,59 @@ async def test_admin_register_then_list_expected_producer() -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_duplicate_expectation_rejected() -> None:
-    async with _admin_client() as client:
-        first = await client.post(
-            "/api/admin/expected-producers",
-            json={
-                "target_table_full_name": "main.silver.events",
-                "producer": "kafka.x",
-                "max_silence_minutes": 15,
-            },
-        )
-        assert first.status_code == 200
-        dup = await client.post(
-            "/api/admin/expected-producers",
-            json={
-                "target_table_full_name": "main.silver.events",
-                "producer": "kafka.x",
-                "max_silence_minutes": 5,
-            },
-        )
+async def test_admin_duplicate_expectation_rejected(admin_client: httpx.AsyncClient) -> None:
+    first = await admin_client.post(
+        "/api/admin/expected-producers",
+        json={
+            "target_table_full_name": "main.silver.events",
+            "producer": "kafka.x",
+            "max_silence_minutes": 15,
+        },
+    )
+    assert first.status_code == 200
+    dup = await admin_client.post(
+        "/api/admin/expected-producers",
+        json={
+            "target_table_full_name": "main.silver.events",
+            "producer": "kafka.x",
+            "max_silence_minutes": 5,
+        },
+    )
     assert dup.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_admin_toggle_then_delete_expected_producer() -> None:
-    async with _admin_client() as client:
-        create = await client.post(
-            "/api/admin/expected-producers",
-            json={
-                "target_table_full_name": "main.silver.events",
-                "producer": "kafka.x",
-                "max_silence_minutes": 15,
-            },
-        )
-        expectation_id = create.json()["id"]
-        toggle = await client.post(
-            f"/api/admin/expected-producers/{expectation_id}/toggle"
-        )
-        assert toggle.status_code == 200
-        assert toggle.json()["is_active"] is False
-        delete_resp = await client.delete(
-            f"/api/admin/expected-producers/{expectation_id}"
-        )
+async def test_admin_toggle_then_delete_expected_producer(admin_client: httpx.AsyncClient) -> None:
+    create = await admin_client.post(
+        "/api/admin/expected-producers",
+        json={
+            "target_table_full_name": "main.silver.events",
+            "producer": "kafka.x",
+            "max_silence_minutes": 15,
+        },
+    )
+    expectation_id = create.json()["id"]
+    toggle = await admin_client.post(
+        f"/api/admin/expected-producers/{expectation_id}/toggle"
+    )
+    assert toggle.status_code == 200
+    assert toggle.json()["is_active"] is False
+    delete_resp = await admin_client.delete(
+        f"/api/admin/expected-producers/{expectation_id}"
+    )
     assert delete_resp.status_code == 200
     assert delete_resp.json()["deleted"] is True
 
 
 @pytest.mark.asyncio
-async def test_admin_freshness_endpoint_returns_status_rows() -> None:
+async def test_admin_freshness_endpoint_returns_status_rows(admin_client: httpx.AsyncClient) -> None:
     _seed_expectation(target="main.silver.events", producer="kafka.x", max_silence=15)
     _seed_inbound_edge(
         target="main.silver.events",
         producer="kafka.x",
         when=dt.datetime.now(dt.UTC) - dt.timedelta(minutes=5),
     )
-    async with _admin_client() as client:
-        response = await client.get("/api/admin/expected-producers/freshness")
+    response = await admin_client.get("/api/admin/expected-producers/freshness")
     assert response.status_code == 200, response.text
     body = response.json()
     assert "now" in body
@@ -354,19 +342,18 @@ async def test_admin_freshness_endpoint_returns_status_rows() -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_create_validation_errors() -> None:
-    async with _admin_client() as client:
-        missing = await client.post(
-            "/api/admin/expected-producers",
-            json={"producer": "x", "max_silence_minutes": 1},
-        )
-        assert missing.status_code == 422
-        zero_silence = await client.post(
-            "/api/admin/expected-producers",
-            json={
-                "target_table_full_name": "t",
-                "producer": "p",
-                "max_silence_minutes": 0,
-            },
-        )
+async def test_admin_create_validation_errors(admin_client: httpx.AsyncClient) -> None:
+    missing = await admin_client.post(
+        "/api/admin/expected-producers",
+        json={"producer": "x", "max_silence_minutes": 1},
+    )
+    assert missing.status_code == 422
+    zero_silence = await admin_client.post(
+        "/api/admin/expected-producers",
+        json={
+            "target_table_full_name": "t",
+            "producer": "p",
+            "max_silence_minutes": 0,
+        },
+    )
     assert zero_silence.status_code == 422

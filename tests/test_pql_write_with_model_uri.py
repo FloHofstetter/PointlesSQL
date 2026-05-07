@@ -53,17 +53,10 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 async def test_write_table_threads_source_model_uri(
     monkeypatch: pytest.MonkeyPatch, orders_delta: str
-) -> None:
+, admin_client: httpx.AsyncClient) -> None:
     """Setting ``source_model_uri`` propagates to ``pql.write_table``."""
     app.state.uc_client = _uc_mock(orders_delta)
     captured: dict[str, Any] = {}
@@ -78,16 +71,15 @@ async def test_write_table_threads_source_model_uri(
             captured["kwargs"] = kwargs
 
     monkeypatch.setattr(pql_write_routes, "_build_pql", lambda r, **kw: _FakePQL(**kw))
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/pql/write_table",
-            json={
-                "sql": "SELECT id, name FROM main.sales.orders",
-                "target": "main.gold.preds_v2",
-                "mode": "overwrite",
-                "source_model_uri": "models:/main.fraud.classifier/3",
-            },
-        )
+    resp = await admin_client.post(
+        "/api/pql/write_table",
+        json={
+            "sql": "SELECT id, name FROM main.sales.orders",
+            "target": "main.gold.preds_v2",
+            "mode": "overwrite",
+            "source_model_uri": "models:/main.fraud.classifier/3",
+        },
+    )
     assert resp.status_code == 200, resp.text
     assert captured["kwargs"]["source_model_uri"] == "models:/main.fraud.classifier/3"
     # Single-ref SELECT auto-derives ``source_table_fqn`` so the
@@ -97,7 +89,7 @@ async def test_write_table_threads_source_model_uri(
 
 async def test_write_table_rejects_blank_source_model_uri(
     monkeypatch: pytest.MonkeyPatch, orders_delta: str
-) -> None:
+, admin_client: httpx.AsyncClient) -> None:
     """An empty / whitespace-only ``source_model_uri`` is a 400."""
     app.state.uc_client = _uc_mock(orders_delta)
 
@@ -106,22 +98,21 @@ async def test_write_table_rejects_blank_source_model_uri(
         def write_table(self, df: Any, full_name: str, *, mode: str, **kwargs: Any) -> None: ...
 
     monkeypatch.setattr(pql_write_routes, "_build_pql", lambda r, **kw: _FakePQL(**kw))
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/pql/write_table",
-            json={
-                "sql": "SELECT id FROM main.sales.orders",
-                "target": "main.gold.preds_v2",
-                "mode": "overwrite",
-                "source_model_uri": "   ",
-            },
-        )
+    resp = await admin_client.post(
+        "/api/pql/write_table",
+        json={
+            "sql": "SELECT id FROM main.sales.orders",
+            "target": "main.gold.preds_v2",
+            "mode": "overwrite",
+            "source_model_uri": "   ",
+        },
+    )
     assert resp.status_code in (400, 422)
 
 
 async def test_merge_threads_source_model_uri(
     monkeypatch: pytest.MonkeyPatch, orders_delta: str
-) -> None:
+, admin_client: httpx.AsyncClient) -> None:
     """``POST /api/pql/merge`` passes ``source_model_uri`` to ``PQL.merge``."""
     app.state.uc_client = _uc_mock(orders_delta)
     captured: dict[str, Any] = {}
@@ -149,16 +140,15 @@ async def test_merge_threads_source_model_uri(
             }
 
     monkeypatch.setattr(pql_write_routes, "_build_pql", lambda r, **kw: _FakePQL(**kw))
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/pql/merge",
-            json={
-                "sql": "SELECT id, name FROM main.sales.orders",
-                "target": "main.silver.orders",
-                "on": ["id"],
-                "source_model_uri": "models:/main.fraud.classifier/4",
-            },
-        )
+    resp = await admin_client.post(
+        "/api/pql/merge",
+        json={
+            "sql": "SELECT id, name FROM main.sales.orders",
+            "target": "main.silver.orders",
+            "on": ["id"],
+            "source_model_uri": "models:/main.fraud.classifier/4",
+        },
+    )
     assert resp.status_code == 200, resp.text
     assert captured["kwargs"]["source_model_uri"] == "models:/main.fraud.classifier/4"
     assert captured["kwargs"]["source_table_fqn"] == "main.sales.orders"

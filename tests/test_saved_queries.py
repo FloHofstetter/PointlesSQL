@@ -10,20 +10,6 @@ from pointlessql.exceptions import ValidationError
 from pointlessql.services import saved_queries as sq
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 def _admin_id() -> int:
@@ -145,70 +131,64 @@ def test_owner_can_toggle_sharing() -> None:
 # -- route-level ---------------------------------------------------
 
 
-async def test_create_and_list_via_api() -> None:
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/saved-queries",
-            json={"title": "API test", "sql": "SELECT 1", "is_shared": False},
-        )
-        assert resp.status_code == 200, resp.text
-        created = resp.json()
-        assert created["slug"].startswith("api-test-")
-        slug = created["slug"]
+async def test_create_and_list_via_api(admin_client: httpx.AsyncClient) -> None:
+    resp = await admin_client.post(
+        "/api/saved-queries",
+        json={"title": "API test", "sql": "SELECT 1", "is_shared": False},
+    )
+    assert resp.status_code == 200, resp.text
+    created = resp.json()
+    assert created["slug"].startswith("api-test-")
+    slug = created["slug"]
 
-        resp = await client.get("/api/saved-queries")
-        assert resp.status_code == 200
-        lst = resp.json()
-        assert any(r["slug"] == slug for r in lst)
+    resp = await admin_client.get("/api/saved-queries")
+    assert resp.status_code == 200
+    lst = resp.json()
+    assert any(r["slug"] == slug for r in lst)
 
-        resp = await client.get(f"/api/saved-queries/{slug}")
-        assert resp.status_code == 200
+    resp = await admin_client.get(f"/api/saved-queries/{slug}")
+    assert resp.status_code == 200
 
 
-async def test_non_admin_cannot_see_private_via_api() -> None:
+async def test_non_admin_cannot_see_private_via_api(admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
     # Admin creates a private query.
-    async with _admin_client() as admin:
-        resp = await admin.post(
-            "/api/saved-queries",
-            json={"title": "Private admin", "sql": "SELECT 1", "is_shared": False},
-        )
-        assert resp.status_code == 200, resp.text
-        slug = resp.json()["slug"]
+    resp = await admin_client.post(
+        "/api/saved-queries",
+        json={"title": "Private admin", "sql": "SELECT 1", "is_shared": False},
+    )
+    assert resp.status_code == 200, resp.text
+    slug = resp.json()["slug"]
 
     # Non-admin asks for it → 404.
-    async with _non_admin_client() as other:
-        resp = await other.get(f"/api/saved-queries/{slug}")
-        assert resp.status_code == 404
-        body = resp.json()
-        assert body["code"] == "catalog_not_found"
+    resp = await non_admin_client.get(f"/api/saved-queries/{slug}")
+    assert resp.status_code == 404
+    body = resp.json()
+    assert body["code"] == "catalog_not_found"
 
 
-async def test_patch_by_non_owner_returns_404() -> None:
-    async with _admin_client() as admin:
-        resp = await admin.post(
-            "/api/saved-queries",
-            json={"title": "Orig", "sql": "SELECT 1", "is_shared": True},
-        )
-        slug = resp.json()["slug"]
+async def test_patch_by_non_owner_returns_404(admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
+    resp = await admin_client.post(
+        "/api/saved-queries",
+        json={"title": "Orig", "sql": "SELECT 1", "is_shared": True},
+    )
+    slug = resp.json()["slug"]
 
-    async with _non_admin_client() as other:
-        resp = await other.patch(
-            f"/api/saved-queries/{slug}",
-            json={"title": "hacked"},
-        )
-        assert resp.status_code == 404
+    resp = await non_admin_client.patch(
+        f"/api/saved-queries/{slug}",
+        json={"title": "hacked"},
+    )
+    assert resp.status_code == 404
 
 
-async def test_delete_roundtrip_via_api() -> None:
-    async with _admin_client() as admin:
-        resp = await admin.post(
-            "/api/saved-queries",
-            json={"title": "to delete", "sql": "SELECT 1"},
-        )
-        slug = resp.json()["slug"]
+async def test_delete_roundtrip_via_api(admin_client: httpx.AsyncClient) -> None:
+    resp = await admin_client.post(
+        "/api/saved-queries",
+        json={"title": "to delete", "sql": "SELECT 1"},
+    )
+    slug = resp.json()["slug"]
 
-        resp = await admin.delete(f"/api/saved-queries/{slug}")
-        assert resp.status_code == 204
+    resp = await admin_client.delete(f"/api/saved-queries/{slug}")
+    assert resp.status_code == 204
 
-        resp = await admin.get(f"/api/saved-queries/{slug}")
-        assert resp.status_code == 404
+    resp = await admin_client.get(f"/api/saved-queries/{slug}")
+    assert resp.status_code == 404

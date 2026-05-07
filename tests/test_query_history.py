@@ -54,20 +54,6 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 # -- service-level -------------------------------------------------
@@ -197,13 +183,12 @@ def test_list_queries_reverse_lookup_by_table() -> None:
 # -- route-level ---------------------------------------------------
 
 
-async def test_execute_success_writes_history_row(orders_delta: str) -> None:
+async def test_execute_success_writes_history_row(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT * FROM main.sales.orders ORDER BY id"},
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT * FROM main.sales.orders ORDER BY id"},
+    )
     assert resp.status_code == 200, resp.text
 
     factory = app.state.session_factory
@@ -222,13 +207,12 @@ async def test_execute_success_writes_history_row(orders_delta: str) -> None:
         assert [t.full_name for t in tables] == ["main.sales.orders"]
 
 
-async def test_execute_parse_failure_writes_failed_history(orders_delta: str) -> None:
+async def test_execute_parse_failure_writes_failed_history(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELEC * FROM x"},
-        )
+    resp = await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELEC * FROM x"},
+    )
     assert resp.status_code == 400
 
     factory = app.state.session_factory
@@ -236,36 +220,34 @@ async def test_execute_parse_failure_writes_failed_history(orders_delta: str) ->
     assert any("Could not parse" in (r["error_message"] or "") for r in rows)
 
 
-async def test_api_queries_non_admin_sees_only_own_rows(orders_delta: str) -> None:
+async def test_api_queries_non_admin_sees_only_own_rows(orders_delta: str, non_admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(
         storage_location=orders_delta,
         effective=[{"principal": "nonadmin@test.com", "privileges": ["SELECT"]}],
     )
     # Non-admin runs a query.
-    async with _non_admin_client() as client:
-        resp = await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT * FROM main.sales.orders"},
-        )
-        assert resp.status_code == 200, resp.text
+    resp = await non_admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT * FROM main.sales.orders"},
+    )
+    assert resp.status_code == 200, resp.text
 
-        # Non-admin lists own queries — should see their row, nothing else.
-        resp = await client.get("/api/queries")
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body
-        for row in body:
-            assert row["user_email"] == "nonadmin@test.com"
+    # Non-admin lists own queries — should see their row, nothing else.
+    resp = await non_admin_client.get("/api/queries")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body
+    for row in body:
+        assert row["user_email"] == "nonadmin@test.com"
 
 
-async def test_queries_page_renders(orders_delta: str) -> None:
+async def test_queries_page_renders(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
-    async with _admin_client() as client:
-        # Seed one row so the page exercises the populated branch.
-        await client.post(
-            "/api/sql/execute",
-            json={"sql": "SELECT * FROM main.sales.orders"},
-        )
-        resp = await client.get("/queries")
+    # Seed one row so the page exercises the populated branch.
+    await admin_client.post(
+        "/api/sql/execute",
+        json={"sql": "SELECT * FROM main.sales.orders"},
+    )
+    resp = await admin_client.get("/queries")
     assert resp.status_code == 200
     assert b"Query history" in resp.content

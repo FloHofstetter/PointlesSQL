@@ -13,18 +13,10 @@ import pytest
 from pointlessql.api.main import app
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 @pytest.mark.asyncio
-async def test_conventions_returns_yaml_and_doc_excerpt() -> None:
-    async with _admin_client() as client:
-        response = await client.get("/api/conventions")
+async def test_conventions_returns_yaml_and_doc_excerpt(admin_client: httpx.AsyncClient) -> None:
+    response = await admin_client.get("/api/conventions")
     assert response.status_code == 200, response.text
     payload = response.json()
     assert "yaml" in payload

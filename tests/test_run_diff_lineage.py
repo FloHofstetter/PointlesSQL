@@ -35,13 +35,6 @@ def _stub_uc_client() -> None:
     app.state.uc_client = MagicMock()
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_run(
     *,
@@ -175,14 +168,13 @@ def test_lineage_diff_row_counts_per_table() -> None:
 
 
 @pytest.mark.asyncio
-async def test_diff_json_includes_lineage_diff_when_detail_true() -> None:
+async def test_diff_json_includes_lineage_diff_when_detail_true(admin_client: httpx.AsyncClient) -> None:
     a = _seed_run(rejects_by_reason={"on_key_null": 1})
     b = _seed_run(rejects_by_reason={"on_key_null": 2})
-    async with _admin_client() as client:
-        r = await client.get(
-            "/api/agent-runs/diff",
-            params={"a": a, "b": b, "detail": True, "align": "content"},
-        )
+    r = await admin_client.get(
+        "/api/agent-runs/diff",
+        params={"a": a, "b": b, "detail": True, "align": "content"},
+    )
     assert r.status_code == 200
     body = r.json()
     assert "lineage_diff" in body
@@ -190,11 +182,10 @@ async def test_diff_json_includes_lineage_diff_when_detail_true() -> None:
 
 
 @pytest.mark.asyncio
-async def test_diff_json_omits_lineage_when_detail_false() -> None:
+async def test_diff_json_omits_lineage_when_detail_false(admin_client: httpx.AsyncClient) -> None:
     a = _seed_run()
     b = _seed_run()
-    async with _admin_client() as client:
-        r = await client.get("/api/agent-runs/diff", params={"a": a, "b": b})
+    r = await admin_client.get("/api/agent-runs/diff", params={"a": a, "b": b})
     assert r.status_code == 200
     assert "lineage_diff" not in r.json()
 
@@ -205,7 +196,7 @@ async def test_diff_json_omits_lineage_when_detail_false() -> None:
 
 
 @pytest.mark.asyncio
-async def test_html_diff_renders_stat_cards_and_chart_payload() -> None:
+async def test_html_diff_renders_stat_cards_and_chart_payload(admin_client: httpx.AsyncClient) -> None:
     a = _seed_run(
         rejects_by_reason={"on_key_null": 5},
         value_changes={"cat.sch.silver": 3},
@@ -216,8 +207,7 @@ async def test_html_diff_renders_stat_cards_and_chart_payload() -> None:
         value_changes={"cat.sch.silver": 5, "cat.sch.gold": 8},
         rows_per_table={"cat.sch.silver": 200, "cat.sch.gold": 5},
     )
-    async with _admin_client() as client:
-        r = await client.get(f"/runs/{a}/diff/{b}")
+    r = await admin_client.get(f"/runs/{a}/diff/{b}")
     assert r.status_code == 200
     body = r.text
     assert "Compare runs" in body
@@ -233,7 +223,6 @@ async def test_html_diff_renders_stat_cards_and_chart_payload() -> None:
 
 
 @pytest.mark.asyncio
-async def test_html_diff_404_on_missing_run() -> None:
-    async with _admin_client() as client:
-        r = await client.get(f"/runs/nope-{uuid.uuid4()}/diff/{uuid.uuid4()}")
+async def test_html_diff_404_on_missing_run(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.get(f"/runs/nope-{uuid.uuid4()}/diff/{uuid.uuid4()}")
     assert r.status_code == 404
