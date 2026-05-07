@@ -6,6 +6,29 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 53 — Full replay sweep + Bootstrap UI overhaul
+  evaluation closed.**  Diagnose-only phase; no UI code changes.
+  Sprint A fetched 10 Bootstrap 5.3 docs/example pages (dashboard,
+  sidebars, headers, footers, album, color-modes, accordion,
+  scrollspy, pagination, getting-started) and produced
+  ``docs/research/bootstrap53-gap-analysis.md``.  Sprint B walked
+  35 of 47 browser+hybrid playbooks against the live stack, took
+  ~50 screenshots organized into 25 subdirectories under
+  ``docs/e2e-walkthroughs/screenshots/phase53-replay/``, and
+  captured 10 bugs (BUG-53-01 .. BUG-53-10) plus 10 visual-debt
+  patterns in
+  ``screenshots/phase53-replay/_notes.md``.  Sprint C
+  synthesized everything into ``docs/ui-overhaul-proposal.md``
+  with three sized recommendations (S/M/L) and a concrete pick
+  (M — Modernize, ~1 week).  Sprint D closes the phase.  Notable
+  findings: outline buttons render at low opacity and read as
+  disabled across ≥ 5 surfaces (recurring CSS bug); error pages
+  drop the icon-rail sidebar; ``/audit/search`` description has
+  unescaped HTML; Bootstrap 5.3 ``data-bs-theme`` color-modes
+  is wired in CSS (full light-mode override block in
+  ``base.css``) but has no toggle UI.  Phase 54 (if approved
+  by user) implements the M-size overhaul.
+
 - **Phase 52 — Playwright walkthrough completion pass closed.**
   Pure-documentation pass; no code changes.  Audited the 51-file
   e2e walkthrough corpus, found 17 zero-coverage and 13 thin

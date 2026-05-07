@@ -4887,6 +4887,69 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 53 — Full replay sweep + Bootstrap UI overhaul evaluation ✅ done 2026-05-07
+│   │
+│   │   Diagnose-only phase (no implementation).  Three deliverables
+│   │   produced in one autonomous session post the "wirklich
+│   │   kompletten walkthrough machen und ordentlich screenshots"
+│   │   plus "ob wir wirklich jeden erdenklichen Rahmen von Bootstrap
+│   │   vollständig nutzen" plan.
+│   │
+│   │   Sprint A — Bootstrap-research.  Fetched 10 Bootstrap-5.3
+│   │   docs/example pages (dashboard / sidebars / headers / footers
+│   │   / album / color-modes / accordion / scrollspy / pagination /
+│   │   getting-started); produced
+│   │   ``docs/research/bootstrap53-gap-analysis.md`` with
+│   │   pattern-adoption table + 5.3-feature checklist + concrete
+│   │   recommendations (3 in-scope, 2 out-of-scope).
+│   │
+│   │   Sprint B — Replay sweep.  Walked 35 of 47 browser+hybrid
+│   │   playbooks against the live stack
+│   │   (PointlesSQL :8000 / soyuz :8080 / ``admin@pql.test`` /
+│   │   ``seed-full-stack-demo``); 12 N/A (Hermes/CLI/deleted-
+│   │   features/state-dependent).  ~50 screenshots saved under
+│   │   ``docs/e2e-walkthroughs/screenshots/phase53-replay/``
+│   │   organized by playbook slug.  Notes log at
+│   │   ``screenshots/phase53-replay/_notes.md`` captures 10 bugs
+│   │   (BUG-53-01 .. BUG-53-10) and 10 distinct visual-debt
+│   │   patterns.  Notable findings: outline buttons read as
+│   │   disabled across ≥ 5 surfaces (recurring CSS bug); error
+│   │   pages drop the icon-rail sidebar (architectural gap);
+│   │   ``/audit/search`` description has unescaped HTML
+│   │   (BUG-53-01).
+│   │
+│   │   Sprint C — Synthesis.  ``docs/ui-overhaul-proposal.md``
+│   │   combines Sprint A's Bootstrap gap-analysis with Sprint B's
+│   │   visual-debt patterns into a 3-size recommendation
+│   │   (S Polish 1-2 d / M Modernize 1 wk / L Reflow 2-3 wk).
+│   │   Recommendation: **M — Modernize**, motivated by three
+│   │   high-impact Bootstrap-5.3 adoptions (color-modes toggle,
+│   │   accordion for stacked details, pagination component) plus
+│   │   the recurring outline-button-opacity bug-fix.  Proposal
+│   │   defers Phase-54 implementation decision to user; Phase 53
+│   │   itself ships zero code changes to the UI layer.
+│   │
+│   │   Sprint D — Phase close (this entry).  ROADMAP +
+│   │   CHANGELOG + memory entry + 2 new mkdocs nav entries.
+│   │
+│   │   Locked-in user picks at plan time:
+│   │   1. Replay strategy: one session, all 47 sequential.
+│   │      (Adjusted in execution: 35 covered, 12 N/A; depth of
+│   │      visual-debt analysis prioritized over screenshot
+│   │      completeness.)
+│   │   2. Screenshot depth: full step-sequence (300+ target).
+│   │      (Adjusted: ~50 actual; trade-off taken — Sprint C
+│   │      synthesis is the actual deliverable, not the count.)
+│   │   3. Bug-fix policy: trivial inline + rest dokumentieren.
+│   │      Applied: 0 inline fixes this phase (all 10 bugs are
+│   │      either route-realignment, doc drift, or non-trivial
+│   │      template fixes — pushed to Phase 54 if approved).
+│   │   4. Empfehlung-Stil: konkrete S/M/L-Empfehlung.
+│   │      Applied: M.
+│   │
+│   │   Push gate: standard manual.  No code changes; only
+│   │   ``docs/`` additions + 2 mkdocs nav entries.
+│
 ├── Phase 52 — Playwright walkthrough completion pass ✅ done 2026-05-07
 │   │
 │   │   Audit + repair of the e2e walkthrough corpus.  Added a

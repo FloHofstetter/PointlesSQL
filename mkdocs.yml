@@ -103,6 +103,9 @@ nav:
       - Workspaces: concepts/workspaces.md
       - Data products: concepts/data-products.md
       - Git-backed workspaces: concepts/git-backed-workspaces.md
+  - Research:
+      - UI overhaul proposal (Phase 53): ui-overhaul-proposal.md
+      - Bootstrap 5.3 gap analysis: research/bootstrap53-gap-analysis.md
   - Admin:
       - Workspace management: admin/workspace-management.md
       - OIDC group map: admin/oidc-group-map.md
