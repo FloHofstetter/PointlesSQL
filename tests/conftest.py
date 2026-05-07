@@ -5,9 +5,9 @@ from __future__ import annotations
 import datetime
 import os
 import shutil
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 from unittest.mock import MagicMock
 
 # Disable optional integrations whose subprocess startup would otherwise
@@ -44,6 +44,7 @@ _pql_auth_for_speedup._hasher = _PwdlibPasswordHash(  # pyright: ignore[reportPr
     (_PwdlibBcryptHasher(rounds=4),)
 )
 
+import httpx
 import pytest
 from soyuz_catalog_client import Client
 from soyuz_catalog_client.api.catalogs import (
@@ -71,8 +72,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import app
-from pointlessql.models import Base, User, Workspace, WorkspaceMember
+from pointlessql.models import ApiKey, Base, User, Workspace, WorkspaceMember
 from pointlessql.pql.pql import PQL
+from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth, csrf
 from pointlessql.services.soyuz_client import make_soyuz_client
 
@@ -202,7 +204,7 @@ def _wipe_test_rows(engine: Engine) -> None:
             # to, hence the IF EXISTS guard via try/except.
             try:
                 conn.execute(_sa_text("DELETE FROM sqlite_sequence"))
-            except Exception:
+            except Exception:  # noqa: BLE001 — sqlite_sequence is created on first AUTOINCREMENT, may not exist yet
                 pass
 
 
@@ -362,6 +364,139 @@ def auth_cookies() -> dict[str, str]:
 def non_admin_cookies() -> dict[str, str]:
     """Return a dict with the auth cookie for the non-admin test user."""
     return app.state._test_non_admin_cookie
+
+
+# ---------------------------------------------------------------------------
+# Phase 46.1 — Centralized auth fixtures
+#
+# Replaces the ~48 local ``_admin_client()`` / ``_non_admin_client()``
+# helpers that proliferated across the test suite.  Existing local
+# helpers stay valid; new tests should consume these fixtures.  Phase
+# 46.2 migrates the existing files in route-family batches.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+async def admin_client(
+    auth_cookies: dict[str, str],
+) -> AsyncIterator[httpx.AsyncClient]:
+    """``httpx.AsyncClient`` pre-authenticated as the admin test user.
+
+    Function-scoped to match the ``_auth_db`` autouse re-seed shape;
+    the underlying ``app.state._test_auth_cookie`` rolls per test.
+    """
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=auth_cookies,
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def non_admin_client(
+    non_admin_cookies: dict[str, str],
+) -> AsyncIterator[httpx.AsyncClient]:
+    """``httpx.AsyncClient`` pre-authenticated as the non-admin test user."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+        cookies=non_admin_cookies,
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def anonymous_client() -> AsyncIterator[httpx.AsyncClient]:
+    """``httpx.AsyncClient`` with no cookies — for auth-rejection tests."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+class ApiKeyFixture(NamedTuple):
+    """Triple yielded by the API-key fixtures.
+
+    Fields:
+        secret: Plaintext Bearer token (only ever returned at create
+            time; the hashed form lives in ``row.hashed_secret``).
+        row: Persisted :class:`ApiKey` ORM row.
+        headers: Pre-built ``{"Authorization": f"Bearer {secret}"}``
+            dict so callers can pass it directly to ``client.get(...,
+            headers=headers)``.
+    """
+
+    secret: str
+    row: ApiKey
+    headers: dict[str, str]
+
+
+def _wipe_api_keys() -> None:
+    """Truncate ``api_keys`` and invalidate the in-memory cache."""
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(ApiKey).delete()
+        session.commit()
+    api_keys_service.invalidate_cache()
+
+
+def _make_api_key_fixture(
+    *,
+    name: str,
+    supervisor: bool = False,
+    auditor: bool = False,
+    lineage_inbound: bool = False,
+) -> ApiKeyFixture:
+    """Persist one ``ApiKey`` and pack it into an :class:`ApiKeyFixture`."""
+    _wipe_api_keys()
+    row, plaintext = api_keys_service.create_api_key(
+        app.state.session_factory,
+        name=name,
+        supervisor=supervisor,
+        auditor=auditor,
+        lineage_inbound=lineage_inbound,
+    )
+    return ApiKeyFixture(
+        secret=plaintext,
+        row=row,
+        headers={"Authorization": f"Bearer {plaintext}"},
+    )
+
+
+@pytest.fixture
+def supervisor_secret() -> Iterator[ApiKeyFixture]:
+    """Yield a freshly-created supervisor-scoped ``ApiKey``.
+
+    Wipes ``api_keys`` before and after the test so successive cases
+    don't see leftover rows.
+    """
+    fixture = _make_api_key_fixture(name="supervisor-fixture", supervisor=True)
+    try:
+        yield fixture
+    finally:
+        _wipe_api_keys()
+
+
+@pytest.fixture
+def auditor_secret() -> Iterator[ApiKeyFixture]:
+    """Yield a freshly-created auditor-scoped ``ApiKey``."""
+    fixture = _make_api_key_fixture(name="auditor-fixture", auditor=True)
+    try:
+        yield fixture
+    finally:
+        _wipe_api_keys()
+
+
+@pytest.fixture
+def api_key_secret() -> Iterator[ApiKeyFixture]:
+    """Yield a freshly-created unprivileged ``ApiKey`` (no supervisor / auditor)."""
+    fixture = _make_api_key_fixture(name="standard-fixture")
+    try:
+        yield fixture
+    finally:
+        _wipe_api_keys()
 
 
 async def seed_csrf(client: Any) -> str:
