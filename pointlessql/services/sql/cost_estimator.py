@@ -18,7 +18,7 @@ a single schema version.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 _CARDINALITY_KEYS: tuple[str, ...] = (
     "estimated_cardinality",
@@ -108,14 +108,15 @@ def estimate_cost(plan_json: Any) -> CostEstimate:
 
     stack: list[Any] = []
     if isinstance(plan_json, list):
-        stack.extend(plan_json)
+        stack.extend(cast(list[Any], plan_json))
     elif isinstance(plan_json, dict):
         stack.append(plan_json)
 
     while stack:
-        node = stack.pop()
-        if not isinstance(node, dict):
+        node_any = stack.pop()
+        if not isinstance(node_any, dict):
             continue
+        node = cast(dict[str, Any], node_any)
 
         name = node.get("name", "")
         if isinstance(name, str) and _JOIN_NODE_HINT in name.upper():
@@ -128,20 +129,21 @@ def estimate_cost(plan_json: Any) -> CostEstimate:
                 continue
             try:
                 node_cardinality = int(raw)
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 continue
             break
 
         if node_cardinality is None:
             extra = node.get("extra_info")
             if isinstance(extra, dict):
+                extra_dict = cast(dict[str, Any], extra)
                 for key in _CARDINALITY_EXTRA_INFO_KEYS:
-                    raw_extra = extra.get(key)
+                    raw_extra = extra_dict.get(key)
                     if raw_extra is None:
                         continue
                     try:
                         node_cardinality = int(str(raw_extra).strip())
-                    except TypeError, ValueError:
+                    except (TypeError, ValueError):
                         continue
                     break
 
@@ -151,7 +153,7 @@ def estimate_cost(plan_json: Any) -> CostEstimate:
         for key in _CHILDREN_KEYS:
             children = node.get(key)
             if isinstance(children, list):
-                stack.extend(children)
+                stack.extend(cast(list[Any], children))
                 break
 
     cost = max_cardinality * (1 + join_depth)
