@@ -17,14 +17,6 @@ from pointlessql.services.models_compare import (
 )
 
 
-def _client(**kwargs) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        follow_redirects=False,
-        **kwargs,
-    )
-
 
 # ---------- pure-function diff helpers ----------
 
@@ -185,28 +177,25 @@ def uc_with_versions(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_compare_anonymous_redirects(uc_with_versions: AsyncMock) -> None:
-    async with _client() as c:
-        resp = await c.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=2")
+async def test_compare_anonymous_redirects(uc_with_versions: AsyncMock, anonymous_client: httpx.AsyncClient) -> None:
+    resp = await anonymous_client.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=2")
     assert resp.status_code == 303
 
 
 @pytest.mark.asyncio
 async def test_compare_rejects_same_version(
-    uc_with_versions: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_versions: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=1")
+    resp = await admin_client.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=1")
     # Phase 43.3: ``v1 and v2 must differ`` is a ValidationError (422).
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_compare_renders_metric_diff(
-    uc_with_versions: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_versions: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=2")
+    resp = await admin_client.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=2")
     assert resp.status_code == 200
     body = resp.text
     # Header rendered

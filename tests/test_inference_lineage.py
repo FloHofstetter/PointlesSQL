@@ -24,14 +24,6 @@ from pointlessql.services.models_lineage import (
 )
 
 
-def _client(**kwargs) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        follow_redirects=False,
-        **kwargs,
-    )
-
 
 def _seed_run_and_op(factory, run_id: str) -> int:
     """Insert one ``AgentRun`` + one ``AgentRunOperation`` for FK linkage."""
@@ -285,7 +277,7 @@ def uc_for_inference(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 @pytest.mark.asyncio
 async def test_api_predictions_endpoint_groups_by_target(
-    uc_for_inference: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_inference: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     factory = app.state.session_factory
     run_id = str(uuid.uuid4())
@@ -299,8 +291,7 @@ async def test_api_predictions_endpoint_groups_by_target(
         source_model_uri="models:/cat.sch.smoke_model/1",
         n=3,
     )
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models/cat.sch.smoke_model/predictions")
+    resp = await admin_client.get("/api/models/cat.sch.smoke_model/predictions")
     assert resp.status_code == 200
     body = resp.json()
     assert body["predictions"] == [{"target_table": "cat.sch.preds", "edge_count": 3}]
@@ -309,15 +300,14 @@ async def test_api_predictions_endpoint_groups_by_target(
 @pytest.mark.asyncio
 async def test_api_predictions_endpoint_unauthenticated(
     uc_for_inference: AsyncMock,
-) -> None:
-    async with _client() as c:
-        resp = await c.get("/api/models/cat.sch.smoke_model/predictions")
+    anonymous_client: httpx.AsyncClient) -> None:
+    resp = await anonymous_client.get("/api/models/cat.sch.smoke_model/predictions")
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_api_lineage_returns_bidirectional_graph(
-    uc_for_inference: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_inference: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     """Endpoint surfaces both ``trained_from`` and ``inferred_to`` edges."""
     factory = app.state.session_factory
@@ -357,8 +347,7 @@ async def test_api_lineage_returns_bidirectional_graph(
 
     uc_for_inference.list_model_versions.side_effect = _list_with_marker
 
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models/cat.sch.smoke_model/lineage")
+    resp = await admin_client.get("/api/models/cat.sch.smoke_model/lineage")
     assert resp.status_code == 200
     body = resp.json()
     labels = {e["label"] for e in body["edges"]}

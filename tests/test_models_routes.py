@@ -16,14 +16,6 @@ import pytest
 from pointlessql.api.main import app
 
 
-def _client(**kwargs) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        follow_redirects=False,
-        **kwargs,
-    )
-
 
 _LINK_MARKER = json.dumps(
     {
@@ -118,9 +110,8 @@ def uc_with_models(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_models_index_anonymous_redirects(uc_with_models: AsyncMock) -> None:
-    async with _client() as c:
-        resp = await c.get("/models")
+async def test_models_index_anonymous_redirects(uc_with_models: AsyncMock, anonymous_client: httpx.AsyncClient) -> None:
+    resp = await anonymous_client.get("/models")
     # Auth middleware redirects HTML pages to /auth/login (without ?next=)
     # before our route's own redirect ever runs.
     assert resp.status_code == 303
@@ -129,10 +120,9 @@ async def test_models_index_anonymous_redirects(uc_with_models: AsyncMock) -> No
 
 @pytest.mark.asyncio
 async def test_models_index_renders_for_authenticated_user(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/models")
+    resp = await admin_client.get("/models")
     assert resp.status_code == 200
     body = resp.text
     assert "Registered Models" in body
@@ -142,18 +132,16 @@ async def test_models_index_renders_for_authenticated_user(
 @pytest.mark.asyncio
 async def test_api_models_unauthenticated_returns_401(
     uc_with_models: AsyncMock,
-) -> None:
-    async with _client() as c:
-        resp = await c.get("/api/models")
+    anonymous_client: httpx.AsyncClient) -> None:
+    resp = await anonymous_client.get("/api/models")
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_api_models_lists_models(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models")
+    resp = await admin_client.get("/api/models")
     assert resp.status_code == 200
     body = resp.json()
     assert any(m["full_name"] == "cat1.sch1.smoke_model" for m in body["models"])
@@ -161,20 +149,18 @@ async def test_api_models_lists_models(
 
 @pytest.mark.asyncio
 async def test_api_models_filters_by_catalog(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models?catalog_name=other")
+    resp = await admin_client.get("/api/models?catalog_name=other")
     assert resp.status_code == 200
     assert resp.json()["models"] == []
 
 
 @pytest.mark.asyncio
 async def test_api_models_enrich_latest_populates_version_summary(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models?enrich_latest=true")
+    resp = await admin_client.get("/api/models?enrich_latest=true")
     assert resp.status_code == 200
     rows = resp.json()["models"]
     assert rows[0]["latest_version"] == 2
@@ -184,10 +170,9 @@ async def test_api_models_enrich_latest_populates_version_summary(
 
 @pytest.mark.asyncio
 async def test_api_get_model_returns_model_plus_versions(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models/cat1.sch1.smoke_model")
+    resp = await admin_client.get("/api/models/cat1.sch1.smoke_model")
     assert resp.status_code == 200
     body = resp.json()
     assert body["model"]["full_name"] == "cat1.sch1.smoke_model"
@@ -200,18 +185,16 @@ async def test_api_get_model_returns_model_plus_versions(
 
 
 @pytest.mark.asyncio
-async def test_api_get_model_404(uc_with_models: AsyncMock, auth_cookies: dict[str, str]) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models/cat1.sch1.missing")
+async def test_api_get_model_404(uc_with_models: AsyncMock, admin_client: httpx.AsyncClient) -> None:
+    resp = await admin_client.get("/api/models/cat1.sch1.missing")
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_api_model_linked_runs_extracts_markers(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models/cat1.sch1.smoke_model/runs")
+    resp = await admin_client.get("/api/models/cat1.sch1.smoke_model/runs")
     assert resp.status_code == 200
     runs = resp.json()["runs"]
     assert len(runs) == 1
@@ -223,18 +206,16 @@ async def test_api_model_linked_runs_extracts_markers(
 @pytest.mark.asyncio
 async def test_model_detail_anonymous_redirects(
     uc_with_models: AsyncMock,
-) -> None:
-    async with _client() as c:
-        resp = await c.get("/models/cat1.sch1.smoke_model")
+    anonymous_client: httpx.AsyncClient) -> None:
+    resp = await anonymous_client.get("/models/cat1.sch1.smoke_model")
     assert resp.status_code == 303
 
 
 @pytest.mark.asyncio
 async def test_model_detail_renders_all_tabs(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/models/cat1.sch1.smoke_model")
+    resp = await admin_client.get("/models/cat1.sch1.smoke_model")
     assert resp.status_code == 200
     body = resp.text
     # Header + tab nav rendered.
@@ -251,19 +232,17 @@ async def test_model_detail_renders_all_tabs(
 
 @pytest.mark.asyncio
 async def test_model_detail_404_for_unknown_model(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/models/cat1.sch1.unknown")
+    resp = await admin_client.get("/models/cat1.sch1.unknown")
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_model_detail_overview_shows_linked_run(
-    uc_with_models: AsyncMock, auth_cookies: dict[str, str]
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/models/cat1.sch1.smoke_model")
+    resp = await admin_client.get("/models/cat1.sch1.smoke_model")
     assert resp.status_code == 200
     body = resp.text
     # Overview card lists the agent_run_id from the _pql_link marker.

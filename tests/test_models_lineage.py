@@ -17,14 +17,6 @@ from pointlessql.services.models_lineage import (
 )
 
 
-def _client(**kwargs) -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        follow_redirects=False,
-        **kwargs,
-    )
-
 
 def _seed_run_with_edges(factory, run_id: str, source_tables: list[str]) -> None:
     """Insert an AgentRun + a LineageRowEdge per source table."""
@@ -160,13 +152,12 @@ def uc_for_lineage(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 @pytest.mark.asyncio
 async def test_api_model_lineage_returns_model_node_and_source_tables(
-    uc_for_lineage: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_lineage: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     factory = app.state.session_factory
     _seed_run_with_edges(factory, "deadbeef", ["cat1.sch1.users"])
 
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models/cat1.sch1.smoke_model/lineage")
+    resp = await admin_client.get("/api/models/cat1.sch1.smoke_model/lineage")
     assert resp.status_code == 200
     body = resp.json()
     assert body["model_full_name"] == "cat1.sch1.smoke_model"
@@ -179,11 +170,10 @@ async def test_api_model_lineage_returns_model_node_and_source_tables(
 
 @pytest.mark.asyncio
 async def test_api_model_lineage_empty_when_no_linked_runs(
-    uc_for_lineage: AsyncMock, auth_cookies: dict[str, str]
+    uc_for_lineage: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
     # No seeded runs → only the centre model node, zero edges.
-    async with _client(cookies=auth_cookies) as c:
-        resp = await c.get("/api/models/cat1.sch1.smoke_model/lineage")
+    resp = await admin_client.get("/api/models/cat1.sch1.smoke_model/lineage")
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["nodes"]) == 1
@@ -193,7 +183,6 @@ async def test_api_model_lineage_empty_when_no_linked_runs(
 @pytest.mark.asyncio
 async def test_api_model_lineage_unauthenticated(
     uc_for_lineage: AsyncMock,
-) -> None:
-    async with _client() as c:
-        resp = await c.get("/api/models/cat1.sch1.smoke_model/lineage")
+    anonymous_client: httpx.AsyncClient) -> None:
+    resp = await anonymous_client.get("/api/models/cat1.sch1.smoke_model/lineage")
     assert resp.status_code == 401
