@@ -17,15 +17,33 @@
     <span class="text-muted small">Read-only.  Configured via env vars.</span>
 </div>
 
-<div class="alert alert-info small">
-    <i class="bi bi-info-circle me-1"></i>
-    All values on this page are <strong>read-only</strong>.  Most are
-    set via <code>POINTLESSQL_*</code> environment variables and require
-    a process restart to change — wiring an admin form would silently
-    desync from <code>os.environ</code>.  Rotate <code>system_keys</code>
-    rows via SQL or the dedicated CLI; that flow is not exposed here
-    because re-hashing already-stored audit data needs a backfill that
-    a one-click button cannot supply safely.
+<div class="accordion accordion-flush mb-3" id="info-accordion-system-info">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed small fw-normal"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#info-collapse-system-info"
+                    aria-expanded="false"
+                    aria-controls="info-collapse-system-info">
+                <i class="bi bi-info-circle me-2"></i>
+                What is this page?
+            </button>
+        </h2>
+        <div id="info-collapse-system-info"
+             class="accordion-collapse collapse"
+             data-bs-parent="#info-accordion-system-info">
+            <div class="accordion-body small">
+                All values on this page are <strong>read-only</strong>.  Most are
+                set via <code>POINTLESSQL_*</code> environment variables and require
+                a process restart to change — wiring an admin form would silently
+                desync from <code>os.environ</code>.  Rotate <code>system_keys</code>
+                rows via SQL or the dedicated CLI; that flow is not exposed here
+                because re-hashing already-stored audit data needs a backfill that
+                a one-click button cannot supply safely.
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row g-3">
