@@ -4887,6 +4887,95 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 51 — Git-backed workspaces ✅ done
+│   │
+│   │   Workspaces gain a 1..n git-repo registry; clones land at
+│   │   ``<base_dir>/<workspace_id>/<slug>/`` and feed the
+│   │   yaml loaders (data products + conventions) plus three
+│   │   asset bridges (notebooks via ``repo:<ws>:<slug>/<rel>``
+│   │   spec, dashboards + saved-queries via
+│   │   ``pointlessql.yaml`` blocks).  Read-only by design — git
+│   │   is truth, DB is cache.  Provider-shape (``GitProvider``
+│   │   Protocol) lets GitLab/Gitea adapters drop in without
+│   │   service-layer changes.  Webhook receiver
+│   │   (``POST /webhook/git/{repo_id}`` + HMAC verify) and
+│   │   opt-in cron loop drive auto-pulls; admin JSON API
+│   │   (``/api/admin/repos/*``) drives manual ops.  4 new
+│   │   plugin tools.  Pyright budget unchanged at 497.
+│   │
+│   ├── Sprint 51.1 — Foundation.  ``pointlessql/git/``
+│   │       package: GitProvider Protocol + Generic + GitHub
+│   │       impls, async subprocess helper, error family.
+│   │       ``services/secrets.py`` Fernet authenticated
+│   │       encryption (replaces base64url for at-rest creds).
+│   │       Two ORM tables (``workspace_repos`` +
+│   │       ``workspace_repo_secrets``) via Alembic
+│   │       ``aa9b1c3e5d7f``.  ``WorkspaceReposSettings``,
+│   │       4 ``ErrorCode`` members, ``cryptography>=44.0``
+│   │       added.  34 new tests.
+│   │
+│   ├── Sprint 51.2 — Yaml-loader integration.
+│   │       ``discover_repo_yaml_files`` walks every workspace
+│   │       repo's clone dir; ``load_contracts_for_workspace``
+│   │       + ``load_conventions_for_workspace`` combine
+│   │       env-paths + repo-discovered yaml.
+│   │       ``build_post_pull_loader_hook`` returns a
+│   │       ``sync_repo``-compatible hook that re-runs both
+│   │       loaders; counts surface on ``SyncOutcome``.  Loader
+│   │       errors stay isolated.  6 new tests.
+│   │
+│   ├── Sprint 51.3 — Notebook + Dashboard + Saved-Query
+│   │       bridge.  ``resolve_notebook_path`` accepts
+│   │       ``repo:<ws>:<slug>/<rel>.py`` spec.  New
+│   │       ``pointlessql/repo_assets/`` package with two yaml
+│   │       loaders.  ``Dashboard`` + ``SavedQuery`` rows gain
+│   │       ``source`` + ``repo_yaml_path`` columns via Alembic
+│   │       ``bb1d4f6e8a0c`` so the admin UI can render
+│   │       git-canonical rows as read-only.  13 new tests.
+│   │
+│   ├── Sprint 51.4 — Webhook receiver + cron sync loop.
+│   │       Unauthenticated ``POST /webhook/git/{repo_id}``
+│   │       (HMAC sig is the auth) verifies + parses + fires
+│   │       async ``sync_repo``.  Lifespan-managed
+│   │       ``_workspace_repos_sync_loop`` opt-in via
+│   │       ``POINTLESSQL_REPOS_SYNC_INTERVAL_SECONDS≥60``.
+│   │       ``/webhook/git/`` added to PUBLIC_PREFIXES + CSRF
+│   │       exempt list.  9 new tests.
+│   │
+│   ├── Sprint 51.5 — Admin JSON API.  Eight admin-gated
+│   │       endpoints behind ``/api/admin/repos`` (list /
+│   │       create / detail / sync / add-or-rotate-secret /
+│   │       revoke-secret / rotate-webhook / delete).
+│   │       Reveal-once webhook secret on creation; secret
+│   │       plaintext never echoed back on subsequent reads.
+│   │       Every mutation stamps an ``audit_log`` entry.
+│   │       Workspace-scoping enforced via ``_load_repo``
+│   │       (other-workspace repos 404).  10 new tests.
+│   │
+│   └── Sprint 51.7 — Plugin tools.  Four new LLM-callable
+│           Hermes tools (``pql_list_workspace_repos``,
+│           ``pql_get_workspace_repo``,
+│           ``pql_trigger_repo_sync`` (supervisor-gated),
+│           ``pql_repo_sync_history``).  ``PointlessClient``
+│           gains four matching methods.  Slug→id resolution
+│           lives client-side.  8 new plugin tests; total
+│           141 → 149.
+│
+│   Carve-outs (deferred):
+│   - **Sprint 51.6 (OAuth GitHub-App).**  Was approved in the
+│     plan as opt-in; deferred to a follow-up sub-sprint
+│     because (a) it requires registering a real GitHub App +
+│     a private-key secret to exercise end-to-end and (b)
+│     deploy-keys / PATs already cover the per-workspace
+│     credential surface today.  When the App is available,
+│     drop ``GitHubInstallation`` + the OAuth callback flow +
+│     a per-user token-refresh path on top of the existing
+│     ``GitHubProvider``.  No foundation refactor needed.
+│   - **HTML admin pages.**  The 51.5 surface today is JSON
+│     only.  A 5-tab detail page (Overview / Auth / Sync
+│     history / Files / Danger) is a natural follow-up; the
+│     JSON shape is sufficient for the agent + ``curl`` paths.
+│
 ├── Phase 50 — Native Data-Product support ✅ done
 │   │
 │   │   Every UC schema can opt-in to product status by committing

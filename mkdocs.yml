@@ -102,6 +102,7 @@ nav:
       - Contextual help: concepts/contextual-help.md
       - Workspaces: concepts/workspaces.md
       - Data products: concepts/data-products.md
+      - Git-backed workspaces: concepts/git-backed-workspaces.md
   - Admin:
       - Workspace management: admin/workspace-management.md
       - OIDC group map: admin/oidc-group-map.md
@@ -157,6 +158,7 @@ nav:
               - Operational: e2e-walkthroughs/operational.md
               - Agent drift monitor: e2e-walkthroughs/agent_drift_monitor.md
               - Multi-workspace setup: e2e-walkthroughs/multi-workspace-setup.md
+              - Git-backed workspaces: e2e-walkthroughs/git-backed-workspaces.md
           - Agents + ML registry:
               - Agent ML registry: e2e-walkthroughs/agent-ml-registry.md
               - Models tab: e2e-walkthroughs/models-tab.md

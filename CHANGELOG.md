@@ -6,6 +6,99 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 51 — Git-backed workspaces closed.**  Workspaces can
+  now register 1..n git repositories whose contents feed the
+  yaml loaders (data products + conventions) and the asset
+  bridges (notebooks + dashboards + saved queries).  Read-only
+  by design — git is truth, DB is cache, edits flow through the
+  team's git tool / PR.  Seven surfaces shipped across seven
+  sub-sprints (51.6 OAuth deferred — see Carve-outs below):
+
+  - **51.1 — Foundation.**  New ``pointlessql/git/`` package:
+    ``GitProvider`` Protocol + ``GenericGitProvider`` /
+    ``GitHubProvider`` implementations, async subprocess
+    helper, error family.  Generic clone+pull via depth-1 git
+    subprocess; GitHub adds HMAC-SHA-256 signature
+    verification of ``X-Hub-Signature-256``.  New
+    ``services/secrets.py`` with Fernet authenticated
+    encryption keyed off an install-scoped master key in
+    ``system_keys`` (replaces the base64url-only path Phase 20
+    used for cloud-trail credentials).  Two ORM tables
+    (``workspace_repos`` + ``workspace_repo_secrets``) via
+    Alembic ``aa9b1c3e5d7f``.  Service surface
+    (``create_repo`` / ``add_secret`` /
+    ``rotate_webhook_secret`` / ``delete_repo`` /
+    ``sync_repo`` / ``list_repos_due_for_sync`` /
+    ``list_repos_for_workspace``).  4 new ``ErrorCode``
+    members (``WORKSPACE_REPO_*``), ``WorkspaceReposSettings``
+    under env prefix ``POINTLESSQL_REPOS_*``,
+    ``cryptography>=44.0`` added.  34 new tests.
+
+  - **51.2 — Yaml-loader integration.**  New
+    ``discover_repo_yaml_files`` walks every workspace repo's
+    clone dir against ``settings.workspace_repos.
+    yaml_search_globs``; new ``load_contracts_for_workspace``
+    + ``load_conventions_for_workspace`` combine env-paths +
+    repo-discovered yaml.  ``build_post_pull_loader_hook``
+    returns a ``sync_repo``-compatible hook that re-runs both
+    loaders after every successful pull; counts surface on
+    ``SyncOutcome.loaded_data_products`` /
+    ``loaded_conventions``.  Loader errors stay isolated —
+    one bad yaml does not poison the sync.  6 new tests.
+
+  - **51.3 — Notebook + Dashboard + Saved-Query bridge.**
+    ``resolve_notebook_path`` accepts a new ``repo:<workspace_id>:
+    <slug>/<rel>.py`` spec that resolves against the clone dir
+    instead of the legacy notebooks-dir; traversal-rejection
+    + suffix-check carry over.  New
+    ``pointlessql/repo_assets/`` package with
+    ``load_dashboards_from_yaml`` / ``load_saved_queries_from_yaml``
+    + per-workspace drivers.  ``Dashboard`` + ``SavedQuery``
+    rows gain ``source`` (``'ui'`` or ``'repo:<slug>'``) +
+    ``repo_yaml_path`` columns via Alembic ``bb1d4f6e8a0c``
+    so the admin UI can render git-canonical rows as read-only.
+    13 new tests.
+
+  - **51.4 — Webhook receiver + cron sync loop.**  New
+    ``POST /webhook/git/{repo_id}`` endpoint —
+    unauthenticated at the middleware layer because the HMAC
+    signature *is* the auth.  Signature verified against the
+    repo's stored ``webhook_secret``; non-push events return
+    202 ``status='ignored'`` without scheduling work.  Push
+    events on the default branch schedule ``sync_repo`` as
+    ``asyncio.create_task`` (fire-and-forget; webhook caller
+    gets 202 immediately).  Lifespan-managed
+    ``_workspace_repos_sync_loop`` ticks every
+    ``settings.workspace_repos.sync_interval_seconds``
+    (opt-in default-disabled, min 60 s) and pulls every
+    repo whose ``last_synced_at`` is older than the cadence.
+    ``/webhook/git/`` added to ``PUBLIC_PREFIXES`` and the
+    CSRF-exempt list.  9 new tests.
+
+  - **51.5 — Admin JSON API.**  Eight admin-gated endpoints
+    behind ``/api/admin/repos`` (list / create / detail /
+    sync / add-or-rotate-secret / revoke-secret /
+    rotate-webhook-secret / delete).  Reveal-once webhook
+    secret on creation; subsequent ``GET`` calls never echo
+    plaintext (secrets render as
+    ``{kind, created_at, rotated_at}`` only).  Every mutation
+    stamps an ``audit_log`` entry; workspace-scoping enforced
+    via ``_load_repo`` (other-workspace repos 404 even for
+    tenant admins).  10 new tests.
+
+  - **51.7 — Plugin tools.**  Four new agent-callable Hermes
+    tools in ``hermes-plugin-pointlessql``:
+    ``pql_list_workspace_repos`` (no args),
+    ``pql_get_workspace_repo`` (slug),
+    ``pql_trigger_repo_sync`` (slug — supervisor scope
+    enforced server-side),
+    ``pql_repo_sync_history`` (slug + limit).
+    ``PointlessClient`` extended with four matching methods.
+    Slug→id resolution lives client-side so a future
+    server-side slug-keyed route can drop in without
+    breaking the tool contract.  8 new tests; plugin total
+    141 → 149.
+
 - **Phase 50 — Native Data-Product support closed.**  PointlesSQL
   now treats any UC schema as an opt-in data product when its
   data team commits a ``pointlessql.yaml`` declaring steward,
