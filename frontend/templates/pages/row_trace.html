@@ -126,7 +126,8 @@ function rowAtVersion() {
 
 {% set has_predecessors = steps|selectattr("predecessors")|list %}
 {% set has_value_changes = steps|selectattr("value_changes")|list %}
-{% if steps and (has_predecessors or has_value_changes) %}
+{% set has_cdf_events = steps|selectattr("cdf_events")|list %}
+{% if steps and (has_predecessors or has_value_changes or has_cdf_events) %}
 <div class="card">
  <div class="card-header"><i class="bi bi-arrow-down me-1"></i>Walk back</div>
  <ol class="list-group list-group-flush list-group-numbered">
@@ -223,6 +224,30 @@ function rowAtVersion() {
  title="admin-only reveal; logs an audit_log row of action=pii.value_revealed">
  <i class="bi bi-eye"></i> Reveal
  </button>
+ {% endif %}
+ </li>
+ {% endfor %}
+ </ul>
+ </details>
+ {% endif %}
+ {% if step.cdf_events %}
+ <details class="mt-2 small" data-cdf-events="1">
+ <summary class="text-muted">
+ <i class="bi bi-file-earmark-diff me-1"></i>CDF captures ({{ step.cdf_events|length }})
+ </summary>
+ <ul class="list-unstyled mt-2 mb-0 ms-3">
+ {% for ev in step.cdf_events %}
+ <li class="mb-1 d-flex align-items-center gap-2 flex-wrap">
+ <span class="badge bg-light text-dark border">v{{ ev.delta_version }}</span>
+ {% include "partials/_cdf_change_type_pill.html" %}
+ <span class="text-muted small">{{ ev.created_at }}</span>
+ {% if ev.commit_timestamp %}
+ <span class="text-muted small" title="Delta commit timestamp">
+ <i class="bi bi-clock me-1"></i>{{ ev.commit_timestamp }}
+ </span>
+ {% endif %}
+ {% if ev.producer_label %}
+ <span class="text-muted small font-monospace">— {{ ev.producer_label }}</span>
  {% endif %}
  </li>
  {% endfor %}

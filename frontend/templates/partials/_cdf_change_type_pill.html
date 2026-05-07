@@ -1,0 +1,16 @@
+{# Render the colour-coded pill for one ``cdf_tail_events.change_type``.
+
+Expects an ``ev`` variable in scope with a ``.change_type`` attribute,
+mirroring the loop variable used in both the table-detail "CDF events"
+tab and the row-trace walkback panel. #}
+{% if ev.change_type == "insert" %}
+<span class="badge bg-success">insert</span>
+{% elif ev.change_type == "delete" %}
+<span class="badge bg-danger">delete</span>
+{% elif ev.change_type == "update_preimage" %}
+<span class="badge bg-warning text-dark">update (pre)</span>
+{% elif ev.change_type == "update_postimage" %}
+<span class="badge bg-warning text-dark">update (post)</span>
+{% else %}
+<span class="badge bg-secondary">{{ ev.change_type }}</span>
+{% endif %}

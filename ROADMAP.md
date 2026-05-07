@@ -4520,6 +4520,38 @@ PointlesSQL
 │           walkthrough at
 │           ``docs/e2e-walkthroughs/admin-cdf-tail.md``.
 │
+├── Phase 40.7 — Row-Trace fold-in of CDF events           ✅ done
+│   │
+│   │   Phase-40.6's deferred surface: foreign-Delta CDF events
+│   │   captured by the Phase-40.5 tail folded back into the
+│   │   existing row-trace walkback as contextual metadata.  No
+│   │   new walkback semantics — events attach per step on
+│   │   ``(table, row_id)`` mirror of Phase-15.7's value-changes
+│   │   pattern.  Walkback semantics (predecessors out of
+│   │   ``lineage_row_edges``) stay unchanged; CDF captures are
+│   │   pure context, never new walkback steps.  Single sprint,
+│   │   no new Alembic migration, no new credential surface, no
+│   │   new plugin tool — existing ``pql_row_trace`` ships the
+│   │   new ``cdf_events`` per-step field transparently.
+│   │
+│   └── Sprint 40.7.1 — Per-step ``cdf_events`` attach
+│           New ``fetch_events_for_row`` service helper in
+│           ``pointlessql/services/cdf_tail.py`` (workspace-scoped
+│           indexed lookup on ``(workspace_id, table_full_name,
+│           row_id)``).  New ``_attach_cdf_events`` route-level
+│           helper in ``pointlessql/api/lineage_routes.py``
+│           parallel to ``_attach_value_changes``; threaded into
+│           both row-trace handlers (JSON + HTML).
+│           ``_step_to_dict`` extended with always-present
+│           ``cdf_events: []``.  New ``<details>`` block on
+│           ``frontend/templates/pages/row_trace.html`` mirroring
+│           the Value-changes pattern.  Change-type pill
+│           extracted into reusable
+│           ``frontend/templates/partials/_cdf_change_type_pill.html``;
+│           ``table.html`` 7th-tab CDF-events table now includes
+│           the partial verbatim.  3 pytest cases (attach,
+│           empty-list-default, workspace-isolation).
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

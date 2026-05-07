@@ -6,6 +6,28 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 40.7 — Row-Trace fold-in of CDF events closed.**  Single
+  sprint that resolves Phase-40.6's deferred boundary discussion.
+  Foreign-Delta CDF events captured by the Phase-40.5 tail now
+  fold into the existing row-trace walkback as contextual metadata
+  per step — every walkback step gets a ``cdf_events: []`` field
+  populated from
+  ``cdf_tail_events WHERE workspace_id=? AND table_full_name=? AND row_id=?``.
+  Walkback semantics stay unchanged (predecessors come exclusively
+  from ``lineage_row_edges``); CDF captures are pure context, never
+  new walkback steps.  New service helper
+  ``pointlessql.services.cdf_tail.fetch_events_for_row`` mirrors
+  ``fetch_value_changes_for_row``; new route helper
+  ``_attach_cdf_events`` mirrors ``_attach_value_changes``.
+  Template adds a new ``<details>`` block on
+  ``pages/row_trace.html`` with version pill + change-type pill +
+  timestamps; change-type pill extracted into reusable
+  ``partials/_cdf_change_type_pill.html`` and shared with the
+  Phase-40.6 table-detail CDF events tab.  No new Alembic
+  migration, no new credential surface, no new plugin tool — the
+  existing ``pql_row_trace`` ships ``cdf_events`` per step
+  transparently.  3 new pytest cases (attach, empty-list-default,
+  workspace-isolation).
 - **Phase 40.6 — CDF Tail UI integration closed.**  Three thin
   sprints turn the Phase-40.5 capture surface into a fully
   browsable + agent-readable governance surface.  Sprint 40.6.1

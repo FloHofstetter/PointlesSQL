@@ -52,6 +52,56 @@ VALID_CHANGE_TYPES = frozenset(
 )
 
 
+def fetch_events_for_row(
+    session_factory: sessionmaker[Session],
+    *,
+    workspace_id: int,
+    table_full_name: str,
+    row_id: str,
+    limit: int = 50,
+) -> list[CdfTailEvent]:
+    """Return captured CDF events for one ``(table, row_id)`` pair.
+
+    Used by the row-trace UI to fold CDF captures into the existing
+    walkback steps as contextual metadata, alongside the
+    ``lineage_value_changes`` per-cell history.  Workspace-scoped so
+    two installs that happen to share a row identifier never see
+    each other's events.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        workspace_id: Active workspace; only events captured for this
+            workspace are returned.
+        table_full_name: Three-part UC name; matched verbatim against
+            :attr:`CdfTailEvent.table_full_name`.
+        row_id: Stringified row identifier (the value the
+            subscription's ``row_id_column`` produced at capture).
+        limit: Defensive bound on the per-row event count.  Defaults
+            to 50 so a runaway producer can't blow up the row-trace
+            page.
+
+    Returns:
+        Matching events ordered ``(delta_version, created_at)``
+        ascending so the row-trace pane renders insert→update→delete
+        in commit order.  Empty list when no events match.
+    """
+    with session_factory() as session:
+        stmt = (
+            select(CdfTailEvent)
+            .where(
+                CdfTailEvent.workspace_id == workspace_id,
+                CdfTailEvent.table_full_name == table_full_name,
+                CdfTailEvent.row_id == row_id,
+            )
+            .order_by(
+                CdfTailEvent.delta_version.asc(),
+                CdfTailEvent.created_at.asc(),
+            )
+            .limit(limit)
+        )
+        return list(session.scalars(stmt))
+
+
 def _coerce_timestamp(value: Any) -> datetime.datetime | None:
     """Parse a Delta CDF ``_commit_timestamp`` cell into UTC.
 

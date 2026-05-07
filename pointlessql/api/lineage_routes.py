@@ -31,6 +31,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
+    current_workspace_id,
     effective_principal,
     get_uc_client,
     get_user,
@@ -39,6 +40,7 @@ from pointlessql.exceptions import CatalogNotFoundError, CatalogUnavailableError
 from pointlessql.models import AgentRunOperation
 from pointlessql.services import pii_mask, pii_resolver
 from pointlessql.services.authorization import SELECT, check_privilege
+from pointlessql.services.cdf_tail import fetch_events_for_row as fetch_cdf_events_for_row
 from pointlessql.services.lineage_edges import (
     ColumnPredecessorRef,
     ColumnTraceStep,
@@ -131,13 +133,15 @@ def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict
     Returns:
         Dict with ``depth`` / ``table`` / ``row_id`` / ``op_id`` /
         ``op_name`` / ``run_id`` / ``source_file`` /
-        ``predecessors`` / ``value_changes`` keys.  ``predecessors``
-        is the full list of edges feeding this row — length > 1
-        indicates fan-in (aggregate op or repeated re-runs).
-        ``value_changes`` is the per-cell preimage/postimage list
-        for this step's ``(table, row_id)`` pair,
-        empty when no merge with ``track_value_changes=True`` has
-        touched this row.
+        ``predecessors`` / ``value_changes`` / ``cdf_events`` keys.
+        ``predecessors`` is the full list of edges feeding this row
+        — length > 1 indicates fan-in (aggregate op or repeated
+        re-runs).  ``value_changes`` is the per-cell
+        preimage/postimage list for this step's ``(table, row_id)``
+        pair, empty when no merge with ``track_value_changes=True``
+        has touched this row.  ``cdf_events`` is the captured
+        foreign-Delta CDF tail history for the same pair, empty
+        when no subscription has captured events for this row.
     """
     meta = op_meta.get(step.op_id) if step.op_id is not None else None
     return {
@@ -150,6 +154,7 @@ def _step_to_dict(step: LineageStep, op_meta: dict[int, dict[str, Any]]) -> dict
         "source_file": step.source_file,
         "predecessors": [_predecessor_to_dict(p, op_meta) for p in step.predecessors],
         "value_changes": [],
+        "cdf_events": [],
     }
 
 
@@ -197,6 +202,64 @@ def _attach_value_changes(factory: Any, step_dicts: list[dict[str, Any]]) -> lis
                 "display_new": r.new_value if r.new_value is not None else None,
             }
             for r in rows
+        ]
+    return step_dicts
+
+
+def _attach_cdf_events(
+    factory: Any,
+    step_dicts: list[dict[str, Any]],
+    *,
+    workspace_id: int,
+) -> list[dict[str, Any]]:
+    """Populate the ``cdf_events`` key on each step from the CDF tail log.
+
+    Mirrors :func:`_attach_value_changes` for the Phase-40.5/40.6
+    foreign-Delta CDF capture stream.  Per step a single indexed
+    point-lookup on ``(workspace_id, table_full_name, row_id)`` —
+    bounded to ≤20 reads at the default ``max_hops``.  Events are
+    captured for foreign tables that PointlesSQL didn't write but
+    the operator subscribed to; folding them in here gives the
+    audit-reviewer a unified view of "everything that ever happened
+    to this row".
+
+    Workspace-scoping is mandatory: row identifiers are stringified
+    foreign-key values that two installs could collide on by
+    accident (e.g. both seed an ``id=1`` row in
+    ``demo.silver.orders``).
+
+    Args:
+        factory: SQLAlchemy session factory.
+        step_dicts: Already-projected step dicts (output of
+            :func:`_step_to_dict`).
+        workspace_id: Active workspace; passed through to the
+            service-layer helper.
+
+    Returns:
+        The same list, mutated in place — each step's ``cdf_events``
+        list is replaced with ``[{id, delta_version, change_type,
+        commit_timestamp, created_at, producer_label}]`` entries.
+        Steps with no matching events keep an empty list so
+        templates can ``{% if step.cdf_events %}`` without
+        :class:`KeyError`.
+    """
+    for step in step_dicts:
+        events = fetch_cdf_events_for_row(
+            factory,
+            workspace_id=workspace_id,
+            table_full_name=step["table"],
+            row_id=step["row_id"],
+        )
+        step["cdf_events"] = [
+            {
+                "id": e.id,
+                "delta_version": e.delta_version,
+                "change_type": e.change_type,
+                "commit_timestamp": e.commit_timestamp.isoformat() if e.commit_timestamp else None,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+                "producer_label": e.producer_label,
+            }
+            for e in events
         ]
     return step_dicts
 
@@ -405,6 +468,9 @@ async def api_row_trace(
     op_meta = _load_op_metadata(_collect_op_ids(steps))
     step_dicts = [_step_to_dict(s, op_meta) for s in steps]
     step_dicts = _attach_value_changes(factory, step_dicts)
+    step_dicts = _attach_cdf_events(
+        factory, step_dicts, workspace_id=current_workspace_id(request)
+    )
     step_dicts = await _apply_pii_masking(request, step_dicts)
     return {
         "table": table,
@@ -447,6 +513,9 @@ async def html_row_trace(
     op_meta = _load_op_metadata(_collect_op_ids(steps))
     step_dicts = [_step_to_dict(s, op_meta) for s in steps]
     step_dicts = _attach_value_changes(factory, step_dicts)
+    step_dicts = _attach_cdf_events(
+        factory, step_dicts, workspace_id=current_workspace_id(request)
+    )
     step_dicts = await _apply_pii_masking(request, step_dicts)
 
     return _templates(request).TemplateResponse(
