@@ -115,10 +115,10 @@ def test_emit_test_failure_rejects_validates_lengths() -> None:
 
 def test_audit_aggregator_recognises_expectation_failures_metric() -> None:
     """``expectation_failures`` is a first-class metric with a SQL spec."""
-    from pointlessql.services.audit_aggregator import VALID_METRICS, _metric_spec
+    from pointlessql.services.audit_aggregator import VALID_METRICS, metric_spec
 
     assert "expectation_failures" in VALID_METRICS
-    spec = _metric_spec("expectation_failures")
+    spec = metric_spec("expectation_failures")
     # Filter is a row-level WHERE on the reject reason — not None.
     assert spec.where is not None
     # And it points at lineage_row_rejects, not a separate table.
