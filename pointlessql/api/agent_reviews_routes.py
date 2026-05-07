@@ -216,6 +216,64 @@ async def api_get_agent_review(request: Request, review_id: int) -> dict[str, An
     return _row_to_dict(row)
 
 
+_REVIEWS_LIST_PAGE_SIZE = 50
+
+
+@router.get("/agent-reviews", response_class=HTMLResponse)
+async def html_agent_reviews_list(
+    request: Request,
+    offset: int = 0,
+) -> HTMLResponse:
+    """Render the paginated list of agent reviews (admin-only).
+
+    Admin gate matches the detail page — auditor keys remain
+    HTTP-API-only because the row preview surfaces digest text the
+    Audit-Reviewer-Agent generates.
+
+    Args:
+        request: Incoming FastAPI request; admin-gated.
+        offset: 0-based row offset (driven by the
+            ``_macros/pagination.html`` page-link footer).
+
+    Returns:
+        Rendered ``pages/agent_reviews_list.html`` with one page
+        of reviews newest-first.
+    """
+    from sqlalchemy import func as _func
+
+    require_admin(request)
+    if offset < 0:
+        offset = 0
+    factory = request.app.state.session_factory
+    with factory() as session:
+        total = int(session.scalar(select(_func.count()).select_from(AgentReview)) or 0)
+        rows = list(
+            session.scalars(
+                select(AgentReview)
+                .order_by(desc(AgentReview.created_at))
+                .offset(offset)
+                .limit(_REVIEWS_LIST_PAGE_SIZE)
+            ).all()
+        )
+        for row in rows:
+            session.expunge(row)
+    reviews = [_row_to_dict(row) for row in rows]
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "pages/agent_reviews_list.html",
+        {
+            "reviews": reviews,
+            "total": total,
+            "offset": offset,
+            "row_limit": _REVIEWS_LIST_PAGE_SIZE,
+            "active_page": "audit",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
 @router.get("/agent-reviews/{review_id}", response_class=HTMLResponse)
 async def html_agent_review_detail(request: Request, review_id: int) -> HTMLResponse:
     """Render the full review detail page (admin-only).

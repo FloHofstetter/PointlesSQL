@@ -54,7 +54,7 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`contextual-panels.md`](contextual-panels.md) | sidebar context-panel | 17 |
 | [`ux-overhaul.md`](ux-overhaul.md) | sidebar + theme + density | 17 |
 | [`list-polish.md`](list-polish.md) | sticky headers, density toggles | 17 |
-| [`sql-editor.md`](sql-editor.md) | `/sql-editor` + saved queries | 12 |
+| [`sql-editor.md`](sql-editor.md) | `/sql` + saved queries | 12 |
 | [`dashboards.md`](dashboards.md) | `/dashboards`, `/dashboards/{id}` | 12.5 |
 | [`alerts.md`](alerts.md) | `/alerts` + destinations + Atom feed | 18.x |
 | [`rollback.md`](rollback.md) | `/runs/{id}` admin rollback card | 16 |

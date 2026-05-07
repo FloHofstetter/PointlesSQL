@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
+{% from "_macros/pagination.html" import paginate %}
+{% block title %}Agent reviews · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Audit cockpit", "href": "/audit/queries"},
+    {"label": "Agent reviews"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-robot fs-3"></i>
+        <h1 class="h3 mb-0">Agent reviews{{ info('admin.agent-reviews') }}</h1>
+    </div>
+    <span class="text-muted small">
+        {%- if total > 0 -%}
+        {%- set page_first = offset + 1 -%}
+        {%- set page_last = (offset + reviews|length) -%}
+        {{ page_first }}–{{ page_last }} of {{ total }} review{{ '' if total == 1 else 's' }}
+        {%- else -%}
+        0 reviews
+        {%- endif -%}
+    </span>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if reviews %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle pql-list-table">
+                <thead>
+                    <tr>
+                        <th class="ps-3">ID</th>
+                        <th>Created</th>
+                        <th>Period</th>
+                        <th>Severity</th>
+                        <th class="pe-3">Summary</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for review in reviews %}
+                    <tr>
+                        <td class="ps-3 font-monospace small">
+                            <a href="/agent-reviews/{{ review.id }}" class="text-decoration-none">#{{ review.id }}</a>
+                        </td>
+                        <td class="small text-muted font-monospace">
+                            {{ review.created_at[:19] }}Z
+                        </td>
+                        <td class="small text-muted font-monospace">
+                            {{ review.period_start[:10] }} &rarr; {{ review.period_end[:10] }}
+                        </td>
+                        <td>
+                            {% set sev = review.severity %}
+                            <span class="badge {% if sev == 'critical' %}bg-danger{% elif sev == 'warn' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                {{ sev }}
+                            </span>
+                        </td>
+                        <td class="pe-3 small">
+                            {%- set first_line = (review.summary_md or '').split('\n')[0] -%}
+                            {{ first_line[:160] }}{% if first_line|length > 160 %}…{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        {% with flush=True, icon="bi-robot",
+                title="No agent reviews recorded yet",
+                message="The Audit-Reviewer-Agent persona writes a Markdown digest after each daily / weekly cron run; rows appear here once it has fired at least once." %}
+            {% include "components/empty.html" %}
+        {% endwith %}
+        {% endif %}
+    </div>
+</div>
+
+{{ paginate(
+    total=total,
+    offset=offset,
+    limit=row_limit,
+    base_url=request.url.path,
+    query_params=request.query_params,
+    aria_label='Agent reviews pagination'
+) }}
+{% endblock %}

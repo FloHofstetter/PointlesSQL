@@ -1,6 +1,6 @@
 # SQL editor walkthrough
 
-> **Mode:** `browser` · **Phase:** 12 · **Surface:** /sql-editor + saved queries
+> **Mode:** `browser` · **Phase:** 12 · **Surface:** /sql + saved queries
 
 Exercises the Sprints 49-53 ad-hoc SQL surface: CodeMirror editor
 at `/sql`, per-referenced-table `SELECT` enforcement, query

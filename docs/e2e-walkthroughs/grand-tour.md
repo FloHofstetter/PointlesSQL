@@ -505,7 +505,7 @@ representative MCP call from the act's prose:
 3. `browser_click(".lineage-row-id-link:first")`,
    `browser_evaluate('() => document.querySelector(".cytoscape-canvas")')`
    — Act 3: row trace.
-4. `browser_navigate('http://127.0.0.1:8000/sql-editor')`,
+4. `browser_navigate('http://127.0.0.1:8000/sql')`,
    `browser_type(role="textbox", text="SELECT 1")`,
    `browser_press_key("F5")` — Act 4: SQL editor.
 5. `browser_navigate('http://127.0.0.1:8000/jobs')`,

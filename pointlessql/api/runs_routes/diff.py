@@ -75,6 +75,24 @@ async def agent_run_diff_page(
     value_changes_b = sum(lineage_diff["value_change_volume_per_table"]["b"].values())
     rejects_a = sum(lineage_diff["reject_pattern_shift"]["a"].values())
     rejects_b = sum(lineage_diff["reject_pattern_shift"]["b"].values())
+    # Phase 54.5a: per-tab counts for the nav-tabs badges so the
+    # ``Lineage`` / ``Rejects`` / ``Cells`` / ``Column lineage`` tabs
+    # surface the same affordance the ``Operations`` tab already
+    # carries.  Each is a single integer the template renders as a
+    # ``.badge`` whenever it is non-zero.
+    lineage_diff_count = sum(
+        1
+        for axis in ("reject_pattern_shift", "value_change_volume_per_table", "row_count_delta_per_table")
+        for delta in lineage_diff[axis]["delta"].values()
+        if delta != 0
+    )
+    rejects_diff_count = abs(rejects_b - rejects_a)
+    value_changes_diff_count = len(value_changes_diff.get("tables", []))
+    column_lineage_diff_count = (
+        len(column_lineage_diff.get("edges_only_in_a", []))
+        + len(column_lineage_diff.get("edges_only_in_b", []))
+        + len(column_lineage_diff.get("edges_changed", []))
+    )
     return templates(request).TemplateResponse(
         request,
         "pages/agent_run_compare.html",
@@ -91,6 +109,10 @@ async def agent_run_diff_page(
             "lineage_diff": lineage_diff,
             "value_changes_diff": value_changes_diff,
             "column_lineage_diff": column_lineage_diff,
+            "lineage_diff_count": lineage_diff_count,
+            "rejects_diff_count": rejects_diff_count,
+            "value_changes_diff_count": value_changes_diff_count,
+            "column_lineage_diff_count": column_lineage_diff_count,
             "rows_touched_diff": summary_b["rows_touched"] - summary_a["rows_touched"],
             "errored_ops_diff": summary_b["errored_ops_count"] - summary_a["errored_ops_count"],
             "active_page": "runs",

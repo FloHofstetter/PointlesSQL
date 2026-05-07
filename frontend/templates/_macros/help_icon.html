@@ -27,6 +27,14 @@
 {%- if entry.learn_more -%}
 {%- set body_html = body_html ~ "<br><a href='https://flohofstetter.github.io/PointlesSQL" ~ entry.learn_more ~ "' target='_blank' rel='noopener'>Learn more &rarr;</a>" -%}
 {%- endif -%}
+{#- ``data-bs-content`` lives inside an HTML attribute, so any ``"``
+    in ``body_html`` would close the attribute early — the symptom
+    Phase 53 flagged on /audit/search where the next attribute leaked
+    into rendered prose.  We need *attribute* escaping, not the
+    no-escape ``|safe`` Phase 17 used: Bootstrap re-parses the
+    decoded value as HTML because ``data-bs-html="true"``, so the
+    round-trip preserves the markup we care about (``<br>`` + the
+    ``Learn more`` anchor) without breaking attribute boundaries. -#}
 <button type="button"
  class="btn btn-link p-0 ms-1 align-baseline help-icon text-muted"
  data-bs-toggle="popover"
@@ -34,6 +42,6 @@
  data-bs-placement="auto"
  data-bs-html="true"
  data-bs-title="{{ entry.title }}"
- data-bs-content="{{ body_html|safe }}"
+ data-bs-content="{{ body_html|e }}"
  aria-label="{{ entry.title }}"><i class="bi bi-info-circle"></i></button>
 {%- endmacro %}
