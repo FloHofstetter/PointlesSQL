@@ -90,3 +90,10 @@ class ErrorCode(StrEnum):
     DATA_PRODUCT_SCHEMA_DRIFT = "data_product_schema_drift"
     DATA_PRODUCT_FRESHNESS_VIOLATION = "data_product_freshness_violation"
     DATA_PRODUCT_YAML_INVALID = "data_product_yaml_invalid"
+
+    # Workspace repos (Phase 51 git-backed workspaces).
+    WORKSPACE_REPO_ERROR = "workspace_repo_error"
+    WORKSPACE_REPO_CLONE_FAILED = "workspace_repo_clone_failed"
+    WORKSPACE_REPO_AUTH_FAILED = "workspace_repo_auth_failed"
+    WORKSPACE_REPO_UNKNOWN_PROVIDER = "workspace_repo_unknown_provider"
+    WORKSPACE_REPO_WEBHOOK_INVALID = "workspace_repo_webhook_invalid"

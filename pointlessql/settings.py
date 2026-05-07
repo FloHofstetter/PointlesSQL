@@ -708,6 +708,43 @@ class DataProductsSettings(BaseSettings):
     re_alert_suppress_minutes: int = 60
 
 
+class WorkspaceReposSettings(BaseSettings):
+    """Workspace-repo clone + sync configuration (Phase 51).
+
+    Reads ``POINTLESSQL_REPOS_*`` environment variables.  The
+    foundation sub-sprint pinned every value at a safe default:
+    ``sync_interval_seconds`` defaults to ``0`` (cron loop
+    dormant; manual syncs and webhook syncs work regardless), and
+    ``base_dir`` anchors clones beside the repo root so a fresh
+    install needs zero env-vars to start cloning repos.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_REPOS_")
+
+    base_dir: Path = Field(default_factory=lambda: _PROJECT_ROOT / "repos")
+    sync_interval_seconds: int = 0
+    clone_timeout_seconds: int = 300
+    pull_timeout_seconds: int = 120
+    yaml_search_globs: tuple[str, ...] = (
+        "pointlessql.yaml",
+        "**/pointlessql.yaml",
+    )
+
+    @field_validator("base_dir", mode="after")
+    @classmethod
+    def _resolve_base_dir(cls, value: Path) -> Path:
+        """Anchor *base_dir* to the startup CWD when relative.
+
+        Mirrors :class:`JupyterSettings`'s anchoring trick — papermill
+        and other workers can issue process-wide ``os.chdir`` calls,
+        so we resolve eagerly to keep clone paths stable across
+        concurrent ``Settings()`` constructions.
+        """
+        if value.is_absolute():
+            return value.resolve()
+        return (_STARTUP_CWD / value).resolve()
+
+
 class DBTSettings(BaseSettings):
     """Embedded ``dbt docs serve`` subprocess + reverse-proxy configuration.
 
@@ -798,3 +835,4 @@ class Settings(BaseSettings):
     data_products: DataProductsSettings = Field(default_factory=DataProductsSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
+    workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)

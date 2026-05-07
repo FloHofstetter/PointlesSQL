@@ -55,6 +55,7 @@ dependencies = [
     "markdown-it-py>=3.0",
     "ansi2html>=1.9",
     "Pygments>=2.18",
+    "cryptography>=44.0",
 ]
 
 [project.optional-dependencies]

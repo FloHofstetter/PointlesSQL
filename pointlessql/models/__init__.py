@@ -106,6 +106,13 @@ from pointlessql.models.scheduler import (
 )
 from pointlessql.models.sync import SyncRun
 from pointlessql.models.system_keys import SystemKey
+from pointlessql.models.workspace_repos import (
+    WORKSPACE_REPO_PROVIDER_KINDS,
+    WORKSPACE_REPO_SECRET_KINDS,
+    WORKSPACE_REPO_SYNC_STATES,
+    WorkspaceRepo,
+    WorkspaceRepoSecret,
+)
 from pointlessql.models.workspaces import (
     WORKSPACE_PIN_MODES,
     WORKSPACE_ROLES,
@@ -175,8 +182,13 @@ __all__ = [
     "UnattributedWrite",
     "User",
     "WORKSPACE_PIN_MODES",
+    "WORKSPACE_REPO_PROVIDER_KINDS",
+    "WORKSPACE_REPO_SECRET_KINDS",
+    "WORKSPACE_REPO_SYNC_STATES",
     "WORKSPACE_ROLES",
     "Workspace",
     "WorkspaceCatalogPin",
     "WorkspaceMember",
+    "WorkspaceRepo",
+    "WorkspaceRepoSecret",
 ]
