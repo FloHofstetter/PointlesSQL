@@ -4887,6 +4887,54 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 48 — Primitive-Obsession StrEnum Sweep ✅ done
+│   │
+│   │   Replaces the 9 enum-shaped string columns and 17
+│   │   CloudEvents type literals with explicit ``StrEnum`` /
+│   │   ``Final`` registries.  StrEnum members compare equal to
+│   │   their string value, so DB-stored values, JSON wire
+│   │   format, and SQL CHECK constraint matching are
+│   │   byte-identical -- no DB migration, no wire-format change,
+│   │   no production behaviour change.  Models stay on
+│   │   ``Mapped[str]`` per anti-goal.  Pyright budget unchanged
+│   │   at 497.  1686 tests pass (1673 baseline + 13 new enum
+│   │   sanity tests).
+│   │
+│   ├── Sprint 48.1 — Add ``pointlessql/enums.py`` with
+│   │       ``RunStatus`` / ``OpName`` / ``ReadKind`` /
+│   │       ``QueryStatus`` / ``ReviewSeverity`` / ``ReviewKind`` /
+│   │       ``AuditSinkType`` / ``EventOutcome`` /
+│   │       ``BranchAction`` StrEnums.  ``tests/test_enums.py``
+│   │       (13 cases) pins every value byte-for-byte against
+│   │       legacy ``frozenset`` / tuple constants.  Purely
+│   │       additive -- old constants stay valid.
+│   │
+│   ├── Sprint 48.2 — Migrate consumers in four route-family
+│   │       batches.  Batch 1 RunStatus + QueryStatus (~11
+│   │       files: agent-run lifecycle / events /
+│   │       audit-aggregator + query_history + sql_routes +
+│   │       PQL read paths).  Batch 2 OpName + BranchAction
+│   │       (~13 files: ``record_operation`` /
+│   │       ``operation_context`` typed; 9 PQL primitives +
+│   │       sql_explain pass enum members; ``_op_name_for_node``
+│   │       returns ``OpName``; ``record_branch_audit_log``
+│   │       takes ``BranchAction``).  Batch 3 ReadKind (~5
+│   │       files: ``record_query`` / ``record_read`` /
+│   │       audit_routes typed; ``VALID_READ_KINDS`` derived from
+│   │       StrEnum).  Batch 4 AuditSinkType + EventOutcome +
+│   │       ReviewSeverity (~4 files: dispatch_to_sinks branch,
+│   │       outcome updates, ``_SEVERITY_RANK`` keys).
+│   │
+│   └── Sprint 48.3 — Add unified
+│           ``pointlessql/services/cloudevents/`` package
+│           re-exporting the 17 CloudEvents ``Final`` constants
+│           under one import path.  Legacy ``EVENT_TYPE_*``
+│           aliases stay on
+│           ``services.agent_runs.events`` and
+│           ``services.governance_events`` for back-compat;
+│           ``test_cloudevents_registry_matches_legacy_constants``
+│           pins both halves byte-for-byte.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

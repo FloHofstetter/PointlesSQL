@@ -6,6 +6,39 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 48 — Primitive-Obsession StrEnum Sweep closed.**
+  Five-sub-sprint refactor (1 additive + 4 batch migrations + 1
+  CloudEvents registry) in one autonomous run.  Introduces nine
+  StrEnums at ``pointlessql/enums.py``
+  (``RunStatus`` / ``OpName`` / ``ReadKind`` / ``QueryStatus`` /
+  ``ReviewSeverity`` / ``ReviewKind`` / ``AuditSinkType`` /
+  ``EventOutcome`` / ``BranchAction``) covering every
+  enum-shaped string column in the project.  StrEnum members
+  compare equal to their string value, so DB-stored values,
+  JSON wire format, and SQL CHECK constraint matching keep
+  working unchanged: ``RunStatus.RUNNING == "running"`` is
+  ``True`` and JSON serialises as ``'"running"'`` not
+  ``'"RunStatus.RUNNING"'``.  Models stay on plain
+  ``Mapped[str]`` per anti-goal.  Sprint 48.1 added the
+  registry plus 13 sanity tests pinning every value
+  byte-for-byte against the legacy ``frozenset`` / tuple
+  constants
+  (``VALID_STATUSES`` / ``VALID_OP_NAMES`` / ``VALID_READ_KINDS`` /
+  ``REVIEW_SEVERITIES`` / ``REVIEW_KINDS`` / ``SINK_TYPES`` /
+  ``BRANCH_ACTIONS``).  Sprint 48.2 migrated consumers in four
+  batches by field-family: batch 1 RunStatus + QueryStatus
+  (~11 files), batch 2 OpName + BranchAction (~13 files),
+  batch 3 ReadKind (~5 files), batch 4
+  AuditSinkType + EventOutcome + ReviewSeverity (~4 files).
+  ``VALID_READ_KINDS`` is now derived from the StrEnum so the
+  two cannot drift apart.  Sprint 48.3 introduced
+  ``pointlessql/services/cloudevents/`` as the single import
+  path for the 17 CloudEvents type literals; the legacy
+  ``EVENT_TYPE_*`` aliases on ``services.agent_runs.events``
+  and ``services.governance_events`` stay valid for
+  back-compat.  Pyright budget unchanged at 497.  1686 tests
+  pass (1673 baseline + 13 new enum sanity tests).
+
 - **Phase 47 — NewType ID Hardening closed.**  Two-sprint
   refactor in one autonomous run.  Introduces
   ``RunId`` / ``OpId`` / ``QueryHistoryId`` / ``WorkspaceId``
