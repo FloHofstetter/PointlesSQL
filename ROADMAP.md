@@ -4520,6 +4520,39 @@ PointlesSQL
 │           walkthrough at
 │           ``docs/e2e-walkthroughs/admin-cdf-tail.md``.
 │
+├── Phase 42 — Anomaly-Inbox System-Errors band           ✅ done
+│   │
+│   │   Phase-40.6's second deferred surface: foreign-Delta CDF
+│   │   subscriptions whose last tail tick stamped ``last_error``
+│   │   surfaced on the audit-reviewer's inbox.  Operator question
+│   │   "are any of my CDF subscriptions currently broken?" is now
+│   │   answered without leaving ``/audit/inbox``.  Anti-goal: no
+│   │   sigma-anomaly framework intrusion — CDF errors are point-
+│   │   in-time state and render server-side as a separate band
+│   │   above the time-bin sigma cards.  Single sprint, no new
+│   │   Alembic migration, no new credential surface, no mutation
+│   │   endpoint (auditor sees, admin clears).
+│   │
+│   └── Sprint 42.1 — System-errors band on ``/audit/inbox``
+│           New ``_load_system_errors`` helper in
+│           ``pointlessql/api/audit_inbox_routes.py`` —
+│           workspace-scoped query on
+│           ``cdf_tail_subscriptions WHERE last_error IS NOT NULL``,
+│           ordered ``last_tailed_at DESC NULLS LAST`` so freshest
+│           failures bubble.  Threaded into the page-render context
+│           as ``system_errors``.  Template
+│           ``frontend/templates/pages/audit_inbox.html`` extended
+│           with a new ``<section data-inbox-section="system-errors">``
+│           above the existing filter form / anomaly table; section
+│           is conditional on ``{% if system_errors %}`` so a clean
+│           workspace renders zero noise.  Each row carries a
+│           paused-badge (when ``is_active=False``), the truncated
+│           error message, ``last_tailed_at``, and an "Open admin"
+│           cross-link to ``/admin/cdf-subscriptions`` (admin-scope
+│           handles retry/clear).  4 pytest cases (renders, hides,
+│           workspace-isolation, paused-marker).  Walkthrough-deep
+│           extended with a new Part E (3 steps).
+│
 ├── Phase 40.7 — Row-Trace fold-in of CDF events           ✅ done
 │   │
 │   │   Phase-40.6's deferred surface: foreign-Delta CDF events

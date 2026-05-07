@@ -24,6 +24,54 @@
     expires.
 </p>
 
+{% if system_errors %}
+<section class="mb-4" data-inbox-section="system-errors">
+    <h2 class="h5 d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        <span>System errors</span>
+        <span class="badge bg-danger" data-system-errors-count>{{ system_errors|length }}</span>
+    </h2>
+    <p class="text-muted small mb-2">
+        Live state of foreign-Delta CDF subscriptions whose last tail
+        tick stamped <code>last_error</code>.  Cleared automatically
+        on the next successful tick.  Operators retry from the admin
+        page.
+    </p>
+    <ul class="list-group list-group-flush">
+        {% for err in system_errors %}
+        <li class="list-group-item" data-system-error-row="{{ err.id }}">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+                <div class="flex-grow-1">
+                    <div class="fw-semibold">
+                        <code>{{ err.table_full_name }}</code>
+                        {% if not err.is_active %}
+                        <span class="badge bg-secondary ms-1">paused</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-danger small mt-1 font-monospace text-break">
+                        {{ err.last_error|truncate(180) }}
+                    </div>
+                    <div class="text-muted small mt-1">
+                        Last attempt: {{ err.last_tailed_at or "—" }}
+                        {% if err.producer_label %}
+                        · producer: <code>{{ err.producer_label }}</code>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-shrink-0">
+                    <a href="/admin/cdf-subscriptions"
+                       class="btn btn-sm btn-outline-primary"
+                       data-inbox-action="open-admin">
+                        <i class="bi bi-tools me-1"></i>Open admin
+                    </a>
+                </div>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
 <form id="inbox-filter" class="row g-2 align-items-end mb-3" autocomplete="off">
     <div class="col-md-2">
         <label for="inbox-severity" class="form-label small mb-1">Severity{{ info('audit.severity-warn-vs-critical') }}</label>

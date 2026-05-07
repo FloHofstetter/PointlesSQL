@@ -202,6 +202,43 @@ this one drives the human cockpit via the browser.
      201 with `{slug, name, ...}`. Slug is generated from the
      name. Run it to verify execution.
 
+### Part E — CDF system errors (3 steps)
+
+Phase 42 adds a server-rendered "System errors" band above the
+sigma anomaly cards on `/audit/inbox`. It surfaces foreign-Delta
+CDF subscriptions whose last tail tick stamped `last_error`.
+Point-in-time state — the next successful tick clears it.
+
+1. **Verify the band is hidden in clean state**.
+   - Action: ensure all CDF subscriptions in the workspace have
+     `last_error IS NULL` (fresh seed-e2e satisfies this).
+   - Action: `browser_navigate('http://127.0.0.1:8000/audit/inbox')`.
+   - Assert: no `<section data-inbox-section="system-errors">`
+     element in the DOM. The page jumps straight from the
+     intro paragraph to the filter form.
+
+2. **Trigger a CDF tail error**.
+   - Action: navigate to `/admin/cdf-subscriptions`, register a
+     subscription against a non-existent FQN
+     (e.g. `demo.does.not_exist`).
+   - Action: click "Run tail now". Wait for the page reload —
+     the new row's `Last error` column populates with the
+     "uc.get_table failed" string (or whatever soyuz returns
+     for the missing table).
+   - Action: reload `/audit/inbox`.
+   - Assert: the System-errors `<section>` is now visible above
+     the anomaly table. The badge shows the count, the row
+     surfaces the table FQN as `<code>`, the truncated error
+     message in red, and `Last attempt` with the ISO timestamp.
+
+3. **Click the action link**.
+   - Action: click "Open admin" on the system-errors row.
+   - Assert: the browser navigates to
+     `/admin/cdf-subscriptions`. Auditor scope was sufficient to
+     *see* the error; clearing it (delete the broken sub or
+     re-run after fixing the table) is admin-only and lives
+     there.
+
 ## Verification log
 
 - **2026-05-06 — data-path verified end-to-end (Phase 38.3).**

@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 42 — Anomaly-Inbox System-Errors band closed.**  Single
+  sprint (42.1) that surfaces foreign-Delta CDF subscriptions with
+  ``last_error IS NOT NULL`` on ``/audit/inbox``.  New
+  server-rendered ``<section data-inbox-section="system-errors">``
+  above the existing filter form / sigma anomaly table on
+  ``frontend/templates/pages/audit_inbox.html``; conditional on
+  ``{% if system_errors %}`` so a healthy workspace renders zero
+  noise.  Loader ``_load_system_errors`` in
+  ``pointlessql/api/audit_inbox_routes.py`` queries
+  ``cdf_tail_subscriptions WHERE workspace_id=? AND last_error IS NOT NULL``
+  ordered ``last_tailed_at DESC NULLS LAST``.  Each row shows the
+  truncated error, paused-badge if ``is_active=False``, last-attempt
+  ISO timestamp, producer label, and an "Open admin" cross-link
+  (auditor sees, admin clears — auditor scope stays read-only).
+  No new Alembic migration, no new sigma metric (CDF errors are
+  point-in-time state, not event counts), no acknowledge table
+  (errors clear automatically on the next successful tail tick).
+  4 new pytest cases (renders, hides, workspace-isolation,
+  paused-marker).  Walkthrough ``audit-cockpit-deep.md`` extended
+  with Part E (3 steps).
 - **Phase 40.7 — Row-Trace fold-in of CDF events closed.**  Single
   sprint that resolves Phase-40.6's deferred boundary discussion.
   Foreign-Delta CDF events captured by the Phase-40.5 tail now
