@@ -4520,6 +4520,99 @@ PointlesSQL
 │           walkthrough at
 │           ``docs/e2e-walkthroughs/admin-cdf-tail.md``.
 │
+├── Phase 43 — Error envelope + exception hierarchy unification ✅ done
+│   │
+│   │   Code-quality overhaul on the API error path.  Three
+│   │   asymmetries closed in one autonomous run: (a) zero
+│   │   ``StrEnum`` for error codes → central
+│   │   ``pointlessql/error_codes.py`` ``ErrorCode`` enum; (b) three
+│   │   orphan exception families (``BranchError``,
+│   │   ``RollbackError``, subprocess + integrity loners) inheriting
+│   │   from raw ``Exception`` → all reparented under
+│   │   ``PointlessSQLError`` with their own
+│   │   ``status_code``/``error_code`` class attrs (centralised
+│   │   handler now auto-renders); (c) 42 bare-string
+│   │   ``raise HTTPException`` sites returning generic ``http_NNN``
+│   │   codes → 40 converted to domain exceptions, 2 proxy-upstream
+│   │   residuals allowlisted via ``# bare-http-ok`` comment.  Plugin
+│   │   ``run`` helper extended to parse RFC 9457 ``code`` +
+│   │   extension members so the agent sees structured codes.  No new
+│   │   Alembic migrations.
+│   │
+│   ├── Sprint 43.1 — Central ``ErrorCode`` StrEnum
+│   │       New ``pointlessql/error_codes.py`` with 35 enum members
+│   │       grouped by domain (catalog, auth, validation, engine,
+│   │       audit, branch, rollback, model, subprocess).  Every
+│   │       ``PointlessSQLError`` subclass references
+│   │       ``error_code: ErrorCode = ErrorCode.X`` instead of raw
+│   │       string literals.  ``StrEnum`` subclasses ``str`` so legacy
+│   │       ``body["code"] == "validation_error"`` assertions stay
+│   │       green.  5 new pytest cases.
+│   │
+│   ├── Sprint 43.2 — Reparent orphan exception families
+│   │       ``BranchError`` (×6), ``RollbackError`` (×4), subprocess
+│   │       (``DBT*``, ``MLflowStartupError``), ``AuditIntegrityError``,
+│   │       ``BranchTagsCorruptError``, ``SQLParseError`` all reparented
+│   │       under ``PointlessSQLError``.  Subprocess errors keep
+│   │       ``RuntimeError`` via dual-inheritance (mirror of
+│   │       ``ValidationError(PointlessSQLError, ValueError)``
+│   │       pattern).  New ``extension_members()`` hook on the base
+│   │       class replaces the inline ``isinstance(AuthorizationError)``
+│   │       branch in the centralised handler — ``BranchPromotionConflictError``,
+│   │       ``RollbackAmbiguous``, ``RollbackStale`` surface their
+│   │       structured fields as RFC 9457 extension members
+│   │       automatically.  ``_refusal_to_http_error`` translation
+│   │       helper deleted from ``runs_routes/rollback.py``.
+│   │       ``RollbackStale`` flips 422 → 409 (semantic conflict, not
+│   │       request-validation), ``test_stale_returns_422`` renamed.
+│   │       28 new pytest cases.
+│   │
+│   ├── Sprint 43.3 — Eliminate bare-string ``raise HTTPException``
+│   │       42 → 2 sites (95% conversion).  Three new domain
+│   │       exceptions in ``pointlessql/exceptions.py``:
+│   │       ``PermissionDeniedError`` (403, no securable context),
+│   │       ``ResourceNotFoundError`` (404, non-catalog miss),
+│   │       ``ConflictError`` (409, generic state conflict).  Buckets
+│   │       converted: 401 auth (×7) → ``AuthenticationError``;
+│   │       403 admin (×2) → ``PermissionDeniedError``; 400 missing-
+│   │       param (×6) → ``ValidationError``; 404 missing-resource
+│   │       (×11) → ``ResourceNotFoundError`` /
+│   │       ``CatalogNotFoundError``; 503 dbt-execution (×3) →
+│   │       redundant after Sprint 43.2 reparenting, ``except`` blocks
+│   │       deleted; misc 5xx → ``EngineError``.  2 proxy-upstream
+│   │       502 sites stay as bare ``HTTPException`` with
+│   │       ``# bare-http-ok:`` comment (no domain home for
+│   │       proxy-failed-to-reach-subprocess).  New
+│   │       ``tests/test_no_bare_http_exception.py`` lint test
+│   │       enforces the allowlist.  4 pre-existing tests updated for
+│   │       400 → 422 status flip on input-validation.
+│   │
+│   ├── Sprint 43.4 — ``ErrorEnvelope`` Pydantic + selective OpenAPI
+│   │       New ``pointlessql/api/error_envelope.py`` with
+│   │       ``ErrorEnvelope`` base + four refinements
+│   │       (``AuthorizationErrorEnvelope``,
+│   │       ``ValidationErrorEnvelope``, ``RollbackStaleEnvelope``,
+│   │       ``BranchPromotionConflictEnvelope``).  ``error_responses.py``
+│   │       exports ``STANDARD_ERROR_RESPONSES`` for declaration via
+│   │       ``@router.get(..., responses=STANDARD_ERROR_RESPONSES)``.
+│   │       Applied selectively to 13 plugin-facing routes (audit ×6,
+│   │       lineage ×3, pql-write ×4) so the OpenAPI schema exposes
+│   │       the envelope contract.  4 new pytest cases assert the
+│   │       schema contract.
+│   │
+│   └── Sprint 43.5 — Plugin envelope-aware error rendering
+│           ``hermes-plugin-pointlessql`` ``run()`` helper extended:
+│           on ``httpx.HTTPStatusError`` with
+│           ``Content-Type: application/problem+json``, parses ``code``
+│           and 11 extension members
+│           (``required_privilege``, ``securable_type``, ``full_name``,
+│           ``table_name``, ``expected_version``, ``actual_version``,
+│           ``candidate_ordinals``, ``current_version``,
+│           ``intervening_op_count``, ``errors``) into the agent-
+│           visible envelope.  Falls back to legacy text-only shape
+│           for plain text responses.  5 new pytest cases plugin-side
+│           pin the contract.
+│
 ├── Phase 42 — Anomaly-Inbox System-Errors band           ✅ done
 │   │
 │   │   Phase-40.6's second deferred surface: foreign-Delta CDF

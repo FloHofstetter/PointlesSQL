@@ -6,6 +6,45 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 43 — Error envelope + exception hierarchy unification
+  closed.**  Five sub-sprints in one autonomous run.  Three
+  asymmetries closed: zero-enum-for-error-codes, three orphan
+  exception families, 42 bare-string ``HTTPException`` sites.
+  Sprint 43.1 introduced the central ``ErrorCode`` ``StrEnum`` in
+  ``pointlessql/error_codes.py`` (35 members grouped by domain);
+  every ``PointlessSQLError`` subclass now references an enum
+  member via ``error_code: ErrorCode = ErrorCode.X`` instead of a
+  raw string.  Sprint 43.2 reparented ``BranchError`` (×6),
+  ``RollbackError`` (×4), ``DBTStartupError`` /
+  ``DBTExecutionError`` / ``MLflowStartupError`` (dual-parent with
+  ``RuntimeError``), ``AuditIntegrityError``,
+  ``BranchTagsCorruptError``, ``SQLParseError`` under
+  ``PointlessSQLError`` so the centralised handler picks them up
+  directly; new ``extension_members()`` hook on the base class
+  surfaces structured fields automatically (replaces the inline
+  ``isinstance(AuthorizationError)`` branch).  ``RollbackStale``
+  flips 422 → 409 and ``RollbackAmbiguous`` 422 → 409 (semantic
+  conflict, not request-validation).  Sprint 43.3 converted 42 →
+  2 bare-string ``HTTPException`` sites; new
+  ``PermissionDeniedError``/``ResourceNotFoundError``/``ConflictError``
+  in ``pointlessql/exceptions.py``; ``DBTExecutionError``
+  ``except`` blocks deleted (subclass now self-renders); 2 proxy-
+  upstream 502s allowlisted via ``# bare-http-ok`` comment +
+  ``tests/test_no_bare_http_exception.py`` lint test.  Sprint 43.4
+  added ``ErrorEnvelope`` Pydantic models in
+  ``pointlessql/api/error_envelope.py`` and
+  ``STANDARD_ERROR_RESPONSES`` constants in
+  ``pointlessql/api/error_responses.py``; applied selectively to
+  13 plugin-facing routes so OpenAPI exposes the envelope.
+  Sprint 43.5 (plugin-side) extended ``run()`` helper in
+  ``hermes-plugin-pointlessql/.../tools/_common.py`` to parse
+  ``application/problem+json`` body and surface ``code`` plus 11
+  extension members to the agent envelope; falls back to legacy
+  text shape for non-problem responses.  No Alembic migrations.
+  Wire format strictly additive (StrEnum subclasses ``str``;
+  legacy assertions stay green).  ~57 new pytest cases (5 +
+  ~28 + ~19 + 4 PointlesSQL-side; 5 plugin-side).  Pyright
+  budget unchanged at 559/559.
 - **Phase 42 — Anomaly-Inbox System-Errors band closed.**  Single
   sprint (42.1) that surfaces foreign-Delta CDF subscriptions with
   ``last_error IS NOT NULL`` on ``/audit/inbox``.  New
