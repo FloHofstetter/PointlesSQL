@@ -6,6 +6,35 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 46 — Test-Auth-Fixture Centralization closed.**
+  Two-sprint refactor in one autonomous run.  Eliminates ~48
+  local ``_admin_client()`` / ``_non_admin_client()`` /
+  ``_bearer_client()`` / ``_client(**kwargs)`` helpers and ~7
+  local ``Iterator[str]``-shaped ``supervisor_secret`` /
+  ``auditor_secret`` / ``normal_secret`` API-key fixtures across
+  55 test files.  Net delta -2027 / +1721 LOC across the
+  six route-family batches.  1667 tests pass (1661 baseline + 6
+  sanity tests).  No production-app changes; production ``app``
+  remains the SUT.  Sprint 46.1 added six fixtures to
+  ``tests/conftest.py``: ``admin_client``, ``non_admin_client``,
+  ``anonymous_client`` (all yielding ``httpx.AsyncClient`` with
+  pre-set cookies — or no cookies for ``anonymous_client``); and
+  ``supervisor_secret`` / ``auditor_secret`` / ``api_key_secret``
+  yielding the new ``ApiKeyFixture`` NamedTuple of
+  ``(secret, row, headers)``.  Sprint 46.2 migrated the test
+  files in six route-family batches: admin (2), audit (6),
+  branch/rollback/promotion (3), models/ML (4),
+  supervisor/scheduler (4), catch-all (36).  Four files
+  deliberately kept local helpers per the plan's
+  "different test pattern" carve-out: ``test_csrf.py`` (raw JWT
+  injection), ``test_lineage_inbound_routes.py`` (custom
+  ``federation_secret`` Bearer scope),
+  ``test_api_key_gate.py`` (interleaved inline AsyncClient
+  blocks reusing one ``transport`` variable),
+  ``test_training_log_route.py`` (per-call ``X-Agent-Run-Id``
+  header injection).  New ``tests/test_auth_fixtures.py`` (6
+  cases) pins the fixture contract.
+
 - **Phase 45 — Pyright Hot-Spot Cleanup closed.**  Five
   file-scoped sprints in one autonomous run, all at JSON / soyuz
   / DuckDB-plan deserialisation seams.  Pyright budget 559 → 497

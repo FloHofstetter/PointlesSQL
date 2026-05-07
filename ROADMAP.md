@@ -4813,6 +4813,42 @@ PointlesSQL
 │           ~497 are rooted in third-party stubs Python annotations
 │           cannot fix.
 │
+├── Phase 46 — Test-Auth-Fixture Centralization ✅ done
+│   │
+│   │   Replaces ~48 local ``_admin_client()`` /
+│   │   ``_non_admin_client()`` / ``_bearer_client()`` /
+│   │   ``_client(**kwargs)`` helpers and ~7 local
+│   │   ``Iterator[str]``-shaped API-key fixtures across 55 test
+│   │   files with six conftest fixtures.  Two-sprint refactor in
+│   │   one autonomous run.  Net delta -2027 / +1721 LOC.  1667
+│   │   tests pass (1661 baseline + 6 sanity tests).  No
+│   │   production-app changes.
+│   │
+│   ├── Sprint 46.1 — Add admin_client / non_admin_client /
+│   │       anonymous_client + ApiKeyFixture fixtures.  Six new
+│   │       pytest fixtures in ``tests/conftest.py``:
+│   │       ``admin_client``, ``non_admin_client``,
+│   │       ``anonymous_client`` yielding pre-configured
+│   │       ``httpx.AsyncClient`` instances; ``supervisor_secret``,
+│   │       ``auditor_secret``, ``api_key_secret`` yielding the
+│   │       new ``ApiKeyFixture(secret, row, headers)`` NamedTuple.
+│   │       Purely additive — old local helpers stay valid.  New
+│   │       ``tests/test_auth_fixtures.py`` (6 cases) pins the
+│   │       fixture contract.
+│   │
+│   └── Sprint 46.2 — Migrate test files in six route-family
+│           batches.  Admin (2), audit (6), branch/rollback/
+│           promotion (3), models/ML (4), supervisor/scheduler
+│           (4), catch-all (36).  Four files deliberately kept
+│           local helpers per the plan's "different test
+│           pattern" carve-out: ``test_csrf.py`` (raw JWT
+│           injection), ``test_lineage_inbound_routes.py``
+│           (custom ``federation_secret`` Bearer scope),
+│           ``test_api_key_gate.py`` (interleaved inline
+│           AsyncClient blocks reusing one ``transport``
+│           variable), ``test_training_log_route.py`` (per-call
+│           ``X-Agent-Run-Id`` header injection).
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to
