@@ -6,6 +6,35 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 45 — Pyright Hot-Spot Cleanup closed.**  Five
+  file-scoped sprints in one autonomous run, all at JSON / soyuz
+  / DuckDB-plan deserialisation seams.  Pyright budget 559 → 497
+  (62 warnings closed, 11.1% reduction).  No production-code
+  refactor — pure type-narrowing via ``cast(dict[str, Any], …)``
+  and ``cast(list[dict[str, Any]], …)`` at boundaries the
+  ``isinstance`` narrower can't reach.  No runtime semantics
+  change.  Sprint 45.1 narrowed ``audit_sinks_routes.py``
+  (12 → 0) with two helpers ``_loads_obj`` / ``_loads_list``
+  absorbing every ``json.loads(...) -> Any`` boundary.  Sprint
+  45.2 narrowed ``services/sql/cost_estimator.py`` (14 → 0) and
+  parenthesised two ``except TypeError, ValueError:`` (PEP 758
+  lenient form, valid in Python 3.14) → ``except (TypeError,
+  ValueError):`` so ``ValueError`` no longer shadows the
+  built-in inside the handler.  Sprint 45.3 narrowed
+  ``governance_routes.py`` (10 → 0) on UC ``columns`` /
+  ``options`` payloads.  Sprint 45.4 narrowed
+  ``volumes_routes.py`` (13 → 3 — three remaining are PyArrow /
+  deltalake stub-gap, anti-goal compliant).  Sprint 45.5
+  narrowed ``home_routes.py`` (16 → 0) on the UC ``get_tree()``
+  cascade and the notebook ``_walk`` recursion.  Skipped the
+  three biggest stub-gap files (``pql/_merge.py``,
+  ``pql/_autoload.py``, ``services/lineage/inbound_parser.py``,
+  197 warnings combined) per memory
+  ``feedback_pyright_thirdparty_stubs.md`` — those need custom
+  ``.pyi`` stubs for PyArrow / deltalake / OpenLineage, multi-week
+  scope, queued for Phase 47 if/when the ROI becomes real.  No
+  new tests; annotations don't add behaviour.
+
 - **Phase 44 — Structured logging + traceback preservation
   closed.**  Five sub-sprints in one autonomous run.  Four gaps
   closed: ``JSONFormatter`` ignored ``extra={...}`` (half-done

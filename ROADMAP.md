@@ -4748,6 +4748,71 @@ PointlesSQL
 │           the partial verbatim.  3 pytest cases (attach,
 │           empty-list-default, workspace-isolation).
 │
+├── Phase 45 — Pyright Hot-Spot Cleanup ✅ done
+│   │
+│   │   Code-quality cleanup at JSON / soyuz / DuckDB-plan
+│   │   deserialisation seams.  Pyright budget 559 → 497 (62
+│   │   warnings closed, 11.1% reduction).  Five file-scoped
+│   │   sprints in one autonomous run; no production-code
+│   │   refactor — pure type-narrowing.  No runtime semantics
+│   │   change.  Skipped the three biggest stub-gap files
+│   │   (``pql/_merge.py`` 120, ``pql/_autoload.py`` 46,
+│   │   ``services/lineage/inbound_parser.py`` 31) per memory
+│   │   ``feedback_pyright_thirdparty_stubs.md`` — those need
+│   │   custom ``.pyi`` stubs for PyArrow / deltalake /
+│   │   OpenLineage and are a Phase-47 candidate at earliest.
+│   │
+│   ├── Sprint 45.1 — Narrow ``audit_sinks_routes.py`` (12 → 0)
+│   │       Two helpers (``_loads_obj`` / ``_loads_list``) absorb
+│   │       every ``json.loads(...) -> Any`` boundary; ``cast()``
+│   │       narrows the in-place ``decoded = value`` and
+│   │       ``body["config"]`` arms that pyright cannot infer
+│   │       from ``isinstance`` alone.
+│   │
+│   ├── Sprint 45.2 — ``cost_estimator.py`` narrowing + parens
+│   │       (14 → 0)  Two ``except TypeError, ValueError:`` (PEP
+│   │       758 lenient form, valid in Python 3.14) → ``except
+│   │       (TypeError, ValueError):``.  Semantic no-op — both
+│   │       types are caught either way — but the parenthesised
+│   │       form does not bind ``ValueError`` to a name that
+│   │       shadows the built-in inside the except block.
+│   │       Plus ``cast(dict[str, Any], …)`` after isinstance
+│   │       checks so subsequent ``node.get(...)`` calls don't
+│   │       cascade Unknown.
+│   │
+│   ├── Sprint 45.3 — Narrow ``governance_routes.py`` (10 → 0)
+│   │       UC ``columns`` payload from ``enforce_table_profile_access``
+│   │       gets ``cast(list[dict[str, Any]], …)``;
+│   │       ``cast(dict[str, Any], …)`` after the
+│   │       ``isinstance(options_raw, dict)`` check on UC
+│   │       connection options.
+│   │
+│   ├── Sprint 45.4 — Narrow ``volumes_routes.py`` (13 → 3)
+│   │       Three remaining warnings are PyArrow / deltalake
+│   │       stub-gap, anti-goal compliant.  Annotates ``columns:
+│   │       list[dict[str, Any]] = []`` so the converted-to-Delta
+│   │       payload keeps a known shape downstream; isolates
+│   │       ``data = resp.json()`` narrowing to a single
+│   │       ``isinstance(data, dict)`` branch with a
+│   │       ``cast(list[dict[str, Any]], …)`` on the volumes
+│   │       fan-out.
+│   │
+│   ├── Sprint 45.5 — Narrow ``home_routes.py`` (16 → 0)
+│   │       ``cast(datetime, started_at)`` on the ``JobRunModel``
+│   │       row tuple unpack so the Spark-history bucket index is
+│   │       ``int``, not ``Any``.  ``cast(list[dict[str, Any]],
+│   │       cat.get("schemas") or [])`` on the UC ``get_tree()``
+│   │       cascade (schemas → tables) so per-node ``score_match``
+│   │       / ``.get`` calls keep their narrow types.  Same
+│   │       pattern on the notebook-tree ``_walk`` recursion.
+│   │
+│   └── Sprint 45.6 — Pyright budget 559 → 497
+│           ``scripts/check-pyright-budget.sh`` ``BUDGET=`` lowered
+│           to 497 with a 5-line comment block documenting the
+│           Phase-45 reduction and the policy that the remaining
+│           ~497 are rooted in third-party stubs Python annotations
+│           cannot fix.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

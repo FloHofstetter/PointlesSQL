@@ -26,7 +26,14 @@ set -euo pipefail
 # partially-unknown warning.  Same shape as the dbt-bridge:
 # producer-emitted JSON, no upstream TypedDict schema, would need
 # the full OpenLineage 1.x spec (~50 facets) modelled to silence.
-BUDGET=559
+#
+# Phase 45 lowered from 559 → 497: cleanup of api/* boundary casts
+# (audit_sinks_routes, governance_routes, volumes_routes,
+# home_routes) and cost_estimator narrowing, all at JSON / soyuz
+# / DuckDB-plan deserialisation seams.  The remaining ~497 are
+# rooted in PyArrow / deltalake / OpenLineage stubs that Python
+# annotations cannot fix.
+BUDGET=497
 
 # Run pyright and capture the trailing summary line, e.g.
 #   "0 errors, 522 warnings, 0 informations"
