@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}Data Products · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Data Products"}] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-collection fs-3"></i>
+    <h1 class="h3 mb-0">Data Products</h1>
+</div>
+
+<div x-data="dataProductsBrowse()" x-init="init()">
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row gx-2 align-items-center">
+                <div class="col-md-8">
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="Filter by name, catalog or schema…"
+                           x-model="filter"
+                           @input="reload()">
+                </div>
+                <div class="col-md-4 d-flex align-items-end justify-content-end gap-2">
+                    {% if is_admin %}
+                    <button class="btn btn-sm btn-outline-primary" @click="reloadFromYaml()" :disabled="reloading">
+                        <i class="bi bi-arrow-repeat"></i>
+                        <span x-text="reloading ? 'Reloading…' : 'Reload yaml'"></span>
+                    </button>
+                    {% endif %}
+                    <button class="btn btn-sm btn-outline-secondary" @click="reload()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <template x-if="loading">
+        <div class="text-muted small p-3">
+            <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+        </div>
+    </template>
+
+    <template x-if="error">
+        <div class="alert alert-danger" x-text="error"></div>
+    </template>
+
+    <template x-if="!loading && !error && filtered().length === 0">
+        <div class="alert alert-secondary">
+            <i class="bi bi-info-circle me-1"></i>
+            No data products are cached yet.
+            <span class="small text-muted">
+                Drop a <code>pointlessql.yaml</code> with a
+                <code>data_product:</code> block in your data team's
+                repo, point
+                <code>POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS</code>
+                at it, then click "Reload yaml".
+            </span>
+        </div>
+    </template>
+
+    <template x-if="!loading && !error && filtered().length > 0">
+        <div class="row g-3">
+            <template x-for="p in filtered()" :key="p.id">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-start justify-content-between">
+                                <h5 class="card-title mb-1">
+                                    <a :href="'/data-products/' + p.catalog + '/' + p.schema"
+                                       class="text-decoration-none">
+                                        <i class="bi bi-collection me-1"></i>
+                                        <span x-text="p.ref"></span>
+                                    </a>
+                                </h5>
+                                <span class="badge bg-secondary" x-text="'v' + p.version"></span>
+                            </div>
+                            <p class="card-text small text-muted"
+                               x-text="(p.description || '').substring(0, 160) || 'No description.'"></p>
+                            <div class="d-flex flex-wrap gap-2 small">
+                                <template x-if="p.steward.email">
+                                    <span class="text-muted">
+                                        <i class="bi bi-person"></i>
+                                        <span x-text="p.steward.display_name || p.steward.email"></span>
+                                    </span>
+                                </template>
+                                <template x-if="!p.steward.email">
+                                    <span class="text-muted fst-italic">
+                                        <i class="bi bi-person-x"></i> No steward
+                                    </span>
+                                </template>
+                                <template x-if="p.sla_minutes">
+                                    <span class="text-muted">
+                                        <i class="bi bi-stopwatch"></i>
+                                        <span x-text="'SLA ' + p.sla_minutes + ' min'"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </template>
+</div>
+
+<script>
+window.dataProductsBrowse = function () {
+    return {
+        products: [],
+        filter: '',
+        loading: false,
+        reloading: false,
+        error: null,
+
+        async init() {
+            await this.reload();
+        },
+
+        async reload() {
+            this.loading = true;
+            this.error = null;
+            try {
+                const res = await fetch('/api/data-products');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.products = Array.isArray(data.data_products) ? data.data_products : [];
+            } catch (e) {
+                this.error = 'Failed to load data products: ' + e.message;
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async reloadFromYaml() {
+            this.reloading = true;
+            this.error = null;
+            try {
+                const res = await fetch('/api/data-products/reload', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.detail || ('HTTP ' + res.status));
+                }
+                await this.reload();
+            } catch (e) {
+                this.error = 'Yaml reload failed: ' + e.message;
+            } finally {
+                this.reloading = false;
+            }
+        },
+
+        filtered() {
+            if (!this.filter) return this.products;
+            const f = this.filter.toLowerCase();
+            return this.products.filter(p =>
+                p.ref.toLowerCase().includes(f)
+                || (p.description || '').toLowerCase().includes(f)
+            );
+        },
+    };
+};
+</script>
+{% endblock %}

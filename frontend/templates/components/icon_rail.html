@@ -80,6 +80,15 @@
            and /models still work for flat-list views; reach them
            via Cmd+K or the catalog tree's filter. #}
         <li class="pql-icon-rail__item">
+            <a href="/data-products"
+               data-section="data_products"
+               class="pql-icon-rail__link{% if active_section == 'data_products' %} active{% endif %}"
+               title="Data products (yaml-declared UC schemas)">
+                <i class="bi bi-collection"></i>
+                <span class="pql-icon-rail__label">Products</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
             <a href="/dashboards"
                data-section="dashboards"
                class="pql-icon-rail__link{% if active_section == 'dashboards' %} active{% endif %}"

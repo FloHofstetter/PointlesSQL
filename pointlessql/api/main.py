@@ -47,6 +47,10 @@ from pointlessql.api.catalog_html_routes import router as catalog_html_router
 from pointlessql.api.catalog_routes import router as catalog_router
 from pointlessql.api.conventions_routes import router as conventions_router
 from pointlessql.api.dashboards_routes import router as dashboards_router
+from pointlessql.api.data_products_html_routes import (
+    router as data_products_html_router,
+)
+from pointlessql.api.data_products_routes import router as data_products_router
 from pointlessql.api.dbt_html_routes import router as dbt_html_router
 from pointlessql.api.dbt_proxy import router as dbt_proxy_router
 from pointlessql.api.dbt_routes import router as dbt_router
@@ -761,6 +765,8 @@ app.include_router(dbt_proxy_router)
 app.include_router(dbt_router)
 app.include_router(models_router)
 app.include_router(models_html_router)
+app.include_router(data_products_router)
+app.include_router(data_products_html_router)
 _STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"
 
 

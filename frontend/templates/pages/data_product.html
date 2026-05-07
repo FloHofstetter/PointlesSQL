@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% block title %}{{ product.ref }} · Data Products · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Data Products", "href": "/data-products"},
+    {"label": product.ref}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="dataProductDetail({{ product | tojson }})" x-init="init()">
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <i class="bi bi-collection fs-3"></i>
+        <h1 class="h3 mb-0">
+            <span x-text="product.name"></span>
+            <span class="text-muted small ms-2" x-text="product.ref"></span>
+        </h1>
+        <span class="badge bg-secondary ms-2" x-text="'v' + product.version"></span>
+    </div>
+
+    <ul class="nav nav-tabs mb-3" id="dpTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-overview" type="button" role="tab">Overview</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-contract-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-contract" type="button" role="tab">Contract</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-diff-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-diff" type="button" role="tab">Diff</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-lineage" type="button" role="tab">Lineage</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-compliance-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-compliance" type="button" role="tab">Compliance</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="dpTabsContent">
+        <!-- Overview -->
+        <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Steward</dt>
+                        <dd class="col-sm-9">
+                            <template x-if="product.steward_email">
+                                <a :href="'mailto:' + product.steward_email"
+                                   x-text="product.steward_display_name || product.steward_email"></a>
+                            </template>
+                            <template x-if="!product.steward_email">
+                                <span class="text-muted fst-italic">Not assigned</span>
+                            </template>
+                        </dd>
+
+                        <dt class="col-sm-3">Description</dt>
+                        <dd class="col-sm-9" x-text="product.description || '—'"></dd>
+
+                        <dt class="col-sm-3">Freshness SLA</dt>
+                        <dd class="col-sm-9">
+                            <template x-if="product.sla_minutes">
+                                <span x-text="product.sla_minutes + ' minutes'"></span>
+                            </template>
+                            <template x-if="!product.sla_minutes">
+                                <span class="text-muted">No SLA declared</span>
+                            </template>
+                        </dd>
+
+                        <dt class="col-sm-3">Last loaded</dt>
+                        <dd class="col-sm-9 small text-muted" x-text="product.last_loaded_at"></dd>
+
+                        <dt class="col-sm-3">UC ref</dt>
+                        <dd class="col-sm-9">
+                            <code x-text="product.ref"></code>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contract -->
+        <div class="tab-pane fade" id="tab-contract" role="tabpanel">
+            <template x-if="!detail">
+                <div class="text-muted small p-3">Loading contract…</div>
+            </template>
+            <template x-if="detail">
+                <div>
+                    <template x-for="t in detail.tables" :key="t.name">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-table me-1"></i>
+                                    <span x-text="t.name"></span>
+                                    <template x-if="t.primary_key.length > 0">
+                                        <span class="badge bg-info ms-2"
+                                              x-text="'PK: ' + t.primary_key.join(', ')"></span>
+                                    </template>
+                                </h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Column</th>
+                                                <th>Type</th>
+                                                <th>Nullable</th>
+                                                <th>Description</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="c in t.columns" :key="c.name">
+                                                <tr>
+                                                    <td><code x-text="c.name"></code></td>
+                                                    <td><span class="badge bg-secondary" x-text="c.type"></span></td>
+                                                    <td>
+                                                        <template x-if="c.nullable">
+                                                            <span class="text-muted small">nullable</span>
+                                                        </template>
+                                                        <template x-if="!c.nullable">
+                                                            <span class="badge bg-warning text-dark">NOT NULL</span>
+                                                        </template>
+                                                    </td>
+                                                    <td class="small text-muted" x-text="c.description || ''"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
+
+        <!-- Diff -->
+        <div class="tab-pane fade" id="tab-diff" role="tabpanel">
+            <template x-if="diffLoading">
+                <div class="text-muted small p-3">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Diffing yaml against on-disk schema…
+                </div>
+            </template>
+            <template x-if="diff">
+                <div>
+                    <template x-for="t in diff.tables" :key="t.name">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-table me-1"></i>
+                                    <span x-text="t.name"></span>
+                                    <template x-if="t.error">
+                                        <span class="badge bg-warning text-dark ms-2" x-text="t.error"></span>
+                                    </template>
+                                    <template x-if="!t.error && !t.is_breaking">
+                                        <span class="badge bg-success ms-2">Compliant</span>
+                                    </template>
+                                    <template x-if="!t.error && t.is_breaking">
+                                        <span class="badge bg-danger ms-2">Breaking drift</span>
+                                    </template>
+                                </h5>
+                                <template x-if="!t.error">
+                                    <ul class="small mb-0">
+                                        <li x-show="t.missing_columns && t.missing_columns.length">
+                                            <strong>Missing columns:</strong>
+                                            <span x-text="(t.missing_columns || []).join(', ')"></span>
+                                        </li>
+                                        <li x-show="t.extra_columns && t.extra_columns.length">
+                                            <strong>Extra columns (drift):</strong>
+                                            <span x-text="(t.extra_columns || []).join(', ')"></span>
+                                        </li>
+                                        <li x-show="t.type_mismatches && t.type_mismatches.length">
+                                            <strong>Type mismatches:</strong>
+                                            <template x-for="m in t.type_mismatches" :key="m.name">
+                                                <span class="d-block ms-3"
+                                                      x-text="m.name + ': contract=' + m.contract + ' actual=' + m.actual"></span>
+                                            </template>
+                                        </li>
+                                        <li x-show="t.dropped_pk_columns && t.dropped_pk_columns.length">
+                                            <strong>Dropped PK columns:</strong>
+                                            <span x-text="(t.dropped_pk_columns || []).join(', ')"></span>
+                                        </li>
+                                    </ul>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+            <template x-if="diffError">
+                <div class="alert alert-danger" x-text="diffError"></div>
+            </template>
+        </div>
+
+        <!-- Lineage -->
+        <div class="tab-pane fade" id="tab-lineage" role="tabpanel">
+            <div id="dp-cy" style="width: 100%; height: 600px;" x-show="lineageLoaded"></div>
+            <template x-if="!lineageLoaded">
+                <div class="text-muted small p-3">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Loading lineage graph…
+                </div>
+            </template>
+            <template x-if="lineageEmpty">
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle me-1"></i>
+                    No lineage edges recorded yet for this product's tables.
+                </div>
+            </template>
+        </div>
+
+        <!-- Compliance -->
+        <div class="tab-pane fade" id="tab-compliance" role="tabpanel">
+            <template x-if="!detail">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="detail && detail.recent_events.length === 0">
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle me-1"></i>
+                    No contract validations have run against this product yet.
+                </div>
+            </template>
+            <template x-if="detail && detail.recent_events.length > 0">
+                <div class="card">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Outcome</th>
+                                    <th>Op</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="e in detail.recent_events" :key="e.id">
+                                    <tr>
+                                        <td class="small text-muted" x-text="e.created_at"></td>
+                                        <td>
+                                            <template x-if="e.outcome === 'compliant'">
+                                                <span class="badge bg-success">compliant</span>
+                                            </template>
+                                            <template x-if="e.outcome === 'violated'">
+                                                <span class="badge bg-danger">violated</span>
+                                            </template>
+                                            <template x-if="e.outcome === 'schema_drift_warning'">
+                                                <span class="badge bg-warning text-dark">drift</span>
+                                            </template>
+                                            <template x-if="e.outcome === 'no_contract'">
+                                                <span class="badge bg-secondary">no_contract</span>
+                                            </template>
+                                        </td>
+                                        <td>
+                                            <a :href="'/runs?op=' + e.agent_run_operation_id"
+                                               class="text-decoration-none small"
+                                               x-text="'op #' + e.agent_run_operation_id"></a>
+                                        </td>
+                                        <td class="small">
+                                            <code x-text="JSON.stringify(e.details).substring(0, 120)"></code>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+window.dataProductDetail = function (product) {
+    return {
+        product: product,
+        detail: null,
+        diff: null,
+        diffLoading: false,
+        diffError: null,
+        lineageLoaded: false,
+        lineageEmpty: false,
+
+        async init() {
+            await this.loadDetail();
+            this.wireLazyTabs();
+        },
+
+        async loadDetail() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.detail = await res.json();
+            } catch (e) {
+                console.error('detail load failed', e);
+            }
+        },
+
+        wireLazyTabs() {
+            const diffBtn = document.querySelector('[data-bs-target="#tab-diff"]');
+            if (diffBtn) {
+                diffBtn.addEventListener('shown.bs.tab', () => this.loadDiff(), { once: true });
+            }
+            const lineageBtn = document.querySelector('[data-bs-target="#tab-lineage"]');
+            if (lineageBtn) {
+                lineageBtn.addEventListener('shown.bs.tab', () => this.loadLineage(), { once: true });
+            }
+        },
+
+        async loadDiff() {
+            this.diffLoading = true;
+            this.diffError = null;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/diff');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.diff = await res.json();
+            } catch (e) {
+                this.diffError = 'Diff failed: ' + e.message;
+            } finally {
+                this.diffLoading = false;
+            }
+        },
+
+        async loadLineage() {
+            try {
+                if (typeof window.loadCytoscapeOnce === 'function') {
+                    await window.loadCytoscapeOnce();
+                }
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/lineage');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (!data.nodes || data.nodes.length === 0) {
+                    this.lineageEmpty = true;
+                    this.lineageLoaded = true;
+                    return;
+                }
+                this.lineageLoaded = true;
+                if (typeof window.renderModelGraph === 'function') {
+                    window.renderModelGraph('dp-cy', data);
+                } else if (typeof cytoscape === 'function') {
+                    cytoscape({
+                        container: document.getElementById('dp-cy'),
+                        elements: { nodes: data.nodes, edges: data.edges },
+                        layout: { name: 'breadthfirst' },
+                        style: [
+                            { selector: 'node', style: { 'label': 'data(label)', 'background-color': '#0d6efd' } },
+                            { selector: 'edge', style: { 'curve-style': 'bezier', 'target-arrow-shape': 'triangle' } },
+                        ],
+                    });
+                }
+            } catch (e) {
+                console.error('lineage load failed', e);
+                this.lineageEmpty = true;
+                this.lineageLoaded = true;
+            }
+        },
+    };
+};
+</script>
+{% endblock %}
