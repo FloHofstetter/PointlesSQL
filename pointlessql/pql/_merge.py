@@ -52,6 +52,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
 )
+from pointlessql.identifiers import RunId
 from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._read import read_table
@@ -195,7 +196,7 @@ def merge_table(
 
     with operation_context(
         factory,
-        agent_run_id=agent_run_id,
+        agent_run_id=cast(RunId | None, agent_run_id),
         op_name="merge",
         params={"target": target, "on": list(on), "strategy": strategy},
         target_table=target,

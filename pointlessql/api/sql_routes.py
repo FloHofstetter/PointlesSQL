@@ -24,7 +24,7 @@ import asyncio
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Body, Request
@@ -37,6 +37,7 @@ from pointlessql.api.dependencies import (
     get_uc_client,
     get_user,
 )
+from pointlessql.identifiers import RunId
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.settings import Settings
 
@@ -680,7 +681,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     sql_hash = short_sql_hash(query)
     with operation_context(
         factory,
-        agent_run_id=run_id,
+        agent_run_id=cast(RunId | None, run_id),
         op_name="sql_explain",
         params={"sql_hash": sql_hash},
         target_table=None,

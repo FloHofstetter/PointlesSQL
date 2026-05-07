@@ -33,6 +33,7 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user
 from pointlessql.exceptions import ValidationError
+from pointlessql.identifiers import QueryHistoryId
 from pointlessql.services import query_history as query_history_service
 from pointlessql.services import saved_queries as saved_queries_service
 
@@ -161,7 +162,7 @@ async def api_get_query(request: Request, history_id: int) -> dict[str, Any]:
     row = await asyncio.to_thread(
         query_history_service.get_by_id,
         factory,
-        history_id,
+        QueryHistoryId(history_id),
         user_id=user["id"],
         is_admin=bool(user.get("is_admin", False)),
     )

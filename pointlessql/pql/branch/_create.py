@@ -32,6 +32,7 @@ from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 
 from pointlessql.exceptions import CatalogUnavailableError
+from pointlessql.identifiers import RunId
 from pointlessql.pql._branch_errors import (
     BranchAlreadyExistsError,
     BranchCloudUnsupportedError,
@@ -303,7 +304,7 @@ def create_branch_schema(
 
     with operation_context(
         factory,
-        agent_run_id=agent_run_id,
+        agent_run_id=cast(RunId | None, agent_run_id),
         op_name="branch_create",
         params={
             "source_schema": source_schema_fqn,

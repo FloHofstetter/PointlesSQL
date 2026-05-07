@@ -13,12 +13,13 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Any
+from typing import Any, cast
 
 from pointlessql.exceptions import (
     SQLExecutionError,
     ValidationError,
 )
+from pointlessql.identifiers import RunId
 from pointlessql.pql._types import SQLResult
 from pointlessql.pql.engine import register_delta_view
 from pointlessql.pql.sql_parser import SQLParseError, extract_column_lineage, prepare_sql
@@ -100,7 +101,7 @@ def run_sql(
 
     with operation_context(
         factory,
-        agent_run_id=effective_run_id,
+        agent_run_id=cast(RunId | None, effective_run_id),
         op_name="sql",
         params={
             "query": query[:1024],

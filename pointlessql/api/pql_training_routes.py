@@ -28,6 +28,7 @@ from fastapi import APIRouter, Body, Request
 
 from pointlessql.api._audit_helpers import audit, effective_agent_run_id
 from pointlessql.exceptions import ValidationError
+from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.operations import (
     VALID_OP_NAMES,
     record_operation,
@@ -163,7 +164,7 @@ async def api_pql_training_log(
     def _persist() -> int:
         return record_operation(
             factory,
-            agent_run_id=resolved_run_id,
+            agent_run_id=RunId(resolved_run_id),
             op_name=op_name,
             params=op_params,
             target_table=None,

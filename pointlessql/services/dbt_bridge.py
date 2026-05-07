@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from pointlessql.exceptions import AuditUnavailableError
+from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.operations import record_operation
 from pointlessql.services.lineage.rows import record_rejects
 
@@ -585,7 +586,7 @@ def emit_operations_for_dbt_run(
         try:
             op_id = record_operation(
                 session_factory,
-                agent_run_id=agent_run_id,
+                agent_run_id=RunId(agent_run_id),
                 op_name=_op_name_for_node(node.resource_type),
                 params=params,
                 target_table=node.relation_name,

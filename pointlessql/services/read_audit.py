@@ -34,6 +34,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+from pointlessql.identifiers import RunId
 from pointlessql.services.query_history import record_query
 
 if TYPE_CHECKING:
@@ -42,11 +43,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _resolve_run_id(explicit: str | None) -> str | None:
+def _resolve_run_id(explicit: str | None) -> RunId | None:
     if explicit:
-        return explicit
+        return RunId(explicit)
     env = os.environ.get("POINTLESSQL_AGENT_RUN_ID")
-    return env if env else None
+    return RunId(env) if env else None
 
 
 def _resolve_principal(explicit: str | None) -> str:

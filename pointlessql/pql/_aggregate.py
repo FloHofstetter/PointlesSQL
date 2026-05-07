@@ -48,6 +48,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
 )
+from pointlessql.identifiers import RunId
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
@@ -188,7 +189,7 @@ def aggregate_table(
 
     with operation_context(
         factory,
-        agent_run_id=agent_run_id,
+        agent_run_id=cast(RunId | None, agent_run_id),
         op_name="aggregate",
         params={
             "target": target,

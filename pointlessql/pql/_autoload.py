@@ -33,7 +33,7 @@ import glob
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import deltalake
 import httpx
@@ -57,6 +57,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
 )
+from pointlessql.identifiers import RunId
 from pointlessql.models import AutoloadCheckpoint
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._hashing import concat_sha256
@@ -157,7 +158,7 @@ def autoload_files(
 
     with operation_context(
         audit_factory,
-        agent_run_id=agent_run_id,
+        agent_run_id=cast(RunId | None, agent_run_id),
         op_name="autoload",
         params={
             "source_path": str(source_path),

@@ -34,6 +34,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import AuditUnavailableError, PointlessSQLError
+from pointlessql.identifiers import OpId, RunId
 from pointlessql.models import AgentRun, AgentRunOperation
 from pointlessql.services.agent_runs.mlflow_detector import detect_mlflow_run_id
 
@@ -291,7 +292,7 @@ class OperationRecorder:
 def record_operation(
     session_factory: sessionmaker[Session],
     *,
-    agent_run_id: str,
+    agent_run_id: RunId,
     op_name: str,
     params: dict[str, Any],
     target_table: str | None,
@@ -305,7 +306,7 @@ def record_operation(
     training_params_json: str | None = None,
     env_snapshot: str | None = None,
     warnings_json: str | None = None,
-) -> int:
+) -> OpId:
     """Insert one ``agent_run_operations`` row in strict mode.
 
     Args:
@@ -420,7 +421,7 @@ def record_operation(
                     parent.mlflow_run_id = mlflow_run_id
             session.commit()
             session.refresh(row)
-            return row.id
+            return OpId(row.id)
     except AuditUnavailableError:
         raise
     except SQLAlchemyError as exc:
@@ -433,7 +434,7 @@ def record_operation(
 def operation_context(
     session_factory: sessionmaker[Session] | None,
     *,
-    agent_run_id: str | None,
+    agent_run_id: RunId | None,
     op_name: str,
     params: dict[str, Any],
     target_table: str | None = None,

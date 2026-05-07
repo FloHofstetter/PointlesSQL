@@ -20,6 +20,7 @@ from typing import Any
 from fastapi import Request
 
 from pointlessql.api.dependencies import client_ip, effective_principal, get_user
+from pointlessql.identifiers import RunId
 from pointlessql.services import audit as audit_service
 from pointlessql.services import query_history as query_history_service
 
@@ -121,7 +122,7 @@ async def record_query_async(
             referenced_tables=referenced_tables,
             error_message=error_message,
             request_id=request_id,
-            agent_run_id=resolved_run_id,
+            agent_run_id=RunId(resolved_run_id) if resolved_run_id else None,
             workspace_id=workspace_id,
         )
     except Exception:  # noqa: BLE001 — never mask the query response

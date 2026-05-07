@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 from deltalake import CommitProperties, DeltaTable
@@ -43,6 +43,7 @@ from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
 )
+from pointlessql.identifiers import RunId
 from pointlessql.models import AgentRunOperation
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.agent_runs.operations import (
@@ -152,7 +153,7 @@ def rollback_table(
 
     with operation_context(
         factory,
-        agent_run_id=agent_run_id,
+        agent_run_id=cast(RunId | None, agent_run_id),
         op_name="rollback",
         params={
             "target": target,

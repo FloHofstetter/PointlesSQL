@@ -44,8 +44,9 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
+from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.operations import (
     OperationRecorder,
@@ -207,7 +208,7 @@ def training_context(
 
     with operation_context(
         session_factory,
-        agent_run_id=agent_run_id,
+        agent_run_id=cast(RunId | None, agent_run_id),
         op_name=op_name,
         params=initial_params,
         target_table=model_fqn,

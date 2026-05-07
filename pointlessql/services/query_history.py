@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import desc, func, select
 
+from pointlessql.identifiers import QueryHistoryId, RunId
 from pointlessql.models import QueryHistory, QueryHistoryTable
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ VALID_READ_KINDS: frozenset[str] = frozenset(
 )
 
 
-def _sanitise_run_id(value: str | None) -> str | None:
+def _sanitise_run_id(value: str | None) -> RunId | None:
     """Drop garbage values before they hit the indexed column.
 
     A UUIDv4 string is exactly 36 characters (32 hex + 4 dashes).
@@ -78,7 +79,7 @@ def _sanitise_run_id(value: str | None) -> str | None:
             len(cleaned),
         )
         return None
-    return cleaned
+    return RunId(cleaned)
 
 
 def record_query(
@@ -95,10 +96,10 @@ def record_query(
     referenced_tables: list[str],
     error_message: str | None = None,
     request_id: str | None = None,
-    agent_run_id: str | None = None,
+    agent_run_id: RunId | None = None,
     read_kind: str = "sql_execute",
     workspace_id: int = 1,
-) -> int:
+) -> QueryHistoryId:
     """Insert a :class:`QueryHistory` row plus its table-reference rows.
 
     Args:
@@ -187,7 +188,7 @@ def record_query(
             referenced_tables,
             row_count,
         )
-        return entry.id
+        return QueryHistoryId(entry.id)
 
 
 def list_queries(
@@ -271,7 +272,7 @@ def list_queries(
 
 def get_by_id(
     factory: sessionmaker[Session],
-    history_id: int,
+    history_id: QueryHistoryId,
     *,
     user_id: int,
     is_admin: bool,
