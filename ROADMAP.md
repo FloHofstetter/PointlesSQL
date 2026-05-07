@@ -4849,6 +4849,44 @@ PointlesSQL
 │           variable), ``test_training_log_route.py`` (per-call
 │           ``X-Agent-Run-Id`` header injection).
 │
+├── Phase 47 — NewType ID Hardening ✅ done
+│   │
+│   │   Wraps the project's primary identifier strings in
+│   │   distinct ``typing.NewType`` aliases so pyright catches
+│   │   mixups (passing a ``RunId`` where a ``WorkspaceId`` was
+│   │   expected) even though every alias erases to ``str`` or
+│   │   ``int`` at runtime.  No DB migration, no wire-format
+│   │   change, no production behaviour change — purely a
+│   │   compile-time contract aid at the function-signature /
+│   │   service / route boundary.  Models stay on plain
+│   │   ``Mapped[str]`` / ``Mapped[int]`` per anti-goal (ORM
+│   │   integration with NewType is unspec'd).  Pyright budget
+│   │   unchanged at 497.  1673 tests pass (1667 baseline + 6
+│   │   new identifier sanity tests).
+│   │
+│   ├── Sprint 47.1 — Add ``pointlessql/identifiers.py`` with
+│   │       ``RunId`` / ``OpId`` / ``QueryHistoryId`` /
+│   │       ``WorkspaceId`` aliases and a 6-case
+│   │       ``tests/test_identifiers.py`` pinning the runtime
+│   │       erasure contract.  Greenfield: zero existing
+│   │       NewType / Annotated usage in the codebase before
+│   │       this phase.
+│   │
+│   └── Sprint 47.2 — Wire the aliases through the
+│           public-API entry points: ``services/query_history.py``
+│           (``record_query`` takes ``RunId | None``, returns
+│           ``QueryHistoryId``; ``get_by_id`` takes
+│           ``QueryHistoryId``; ``_sanitise_run_id`` returns
+│           ``RunId | None``); ``services/agent_runs/operations.py``
+│           (``record_operation`` takes ``RunId``, returns
+│           ``OpId``; ``operation_context`` takes ``RunId | None``);
+│           ``services/read_audit.py`` (``_resolve_run_id``
+│           returns ``RunId | None``).  Wraps land at the FastAPI
+│           Path/Query boundary and via
+│           ``cast(RunId | None, ...)`` at the
+│           ``operation_context`` cascade across 10 PQL
+│           primitives.
+│
 ├── Some-day — Public launch + external distribution      💤 unscheduled
 │   │
 │   │   This is the moment the stack goes from "my project" to

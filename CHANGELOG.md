@@ -6,6 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 47 — NewType ID Hardening closed.**  Two-sprint
+  refactor in one autonomous run.  Introduces
+  ``RunId`` / ``OpId`` / ``QueryHistoryId`` / ``WorkspaceId``
+  NewType aliases at ``pointlessql/identifiers.py`` and wires
+  them through the public-API entry points of the agent-run
+  audit pipeline and the query_history service.  Pyright now
+  treats the four IDs as distinct nominal types — passing an
+  ``OpId`` where a ``QueryHistoryId`` was expected fails type
+  check, even though both erase to ``int`` at runtime.  Models
+  stay on plain ``Mapped[str]`` / ``Mapped[int]`` per anti-goal
+  (ORM integration with NewType is unspec'd).  Pyright budget
+  unchanged at 497.  1673 tests pass (1667 baseline + 6 new
+  identifier sanity tests).  Wraps land at the FastAPI
+  Path/Query boundary (``RunId(run_id)``,
+  ``QueryHistoryId(history_id)``) and at the
+  ``operation_context`` cascade across 10 PQL primitives via
+  ``cast(RunId | None, ...)``.  Wire format and DB-stored
+  values are byte-identical.
+
 - **Phase 46 — Test-Auth-Fixture Centralization closed.**
   Two-sprint refactor in one autonomous run.  Eliminates ~48
   local ``_admin_client()`` / ``_non_admin_client()`` /
