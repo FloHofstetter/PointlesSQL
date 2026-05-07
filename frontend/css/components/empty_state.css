@@ -36,8 +36,10 @@
     margin-top: var(--pql-space-3);
 }
 
-/* Error pages use a focused centered shell (no sidebar is already set via
-   ``hide_sidebar=True`` on the handler side). */
+/* Error pages center the empty-card inside the main slot. Sidebar
+   stays mounted (Phase 54.1) so the navigation context survives a
+   404/403/500 — the focused card sits in the remaining horizontal
+   real-estate. */
 .pql-error-shell {
     display: flex;
     align-items: center;

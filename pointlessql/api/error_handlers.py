@@ -299,7 +299,7 @@ def _render_error_page(
         "message": message,
         "request_id": request_id,
         "current_user": getattr(request.state, "user", None),
-        "hide_sidebar": True,
+        "hide_sidebar": False,
     }
     if extra:
         context.update(extra)
