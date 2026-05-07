@@ -284,20 +284,6 @@ def _seed_papermill_job_and_run(
         return job.id, run.id
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 @pytest.fixture
@@ -316,83 +302,76 @@ def run_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return runs
 
 
-async def test_render_route_serves_nbconvert_html(run_output_dir: Path) -> None:
+async def test_render_route_serves_nbconvert_html(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Happy path: owner requests the inline render and gets the cell source back."""
     job_id, run_id = _seed_papermill_job_and_run()
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
 
-    async with _admin_client() as client:
-        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+    resp = await admin_client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
 
     assert resp.status_code == 200
     assert "sprint-26-route-smoke" in resp.text
     assert (run_output_dir / f"{run_id}.html").is_file()
 
 
-async def test_render_route_missing_ipynb_404s(run_output_dir: Path) -> None:
+async def test_render_route_missing_ipynb_404s(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """A run with no output ipynb surfaces as 404 via CatalogNotFoundError."""
     job_id, run_id = _seed_papermill_job_and_run()
 
-    async with _admin_client() as client:
-        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+    resp = await admin_client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
 
     assert resp.status_code == 404
 
 
-async def test_render_route_cross_job_run_id_404s(run_output_dir: Path) -> None:
+async def test_render_route_cross_job_run_id_404s(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """A run_id from a different job cannot be rendered under this job."""
     job_a, run_a = _seed_papermill_job_and_run()
     _job_b, run_b = _seed_papermill_job_and_run()
     (run_output_dir / f"{run_b}.ipynb").write_text(_minimal_ipynb_source())
 
-    async with _admin_client() as client:
-        resp = await client.get(f"/jobs/{job_a}/runs/{run_b}/notebook")
+    resp = await admin_client.get(f"/jobs/{job_a}/runs/{run_b}/notebook")
 
     assert resp.status_code == 404
 
 
-async def test_render_route_rejects_non_papermill_job(run_output_dir: Path) -> None:
+async def test_render_route_rejects_non_papermill_job(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """Only papermill jobs expose the render route; other kinds 404."""
     job_id, run_id = _seed_papermill_job_and_run(kind="python")
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
 
-    async with _admin_client() as client:
-        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+    resp = await admin_client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
 
     assert resp.status_code == 404
 
 
-async def test_render_route_non_owner_404s(run_output_dir: Path) -> None:
+async def test_render_route_non_owner_404s(run_output_dir: Path, non_admin_client: httpx.AsyncClient) -> None:
     """Non-admin non-owner cannot see another user's job output."""
     job_id, run_id = _seed_papermill_job_and_run(owner_email="test@test.com")
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
 
-    async with _non_admin_client() as client:
-        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
+    resp = await non_admin_client.get(f"/jobs/{job_id}/runs/{run_id}/notebook")
 
     assert resp.status_code == 404
 
 
-async def test_download_ipynb_serves_raw_file(run_output_dir: Path) -> None:
+async def test_download_ipynb_serves_raw_file(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """``?format=ipynb`` returns the raw notebook bytes with a download filename."""
     job_id, run_id = _seed_papermill_job_and_run()
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
 
-    async with _admin_client() as client:
-        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook/download?format=ipynb")
+    resp = await admin_client.get(f"/jobs/{job_id}/runs/{run_id}/notebook/download?format=ipynb")
 
     assert resp.status_code == 200
     assert "sprint-26-route-smoke" in resp.text
     assert f"job{job_id}_run{run_id}.ipynb" in resp.headers.get("content-disposition", "")
 
 
-async def test_download_html_triggers_render(run_output_dir: Path) -> None:
+async def test_download_html_triggers_render(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
     """``?format=html`` writes the sidecar on first hit and serves it."""
     job_id, run_id = _seed_papermill_job_and_run()
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
 
-    async with _admin_client() as client:
-        resp = await client.get(f"/jobs/{job_id}/runs/{run_id}/notebook/download?format=html")
+    resp = await admin_client.get(f"/jobs/{job_id}/runs/{run_id}/notebook/download?format=html")
 
     assert resp.status_code == 200
     assert (run_output_dir / f"{run_id}.html").is_file()

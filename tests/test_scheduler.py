@@ -386,20 +386,6 @@ class TestSchedulerLifecycle:
 # -- Route tests --
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 @pytest.fixture(autouse=True)
@@ -414,63 +400,59 @@ def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class TestJobRoutes:
-    async def test_admin_can_create_job(self) -> None:
-        async with _admin_client() as client:
-            resp = await client.post(
-                "/api/jobs",
-                json={
-                    "name": "sync-analytics",
-                    "cron_expr": "*/5 * * * *",
-                    "kind": "python",
-                    "config": {"entry_point": "my_job"},
-                },
-            )
+    async def test_admin_can_create_job(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.post(
+            "/api/jobs",
+            json={
+                "name": "sync-analytics",
+                "cron_expr": "*/5 * * * *",
+                "kind": "python",
+                "config": {"entry_point": "my_job"},
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["name"] == "sync-analytics"
         assert data["kind"] == "python"
         assert data["is_paused"] is False
 
-    async def test_non_admin_create_forbidden(self) -> None:
-        async with _non_admin_client() as client:
-            resp = await client.post(
-                "/api/jobs",
-                json={
-                    "name": "x",
-                    "cron_expr": "* * * * *",
-                    "kind": "python",
-                    "config": {"entry_point": "x"},
-                },
-            )
+    async def test_non_admin_create_forbidden(self, non_admin_client: httpx.AsyncClient) -> None:
+        resp = await non_admin_client.post(
+            "/api/jobs",
+            json={
+                "name": "x",
+                "cron_expr": "* * * * *",
+                "kind": "python",
+                "config": {"entry_point": "x"},
+            },
+        )
         assert resp.status_code == 403
 
-    async def test_invalid_cron_rejected(self) -> None:
-        async with _admin_client() as client:
-            resp = await client.post(
-                "/api/jobs",
-                json={
-                    "name": "bad",
-                    "cron_expr": "not-a-cron",
-                    "kind": "python",
-                    "config": {},
-                },
-            )
+    async def test_invalid_cron_rejected(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.post(
+            "/api/jobs",
+            json={
+                "name": "bad",
+                "cron_expr": "not-a-cron",
+                "kind": "python",
+                "config": {},
+            },
+        )
         assert resp.status_code == 422
 
-    async def test_unknown_kind_rejected(self) -> None:
-        async with _admin_client() as client:
-            resp = await client.post(
-                "/api/jobs",
-                json={
-                    "name": "bad",
-                    "cron_expr": "* * * * *",
-                    "kind": "does-not-exist",
-                    "config": {},
-                },
-            )
+    async def test_unknown_kind_rejected(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.post(
+            "/api/jobs",
+            json={
+                "name": "bad",
+                "cron_expr": "* * * * *",
+                "kind": "does-not-exist",
+                "config": {},
+            },
+        )
         assert resp.status_code == 422
 
-    async def test_list_filters_by_ownership(self) -> None:
+    async def test_list_filters_by_ownership(self, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
         factory = app.state.session_factory
         # Seed: admin-owned job and non-admin-owned job.
         with factory() as session:
@@ -506,19 +488,17 @@ class TestJobRoutes:
             )
             session.commit()
 
-        async with _admin_client() as client:
-            resp = await client.get("/api/jobs")
+        resp = await admin_client.get("/api/jobs")
         assert resp.status_code == 200
         names = {j["name"] for j in resp.json()}
         assert names == {"admin-owned", "user-owned"}
 
-        async with _non_admin_client() as client:
-            resp = await client.get("/api/jobs")
+        resp = await non_admin_client.get("/api/jobs")
         assert resp.status_code == 200
         names = {j["name"] for j in resp.json()}
         assert names == {"user-owned"}
 
-    async def test_manual_run_and_pause_unpause(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_manual_run_and_pause_unpause(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
         # Register a fake kind so we don't require pg_sync plumbing.
         recording_registry = _RecordingRegistry()
 
@@ -549,24 +529,21 @@ class TestJobRoutes:
             session.commit()
             job_id = job.id
 
-        async with _admin_client() as client:
-            run_resp = await client.post(f"/api/jobs/{job_id}/run")
+        run_resp = await admin_client.post(f"/api/jobs/{job_id}/run")
         assert run_resp.status_code == 200
         assert run_resp.json()["status"] == "succeeded"
         assert run_resp.json()["trigger"] == "manual"
         assert len(recording_registry.calls) == 1
 
-        async with _admin_client() as client:
-            pause_resp = await client.post(f"/api/jobs/{job_id}/pause")
+        pause_resp = await admin_client.post(f"/api/jobs/{job_id}/pause")
         assert pause_resp.status_code == 200
         assert pause_resp.json()["is_paused"] is True
 
-        async with _admin_client() as client:
-            unpause_resp = await client.post(f"/api/jobs/{job_id}/unpause")
+        unpause_resp = await admin_client.post(f"/api/jobs/{job_id}/unpause")
         assert unpause_resp.status_code == 200
         assert unpause_resp.json()["is_paused"] is False
 
-    async def test_non_owner_cannot_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_non_owner_cannot_run(self, monkeypatch: pytest.MonkeyPatch, non_admin_client: httpx.AsyncClient) -> None:
         factory = app.state.session_factory
         with factory() as session:
             admin_user = session.scalars(select(User).where(User.email == "test@test.com")).first()
@@ -587,17 +564,15 @@ class TestJobRoutes:
             job_id = job.id
 
         # Non-admin cannot see or act on a job they do not own.
-        async with _non_admin_client() as client:
-            resp = await client.post(f"/api/jobs/{job_id}/run")
+        resp = await non_admin_client.post(f"/api/jobs/{job_id}/run")
         assert resp.status_code == 404
 
-    async def test_jobs_page_renders(self) -> None:
-        async with _admin_client() as client:
-            resp = await client.get("/jobs")
+    async def test_jobs_page_renders(self, admin_client: httpx.AsyncClient) -> None:
+        resp = await admin_client.get("/jobs")
         assert resp.status_code == 200
         assert "Jobs" in resp.text
 
-    async def test_job_detail_renders_runs(self) -> None:
+    async def test_job_detail_renders_runs(self, admin_client: httpx.AsyncClient) -> None:
         factory = app.state.session_factory
         with factory() as session:
             admin_user = session.scalars(select(User).where(User.email == "test@test.com")).first()
@@ -627,8 +602,7 @@ class TestJobRoutes:
             )
             session.commit()
 
-        async with _admin_client() as client:
-            resp = await client.get(f"/jobs/{job_id}")
+        resp = await admin_client.get(f"/jobs/{job_id}")
         assert resp.status_code == 200
         assert "my-job" in resp.text
         assert "succeeded" in resp.text

@@ -4,42 +4,13 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-from collections.abc import Iterator
 
 import httpx
 import pytest
 
 from pointlessql.api.main import app
-from pointlessql.models import AgentRunOperation, ApiKey
-from pointlessql.services import api_keys as api_keys_service
-
-
-def _wipe_api_keys() -> None:
-    factory = app.state.session_factory
-    with factory() as session:
-        session.query(ApiKey).delete()
-        session.commit()
-    api_keys_service.invalidate_cache()
-
-
-@pytest.fixture
-def supervisor_secret() -> Iterator[str]:
-    _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="sup", supervisor=True
-    )
-    try:
-        yield plaintext
-    finally:
-        _wipe_api_keys()
-
-
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
+from pointlessql.models import AgentRunOperation
+from tests.conftest import ApiKeyFixture
 
 
 async def _seed_run(client: httpx.AsyncClient, *, run_id: str) -> None:
@@ -96,33 +67,32 @@ def _add_op(
 
 @pytest.mark.asyncio
 async def test_detail_returns_operations_diff_when_flag_set(
-    supervisor_secret: str,
-) -> None:
+    supervisor_secret: ApiKeyFixture,
+    admin_client: httpx.AsyncClient) -> None:
     transport = httpx.ASGITransport(app=app)
     run_a = "1111aaaa-1111-1111-1111-aaaaaaaa1111"
     run_b = "2222bbbb-2222-2222-2222-bbbbbbbb2222"
-    async with _admin_client() as cookie_client:
-        await _seed_run(cookie_client, run_id=run_a)
-        await _seed_run(cookie_client, run_id=run_b)
-        _add_op(
-            run_id=run_a,
-            op_name="merge",
-            target="main.silver.orders",
-            rows_affected=10,
-            params={"strategy": "upsert"},
-        )
-        _add_op(
-            run_id=run_b,
-            op_name="merge",
-            target="main.silver.orders",
-            rows_affected=25,
-            params={"strategy": "scd2"},
-        )
+    await _seed_run(admin_client, run_id=run_a)
+    await _seed_run(admin_client, run_id=run_b)
+    _add_op(
+        run_id=run_a,
+        op_name="merge",
+        target="main.silver.orders",
+        rows_affected=10,
+        params={"strategy": "upsert"},
+    )
+    _add_op(
+        run_id=run_b,
+        op_name="merge",
+        target="main.silver.orders",
+        rows_affected=25,
+        params={"strategy": "scd2"},
+    )
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
         response = await c.get(
             "/api/agent-runs/diff",
             params={"a": run_a, "b": run_b, "detail": "true"},
-            headers={"Authorization": f"Bearer {supervisor_secret}"},
+            headers={"Authorization": f"Bearer {supervisor_secret.secret}"},
         )
     assert response.status_code == 200, response.text
     payload = response.json()
@@ -139,32 +109,31 @@ async def test_detail_returns_operations_diff_when_flag_set(
 
 @pytest.mark.asyncio
 async def test_detail_includes_value_changes_and_column_lineage_diff(
-    supervisor_secret: str,
-) -> None:
+    supervisor_secret: ApiKeyFixture,
+    admin_client: httpx.AsyncClient) -> None:
     """Phase 18.9 — detail=true now also carries cell + column-lineage diff."""
     transport = httpx.ASGITransport(app=app)
     run_a = "1111aaab-1111-1111-1111-aaaaaaab1111"
     run_b = "2222bbbc-2222-2222-2222-bbbbbbbc2222"
-    async with _admin_client() as cookie_client:
-        await _seed_run(cookie_client, run_id=run_a)
-        await _seed_run(cookie_client, run_id=run_b)
-        _add_op(
-            run_id=run_a,
-            op_name="merge",
-            target="main.silver.orders",
-            rows_affected=1,
-        )
-        _add_op(
-            run_id=run_b,
-            op_name="merge",
-            target="main.silver.orders",
-            rows_affected=1,
-        )
+    await _seed_run(admin_client, run_id=run_a)
+    await _seed_run(admin_client, run_id=run_b)
+    _add_op(
+        run_id=run_a,
+        op_name="merge",
+        target="main.silver.orders",
+        rows_affected=1,
+    )
+    _add_op(
+        run_id=run_b,
+        op_name="merge",
+        target="main.silver.orders",
+        rows_affected=1,
+    )
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
         response = await c.get(
             "/api/agent-runs/diff",
             params={"a": run_a, "b": run_b, "detail": "true"},
-            headers={"Authorization": f"Bearer {supervisor_secret}"},
+            headers={"Authorization": f"Bearer {supervisor_secret.secret}"},
         )
     assert response.status_code == 200, response.text
     payload = response.json()
@@ -175,18 +144,17 @@ async def test_detail_includes_value_changes_and_column_lineage_diff(
 
 
 @pytest.mark.asyncio
-async def test_detail_omitted_when_flag_unset(supervisor_secret: str) -> None:
+async def test_detail_omitted_when_flag_unset(supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient) -> None:
     transport = httpx.ASGITransport(app=app)
     run_a = "3333cccc-3333-3333-3333-cccccccc3333"
     run_b = "4444dddd-4444-4444-4444-dddddddd4444"
-    async with _admin_client() as cookie_client:
-        await _seed_run(cookie_client, run_id=run_a)
-        await _seed_run(cookie_client, run_id=run_b)
+    await _seed_run(admin_client, run_id=run_a)
+    await _seed_run(admin_client, run_id=run_b)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
         response = await c.get(
             "/api/agent-runs/diff",
             params={"a": run_a, "b": run_b},
-            headers={"Authorization": f"Bearer {supervisor_secret}"},
+            headers={"Authorization": f"Bearer {supervisor_secret.secret}"},
         )
     assert response.status_code == 200
     payload = response.json()
@@ -197,13 +165,12 @@ async def test_detail_omitted_when_flag_unset(supervisor_secret: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_detail_rejects_bad_align(supervisor_secret: str) -> None:
+async def test_detail_rejects_bad_align(supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient) -> None:
     transport = httpx.ASGITransport(app=app)
     run_a = "5555eeee-5555-5555-5555-eeeeeeee5555"
     run_b = "6666ffff-6666-6666-6666-ffffffff6666"
-    async with _admin_client() as cookie_client:
-        await _seed_run(cookie_client, run_id=run_a)
-        await _seed_run(cookie_client, run_id=run_b)
+    await _seed_run(admin_client, run_id=run_a)
+    await _seed_run(admin_client, run_id=run_b)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
         response = await c.get(
             "/api/agent-runs/diff",
@@ -213,6 +180,6 @@ async def test_detail_rejects_bad_align(supervisor_secret: str) -> None:
                 "detail": "true",
                 "align": "fuzzy",
             },
-            headers={"Authorization": f"Bearer {supervisor_secret}"},
+            headers={"Authorization": f"Bearer {supervisor_secret.secret}"},
         )
     assert response.status_code == 422
