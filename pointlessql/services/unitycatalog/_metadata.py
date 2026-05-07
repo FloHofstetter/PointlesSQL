@@ -31,6 +31,7 @@ from pointlessql.services.unitycatalog._api import (
     _update_tags,
     wrap_catalog_errors,
 )
+from pointlessql.table_fqn import TableFqn
 
 
 class MetadataMixin:
@@ -52,7 +53,7 @@ class MetadataMixin:
         self, catalog_name: str, schema_name: str, table_name: str
     ) -> dict[str, Any]:
         """Return metadata (including columns) for a single table."""
-        full_name = f"{catalog_name}.{schema_name}.{table_name}"
+        full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
         response = await _get_table.asyncio(full_name=full_name, client=self._client)
         if response is None:
             return {}
@@ -117,7 +118,7 @@ class MetadataMixin:
             schema_name: Parent schema.
             table_name: Target table.
         """
-        full_name = f"{catalog_name}.{schema_name}.{table_name}"
+        full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
         await _delete_table.asyncio(full_name=full_name, client=self._client)
 
     @wrap_catalog_errors

@@ -54,6 +54,7 @@ from pointlessql.services.authorization import (
     check_privilege,
 )
 from pointlessql.settings import Settings
+from pointlessql.table_fqn import TableFqn
 
 logger = logging.getLogger(__name__)
 
@@ -61,33 +62,6 @@ router = APIRouter(tags=["pql-write"])
 
 
 # ─── helpers ──────────────────────────────────────────────────────────
-
-
-def _split_three_part(full_name: str) -> tuple[str, str, str]:
-    """Validate and split a ``catalog.schema.table`` UC reference.
-
-    Local copy of the same helper in
-    :mod:`pointlessql.api.pql_introspect_routes` — duplicated rather
-    than re-exported so the two route modules stay independently
-    importable.  Both copies share the same shape and the same
-    error message.
-
-    Args:
-        full_name: 3-part dot-separated identifier.
-
-    Returns:
-        ``(catalog, schema, table)``.
-
-    Raises:
-        ValidationError: When the identifier has fewer than three
-            non-empty parts.
-    """
-    parts = [p.strip() for p in full_name.split(".")]
-    if len(parts) != 3 or not all(parts):
-        raise ValidationError(
-            "table must be a three-part UC name 'catalog.schema.table'",
-        )
-    return parts[0], parts[1], parts[2]
 
 
 async def _approve_select_refs(request: Request, refs: list[str]) -> dict[str, str]:
@@ -161,7 +135,7 @@ async def _check_write_target(request: Request, target: str, *, must_exist: bool
         AuthorizationError: When the principal lacks the required
             privilege.
     """  # noqa: DOC502,DOC503 — ValidationError + AuthorizationError raised inside helpers
-    catalog, schema_name, table_name = _split_three_part(target)
+    catalog, schema_name, table_name = TableFqn.parse(target).parts()
     uc_client = get_uc_client(request)
     user = get_user(request)
     email = effective_principal(request) or user.get("email", "")
@@ -607,7 +581,7 @@ async def api_pql_drop_table(request: Request, body: dict[str, Any] = Body(...))
     full_name = (body or {}).get("full_name", "")
     if not isinstance(full_name, str) or not full_name.strip():
         raise ValidationError("full_name is required and must be a string.")
-    catalog, schema_name, table_name = _split_three_part(full_name)
+    catalog, schema_name, table_name = TableFqn.parse(full_name).parts()
 
     uc_client = get_uc_client(request)
     await uc_client.delete_table(catalog, schema_name, table_name)

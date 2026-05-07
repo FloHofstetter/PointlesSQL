@@ -56,6 +56,7 @@ from pointlessql.services.lineage_edges import (
     walk_back,
     walk_back_columns,
 )
+from pointlessql.table_fqn import TableFqn
 
 logger = logging.getLogger(__name__)
 
@@ -511,7 +512,7 @@ async def html_row_trace(
         catalog/schema/table parts (for breadcrumb), and the
         original row id.
     """
-    full_name = f"{catalog_name}.{schema_name}.{table_name}"
+    full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
     await _enforce_select(request, full_name)
 
     factory = _get_session_factory()
@@ -674,7 +675,7 @@ async def html_column_trace(
         catalog/schema/table parts (for breadcrumb), and the
         column name.
     """
-    full_name = f"{catalog_name}.{schema_name}.{table_name}"
+    full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
     await _enforce_select(request, full_name)
 
     factory = _get_session_factory()

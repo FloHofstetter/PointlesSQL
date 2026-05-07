@@ -25,9 +25,10 @@ from fastapi import APIRouter, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import get_uc_client
-from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import AgentRunOperation
 from pointlessql.pql.pql import PQL
+from pointlessql.table_fqn import TableFqn
 
 router = APIRouter(tags=["pql-introspect"])
 
@@ -94,23 +95,6 @@ async def api_pql_primitives() -> dict[str, Any]:
     return {"primitives": _PRIMITIVE_SPECS}
 
 
-def _split_three_part(full_name: str) -> tuple[str, str, str]:
-    """Validate and split a ``catalog.schema.table`` UC reference.
-
-    Args:
-        full_name: Three-part dot-separated identifier.
-
-    Returns:
-        ``(catalog, schema, table)``.
-
-    Raises:
-        ValidationError: When the identifier is empty or has fewer
-            than three non-empty parts.
-    """
-    parts = [p.strip() for p in full_name.split(".")]
-    if len(parts) != 3 or not all(parts):
-        raise ValidationError("table must be a three-part UC name 'catalog.schema.table'")
-    return parts[0], parts[1], parts[2]
 
 
 def _serialize_columns(columns_raw: Any) -> list[dict[str, Any]]:
@@ -218,11 +202,11 @@ async def api_pql_target_state(
 
     Returns:
         ``{"table", "exists", "schema", "last_5_writes"}``.
-        :func:`_split_three_part` raises :class:`ValidationError`
+        :meth:`TableFqn.parse` raises :class:`ValidationError`
         when ``table`` lacks three non-empty parts; FastAPI's
         exception handlers translate that into a 400.
     """
-    catalog, schema_name, table_name = _split_three_part(table)
+    catalog, schema_name, table_name = TableFqn.parse(table).parts()
     client = get_uc_client(request)
     exists = True
     columns: list[dict[str, Any]] = []
@@ -282,7 +266,7 @@ async def api_pql_lineage(
     """
     # Validate the three-part shape eagerly so the caller gets a 422
     # before the soyuz call runs.
-    _split_three_part(table)
+    TableFqn.parse(table)
     client = get_uc_client(request)
     graph = await client.get_lineage(table, depth=depth)
     return {

@@ -35,6 +35,7 @@ from pointlessql.services.authorization import (
     check_privilege_from_effective,
     has_privilege,
 )
+from pointlessql.table_fqn import TableFqn
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +204,7 @@ async def table_detail(
     effective: list[dict[str, Any]] = []
     lineage: dict[str, Any] = {}
     error: str | None = None
-    full_name = f"{catalog_name}.{schema_name}.{table_name}"
+    full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
     try:
         table, tags, permissions, effective, lineage = await asyncio.gather(
             client.get_table(catalog_name, schema_name, table_name),

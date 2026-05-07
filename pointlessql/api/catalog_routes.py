@@ -37,6 +37,7 @@ from pointlessql.services.authorization import (
 )
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.settings import Settings
+from pointlessql.table_fqn import TableFqn
 
 logger = logging.getLogger(__name__)
 
@@ -463,7 +464,7 @@ async def api_table_preview(
     """
     client = get_uc_client(request)
     user = get_user(request)
-    full_name = f"{catalog_name}.{schema_name}.{table_name}"
+    full_name = TableFqn.from_parts(catalog_name, schema_name, table_name)
     principal = effective_principal(request) or user.get("email", "")
     effective = await client.get_effective_permissions("table", full_name)
     check_privilege_from_effective(

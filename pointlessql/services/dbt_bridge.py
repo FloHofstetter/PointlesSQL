@@ -38,6 +38,7 @@ from pointlessql.exceptions import AuditUnavailableError
 from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.operations import record_operation
 from pointlessql.services.lineage.rows import record_rejects
+from pointlessql.table_fqn import TableFqn
 
 if TYPE_CHECKING:
     from soyuz_catalog_client import Client
@@ -355,7 +356,7 @@ def _node_relation_name(node: dict[str, Any]) -> str | None:
     schema = node.get("schema")
     alias = node.get("alias") or node.get("name")
     if db and schema and alias:
-        return f"{db}.{schema}.{alias}"
+        return TableFqn.from_parts(db, schema, alias)
     return None
 
 

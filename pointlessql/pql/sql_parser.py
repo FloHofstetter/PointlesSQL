@@ -28,6 +28,7 @@ from sqlglot.lineage import lineage as _sqlglot_lineage
 
 from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import ValidationError
+from pointlessql.table_fqn import TableFqn
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
@@ -102,7 +103,7 @@ def prepare_sql(sql: str) -> PreparedSQL:
                 f"Table reference {table.sql(dialect='duckdb')!r} is not "
                 f"fully qualified; the editor requires catalog.schema.table.",
             )
-        full = f"{catalog.name}.{schema.name}.{name.name}"
+        full = TableFqn.from_parts(catalog.name, schema.name, name.name)
         alias = table.args.get("alias")
         replacement = exp.Table(
             this=exp.Identifier(this=full, quoted=True),
@@ -272,7 +273,7 @@ def _leaf_source_table(leaf: Any) -> str | None:
         return None
     catalog_name = catalog.name if hasattr(catalog, "name") else str(catalog)
     db_name = db.name if hasattr(db, "name") else str(db)
-    return f"{catalog_name}.{db_name}.{name}"
+    return TableFqn.from_parts(catalog_name, db_name, str(name))
 
 
 def _leaf_source_column(leaf: Any) -> str | None:

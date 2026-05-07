@@ -35,6 +35,7 @@ from pointlessql.api.dependencies import get_uc_client, get_user
 from pointlessql.exceptions import CatalogUnavailableError, PointlessSQLError
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.settings import Settings
+from pointlessql.table_fqn import TableFqn
 from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
@@ -503,7 +504,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                     out.append(
                         {
                             "type": "table",
-                            "label": f"{cat_name}.{s_name}.{t_name}",
+                            "label": TableFqn.from_parts(cat_name, s_name, t_name),
                             "description": str(table.get("comment") or ""),
                             "url": (f"/catalogs/{cat_name}/schemas/{s_name}/tables/{t_name}"),
                             "updated_at": epoch_seconds(table.get("updated_at")),

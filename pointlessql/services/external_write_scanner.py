@@ -30,6 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from pointlessql.models import AgentRunOperation, UnattributedWrite
+from pointlessql.table_fqn import TableFqn
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
@@ -73,7 +74,7 @@ def _parse_commit_timestamp(entry: dict[str, Any]) -> datetime.datetime | None:
 
 def _attributed_versions(
     session: Session,
-    table_fqn: str,
+    table_fqn: TableFqn,
 ) -> set[int]:
     """Return Delta versions claimed by any ``agent_run_operations`` row.
 
@@ -100,7 +101,7 @@ def _attributed_versions(
 def scan_table(
     factory: sessionmaker[Session],
     *,
-    table_fqn: str,
+    table_fqn: TableFqn,
     storage_location: str,
     history_limit: int = DEFAULT_HISTORY_LIMIT,
     now: datetime.datetime | None = None,
@@ -254,7 +255,7 @@ async def scan_all(
                 storage = table.get("storage_location")
                 if not isinstance(tbl_name, str) or not isinstance(storage, str) or not storage:
                     continue
-                fqn = f"{cat_name}.{sch_name}.{tbl_name}"
+                fqn = TableFqn.from_parts(cat_name, sch_name, tbl_name)
                 new_rows = await asyncio.to_thread(
                     scan_table,
                     factory,

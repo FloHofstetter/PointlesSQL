@@ -39,6 +39,7 @@ from pointlessql.pql.branch._common import (
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.branch_tags import STATUS_ACTIVE, STATUS_PROMOTED
 from pointlessql.settings import Settings
+from pointlessql.table_fqn import TableFqn
 
 
 def _check_promotion_conflicts(
@@ -74,7 +75,7 @@ def _check_promotion_conflicts(
 
     catalog, schema = split_two_part(parent_schema_fqn, "parent_schema")
     for table_name, expected_version in parent_versions_at_create.items():
-        full_name = f"{catalog}.{schema}.{table_name}"
+        full_name = TableFqn.from_parts(catalog, schema, table_name)
         try:
             response = _get_table.sync(client=client, full_name=full_name)
         except UnexpectedStatus:
@@ -311,7 +312,7 @@ def preview_promote_conflicts(
     conflicts: list[dict[str, Any]] = []
     catalog, schema = split_two_part(tags.parent_schema, "parent_schema")
     for table_name, expected_version in tags.parent_version_at_create.items():
-        full_name = f"{catalog}.{schema}.{table_name}"
+        full_name = TableFqn.from_parts(catalog, schema, table_name)
         actual_version = -1
         try:
             response = _get_table.sync(client=client, full_name=full_name)
