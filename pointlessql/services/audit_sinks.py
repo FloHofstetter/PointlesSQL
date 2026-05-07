@@ -33,6 +33,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from pointlessql.enums import AuditSinkType
 from pointlessql.models.audit_sinks import AuditSink
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.aws_sigv4 import sign_request
@@ -341,11 +342,11 @@ async def dispatch_one(
     Returns:
         ``True`` when the dispatcher reports success.
     """
-    if sink.type == "webhook":
+    if sink.type == AuditSinkType.WEBHOOK:
         return await _dispatch_webhook(sink, envelope)
-    if sink.type == "s3":
+    if sink.type == AuditSinkType.S3:
         return await _dispatch_s3(sink, envelope, client=client)
-    if sink.type == "aws_cloudtrail":
+    if sink.type == AuditSinkType.AWS_CLOUDTRAIL:
         return await _dispatch_cloudtrail(sink, envelope, client=client)
     logger.warning("audit_sinks[%s] unknown type=%r — skipping", sink.id, sink.type)
     return False

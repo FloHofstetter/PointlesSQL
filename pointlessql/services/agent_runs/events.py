@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-from pointlessql.enums import RunStatus
+from pointlessql.enums import EventOutcome, RunStatus
 from pointlessql.models import AgentRunEvent
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.audit_sinks import dispatch_to_sinks
@@ -330,5 +330,5 @@ async def emit_agent_run_event(
         _update_event_outcome(
             session_factory,
             row_id=row_id,
-            outcome="delivered" if delivered else "delivery_failed",
+            outcome=EventOutcome.DELIVERED if delivered else EventOutcome.DELIVERY_FAILED,
         )

@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
+from pointlessql.enums import EventOutcome
 from pointlessql.models.audit_sinks import GovernanceEvent
 from pointlessql.services.audit_sinks import dispatch_to_sinks
 from pointlessql.settings import Settings
@@ -286,7 +287,7 @@ async def emit_governance_event(
         _update_event_outcome(
             session_factory,
             row_id=row_id,
-            outcome="no_destination",
+            outcome=EventOutcome.NO_DESTINATION,
             delivered_to=[],
         )
         return
@@ -294,6 +295,6 @@ async def emit_governance_event(
     _update_event_outcome(
         session_factory,
         row_id=row_id,
-        outcome="delivered" if delivered else "delivery_failed",
+        outcome=EventOutcome.DELIVERED if delivered else EventOutcome.DELIVERY_FAILED,
         delivered_to=log,
     )

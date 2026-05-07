@@ -32,6 +32,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from pointlessql.enums import ReviewSeverity
 from pointlessql.models.agent_reviews import AgentReview, ReviewDestination
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 
@@ -41,7 +42,11 @@ CLOUDEVENT_TYPE = "pointlessql.agent_review.posted.v1"
 
 # Numeric ordering so a destination's min_severity gate is a simple
 # ``>=`` comparison. Lowest = always fires; highest = critical-only.
-_SEVERITY_RANK: dict[str, int] = {"ok": 0, "warn": 1, "critical": 2}
+_SEVERITY_RANK: dict[str, int] = {
+    ReviewSeverity.OK: 0,
+    ReviewSeverity.WARN: 1,
+    ReviewSeverity.CRITICAL: 2,
+}
 
 
 class _SessionFactory(Protocol):
