@@ -11,14 +11,6 @@ from pointlessql.api.main import app
 from pointlessql.models import CdfTailSubscription
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
 def _seed(table: str, *, is_active: bool = True, last_error: str | None = None) -> int:
     """Insert one CdfTailSubscription and return its id."""
     factory = app.state.session_factory
@@ -41,10 +33,11 @@ class TestAdminCdfTailPage:
     """``GET /admin/cdf-subscriptions`` rendering + filter behaviour."""
 
     @pytest.mark.asyncio
-    async def test_renders_subscription_list(self) -> None:
+    async def test_renders_subscription_list(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         sub_id = _seed("demo.silver.orders")
-        async with _admin_client() as c:
-            resp = await c.get("/admin/cdf-subscriptions")
+        resp = await admin_client.get("/admin/cdf-subscriptions")
         assert resp.status_code == 200, resp.text
         body = resp.text
         assert "demo.silver.orders" in body
@@ -53,38 +46,41 @@ class TestAdminCdfTailPage:
         assert "all healthy" in body
 
     @pytest.mark.asyncio
-    async def test_filters_by_table_substring(self) -> None:
+    async def test_filters_by_table_substring(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         _seed("demo.silver.orders")
         _seed("demo.bronze.events")
-        async with _admin_client() as c:
-            resp = await c.get(
-                "/admin/cdf-subscriptions",
-                params={"table_fqn_like": "silver"},
-            )
+        resp = await admin_client.get(
+            "/admin/cdf-subscriptions",
+            params={"table_fqn_like": "silver"},
+        )
         assert resp.status_code == 200
         body = resp.text
         assert "demo.silver.orders" in body
         assert "demo.bronze.events" not in body
 
     @pytest.mark.asyncio
-    async def test_only_active_filter_drops_paused(self) -> None:
+    async def test_only_active_filter_drops_paused(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         _seed("demo.silver.active_one", is_active=True)
         _seed("demo.silver.paused_one", is_active=False)
-        async with _admin_client() as c:
-            resp = await c.get(
-                "/admin/cdf-subscriptions",
-                params={"only_active": "true"},
-            )
+        resp = await admin_client.get(
+            "/admin/cdf-subscriptions",
+            params={"only_active": "true"},
+        )
         assert resp.status_code == 200
         body = resp.text
         assert "demo.silver.active_one" in body
         assert "demo.silver.paused_one" not in body
 
     @pytest.mark.asyncio
-    async def test_error_badge_surfaces_last_error_count(self) -> None:
+    async def test_error_badge_surfaces_last_error_count(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         _seed("demo.silver.broken", last_error="storage_location not reachable")
-        async with _admin_client() as c:
-            resp = await c.get("/admin/cdf-subscriptions")
+        resp = await admin_client.get("/admin/cdf-subscriptions")
         assert resp.status_code == 200
         body = resp.text
         assert "with last_error" in body
