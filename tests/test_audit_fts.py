@@ -40,13 +40,6 @@ def fts_index() -> None:
     audit_fts.install_index(app.state.session_factory)
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_run(*, run_id: str, principal: str, tables: list[str], notebook: str) -> None:
     """Add a single :class:`AgentRun` row through the SQLAlchemy session."""
@@ -329,7 +322,7 @@ def test_rebuild_index_re_seeds(fts_index: None) -> None:
 
 
 @pytest.mark.asyncio
-async def test_api_audit_search_route(fts_index: None) -> None:
+async def test_api_audit_search_route(fts_index: None, admin_client: httpx.AsyncClient) -> None:
     """``GET /api/audit/search`` returns the FTS payload."""
     _seed_run(
         run_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -337,8 +330,7 @@ async def test_api_audit_search_route(fts_index: None) -> None:
         tables=["main.bronze.t"],
         notebook="jay/job.py",
     )
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/search?q=jay&axis=runs")
+    r = await admin_client.get("/api/audit/search?q=jay&axis=runs")
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["available"] is True
@@ -346,26 +338,23 @@ async def test_api_audit_search_route(fts_index: None) -> None:
 
 
 @pytest.mark.asyncio
-async def test_api_audit_search_empty_query_validation() -> None:
+async def test_api_audit_search_empty_query_validation(admin_client: httpx.AsyncClient) -> None:
     """``q=`` empty triggers FastAPI's min_length validator."""
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/search?q=")
+    r = await admin_client.get("/api/audit/search?q=")
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_api_audit_search_html_renders(fts_index: None) -> None:
+async def test_api_audit_search_html_renders(fts_index: None, admin_client: httpx.AsyncClient) -> None:
     """``GET /audit/search`` renders the search page shell."""
-    async with _admin_client() as c:
-        r = await c.get("/audit/search")
+    r = await admin_client.get("/audit/search")
     assert r.status_code == 200, r.text
     assert "audit cockpit" in r.text.lower() or "search" in r.text.lower()
 
 
 @pytest.mark.asyncio
-async def test_api_audit_search_no_fts_returns_unavailable() -> None:
+async def test_api_audit_search_no_fts_returns_unavailable(admin_client: httpx.AsyncClient) -> None:
     """Without install_index, the route returns available=false instead of 500."""
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/search?q=anything")
+    r = await admin_client.get("/api/audit/search?q=anything")
     assert r.status_code == 200
     assert r.json()["available"] is False

@@ -35,20 +35,6 @@ def now() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _non_admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_non_admin_cookie,
-    )
 
 
 def _seed_runs(
@@ -319,17 +305,15 @@ def test_anomaly_steady_state_is_ok(now: datetime.datetime) -> None:
 
 
 @pytest.mark.asyncio
-async def test_summary_route_admin_only() -> None:
-    async with _non_admin_client() as client:
-        r = await client.get("/api/audit/summary")
+async def test_summary_route_admin_only(non_admin_client: httpx.AsyncClient) -> None:
+    r = await non_admin_client.get("/api/audit/summary")
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_summary_route_returns_counts(now: datetime.datetime) -> None:
+async def test_summary_route_returns_counts(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
     _seed_runs(now, count=2)
-    async with _admin_client() as client:
-        r = await client.get("/api/audit/summary")
+    r = await admin_client.get("/api/audit/summary")
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["counts"]["runs"] == 2
@@ -337,10 +321,9 @@ async def test_summary_route_returns_counts(now: datetime.datetime) -> None:
 
 
 @pytest.mark.asyncio
-async def test_summary_route_records_self_in_query_history(now: datetime.datetime) -> None:
+async def test_summary_route_records_self_in_query_history(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
     factory = app.state.session_factory
-    async with _admin_client() as client:
-        r = await client.get("/api/audit/summary")
+    r = await admin_client.get("/api/audit/summary")
     assert r.status_code == 200
     with factory() as s:
         rows = list(s.scalars(select(QueryHistory).where(QueryHistory.read_kind == "audit_api")))
@@ -349,20 +332,18 @@ async def test_summary_route_records_self_in_query_history(now: datetime.datetim
 
 
 @pytest.mark.asyncio
-async def test_timeseries_route_validation() -> None:
-    async with _admin_client() as client:
-        r = await client.get("/api/audit/timeseries", params={"metric": "garbage"})
+async def test_timeseries_route_validation(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.get("/api/audit/timeseries", params={"metric": "garbage"})
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_timeseries_route_returns_points(now: datetime.datetime) -> None:
+async def test_timeseries_route_returns_points(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
     _seed_runs(now, count=3)
-    async with _admin_client() as client:
-        r = await client.get(
-            "/api/audit/timeseries",
-            params={"metric": "runs", "bin": "day"},
-        )
+    r = await admin_client.get(
+        "/api/audit/timeseries",
+        params={"metric": "runs", "bin": "day"},
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["metric"] == "runs"
@@ -370,13 +351,12 @@ async def test_timeseries_route_returns_points(now: datetime.datetime) -> None:
 
 
 @pytest.mark.asyncio
-async def test_anomalies_route_returns_severity_field(now: datetime.datetime) -> None:
+async def test_anomalies_route_returns_severity_field(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
     _seed_runs(now, count=2)
-    async with _admin_client() as client:
-        r = await client.get(
-            "/api/audit/anomalies",
-            params={"metric": "runs", "window_days": 3, "sigma": 2.0, "bin": "day"},
-        )
+    r = await admin_client.get(
+        "/api/audit/anomalies",
+        params={"metric": "runs", "window_days": 3, "sigma": 2.0, "bin": "day"},
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["threshold_sigma"] == 2.0
@@ -385,7 +365,6 @@ async def test_anomalies_route_returns_severity_field(now: datetime.datetime) ->
 
 
 @pytest.mark.asyncio
-async def test_summary_route_iso8601_validation() -> None:
-    async with _admin_client() as client:
-        r = await client.get("/api/audit/summary", params={"since": "garbage"})
+async def test_summary_route_iso8601_validation(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.get("/api/audit/summary", params={"since": "garbage"})
     assert r.status_code == 422

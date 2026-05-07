@@ -18,13 +18,6 @@ from pointlessql.models import CdfTailSubscription
 from pointlessql.services import workspaces as workspaces_service
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
 
 def _seed_subscription(
     *,
@@ -60,7 +53,7 @@ def _delete_all_subs() -> None:
 
 
 @pytest.mark.asyncio
-async def test_inbox_renders_system_errors_band_when_subscription_has_error() -> None:
+async def test_inbox_renders_system_errors_band_when_subscription_has_error(admin_client: httpx.AsyncClient) -> None:
     """Page surfaces a System-errors section when at least one sub failed."""
     _delete_all_subs()
     _seed_subscription(
@@ -68,8 +61,7 @@ async def test_inbox_renders_system_errors_band_when_subscription_has_error() ->
         last_error="uc.get_table failed: 403 Forbidden",
     )
 
-    async with _admin_client() as client:
-        resp = await client.get("/audit/inbox")
+    resp = await admin_client.get("/audit/inbox")
     assert resp.status_code == 200, resp.text
     body = resp.text
     assert 'data-inbox-section="system-errors"' in body
@@ -78,19 +70,18 @@ async def test_inbox_renders_system_errors_band_when_subscription_has_error() ->
 
 
 @pytest.mark.asyncio
-async def test_inbox_hides_section_when_no_errors() -> None:
+async def test_inbox_hides_section_when_no_errors(admin_client: httpx.AsyncClient) -> None:
     """Section is absent when every subscription has ``last_error IS NULL``."""
     _delete_all_subs()
     _seed_subscription(table="demo.silver.healthy", last_error=None)
 
-    async with _admin_client() as client:
-        resp = await client.get("/audit/inbox")
+    resp = await admin_client.get("/audit/inbox")
     assert resp.status_code == 200
     assert 'data-inbox-section="system-errors"' not in resp.text
 
 
 @pytest.mark.asyncio
-async def test_inbox_workspace_isolation() -> None:
+async def test_inbox_workspace_isolation(admin_client: httpx.AsyncClient) -> None:
     """Errors from a foreign workspace must not bleed into the default inbox."""
     _delete_all_subs()
     other = workspaces_service.create_workspace(
@@ -102,15 +93,14 @@ async def test_inbox_workspace_isolation() -> None:
         last_error="something broke in ws-other",
     )
 
-    async with _admin_client() as client:
-        resp = await client.get("/audit/inbox")
+    resp = await admin_client.get("/audit/inbox")
     assert resp.status_code == 200
     assert 'data-inbox-section="system-errors"' not in resp.text
     assert "demo.silver.foreign" not in resp.text
 
 
 @pytest.mark.asyncio
-async def test_inbox_paused_subscription_marked() -> None:
+async def test_inbox_paused_subscription_marked(admin_client: httpx.AsyncClient) -> None:
     """Paused subscription with an error keeps a ``paused`` badge."""
     _delete_all_subs()
     _seed_subscription(
@@ -119,8 +109,7 @@ async def test_inbox_paused_subscription_marked() -> None:
         is_active=False,
     )
 
-    async with _admin_client() as client:
-        resp = await client.get("/audit/inbox")
+    resp = await admin_client.get("/audit/inbox")
     assert resp.status_code == 200
     body = resp.text
     assert 'data-inbox-section="system-errors"' in body

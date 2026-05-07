@@ -11,7 +11,6 @@ include_acked filters.
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Iterator
 
 import httpx
 import pytest
@@ -21,45 +20,9 @@ from pointlessql.models import (
     AgentRun,
     AgentRunOperation,
     AnomalyAck,
-    ApiKey,
     LineageRowReject,
 )
-from pointlessql.services import api_keys as api_keys_service
-
-
-def _wipe_api_keys() -> None:
-    factory = app.state.session_factory
-    with factory() as session:
-        session.query(ApiKey).delete()
-        session.commit()
-    api_keys_service.invalidate_cache()
-
-
-@pytest.fixture
-def auditor_secret() -> Iterator[str]:
-    _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="aud", auditor=True
-    )
-    try:
-        yield plaintext
-    finally:
-        _wipe_api_keys()
-
-
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _bearer_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-    )
+from tests.conftest import ApiKeyFixture
 
 
 def _seed_baseline_then_spike(metric: str = "rejects") -> str:
@@ -160,10 +123,9 @@ def _seed_baseline_then_spike(metric: str = "rejects") -> str:
 
 
 @pytest.mark.asyncio
-async def test_inbox_empty_returns_zero_total() -> None:
+async def test_inbox_empty_returns_zero_total(admin_client: httpx.AsyncClient) -> None:
     """An empty audit lake returns no anomalies."""
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/inbox")
+    r = await admin_client.get("/api/audit/inbox")
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["total_count"] == 0
@@ -172,11 +134,10 @@ async def test_inbox_empty_returns_zero_total() -> None:
 
 
 @pytest.mark.asyncio
-async def test_inbox_surfaces_spike_breach() -> None:
+async def test_inbox_surfaces_spike_breach(admin_client: httpx.AsyncClient) -> None:
     """A 200-reject spike day surfaces in the inbox at warn or critical."""
     spike_day = _seed_baseline_then_spike()
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/inbox")
+    r = await admin_client.get("/api/audit/inbox")
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["total_count"] >= 1
@@ -190,11 +151,10 @@ async def test_inbox_surfaces_spike_breach() -> None:
 
 
 @pytest.mark.asyncio
-async def test_inbox_severity_filter_critical_only() -> None:
+async def test_inbox_severity_filter_critical_only(admin_client: httpx.AsyncClient) -> None:
     """severity=critical only returns critical breaches."""
     _seed_baseline_then_spike()
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/inbox?severity=critical")
+    r = await admin_client.get("/api/audit/inbox?severity=critical")
     assert r.status_code == 200, r.text
     payload = r.json()
     for a in payload["anomalies"]:
@@ -202,138 +162,134 @@ async def test_inbox_severity_filter_critical_only() -> None:
 
 
 @pytest.mark.asyncio
-async def test_inbox_ack_hides_anomaly_until_unacked() -> None:
+async def test_inbox_ack_hides_anomaly_until_unacked(admin_client: httpx.AsyncClient) -> None:
     """Posting an ack hides the row; deleting the ack restores it."""
     spike_day = _seed_baseline_then_spike()
-    async with _admin_client() as c:
-        before = (await c.get("/api/audit/inbox")).json()
-        spike = next(
-            a
-            for a in before["anomalies"]
-            if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
-        )
-        ack_resp = await c.post(
-            "/api/audit/anomaly-acks",
-            json={
-                "metric": spike["metric"],
-                "bin_iso": spike["bin_iso"],
-                "bin_kind": "day",
-                "comment": "investigated",
-            },
-        )
-        assert ack_resp.status_code == 201, ack_resp.text
-        ack_id = ack_resp.json()["id"]
+    before = (await admin_client.get("/api/audit/inbox")).json()
+    spike = next(
+        a
+        for a in before["anomalies"]
+        if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
+    )
+    ack_resp = await admin_client.post(
+        "/api/audit/anomaly-acks",
+        json={
+            "metric": spike["metric"],
+            "bin_iso": spike["bin_iso"],
+            "bin_kind": "day",
+            "comment": "investigated",
+        },
+    )
+    assert ack_resp.status_code == 201, ack_resp.text
+    ack_id = ack_resp.json()["id"]
 
-        after = (await c.get("/api/audit/inbox")).json()
-        bins_after = {(a["metric"], a["bin_iso"]) for a in after["anomalies"]}
-        assert (spike["metric"], spike["bin_iso"]) not in bins_after
+    after = (await admin_client.get("/api/audit/inbox")).json()
+    bins_after = {(a["metric"], a["bin_iso"]) for a in after["anomalies"]}
+    assert (spike["metric"], spike["bin_iso"]) not in bins_after
 
-        with_acked = (await c.get("/api/audit/inbox?include_acked=true")).json()
-        bins_with_acked = {(a["metric"], a["bin_iso"]) for a in with_acked["anomalies"]}
-        assert (spike["metric"], spike["bin_iso"]) in bins_with_acked
+    with_acked = (await admin_client.get("/api/audit/inbox?include_acked=true")).json()
+    bins_with_acked = {(a["metric"], a["bin_iso"]) for a in with_acked["anomalies"]}
+    assert (spike["metric"], spike["bin_iso"]) in bins_with_acked
 
-        del_resp = await c.delete(f"/api/audit/anomaly-acks/{ack_id}")
-        assert del_resp.status_code == 200, del_resp.text
-        restored = (await c.get("/api/audit/inbox")).json()
-        bins_restored = {(a["metric"], a["bin_iso"]) for a in restored["anomalies"]}
-        assert (spike["metric"], spike["bin_iso"]) in bins_restored
+    del_resp = await admin_client.delete(f"/api/audit/anomaly-acks/{ack_id}")
+    assert del_resp.status_code == 200, del_resp.text
+    restored = (await admin_client.get("/api/audit/inbox")).json()
+    bins_restored = {(a["metric"], a["bin_iso"]) for a in restored["anomalies"]}
+    assert (spike["metric"], spike["bin_iso"]) in bins_restored
 
 
 @pytest.mark.asyncio
-async def test_inbox_double_ack_rejected() -> None:
+async def test_inbox_double_ack_rejected(admin_client: httpx.AsyncClient) -> None:
     """Second ack against the same identity returns 422."""
     spike_day = _seed_baseline_then_spike()
-    async with _admin_client() as c:
-        spike = next(
-            a
-            for a in (await c.get("/api/audit/inbox")).json()["anomalies"]
-            if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
-        )
-        first = await c.post(
-            "/api/audit/anomaly-acks",
-            json={
-                "metric": spike["metric"],
-                "bin_iso": spike["bin_iso"],
-                "bin_kind": "day",
-            },
-        )
-        assert first.status_code == 201
-        second = await c.post(
-            "/api/audit/anomaly-acks",
-            json={
-                "metric": spike["metric"],
-                "bin_iso": spike["bin_iso"],
-                "bin_kind": "day",
-            },
-        )
-        assert second.status_code == 422, second.text
+    spike = next(
+        a
+        for a in (await admin_client.get("/api/audit/inbox")).json()["anomalies"]
+        if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
+    )
+    first = await admin_client.post(
+        "/api/audit/anomaly-acks",
+        json={
+            "metric": spike["metric"],
+            "bin_iso": spike["bin_iso"],
+            "bin_kind": "day",
+        },
+    )
+    assert first.status_code == 201
+    second = await admin_client.post(
+        "/api/audit/anomaly-acks",
+        json={
+            "metric": spike["metric"],
+            "bin_iso": spike["bin_iso"],
+            "bin_kind": "day",
+        },
+    )
+    assert second.status_code == 422, second.text
 
 
 @pytest.mark.asyncio
-async def test_inbox_snooze_expires_re_surfaces_anomaly() -> None:
+async def test_inbox_snooze_expires_re_surfaces_anomaly(admin_client: httpx.AsyncClient) -> None:
     """Snooze with a past dismissed_until lets the anomaly resurface."""
     spike_day = _seed_baseline_then_spike()
     past = (dt.datetime.now(dt.UTC) - dt.timedelta(days=1)).isoformat()
-    async with _admin_client() as c:
-        spike = next(
-            a
-            for a in (await c.get("/api/audit/inbox")).json()["anomalies"]
-            if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
-        )
-        ack_resp = await c.post(
-            "/api/audit/anomaly-acks",
-            json={
-                "metric": spike["metric"],
-                "bin_iso": spike["bin_iso"],
-                "bin_kind": "day",
-                "dismissed_until": past,
-            },
-        )
-        assert ack_resp.status_code == 201
-        # Expired snooze: the anomaly should resurface in the default view.
-        again = (await c.get("/api/audit/inbox")).json()
-        bins = {(a["metric"], a["bin_iso"]) for a in again["anomalies"]}
-        assert (spike["metric"], spike["bin_iso"]) in bins
+    spike = next(
+        a
+        for a in (await admin_client.get("/api/audit/inbox")).json()["anomalies"]
+        if a["metric"] == "rejects" and a["bin_iso"].startswith(spike_day)
+    )
+    ack_resp = await admin_client.post(
+        "/api/audit/anomaly-acks",
+        json={
+            "metric": spike["metric"],
+            "bin_iso": spike["bin_iso"],
+            "bin_kind": "day",
+            "dismissed_until": past,
+        },
+    )
+    assert ack_resp.status_code == 201
+    # Expired snooze: the anomaly should resurface in the default view.
+    again = (await admin_client.get("/api/audit/inbox")).json()
+    bins = {(a["metric"], a["bin_iso"]) for a in again["anomalies"]}
+    assert (spike["metric"], spike["bin_iso"]) in bins
 
 
 @pytest.mark.asyncio
-async def test_inbox_auditor_scope_passes(auditor_secret: str) -> None:
+async def test_inbox_auditor_scope_passes(
+    anonymous_client: httpx.AsyncClient,
+    auditor_secret: ApiKeyFixture,
+) -> None:
     """Auditor API key passes /api/audit/inbox without admin cookie."""
     _seed_baseline_then_spike()
-    async with _bearer_client() as c:
-        r = await c.get(
-            "/api/audit/inbox",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    r = await anonymous_client.get(
+        "/api/audit/inbox",
+        headers=auditor_secret.headers,
+    )
     assert r.status_code == 200, r.text
 
 
 @pytest.mark.asyncio
-async def test_anomaly_ack_validates_required_fields() -> None:
+async def test_anomaly_ack_validates_required_fields(admin_client: httpx.AsyncClient) -> None:
     """POST with missing metric/bin returns 422."""
-    async with _admin_client() as c:
-        r = await c.post("/api/audit/anomaly-acks", json={"bin_iso": "2026-05-01"})
-        assert r.status_code == 422
-        r = await c.post(
-            "/api/audit/anomaly-acks",
-            json={"metric": "rejects", "bin_iso": "2026-05-01"},
-        )
-        assert r.status_code == 422  # missing bin_kind
+    r = await admin_client.post("/api/audit/anomaly-acks", json={"bin_iso": "2026-05-01"})
+    assert r.status_code == 422
+    r = await admin_client.post(
+        "/api/audit/anomaly-acks",
+        json={"metric": "rejects", "bin_iso": "2026-05-01"},
+    )
+    assert r.status_code == 422  # missing bin_kind
 
 
 @pytest.mark.asyncio
-async def test_anomaly_ack_unknown_id_404() -> None:
+async def test_anomaly_ack_unknown_id_404(admin_client: httpx.AsyncClient) -> None:
     """DELETE /api/audit/anomaly-acks/9999 → 404."""
-    async with _admin_client() as c:
-        r = await c.delete("/api/audit/anomaly-acks/9999")
+    r = await admin_client.delete("/api/audit/anomaly-acks/9999")
     assert r.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_inbox_html_page_renders() -> None:
+async def test_inbox_html_page_renders(admin_client: httpx.AsyncClient) -> None:
     """GET /audit/inbox returns the rendered shell."""
-    async with _admin_client() as c:
-        r = await c.get("/audit/inbox")
+    r = await admin_client.get("/audit/inbox")
     assert r.status_code == 200, r.text
     assert "Anomaly inbox" in r.text or "anomaly" in r.text.lower()
 

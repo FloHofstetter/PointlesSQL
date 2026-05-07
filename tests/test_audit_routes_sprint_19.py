@@ -22,7 +22,6 @@ Covers:
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Iterator
 
 import httpx
 import pytest
@@ -30,74 +29,14 @@ import pytest
 from pointlessql.api.main import app
 from pointlessql.models import (
     AgentRunOperation,
-    ApiKey,
     LineageColumnMap,
     LineageRowEdge,
     LineageRowReject,
     LineageValueChange,
     QueryHistory,
 )
-from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import audit_aggregator as agg
-
-
-def _wipe_api_keys() -> None:
-    factory = app.state.session_factory
-    with factory() as session:
-        session.query(ApiKey).delete()
-        session.commit()
-    api_keys_service.invalidate_cache()
-
-
-@pytest.fixture
-def auditor_secret() -> Iterator[str]:
-    _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="aud", auditor=True
-    )
-    try:
-        yield plaintext
-    finally:
-        _wipe_api_keys()
-
-
-@pytest.fixture
-def supervisor_secret() -> Iterator[str]:
-    _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="sup", supervisor=True
-    )
-    try:
-        yield plaintext
-    finally:
-        _wipe_api_keys()
-
-
-@pytest.fixture
-def normal_secret() -> Iterator[str]:
-    _wipe_api_keys()
-    _, plaintext = api_keys_service.create_api_key(
-        app.state.session_factory, name="reader", supervisor=False
-    )
-    try:
-        yield plaintext
-    finally:
-        _wipe_api_keys()
-
-
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
-def _bearer_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-    )
+from tests.conftest import ApiKeyFixture
 
 
 async def _seed_run(client: httpx.AsyncClient, *, run_id: str) -> None:
@@ -220,45 +159,41 @@ def _add_column_map(*, run_id: str, op_id: int) -> None:
 
 
 @pytest.mark.asyncio
-async def test_audit_summary_normal_key_403(normal_secret: str) -> None:
+async def test_audit_summary_normal_key_403(api_key_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
     """A non-privileged Bearer key cannot reach /api/audit/summary."""
-    async with _bearer_client() as c:
-        r = await c.get(
-            "/api/audit/summary",
-            headers={"Authorization": f"Bearer {normal_secret}"},
-        )
+    r = await anonymous_client.get(
+        "/api/audit/summary",
+        headers={"Authorization": f"Bearer {api_key_secret.secret}"},
+    )
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_audit_summary_supervisor_key_403(supervisor_secret: str) -> None:
+async def test_audit_summary_supervisor_key_403(supervisor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
     """Supervisor scope is insufficient for tenant-wide audit aggregates."""
-    async with _bearer_client() as c:
-        r = await c.get(
-            "/api/audit/summary",
-            headers={"Authorization": f"Bearer {supervisor_secret}"},
-        )
+    r = await anonymous_client.get(
+        "/api/audit/summary",
+        headers={"Authorization": f"Bearer {supervisor_secret.secret}"},
+    )
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_audit_summary_auditor_key_200(auditor_secret: str) -> None:
+async def test_audit_summary_auditor_key_200(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
     """Auditor scope passes for tenant-wide audit aggregates."""
-    async with _bearer_client() as c:
-        r = await c.get(
-            "/api/audit/summary",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    r = await anonymous_client.get(
+        "/api/audit/summary",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 200, r.text
     payload = r.json()
     assert "counts" in payload
 
 
 @pytest.mark.asyncio
-async def test_audit_summary_admin_cookie_200() -> None:
+async def test_audit_summary_admin_cookie_200(admin_client: httpx.AsyncClient) -> None:
     """Admin cookie still passes (admin > auditor)."""
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/summary")
+    r = await admin_client.get("/api/audit/summary")
     assert r.status_code == 200, r.text
 
 
@@ -268,22 +203,20 @@ async def test_audit_summary_admin_cookie_200() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_audit_lineage_auditor_passes(auditor_secret: str) -> None:
+async def test_run_audit_lineage_auditor_passes(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
     run_id = "11111111-1111-1111-1111-111111111111"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        op_id = _add_op(run_id=run_id)
-        _add_row_edge(
-            run_id=run_id,
-            op_id=op_id,
-            source="main.bronze.orders_raw",
-            target="main.silver.orders",
-        )
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/lineage",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    op_id = _add_op(run_id=run_id)
+    _add_row_edge(
+        run_id=run_id,
+        op_id=op_id,
+        source="main.bronze.orders_raw",
+        target="main.silver.orders",
+    )
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/lineage",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["run_id"] == run_id
@@ -292,53 +225,47 @@ async def test_run_audit_lineage_auditor_passes(auditor_secret: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_audit_lineage_supervisor_passes(supervisor_secret: str) -> None:
+async def test_run_audit_lineage_supervisor_passes(supervisor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
     """Supervisor scope passes per-run audit reads (existing inspection priv)."""
     run_id = "11119999-1111-1111-1111-aaaaaaaaaaaa"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        op_id = _add_op(run_id=run_id)
-        _add_row_edge(
-            run_id=run_id,
-            op_id=op_id,
-            source="main.bronze.orders_raw",
-            target="main.silver.orders",
-        )
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/lineage",
-            headers={"Authorization": f"Bearer {supervisor_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    op_id = _add_op(run_id=run_id)
+    _add_row_edge(
+        run_id=run_id,
+        op_id=op_id,
+        source="main.bronze.orders_raw",
+        target="main.silver.orders",
+    )
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/lineage",
+        headers={"Authorization": f"Bearer {supervisor_secret.secret}"},
+    )
     assert r.status_code == 200, r.text
 
 
 @pytest.mark.asyncio
-async def test_run_audit_lineage_normal_key_403(normal_secret: str) -> None:
+async def test_run_audit_lineage_normal_key_403(api_key_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
     """Non-privileged keys cannot reach per-run audit reads."""
     run_id = "1111aaaa-1111-1111-1111-bbbbbbbbbbbb"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        _add_op(run_id=run_id)
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/lineage",
-            headers={"Authorization": f"Bearer {normal_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    _add_op(run_id=run_id)
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/lineage",
+        headers={"Authorization": f"Bearer {api_key_secret.secret}"},
+    )
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
-async def test_run_audit_rejects_route(auditor_secret: str) -> None:
+async def test_run_audit_rejects_route(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
     run_id = "22222222-2222-2222-2222-222222222222"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        op_id = _add_op(run_id=run_id)
-        _add_reject(run_id=run_id, op_id=op_id)
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/rejects",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    op_id = _add_op(run_id=run_id)
+    _add_reject(run_id=run_id, op_id=op_id)
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/rejects",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["row_count"] == 1
@@ -347,18 +274,18 @@ async def test_run_audit_rejects_route(auditor_secret: str) -> None:
 
 @pytest.mark.asyncio
 async def test_run_audit_value_changes_masked_by_default(
-    auditor_secret: str,
+    auditor_secret: ApiKeyFixture,
+    admin_client: httpx.AsyncClient,
+    anonymous_client: httpx.AsyncClient,
 ) -> None:
     run_id = "33333333-3333-3333-3333-333333333333"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        op_id = _add_op(run_id=run_id)
-        _add_value_change(run_id=run_id, op_id=op_id)
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/value-changes",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    op_id = _add_op(run_id=run_id)
+    _add_value_change(run_id=run_id, op_id=op_id)
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/value-changes",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["masked"] is True
@@ -371,17 +298,15 @@ async def test_run_audit_value_changes_masked_by_default(
 
 
 @pytest.mark.asyncio
-async def test_run_audit_column_lineage_route(auditor_secret: str) -> None:
+async def test_run_audit_column_lineage_route(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
     run_id = "44444444-4444-4444-4444-444444444444"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        op_id = _add_op(run_id=run_id)
-        _add_column_map(run_id=run_id, op_id=op_id)
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/column-lineage",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    op_id = _add_op(run_id=run_id)
+    _add_column_map(run_id=run_id, op_id=op_id)
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/column-lineage",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 200, r.text
     payload = r.json()
     assert payload["row_count"] == 1
@@ -389,16 +314,14 @@ async def test_run_audit_column_lineage_route(auditor_secret: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_audit_external_writes_route(auditor_secret: str) -> None:
+async def test_run_audit_external_writes_route(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
     run_id = "55555555-5555-5555-5555-555555555555"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        _add_op(run_id=run_id)
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/external-writes",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    _add_op(run_id=run_id)
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/external-writes",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     # No external writes seeded → empty list, 200.
     assert r.status_code == 200, r.text
     payload = r.json()
@@ -406,13 +329,12 @@ async def test_run_audit_external_writes_route(auditor_secret: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_audit_returns_404_for_missing_run(auditor_secret: str) -> None:
+async def test_run_audit_returns_404_for_missing_run(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
     """Stale run_id returns CatalogNotFoundError (404), not empty rows."""
-    async with _bearer_client() as c:
-        r = await c.get(
-            "/api/agent-runs/00000000-0000-0000-0000-000000000000/audit/lineage",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    r = await anonymous_client.get(
+        "/api/agent-runs/00000000-0000-0000-0000-000000000000/audit/lineage",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 404
 
 
@@ -423,22 +345,21 @@ async def test_run_audit_returns_404_for_missing_run(auditor_secret: str) -> Non
 
 @pytest.mark.asyncio
 async def test_audit_history_excludes_audit_api_by_default(
-    auditor_secret: str,
-) -> None:
+    auditor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient) -> None:
     """Default response hides ``read_kind='audit_api'`` rows."""
     # First, a /api/audit/summary call lands an audit_api row.
-    async with _bearer_client() as c:
-        r1 = await c.get(
-            "/api/audit/summary",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
-        assert r1.status_code == 200
-        # Now query history — by default, the audit_api row should not
-        # surface even though it landed seconds ago.
-        r2 = await c.get(
-            "/api/audit/history",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    r1 = await anonymous_client.get(
+        "/api/audit/summary",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
+    assert r1.status_code == 200
+    # Now query history — by default, the audit_api row should not
+    # surface even though it landed seconds ago.
+    r2 = await anonymous_client.get(
+        "/api/audit/history",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r2.status_code == 200, r2.text
     payload = r2.json()
     audit_api_rows = [r for r in payload["rows"] if r["read_kind"] == "audit_api"]
@@ -447,20 +368,19 @@ async def test_audit_history_excludes_audit_api_by_default(
 
 @pytest.mark.asyncio
 async def test_audit_history_include_audit_api_lifts_filter(
-    auditor_secret: str,
-) -> None:
+    auditor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient) -> None:
     """``include_audit_api=true`` surfaces cockpit self-tracking rows."""
-    async with _bearer_client() as c:
-        # Seed an audit_api row first.
-        await c.get(
-            "/api/audit/summary",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
-        r = await c.get(
-            "/api/audit/history",
-            params={"include_audit_api": "true"},
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    # Seed an audit_api row first.
+    await anonymous_client.get(
+        "/api/audit/summary",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
+    r = await anonymous_client.get(
+        "/api/audit/history",
+        params={"include_audit_api": "true"},
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 200
     payload = r.json()
     audit_api_rows = [row for row in payload["rows"] if row["read_kind"] == "audit_api"]
@@ -474,24 +394,22 @@ async def test_audit_history_include_audit_api_lifts_filter(
 
 @pytest.mark.asyncio
 async def test_run_audit_endpoints_record_audit_api_history(
-    auditor_secret: str,
-) -> None:
+    auditor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
     """Each successful per-run audit read leaves an audit_api breadcrumb."""
     run_id = "77777777-7777-7777-7777-777777777777"
-    async with _admin_client() as cookie:
-        await _seed_run(cookie, run_id=run_id)
-        op_id = _add_op(run_id=run_id)
-        _add_row_edge(
-            run_id=run_id,
-            op_id=op_id,
-            source="main.bronze.orders_raw",
-            target="main.silver.orders",
-        )
-    async with _bearer_client() as c:
-        r = await c.get(
-            f"/api/agent-runs/{run_id}/audit/lineage",
-            headers={"Authorization": f"Bearer {auditor_secret}"},
-        )
+    await _seed_run(admin_client, run_id=run_id)
+    op_id = _add_op(run_id=run_id)
+    _add_row_edge(
+        run_id=run_id,
+        op_id=op_id,
+        source="main.bronze.orders_raw",
+        target="main.silver.orders",
+    )
+    r = await anonymous_client.get(
+        f"/api/agent-runs/{run_id}/audit/lineage",
+        headers={"Authorization": f"Bearer {auditor_secret.secret}"},
+    )
     assert r.status_code == 200
     factory = app.state.session_factory
     with factory() as session:

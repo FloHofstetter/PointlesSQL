@@ -25,14 +25,6 @@ from pointlessql.models import (
 )
 
 
-def _admin_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-        cookies=app.state._test_auth_cookie,
-    )
-
-
 def _seed_run(*, run_id: str, tables: list[str] | None = None) -> None:
     """Insert one :class:`AgentRun` row with the given declared tables."""
     factory = app.state.session_factory
@@ -119,7 +111,7 @@ def _seed_query_with_table(*, run_id: str, full_name: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_kind_touched_finds_declared_table() -> None:
+async def test_kind_touched_finds_declared_table(admin_client: httpx.AsyncClient) -> None:
     """A run with the FQN in tables_touched surfaces under kind=touched."""
     _seed_run(
         run_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -129,8 +121,7 @@ async def test_kind_touched_finds_declared_table() -> None:
         run_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         tables=["main.silver.unrelated"],
     )
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=touched")
+    r = await admin_client.get("/api/audit/by-table?fqn=main.silver.orders&kind=touched")
     assert r.status_code == 200, r.text
     payload = r.json()
     ids = {run["id"] for run in payload["runs"]}
@@ -139,22 +130,21 @@ async def test_kind_touched_finds_declared_table() -> None:
 
 
 @pytest.mark.asyncio
-async def test_kind_written_via_op_target_table() -> None:
+async def test_kind_written_via_op_target_table(admin_client: httpx.AsyncClient) -> None:
     """A run with a merge op against the FQN surfaces under kind=written."""
     _seed_run(run_id="cccccccc-cccc-cccc-cccc-cccccccccccc", tables=[])
     _seed_op(
         run_id="cccccccc-cccc-cccc-cccc-cccccccccccc",
         target="main.silver.orders",
     )
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=written")
+    r = await admin_client.get("/api/audit/by-table?fqn=main.silver.orders&kind=written")
     assert r.status_code == 200, r.text
     ids = {run["id"] for run in r.json()["runs"]}
     assert "cccccccc-cccc-cccc-cccc-cccccccccccc" in ids
 
 
 @pytest.mark.asyncio
-async def test_kind_written_via_value_change() -> None:
+async def test_kind_written_via_value_change(admin_client: httpx.AsyncClient) -> None:
     """A run with a value-change against the FQN surfaces under kind=written."""
     _seed_run(run_id="dddddddd-dddd-dddd-dddd-dddddddddddd", tables=[])
     op_id = _seed_op(
@@ -166,85 +156,77 @@ async def test_kind_written_via_value_change() -> None:
         op_id=op_id,
         target="main.silver.orders",
     )
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=written")
+    r = await admin_client.get("/api/audit/by-table?fqn=main.silver.orders&kind=written")
     assert r.status_code == 200, r.text
     ids = {run["id"] for run in r.json()["runs"]}
     assert "dddddddd-dddd-dddd-dddd-dddddddddddd" in ids
 
 
 @pytest.mark.asyncio
-async def test_kind_read_via_query_history_table() -> None:
+async def test_kind_read_via_query_history_table(admin_client: httpx.AsyncClient) -> None:
     """A run whose query_history referenced the FQN surfaces under kind=read."""
     _seed_run(run_id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee", tables=[])
     _seed_query_with_table(
         run_id="eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
         full_name="main.silver.orders",
     )
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=read")
+    r = await admin_client.get("/api/audit/by-table?fqn=main.silver.orders&kind=read")
     assert r.status_code == 200, r.text
     ids = {run["id"] for run in r.json()["runs"]}
     assert "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee" in ids
 
 
 @pytest.mark.asyncio
-async def test_kind_read_does_not_match_touched_only_run() -> None:
+async def test_kind_read_does_not_match_touched_only_run(admin_client: httpx.AsyncClient) -> None:
     """Touched-only run doesn't bleed into kind=read."""
     _seed_run(
         run_id="ffffffff-ffff-ffff-ffff-ffffffffffff",
         tables=["main.silver.orders"],
     )
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=read")
+    r = await admin_client.get("/api/audit/by-table?fqn=main.silver.orders&kind=read")
     assert r.status_code == 200
     ids = {run["id"] for run in r.json()["runs"]}
     assert "ffffffff-ffff-ffff-ffff-ffffffffffff" not in ids
 
 
 @pytest.mark.asyncio
-async def test_unknown_kind_returns_422() -> None:
+async def test_unknown_kind_returns_422(admin_client: httpx.AsyncClient) -> None:
     """A garbage ``kind`` value rejects with 422."""
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=main.x.y&kind=nope")
+    r = await admin_client.get("/api/audit/by-table?fqn=main.x.y&kind=nope")
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_empty_fqn_returns_422() -> None:
+async def test_empty_fqn_returns_422(admin_client: httpx.AsyncClient) -> None:
     """A whitespace-only fqn rejects with 422."""
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=%20%20")
+    r = await admin_client.get("/api/audit/by-table?fqn=%20%20")
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_html_by_table_page_renders() -> None:
+async def test_html_by_table_page_renders(admin_client: httpx.AsyncClient) -> None:
     """``GET /audit/by-table/main.silver.orders`` returns the page shell."""
-    async with _admin_client() as c:
-        r = await c.get("/audit/by-table/main.silver.orders")
+    r = await admin_client.get("/audit/by-table/main.silver.orders")
     assert r.status_code == 200, r.text
     assert "main.silver.orders" in r.text
     assert "Runs that touched" in r.text
 
 
 @pytest.mark.asyncio
-async def test_table_detail_cross_link_route_reachable() -> None:
+async def test_table_detail_cross_link_route_reachable(admin_client: httpx.AsyncClient) -> None:
     """The route the catalog table-detail page links to is reachable."""
-    async with _admin_client() as c:
-        r = await c.get("/audit/by-table/main.silver.orders")
+    r = await admin_client.get("/audit/by-table/main.silver.orders")
     assert r.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_pagination_limit_respected() -> None:
+async def test_pagination_limit_respected(admin_client: httpx.AsyncClient) -> None:
     """``limit=1`` returns at most one run."""
     for i in range(3):
         _seed_run(
             run_id=f"limit-{i:01d}-{'0' * 30}"[:36],
             tables=["main.silver.orders"],
         )
-    async with _admin_client() as c:
-        r = await c.get("/api/audit/by-table?fqn=main.silver.orders&kind=touched&limit=1")
+    r = await admin_client.get("/api/audit/by-table?fqn=main.silver.orders&kind=touched&limit=1")
     assert r.status_code == 200
     assert len(r.json()["runs"]) == 1
