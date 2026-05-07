@@ -83,3 +83,10 @@ class ErrorCode(StrEnum):
     DBT_STARTUP_ERROR = "dbt_startup_error"
     DBT_EXECUTION_ERROR = "dbt_execution_error"
     MLFLOW_STARTUP_ERROR = "mlflow_startup_error"
+
+    # Data products (Phase 50).
+    DATA_PRODUCT_ERROR = "data_product_error"
+    DATA_PRODUCT_CONTRACT_VIOLATION = "data_product_contract_violation"
+    DATA_PRODUCT_SCHEMA_DRIFT = "data_product_schema_drift"
+    DATA_PRODUCT_FRESHNESS_VIOLATION = "data_product_freshness_violation"
+    DATA_PRODUCT_YAML_INVALID = "data_product_yaml_invalid"

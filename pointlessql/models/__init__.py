@@ -67,6 +67,11 @@ from pointlessql.models.catalog import (
     TableStats,
 )
 from pointlessql.models.cdf_tail import CdfTailEvent, CdfTailSubscription
+from pointlessql.models.data_products import (
+    CONTRACT_EVENT_OUTCOMES,
+    DataProduct,
+    DataProductContractEvent,
+)
 from pointlessql.models.expected_lineage_inbound import ExpectedLineageInbound
 from pointlessql.models.external_writes import UnattributedWrite
 from pointlessql.models.lineage import (
@@ -127,8 +132,11 @@ __all__ = [
     "BRANCH_ACTIONS",
     "Base",
     "BranchAuditLog",
+    "CONTRACT_EVENT_OUTCOMES",
     "CdfTailEvent",
     "CdfTailSubscription",
+    "DataProduct",
+    "DataProductContractEvent",
     "Dashboard",
     "ExpectedLineageInbound",
     "GovernanceEvent",

@@ -685,6 +685,29 @@ class ConventionsSettings(BaseSettings):
     path: Path | None = None
 
 
+class DataProductsSettings(BaseSettings):
+    """Data-product loader + freshness-scanner configuration.
+
+    Reads ``POINTLESSQL_DATA_PRODUCTS_*`` environment variables.  The
+    loader walks ``yaml_search_paths`` for ``pointlessql.yaml`` files
+    whose top-level ``data_product:`` block declares a UC schema as
+    a product (Sprint 50.1).  The freshness scanner (Sprint 50.4)
+    iterates every cached product whose ``sla_minutes`` is non-NULL.
+
+    ``scan_interval_seconds`` defaults to ``0`` (dormant) — same
+    opt-in discipline as :class:`ExternalWritesSettings` and
+    :class:`CDFTailSettings`.  ``yaml_search_paths`` defaults to an
+    empty list; admins point it at the data-team repos that ship
+    ``pointlessql.yaml``.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_DATA_PRODUCTS_")
+
+    scan_interval_seconds: int = 0
+    yaml_search_paths: list[Path] = Field(default_factory=list[Path])
+    re_alert_suppress_minutes: int = 60
+
+
 class DBTSettings(BaseSettings):
     """Embedded ``dbt docs serve`` subprocess + reverse-proxy configuration.
 
@@ -772,5 +795,6 @@ class Settings(BaseSettings):
     cdf_tail: CDFTailSettings = Field(default_factory=CDFTailSettings)
     branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
+    data_products: DataProductsSettings = Field(default_factory=DataProductsSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
