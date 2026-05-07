@@ -67,8 +67,8 @@ def _add_op(
 
 @pytest.mark.asyncio
 async def test_detail_returns_operations_diff_when_flag_set(
-    supervisor_secret: ApiKeyFixture,
-    admin_client: httpx.AsyncClient) -> None:
+    supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient
+) -> None:
     transport = httpx.ASGITransport(app=app)
     run_a = "1111aaaa-1111-1111-1111-aaaaaaaa1111"
     run_b = "2222bbbb-2222-2222-2222-bbbbbbbb2222"
@@ -109,8 +109,8 @@ async def test_detail_returns_operations_diff_when_flag_set(
 
 @pytest.mark.asyncio
 async def test_detail_includes_value_changes_and_column_lineage_diff(
-    supervisor_secret: ApiKeyFixture,
-    admin_client: httpx.AsyncClient) -> None:
+    supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient
+) -> None:
     """Phase 18.9 — detail=true now also carries cell + column-lineage diff."""
     transport = httpx.ASGITransport(app=app)
     run_a = "1111aaab-1111-1111-1111-aaaaaaab1111"
@@ -144,7 +144,9 @@ async def test_detail_includes_value_changes_and_column_lineage_diff(
 
 
 @pytest.mark.asyncio
-async def test_detail_omitted_when_flag_unset(supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient) -> None:
+async def test_detail_omitted_when_flag_unset(
+    supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient
+) -> None:
     transport = httpx.ASGITransport(app=app)
     run_a = "3333cccc-3333-3333-3333-cccccccc3333"
     run_b = "4444dddd-4444-4444-4444-dddddddd4444"
@@ -165,7 +167,9 @@ async def test_detail_omitted_when_flag_unset(supervisor_secret: ApiKeyFixture, 
 
 
 @pytest.mark.asyncio
-async def test_detail_rejects_bad_align(supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient) -> None:
+async def test_detail_rejects_bad_align(
+    supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient
+) -> None:
     transport = httpx.ASGITransport(app=app)
     run_a = "5555eeee-5555-5555-5555-eeeeeeee5555"
     run_b = "6666ffff-6666-6666-6666-ffffffff6666"

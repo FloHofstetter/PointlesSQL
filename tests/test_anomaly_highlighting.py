@@ -47,7 +47,6 @@ def _stub_uc_client(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-
 def _seed_anomalous_rejects(*, today_count: int, prior_days: list[int]) -> str:
     """Insert one run per prior day + a sentinel today, with the
     requested reject counts.  Returns today's run id.
@@ -158,7 +157,9 @@ async def test_home_summary_includes_anomalies_block(admin_client: httpx.AsyncCl
 
 
 @pytest.mark.asyncio
-async def test_home_summary_anomalies_critical_for_synthetic_spike(admin_client: httpx.AsyncClient) -> None:
+async def test_home_summary_anomalies_critical_for_synthetic_spike(
+    admin_client: httpx.AsyncClient,
+) -> None:
     _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
     r = await admin_client.get("/api/home/summary")
     body = r.json()
@@ -173,7 +174,9 @@ async def test_home_summary_anomalies_critical_for_synthetic_spike(admin_client:
 
 
 @pytest.mark.asyncio
-async def test_home_html_renders_anomaly_banner_on_critical(admin_client: httpx.AsyncClient) -> None:
+async def test_home_html_renders_anomaly_banner_on_critical(
+    admin_client: httpx.AsyncClient,
+) -> None:
     _seed_anomalous_rejects(today_count=50, prior_days=[2, 3, 1, 2, 4, 2, 3])
     r = await admin_client.get("/")
     assert r.status_code == 200

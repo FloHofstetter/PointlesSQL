@@ -255,7 +255,6 @@ def test_stamp_alerted_updates_last_alerted_at() -> None:
 # ---------------------------------------------------------------------------
 
 
-
 @pytest.mark.asyncio
 async def test_admin_register_then_list_expected_producer(admin_client: httpx.AsyncClient) -> None:
     create = await admin_client.post(
@@ -313,20 +312,18 @@ async def test_admin_toggle_then_delete_expected_producer(admin_client: httpx.As
         },
     )
     expectation_id = create.json()["id"]
-    toggle = await admin_client.post(
-        f"/api/admin/expected-producers/{expectation_id}/toggle"
-    )
+    toggle = await admin_client.post(f"/api/admin/expected-producers/{expectation_id}/toggle")
     assert toggle.status_code == 200
     assert toggle.json()["is_active"] is False
-    delete_resp = await admin_client.delete(
-        f"/api/admin/expected-producers/{expectation_id}"
-    )
+    delete_resp = await admin_client.delete(f"/api/admin/expected-producers/{expectation_id}")
     assert delete_resp.status_code == 200
     assert delete_resp.json()["deleted"] is True
 
 
 @pytest.mark.asyncio
-async def test_admin_freshness_endpoint_returns_status_rows(admin_client: httpx.AsyncClient) -> None:
+async def test_admin_freshness_endpoint_returns_status_rows(
+    admin_client: httpx.AsyncClient,
+) -> None:
     _seed_expectation(target="main.silver.events", producer="kafka.x", max_silence=15)
     _seed_inbound_edge(
         target="main.silver.events",

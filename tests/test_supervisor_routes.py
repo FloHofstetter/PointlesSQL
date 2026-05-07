@@ -121,7 +121,9 @@ async def test_list_rejects_bad_since(admin_client: httpx.AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_summary_requires_supervisor_normal_key_403(
     api_key_secret: ApiKeyFixture,
-    admin_client: httpx.AsyncClient, anonymous_client: httpx.AsyncClient) -> None:
+    admin_client: httpx.AsyncClient,
+    anonymous_client: httpx.AsyncClient,
+) -> None:
     # Seed a run via the admin cookie session.
     run_id = "eeee1111-1111-1111-1111-eeeeeeeeeeee"
     await _seed_run(admin_client, run_id=run_id)
@@ -136,7 +138,9 @@ async def test_summary_requires_supervisor_normal_key_403(
 @pytest.mark.asyncio
 async def test_summary_supervisor_key_passes_with_payload(
     supervisor_secret: ApiKeyFixture,
-    admin_client: httpx.AsyncClient, anonymous_client: httpx.AsyncClient) -> None:
+    admin_client: httpx.AsyncClient,
+    anonymous_client: httpx.AsyncClient,
+) -> None:
     run_id = "ffff1111-1111-1111-1111-ffffffffffff"
     await _seed_run(admin_client, run_id=run_id, agent_id="hermes-1")
     _add_op(run_id=run_id, target="main.silver.orders", rows_affected=42)
@@ -179,7 +183,9 @@ async def test_summary_admin_cookie_also_passes(admin_client: httpx.AsyncClient)
 @pytest.mark.asyncio
 async def test_diff_shows_table_only_in_each_side(
     supervisor_secret: ApiKeyFixture,
-    admin_client: httpx.AsyncClient, anonymous_client: httpx.AsyncClient) -> None:
+    admin_client: httpx.AsyncClient,
+    anonymous_client: httpx.AsyncClient,
+) -> None:
     run_a = "aaaa9999-1111-1111-1111-aaaaaaaaaaaa"
     run_b = "bbbb9999-2222-2222-2222-bbbbbbbbbbbb"
     await _seed_run(admin_client, run_id=run_a)
@@ -216,7 +222,11 @@ async def test_diff_shows_table_only_in_each_side(
 
 
 @pytest.mark.asyncio
-async def test_diff_404_when_one_side_missing(supervisor_secret: ApiKeyFixture, admin_client: httpx.AsyncClient, anonymous_client: httpx.AsyncClient) -> None:
+async def test_diff_404_when_one_side_missing(
+    supervisor_secret: ApiKeyFixture,
+    admin_client: httpx.AsyncClient,
+    anonymous_client: httpx.AsyncClient,
+) -> None:
     run_a = "ccccaaa1-1111-1111-1111-cccccccccccc"
     await _seed_run(admin_client, run_id=run_a)
     response = await anonymous_client.get(

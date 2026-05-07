@@ -183,7 +183,11 @@ def parse_to_column_maps(
                 if not isinstance(source_column_raw, str) or not source_column_raw:
                     continue
                 source_namespace = inp.get("namespace")
-                if isinstance(source_namespace, str) and source_namespace and source_namespace != "unity":
+                if (
+                    isinstance(source_namespace, str)
+                    and source_namespace
+                    and source_namespace != "unity"
+                ):
                     source_table = f"{source_namespace}.{source_table_raw}"
                 else:
                     source_table = source_table_raw
@@ -259,7 +263,11 @@ def parse_to_row_edges(
             if not isinstance(target_row_id, str) or not target_row_id:
                 continue
             source_namespace = inp.get("namespace")
-            if isinstance(source_namespace, str) and source_namespace and source_namespace != "unity":
+            if (
+                isinstance(source_namespace, str)
+                and source_namespace
+                and source_namespace != "unity"
+            ):
                 source_table = f"{source_namespace}.{source_table_raw}"
             else:
                 source_table = source_table_raw

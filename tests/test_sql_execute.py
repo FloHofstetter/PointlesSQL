@@ -63,9 +63,9 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-
-
-async def test_admin_executes_query_and_sees_rows(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_admin_executes_query_and_sees_rows(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
         "/api/sql/execute",
@@ -80,7 +80,9 @@ async def test_admin_executes_query_and_sees_rows(orders_delta: str, admin_clien
     assert body["rows"][0] == [1, "a"]
 
 
-async def test_non_admin_without_select_is_denied(orders_delta: str, non_admin_client: httpx.AsyncClient) -> None:
+async def test_non_admin_without_select_is_denied(
+    orders_delta: str, non_admin_client: httpx.AsyncClient
+) -> None:
     # empty effective perms → check_privilege should raise 403.
     app.state.uc_client = _make_uc_mock(
         storage_location=orders_delta,
@@ -97,7 +99,9 @@ async def test_non_admin_without_select_is_denied(orders_delta: str, non_admin_c
     assert body["required_privilege"] == "SELECT"
 
 
-async def test_non_admin_with_select_grant_succeeds(orders_delta: str, non_admin_client: httpx.AsyncClient) -> None:
+async def test_non_admin_with_select_grant_succeeds(
+    orders_delta: str, non_admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(
         storage_location=orders_delta,
         effective=[{"principal": "nonadmin@test.com", "privileges": ["SELECT"]}],
@@ -111,7 +115,9 @@ async def test_non_admin_with_select_grant_succeeds(orders_delta: str, non_admin
     assert body["rows"] == [[5]]
 
 
-async def test_malformed_sql_returns_400_problem_json(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_malformed_sql_returns_400_problem_json(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
         "/api/sql/execute",
@@ -123,7 +129,9 @@ async def test_malformed_sql_returns_400_problem_json(orders_delta: str, admin_c
     assert body["code"] == "sql_execution_error"
 
 
-async def test_two_part_reference_is_rejected(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_two_part_reference_is_rejected(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
         "/api/sql/execute",
@@ -135,7 +143,9 @@ async def test_two_part_reference_is_rejected(orders_delta: str, admin_client: h
     assert "catalog.schema.table" in body["detail"]
 
 
-async def test_row_cap_is_applied(orders_delta: str, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
+async def test_row_cap_is_applied(
+    orders_delta: str, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient
+) -> None:
     # Clamp max_rows to 3 so our 5-row Delta table gets truncated.
     monkeypatch.setattr(app.state.settings.sql, "max_rows", 3)
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
@@ -169,7 +179,9 @@ async def test_sql_editor_page_renders(admin_client: httpx.AsyncClient) -> None:
     assert b"active_page" not in resp.content  # server context var, not rendered
 
 
-async def test_explain_mode_returns_plan_and_skips_history(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_explain_mode_returns_plan_and_skips_history(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     # Capture history row count before the EXPLAIN call so we can
     # assert it did NOT grow (Sprint-53 decision: EXPLAIN is

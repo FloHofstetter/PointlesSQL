@@ -148,7 +148,9 @@ async def test_create_and_list_via_api(admin_client: httpx.AsyncClient) -> None:
     assert resp.status_code == 200
 
 
-async def test_non_admin_cannot_see_private_via_api(admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
+async def test_non_admin_cannot_see_private_via_api(
+    admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
+) -> None:
     # Admin creates a private query.
     resp = await admin_client.post(
         "/api/saved-queries",
@@ -164,7 +166,9 @@ async def test_non_admin_cannot_see_private_via_api(admin_client: httpx.AsyncCli
     assert body["code"] == "catalog_not_found"
 
 
-async def test_patch_by_non_owner_returns_404(admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
+async def test_patch_by_non_owner_returns_404(
+    admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
+) -> None:
     resp = await admin_client.post(
         "/api/saved-queries",
         json={"title": "Orig", "sql": "SELECT 1", "is_shared": True},

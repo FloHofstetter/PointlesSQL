@@ -42,7 +42,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-
 def _seed_value_changes() -> tuple[str, int]:
     """Insert one merge op + two value-change rows on (silver.orders, row-A)."""
     factory = app.state.session_factory
@@ -101,7 +100,9 @@ def _seed_value_changes() -> tuple[str, int]:
 
 
 @pytest.mark.asyncio
-async def test_value_changes_returns_two_changes(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_value_changes_returns_two_changes(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     _seed_value_changes()
     response = await admin_client.get(
         "/api/lineage/value-changes",
@@ -121,7 +122,9 @@ async def test_value_changes_returns_two_changes(uc_mock: MagicMock, admin_clien
 
 
 @pytest.mark.asyncio
-async def test_value_changes_column_filter_narrows(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_value_changes_column_filter_narrows(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     _seed_value_changes()
     response = await admin_client.get(
         "/api/lineage/value-changes",
@@ -139,7 +142,9 @@ async def test_value_changes_column_filter_narrows(uc_mock: MagicMock, admin_cli
 
 
 @pytest.mark.asyncio
-async def test_value_changes_unknown_row_returns_empty(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_value_changes_unknown_row_returns_empty(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     response = await admin_client.get(
         "/api/lineage/value-changes",
         params={"table": "main.silver.orders", "row_id": "never-existed"},
@@ -149,7 +154,9 @@ async def test_value_changes_unknown_row_returns_empty(uc_mock: MagicMock, admin
 
 
 @pytest.mark.asyncio
-async def test_value_changes_rejects_empty_row_id(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_value_changes_rejects_empty_row_id(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     response = await admin_client.get(
         "/api/lineage/value-changes",
         params={"table": "main.silver.orders", "row_id": ""},

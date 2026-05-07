@@ -47,9 +47,7 @@ CDF_META_CHANGE_TYPE = "_change_type"
 CDF_META_VERSION = "_commit_version"
 CDF_META_TIMESTAMP = "_commit_timestamp"
 
-VALID_CHANGE_TYPES = frozenset(
-    {"insert", "update_preimage", "update_postimage", "delete"}
-)
+VALID_CHANGE_TYPES = frozenset({"insert", "update_preimage", "update_postimage", "delete"})
 
 
 def fetch_events_for_row(
@@ -125,7 +123,7 @@ def _coerce_timestamp(value: Any) -> datetime.datetime | None:
     if isinstance(value, int | float):
         try:
             return datetime.datetime.fromtimestamp(value / 1000.0, tz=datetime.UTC)
-        except (OverflowError, OSError, ValueError):
+        except OverflowError, OSError, ValueError:
             return None
     if isinstance(value, str):
         try:
@@ -365,9 +363,7 @@ async def tail_all(
     with factory() as session:
         active_ids = list(
             session.scalars(
-                select(CdfTailSubscription.id).where(
-                    CdfTailSubscription.is_active.is_(True)
-                )
+                select(CdfTailSubscription.id).where(CdfTailSubscription.is_active.is_(True))
             ).all()
         )
 

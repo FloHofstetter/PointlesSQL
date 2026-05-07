@@ -88,7 +88,12 @@ def test_one_producer_one_source_table() -> None:
     assert seen is not None
     # SQLite returns naive datetimes; PG returns tz-aware.  Compare
     # the wall-clock pieces only so the test stays dialect-portable.
-    assert (seen.year, seen.month, seen.day, seen.hour) == (when.year, when.month, when.day, when.hour)
+    assert (seen.year, seen.month, seen.day, seen.hour) == (
+        when.year,
+        when.month,
+        when.day,
+        when.hour,
+    )
 
 
 def test_two_producers_ordered_by_last_seen_desc() -> None:

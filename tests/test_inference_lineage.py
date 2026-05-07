@@ -298,8 +298,8 @@ async def test_api_predictions_endpoint_groups_by_target(
 
 @pytest.mark.asyncio
 async def test_api_predictions_endpoint_unauthenticated(
-    uc_for_inference: AsyncMock,
-    anonymous_client: httpx.AsyncClient) -> None:
+    uc_for_inference: AsyncMock, anonymous_client: httpx.AsyncClient
+) -> None:
     resp = await anonymous_client.get("/api/models/cat.sch.smoke_model/predictions")
     assert resp.status_code == 401
 

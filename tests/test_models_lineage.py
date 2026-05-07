@@ -181,7 +181,7 @@ async def test_api_model_lineage_empty_when_no_linked_runs(
 
 @pytest.mark.asyncio
 async def test_api_model_lineage_unauthenticated(
-    uc_for_lineage: AsyncMock,
-    anonymous_client: httpx.AsyncClient) -> None:
+    uc_for_lineage: AsyncMock, anonymous_client: httpx.AsyncClient
+) -> None:
     resp = await anonymous_client.get("/api/models/cat1.sch1.smoke_model/lineage")
     assert resp.status_code == 401

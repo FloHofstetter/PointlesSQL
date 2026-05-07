@@ -386,8 +386,6 @@ class TestSchedulerLifecycle:
 # -- Route tests --
 
 
-
-
 @pytest.fixture(autouse=True)
 def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
     """Route per-request client construction through app.state.uc_client."""
@@ -452,7 +450,9 @@ class TestJobRoutes:
         )
         assert resp.status_code == 422
 
-    async def test_list_filters_by_ownership(self, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_list_filters_by_ownership(
+        self, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
+    ) -> None:
         factory = app.state.session_factory
         # Seed: admin-owned job and non-admin-owned job.
         with factory() as session:
@@ -498,7 +498,9 @@ class TestJobRoutes:
         names = {j["name"] for j in resp.json()}
         assert names == {"user-owned"}
 
-    async def test_manual_run_and_pause_unpause(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
+    async def test_manual_run_and_pause_unpause(
+        self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient
+    ) -> None:
         # Register a fake kind so we don't require pg_sync plumbing.
         recording_registry = _RecordingRegistry()
 
@@ -543,7 +545,9 @@ class TestJobRoutes:
         assert unpause_resp.status_code == 200
         assert unpause_resp.json()["is_paused"] is False
 
-    async def test_non_owner_cannot_run(self, monkeypatch: pytest.MonkeyPatch, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_non_owner_cannot_run(
+        self, monkeypatch: pytest.MonkeyPatch, non_admin_client: httpx.AsyncClient
+    ) -> None:
         factory = app.state.session_factory
         with factory() as session:
             admin_user = session.scalars(select(User).where(User.email == "test@test.com")).first()

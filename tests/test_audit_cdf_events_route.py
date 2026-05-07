@@ -64,9 +64,7 @@ class TestAuditCdfEvents:
         _seed_event(sub_id, full_name, version=0, row_id="42")
         _seed_event(sub_id, full_name, version=1, row_id="43")
         async with _authed_client() as c:
-            resp = await c.get(
-                "/api/audit/cdf-events", params={"table": full_name}
-            )
+            resp = await c.get("/api/audit/cdf-events", params={"table": full_name})
         assert resp.status_code == 200, resp.text
         body = resp.json()
         assert body["table"] == full_name
@@ -99,9 +97,7 @@ class TestAuditCdfEvents:
         assert names == {"demo.silver.tracked_a", "demo.silver.paused_b"}
 
         async with _authed_client() as c:
-            resp = await c.get(
-                "/api/audit/cdf-subscriptions", params={"only_active": "true"}
-            )
+            resp = await c.get("/api/audit/cdf-subscriptions", params={"only_active": "true"})
         assert resp.status_code == 200
         body = resp.json()
         names = {s["table_full_name"] for s in body["subscriptions"]}

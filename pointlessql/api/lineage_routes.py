@@ -477,9 +477,7 @@ async def api_row_trace(
     op_meta = _load_op_metadata(_collect_op_ids(steps))
     step_dicts = [_step_to_dict(s, op_meta) for s in steps]
     step_dicts = _attach_value_changes(factory, step_dicts)
-    step_dicts = _attach_cdf_events(
-        factory, step_dicts, workspace_id=current_workspace_id(request)
-    )
+    step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=current_workspace_id(request))
     step_dicts = await _apply_pii_masking(request, step_dicts)
     return {
         "table": table,
@@ -522,9 +520,7 @@ async def html_row_trace(
     op_meta = _load_op_metadata(_collect_op_ids(steps))
     step_dicts = [_step_to_dict(s, op_meta) for s in steps]
     step_dicts = _attach_value_changes(factory, step_dicts)
-    step_dicts = _attach_cdf_events(
-        factory, step_dicts, workspace_id=current_workspace_id(request)
-    )
+    step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=current_workspace_id(request))
     step_dicts = await _apply_pii_masking(request, step_dicts)
 
     return _templates(request).TemplateResponse(

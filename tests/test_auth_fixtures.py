@@ -54,9 +54,7 @@ def test_supervisor_secret_yields_supervisor_scope(
     assert supervisor_secret.secret  # non-empty plaintext
     assert supervisor_secret.row.supervisor is True
     assert supervisor_secret.row.auditor is False
-    assert supervisor_secret.headers == {
-        "Authorization": f"Bearer {supervisor_secret.secret}"
-    }
+    assert supervisor_secret.headers == {"Authorization": f"Bearer {supervisor_secret.secret}"}
 
 
 def test_auditor_secret_yields_auditor_scope(

@@ -44,12 +44,12 @@ def _app_setup(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-
-
 class TestHtmxFragmentToast:
     """Non-boosted HTMX fragment requests get an ``HX-Trigger`` toast."""
 
-    async def test_htmx_fragment_receives_trigger_header(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_htmx_fragment_receives_trigger_header(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         """Non-admin on ``/connections`` + ``HX-Request: true`` → toast trigger.
 
         ``_require_admin`` raises :class:`AuthorizationError` before any
@@ -71,7 +71,9 @@ class TestHtmxFragmentToast:
         # do not want to ship an HTML page as the toast body.
         assert resp.content == b""
 
-    async def test_boosted_navigation_falls_back_to_html_page(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_boosted_navigation_falls_back_to_html_page(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         """``HX-Boosted: true`` callers get the branded HTML error page."""
         resp = await non_admin_client.get(
             "/connections",
@@ -92,7 +94,9 @@ class TestRfc9457Compliance:
         resp = await admin_client.get("/api/tree")
         assert resp.headers["content-type"].startswith("application/problem+json")
 
-    async def test_problem_media_type_when_accept_json(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_problem_media_type_when_accept_json(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         """Non-API paths honour ``Accept: application/json`` too."""
         resp = await non_admin_client.get(
             "/connections",
@@ -104,7 +108,9 @@ class TestRfc9457Compliance:
         assert set(body).issuperset({"type", "title", "status", "detail", "code"})
         assert body["type"] == "about:blank"
 
-    async def test_authorization_extension_members_in_body(self, admin_client: httpx.AsyncClient) -> None:
+    async def test_authorization_extension_members_in_body(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         """``AuthorizationError`` carries extra context as RFC 9457 extensions."""
         app.state.uc_client.get_tree = AsyncMock(
             side_effect=AuthorizationError("user@test.com", "MODIFY", "schema", "cat.sch")

@@ -159,7 +159,9 @@ def _add_column_map(*, run_id: str, op_id: int) -> None:
 
 
 @pytest.mark.asyncio
-async def test_audit_summary_normal_key_403(api_key_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
+async def test_audit_summary_normal_key_403(
+    api_key_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient
+) -> None:
     """A non-privileged Bearer key cannot reach /api/audit/summary."""
     r = await anonymous_client.get(
         "/api/audit/summary",
@@ -169,7 +171,9 @@ async def test_audit_summary_normal_key_403(api_key_secret: ApiKeyFixture, anony
 
 
 @pytest.mark.asyncio
-async def test_audit_summary_supervisor_key_403(supervisor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
+async def test_audit_summary_supervisor_key_403(
+    supervisor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient
+) -> None:
     """Supervisor scope is insufficient for tenant-wide audit aggregates."""
     r = await anonymous_client.get(
         "/api/audit/summary",
@@ -179,7 +183,9 @@ async def test_audit_summary_supervisor_key_403(supervisor_secret: ApiKeyFixture
 
 
 @pytest.mark.asyncio
-async def test_audit_summary_auditor_key_200(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
+async def test_audit_summary_auditor_key_200(
+    auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient
+) -> None:
     """Auditor scope passes for tenant-wide audit aggregates."""
     r = await anonymous_client.get(
         "/api/audit/summary",
@@ -203,7 +209,11 @@ async def test_audit_summary_admin_cookie_200(admin_client: httpx.AsyncClient) -
 
 
 @pytest.mark.asyncio
-async def test_run_audit_lineage_auditor_passes(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
+async def test_run_audit_lineage_auditor_passes(
+    auditor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id = "11111111-1111-1111-1111-111111111111"
     await _seed_run(admin_client, run_id=run_id)
     op_id = _add_op(run_id=run_id)
@@ -225,7 +235,11 @@ async def test_run_audit_lineage_auditor_passes(auditor_secret: ApiKeyFixture, a
 
 
 @pytest.mark.asyncio
-async def test_run_audit_lineage_supervisor_passes(supervisor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
+async def test_run_audit_lineage_supervisor_passes(
+    supervisor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
     """Supervisor scope passes per-run audit reads (existing inspection priv)."""
     run_id = "11119999-1111-1111-1111-aaaaaaaaaaaa"
     await _seed_run(admin_client, run_id=run_id)
@@ -244,7 +258,11 @@ async def test_run_audit_lineage_supervisor_passes(supervisor_secret: ApiKeyFixt
 
 
 @pytest.mark.asyncio
-async def test_run_audit_lineage_normal_key_403(api_key_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
+async def test_run_audit_lineage_normal_key_403(
+    api_key_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
     """Non-privileged keys cannot reach per-run audit reads."""
     run_id = "1111aaaa-1111-1111-1111-bbbbbbbbbbbb"
     await _seed_run(admin_client, run_id=run_id)
@@ -257,7 +275,11 @@ async def test_run_audit_lineage_normal_key_403(api_key_secret: ApiKeyFixture, a
 
 
 @pytest.mark.asyncio
-async def test_run_audit_rejects_route(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
+async def test_run_audit_rejects_route(
+    auditor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id = "22222222-2222-2222-2222-222222222222"
     await _seed_run(admin_client, run_id=run_id)
     op_id = _add_op(run_id=run_id)
@@ -298,7 +320,11 @@ async def test_run_audit_value_changes_masked_by_default(
 
 
 @pytest.mark.asyncio
-async def test_run_audit_column_lineage_route(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
+async def test_run_audit_column_lineage_route(
+    auditor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id = "44444444-4444-4444-4444-444444444444"
     await _seed_run(admin_client, run_id=run_id)
     op_id = _add_op(run_id=run_id)
@@ -314,7 +340,11 @@ async def test_run_audit_column_lineage_route(auditor_secret: ApiKeyFixture, ano
 
 
 @pytest.mark.asyncio
-async def test_run_audit_external_writes_route(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
+async def test_run_audit_external_writes_route(
+    auditor_secret: ApiKeyFixture,
+    anonymous_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id = "55555555-5555-5555-5555-555555555555"
     await _seed_run(admin_client, run_id=run_id)
     _add_op(run_id=run_id)
@@ -329,7 +359,9 @@ async def test_run_audit_external_writes_route(auditor_secret: ApiKeyFixture, an
 
 
 @pytest.mark.asyncio
-async def test_run_audit_returns_404_for_missing_run(auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient) -> None:
+async def test_run_audit_returns_404_for_missing_run(
+    auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient
+) -> None:
     """Stale run_id returns CatalogNotFoundError (404), not empty rows."""
     r = await anonymous_client.get(
         "/api/agent-runs/00000000-0000-0000-0000-000000000000/audit/lineage",
@@ -345,8 +377,8 @@ async def test_run_audit_returns_404_for_missing_run(auditor_secret: ApiKeyFixtu
 
 @pytest.mark.asyncio
 async def test_audit_history_excludes_audit_api_by_default(
-    auditor_secret: ApiKeyFixture,
-    anonymous_client: httpx.AsyncClient) -> None:
+    auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient
+) -> None:
     """Default response hides ``read_kind='audit_api'`` rows."""
     # First, a /api/audit/summary call lands an audit_api row.
     r1 = await anonymous_client.get(
@@ -368,8 +400,8 @@ async def test_audit_history_excludes_audit_api_by_default(
 
 @pytest.mark.asyncio
 async def test_audit_history_include_audit_api_lifts_filter(
-    auditor_secret: ApiKeyFixture,
-    anonymous_client: httpx.AsyncClient) -> None:
+    auditor_secret: ApiKeyFixture, anonymous_client: httpx.AsyncClient
+) -> None:
     """``include_audit_api=true`` surfaces cockpit self-tracking rows."""
     # Seed an audit_api row first.
     await anonymous_client.get(
@@ -395,7 +427,9 @@ async def test_audit_history_include_audit_api_lifts_filter(
 @pytest.mark.asyncio
 async def test_run_audit_endpoints_record_audit_api_history(
     auditor_secret: ApiKeyFixture,
-    anonymous_client: httpx.AsyncClient, admin_client: httpx.AsyncClient) -> None:
+    anonymous_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient,
+) -> None:
     """Each successful per-run audit read leaves an audit_api breadcrumb."""
     run_id = "77777777-7777-7777-7777-777777777777"
     await _seed_run(admin_client, run_id=run_id)

@@ -40,7 +40,6 @@ def fts_index() -> None:
     audit_fts.install_index(app.state.session_factory)
 
 
-
 def _seed_run(*, run_id: str, principal: str, tables: list[str], notebook: str) -> None:
     """Add a single :class:`AgentRun` row through the SQLAlchemy session."""
     factory = app.state.session_factory
@@ -345,7 +344,9 @@ async def test_api_audit_search_empty_query_validation(admin_client: httpx.Async
 
 
 @pytest.mark.asyncio
-async def test_api_audit_search_html_renders(fts_index: None, admin_client: httpx.AsyncClient) -> None:
+async def test_api_audit_search_html_renders(
+    fts_index: None, admin_client: httpx.AsyncClient
+) -> None:
     """``GET /audit/search`` renders the search page shell."""
     r = await admin_client.get("/audit/search")
     assert r.status_code == 200, r.text

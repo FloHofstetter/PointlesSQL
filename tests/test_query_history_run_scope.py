@@ -115,7 +115,9 @@ def test_list_queries_filters_by_agent_run_id() -> None:
 
 
 @pytest.mark.asyncio
-async def test_sql_execute_tags_history_with_header(monkeypatch, admin_client: httpx.AsyncClient) -> None:
+async def test_sql_execute_tags_history_with_header(
+    monkeypatch, admin_client: httpx.AsyncClient
+) -> None:
     factory = app.state.session_factory
     run_id = _create_run("45678901-4567-4567-4567-456789012345")
 

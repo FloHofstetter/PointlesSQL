@@ -66,16 +66,12 @@ async def admin_cdf_subscriptions_index(
         else None
     )
     with factory() as session:
-        stmt = select(CdfTailSubscription).where(
-            CdfTailSubscription.workspace_id == workspace_id
-        )
+        stmt = select(CdfTailSubscription).where(CdfTailSubscription.workspace_id == workspace_id)
         if only_active:
             stmt = stmt.where(CdfTailSubscription.is_active.is_(True))
         if cleaned_like:
             stmt = stmt.where(CdfTailSubscription.table_full_name.like(f"%{cleaned_like}%"))
-        rows = list(
-            session.scalars(stmt.order_by(CdfTailSubscription.created_at.desc())).all()
-        )
+        rows = list(session.scalars(stmt.order_by(CdfTailSubscription.created_at.desc())).all())
         entries = [_serialize(r) for r in rows]
         with_errors = (
             session.scalar(
@@ -136,14 +132,10 @@ async def api_admin_list_cdf_subscriptions(
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        stmt = select(CdfTailSubscription).where(
-            CdfTailSubscription.workspace_id == workspace_id
-        )
+        stmt = select(CdfTailSubscription).where(CdfTailSubscription.workspace_id == workspace_id)
         if only_active:
             stmt = stmt.where(CdfTailSubscription.is_active.is_(True))
-        rows = list(
-            session.scalars(stmt.order_by(CdfTailSubscription.created_at.desc())).all()
-        )
+        rows = list(session.scalars(stmt.order_by(CdfTailSubscription.created_at.desc())).all())
         out = [_serialize(r) for r in rows]
     return {"subscriptions": out}
 

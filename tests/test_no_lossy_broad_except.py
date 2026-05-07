@@ -68,10 +68,7 @@ def _body_has_logger_exception_or_exc_info(body: list[ast.stmt]) -> bool:
         if not isinstance(node, ast.Call):
             continue
         # ``something.exception(...)`` — Bucket A.
-        if (
-            isinstance(node.func, ast.Attribute)
-            and node.func.attr == "exception"
-        ):
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "exception":
             return True
         # Any call with ``exc_info=`` keyword — Bucket B.
         for kw in node.keywords:
@@ -129,9 +126,7 @@ def _has_allowlist_marker(source_lines: list[str], handler: ast.ExceptHandler) -
     return False
 
 
-def _classify(
-    handler: ast.ExceptHandler, source_lines: list[str]
-) -> tuple[str, str | None]:
+def _classify(handler: ast.ExceptHandler, source_lines: list[str]) -> tuple[str, str | None]:
     """Return (verdict, reason).  verdict is ``"pass"`` or ``"fail"``."""
     body = handler.body
     if _body_has_logger_exception_or_exc_info(body):

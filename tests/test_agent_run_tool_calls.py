@@ -144,7 +144,9 @@ async def test_tool_call_clamps_called_at_to_iso(admin_client: httpx.AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_tool_call_truncates_oversized_result_summary(admin_client: httpx.AsyncClient) -> None:
+async def test_tool_call_truncates_oversized_result_summary(
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id = "eeeeeeee-1111-1111-1111-eeeeeeeeeeee"
     huge = "x" * 5000
     await _seed_run(admin_client, run_id)

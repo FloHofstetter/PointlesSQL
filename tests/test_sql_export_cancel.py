@@ -59,8 +59,6 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-
-
 # -- Export (real Delta, short queries — safe) ---------------------
 
 
@@ -108,13 +106,17 @@ async def test_parquet_export_roundtrip(orders_delta: str, admin_client: httpx.A
     assert table.num_rows == 5
 
 
-async def test_export_404_for_missing_history(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_export_404_for_missing_history(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.get("/api/sql/execute/999999/download?format=csv")
     assert resp.status_code == 404
 
 
-async def test_export_re_enforces_select(orders_delta: str, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
+async def test_export_re_enforces_select(
+    orders_delta: str, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
+) -> None:
     # Admin seeds a history row (admin bypass is in effect).
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
@@ -170,7 +172,9 @@ async def test_cancel_swallows_interrupt_raising(admin_client: httpx.AsyncClient
     assert resp.status_code == 204
 
 
-async def test_execute_returns_query_id_in_response(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_execute_returns_query_id_in_response(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
         "/api/sql/execute",

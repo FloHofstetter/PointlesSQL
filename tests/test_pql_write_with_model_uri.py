@@ -53,10 +53,9 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-
 async def test_write_table_threads_source_model_uri(
-    monkeypatch: pytest.MonkeyPatch, orders_delta: str
-, admin_client: httpx.AsyncClient) -> None:
+    monkeypatch: pytest.MonkeyPatch, orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     """Setting ``source_model_uri`` propagates to ``pql.write_table``."""
     app.state.uc_client = _uc_mock(orders_delta)
     captured: dict[str, Any] = {}
@@ -88,8 +87,8 @@ async def test_write_table_threads_source_model_uri(
 
 
 async def test_write_table_rejects_blank_source_model_uri(
-    monkeypatch: pytest.MonkeyPatch, orders_delta: str
-, admin_client: httpx.AsyncClient) -> None:
+    monkeypatch: pytest.MonkeyPatch, orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     """An empty / whitespace-only ``source_model_uri`` is a 400."""
     app.state.uc_client = _uc_mock(orders_delta)
 
@@ -111,8 +110,8 @@ async def test_write_table_rejects_blank_source_model_uri(
 
 
 async def test_merge_threads_source_model_uri(
-    monkeypatch: pytest.MonkeyPatch, orders_delta: str
-, admin_client: httpx.AsyncClient) -> None:
+    monkeypatch: pytest.MonkeyPatch, orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     """``POST /api/pql/merge`` passes ``source_model_uri`` to ``PQL.merge``."""
     app.state.uc_client = _uc_mock(orders_delta)
     captured: dict[str, Any] = {}

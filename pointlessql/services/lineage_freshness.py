@@ -72,15 +72,11 @@ def compute_freshness(
         is_active, status, last_seen_at, stale_minutes, last_alerted_at}``
         ordered (stale first, never-seen second, fresh last).
     """
-    stmt = select(ExpectedLineageInbound).where(
-        ExpectedLineageInbound.workspace_id == workspace_id
-    )
+    stmt = select(ExpectedLineageInbound).where(ExpectedLineageInbound.workspace_id == workspace_id)
     if only_active:
         stmt = stmt.where(ExpectedLineageInbound.is_active.is_(True))
     if target_table_full_name is not None:
-        stmt = stmt.where(
-            ExpectedLineageInbound.target_table_full_name == target_table_full_name
-        )
+        stmt = stmt.where(ExpectedLineageInbound.target_table_full_name == target_table_full_name)
     expectations = list(session.scalars(stmt).all())
     if not expectations:
         return []

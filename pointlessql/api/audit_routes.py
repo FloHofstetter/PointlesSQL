@@ -737,14 +737,10 @@ async def api_audit_cdf_subscriptions(
     from pointlessql.models import CdfTailSubscription
 
     with factory() as session:
-        stmt = select(CdfTailSubscription).where(
-            CdfTailSubscription.workspace_id == workspace_id
-        )
+        stmt = select(CdfTailSubscription).where(CdfTailSubscription.workspace_id == workspace_id)
         if only_active:
             stmt = stmt.where(CdfTailSubscription.is_active.is_(True))
-        rows = list(
-            session.scalars(stmt.order_by(CdfTailSubscription.created_at.desc())).all()
-        )
+        rows = list(session.scalars(stmt.order_by(CdfTailSubscription.created_at.desc())).all())
         out = [
             {
                 "id": r.id,
@@ -818,9 +814,7 @@ async def api_audit_cdf_events(
                 "producer_label": sub.producer_label,
                 "is_active": bool(sub.is_active),
                 "last_version_processed": sub.last_version_processed,
-                "last_tailed_at": sub.last_tailed_at.isoformat()
-                if sub.last_tailed_at
-                else None,
+                "last_tailed_at": sub.last_tailed_at.isoformat() if sub.last_tailed_at else None,
                 "last_error": sub.last_error,
             }
             rows = list(

@@ -43,7 +43,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-
 def _seed_edge_and_events(
     *,
     table: str,
@@ -103,7 +102,9 @@ def _seed_edge_and_events(
 
 
 @pytest.mark.asyncio
-async def test_walk_back_attaches_cdf_events_to_step(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_walk_back_attaches_cdf_events_to_step(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     """Walkback emits ``cdf_events`` per step ordered by ``delta_version``."""
     table = "demo.silver.tracked_fold_in"
     row_id = "row-fold-001"
@@ -127,8 +128,8 @@ async def test_walk_back_attaches_cdf_events_to_step(uc_mock: MagicMock, admin_c
 
 @pytest.mark.asyncio
 async def test_walk_back_steps_without_cdf_events_get_empty_list(
-    uc_mock: MagicMock,
-    admin_client: httpx.AsyncClient) -> None:
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     """Step without matching CDF events still has the ``cdf_events`` key."""
     table = "demo.silver.no_cdf_yet"
     row_id = "row-no-cdf-001"
@@ -158,7 +159,9 @@ async def test_walk_back_steps_without_cdf_events_get_empty_list(
 
 
 @pytest.mark.asyncio
-async def test_walk_back_workspace_isolation(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_walk_back_workspace_isolation(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     """CDF events from a different workspace must not leak into the trace."""
     table = "demo.silver.cross_ws"
     row_id = "row-cross-ws-001"
@@ -167,9 +170,7 @@ async def test_walk_back_workspace_isolation(uc_mock: MagicMock, admin_client: h
     )
     other_ws_id = other.id
 
-    _seed_edge_and_events(
-        table=table, row_id=row_id, versions=[42], workspace_id=other_ws_id
-    )
+    _seed_edge_and_events(table=table, row_id=row_id, versions=[42], workspace_id=other_ws_id)
 
     resp = await admin_client.get(
         "/api/lineage/row-trace",

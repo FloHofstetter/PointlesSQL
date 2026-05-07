@@ -108,7 +108,9 @@ def uc_with_models(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_models_index_anonymous_redirects(uc_with_models: AsyncMock, anonymous_client: httpx.AsyncClient) -> None:
+async def test_models_index_anonymous_redirects(
+    uc_with_models: AsyncMock, anonymous_client: httpx.AsyncClient
+) -> None:
     resp = await anonymous_client.get("/models")
     # Auth middleware redirects HTML pages to /auth/login (without ?next=)
     # before our route's own redirect ever runs.
@@ -129,8 +131,8 @@ async def test_models_index_renders_for_authenticated_user(
 
 @pytest.mark.asyncio
 async def test_api_models_unauthenticated_returns_401(
-    uc_with_models: AsyncMock,
-    anonymous_client: httpx.AsyncClient) -> None:
+    uc_with_models: AsyncMock, anonymous_client: httpx.AsyncClient
+) -> None:
     resp = await anonymous_client.get("/api/models")
     assert resp.status_code == 401
 
@@ -183,7 +185,9 @@ async def test_api_get_model_returns_model_plus_versions(
 
 
 @pytest.mark.asyncio
-async def test_api_get_model_404(uc_with_models: AsyncMock, admin_client: httpx.AsyncClient) -> None:
+async def test_api_get_model_404(
+    uc_with_models: AsyncMock, admin_client: httpx.AsyncClient
+) -> None:
     resp = await admin_client.get("/api/models/cat1.sch1.missing")
     assert resp.status_code == 404
 
@@ -203,8 +207,8 @@ async def test_api_model_linked_runs_extracts_markers(
 
 @pytest.mark.asyncio
 async def test_model_detail_anonymous_redirects(
-    uc_with_models: AsyncMock,
-    anonymous_client: httpx.AsyncClient) -> None:
+    uc_with_models: AsyncMock, anonymous_client: httpx.AsyncClient
+) -> None:
     resp = await anonymous_client.get("/models/cat1.sch1.smoke_model")
     assert resp.status_code == 303
 

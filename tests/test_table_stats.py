@@ -42,8 +42,6 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-
-
 def _make_uc_mock(storage_location: str) -> MagicMock:
     client = MagicMock(spec=UnityCatalogClient)
     client.get_table = AsyncMock(
@@ -176,8 +174,8 @@ def test_read_delta_log_version_reads_a_real_table(orders_delta: str) -> None:
 
 @pytest.mark.asyncio
 async def test_profile_and_stats_round_trip_for_admin(
-    orders_delta: str,
-    admin_client: httpx.AsyncClient) -> None:
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(orders_delta)
     full_name = "main.sales.orders"
     profile = await admin_client.post(f"/api/tables/{full_name}/profile")
@@ -201,7 +199,9 @@ async def test_profile_and_stats_round_trip_for_admin(
 
 
 @pytest.mark.asyncio
-async def test_delete_stats_requires_admin(orders_delta: str, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
+async def test_delete_stats_requires_admin(
+    orders_delta: str, admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(orders_delta)
     full_name = "main.sales.orders"
     # Admin populates + clears.
@@ -214,7 +214,9 @@ async def test_delete_stats_requires_admin(orders_delta: str, admin_client: http
 
 
 @pytest.mark.asyncio
-async def test_profile_enforces_select(orders_delta: str, monkeypatch: pytest.MonkeyPatch, non_admin_client: httpx.AsyncClient) -> None:
+async def test_profile_enforces_select(
+    orders_delta: str, monkeypatch: pytest.MonkeyPatch, non_admin_client: httpx.AsyncClient
+) -> None:
     """A caller without SELECT on the table is refused at enforcement."""
     app.state.uc_client = _make_uc_mock(orders_delta)
 

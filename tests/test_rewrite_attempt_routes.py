@@ -31,7 +31,6 @@ def _stub_uc_client() -> None:
     app.state.uc_client = client
 
 
-
 @pytest.fixture
 def run_id() -> str:
     """Insert one minimal AgentRun in workspace 1 and return its id."""
@@ -53,7 +52,9 @@ def run_id() -> str:
     return rid
 
 
-async def test_post_rewrite_attempt_creates_row(run_id: str, admin_client: httpx.AsyncClient) -> None:
+async def test_post_rewrite_attempt_creates_row(
+    run_id: str, admin_client: httpx.AsyncClient
+) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "abc123def456",
@@ -76,9 +77,7 @@ async def test_post_rewrite_attempt_creates_row(run_id: str, admin_client: httpx
     factory: Any = app.state.session_factory
     with factory() as session:
         rows = list(
-            session.scalars(
-                select(RewriteAttempt).where(RewriteAttempt.agent_run_id == run_id)
-            )
+            session.scalars(select(RewriteAttempt).where(RewriteAttempt.agent_run_id == run_id))
         )
     assert len(rows) == 1
     row = rows[0]
@@ -91,7 +90,9 @@ async def test_post_rewrite_attempt_creates_row(run_id: str, admin_client: httpx
     assert row.reason == "Added LIMIT 1000 to bound the scan."
 
 
-async def test_post_rewrite_attempt_human_escalation_no_rewrite(run_id: str, admin_client: httpx.AsyncClient) -> None:
+async def test_post_rewrite_attempt_human_escalation_no_rewrite(
+    run_id: str, admin_client: httpx.AsyncClient
+) -> None:
     """human_approval_required can omit rewritten_sql_hash and rewritten_cost."""
     body = {
         "attempt_no": 4,
@@ -113,7 +114,9 @@ async def test_post_rewrite_attempt_human_escalation_no_rewrite(run_id: str, adm
     assert row.rewritten_cost is None
 
 
-async def test_post_rewrite_attempt_duplicate_returns_4xx(run_id: str, admin_client: httpx.AsyncClient) -> None:
+async def test_post_rewrite_attempt_duplicate_returns_4xx(
+    run_id: str, admin_client: httpx.AsyncClient
+) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "a",
@@ -132,7 +135,9 @@ async def test_post_rewrite_attempt_duplicate_returns_4xx(run_id: str, admin_cli
     assert second.status_code >= 400
 
 
-async def test_post_rewrite_attempt_unknown_run_returns_404(admin_client: httpx.AsyncClient) -> None:
+async def test_post_rewrite_attempt_unknown_run_returns_404(
+    admin_client: httpx.AsyncClient,
+) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "a",
@@ -147,7 +152,9 @@ async def test_post_rewrite_attempt_unknown_run_returns_404(admin_client: httpx.
     assert resp.status_code == 404
 
 
-async def test_post_rewrite_attempt_invalid_verdict(run_id: str, admin_client: httpx.AsyncClient) -> None:
+async def test_post_rewrite_attempt_invalid_verdict(
+    run_id: str, admin_client: httpx.AsyncClient
+) -> None:
     body = {
         "attempt_no": 1,
         "original_sql_hash": "a",
@@ -161,7 +168,9 @@ async def test_post_rewrite_attempt_invalid_verdict(run_id: str, admin_client: h
     assert resp.status_code >= 400
 
 
-async def test_run_detail_renders_rewrites_subtab(run_id: str, admin_client: httpx.AsyncClient) -> None:
+async def test_run_detail_renders_rewrites_subtab(
+    run_id: str, admin_client: httpx.AsyncClient
+) -> None:
     """The run-view page renders the new Rewrites sub-tab with the rows."""
     factory: Any = app.state.session_factory
     with factory() as session:

@@ -142,12 +142,8 @@ async def api_lineage_openlineage_inbound(
         raise ValidationError(f"invalid OpenLineage event: {msg}") from exc
 
     now = datetime.datetime.now(datetime.UTC)
-    column_candidates = parse_to_column_maps(
-        event, workspace_id=workspace_id, created_at=now
-    )
-    row_candidates = parse_to_row_edges(
-        event, workspace_id=workspace_id, created_at=now
-    )
+    column_candidates = parse_to_column_maps(event, workspace_id=workspace_id, created_at=now)
+    row_candidates = parse_to_row_edges(event, workspace_id=workspace_id, created_at=now)
 
     factory = request.app.state.session_factory
     inserted_columns = 0

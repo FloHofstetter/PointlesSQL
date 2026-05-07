@@ -26,8 +26,6 @@ def _reset_pii_cache() -> None:
     pii_resolver.invalidate_all()
 
 
-
-
 # ---------------------------------------------------------------------
 # pii_mask
 # ---------------------------------------------------------------------
@@ -203,7 +201,9 @@ async def test_reveal_endpoint_admin_only(non_admin_client: httpx.AsyncClient) -
 
 
 @pytest.mark.asyncio
-async def test_reveal_returns_cleartext_and_writes_audit_log(admin_client: httpx.AsyncClient) -> None:
+async def test_reveal_returns_cleartext_and_writes_audit_log(
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id, op_id, table, row_id, column, old_value, new_value = _seed_value_change()
     r = await admin_client.post(
         "/api/audit/pii/reveal",

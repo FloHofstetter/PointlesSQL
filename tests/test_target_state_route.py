@@ -34,7 +34,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-
 async def _seed_run_with_op(
     client: httpx.AsyncClient,
     *,
@@ -88,8 +87,8 @@ async def _seed_run_with_op(
 
 @pytest.mark.asyncio
 async def test_target_state_returns_exists_false_when_uc_404s(
-    uc_mock: MagicMock,
-    admin_client: httpx.AsyncClient) -> None:
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     uc_mock.get_table.side_effect = CatalogNotFoundError("nope")
     response = await admin_client.get(
         "/api/pql/target-state", params={"table": "main.silver.orders_missing"}
@@ -103,7 +102,9 @@ async def test_target_state_returns_exists_false_when_uc_404s(
 
 
 @pytest.mark.asyncio
-async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_target_state_returns_schema_and_writes(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     target = "main.silver.orders_state"
     uc_mock.get_table.return_value = {
         "name": "orders_state",
@@ -130,7 +131,9 @@ async def test_target_state_returns_schema_and_writes(uc_mock: MagicMock, admin_
 
 
 @pytest.mark.asyncio
-async def test_target_state_rejects_non_three_part_name(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_target_state_rejects_non_three_part_name(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     response = await admin_client.get("/api/pql/target-state", params={"table": "not.three"})
     # ValidationError surfaces as 422 via the app's exception handler.
     assert response.status_code == 422

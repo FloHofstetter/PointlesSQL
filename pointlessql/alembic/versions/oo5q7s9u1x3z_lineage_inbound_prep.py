@@ -45,9 +45,7 @@ def upgrade() -> None:
         batch.alter_column("op_id", existing_type=sa.Integer(), nullable=True)
         batch.add_column(sa.Column("producer", sa.String(length=255), nullable=True))
         batch.add_column(sa.Column("external_event_id", sa.String(length=64), nullable=True))
-        batch.create_index(
-            "ix_lineage_row_edges_producer", ["producer"], unique=False
-        )
+        batch.create_index("ix_lineage_row_edges_producer", ["producer"], unique=False)
         batch.create_index(
             "ix_lineage_row_edges_target_producer",
             ["target_table", "producer"],
@@ -59,9 +57,7 @@ def upgrade() -> None:
         batch.alter_column("op_id", existing_type=sa.Integer(), nullable=True)
         batch.add_column(sa.Column("producer", sa.String(length=255), nullable=True))
         batch.add_column(sa.Column("external_event_id", sa.String(length=64), nullable=True))
-        batch.create_index(
-            "ix_lineage_column_map_producer", ["producer"], unique=False
-        )
+        batch.create_index("ix_lineage_column_map_producer", ["producer"], unique=False)
         batch.create_index(
             "ix_lineage_column_map_target_producer",
             ["target_table", "producer"],

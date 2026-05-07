@@ -129,7 +129,7 @@ def estimate_cost(plan_json: Any) -> CostEstimate:
                 continue
             try:
                 node_cardinality = int(raw)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             break
 
@@ -143,7 +143,7 @@ def estimate_cost(plan_json: Any) -> CostEstimate:
                         continue
                     try:
                         node_cardinality = int(str(raw_extra).strip())
-                    except (TypeError, ValueError):
+                    except TypeError, ValueError:
                         continue
                     break
 

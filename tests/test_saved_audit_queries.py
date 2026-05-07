@@ -34,8 +34,6 @@ def _seed_starters() -> None:
     svc.bootstrap_starter_rows(app.state.session_factory)
 
 
-
-
 # ---------------------------------------------------------------------
 # allow-list / SELECT-only
 # ---------------------------------------------------------------------

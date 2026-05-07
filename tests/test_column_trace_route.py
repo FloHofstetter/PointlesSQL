@@ -43,7 +43,6 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-
 def _seed_column_map_chain() -> tuple[str, int, int]:
     """Insert a 2-hop column-map chain bronze.qty → silver.qty → gold.units_sold."""
     factory = app.state.session_factory
@@ -112,7 +111,9 @@ def _seed_column_map_chain() -> tuple[str, int, int]:
 
 
 @pytest.mark.asyncio
-async def test_column_trace_walks_back_two_hops(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_column_trace_walks_back_two_hops(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     _seed_column_map_chain()
     response = await admin_client.get(
         "/api/lineage/column-trace",
@@ -132,7 +133,9 @@ async def test_column_trace_walks_back_two_hops(uc_mock: MagicMock, admin_client
 
 
 @pytest.mark.asyncio
-async def test_column_trace_unknown_column_returns_lone_step(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_column_trace_unknown_column_returns_lone_step(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     _seed_column_map_chain()
     response = await admin_client.get(
         "/api/lineage/column-trace",
@@ -145,7 +148,9 @@ async def test_column_trace_unknown_column_returns_lone_step(uc_mock: MagicMock,
 
 
 @pytest.mark.asyncio
-async def test_column_trace_rejects_empty_column(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_column_trace_rejects_empty_column(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     response = await admin_client.get(
         "/api/lineage/column-trace",
         params={"table": "main.gold.t", "column": ""},

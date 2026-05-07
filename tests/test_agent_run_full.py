@@ -24,7 +24,9 @@ async def _seed_run(client: httpx.AsyncClient, run_id: str) -> None:
 
 
 @pytest.mark.asyncio
-async def test_full_returns_run_and_collections_for_fresh_run(admin_client: httpx.AsyncClient) -> None:
+async def test_full_returns_run_and_collections_for_fresh_run(
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id = "f1111111-1111-1111-1111-111111111111"
     await _seed_run(admin_client, run_id)
     response = await admin_client.get(f"/api/agent-runs/{run_id}/full")

@@ -87,9 +87,7 @@ class TestTailSubscription:
         assert inserted >= 4  # 4 inserts across versions 0+1
         with app.state.session_factory() as session:
             events = list(
-                session.query(CdfTailEvent)
-                .filter(CdfTailEvent.subscription_id == sub_id)
-                .all()
+                session.query(CdfTailEvent).filter(CdfTailEvent.subscription_id == sub_id).all()
             )
             sub = session.get(CdfTailSubscription, sub_id)
         assert sub is not None
@@ -179,7 +177,9 @@ class TestAdminCdfSubscriptions:
     """``/api/admin/cdf-subscriptions`` happy path + scoping."""
 
     @pytest.mark.asyncio
-    async def test_create_list_toggle_delete_round_trip(self, admin_client: httpx.AsyncClient) -> None:
+    async def test_create_list_toggle_delete_round_trip(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         create = await admin_client.post(
             "/api/admin/cdf-subscriptions",
             json={
@@ -200,15 +200,11 @@ class TestAdminCdfSubscriptions:
         ids = [r["id"] for r in listing.json()["subscriptions"]]
         assert sub_id in ids
 
-        toggle = await admin_client.post(
-            f"/api/admin/cdf-subscriptions/{sub_id}/toggle"
-        )
+        toggle = await admin_client.post(f"/api/admin/cdf-subscriptions/{sub_id}/toggle")
         assert toggle.status_code == 200
         assert toggle.json()["is_active"] is False
 
-        delete = await admin_client.delete(
-            f"/api/admin/cdf-subscriptions/{sub_id}"
-        )
+        delete = await admin_client.delete(f"/api/admin/cdf-subscriptions/{sub_id}")
         assert delete.status_code == 200
         assert delete.json() == {"id": sub_id, "deleted": True}
 

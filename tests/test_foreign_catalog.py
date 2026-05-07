@@ -82,8 +82,6 @@ def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-
-
 class TestCreateCatalogRoute:
     async def test_admin_can_create_foreign_catalog(self, admin_client: httpx.AsyncClient) -> None:
         app.state.uc_client = _make_uc_mock()
@@ -149,7 +147,9 @@ class TestCatalogDetailHtml:
         # shows up in every catalog's HTML regardless of type.
         assert "FOREIGN</span>" in text
 
-    async def test_managed_catalog_has_no_foreign_card(self, admin_client: httpx.AsyncClient) -> None:
+    async def test_managed_catalog_has_no_foreign_card(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(catalog=_MANAGED_CATALOG)
         resp = await admin_client.get("/catalogs/managed_cat")
         assert resp.status_code == 200
@@ -163,7 +163,9 @@ class TestCatalogDetailHtml:
 
 
 class TestHomePageModal:
-    async def test_admin_sees_create_button_and_connection_options(self, admin_client: httpx.AsyncClient) -> None:
+    async def test_admin_sees_create_button_and_connection_options(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(
             connections=[{"name": "my_pg", "connection_type": "POSTGRESQL"}]
         )
@@ -176,7 +178,9 @@ class TestHomePageModal:
         assert "my_pg" in text
         assert "POSTGRESQL" in text
 
-    async def test_non_admin_has_no_create_button(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_non_admin_has_no_create_button(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock()
         resp = await non_admin_client.get("/")
         assert resp.status_code == 200

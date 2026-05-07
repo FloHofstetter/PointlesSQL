@@ -122,9 +122,7 @@ class TestCdfTabVisibility:
         full_name = "demo.silver.no_sub_table"
         _stub_uc_client_for_table(monkeypatch, full_name)
         async with _authed_client() as c:
-            resp = await c.get(
-                "/catalogs/demo/schemas/silver/tables/no_sub_table"
-            )
+            resp = await c.get("/catalogs/demo/schemas/silver/tables/no_sub_table")
         assert resp.status_code == 200, resp.text
         body = resp.text
         assert 'id="tab-cdf-events"' not in body
@@ -140,9 +138,7 @@ class TestCdfTabVisibility:
         _seed_event(sub_id, full_name, version=1, row_id="43")
         _stub_uc_client_for_table(monkeypatch, full_name)
         async with _authed_client() as c:
-            resp = await c.get(
-                "/catalogs/demo/schemas/silver/tables/tracked_table"
-            )
+            resp = await c.get("/catalogs/demo/schemas/silver/tables/tracked_table")
         assert resp.status_code == 200, resp.text
         body = resp.text
         # Tab + pane mounted.

@@ -492,8 +492,6 @@ def test_list_recent_runs_most_recent_first(metadata_factory: Any) -> None:
 # -- Route tests --
 
 
-
-
 @pytest.fixture(autouse=True)
 def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
     """Route per-request client construction through app.state.uc_client."""
@@ -510,7 +508,9 @@ class TestSyncRoute:
         resp = await non_admin_client.post("/api/catalogs/pg_cat/sync")
         assert resp.status_code == 403
 
-    async def test_admin_sync_happy_path(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
+    async def test_admin_sync_happy_path(
+        self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient
+    ) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
         uc.get_catalog = AsyncMock(
             return_value={
@@ -553,7 +553,9 @@ class TestSyncRoute:
         resp = await admin_client.post("/api/catalogs/managed_cat/sync")
         assert resp.status_code == 403
 
-    async def test_audit_log_written(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
+    async def test_audit_log_written(
+        self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient
+    ) -> None:
         uc = MagicMock(spec=UnityCatalogClient)
         uc.get_catalog = AsyncMock(return_value={"name": "pg_cat", "connection_name": "pg1"})
         uc.get_connection = AsyncMock(return_value={"name": "pg1", "options": {"host": "h"}})
@@ -587,7 +589,9 @@ class TestSyncRoute:
 
 
 class TestCatalogDetailHistory:
-    async def test_history_card_renders_runs(self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient) -> None:
+    async def test_history_card_renders_runs(
+        self, monkeypatch: pytest.MonkeyPatch, admin_client: httpx.AsyncClient
+    ) -> None:
         import datetime
 
         uc = MagicMock(spec=UnityCatalogClient)

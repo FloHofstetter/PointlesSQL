@@ -100,9 +100,7 @@ def _serialize(row: AuditSink) -> dict[str, Any]:
     cfg = _loads_obj(row.config_json or "{}")
     event_types = _loads_list(row.event_types_json)
     ws_decoded = _loads_list(row.workspace_filter)
-    workspace_filter: list[int] | None = (
-        [int(x) for x in ws_decoded] if ws_decoded else None
-    )
+    workspace_filter: list[int] | None = [int(x) for x in ws_decoded] if ws_decoded else None
     return {
         "id": row.id,
         "name": row.name,

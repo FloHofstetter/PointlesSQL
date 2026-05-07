@@ -72,14 +72,12 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-
-
 # ─── autoload ─────────────────────────────────────────────────────────
 
 
 async def test_autoload_admin_dispatches_to_pql_primitive(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-, admin_client: httpx.AsyncClient) -> None:
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, admin_client: httpx.AsyncClient
+) -> None:
     """Admin call reaches PQL.autoload with the body fields verbatim."""
     app.state.uc_client = _make_uc_mock(storage_location="/unused", table_exists=False)
     captured: dict[str, Any] = {}
@@ -126,7 +124,9 @@ async def test_autoload_rejects_missing_source_path(admin_client: httpx.AsyncCli
     assert resp.status_code in (400, 422)
 
 
-async def test_autoload_non_admin_without_privilege_is_denied(non_admin_client: httpx.AsyncClient) -> None:
+async def test_autoload_non_admin_without_privilege_is_denied(
+    non_admin_client: httpx.AsyncClient,
+) -> None:
     app.state.uc_client = _make_uc_mock(
         storage_location="/unused", table_exists=False, effective=[]
     )
@@ -141,8 +141,8 @@ async def test_autoload_non_admin_without_privilege_is_denied(non_admin_client: 
 
 
 async def test_write_table_admin_runs_select_and_writes(
-    monkeypatch: pytest.MonkeyPatch, orders_delta: str
-, admin_client: httpx.AsyncClient) -> None:
+    monkeypatch: pytest.MonkeyPatch, orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     """Admin POST runs the SELECT against the source Delta and pipes through write_table."""
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     captured: dict[str, Any] = {}
@@ -192,8 +192,8 @@ async def test_write_table_rejects_invalid_mode(admin_client: httpx.AsyncClient)
 
 
 async def test_merge_admin_dispatches_with_keys(
-    monkeypatch: pytest.MonkeyPatch, orders_delta: str
-, admin_client: httpx.AsyncClient) -> None:
+    monkeypatch: pytest.MonkeyPatch, orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     captured: dict[str, Any] = {}
 

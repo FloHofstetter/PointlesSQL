@@ -102,9 +102,7 @@ async def html_audit_inbox(request: Request) -> HTMLResponse:
     """
     require_auditor(request)
     factory = request.app.state.session_factory
-    system_errors = _load_system_errors(
-        factory, workspace_id=current_workspace_id(request)
-    )
+    system_errors = _load_system_errors(factory, workspace_id=current_workspace_id(request))
     context: dict[str, Any] = {
         "active_page": "audit",
         "active_catalog": None,

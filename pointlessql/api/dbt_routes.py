@@ -919,8 +919,7 @@ async def api_dbt_test_failures(
     agent_run_id: str | None = Query(
         default=None,
         description=(
-            "agent_runs.id whose failures to list; omit for recent "
-            "failures across all dbt runs"
+            "agent_runs.id whose failures to list; omit for recent failures across all dbt runs"
         ),
     ),
     limit: int = Query(default=100, ge=1, le=500),

@@ -22,9 +22,10 @@ def uc_mock(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     return mock
 
 
-
 @pytest.mark.asyncio
-async def test_lineage_returns_combined_graph(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_lineage_returns_combined_graph(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     uc_mock.get_lineage.return_value = {
         "upstream": {
             "root": "main.silver.orders",
@@ -53,14 +54,18 @@ async def test_lineage_returns_combined_graph(uc_mock: MagicMock, admin_client: 
 
 
 @pytest.mark.asyncio
-async def test_lineage_rejects_two_part_name(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_lineage_rejects_two_part_name(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     response = await admin_client.get("/api/pql/lineage", params={"table": "main.silver"})
     assert response.status_code == 422
     uc_mock.get_lineage.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_lineage_rejects_depth_above_max(uc_mock: MagicMock, admin_client: httpx.AsyncClient) -> None:
+async def test_lineage_rejects_depth_above_max(
+    uc_mock: MagicMock, admin_client: httpx.AsyncClient
+) -> None:
     response = await admin_client.get(
         "/api/pql/lineage",
         params={"table": "main.silver.orders", "depth": 99},

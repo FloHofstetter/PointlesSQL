@@ -35,8 +35,6 @@ def now() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)
 
 
-
-
 def _seed_runs(
     now: datetime.datetime,
     *,
@@ -311,7 +309,9 @@ async def test_summary_route_admin_only(non_admin_client: httpx.AsyncClient) -> 
 
 
 @pytest.mark.asyncio
-async def test_summary_route_returns_counts(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
+async def test_summary_route_returns_counts(
+    now: datetime.datetime, admin_client: httpx.AsyncClient
+) -> None:
     _seed_runs(now, count=2)
     r = await admin_client.get("/api/audit/summary")
     assert r.status_code == 200, r.text
@@ -321,7 +321,9 @@ async def test_summary_route_returns_counts(now: datetime.datetime, admin_client
 
 
 @pytest.mark.asyncio
-async def test_summary_route_records_self_in_query_history(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
+async def test_summary_route_records_self_in_query_history(
+    now: datetime.datetime, admin_client: httpx.AsyncClient
+) -> None:
     factory = app.state.session_factory
     r = await admin_client.get("/api/audit/summary")
     assert r.status_code == 200
@@ -338,7 +340,9 @@ async def test_timeseries_route_validation(admin_client: httpx.AsyncClient) -> N
 
 
 @pytest.mark.asyncio
-async def test_timeseries_route_returns_points(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
+async def test_timeseries_route_returns_points(
+    now: datetime.datetime, admin_client: httpx.AsyncClient
+) -> None:
     _seed_runs(now, count=3)
     r = await admin_client.get(
         "/api/audit/timeseries",
@@ -351,7 +355,9 @@ async def test_timeseries_route_returns_points(now: datetime.datetime, admin_cli
 
 
 @pytest.mark.asyncio
-async def test_anomalies_route_returns_severity_field(now: datetime.datetime, admin_client: httpx.AsyncClient) -> None:
+async def test_anomalies_route_returns_severity_field(
+    now: datetime.datetime, admin_client: httpx.AsyncClient
+) -> None:
     _seed_runs(now, count=2)
     r = await admin_client.get(
         "/api/audit/anomalies",

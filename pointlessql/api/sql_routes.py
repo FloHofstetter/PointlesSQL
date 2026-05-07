@@ -676,7 +676,9 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
         try:
             run_id = str(_uuid.UUID(run_id_raw))
         except ValueError:
-            logger.debug("explain: malformed X-Agent-Run-Id %r — skipping per-run audit", run_id_raw)
+            logger.debug(
+                "explain: malformed X-Agent-Run-Id %r — skipping per-run audit", run_id_raw
+            )
     factory = getattr(request.app.state, "session_factory", None) if run_id else None
 
     sql_hash = short_sql_hash(query)

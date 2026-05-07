@@ -284,8 +284,6 @@ def _seed_papermill_job_and_run(
         return job.id, run.id
 
 
-
-
 @pytest.fixture
 def run_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point ``settings.jupyter`` at an isolated workspace with a ``runs/`` subdir.
@@ -302,7 +300,9 @@ def run_output_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return runs
 
 
-async def test_render_route_serves_nbconvert_html(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_render_route_serves_nbconvert_html(
+    run_output_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """Happy path: owner requests the inline render and gets the cell source back."""
     job_id, run_id = _seed_papermill_job_and_run()
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
@@ -314,7 +314,9 @@ async def test_render_route_serves_nbconvert_html(run_output_dir: Path, admin_cl
     assert (run_output_dir / f"{run_id}.html").is_file()
 
 
-async def test_render_route_missing_ipynb_404s(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_render_route_missing_ipynb_404s(
+    run_output_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """A run with no output ipynb surfaces as 404 via CatalogNotFoundError."""
     job_id, run_id = _seed_papermill_job_and_run()
 
@@ -323,7 +325,9 @@ async def test_render_route_missing_ipynb_404s(run_output_dir: Path, admin_clien
     assert resp.status_code == 404
 
 
-async def test_render_route_cross_job_run_id_404s(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_render_route_cross_job_run_id_404s(
+    run_output_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """A run_id from a different job cannot be rendered under this job."""
     job_a, run_a = _seed_papermill_job_and_run()
     _job_b, run_b = _seed_papermill_job_and_run()
@@ -334,7 +338,9 @@ async def test_render_route_cross_job_run_id_404s(run_output_dir: Path, admin_cl
     assert resp.status_code == 404
 
 
-async def test_render_route_rejects_non_papermill_job(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_render_route_rejects_non_papermill_job(
+    run_output_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """Only papermill jobs expose the render route; other kinds 404."""
     job_id, run_id = _seed_papermill_job_and_run(kind="python")
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
@@ -344,7 +350,9 @@ async def test_render_route_rejects_non_papermill_job(run_output_dir: Path, admi
     assert resp.status_code == 404
 
 
-async def test_render_route_non_owner_404s(run_output_dir: Path, non_admin_client: httpx.AsyncClient) -> None:
+async def test_render_route_non_owner_404s(
+    run_output_dir: Path, non_admin_client: httpx.AsyncClient
+) -> None:
     """Non-admin non-owner cannot see another user's job output."""
     job_id, run_id = _seed_papermill_job_and_run(owner_email="test@test.com")
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
@@ -354,7 +362,9 @@ async def test_render_route_non_owner_404s(run_output_dir: Path, non_admin_clien
     assert resp.status_code == 404
 
 
-async def test_download_ipynb_serves_raw_file(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_download_ipynb_serves_raw_file(
+    run_output_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """``?format=ipynb`` returns the raw notebook bytes with a download filename."""
     job_id, run_id = _seed_papermill_job_and_run()
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())
@@ -366,7 +376,9 @@ async def test_download_ipynb_serves_raw_file(run_output_dir: Path, admin_client
     assert f"job{job_id}_run{run_id}.ipynb" in resp.headers.get("content-disposition", "")
 
 
-async def test_download_html_triggers_render(run_output_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_download_html_triggers_render(
+    run_output_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """``?format=html`` writes the sidecar on first hit and serves it."""
     job_id, run_id = _seed_papermill_job_and_run()
     (run_output_dir / f"{run_id}.ipynb").write_text(_minimal_ipynb_source())

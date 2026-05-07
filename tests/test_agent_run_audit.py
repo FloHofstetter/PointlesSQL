@@ -284,7 +284,9 @@ async def test_emit_event_marks_no_destination_without_url() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_detail_renders_operations_and_source_tabs(admin_client: httpx.AsyncClient) -> None:
+async def test_run_detail_renders_operations_and_source_tabs(
+    admin_client: httpx.AsyncClient,
+) -> None:
     run_id = "ffffffff-ffff-ffff-ffff-ffffffffffff"
     source = "import pql\n"
     post = await admin_client.post(

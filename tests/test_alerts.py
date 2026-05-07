@@ -456,7 +456,9 @@ async def test_feed_json_roundtrip_with_valid_token(admin_client: httpx.AsyncCli
 
 
 @pytest.mark.asyncio
-async def test_stranger_cannot_fetch_alert_by_slug(admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient) -> None:
+async def test_stranger_cannot_fetch_alert_by_slug(
+    admin_client: httpx.AsyncClient, non_admin_client: httpx.AsyncClient
+) -> None:
     saved_query_id = _make_saved_query(owner_id=1, title="Stranger test")
     create = await admin_client.post(
         "/api/alerts",

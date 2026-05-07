@@ -43,8 +43,6 @@ _PARAM_IPYNB = json.dumps(
 ).encode()
 
 
-
-
 @pytest.fixture
 def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point ``settings.jupyter.notebooks_dir`` at an isolated tmp directory."""
@@ -57,7 +55,9 @@ def workspace_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 # -- GET /api/notebooks/tree --
 
 
-async def test_tree_returns_nested_listing(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_tree_returns_nested_listing(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """Happy path: nested folders + top-level notebooks surface in the JSON."""
     (workspace_dir / "pipelines").mkdir()
     (workspace_dir / "pipelines" / "etl.ipynb").write_bytes(_PARAM_IPYNB)
@@ -87,7 +87,9 @@ async def test_tree_excludes_runs_dir(workspace_dir: Path, admin_client: httpx.A
     assert "real.ipynb" in names
 
 
-async def test_tree_non_admin_forbidden(workspace_dir: Path, non_admin_client: httpx.AsyncClient) -> None:
+async def test_tree_non_admin_forbidden(
+    workspace_dir: Path, non_admin_client: httpx.AsyncClient
+) -> None:
     """The tree API is admin-only; non-admins get a 403 envelope."""
     resp = await non_admin_client.get("/api/notebooks/tree")
     assert resp.status_code == 403
@@ -96,7 +98,9 @@ async def test_tree_non_admin_forbidden(workspace_dir: Path, non_admin_client: h
 # -- GET /notebooks/workspace HTML page --
 
 
-async def test_workspace_page_admin_renders(workspace_dir: Path, admin_client: httpx.AsyncClient) -> None:
+async def test_workspace_page_admin_renders(
+    workspace_dir: Path, admin_client: httpx.AsyncClient
+) -> None:
     """Admins get the workspace HTML page with the upload card markup."""
     resp = await admin_client.get("/notebooks/workspace")
     assert resp.status_code == 200
@@ -104,7 +108,9 @@ async def test_workspace_page_admin_renders(workspace_dir: Path, admin_client: h
     assert "notebookWorkspace()" in resp.text
 
 
-async def test_workspace_page_non_admin_forbidden(workspace_dir: Path, non_admin_client: httpx.AsyncClient) -> None:
+async def test_workspace_page_non_admin_forbidden(
+    workspace_dir: Path, non_admin_client: httpx.AsyncClient
+) -> None:
     """Non-admins bounce off the workspace page."""
     resp = await non_admin_client.get("/notebooks/workspace")
     assert resp.status_code == 403

@@ -33,22 +33,18 @@ class TestAdminCdfTailPage:
     """``GET /admin/cdf-subscriptions`` rendering + filter behaviour."""
 
     @pytest.mark.asyncio
-    async def test_renders_subscription_list(
-        self, admin_client: httpx.AsyncClient
-    ) -> None:
+    async def test_renders_subscription_list(self, admin_client: httpx.AsyncClient) -> None:
         sub_id = _seed("demo.silver.orders")
         resp = await admin_client.get("/admin/cdf-subscriptions")
         assert resp.status_code == 200, resp.text
         body = resp.text
         assert "demo.silver.orders" in body
-        assert f'/api/admin/cdf-subscriptions/{sub_id}/toggle' in body
+        assert f"/api/admin/cdf-subscriptions/{sub_id}/toggle" in body
         # Healthy install -> green badge, no error chip.
         assert "all healthy" in body
 
     @pytest.mark.asyncio
-    async def test_filters_by_table_substring(
-        self, admin_client: httpx.AsyncClient
-    ) -> None:
+    async def test_filters_by_table_substring(self, admin_client: httpx.AsyncClient) -> None:
         _seed("demo.silver.orders")
         _seed("demo.bronze.events")
         resp = await admin_client.get(
@@ -61,9 +57,7 @@ class TestAdminCdfTailPage:
         assert "demo.bronze.events" not in body
 
     @pytest.mark.asyncio
-    async def test_only_active_filter_drops_paused(
-        self, admin_client: httpx.AsyncClient
-    ) -> None:
+    async def test_only_active_filter_drops_paused(self, admin_client: httpx.AsyncClient) -> None:
         _seed("demo.silver.active_one", is_active=True)
         _seed("demo.silver.paused_one", is_active=False)
         resp = await admin_client.get(

@@ -111,8 +111,6 @@ def _patch_for_principal(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-
-
 # -- Catalog enforcement --
 
 
@@ -122,13 +120,17 @@ class TestCatalogEnforcement:
         resp = await admin_client.get("/catalogs/test_cat")
         assert resp.status_code == 200
 
-    async def test_non_admin_denied_without_grant(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_non_admin_denied_without_grant(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(effective_for_user=[])
         resp = await non_admin_client.get("/catalogs/test_cat")
         assert resp.status_code == 403
         assert "Access denied" in resp.text
 
-    async def test_non_admin_allowed_with_use_catalog(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_non_admin_allowed_with_use_catalog(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(
             effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["USE CATALOG"]}]
         )
@@ -147,12 +149,16 @@ class TestCatalogEnforcement:
 
 
 class TestSchemaEnforcement:
-    async def test_non_admin_denied_without_grant(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_non_admin_denied_without_grant(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(effective_for_user=[])
         resp = await non_admin_client.get("/catalogs/test_cat/schemas/test_sch")
         assert resp.status_code == 403
 
-    async def test_non_admin_allowed_with_use_schema(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_non_admin_allowed_with_use_schema(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(
             effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["USE SCHEMA"]}]
         )
@@ -164,7 +170,9 @@ class TestSchemaEnforcement:
 
 
 class TestTableEnforcement:
-    async def test_non_admin_denied_without_grant(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_non_admin_denied_without_grant(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(effective_for_user=[])
         resp = await non_admin_client.get("/catalogs/test_cat/schemas/test_sch/tables/test_tbl")
         assert resp.status_code == 403
@@ -187,7 +195,9 @@ class TestUpdateEnforcement:
         assert resp.status_code == 403
         assert resp.json()["code"] == "authorization_error"
 
-    async def test_update_catalog_allowed_with_modify(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_update_catalog_allowed_with_modify(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(
             effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["MODIFY"]}]
         )
@@ -215,7 +225,9 @@ class TestUpdateEnforcement:
 
 
 class TestPermissionsEnforcement:
-    async def test_update_permissions_denied_without_manage_grants(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_update_permissions_denied_without_manage_grants(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(
             effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["MODIFY"]}]
         )
@@ -225,7 +237,9 @@ class TestPermissionsEnforcement:
         )
         assert resp.status_code == 403
 
-    async def test_update_permissions_allowed_with_manage_grants(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_update_permissions_allowed_with_manage_grants(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock(
             effective_for_user=[{"principal": "nonadmin@test.com", "privileges": ["MANAGE_GRANTS"]}]
         )
@@ -240,7 +254,9 @@ class TestPermissionsEnforcement:
 
 
 class TestFederationAdminOnly:
-    async def test_connections_denied_for_non_admin(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_connections_denied_for_non_admin(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock()
         resp = await non_admin_client.get("/api/connections")
         assert resp.status_code == 403
@@ -251,23 +267,31 @@ class TestFederationAdminOnly:
         resp = await admin_client.get("/api/connections")
         assert resp.status_code == 200
 
-    async def test_ext_locations_denied_for_non_admin(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_ext_locations_denied_for_non_admin(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock()
         resp = await non_admin_client.get("/api/external-locations")
         assert resp.status_code == 403
 
-    async def test_credentials_denied_for_non_admin(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_credentials_denied_for_non_admin(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock()
         resp = await non_admin_client.get("/api/credentials")
         assert resp.status_code == 403
 
-    async def test_connections_html_denied_for_non_admin(self, non_admin_client: httpx.AsyncClient) -> None:
+    async def test_connections_html_denied_for_non_admin(
+        self, non_admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock()
         resp = await non_admin_client.get("/connections")
         assert resp.status_code == 403
         assert "Access denied" in resp.text
 
-    async def test_connections_html_allowed_for_admin(self, admin_client: httpx.AsyncClient) -> None:
+    async def test_connections_html_allowed_for_admin(
+        self, admin_client: httpx.AsyncClient
+    ) -> None:
         app.state.uc_client = _make_uc_mock()
         resp = await admin_client.get("/connections")
         assert resp.status_code == 200

@@ -175,7 +175,9 @@ def uc_with_versions(monkeypatch: pytest.MonkeyPatch) -> AsyncMock:
 
 
 @pytest.mark.asyncio
-async def test_compare_anonymous_redirects(uc_with_versions: AsyncMock, anonymous_client: httpx.AsyncClient) -> None:
+async def test_compare_anonymous_redirects(
+    uc_with_versions: AsyncMock, anonymous_client: httpx.AsyncClient
+) -> None:
     resp = await anonymous_client.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=2")
     assert resp.status_code == 303
 

@@ -84,9 +84,7 @@ async def api_admin_list_expected_producers(
         )
         if only_active:
             stmt = stmt.where(ExpectedLineageInbound.is_active.is_(True))
-        rows = list(
-            session.scalars(stmt.order_by(ExpectedLineageInbound.created_at.desc())).all()
-        )
+        rows = list(session.scalars(stmt.order_by(ExpectedLineageInbound.created_at.desc())).all())
         out = [_serialize(r) for r in rows]
     return {"expectations": out}
 

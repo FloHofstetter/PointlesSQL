@@ -54,8 +54,6 @@ def orders_delta(tmp_path: Path) -> str:
     return loc
 
 
-
-
 # -- service-level -------------------------------------------------
 
 
@@ -183,7 +181,9 @@ def test_list_queries_reverse_lookup_by_table() -> None:
 # -- route-level ---------------------------------------------------
 
 
-async def test_execute_success_writes_history_row(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_execute_success_writes_history_row(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
         "/api/sql/execute",
@@ -207,7 +207,9 @@ async def test_execute_success_writes_history_row(orders_delta: str, admin_clien
         assert [t.full_name for t in tables] == ["main.sales.orders"]
 
 
-async def test_execute_parse_failure_writes_failed_history(orders_delta: str, admin_client: httpx.AsyncClient) -> None:
+async def test_execute_parse_failure_writes_failed_history(
+    orders_delta: str, admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     resp = await admin_client.post(
         "/api/sql/execute",
@@ -220,7 +222,9 @@ async def test_execute_parse_failure_writes_failed_history(orders_delta: str, ad
     assert any("Could not parse" in (r["error_message"] or "") for r in rows)
 
 
-async def test_api_queries_non_admin_sees_only_own_rows(orders_delta: str, non_admin_client: httpx.AsyncClient) -> None:
+async def test_api_queries_non_admin_sees_only_own_rows(
+    orders_delta: str, non_admin_client: httpx.AsyncClient
+) -> None:
     app.state.uc_client = _make_uc_mock(
         storage_location=orders_delta,
         effective=[{"principal": "nonadmin@test.com", "privileges": ["SELECT"]}],

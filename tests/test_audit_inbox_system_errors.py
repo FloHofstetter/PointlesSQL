@@ -52,7 +52,9 @@ def _delete_all_subs() -> None:
 
 
 @pytest.mark.asyncio
-async def test_inbox_renders_system_errors_band_when_subscription_has_error(admin_client: httpx.AsyncClient) -> None:
+async def test_inbox_renders_system_errors_band_when_subscription_has_error(
+    admin_client: httpx.AsyncClient,
+) -> None:
     """Page surfaces a System-errors section when at least one sub failed."""
     _delete_all_subs()
     _seed_subscription(

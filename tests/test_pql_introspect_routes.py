@@ -7,7 +7,9 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_primitives_returns_five_entries_with_signature_and_doc(admin_client: httpx.AsyncClient) -> None:
+async def test_primitives_returns_five_entries_with_signature_and_doc(
+    admin_client: httpx.AsyncClient,
+) -> None:
     response = await admin_client.get("/api/pql/primitives")
     assert response.status_code == 200, response.text
     payload = response.json()
@@ -31,7 +33,9 @@ async def test_primitives_returns_five_entries_with_signature_and_doc(admin_clie
 
 
 @pytest.mark.asyncio
-async def test_autoload_signature_carries_source_path_kwarg(admin_client: httpx.AsyncClient) -> None:
+async def test_autoload_signature_carries_source_path_kwarg(
+    admin_client: httpx.AsyncClient,
+) -> None:
     """Regression test for the live-walkthrough bug.
 
     The 2026-04-25 demo failed because the human reviewer typed

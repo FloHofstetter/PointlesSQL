@@ -35,7 +35,6 @@ def _stub_uc_client() -> None:
     app.state.uc_client = MagicMock()
 
 
-
 def _seed_run(
     *,
     rejects_by_reason: dict[str, int] | None = None,
@@ -168,7 +167,9 @@ def test_lineage_diff_row_counts_per_table() -> None:
 
 
 @pytest.mark.asyncio
-async def test_diff_json_includes_lineage_diff_when_detail_true(admin_client: httpx.AsyncClient) -> None:
+async def test_diff_json_includes_lineage_diff_when_detail_true(
+    admin_client: httpx.AsyncClient,
+) -> None:
     a = _seed_run(rejects_by_reason={"on_key_null": 1})
     b = _seed_run(rejects_by_reason={"on_key_null": 2})
     r = await admin_client.get(
@@ -196,7 +197,9 @@ async def test_diff_json_omits_lineage_when_detail_false(admin_client: httpx.Asy
 
 
 @pytest.mark.asyncio
-async def test_html_diff_renders_stat_cards_and_chart_payload(admin_client: httpx.AsyncClient) -> None:
+async def test_html_diff_renders_stat_cards_and_chart_payload(
+    admin_client: httpx.AsyncClient,
+) -> None:
     a = _seed_run(
         rejects_by_reason={"on_key_null": 5},
         value_changes={"cat.sch.silver": 3},
