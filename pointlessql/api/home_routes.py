@@ -607,7 +607,7 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
             tree = notebook_workspace_service.list_workspace_tree(
                 settings_obj.jupyter.notebooks_dir.resolve(),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 — search must never fail the page
             logger.warning("search: notebook tree unavailable", exc_info=True)
             return []
         out: list[dict[str, Any]] = []

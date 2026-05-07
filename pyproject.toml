@@ -115,7 +115,7 @@ target-version = "py314"
 extend-exclude = ["notebooks/scratch*"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "D"]
+select = ["E", "F", "I", "UP", "D", "BLE"]
 ignore = ["D107"]  # __init__ docstrings — handled by class docstring per pydoclint
 pydocstyle.convention = "google"
 
