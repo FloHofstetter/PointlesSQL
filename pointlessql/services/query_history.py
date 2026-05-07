@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import desc, func, select
 
-from pointlessql.enums import QueryStatus
+from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.identifiers import QueryHistoryId, RunId
 from pointlessql.models import QueryHistory, QueryHistoryTable
 
@@ -38,19 +38,9 @@ logger = logging.getLogger(__name__)
 
 _RUN_ID_LENGTH = 36
 
-VALID_READ_KINDS: frozenset[str] = frozenset(
-    {
-        "sql_execute",
-        "pql_table",
-        "pql_table_at_version",
-        "engine_direct",
-        "audit_api",
-        # Admin-only cross-workspace lens.  Distinguished from
-        # ``audit_api`` so the audit-of-audit pipeline can flag a
-        # tenant admin escalating into the god-eye view.
-        "audit_api_cross_workspace",
-    }
-)
+VALID_READ_KINDS: frozenset[str] = frozenset(member.value for member in ReadKind)
+"""Legacy frozenset alias kept for back-compat.  New code should use the
+:class:`pointlessql.enums.ReadKind` StrEnum directly."""
 
 
 def _sanitise_run_id(value: str | None) -> RunId | None:
@@ -98,7 +88,7 @@ def record_query(
     error_message: str | None = None,
     request_id: str | None = None,
     agent_run_id: RunId | None = None,
-    read_kind: str = "sql_execute",
+    read_kind: ReadKind = ReadKind.SQL_EXECUTE,
     workspace_id: int = 1,
 ) -> QueryHistoryId:
     """Insert a :class:`QueryHistory` row plus its table-reference rows.

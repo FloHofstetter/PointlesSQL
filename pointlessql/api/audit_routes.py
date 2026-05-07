@@ -33,7 +33,7 @@ from pointlessql.api.dependencies import (
     require_auditor,
 )
 from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
-from pointlessql.enums import QueryStatus
+from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     PermissionDeniedError,
@@ -139,7 +139,7 @@ def _record_self(
     endpoint: str,
     params: dict[str, Any],
     started_at: datetime.datetime,
-    read_kind: str = "audit_api",
+    read_kind: ReadKind = ReadKind.AUDIT_API,
 ) -> None:
     """Persist a ``query_history`` row for one ``/api/audit/*`` call.
 
@@ -258,7 +258,7 @@ async def api_audit_summary(
             "workspace": workspace,
         },
         started_at=started_at,
-        read_kind="audit_api_cross_workspace" if lens_mode == "all" else "audit_api",
+        read_kind=ReadKind.AUDIT_API_CROSS_WORKSPACE if lens_mode == "all" else ReadKind.AUDIT_API,
     )
     return response
 
@@ -344,7 +344,7 @@ async def api_audit_timeseries(
             "workspace": workspace,
         },
         started_at=started_at,
-        read_kind="audit_api_cross_workspace" if lens_mode == "all" else "audit_api",
+        read_kind=ReadKind.AUDIT_API_CROSS_WORKSPACE if lens_mode == "all" else ReadKind.AUDIT_API,
     )
     return response
 
@@ -435,7 +435,7 @@ async def api_audit_anomalies(
             "workspace": workspace,
         },
         started_at=started_at,
-        read_kind="audit_api_cross_workspace" if lens_mode == "all" else "audit_api",
+        read_kind=ReadKind.AUDIT_API_CROSS_WORKSPACE if lens_mode == "all" else ReadKind.AUDIT_API,
     )
     return response
 

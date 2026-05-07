@@ -37,7 +37,7 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.enums import QueryStatus
+from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -243,7 +243,7 @@ def _record(
     record_read(
         factory,
         table_fqn=full_name,
-        read_kind="pql_table_at_version",
+        read_kind=ReadKind.PQL_TABLE_AT_VERSION,
         started_at=started_at,
         finished_at=finished_at,
         status=status,

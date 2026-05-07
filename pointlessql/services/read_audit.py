@@ -34,7 +34,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from pointlessql.enums import QueryStatus
+from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.identifiers import RunId
 from pointlessql.services.query_history import record_query
 
@@ -61,7 +61,7 @@ def record_read(
     factory: sessionmaker[Session] | None,
     *,
     table_fqn: str,
-    read_kind: str = "pql_table",
+    read_kind: ReadKind = ReadKind.PQL_TABLE,
     agent_run_id: str | None = None,
     principal: str | None = None,
     started_at: datetime.datetime,
