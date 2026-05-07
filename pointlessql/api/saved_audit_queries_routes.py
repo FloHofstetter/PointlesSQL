@@ -13,13 +13,13 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.services import saved_audit_queries as svc
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ async def api_get_saved_audit_query(request: Request, slug: str) -> dict[str, An
     require_admin(request)
     row = svc.get_by_slug(request.app.state.session_factory, slug)
     if row is None:
-        raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
+        raise ResourceNotFoundError(f"saved_audit_query: {slug}")
     return row
 
 
@@ -156,7 +156,7 @@ async def api_update_saved_audit_query(
         alert_threshold_count=threshold_arg,
     )
     if row is None:
-        raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
+        raise ResourceNotFoundError(f"saved_audit_query: {slug}")
     await audit(
         request,
         "saved_audit_query.updated",
@@ -183,7 +183,7 @@ async def api_delete_saved_audit_query(request: Request, slug: str) -> dict[str,
     require_admin(request)
     deleted = svc.delete(request.app.state.session_factory, slug)
     if not deleted:
-        raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
+        raise ResourceNotFoundError(f"saved_audit_query: {slug}")
     await audit(
         request,
         "saved_audit_query.deleted",
@@ -217,7 +217,7 @@ async def api_run_saved_audit_query(
     require_admin(request)
     result = svc.execute(request.app.state.session_factory, slug, row_cap=row_cap)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
+        raise ResourceNotFoundError(f"saved_audit_query: {slug}")
     return result
 
 
@@ -243,7 +243,7 @@ async def api_export_saved_audit_query_csv(
     require_admin(request)
     result = svc.execute(request.app.state.session_factory, slug, row_cap=10_000)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
+        raise ResourceNotFoundError(f"saved_audit_query: {slug}")
 
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -286,7 +286,7 @@ async def api_export_saved_audit_query_json(
     require_admin(request)
     result = svc.execute(request.app.state.session_factory, slug, row_cap=10_000)
     if result is None:
-        raise HTTPException(status_code=404, detail=f"saved_audit_query: {slug}")
+        raise ResourceNotFoundError(f"saved_audit_query: {slug}")
 
     payload = json.dumps(
         {

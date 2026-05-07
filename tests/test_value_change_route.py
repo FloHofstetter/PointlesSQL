@@ -165,4 +165,6 @@ async def test_value_changes_rejects_empty_row_id(uc_mock: MagicMock) -> None:
             "/api/lineage/value-changes",
             params={"table": "main.silver.orders", "row_id": ""},
         )
-    assert response.status_code == 400
+    # Phase 43.3: ``row_id is required`` is a ValidationError (422).
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"

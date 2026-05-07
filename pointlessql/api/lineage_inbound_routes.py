@@ -138,7 +138,8 @@ async def api_lineage_openlineage_inbound(
     try:
         event = OpenLineageInboundEvent.model_validate(raw_body)
     except PydanticValidationError as exc:
-        raise ValidationError(f"invalid OpenLineage event: {exc.errors()[0].get('msg', 'parse error')}") from exc
+        msg = exc.errors()[0].get("msg", "parse error")
+        raise ValidationError(f"invalid OpenLineage event: {msg}") from exc
 
     now = datetime.datetime.now(datetime.UTC)
     column_candidates = parse_to_column_maps(

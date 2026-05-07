@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
@@ -36,7 +36,12 @@ from pointlessql.api.dependencies import (
     get_uc_client,
     get_user,
 )
-from pointlessql.exceptions import CatalogNotFoundError, CatalogUnavailableError
+from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
+from pointlessql.exceptions import (
+    CatalogNotFoundError,
+    CatalogUnavailableError,
+    ValidationError,
+)
 from pointlessql.models import AgentRunOperation
 from pointlessql.services import pii_mask, pii_resolver
 from pointlessql.services.authorization import SELECT, check_privilege
@@ -433,7 +438,7 @@ def _load_op_metadata(op_ids: set[int]) -> dict[int, dict[str, Any]]:
         return result
 
 
-@router.get("/api/lineage/row-trace")
+@router.get("/api/lineage/row-trace", responses=STANDARD_ERROR_RESPONSES)
 async def api_row_trace(
     request: Request,
     table: str = Query(..., description="Three-part UC name"),
@@ -458,7 +463,7 @@ async def api_row_trace(
         HTTPException: 400 when ``row_id`` is empty.
     """
     if not row_id:
-        raise HTTPException(status_code=400, detail="row_id is required")
+        raise ValidationError("row_id is required")
     await _enforce_select(request, table)
 
     factory = _get_session_factory()
@@ -606,7 +611,7 @@ def _collect_column_op_ids(steps: list[ColumnTraceStep]) -> set[int]:
     return ids
 
 
-@router.get("/api/lineage/column-trace")
+@router.get("/api/lineage/column-trace", responses=STANDARD_ERROR_RESPONSES)
 async def api_column_trace(
     request: Request,
     table: str = Query(..., description="Three-part UC name"),
@@ -630,7 +635,7 @@ async def api_column_trace(
         HTTPException: 400 when ``column`` is empty.
     """
     if not column:
-        raise HTTPException(status_code=400, detail="column is required")
+        raise ValidationError("column is required")
     await _enforce_select(request, table)
 
     factory = _get_session_factory()
@@ -693,7 +698,7 @@ async def html_column_trace(
     )
 
 
-@router.get("/api/lineage/value-changes")
+@router.get("/api/lineage/value-changes", responses=STANDARD_ERROR_RESPONSES)
 async def api_value_changes(
     request: Request,
     table: str = Query(..., description="Three-part UC name"),
@@ -723,7 +728,7 @@ async def api_value_changes(
         HTTPException: 400 when ``row_id`` is empty.
     """
     if not row_id:
-        raise HTTPException(status_code=400, detail="row_id is required")
+        raise ValidationError("row_id is required")
     await _enforce_select(request, table)
 
     factory = _get_session_factory()

@@ -28,7 +28,7 @@ import logging
 from typing import Any
 
 import deltalake
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
@@ -36,7 +36,11 @@ from pointlessql.api.dependencies import (
     get_user,
     require_admin,
 )
-from pointlessql.exceptions import CatalogNotFoundError, CatalogUnavailableError
+from pointlessql.exceptions import (
+    EngineError,
+    ResourceNotFoundError,
+    ValidationError,
+)
 from pointlessql.models import AgentRunOperation
 from pointlessql.services.authorization import SELECT, check_privilege
 
@@ -58,28 +62,28 @@ async def _resolve_storage(request: Request, full_name: str) -> str:
         The storage location URI.
 
     Raises:
-        HTTPException: 404 when the table is unknown / has no
-            location, 403 when the user lacks SELECT, 503 when soyuz
-            is unreachable.
+        ValidationError: 422 when ``full_name`` isn't 3-part.
+        ResourceNotFoundError: 404 when the table has no
+            ``storage_location`` registered.
+        CatalogNotFoundError: 404 when the table doesn't exist on
+            soyuz.
+        CatalogUnavailableError: 502 when soyuz is unreachable.
+        AuthorizationError: 403 when the user lacks ``SELECT``.
     """
     user = get_user(request)
     uc = get_uc_client(request)
     parts = full_name.split(".")
     if len(parts) != 3:
-        raise HTTPException(
-            status_code=400,
-            detail=f"full_name must be three parts: 'catalog.schema.table', got {full_name!r}",
+        raise ValidationError(
+            f"full_name must be three parts: 'catalog.schema.table', got {full_name!r}"
         )
     cat, sch, tbl = parts
-    try:
-        table_info = await uc.get_table(cat, sch, tbl)
-    except CatalogUnavailableError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except CatalogNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    # CatalogUnavailableError / CatalogNotFoundError flow through the
+    # centralised handler (502 / 404) — no inline translation needed.
+    table_info = await uc.get_table(cat, sch, tbl)
     storage = table_info.get("storage_location") if isinstance(table_info, dict) else None
     if not storage or not isinstance(storage, str):
-        raise HTTPException(status_code=404, detail=f"Table {full_name!r} has no storage_location")
+        raise ResourceNotFoundError(f"Table {full_name!r} has no storage_location")
     await check_privilege(uc, user["email"], bool(user.get("is_admin")), "table", full_name, SELECT)
     return storage
 
@@ -112,7 +116,7 @@ async def api_table_versions(request: Request, full_name: str) -> dict[str, Any]
         table = deltalake.DeltaTable(storage)
         history = table.history()
     except Exception as exc:  # noqa: BLE001 — Delta absent / corrupt
-        raise HTTPException(status_code=503, detail=f"Could not read Delta history: {exc}") from exc
+        raise EngineError(f"Could not read Delta history: {exc}") from exc
 
     factory = request.app.state.session_factory
     with factory() as session:
@@ -217,10 +221,7 @@ async def api_table_preview_at_version(
         frame = table.to_pandas()
     except Exception as exc:  # noqa: BLE001 — Delta absent / version invalid
         detail, _kind = humanize_preview_error(exc)
-        raise HTTPException(
-            status_code=400,
-            detail=f"Could not load v{version}: {detail}",
-        ) from exc
+        raise ValidationError(f"Could not load v{version}: {detail}") from exc
 
     rows, total = _frame_rows_to_dicts(frame, limit)
     return {
@@ -269,7 +270,7 @@ async def api_row_at_version(
         dt.load_as_version(version)
         frame = dt.to_pandas()
     except Exception as exc:  # noqa: BLE001 — Delta absent / version invalid
-        raise HTTPException(status_code=400, detail=f"Could not load v{version}: {exc}") from exc
+        raise ValidationError(f"Could not load v{version}: {exc}") from exc
 
     if "_lineage_row_id" not in frame.columns:
         return {

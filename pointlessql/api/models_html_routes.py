@@ -13,11 +13,12 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from pointlessql.api.dependencies import get_uc_client, get_user
 from pointlessql.api.models_routes import annotate_version, fetch_mlflow_context
+from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.services import model_promotion
 
 _logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ async def model_detail_page(full_name: str, request: Request) -> HTMLResponse | 
     client = get_uc_client(request)
     model = await client.get_registered_model(full_name)
     if not model:
-        raise HTTPException(status_code=404, detail=f"Model {full_name!r} not found")
+        raise ResourceNotFoundError(f"Model {full_name!r} not found")
 
     versions = await client.list_model_versions(full_name=full_name)
     versions_enriched = await _gather_versions_with_mlflow(versions)
@@ -126,7 +127,7 @@ async def model_compare_page(
             status_code=303,
         )
     if v1 == v2:
-        raise HTTPException(status_code=400, detail="v1 and v2 must differ")
+        raise ValidationError("v1 and v2 must differ")
 
     # Local imports to avoid circulars at module import time.
     from pointlessql.services.models_compare import (
@@ -141,9 +142,9 @@ async def model_compare_page(
         client.get_model_version(full_name, v2),
     )
     if not v1_info:
-        raise HTTPException(status_code=404, detail=f"v{v1} not found")
+        raise ResourceNotFoundError(f"v{v1} not found")
     if not v2_info:
-        raise HTTPException(status_code=404, detail=f"v{v2} not found")
+        raise ResourceNotFoundError(f"v{v2} not found")
 
     v1_annot = annotate_version(v1_info)
     v2_annot = annotate_version(v2_info)

@@ -45,6 +45,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_admin,
 )
+from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.services.authorization import (
     MODIFY,
@@ -264,7 +265,7 @@ def _build_pql(request: Request, *, principal: str, agent_run_id: str | None) ->
 # ─── routes ───────────────────────────────────────────────────────────
 
 
-@router.post("/api/pql/autoload")
+@router.post("/api/pql/autoload", responses=STANDARD_ERROR_RESPONSES)
 async def api_pql_autoload(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Lift files from a Volume directory into a Delta target.
 
@@ -341,7 +342,7 @@ async def api_pql_autoload(request: Request, body: dict[str, Any] = Body(...)) -
 _VALID_WRITE_MODES = ("error", "append", "overwrite", "ignore")
 
 
-@router.post("/api/pql/write_table")
+@router.post("/api/pql/write_table", responses=STANDARD_ERROR_RESPONSES)
 async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Run a SELECT, write the result rows to a Delta target.
 
@@ -456,7 +457,7 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
 _VALID_MERGE_STRATEGIES = ("upsert", "scd2")
 
 
-@router.post("/api/pql/merge")
+@router.post("/api/pql/merge", responses=STANDARD_ERROR_RESPONSES)
 async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Run a SELECT, merge the result into an existing Delta target.
 
@@ -570,7 +571,7 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
     return result
 
 
-@router.post("/api/pql/drop_table", status_code=200)
+@router.post("/api/pql/drop_table", status_code=200, responses=STANDARD_ERROR_RESPONSES)
 async def api_pql_drop_table(request: Request, body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     """Delete a Unity Catalog table — admin-only.
 

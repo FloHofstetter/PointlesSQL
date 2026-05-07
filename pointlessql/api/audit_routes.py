@@ -22,7 +22,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Query, Request
 from sqlalchemy import func, select
 
 from pointlessql.api._audit_helpers import audit
@@ -32,7 +32,12 @@ from pointlessql.api.dependencies import (
     require_admin,
     require_auditor,
 )
-from pointlessql.exceptions import CatalogNotFoundError, ValidationError
+from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
+from pointlessql.exceptions import (
+    CatalogNotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from pointlessql.models import AgentRun, AnomalyAck, LineageValueChange
 from pointlessql.services import audit_aggregator as agg
 from pointlessql.services.query_history import VALID_READ_KINDS, list_queries, record_query
@@ -82,7 +87,7 @@ def _resolve_workspace_lens(request: Request, override: str | None) -> tuple[int
 
     if cleaned.lower() == "all":
         if not is_admin:
-            raise HTTPException(status_code=403, detail="?workspace=all requires admin")
+            raise PermissionDeniedError("?workspace=all requires admin")
         return None, "all"
 
     # Slug → id
@@ -93,10 +98,7 @@ def _resolve_workspace_lens(request: Request, override: str | None) -> tuple[int
     if ws is None:
         raise ValidationError(f"workspace {cleaned!r} not found")
     if ws.id != current_id and not is_admin:
-        raise HTTPException(
-            status_code=403,
-            detail="?workspace=<slug> for a different workspace requires admin",
-        )
+        raise PermissionDeniedError("?workspace=<slug> for a different workspace requires admin")
     return ws.id, "named"
 
 
@@ -180,7 +182,7 @@ def _record_self(
         logger.warning("audit_api: failed to self-track %s: %s", endpoint, exc)
 
 
-@router.get("/api/audit/summary")
+@router.get("/api/audit/summary", responses=STANDARD_ERROR_RESPONSES)
 async def api_audit_summary(
     request: Request,
     since: str | None = Query(default=None, description="ISO-8601 lower bound"),
@@ -257,7 +259,7 @@ async def api_audit_summary(
     return response
 
 
-@router.get("/api/audit/timeseries")
+@router.get("/api/audit/timeseries", responses=STANDARD_ERROR_RESPONSES)
 async def api_audit_timeseries(
     request: Request,
     metric: str = Query(..., description="Cockpit metric"),
@@ -343,7 +345,7 @@ async def api_audit_timeseries(
     return response
 
 
-@router.get("/api/audit/anomalies")
+@router.get("/api/audit/anomalies", responses=STANDARD_ERROR_RESPONSES)
 async def api_audit_anomalies(
     request: Request,
     metric: str = Query(..., description="Cockpit metric"),
@@ -434,7 +436,7 @@ async def api_audit_anomalies(
     return response
 
 
-@router.get("/api/audit/principal-summary")
+@router.get("/api/audit/principal-summary", responses=STANDARD_ERROR_RESPONSES)
 async def api_audit_principal_summary(
     request: Request,
     principal: str = Query(..., description="AgentRun.principal exact match"),
@@ -610,7 +612,7 @@ async def api_audit_pii_reveal(
     }
 
 
-@router.get("/api/audit/history")
+@router.get("/api/audit/history", responses=STANDARD_ERROR_RESPONSES)
 async def api_audit_history(
     request: Request,
     since: str | None = Query(default=None, description="ISO-8601 lower bound on started_at"),
@@ -906,7 +908,7 @@ def _ack_is_active(ack: AnomalyAck, now: datetime.datetime) -> bool:
     return cutoff > now
 
 
-@router.get("/api/audit/inbox")
+@router.get("/api/audit/inbox", responses=STANDARD_ERROR_RESPONSES)
 async def api_audit_inbox(
     request: Request,
     severity: str = Query(

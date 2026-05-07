@@ -160,4 +160,7 @@ async def test_column_trace_rejects_empty_column(uc_mock: MagicMock) -> None:
             "/api/lineage/column-trace",
             params={"table": "main.gold.t", "column": ""},
         )
-    assert response.status_code == 400
+    # Phase 43.3: ``column is required`` is a ValidationError (422),
+    # not the legacy bare-string HTTPException(400).
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"

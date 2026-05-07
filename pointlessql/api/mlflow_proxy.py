@@ -30,6 +30,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from pointlessql.api.dependencies import get_user
+from pointlessql.exceptions import AuthenticationError
+from pointlessql.services.mlflow_subprocess import MLflowStartupError
 from pointlessql.types import UserInfo
 
 _logger = logging.getLogger(__name__)
@@ -63,17 +65,14 @@ async def mlflow_proxy(path: str, request: Request) -> Response:
     """
     user: UserInfo = get_user(request)
     if user["id"] == 0:
-        raise HTTPException(status_code=401, detail="Auth required for MLflow")
+        raise AuthenticationError("Auth required for MLflow")
 
     settings = request.app.state.settings
     if request.app.state.mlflow_subprocess is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "MLflow subprocess is not running. "
-                "Install the optional [ml] extra and ensure "
-                "POINTLESSQL_MLFLOW_ENABLED=1."
-            ),
+        raise MLflowStartupError(
+            "MLflow subprocess is not running. "
+            "Install the optional [ml] extra and ensure "
+            "POINTLESSQL_MLFLOW_ENABLED=1."
         )
 
     target_url = f"http://127.0.0.1:{settings.mlflow.port}/{path}"
@@ -104,6 +103,8 @@ async def mlflow_proxy(path: str, request: Request) -> Response:
             )
         except httpx.HTTPError as exc:
             _logger.warning("MLflow proxy upstream error for %s: %s", path, exc)
+            # bare-http-ok: 502 is the canonical proxy-upstream-failed
+            # status; no domain-named exception exists for it.
             raise HTTPException(status_code=502, detail=f"MLflow upstream error: {exc}") from exc
 
     # Strip headers that interfere with our re-emission. ``content-encoding``

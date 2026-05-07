@@ -20,6 +20,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from pointlessql.api.dependencies import get_user
+from pointlessql.exceptions import AuthenticationError
+from pointlessql.services.dbt_subprocess import DBTStartupError
 from pointlessql.types import UserInfo
 
 _logger = logging.getLogger(__name__)
@@ -53,17 +55,14 @@ async def dbt_proxy(path: str, request: Request) -> Response:
     """
     user: UserInfo = get_user(request)
     if user["id"] == 0:
-        raise HTTPException(status_code=401, detail="Auth required for dbt docs")
+        raise AuthenticationError("Auth required for dbt docs")
 
     settings = request.app.state.settings
     if request.app.state.dbt_subprocess is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "dbt-docs subprocess is not running. "
-                "Install the optional [dbt] extra and ensure "
-                "POINTLESSQL_DBT_ENABLED=1 plus a compiled dbt project."
-            ),
+        raise DBTStartupError(
+            "dbt-docs subprocess is not running. "
+            "Install the optional [dbt] extra and ensure "
+            "POINTLESSQL_DBT_ENABLED=1 plus a compiled dbt project."
         )
 
     target_url = f"http://127.0.0.1:{settings.dbt.docs_port}/{path}"
@@ -91,6 +90,8 @@ async def dbt_proxy(path: str, request: Request) -> Response:
             )
         except httpx.HTTPError as exc:
             _logger.warning("dbt-docs proxy upstream error for %s: %s", path, exc)
+            # bare-http-ok: 502 is the canonical proxy-upstream-failed
+            # status; no domain-named exception exists for it.
             raise HTTPException(status_code=502, detail=f"dbt-docs upstream error: {exc}") from exc
 
     response_headers = {

@@ -29,12 +29,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Query, Request
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin, require_supervisor
-from pointlessql.exceptions import AuditUnavailableError
+from pointlessql.exceptions import (
+    AuditUnavailableError,
+    AuthenticationError,
+    EngineError,
+    ResourceNotFoundError,
+)
 from pointlessql.models.agent_run_audit import AgentRunOperation
 from pointlessql.models.agent_runs import (
     STATUS_FAILED,
@@ -395,9 +400,9 @@ async def _emit_audit_for_run(
             pre_versions=pre_versions,
             post_versions=post_versions,
         )
-    except AuditUnavailableError as exc:
-        logger.error("dbt bridge failed to emit operations: %s", exc)
-        raise HTTPException(status_code=500, detail=f"audit emit failed: {exc}") from exc
+    except AuditUnavailableError:
+        logger.exception("dbt bridge failed to emit operations")
+        raise
 
     rejects_inserted = emit_test_failure_rejects(
         factory,
@@ -445,14 +450,13 @@ async def api_dbt_compile(
     """
     user = get_user(request)
     if user["id"] == 0:
-        raise HTTPException(status_code=401, detail="auth required")
+        raise AuthenticationError("auth required")
 
     models = body.get("models") if isinstance(body.get("models"), list) else None
     executor = _executor(request)
-    try:
-        result = await executor.compile(models=models)
-    except DBTExecutionError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    # DBTExecutionError is a PointlessSQLError(503); the centralised
+    # handler renders it directly — no inline translation required.
+    result = await executor.compile(models=models)
     return _result_payload(result, agent_run_id=None)
 
 
@@ -476,10 +480,9 @@ async def api_dbt_deps(
     """
     require_admin(request)
     executor = _executor(request)
-    try:
-        result = await executor.deps()
-    except DBTExecutionError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    # DBTExecutionError is a PointlessSQLError(503); centralised
+    # handler renders it directly.
+    result = await executor.deps()
     await audit(request, "dbt_deps", "dbt:deps", {"exit_code": result.exit_code})
     return _result_payload(result, agent_run_id=None)
 
@@ -691,10 +694,12 @@ async def _run_or_test(
             )
         else:
             result = await executor.test(models=models)
-    except DBTExecutionError as exc:
+    except DBTExecutionError:
         if owned:
             _finish_owned_run(request, agent_run_id, succeeded=False, exit_code=-1)
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        # DBTExecutionError is a PointlessSQLError(503); the
+        # centralised handler renders it directly.
+        raise
 
     bridge = await _emit_audit_for_run(
         request,
@@ -827,21 +832,15 @@ def _load_manifest_or_404(request: Request) -> dict[str, Any]:
     # the path dbt actually wrote to (handles relative project_dir).
     manifest_path = _executor(request).manifest_path
     if not manifest_path.is_file():
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                "no dbt manifest on disk yet — call POST /api/dbt/compile "
-                "(or POST /api/dbt/run) first to materialise "
-                "target/manifest.json"
-            ),
+        raise ResourceNotFoundError(
+            "no dbt manifest on disk yet — call POST /api/dbt/compile "
+            "(or POST /api/dbt/run) first to materialise "
+            "target/manifest.json"
         )
     try:
         return parse_manifest(manifest_path)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"manifest.json is not parseable JSON: {exc}",
-        ) from exc
+        raise EngineError(f"manifest.json is not parseable JSON: {exc}") from exc
 
 
 @router.get("/api/dbt/manifest")
@@ -864,7 +863,7 @@ async def api_dbt_manifest(request: Request) -> dict[str, Any]:
     """
     user = get_user(request)
     if user["id"] == 0:
-        raise HTTPException(status_code=401, detail="auth required")
+        raise AuthenticationError("auth required")
     manifest = _load_manifest_or_404(request)
     metadata = as_dict(manifest.get("metadata"))
     generated_at = metadata.get("generated_at")
@@ -896,7 +895,7 @@ async def api_dbt_coverage(request: Request) -> dict[str, Any]:
     """
     user = get_user(request)
     if user["id"] == 0:
-        raise HTTPException(status_code=401, detail="auth required")
+        raise AuthenticationError("auth required")
     manifest = _load_manifest_or_404(request)
     models = project_models(manifest)
     total = len(models)
@@ -1026,7 +1025,7 @@ async def api_dbt_runs(
     """
     user = get_user(request)
     if user["id"] == 0:
-        raise HTTPException(status_code=401, detail="auth required")
+        raise AuthenticationError("auth required")
     factory = request.app.state.session_factory
     workspace_id = int(getattr(request.state, "workspace_id", 1))
     runs: list[dict[str, Any]] = []

@@ -372,14 +372,18 @@ async def test_get_promotion_endpoint_returns_history(
 
 
 @pytest.mark.asyncio
-async def test_promote_endpoint_400_on_validation_error(
+async def test_promote_endpoint_422_on_validation_error(
     uc_for_promotion: AsyncMock, auth_cookies: dict[str, str]
 ) -> None:
-    """Promoting the current champion → 400 with the underlying message."""
+    """Promoting the current champion → 422 ``promotion_error``."""
     async with _client(cookies=auth_cookies) as c:
         resp = await c.post(
             "/api/models/cat.sch.model/promote",
             json={"target_version": 2, "reason": "no-op"},
         )
-    assert resp.status_code == 400
-    assert "already champion" in resp.json()["detail"]
+    # Phase 43.3: PromotionError is now a PointlessSQLError(422); the
+    # centralised handler renders it as ``promotion_error``.
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["code"] == "promotion_error"
+    assert "already champion" in body["detail"]

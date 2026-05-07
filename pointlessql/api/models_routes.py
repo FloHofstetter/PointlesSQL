@@ -34,7 +34,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from pointlessql.api.dependencies import (
@@ -43,7 +43,12 @@ from pointlessql.api.dependencies import (
     get_user,
     require_supervisor,
 )
-from pointlessql.exceptions import CatalogNotFoundError
+from pointlessql.exceptions import (
+    AuthenticationError,
+    CatalogNotFoundError,
+    CatalogUnavailableError,
+    ResourceNotFoundError,
+)
 from pointlessql.services import model_promotion
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.mlflow_soyuz_link import parse_link_marker
@@ -114,7 +119,7 @@ def _require_auth(request: Request) -> None:
     """
     user = get_user(request)
     if user["id"] == 0:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise AuthenticationError("Authentication required")
 
 
 @router.get("/api/models")
@@ -179,7 +184,7 @@ async def api_get_model(request: Request, full_name: str) -> dict[str, Any]:
     client = get_uc_client(request)
     model = await client.get_registered_model(full_name)
     if not model:
-        raise HTTPException(status_code=404, detail=f"Model {full_name!r} not found")
+        raise ResourceNotFoundError(f"Model {full_name!r} not found")
     versions = await client.list_model_versions(full_name=full_name)
     annotated = [annotate_version(v) for v in versions]
     return {"model": model, "versions": annotated}
@@ -192,10 +197,7 @@ async def api_get_model_version(request: Request, full_name: str, version: int) 
     client = get_uc_client(request)
     info = await client.get_model_version(full_name, version)
     if not info:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Version {version} of {full_name!r} not found",
-        )
+        raise ResourceNotFoundError(f"Version {version} of {full_name!r} not found")
     annotated = annotate_version(info)
     marker = annotated.get("link_marker") or {}
     mlflow_run_id = marker.get("mlflow_run_id") or info.get("run_id")
@@ -366,7 +368,10 @@ async def api_promote_model(
             reason=body.reason,
         )
     except model_promotion.PromotionError as exc:
+        # Heuristic split: a soyuz failure (catalog unreachable during the
+        # marker patch) is a 502, everything else is a 422 PromotionError.
         message = str(exc)
-        status = 502 if "soyuz" in message.lower() else 400
-        raise HTTPException(status_code=status, detail=message) from exc
+        if "soyuz" in message.lower():
+            raise CatalogUnavailableError(message) from exc
+        raise
     return result

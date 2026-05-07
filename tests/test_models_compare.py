@@ -197,7 +197,8 @@ async def test_compare_rejects_same_version(
 ) -> None:
     async with _client(cookies=auth_cookies) as c:
         resp = await c.get("/models/cat1.sch1.smoke_model/compare?v1=1&v2=1")
-    assert resp.status_code == 400
+    # Phase 43.3: ``v1 and v2 must differ`` is a ValidationError (422).
+    assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
