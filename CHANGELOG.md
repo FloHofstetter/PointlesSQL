@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 49b — Service-File Splits closed.**  Two oversize service
+  files migrated into Phase-35-style per-axis subpackages.
+  ``services/agent_runs/operations.py`` (929 LOC) → six-file
+  subpackage: ``__init__`` (re-exports), ``_common`` (recorder
+  + helpers), ``_rollback`` (5 exception classes), ``_lifecycle``
+  (record_operation + operation_context), ``_lineage`` (3
+  post-commit hooks), ``_rejects`` (1 hook), ``_value_changes``
+  (1 hook).  ``services/audit_aggregator.py`` (913 LOC) →
+  four-file subpackage: ``_query_builder`` (MetricSpec + the
+  ~150-LOC metric-spec switch + filter helpers), ``_summary``,
+  ``_timeseries``, ``_anomaly`` (rolling-baseline detection +
+  per-run verdict + backfill).  Cross-module helpers dropped
+  leading underscores per Phase 35 convention; module-internal
+  helpers kept theirs.  Public API surface unchanged via
+  ``__init__.py`` re-exports — every existing
+  ``from pointlessql.services...operations import X`` continues
+  to work.  Two tests updated (``test_operation_warnings.py``
+  and ``test_dbt_test_failure_bridge.py``) for renamed cross-
+  module helpers.  Pyright budget unchanged at 497.  1686 tests
+  pass.  Two commits, one per file split.
+
 - **Phase 49a — Repo-wide Lint-Sweep closed.**  Two-commit cleanup
   pass clearing pre-existing ruff E501 + pydoclint
   DOC502 / DOC503 / DOC601 / DOC603 violations accumulated since

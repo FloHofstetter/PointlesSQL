@@ -4935,6 +4935,46 @@ PointlesSQL
 │           ``test_cloudevents_registry_matches_legacy_constants``
 │           pins both halves byte-for-byte.
 │
+├── Phase 49b — Service-File Splits ✅ done
+│   │
+│   │   Two oversize service files migrated into Phase-35-style
+│   │   per-axis subpackages.  Public API unchanged via
+│   │   ``__init__.py`` re-exports; existing
+│   │   ``from pointlessql.services...operations import X``
+│   │   imports keep working without churn.  Cross-module
+│   │   helpers dropped leading underscores per Phase 35
+│   │   convention; module-internal helpers kept theirs.
+│   │   Pyright budget unchanged at 497.  1686 tests pass.
+│   │
+│   ├── Sprint 49b.1 — ``services/agent_runs/operations.py``
+│   │       (929 LOC) → six-file subpackage:
+│   │       ``__init__`` (re-exports), ``_common``
+│   │       (OperationRecorder + ``serialise_warnings`` /
+│   │       ``stamp_audit_marker`` + ``LINEAGE_FAILED_MARKER`` +
+│   │       ``VALID_OP_NAMES`` derived from ``OpName`` StrEnum),
+│   │       ``_rollback`` (RollbackError + 4 subclasses),
+│   │       ``_lifecycle`` (``record_operation`` +
+│   │       ``operation_context``), ``_lineage`` (3
+│   │       post-commit hooks: emit + row-edges + column-edges),
+│   │       ``_rejects`` (1 hook), ``_value_changes`` (1 hook).
+│   │       One test (``test_operation_warnings.py``) updated to
+│   │       import ``stamp_audit_marker`` from
+│   │       ``operations._common``.
+│   │
+│   └── Sprint 49b.2 — ``services/audit_aggregator.py``
+│           (913 LOC) → four-file subpackage:
+│           ``_query_builder`` (type aliases + ``VALID_*`` sets
+│           + ``MetricSpec`` dataclass + ``metric_spec()``
+│           switch + ``bin_expr()`` + ``apply_audit_filters()``
+│           + ``scalar_count()``), ``_summary`` (``summary()``),
+│           ``_timeseries`` (``timeseries()`` + module-private
+│           ``_group_col()``), ``_anomaly`` (``anomalies()`` +
+│           ``compute_run_anomaly()`` + ``backfill_run_anomalies()``
+│           + ``RUN_ANOMALY_METRICS`` + ``_SEVERITY_RANK`` +
+│           ``_classify()`` + ``_bin_floor_compare_string()``).
+│           One test (``test_dbt_test_failure_bridge.py``) updated
+│           to import ``metric_spec`` (was ``_metric_spec``).
+│
 ├── Phase 49a — Repo-wide Lint-Sweep ✅ done
 │   │
 │   │   Single-sprint cleanup of pre-existing ruff E501 + pydoclint
