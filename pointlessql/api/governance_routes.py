@@ -26,7 +26,7 @@ import asyncio
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import Response
@@ -140,9 +140,10 @@ async def api_profile_table(
 
     table_info = await enforce_table_profile_access(request, full_name)
     storage_location = str(table_info.get("storage_location") or "")
+    raw_columns = cast(list[dict[str, Any]], table_info.get("columns") or [])
     columns = [
         {"name": str(c.get("name") or ""), "type": str(c.get("type_text") or "")}
-        for c in (table_info.get("columns") or [])
+        for c in raw_columns
         if c.get("name")
     ]
     factory = getattr(request.app.state, "session_factory", None)
@@ -336,8 +337,9 @@ async def api_sync_catalog(request: Request, catalog_name: str) -> dict[str, obj
         )
     connection = await client.get_connection(str(connection_name))
     credential: dict[str, Any] | None = None
-    options = connection.get("options") or {}
-    credential_name = options.get("credential_name") if isinstance(options, dict) else None
+    options_raw: Any = connection.get("options") or {}
+    options = cast(dict[str, Any], options_raw) if isinstance(options_raw, dict) else {}
+    credential_name = options.get("credential_name")
     if credential_name:
         credential = await client.get_credential(str(credential_name))
     factory = request.app.state.session_factory
