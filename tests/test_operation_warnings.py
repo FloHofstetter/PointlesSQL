@@ -1,6 +1,6 @@
 """Tests for the BUG-grand-08 ``warnings_json`` separation.
 
-Pre-fix: ``_stamp_audit_marker`` appended ``[lineage_emit_failed]``
+Pre-fix: ``stamp_audit_marker`` appended ``[lineage_emit_failed]``
 into ``error_message`` whenever a soyuz post-commit hook failed,
 which made the run-detail Operations tab paint successful merges
 as ``status=error``.
@@ -19,10 +19,8 @@ import uuid
 
 from pointlessql.api.main import app
 from pointlessql.models import AgentRun, AgentRunOperation
-from pointlessql.services.agent_runs.operations import (
-    _stamp_audit_marker,
-    operation_context,
-)
+from pointlessql.services.agent_runs.operations import operation_context
+from pointlessql.services.agent_runs.operations._common import stamp_audit_marker
 
 
 def _seed_run(factory, run_id: str) -> None:
@@ -41,7 +39,7 @@ def _seed_run(factory, run_id: str) -> None:
 
 
 def test_stamp_marker_writes_warnings_not_error_message() -> None:
-    """A single ``_stamp_audit_marker`` call lands in warnings_json."""
+    """A single ``stamp_audit_marker`` call lands in warnings_json."""
     factory = app.state.session_factory
     run_id = str(uuid.uuid4())
     _seed_run(factory, run_id)
@@ -52,7 +50,7 @@ def test_stamp_marker_writes_warnings_not_error_message() -> None:
     with factory() as session:
         op = session.query(AgentRunOperation).filter_by(agent_run_id=run_id).one()
 
-    _stamp_audit_marker(factory, op_id=op.id, marker="[lineage_emit_failed] boom")
+    stamp_audit_marker(factory, op_id=op.id, marker="[lineage_emit_failed] boom")
 
     with factory() as session:
         refreshed = session.get(AgentRunOperation, op.id)
@@ -74,9 +72,9 @@ def test_stamp_marker_appends_to_existing_warnings() -> None:
     with factory() as session:
         op = session.query(AgentRunOperation).filter_by(agent_run_id=run_id).one()
 
-    _stamp_audit_marker(factory, op_id=op.id, marker="[lineage_emit_failed] one")
-    _stamp_audit_marker(factory, op_id=op.id, marker="[lineage_edges_partial] two")
-    _stamp_audit_marker(factory, op_id=op.id, marker="[lineage_value_partial] three")
+    stamp_audit_marker(factory, op_id=op.id, marker="[lineage_emit_failed] one")
+    stamp_audit_marker(factory, op_id=op.id, marker="[lineage_edges_partial] two")
+    stamp_audit_marker(factory, op_id=op.id, marker="[lineage_value_partial] three")
 
     with factory() as session:
         refreshed = session.get(AgentRunOperation, op.id)
