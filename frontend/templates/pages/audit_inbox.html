@@ -191,8 +191,8 @@
                 ? `<span class="text-muted small">acked by ${escapeHtml(a.ack.acked_by)}${a.ack.dismissed_until ? ' until ' + escapeHtml(a.ack.dismissed_until.slice(0, 16)) : ''}</span>`
                 : '<span class="text-muted small">—</span>';
             const actionCell = a.ack
-                ? `<button class="btn btn-sm btn-outline-secondary" data-action="unack" data-ack-id="${a.ack.id}">Un-ack</button>`
-                : `<button class="btn btn-sm btn-outline-primary" data-action="ack" data-metric="${escapeHtml(a.metric)}" data-bin-iso="${escapeHtml(a.bin_iso)}" data-bin-kind="${escapeHtml(a.bin_kind)}">Ack</button>`;
+                ? `<button class="btn btn-sm btn-outline-secondary" data-action="unack" data-ack-id="${a.ack.id}"><i class="bi bi-arrow-counterclockwise me-1"></i>Unacknowledge</button>`
+                : `<button class="btn btn-sm btn-primary" data-action="ack" data-metric="${escapeHtml(a.metric)}" data-bin-iso="${escapeHtml(a.bin_iso)}" data-bin-kind="${escapeHtml(a.bin_kind)}"><i class="bi bi-check2 me-1"></i>Acknowledge</button>`;
             return `<tr>
                 <td>${severityBadge(a.severity)}</td>
                 <td class="font-monospace small">${escapeHtml(a.metric)}</td>
