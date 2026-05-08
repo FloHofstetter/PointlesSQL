@@ -4887,6 +4887,132 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 57 — Phase-56 carve-outs + route-test coverage      ✅ done 2026-05-08
+│   │
+│   │   Closes the three explicit carve-outs from Phase 56 in
+│   │   one autonomous session post the user-prompt "plane aus!"
+│   │   on (1) queries.html Tables→Cards, (2) DESIGN-tagged
+│   │   findings from the 56.1 audit, (3) test-coverage sweep on
+│   │   admin_api_keys / federation / jobs / dashboards.  Nine
+│   │   sub-sprints; ~85 new pytest cases; one mobile-data-label
+│   │   sweep on 7 surfaces.
+│   │
+│   │   The plan-phase audit again reduced the implementation
+│   │   set:  the "DESIGN-tagged findings" carve-out turned out
+│   │   to be effectively empty (Section 4 of
+│   │   ``phase56_audit_findings.md`` declares ``[DESIGN]`` as a
+│   │   tag-category but no individual finding actually carries
+│   │   the tag — they were all CONTENT/STRUCTURAL and folded
+│   │   into Sprint 56.10).  Sprint 57.1 was repurposed as an
+│   │   audit-Ersatz on the ~15 surfaces that the 56.1 audit had
+│   │   never covered (admin/* detail views, federation/* detail
+│   │   views, jobs+dashboards detail views, branches detail,
+│   │   volumes), producing ten STRUCTURAL findings (mobile
+│   │   data-label adoption) + one CONTENT finding + one DESIGN
+│   │   finding (admin_workspaces "Create" form → modal,
+│   │   deferred to Phase 58).  Saved one Sprint-token worth of
+│   │   speculative DESIGN work.
+│   │
+│   │   Sprint 57.1 — Audit-Ersatz: per-surface semantic-content
+│   │   review of the ~18 surfaces that the 56.1 audit had not
+│   │   covered.  Output ``docs/internal/phase57_audit_findings.md``.
+│   │   Read-only.
+│   │
+│   │   Sprint 57.2 — Server-side offset pagination on
+│   │   ``/queries`` (analog Phase 55.1 ``/runs``).  Extends
+│   │   ``query_history.list_queries`` with an ``offset`` kwarg
+│   │   (backward-compatible default 0); ``count_queries`` grows
+│   │   the same filter-arg list ``list_queries`` already takes
+│   │   so the pager can compute filter-aware ``remaining``.
+│   │   GET /queries dispatches HX-Request → fragment template
+│   │   for the Load-More flow.  5 new pytest cases.
+│   │
+│   │   Sprint 57.3 — ``/queries`` table → card-grid + hljs SQL
+│   │   syntax-highlighting.  Replaces the Alpine listTable +
+│   │   9-column table with a Bootstrap card-grid (col-12 /
+│   │   col-md-6 / col-xxl-4) where each card carries a status
+│   │   stripe on the left edge (succeeded / failed / cancelled)
+│   │   and the SQL rendered in a height-capped ``<pre>`` block
+│   │   coloured by highlight.js.  Filters move from client-side
+│   │   chips (mine / failed / last24h) to server-side Form-GET
+│   │   selects (read_kind / status / since), same trade-off as
+│   │   56.9 on agent_reviews + alerts.  hljs loaded via
+│   │   jsdelivr CDN to match the project's existing Bootstrap /
+│   │   htmx / alpine / chart.js precedent — no vendor/
+│   │   directory.  HTMX after-swap re-highlight.  2 new pytest
+│   │   cases.
+│   │
+│   │   Sprint 57.4 — ``federation_routes.py`` route-level
+│   │   smoke-tests (21 endpoints, ~14% → ~80% coverage).  26
+│   │   new pytest cases covering 5 connections × 3 resource
+│   │   families (15 JSON CRUD) + 6 HTML pages, each with
+│   │   admin-success + non-admin-403 + audit-emission asserts +
+│   │   one outage-banner case for the connections index.
+│   │
+│   │   Sprint 57.5 — ``dashboards_routes.py`` smoke-tests (9
+│   │   endpoints, ~22% → ~80%).  16 new pytest cases.  Caught
+│   │   one spec-mismatch at sprint-start: the create-dashboard
+│   │   route maps slug-validation rejections to 422 (not 400)
+│   │   because ``ValidationError`` inherits
+│   │   ``PointlessSQLError.status_code = 422``.
+│   │
+│   │   Sprint 57.6 — ``jobs_routes.py`` smoke-tests (13
+│   │   endpoints, ~53% → ~80%).  14 new pytest cases targeting
+│   │   the 5 endpoints not covered by ``TestJobRoutes`` in
+│   │   ``test_scheduler.py`` (DAG tasks list, run-tasks,
+│   │   run-logs + task-filter, notebook + download 404 paths,
+│   │   compare ``?to=`` papermill-only).
+│   │
+│   │   Sprint 57.7 — ``admin_api_keys_routes.py`` edge-case
+│   │   extension (3 endpoints, ~66% → ~95%).  8 new pytest
+│   │   cases on top of the 5 existing happy-path tests:
+│   │   create rejects empty / missing / whitespace name (422),
+│   │   workspace_id <= 0 (422), duplicate active name (422);
+│   │   revoke twice → 404 second time; list ?include_revoked
+│   │   surfaces inactive; supervisor + auditor combo; non-admin
+│   │   revoke → 403 (require_admin runs first).
+│   │
+│   │   Sprint 57.8 — Apply CONTENT + STRUCTURAL findings from
+│   │   57.1.  Adds ``pql-list-table`` class + ``data-label``
+│   │   attributes to 7 surfaces that rendered badly on <640px
+│   │   without per-column labels: admin_audit_sinks,
+│   │   admin_review_destinations, admin_workspaces (dual
+│   │   tables), volumes, volume_detail (Alpine x-for table),
+│   │   job_detail (DAG tasks + recent runs), branch_detail
+│   │   (audit log).  Same mechanic as Phase 56.4.
+│   │
+│   │   Sprint 57.9 — Phase close (this entry).  ROADMAP +
+│   │   CHANGELOG + memory entry.
+│   │
+│   │   Drops (recorded for the implementation log):
+│   │   - DESIGN-finding admin_workspaces "Create" → modal.
+│   │     Defer Phase 58 — focused mini-redesign.
+│   │   - admin_audit_sinks empty-state icon swap (CONTENT,
+│   │     cosmetic only).  Defer Phase 58.
+│   │   - branches_routes test-coverage extension — already at
+│   │     ~85%, diminishing returns.
+│   │   - audit_search_routes test-coverage — already 100%.
+│   │   - hljs vendoring per the original plan-pick — project
+│   │     pattern is CDN for everything (Bootstrap, htmx, alpine,
+│   │     chart.js, codemirror) and a single vendored dep would
+│   │     be inconsistent.  Sticking to CDN.
+│   │   - Alpine listTable on the new card-container for
+│   │     ``/queries``.  Server-side filter via Form-GET-Reload
+│   │     is sufficient (analog 56.9); user-replay-driven re-add
+│   │     Phase 58 if demanded.
+│   │   - SQL truncate-with-drawer in queries-card.  Initial
+│   │     commit without truncate; observe in user replay.
+│   │
+│   │   Browser-replay verification:  Wave-3 (57.3 cards + hljs +
+│   │   Load-More) needs browser-side verification of hljs-render,
+│   │   Load-More click + scroll-trigger, mobile card-stack —
+│   │   left for user post-rebuild.  Wave-1 audit + Wave-2 backend
+│   │   pagination + Wave-3 test-coverage sweeps + Wave-4 mobile-
+│   │   sweep all gate on pytest only (124 tests green across the
+│   │   touched test files).
+│   │
+│   │   Push gate: standard manual.
+│   │
 ├── Phase 56 — UX-polish + bug-hunt + semantic-content review ✅ done 2026-05-08
 │   │
 │   │   Three-wave audit-first sweep post the user-prompt

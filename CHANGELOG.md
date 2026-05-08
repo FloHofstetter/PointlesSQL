@@ -6,6 +6,36 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 57 — Phase-56 carve-outs + route-test coverage closed.**
+  Nine sub-sprints in one autonomous session post the user-prompt
+  "plane aus!" on (1) ``queries.html`` Tables→Cards, (2) DESIGN-
+  tagged findings from the 56.1 audit, (3) test-coverage sweep on
+  admin_api_keys / federation / jobs / dashboards.  Plan-phase
+  audit again reduced the set: the "DESIGN-tagged findings" carve-
+  out turned out to be effectively empty (Section 4 of the
+  ``phase56_audit_findings.md`` declared ``[DESIGN]`` as a
+  tag-category but no individual finding actually carried the tag
+  — all CONTENT/STRUCTURAL and folded into Sprint 56.10).  Sprint
+  57.1 was repurposed as an audit-Ersatz on the ~15 surfaces the
+  56.1 audit had never covered, producing 10 STRUCTURAL findings
+  + 1 CONTENT + 1 DESIGN.  Net delta: ``/queries`` is now a
+  card-grid with hljs SQL syntax-highlighting + server-side
+  offset Load-More analog Phase 55.1 ``/runs``;  ``filter_kind``
+  / ``status`` / ``since`` move to server-side Form-GET selects;
+  ~85 new pytest cases across federation_routes (26),
+  dashboards_routes (16), jobs_routes (14), admin_api_keys
+  edge-cases (8), query history offset (5), card render (2);
+  mobile data-label sweep on 7 more surfaces (admin_audit_sinks,
+  admin_review_destinations, admin_workspaces dual tables,
+  volumes, volume_detail, job_detail dual tables, branch_detail
+  audit-log).  124 tests green across the touched test files.
+  Carve-outs deferred to Phase 58: admin_workspaces "Create" form
+  → modal (DESIGN), admin_audit_sinks empty-state icon swap
+  (CONTENT-cosmetic), Alpine listTable re-add on queries-cards
+  (only if user-replay calls for it).  Browser-replay verification
+  for the queries cards + hljs render is left for the user post-
+  rebuild — same handling as 54 / 55 / 56.
+
 - **Phase 56 — UX-polish + bug-hunt + semantic-content review
   closed.**  Three-wave audit-first sweep post the user-prompt
   "wir machen bug-hunting … und auch hunting von schlechter
