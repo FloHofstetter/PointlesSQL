@@ -33,7 +33,7 @@
 {% else %}
 <div class="card">
     <div class="card-body p-0">
-        <table class="table table-sm mb-0">
+        <table class="table table-sm mb-0 pql-list-table">
             <thead>
                 <tr>
                     <th>Full name</th>
@@ -44,14 +44,14 @@
             <tbody>
                 {% for v in volumes %}
                 <tr>
-                    <td>
+                    <td data-label="Full name">
                         <a href="/volumes/{{ v.full_name }}"
                            class="font-monospace">{{ v.full_name }}</a>
                     </td>
-                    <td>
+                    <td data-label="Type">
                         <span class="badge text-bg-info">{{ v.volume_type }}</span>
                     </td>
-                    <td class="font-monospace small">{{ v.storage_location or '—' }}</td>
+                    <td data-label="Storage location" class="font-monospace small">{{ v.storage_location or '—' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

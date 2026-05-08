@@ -53,7 +53,7 @@
     </div>
     {% if sinks %}
     <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+        <table class="table table-sm align-middle mb-0 pql-list-table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -69,16 +69,16 @@
                 {% for s in sinks %}
                 <tr data-sink-id="{{ s.id }}"
                     x-data='auditSinkRow({{ s.id }}, {{ s.name|tojson }}, {{ s.is_active|tojson }})'>
-                    <td><strong>{{ s.name }}</strong></td>
-                    <td>
+                    <td data-label="Name"><strong>{{ s.name }}</strong></td>
+                    <td data-label="Type">
                         <span class="badge bg-secondary font-monospace">{{ s.type }}</span>
                     </td>
-                    <td class="font-monospace small">
+                    <td data-label="Config" class="font-monospace small">
                         {% for k, v in s.config_redacted.items() %}
                         <div><span class="text-muted">{{ k }}:</span> {{ v }}</div>
                         {% endfor %}
                     </td>
-                    <td class="small">
+                    <td data-label="Event types" class="small">
                         {% if s.event_types %}
                         {% for evt in s.event_types %}
                         <code class="d-block">{{ evt }}</code>
@@ -87,7 +87,7 @@
                         <span class="text-muted">(every event)</span>
                         {% endif %}
                     </td>
-                    <td class="small">
+                    <td data-label="Workspace filter" class="small">
                         {% if s.workspace_filter %}
                         {% for ws_id in s.workspace_filter %}
                         {% set ws = workspace_choices|selectattr("id", "equalto", ws_id)|first %}
@@ -99,7 +99,7 @@
                         <span class="text-muted">install-global</span>
                         {% endif %}
                     </td>
-                    <td class="text-center">
+                    <td data-label="Active" class="text-center">
                         <div class="form-check form-switch d-inline-block">
                             <input type="checkbox" class="form-check-input"
                                    :checked="isActive"
@@ -107,7 +107,7 @@
                                    @change="toggleActive($event.target.checked)">
                         </div>
                     </td>
-                    <td>
+                    <td data-label="Actions">
                         <button type="button" class="btn btn-outline-primary btn-sm"
                                 :disabled="busy"
                                 @click="test()">

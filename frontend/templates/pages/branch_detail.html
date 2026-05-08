@@ -197,7 +197,7 @@
     <div class="card-body p-0">
         {% if audit_log %}
         <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle pql-list-table">
                 <thead>
                     <tr>
                         <th class="ps-3">When</th>
@@ -209,16 +209,16 @@
                 <tbody>
                     {% for entry in audit_log %}
                     <tr>
-                        <td class="ps-3 small text-muted font-monospace">{{ entry.created_at[:19] }}</td>
-                        <td><code>{{ entry.action }}</code></td>
-                        <td class="font-monospace small">
+                        <td data-label="When" class="ps-3 small text-muted font-monospace">{{ entry.created_at[:19] }}</td>
+                        <td data-label="Action"><code>{{ entry.action }}</code></td>
+                        <td data-label="Run" class="font-monospace small">
                             {% if entry.run_id %}
                             <a href="/runs/{{ entry.run_id }}">{{ entry.run_id[:8] }}</a>
                             {% else %}
                             <span class="text-muted">—</span>
                             {% endif %}
                         </td>
-                        <td><pre class="small mb-0">{{ entry.payload | tojson(indent=2) if entry.payload else "" }}</pre></td>
+                        <td data-label="Payload"><pre class="small mb-0">{{ entry.payload | tojson(indent=2) if entry.payload else "" }}</pre></td>
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -99,7 +99,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive" x-data="{ openTaskId: null, logs: [], loading: false }">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle pql-list-table">
                 <thead>
                     <tr>
                         <th class="ps-3">Name</th>
@@ -115,11 +115,11 @@
                 <tbody>
                     {% for t in tasks %}
                     <tr>
-                        <td class="ps-3 font-monospace">{{ t.name }}</td>
-                        <td><span class="badge bg-info text-dark">{{ t.kind }}</span></td>
-                        <td class="small">{{ t.depends_on|join(", ") if t.depends_on else "—" }}</td>
-                        <td class="small">{{ t.max_retries }} × {{ t.retry_backoff_seconds }}s</td>
-                        <td>
+                        <td data-label="Name" class="ps-3 font-monospace">{{ t.name }}</td>
+                        <td data-label="Kind"><span class="badge bg-info text-dark">{{ t.kind }}</span></td>
+                        <td data-label="Depends on" class="small">{{ t.depends_on|join(", ") if t.depends_on else "—" }}</td>
+                        <td data-label="Retries" class="small">{{ t.max_retries }} × {{ t.retry_backoff_seconds }}s</td>
+                        <td data-label="Latest status">
                             {% if t.latest_status == "succeeded" %}
                             <span class="badge bg-success">{{ t.latest_status }}</span>
                             {% elif t.latest_status == "failed" %}
@@ -132,9 +132,9 @@
                             <span class="text-muted small">—</span>
                             {% endif %}
                         </td>
-                        <td class="small">{{ t.latest_attempts }}</td>
-                        <td class="small text-danger">{{ t.latest_error or "" }}</td>
-                        <td class="pe-3 text-end">
+                        <td data-label="Attempts" class="small">{{ t.latest_attempts }}</td>
+                        <td data-label="Last error" class="small text-danger">{{ t.latest_error or "" }}</td>
+                        <td data-label="Actions" class="pe-3 text-end">
                             {% if t.latest_run_id %}
                             <button type="button" class="btn btn-sm btn-outline-secondary"
                                     x-on:click="
@@ -268,7 +268,7 @@
     <div class="card-body p-0">
         {% if runs %}
         <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle pql-list-table">
                 <thead>
                     <tr>
                         <th class="ps-3">Started</th>
@@ -284,8 +284,8 @@
                     {% set is_selectable = job.kind == "papermill" and run.status in ["succeeded", "failed"] %}
                     <tr {% if is_selectable %}style="cursor: pointer;"
                         onclick="window.dispatchEvent(new CustomEvent('run-selected', { detail: { runId: {{ run.id }} } }))"{% endif %}>
-                        <td class="ps-3 small">{{ run.started_at }}</td>
-                        <td>
+                        <td data-label="Started" class="ps-3 small">{{ run.started_at }}</td>
+                        <td data-label="Status">
                             {% if run.status == "succeeded" %}
                             <span class="badge bg-success">{{ run.status }}</span>
                             {% elif run.status == "failed" %}
@@ -296,12 +296,12 @@
                             <span class="badge bg-info text-dark">{{ run.status }}</span>
                             {% endif %}
                         </td>
-                        <td class="small">{{ run.trigger }}</td>
-                        <td class="small">
+                        <td data-label="Trigger" class="small">{{ run.trigger }}</td>
+                        <td data-label="Duration" class="small">
                             {% if run.duration_seconds is not none %}{{ "%.1f"|format(run.duration_seconds) }}s{% else %}—{% endif %}
                         </td>
-                        <td class="small text-danger">{{ run.error or "" }}</td>
-                        <td class="pe-3 text-end">
+                        <td data-label="Error" class="small text-danger">{{ run.error or "" }}</td>
+                        <td data-label="Actions" class="pe-3 text-end">
                             {% if job.kind == "papermill" and run.status in ("succeeded", "failed") %}
                             <a href="/jobs/{{ job.id }}/runs/{{ run.id }}/notebook/download?format=ipynb"
                                onclick="event.stopPropagation()"

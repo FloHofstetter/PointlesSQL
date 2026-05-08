@@ -80,7 +80,7 @@
  <div class="p-3 text-muted small">Volume is empty.</div>
  </template>
  <template x-if="files.length > 0">
- <table class="table table-sm mb-0 small">
+ <table class="table table-sm mb-0 small pql-list-table">
  <thead>
  <tr>
  <th>Path</th>
@@ -91,10 +91,10 @@
  <tbody>
  <template x-for="file in files" :key="file.path">
  <tr>
- <td class="font-monospace" x-text="file.path"></td>
- <td class="text-end font-monospace"
+ <td data-label="Path" class="font-monospace" x-text="file.path"></td>
+ <td data-label="Size" class="text-end font-monospace"
  x-text="humanBytes(file.size_bytes)"></td>
- <td class="text-end pe-3">
+ <td data-label="Actions" class="text-end pe-3">
  <button type="button"
  class="btn btn-outline-primary btn-sm me-1"
  x-show="isConvertible(file)"

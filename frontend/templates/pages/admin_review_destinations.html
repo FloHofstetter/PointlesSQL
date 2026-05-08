@@ -55,7 +55,7 @@
     </div>
     {% if destinations %}
     <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+        <table class="table table-sm align-middle mb-0 pql-list-table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -71,12 +71,12 @@
                 {% for d in destinations %}
                 <tr data-destination-id="{{ d.id }}"
                     x-data='reviewDestRow({{ d.id }}, {{ d.name|tojson }}, {{ d.is_active|tojson }}, {{ d.min_severity|tojson }})'>
-                    <td><strong>{{ d.name }}</strong></td>
-                    <td class="font-monospace small text-truncate" style="max-width: 320px;"
+                    <td data-label="Name"><strong>{{ d.name }}</strong></td>
+                    <td data-label="Webhook URL" class="font-monospace small text-truncate" style="max-width: 320px;"
                         :title="webhookUrl">
                         {{ d.webhook_url }}
                     </td>
-                    <td>
+                    <td data-label="Min severity">
                         <select class="form-select form-select-sm"
                                 style="max-width: 7rem;"
                                 :disabled="busy"
@@ -86,14 +86,14 @@
                             {% endfor %}
                         </select>
                     </td>
-                    <td class="text-center">
+                    <td data-label="HMAC" class="text-center">
                         {% if d.has_hmac_secret %}
                         <span class="badge bg-success">set</span>
                         {% else %}
                         <span class="badge bg-light text-muted border">none</span>
                         {% endif %}
                     </td>
-                    <td class="small">
+                    <td data-label="Workspace filter" class="small">
                         {% if d.workspace_filter %}
                         {% for ws_id in d.workspace_filter %}
                         {% set ws = workspace_choices|selectattr("id", "equalto", ws_id)|first %}
@@ -105,7 +105,7 @@
                         <span class="text-muted">install-global</span>
                         {% endif %}
                     </td>
-                    <td class="text-center">
+                    <td data-label="Active" class="text-center">
                         <div class="form-check form-switch d-inline-block">
                             <input type="checkbox" class="form-check-input"
                                    :checked="isActive"
@@ -113,7 +113,7 @@
                                    @change="toggleActive($event.target.checked)">
                         </div>
                     </td>
-                    <td>
+                    <td data-label="Actions">
                         <button type="button" class="btn btn-outline-danger btn-sm"
                                 :disabled="busy"
                                 @click="remove()">

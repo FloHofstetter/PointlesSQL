@@ -58,7 +58,7 @@
 
 <h2 class="h5 mb-2">Active workspaces</h2>
 <div class="table-responsive mb-4">
-    <table class="table table-sm align-middle">
+    <table class="table table-sm align-middle pql-list-table">
         <thead>
             <tr>
                 <th>Slug</th>
@@ -71,11 +71,11 @@
         <tbody>
             {% for ws in active_workspaces %}
             <tr data-ws-id="{{ ws.id }}" data-ws-slug="{{ ws.slug }}">
-                <td><code>{{ ws.slug }}</code></td>
-                <td>{{ ws.name }}{% if ws.description %}<div class="text-muted small">{{ ws.description }}</div>{% endif %}</td>
-                <td class="text-end">{{ member_counts.get(ws.id, 0) }}</td>
-                <td class="text-muted small">{{ ws.created_at.strftime('%Y-%m-%d') if ws.created_at else '—' }}</td>
-                <td>
+                <td data-label="Slug"><code>{{ ws.slug }}</code></td>
+                <td data-label="Name">{{ ws.name }}{% if ws.description %}<div class="text-muted small">{{ ws.description }}</div>{% endif %}</td>
+                <td data-label="Members" class="text-end">{{ member_counts.get(ws.id, 0) }}</td>
+                <td data-label="Created" class="text-muted small">{{ ws.created_at.strftime('%Y-%m-%d') if ws.created_at else '—' }}</td>
+                <td data-label="Actions">
                     {% if ws.id != 1 %}
                     <button type="button" class="btn btn-sm btn-outline-warning"
                             x-data='archiveButton({{ ws.id }}, {{ ws.slug|tojson }})'
@@ -97,7 +97,7 @@
 {% if archived_workspaces %}
 <h2 class="h5 mb-2 text-muted">Archived</h2>
 <div class="table-responsive">
-    <table class="table table-sm align-middle">
+    <table class="table table-sm align-middle pql-list-table">
         <thead>
             <tr>
                 <th>Slug</th>
@@ -108,9 +108,9 @@
         <tbody>
             {% for ws in archived_workspaces %}
             <tr>
-                <td><code>{{ ws.slug }}</code></td>
-                <td>{{ ws.name }}</td>
-                <td class="text-muted small">{{ ws.archived_at.strftime('%Y-%m-%d %H:%M UTC') if ws.archived_at else '—' }}</td>
+                <td data-label="Slug"><code>{{ ws.slug }}</code></td>
+                <td data-label="Name">{{ ws.name }}</td>
+                <td data-label="Archived at" class="text-muted small">{{ ws.archived_at.strftime('%Y-%m-%d %H:%M UTC') if ws.archived_at else '—' }}</td>
             </tr>
             {% endfor %}
         </tbody>
