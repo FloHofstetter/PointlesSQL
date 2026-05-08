@@ -32,6 +32,12 @@ window.pqlApi = pqlApi;
 // rendered by ``_macros/copy_button.html``.
 import './copy_button.js';
 
+// Bootstrap-tab URL-state sync (Sprint 59.2).  Self-bootstrapping;
+// reads ``?tab=…&subtab=…`` on DOMContentLoaded and mirrors active
+// tabs back via history.replaceState.  Idempotent on pages without
+// tabs.
+import './tab_sync.js';
+
 // Pure utility helpers — no Alpine factories, but used directly from
 // templates as ``x-text="pqlRelativeTime(iso)"`` etc.
 import { pqlParseServerIso, pqlRelativeTime } from './relative_time.js';

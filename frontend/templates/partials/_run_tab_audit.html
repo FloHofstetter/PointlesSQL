@@ -5,7 +5,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link active" id="tab-tool-calls-btn" data-bs-toggle="tab"
  data-bs-target="#tab-tool-calls" type="button" role="tab"
- aria-controls="tab-tool-calls" aria-selected="true">
+ aria-controls="tab-tool-calls" aria-selected="true"
+ data-pql-tab-key="tool-calls">
  <i class="bi bi-tools me-1"></i>Tool calls
  {% if tool_calls %}<span class="badge bg-secondary ms-1">{{ tool_calls | length }}</span>{% endif %}
  </button>
@@ -13,7 +14,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-audit-btn" data-bs-toggle="tab"
  data-bs-target="#tab-audit" type="button" role="tab"
- aria-controls="tab-audit" aria-selected="false">
+ aria-controls="tab-audit" aria-selected="false"
+ data-pql-tab-key="audit-log">
  <i class="bi bi-journal-text me-1"></i>Audit log
  {% if audit_entries %}<span class="badge bg-secondary ms-1">{{ audit_entries | length }}</span>{% endif %}
  </button>
@@ -21,7 +23,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-external-writes-btn" data-bs-toggle="tab"
  data-bs-target="#tab-external-writes" type="button" role="tab"
- aria-controls="tab-external-writes" aria-selected="false">
+ aria-controls="tab-external-writes" aria-selected="false"
+ data-pql-tab-key="external-writes">
  <i class="bi bi-exclamation-octagon me-1"></i>External writes
  {% if unattributed_writes %}<span class="badge bg-warning text-dark ms-1">{{ unattributed_writes | length }}</span>{% endif %}
  </button>

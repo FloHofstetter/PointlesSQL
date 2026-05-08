@@ -69,6 +69,7 @@
                 data-bs-toggle="tab"
                 data-bs-target="#bytable-{{ kind }}"
                 data-kind="{{ kind }}"
+                data-pql-tab-key="{{ kind }}"
                 type="button" role="tab">
             <i class="bi bi-{% if kind == 'touched' %}hand-index{% elif kind == 'written' %}pencil-square{% else %}eye{% endif %} me-1"></i>
             {{ kind|capitalize }}

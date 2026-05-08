@@ -8,7 +8,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link active" id="tab-ops-btn" data-bs-toggle="tab"
  data-bs-target="#tab-ops" type="button" role="tab"
- aria-controls="tab-ops" aria-selected="true">
+ aria-controls="tab-ops" aria-selected="true"
+ data-pql-tab-key="ops">
  <i class="bi bi-list-ol me-1"></i>Operations
  {% if operations %}<span class="badge bg-secondary ms-1">{{ operations | length }}</span>{% endif %}
  </button>
@@ -16,7 +17,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-rejects-btn" data-bs-toggle="tab"
  data-bs-target="#tab-rejects" type="button" role="tab"
- aria-controls="tab-rejects" aria-selected="false">
+ aria-controls="tab-rejects" aria-selected="false"
+ data-pql-tab-key="rejects">
  <i class="bi bi-x-octagon me-1"></i>Rejects
  {% if rejects %}<span class="badge bg-warning text-dark ms-1">{{ rejects | length }}</span>{% endif %}
  </button>
@@ -24,7 +26,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-queries-btn" data-bs-toggle="tab"
  data-bs-target="#tab-queries" type="button" role="tab"
- aria-controls="tab-queries" aria-selected="false">
+ aria-controls="tab-queries" aria-selected="false"
+ data-pql-tab-key="queries">
  <i class="bi bi-code-square me-1"></i>Queries
  {% if queries %}<span class="badge bg-secondary ms-1">{{ queries | length }}</span>{% endif %}
  </button>
@@ -32,7 +35,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-rewrites-btn" data-bs-toggle="tab"
  data-bs-target="#tab-rewrites" type="button" role="tab"
- aria-controls="tab-rewrites" aria-selected="false">
+ aria-controls="tab-rewrites" aria-selected="false"
+ data-pql-tab-key="rewrites">
  <i class="bi bi-arrow-repeat me-1"></i>Rewrites
  {% if rewrite_attempts %}<span class="badge bg-info text-dark ms-1">{{ rewrite_attempts | length }}</span>{% endif %}
  </button>
@@ -40,7 +44,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-uc-mutations-btn" data-bs-toggle="tab"
  data-bs-target="#tab-uc-mutations" type="button" role="tab"
- aria-controls="tab-uc-mutations" aria-selected="false">
+ aria-controls="tab-uc-mutations" aria-selected="false"
+ data-pql-tab-key="uc-mutations">
  <i class="bi bi-database-gear me-1"></i>UC mutations
  {% if uc_mutations %}<span class="badge bg-secondary ms-1">{{ uc_mutations | length }}</span>{% endif %}
  </button>

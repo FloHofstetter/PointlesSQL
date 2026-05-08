@@ -79,32 +79,32 @@
 
 <ul class="nav nav-tabs mb-3" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="tab-ops-btn" data-bs-toggle="tab" data-bs-target="#tab-ops" type="button" role="tab">
+        <button class="nav-link active" id="tab-ops-btn" data-bs-toggle="tab" data-bs-target="#tab-ops" type="button" role="tab" data-pql-tab-key="ops">
             <i class="bi bi-list-ol me-1"></i>Operations
             <span class="badge bg-secondary ms-1">{{ detail.operations_diff | length }}</span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-lineage" type="button" role="tab">
+        <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-lineage" type="button" role="tab" data-pql-tab-key="lineage">
             <i class="bi bi-diagram-3 me-1"></i>Lineage
             {% if lineage_diff_count %}<span class="badge bg-secondary ms-1">{{ lineage_diff_count }}</span>{% endif %}
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-rejects-btn" data-bs-toggle="tab" data-bs-target="#tab-rejects" type="button" role="tab">
+        <button class="nav-link" id="tab-rejects-btn" data-bs-toggle="tab" data-bs-target="#tab-rejects" type="button" role="tab" data-pql-tab-key="rejects">
             <i class="bi bi-x-octagon me-1"></i>Rejects
             {% if rejects_diff_count %}<span class="badge bg-warning text-dark ms-1">{{ rejects_diff_count }}</span>{% endif %}
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-tools-btn" data-bs-toggle="tab" data-bs-target="#tab-tools" type="button" role="tab">
+        <button class="nav-link" id="tab-tools-btn" data-bs-toggle="tab" data-bs-target="#tab-tools" type="button" role="tab" data-pql-tab-key="tools">
             <i class="bi bi-tools me-1"></i>Tool calls
             <span class="badge bg-secondary ms-1">{{ detail.tool_calls_diff | length }}</span>
         </button>
     </li>
     {% if value_changes_diff is defined and value_changes_diff %}
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-cells-btn" data-bs-toggle="tab" data-bs-target="#tab-cells" type="button" role="tab">
+        <button class="nav-link" id="tab-cells-btn" data-bs-toggle="tab" data-bs-target="#tab-cells" type="button" role="tab" data-pql-tab-key="cells">
             <i class="bi bi-grid-3x3 me-1"></i>Cells
             {% if value_changes_diff_count %}<span class="badge bg-secondary ms-1">{{ value_changes_diff_count }}</span>{% endif %}
         </button>
@@ -112,7 +112,7 @@
     {% endif %}
     {% if column_lineage_diff is defined and column_lineage_diff %}
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-column-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-column-lineage" type="button" role="tab">
+        <button class="nav-link" id="tab-column-lineage-btn" data-bs-toggle="tab" data-bs-target="#tab-column-lineage" type="button" role="tab" data-pql-tab-key="column-lineage">
             <i class="bi bi-bezier2 me-1"></i>Column lineage
             {% if column_lineage_diff_count %}<span class="badge bg-secondary ms-1">{{ column_lineage_diff_count }}</span>{% endif %}
         </button>

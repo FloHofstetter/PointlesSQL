@@ -37,21 +37,24 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
  data-bs-target="#tab-overview" type="button" role="tab"
- aria-controls="tab-overview" aria-selected="true">
+ aria-controls="tab-overview" aria-selected="true"
+ data-pql-tab-key="overview">
  <i class="bi bi-info-circle me-1"></i>Overview
  </button>
  </li>
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-preview-btn" data-bs-toggle="tab"
  data-bs-target="#tab-preview" type="button" role="tab"
- aria-controls="tab-preview" aria-selected="false">
+ aria-controls="tab-preview" aria-selected="false"
+ data-pql-tab-key="preview">
  <i class="bi bi-eye me-1"></i>Preview
  </button>
  </li>
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-columns-btn" data-bs-toggle="tab"
  data-bs-target="#tab-columns" type="button" role="tab"
- aria-controls="tab-columns" aria-selected="false">
+ aria-controls="tab-columns" aria-selected="false"
+ data-pql-tab-key="columns">
  <i class="bi bi-list-columns me-1"></i>Columns
  <span class="badge bg-secondary ms-1">{{ table.columns|length }}</span>
  </button>
@@ -59,14 +62,16 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab"
  data-bs-target="#tab-lineage" type="button" role="tab"
- aria-controls="tab-lineage" aria-selected="false">
+ aria-controls="tab-lineage" aria-selected="false"
+ data-pql-tab-key="lineage">
  <i class="bi bi-diagram-3 me-1"></i>Lineage
  </button>
  </li>
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-tags-btn" data-bs-toggle="tab"
  data-bs-target="#tab-tags" type="button" role="tab"
- aria-controls="tab-tags" aria-selected="false">
+ aria-controls="tab-tags" aria-selected="false"
+ data-pql-tab-key="tags">
  <i class="bi bi-tags me-1"></i>Tags
  </button>
  </li>
@@ -74,7 +79,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-cdf-events-btn" data-bs-toggle="tab"
  data-bs-target="#tab-cdf-events" type="button" role="tab"
- aria-controls="tab-cdf-events" aria-selected="false">
+ aria-controls="tab-cdf-events" aria-selected="false"
+ data-pql-tab-key="cdf-events">
  <i class="bi bi-arrow-down-up me-1"></i>CDF events
  {% if cdf_subscription.last_error %}
  <span class="badge bg-warning text-dark ms-1">err</span>
@@ -89,7 +95,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-permissions-btn" data-bs-toggle="tab"
  data-bs-target="#tab-permissions" type="button" role="tab"
- aria-controls="tab-permissions" aria-selected="false">
+ aria-controls="tab-permissions" aria-selected="false"
+ data-pql-tab-key="permissions">
  <i class="bi bi-shield-lock me-1"></i>Permissions
  </button>
  </li>

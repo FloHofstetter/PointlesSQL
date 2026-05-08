@@ -3,14 +3,16 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link active" id="tab-source-btn" data-bs-toggle="tab"
  data-bs-target="#tab-source" type="button" role="tab"
- aria-controls="tab-source" aria-selected="true">
+ aria-controls="tab-source" aria-selected="true"
+ data-pql-tab-key="source">
  <i class="bi bi-file-earmark-text me-1"></i>Source
  </button>
  </li>
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-cells-btn" data-bs-toggle="tab"
  data-bs-target="#tab-cells" type="button" role="tab"
- aria-controls="tab-cells" aria-selected="false">
+ aria-controls="tab-cells" aria-selected="false"
+ data-pql-tab-key="cells">
  <i class="bi bi-code-slash me-1"></i>Cells
  {% if cells %}<span class="badge bg-secondary ms-1">{{ cells | length }}</span>{% endif %}
  </button>
@@ -18,7 +20,8 @@
  <li class="nav-item" role="presentation">
  <button class="nav-link" id="tab-events-btn" data-bs-toggle="tab"
  data-bs-target="#tab-events" type="button" role="tab"
- aria-controls="tab-events" aria-selected="false">
+ aria-controls="tab-events" aria-selected="false"
+ data-pql-tab-key="events">
  <i class="bi bi-broadcast me-1"></i>Events
  {% if events %}<span class="badge bg-secondary ms-1">{{ events | length }}</span>{% endif %}
  </button>
