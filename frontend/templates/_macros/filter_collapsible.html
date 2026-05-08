@@ -1,0 +1,47 @@
+{# Collapsible filter-row wrapper (Sprint 59.4 / Pattern P-6).
+
+   Wraps a dense filter row so it collapses behind a summary pill on
+   list pages where the filter inputs cluster too tight at desktop
+   width.  Pure Bootstrap (data-bs-toggle="collapse") — no Alpine,
+   no per-page JS.
+
+   Usage:
+
+     {% from "_macros/filter_collapsible.html" import filter_collapsible %}
+     {% set summary %}<span class="badge bg-secondary">Severity: {{ severity }}</span>{% endset %}
+     {% call filter_collapsible('inbox-filter-row', summary, expanded=False) %}
+         <form id="inbox-filter" class="row g-2 align-items-end" autocomplete="off">
+             <!-- existing filter inputs -->
+         </form>
+     {% endcall %}
+
+   Args:
+     wrapper_id  — DOM id for the collapsing wrapper.  Must be unique
+                   per page; the toggle button binds via this id.
+     summary     — caller-rendered HTML showing current filter state
+                   (badges/pills).  Empty string is fine.
+     expanded    — bool, default False.  Pass True for pages where the
+                   filter is the primary affordance (e.g. /audit/search). #}
+
+{% macro filter_collapsible(wrapper_id, summary='', expanded=False) %}
+<div class="pql-filter-collapsible mb-3">
+    <button type="button"
+            class="btn btn-link btn-sm text-decoration-none p-0 d-inline-flex align-items-center gap-2 mb-2"
+            data-bs-toggle="collapse"
+            data-bs-target="#{{ wrapper_id }}"
+            aria-expanded="{{ 'true' if expanded else 'false' }}"
+            aria-controls="{{ wrapper_id }}">
+        <i class="bi bi-funnel"></i>
+        <span class="fw-semibold">Filter</span>
+        {% if summary %}
+        <span class="text-muted small d-inline-flex align-items-center gap-1">
+            {{ summary | safe }}
+        </span>
+        {% endif %}
+        <i class="bi bi-chevron-down ms-1 pql-filter-collapsible__chevron"></i>
+    </button>
+    <div class="collapse{% if expanded %} show{% endif %}" id="{{ wrapper_id }}">
+        {{ caller() }}
+    </div>
+</div>
+{% endmacro %}

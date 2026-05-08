@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/filter_collapsible.html" import filter_collapsible %}
 {% block title %}Audit cockpit · anomaly inbox · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -72,7 +73,11 @@
 </section>
 {% endif %}
 
-<form id="inbox-filter" class="row g-2 align-items-end mb-3" autocomplete="off">
+{% set inbox_summary %}
+<span class="badge bg-secondary-subtle text-body">warn or worse · day · last 7d</span>
+{% endset %}
+{% call filter_collapsible('inbox-filter-collapse', inbox_summary) %}
+<form id="inbox-filter" class="row g-2 align-items-end" autocomplete="off">
     <div class="col-md-2">
         <label for="inbox-severity" class="form-label small mb-1">Severity{{ info('audit.severity-warn-vs-critical') }}</label>
         <select id="inbox-severity" class="form-select form-select-sm">
@@ -116,6 +121,7 @@
         </div>
     </div>
 </form>
+{% endcall %}
 
 <div id="inbox-meta" class="small text-muted mb-2"></div>
 
