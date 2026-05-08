@@ -77,7 +77,7 @@
  >
  <td data-label="ID"><a href="/runs/{{ run.id }}"
  class="text-decoration-none font-monospace small"
- title="{{ run.id }}">{{ run.id[:8] }}</a></td>
+ title="{{ run.id|format_uuid }}">{{ run.id[:8] }}</a></td>
  <td data-label="Principal" class="font-monospace small">{{ run.principal or "—" }}</td>
  <td data-label="Agent" class="font-monospace small">{{ run.agent_id or "—" }}</td>
  <td data-label="Status">

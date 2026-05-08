@@ -142,11 +142,45 @@ def _format_epoch_ms(value: Any) -> str:
         return "—"
     try:
         return datetime.fromtimestamp(int(value) / 1000, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return str(value)
 
 
+def _format_uuid(value: Any) -> str:
+    """Normalise UUID strings to canonical hyphenated form.
+
+    PointlesSQL's API mixes hyphenated and packed UUID formats depending
+    on the source row (some seeds, some FK inserts, some agent-emitted
+    payloads). Templates use this filter so the user always sees the
+    same shape regardless of source.
+    """
+    if not value:
+        return ""
+    s = str(value).replace("-", "")
+    if len(s) != 32:
+        return str(value)
+    return f"{s[0:8]}-{s[8:12]}-{s[12:16]}-{s[16:20]}-{s[20:32]}"
+
+
+def _format_hash(value: Any, sentinel_label: str = "(no source captured)") -> str:
+    """Hide the all-zeros SHA sentinel as a human-readable label.
+
+    Run-source capture writes ``"0" * 64`` when no bytes were captured
+    (e.g. agent-only flows that never hit ``capture_run_source``). The
+    raw zero-hash leaks an implementation detail; this filter swaps it
+    for a readable empty-state. Real hashes pass through unchanged.
+    """
+    if not value:
+        return ""
+    s = str(value)
+    if s and all(c == "0" for c in s):
+        return sentinel_label
+    return s
+
+
 _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
+_TEMPLATES.env.filters["format_uuid"] = _format_uuid
+_TEMPLATES.env.filters["format_hash"] = _format_hash
 
 # contextual help-popover registry (see ``pointlessql/web/
 # help.py``).  Templates resolve slugs via ``{{ help('runs.what-is-a-

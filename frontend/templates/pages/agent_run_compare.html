@@ -59,7 +59,7 @@
         <div class="card">
             <div class="card-header d-flex align-items-center gap-2">
                 <span class="badge bg-secondary">{{ label }}</span>
-                <span class="font-monospace small">{{ run.id[:12] }}…</span>
+                <span class="font-monospace small" title="{{ run.id|format_uuid }}">{{ run.id[:12] }}…</span>
                 <span class="text-muted ms-auto small">
                     <i class="bi bi-person"></i> {{ run.principal or '<unknown>' }}
                 </span>

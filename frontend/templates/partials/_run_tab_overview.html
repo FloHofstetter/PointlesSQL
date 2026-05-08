@@ -29,7 +29,7 @@
  {% if source %}
  <div class="card">
  <div class="card-header small text-muted">
- <span class="me-3 font-monospace">SHA-256: {{ source.source_sha }}</span>
+ <span class="me-3 font-monospace">SHA-256: {{ source.source_sha|format_hash }}</span>
  <span class="font-monospace">captured: {{ source.captured_at or "&mdash;" }}</span>
  </div>
  <div class="card-body p-0">

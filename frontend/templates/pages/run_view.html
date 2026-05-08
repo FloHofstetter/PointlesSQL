@@ -63,7 +63,7 @@
  {% if run %}
  <li class="breadcrumb-item"><a href="/runs" class="text-decoration-none">Runs</a></li>
  <li class="breadcrumb-item active font-monospace"
- title="{{ run.id }}">#{{ run.id[:8] }}</li>
+ title="{{ run.id|format_uuid }}">#{{ run.id[:8] }}</li>
  {% else %}
  <li class="breadcrumb-item"><a href="/notebooks" class="text-decoration-none">Notebooks</a></li>
  <li class="breadcrumb-item active font-monospace">{{ notebook_path }}</li>
