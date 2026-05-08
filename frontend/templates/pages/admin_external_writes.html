@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/truncate.html" import truncate_cell %}
 {% from "_macros/help_icon.html" import info %}
 {% block title %}External writes · PointlesSQL{% endblock %}
 
@@ -120,10 +121,8 @@
                         <td data-label="Table" class="font-monospace small">{{ w.table_fqn }}</td>
                         <td data-label="Delta v" class="font-monospace">{{ w.delta_version }}</td>
                         <td data-label="Commit ts" class="small font-monospace">{{ w.commit_timestamp or "—" }}</td>
-                        <td data-label="Commit info" class="small font-monospace" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis;">
-                            <code title="{{ w.commit_info or '' }}">
-                                {{ (w.commit_info or '')[:120] }}{% if (w.commit_info or '')|length > 120 %}…{% endif %}
-                            </code>
+                        <td data-label="Commit info">
+                            {{ truncate_cell(w.commit_info, max=120, klass="font-monospace small") }}
                         </td>
                         <td data-label="Acknowledged" class="small">
                             {% if w.acknowledged_at %}

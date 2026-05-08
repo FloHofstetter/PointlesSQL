@@ -1,3 +1,4 @@
+{% from "_macros/truncate.html" import truncate_cell %}
  <div class="tab-pane fade" id="top-operations" role="tabpanel" aria-labelledby="top-operations-btn">
  <p class="text-muted small mb-2">
  Operations are the unit of supervision inside this run.{{ info('runs.what-is-an-operation') }}
@@ -334,8 +335,8 @@
  <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
  {% endif %}
  </td>
- <td class="font-monospace small">
- <code title="{{ q.sql_text }}">{{ q.sql_text[:120] }}{% if q.sql_text | length > 120 %}…{% endif %}</code>
+ <td>
+ {{ truncate_cell(q.sql_text, max=120, klass="font-monospace small") }}
  </td>
  <td class="font-monospace">{{ q.row_count if q.row_count is not none else "&mdash;" | safe }}</td>
  <td class="font-monospace text-muted">{{ q.duration_ms ~ ' ms' if q.duration_ms is not none else "&mdash;" | safe }}</td>
@@ -480,10 +481,8 @@
  <td><span class="badge bg-info text-dark font-monospace">{{ m.action }}</span></td>
  <td class="font-monospace">{{ m.target }}</td>
  <td class="font-monospace small">{{ m.principal or "—" }}</td>
- <td class="font-monospace small text-muted" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis;">
- <code title="{{ m.detail or '' }}">
- {{ (m.detail or '')[:120] }}{% if (m.detail or '')|length > 120 %}…{% endif %}
- </code>
+ <td>
+ {{ truncate_cell(m.detail, max=120, klass="font-monospace small text-muted") }}
  </td>
  </tr>
  {% endfor %}

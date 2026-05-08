@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/truncate.html" import truncate_cell %}
 {% from "_macros/help_icon.html" import info %}
 {#
  supervision list with Alpine ``listTable`` filter bar.
@@ -78,8 +79,8 @@
  <td data-label="ID"><a href="/runs/{{ run.id }}"
  class="text-decoration-none font-monospace small"
  title="{{ run.id|format_uuid }}">{{ run.id[:8] }}</a></td>
- <td data-label="Principal" class="font-monospace small">{{ run.principal or "—" }}</td>
- <td data-label="Agent" class="font-monospace small">{{ run.agent_id or "—" }}</td>
+ <td data-label="Principal">{{ truncate_cell(run.principal or "—", max=40) }}</td>
+ <td data-label="Agent">{{ truncate_cell(run.agent_id or "—", max=40) }}</td>
  <td data-label="Status">
  <span class="badge {{ status_class(run.status) }}">{{ run.status }}</span>
  </td>
@@ -98,11 +99,11 @@
  {% if run.cost_est is not none %}{{ run.cost_est }}{% else %}—{% endif %}
  </td>
  <td data-label="Started" class="font-monospace small text-muted">{{ run.started_at or "—" }}</td>
- <td data-label="Tables touched" class="font-monospace small text-muted">
+ <td data-label="Tables touched">
  {% if run.tables_touched %}
- {{ run.tables_touched | join(', ') }}
+ {{ truncate_cell(run.tables_touched | join(', '), max=80, klass="font-monospace small text-muted") }}
  {% else %}
- —
+ <span class="text-muted">—</span>
  {% endif %}
  </td>
  </tr>

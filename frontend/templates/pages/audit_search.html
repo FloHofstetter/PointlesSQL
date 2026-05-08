@@ -136,10 +136,13 @@
 
     function buildRowHtml(r) {
         const link = rowLink(r.axis, r.entity_id, r.run_id);
+        const eid = String(r.entity_id || '');
+        const eidShort = eid.length > 60 ? eid.slice(0, 60) + '…' : eid;
+        const eidClass = eid.length > 60 ? 'pql-truncate-tip font-monospace small' : 'font-monospace small';
         return `<tr>
             <td><span class="badge bg-secondary">${escapeHtml(r.axis)}</span></td>
             <td class="font-monospace small text-muted">${escapeHtml((r.run_id || '').slice(0, 8))}</td>
-            <td><a href="${link}" class="font-monospace small text-decoration-none">${escapeHtml(r.entity_id)}</a></td>
+            <td><a href="${link}" class="${eidClass} text-decoration-none" title="${escapeHtml(eid)}">${escapeHtml(eidShort)}</a></td>
             <td class="small">${snippetHtml(r.snippet)}</td>
             <td class="text-end font-monospace small text-muted">${r.rank !== null ? r.rank.toFixed(2) : '—'}</td>
         </tr>`;

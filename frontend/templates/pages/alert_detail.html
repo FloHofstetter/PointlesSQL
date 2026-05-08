@@ -80,7 +80,8 @@
  <span class="badge text-bg-info" x-text="dest.kind"></span>
  </td>
  <td data-label="URL">
- <code class="small" x-text="dest.webhook_url || '(pull feed)'"></code>
+ <code class="pql-truncate-tip small" :title="dest.webhook_url || '(pull feed)'"
+  x-text="(dest.webhook_url || '(pull feed)').slice(0, 60) + ((dest.webhook_url || '').length > 60 ? '…' : '')"></code>
  </td>
  <td data-label="HMAC">
  <span x-show="dest.has_hmac" class="badge text-bg-success">yes</span>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/truncate.html" import truncate_cell %}
 {% block title %}Queries · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -112,7 +113,6 @@
                     </thead>
                     <tbody>
                         {% for entry in entries %}
-                        {% set sql_snip = (entry.sql_text or '')[:120] %}
                         <tr data-search="{{ (entry.sql_text or '')|lower }} {{ entry.user_email|lower }} {{ (entry.tables or [])|join(' ')|lower }} {{ entry.read_kind or '' }}"
                             data-sort-started-at="{{ entry.started_at or '' }}"
                             data-sort-status="{{ entry.status or '' }}"
@@ -155,9 +155,9 @@
                             <td data-label="Rows" class="font-monospace small text-muted">
                                 {% if entry.row_count is not none %}{{ entry.row_count }}{% else %}—{% endif %}
                             </td>
-                            <td data-label="SQL" class="font-monospace small"
+                            <td data-label="SQL"
                                 x-data="{ open: false }">
-                                <code>{{ sql_snip }}{% if (entry.sql_text or '')|length > 120 %}…{% endif %}</code>
+                                {{ truncate_cell(entry.sql_text, max=120, klass="font-monospace small") }}
                                 {% if entry.error_message %}
                                 <button type="button"
                                         class="btn btn-link btn-sm p-0 ms-1 text-decoration-none text-danger"

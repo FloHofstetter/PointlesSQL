@@ -1,0 +1,35 @@
+{#
+    Truncate-with-tooltip macro for long-text cells in list-tables.
+
+    Renders ``text`` truncated at ``max`` characters followed by an
+    ellipsis when over-length, and exposes the full value via the
+    native ``title=`` attribute (browser tooltip on hover, ~700ms
+    delay, zero-JS overhead).
+
+    Why native ``title=`` and not Bootstrap Tooltip — initialising a
+    Bootstrap Popper tooltip on every cell of a 50-row table is a
+    measurable perf foot-gun (Plan-Agent-Phase-56 risk-flag).
+    Native tooltip has worse styling but zero startup cost.
+
+    Usage::
+
+        {% from "_macros/truncate.html" import truncate_cell %}
+        <td>{{ truncate_cell(op.sql, max=120) }}</td>
+        <td>{{ truncate_cell(user.email, max=40, klass="small") }}</td>
+
+    Params:
+      - ``text``: the value to render. ``None`` and missing render
+        as empty.
+      - ``max`` (default 80): truncation threshold in characters.
+        Strings of length ≤ ``max`` render unchanged.
+      - ``klass`` (default ``"font-monospace small"``): CSS classes
+        applied to the wrapping ``<span>``.
+#}
+{% macro truncate_cell(text, max=80, klass="font-monospace small") -%}
+{%- set s = text|default("", true) -%}
+{%- if s|length > max -%}
+<span class="pql-truncate-tip {{ klass }}" title="{{ s }}">{{ s[:max] }}…</span>
+{%- else -%}
+<span class="{{ klass }}">{{ s }}</span>
+{%- endif -%}
+{%- endmacro %}

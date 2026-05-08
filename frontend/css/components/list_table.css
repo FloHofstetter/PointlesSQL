@@ -83,6 +83,15 @@
  background: var(--bs-body-bg);
 }
 
+/* Truncate-with-tooltip cell content — paired with the
+ * ``_macros/truncate.html`` macro.  Uses the native ``title=``
+ * attribute for the tooltip (zero-JS, ~700ms-delay).  The dotted
+ * underline signals to the user that hovering reveals more. */
+.pql-truncate-tip {
+ cursor: help;
+ border-bottom: 1px dotted var(--bs-border-color);
+}
+
 /* Row hover quick-actions — jobs list only (for now). The actions
  stay off-screen visually until the row is hovered or any child
  gains keyboard focus. We use `visibility` rather than `display`
