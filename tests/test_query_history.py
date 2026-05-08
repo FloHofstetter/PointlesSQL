@@ -394,6 +394,67 @@ async def test_queries_page_emits_cards_with_hljs_marker(
     assert "/static/js/sql_highlight.js" in body
 
 
+async def test_queries_card_emits_drawer_trigger_for_long_sql(
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """SQL longer than 700 chars surfaces a drawer-trigger button."""
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    long_sql = "SELECT " + ", ".join([f"col_{i}" for i in range(120)]) + " FROM main.t"
+    assert len(long_sql) > 700
+    qh.record_query(
+        factory,
+        user_id=1,
+        user_email="x@y.z",
+        sql_text=long_sql,
+        started_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC),
+        finished_at=datetime.datetime(2026, 4, 1, 0, 0, 0, 100000, tzinfo=datetime.UTC),
+        status="succeeded",
+        row_count=1,
+        duration_ms=100,
+        referenced_tables=[],
+    )
+    resp = await admin_client.get("/queries")
+    assert resp.status_code == 200
+    body = resp.text
+    assert "View full SQL" in body
+    assert 'data-bs-toggle="offcanvas"' in body
+    assert "drawer-q-" in body  # macro id prefix
+
+
+async def test_queries_card_omits_drawer_for_short_sql(
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Short SQL renders without the drawer trigger — no UI clutter."""
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    qh.record_query(
+        factory,
+        user_id=1,
+        user_email="x@y.z",
+        sql_text="SELECT 1",
+        started_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC),
+        finished_at=datetime.datetime(2026, 4, 1, 0, 0, 0, 100000, tzinfo=datetime.UTC),
+        status="succeeded",
+        row_count=1,
+        duration_ms=100,
+        referenced_tables=[],
+    )
+    resp = await admin_client.get("/queries")
+    assert resp.status_code == 200
+    assert "View full SQL" not in resp.text
+
+
 async def test_queries_page_status_filter_narrows_results(
     orders_delta: str,
     admin_client: httpx.AsyncClient,

@@ -15,43 +15,56 @@
         <i class="bi bi-folder2-open fs-3"></i>
         <h1 class="h3 mb-0">Workspaces{{ info('admin.workspace-pins') }}</h1>
     </div>
-    <span class="text-muted small">
-        {{ active_workspaces|length }} active{% if archived_workspaces %}, {{ archived_workspaces|length }} archived{% endif %}
-    </span>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small">
+            {{ active_workspaces|length }} active{% if archived_workspaces %}, {{ archived_workspaces|length }} archived{% endif %}
+        </span>
+        <button type="button" class="btn btn-primary btn-sm"
+                data-bs-toggle="modal" data-bs-target="#createWorkspaceModal">
+            <i class="bi bi-plus-lg me-1"></i>New workspace
+        </button>
+    </div>
 </div>
 
-<div class="card mb-4" x-data="adminWorkspaces()">
-    <div class="card-header">
-        <strong>Create workspace</strong>
-    </div>
-    <div class="card-body">
-        <div class="row g-2">
-            <div class="col-md-3">
-                <label class="form-label small mb-1" for="ws-slug">Slug</label>
-                <input id="ws-slug" type="text" class="form-control form-control-sm"
-                       x-model="form.slug" placeholder="prod-audit"
-                       maxlength="64">
-                <div class="form-text">Lower-case letters / digits / `-` / `_`. Used in URLs and the X-Workspace header.</div>
+<div class="modal fade" id="createWorkspaceModal" tabindex="-1"
+     aria-labelledby="createWorkspaceModalLabel" aria-hidden="true"
+     x-data="adminWorkspaces()">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createWorkspaceModalLabel">New workspace</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="col-md-4">
-                <label class="form-label small mb-1" for="ws-name">Name</label>
-                <input id="ws-name" type="text" class="form-control form-control-sm"
-                       x-model="form.name" placeholder="Production audit" maxlength="200">
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label" for="ws-slug">Slug</label>
+                    <input id="ws-slug" type="text" class="form-control font-monospace"
+                           x-model="form.slug" placeholder="prod-audit" maxlength="64">
+                    <div class="form-text">Lower-case letters / digits / <code>-</code> / <code>_</code>. Used in URLs and the X-Workspace header.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="ws-name">Name</label>
+                    <input id="ws-name" type="text" class="form-control"
+                           x-model="form.name" placeholder="Production audit" maxlength="200">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="ws-desc">Description (optional)</label>
+                    <textarea id="ws-desc" class="form-control" rows="2"
+                              x-model="form.description" maxlength="500"
+                              placeholder="What this workspace is for and who uses it."></textarea>
+                </div>
+                <div class="alert alert-danger" x-show="error" x-text="error" x-cloak></div>
             </div>
-            <div class="col-md-5">
-                <label class="form-label small mb-1" for="ws-desc">Description (optional)</label>
-                <input id="ws-desc" type="text" class="form-control form-control-sm"
-                       x-model="form.description" maxlength="500">
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary"
+                        :disabled="!form.slug || !form.name || creating"
+                        @click="create()">
+                    <span x-show="creating" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                    <span x-show="!creating">Create workspace</span>
+                    <span x-show="creating">Creating&hellip;</span>
+                </button>
             </div>
-        </div>
-        <div class="mt-3 d-flex gap-2">
-            <button type="button" class="btn btn-primary btn-sm"
-                    :disabled="!form.slug || !form.name || creating"
-                    @click="create()">
-                <span x-show="!creating">Create workspace</span>
-                <span x-show="creating">Creating&hellip;</span>
-            </button>
-            <span x-show="error" class="text-danger small align-self-center" x-text="error"></span>
         </div>
     </div>
 </div>
