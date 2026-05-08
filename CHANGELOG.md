@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 58 — Phase-57 carve-out trio closed.**  Three small
+  deferred items from Sprint 57.8 land in one autonomous pass
+  (single commit) post the user-prompt "mache die sofort follo
+  up und pahse 58 noch ferig".  (1) admin_workspaces "Create"
+  form → Bootstrap modal — closes the one DESIGN finding from
+  the 57.1 audit.  (2) admin_audit_sinks empty-state icon
+  ``bi-broadcast`` → ``bi-broadcast-pin`` — closes the one
+  CONTENT finding.  (3) Query-card "View full SQL" drawer
+  trigger via the Phase-56.8 ``detail_drawer`` macro — surfaces
+  only when SQL > 700 chars so short queries stay clean.  Alpine
+  listTable re-add on the queries card-grid stays parked (no
+  user signal yet).  17 query-history + 12 admin_workspaces
+  tests green.
+
 - **Phase 57 — Phase-56 carve-outs + route-test coverage closed.**
   Nine sub-sprints in one autonomous session post the user-prompt
   "plane aus!" on (1) ``queries.html`` Tables→Cards, (2) DESIGN-

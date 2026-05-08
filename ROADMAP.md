@@ -4887,6 +4887,42 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 58 — Phase-57 carve-out trio                       ✅ done 2026-05-08
+│   │
+│   │   Three small deferred items from Sprint 57.8 land in one
+│   │   autonomous pass post the user-prompt "mache die sofort
+│   │   follo up und pahse 58 noch ferig".  Single commit.
+│   │
+│   │   58.1 — admin_workspaces "Create" form → Bootstrap modal.
+│   │   Replaces the inline card-form at the top of the workspace
+│   │   list with a "+ New workspace" button + modal, matching
+│   │   the jobs / dashboards / alerts UX.  Alpine state + POST
+│   │   flow unchanged; only the surface moves.  Closes the one
+│   │   DESIGN finding from the Phase 57.1 audit.
+│   │
+│   │   58.2 — admin_audit_sinks empty-state icon swap
+│   │   (``bi-broadcast`` → ``bi-broadcast-pin``).  Cosmetic
+│   │   refinement noted as the only CONTENT finding in the 57.1
+│   │   audit.
+│   │
+│   │   58.3 — Query-card "View full SQL" drawer trigger.  SQL
+│   │   longer than 700 characters surfaces a Phase-56.8
+│   │   detail_drawer button that pops the full text out of the
+│   │   card's height-capped ``<pre>`` into an Offcanvas panel.
+│   │   Short SQL renders without the trigger so the card stays
+│   │   clean.  Pre-emptive add — the alternative was to wait for
+│   │   user-replay to demand it, but height-capped scrolling on a
+│   │   200-line stored procedure is poor enough that proactive
+│   │   ship is the better trade.  2 new pytest cases.
+│   │
+│   │   Drops (deliberately not picked up):
+│   │   - Alpine listTable re-add on queries card-grid — no user
+│   │     signal that server-side Form-GET reload is too slow.
+│   │     Stays parked until replay calls for it.
+│   │   - Browser-replay verification — same handling as 54-57.
+│   │
+│   │   Push gate: standard manual.
+│   │
 ├── Phase 57 — Phase-56 carve-outs + route-test coverage      ✅ done 2026-05-08
 │   │
 │   │   Closes the three explicit carve-outs from Phase 56 in
