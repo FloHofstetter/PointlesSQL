@@ -1,0 +1,36 @@
+/* Detail-drawer Offcanvas styling (Sprint 56.8).
+ *
+ * Paired with ``_macros/detail_drawer.html``. The drawer slides in
+ * from the right and is sized to comfortably display long SQL
+ * statements / JSON blobs / event payloads without dominating
+ * the viewport on wider screens, while still respecting narrow
+ * viewports.
+ */
+
+.pql-detail-drawer {
+    width: min(640px, 90vw);
+}
+
+.pql-detail-drawer__body {
+    overflow-x: auto;
+}
+
+.pql-detail-drawer__body pre {
+    margin-bottom: 0;
+    font-size: var(--pql-text-xs, 0.8125rem);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.pql-detail-drawer__body code {
+    font-size: inherit;
+}
+
+.pql-drawer-trigger {
+    cursor: pointer;
+    color: var(--bs-secondary-color);
+}
+
+.pql-drawer-trigger:hover {
+    color: var(--bs-link-color);
+}

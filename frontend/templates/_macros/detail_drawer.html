@@ -1,0 +1,50 @@
+{#
+    Bootstrap Offcanvas drawer for long-content cells.
+
+    Renders an inline icon-trigger + a paired Offcanvas pane. Click
+    the trigger to slide a side-drawer in from the right with the
+    full content, ESC or backdrop-click to close. Bootstrap manages
+    focus + ARIA — no extra JS.
+
+    Usage::
+
+        {% from "_macros/detail_drawer.html" import detail_drawer %}
+        {% call detail_drawer("op-" ~ op.id, "View full SQL", title=op.target_table) %}
+            <pre class="mb-0"><code class="language-sql">{{ op.sql_text }}</code></pre>
+        {% endcall %}
+
+    Params:
+      - ``id``: unique drawer id (suffix appended to ``drawer-``).
+      - ``label``: aria-label + tooltip on the trigger button.
+      - ``title`` (optional): heading rendered in the drawer header;
+        defaults to ``label``.
+      - ``icon`` (default ``bi-arrows-fullscreen``): trigger icon.
+
+    The ``{% call %}`` body becomes the drawer body content.
+#}
+{% macro detail_drawer(id, label, title=None, icon="bi-arrows-fullscreen") -%}
+<button type="button"
+    class="btn btn-link btn-sm p-0 ms-1 align-baseline pql-drawer-trigger"
+    data-bs-toggle="offcanvas"
+    data-bs-target="#drawer-{{ id }}"
+    aria-controls="drawer-{{ id }}"
+    aria-label="{{ label }}"
+    title="{{ label }}">
+    <i class="bi {{ icon }}"></i>
+</button>
+<div class="offcanvas offcanvas-end pql-detail-drawer"
+    tabindex="-1"
+    id="drawer-{{ id }}"
+    aria-labelledby="drawer-{{ id }}-label">
+    <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title font-monospace small text-truncate me-3" id="drawer-{{ id }}-label">
+            {{ title or label }}
+        </h5>
+        <button type="button" class="btn-close"
+            data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body pql-detail-drawer__body">
+        {{ caller() }}
+    </div>
+</div>
+{%- endmacro %}

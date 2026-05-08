@@ -1,3 +1,5 @@
+{% from "_macros/truncate.html" import truncate_cell %}
+{% from "_macros/detail_drawer.html" import detail_drawer %}
  <div class="tab-pane fade" id="top-audit" role="tabpanel" aria-labelledby="top-audit-btn">
  <ul class="nav nav-pills mb-3 small" id="auditSubTabs" role="tablist">
  <li class="nav-item" role="presentation">
@@ -45,12 +47,22 @@
  <tr>
  <td class="font-monospace text-muted">{{ tc.called_at or "&mdash;" | safe }}</td>
  <td><span class="badge bg-secondary text-uppercase">{{ tc.tool_name }}</span></td>
- <td class="font-monospace small">
- <code title="{{ tc.args_json }}">{{ tc.args_json[:120] }}{% if tc.args_json | length > 120 %}…{% endif %}</code>
+ <td>
+ {{ truncate_cell(tc.args_json, max=120, klass="font-monospace small") }}
+ {% if tc.args_json and tc.args_json|length > 120 %}
+ {%- call detail_drawer("toolargs-" ~ tc.id|string, "View full args", title=tc.tool_name ~ " — args") %}
+ <pre><code class="language-json">{{ tc.args_json }}</code></pre>
+ {%- endcall %}
+ {% endif %}
  </td>
- <td class="font-monospace small">
+ <td>
  {% if tc.result_summary %}
- <code title="{{ tc.result_summary }}">{{ tc.result_summary[:120] }}{% if tc.result_summary | length > 120 %}…{% endif %}</code>
+ {{ truncate_cell(tc.result_summary, max=120, klass="font-monospace small") }}
+ {% if tc.result_summary|length > 120 %}
+ {%- call detail_drawer("toolres-" ~ tc.id|string, "View full result", title=tc.tool_name ~ " — result") %}
+ <pre><code>{{ tc.result_summary }}</code></pre>
+ {%- endcall %}
+ {% endif %}
  {% else %}
  <span class="text-muted">&mdash;</span>
  {% endif %}
@@ -91,7 +103,18 @@
  <td class="font-monospace text-muted">{{ entry.created_at or "&mdash;" | safe }}</td>
  <td class="font-monospace">{{ entry.actor_email or "&mdash;" | safe }} <span class="text-muted">({{ entry.actor_role or "?" }})</span></td>
  <td><span class="badge bg-secondary">{{ entry.action }}</span></td>
- <td class="font-monospace small text-muted">{{ entry.detail or "&mdash;" | safe }}</td>
+ <td>
+ {% if entry.detail %}
+ {{ truncate_cell(entry.detail, max=80, klass="font-monospace small text-muted") }}
+ {% if entry.detail|length > 80 %}
+ {%- call detail_drawer("audit-" ~ entry.id|string, "View full detail", title=entry.action) %}
+ <pre>{{ entry.detail }}</pre>
+ {%- endcall %}
+ {% endif %}
+ {% else %}
+ <span class="text-muted">&mdash;</span>
+ {% endif %}
+ </td>
  </tr>
  {% endfor %}
  </tbody>
