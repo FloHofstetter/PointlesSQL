@@ -31,5 +31,6 @@
 @import url("./components/command_palette.css?v=ASSET_VERSION");
 @import url("./components/dashboard.css?v=ASSET_VERSION");      /* home dashboard, status dot, onboarding, admin audit */
 @import url("./components/list_table.css?v=ASSET_VERSION");     /* search input, chips, sortable headers, row actions */
+@import url("./components/cards.css?v=ASSET_VERSION");          /* card-grid surfaces (sprint 56.9) */
 @import url("./components/detail_drawer.css?v=ASSET_VERSION");  /* offcanvas detail drawers (sprint 56.8) */
 @import url("./responsive.css?v=ASSET_VERSION");                /* mobile breakpoints, reduced-motion */

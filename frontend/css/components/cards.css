@@ -1,0 +1,42 @@
+/* Card-grid surfaces (Sprint 56.9).
+ *
+ * Replaces narrative-rich tables (agent_reviews_list, alerts) with
+ * card grids.  Each card carries a severity / status accent on its
+ * left edge so the eye can scan a grid faster than a table.
+ */
+
+/* Agent-review card — severity stripe on the left edge. */
+.pql-review-card {
+    color: inherit;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    border-left: 3px solid var(--bs-border-color);
+}
+.pql-review-card:hover,
+.pql-review-card:focus-within {
+    transform: translateY(-1px);
+    box-shadow: var(--bs-box-shadow-sm);
+    text-decoration: none;
+}
+.pql-review-card--ok {
+    border-left-color: var(--bs-success);
+}
+.pql-review-card--warn {
+    border-left-color: var(--bs-warning);
+}
+.pql-review-card--critical {
+    border-left-color: var(--bs-danger);
+}
+
+/* Alerts card — active vs paused stripe. */
+.pql-alert-card {
+    border-left: 3px solid var(--bs-border-color);
+}
+.pql-alert-card--active {
+    border-left-color: var(--bs-success);
+}
+.pql-alert-card--paused {
+    border-left-color: var(--bs-secondary);
+}
+.pql-alert-card .card-header a {
+    color: var(--bs-link-color);
+}

@@ -27,56 +27,47 @@
     </span>
 </div>
 
+{% if reviews %}
+<div class="row g-3">
+    {% for review in reviews %}
+    {% set sev = review.severity %}
+    <div class="col-12 col-md-6 col-xxl-4">
+        <a href="/agent-reviews/{{ review.id }}"
+           class="card h-100 text-decoration-none pql-review-card pql-review-card--{{ sev }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="font-monospace small text-muted">#{{ review.id }}</span>
+                <span class="badge {% if sev == 'critical' %}bg-danger{% elif sev == 'warn' %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                    {{ sev }}
+                </span>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-2 font-monospace">
+                    <i class="bi bi-calendar-range me-1"></i>
+                    {{ review.period_start[:10] }} &rarr; {{ review.period_end[:10] }}
+                </p>
+                <p class="mb-0">
+                    {%- set first_line = (review.summary_md or '').split('\n')[0] -%}
+                    {{ first_line }}
+                </p>
+            </div>
+            <div class="card-footer small text-muted font-monospace bg-transparent">
+                <i class="bi bi-clock me-1"></i>{{ review.created_at[:19] }}Z
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
 <div class="card">
     <div class="card-body p-0">
-        {% if reviews %}
-        <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0 align-middle pql-list-table">
-                <thead class="pql-thead-sticky">
-                    <tr>
-                        <th class="ps-3">ID</th>
-                        <th>Created</th>
-                        <th>Period</th>
-                        <th>Severity</th>
-                        <th class="pe-3">Summary</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for review in reviews %}
-                    <tr>
-                        <td class="ps-3 font-monospace small">
-                            <a href="/agent-reviews/{{ review.id }}" class="text-decoration-none">#{{ review.id }}</a>
-                        </td>
-                        <td class="small text-muted font-monospace">
-                            {{ review.created_at[:19] }}Z
-                        </td>
-                        <td class="small text-muted font-monospace">
-                            {{ review.period_start[:10] }} &rarr; {{ review.period_end[:10] }}
-                        </td>
-                        <td>
-                            {% set sev = review.severity %}
-                            <span class="badge {% if sev == 'critical' %}bg-danger{% elif sev == 'warn' %}bg-warning text-dark{% else %}bg-success{% endif %}">
-                                {{ sev }}
-                            </span>
-                        </td>
-                        <td class="pe-3 small">
-                            {%- set first_line = (review.summary_md or '').split('\n')[0] -%}
-                            {{ first_line[:160] }}{% if first_line|length > 160 %}…{% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
         {% with flush=True, icon="bi-robot",
                 title="No agent reviews recorded yet",
                 message="The Audit-Reviewer-Agent persona writes a Markdown digest after each daily / weekly cron run; rows appear here once it has fired at least once." %}
             {% include "components/empty.html" %}
         {% endwith %}
-        {% endif %}
     </div>
 </div>
+{% endif %}
 
 {{ paginate(
     total=total,
