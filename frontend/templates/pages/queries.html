@@ -173,7 +173,7 @@
                                 <span class="badge text-bg-secondary me-1 font-monospace">{{ full }}</span>
                                 {% endfor %}
                             </td>
-                            <td class="text-end pe-3">
+                            <td data-label="Actions" class="text-end pe-3">
                                 <a href="/sql?prefill={{ entry.sql_text|urlencode }}&history_id={{ entry.id }}"
                                    class="btn btn-outline-primary btn-sm"
                                    title="Re-run in SQL editor">

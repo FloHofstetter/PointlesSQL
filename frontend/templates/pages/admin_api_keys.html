@@ -66,7 +66,7 @@
     </div>
     {% if keys %}
     <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+        <table class="table table-sm align-middle mb-0 pql-list-table">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -83,9 +83,9 @@
                 {% for k in keys %}
                 <tr data-api-key-name="{{ k.name }}"
                     x-data='apiKeyRow({{ k.name|tojson }}, {{ (k.revoked_at is not none)|tojson }})'>
-                    <td><strong>{{ k.name }}</strong></td>
-                    <td class="font-monospace small">{{ k.secret_prefix }}…</td>
-                    <td class="small">
+                    <td data-label="Name"><strong>{{ k.name }}</strong></td>
+                    <td data-label="Prefix" class="font-monospace small">{{ k.secret_prefix }}…</td>
+                    <td data-label="Scopes" class="small">
                         {% if k.supervisor %}
                         <span class="badge bg-warning text-dark">supervisor</span>
                         {% endif %}
@@ -99,23 +99,23 @@
                         <span class="text-muted">agent</span>
                         {% endif %}
                     </td>
-                    <td class="small">
+                    <td data-label="Workspace" class="small">
                         {% if k.workspace_slug %}
                         <code>{{ k.workspace_slug }}</code>
                         {% else %}
                         <span class="text-muted">#{{ k.workspace_id }}</span>
                         {% endif %}
                     </td>
-                    <td class="small text-nowrap">{{ k.created_at[:10] if k.created_at else '—' }}</td>
-                    <td class="small text-nowrap">{{ k.last_used_at[:10] if k.last_used_at else '—' }}</td>
-                    <td>
+                    <td data-label="Created" class="small text-nowrap">{{ k.created_at[:10] if k.created_at else '—' }}</td>
+                    <td data-label="Last used" class="small text-nowrap">{{ k.last_used_at[:10] if k.last_used_at else '—' }}</td>
+                    <td data-label="Status">
                         {% if k.revoked_at %}
                         <span class="badge bg-secondary">revoked {{ k.revoked_at[:10] }}</span>
                         {% else %}
                         <span class="badge bg-success">active</span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="Actions">
                         {% if not k.revoked_at %}
                         <button type="button" class="btn btn-outline-danger btn-sm"
                                 :disabled="busy"

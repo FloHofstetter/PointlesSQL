@@ -63,7 +63,8 @@
  </div>
  </template>
  <template x-if="destinations.length > 0">
- <table class="table table-sm mb-0 small">
+ <div class="table-responsive">
+ <table class="table table-sm mb-0 small pql-list-table">
  <thead>
  <tr>
  <th>Kind</th>
@@ -75,17 +76,17 @@
  <tbody>
  <template x-for="dest in destinations" :key="dest.id">
  <tr>
- <td>
+ <td data-label="Kind">
  <span class="badge text-bg-info" x-text="dest.kind"></span>
  </td>
- <td>
+ <td data-label="URL">
  <code class="small" x-text="dest.webhook_url || '(pull feed)'"></code>
  </td>
- <td>
+ <td data-label="HMAC">
  <span x-show="dest.has_hmac" class="badge text-bg-success">yes</span>
  <span x-show="!dest.has_hmac" class="text-muted">—</span>
  </td>
- <td class="text-end pe-3">
+ <td data-label="Actions" class="text-end pe-3">
  <button type="button"
  class="btn btn-outline-danger btn-sm"
  @click="removeDest(dest)">
@@ -96,6 +97,7 @@
  </template>
  </tbody>
  </table>
+ </div>
  </template>
  </div>
  </div>

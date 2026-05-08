@@ -101,7 +101,7 @@
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle">
+            <table class="table table-sm mb-0 align-middle pql-list-table">
                 <thead>
                     <tr>
                         <th class="ps-3">Detected</th>
@@ -116,16 +116,16 @@
                 <tbody>
                     {% for w in entries %}
                     <tr {% if w.acknowledged_at %}class="text-muted"{% endif %}>
-                        <td class="ps-3 small font-monospace">{{ w.detected_at }}</td>
-                        <td class="font-monospace small">{{ w.table_fqn }}</td>
-                        <td class="font-monospace">{{ w.delta_version }}</td>
-                        <td class="small font-monospace">{{ w.commit_timestamp or "—" }}</td>
-                        <td class="small font-monospace" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis;">
+                        <td data-label="Detected" class="ps-3 small font-monospace">{{ w.detected_at }}</td>
+                        <td data-label="Table" class="font-monospace small">{{ w.table_fqn }}</td>
+                        <td data-label="Delta v" class="font-monospace">{{ w.delta_version }}</td>
+                        <td data-label="Commit ts" class="small font-monospace">{{ w.commit_timestamp or "—" }}</td>
+                        <td data-label="Commit info" class="small font-monospace" style="max-width: 360px; overflow: hidden; text-overflow: ellipsis;">
                             <code title="{{ w.commit_info or '' }}">
                                 {{ (w.commit_info or '')[:120] }}{% if (w.commit_info or '')|length > 120 %}…{% endif %}
                             </code>
                         </td>
-                        <td class="small">
+                        <td data-label="Acknowledged" class="small">
                             {% if w.acknowledged_at %}
                             <span class="badge bg-secondary">{{ w.acknowledged_by }}</span>
                             <span class="text-muted">{{ w.acknowledged_at }}</span>
@@ -133,7 +133,7 @@
                             <span class="badge bg-warning text-dark">pending</span>
                             {% endif %}
                         </td>
-                        <td class="pe-3 text-end">
+                        <td data-label="Action" class="pe-3 text-end">
                             {% if not w.acknowledged_at %}
                             <form method="post" action="/api/admin/external-writes/{{ w.id }}/acknowledge"
                                   hx-boost="false" class="d-inline">

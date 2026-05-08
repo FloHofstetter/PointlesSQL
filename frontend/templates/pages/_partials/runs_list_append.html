@@ -27,15 +27,15 @@
  data-sort-cost="{{ run.cost_est or 0 }}"
  data-sort-started_at="{{ run.started_at or '' }}"
  >
- <td><a href="/runs/{{ run.id }}"
+ <td data-label="ID"><a href="/runs/{{ run.id }}"
   class="text-decoration-none font-monospace small"
   title="{{ run.id }}">{{ run.id[:8] }}</a></td>
- <td class="font-monospace small">{{ run.principal or "—" }}</td>
- <td class="font-monospace small">{{ run.agent_id or "—" }}</td>
- <td>
+ <td data-label="Principal" class="font-monospace small">{{ run.principal or "—" }}</td>
+ <td data-label="Agent" class="font-monospace small">{{ run.agent_id or "—" }}</td>
+ <td data-label="Status">
   <span class="badge {{ status_class(run.status) }}">{{ run.status }}</span>
  </td>
- <td>
+ <td data-label="Anomaly">
   {% if run.anomaly_severity == 'critical' %}
   <span class="badge bg-danger" title="{{ run.anomaly_metric or '' }}">critical</span>
   {% elif run.anomaly_severity == 'warn' %}
@@ -46,11 +46,11 @@
   <span class="text-muted small">—</span>
   {% endif %}
  </td>
- <td class="font-monospace small text-muted">
+ <td data-label="Cost est." class="font-monospace small text-muted">
   {% if run.cost_est is not none %}{{ run.cost_est }}{% else %}—{% endif %}
  </td>
- <td class="font-monospace small text-muted">{{ run.started_at or "—" }}</td>
- <td class="font-monospace small text-muted">
+ <td data-label="Started" class="font-monospace small text-muted">{{ run.started_at or "—" }}</td>
+ <td data-label="Tables touched" class="font-monospace small text-muted">
   {% if run.tables_touched %}
   {{ run.tables_touched | join(', ') }}
   {% else %}
