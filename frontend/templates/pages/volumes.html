@@ -21,12 +21,32 @@
 {% if not volumes %}
 <div class="card">
     <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-inbox display-4 d-block mb-2"></i>
-        <p class="mb-2">No volumes found.</p>
-        <p class="small">
-            Create a volume through the soyuz-catalog API or the UC CLI;
-            once it has a <code>file://</code> storage location PointlesSQL
-            can accept uploads and convert files to Delta tables.
+        <i class="bi bi-hdd-stack display-4 d-block mb-2"></i>
+        <p class="mb-2">No volumes yet.</p>
+        <p class="small mb-3">
+            UC Volumes are file-storage namespaces inside a catalog.
+            Create your first volume:
+        </p>
+        <ol class="text-start small mx-auto" style="max-width: 540px;">
+            <li class="mb-2">
+                <strong>Docker:</strong>
+                <code>docker exec pointlessql-soyuz \
+                soyuz-cli volumes create --catalog &lt;name&gt;
+                --schema &lt;name&gt; --volume &lt;name&gt;</code>
+            </li>
+            <li class="mb-2">
+                <strong>Python:</strong>
+                <code>client.volumes.create(catalog_name=…,
+                schema_name=…, name=…)</code>
+            </li>
+            <li>
+                <strong>Hermes:</strong> agent tool
+                <code>create_volume(catalog, schema, name)</code>
+            </li>
+        </ol>
+        <p class="small text-muted mt-3 mb-0">
+            Once a volume has a <code>file://</code> storage location,
+            PointlesSQL can accept uploads and convert files to Delta tables.
         </p>
     </div>
 </div>

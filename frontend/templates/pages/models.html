@@ -53,11 +53,30 @@
 
     <template x-if="!loading && !error && models.length === 0">
         <div>
-            {% with icon="bi-robot",
-                title="No registered models",
-                message="Models appear here once promoted via the Hermes plugin or mlflow.register_model() against the soyuz UC-OSS endpoint." %}
-            {% include "components/empty.html" %}
-            {% endwith %}
+            <div class="card">
+                <div class="card-body text-center text-muted py-5">
+                    <i class="bi bi-box-seam display-4 d-block mb-2"></i>
+                    <p class="mb-2">No registered models yet.</p>
+                    <p class="small mb-3">
+                        Register your first model:
+                    </p>
+                    <ol class="text-start small mx-auto" style="max-width: 540px;">
+                        <li class="mb-2">
+                            <strong>MLflow:</strong>
+                            <code>mlflow.register_model("runs:/&lt;run-id&gt;/model",
+                            "main.silver.my_model")</code>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Hermes:</strong> agent tool
+                            <code>register_model(model_uri, target_name)</code>
+                        </li>
+                        <li>
+                            <strong>Docs:</strong>
+                            <a href="/docs/" class="text-decoration-none">Models in the catalog</a>
+                        </li>
+                    </ol>
+                </div>
+            </div>
         </div>
     </template>
 

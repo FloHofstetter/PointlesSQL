@@ -105,11 +105,16 @@
  </div>
  </div>
  {% else %}
- {% with flush=True, icon="bi-diagram-3",
- title="No branches yet",
- message="Create one with pql.branch('catalog.schema', 'branch_name') in a notebook." %}
- {% include "components/empty.html" %}
- {% endwith %}
+ <div class="pql-empty">
+ <i class="bi bi-diagram-3 pql-empty__icon" aria-hidden="true"></i>
+ <p class="pql-empty__title">No branches yet</p>
+ <p class="pql-empty__message">
+ Create one with
+ <code>pql.branch('catalog.schema', 'branch_name')</code>
+ in a notebook, or with the agent <code>create_branch</code>
+ tool.
+ </p>
+ </div>
  {% endif %}
  </div>
 </div>
