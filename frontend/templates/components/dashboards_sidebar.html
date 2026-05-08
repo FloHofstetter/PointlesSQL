@@ -21,7 +21,14 @@
         </template>
 
         <template x-if="items && items.length === 0">
-            <div class="text-muted small p-3 fst-italic">No dashboards yet.</div>
+            <div class="text-muted small p-3">
+                <p class="mb-2">No dashboards yet.</p>
+                <p class="mb-0 fst-italic">
+                    Create one via
+                    <a href="/dashboards/new" class="text-decoration-none">+ New dashboard</a>
+                    or with the agent <code>create_dashboard</code> tool.
+                </p>
+            </div>
         </template>
 
         <ul class="list-unstyled mb-0" x-show="items && items.length > 0" x-cloak>
