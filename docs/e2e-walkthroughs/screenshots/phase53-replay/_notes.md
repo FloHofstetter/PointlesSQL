@@ -21,19 +21,26 @@ These notes feed into:
 
 ## Bugs found (BUG-53-NN)
 
-| ID | Severity | Surface | Fix path |
-|---|---|---|---|
-| BUG-53-01 | medium | `/audit/search` | Template has unescaped HTML in description text — `Learn more →" aria-label="Audit FTS syntax">` leaks into rendered prose. Likely a `{{ help | safe }}` filter applied to a string with embedded markup. Fix in `audit_search.html` template. |
-| BUG-53-02 | low | walkthrough doc | `sql-editor.md` references `/sql-editor` but actual route is `/sql`. Update walkthrough surface tag + MCP script. |
-| BUG-53-03 | medium | icon-rail | `WORKSPACE` icon-rail link points to `/workspace` which 404s. Either the link should target `/catalogs/<slug>` (workspace-as-catalog) or a real workspace landing page should be added. |
-| BUG-53-04 | low | walkthrough doc | `admin-audit.md` references `/admin/audit-log` but actual route is `/admin/audit`. Update walkthrough. |
-| BUG-53-05 | medium | `/data-products` | 404. Either route was removed or the `data_products.md` walkthrough is out of date. Investigate `pointlessql/api/` for current data-products surface. |
-| BUG-53-07 | high | `/jobs/new` | GET returns `Invalid input — Request validation failed` instead of rendering a creation form. The "+ New job" button on `/jobs` likely points here. Either add a GET form view or change the button to open a modal. |
-| BUG-53-08 | high | `/dashboards/new` | 404. The "+ New dashboard" button on `/dashboards` is broken or expects a different path. |
-| BUG-53-09 | low | `/agent-reviews` | 404. There is no list view; only `/agent-reviews/{id}` exists. Either add a list page (currently /audit/inbox?) or document that the detail-only flow is intentional. |
-| BUG-53-10 | low | `/foreign-catalogs` | 404. No list view at this path; foreign catalogs are managed via `/connections`. Walkthrough `foreign-catalog-sync.md` likely points to a stale path. |
+| ID | Severity | Surface | Status | Fix path |
+|---|---|---|---|---|
+| BUG-53-01 | medium | `/audit/search` | **CLOSED** (Phase 56.2 verify) | Help-icon escape fixed in Phase 53 (`_macros/help_icon.html` `\|e` filter). `grep 'Learn more' frontend/templates/pages/audit_search.html` returns nothing. |
+| BUG-53-02 | low | walkthrough doc | **CLOSED** (Phase 56.2 verify) | No `/sql-editor` URL references in `sql-editor.md`; surface-tag and body already use `/sql`. |
+| BUG-53-03 | medium | icon-rail | **CLOSED** (Phase 56.2 verify) | Icon-rail link is `/notebooks/workspace` (not `/workspace` as bug claimed); route exists at `notebooks_routes.py:103`. |
+| BUG-53-04 | low | walkthrough doc | **CLOSED** (Phase 56.2 verify) | No `/admin/audit-log` URL references in `admin-audit.md`; all references are `/admin/audit`. |
+| BUG-53-05 | medium | `/data-products` | **CLOSED** (Phase 56.2 verify) | HTML route exists at `data_products_html_routes.py:25`; `icon_rail.html:83` link works; `data_product.html` template renders. |
+| BUG-53-07 | high | `/jobs/new` | **CLOSED** (Phase 56.2 verify) | "New job" button on `jobs.html:14` uses `data-bs-toggle="modal"` (in-place modal `#createJobModal`), not `/jobs/new` GET. |
+| BUG-53-08 | high | `/dashboards/new` | **CLOSED** (Phase 56.2 verify) | "New dashboard" button on `dashboards.html:14` uses `data-bs-toggle="modal"` (in-place modal `#createDashboardModal`), not `/dashboards/new` GET. |
+| BUG-53-09 | low | `/agent-reviews` | **CLOSED** (Phase 19) | List route exists at `agent_reviews_routes.py:222` since Phase 19 closed. |
+| BUG-53-10 | low | `/foreign-catalogs` | **CLOSED** (Phase 56.2 verify) | No `/foreign-catalogs` URL references in `foreign-catalog-sync.md`; walkthrough is about modal-based creation under existing surfaces. |
 
 (BUG-53-06 reserved — false alarm during sweep, not used.)
+
+**All 9 BUG-53-NN entries closed during Phase 56.1+56.2 audit.** The
+fixes landed across Phases 12 (notebook workspace), 19 (agent-reviews),
+24 (jobs modal-create), 25 (dashboards modal-create), 53 (help-icon
+escape) — but the BUG list was never updated post-fix. Phase 56.1
+audit verified each surface and Phase 56.2 marks them closed in one
+sweep.
 
 ---
 
