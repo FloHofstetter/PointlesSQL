@@ -22,7 +22,7 @@ from collections import defaultdict
 from typing import Any
 
 from fastapi import Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from pointlessql.models import (
     AgentRunEvent,
@@ -39,8 +39,13 @@ from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services import output_rendering as output_rendering_service
 
 
-def load_runs(request: Request, limit: int = 200) -> list[dict[str, Any]]:
-    """Fetch the most recent agent-run rows as serialized dicts.
+def load_runs(
+    request: Request,
+    *,
+    offset: int = 0,
+    limit: int = 200,
+) -> tuple[list[dict[str, Any]], int]:
+    """Fetch one page of agent-run rows plus the global count.
 
     Scoped to the caller's resolved workspace.  The super-admin
     "All workspaces" lens skips the filter via a separate code
@@ -48,26 +53,37 @@ def load_runs(request: Request, limit: int = 200) -> list[dict[str, Any]]:
 
     Args:
         request: Incoming FastAPI request.
+        offset: Zero-based offset of the first row in the page.
         limit: Max rows to return; the list page caps at the table
             renderer's natural size.
 
     Returns:
-        One dict per row, newest-first, as shaped by
-        :func:`serialize_agent_run`.
+        ``(rows, total)`` — one dict per row (newest-first, shaped by
+        :func:`serialize_agent_run`) plus the unfiltered ``COUNT(*)``
+        so the caller can decide whether to render a Load-More CTA.
     """
     from pointlessql.api.agent_runs_routes import serialize_agent_run
 
     factory = request.app.state.session_factory
     workspace_id = int(getattr(request.state, "workspace_id", 1))
     with factory() as session:
+        total = int(
+            session.scalar(
+                select(func.count())
+                .select_from(AgentRun)
+                .where(AgentRun.workspace_id == workspace_id)
+            )
+            or 0
+        )
         stmt = (
             select(AgentRun)
             .where(AgentRun.workspace_id == workspace_id)
             .order_by(AgentRun.started_at.desc())
-            .limit(limit)
+            .offset(max(offset, 0))
+            .limit(max(limit, 1))
         )
         rows = list(session.scalars(stmt).all())
-        return [serialize_agent_run(row) for row in rows]
+        return [serialize_agent_run(row) for row in rows], total
 
 
 def load_outputs_for_run(

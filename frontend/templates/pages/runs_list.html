@@ -4,13 +4,16 @@
  supervision list with Alpine ``listTable`` filter bar.
 
  Expected context:
- * ``runs`` (list[dict]) — agent-run rows from
- ``serialize_agent_run`` (newest-first, capped at 200).
+ * ``runs`` (list[dict]) — first page of agent-run rows from
+ ``serialize_agent_run`` (newest-first, page size 200).
+ * ``total``, ``offset``, ``row_limit``, ``next_offset``, ``remaining``
+ — pager state used by the Load-More CTA below the table.
 
  Filtering is client-side via the existing ``listTable`` component
- (search box + status chips). Server-side query params remain a
- non-goal: 200 rows is well within client-side filter cost, and the
- page render stays cacheable / progressive-enhancement-safe.
+ (search box + status chips).  Phase 55.3 adds an HTMX-driven
+ "Load N more" button; appended rows fire ``pql:rows-appended`` so
+ ``listTable`` can re-snapshot ``_rows`` and keep filters / sort
+ honest across pages.
 #}
 {% block title %}Runs · PointlesSQL{% endblock %}
 
@@ -40,7 +43,8 @@
  ],
  initialSort: { key: 'started_at', dir: 'desc' },
  emptyMessage: 'No runs match the current filter.'
- })">
+ })"
+ @pql:rows-appended="$nextTick(() => refreshRows && refreshRows())">
  <div class="card">
  <div class="card-body p-0">
  <table class="table table-hover table-sm mb-0 pql-list-table">
@@ -56,7 +60,7 @@
  <th>Tables touched</th>
  </tr>
  </thead>
- <tbody>
+ <tbody id="runs-tbody">
  {% for run in runs %}
  <tr
  data-search="{{ run.id }} {{ run.principal or '' }} {{ run.agent_id or '' }} {{ run.status }} {% if run.anomaly_severity %}anomaly:{{ run.anomaly_severity }}{% endif %} {{ (run.tables_touched or []) | join(' ') }}"
@@ -106,6 +110,20 @@
  </tbody>
  </table>
  </div>
+ </div>
+ <div id="runs-pager" class="d-flex justify-content-center align-items-center gap-3 my-3">
+ {% if next_offset is not none %}
+ <button class="btn btn-outline-secondary btn-sm"
+  hx-get="/runs?offset={{ next_offset }}"
+  hx-target="#runs-tbody"
+  hx-swap="beforeend"
+  hx-on:htmx:after-swap="this.closest('[x-data]').dispatchEvent(new CustomEvent('pql:rows-appended', {bubbles: true}))">
+  <i class="bi bi-arrow-down-circle me-1"></i>
+  Load {{ row_limit }} more · {{ remaining }} remaining
+ </button>
+ {% elif total > row_limit %}
+ <span class="text-muted small">All {{ total }} runs loaded.</span>
+ {% endif %}
  </div>
 </div>
 {% else %}

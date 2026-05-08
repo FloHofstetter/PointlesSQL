@@ -260,5 +260,16 @@ export function listTable(config) {
             }
             if (this._emptyEl) this._emptyEl.hidden = visible > 0;
         },
+
+        // Re-snapshot rows from the live tbody and re-apply sort + filter.
+        // Used after HTMX appends a new page of rows: the original
+        // `init()` snapshotted `_rows` once, so subsequent appends are
+        // invisible to filter / sort until we refresh the snapshot.
+        refreshRows() {
+            if (!this._tbody) return;
+            this._rows = Array.from(this._tbody.rows);
+            if (this.sortKey) this._applySort();
+            this._applyFilter();
+        },
     };
 }
