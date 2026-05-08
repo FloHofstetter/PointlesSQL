@@ -19,12 +19,12 @@
 <nav class="pql-icon-rail" aria-label="Primary navigation">
     <ul class="pql-icon-rail__list">
         <li class="pql-icon-rail__item">
-            <a href="/connections"
+            <a href="/"
                data-section="federation"
            class="pql-icon-rail__link{% if active_section == 'federation' %} active{% endif %}"
-               title="Federation (catalogs, connections, external locations, credentials)">
-                <i class="bi bi-plug"></i>
-                <span class="pql-icon-rail__label">Federation</span>
+               title="Catalog (catalogs, schemas, tables, foreign connections, volumes, models)">
+                <i class="bi bi-database"></i>
+                <span class="pql-icon-rail__label">Catalog</span>
             </a>
         </li>
         <li class="pql-icon-rail__item">
@@ -72,6 +72,24 @@
                title="Alerts">
                 <i class="bi bi-bell"></i>
                 <span class="pql-icon-rail__label">Alerts</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/audit/inbox"
+               data-section="audit"
+               class="pql-icon-rail__link{% if active_section == 'audit' %} active{% endif %}"
+               title="Audit cockpit — anomaly inbox, search, by-table, by-query">
+                <i class="bi bi-shield-check"></i>
+                <span class="pql-icon-rail__label">Audit</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/agent-reviews"
+               data-section="reviews"
+               class="pql-icon-rail__link{% if active_section == 'reviews' %} active{% endif %}"
+               title="Agent reviews — automated review loops">
+                <i class="bi bi-clipboard-check"></i>
+                <span class="pql-icon-rail__label">Reviews</span>
             </a>
         </li>
         {# Volumes + Models intentionally have NO rail icon — they
@@ -134,7 +152,7 @@
                data-section="admin"
                class="pql-icon-rail__link{% if active_section == 'admin' %} active{% endif %}"
                title="Admin landing — audit log, sinks, destinations, workspaces">
-                <i class="bi bi-shield-check"></i>
+                <i class="bi bi-tools"></i>
                 <span class="pql-icon-rail__label">Admin</span>
             </a>
         </li>

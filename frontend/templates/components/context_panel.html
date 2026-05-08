@@ -68,6 +68,64 @@
  {% include "components/sidebars/alerts_sidebar.html" %}
  {% elif active_section == 'mlflow' %}
  {% include "components/sidebars/mlflow_sidebar.html" %}
+ {% elif active_section == 'audit' %}
+ {% set _audit_path = request.url.path if request else '' %}
+ <div class="pql-context-panel__header">Audit cockpit</div>
+ <div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/audit/inbox"
+ class="pql-context-panel__link{% if _audit_path == '/audit/inbox' %} active{% endif %}">
+ <i class="bi bi-bell-fill"></i>
+ <span>Inbox</span>
+ </a>
+ </li>
+ <li>
+ <a href="/audit/search"
+ class="pql-context-panel__link{% if _audit_path == '/audit/search' %} active{% endif %}">
+ <i class="bi bi-search"></i>
+ <span>Search</span>
+ </a>
+ </li>
+ <li>
+ <a href="/audit/by-table"
+ class="pql-context-panel__link{% if _audit_path.startswith('/audit/by-table') %} active{% endif %}">
+ <i class="bi bi-table"></i>
+ <span>By table</span>
+ </a>
+ </li>
+ <li>
+ <a href="/audit/queries"
+ class="pql-context-panel__link{% if _audit_path == '/audit/queries' %} active{% endif %}">
+ <i class="bi bi-code-square"></i>
+ <span>By query</span>
+ </a>
+ </li>
+ </ul>
+ <div class="pql-context-panel__hint">
+ Drill into any row to open the source run, or use the agent
+ <code>audit_history</code> tool for run-scoped retrieval.
+ </div>
+ </div>
+ {% elif active_section == 'reviews' %}
+ {% set _reviews_path = request.url.path if request else '' %}
+ <div class="pql-context-panel__header">Agent reviews</div>
+ <div class="pql-context-panel__body">
+ <ul class="pql-context-panel__list">
+ <li>
+ <a href="/agent-reviews"
+ class="pql-context-panel__link{% if _reviews_path == '/agent-reviews' %} active{% endif %}">
+ <i class="bi bi-clipboard-check"></i>
+ <span>All reviews</span>
+ </a>
+ </li>
+ </ul>
+ <div class="pql-context-panel__hint">
+ Automated review loops triggered post-run.  Configure
+ destinations under <a href="/admin/review-destinations">Admin
+ → Review destinations</a>.
+ </div>
+ </div>
  {% elif active_section == 'admin' %}
  {% set _admin_path = request.url.path if request else '' %}
  <div class="pql-context-panel__header">Admin</div>
@@ -85,13 +143,6 @@
  class="pql-context-panel__link{% if _admin_path == '/admin/audit' %} active{% endif %}">
  <i class="bi bi-journal-text"></i>
  <span>Audit log</span>
- </a>
- </li>
- <li>
- <a href="/audit/queries"
- class="pql-context-panel__link{% if _admin_path.startswith('/audit') %} active{% endif %}">
- <i class="bi bi-shield-check"></i>
- <span>Audit cockpit</span>
  </a>
  </li>
  <li>
