@@ -48,7 +48,7 @@
     <input type="hidden" name="agent_run_id" value="{{ agent_run_filter }}">
     {% endif %}
     <div class="col-12 col-sm-auto">
-        <label for="read-kind-filter" class="form-label small mb-1 text-muted">Read kind</label>
+        <label for="read-kind-filter" class="form-label small mb-1 text-muted">Source</label>
         <select id="read-kind-filter" name="read_kind" class="form-select form-select-sm">
             <option value="" {% if not read_kind_filter %}selected{% endif %}>All</option>
             <option value="sql_execute" {% if read_kind_filter == 'sql_execute' %}selected{% endif %}>SQL execute</option>
@@ -57,7 +57,7 @@
         </select>
     </div>
     <div class="col-12 col-sm-auto">
-        <label for="status-filter" class="form-label small mb-1 text-muted">Status</label>
+        <label for="status-filter" class="form-label small mb-1 text-muted">Outcome</label>
         <select id="status-filter" name="status" class="form-select form-select-sm">
             <option value="" {% if not status_filter %}selected{% endif %}>All</option>
             <option value="succeeded" {% if status_filter == 'succeeded' %}selected{% endif %}>Succeeded</option>
@@ -66,7 +66,7 @@
         </select>
     </div>
     <div class="col-12 col-sm-auto">
-        <label for="since-filter" class="form-label small mb-1 text-muted">Window</label>
+        <label for="since-filter" class="form-label small mb-1 text-muted">Time range</label>
         <select id="since-filter" name="since" class="form-select form-select-sm">
             <option value="" {% if not since_filter %}selected{% endif %}>All time</option>
             <option value="24h" {% if since_filter == '24h' %}selected{% endif %}>Last 24h</option>

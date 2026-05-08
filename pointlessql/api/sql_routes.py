@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from typing import Any, Literal, cast
 from uuid import uuid4
@@ -43,6 +44,8 @@ from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.settings import Settings
 
 logger = logging.getLogger(__name__)
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 router = APIRouter(tags=["sql"])
 
@@ -349,7 +352,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 row_count=None,
                 duration_ms=None,
                 referenced_tables=parsed_refs,
-                error_message=str(exc),
+                error_message=_ANSI_ESCAPE_RE.sub("", str(exc)),
             )
         raise
     finally:

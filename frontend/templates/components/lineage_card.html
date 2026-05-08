@@ -15,8 +15,11 @@
 #}
 {% set upstream = (lineage or {}).get("upstream", {}) %}
 {% set downstream = (lineage or {}).get("downstream", {}) %}
-{% set up_nodes = upstream.get("nodes", []) %}
-{% set down_nodes = downstream.get("nodes", []) %}
+{# Skip the depth-0 self-node — it duplicates the page subject in
+   both UPSTREAM and DOWNSTREAM lists, which is confusing on tables
+   with no edges. #}
+{% set up_nodes = upstream.get("nodes", []) | rejectattr("depth", "equalto", 0) | list %}
+{% set down_nodes = downstream.get("nodes", []) | rejectattr("depth", "equalto", 0) | list %}
 {% set up_edges = upstream.get("edges", []) %}
 {% set down_edges = downstream.get("edges", []) %}
 

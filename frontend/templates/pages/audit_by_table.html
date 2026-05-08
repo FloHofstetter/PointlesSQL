@@ -22,10 +22,10 @@
 
 <p class="text-muted">
     Reverse-index of agent runs against this UC table.  The
-    <strong>touched</strong> tab lists runs that declared the table
-    in <code>tables_touched</code>; <strong>written</strong> covers
-    ops + value-changes; <strong>read</strong> joins through
-    <code>query_history</code>.  Click a row to drill into the run-detail.
+    <strong>Touched</strong> tab lists runs that declared the table;
+    <strong>Wrote</strong> covers writes + value-changes;
+    <strong>Read</strong> covers SELECTs against this table.  Click a
+    row to drill into the run-detail.
 </p>
 
 {% if not table_fqn %}
