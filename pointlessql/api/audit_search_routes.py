@@ -60,13 +60,15 @@ async def api_audit_search(
     since: str | None = Query(default=None, description="ISO-8601 lower bound"),
     until: str | None = Query(default=None, description="ISO-8601 upper bound (exclusive)"),
     limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> dict[str, Any]:
     """Free-text search across the audit lake.
 
     Backed by SQLite FTS5 on a single virtual table populated by
     triggers (alembic migration ``y5u7v9w1x3z5``).  Postgres
-    deployments return ``available=false`` because the migration
-    is SQLite-only.
+    deployments use the ``audit_search_index`` GIN-on-tsvector table
+    instead.  Both dialects honor ``offset`` so the cockpit can
+    stream pages.
 
     Args:
         request: Incoming FastAPI request.
@@ -79,12 +81,13 @@ async def api_audit_search(
             timestamp (per-axis JOIN).  ``None`` is "no bound".
         until: ISO-8601 upper bound (exclusive).
         limit: Max rows (1–500); FTS rank-ascending.
+        offset: Zero-based offset for the page.
 
     Returns:
-        ``{"available": bool, "query", "axis", "since", "until",
-        "limit", "results": [{"axis", "entity_id", "run_id",
-        "principal", "table_fqn", "snippet", "rank"}, ...],
-        "total_count": int}``.
+        ``{"available", "query", "axis", "since", "until", "limit",
+        "offset", "next_offset", "results", "total_count"}``.
+        ``next_offset`` is ``None`` when the page is the tail of the
+        result set.
 
     Raises:
         ValidationError: ``axis`` outside the whitelist or
@@ -95,9 +98,6 @@ async def api_audit_search(
         raise ValidationError(f"axis must be one of {sorted(audit_fts.VALID_AXES)}")
     since_dt = _parse_iso8601("since", since)
     until_dt = _parse_iso8601("until", until)
-    # Scope the FTS5 result to the caller's resolved workspace.
-    # Cross-workspace search via the super-admin lens explicitly
-    # opts in through ``?workspace=all``.
     workspace_id = int(getattr(request.state, "workspace_id", 1))
     return audit_fts.search(
         request.app.state.session_factory,
@@ -106,6 +106,7 @@ async def api_audit_search(
         since=since_dt,
         until=until_dt,
         limit=limit,
+        offset=offset,
         workspace_id=workspace_id,
     )
 

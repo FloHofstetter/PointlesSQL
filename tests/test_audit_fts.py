@@ -359,3 +359,66 @@ async def test_api_audit_search_no_fts_returns_unavailable(admin_client: httpx.A
     r = await admin_client.get("/api/audit/search?q=anything")
     assert r.status_code == 200
     assert r.json()["available"] is False
+
+
+def test_search_offset_pages_results(fts_index: None) -> None:
+    """``offset`` shifts the page; ``next_offset`` reports tail-state.
+
+    Uses a notebook-path token shared across three seeded runs.
+    The FTS tokenizer treats ``.``/``_``/``-`` as separators on top of
+    unicode61's default punctuation handling, so a single bareword
+    like ``pagertestseed`` survives intact and matches all three.
+    """
+    for i in range(3):
+        _seed_run(
+            run_id=f"55555555-5555-5555-5555-{i:012d}",
+            principal=f"alice{i}@example.com",
+            tables=["main.bronze.t"],
+            notebook=f"pagertestseed-{i}.py",
+        )
+    page0 = audit_fts.search(
+        app.state.session_factory,
+        query="pagertestseed",
+        axis="runs",
+        limit=2,
+        offset=0,
+    )
+    assert page0["available"]
+    assert page0["total_count"] == 2
+    assert page0["offset"] == 0
+    assert page0["next_offset"] == 2
+    page1 = audit_fts.search(
+        app.state.session_factory,
+        query="pagertestseed",
+        axis="runs",
+        limit=2,
+        offset=2,
+    )
+    assert page1["total_count"] == 1
+    assert page1["offset"] == 2
+    assert page1["next_offset"] is None
+    seen = {row["entity_id"] for row in page0["results"]} | {
+        row["entity_id"] for row in page1["results"]
+    }
+    assert len(seen) == 3
+
+
+@pytest.mark.asyncio
+async def test_api_audit_search_offset_route(
+    fts_index: None, admin_client: httpx.AsyncClient
+) -> None:
+    """``GET /api/audit/search?offset=N`` carries the new pager fields."""
+    for i in range(2):
+        _seed_run(
+            run_id=f"66666666-6666-6666-6666-{i:012d}",
+            principal=f"bob{i}@example.com",
+            tables=["main.bronze.t"],
+            notebook=f"routepager-{i}.py",
+        )
+    r = await admin_client.get(
+        "/api/audit/search?q=routepager&axis=runs&limit=1&offset=1"
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["offset"] == 1
+    assert "next_offset" in body

@@ -268,6 +268,7 @@ def search(
     sanitised: str,
     axis: str,
     limit: int,
+    offset: int = 0,
     workspace_id: int | None,
 ) -> list[dict[str, Any]] | None:
     """Postgres path: ``text_search @@ plainto_tsquery``.
@@ -287,7 +288,11 @@ def search(
     pg_query = re.sub(r"[._@\-]+", " ", sanitised).strip()
     if not pg_query:
         return None
-    params: dict[str, Any] = {"query": pg_query, "limit": limit}
+    params: dict[str, Any] = {
+        "query": pg_query,
+        "limit": limit,
+        "offset": max(offset, 0),
+    }
     sql_parts: list[str] = [
         "SELECT s.axis, s.entity_id, s.run_id, s.principal, s.table_fqn, "
         "       s.workspace_id, "
@@ -307,7 +312,7 @@ def search(
     if workspace_id is not None:
         sql_parts.append("AND s.workspace_id = :workspace_id")
         params["workspace_id"] = workspace_id
-    sql_parts.append("ORDER BY rank DESC LIMIT :limit")
+    sql_parts.append("ORDER BY rank DESC LIMIT :limit OFFSET :offset")
     sql = " ".join(sql_parts)
 
     try:

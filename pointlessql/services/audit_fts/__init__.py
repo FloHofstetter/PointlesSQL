@@ -101,6 +101,7 @@ def search(
     since: datetime.datetime | None = None,
     until: datetime.datetime | None = None,
     limit: int = 50,
+    offset: int = 0,
     workspace_id: int | None = None,
 ) -> dict[str, Any]:
     """Search the audit lake; returns a JSON-shaped result dict.
@@ -112,15 +113,20 @@ def search(
         since: Optional ISO-aware lower bound on the source row's
             primary timestamp.
         until: Optional upper bound (exclusive).
-        limit: Max rows returned (``rank``-ordered, most relevant
-            first).
+        limit: Max rows returned per page (``rank``-ordered, most
+            relevant first).
+        offset: Zero-based offset for paged calls.  Both SQLite and
+            Postgres dialects honor this.
         workspace_id: Restrict to a single workspace's audit corpus.
             ``None`` skips the filter (super-admin cross-workspace
             lens).
 
     Returns:
         ``{"available", "query", "axis", "since", "until", "limit",
-        "workspace_id", "results", "total_count"}``.
+        "offset", "next_offset", "workspace_id", "results",
+        "total_count"}``.  ``next_offset`` is ``offset + limit`` when
+        the page came back full and ``None`` once the page is the
+        tail of the result set.
 
     Raises:
         ValueError: ``axis`` outside :data:`VALID_AXES`.
@@ -130,6 +136,7 @@ def search(
     if axis not in VALID_AXES:
         raise ValueError(f"unknown axis: {axis!r}")
 
+    safe_offset = max(offset, 0)
     response: dict[str, Any] = {
         "available": False,
         "query": query,
@@ -137,6 +144,8 @@ def search(
         "since": since.isoformat() if since else None,
         "until": until.isoformat() if until else None,
         "limit": limit,
+        "offset": safe_offset,
+        "next_offset": None,
         "workspace_id": workspace_id,
         "results": [],
         "total_count": 0,
@@ -152,6 +161,7 @@ def search(
                 sanitised=sanitised,
                 axis=axis,
                 limit=limit,
+                offset=safe_offset,
                 workspace_id=workspace_id,
             )
         elif _is_postgres(session):
@@ -160,6 +170,7 @@ def search(
                 sanitised=sanitised,
                 axis=axis,
                 limit=limit,
+                offset=safe_offset,
                 workspace_id=workspace_id,
             )
         else:
@@ -171,11 +182,17 @@ def search(
         if since is not None or until is not None:
             results = _apply_time_filter(session, results, since=since, until=until)
 
+        # Page-tail detection: a full page of ``limit`` rows from the
+        # underlying SQL implies more candidates may exist.  Time
+        # filters happen post-SQL so a partial page here is genuinely
+        # exhausted at this offset under these filters.
+        next_offset = safe_offset + limit if len(results) >= limit else None
         response.update(
             {
                 "available": True,
                 "results": results,
                 "total_count": len(results),
+                "next_offset": next_offset,
             }
         )
     return response

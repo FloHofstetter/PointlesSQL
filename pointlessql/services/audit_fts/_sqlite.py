@@ -239,13 +239,18 @@ def search(
     sanitised: str,
     axis: str,
     limit: int,
+    offset: int = 0,
     workspace_id: int | None,
 ) -> list[dict[str, Any]] | None:
     """SQLite path: ``audit_search MATCH :query``."""
     if not is_available(session):
         return None
 
-    params: dict[str, Any] = {"query": sanitised, "limit": limit}
+    params: dict[str, Any] = {
+        "query": sanitised,
+        "limit": limit,
+        "offset": max(offset, 0),
+    }
     sql_parts: list[str] = [
         "SELECT s.axis, s.entity_id, s.run_id, s.principal, s.table_fqn, "
         "s.workspace_id, "
@@ -260,7 +265,7 @@ def search(
     if workspace_id is not None:
         sql_parts.append("AND s.workspace_id = :workspace_id")
         params["workspace_id"] = workspace_id
-    sql_parts.append("ORDER BY rank LIMIT :limit")
+    sql_parts.append("ORDER BY rank LIMIT :limit OFFSET :offset")
     sql = " ".join(sql_parts)
 
     try:
