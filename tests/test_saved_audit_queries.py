@@ -234,3 +234,26 @@ async def test_csv_export_writes_audit_log(admin_client: httpx.AsyncClient) -> N
         )
     assert rows, "expected an audit_log row of action saved_audit_query.exported"
     assert rows[-1].target.startswith("saved_audit_query:")
+
+
+def test_list_paginated_starter_first_then_offset() -> None:
+    """``list_paginated`` honors ``offset`` + ``limit`` and returns global total."""
+    factory = app.state.session_factory
+    rows_first, total_first = svc.list_paginated(factory, offset=0, limit=2)
+    assert len(rows_first) == 2
+    assert rows_first[0]["is_starter"] is True
+    rows_next, total_next = svc.list_paginated(factory, offset=2, limit=2)
+    assert total_first == total_next
+    assert {r["slug"] for r in rows_first}.isdisjoint({r["slug"] for r in rows_next})
+
+
+@pytest.mark.asyncio
+async def test_audit_queries_html_page_renders_with_pager(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """GET /audit/queries renders the cockpit and accepts ``?offset=``."""
+    r = await admin_client.get("/audit/queries")
+    assert r.status_code == 200, r.text
+    assert "Saved queries" in r.text
+    r2 = await admin_client.get("/audit/queries?offset=0")
+    assert r2.status_code == 200, r2.text

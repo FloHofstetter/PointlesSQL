@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/pagination.html" import paginate %}
 {% block title %}Audit cockpit · saved queries · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -29,7 +30,13 @@
             <div class="card-header d-flex align-items-center gap-2">
                 <i class="bi bi-bookmark-star"></i>
                 <span class="fw-semibold">Saved queries</span>
-                <span class="badge bg-secondary ms-auto">{{ saved_audit_queries | length }}</span>
+                <span class="badge bg-secondary ms-auto">
+                    {%- if saved_audit_queries_total > saved_audit_queries|length -%}
+                    {{ saved_audit_queries_offset + 1 }}–{{ saved_audit_queries_offset + (saved_audit_queries|length) }} of {{ saved_audit_queries_total }}
+                    {%- else -%}
+                    {{ saved_audit_queries_total }}
+                    {%- endif -%}
+                </span>
             </div>
             <ul class="list-group list-group-flush small">
                 {% for q in saved_audit_queries %}
@@ -52,6 +59,18 @@
                 </li>
                 {% endfor %}
             </ul>
+            {% if saved_audit_queries_total > saved_audit_queries_limit %}
+            <div class="card-footer p-2">
+                {{ paginate(
+                    total=saved_audit_queries_total,
+                    offset=saved_audit_queries_offset,
+                    limit=saved_audit_queries_limit,
+                    base_url=request.url.path,
+                    query_params=request.query_params,
+                    aria_label='Saved queries pagination'
+                ) }}
+            </div>
+            {% endif %}
         </div>
     </div>
 

@@ -29,7 +29,7 @@ from typing import TYPE_CHECKING, Any
 import sqlglot
 import sqlglot.errors as sgerrors
 import sqlglot.expressions as sgexp
-from sqlalchemy import desc, select, text
+from sqlalchemy import desc, func, select, text
 
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import SavedAuditQuery
@@ -233,6 +233,45 @@ def list_all(factory: sessionmaker[Session]) -> list[dict[str, Any]]:
             )
         )
         return [serialize(r) for r in rows]
+
+
+def list_paginated(
+    factory: sessionmaker[Session],
+    *,
+    offset: int = 0,
+    limit: int = 50,
+) -> tuple[list[dict[str, Any]], int]:
+    """Return a single page of saved queries plus the global count.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        offset: Zero-based offset of the first row in the page.
+        limit: Maximum rows in the page.
+
+    Returns:
+        ``(rows, total)`` — paginated serialised rows and the
+        unfiltered ``COUNT(*)`` so the caller can render a page-link
+        footer.  Multi-user installs accumulate user-created queries
+        beyond the starter set, so the cockpit ships defensive
+        pagination rather than letting one giant ``UL`` push the
+        editor card off-screen.
+    """
+    with factory() as session:
+        total = int(
+            session.scalar(select(func.count()).select_from(SavedAuditQuery)) or 0
+        )
+        rows = list(
+            session.scalars(
+                select(SavedAuditQuery)
+                .order_by(
+                    desc(SavedAuditQuery.is_starter),
+                    desc(SavedAuditQuery.updated_at),
+                )
+                .offset(max(offset, 0))
+                .limit(max(limit, 1))
+            )
+        )
+        return [serialize(r) for r in rows], total
 
 
 def get_by_slug(factory: sessionmaker[Session], slug: str) -> dict[str, Any] | None:

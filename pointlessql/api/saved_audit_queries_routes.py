@@ -316,24 +316,39 @@ async def api_export_saved_audit_query_json(
     )
 
 
+_AUDIT_QUERIES_PAGE_SIZE = 50
+
+
 @router.get("/audit/queries", response_class=HTMLResponse)
-async def html_audit_queries(request: Request) -> HTMLResponse:
+async def html_audit_queries(
+    request: Request,
+    offset: int = Query(default=0, ge=0),
+) -> HTMLResponse:
     """Render the audit-cockpit query workbench.
 
     Args:
         request: FastAPI request.
+        offset: Zero-based offset for the saved-queries pager.
 
     Returns:
-        Rendered ``pages/audit_queries.html`` with the full saved
-        list and the user info Jinja's base layout already needs.
+        Rendered ``pages/audit_queries.html`` with one page of saved
+        queries plus the global ``total`` so the pager can decide
+        whether to render Next/Prev buttons.
     """
     require_admin(request)
-    rows = svc.list_all(request.app.state.session_factory)
+    rows, total = svc.list_paginated(
+        request.app.state.session_factory,
+        offset=offset,
+        limit=_AUDIT_QUERIES_PAGE_SIZE,
+    )
     return _templates(request).TemplateResponse(
         request,
         "pages/audit_queries.html",
         {
             "saved_audit_queries": rows,
+            "saved_audit_queries_total": total,
+            "saved_audit_queries_offset": offset,
+            "saved_audit_queries_limit": _AUDIT_QUERIES_PAGE_SIZE,
             "active_page": "audit",
             "active_catalog": None,
             "active_schema": None,
