@@ -93,3 +93,108 @@ async def test_admin_revoke_404_for_unknown_name(
     response = await admin_client.post("/api/admin/api-keys/unknown/revoke")
     assert response.status_code == 404
     _wipe()
+
+
+# -- Sprint 57.7 — edge-case extension --
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_empty_name(admin_client: httpx.AsyncClient) -> None:
+    _wipe()
+    response = await admin_client.post("/api/admin/api-keys", json={"name": "  "})
+    assert response.status_code == 422
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_missing_name(admin_client: httpx.AsyncClient) -> None:
+    _wipe()
+    response = await admin_client.post("/api/admin/api-keys", json={})
+    assert response.status_code == 422
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_non_positive_workspace_id(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    response = await admin_client.post(
+        "/api/admin/api-keys", json={"name": "k", "workspace_id": 0}
+    )
+    assert response.status_code == 422
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_create_rejects_duplicate_active_name(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """A name unique among active keys cannot be reused while the first lives."""
+    _wipe()
+    first = await admin_client.post("/api/admin/api-keys", json={"name": "dup"})
+    assert first.status_code == 200
+    second = await admin_client.post("/api/admin/api-keys", json={"name": "dup"})
+    assert second.status_code == 422
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_revoke_twice_returns_404_second_time(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    await admin_client.post("/api/admin/api-keys", json={"name": "rotateme"})
+    first = await admin_client.post("/api/admin/api-keys/rotateme/revoke")
+    second = await admin_client.post("/api/admin/api-keys/rotateme/revoke")
+    assert first.status_code == 200
+    assert second.status_code == 404
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_list_include_revoked_surfaces_inactive(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """``?include_revoked=true`` shows revoked keys; default hides them."""
+    _wipe()
+    await admin_client.post("/api/admin/api-keys", json={"name": "active"})
+    await admin_client.post("/api/admin/api-keys", json={"name": "killed"})
+    await admin_client.post("/api/admin/api-keys/killed/revoke")
+
+    default = await admin_client.get("/api/admin/api-keys")
+    visible = {k["name"] for k in default.json()["keys"]}
+    assert visible == {"active"}
+
+    with_revoked = await admin_client.get(
+        "/api/admin/api-keys?include_revoked=true"
+    )
+    visible_all = {k["name"] for k in with_revoked.json()["keys"]}
+    assert visible_all == {"active", "killed"}
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_create_supervisor_and_auditor_combo(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    _wipe()
+    response = await admin_client.post(
+        "/api/admin/api-keys",
+        json={"name": "supaud", "supervisor": True, "auditor": True},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["supervisor"] is True
+    assert body["auditor"] is True
+    _wipe()
+
+
+@pytest.mark.asyncio
+async def test_non_admin_cannot_revoke(non_admin_client: httpx.AsyncClient) -> None:
+    _wipe()
+    # Non-admin can't even reach the revoke handler — the require_admin
+    # gate fires before the missing-key 404 path, so we get 403.
+    resp = await non_admin_client.post("/api/admin/api-keys/anything/revoke")
+    assert resp.status_code == 403
+    _wipe()
