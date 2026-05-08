@@ -191,6 +191,7 @@ def list_queries(
     agent_run_id: str | None = None,
     read_kind: str | None = None,
     limit: int = 200,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
     """Return recent query-history rows as plain dicts.
 
@@ -209,13 +210,21 @@ def list_queries(
             returns all.
         limit: Hard row cap.  Also enforces ORDER BY ``started_at DESC``
             so the most recent activity is at the top.
+        offset: Zero-based offset for pagination.  Used by the
+            ``/queries`` HTMX Load-More flow to stream subsequent
+            pages without re-fetching the head of the list.
 
     Returns:
         A list of dicts, each with scalar keys from :class:`QueryHistory`
         plus a ``tables`` list carrying the joined
         :class:`QueryHistoryTable` ``full_name`` values.
     """
-    stmt = select(QueryHistory).order_by(desc(QueryHistory.started_at)).limit(limit)
+    stmt = (
+        select(QueryHistory)
+        .order_by(desc(QueryHistory.started_at), desc(QueryHistory.id))
+        .limit(limit)
+        .offset(offset)
+    )
     if user_id is not None:
         stmt = stmt.where(QueryHistory.user_id == user_id)
     if status is not None:
@@ -364,16 +373,44 @@ def update_chart_config(
         }
 
 
-def count_queries(factory: sessionmaker[Session]) -> int:
-    """Return the total number of history rows.
+def count_queries(
+    factory: sessionmaker[Session],
+    *,
+    user_id: int | None = None,
+    status: str | None = None,
+    since: datetime.datetime | None = None,
+    agent_run_id: str | None = None,
+    read_kind: str | None = None,
+) -> int:
+    """Return the total number of history rows matching the filters.
 
     Args:
         factory: SQLAlchemy session factory.
+        user_id: Filter to rows with this ``user_id`` (mirrors
+            :func:`list_queries`).
+        status: Filter to a single status string.
+        since: Filter to ``started_at >= since``.
+        agent_run_id: Filter to rows whose ``agent_run_id`` matches.
+        read_kind: Filter to rows whose ``read_kind`` matches one of
+            :data:`VALID_READ_KINDS`.  Unknown values fall back to
+            "no filter" — same semantics as :func:`list_queries`.
 
     Returns:
-        The ``COUNT(*)`` of ``query_history``.  Used by the
-        ``/queries`` page header's "N entries" line.
+        The filter-aware ``COUNT(*)`` of ``query_history``.  Used by
+        the ``/queries`` page header's "N entries" line and the
+        Load-More pager to compute ``remaining``.
     """
+    stmt = select(func.count()).select_from(QueryHistory)
+    if user_id is not None:
+        stmt = stmt.where(QueryHistory.user_id == user_id)
+    if status is not None:
+        stmt = stmt.where(QueryHistory.status == status)
+    if since is not None:
+        stmt = stmt.where(QueryHistory.started_at >= since)
+    if agent_run_id is not None:
+        stmt = stmt.where(QueryHistory.agent_run_id == agent_run_id)
+    if read_kind is not None and read_kind in VALID_READ_KINDS:
+        stmt = stmt.where(QueryHistory.read_kind == read_kind)
     with factory() as session:
-        result = session.execute(select(func.count()).select_from(QueryHistory))
+        result = session.execute(stmt)
         return int(result.scalar() or 0)

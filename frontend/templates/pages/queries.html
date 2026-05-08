@@ -15,7 +15,7 @@
         <h1 class="h3 mb-0">Query history</h1>
     </div>
     <span class="text-muted small">
-        {{ entries|length }} entr{{ 'y' if entries|length == 1 else 'ies' }} shown
+        Showing {{ entries|length }} of {{ total }} entr{{ 'y' if total == 1 else 'ies' }}
     </span>
 </div>
 
@@ -80,7 +80,8 @@
                           return !Number.isNaN(t) && (Date.now() - t) <= 24 * 3600 * 1000;
                       } },
                 ],
-             })">
+             })"
+             @pql:rows-appended="$nextTick(() => refreshRows && refreshRows())">
             <div class="pql-list-controls">
                 <input type="search"
                        class="form-control form-control-sm pql-list-controls__search"
@@ -111,7 +112,7 @@
                             <th></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="queries-tbody">
                         {% for entry in entries %}
                         <tr data-search="{{ (entry.sql_text or '')|lower }} {{ entry.user_email|lower }} {{ (entry.tables or [])|join(' ')|lower }} {{ entry.read_kind or '' }}"
                             data-sort-started-at="{{ entry.started_at or '' }}"
@@ -186,6 +187,20 @@
                 </table>
             </div>
         </div>
+    </div>
+    <div id="queries-pager" class="d-flex justify-content-center align-items-center gap-3 my-3">
+        {% if next_offset is not none %}
+        <button class="btn btn-outline-secondary btn-sm"
+                hx-get="/queries?offset={{ next_offset }}{% if read_kind_filter %}&read_kind={{ read_kind_filter }}{% endif %}{% if agent_run_filter %}&agent_run_id={{ agent_run_filter }}{% endif %}"
+                hx-target="#queries-tbody"
+                hx-swap="beforeend"
+                hx-on:htmx:after-swap="this.closest('[x-data]').dispatchEvent(new CustomEvent('pql:rows-appended', {bubbles: true}))">
+            <i class="bi bi-arrow-down-circle me-1"></i>
+            Load {{ row_limit }} more · {{ remaining }} remaining
+        </button>
+        {% elif total > row_limit %}
+        <span class="text-muted small">All {{ total }} entries loaded.</span>
+        {% endif %}
     </div>
 </div>
 {% endif %}

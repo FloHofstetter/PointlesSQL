@@ -1,0 +1,104 @@
+{% from "_macros/truncate.html" import truncate_cell %}
+{#
+ HTMX response fragment for ``/queries?offset=N`` with ``HX-Request: true``.
+
+ Two-part swap:
+
+ * ``<tr>`` rows below stream into ``#queries-tbody`` via the
+   button's own ``hx-target`` + ``beforeend`` settings.
+ * ``#queries-pager`` further down replaces the Load-More CTA with
+   an updated copy via ``hx-swap-oob="true"`` so the next click
+   points at the next ``offset``.
+
+ After settle, ``queries.html`` dispatches ``pql:rows-appended`` so
+ the Alpine ``listTable`` re-snapshots its row list and re-applies
+ active chip filters / sort to the new rows.
+
+ Sprint 57.3 will rewrite both this partial and ``queries.html`` to
+ a card-grid + hljs syntax-highlighted SQL.  The pager structure
+ (id, hx-* attributes) stays stable across both layouts.
+#}
+{% for entry in entries %}
+<tr data-search="{{ (entry.sql_text or '')|lower }} {{ entry.user_email|lower }} {{ (entry.tables or [])|join(' ')|lower }} {{ entry.read_kind or '' }}"
+    data-sort-started-at="{{ entry.started_at or '' }}"
+    data-sort-status="{{ entry.status or '' }}"
+    data-sort-read-kind="{{ entry.read_kind or '' }}"
+    data-sort-user-email="{{ entry.user_email|lower }}"
+    data-sort-duration-ms="{{ entry.duration_ms if entry.duration_ms is not none else -1 }}"
+    data-sort-row-count="{{ entry.row_count if entry.row_count is not none else -1 }}"
+    data-user-id="{{ entry.user_id }}"
+    data-status="{{ entry.status }}"
+    data-started-at="{{ entry.started_at or '' }}">
+  <td class="ps-3 small text-muted font-monospace" data-label="Started">
+    <span x-data='{ iso: {{ (entry.started_at or "")|tojson }} }'
+          x-text="iso ? pqlRelativeTime(iso) : '—'"
+          x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ entry.started_at }}</span>
+  </td>
+  <td data-label="Status">
+    {% if entry.status == 'succeeded' %}
+    <span class="badge bg-success">succeeded</span>
+    {% elif entry.status == 'failed' %}
+    <span class="badge bg-danger">failed</span>
+    {% elif entry.status == 'cancelled' %}
+    <span class="badge bg-warning text-dark">cancelled</span>
+    {% else %}
+    <span class="badge bg-secondary">{{ entry.status }}</span>
+    {% endif %}
+  </td>
+  <td data-label="Kind">
+    {% if entry.read_kind == 'pql_table' %}
+    <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
+    {% elif entry.read_kind == 'engine_direct' %}
+    <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
+    {% else %}
+    <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
+    {% endif %}
+  </td>
+  <td data-label="User" class="small">{{ entry.user_email }}</td>
+  <td data-label="Duration" class="font-monospace small text-muted">
+    {% if entry.duration_ms is not none %}{{ entry.duration_ms }} ms{% else %}—{% endif %}
+  </td>
+  <td data-label="Rows" class="font-monospace small text-muted">
+    {% if entry.row_count is not none %}{{ entry.row_count }}{% else %}—{% endif %}
+  </td>
+  <td data-label="SQL" x-data="{ open: false }">
+    {{ truncate_cell(entry.sql_text, max=120, klass="font-monospace small") }}
+    {% if entry.error_message %}
+    <button type="button"
+            class="btn btn-link btn-sm p-0 ms-1 text-decoration-none text-danger"
+            x-on:click.stop="open = !open"
+            x-text="open ? 'Hide error' : 'Show error'"></button>
+    <pre class="small mb-0 mt-1 text-danger"
+         x-show="open"
+         x-cloak>{{ entry.error_message }}</pre>
+    {% endif %}
+  </td>
+  <td data-label="Tables" class="pe-3 small">
+    {% for full in entry.tables or [] %}
+    <span class="badge text-bg-secondary me-1 font-monospace">{{ full }}</span>
+    {% endfor %}
+  </td>
+  <td data-label="Actions" class="text-end pe-3">
+    <a href="/sql?prefill={{ entry.sql_text|urlencode }}&history_id={{ entry.id }}"
+       class="btn btn-outline-primary btn-sm"
+       title="Re-run in SQL editor">
+      <i class="bi bi-arrow-clockwise"></i>
+    </a>
+  </td>
+</tr>
+{% endfor %}
+
+<div id="queries-pager" hx-swap-oob="true" class="d-flex justify-content-center align-items-center gap-3 my-3">
+  {% if next_offset is not none %}
+  <button class="btn btn-outline-secondary btn-sm"
+          hx-get="/queries?offset={{ next_offset }}{% if read_kind_filter %}&read_kind={{ read_kind_filter }}{% endif %}{% if agent_run_filter %}&agent_run_id={{ agent_run_filter }}{% endif %}"
+          hx-target="#queries-tbody"
+          hx-swap="beforeend"
+          hx-on:htmx:after-swap="this.closest('[x-data]').dispatchEvent(new CustomEvent('pql:rows-appended', {bubbles: true}))">
+    <i class="bi bi-arrow-down-circle me-1"></i>
+    Load {{ row_limit }} more · {{ remaining }} remaining
+  </button>
+  {% elif total > row_limit %}
+  <span class="text-muted small">All {{ total }} entries loaded.</span>
+  {% endif %}
+</div>

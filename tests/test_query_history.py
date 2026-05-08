@@ -255,3 +255,126 @@ async def test_queries_page_renders(orders_delta: str, admin_client: httpx.Async
     resp = await admin_client.get("/queries")
     assert resp.status_code == 200
     assert b"Query history" in resp.content
+
+
+def _seed_history_rows(factory: Any, count: int, user_id: int = 1) -> None:
+    """Insert ``count`` synthetic query_history rows newest-first."""
+    base = datetime.datetime(2026, 4, 1, 12, 0, 0, tzinfo=datetime.UTC)
+    for i in range(count):
+        qh.record_query(
+            factory,
+            user_id=user_id,
+            user_email=f"user{user_id}@test.com",
+            sql_text=f"SELECT {i}",
+            started_at=base + datetime.timedelta(seconds=i),
+            finished_at=base + datetime.timedelta(seconds=i, milliseconds=10),
+            status="succeeded",
+            row_count=1,
+            duration_ms=10,
+            referenced_tables=[],
+        )
+
+
+def test_list_queries_offset_streams_pages() -> None:
+    factory = app.state.session_factory
+    # Clean slate — caller controls the row count for stable assertions.
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    _seed_history_rows(factory, count=12, user_id=1)
+
+    page1 = qh.list_queries(factory, user_id=1, limit=5, offset=0)
+    page2 = qh.list_queries(factory, user_id=1, limit=5, offset=5)
+    page3 = qh.list_queries(factory, user_id=1, limit=5, offset=10)
+
+    assert len(page1) == 5
+    assert len(page2) == 5
+    assert len(page3) == 2
+    page1_ids = {r["id"] for r in page1}
+    page2_ids = {r["id"] for r in page2}
+    page3_ids = {r["id"] for r in page3}
+    assert page1_ids.isdisjoint(page2_ids)
+    assert page2_ids.isdisjoint(page3_ids)
+
+
+def test_count_queries_honours_filters() -> None:
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    _seed_history_rows(factory, count=4, user_id=1)
+    _seed_history_rows(factory, count=3, user_id=2)
+
+    assert qh.count_queries(factory) == 7
+    assert qh.count_queries(factory, user_id=1) == 4
+    assert qh.count_queries(factory, user_id=2) == 3
+    assert qh.count_queries(factory, user_id=99) == 0
+
+
+async def test_queries_page_emits_pager_when_more_pages_remain(
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    _seed_history_rows(factory, count=60, user_id=1)
+
+    resp = await admin_client.get("/queries")
+    assert resp.status_code == 200
+    body = resp.text
+    # Default page size is 50, so 60 rows → next_offset=50 must surface.
+    assert "Load 50 more" in body
+    assert "10 remaining" in body
+    assert "Showing 50 of 60" in body
+
+
+async def test_queries_page_htmx_returns_partial(
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    _seed_history_rows(factory, count=80, user_id=1)
+
+    resp = await admin_client.get(
+        "/queries?offset=50",
+        headers={"HX-Request": "true"},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    # Partial response — no full <html> shell, only fragment + OOB pager.
+    assert "<!doctype html>" not in body.lower()
+    assert "queries-pager" in body
+    assert 'hx-swap-oob="true"' in body
+    # offset=50 + page=50 = 100 ≥ total=80 → no further next_offset link.
+    assert "All 80 entries loaded." in body
+
+
+async def test_queries_page_htmx_passes_filter_params_through(
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    _seed_history_rows(factory, count=70, user_id=1)
+
+    resp = await admin_client.get(
+        "/queries?read_kind=sql_execute",
+    )
+    assert resp.status_code == 200
+    # Pager URL must propagate read_kind so subsequent pages honour the filter.
+    assert "read_kind=sql_execute" in resp.text

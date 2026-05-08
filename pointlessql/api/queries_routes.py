@@ -26,7 +26,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
@@ -40,6 +40,16 @@ from pointlessql.services import saved_queries as saved_queries_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["queries"])
+
+_QUERIES_PAGE_SIZE = 50
+
+
+def _next_offset(offset: int, page: int, total: int) -> int | None:
+    """Return the offset for the next page or ``None`` if exhausted."""
+    upcoming = offset + page
+    if upcoming >= total:
+        return None
+    return upcoming
 
 
 def _templates(request: Request) -> Jinja2Templates:
@@ -237,12 +247,15 @@ async def queries_page(
     request: Request,
     agent_run_id: str | None = None,
     read_kind: str | None = None,
+    offset: int = Query(default=0, ge=0),
 ) -> HTMLResponse:
     """Render the query history page.
 
-    Pre-loads the initial history slice server-side so the page
-    paints without waiting on a second round-trip; the list-table
-    Alpine component then takes over for chip filtering and sort.
+    Server-side pagination via offset.  HTMX requests with
+    ``HX-Request: true`` short-circuit to a partial template
+    (rows + OOB-swap pager) so the Load-More button can stream
+    further pages without re-rendering the shell — same plumbing
+    as ``/runs`` (Phase 55.1).
 
     When an ``agent_run_id`` query param is present the pre-loaded
     slice scopes to that run only and the page surfaces a
@@ -258,43 +271,65 @@ async def queries_page(
         read_kind: Optional read-kind filter (``sql_execute`` /
             ``pql_table`` / ``engine_direct``); unknown values are
             dropped silently by the service layer.
+        offset: Zero-based offset for pagination.  HTMX Load-More
+            uses this to stream subsequent pages.
 
     Returns:
-        The rendered HTML page.
+        ``pages/queries.html`` for full requests, or
+        ``pages/_partials/queries_list_append.html`` for HTMX.
     """
     factory = getattr(request.app.state, "session_factory", None)
     user = get_user(request)
     entries: list[dict[str, Any]] = []
+    total = 0
     cleaned_run_id = (
         agent_run_id.strip() if isinstance(agent_run_id, str) and agent_run_id.strip() else None
     )
     cleaned_read_kind = (
         read_kind.strip() if isinstance(read_kind, str) and read_kind.strip() else None
     )
+    user_filter: int | None = None if user.get("is_admin") else user["id"]
     if factory is not None:
-        user_filter: int | None = None if user.get("is_admin") else user["id"]
         entries = await asyncio.to_thread(
             query_history_service.list_queries,
             factory,
             user_id=user_filter,
             agent_run_id=cleaned_run_id,
             read_kind=cleaned_read_kind,
-            limit=200,
+            limit=_QUERIES_PAGE_SIZE,
+            offset=offset,
         )
-    return _templates(request).TemplateResponse(
-        request,
-        "pages/queries.html",
-        {
-            "entries": entries,
-            "agent_run_filter": cleaned_run_id,
-            "read_kind_filter": cleaned_read_kind,
-            "active_page": "queries",
-            "active_catalog": None,
-            "active_schema": None,
-            "active_table": None,
-            "list_page": True,
-        },
+        total = await asyncio.to_thread(
+            query_history_service.count_queries,
+            factory,
+            user_id=user_filter,
+            agent_run_id=cleaned_run_id,
+            read_kind=cleaned_read_kind,
+        )
+    next_off = _next_offset(offset, _QUERIES_PAGE_SIZE, total)
+    remaining = max(total - (offset + len(entries)), 0)
+    ctx: dict[str, Any] = {
+        "entries": entries,
+        "agent_run_filter": cleaned_run_id,
+        "read_kind_filter": cleaned_read_kind,
+        "total": total,
+        "offset": offset,
+        "row_limit": _QUERIES_PAGE_SIZE,
+        "next_offset": next_off,
+        "remaining": remaining,
+        "active_page": "queries",
+        "active_catalog": None,
+        "active_schema": None,
+        "active_table": None,
+        "list_page": True,
+    }
+    is_htmx = request.headers.get("HX-Request") == "true"
+    template = (
+        "pages/_partials/queries_list_append.html"
+        if is_htmx
+        else "pages/queries.html"
     )
+    return _templates(request).TemplateResponse(request, template, ctx)
 
 
 # -- saved queries ---------------------------------------------------------
