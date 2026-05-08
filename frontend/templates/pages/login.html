@@ -1,15 +1,10 @@
-{% extends "base.html" %}
+{% extends "_layouts/auth_chromeless.html" %}
 {% from "_macros/csrf.html" import csrf_input with context %}
 {% block title %}Login — PointlesSQL{% endblock %}
-
-{% block content_class %}d-flex align-items-center justify-content-center{% endblock %}
 
 {% block content %}
 <div class="pql-card" style="max-width: 420px; width: 100%;">
     <div class="pql-stack">
-        <h4 class="text-center m-0">
-            <i class="bi bi-database"></i> PointlesSQL
-        </h4>
 
         {% if error %}
         <div class="alert alert-danger alert-dismissible fade show m-0" role="alert">

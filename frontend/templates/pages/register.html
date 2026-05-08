@@ -1,15 +1,11 @@
-{% extends "base.html" %}
+{% extends "_layouts/auth_chromeless.html" %}
 {% from "_macros/csrf.html" import csrf_input with context %}
 {% block title %}Register — PointlesSQL{% endblock %}
-
-{% block content_class %}d-flex align-items-center justify-content-center{% endblock %}
 
 {% block content %}
 <div class="card border-secondary" style="max-width: 420px; width: 100%;">
     <div class="card-body p-4">
-        <h4 class="card-title text-center mb-3">
-            <i class="bi bi-database"></i> Create Account
-        </h4>
+        <h4 class="card-title text-center mb-3">Create account</h4>
 
         {% if first_user %}
         <div class="alert alert-info small">

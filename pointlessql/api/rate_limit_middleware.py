@@ -140,17 +140,25 @@ def _resolve_dimensions(rule: _Rule, settings: Any) -> list[_Dimension]:
     return out
 
 
-def _render_429(retry_after: int) -> HTMLResponse:
+def _render_429(request: Request, retry_after: int) -> HTMLResponse:
     """Return the 429 HTML response used for every reject.
 
-    Matches the CSRF-reject shape (bare ``HTMLResponse``, no
-    templating) so operators see a consistent error surface across
-    hardening layers.
+    Renders the chromeless ``pages/429.html`` template so the
+    rejected user lands on a real PointlesSQL page (logo + card)
+    instead of a bare ``<h1>``.  Falls back to the bare-HTML body
+    if templates aren't on ``app.state`` yet (early-init).
     """
-    body = (
-        "<h1>429 — Too many attempts</h1>"
-        f"<p>Please wait {retry_after} seconds before trying again.</p>"
-    )
+    templates = getattr(request.app.state, "templates", None)
+    if templates is not None:
+        body = templates.env.get_template("pages/429.html").render(
+            request=request,
+            retry_after=retry_after,
+        )
+    else:
+        body = (
+            "<h1>429 — Too many attempts</h1>"
+            f"<p>Please wait {retry_after} seconds before trying again.</p>"
+        )
     response = HTMLResponse(body, status_code=429)
     response.headers["Retry-After"] = str(retry_after)
     return response
@@ -239,6 +247,6 @@ async def rate_limit_middleware(request: Request, call_next: Any) -> Response:
                 actor_role="system",
                 client_ip=ip,
             )
-            return _render_429(retry_after)
+            return _render_429(request, retry_after)
 
     return await call_next(request)

@@ -1,0 +1,17 @@
+{% extends "_layouts/auth_chromeless.html" %}
+{% block title %}Too many attempts — PointlesSQL{% endblock %}
+
+{% block content %}
+<div class="pql-card pql-empty pql-empty--danger" style="max-width: 480px; width: 100%;">
+    <i class="bi bi-shield-exclamation pql-empty__icon" aria-hidden="true"></i>
+    <p class="pql-empty__title">Too many attempts</p>
+    <p class="pql-empty__message">
+        For security, this endpoint is rate-limited.  Please wait
+        <strong>{{ retry_after }}</strong> second{% if retry_after != 1 %}s{% endif %}
+        before trying again.
+    </p>
+    <a href="/auth/login" class="btn btn-outline-primary btn-sm pql-empty__action">
+        Back to login
+    </a>
+</div>
+{% endblock %}
