@@ -25,14 +25,32 @@
     </span>
 </div>
 
-<div class="alert alert-info small">
-    <i class="bi bi-info-circle me-1"></i>
-    Pull-modell.  Lists per-table opt-ins where PointlesSQL periodically
-    reads <code>DeltaTable.load_cdf()</code> and persists every CDF row
-    into <code>cdf_tail_events</code>.  Counterpart to push-modell
-    OpenLineage ingestion.  See
-    <code>POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS</code> for the
-    background-loop opt-in; the "Run tail now" button works regardless.
+<div class="accordion accordion-flush mb-3" id="info-accordion-cdf-tail">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed small fw-normal"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#info-collapse-cdf-tail"
+                    aria-expanded="false"
+                    aria-controls="info-collapse-cdf-tail">
+                <i class="bi bi-info-circle me-2"></i>
+                What is this page?
+            </button>
+        </h2>
+        <div id="info-collapse-cdf-tail"
+             class="accordion-collapse collapse"
+             data-bs-parent="#info-accordion-cdf-tail">
+            <div class="accordion-body small">
+                Pull-modell.  Lists per-table opt-ins where PointlesSQL periodically
+                reads <code>DeltaTable.load_cdf()</code> and persists every CDF row
+                into <code>cdf_tail_events</code>.  Counterpart to push-modell
+                OpenLineage ingestion.  See
+                <code>POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS</code> for the
+                background-loop opt-in; the "Run tail now" button works regardless.
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card mb-3">

@@ -20,15 +20,33 @@
     </span>
 </div>
 
-<div class="alert alert-info small">
-    <i class="bi bi-info-circle me-1"></i>
-    Webhook fan-out for the Audit-Reviewer agent.  Each destination
-    has a minimum-severity gate — <code>warn</code> destinations skip
-    <code>ok</code> reviews, <code>critical</code> destinations skip
-    everything except critical.  Optional HMAC-SHA256 signs every
-    request body with the configured secret; see
-    <a href="/static/docs/integrations/agent-review-webhooks.html"
-       hx-boost="false">the webhook spec</a> for the exact header format.
+<div class="accordion accordion-flush mb-3" id="info-accordion-review-destinations">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed small fw-normal"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#info-collapse-review-destinations"
+                    aria-expanded="false"
+                    aria-controls="info-collapse-review-destinations">
+                <i class="bi bi-info-circle me-2"></i>
+                What is this page?
+            </button>
+        </h2>
+        <div id="info-collapse-review-destinations"
+             class="accordion-collapse collapse"
+             data-bs-parent="#info-accordion-review-destinations">
+            <div class="accordion-body small">
+                Webhook fan-out for the Audit-Reviewer agent.  Each destination
+                has a minimum-severity gate — <code>warn</code> destinations skip
+                <code>ok</code> reviews, <code>critical</code> destinations skip
+                everything except critical.  Optional HMAC-SHA256 signs every
+                request body with the configured secret; see
+                <a href="/static/docs/integrations/agent-review-webhooks.html"
+                   hx-boost="false">the webhook spec</a> for the exact header format.
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card mb-4">
