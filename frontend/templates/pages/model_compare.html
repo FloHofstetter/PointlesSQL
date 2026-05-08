@@ -115,7 +115,13 @@
         </table>
     </div>
     {% else %}
-    <div class="card-body small text-muted">No metrics recorded for either run.</div>
+    <div class="card-body">
+        {% with flush=True, icon="bi-bar-chart",
+            title="No metrics recorded",
+            message="Neither run logged training metrics. Use mlflow.log_metric() in the training notebook to populate this card." %}
+        {% include "components/empty.html" %}
+        {% endwith %}
+    </div>
     {% endif %}
 </div>
 
@@ -157,7 +163,11 @@
                 </ul>
                 {% endif %}
                 {% else %}
-                <p class="text-muted mb-0">No param differences.</p>
+                {% with flush=True, icon="bi-check2",
+                    title="No param differences",
+                    message="Both runs trained with identical hyper-parameters." %}
+                {% include "components/empty.html" %}
+                {% endwith %}
                 {% endif %}
             </div>
         </div>
@@ -199,7 +209,11 @@
                 </ul>
                 {% endif %}
                 {% else %}
-                <p class="text-muted mb-0">No tag differences.</p>
+                {% with flush=True, icon="bi-check2",
+                    title="No tag differences",
+                    message="Both runs carry identical MLflow tags." %}
+                {% include "components/empty.html" %}
+                {% endwith %}
                 {% endif %}
             </div>
         </div>

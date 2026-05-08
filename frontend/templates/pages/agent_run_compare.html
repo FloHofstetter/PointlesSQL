@@ -207,7 +207,11 @@
             {% if value_changes_diff.masked %}<strong>Cells are masked</strong> — admin reveal lives at <code>POST /api/audit/pii/reveal</code>.{% endif %}
         </p>
         {% if not value_changes_diff.tables %}
-        <div class="card"><div class="card-body text-muted small fst-italic">No value-change cells captured for either run.</div></div>
+        {% with icon="bi-arrow-left-right",
+            title="No value-change cells",
+            message="Neither run captured per-cell value changes. Enable track_value_changes=True on pql.merge() to populate this tab." %}
+        {% include "components/empty.html" %}
+        {% endwith %}
         {% endif %}
         {% for table in value_changes_diff.tables %}
         <div class="card mb-3">

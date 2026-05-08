@@ -54,7 +54,13 @@
  </div>
  <div class="card-body p-0">
  <template x-if="destinations.length === 0">
- <div class="p-3 text-muted small">No destinations yet.</div>
+ <div class="p-3">
+ {% with flush=True, icon="bi-inboxes",
+     title="No destinations",
+     message="Add a webhook URL or pull-feed receiver below to deliver this alert when it fires." %}
+ {% include "components/empty.html" %}
+ {% endwith %}
+ </div>
  </template>
  <template x-if="destinations.length > 0">
  <table class="table table-sm mb-0 small">
@@ -102,8 +108,12 @@
  </div>
  <div class="card-body p-0">
  {% if not events %}
- <div class="p-3 text-muted small">
- No events yet. The alert will write one row per firing.
+ <div class="p-3">
+ {% with flush=True, icon="bi-clock-history",
+     title="No events yet",
+     message="The alert will write one row per firing — outcome, row count, and event id." %}
+ {% include "components/empty.html" %}
+ {% endwith %}
  </div>
  {% else %}
  <table class="table table-sm table-striped mb-0 small">

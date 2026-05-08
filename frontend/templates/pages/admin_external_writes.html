@@ -92,13 +92,11 @@
 </div>
 
 {% if not entries %}
-<div class="card">
-    <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-shield-check display-4 d-block mb-2"></i>
-        <p class="mb-2">No unattributed writes detected.</p>
-        <p class="small mb-0">Every Delta commit on the scanned tables is claimed by a PQL operation.</p>
-    </div>
-</div>
+{% with icon="bi-shield-check", variant="success",
+    title="No unattributed writes detected",
+    message="Every Delta commit on the scanned tables is claimed by a PQL operation. The audit trail is intact." %}
+{% include "components/empty.html" %}
+{% endwith %}
 {% else %}
 <div class="card">
     <div class="card-body p-0">

@@ -317,7 +317,13 @@
             </table>
         </div>
         {% else %}
-        <div class="p-3 text-muted small fst-italic">No runs yet.</div>
+        <div class="p-3">
+            {% with flush=True, icon="bi-play-circle",
+                title="No runs yet",
+                message="Runs of this job appear here once it has been triggered (manually or by the cron schedule)." %}
+            {% include "components/empty.html" %}
+            {% endwith %}
+        </div>
         {% endif %}
     </div>
 </div>

@@ -52,15 +52,13 @@
 </form>
 
 {% if not entries %}
-<div class="card">
-    <div class="card-body text-center text-muted py-5">
-        <i class="bi bi-inbox display-4 d-block mb-2"></i>
-        <p class="mb-2">No queries yet.</p>
-        <a href="/sql" class="btn btn-primary btn-sm">
-            <i class="bi bi-code-square"></i> Open SQL editor
-        </a>
-    </div>
-</div>
+{% with icon="bi-database",
+    title="No queries yet",
+    message="Run a SQL query to populate this history.",
+    action_href="/sql",
+    action_label="Open SQL editor" %}
+{% include "components/empty.html" %}
+{% endwith %}
 {% else %}
 <div class="card">
     <div class="card-body p-0">

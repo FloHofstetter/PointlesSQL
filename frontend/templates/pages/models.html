@@ -52,13 +52,12 @@
     </template>
 
     <template x-if="!loading && !error && models.length === 0">
-        <div class="alert alert-secondary">
-            <i class="bi bi-info-circle me-1"></i>
-            No registered models found.
-            <span class="small text-muted">
-                Use the Hermes plugin or call <code>mlflow.register_model()</code>
-                against the soyuz UC-OSS endpoint to register one.
-            </span>
+        <div>
+            {% with icon="bi-robot",
+                title="No registered models",
+                message="Models appear here once promoted via the Hermes plugin or mlflow.register_model() against the soyuz UC-OSS endpoint." %}
+            {% include "components/empty.html" %}
+            {% endwith %}
         </div>
     </template>
 

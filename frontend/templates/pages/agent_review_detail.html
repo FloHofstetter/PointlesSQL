@@ -106,11 +106,14 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <div class="card-body text-muted small">
-                No webhook destinations configured at the time of dispatch.
-                Configure destinations in
-                <code>/admin/review-destinations</code> to fan reviews
-                out to external sinks.
+            <div class="card-body">
+                {% with flush=True, icon="bi-send-x",
+                    title="No webhook destinations",
+                    message="No destinations were configured when this review was dispatched. Add receivers under /admin/review-destinations to fan future reviews to external sinks.",
+                    action_href="/admin/review-destinations",
+                    action_label="Configure destinations" %}
+                {% include "components/empty.html" %}
+                {% endwith %}
             </div>
             {% endif %}
         </div>
