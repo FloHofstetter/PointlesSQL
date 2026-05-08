@@ -4887,6 +4887,109 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 55 — UI polish nachzug (post-Phase-54)            ✅ done 2026-05-08
+│   │
+│   │   Closes the three explicit Phase-54 carve-outs (accordion
+│   │   gap, /audit/queries pagination, /runs + /audit/search
+│   │   pagination) plus a small-BS-pattern audit.  Six sub-sprints
+│   │   in one autonomous session post the "kannst du die noch
+│   │   unetanen dinge vollständig ausplanen?" plan.  Plan-phase
+│   │   audit again reduced the implementation set: the
+│   │   ``agent_run_compare.html`` accordion candidate from the
+│   │   Phase-54 carve-out turned out to be a misidentification (no
+│   │   ``.alert`` on that page; the "Cell-level diffing not
+│   │   implemented" line lives on the *separate* ``run_compare.html``
+│   │   side-by-side iframe view as a footer disclaimer).  Two
+│   │   bonus accordion candidates surfaced instead.
+│   │
+│   │   Sprint 55.1 — Accordion polish.  Two more admin pages flip
+│   │   the verbose ``.alert-info`` header into ``accordion-flush``:
+│   │   ``admin_review_destinations.html`` (9-line webhook fan-out
+│   │   + spec-link) and ``admin_cdf_tail.html`` (8-line pull-modell
+│   │   + interval env-var).  Both keep their copy verbatim; distinct
+│   │   accordion ids per page so a hypothetical combined view
+│   │   doesn't collide on ``data-bs-target``.
+│   │
+│   │   Sprint 55.2 — /audit/queries pagination.  Saved-queries
+│   │   cockpit kept loading the full list as a single ``UL``;
+│   │   multi-user installs accumulate user-created queries past the
+│   │   starter set, so the cockpit now ships defensive pagination
+│   │   (50 rows per page) modelled on the Phase-54.3 ``/admin/audit``
+│   │   flow.  New ``saved_audit_queries.list_paginated`` returns
+│   │   ``(rows, total)`` via a separate ``COUNT(*)``;
+│   │   ``html_audit_queries`` accepts ``?offset=`` and renders only
+│   │   the current page; the template calls the shared ``paginate``
+│   │   macro under the saved-queries card when ``total`` exceeds
+│   │   the page size.  The right-hand result table is fetched
+│   │   per-query via vanilla JS and already capped server-side; that
+│   │   surface stays unchanged.
+│   │
+│   │   Sprint 55.3 — /runs infinite-scroll Load-More.  Phase 54.3
+│   │   deferred this because the page already relied on Alpine
+│   │   ``listTable`` for client-side filter chips.  The Alpine layer
+│   │   stays intact and HTMX threads a Load-More CTA through it:
+│   │   ``load_runs`` now returns ``(rows, total)`` and accepts
+│   │   ``offset``; ``GET /runs`` checks ``HX-Request`` and either
+│   │   renders the page shell or a fragment partial that streams
+│   │   the next page of ``<tr>`` rows into ``#runs-tbody`` while
+│   │   replacing ``#runs-pager`` via ``hx-swap-oob="true"`` to
+│   │   advance the offset; ``listTable`` exposes ``refreshRows()``
+│   │   so the new rows fall under the active filter / sort after
+│   │   each append, and ``runs_list.html`` fires ``pql:rows-appended``
+│   │   on ``htmx:after-swap`` to trigger it.  JSON ``/api/runs`` now
+│   │   also reports ``total`` + ``next_offset`` for machine
+│   │   consumers.
+│   │
+│   │   Sprint 55.4 — /audit/search infinite-scroll Load-More.
+│   │   Phase 54.3 deferred this because the page is fetch-driven
+│   │   (JSON API) and adding offset support touched both
+│   │   dialect-specific FTS modules.  Per-dialect ``search`` now
+│   │   accepts ``offset`` and threads ``OFFSET :n`` into the SQL on
+│   │   both SQLite (FTS5 MATCH) and Postgres (tsvector/GIN); the
+│   │   facade ``audit_fts.search`` and ``GET /api/audit/search``
+│   │   expose ``offset`` + ``next_offset`` (the latter ``None`` once
+│   │   the page is the tail).  The audit-search HTML keeps its
+│   │   existing fetch flow but tracks ``offset`` in module state,
+│   │   fires a Load-More button when ``next_offset`` is non-null,
+│   │   and appends new rows into the existing ``<tbody>``.  A fresh
+│   │   "Search" submission resets state so a new query never appends
+│   │   onto stale results.
+│   │
+│   │   Sprint 55.5 — Smaller-BS-patterns audit + adoption.
+│   │   Audit-first per the plan: each pattern adopted only with
+│   │   ≥ 3 real surfaces.  Toast (1× ephemeral .alert-success) →
+│   │   DROP.  Progress bars (27× spinner-border but none with
+│   │   quantifiable progress; spinners stay correct) → DROP.
+│   │   Link-utilities (101× ``text-decoration-none``, all semantic
+│   │   and theme-correct already; mass-replacement risks more than
+│   │   it gains) → DROP.  Sticky-Top → REAL: 5 long-list tables
+│   │   (``/runs``, ``/audit/search``, ``/admin/audit``,
+│   │   ``/agent-reviews``, ``/branches``) commonly scroll past their
+│   │   thead.  New ``.pql-thead-sticky`` rule pins the column row
+│   │   at ``top: var(--pql-topbar-height)`` with ``z-index: 1010``
+│   │   so the existing topbar (``z-index: 1020``) always overlays
+│   │   it; the mobile collapse rule
+│   │   (``.pql-list-table > thead { display: none }``) keeps
+│   │   winning under 640 px.
+│   │
+│   │   Sprint 55.6 — Phase close (this entry).  ROADMAP +
+│   │   CHANGELOG + memory entry.
+│   │
+│   │   Drops (recorded for the implementation log):
+│   │   - ``agent_run_compare.html`` accordion-info-block — no
+│   │     ``.alert`` on that page; the misidentification was a
+│   │     similar-name conflation with ``run_compare.html``, where
+│   │     the alert is a footer disclaimer, not a header info-block.
+│   │   - Toast / Progress / Link-utility sweeps — below the
+│   │     ≥ 3-real-surface threshold; explicit DROP per the plan.
+│   │
+│   │   Browser-replay verification: stack runs from a baked Docker
+│   │   image; edits don't show up live without a rebuild.
+│   │   Templates parse, route imports succeed, all touched pytest
+│   │   groups pass (1830 tests / 7 skipped, ``pytest -x -q``).
+│   │   Pyright: 497 warnings, at budget.  Push gate: standard
+│   │   manual.
+│
 ├── Phase 54 — UI overhaul implementation (M = Modernize) ✅ done 2026-05-08
 │   │
 │   │   Implements the Phase-53 ``ui-overhaul-proposal.md`` Size-M

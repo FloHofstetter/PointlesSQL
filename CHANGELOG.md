@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 55 — UI polish nachzug (post-Phase-54) closed.**  Closes
+  the three explicit Phase-54 carve-outs (accordion gap on two
+  more admin pages, ``/audit/queries`` server-side pagination,
+  ``/runs`` + ``/audit/search`` HTMX/fetch infinite-scroll Load-More)
+  plus a smaller-BS-pattern audit.  Six sub-sprints in one
+  autonomous session.  The plan-phase audit again reduced the set:
+  ``agent_run_compare.html`` had no ``.alert`` block (the
+  Phase-54 carve-out misidentified it; the actual disclaimer lives
+  on ``run_compare.html`` as a footer), and the smaller-BS pattern
+  audit dropped Toast / Progress / Link-utilities for being below
+  the ≥ 3-real-surface threshold.  Sticky-Top survived: a new
+  ``.pql-thead-sticky`` rule pins the column row at
+  ``top: var(--pql-topbar-height)`` with ``z-index: 1010`` and
+  is applied to ``/runs``, ``/audit/search``, ``/admin/audit``,
+  ``/agent-reviews``, ``/branches``.  ``listTable`` gains a
+  ``refreshRows()`` method so HTMX-appended rows fall under the
+  active filter / sort.  Per-dialect FTS ``search`` (SQLite +
+  Postgres) now accepts ``offset`` so the audit-search lake can
+  stream pages.
+
 - **Phase 54 — UI overhaul implementation (M = Modernize) closed.**
   Implements the Phase-53 ``ui-overhaul-proposal.md`` Size-M
   recommendation in six sub-sprints.  The plan-phase code-audit
