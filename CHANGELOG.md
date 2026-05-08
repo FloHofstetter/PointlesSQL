@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 56 — UX-polish + bug-hunt + semantic-content review
+  closed.**  Three-wave audit-first sweep post the user-prompt
+  "wir machen bug-hunting … und auch hunting von schlechter
+  visualisierung … die *richtigen*, semantisch korrekten Inhalte".
+  12 sub-sprints in one autonomous session.  Plan-phase audit
+  collapsed the implementation set substantially: all 9
+  BUG-53-NN markers turned out to be already-fixed-but-not-closed
+  (closed in 56.2 with a per-marker evidence trail in
+  ``_notes.md``); the worried-about Alpine x-data quoting risk
+  on 10 templates turned out to be already-safe via Jinja's
+  default ``|tojson`` ``\\uXXXX``-escape (regression test pins
+  it); four of the Phase-53 visual-debt patterns (#1
+  outline-button-opacity, #2 errors-no-sidebar, #6 UUID format,
+  #8 tab-badges) were already-fixed-but-not-closed by earlier
+  phases.  Net surface changes: 8 empty-states standardised
+  on ``components/empty.html`` with action-oriented messages;
+  7 list-tables get ``data-label`` for mobile-collapse; new
+  display-layer Jinja filters ``format_uuid`` + ``format_hash``;
+  three new reusable macros (``truncate_cell``, ``copy_btn``,
+  ``detail_drawer``) applied across 13 surfaces; tables→cards
+  conversion on ``agent_reviews_list`` + ``alerts``; semantic-
+  content rewrites on three high-traffic descriptions
+  (audit-inbox, audit-queries, run-source).  The user's
+  emphasis on "die richtigen Inhalte" (semantically correct
+  content) added Sub-Sprint 56.10 as a dedicated content-
+  rewrite pass distinct from the layout-debt Wave-2/3
+  mechanical sweeps.
+
 - **Phase 55 — UI polish nachzug (post-Phase-54) closed.**  Closes
   the three explicit Phase-54 carve-outs (accordion gap on two
   more admin pages, ``/audit/queries`` server-side pagination,

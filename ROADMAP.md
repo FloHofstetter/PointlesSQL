@@ -4887,6 +4887,183 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 56 — UX-polish + bug-hunt + semantic-content review ✅ done 2026-05-08
+│   │
+│   │   Three-wave audit-first sweep post the user-prompt
+│   │   "wir machen bug-hunting + auch hunting von schlechter
+│   │   visualisierung … und auch die semantisch richtigen
+│   │   Inhalte".  12 sub-sprints in one autonomous session
+│   │   (audit-only Wave 1 + 4 mechanical sweeps in Wave 2 + 4
+│   │   new-primitive Wave 3 + 3-item Wave 4 polish + close).
+│   │
+│   │   The plan-phase audit (3 parallel Explore agents +
+│   │   verify-pass) collapsed the implementation set
+│   │   substantially:  9 of 9 BUG-53-NN markers turned out to
+│   │   be already-fixed-but-not-closed (closed in 56.2 with
+│   │   per-marker evidence trail in
+│   │   ``screenshots/phase53-replay/_notes.md``); the worried-
+│   │   about Alpine x-data quoting on 10 templates turned out
+│   │   to be already-safe via Jinja's default ``|tojson``
+│   │   ``\\uXXXX``-escape behaviour (regression test in
+│   │   ``tests/test_alpine_x_data_quoting.py`` pins it); and
+│   │   four of the Phase-53 visual-debt patterns (#1 outline-
+│   │   button-opacity, #2 errors-no-sidebar, #6 UUID format,
+│   │   #8 tab-badges only first sub-tab) were already-fixed-but-
+│   │   not-closed by Phases 54.1 / 56.5 / earlier.
+│   │
+│   │   Sprint 56.1 — Audit consolidation + per-page semantic
+│   │   review.  Read-only.  Output:
+│   │   ``docs/internal/phase56_audit_findings.md`` with six
+│   │   sections (layout-pattern inventory, BUG-status, per-
+│   │   page semantic review for 20 surfaces, affected-file
+│   │   list per sub-sprint, risk-notes, out-of-scope).  No code
+│   │   changes — every finding is acted on (or deferred) in
+│   │   later sub-sprints with explicit cross-references.
+│   │
+│   │   Sprint 56.2 — BUG-53-NN closure + Alpine x-data quoting
+│   │   regression test.  Closes all 9 BUG-53-NN markers in one
+│   │   sweep of ``_notes.md``.  ``tests/test_alpine_x_data_
+│   │   quoting.py`` (12 tests) pins the safe behaviour against
+│   │   future regressions.  Net 0 template code-changes.
+│   │
+│   │   Sprint 56.3 — Empty-state component sweep.  8 templates
+│   │   converted from inline ``<p>``/``<div>`` empty-states to
+│   │   ``{% include "components/empty.html" %}`` with action-
+│   │   oriented messages (e.g. "Add a webhook URL or pull-feed
+│   │   receiver below" instead of "No destinations yet").
+│   │   Templates: ``alert_detail`` (×2), ``queries``, ``models``,
+│   │   ``job_detail``, ``agent_run_compare``, ``model_compare``
+│   │   (×3), ``agent_review_detail``, ``admin_external_writes``.
+│   │
+│   │   Sprint 56.4 — Mobile data-label sweep + Pattern-3
+│   │   closure.  7 list-tables get ``data-label`` on every
+│   │   ``<td>``; 4 templates also get the ``pql-list-table`` class
+│   │   added so the existing mobile-collapse CSS rule kicks in
+│   │   under 640 px.  Pattern-3 (mobile cards bare em-dash) is
+│   │   automatically resolved because the mobile rule prepends
+│   │   ``data-label`` as the column-key.  Templates:
+│   │   ``runs_list`` + ``runs_list_append``, ``admin_api_keys``,
+│   │   ``admin_external_writes``, ``audit_by_table``,
+│   │   ``queries`` (consistency repair), ``alert_detail``
+│   │   destinations table.  ``agent_reviews_list`` skipped —
+│   │   becomes a card-grid in 56.9.
+│   │
+│   │   Sprint 56.5 — Display-layer Jinja filters
+│   │   ``format_uuid`` (Pattern-6) + ``format_hash``
+│   │   (Pattern-7).  ``format_uuid`` normalises packed/
+│   │   hyphenated UUID strings to canonical 8-4-4-4-12;
+│   │   ``format_hash`` swaps the all-zeros SHA-sentinel for
+│   │   the readable label ``(no source captured)``.  Applied
+│   │   in 5 templates (run-id title-attrs +
+│   │   ``_run_tab_overview`` source-SHA).  Bonus: fixes the
+│   │   ``_format_epoch_ms`` ``except TypeError, ValueError``
+│   │   binding-target bug to the proper tuple form.  11
+│   │   filter tests in ``tests/test_jinja_display_filters.py``.
+│   │
+│   │   Sprint 56.6 — Truncate-with-tooltip primitive.  New
+│   │   ``_macros/truncate.html`` ``truncate_cell(text, max,
+│   │   klass)``.  Native ``title=`` (NOT Bootstrap Tooltip —
+│   │   plan-agent perf-foot-gun flag for 50-row tables); new
+│   │   ``.pql-truncate-tip`` CSS class with dotted-underline
+│   │   + ``cursor: help``.  Applied to 6 surfaces: run-detail
+│   │   Queries SQL + UC-mutations detail, queries history SQL,
+│   │   runs-list Principal/Agent/Tables, audit-search entity-
+│   │   id (mirrored in JS template literal), alert-detail URL
+│   │   (Alpine ``:title``), admin-external-writes commit_info.
+│   │   5 macro tests.
+│   │
+│   │   Sprint 56.7 — Copy-button primitive + reuse of existing
+│   │   toast hook.  New ``_macros/copy_button.html``
+│   │   ``copy_btn(value, label, icon)`` + delegated listener in
+│   │   ``frontend/js/copy_button.js`` (single click-handler
+│   │   wired in ``bootstrap.js``).  Reuses
+│   │   ``window.pqlToast.success/error`` (already wired up
+│   │   pre-Phase-56) so no new toast plumbing.  Applied to 4
+│   │   surfaces: run-detail breadcrumb (full UUID),
+│   │   alert-detail webhook URL (Alpine
+│   │   ``:data-pql-copy``), connection-options table (per-row),
+│   │   model-detail header (model URI).
+│   │
+│   │   Sprint 56.8 — Bootstrap Offcanvas detail-drawer.  New
+│   │   ``_macros/detail_drawer.html`` exposes a ``{% call %}``
+│   │   macro; trigger + offcanvas-pane pair, Bootstrap manages
+│   │   focus + ARIA + ESC + backdrop-click.  New CSS
+│   │   ``components/detail_drawer.css`` sizes drawer to
+│   │   ``min(640px, 90vw)`` with ``<pre>``-content styling.
+│   │   Applied to 3 surfaces: run-detail Queries SQL drawer,
+│   │   tool-call Args + Result drawers (each only when the
+│   │   truncation kicks in), audit-log Detail drawer.  ``<details>``
+│   │   alternative dropped per user-pick (Offcanvas) +
+│   │   plan-agent FF-quirk risk-flag for ``<tr>`` containing
+│   │   ``<details>``.
+│   │
+│   │   Sprint 56.9 — Tables→Cards: agent_reviews + alerts.
+│   │   User-pick "Ambitious".  ``agent_reviews_list``: 5-col
+│   │   table → severity-coloured card-grid
+│   │   (``col-12 col-md-6 col-xxl-4``) with full-summary
+│   │   first-line (no truncation), period range with
+│   │   calendar icon, created-at as card-footer.  ``alerts``:
+│   │   6-col Alpine x-for table → active/paused-coloured
+│   │   card-grid with cron + condition + destinations as
+│   │   labelled key/value lines, pause/delete actions in
+│   │   card-footer.  New ``components/cards.css`` for left-
+│   │   stripe accents.  Server-side filter via the existing
+│   │   pagination-macro (no listTable Alpine generalisation).
+│   │   ``queries.html`` Tables→Cards intentionally deferred
+│   │   per plan-agent risk-flag.
+│   │
+│   │   Sprint 56.10 — Semantic-content corrections (action-
+│   │   orientation rewrites).  3 high-traffic surfaces: source
+│   │   sub-tab subtitle ("Source bytes captured at run start,
+│   │   hashed for tamper-evidence"), audit-inbox heading
+│   │   ("anomaly inbox" → "what needs attention") +
+│   │   description rewrite, audit-queries description rewrite
+│   │   (leads with user-goal, lists allow-listed table names).
+│   │   Other audit findings (runs_list "Operations" rename,
+│   │   audit_inbox top-KPI, audit_queries "Result" sub-section)
+│   │   turned out to not match the codebase and are recorded
+│   │   as false-positives.
+│   │
+│   │   Sprint 56.11 — UX polish bundle.  2 buried CTAs
+│   │   promoted (admin_external_writes Acknowledge:
+│   │   ``btn-outline-success`` → ``btn-success``;
+│   │   audit_inbox JS Ack/Un-ack: ``btn-outline-primary`` →
+│   │   ``btn-primary`` + full-word labels with leading icons).
+│   │   Spinner-text expanded on the long-running lineage DAG
+│   │   load + ARIA ``role="status"`` + ``aria-live="polite"``.
+│   │   Phase-53 patterns 1, 2, 8 verified already-clean (no
+│   │   CSS opacity-override, sidebar-on-error fixed by
+│   │   Phase 54.1, all 5 Operations sub-tabs already render
+│   │   count badges).  The "polish-bundle" sub-sprint turned
+│   │   out mostly to be confirmation work.
+│   │
+│   │   Sprint 56.12 — Phase close (this entry).  ROADMAP +
+│   │   CHANGELOG + memory entry.
+│   │
+│   │   Drops (recorded for the implementation log):
+│   │   - ``queries.html`` Tables→Cards — plan-agent risk-flag
+│   │     (½-day each for code-highlighting + toggle-state
+│   │     migration).
+│   │   - DESIGN-tagged findings from 56.1 per-page semantic
+│   │     review — page-level redesigns deferred to Phase 57+.
+│   │   - Test-coverage-sweep for admin_api_keys / branches /
+│   │     federation / jobs / dashboards / audit_search —
+│   │     carve-out Phase 57 (Phase 56 was UX-only by design).
+│   │   - mb-3 vs mb-4 padding standardisation — explicitly
+│   │     out-of-scope.
+│   │
+│   │   Browser-replay verification: same handling as Phase 54
+│   │   + 55.  Stack runs Docker-baked; the Wave-2 mechanical
+│   │   sweeps (56.2 / 56.3 / 56.4 / 56.5) need only template-
+│   │   parse + pytest gates (all green).  Wave-3 primitives +
+│   │   Wave-4 polish (56.6 / 56.7 / 56.8 / 56.9 / 56.11) need
+│   │   browser-side verification of tooltip-hover, toast-
+│   │   render, drawer click-to-open + ESC-close, card-grid
+│   │   layout, action-discovery affordance — left for the
+│   │   user post-rebuild.
+│   │
+│   │   Push gate: standard manual.
+│   │
 ├── Phase 55 — UI polish nachzug (post-Phase-54)            ✅ done 2026-05-08
 │   │
 │   │   Closes the three explicit Phase-54 carve-outs (accordion
