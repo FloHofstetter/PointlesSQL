@@ -6,23 +6,54 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
-- **Phase 59 audit findings documented — sprint-actionable backlog.**
-  Headed-Playwright UX tour through 8 thematic surface groups
-  produced 65 desktop screenshots and 71 findings (23 CONTENT /
-  37 STRUCTURAL / 11 DESIGN), clustered into 8 cross-cutting
-  patterns (P-1 Bootstrap-tab URL state, P-2 auth/error
-  chromeless, P-3 icon-rail mis-mapping, P-4 sidebar sub-pane
-  inconsistency, P-5 empty-state quality, P-6 filter-row density,
-  P-7 internal-jargon leak, P-8 logic bugs + ANSI-strip).  Zero
-  browser-console errors and zero 5xx during the tour — UI is
-  runtime-clean.  Findings doc:
-  ``docs/internal/phase59_audit_findings.md``.  Screenshots:
-  ``docs/internal/phase59_screenshots/``.  Sub-Sprint breakdown
-  in ROADMAP under Phase 59 ⏳ — 7 implementable sprints
-  (59.1-59.7) covering 60 CONTENT+STRUCTURAL findings, 11 DESIGN
-  findings parked for Phase 60+.  Pattern P-2 confirmed by user
-  during the Phase 58 replay session (memory:
-  ``feedback_auth_pages_chromeless.md``).
+- **Phase 59 — Comprehensive UX-tour quality sweep ✅ closed
+  (2026-05-08).**  60 implementable findings (out of 71 total,
+  11 DESIGN deferred to Phase 60+) landed across 7 sub-sprints
+  in one autonomous run + an 8th close commit, clearing all 8
+  cross-cutting patterns.
+
+  - 59.1 (``c0d93ae``): CONTENT-jargon sweep + ANSI-strip + 4
+    isolated logic fixes.  /queries label rewrites, /audit/by-table
+    description, /admin/system-info "Phase 29.3" jargon dropped,
+    DuckDB ANSI-escape codes stripped, "Pull-modell" / "push-modell"
+    German typo fixed, Source-card SHA-256 sentinel hidden when
+    bytes ARE captured, Lineage-tab self-node duplication
+    eliminated.
+  - 59.2 (``2fc3e36``): Bootstrap-tab URL-state global helper.
+    New ``frontend/js/tab_sync.js`` reads ``?tab=&subtab=`` on
+    load and mirrors active-tab state back via
+    history.replaceState.  Eleven templates gained
+    ``data-pql-tab-key="<key>"``; 7 page-level + 4 run-detail
+    sub-pane partials.
+  - 59.3 (``4be934f``): Auth/error chromeless layout +
+    ``pages/429.html``.  Login, register, 403, 404, 500 migrated
+    away from full-app chrome.  Rate-limit middleware now
+    renders the new template instead of a bare ``<h1>`` body.
+  - 59.4 (``5a68258``): ``_macros/filter_collapsible.html`` —
+    Bootstrap-collapse wrapper for dense filter rows.  Applied
+    default-collapsed to /audit/inbox (6 fields), default-
+    expanded to /queries (3 fields).
+  - 59.5 (``70981b1``): Icon-rail re-mapping.  New AUDIT and
+    REVIEWS top-items between ALERTS and PRODUCTS.  FEDERATION
+    label/icon/href updated to CATALOG (section key
+    ``federation`` kept internally).  Admin footer icon swapped
+    bi-shield-check → bi-tools to free the icon for AUDIT.
+    context_panel grew AUDIT + REVIEWS branches.
+  - 59.6 (``a7cf5b6``): Sub-pane helper-text dual-mode sweep —
+    /dashboards and /alerts sidebar helpers now reference both
+    a UI path and an agent tool.  /connections, /volumes, /dbt
+    skipped (share the catalog tree, no per-page sidebar to
+    update).
+  - 59.7 (``d1d90db``): Empty-state quality sweep on /volumes
+    (3-step Docker / Python / Hermes), /models (3-step MLflow
+    / Hermes / Docs), /branches (dual-mode notebook + agent).
+  - 59.9 (this entry): Phase close — ROADMAP, CHANGELOG, memory.
+
+  Tour artefacts:
+  ``docs/internal/phase59_audit_findings.md`` (555 lines)
+  + ``docs/internal/phase59_screenshots/`` (65 PNGs across 8
+  themed folders).  Pattern P-2 was user-confirmed mid-tour
+  (memory: ``feedback_auth_pages_chromeless.md``).
 
 - **Phase 58 — Phase-57 carve-out trio closed.**  Three small
   deferred items from Sprint 57.8 land in one autonomous pass

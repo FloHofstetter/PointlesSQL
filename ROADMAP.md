@@ -4887,7 +4887,7 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
-├── Phase 59 — Comprehensive UX-tour quality sweep         ⏳ planned
+├── Phase 59 — Comprehensive UX-tour quality sweep         ✅ done 2026-05-08
 │   │
 │   │   Post-Phase-58 headed-Playwright tour through 8 thematic
 │   │   surface groups produced 65 desktop screenshots and 71
@@ -4901,87 +4901,95 @@ PointlesSQL
 │   │   Phase 59 covers the 60 implementable findings (CONTENT +
 │   │   STRUCTURAL); the 11 DESIGN findings defer to Phase 60+.
 │   │
-│   ├── Sprint 59.1 — Jargon sweep + logic bugs + ANSI strip ⏳
-│   │       CONTENT-only one-sweep + 1 service fix.  Replaces
-│   │       DB-internal jargon with user-language ("Read kind"
-│   │       → "Source", ``tables_touched`` → "Touched",
-│   │       ``written`` → "Wrote", ``read`` → "Read").  Fixes
-│   │       isolated logic bugs: ``run_view.html`` Source-card
-│   │       conditional (no longer prints "no source captured"
-│   │       when source IS captured), branches default-filter
-│   │       (Sidebar shows Promoted but mainlist filters Active —
-│   │       inconsistent state), Lineage-tab self-node duplication
-│   │       on zero-edge tables, German typo "Pull-modell" /
-│   │       "push-modell" → "model" in
-│   │       ``admin_index.html``.  Fixes
-│   │       ``services/sql_execute.py`` to ANSI-strip caught
-│   │       DuckDB exception messages
-│   │       (``re.sub(r'\x1b\[[0-9;]*m', '', error_msg)``).
-│   │       ~½ day.  Patterns P-7 + P-8.
+│   ├── Sprint 59.1 — Jargon sweep + logic bugs + ANSI strip ✅ c0d93ae
+│   │       CONTENT-only sweep + 1 service fix.  "Read kind" →
+│   │       "Source", "Status" → "Outcome", "Window" → "Time
+│   │       range" on /queries; "tables_touched" / "written" /
+│   │       "read" → "Touched" / "Wrote" / "Read" on
+│   │       /audit/by-table; drop "Phase 29.3" jargon from
+│   │       /admin/system-info; fix "Pull-modell" / "push-modell"
+│   │       German typo in admin_index.html; ANSI-strip on
+│   │       caught DuckDB exception messages in
+│   │       sql_routes.py; hide SHA-256 sentinel on Source-card
+│   │       when source bytes ARE captured but SHA is the all-
+│   │       zeros hash; filter depth-0 self-nodes from lineage_card
+│   │       upstream + downstream so zero-edge tables don't render
+│   │       the page subject twice.  Branches default-filter
+│   │       finding investigated and dropped (no actual default-
+│   │       active chip in code).
 │   │
-│   ├── Sprint 59.2 — Bootstrap-tab URL-state global helper ⏳
-│   │       New Alpine helper in ``frontend/js/bs_tab_url.js``
-│   │       reads ``?tab=`` on ``DOMContentLoaded`` and calls
-│   │       ``bsTab.show()``; listens to ``shown.bs.tab`` and
-│   │       mirrors back via ``history.replaceState``.  Wired
-│   │       into ``table.html``, ``run_view.html``,
-│   │       ``model.html``, ``agent_review_detail.html``,
-│   │       ``dashboard_detail.html``, ``job_detail.html``.
-│   │       Bookmarks + browser-back + audit-cockpit-deep-link-
-│   │       drilling fixed in one stroke.  ~1 day.  Pattern P-1.
+│   ├── Sprint 59.2 — Bootstrap-tab URL-state global helper ✅ 2fc3e36
+│   │       New ``frontend/js/tab_sync.js`` self-bootstraps on
+│   │       DOMContentLoaded, reads ``?tab=`` and ``?subtab=`` and
+│   │       activates the matching ``[data-bs-toggle="tab"]
+│   │       [data-pql-tab-key]`` via
+│   │       bootstrap.Tab.getOrCreateInstance.  Global delegated
+│   │       ``shown.bs.tab`` listener mirrors back via
+│   │       history.replaceState.  Eleven templates (table,
+│   │       run_view, model, data_product, agent_run_compare,
+│   │       dbt, audit_by_table + 4 _run_tab_* sub-pane partials)
+│   │       gained ``data-pql-tab-key="<key>"`` attributes.
+│   │       Legacy ``#tab-…`` hash IIFE on run_view kept for
+│   │       backward-compat.
 │   │
-│   ├── Sprint 59.3 — Auth/error chromeless layout            ⏳
-│   │       New ``_layouts/auth_chromeless.html`` (logo + body-
-│   │       slot + footer-link only — no icon-rail, no top-bar
-│   │       Search, no Admin-dropdown).  Migrate ``login.html``,
-│   │       ``register.html``, ``403.html``, ``404.html``,
-│   │       ``500.html``.  Add new ``pages/429.html`` and wire
-│   │       the rate-limit middleware to render it (currently
-│   │       returns bare HTML string).  Confirmed during the
-│   │       Phase-58 replay session — user explicitly flagged
-│   │       Search on Login + 429 design as wrong; memory entry
-│   │       ``feedback_auth_pages_chromeless.md``.  ~1 day.
-│   │       Pattern P-2.
+│   ├── Sprint 59.3 — Auth/error chromeless layout            ✅ 4be934f
+│   │       New ``_layouts/auth_chromeless.html`` — distilled
+│   │       layout with logo + content-block + footer; no
+│   │       icon-rail, no top-bar Search, no Admin-dropdown.
+│   │       Migrated login, register, 403, 404, 500; new
+│   │       ``pages/429.html``; wired ``_render_429`` in
+│   │       rate_limit_middleware to render the new template via
+│   │       ``request.app.state.templates.env`` with bare-HTML
+│   │       fallback for early-init.  User-confirmed during
+│   │       Phase-58 replay (memory:
+│   │       ``feedback_auth_pages_chromeless.md``).
 │   │
-│   ├── Sprint 59.4 — Filter-row collapsible macro              ⏳
-│   │       New ``_macros/filter_collapsible.html``.  Collapsed
-│   │       state shows summary pill ("Filter: warn or worse ·
-│   │       day · since 2026-04-25"); expand button reveals all
-│   │       fields.  Apply to ``audit_inbox.html``,
-│   │       ``queries.html``, ``runs_list.html``,
-│   │       ``audit_search.html``.  ~½ day.  Pattern P-6.
+│   ├── Sprint 59.4 — Filter-row collapsible macro              ✅ 5a68258
+│   │       New ``_macros/filter_collapsible.html`` (pure
+│   │       Bootstrap, no Alpine).  Wraps a dense filter row in a
+│   │       ``.collapse`` block behind a summary pill.  Applied
+│   │       default-collapsed to /audit/inbox (6 fields) and
+│   │       default-expanded to /queries (3 fields).  /audit/search
+│   │       and /runs intentionally skipped — search form IS the
+│   │       primary action on /audit/search; /runs uses Alpine
+│   │       chips, not a dense form.
 │   │
-│   ├── Sprint 59.5 — Icon-rail re-mapping                       ⏳
-│   │       Two new top-level icon-rail items: ``AUDIT``
-│   │       (``bi-shield-check``, sub-tabs Inbox / Search /
-│   │       By-table / By-query / By-run) and ``REVIEWS``
-│   │       (``bi-clipboard-check``, Phase 19 agent-reviews) —
-│   │       both inserted between ALERTS and PRODUCTS.  Rename
-│   │       FEDERATION → CATALOG; federation surfaces
-│   │       (``/connections``, ``/credentials``,
-│   │       ``/external-locations``) get their own
-│   │       ``FEDERATE`` icon-rail item OR fold under CATALOG
-│   │       sub-tab (decision in plan).  Touches
-│   │       ``_partials/icon_rail.html`` + per-page sidebar
-│   │       routing.  ~1 day.  Pattern P-3.
+│   ├── Sprint 59.5 — Icon-rail re-mapping                       ✅ 70981b1
+│   │       Two new top-level rail items: ``AUDIT`` (bi-shield-
+│   │       check) and ``REVIEWS`` (bi-clipboard-check), both
+│   │       between ALERTS and PRODUCTS, both visible to all
+│   │       auth'd users.  Renamed FEDERATION → CATALOG with
+│   │       bi-database icon and href "/" (the actual catalog
+│   │       browser landing); section key stays ``federation``
+│   │       internally to avoid breaking ~10 references.  Admin
+│   │       footer icon swapped bi-shield-check → bi-tools to
+│   │       free the icon for AUDIT.  context_panel.html grew
+│   │       inline AUDIT (Inbox / Search / By table / By query)
+│   │       and REVIEWS (All reviews + cross-link to Admin →
+│   │       Review destinations) branches.  Removed the
+│   │       duplicative "Audit cockpit" link from the admin
+│   │       sidebar.  agent_reviews_routes switched
+│   │       active_page from "audit" → "agent_reviews" so it
+│   │       highlights REVIEWS, not AUDIT.
 │   │
-│   ├── Sprint 59.6 — Sub-pane helper-text sweep                 ⏳
-│   │       Replicate the Jobs-pattern ("Create one via the
-│   │       + New job button on /jobs **or with the agent
-│   │       schedule_job tool**") across all sub-panes that
-│   │       currently have minimal or redundant helper-text.
-│   │       Deduplicates Sidebar against main empty-state where
-│   │       both repeat the same recovery hint.  ~½ day.
-│   │       Pattern P-4.
+│   ├── Sprint 59.6 — Sub-pane helper-text sweep                 ✅ a7cf5b6
+│   │       Replicated the /jobs dual-mode helper across
+│   │       /dashboards (added "+ New dashboard" UI path +
+│   │       agent ``create_dashboard`` tool) and /alerts
+│   │       (existing UI path got a ``create_alert`` agent
+│   │       tool reference).  /connections, /volumes, /dbt
+│   │       skipped — they share the catalog tree (P-3 root
+│   │       cause) and don't render a per-page sidebar helper.
 │   │
-│   ├── Sprint 59.7 — Empty-state quality sweep                  ⏳
-│   │       Rewrite below-bar empty-states (branches default-
-│   │       filter, volumes external-only, models Hermes-jargon)
-│   │       to match best-in-class patterns (audit-search
-│   │       Tokenizer explainer, ML setup steps, Run-anomaly
-│   │       banner).  Each empty-state must contain UI path AND
-│   │       agent-tool path; OSS-distributed pages add Docker-
-│   │       specific override hints.  ~½-1 day.  Pattern P-5.
+│   ├── Sprint 59.7 — Empty-state quality sweep                  ✅ d1d90db
+│   │       Rewrote below-bar empty-states on /volumes (3-step
+│   │       Docker / Python / Hermes), /models (3-step MLflow /
+│   │       Hermes / Docs), /branches (dual-mode pql.branch() +
+│   │       agent create_branch).  Each empty-state now contains
+│   │       a UI path AND an agent path AND (where applicable) a
+│   │       docs link.  Replaces references to "soyuz UC-OSS",
+│   │       "Hermes plugin", and "UC CLI" jargon-tokens with
+│   │       concrete copy-pasteable commands.
 │   │
 │   ├── Phase 60+ DESIGN-deferred (sketch only)                  🧊
 │   │       11 DESIGN findings parked: cytoscape-DAG on table-
@@ -4994,11 +5002,12 @@ PointlesSQL
 │   │       day surface change — bundle as Phase 60 mini-
 │   │       redesign trio (analog Phase 58) when scope crystallises.
 │   │
-│   └── Sprint 59.9 — Phase close                                ⏳
-│           Standard pattern: ROADMAP.md flip ⏳ → ✅ with
-│           commit hashes, CHANGELOG ``[Unreleased]`` entry,
-│           memory entry ``project_phase59_closed.md``,
-│           MEMORY.md index update.  Push gate: standard manual.
+│   └── Sprint 59.9 — Phase close                                ✅ this commit
+│           ROADMAP.md flipped ⏳ → ✅ with commit hashes,
+│           CHANGELOG entry, memory file
+│           ``project_phase59_closed.md``, MEMORY.md index
+│           updated.  Phase 59 totaled 8 commits including the
+│           audit opener + close.  Branch not yet pushed.
 │
 ├── Phase 58 — Phase-57 carve-out trio                       ✅ done 2026-05-08
 │   │
