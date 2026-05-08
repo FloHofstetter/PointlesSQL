@@ -17,10 +17,11 @@
 </div>
 
 <p class="text-muted">
-    Admin-scoped SQL workbench against the audit tables.  Starter
-    queries cover the most common compliance and
-    on-call questions; create your own for project-specific
-    drill-downs.  Every run is logged in <code>query_history</code>{{ info('audit.read-kind') }};
+    Drill into the audit tables to answer compliance + on-call
+    questions. Pick a starter query on the left or write your own
+    SELECT against <code>agent_runs</code>, <code>agent_run_operations</code>,
+    <code>lineage_*</code>, <code>query_history</code>, or <code>audit_log</code>.
+    Every run is itself logged in <code>query_history</code>{{ info('audit.read-kind') }};
     every export writes an <code>audit_log</code> row.
 </p>
 

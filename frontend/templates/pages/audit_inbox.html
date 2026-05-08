@@ -13,15 +13,15 @@
 {% block content %}
 <div class="d-flex align-items-center gap-2 mb-4">
     <i class="bi bi-bell-fill fs-3"></i>
-    <h1 class="h3 mb-0">Audit cockpit · anomaly inbox{{ info('audit.what-is-an-anomaly') }}</h1>
+    <h1 class="h3 mb-0">Audit cockpit · what needs attention{{ info('audit.what-is-an-anomaly') }}</h1>
 </div>
 
 <p class="text-muted">
-    Cross-run anomaly view.  Each row is one bin (metric × time-window)
-    that breached the configured σ threshold.  Acknowledge a row to
-    hide it permanently, or snooze it for a fixed time window.
-    Acked rows reappear on the next cockpit read once their snooze
-    expires.
+    Open anomalies waiting for an operator decision. Each row is one
+    bin (metric × time-window) that breached the configured σ
+    threshold. Acknowledge a row to clear it permanently, or snooze
+    it for a fixed window — snoozed rows re-appear after the timer
+    elapses, acked rows stay cleared.
 </p>
 
 {% if system_errors %}
