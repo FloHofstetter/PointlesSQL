@@ -4887,6 +4887,119 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 59 — Comprehensive UX-tour quality sweep         ⏳ planned
+│   │
+│   │   Post-Phase-58 headed-Playwright tour through 8 thematic
+│   │   surface groups produced 65 desktop screenshots and 71
+│   │   findings (23 CONTENT / 37 STRUCTURAL / 11 DESIGN), plus
+│   │   8 cross-cutting patterns.  Findings doc lives at
+│   │   ``docs/internal/phase59_audit_findings.md``; screenshots
+│   │   at ``docs/internal/phase59_screenshots/``.  Zero browser-
+│   │   console errors and zero 5xx during the tour — UI is
+│   │   runtime-clean, all findings are quality-issues not bugs.
+│   │
+│   │   Phase 59 covers the 60 implementable findings (CONTENT +
+│   │   STRUCTURAL); the 11 DESIGN findings defer to Phase 60+.
+│   │
+│   ├── Sprint 59.1 — Jargon sweep + logic bugs + ANSI strip ⏳
+│   │       CONTENT-only one-sweep + 1 service fix.  Replaces
+│   │       DB-internal jargon with user-language ("Read kind"
+│   │       → "Source", ``tables_touched`` → "Touched",
+│   │       ``written`` → "Wrote", ``read`` → "Read").  Fixes
+│   │       isolated logic bugs: ``run_view.html`` Source-card
+│   │       conditional (no longer prints "no source captured"
+│   │       when source IS captured), branches default-filter
+│   │       (Sidebar shows Promoted but mainlist filters Active —
+│   │       inconsistent state), Lineage-tab self-node duplication
+│   │       on zero-edge tables, German typo "Pull-modell" /
+│   │       "push-modell" → "model" in
+│   │       ``admin_index.html``.  Fixes
+│   │       ``services/sql_execute.py`` to ANSI-strip caught
+│   │       DuckDB exception messages
+│   │       (``re.sub(r'\x1b\[[0-9;]*m', '', error_msg)``).
+│   │       ~½ day.  Patterns P-7 + P-8.
+│   │
+│   ├── Sprint 59.2 — Bootstrap-tab URL-state global helper ⏳
+│   │       New Alpine helper in ``frontend/js/bs_tab_url.js``
+│   │       reads ``?tab=`` on ``DOMContentLoaded`` and calls
+│   │       ``bsTab.show()``; listens to ``shown.bs.tab`` and
+│   │       mirrors back via ``history.replaceState``.  Wired
+│   │       into ``table.html``, ``run_view.html``,
+│   │       ``model.html``, ``agent_review_detail.html``,
+│   │       ``dashboard_detail.html``, ``job_detail.html``.
+│   │       Bookmarks + browser-back + audit-cockpit-deep-link-
+│   │       drilling fixed in one stroke.  ~1 day.  Pattern P-1.
+│   │
+│   ├── Sprint 59.3 — Auth/error chromeless layout            ⏳
+│   │       New ``_layouts/auth_chromeless.html`` (logo + body-
+│   │       slot + footer-link only — no icon-rail, no top-bar
+│   │       Search, no Admin-dropdown).  Migrate ``login.html``,
+│   │       ``register.html``, ``403.html``, ``404.html``,
+│   │       ``500.html``.  Add new ``pages/429.html`` and wire
+│   │       the rate-limit middleware to render it (currently
+│   │       returns bare HTML string).  Confirmed during the
+│   │       Phase-58 replay session — user explicitly flagged
+│   │       Search on Login + 429 design as wrong; memory entry
+│   │       ``feedback_auth_pages_chromeless.md``.  ~1 day.
+│   │       Pattern P-2.
+│   │
+│   ├── Sprint 59.4 — Filter-row collapsible macro              ⏳
+│   │       New ``_macros/filter_collapsible.html``.  Collapsed
+│   │       state shows summary pill ("Filter: warn or worse ·
+│   │       day · since 2026-04-25"); expand button reveals all
+│   │       fields.  Apply to ``audit_inbox.html``,
+│   │       ``queries.html``, ``runs_list.html``,
+│   │       ``audit_search.html``.  ~½ day.  Pattern P-6.
+│   │
+│   ├── Sprint 59.5 — Icon-rail re-mapping                       ⏳
+│   │       Two new top-level icon-rail items: ``AUDIT``
+│   │       (``bi-shield-check``, sub-tabs Inbox / Search /
+│   │       By-table / By-query / By-run) and ``REVIEWS``
+│   │       (``bi-clipboard-check``, Phase 19 agent-reviews) —
+│   │       both inserted between ALERTS and PRODUCTS.  Rename
+│   │       FEDERATION → CATALOG; federation surfaces
+│   │       (``/connections``, ``/credentials``,
+│   │       ``/external-locations``) get their own
+│   │       ``FEDERATE`` icon-rail item OR fold under CATALOG
+│   │       sub-tab (decision in plan).  Touches
+│   │       ``_partials/icon_rail.html`` + per-page sidebar
+│   │       routing.  ~1 day.  Pattern P-3.
+│   │
+│   ├── Sprint 59.6 — Sub-pane helper-text sweep                 ⏳
+│   │       Replicate the Jobs-pattern ("Create one via the
+│   │       + New job button on /jobs **or with the agent
+│   │       schedule_job tool**") across all sub-panes that
+│   │       currently have minimal or redundant helper-text.
+│   │       Deduplicates Sidebar against main empty-state where
+│   │       both repeat the same recovery hint.  ~½ day.
+│   │       Pattern P-4.
+│   │
+│   ├── Sprint 59.7 — Empty-state quality sweep                  ⏳
+│   │       Rewrite below-bar empty-states (branches default-
+│   │       filter, volumes external-only, models Hermes-jargon)
+│   │       to match best-in-class patterns (audit-search
+│   │       Tokenizer explainer, ML setup steps, Run-anomaly
+│   │       banner).  Each empty-state must contain UI path AND
+│   │       agent-tool path; OSS-distributed pages add Docker-
+│   │       specific override hints.  ~½-1 day.  Pattern P-5.
+│   │
+│   ├── Phase 60+ DESIGN-deferred (sketch only)                  🧊
+│   │       11 DESIGN findings parked: cytoscape-DAG on table-
+│   │       lineage tab (Phase 17.3 reuse), Audit unified
+│   │       ``/audit`` page with tab-strip (consolidate 4
+│   │       separate sub-pages), Run-Overview sub-tabs flatten
+│   │       to sectioned cards, ``/auth/me`` rendered profile
+│   │       page (currently raw JSON), ``/admin`` Card-hierarchy
+│   │       (action-required-first ordering).  Each is a multi-
+│   │       day surface change — bundle as Phase 60 mini-
+│   │       redesign trio (analog Phase 58) when scope crystallises.
+│   │
+│   └── Sprint 59.9 — Phase close                                ⏳
+│           Standard pattern: ROADMAP.md flip ⏳ → ✅ with
+│           commit hashes, CHANGELOG ``[Unreleased]`` entry,
+│           memory entry ``project_phase59_closed.md``,
+│           MEMORY.md index update.  Push gate: standard manual.
+│
 ├── Phase 58 — Phase-57 carve-out trio                       ✅ done 2026-05-08
 │   │
 │   │   Three small deferred items from Sprint 57.8 land in one

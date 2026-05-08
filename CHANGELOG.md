@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 59 audit findings documented — sprint-actionable backlog.**
+  Headed-Playwright UX tour through 8 thematic surface groups
+  produced 65 desktop screenshots and 71 findings (23 CONTENT /
+  37 STRUCTURAL / 11 DESIGN), clustered into 8 cross-cutting
+  patterns (P-1 Bootstrap-tab URL state, P-2 auth/error
+  chromeless, P-3 icon-rail mis-mapping, P-4 sidebar sub-pane
+  inconsistency, P-5 empty-state quality, P-6 filter-row density,
+  P-7 internal-jargon leak, P-8 logic bugs + ANSI-strip).  Zero
+  browser-console errors and zero 5xx during the tour — UI is
+  runtime-clean.  Findings doc:
+  ``docs/internal/phase59_audit_findings.md``.  Screenshots:
+  ``docs/internal/phase59_screenshots/``.  Sub-Sprint breakdown
+  in ROADMAP under Phase 59 ⏳ — 7 implementable sprints
+  (59.1-59.7) covering 60 CONTENT+STRUCTURAL findings, 11 DESIGN
+  findings parked for Phase 60+.  Pattern P-2 confirmed by user
+  during the Phase 58 replay session (memory:
+  ``feedback_auth_pages_chromeless.md``).
+
 - **Phase 58 — Phase-57 carve-out trio closed.**  Three small
   deferred items from Sprint 57.8 land in one autonomous pass
   (single commit) post the user-prompt "mache die sofort follo
