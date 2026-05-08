@@ -1,0 +1,33 @@
+{#
+    Copy-to-clipboard button macro.
+
+    Renders a small icon-button that copies ``value`` to the system
+    clipboard on click and surfaces success/failure via the existing
+    ``window.pqlToast`` API (see ``frontend/js/toast.js``).
+
+    A single delegated event-listener in ``frontend/js/copy_button.js``
+    handles every ``.pql-copy-btn`` on the page — no per-button init
+    cost, safe to render hundreds of buttons inside a list-table.
+
+    Usage::
+
+        {% from "_macros/copy_button.html" import copy_btn %}
+        <span class="font-monospace">{{ run.id }}{{ copy_btn(run.id, label="Copy run ID") }}</span>
+
+    Params:
+      - ``value``: the string to copy. HTML-escaped so injecting
+        user-controlled values into the ``data-pql-copy`` attribute
+        is safe.
+      - ``label`` (default ``"Copy"``): used for both ``aria-label``
+        and the native ``title=`` tooltip.
+      - ``icon`` (default ``"bi-clipboard"``): Bootstrap-Icons class.
+#}
+{% macro copy_btn(value, label="Copy", icon="bi-clipboard") -%}
+<button type="button"
+    class="btn btn-link btn-sm p-0 ms-1 align-baseline pql-copy-btn"
+    data-pql-copy="{{ value|e }}"
+    aria-label="{{ label }}"
+    title="{{ label }}">
+    <i class="bi {{ icon }}"></i>
+</button>
+{%- endmacro %}

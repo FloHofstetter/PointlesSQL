@@ -27,6 +27,11 @@ import { pqlApi } from './api.js';
 window.pqlToast = pqlToast;
 window.pqlApi = pqlApi;
 
+// Copy-button delegated listener (Sprint 56.7).  Registers a single
+// document-level click listener that handles every ``.pql-copy-btn``
+// rendered by ``_macros/copy_button.html``.
+import './copy_button.js';
+
 // Pure utility helpers — no Alpine factories, but used directly from
 // templates as ``x-text="pqlRelativeTime(iso)"`` etc.
 import { pqlParseServerIso, pqlRelativeTime } from './relative_time.js';

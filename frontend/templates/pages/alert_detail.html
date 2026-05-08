@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/copy_button.html" import copy_btn %}
 {% block title %}{{ alert.title }} · Alerts · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -82,6 +83,14 @@
  <td data-label="URL">
  <code class="pql-truncate-tip small" :title="dest.webhook_url || '(pull feed)'"
   x-text="(dest.webhook_url || '(pull feed)').slice(0, 60) + ((dest.webhook_url || '').length > 60 ? '…' : '')"></code>
+ <button type="button"
+  class="btn btn-link btn-sm p-0 ms-1 align-baseline pql-copy-btn"
+  x-show="dest.webhook_url"
+  :data-pql-copy="dest.webhook_url"
+  aria-label="Copy webhook URL"
+  title="Copy webhook URL">
+  <i class="bi bi-clipboard"></i>
+ </button>
  </td>
  <td data-label="HMAC">
  <span x-show="dest.has_hmac" class="badge text-bg-success">yes</span>
