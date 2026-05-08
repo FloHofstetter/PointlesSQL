@@ -40,3 +40,32 @@
 .pql-alert-card .card-header a {
     color: var(--bs-link-color);
 }
+
+/* Query-history card — status stripe + bounded SQL pre-block.
+ *
+ * Renders one card per ``query_history`` row (Sprint 57.3).  Cards
+ * stack at sm, two-up at md, three-up at xxl.  The SQL pre-block is
+ * height-capped so a wall-of-text query does not blow the grid out
+ * of alignment — the card scrolls internally.
+ */
+.pql-query-card {
+    border-left: 3px solid var(--bs-border-color);
+}
+.pql-query-card--succeeded {
+    border-left-color: var(--bs-success);
+}
+.pql-query-card--failed {
+    border-left-color: var(--bs-danger);
+}
+.pql-query-card--cancelled {
+    border-left-color: var(--bs-warning);
+}
+.pql-query-card .card-body pre {
+    max-height: 14rem;
+    overflow: auto;
+    margin: 0;
+}
+.pql-query-card .card-body pre code.language-sql {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}

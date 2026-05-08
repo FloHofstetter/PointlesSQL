@@ -360,6 +360,70 @@ async def test_queries_page_htmx_returns_partial(
     assert "All 80 entries loaded." in body
 
 
+async def test_queries_page_emits_cards_with_hljs_marker(
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    qh.record_query(
+        factory,
+        user_id=1,
+        user_email="x@y.z",
+        sql_text="SELECT 1",
+        started_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC),
+        finished_at=datetime.datetime(2026, 4, 1, 0, 0, 0, 100000, tzinfo=datetime.UTC),
+        status="succeeded",
+        row_count=1,
+        duration_ms=100,
+        referenced_tables=[],
+    )
+    resp = await admin_client.get("/queries")
+    assert resp.status_code == 200
+    body = resp.text
+    # Card-grid layout markers: stripe class + grid container + hljs hook.
+    assert "pql-query-card--succeeded" in body
+    assert 'id="queries-grid"' in body
+    assert 'class="language-sql"' in body
+    # hljs CDN + page-local highlight bridge are loaded only on /queries.
+    assert "highlight.min.js" in body
+    assert "/static/js/sql_highlight.js" in body
+
+
+async def test_queries_page_status_filter_narrows_results(
+    orders_delta: str,
+    admin_client: httpx.AsyncClient,
+) -> None:
+    app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
+    factory = app.state.session_factory
+    with factory() as session:
+        session.query(QueryHistoryTable).delete()
+        session.query(QueryHistory).delete()
+        session.commit()
+    base = datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC)
+    for i, st in enumerate(["succeeded", "succeeded", "failed", "cancelled"]):
+        qh.record_query(
+            factory,
+            user_id=1,
+            user_email="x@y.z",
+            sql_text=f"SELECT {i}",
+            started_at=base + datetime.timedelta(seconds=i),
+            finished_at=base + datetime.timedelta(seconds=i, milliseconds=10),
+            status=st,
+            row_count=1,
+            duration_ms=10,
+            referenced_tables=[],
+        )
+
+    resp = await admin_client.get("/queries?status=failed")
+    assert resp.status_code == 200
+    assert "Showing 1 of 1 entry" in resp.text
+
+
 async def test_queries_page_htmx_passes_filter_params_through(
     orders_delta: str,
     admin_client: httpx.AsyncClient,

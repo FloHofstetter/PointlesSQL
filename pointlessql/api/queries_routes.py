@@ -247,6 +247,8 @@ async def queries_page(
     request: Request,
     agent_run_id: str | None = None,
     read_kind: str | None = None,
+    status: str | None = None,
+    since: str | None = None,
     offset: int = Query(default=0, ge=0),
 ) -> HTMLResponse:
     """Render the query history page.
@@ -288,12 +290,17 @@ async def queries_page(
     cleaned_read_kind = (
         read_kind.strip() if isinstance(read_kind, str) and read_kind.strip() else None
     )
+    cleaned_status = status.strip() if isinstance(status, str) and status.strip() else None
+    cleaned_since = since.strip() if isinstance(since, str) and since.strip() else None
+    since_dt = parse_since(cleaned_since) if cleaned_since else None
     user_filter: int | None = None if user.get("is_admin") else user["id"]
     if factory is not None:
         entries = await asyncio.to_thread(
             query_history_service.list_queries,
             factory,
             user_id=user_filter,
+            status=cleaned_status,
+            since=since_dt,
             agent_run_id=cleaned_run_id,
             read_kind=cleaned_read_kind,
             limit=_QUERIES_PAGE_SIZE,
@@ -303,6 +310,8 @@ async def queries_page(
             query_history_service.count_queries,
             factory,
             user_id=user_filter,
+            status=cleaned_status,
+            since=since_dt,
             agent_run_id=cleaned_run_id,
             read_kind=cleaned_read_kind,
         )
@@ -312,6 +321,8 @@ async def queries_page(
         "entries": entries,
         "agent_run_filter": cleaned_run_id,
         "read_kind_filter": cleaned_read_kind,
+        "status_filter": cleaned_status,
+        "since_filter": cleaned_since,
         "total": total,
         "offset": offset,
         "row_limit": _QUERIES_PAGE_SIZE,

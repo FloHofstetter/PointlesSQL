@@ -1,0 +1,68 @@
+{#
+ Single card for one ``query_history`` entry (Sprint 57.3).
+
+ Rendered both by the initial page paint in ``queries.html`` and
+ by the HTMX append partial.  Expects ``entry`` in context.
+
+ Status drives the left-edge stripe via
+ ``.pql-query-card--{succeeded,failed,cancelled}``.  The SQL block
+ carries ``language-sql`` so highlight.js (loaded only on this page)
+ can colour it on initial paint and after every HTMX swap.
+#}
+<div class="col-12 col-md-6 col-xxl-4">
+  <div class="card pql-query-card pql-query-card--{{ entry.status }} h-100">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2">
+      <div class="d-flex gap-2 align-items-center">
+        {% if entry.status == 'succeeded' %}
+        <span class="badge bg-success">succeeded</span>
+        {% elif entry.status == 'failed' %}
+        <span class="badge bg-danger">failed</span>
+        {% elif entry.status == 'cancelled' %}
+        <span class="badge bg-warning text-dark">cancelled</span>
+        {% else %}
+        <span class="badge bg-secondary">{{ entry.status }}</span>
+        {% endif %}
+        {% if entry.read_kind == 'pql_table' %}
+        <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
+        {% elif entry.read_kind == 'engine_direct' %}
+        <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
+        {% else %}
+        <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
+        {% endif %}
+      </div>
+      <span class="text-muted small font-monospace"
+            x-data='{ iso: {{ (entry.started_at or "")|tojson }} }'
+            x-text="iso ? pqlRelativeTime(iso) : '—'"
+            x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">
+        {{ entry.started_at }}
+      </span>
+    </div>
+    <div class="card-body">
+      <pre><code class="language-sql">{{ entry.sql_text or '' }}</code></pre>
+      {% if entry.error_message %}
+      <details class="mt-2">
+        <summary class="small text-danger">Error</summary>
+        <pre class="small text-danger mb-0 mt-1">{{ entry.error_message }}</pre>
+      </details>
+      {% endif %}
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center small">
+      <span class="text-muted">
+        {{ entry.user_email }} ·
+        {% if entry.duration_ms is not none %}{{ entry.duration_ms }} ms{% else %}—{% endif %} ·
+        {% if entry.row_count is not none %}{{ entry.row_count }} rows{% else %}— rows{% endif %}
+      </span>
+      <a href="/sql?prefill={{ entry.sql_text|urlencode }}&history_id={{ entry.id }}"
+         class="btn btn-outline-primary btn-sm"
+         title="Re-run in SQL editor"
+         aria-label="Re-run in SQL editor">
+        <i class="bi bi-arrow-clockwise"></i>
+      </a>
+    </div>
+    {% if entry.tables %}
+    <div class="card-footer pt-2 small">
+      {% for full in entry.tables %}<span class="badge text-bg-secondary me-1 font-monospace">{{ full }}</span>{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>

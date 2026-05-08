@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from "_macros/truncate.html" import truncate_cell %}
 {% block title %}Queries · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -7,6 +6,17 @@
     {"label": "Queries"}
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/styles/github.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.10.0/build/languages/sql.min.js"></script>
+<script src="/static/js/sql_highlight.js?v={{ asset_version }}"></script>
+{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-3">
@@ -26,182 +36,83 @@
         Filtered to agent run
         <a href="/runs/{{ agent_run_filter }}" class="font-monospace">{{ agent_run_filter }}</a>
     </div>
-    <a href="/queries{% if read_kind_filter %}?read_kind={{ read_kind_filter }}{% endif %}" class="btn btn-sm btn-outline-secondary" aria-label="Clear filter">
+    <a href="/queries{% if read_kind_filter %}?read_kind={{ read_kind_filter }}{% endif %}"
+       class="btn btn-sm btn-outline-secondary" aria-label="Clear filter">
         <i class="bi bi-x-lg"></i> Clear
     </a>
 </div>
 {% endif %}
 
-<form method="get" action="/queries" class="d-flex align-items-center gap-2 mb-3">
+<form method="get" action="/queries" class="row g-2 align-items-end mb-3">
     {% if agent_run_filter %}
     <input type="hidden" name="agent_run_id" value="{{ agent_run_filter }}">
     {% endif %}
-    <label for="read-kind-filter" class="form-label mb-0 small text-muted">Read kind</label>
-    <select id="read-kind-filter" name="read_kind" class="form-select form-select-sm w-auto"
-            onchange="this.form.submit()">
-        <option value="" {% if not read_kind_filter %}selected{% endif %}>All</option>
-        <option value="sql_execute" {% if read_kind_filter == 'sql_execute' %}selected{% endif %}>SQL execute</option>
-        <option value="pql_table" {% if read_kind_filter == 'pql_table' %}selected{% endif %}>PQL table read</option>
-        <option value="engine_direct" {% if read_kind_filter == 'engine_direct' %}selected{% endif %}>Engine direct</option>
-    </select>
-    {% if read_kind_filter %}
-    <a href="/queries{% if agent_run_filter %}?agent_run_id={{ agent_run_filter }}{% endif %}"
-       class="btn btn-sm btn-outline-secondary" aria-label="Clear read-kind filter">
-        <i class="bi bi-x-lg"></i> Clear kind
-    </a>
-    {% endif %}
+    <div class="col-12 col-sm-auto">
+        <label for="read-kind-filter" class="form-label small mb-1 text-muted">Read kind</label>
+        <select id="read-kind-filter" name="read_kind" class="form-select form-select-sm">
+            <option value="" {% if not read_kind_filter %}selected{% endif %}>All</option>
+            <option value="sql_execute" {% if read_kind_filter == 'sql_execute' %}selected{% endif %}>SQL execute</option>
+            <option value="pql_table" {% if read_kind_filter == 'pql_table' %}selected{% endif %}>PQL table read</option>
+            <option value="engine_direct" {% if read_kind_filter == 'engine_direct' %}selected{% endif %}>Engine direct</option>
+        </select>
+    </div>
+    <div class="col-12 col-sm-auto">
+        <label for="status-filter" class="form-label small mb-1 text-muted">Status</label>
+        <select id="status-filter" name="status" class="form-select form-select-sm">
+            <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+            <option value="succeeded" {% if status_filter == 'succeeded' %}selected{% endif %}>Succeeded</option>
+            <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+    </div>
+    <div class="col-12 col-sm-auto">
+        <label for="since-filter" class="form-label small mb-1 text-muted">Window</label>
+        <select id="since-filter" name="since" class="form-select form-select-sm">
+            <option value="" {% if not since_filter %}selected{% endif %}>All time</option>
+            <option value="24h" {% if since_filter == '24h' %}selected{% endif %}>Last 24h</option>
+            <option value="7d" {% if since_filter == '7d' %}selected{% endif %}>Last 7d</option>
+            <option value="30d" {% if since_filter == '30d' %}selected{% endif %}>Last 30d</option>
+        </select>
+    </div>
+    <div class="col-12 col-sm-auto">
+        <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-funnel me-1"></i> Apply filters
+        </button>
+        {% if read_kind_filter or status_filter or since_filter %}
+        <a href="/queries{% if agent_run_filter %}?agent_run_id={{ agent_run_filter }}{% endif %}"
+           class="btn btn-outline-secondary btn-sm" aria-label="Clear filters">
+            <i class="bi bi-x-lg"></i> Clear
+        </a>
+        {% endif %}
+    </div>
 </form>
 
 {% if not entries %}
 {% with icon="bi-database",
-    title="No queries yet",
-    message="Run a SQL query to populate this history.",
+    title="No queries match these filters",
+    message="Run a SQL query to populate this history, or relax the filters above.",
     action_href="/sql",
     action_label="Open SQL editor" %}
 {% include "components/empty.html" %}
 {% endwith %}
 {% else %}
-<div class="card">
-    <div class="card-body p-0">
-        <div x-data="listTable({
-                searchPlaceholder: 'Search SQL / tables / user…',
-                initialSort: { key: 'started-at', dir: 'desc' },
-                mobileSort: true,
-                chips: [
-                    { id: 'mine', label: 'Mine only',
-                      match: (tr) => tr.dataset.userId === '{{ current_user.id if current_user else 0 }}' },
-                    { id: 'failed', label: 'Failed',
-                      match: (tr) => tr.dataset.status === 'failed' },
-                    { id: 'last24h', label: 'Last 24h',
-                      match: (tr) => {
-                          const iso = tr.dataset.startedAt;
-                          if (!iso) return false;
-                          const t = new Date(iso).getTime();
-                          return !Number.isNaN(t) && (Date.now() - t) <= 24 * 3600 * 1000;
-                      } },
-                ],
-             })"
-             @pql:rows-appended="$nextTick(() => refreshRows && refreshRows())">
-            <div class="pql-list-controls">
-                <input type="search"
-                       class="form-control form-control-sm pql-list-controls__search"
-                       x-model="query"
-                       x-on:input="onInput()"
-                       x-bind:placeholder="searchPlaceholder"
-                       aria-label="Search queries">
-                <template x-for="chip in chips" :key="chip.id">
-                    <button type="button"
-                            class="pql-chip"
-                            x-bind:class="activeChips[chip.id] ? 'pql-chip--active' : ''"
-                            x-on:click="toggleChip(chip.id)"
-                            x-text="chip.label"></button>
-                </template>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm mb-0 align-middle pql-list-table">
-                    <thead>
-                        <tr>
-                            <th class="ps-3" data-sort-key="started-at">Started</th>
-                            <th data-sort-key="status">Status</th>
-                            <th data-sort-key="read-kind">Kind</th>
-                            <th data-sort-key="user-email">User</th>
-                            <th data-sort-key="duration-ms">Duration</th>
-                            <th data-sort-key="row-count">Rows</th>
-                            <th>SQL</th>
-                            <th class="pe-3">Tables</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody id="queries-tbody">
-                        {% for entry in entries %}
-                        <tr data-search="{{ (entry.sql_text or '')|lower }} {{ entry.user_email|lower }} {{ (entry.tables or [])|join(' ')|lower }} {{ entry.read_kind or '' }}"
-                            data-sort-started-at="{{ entry.started_at or '' }}"
-                            data-sort-status="{{ entry.status or '' }}"
-                            data-sort-read-kind="{{ entry.read_kind or '' }}"
-                            data-sort-user-email="{{ entry.user_email|lower }}"
-                            data-sort-duration-ms="{{ entry.duration_ms if entry.duration_ms is not none else -1 }}"
-                            data-sort-row-count="{{ entry.row_count if entry.row_count is not none else -1 }}"
-                            data-user-id="{{ entry.user_id }}"
-                            data-status="{{ entry.status }}"
-                            data-started-at="{{ entry.started_at or '' }}">
-                            <td class="ps-3 small text-muted font-monospace" data-label="Started">
-                                <span x-data='{ iso: {{ (entry.started_at or "")|tojson }} }'
-                                      x-text="iso ? pqlRelativeTime(iso) : '—'"
-                                      x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ entry.started_at }}</span>
-                            </td>
-                            <td data-label="Status">
-                                {% if entry.status == 'succeeded' %}
-                                <span class="badge bg-success">succeeded</span>
-                                {% elif entry.status == 'failed' %}
-                                <span class="badge bg-danger">failed</span>
-                                {% elif entry.status == 'cancelled' %}
-                                <span class="badge bg-warning text-dark">cancelled</span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ entry.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td data-label="Kind">
-                                {% if entry.read_kind == 'pql_table' %}
-                                <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
-                                {% elif entry.read_kind == 'engine_direct' %}
-                                <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
-                                {% else %}
-                                <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
-                                {% endif %}
-                            </td>
-                            <td data-label="User" class="small">{{ entry.user_email }}</td>
-                            <td data-label="Duration" class="font-monospace small text-muted">
-                                {% if entry.duration_ms is not none %}{{ entry.duration_ms }} ms{% else %}—{% endif %}
-                            </td>
-                            <td data-label="Rows" class="font-monospace small text-muted">
-                                {% if entry.row_count is not none %}{{ entry.row_count }}{% else %}—{% endif %}
-                            </td>
-                            <td data-label="SQL"
-                                x-data="{ open: false }">
-                                {{ truncate_cell(entry.sql_text, max=120, klass="font-monospace small") }}
-                                {% if entry.error_message %}
-                                <button type="button"
-                                        class="btn btn-link btn-sm p-0 ms-1 text-decoration-none text-danger"
-                                        x-on:click.stop="open = !open"
-                                        x-text="open ? 'Hide error' : 'Show error'"></button>
-                                <pre class="small mb-0 mt-1 text-danger"
-                                     x-show="open"
-                                     x-cloak>{{ entry.error_message }}</pre>
-                                {% endif %}
-                            </td>
-                            <td data-label="Tables" class="pe-3 small">
-                                {% for full in entry.tables or [] %}
-                                <span class="badge text-bg-secondary me-1 font-monospace">{{ full }}</span>
-                                {% endfor %}
-                            </td>
-                            <td data-label="Actions" class="text-end pe-3">
-                                <a href="/sql?prefill={{ entry.sql_text|urlencode }}&history_id={{ entry.id }}"
-                                   class="btn btn-outline-primary btn-sm"
-                                   title="Re-run in SQL editor">
-                                    <i class="bi bi-arrow-clockwise"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    <div id="queries-pager" class="d-flex justify-content-center align-items-center gap-3 my-3">
-        {% if next_offset is not none %}
-        <button class="btn btn-outline-secondary btn-sm"
-                hx-get="/queries?offset={{ next_offset }}{% if read_kind_filter %}&read_kind={{ read_kind_filter }}{% endif %}{% if agent_run_filter %}&agent_run_id={{ agent_run_filter }}{% endif %}"
-                hx-target="#queries-tbody"
-                hx-swap="beforeend"
-                hx-on:htmx:after-swap="this.closest('[x-data]').dispatchEvent(new CustomEvent('pql:rows-appended', {bubbles: true}))">
-            <i class="bi bi-arrow-down-circle me-1"></i>
-            Load {{ row_limit }} more · {{ remaining }} remaining
-        </button>
-        {% elif total > row_limit %}
-        <span class="text-muted small">All {{ total }} entries loaded.</span>
-        {% endif %}
-    </div>
+<div class="row g-3" id="queries-grid">
+    {% for entry in entries %}
+    {% include "pages/_partials/_query_card.html" %}
+    {% endfor %}
+</div>
+<div id="queries-pager" class="d-flex justify-content-center align-items-center gap-3 my-3">
+    {% if next_offset is not none %}
+    <button class="btn btn-outline-secondary btn-sm"
+            hx-get="/queries?offset={{ next_offset }}{% if read_kind_filter %}&read_kind={{ read_kind_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if since_filter %}&since={{ since_filter }}{% endif %}{% if agent_run_filter %}&agent_run_id={{ agent_run_filter }}{% endif %}"
+            hx-target="#queries-grid"
+            hx-swap="beforeend">
+        <i class="bi bi-arrow-down-circle me-1"></i>
+        Load {{ row_limit }} more · {{ remaining }} remaining
+    </button>
+    {% elif total > row_limit %}
+    <span class="text-muted small">All {{ total }} entries loaded.</span>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}
