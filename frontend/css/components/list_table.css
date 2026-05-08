@@ -69,6 +69,20 @@
  outline-offset: 2px;
 }
 
+/* Sticky table headers for long lists.  Add ``pql-thead-sticky`` to
+ * a ``<thead>`` and the column row will stay pinned just below the
+ * sticky topbar (z-index 1010 < topbar's 1020 so the topbar always
+ * overlays).  ``--bs-body-bg`` keeps the row opaque so scroll content
+ * can't bleed through.  Only kicks in above the mobile breakpoint
+ * since :``.pql-list-table > thead { display: none }`` already hides
+ * the thead on phones. */
+.pql-thead-sticky th {
+ position: sticky;
+ top: var(--pql-topbar-height);
+ z-index: 1010;
+ background: var(--bs-body-bg);
+}
+
 /* Row hover quick-actions — jobs list only (for now). The actions
  stay off-screen visually until the row is hovered or any child
  gains keyboard focus. We use `visibility` rather than `display`
