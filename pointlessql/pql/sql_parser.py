@@ -1,23 +1,32 @@
-"""Parse SQL and prepare it for the DuckDB execution path.
+"""Parse SQL and prepare it for the right execution path.
 
-The SQL editor needs two things before DuckDB sees a query:
-(a) the set of ``catalog.schema.table`` references so the route can
-enforce ``SELECT`` per table, and (b) a rewrite that collapses each
-three-part reference into a single quoted identifier matching a
-pre-registered view.  DuckDB reserves ``main`` as a catalog name and
-refuses to bind 3-part UC references natively, so the route
-registers each Delta table at its fully-dotted quoted name (e.g.
-``"main.sales.orders"``) and this module rewrites the SQL to point
-at those view identifiers.
+The SQL editor classifies each statement and dispatches to one of
+three families:
 
-Single-statement-only scope: anything that is not a single
-:class:`sqlglot.expressions.Select` (or its immediate ``WITH``
-wrapper) raises :class:`SQLParseError`.
+* **SELECT (and ``WITH ... SELECT``)** runs through DuckDB.  The
+  route extracts the 3-part UC table references, enforces ``SELECT``
+  per table, and rewrites each reference to a quoted identifier
+  matching a pre-registered Delta view.  DuckDB reserves ``main``
+  as a catalog name and refuses to bind 3-part UC references
+  natively, hence the rewrite.
+* **DML (``INSERT INTO ... SELECT``, ``UPDATE``, ``DELETE``,
+  ``MERGE``, ``CREATE TABLE ... AS SELECT``)** routes through the
+  PQL primitives (``write_table`` / ``update`` / ``delete`` /
+  ``merge``).  Source SELECT subqueries still go through the
+  DuckDB rewriter for materialisation; the target table stays as
+  a plain FQN because Delta writes bypass DuckDB.
+* **DDL (``CREATE/DROP SCHEMA``, ``DROP TABLE``, ``ALTER TABLE``)**
+  routes through the soyuz client.
+
+Multi-statement input is still rejected — :func:`_parse_root`
+enforces "exactly one statement".  Use :func:`parse_batch`
+(Phase 63.6) for the batch path.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 import sqlglot
@@ -34,6 +43,27 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
 
     from pointlessql.services.lineage_edges import ColumnEdgeSpec
+
+
+class StmtType(StrEnum):
+    """Classification of the top-level SQL statement.
+
+    Drives dispatcher routing in
+    :mod:`pointlessql.api.sql_dispatcher`.  Each value names the
+    primitive family the dispatcher will route to (DuckDB rewriter,
+    PQL primitive, or soyuz facade).
+    """
+
+    SELECT = "select"
+    INSERT_FROM_SELECT = "insert_from_select"
+    CREATE_TABLE_AS = "create_table_as"
+    UPDATE = "update"
+    DELETE = "delete"
+    MERGE = "merge"
+    DROP_TABLE = "drop_table"
+    CREATE_SCHEMA = "create_schema"
+    DROP_SCHEMA = "drop_schema"
+    ALTER_TABLE = "alter_table"
 
 
 class SQLParseError(ValidationError):
@@ -74,10 +104,16 @@ class PreparedSQL:
 
 
 def prepare_sql(sql: str) -> PreparedSQL:
-    """Parse, validate, and rewrite *sql* for DuckDB-side execution.
+    """Parse, validate, and rewrite a SELECT *sql* for DuckDB execution.
+
+    SELECT-only entry point.  Non-SELECT statements (INSERT /
+    UPDATE / DELETE / MERGE / DDL) raise :class:`SQLParseError` —
+    those go through :func:`parse_and_classify` and the dispatcher
+    instead.
 
     Args:
-        sql: The user-entered SQL.  Must be a single statement.
+        sql: The user-entered SQL.  Must be a single SELECT
+            statement (or its immediate ``WITH`` wrapper).
 
     Returns:
         A :class:`PreparedSQL` carrying the extracted references
@@ -89,6 +125,34 @@ def prepare_sql(sql: str) -> PreparedSQL:
             reference.
     """
     root = _parse_root(sql)
+    if not isinstance(root, (exp.Select, exp.With)) or (
+        isinstance(root, exp.With) and not isinstance(root.this, exp.Select)
+    ):
+        raise SQLParseError(
+            f"prepare_sql expects a SELECT statement (got {type(root).__name__}); "
+            f"use parse_and_classify for non-SELECT statements.",
+        )
+    return _rewrite_select(root)
+
+
+def _rewrite_select(root: Expression) -> PreparedSQL:
+    """Walk *root*'s table refs, rewrite 3-part names to quoted views.
+
+    Shared by :func:`prepare_sql` and (in the dispatcher) the
+    source-SELECT preparation path inside ``INSERT INTO ... SELECT``
+    and ``MERGE ... USING (SELECT ...)``.
+
+    Args:
+        root: A parsed :class:`exp.Select` / :class:`exp.With` node;
+            mutated in place.
+
+    Returns:
+        A :class:`PreparedSQL` with the rewritten SQL string.
+
+    Raises:
+        SQLParseError: When any table reference lacks the full
+            ``catalog.schema.table`` shape.
+    """
     cte_aliases = {cte.alias_or_name for cte in root.find_all(exp.CTE) if cte.alias_or_name}
     refs: list[str] = []
     seen: set[str] = set()
@@ -115,6 +179,246 @@ def prepare_sql(sql: str) -> PreparedSQL:
         seen.add(full)
         refs.append(full)
     return PreparedSQL(refs=refs, rewritten_sql=root.sql(dialect="duckdb"))
+
+
+def parse_and_classify(sql: str) -> tuple[Expression, StmtType]:
+    """Parse *sql* and return its AST plus dispatcher classification.
+
+    Single entry point for the SQL editor's dispatcher path.
+    Accepts every statement type the dispatcher can handle —
+    SELECT / WITH, INSERT, UPDATE, DELETE, MERGE, CREATE TABLE
+    (with or without AS SELECT), DROP TABLE, CREATE SCHEMA,
+    DROP SCHEMA, and ALTER TABLE.  Anything else (CREATE/DROP
+    CATALOG, generic ``Command`` fall-throughs, multi-statement
+    input) raises :class:`SQLParseError`.
+
+    Args:
+        sql: The user-entered SQL.  Must be exactly one statement.
+
+    Returns:
+        ``(ast, stype)`` — the sqlglot expression and its
+        :class:`StmtType` classification.
+
+    Raises:
+        SQLParseError: On parse failure, multi-statement input, or
+            an unsupported statement class.
+    """  # noqa: DOC502 — propagates from _parse_root + classify
+    root = _parse_root(sql)
+    return root, classify(root)
+
+
+def classify(ast: Expression) -> StmtType:
+    """Map a parsed top-level AST node to a :class:`StmtType`.
+
+    Order of checks matters: ``CREATE TABLE ... AS SELECT`` must be
+    distinguished from bare ``CREATE TABLE`` via the presence of
+    ``ast.expression``; ``Drop`` / ``Create`` use the ``kind``
+    string ('TABLE', 'SCHEMA') to discriminate object families.
+
+    Args:
+        ast: The top-level expression from :func:`_parse_root`.
+
+    Returns:
+        The matching :class:`StmtType`.
+
+    Raises:
+        SQLParseError: When the AST does not match any supported
+            statement family.  CREATE/DROP CATALOG land here
+            (sqlglot parses them as :class:`exp.Command` with no
+            structured args) — use the admin UI for catalog
+            management.
+    """
+    if isinstance(ast, (exp.Select, exp.With)):
+        return StmtType.SELECT
+    if isinstance(ast, exp.Insert):
+        return StmtType.INSERT_FROM_SELECT
+    if isinstance(ast, exp.Update):
+        return StmtType.UPDATE
+    if isinstance(ast, exp.Delete):
+        return StmtType.DELETE
+    if isinstance(ast, exp.Merge):
+        return StmtType.MERGE
+    if isinstance(ast, exp.Create):
+        kind = (ast.args.get("kind") or "").upper()
+        if kind == "TABLE":
+            if ast.expression is None:
+                raise SQLParseError(
+                    "Bare CREATE TABLE (without AS SELECT) is not supported "
+                    "from the SQL editor; use the table-detail UI's New Table form.",
+                )
+            return StmtType.CREATE_TABLE_AS
+        if kind == "SCHEMA":
+            return StmtType.CREATE_SCHEMA
+        raise SQLParseError(
+            f"CREATE {kind} is not supported from the SQL editor; "
+            f"use the corresponding admin UI surface.",
+        )
+    if isinstance(ast, exp.Drop):
+        kind = (ast.args.get("kind") or "").upper()
+        if kind == "TABLE":
+            return StmtType.DROP_TABLE
+        if kind == "SCHEMA":
+            return StmtType.DROP_SCHEMA
+        raise SQLParseError(
+            f"DROP {kind} is not supported from the SQL editor; "
+            f"use the corresponding admin UI surface.",
+        )
+    if isinstance(ast, exp.Alter):
+        kind = (ast.args.get("kind") or "").upper()
+        if kind == "TABLE":
+            return StmtType.ALTER_TABLE
+        raise SQLParseError(
+            f"ALTER {kind} is not supported from the SQL editor.",
+        )
+    raise SQLParseError(
+        f"Unsupported statement type: {type(ast).__name__}.",
+    )
+
+
+def extract_write_target(ast: Expression, stype: StmtType) -> str:
+    """Return the 3-part FQN of the write target for a non-SELECT *ast*.
+
+    The dispatcher uses this to scope the per-statement ``MODIFY``
+    privilege check before invoking the PQL primitive or soyuz
+    facade.  For DML the target is always the first
+    :class:`exp.Table` directly under the statement root (not any
+    nested SELECT source).
+
+    Args:
+        ast: A parsed non-SELECT expression.
+        stype: The classification from :func:`classify`.
+
+    Returns:
+        The fully-qualified ``"catalog.schema.table"`` (or
+        ``"catalog.schema"`` for schema-level DDL).
+
+    Raises:
+        SQLParseError: When the target is not three-part qualified
+            or when called for a stype with no extractable target
+            (currently only :attr:`StmtType.SELECT`).
+    """
+    if stype is StmtType.SELECT:
+        raise SQLParseError("SELECT has no write target.")
+    target_node: exp.Table | None
+    if stype is StmtType.CREATE_SCHEMA or stype is StmtType.DROP_SCHEMA:
+        return _extract_schema_target(ast)
+    if isinstance(ast, exp.Insert):
+        target_node = ast.this if isinstance(ast.this, exp.Table) else None
+    elif isinstance(ast, (exp.Update, exp.Delete)):
+        target_node = ast.this if isinstance(ast.this, exp.Table) else None
+    elif isinstance(ast, exp.Merge):
+        node = ast.args.get("this")
+        target_node = node if isinstance(node, exp.Table) else None
+    elif isinstance(ast, exp.Create):
+        # CREATE TABLE ... AS SELECT — `this` is a Schema wrapping a Table.
+        node = ast.this
+        if isinstance(node, exp.Schema):
+            inner = node.this
+            target_node = inner if isinstance(inner, exp.Table) else None
+        elif isinstance(node, exp.Table):
+            target_node = node
+        else:
+            target_node = None
+    elif isinstance(ast, exp.Drop):
+        node = ast.this
+        target_node = node if isinstance(node, exp.Table) else None
+    elif isinstance(ast, exp.Alter):
+        node = ast.this
+        target_node = node if isinstance(node, exp.Table) else None
+    else:
+        target_node = None
+    if target_node is None:
+        raise SQLParseError(
+            f"Could not extract write target from {type(ast).__name__}.",
+        )
+    catalog = target_node.args.get("catalog")
+    schema = target_node.args.get("db")
+    name = target_node.args.get("this")
+    if catalog is None or schema is None or name is None:
+        raise SQLParseError(
+            f"Write target {target_node.sql(dialect='duckdb')!r} is not "
+            f"fully qualified; the editor requires catalog.schema.table.",
+        )
+    return TableFqn.from_parts(catalog.name, schema.name, name.name)
+
+
+def _extract_schema_target(ast: Expression) -> str:
+    """Return ``"catalog.schema"`` for a CREATE/DROP SCHEMA statement.
+
+    sqlglot parses ``CREATE SCHEMA main.bronze`` as
+    ``exp.Create(this=Table(catalog=main, db=bronze, this=None))``
+    — the *catalog* is in :attr:`Table.args["catalog"]` and the
+    *schema name* is in :attr:`Table.args["db"]`.  Two-part
+    qualification is mandatory because schemas without a parent
+    catalog are ambiguous in UC.
+
+    Args:
+        ast: An :class:`exp.Create` or :class:`exp.Drop` whose
+            ``kind`` is ``"SCHEMA"``.
+
+    Returns:
+        ``"catalog.schema"``.
+
+    Raises:
+        SQLParseError: When the schema reference is not two-part
+            qualified.
+    """
+    node = ast.this
+    if isinstance(node, exp.Schema):
+        node = node.this
+    if isinstance(node, exp.Table):
+        catalog = node.args.get("catalog")
+        schema = node.args.get("db")
+        if catalog is not None and schema is not None:
+            return f"{catalog.name}.{schema.name}"
+    raise SQLParseError(
+        "Schema reference is not fully qualified; "
+        "CREATE/DROP SCHEMA requires catalog.schema.",
+    )
+
+
+def extract_source_refs(ast: Expression, stype: StmtType) -> list[str]:
+    """Return the distinct source table refs of a write statement.
+
+    Source refs are the tables a write reads FROM (the SELECT
+    subqueries inside INSERT, MERGE, UPDATE/DELETE-with-correlated-
+    subquery; the source table of MERGE's USING clause).  For
+    UPDATE / DELETE without subqueries the list is empty (the
+    target appears in the AST but is not a source).
+
+    Args:
+        ast: A parsed non-SELECT expression.
+        stype: The classification from :func:`classify`.
+
+    Returns:
+        A list of fully-qualified ``"catalog.schema.table"`` strings
+        in first-appearance order (deduplicated, target excluded).
+    """
+    if stype is StmtType.SELECT:
+        return []
+    try:
+        target_fqn = extract_write_target(ast, stype)
+    except SQLParseError:
+        target_fqn = ""
+    refs: list[str] = []
+    seen: set[str] = set()
+    cte_aliases = {cte.alias_or_name for cte in ast.find_all(exp.CTE) if cte.alias_or_name}
+    for table in ast.find_all(exp.Table):
+        if table.name in cte_aliases and not table.args.get("db"):
+            continue
+        catalog = table.args.get("catalog")
+        schema = table.args.get("db")
+        name = table.args.get("this")
+        if catalog is None or schema is None or name is None:
+            continue
+        full = TableFqn.from_parts(catalog.name, schema.name, name.name)
+        if full == target_fqn:
+            continue
+        if full in seen:
+            continue
+        seen.add(full)
+        refs.append(full)
+    return refs
 
 
 def extract_column_lineage(
@@ -348,13 +652,14 @@ def extract_table_refs(sql: str) -> list[str]:
 
 
 def _parse_root(sql: str) -> Expression:
-    """Parse *sql* as a single statement and validate the editor scope.
+    """Parse *sql* as a single statement and return its AST root.
 
     sqlglot's :func:`sqlglot.parse` returns ``list[Expr | None]``;
     every real AST node is an :class:`exp.Expression` subclass at
-    runtime, so we narrow via explicit :class:`exp.Select` /
-    :class:`exp.With` checks.  A ``With`` is accepted only when it
-    wraps a single ``Select``.
+    runtime.  Statement-class validation is the caller's job —
+    :func:`prepare_sql` raises if the root is not a SELECT;
+    :func:`classify` accepts the broader set the dispatcher
+    handles.
 
     Args:
         sql: The raw SQL string.
@@ -363,8 +668,8 @@ def _parse_root(sql: str) -> Expression:
         The top-level sqlglot expression.
 
     Raises:
-        SQLParseError: On empty input, parse failure, multi-statement
-            input, or non-SELECT top-level statement.
+        SQLParseError: On empty input, parse failure, or
+            multi-statement input.
     """
     sql = (sql or "").strip()
     if not sql:
@@ -375,17 +680,38 @@ def _parse_root(sql: str) -> Expression:
     except ParseError as exc:
         raise SQLParseError(f"Could not parse SQL: {exc}") from exc
 
-    statements = [s for s in parsed if s is not None]
+    statements: list[Expression] = [s for s in parsed if isinstance(s, Expression)]
     if len(statements) != 1:
         raise SQLParseError(
             f"Exactly one SQL statement is required (got {len(statements)}).",
         )
-    root = statements[0]
+    return statements[0]
 
-    if isinstance(root, exp.Select):
-        return root
-    if isinstance(root, exp.With) and isinstance(root.this, exp.Select):
-        return root
-    raise SQLParseError(
-        f"Only SELECT statements are supported (got {type(root).__name__}).",
-    )
+
+def parse_batch(sql: str) -> list[Expression]:
+    """Parse *sql* as one or more statements and return their ASTs.
+
+    Used by the multi-statement editor path (Phase 63.6).  Empty
+    input still raises; otherwise returns one AST per
+    semicolon-separated statement, in source order.
+
+    Args:
+        sql: One or more SQL statements separated by ``;``.
+
+    Returns:
+        A list of top-level sqlglot expressions, length >= 1.
+
+    Raises:
+        SQLParseError: On empty input or parse failure.
+    """
+    sql = (sql or "").strip()
+    if not sql:
+        raise SQLParseError("Empty SQL.")
+    try:
+        parsed = sqlglot.parse(sql, dialect="duckdb")
+    except ParseError as exc:
+        raise SQLParseError(f"Could not parse SQL: {exc}") from exc
+    statements: list[Expression] = [s for s in parsed if isinstance(s, Expression)]
+    if not statements:
+        raise SQLParseError("No SQL statements found.")
+    return statements

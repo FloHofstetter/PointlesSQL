@@ -177,7 +177,7 @@
  </div>
 
  <div class="row g-3">
- <div class="col-lg-9">
+ <div class="col-12">
  <div class="card mb-3">
  <div class="card-body">
  <div id="pql-sql-editor-root" class="pql-sql-editor-host mb-3"></div>
@@ -222,9 +222,6 @@
  </div>
  </div>
  </div>
- </div>
- <div class="col-lg-3">
- {% include "components/saved_queries_drawer.html" %}
  </div>
  </div>
 
@@ -381,10 +378,46 @@
  </div>
  </template>
 
- <template x-if="result && !explainText">
+ <template x-if="result && (result.kind === 'dml' || result.kind === 'ddl') && !explainText">
+ <div>
+ <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+ <span class="badge"
+ :class="{
+ 'text-bg-primary': result.kind === 'dml' && result.stmt_type !== 'delete',
+ 'text-bg-warning text-dark': result.stmt_type === 'delete',
+ 'text-bg-danger': result.kind === 'ddl' && result.op_name && result.op_name.startsWith('drop_'),
+ 'text-bg-success': result.kind === 'ddl' && result.op_name && result.op_name.startsWith('create_')
+ }"
+ x-text="(result.stmt_type || result.kind).replace(/_/g, ' ').toUpperCase()"></span>
+ <span class="text-muted small" x-show="result.target" x-cloak>
+ on <code x-text="result.target"></code>
+ </span>
+ <span class="text-muted small ms-auto" x-show="result.rows_affected != null" x-cloak>
+ <span x-text="result.rows_affected"></span>
+ row<span x-text="result.rows_affected === 1 ? '' : 's'"></span> affected
+ </span>
+ </div>
+ <div class="d-flex flex-wrap gap-2 small">
+ <template x-if="result.agent_run_id">
+ <a :href="'/runs/' + result.agent_run_id"
+ class="btn btn-outline-secondary btn-sm">
+ <i class="bi bi-clock-history me-1"></i>View op trace
+ </a>
+ </template>
+ </div>
+ <template x-if="result.executed_sql">
+ <pre class="mt-3 p-2 small bg-body-tertiary rounded mb-0"
+ style="max-height: 200px; overflow: auto;"
+ x-text="result.executed_sql"></pre>
+ </template>
+ </div>
+ </template>
+
+ <template x-if="result && result.kind !== 'dml' && result.kind !== 'ddl' && !explainText">
  <div>
  <div class="d-flex justify-content-between align-items-center mb-2 small text-muted flex-wrap gap-2">
  <span>
+ <span class="badge text-bg-secondary me-2">SELECT</span>
  <span x-text="result.row_count"></span>
  row<span x-text="result.row_count === 1 ? '' : 's'"></span>
  <span x-show="result.truncated" class="badge text-bg-warning ms-2">truncated</span>

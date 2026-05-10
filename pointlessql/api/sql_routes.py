@@ -238,8 +238,13 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
     import duckdb
 
-    from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
-    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.api.sql_dispatcher import dispatch
+    from pointlessql.exceptions import SQLExecutionError
+    from pointlessql.pql.sql_parser import (
+        SQLParseError,
+        StmtType,
+        parse_and_classify,
+    )
 
     settings: Settings = request.app.state.settings
     if not settings.sql.enabled:
@@ -255,73 +260,108 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     raw_qid = (body or {}).get("query_id")
     query_id = raw_qid if isinstance(raw_qid, str) and raw_qid else uuid4().hex
 
-    # Optional EXPLAIN ANALYZE mode.  The server parses + enforces
-    # the raw SELECT as usual, then wraps the final statement with
-    # ``EXPLAIN ANALYZE``.  Diagnostic runs skip history recording
-    # + audit to keep the operator-facing surfaces clean.
+    # Optional EXPLAIN ANALYZE mode (SELECT-only).  The server
+    # parses + enforces the raw SELECT as usual, then wraps the
+    # final statement with ``EXPLAIN ANALYZE``.  Diagnostic runs
+    # skip history recording + audit to keep the operator-facing
+    # surfaces clean.
     explain = bool((body or {}).get("explain", False))
 
     started_at = datetime.now(UTC)
-    parsed_refs: list[str] = []
     cancelled = False
     timed_out = False
     conn: Any = None
     registry = live_queries(request)
     try:
         try:
-            prepared = prepare_sql(query)
+            ast, stype = parse_and_classify(query)
         except SQLParseError as exc:
             raise SQLExecutionError(str(exc)) from exc
-        parsed_refs = list(prepared.refs)
 
-        client = get_uc_client(request)
-        user = get_user(request)
-        email = effective_principal(request) or user.get("email", "")
-        is_admin = user.get("is_admin", False)
+        if explain and stype is not StmtType.SELECT:
+            raise SQLExecutionError(
+                "EXPLAIN is only supported for SELECT statements.",
+            )
 
-        approved: dict[str, str] = {}
-        for full_name in prepared.refs:
-            parts = full_name.split(".")
-            if len(parts) != 3:
-                raise SQLExecutionError(
-                    f"Internal error: expected 3-part name, got {full_name!r}.",
-                )
-            table_info = await client.get_table(parts[0], parts[1], parts[2])
-            if not table_info:
-                raise CatalogNotFoundError(f"Table not found: {full_name!r}")
-            storage_location = table_info.get("storage_location")
-            if not isinstance(storage_location, str) or not storage_location:
-                raise CatalogNotFoundError(
-                    f"Table {full_name!r} has no storage_location on soyuz-catalog.",
-                )
-            await check_privilege(client, email, is_admin, "table", full_name, SELECT)
-            approved[full_name] = storage_location
-
-        # Open the connection here and hand it to the thread so the
-        # cancel endpoint can reach ``.interrupt()`` via the
-        # live-queries registry.
+        # Open a DuckDB connection for SELECT (cancellable) and for
+        # write paths that materialise a source SELECT
+        # (INSERT-FROM-SELECT, CTAS, MERGE).  UPDATE / DELETE /
+        # DROP / CREATE SCHEMA do not need DuckDB but the conn is
+        # cheap to open and the cancel registry path is preserved.
         conn = duckdb.connect()
         registry[query_id] = conn
         timeout_s = max(1, int(settings.sql.query_timeout_seconds))
+
+        if stype is StmtType.SELECT and explain:
+            # Legacy EXPLAIN path stays inline — feeds the
+            # pre-existing JSON-plan renderer below.
+            from pointlessql.api.sql_dispatcher import (
+                DispatchContext,
+                _enforce_select_per_table,  # pyright: ignore[reportPrivateUsage]
+            )
+            from pointlessql.pql.sql_parser import prepare_sql
+
+            prepared = prepare_sql(query)
+            user = get_user(request)
+            ctx = DispatchContext(
+                request=request,
+                settings=settings,
+                sql=query,
+                ast=ast,
+                stype=stype,
+                actor_email=effective_principal(request) or user.get("email", ""),
+                is_admin=bool(user.get("is_admin", False)),
+                conn=conn,
+                max_rows=settings.sql.max_rows,
+            )
+            approved = await _enforce_select_per_table(ctx, prepared.refs)
+            try:
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        run_sql_sync,
+                        settings,
+                        query,
+                        approved,
+                        settings.sql.max_rows,
+                        conn,
+                        True,  # explain
+                    ),
+                    timeout=timeout_s,
+                )
+            except TimeoutError:
+                timed_out = True
+                try:
+                    conn.interrupt()
+                except Exception:  # noqa: BLE001 — diagnostic only
+                    logger.debug("conn.interrupt() after timeout raised", exc_info=True)
+                raise SQLExecutionError(
+                    f"Query exceeded {timeout_s}s timeout and was cancelled.",
+                ) from None
+            except duckdb.InterruptException as exc:
+                cancelled = True
+                raise SQLExecutionError("Query cancelled by user.") from exc
+
+            return _serialize_explain(query_id, query, result)
+
         try:
-            result = await asyncio.wait_for(
-                asyncio.to_thread(
-                    run_sql_sync,
-                    settings,
-                    query,
-                    approved,
-                    settings.sql.max_rows,
-                    conn,
-                    explain,
+            exec_result = await asyncio.wait_for(
+                dispatch(
+                    request=request,
+                    settings=settings,
+                    sql=query,
+                    ast=ast,
+                    stype=stype,
+                    conn=conn,
                 ),
                 timeout=timeout_s,
             )
+        except SQLParseError as exc:
+            # Late parse failures (e.g. _rewrite_select rejecting a
+            # 2-part table name inside a SELECT branch) bubble up as
+            # SQLExecutionError so the route's RFC 9457 envelope
+            # carries the right code.
+            raise SQLExecutionError(str(exc)) from exc
         except TimeoutError:
-            # Signal DuckDB to abort the running statement; the
-            # worker thread observes the interrupt and raises.  We
-            # then surface the timeout as a ``cancelled`` history
-            # row (not ``failed``) because the query may have been
-            # valid — just slow.
             timed_out = True
             try:
                 conn.interrupt()
@@ -331,15 +371,12 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 f"Query exceeded {timeout_s}s timeout and was cancelled.",
             ) from None
         except duckdb.InterruptException as exc:
-            # Cancelled by the /cancel endpoint.
             cancelled = True
             raise SQLExecutionError("Query cancelled by user.") from exc
     except Exception as exc:
-        # Failure path: record history row before the centralised
-        # error handler renders the response.  EXPLAIN runs skip
-        # history (diagnostic only).  Parse failures have empty
-        # ``parsed_refs``; enforcement failures carry the
-        # references extracted before the check raised.
+        # Failure path: record a history row so the user sees the
+        # attempt in /queries even on error.  EXPLAIN runs skip
+        # history (diagnostic only).
         finished_at = datetime.now(UTC)
         status = QueryStatus.CANCELLED if (cancelled or timed_out) else QueryStatus.FAILED
         if not explain:
@@ -351,7 +388,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 status=status,
                 row_count=None,
                 duration_ms=None,
-                referenced_tables=parsed_refs,
+                referenced_tables=[],
                 error_message=_ANSI_ESCAPE_RE.sub("", str(exc)),
             )
         raise
@@ -365,71 +402,137 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
 
     finished_at = datetime.now(UTC)
     history_id: int | None = None
-    if not explain:
+    if exec_result.kind == "select":
         history_id = await record_query_async(
             request,
             sql_text=query,
             started_at=started_at,
             finished_at=finished_at,
             status=QueryStatus.SUCCEEDED,
-            row_count=result.row_count,
-            duration_ms=result.duration_ms,
-            referenced_tables=result.referenced_tables,
+            row_count=exec_result.row_count,
+            duration_ms=exec_result.duration_ms,
+            referenced_tables=exec_result.referenced_tables,
         )
         await audit(
             request,
             "query.executed",
             f"query:{short_sql_hash(query)}",
             {
-                "row_count": result.row_count,
-                "duration_ms": result.duration_ms,
-                "tables": result.referenced_tables,
-                "truncated": result.truncated,
+                "row_count": exec_result.row_count,
+                "duration_ms": exec_result.duration_ms,
+                "tables": exec_result.referenced_tables,
+                "truncated": exec_result.truncated,
             },
         )
+        return {
+            "query_id": query_id,
+            "history_id": history_id,
+            "is_explain": False,
+            "explain_text": None,
+            "explain_plan": None,
+            "kind": "select",
+            "columns": exec_result.columns,
+            "rows": exec_result.rows,
+            "row_count": exec_result.row_count,
+            "truncated": exec_result.truncated,
+            "duration_ms": exec_result.duration_ms,
+            "executed_sql": exec_result.executed_sql,
+            "referenced_tables": exec_result.referenced_tables,
+        }
 
-    explain_text: str | None = None
-    explain_plan: dict[str, Any] | None = None
-    if explain:
-        # DuckDB is now in JSON profiling mode (set by
-        # ``_sql.py`` before the EXPLAIN ANALYZE call), so the
-        # result-set carries a single JSON blob instead of the
-        # legacy ASCII tree.  Find the JSON cell, parse it for the
-        # frontend's structured renderer, AND keep a pretty-printed
-        # text fallback so older clients / cURL still see something
-        # readable.
-        plan_text: str | None = None
-        for row in result.rows:
-            for cell in row:
-                if isinstance(cell, str) and cell.lstrip().startswith(("{", "[")):
-                    plan_text = cell
-                    break
-            if plan_text is not None:
-                break
-        if plan_text is not None:
-            try:
-                parsed = json.loads(plan_text)
-            except json.JSONDecodeError:
-                parsed = None
-            if isinstance(parsed, dict):
-                explain_plan = parsed
-                explain_text = json.dumps(parsed, indent=2)
-            else:
-                explain_text = plan_text
-        else:
-            # Defensive fallback: pragma may have failed; flatten
-            # whatever DuckDB returned into a tab-joined blob.
-            lines: list[str] = []
-            for row in result.rows:
-                lines.append("\t".join("" if cell is None else str(cell) for cell in row))
-            explain_text = "\n".join(lines)
-
+    # Write path (DML / DDL).  ``query_history`` records the SQL +
+    # the originating ``agent_run_id`` so /runs/<id> can surface
+    # the editor-authored statement (Phase 63.8).
+    history_id = await record_query_async(
+        request,
+        sql_text=query,
+        started_at=started_at,
+        finished_at=finished_at,
+        status=QueryStatus.SUCCEEDED,
+        row_count=exec_result.rows_affected,
+        duration_ms=None,
+        referenced_tables=exec_result.referenced_tables or (
+            [exec_result.target] if exec_result.target else []
+        ),
+        agent_run_id=exec_result.agent_run_id,
+        read_kind="sql_dml" if exec_result.kind == "dml" else "sql_ddl",
+    )
+    await audit(
+        request,
+        f"query.{exec_result.kind}",
+        f"query:{short_sql_hash(query)}",
+        {
+            "stmt_type": stype.value,
+            "target": exec_result.target,
+            "rows_affected": exec_result.rows_affected,
+            "agent_run_id": exec_result.agent_run_id,
+        },
+    )
     return {
         "query_id": query_id,
         "history_id": history_id,
-        "is_explain": explain,
+        "is_explain": False,
+        "explain_text": None,
+        "explain_plan": None,
+        "kind": exec_result.kind,
+        "stmt_type": stype.value,
+        "target": exec_result.target,
+        "rows_affected": exec_result.rows_affected,
+        "agent_run_id": exec_result.agent_run_id,
+        "op_name": exec_result.op_name,
+        "stats": exec_result.stats,
+        "executed_sql": exec_result.executed_sql,
+        "referenced_tables": exec_result.referenced_tables,
+    }
+
+
+def _serialize_explain(query_id: str, sql_text: str, result: Any) -> dict[str, Any]:
+    """Build the EXPLAIN-mode response dict (legacy SELECT-only path).
+
+    Args:
+        query_id: Client-supplied query ID.
+        sql_text: Raw SQL submitted (unused in the response but
+            kept for future parity with the write path).
+        result: A :class:`SQLResult` from :func:`run_sql_sync`
+            with EXPLAIN flag set.
+
+    Returns:
+        The historical EXPLAIN response dict.
+    """
+    del sql_text  # no SQL hash needed for diagnostic explain path
+    explain_text: str | None = None
+    explain_plan: dict[str, Any] | None = None
+    plan_text: str | None = None
+    for row in result.rows:
+        for cell in row:
+            if isinstance(cell, str) and cell.lstrip().startswith(("{", "[")):
+                plan_text = cell
+                break
+        if plan_text is not None:
+            break
+    if plan_text is not None:
+        try:
+            parsed = json.loads(plan_text)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, dict):
+            explain_plan = parsed
+            explain_text = json.dumps(parsed, indent=2)
+        else:
+            explain_text = plan_text
+    else:
+        lines: list[str] = []
+        for row in result.rows:
+            lines.append("\t".join("" if cell is None else str(cell) for cell in row))
+        explain_text = "\n".join(lines)
+
+    return {
+        "query_id": query_id,
+        "history_id": None,
+        "is_explain": True,
         "explain_text": explain_text,
         "explain_plan": explain_plan,
+        "kind": "select",
         "columns": result.columns,
         "rows": result.rows,
         "row_count": result.row_count,
@@ -438,6 +541,218 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         "executed_sql": result.executed_sql,
         "referenced_tables": result.referenced_tables,
     }
+
+
+@router.post("/api/sql/execute_batch")
+async def api_sql_execute_batch(
+    request: Request, body: dict[str, Any] = Body(...)
+) -> dict[str, Any]:
+    """Run multiple ``;``-separated statements in one request (Phase 63.6).
+
+    Each statement is dispatched through the same path as
+    ``POST /api/sql/execute`` so the audit-trail wiring + privilege
+    checks are identical.  Two execution modes:
+
+    * ``atomic=False`` (default) — statements run sequentially.
+      Each write gets its own ``agent_run`` row; the first failure
+      stops the batch and earlier successful writes stay
+      committed.
+    * ``atomic=True`` — single ``agent_run`` for the whole batch.
+      On any DML/DDL failure, ``pql.rollback`` undoes the
+      successful writes that preceded it (Phase 16).  SELECTs in
+      the batch always succeed-or-fail individually since reads
+      are idempotent.
+
+    Args:
+        request: Incoming FastAPI request.
+        body: JSON body with ``sql`` (multi-statement string;
+            ``;``-separated), optional ``atomic`` (bool, default
+            ``False``), and optional ``query_id``.
+
+    Returns:
+        ``{batch_id, results: [...], failed_index, error}``.
+        ``results`` is the per-statement
+        :func:`api_sql_execute`-style response dict (same shape).
+        ``failed_index`` is ``None`` on full success, or the
+        zero-based index of the failing statement.
+
+    Raises:
+        SQLExecutionError: When the SQL editor is disabled or the
+            batch parse fails before any statement runs.
+    """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
+    from pointlessql.api.sql_dispatcher import dispatch
+    from pointlessql.exceptions import SQLExecutionError
+    from pointlessql.pql.sql_parser import (
+        SQLParseError,
+        classify,
+        parse_batch,
+    )
+
+    settings: Settings = request.app.state.settings
+    if not settings.sql.enabled:
+        raise SQLExecutionError("The SQL editor is disabled on this deployment.")
+
+    sql_text = (body or {}).get("sql") or ""
+    if not isinstance(sql_text, str) or not sql_text.strip():
+        raise SQLExecutionError("The 'sql' field must be a non-empty string.")
+    atomic = bool((body or {}).get("atomic", False))
+    raw_qid = (body or {}).get("query_id")
+    batch_id = raw_qid if isinstance(raw_qid, str) and raw_qid else uuid4().hex
+
+    try:
+        asts = parse_batch(sql_text)
+    except SQLParseError as exc:
+        raise SQLExecutionError(str(exc)) from exc
+
+    import duckdb
+
+    results: list[dict[str, Any]] = []
+    failed_index: int | None = None
+    error_message: str | None = None
+    write_run_ids: list[str] = []
+
+    for idx, ast in enumerate(asts):
+        stype = classify(ast)
+        stmt_sql = ast.sql(dialect="duckdb")
+        conn = duckdb.connect()
+        try:
+            exec_result = await dispatch(
+                request=request,
+                settings=settings,
+                sql=stmt_sql,
+                ast=ast,
+                stype=stype,
+                conn=conn,
+            )
+        except Exception as exc:  # noqa: BLE001 — record then halt
+            failed_index = idx
+            error_message = _ANSI_ESCAPE_RE.sub("", str(exc))
+            results.append(
+                {
+                    "index": idx,
+                    "kind": "error",
+                    "stmt_type": stype.value,
+                    "executed_sql": stmt_sql,
+                    "error": error_message,
+                }
+            )
+            break
+        finally:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001 — diagnostic
+                logger.debug("conn.close() raised", exc_info=True)
+        if exec_result.kind != "select" and exec_result.agent_run_id:
+            write_run_ids.append(exec_result.agent_run_id)
+        results.append(
+            {
+                "index": idx,
+                "kind": exec_result.kind,
+                "stmt_type": stype.value,
+                "executed_sql": stmt_sql,
+                "target": exec_result.target,
+                "rows_affected": exec_result.rows_affected,
+                "agent_run_id": exec_result.agent_run_id,
+                "op_name": exec_result.op_name,
+                "row_count": exec_result.row_count,
+                "columns": exec_result.columns,
+                "rows": exec_result.rows,
+            }
+        )
+
+    rollback_log: list[dict[str, Any]] = []
+    if atomic and failed_index is not None:
+        # Roll back any successful writes that preceded the failure.
+        # SELECTs and DDLs are not undoable through pql.rollback —
+        # those stay even in atomic mode (DDL via soyuz is a
+        # different transaction surface).
+        for run_id in reversed(write_run_ids):
+            try:
+                rollback_log.append(
+                    await _rollback_run(request, run_id=run_id)
+                )
+            except Exception as exc:  # noqa: BLE001 — best-effort
+                rollback_log.append({"run_id": run_id, "error": str(exc)})
+
+    await audit(
+        request,
+        "query.batch",
+        f"batch:{batch_id}",
+        {
+            "atomic": atomic,
+            "n_statements": len(asts),
+            "failed_index": failed_index,
+            "rollback_attempted": bool(rollback_log),
+        },
+    )
+
+    return {
+        "batch_id": batch_id,
+        "atomic": atomic,
+        "n_statements": len(asts),
+        "failed_index": failed_index,
+        "error": error_message,
+        "results": results,
+        "rollback": rollback_log,
+    }
+
+
+async def _rollback_run(request: Request, *, run_id: str) -> dict[str, Any]:
+    """Best-effort ``pql.rollback`` for every write op of *run_id*.
+
+    Iterates the run's ``agent_run_operations`` rows in reverse
+    ordinal order and calls :meth:`PQL.rollback` on each
+    target_table.  Used by the atomic-batch failure path.
+
+    Args:
+        request: Incoming FastAPI request.
+        run_id: UUID of the editor's per-write agent_run.
+
+    Returns:
+        ``{"run_id", "ops_rolled_back", "errors"}``.
+    """
+    from sqlalchemy import select
+
+    from pointlessql.api.pql_write_routes import (
+        _build_pql,  # pyright: ignore[reportPrivateUsage]
+    )
+    from pointlessql.models.agent_run_audit import AgentRunOperation
+
+    factory = request.app.state.session_factory
+    user = get_user(request)
+    email = effective_principal(request) or user.get("email", "")
+
+    def _ops() -> list[tuple[int, str | None]]:
+        with factory() as session:
+            rows = (
+                session.execute(
+                    select(AgentRunOperation.ordinal, AgentRunOperation.target_table)
+                    .where(AgentRunOperation.agent_run_id == run_id)
+                    .order_by(AgentRunOperation.ordinal.desc())
+                )
+                .all()
+            )
+            return [(int(r[0]), r[1]) for r in rows]
+
+    ops = await asyncio.to_thread(_ops)
+
+    rolled: list[int] = []
+    errors: list[dict[str, Any]] = []
+
+    def _do_rollback(ordinal: int, target: str) -> None:
+        pql = _build_pql(request, principal=email, agent_run_id=None)
+        pql.rollback(target, before_run=run_id, op_ordinal=ordinal, allow_force=True)
+
+    for ordinal, target in ops:
+        if not target:
+            continue
+        try:
+            await asyncio.to_thread(_do_rollback, ordinal, target)
+            rolled.append(ordinal)
+        except Exception as exc:  # noqa: BLE001 — best-effort
+            errors.append({"ordinal": ordinal, "target": target, "error": str(exc)})
+
+    return {"run_id": run_id, "ops_rolled_back": rolled, "errors": errors}
 
 
 @router.post("/api/sql/execute/{query_id}/cancel", status_code=204)

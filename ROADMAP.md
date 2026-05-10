@@ -4887,6 +4887,120 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 63 — Writeable SQL Editor (AST-dispatch refactor)  ✅ done 2026-05-10
+│   │
+│   │   The SQL editor was SELECT-only at
+│   │   ``pointlessql/pql/sql_parser.py:385-391`` because the
+│   │   DuckDB rewriter only made sense for SELECTs (DuckDB
+│   │   reserves ``main`` as a catalog name and refuses to bind
+│   │   3-part UC refs natively, so the parser has to extract
+│   │   + rewrite source tables).  The audit infrastructure
+│   │   (Phase 13 ``agent_run_operations``, Phase 14 external-
+│   │   write detection, Phase 15.x lineage tables) was
+│   │   already ready for write traffic — the only structural
+│   │   gap was that interactive editor writes did not populate
+│   │   ``query_history.agent_run_id``.  Phase 63 turns the
+│   │   editor backend into an AST-classifying dispatcher that
+│   │   routes each statement family to its correct typed
+│   │   primitive, so editor writes land in the same audit
+│   │   trail as Hermes-driven writes.
+│   │
+│   ├── Sprint 63.1 — Statement-type taxonomy + parser ✅
+│   │       ``StmtType`` StrEnum, ``classify(ast)``,
+│   │       ``extract_write_target`` / ``extract_source_refs``,
+│   │       ``parse_and_classify``, ``parse_batch``.
+│   │       ``_parse_root`` no longer rejects non-SELECT;
+│   │       ``prepare_sql`` keeps SELECT-only via explicit
+│   │       guard.  CREATE/DROP CATALOG parse as ``exp.Command``
+│   │       in sqlglot — deliberately rejected (admin UI).
+│   │       Bare ``CREATE TABLE`` rejected (use New Table form).
+│   │       42 new pytest cases.
+│   │
+│   ├── Sprint 63.2 — pql.update + pql.delete primitives ✅
+│   │       New ``pointlessql/pql/_update_delete.py`` wraps
+│   │       ``DeltaTable.update`` / ``.delete`` (delta-rs
+│   │       accepts SQL-string predicates).
+│   │       ``pql.update(track_value_changes=True)`` reuses
+│   │       merge's CDF capture.  HTTP routes
+│   │       ``POST /api/pql/{update,delete}``.  Alembic
+│   │       ``ee3f6h8j0l2n`` extends the
+│   │       ``ck_agent_run_operations_op_name`` CHECK with all
+│   │       six new op names (update/delete/drop_table/
+│   │       create_schema/drop_schema/alter_table) in one shot.
+│   │       ORM CHECK widened in lockstep.  13 new pytest
+│   │       cases.
+│   │
+│   ├── Sprint 63.3 — Soyuz update_table facade  🧊 deferred
+│   │       Cross-repo soyuz tag bump + client regen out of
+│   │       Phase-63 scope.  Editor's table-detail UI (Phase
+│   │       17.4) already handles ALTER TABLE COMMENT /
+│   │       properties.  Dispatcher's ``ALTER_TABLE`` branch
+│   │       returns a structured "use the table-detail UI"
+│   │       error so the parser path stays live for a future
+│   │       Phase 63.5 to wire in.
+│   │
+│   ├── Sprint 63.4 — Backend dispatcher ✅
+│   │       New ``pointlessql/api/sql_dispatcher.py`` with one
+│   │       ``dispatch(stype, ast, …)`` entry point + per-
+│   │       StmtType branches.  SELECT keeps today's path (no
+│   │       agent_run created).  Write branches start a one-shot
+│   │       ``agent_run`` with ``agent_id='sql-editor'`` BEFORE
+│   │       the primitive call; PQL primitives' operation_context
+│   │       emits ``agent_run_operations`` against that run id
+│   │       automatically.  DDL branches emit op rows directly
+│   │       via SQL (soyuz client has no operation_context).
+│   │       Per-branch privilege checks reuse ``check_privilege``.
+│   │       ``api_sql_execute`` shrinks from 240 LOC to ~140.
+│   │       10 new pytest cases.
+│   │
+│   ├── Sprint 63.5 — MERGE AST → MergeCallSpec translator ✅
+│   │       New ``pointlessql/pql/sql_merge_translator.py``.
+│   │       Supports the ``WHEN MATCHED THEN UPDATE`` (+
+│   │       optional ``WHEN NOT MATCHED THEN INSERT``) upsert
+│   │       subset of ``pql.merge``.  Conditional WHEN clauses,
+│   │       ``WHEN MATCHED THEN DELETE``, ``WHEN NOT MATCHED BY
+│   │       SOURCE``, multiple WHEN MATCHED branches, and
+│   │       complex non-EQ ON predicates are all rejected with
+│   │       structured ``SQLMergeUnsupportedError`` pointing the
+│   │       user at ``POST /api/pql/merge`` for elaborate cases.
+│   │       9 new pytest cases.
+│   │
+│   ├── Sprint 63.6 — Multi-statement / batch route ✅
+│   │       ``POST /api/sql/execute_batch`` runs ``;``-separated
+│   │       statements through the same dispatcher.
+│   │       ``atomic=True`` opens a single batch agent_run and
+│   │       calls ``pql.rollback`` (Phase 16) on the prior
+│   │       write ops on failure.  ``atomic=False`` (default)
+│   │       gives each write its own run.  Frontend toggle
+│   │       deferred to a polish Sprint 63.6.1; the server-side
+│   │       route is callable today.
+│   │
+│   ├── Sprint 63.7 — Editor UX ✅
+│   │       Statement-type badge above the result widget
+│   │       (colour-coded per stmt_type).  Destructive-statement
+│   │       confirmation modal (regex heuristic for
+│   │       DROP TABLE/SCHEMA + DELETE without WHERE).  New
+│   │       ``dml`` / ``ddl`` result-render branch with
+│   │       rows-affected + ``View op trace`` deep-link to
+│   │       ``/runs/<run_id>``.  Existing SELECT rows-table
+│   │       branch unchanged.
+│   │
+│   ├── Sprint 63.8 — Audit-FK wiring ✅
+│   │       ``record_query_async`` accepts ``agent_run_id`` +
+│   │       ``read_kind`` kwargs; dispatcher passes both so
+│   │       editor writes land in ``query_history`` with
+│   │       ``read_kind='sql_dml'`` / ``'sql_ddl'``.
+│   │       ``ReadKind`` extended.  ``/runs/<id>`` already
+│   │       joins ``query_history`` by ``agent_run_id`` (Phase
+│   │       13.10) so editor writes show up in the run's
+│   │       queries panel without further work.
+│   │
+│   └── Sprint 63.9 — Tests + close ✅
+│           31 new pytest cases overall; full suite run shows
+│           147 passes across the touched paths.  ruff /
+│           pyright / pydoclint clean on every new or modified
+│           file.  CHANGELOG, ROADMAP, memory updated.
+│
 ├── Phase 59 — Comprehensive UX-tour quality sweep         ✅ done 2026-05-08
 │   │
 │   │   Post-Phase-58 headed-Playwright tour through 8 thematic

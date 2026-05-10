@@ -20,7 +20,7 @@ from typing import Any
 from fastapi import Request
 
 from pointlessql.api.dependencies import client_ip, effective_principal, get_user
-from pointlessql.enums import QueryStatus
+from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.identifiers import RunId
 from pointlessql.services import audit as audit_service
 from pointlessql.services import query_history as query_history_service
@@ -64,6 +64,7 @@ async def record_query_async(
     referenced_tables: list[str],
     error_message: str | None = None,
     agent_run_id: str | None = None,
+    read_kind: ReadKind | str = ReadKind.SQL_EXECUTE,
 ) -> int | None:
     """Persist a query-history row without blocking the loop.
 
@@ -89,6 +90,12 @@ async def record_query_async(
             resolution falls back to :func:`effective_agent_run_id`
             so callers in the route layer don't need to thread the
             header through.
+        read_kind: Discriminator stored on the row (default
+            ``ReadKind.SQL_EXECUTE`` matches the legacy SELECT
+            path).  Phase 63 dispatcher passes ``"sql_dml"`` for
+            INSERT/UPDATE/DELETE/MERGE and ``"sql_ddl"`` for
+            DROP/CREATE so :file:`/queries` can filter editor
+            traffic by family.
 
     Returns:
         The new ``query_history.id`` on success; ``None`` if no
@@ -108,6 +115,9 @@ async def record_query_async(
     # id without depending on request headers.
     resolved_run_id = agent_run_id or effective_agent_run_id(request)
     workspace_id = int(getattr(request.state, "workspace_id", 1))
+    resolved_read_kind = (
+        read_kind if isinstance(read_kind, ReadKind) else ReadKind(read_kind)
+    )
     try:
         return await asyncio.to_thread(
             query_history_service.record_query,
@@ -125,6 +135,7 @@ async def record_query_async(
             request_id=request_id,
             agent_run_id=RunId(resolved_run_id) if resolved_run_id else None,
             workspace_id=workspace_id,
+            read_kind=resolved_read_kind,
         )
     except Exception:  # noqa: BLE001 — never mask the query response
         logger.exception("failed to record query_history row")

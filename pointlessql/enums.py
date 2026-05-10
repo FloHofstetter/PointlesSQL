@@ -55,6 +55,12 @@ class OpName(StrEnum):
     DBT_MODEL = "dbt_model"
     DBT_TEST = "dbt_test"
     SQL_EXPLAIN = "sql_explain"
+    UPDATE = "update"
+    DELETE = "delete"
+    DROP_TABLE = "drop_table"
+    CREATE_SCHEMA = "create_schema"
+    DROP_SCHEMA = "drop_schema"
+    ALTER_TABLE = "alter_table"
 
 
 class ReadKind(StrEnum):
@@ -64,6 +70,8 @@ class ReadKind(StrEnum):
     """
 
     SQL_EXECUTE = "sql_execute"
+    SQL_DML = "sql_dml"
+    SQL_DDL = "sql_ddl"
     PQL_TABLE = "pql_table"
     PQL_TABLE_AT_VERSION = "pql_table_at_version"
     ENGINE_DIRECT = "engine_direct"

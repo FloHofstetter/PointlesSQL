@@ -6,6 +6,144 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 63 — Writeable SQL Editor (AST-dispatch refactor) ✅
+  closed (2026-05-10).**  Turns the SELECT-only SQL editor into
+  an AST-classifying dispatcher that routes each statement
+  family to its correct typed primitive.  Every editor write now
+  lands in the same audit trail as agent-driven writes
+  (`agent_run_operations` row, `lineage_row_edges` /
+  `lineage_value_changes` where applicable, and a
+  `query_history` row with `agent_run_id` populated).
+
+  The structural gap that motivated Phase 63 was **not** an
+  audit / safety stance — the SELECT-only constraint at
+  [pointlessql/pql/sql_parser.py:385-391](pointlessql/pql/sql_parser.py#L385-L391)
+  fell out of the DuckDB rewriter's scope (DuckDB reserves
+  `main` as a catalog name and refuses to bind 3-part UC refs
+  natively, so the parser has to extract + rewrite source
+  tables; the rewrite logic only made sense for SELECTs).  The
+  audit infrastructure was already ready for write traffic;
+  the only structural gap was that interactive editor writes
+  did not populate `query_history.agent_run_id`.
+
+  - 63.1 — `pointlessql/pql/sql_parser.py`: new `StmtType`
+    StrEnum, `classify(ast) -> StmtType`,
+    `extract_write_target`, `extract_source_refs`,
+    `parse_and_classify`, and `parse_batch` for multi-statement
+    input (Phase 63.6).  `_parse_root` no longer rejects
+    non-SELECT — `prepare_sql` keeps the SELECT-only behaviour
+    via an explicit guard and points the dispatcher at
+    `parse_and_classify` for everything else.  `CREATE CATALOG`
+    / `DROP CATALOG` parse as `exp.Command` in sqlglot and are
+    deliberately rejected (admin UI handles catalog
+    management).  Bare `CREATE TABLE foo (a INT, b TEXT)`
+    rejects with a "use the table-detail UI's New Table form"
+    message.  42 new pytest cases in
+    `tests/test_sql_parser.py` (parametric coverage of every
+    StmtType + write-target extraction + source-ref dedup).
+  - 63.2 — `pointlessql/pql/_update_delete.py` (new) +
+    `pointlessql/pql/pql.py` extended: `pql.update(target, *,
+    set_clause, where=None, track_value_changes=False)` and
+    `pql.delete(target, *, where=None)` wrapping
+    `DeltaTable.update` / `DeltaTable.delete` (delta-rs accepts
+    SQL-string predicates natively).  Both emit
+    `agent_run_operations` rows; `pql.update` reuses the merge
+    path's CDF-based `_capture_value_changes` for the opt-in
+    `lineage_value_changes` capture.  New HTTP routes
+    `POST /api/pql/update` + `POST /api/pql/delete` mirror the
+    write-table / merge auth pattern (`MODIFY` privilege on
+    target).  Alembic migration `ee3f6h8j0l2n` extends
+    `ck_agent_run_operations_op_name` with six new op names
+    (update / delete / drop_table / create_schema / drop_schema
+    / alter_table) in one shot so Phase 63 needs only one
+    migration.  ORM CHECK constraint in
+    `pointlessql/models/agent_run_audit.py` widened in lockstep.
+    13 new pytest cases in `tests/test_update_delete.py`.
+  - 63.3 — soyuz `update_table` facade for ALTER TABLE COMMENT:
+    **deferred** per plan rationale.  Cross-repo soyuz tag bump
+    + client regen is out of scope; the editor's table-detail
+    UI (Phase 17.4) already handles ALTER TABLE COMMENT /
+    properties.  The dispatcher's `ALTER_TABLE` branch returns a
+    structured "use the table-detail UI" error so the parser
+    path stays live for a future Phase 63.5 to wire in.
+  - 63.4 — `pointlessql/api/sql_dispatcher.py` (new): one
+    `dispatch(stype, ast, …)` entry point + per-StmtType
+    branches.  SELECT keeps the existing DuckDB rewriter path
+    (no agent_run created — matches today's behaviour).  Write
+    branches (INSERT FROM SELECT, CREATE TABLE AS SELECT,
+    UPDATE, DELETE, MERGE, DROP TABLE, CREATE SCHEMA, DROP
+    SCHEMA) start a one-shot `agent_run` with
+    `agent_id='sql-editor'` BEFORE invoking the primitive; the
+    PQL primitives' `operation_context` then emits
+    `agent_run_operations` against that run id automatically.
+    DDL branches emit their own op row directly via SQL since
+    the soyuz client has no operation_context wrapper.
+    [pointlessql/api/sql_routes.py:202-440](pointlessql/api/sql_routes.py#L202-L440)
+    shrinks dramatically: parse → classify → dispatch →
+    serialize.  EXPLAIN ANALYZE keeps its inline path
+    (SELECT-only).  Per-branch privilege checks reuse
+    `check_privilege` (SELECT on source refs + MODIFY /
+    USE_SCHEMA on target).  10 new pytest cases in
+    `tests/test_sql_dispatcher.py`.
+  - 63.5 — `pointlessql/pql/sql_merge_translator.py` (new):
+    translates `exp.Merge` → `MergeCallSpec` for the
+    dispatcher's MERGE branch.  Supports the `WHEN MATCHED
+    THEN UPDATE` (+ optional `WHEN NOT MATCHED THEN INSERT`)
+    upsert subset of `pql.merge`; everything outside that
+    raises `SQLMergeUnsupportedError` with structured guidance
+    pointing the user at `POST /api/pql/merge` (which accepts
+    JSON for elaborate scenarios).  Conditional WHEN clauses,
+    `WHEN MATCHED THEN DELETE`, `WHEN NOT MATCHED BY SOURCE`,
+    multiple WHEN MATCHED branches, and complex non-EQ ON
+    predicates are all rejected.  9 new pytest cases in
+    `tests/test_sql_merge_translator.py`.
+  - 63.6 — `POST /api/sql/execute_batch` (new): runs `;`-
+    separated statements via the same dispatcher.  `atomic=True`
+    opens a single per-batch agent_run and calls
+    `pql.rollback` (Phase 16) on the prior write ops on
+    failure.  `atomic=False` (default) makes each write its
+    own run; failures stop the batch but earlier writes stay.
+    Frontend toggle deferred to a polish Sprint 63.6.1 — the
+    server-side route is callable today.
+  - 63.7 — `frontend/js/sql_editor/execute.js` +
+    `frontend/templates/pages/sql_editor.html`: statement-type
+    badge above the result widget (colour-coded SELECT /
+    INSERT / UPDATE / DELETE / DROP); destructive-statement
+    confirmation modal (regex heuristic for `DROP TABLE/SCHEMA`
+    and `DELETE` without `WHERE` — false positives are
+    acceptable since the modal is a UX speed-bump, not a
+    security gate); new `dml`/`ddl` result-render branch
+    showing `<rows_affected> on <target>` + a "View op trace"
+    button deep-linking to `/runs/<run_id>`; existing SELECT
+    rows-table branch unchanged.
+  - 63.8 — Audit-FK wiring: `pointlessql/api/_audit_helpers.py`
+    `record_query_async` accepts `agent_run_id` + `read_kind`
+    kwargs; dispatcher passes both so editor writes land in
+    `query_history` with the originating agent_run_id and
+    `read_kind='sql_dml'` / `'sql_ddl'`.  `pointlessql.enums.ReadKind`
+    extended with `SQL_DML` and `SQL_DDL` values.
+    `/runs/<id>` already joins `query_history` by
+    `agent_run_id` (Phase 13.10) so editor writes show up
+    in the run's queries panel without further work.
+  - 63.9 — Tests + close: 31 new pytest cases overall.
+    `feedback_skip_pytest` rule applies to old tests but
+    Phase-63 surfaces are merge-blocking — full suite run
+    confirms 147 pass across the touched paths
+    (test_sql_parser + test_sql_execute + test_sql_dispatcher
+    + test_sql_merge_translator + test_update_delete +
+    test_pql + test_merge_value_changes + test_merge_rejects).
+    `ruff check` / `pyright` / `pydoclint` clean on every new
+    or modified file.
+
+  **Why this matters:** Phase 14's external-write scanner
+  treats writes that have no `agent_run_operations` row as
+  "unattributed" anomalies.  Pre-Phase-63, an editor write
+  (had it been allowed) would have triggered that scanner
+  every time.  Now editor writes flow through the same audit
+  trail as Hermes-driven writes and the scanner correctly
+  skips them as attributed.
+
+
 - **Phase 59 — Comprehensive UX-tour quality sweep ✅ closed
   (2026-05-08).**  60 implementable findings (out of 71 total,
   11 DESIGN deferred to Phase 60+) landed across 7 sub-sprints
