@@ -56,6 +56,7 @@ dependencies = [
     "ansi2html>=1.9",
     "Pygments>=2.18",
     "cryptography>=44.0",
+    "mcp[cli]>=1.2",
 ]
 
 [project.optional-dependencies]

@@ -79,6 +79,12 @@ PUBLIC_PREFIXES: tuple[str, ...] = (
     # handler; the path itself is unauthenticated so external git
     # hosts can call it without an API key.
     "/webhook/git/",
+    # Phase 65.4: Lens MCP transport.  Authentication is a Bearer
+    # API key with the analyst (or auditor) scope, validated inside
+    # the routes themselves.  Letting the auth middleware redirect
+    # /mcp/* to /auth/login would break IDE consumers (Claude
+    # Desktop, Cursor) that never see an HTTP redirect.
+    "/mcp/",
 )
 
 

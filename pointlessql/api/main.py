@@ -682,6 +682,27 @@ def _admin_issue_auditor_key(  # pyright: ignore[reportUnusedFunction]
     typer.echo(plaintext)
 
 
+@cli.command("lens-mcp")
+def _lens_mcp_cmd() -> None:  # pyright: ignore[reportUnusedFunction]
+    """Run the Lens read-only Q&A MCP server on stdio (Phase 65.4).
+
+    Reads ``LENS_API_KEY`` (an analyst-scoped api_keys secret) from
+    the env, resolves it to a workspace, and exposes every Lens tool
+    to the connected MCP client (Claude Desktop, Cursor, etc.).
+    Blocks until stdin closes.
+    """
+    from pointlessql.services.lens.mcp_server import (
+        LensMcpAuthError,
+        run_lens_mcp_stdio,
+    )
+
+    try:
+        run_lens_mcp_stdio()
+    except LensMcpAuthError as exc:
+        typer.echo(f"lens-mcp: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+
 @cli.command("migrate-to-postgres")
 def _migrate_to_postgres_cmd(  # pyright: ignore[reportUnusedFunction]
     source: str = typer.Option(
