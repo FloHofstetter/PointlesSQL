@@ -250,7 +250,7 @@ async def _workspace_repos_sync_loop(
     """
     from datetime import UTC, datetime, timedelta
 
-    from pointlessql.services.workspace_repos import (
+    from pointlessql.services.workspace.repos import (
         build_post_pull_loader_hook,
         list_repos_due_for_sync,
         sync_repo,

@@ -39,7 +39,7 @@ from pointlessql.models import (
     WorkspaceCatalogPin,
     WorkspaceMember,
 )
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 router = APIRouter(tags=["admin-workspaces"])
 

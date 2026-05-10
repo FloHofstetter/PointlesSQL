@@ -22,7 +22,7 @@ from pointlessql.models.workspace_repos import (
     WorkspaceRepoSecret,
 )
 from pointlessql.services.secrets import decrypt_value
-from pointlessql.services.workspace_repos import (
+from pointlessql.services.workspace.repos import (
     add_secret,
     create_repo,
     delete_repo,

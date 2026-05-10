@@ -34,7 +34,7 @@ from pointlessql.models.workspace_repos import (
     WorkspaceRepo,
     WorkspaceRepoSecret,
 )
-from pointlessql.services.workspace_repos import (
+from pointlessql.services.workspace.repos import (
     add_secret,
     build_post_pull_loader_hook,
     create_repo,

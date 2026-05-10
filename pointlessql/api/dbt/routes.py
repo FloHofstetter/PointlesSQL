@@ -63,7 +63,7 @@ from pointlessql.services.dbt import (
     project_models,
     summarise,
 )
-from pointlessql.services.governance_events import (
+from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
     EVENT_TYPE_DBT_RUN_COMPLETED,
     EVENT_TYPE_DBT_TEST_FAILED,

@@ -25,7 +25,7 @@ from sqlalchemy import select
 from pointlessql.api.main import app
 from pointlessql.models import ApiKey, AuditLog
 from pointlessql.services import api_keys as api_keys_service
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 def _factory():

@@ -1083,7 +1083,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
                 "engine": "duckdb",
                 "referenced_tables": result.referenced_tables,
             }
-            from pointlessql.services.governance_events import (
+            from pointlessql.services.workspace.governance import (
                 EVENT_TYPE_COST_GATE_DENIED,
                 emit_governance_event,
             )

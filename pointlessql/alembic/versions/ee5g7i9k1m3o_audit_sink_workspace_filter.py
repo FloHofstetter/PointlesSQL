@@ -8,7 +8,7 @@ sink to events whose ``workspace_id`` is one of the listed values.
 
 The dispatcher predicate is implemented in
 :func:`pointlessql.services.audit.sinks._select_active_sinks`; see
-also :func:`pointlessql.services.governance_events.emit_governance_event`
+also :func:`pointlessql.services.workspace.governance.emit_governance_event`
 for the call site that threads ``workspace_id`` through.
 
 No backfill is required because ``NULL`` already means "all

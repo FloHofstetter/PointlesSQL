@@ -46,7 +46,7 @@ from pointlessql.services.agent_runs.operations import (
     RollbackStale,
     RollbackTargetNotFound,
 )
-from pointlessql.services.cascade import find_downstream_tables
+from pointlessql.services.workspace import find_downstream_tables
 from pointlessql.types import OpName
 
 router = APIRouter()

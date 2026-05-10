@@ -219,7 +219,7 @@ async def scan_all(
     """
     import asyncio
 
-    from pointlessql.services.governance_events import (
+    from pointlessql.services.workspace.governance import (
         EVENT_TYPE_EXTERNAL_WRITE,
         emit_governance_event,
     )

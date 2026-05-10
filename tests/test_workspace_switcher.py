@@ -25,7 +25,7 @@ import pytest
 from pointlessql.api.main import app
 from pointlessql.api.middleware import WORKSPACE_COOKIE_NAME
 from pointlessql.models import WorkspaceCatalogPin
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 def _factory():

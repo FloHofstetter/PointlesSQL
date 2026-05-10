@@ -31,7 +31,7 @@ from pointlessql.services.dbt import (
     parse_manifest,
     parse_run_results,
 )
-from pointlessql.services.governance_events import (
+from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DBT_RUN_COMPLETED,
     EVENT_TYPE_DBT_TEST_FAILED,
     EVENT_TYPE_DBT_TEST_WARNED,

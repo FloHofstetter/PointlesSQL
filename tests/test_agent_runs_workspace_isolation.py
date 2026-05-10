@@ -29,7 +29,7 @@ from pointlessql.models import (
     Workspace,
     WorkspaceMember,
 )
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 def _factory():

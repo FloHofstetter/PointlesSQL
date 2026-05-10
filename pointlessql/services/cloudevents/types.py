@@ -7,7 +7,7 @@ point the producer at it, ship.
 
 Values match the byte-for-byte literals previously declared in
 :mod:`pointlessql.services.agent_runs.events` and
-:mod:`pointlessql.services.governance_events`; those modules
+:mod:`pointlessql.services.workspace.governance`; those modules
 keep their ``EVENT_TYPE_*`` aliases for back-compat so existing
 imports continue to work without churn.
 """

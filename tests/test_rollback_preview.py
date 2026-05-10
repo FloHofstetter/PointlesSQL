@@ -2,7 +2,7 @@
 
 Two layers under test:
 
-* :func:`pointlessql.services.cascade.find_downstream_tables` —
+* :func:`pointlessql.services.workspace._cascade.find_downstream_tables` —
   reads ``lineage_row_edges`` + ``lineage_column_map`` and reports
   distinct downstream targets.  Pure SQLAlchemy unit tests; no
   HTTP.
@@ -34,7 +34,7 @@ from pointlessql.models import (
     LineageColumnMap,
     LineageRowEdge,
 )
-from pointlessql.services.cascade import find_downstream_tables
+from pointlessql.services.workspace import find_downstream_tables
 
 
 @pytest.fixture

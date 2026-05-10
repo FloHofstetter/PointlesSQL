@@ -135,7 +135,7 @@ class GovernanceEvent(Base):
         event_id: CloudEvents ``id`` field, unique across rows.
         event_type: One of the governance event constants exported
             from
-            :mod:`pointlessql.services.governance_events`.
+            :mod:`pointlessql.services.workspace.governance`.
         fired_at: When the envelope was built.
         outcome: ``pending`` | ``delivered`` | ``delivery_failed`` |
             ``no_destination``.  CHECK-constrained.

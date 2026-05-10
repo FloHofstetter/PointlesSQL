@@ -653,7 +653,7 @@ async def admin_audit_export(
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     from pointlessql.api.dependencies import effective_principal, get_user
-    from pointlessql.services.governance_events import (
+    from pointlessql.services.workspace.governance import (
         EVENT_TYPE_AUDIT_EXPORT_ISSUED,
         emit_governance_event,
     )

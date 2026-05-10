@@ -180,7 +180,7 @@ async def prune_once_async(
     if not deleted:
         return deleted
 
-    from pointlessql.services.governance_events import (
+    from pointlessql.services.workspace.governance import (
         EVENT_TYPE_LINEAGE_PRUNED,
         emit_governance_event,
     )

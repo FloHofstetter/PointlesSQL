@@ -30,7 +30,7 @@ from pointlessql.models import (
     UnattributedWrite,
 )
 from pointlessql.services import audit as audit_service
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 def _factory():
@@ -298,7 +298,7 @@ def test_lineage_edges_inherit_workspace_from_op(
 async def test_emit_governance_event_writes_workspace_id(
     two_workspaces: tuple[int, int],
 ) -> None:
-    from pointlessql.services import governance_events as ge
+    from pointlessql.services.workspace import governance as ge
 
     ws_a, _ = two_workspaces
     await ge.emit_governance_event(

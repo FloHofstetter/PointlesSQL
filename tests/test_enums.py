@@ -142,7 +142,7 @@ def test_cloudevents_registry_matches_legacy_constants() -> None:
         EVENT_TYPE_STARTED,
         EVENT_TYPE_TOOL_CALL,
     )
-    from pointlessql.services.governance_events import (
+    from pointlessql.services.workspace.governance import (
         EVENT_TYPE_AUDIT_EXPORT_ISSUED,
         EVENT_TYPE_BRANCH_CREATED,
         EVENT_TYPE_BRANCH_DISCARDED,

@@ -15,7 +15,7 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.models import CdfTailSubscription
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 def _seed_subscription(

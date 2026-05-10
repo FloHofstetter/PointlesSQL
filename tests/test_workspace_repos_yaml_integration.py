@@ -21,7 +21,7 @@ from sqlalchemy.orm import sessionmaker
 from pointlessql.conventions import load_conventions_for_workspace
 from pointlessql.data_products import load_contracts_for_workspace
 from pointlessql.models.data_products import DataProduct
-from pointlessql.services.workspace_repos import (
+from pointlessql.services.workspace.repos import (
     build_post_pull_loader_hook,
     create_repo,
     sync_repo,
@@ -238,7 +238,7 @@ def test_repo_deletion_does_not_remove_cached_data_products(
                   on_post_pull=hook)
     )
 
-    from pointlessql.services.workspace_repos import delete_repo
+    from pointlessql.services.workspace.repos import delete_repo
 
     delete_repo(factory, repo_id=out.repo.id, base_dir=base)
 

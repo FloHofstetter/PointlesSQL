@@ -93,7 +93,7 @@ def _resolve_workspace_lens(request: Request, override: str | None) -> tuple[int
         return None, "all"
 
     # Slug → id
-    from pointlessql.services import workspaces as workspaces_service
+    from pointlessql.services.workspace import _crud as workspaces_service
 
     factory = request.app.state.session_factory
     ws = workspaces_service.get_workspace_by_slug(factory, slug=cleaned)

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 
 from pointlessql.models.data_products import DataProduct
-from pointlessql.services.governance_events import (
+from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED,
     emit_governance_event,
 )

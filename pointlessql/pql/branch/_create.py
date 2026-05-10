@@ -512,7 +512,7 @@ def _emit_branch_created_event(
         strategy: Picked clone strategy.
         table_count: Number of tables cloned.
     """
-    from pointlessql.services.governance_events import EVENT_TYPE_BRANCH_CREATED
+    from pointlessql.services.workspace.governance import EVENT_TYPE_BRANCH_CREATED
 
     emit_branch_event(
         settings=settings,

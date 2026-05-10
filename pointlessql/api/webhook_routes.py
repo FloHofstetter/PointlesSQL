@@ -31,7 +31,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 
 from pointlessql.git import resolve_provider
 from pointlessql.models.workspace_repos import WorkspaceRepo
-from pointlessql.services.workspace_repos import (
+from pointlessql.services.workspace.repos import (
     build_post_pull_loader_hook,
     sync_repo,
 )

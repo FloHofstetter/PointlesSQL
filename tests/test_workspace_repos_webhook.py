@@ -18,7 +18,7 @@ import httpx
 import pytest
 
 from pointlessql.api.main import app
-from pointlessql.services.workspace_repos import create_repo
+from pointlessql.services.workspace.repos import create_repo
 
 
 def _signature(secret: str, body: bytes) -> str:

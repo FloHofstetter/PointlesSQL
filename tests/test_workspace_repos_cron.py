@@ -14,7 +14,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from pointlessql.models.workspace_repos import WorkspaceRepo
-from pointlessql.services.workspace_repos import (
+from pointlessql.services.workspace.repos import (
     create_repo,
     list_repos_due_for_sync,
 )

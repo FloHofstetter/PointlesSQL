@@ -224,7 +224,7 @@ def _resolve_workspace_context(request: Request) -> dict[str, Any]:
         from sqlalchemy import select as _select
 
         from pointlessql.models import Workspace, WorkspaceCatalogPin
-        from pointlessql.services import workspaces as ws_service
+        from pointlessql.services.workspace import _crud as ws_service
 
         with factory() as session:
             current = session.get(Workspace, workspace_id)

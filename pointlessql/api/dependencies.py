@@ -13,7 +13,7 @@ from fastapi import Request
 
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models import Workspace
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.types import UserInfo
 
@@ -236,7 +236,7 @@ def current_workspace_id(request: Request) -> int:
 
     The auth middleware attaches ``request.state.workspace_id`` on
     every request via
-    :func:`pointlessql.services.workspaces.resolve_workspace_id`.
+    :func:`pointlessql.services.workspace._crud.resolve_workspace_id`.
     Routes that need to scope SQL by workspace pull the id through
     this dependency instead of reading the request state directly so
     the contract stays grep-able and a future swap-out (e.g. flipping

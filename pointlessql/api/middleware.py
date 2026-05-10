@@ -38,12 +38,12 @@ from pointlessql.api.rate_limit_middleware import (
 from pointlessql.config import request_id_var
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth as auth_service
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.types import UserInfo
 
 #: Header carrying the active workspace slug for non-cookie callers
 #: (Hermes plugin, ops curl, CI scripts).  See
-#: :func:`pointlessql.services.workspaces.resolve_workspace_id` for
+#: :func:`pointlessql.services.workspace._crud.resolve_workspace_id` for
 #: precedence rules.
 WORKSPACE_HEADER: str = "x-workspace"
 

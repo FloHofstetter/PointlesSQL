@@ -14,7 +14,7 @@ from pointlessql.api.middleware import WORKSPACE_COOKIE_NAME
 from pointlessql.config import Settings
 from pointlessql.services import auth, csrf
 from pointlessql.services import oidc as oidc_service
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

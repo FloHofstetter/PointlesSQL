@@ -22,7 +22,7 @@ from pointlessql.models import (
     CdfTailSubscription,
     LineageRowEdge,
 )
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 

@@ -1,4 +1,4 @@
-"""Tests for :func:`pointlessql.services.workspaces.resolve_workspace_id`.
+"""Tests for :func:`pointlessql.services.workspace._crud.resolve_workspace_id`.
 
 The resolver is the non-HTTP entry point that the auth middleware,
 the scheduler tick loop, the CLI, and test fixtures all share.
@@ -18,7 +18,7 @@ import pytest
 from pointlessql.api.main import app
 from pointlessql.models import AuditLog, User
 from pointlessql.services import api_keys as api_keys_service
-from pointlessql.services import workspaces as workspaces_service
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 def _factory():

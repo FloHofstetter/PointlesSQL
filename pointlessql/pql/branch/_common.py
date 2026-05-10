@@ -220,13 +220,13 @@ def emit_branch_event(
     Args:
         settings: Resolved :class:`Settings`.
         event_type: One of the ``pointlessql.branch.*`` event types
-            registered in :mod:`pointlessql.services.governance_events`.
+            registered in :mod:`pointlessql.services.workspace.governance`.
         data: Event payload dict (must JSON-serialise).
     """
     import asyncio
 
     from pointlessql.db import get_session_factory
-    from pointlessql.services.governance_events import emit_governance_event
+    from pointlessql.services.workspace.governance import emit_governance_event
 
     try:
         factory = get_session_factory()
