@@ -1,7 +1,7 @@
 """HTTP route tests for the on-demand dbt endpoints.
 
 Bypasses dbt's real CLI by monkeypatching
-:meth:`pointlessql.services.dbt_executor.DBTExecutor._run` to return
+:meth:`pointlessql.services.dbt._executor.DBTExecutor._run` to return
 a stub :class:`DBTRunResult` that points at the fixture
 ``manifest.json`` + ``run_results.json``.  This exercises the full
 HTTP → executor → bridge → audit-row path end-to-end without
@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from pointlessql.api.main import app
 from pointlessql.models import AgentRunOperation
-from pointlessql.services.dbt_executor import DBTExecutor, DBTRunResult
+from pointlessql.services.dbt import DBTExecutor, DBTRunResult
 
 _FIXTURE_DIR = Path(__file__).parent / "fixtures" / "dbt_minimal" / "target"
 

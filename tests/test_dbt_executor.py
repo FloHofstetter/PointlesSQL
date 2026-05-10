@@ -21,11 +21,13 @@ from typing import Any
 import pytest
 
 from pointlessql.config import DBTSettings
-from pointlessql.services.dbt_executor import (
+from pointlessql.services.dbt import (
     DBTExecutionError,
     DBTExecutor,
     DBTRunResult,
-    _truncate,
+)
+from pointlessql.services.dbt._executor import (
+    _truncate,  # noqa: PLC2701  # private helper exercised directly
 )
 
 

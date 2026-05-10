@@ -46,12 +46,12 @@ except Exception as _dbt_import_exc:  # noqa: BLE001 — defensive
     )
 
 from pointlessql.config import DBTSettings  # noqa: E402
-from pointlessql.services.dbt_bridge import (  # noqa: E402 — guarded by skip above
+from pointlessql.services.dbt import (  # noqa: E402 — guarded by skip above
+    DBTExecutor,  # noqa: E402
     merge_manifest_and_results,
     parse_manifest,
     parse_run_results,
 )
-from pointlessql.services.dbt_executor import DBTExecutor  # noqa: E402
 
 pytestmark = pytest.mark.integration
 

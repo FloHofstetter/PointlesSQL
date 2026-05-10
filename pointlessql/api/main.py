@@ -45,7 +45,7 @@ from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import scheduler as scheduler_service
-from pointlessql.services.dbt_subprocess import (
+from pointlessql.services.dbt import (
     DBTStartupError,
     DBTSubprocess,
     dbt_duckdb_available,

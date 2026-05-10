@@ -29,14 +29,15 @@ from sqlalchemy import select
 from pointlessql.api.main import app
 from pointlessql.models.agent_runs import STATUS_RUNNING, AgentRun
 from pointlessql.models.lineage import LineageRowReject
-from pointlessql.services.dbt_bridge import (
+from pointlessql.services.dbt import (
+    DBTExecutor,
+    DBTRunResult,
     emit_operations_for_dbt_run,
     emit_test_failure_rejects,
     merge_manifest_and_results,
     parse_manifest,
     parse_run_results,
 )
-from pointlessql.services.dbt_executor import DBTExecutor, DBTRunResult
 
 _FIXTURE_DIR = Path(__file__).parent / "fixtures" / "dbt_minimal" / "target"
 _MANIFEST = _FIXTURE_DIR / "manifest.json"

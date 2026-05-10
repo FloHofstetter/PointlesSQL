@@ -27,7 +27,7 @@ from pointlessql.api.dbt import routes as dbt_routes
 from pointlessql.api.main import app
 from pointlessql.exceptions import ValidationError
 from pointlessql.models.audit_sinks import GovernanceEvent
-from pointlessql.services.dbt_executor import DBTExecutor, DBTRunResult
+from pointlessql.services.dbt import DBTExecutor, DBTRunResult
 from pointlessql.services.governance_events import (
     EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
 )

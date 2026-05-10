@@ -1,6 +1,6 @@
 """On-demand ``dbt`` CLI subprocess wrapper.
 
-Sibling to :mod:`pointlessql.services.dbt_subprocess`, which manages
+Sibling to :mod:`pointlessql.services.dbt._subprocess`, which manages
 the long-running ``dbt docs serve`` subprocess.  This module instead
 spawns short-lived one-shot CLI invocations (``dbt run``, ``dbt test``,
 ``dbt compile``, ``dbt deps``) and waits for them to exit.
@@ -8,7 +8,7 @@ spawns short-lived one-shot CLI invocations (``dbt run``, ``dbt test``,
 The executor returns a :class:`DBTRunResult` capturing exit code,
 stdout, stderr, and the parsed paths to ``target/manifest.json`` and
 ``target/run_results.json``.  The bridge layer in
-:mod:`pointlessql.services.dbt_bridge` then reads those files and
+:mod:`pointlessql.services.dbt._bridge` then reads those files and
 emits ``agent_run_operations`` rows.
 
 We deliberately do not stream stdout to the HTTP response: dbt's

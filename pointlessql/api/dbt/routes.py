@@ -6,9 +6,9 @@ package installs.  All three writes (``run`` / ``test`` / ``deps``)
 require supervisor scope; ``compile`` only needs an authenticated
 user because it does not mutate state.
 
-The handlers wrap a :class:`pointlessql.services.dbt_executor.DBTExecutor`
+The handlers wrap a :class:`pointlessql.services.dbt._executor.DBTExecutor`
 invocation, then hand the result files to the bridge in
-:mod:`pointlessql.services.dbt_bridge` so each executed model + test
+:mod:`pointlessql.services.dbt._bridge` so each executed model + test
 lands as one ``agent_run_operations`` row.
 
 Lifecycle: callers may pass an ``agent_run_id`` they have already
@@ -48,8 +48,11 @@ from pointlessql.models.agent_runs import (
     AgentRun,
 )
 from pointlessql.models.lineage import LineageRowReject
-from pointlessql.services.dbt_bridge import (
+from pointlessql.services.dbt import (
+    DBTExecutionError,
+    DBTExecutor,
     DBTNodeResult,
+    DBTRunResult,
     as_dict,
     capture_delta_versions,
     emit_operations_for_dbt_run,
@@ -60,7 +63,6 @@ from pointlessql.services.dbt_bridge import (
     project_models,
     summarise,
 )
-from pointlessql.services.dbt_executor import DBTExecutionError, DBTExecutor, DBTRunResult
 from pointlessql.services.governance_events import (
     EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
     EVENT_TYPE_DBT_RUN_COMPLETED,

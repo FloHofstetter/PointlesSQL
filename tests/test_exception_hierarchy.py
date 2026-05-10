@@ -34,8 +34,7 @@ from pointlessql.services.agent_runs.operations import (
 )
 from pointlessql.services.audit import AuditIntegrityError
 from pointlessql.services.branch_tags import BranchTagsCorruptError
-from pointlessql.services.dbt_executor import DBTExecutionError
-from pointlessql.services.dbt_subprocess import DBTStartupError
+from pointlessql.services.dbt import DBTExecutionError, DBTStartupError
 from pointlessql.services.mlflow_subprocess import MLflowStartupError
 from pointlessql.services.model_promotion import PromotionError
 from pointlessql.services.oidc import OIDCError

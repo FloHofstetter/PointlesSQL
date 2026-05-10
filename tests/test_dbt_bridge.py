@@ -28,7 +28,7 @@ from pointlessql.api.main import app
 from pointlessql.exceptions import AuditUnavailableError
 from pointlessql.models import AgentRunOperation
 from pointlessql.models.agent_runs import STATUS_RUNNING, AgentRun
-from pointlessql.services.dbt_bridge import (
+from pointlessql.services.dbt import (
     DBTNodeResult,
     capture_delta_versions,
     emit_operations_for_dbt_run,

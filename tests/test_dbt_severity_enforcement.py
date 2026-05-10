@@ -23,13 +23,14 @@ from pointlessql.api.dbt.routes import _classify_severity
 from pointlessql.api.main import app
 from pointlessql.models.agent_runs import STATUS_FAILED, STATUS_SUCCEEDED, AgentRun
 from pointlessql.models.audit_sinks import GovernanceEvent
-from pointlessql.services.dbt_bridge import (
+from pointlessql.services.dbt import (
+    DBTExecutor,
     DBTNodeResult,
+    DBTRunResult,
     merge_manifest_and_results,
     parse_manifest,
     parse_run_results,
 )
-from pointlessql.services.dbt_executor import DBTExecutor, DBTRunResult
 from pointlessql.services.governance_events import (
     EVENT_TYPE_DBT_RUN_COMPLETED,
     EVENT_TYPE_DBT_TEST_FAILED,

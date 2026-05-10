@@ -21,7 +21,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 
 from pointlessql.api.dependencies import get_user
 from pointlessql.exceptions import AuthenticationError
-from pointlessql.services.dbt_subprocess import DBTStartupError
+from pointlessql.services.dbt import DBTStartupError
 from pointlessql.types import UserInfo
 
 _logger = logging.getLogger(__name__)

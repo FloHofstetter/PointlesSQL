@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from pointlessql.config import DBTSettings
-from pointlessql.services.dbt_subprocess import (
+from pointlessql.services.dbt import (
     DBTStartupError,
     DBTSubprocess,
 )
