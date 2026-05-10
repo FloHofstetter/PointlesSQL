@@ -3,7 +3,7 @@
 PointlesSQL spawns ``mlflow server`` as a managed sub-process so the
 ``/mlflow/`` UI tab in :mod:`pointlessql.api.mlflow_proxy` can forward
 requests to it behind the application's auth layer. The pattern
-mirrors :mod:`pointlessql.services.kernel_session.session` (the
+mirrors :mod:`pointlessql.services.notebook.kernel_session.session` (the
 existing async-subprocess vendor), but with HTTP health-polling and
 PID-file persistence because MLflow is a long-running HTTP server,
 not an ephemeral kernel.
@@ -107,7 +107,7 @@ class MLflowSubprocess:
     """Async-managed ``mlflow server`` process.
 
     Pattern-mirrors
-    :class:`pointlessql.services.kernel_session.session.KernelSession`'s
+    :class:`pointlessql.services.notebook.kernel_session.session.KernelSession`'s
     async-spawn-and-wait-for-ready shape, but adapted for an HTTP
     server: health-check is a polled HTTP probe rather than a
     ZMQ ``wait_for_ready`` call, and the process is expected to

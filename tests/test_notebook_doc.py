@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from pointlessql.services.notebook_doc import (
+from pointlessql.services.notebook import (
     NotebookCell,
     compute_content_hash,
     load_document,

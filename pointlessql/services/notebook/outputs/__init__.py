@@ -25,13 +25,13 @@ working unchanged.
 
 from __future__ import annotations
 
-from pointlessql.services.notebook_outputs.cell_runs import (
+from pointlessql.services.notebook.outputs.cell_runs import (
     list_cell_run_sources,
     record_cell_run_finish,
     record_cell_run_start,
     upsert_cell_run,
 )
-from pointlessql.services.notebook_outputs.outputs import (
+from pointlessql.services.notebook.outputs.outputs import (
     append_output,
     clear_cell,
     clear_path,

@@ -18,15 +18,15 @@ continues to resolve every symbol the API layer needs.
 
 from __future__ import annotations
 
-from pointlessql.services.kernel_session.messages import (
+from pointlessql.services.notebook.kernel_session.messages import (
     KernelMessage,
     Subscription,
 )
-from pointlessql.services.kernel_session.registry import (
+from pointlessql.services.notebook.kernel_session.registry import (
     KernelRegistry,
     drain,
 )
-from pointlessql.services.kernel_session.session import KernelSession
+from pointlessql.services.notebook.kernel_session.session import KernelSession
 
 __all__ = [
     "KernelMessage",

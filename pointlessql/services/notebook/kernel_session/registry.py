@@ -13,8 +13,8 @@ import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-from pointlessql.services.kernel_session.messages import KernelMessage
-from pointlessql.services.kernel_session.session import KernelSession
+from pointlessql.services.notebook.kernel_session.messages import KernelMessage
+from pointlessql.services.notebook.kernel_session.session import KernelSession
 
 
 class KernelRegistry:

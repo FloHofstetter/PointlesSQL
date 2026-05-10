@@ -167,7 +167,7 @@ class NotebookCellRunSource(Base):
 
     No FK to ``notebook_cell_runs`` — the link is logical via the
     indexed columns.  Cascade-on-delete lives in
-    :mod:`pointlessql.services.notebook_outputs`
+    :mod:`pointlessql.services.notebook.outputs`
     (cascade-via-service pattern).
 
     The identity column is ``content_hash`` (``sha256(source)[:16]``);

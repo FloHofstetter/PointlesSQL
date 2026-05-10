@@ -21,7 +21,7 @@ from pathlib import Path
 from jupyter_client.asynchronous.client import AsyncKernelClient  # type: ignore[import-untyped]
 from jupyter_client.manager import AsyncKernelManager  # type: ignore[import-untyped]
 
-from pointlessql.services.kernel_session.messages import (
+from pointlessql.services.notebook.kernel_session.messages import (
     KernelMessage,
     Subscription,
 )

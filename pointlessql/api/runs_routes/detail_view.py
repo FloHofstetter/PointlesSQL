@@ -44,7 +44,7 @@ from pointlessql.api.runs_routes._shared import load_run, templates
 from pointlessql.api.runs_routes.rollback import rollback_targets_for_run
 from pointlessql.config import Settings
 from pointlessql.conventions import load_conventions
-from pointlessql.services import notebook_doc as notebook_doc_service
+from pointlessql.services.notebook import _doc as notebook_doc_service
 from pointlessql.services import output_rendering as output_rendering_service
 from pointlessql.services.conformance import (
     ConformanceFinding,
@@ -207,7 +207,7 @@ async def run_detail_page(
 
     Loads the ``agent_runs`` row, parses the referenced ``.py``
     notebook into ordered cells via
-    :func:`pointlessql.services.notebook_doc.load_document`, and
+    :func:`pointlessql.services.notebook._doc.load_document`, and
     layers the persisted per-cell outputs + run lifecycle on top.
     When the notebook file is missing (agent wrote a run row but the
     file has been deleted or moved), the template still shows the

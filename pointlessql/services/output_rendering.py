@@ -7,7 +7,7 @@ the mime-bundle priority logic that used to live in
 ``frontend/js/notebook/output_renderer.js``.
 
 Each iopub message persisted by
-:mod:`pointlessql.services.notebook_outputs.outputs` carries a
+:mod:`pointlessql.services.notebook.outputs.outputs` carries a
 ``msg_type`` and a ``content`` dict. :func:`render_output_frame`
 inspects ``msg_type`` + ``content`` and returns a
 :class:`RenderedOutput` the template can drop into the page without
@@ -264,7 +264,7 @@ def _render_mime_bundle(data: dict[str, Any]) -> RenderedOutput:
 def render_output_frame(msg_type: str, content: dict[str, Any]) -> RenderedOutput:
     """Dispatch a persisted iopub frame to the matching renderer.
 
-    The :mod:`pointlessql.services.notebook_outputs.outputs` module
+    The :mod:`pointlessql.services.notebook.outputs.outputs` module
     persists a content dict per iopub frame; this function is the
     read-side mirror used by the run-detail template.
 

@@ -292,7 +292,7 @@ def rename_notebook(
     ``.ipynb`` ↔ ``.ipynb`` are the realistic cases; cross-suffix
     renames are still allowed because the shared resolver does not
     distinguish). Output/run rows are *not* migrated here —
-    :func:`pointlessql.services.notebook_outputs.rename_path` owns
+    :func:`pointlessql.services.notebook.outputs.rename_path` owns
     that side of the rename.
 
     Args:
@@ -323,7 +323,7 @@ def delete_notebook(notebooks_dir: Path, relative_path: str) -> Path:
 
     Backs the sidebar delete action. The output-row cascade is the
     caller's responsibility — the API route calls
-    :func:`pointlessql.services.notebook_outputs.clear_path` right
+    :func:`pointlessql.services.notebook.outputs.clear_path` right
     after ``delete_notebook`` returns so the two side effects stay
     explicit at the call site.
 

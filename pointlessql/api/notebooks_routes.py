@@ -23,7 +23,7 @@ from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.dependencies import require_admin
 from pointlessql.config import Settings
-from pointlessql.services import notebook_workspace as notebook_workspace_service
+from pointlessql.services.notebook import _workspace as notebook_workspace_service
 from pointlessql.services import scheduler as scheduler_service
 
 logger = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ async def api_notebooks_tree(request: Request) -> list[dict[str, Any]]:
 
     Returns:
         A list of directory and notebook nodes. See
-        :func:`pointlessql.services.notebook_workspace.list_workspace_tree`
+        :func:`pointlessql.services.notebook._workspace.list_workspace_tree`
         for the shape of each node.
     """
     require_admin(request)

@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`pointlessql.services.notebook_workspace`.
+"""Unit tests for :mod:`pointlessql.services.notebook._workspace`.
 
 Sprint 27 adds the workspace file-browser surface on top of the Sprint 24
 executor. These tests exercise the two pure helpers the service exposes
@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 
 from pointlessql.exceptions import ValidationError
-from pointlessql.services.notebook_workspace import (
+from pointlessql.services.notebook import (
     list_workspace_tree,
     resolve_upload_target,
 )

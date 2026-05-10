@@ -34,7 +34,7 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api.dependencies import get_uc_client, get_user
 from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogUnavailableError, PointlessSQLError
-from pointlessql.services import notebook_workspace as notebook_workspace_service
+from pointlessql.services.notebook import _workspace as notebook_workspace_service
 from pointlessql.types import TableFqn, UserInfo
 
 logger = logging.getLogger(__name__)
