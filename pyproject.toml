@@ -57,6 +57,8 @@ dependencies = [
     "Pygments>=2.18",
     "cryptography>=44.0",
     "mcp[cli]>=1.2",
+    "openai>=1.50",
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]

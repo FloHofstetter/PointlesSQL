@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Lens · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Lens"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container py-3" x-data="lensChat()">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h3 mb-0"><i class="bi bi-eye"></i> Lens</h1>
+    <div>
+      <button class="btn btn-sm btn-primary" @click="newSession()">
+        <i class="bi bi-plus-lg"></i> New session
+      </button>
+    </div>
+  </div>
+
+  <p class="text-secondary small">
+    Ask read-only questions about your data.  Lens uses BYO-key LLM
+    providers (configure in
+    <a href="/admin/lens-providers">Admin → Lens providers</a>).
+    Every tool call is audit-logged; SQL is read-only and
+    auto-LIMITed.
+  </p>
+
+  <div class="row">
+    <div class="col-md-3">
+      <div class="card mb-3">
+        <div class="card-header py-2">
+          <strong>Sessions</strong>
+        </div>
+        <ul class="list-group list-group-flush">
+          <template x-for="s in sessions" :key="s.id">
+            <li class="list-group-item d-flex justify-content-between align-items-center"
+                :class="{ 'active': activeId === s.id }">
+              <a href="#"
+                 class="flex-grow-1 text-decoration-none"
+                 :class="{ 'text-white': activeId === s.id }"
+                 @click.prevent="loadSession(s.id)"
+                 x-text="s.title"></a>
+              <button class="btn btn-sm btn-outline-danger ms-2"
+                      title="Delete session"
+                      @click.stop="deleteSession(s.id)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </li>
+          </template>
+          <li class="list-group-item text-secondary small"
+              x-show="sessions.length === 0">
+            No sessions yet — click "New session" above.
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-md-9">
+      <div class="card mb-3" x-show="activeId !== null">
+        <div class="card-body" style="min-height: 300px; max-height: 60vh; overflow-y: auto;">
+          <template x-for="m in messages" :key="m.id">
+            <div class="mb-3">
+              <div class="d-flex justify-content-between text-secondary small">
+                <span x-text="m.role"></span>
+                <span x-text="m.tool_name || ''"></span>
+              </div>
+              <div class="border rounded p-2"
+                   :class="{
+                     'bg-body-tertiary': m.role === 'user',
+                     'bg-success-subtle': m.role === 'assistant',
+                     'bg-info-subtle': m.role === 'tool',
+                   }">
+                <pre class="mb-0" style="white-space: pre-wrap;" x-text="m.content || JSON.stringify(m, null, 2)"></pre>
+              </div>
+            </div>
+          </template>
+          <div x-show="thinking" class="text-secondary small">
+            <i class="bi bi-three-dots"></i> Lens is thinking…
+          </div>
+        </div>
+        <div class="card-footer">
+          <form @submit.prevent="sendMessage()">
+            <div class="input-group">
+              <input type="text" class="form-control"
+                     placeholder="Ask a question about your data…"
+                     x-model="draft" :disabled="thinking">
+              <button class="btn btn-primary" type="submit"
+                      :disabled="thinking || !draft.trim()">
+                <i class="bi bi-send"></i> Send
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="alert alert-info" x-show="activeId === null">
+        Select a session on the left, or click "New session" to start.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function lensChat() {
+  return {
+    sessions: [],
+    activeId: null,
+    messages: [],
+    draft: '',
+    thinking: false,
+    async init() {
+      await this.loadSessions();
+    },
+    async loadSessions() {
+      const res = await fetch('/api/lens/sessions');
+      const body = await res.json();
+      this.sessions = body.sessions || [];
+    },
+    async newSession() {
+      const title = prompt('Session title?', 'New analysis');
+      if (!title) return;
+      const res = await fetch('/api/lens/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title, llm_provider: 'anthropic' }),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        await this.loadSessions();
+        await this.loadSession(body.id);
+      } else {
+        alert('Could not create session: ' + res.status);
+      }
+    },
+    async loadSession(id) {
+      this.activeId = id;
+      const res = await fetch(`/api/lens/sessions/${id}/messages`);
+      const body = await res.json();
+      this.messages = body.messages || [];
+    },
+    async deleteSession(id) {
+      if (!confirm('Delete this session?')) return;
+      await fetch(`/api/lens/sessions/${id}`, { method: 'DELETE' });
+      if (this.activeId === id) {
+        this.activeId = null;
+        this.messages = [];
+      }
+      await this.loadSessions();
+    },
+    async sendMessage() {
+      if (!this.draft.trim() || !this.activeId) return;
+      this.thinking = true;
+      try {
+        await fetch(`/api/lens/sessions/${this.activeId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: this.draft }),
+        });
+        this.draft = '';
+        await this.loadSession(this.activeId);
+      } finally {
+        this.thinking = false;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

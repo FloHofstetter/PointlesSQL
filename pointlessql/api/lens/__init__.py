@@ -15,11 +15,44 @@ by charter).
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import HTMLResponse
 
+from pointlessql.api.dependencies import require_analyst
+from pointlessql.api.lens.messages import router as _messages_router
 from pointlessql.api.lens.provenance import router as _provenance_router
+from pointlessql.api.lens.sessions import router as _sessions_router
 
-router = APIRouter(prefix="/api/lens", tags=["lens"])
-router.include_router(_provenance_router)
+router = APIRouter(tags=["lens"])
+
+_api_router = APIRouter(prefix="/api/lens")
+_api_router.include_router(_provenance_router)
+_api_router.include_router(_sessions_router)
+_api_router.include_router(_messages_router)
+router.include_router(_api_router)
+
+
+@router.get(
+    "/lens",
+    response_class=HTMLResponse,
+    dependencies=[Depends(require_analyst)],
+)
+def lens_index_page(request: Request) -> HTMLResponse:
+    """Render the Lens chat-UI landing page (Phase 65.5).
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        Server-rendered Jinja2 page; the chat dynamics live in the
+        Alpine.js block inside ``pages/lens_index.html``.
+    """
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "pages/lens_index.html",
+        {"active_page": "lens"},
+    )
+
 
 __all__ = ["router"]

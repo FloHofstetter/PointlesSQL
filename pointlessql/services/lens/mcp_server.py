@@ -153,7 +153,7 @@ def create_lens_mcp_server(
     Raises:
         LensMcpAuthError: When *api_key_secret* is set but does not
             resolve to a usable key.
-    """
+    """  # noqa: DOC502 — LensMcpAuthError raised by resolve_lens_key
     mcp = FastMCP("PointlesSQL Lens")
 
     # Pre-resolve the Bearer for stdio transport.  SSE transport
@@ -244,7 +244,7 @@ def run_lens_mcp_stdio(
     Raises:
         LensMcpAuthError: When no Bearer secret is available or it
             does not resolve.
-    """
+    """  # noqa: DOC502 — LensMcpAuthError raised by helper
     import asyncio
 
     from pointlessql.db import get_session_factory, init_db

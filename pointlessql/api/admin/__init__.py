@@ -31,6 +31,7 @@ from pointlessql.api.admin.expected_producers import (
     router as _expected_producers_router,
 )
 from pointlessql.api.admin.external_writes import router as _external_writes_router
+from pointlessql.api.admin.lens_providers import router as _lens_providers_router
 from pointlessql.api.admin.repos import router as _repos_router
 from pointlessql.api.admin.workspace_pins import router as _workspace_pins_router
 from pointlessql.api.admin.workspaces import router as _workspaces_router
@@ -44,5 +45,6 @@ router.include_router(_cdf_tail_router)
 router.include_router(_expected_producers_router)
 router.include_router(_external_writes_router)
 router.include_router(_api_keys_router)
+router.include_router(_lens_providers_router)
 
 __all__ = ["router"]

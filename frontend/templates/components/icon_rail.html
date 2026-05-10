@@ -50,6 +50,15 @@
             </a>
         </li>
         <li class="pql-icon-rail__item">
+            <a href="/lens"
+               data-section="lens"
+               class="pql-icon-rail__link{% if active_section == 'lens' %} active{% endif %}"
+               title="Lens — read-only Q&amp;A over your data (Phase 65)">
+                <i class="bi bi-eye"></i>
+                <span class="pql-icon-rail__label">Lens</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
             {{ permission_link(
                  href="/notebooks/workspace",
                  icon="bi-folder2-open",
