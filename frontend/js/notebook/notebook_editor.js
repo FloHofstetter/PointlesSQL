@@ -247,6 +247,138 @@ export function notebookEditor({ initialPath = '' } = {}) {
  catch (e) { this.errorMessage = (e && e.message) || String(e); }
  },
 
+ // -- Cell management ops --
+
+ _nextCellOrdinal() {
+ let max = -1;
+ for (const cell of this.cells) {
+ const m = /^cell-(\d+)$/.exec(cell.id || '');
+ if (m) {
+ const n = parseInt(m[1], 10);
+ if (Number.isFinite(n) && n > max) max = n;
+ }
+ }
+ return max + 1;
+ },
+
+ async _makeBlankCell(cellType = 'code') {
+ const ordinal = this._nextCellOrdinal();
+ const source = '';
+ return {
+ id: `cell-${ordinal}`,
+ content_hash: await _computeContentHash(source),
+ cell_type: cellType,
+ source: source,
+ result_var: null,
+ _dirty: false,
+ exec_count: null,
+ status: null,
+ };
+ },
+
+ async _insertCellAt(index, cell) {
+ this.cells.splice(index, 0, cell);
+ this.dirty = true;
+ await this.$nextTick();
+ const host = document.getElementById(`pql-cell-host-${cell.id}`);
+ if (host && !this._editors[cell.id]) {
+ const editor = cellEditor({
+ initialSource: cell.source,
+ language: cell.cell_type === 'sql'
+ ? 'sql'
+ : (cell.cell_type === 'markdown' ? 'markdown' : 'python'),
+ onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
+ });
+ this._editors[cell.id] = editor;
+ await editor.mount(host);
+ }
+ },
+
+ async addCellAbove(cell, cellType = 'code') {
+ const idx = this.cells.findIndex((c) => c.id === cell.id);
+ if (idx < 0) return;
+ const fresh = await this._makeBlankCell(cellType);
+ await this._insertCellAt(idx, fresh);
+ },
+
+ async addCellBelow(cell, cellType = 'code') {
+ const idx = this.cells.findIndex((c) => c.id === cell.id);
+ const insertAt = idx < 0 ? this.cells.length : idx + 1;
+ const fresh = await this._makeBlankCell(cellType);
+ await this._insertCellAt(insertAt, fresh);
+ },
+
+ async addCellAtEnd(cellType = 'code') {
+ const fresh = await this._makeBlankCell(cellType);
+ await this._insertCellAt(this.cells.length, fresh);
+ },
+
+ deleteCell(cell) {
+ const idx = this.cells.findIndex((c) => c.id === cell.id);
+ if (idx < 0) return;
+ const editor = this._editors[cell.id];
+ if (editor) {
+ editor.destroy();
+ delete this._editors[cell.id];
+ }
+ // Drop any live outputs (the persisted notebook_outputs rows
+ // for the dead content_hash will be cleared next time the cell
+ // is re-executed; nothing here can address it anyway).
+ delete this._liveOutputs[cell.content_hash];
+ delete this._runStatus[cell.content_hash];
+ this.cells.splice(idx, 1);
+ this.dirty = true;
+ },
+
+ async _moveCell(cell, delta) {
+ const idx = this.cells.findIndex((c) => c.id === cell.id);
+ if (idx < 0) return;
+ const target = idx + delta;
+ if (target < 0 || target >= this.cells.length) return;
+ const [removed] = this.cells.splice(idx, 1);
+ this.cells.splice(target, 0, removed);
+ this.dirty = true;
+ // Move ops don't touch content_hash, so no editor remount.
+ },
+
+ async moveCellUp(cell) { await this._moveCell(cell, -1); },
+ async moveCellDown(cell) { await this._moveCell(cell, +1); },
+
+ async convertCellType(cell, newType) {
+ if (cell.cell_type === newType) return;
+ const editor = this._editors[cell.id];
+ const source = editor ? editor.getSource() : cell.source;
+ // Tear down + re-mount the editor so the new language extension
+ // (python / sql / markdown) takes effect.
+ if (editor) { editor.destroy(); delete this._editors[cell.id]; }
+ cell.cell_type = newType;
+ cell.source = source;
+ cell.content_hash = await _computeContentHash(source);
+ cell.result_var = newType === 'sql' ? cell.result_var : null;
+ cell.exec_count = null;
+ cell.status = null;
+ // Outputs from the previous cell type don't apply.
+ delete this._liveOutputs[cell.content_hash];
+ cell._dirty = true;
+ this.dirty = true;
+ await this.$nextTick();
+ const host = document.getElementById(`pql-cell-host-${cell.id}`);
+ if (host) {
+ const fresh = cellEditor({
+ initialSource: source,
+ language: newType === 'sql'
+ ? 'sql'
+ : (newType === 'markdown' ? 'markdown' : 'python'),
+ onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
+ });
+ this._editors[cell.id] = fresh;
+ // Reset the host's init guard so the new editor can mount.
+ host.dataset.pqlCellInit = '';
+ host.innerHTML = '';
+ await fresh.mount(host);
+ }
+ },
+
  _installKeymap() {
  // Cmd/Ctrl-S save; bound at the window so a focused CodeMirror
  // sub-editor cannot eat the event before we see it.
