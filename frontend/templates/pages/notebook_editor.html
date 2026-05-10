@@ -18,13 +18,37 @@
   <i class="bi bi-journal-code" aria-hidden="true"></i>
   <span class="pql-notebook-path" x-text="path"></span>
   <span class="badge bg-warning"
-        x-show="dirty"
+        x-show="dirty && !saving"
         x-cloak
         title="Notebook has unsaved changes">
    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
    Unsaved
   </span>
-  <span class="badge bg-secondary ms-auto"
+  <span class="badge bg-info"
+        x-show="saving"
+        x-cloak>
+   <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+   Saving…
+  </span>
+  <span class="text-success small"
+        x-show="!dirty && !saving && lastSavedAt"
+        x-cloak
+        title="Last saved time">
+   <i class="bi bi-check-circle" aria-hidden="true"></i>
+   Saved
+  </span>
+  <button type="button"
+          class="btn btn-sm btn-outline-primary ms-auto"
+          @click="save()"
+          :disabled="saving || mtimeConflict"
+          title="Save notebook (Cmd/Ctrl+S)">
+   <i class="bi bi-save" aria-hidden="true"></i>
+   Save
+  </button>
+  <span class="text-muted small">
+   <kbd>Cmd</kbd>+<kbd>S</kbd>
+  </span>
+  <span class="badge bg-secondary"
         x-show="loading"
         x-cloak>
    Loading…

@@ -25,8 +25,13 @@ export function notebookEditor({ initialPath = '' } = {}) {
  outputs: [],
  dirty: false,
  loading: true,
+ saving: false,
+ lastSavedAt: null,
+ mtime: null,
  errorMessage: '',
+ mtimeConflict: false,
  _editors: {},
+ _onKeydown: null,
 
  async init() {
  try {
@@ -42,6 +47,7 @@ export function notebookEditor({ initialPath = '' } = {}) {
  }
  this.path = res.data.path || this.path;
  this.dirty = !!res.data.dirty;
+ this.mtime = res.data.mtime || null;
  this.cells = (res.data.cells || []).map((cell) => ({
  ...cell,
  _dirty: false,
@@ -52,9 +58,74 @@ export function notebookEditor({ initialPath = '' } = {}) {
  // then mount per-cell CodeMirror editors.
  await this.$nextTick();
  await this._mountAllEditors();
+ this._installKeymap();
  } catch (err) {
  this.errorMessage = (err && err.message) || String(err);
  this.loading = false;
+ }
+ },
+
+ _installKeymap() {
+ // Cmd/Ctrl-S save; bound at the window so a focused CodeMirror
+ // sub-editor cannot eat the event before we see it.
+ this._onKeydown = (ev) => {
+ if (ev.key !== 's' && ev.key !== 'S') return;
+ if (!(ev.metaKey || ev.ctrlKey)) return;
+ ev.preventDefault();
+ this.save();
+ };
+ window.addEventListener('keydown', this._onKeydown);
+ },
+
+ async save() {
+ if (this.saving || this.mtimeConflict) return;
+ this.saving = true;
+ try {
+ const payload = {
+ path: this.path,
+ expected_mtime: this.mtime,
+ cells: this.cells.map((cell) => ({
+ cell_type: cell.cell_type,
+ source: cell.source,
+ result_var: cell.result_var || null,
+ })),
+ };
+ const res = await window.pqlApi.fetch('/api/notebooks/save', {
+ method: 'POST',
+ body: JSON.stringify(payload),
+ headers: { 'Content-Type': 'application/json' },
+ silent: true,
+ });
+ if (res.status === 409) {
+ this.mtimeConflict = true;
+ this.errorMessage = 'Notebook changed on disk — reload to see the latest version.';
+ return;
+ }
+ if (!res.ok) {
+ this.errorMessage = (res.data && res.data.detail)
+ || `Save failed (HTTP ${res.status}).`;
+ return;
+ }
+ const data = res.data || {};
+ const updated = data.cells || [];
+ // Re-key our in-memory cells with the freshly-computed
+ // content_hashes so subsequent run-history lookups, output
+ // routing, and (later) WS execute frames address the same
+ // identity the server now persists.
+ for (let i = 0; i < this.cells.length; i++) {
+ if (updated[i] && updated[i].content_hash) {
+ this.cells[i].content_hash = updated[i].content_hash;
+ }
+ this.cells[i]._dirty = false;
+ }
+ this.mtime = data.mtime || this.mtime;
+ this.dirty = false;
+ this.lastSavedAt = new Date();
+ this.errorMessage = '';
+ } catch (err) {
+ this.errorMessage = (err && err.message) || String(err);
+ } finally {
+ this.saving = false;
  }
  },
 
@@ -133,6 +204,10 @@ export function notebookEditor({ initialPath = '' } = {}) {
  editor.destroy();
  }
  this._editors = {};
+ if (this._onKeydown) {
+ window.removeEventListener('keydown', this._onKeydown);
+ this._onKeydown = null;
+ }
  },
  };
 }

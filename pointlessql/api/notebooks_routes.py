@@ -271,9 +271,113 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
         {
             "path": document.path,
             "dirty": document.dirty,
+            "mtime": absolute.stat().st_mtime,
             "cells": cells,
             "outputs": outputs,
         }
+    )
+
+
+@router.post("/api/notebooks/save")
+async def api_save_notebook(
+    request: Request,
+    body: dict[str, Any] = Body(...),
+) -> JSONResponse:
+    """Persist a notebook's cells back to disk.
+
+    The browser editor sends ``{path, cells, expected_mtime?}``;
+    cells are an ordered list of ``{cell_type, source, result_var?}``
+    dicts.  When ``expected_mtime`` is supplied and disagrees with
+    the current on-disk mtime, the route 409s with
+    ``{"error": "mtime_conflict", "current_mtime": <iso>}`` so the
+    browser can prompt the user to reload before overwriting.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        body: JSON body with ``path``, ``cells``, optional
+            ``expected_mtime`` (float seconds since epoch).
+
+    Returns:
+        JSON ``{path, mtime, cells: [{content_hash, ...}]}`` on
+        success — cells carry the freshly-computed FNV-1a-64
+        content_hashes so the browser can clear ``_dirty`` flags.
+
+    Raises:
+        ValidationError: When path / cells are malformed or escape
+            the workspace root.
+    """
+    require_admin(request)
+    raw_path = body.get("path") if isinstance(body, dict) else None
+    raw_cells = body.get("cells") if isinstance(body, dict) else None
+    if not isinstance(raw_path, str):
+        raise ValidationError("body.path must be a string")
+    if not isinstance(raw_cells, list):
+        raise ValidationError("body.cells must be a list")
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    absolute = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, raw_path, must_exist=True
+    )
+    expected_mtime = body.get("expected_mtime")
+    if isinstance(expected_mtime, (int, float)):
+        current_mtime = absolute.stat().st_mtime
+        if abs(current_mtime - float(expected_mtime)) > 0.001:
+            # Return JSONResponse directly so the structured 409 body
+            # survives the central error handler's str-coercion of
+            # HTTPException.detail.
+            return JSONResponse(
+                {
+                    "error": "mtime_conflict",
+                    "current_mtime": current_mtime,
+                },
+                status_code=409,
+            )
+    cells: list[notebook_doc_service.NotebookCell] = []
+    for index, raw in enumerate(raw_cells):
+        if not isinstance(raw, dict):
+            raise ValidationError(
+                f"body.cells[{index}] must be an object, got {type(raw).__name__}"
+            )
+        cell_type = raw.get("cell_type", "code")
+        if cell_type not in {"code", "markdown", "sql"}:
+            raise ValidationError(
+                f"body.cells[{index}].cell_type must be one of code/markdown/sql"
+            )
+        source = raw.get("source", "")
+        if not isinstance(source, str):
+            raise ValidationError(
+                f"body.cells[{index}].source must be a string"
+            )
+        result_var = raw.get("result_var")
+        if result_var is not None and not isinstance(result_var, str):
+            raise ValidationError(
+                f"body.cells[{index}].result_var must be a string or null"
+            )
+        cells.append(
+            notebook_doc_service.NotebookCell(
+                id=f"cell-{index}",
+                content_hash=notebook_doc_service.compute_content_hash(source),
+                cell_type=cell_type,
+                source=source,
+                result_var=result_var if cell_type == "sql" else None,
+            )
+        )
+    notebook_doc_service.save_document(absolute, cells)
+    new_mtime = absolute.stat().st_mtime
+    out_cells = [
+        {
+            "id": cell.id,
+            "content_hash": cell.content_hash,
+            "cell_type": cell.cell_type,
+            "source": cell.source,
+            "result_var": cell.result_var,
+        }
+        for cell in cells
+    ]
+    relative = str(absolute.relative_to(notebooks_dir))
+    logger.info("saved notebook %s (%d cells)", relative, len(cells))
+    return JSONResponse(
+        {"path": relative, "mtime": new_mtime, "cells": out_cells}
     )
 
 
