@@ -177,8 +177,19 @@
      </div>
     </div>
    </div>
-   <div class="pql-notebook-cell__editor"
-        :id="`pql-cell-host-${cell.id}`"></div>
+   <template x-if="cell.cell_type === 'markdown' && cell.view_mode">
+    <div class="pql-notebook-cell__markdown-view"
+         tabindex="0"
+         @click="enterMarkdownEdit(cell)"
+         @keydown.enter.prevent="enterMarkdownEdit(cell)"
+         x-html="cell._renderedHtml || '<em class=\'text-muted\'>Empty markdown cell — click to edit.</em>'"></div>
+   </template>
+   <template x-if="!(cell.cell_type === 'markdown' && cell.view_mode)">
+    <div class="pql-notebook-cell__editor"
+         :id="`pql-cell-host-${cell.id}`"
+         @keydown.shift.enter.prevent="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : runCell(cell)"
+         @keydown.escape="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : null"></div>
+   </template>
    <div class="pql-notebook-cell__output"
         :id="`pql-cell-output-${cell.id}`"></div>
   </div>

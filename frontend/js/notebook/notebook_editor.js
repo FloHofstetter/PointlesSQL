@@ -448,19 +448,82 @@ export function notebookEditor({ initialPath = '' } = {}) {
 
  async _mountAllEditors() {
  const promises = this.cells.map(async (cell) => {
+ // Markdown cells default to view-mode and only mount the
+ // editor on demand when the user clicks into them.
+ if (cell.cell_type === 'markdown') {
+ cell.view_mode = true;
+ await this._renderMarkdown(cell);
+ return;
+ }
+ cell.view_mode = false;
  const host = document.getElementById(`pql-cell-host-${cell.id}`);
  if (!host || this._editors[cell.id]) return;
  const editor = cellEditor({
  initialSource: cell.source,
- language: cell.cell_type === 'sql'
- ? 'sql'
- : (cell.cell_type === 'markdown' ? 'markdown' : 'python'),
+ language: cell.cell_type === 'sql' ? 'sql' : 'python',
  onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
  });
  this._editors[cell.id] = editor;
  await editor.mount(host);
  });
  await Promise.all(promises);
+ },
+
+ async _renderMarkdown(cell) {
+ try {
+ const res = await window.pqlApi.fetch(
+ '/api/notebooks/render-markdown',
+ {
+ method: 'POST',
+ body: JSON.stringify({ source: cell.source || '' }),
+ headers: { 'Content-Type': 'application/json' },
+ silent: true,
+ },
+ );
+ if (res.ok) {
+ cell._renderedHtml = (res.data && res.data.html) || '';
+ } else {
+ cell._renderedHtml = '<em>Failed to render markdown.</em>';
+ }
+ } catch (err) {
+ cell._renderedHtml = `<em>${(err && err.message) || String(err)}</em>`;
+ }
+ },
+
+ async enterMarkdownEdit(cell) {
+ if (cell.cell_type !== 'markdown') return;
+ cell.view_mode = false;
+ await this.$nextTick();
+ const host = document.getElementById(`pql-cell-host-${cell.id}`);
+ if (!host) return;
+ if (this._editors[cell.id]) {
+ this._editors[cell.id].focus();
+ return;
+ }
+ const editor = cellEditor({
+ initialSource: cell.source,
+ language: 'markdown',
+ onSourceChange: (value) => this._onCellSourceChange(cell.id, value),
+ });
+ this._editors[cell.id] = editor;
+ host.dataset.pqlCellInit = '';
+ host.innerHTML = '';
+ await editor.mount(host);
+ editor.focus();
+ },
+
+ async exitMarkdownEdit(cell) {
+ if (cell.cell_type !== 'markdown') return;
+ // Pull the latest source from the editor before tearing it down.
+ const editor = this._editors[cell.id];
+ if (editor) {
+ cell.source = editor.getSource();
+ cell.content_hash = await _computeContentHash(cell.source);
+ editor.destroy();
+ delete this._editors[cell.id];
+ }
+ await this._renderMarkdown(cell);
+ cell.view_mode = true;
  },
 
  _onCellSourceChange(cellId, value) {

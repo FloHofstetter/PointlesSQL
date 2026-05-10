@@ -70,6 +70,49 @@
  min-height: 80px;
 }
 
+.pql-notebook-cell__markdown-view {
+ padding: 0.6rem 0.9rem;
+ cursor: text;
+ background: var(--bs-body-bg);
+ min-height: 2.5rem;
+ outline: none;
+}
+
+.pql-notebook-cell__markdown-view:focus {
+ outline: 2px solid var(--bs-primary);
+ outline-offset: -2px;
+}
+
+.pql-notebook-cell__markdown-view h1,
+.pql-notebook-cell__markdown-view h2,
+.pql-notebook-cell__markdown-view h3 {
+ margin-top: 0.4rem;
+}
+
+.pql-notebook-cell__markdown-view code {
+ background: var(--bs-secondary-bg-subtle, var(--bs-secondary-bg));
+ padding: 0.05rem 0.35rem;
+ border-radius: 0.2rem;
+ font-size: 0.9em;
+}
+
+.pql-notebook-cell__markdown-view pre {
+ background: var(--bs-secondary-bg-subtle, var(--bs-secondary-bg));
+ padding: 0.5rem 0.75rem;
+ border-radius: 0.25rem;
+ overflow: auto;
+}
+
+.pql-notebook-cell__markdown-view table {
+ border-collapse: collapse;
+}
+
+.pql-notebook-cell__markdown-view th,
+.pql-notebook-cell__markdown-view td {
+ border: 1px solid var(--bs-border-color);
+ padding: 0.2rem 0.5rem;
+}
+
 .pql-notebook-cell__editor.cm-editor {
  height: 100%;
 }

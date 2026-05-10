@@ -25,6 +25,7 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api.dependencies import require_admin
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
+from pointlessql.services import output_rendering as notebook_render_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.notebook import _doc as notebook_doc_service
 from pointlessql.services.notebook import _workspace as notebook_workspace_service
@@ -379,6 +380,35 @@ async def api_save_notebook(
     return JSONResponse(
         {"path": relative, "mtime": new_mtime, "cells": out_cells}
     )
+
+
+@router.post("/api/notebooks/render-markdown")
+async def api_render_markdown(
+    request: Request,
+    body: dict[str, Any] = Body(...),
+) -> JSONResponse:
+    """Render a markdown cell to sanitised HTML.
+
+    Server-side render via the existing markdown-it-py CommonMark
+    renderer (HTML disabled in the parser → embedded
+    ``<script>`` / ``<iframe>`` tags are escaped at parse time).
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        body: JSON body with key ``source`` (markdown text).
+
+    Returns:
+        JSON ``{"html": "<rendered fragment>"}``.
+
+    Raises:
+        ValidationError: When ``body.source`` is missing / non-string.
+    """
+    require_admin(request)
+    raw = body.get("source") if isinstance(body, dict) else None
+    if not isinstance(raw, str):
+        raise ValidationError("body.source must be a string")
+    html = notebook_render_service.render_markdown_source(raw)
+    return JSONResponse({"html": html})
 
 
 @router.get("/notebooks/edit/{path:path}", response_class=HTMLResponse)
