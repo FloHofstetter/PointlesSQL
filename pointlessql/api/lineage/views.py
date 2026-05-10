@@ -43,7 +43,8 @@ from pointlessql.exceptions import (
     ValidationError,
 )
 from pointlessql.models import AgentRunOperation
-from pointlessql.services import pii_mask, pii_resolver
+from pointlessql.services.pii import _mask as pii_mask
+from pointlessql.services.pii import _resolver as pii_resolver
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.services.cdf_tail import fetch_events_for_row as fetch_cdf_events_for_row
 from pointlessql.services.lineage_edges import (

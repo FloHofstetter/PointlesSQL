@@ -51,7 +51,7 @@ def record_value_changes(
      adds the PII redaction hook: when ``pii_mode`` is
     ``hash_only`` or ``redact_with_audit_log``, every column whose
     name matches
-    :data:`pointlessql.services.pii_redactor.PII_NAME_PATTERN` gets
+    :data:`pointlessql.services.pii._redactor.PII_NAME_PATTERN` gets
     its ``old_value`` / ``new_value`` rewritten before insert.
     ``hash_only`` keeps equality joinable across runs; the
     ``redact_with_audit_log`` mode also appends a single
@@ -69,7 +69,7 @@ def record_value_changes(
             in production callers.
         pii_hash_secret: Pre-shared secret for ``hash_only`` mode.
             ``None`` triggers a lazy auto-generation via
-            :func:`pointlessql.services.pii_redactor.get_or_create_pii_hash_secret`.
+            :func:`pointlessql.services.pii._redactor.get_or_create_pii_hash_secret`.
 
     Returns:
         ``None`` on success or empty input.
@@ -95,7 +95,7 @@ def record_value_changes(
 
     redacted_count = 0
     if pii_mode != "store_clear":
-        from pointlessql.services.pii_redactor import (
+        from pointlessql.services.pii import (
             get_or_create_pii_hash_secret,
             hash_value,
             is_pii_by_name,

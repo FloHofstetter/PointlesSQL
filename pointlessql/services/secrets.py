@@ -15,7 +15,7 @@ both keyed off a single install-scoped master key stored in the
 ``system_keys`` table under :data:`MASTER_KEY_NAME`.  The master
 key is generated on first use (idempotent under UNIQUE-conflict
 recovery, mirroring
-:func:`pointlessql.services.pii_redactor.get_or_create_pii_hash_secret`)
+:func:`pointlessql.services.pii._redactor.get_or_create_pii_hash_secret`)
 and never rotated automatically — callers that want rotation
 must re-encrypt every dependent row themselves.
 

@@ -15,7 +15,7 @@ Two PII-detection paths run in OR order:
    common ``email``, ``phone``, ``ssn``, ``credit_card``, ``iban``,
    ``passport`` type names that operators forget to tag explicitly.
 2. **Soyuz tag.**  Asynchronously read at row-trace render time by
-   :mod:`pointlessql.services.pii_resolver`.  Not consulted from
+   :mod:`pointlessql.services.pii._resolver`.  Not consulted from
    this sync write path — adding a sync soyuz round-trip per merge
    would dominate per-write cost.  Tagged-but-non-pattern columns
    stay un-redacted at write time and rely on the existing render-

@@ -18,7 +18,8 @@ from pointlessql.models import (
     AuditLog,
     LineageValueChange,
 )
-from pointlessql.services import pii_mask, pii_resolver
+from pointlessql.services.pii import _mask as pii_mask
+from pointlessql.services.pii import _resolver as pii_resolver
 
 
 @pytest.fixture(autouse=True)
