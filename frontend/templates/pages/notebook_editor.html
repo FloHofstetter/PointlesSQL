@@ -148,6 +148,12 @@
                    @click="convertCellType(cell, 'markdown')">Markdown</button></li>
       </ul>
      </div>
+     <button type="button"
+             class="btn btn-sm btn-outline-secondary"
+             @click="toggleHistoryFor(cell)"
+             title="Show last 5 runs of this cell">
+      <i class="bi bi-clock-history" aria-hidden="true"></i>
+     </button>
      <div class="btn-group" role="group" aria-label="Cell management">
       <button type="button" class="btn btn-sm btn-outline-secondary"
               @click="addCellAbove(cell)"
@@ -187,11 +193,44 @@
    <template x-if="!(cell.cell_type === 'markdown' && cell.view_mode)">
     <div class="pql-notebook-cell__editor"
          :id="`pql-cell-host-${cell.id}`"
-         @keydown.shift.enter.prevent="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : runCell(cell)"
+         @keydown.shift.enter.prevent="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : runCellAndAdvance(cell)"
+         @keydown.ctrl.enter.prevent="runCell(cell)"
+         @keydown.meta.enter.prevent="runCell(cell)"
          @keydown.escape="cell.cell_type === 'markdown' ? exitMarkdownEdit(cell) : null"></div>
    </template>
    <div class="pql-notebook-cell__output"
         :id="`pql-cell-output-${cell.id}`"></div>
+   <template x-if="historyOpenFor === cell.id">
+    <div class="pql-notebook-cell__history">
+     <div class="pql-notebook-cell__history-header">
+      <strong>Last runs</strong>
+      <button type="button" class="btn-close btn-close-sm"
+              @click="historyOpenFor = null"
+              aria-label="Close"></button>
+     </div>
+     <template x-if="historyForCell(cell).length === 0">
+      <div class="text-muted small">No prior runs for this cell.</div>
+     </template>
+     <ul class="list-unstyled mb-0">
+      <template x-for="run in historyForCell(cell)" :key="run.id">
+       <li class="pql-notebook-cell__history-row">
+        <span class="badge"
+              :class="{
+                'bg-success': run.status === 'ok',
+                'bg-danger': run.status === 'error',
+                'bg-warning': run.status === 'aborted',
+                'bg-secondary': run.status === 'running'
+              }"
+              x-text="run.status"></span>
+        <span class="text-muted small"
+              x-text="run.execution_count != null ? `[${run.execution_count}]` : '[ ]'"></span>
+        <span class="text-muted small flex-grow-1"
+              x-text="run.started_at"></span>
+       </li>
+      </template>
+     </ul>
+    </div>
+   </template>
   </div>
  </template>
 

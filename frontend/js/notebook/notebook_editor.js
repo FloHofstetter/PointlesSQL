@@ -61,6 +61,9 @@ export function notebookEditor({ initialPath = '' } = {}) {
  _kernel: null,
  _liveOutputs: {},
  _runStatus: {},
+ _autosaveTimer: null,
+ _historyByCell: {},
+ historyOpenFor: null,
 
  async init() {
  try {
@@ -237,6 +240,48 @@ export function notebookEditor({ initialPath = '' } = {}) {
  if (!this._kernel) return;
  try { await this._kernel.interrupt(); }
  catch (e) { this.errorMessage = (e && e.message) || String(e); }
+ },
+
+ async runCellAndAdvance(cell) {
+ // Shift-Enter: run + move focus to the next cell, or insert a new
+ // code cell if this is the last one.
+ await this.runCell(cell);
+ const idx = this.cells.findIndex((c) => c.id === cell.id);
+ if (idx < 0) return;
+ if (idx === this.cells.length - 1) {
+ await this.addCellAtEnd('code');
+ } else {
+ const next = this.cells[idx + 1];
+ if (next && this._editors[next.id]) this._editors[next.id].focus();
+ }
+ },
+
+ async toggleHistoryFor(cell) {
+ if (this.historyOpenFor === cell.id) {
+ this.historyOpenFor = null;
+ return;
+ }
+ await this._fetchHistory(cell);
+ this.historyOpenFor = cell.id;
+ },
+
+ async _fetchHistory(cell) {
+ try {
+ const url = `/api/notebooks/cell-history?path=${encodeURIComponent(this.path)}`
+ + `&content_hash=${encodeURIComponent(cell.content_hash)}&limit=5`;
+ const res = await window.pqlApi.fetch(url, { silent: true });
+ if (res.ok) {
+ this._historyByCell[cell.id] = (res.data && res.data.runs) || [];
+ } else {
+ this._historyByCell[cell.id] = [];
+ }
+ } catch (_e) {
+ this._historyByCell[cell.id] = [];
+ }
+ },
+
+ historyForCell(cell) {
+ return this._historyByCell[cell.id] || [];
  },
 
  async restartKernel() {
@@ -532,6 +577,15 @@ export function notebookEditor({ initialPath = '' } = {}) {
  cell.source = value;
  cell._dirty = true;
  this.dirty = true;
+ this._scheduleAutosave();
+ },
+
+ _scheduleAutosave() {
+ if (this._autosaveTimer) clearTimeout(this._autosaveTimer);
+ this._autosaveTimer = setTimeout(() => {
+ this._autosaveTimer = null;
+ if (this.dirty && !this.saving && !this.mtimeConflict) this.save();
+ }, 5000);
  },
 
  cellLabel(cell) {

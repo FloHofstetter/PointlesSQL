@@ -382,6 +382,45 @@ async def api_save_notebook(
     )
 
 
+@router.get("/api/notebooks/cell-history")
+async def api_cell_history(
+    request: Request,
+    path: str = Query(..., min_length=1),
+    content_hash: str = Query(..., min_length=1),
+    limit: int = Query(20, ge=1, le=100),
+) -> JSONResponse:
+    """Return the last *limit* run-source rows for one cell.
+
+    Backs the per-cell run-history popover the notebook editor
+    surfaces in Sprint 66.7.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        path: Relative notebook path under ``notebooks_dir``.
+        content_hash: FNV-1a-64 cell identity.
+        limit: Maximum rows to return (1-100, default 20).
+
+    Returns:
+        JSON ``{"cell": {"path", "content_hash"}, "runs": [...]}``.
+        Each run row carries ``id`` / ``execution_count`` / ``source``
+        / ``started_at`` / ``finished_at`` / ``status`` /
+        ``kernel_session_id``.
+    """
+    require_admin(request)
+    runs = notebook_outputs_service.list_cell_run_sources(
+        request.app.state.session_factory,
+        file_path=path,
+        content_hash=content_hash,
+        limit=limit,
+    )
+    return JSONResponse(
+        {
+            "cell": {"path": path, "content_hash": content_hash},
+            "runs": runs,
+        }
+    )
+
+
 @router.post("/api/notebooks/render-markdown")
 async def api_render_markdown(
     request: Request,
