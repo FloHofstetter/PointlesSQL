@@ -89,6 +89,8 @@ def record_query(
     agent_run_id: RunId | None = None,
     read_kind: ReadKind = ReadKind.SQL_EXECUTE,
     workspace_id: int = 1,
+    notebook_path: str | None = None,
+    notebook_content_hash: str | None = None,
 ) -> QueryHistoryId:
     """Insert a :class:`QueryHistory` row plus its table-reference rows.
 
@@ -132,6 +134,12 @@ def record_query(
             (CLI, scheduler, fixtures) keep working without explicit
             threading; HTTP routes pass ``request.state.workspace_id``
             for proper isolation.
+        notebook_path: Phase 66.5 — relative path of the SQL cell's
+            host notebook (``.py`` jupytext file) when the query
+            originated from a browser notebook editor SQL cell.
+        notebook_content_hash: Phase 66.5 — FNV-1a-64 cell identity,
+            paired with ``notebook_path`` so the audit cockpit can
+            deep-link the row back to the originating cell.
 
     Returns:
         The auto-assigned ``QueryHistory.id`` of the new row (so
@@ -158,6 +166,8 @@ def record_query(
             request_id=request_id,
             agent_run_id=sanitised_run_id,
             read_kind=read_kind,
+            notebook_path=notebook_path,
+            notebook_content_hash=notebook_content_hash,
         )
         session.add(entry)
         session.flush()  # assigns entry.id for the FK below

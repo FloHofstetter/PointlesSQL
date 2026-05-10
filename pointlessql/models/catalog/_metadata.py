@@ -218,6 +218,12 @@ class QueryHistory(Base):
     lens_session_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("lens_sessions.id"), nullable=True
     )
+    # Phase 66.5 — when a SQL execution originates from a notebook
+    # SQL cell (``# %% [sql] df``), these two columns carry the
+    # source file + the FNV-1a-64 cell-identity so the audit
+    # cockpit can deep-link back to the cell that produced the row.
+    notebook_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    notebook_content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class QueryHistoryTable(Base):

@@ -159,6 +159,12 @@
  color: var(--bs-secondary-color);
 }
 
+.pql-notebook-cell__result-var {
+ width: 5rem;
+ font-family: var(--bs-font-monospace, monospace);
+ font-size: 0.78rem;
+}
+
 .pql-notebook-add-row {
  display: flex;
  justify-content: center;

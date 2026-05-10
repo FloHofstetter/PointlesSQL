@@ -207,7 +207,10 @@ export function notebookEditor({ initialPath = '' } = {}) {
  // cell since the last save.
  const fresh = await this._refreshCellHash(cell);
  try {
- await this._kernel.execute(fresh.contentHash, fresh.source);
+ await this._kernel.execute(fresh.contentHash, fresh.source, {
+ cellType: cell.cell_type,
+ resultVar: cell.result_var || null,
+ });
  } catch (e) {
  this.errorMessage = (e && e.message) || String(e);
  }

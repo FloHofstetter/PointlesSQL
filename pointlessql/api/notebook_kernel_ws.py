@@ -35,10 +35,17 @@ from typing import Any
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from pointlessql.config import Settings
-from pointlessql.exceptions import ValidationError
+from pointlessql.exceptions import (
+    AuthorizationError,
+    CatalogNotFoundError,
+    ValidationError,
+)
+from pointlessql.pql import SQLParseError
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth as auth_service
+from pointlessql.services import query_history as query_history_service
 from pointlessql.services.notebook import _doc as notebook_doc
+from pointlessql.services.notebook import _sql_cell as notebook_sql_cell
 from pointlessql.services.notebook import outputs as notebook_outputs_service
 from pointlessql.services.notebook.kernel_session import (
     KernelMessage,
@@ -150,6 +157,10 @@ async def _pump_subscription(
     factory: Any,
     pending_run_sources: dict[tuple[str, str], int],
     output_counters: dict[tuple[str, str], int],
+    sql_cell_metadata: dict[tuple[str, str], dict[str, Any]],
+    user: UserInfo,
+    workspace_id: int,
+    cell_run_started_at: dict[tuple[str, str], datetime.datetime],
     channel: str,
 ) -> None:
     """Forward one ZMQ channel's messages from kernel queue to the browser.
@@ -173,6 +184,19 @@ async def _pump_subscription(
         output_counters: Per-cell monotonic counter feeding
             ``notebook_outputs.output_index``.  Lives across both
             channels so we can mutate it from this single helper.
+        sql_cell_metadata: Map keyed by ``(content_hash,
+            kernel_session_id)`` carrying ``raw_sql`` +
+            ``approved_tables`` for SQL cells so the execute_reply
+            handler can write a ``query_history`` row.
+        user: Authenticated user driving the WebSocket — copied
+            into the audit row's ``user_id`` / ``user_email``.
+        workspace_id: Active workspace from auth_middleware,
+            recorded on the ``query_history`` row for tenant
+            isolation.
+        cell_run_started_at: Map keyed by ``(content_hash,
+            kernel_session_id)`` to ``execute_request`` start
+            time; the ``execute_reply`` handler subtracts to
+            compute ``duration_ms``.
         channel: ``"iopub"`` or ``"shell"`` — selects which queue we
             drain.
     """
@@ -187,6 +211,10 @@ async def _pump_subscription(
                 factory=factory,
                 pending_run_sources=pending_run_sources,
                 output_counters=output_counters,
+                sql_cell_metadata=sql_cell_metadata,
+                user=user,
+                workspace_id=workspace_id,
+                cell_run_started_at=cell_run_started_at,
                 channel=channel,
             )
         except WebSocketDisconnect:
@@ -204,6 +232,10 @@ async def _handle_kernel_message(
     factory: Any,
     pending_run_sources: dict[tuple[str, str], int],
     output_counters: dict[tuple[str, str], int],
+    sql_cell_metadata: dict[tuple[str, str], dict[str, Any]],
+    user: UserInfo,
+    workspace_id: int,
+    cell_run_started_at: dict[tuple[str, str], datetime.datetime],
     channel: str,
 ) -> None:
     """Process one :class:`KernelMessage` — persist + forward."""
@@ -241,6 +273,7 @@ async def _handle_kernel_message(
         execution_count = (
             int(execution_count_raw) if isinstance(execution_count_raw, int) else None
         )
+        finished_at = datetime.datetime.now(datetime.UTC)
         try:
             notebook_outputs_service.upsert_cell_run(
                 factory,
@@ -263,10 +296,43 @@ async def _handle_kernel_message(
                     source_id=run_source_id,
                     status=status,
                     execution_count=execution_count,
-                    finished_at=datetime.datetime.now(datetime.UTC),
+                    finished_at=finished_at,
                 )
             except Exception:  # noqa: BLE001
                 logger.exception("notebook_cell_run_source finish failed")
+        # SQL-cell audit row.  Only writes when the cell was wrapped
+        # via __pql_sql_run; pure-Python cells never enter this path.
+        sql_meta = sql_cell_metadata.pop(
+            (msg.content_hash, session.session_id), None
+        )
+        if sql_meta is not None:
+            started_at = cell_run_started_at.pop(
+                (msg.content_hash, session.session_id), finished_at
+            )
+            duration_ms = max(
+                0,
+                int((finished_at - started_at).total_seconds() * 1000),
+            )
+            try:
+                query_history_service.record_query(
+                    factory,
+                    user_id=int(user.get("id") or 0),
+                    user_email=str(user.get("email") or ""),
+                    sql_text=str(sql_meta.get("raw_sql") or ""),
+                    started_at=started_at,
+                    finished_at=finished_at,
+                    status="succeeded" if status == "ok" else "failed",
+                    row_count=None,
+                    duration_ms=duration_ms,
+                    referenced_tables=list(
+                        sql_meta.get("approved_tables") or []
+                    ),
+                    workspace_id=workspace_id,
+                    notebook_path=file_path,
+                    notebook_content_hash=msg.content_hash,
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception("query_history record_query failed")
     payload = {
         "notify": "kernel_message",
         "params": {
@@ -291,12 +357,18 @@ async def _handle_execute(
     factory: Any,
     pending_run_sources: dict[tuple[str, str], int],
     output_counters: dict[tuple[str, str], int],
+    sql_cell_metadata: dict[tuple[str, str], dict[str, Any]],
+    cell_run_started_at: dict[tuple[str, str], datetime.datetime],
+    user: UserInfo,
 ) -> None:
     """Handle a JSON-RPC ``execute`` request.
 
     Persists a fresh ``notebook_cell_run_sources`` row before sending
     the kernel ``execute_request`` so the run-history popover (Sprint
     66.7) sees a row even if the kernel hangs and never replies.
+    SQL cells (``cell_type == 'sql'``) get their source wrapped with
+    a call to the kernel-bootstrap ``__pql_sql_run`` helper after a
+    server-side privilege check resolves the ``approved_tables`` map.
     """
     content_hash = params.get("content_hash")
     source = params.get("source")
@@ -316,6 +388,58 @@ async def _handle_execute(
             message="execute params.source must be a string",
         )
         return
+    cell_type = params.get("cell_type") or "code"
+    result_var = params.get("result_var")
+    if not isinstance(cell_type, str):
+        cell_type = "code"
+    if cell_type == "sql":
+        # SQL cells: wrap server-side with __pql_sql_run after a
+        # privilege check on every referenced table.  The browser
+        # never sees the approved_tables map.
+        try:
+            uc_client = websocket.app.state.uc_client
+            approved = await notebook_sql_cell.resolve_approved_tables(
+                source,
+                uc_client=uc_client,
+                actor_email=str(user.get("email") or ""),
+                is_admin=bool(user.get("is_admin")),
+            )
+        except SQLParseError as exc:
+            await _send_error(
+                websocket,
+                request_id=request_id,
+                code="sql_parse_error",
+                message=str(exc),
+            )
+            return
+        except AuthorizationError as exc:
+            await _send_error(
+                websocket,
+                request_id=request_id,
+                code="sql_authorization_denied",
+                message=str(exc),
+            )
+            return
+        except CatalogNotFoundError as exc:
+            await _send_error(
+                websocket,
+                request_id=request_id,
+                code="sql_catalog_not_found",
+                message=str(exc),
+            )
+            return
+        wrapped_source = notebook_sql_cell.build_kernel_wrapper(
+            source,
+            approved_tables=approved,
+            result_var=result_var if isinstance(result_var, str) else None,
+        )
+        sql_cell_metadata[(content_hash, session.session_id)] = {
+            "raw_sql": source,
+            "approved_tables": list(approved.keys()),
+        }
+        kernel_source = wrapped_source
+    else:
+        kernel_source = source
     started_at = datetime.datetime.now(datetime.UTC)
     output_counters.pop((content_hash, session.session_id), None)
     try:
@@ -350,7 +474,8 @@ async def _handle_execute(
         )
         return
     pending_run_sources[(content_hash, session.session_id)] = run_source_id
-    msg_id = await session.execute(source, content_hash)
+    cell_run_started_at[(content_hash, session.session_id)] = started_at
+    msg_id = await session.execute(kernel_source, content_hash)
     payload = {
         "id": request_id,
         "result": {"msg_id": msg_id, "kernel_session_id": session.session_id},
@@ -476,6 +601,9 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
     sub = session.subscribe()
     pending_run_sources: dict[tuple[str, str], int] = {}
     output_counters: dict[tuple[str, str], int] = {}
+    sql_cell_metadata: dict[tuple[str, str], dict[str, Any]] = {}
+    cell_run_started_at: dict[tuple[str, str], datetime.datetime] = {}
+    workspace_id = int(getattr(websocket.state, "workspace_id", 0) or 0) or 1
     iopub_task = asyncio.create_task(
         _pump_subscription(
             websocket,
@@ -485,6 +613,10 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
             factory=factory,
             pending_run_sources=pending_run_sources,
             output_counters=output_counters,
+            sql_cell_metadata=sql_cell_metadata,
+            user=user,
+            workspace_id=workspace_id,
+            cell_run_started_at=cell_run_started_at,
             channel="iopub",
         ),
         name=f"ws-iopub-{session.session_id[:8]}",
@@ -498,6 +630,10 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
             factory=factory,
             pending_run_sources=pending_run_sources,
             output_counters=output_counters,
+            sql_cell_metadata=sql_cell_metadata,
+            user=user,
+            workspace_id=workspace_id,
+            cell_run_started_at=cell_run_started_at,
             channel="shell",
         ),
         name=f"ws-shell-{session.session_id[:8]}",
@@ -558,6 +694,9 @@ async def notebook_kernel_ws(websocket: WebSocket) -> None:
                     factory=factory,
                     pending_run_sources=pending_run_sources,
                     output_counters=output_counters,
+                    sql_cell_metadata=sql_cell_metadata,
+                    cell_run_started_at=cell_run_started_at,
+                    user=user,
                 )
             elif method == "interrupt":
                 await _handle_interrupt(

@@ -106,6 +106,18 @@
            x-text="`[${cell.exec_count != null ? cell.exec_count : ' '}]`"></span>
      <span class="text-muted"
            x-text="cell.content_hash.slice(0, 8)"></span>
+     <template x-if="cell.cell_type === 'sql'">
+      <div class="d-flex align-items-center gap-1">
+       <span class="text-muted small">→</span>
+       <input type="text"
+              class="form-control form-control-sm pql-notebook-cell__result-var"
+              :value="cell.result_var || 'df'"
+              @change="cell.result_var = $event.target.value || 'df'; cell._dirty = true; dirty = true"
+              placeholder="df"
+              title="Name to bind the resulting DataFrame to in the kernel namespace"
+              size="6">
+      </div>
+     </template>
     </div>
     <div class="d-flex align-items-center gap-2">
      <span class="text-muted"

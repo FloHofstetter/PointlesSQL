@@ -97,10 +97,12 @@ export function createKernelClient({
  });
  },
 
- execute(contentHash, source) {
+ execute(contentHash, source, options = {}) {
  return _request('execute', {
  content_hash: contentHash,
  source: source,
+ cell_type: options.cellType || 'code',
+ result_var: options.resultVar || null,
  });
  },
 
