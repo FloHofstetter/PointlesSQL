@@ -63,21 +63,20 @@ from pointlessql.models.audit import (
     SavedAuditQuery,
 )
 from pointlessql.models.auth import User
-from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.models.base import Base
 from pointlessql.models.branch_audit import BRANCH_ACTIONS, BranchAuditLog
 from pointlessql.models.catalog import (
+    CONTRACT_EVENT_OUTCOMES,
+    AutoloadCheckpoint,
     Dashboard,
+    DataProduct,
+    DataProductContractEvent,
     QueryHistory,
     QueryHistoryTable,
     RateLimitEvent,
+    RecentTable,
     SavedQuery,
     TableStats,
-)
-from pointlessql.models.data_products import (
-    CONTRACT_EVENT_OUTCOMES,
-    DataProduct,
-    DataProductContractEvent,
 )
 from pointlessql.models.lineage import (
     REJECT_REASONS,
@@ -96,7 +95,6 @@ from pointlessql.models.notebook import (
     NotebookCellRunSource,
     NotebookOutput,
 )
-from pointlessql.models.recents import RecentTable
 from pointlessql.models.scheduler import (
     Job,
     JobLog,

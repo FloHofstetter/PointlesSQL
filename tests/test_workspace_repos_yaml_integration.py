@@ -20,7 +20,7 @@ from sqlalchemy.orm import sessionmaker
 
 from pointlessql.conventions import load_conventions_for_workspace
 from pointlessql.data_products import load_contracts_for_workspace
-from pointlessql.models.data_products import DataProduct
+from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.services.workspace.repos import (
     build_post_pull_loader_hook,
     create_repo,

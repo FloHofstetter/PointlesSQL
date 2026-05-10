@@ -41,7 +41,7 @@ from pointlessql.data_products._diff import ContractDiffResult
 from pointlessql.exceptions import ResourceNotFoundError
 from pointlessql.models import LineageRowEdge
 from pointlessql.models.auth import User
-from pointlessql.models.data_products import (
+from pointlessql.models.catalog._data_products import (
     DataProduct,
     DataProductContractEvent,
 )

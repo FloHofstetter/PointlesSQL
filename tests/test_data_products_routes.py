@@ -20,7 +20,7 @@ import pytest
 from pointlessql.api.main import app
 from pointlessql.data_products import load_contract
 from pointlessql.models.auth import User
-from pointlessql.models.data_products import (
+from pointlessql.models.catalog._data_products import (
     DataProduct,
     DataProductContractEvent,
 )

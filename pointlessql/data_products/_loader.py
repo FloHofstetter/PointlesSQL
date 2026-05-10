@@ -47,7 +47,7 @@ from sqlalchemy import select
 from pointlessql.data_products._errors import DataProductYamlInvalid
 from pointlessql.data_products._schema import DataProductContract
 from pointlessql.models.auth import User
-from pointlessql.models.data_products import DataProduct
+from pointlessql.models.catalog._data_products import DataProduct
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

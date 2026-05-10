@@ -24,7 +24,7 @@ from sqlalchemy import select
 
 from pointlessql.api.main import app
 from pointlessql.models import GovernanceEvent
-from pointlessql.models.data_products import DataProduct
+from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.services import data_product_freshness_scanner
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED,

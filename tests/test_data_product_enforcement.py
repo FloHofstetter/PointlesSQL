@@ -30,7 +30,7 @@ from pointlessql.data_products._diff import ActualColumn, _diff_columns
 from pointlessql.data_products._enforce import check_contract_for_write
 from pointlessql.data_products._schema import DataProductColumnSpec
 from pointlessql.models import AgentRun, AgentRunOperation
-from pointlessql.models.data_products import DataProductContractEvent
+from pointlessql.models.catalog._data_products import DataProductContractEvent
 
 ORDERS_YAML = """\
 data_product:

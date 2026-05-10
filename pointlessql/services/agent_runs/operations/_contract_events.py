@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from pointlessql.models.data_products import DataProductContractEvent
+from pointlessql.models.catalog._data_products import DataProductContractEvent
 from pointlessql.services.agent_runs.operations._common import stamp_audit_marker
 
 if TYPE_CHECKING:

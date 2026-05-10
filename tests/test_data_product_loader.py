@@ -27,7 +27,7 @@ from pointlessql.data_products import (
     parse_yaml,
 )
 from pointlessql.models.auth import User
-from pointlessql.models.data_products import DataProduct
+from pointlessql.models.catalog._data_products import DataProduct
 
 VALID_YAML = """\
 data_product:
