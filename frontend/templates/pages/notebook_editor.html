@@ -37,8 +37,31 @@
    <i class="bi bi-check-circle" aria-hidden="true"></i>
    Saved
   </span>
+  <span class="badge ms-auto"
+        :class="{
+          'bg-secondary': kernelStatus === 'disconnected' || kernelStatus === 'closed',
+          'bg-warning': kernelStatus === 'connecting',
+          'bg-success': kernelStatus === 'ready'
+        }"
+        x-text="`Kernel: ${kernelStatus}`"></span>
   <button type="button"
-          class="btn btn-sm btn-outline-primary ms-auto"
+          class="btn btn-sm btn-outline-warning"
+          @click="interruptKernel()"
+          :disabled="kernelStatus !== 'ready'"
+          title="Send KeyboardInterrupt to the kernel">
+   <i class="bi bi-x-octagon" aria-hidden="true"></i>
+   Interrupt
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-danger"
+          @click="restartKernel()"
+          :disabled="kernelStatus !== 'ready'"
+          title="Restart kernel (clears variables + outputs)">
+   <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+   Restart
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-primary"
           @click="save()"
           :disabled="saving || mtimeConflict"
           title="Save notebook (Cmd/Ctrl+S)">
@@ -73,6 +96,8 @@
      <span class="pql-notebook-cell__type-pill"
            :data-cell-type="cell.cell_type"
            x-text="cellLabel(cell)"></span>
+     <span class="text-muted small"
+           x-text="`[${cell.exec_count != null ? cell.exec_count : ' '}]`"></span>
      <span class="text-muted"
            x-text="cell.content_hash.slice(0, 8)"></span>
     </div>
@@ -80,12 +105,20 @@
      <span class="text-muted"
            x-show="cell._dirty"
            title="Cell modified since last save">●</span>
+     <button type="button"
+             class="btn btn-sm btn-outline-success"
+             @click="runCell(cell)"
+             :disabled="cell.cell_type === 'markdown' || kernelStatus !== 'ready'"
+             title="Run this cell">
+      <i class="bi bi-play-fill" aria-hidden="true"></i>
+      Run
+     </button>
     </div>
    </div>
    <div class="pql-notebook-cell__editor"
         :id="`pql-cell-host-${cell.id}`"></div>
-   <pre class="pql-notebook-cell__output"
-        x-text="outputsForCell(cell.content_hash)"></pre>
+   <div class="pql-notebook-cell__output"
+        :id="`pql-cell-output-${cell.id}`"></div>
   </div>
  </template>
 </div>

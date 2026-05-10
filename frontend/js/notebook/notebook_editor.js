@@ -17,6 +17,30 @@
  */
 
 import { cellEditor } from './cell_editor.js';
+import { createKernelClient } from './kernel_ws.js';
+import { renderOutputFrame } from './output_renderer.js';
+
+// Mirrors `pointlessql.services.notebook._doc.compute_content_hash`
+// — FNV-1a 64-bit over the line-right-stripped + LF-normalised source.
+// Kept inline (rather than a shared util) so the cell-identity contract
+// has one obvious copy on each side.
+const _FNV_OFFSET_64 = 0xcbf29ce484222325n;
+const _FNV_PRIME_64 = 0x100000001b3n;
+const _FNV_MASK_64 = 0xffffffffffffffffn;
+
+async function _computeContentHash(source) {
+ const normalised = String(source || '')
+ .replace(/\r\n/g, '\n')
+ .split('\n')
+ .map((line) => line.replace(/\s+$/, ''))
+ .join('\n');
+ const bytes = new TextEncoder().encode(normalised);
+ let h = _FNV_OFFSET_64;
+ for (const byte of bytes) {
+ h = ((h ^ BigInt(byte)) * _FNV_PRIME_64) & _FNV_MASK_64;
+ }
+ return h.toString(16).padStart(16, '0');
+}
 
 export function notebookEditor({ initialPath = '' } = {}) {
  return {
@@ -30,8 +54,13 @@ export function notebookEditor({ initialPath = '' } = {}) {
  mtime: null,
  errorMessage: '',
  mtimeConflict: false,
+ kernelStatus: 'disconnected',
+ kernelSessionId: null,
  _editors: {},
  _onKeydown: null,
+ _kernel: null,
+ _liveOutputs: {},
+ _runStatus: {},
 
  async init() {
  try {
@@ -53,16 +82,169 @@ export function notebookEditor({ initialPath = '' } = {}) {
  _dirty: false,
  }));
  this.outputs = res.data.outputs || [];
+ this._seedLiveOutputs();
  this.loading = false;
  // Wait one frame so Alpine's x-for has rendered the cell DOM,
  // then mount per-cell CodeMirror editors.
  await this.$nextTick();
  await this._mountAllEditors();
+ this._renderAllOutputs();
  this._installKeymap();
+ this._connectKernel();
  } catch (err) {
  this.errorMessage = (err && err.message) || String(err);
  this.loading = false;
  }
+ },
+
+ _seedLiveOutputs() {
+ this._liveOutputs = {};
+ for (const out of this.outputs) {
+ const hash = out.content_hash;
+ if (!hash) continue;
+ if (!this._liveOutputs[hash]) this._liveOutputs[hash] = [];
+ this._liveOutputs[hash].push(out);
+ }
+ },
+
+ _outputContainerFor(cell) {
+ return document.getElementById(`pql-cell-output-${cell.id}`);
+ },
+
+ _renderCellOutput(cell) {
+ const host = this._outputContainerFor(cell);
+ if (!host) return;
+ host.innerHTML = '';
+ const frames = this._liveOutputs[cell.content_hash] || [];
+ for (const frame of frames) {
+ host.appendChild(renderOutputFrame(frame));
+ }
+ },
+
+ _renderAllOutputs() {
+ for (const cell of this.cells) {
+ this._renderCellOutput(cell);
+ }
+ },
+
+ _connectKernel() {
+ if (this._kernel) return;
+ this.kernelStatus = 'connecting';
+ this._kernel = createKernelClient({
+ notebookPath: this.path,
+ onMessage: (frame) => this._onKernelFrame(frame),
+ onReady: (info) => {
+ this.kernelStatus = 'ready';
+ this.kernelSessionId = info.kernel_session_id || null;
+ },
+ onClose: () => {
+ this.kernelStatus = 'closed';
+ },
+ onError: (e) => {
+ this.errorMessage = (e && e.message) || 'Kernel error';
+ },
+ });
+ this._kernel.connect();
+ },
+
+ _onKernelFrame(frame) {
+ if (!frame || typeof frame !== 'object') return;
+ const hash = frame.content_hash;
+ if (!hash) return;
+ const cell = this.cells.find((c) => c.content_hash === hash);
+ if (frame.channel === 'iopub') {
+ const msgType = frame.msg_type;
+ if (msgType === 'status') {
+ if (cell) {
+ const state = (frame.content && frame.content.execution_state) || '';
+ if (state === 'busy') this._runStatus[hash] = 'running';
+ else if (state === 'idle' && this._runStatus[hash] === 'running') {
+ // The execute_reply on the shell channel will set the
+ // final ok/error status; "idle" alone just means the
+ // kernel is no longer busy with this request.
+ }
+ }
+ return;
+ }
+ if (msgType === 'execute_input') {
+ // First iopub frame for a fresh execute — clear stale outputs.
+ this._liveOutputs[hash] = [];
+ if (cell) this._renderCellOutput(cell);
+ return;
+ }
+ if (msgType === 'stream'
+ || msgType === 'execute_result'
+ || msgType === 'display_data'
+ || msgType === 'error') {
+ if (!this._liveOutputs[hash]) this._liveOutputs[hash] = [];
+ this._liveOutputs[hash].push(frame);
+ if (cell) {
+ const host = this._outputContainerFor(cell);
+ if (host) host.appendChild(renderOutputFrame(frame));
+ }
+ }
+ } else if (frame.channel === 'shell' && frame.msg_type === 'execute_reply') {
+ const status = frame.content && frame.content.status;
+ const execCount = frame.content && frame.content.execution_count;
+ this._runStatus[hash] = status || 'ok';
+ if (cell) {
+ cell.exec_count = execCount;
+ cell.status = status;
+ }
+ }
+ },
+
+ async runCell(cell) {
+ if (!cell) return;
+ if (!this._kernel || this._kernel.readyState !== WebSocket.OPEN) {
+ this.errorMessage = 'Kernel not connected.';
+ return;
+ }
+ // Markdown cells don't go through the kernel.
+ if (cell.cell_type === 'markdown') return;
+ // Refresh content_hash before sending so the kernel routes
+ // outputs to the right identity even if the user edited the
+ // cell since the last save.
+ const fresh = await this._refreshCellHash(cell);
+ try {
+ await this._kernel.execute(fresh.contentHash, fresh.source);
+ } catch (e) {
+ this.errorMessage = (e && e.message) || String(e);
+ }
+ },
+
+ async _refreshCellHash(cell) {
+ // Ask the per-cell editor for the current source, recompute the
+ // FNV-1a-64 hash client-side, and update the cell.
+ const editor = this._editors[cell.id];
+ const source = editor ? editor.getSource() : cell.source;
+ const newHash = await _computeContentHash(source);
+ if (newHash !== cell.content_hash) {
+ // Move any persisted live-outputs over to the new hash so
+ // the visual state survives a hash change.
+ this._liveOutputs[newHash] = this._liveOutputs[cell.content_hash] || [];
+ delete this._liveOutputs[cell.content_hash];
+ cell.content_hash = newHash;
+ }
+ cell.source = source;
+ return { contentHash: newHash, source: source };
+ },
+
+ async interruptKernel() {
+ if (!this._kernel) return;
+ try { await this._kernel.interrupt(); }
+ catch (e) { this.errorMessage = (e && e.message) || String(e); }
+ },
+
+ async restartKernel() {
+ if (!this._kernel) return;
+ try {
+ await this._kernel.restart();
+ this._liveOutputs = {};
+ this._runStatus = {};
+ this._renderAllOutputs();
+ }
+ catch (e) { this.errorMessage = (e && e.message) || String(e); }
  },
 
  _installKeymap() {
@@ -154,41 +336,6 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this.dirty = true;
  },
 
- outputsForCell(contentHash) {
- // Sprint 66.1 scope: surface persisted outputs as plain text so the
- // page exercises the load round-trip.  Sprint 66.3 swaps this for
- // the proper MIME-bundle-aware renderer.
- const matching = this.outputs.filter(
- (o) => o.content_hash === contentHash,
- );
- if (!matching.length) return '';
- const lines = [];
- for (const out of matching) {
- const c = out.content || {};
- if (out.msg_type === 'stream' && typeof c.text === 'string') {
- lines.push(c.text);
- } else if (
- out.msg_type === 'execute_result'
- || out.msg_type === 'display_data'
- ) {
- const data = c.data || {};
- if (typeof data['text/plain'] === 'string') {
- lines.push(data['text/plain']);
- } else if (typeof data['text/markdown'] === 'string') {
- lines.push(data['text/markdown']);
- } else if (typeof data['text/html'] === 'string') {
- lines.push('[html output]');
- } else if (data['image/png']) {
- lines.push('[image]');
- }
- } else if (out.msg_type === 'error') {
- const tb = Array.isArray(c.traceback) ? c.traceback.join('\n') : '';
- lines.push(tb || `${c.ename}: ${c.evalue}`);
- }
- }
- return lines.join('\n');
- },
-
  cellLabel(cell) {
  if (cell.cell_type === 'sql') {
  return cell.result_var
@@ -207,6 +354,10 @@ export function notebookEditor({ initialPath = '' } = {}) {
  if (this._onKeydown) {
  window.removeEventListener('keydown', this._onKeydown);
  this._onKeydown = null;
+ }
+ if (this._kernel) {
+ this._kernel.close();
+ this._kernel = null;
  }
  },
  };
