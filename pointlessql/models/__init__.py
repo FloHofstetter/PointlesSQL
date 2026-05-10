@@ -75,21 +75,22 @@ from pointlessql.models.catalog import (
     SavedQuery,
     TableStats,
 )
-from pointlessql.models.cdf_tail import CdfTailEvent, CdfTailSubscription
 from pointlessql.models.data_products import (
     CONTRACT_EVENT_OUTCOMES,
     DataProduct,
     DataProductContractEvent,
 )
-from pointlessql.models.expected_lineage_inbound import ExpectedLineageInbound
-from pointlessql.models.external_writes import UnattributedWrite
 from pointlessql.models.lineage import (
     REJECT_REASONS,
     TRANSFORM_KINDS,
+    CdfTailEvent,
+    CdfTailSubscription,
+    ExpectedLineageInbound,
     LineageColumnMap,
     LineageRowEdge,
     LineageRowReject,
     LineageValueChange,
+    UnattributedWrite,
 )
 from pointlessql.models.notebook import (
     NotebookCellRun,
