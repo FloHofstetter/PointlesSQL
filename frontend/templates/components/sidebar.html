@@ -1,4 +1,5 @@
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/permission_link.html" import permission_link %}
 <aside class="pql-sidebar border-end"
  x-data="catalogTree()"
  x-init="load()"
@@ -24,6 +25,25 @@
  placeholder="Filter catalog tree…"
  aria-label="Filter catalog tree">
  </div>
+
+ {# Catalog-scoped operational pages — branches first, more later.
+    Branches is admin-only; rendered via permission_link so non-admins
+    see the entry as a greyed-out lock affordance with a click-toast
+    naming the missing role rather than a silently-hidden surface. #}
+ {% set _cat_path = request.url.path if request else '' %}
+ <ul class="pql-context-panel__list border-bottom">
+ <li>
+ {{ permission_link(
+      href="/branches",
+      icon="bi-diagram-3",
+      label="Branches",
+      granted=(current_user is defined and current_user and current_user.is_admin),
+      required_role="admin",
+      css_class="pql-context-panel__link",
+      active=_cat_path.startswith("/branches")
+ ) }}
+ </li>
+ </ul>
 
  {# Recent tables, last five visits keyed by FQN.
  Items come from the localStorage writer in base.html and stay

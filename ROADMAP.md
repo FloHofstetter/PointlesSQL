@@ -4887,6 +4887,40 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 64 — Permission-locked nav-link UX               ✅ done 2026-05-10
+│   │
+│   │   Admin-only navigation entries (Workspace + Admin in the
+│   │   icon-rail, Branches in the catalog sidebar, Workspace +
+│   │   Admin in the mobile drawer) used to be hidden via inline
+│   │   ``{% if current_user.is_admin %}`` wrappers — a regular
+│   │   user couldn't see they existed and therefore didn't know
+│   │   what to ask the workspace admin for.  Phase 64 makes the
+│   │   entries visible-but-locked: greyed out, lock-icon suffix,
+│   │   ``aria-disabled="true"``; click / Enter / Space surface a
+│   │   toast naming the missing role.  Backend authorisation is
+│   │   unchanged — the routes still 403 if the dead ``href="#"``
+│   │   is bypassed.  Single sprint, ~½ day.
+│   │
+│   ├── Sprint 64.1 — `permission_link` macro + delegated JS ✅
+│   │       New ``frontend/templates/_macros/permission_link.html``
+│   │       parameterised across the three call-site markups
+│   │       (icon-rail's ``data-section`` + label-span,
+│   │       sidebar's ``pql-context-panel__link``, nav-links'
+│   │       plain-text label).  New
+│   │       ``frontend/js/permission_link.js`` registers a single
+│   │       document-level click + keyboard listener via
+│   │       ``bootstrap.js``, calls
+│   │       ``window.pqlToast.info("Requires <role> role —
+│   │       contact your workspace admin.")``.  ``.permission-locked``
+│   │       CSS class added to ``frontend/css/layout.css``
+│   │       (opacity 0.55, ``cursor: not-allowed``).  Five
+│   │       inline ``{% if %}`` wrappers replaced by macro calls
+│   │       across icon_rail.html (2x), sidebar.html (1x), and
+│   │       nav_links.html (2x).  User-menu admin badge stays
+│   │       unchanged (status indicator, not a link); admin-page
+│   │       internal cards + table-row action buttons explicitly
+│   │       out of scope (eigene UX-Kategorie).
+│
 ├── Phase 63 — Writeable SQL Editor (AST-dispatch refactor)  ✅ done 2026-05-10
 │   │
 │   │   The SQL editor was SELECT-only at

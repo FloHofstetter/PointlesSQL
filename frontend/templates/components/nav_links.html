@@ -11,11 +11,13 @@
  bottom.
 
  The caller can override the `<ul>` classes via the
- ``nav_list_class`` variable (default: ``navbar-nav``). The
- admin-only Workspace link and the user dropdown follow the same
- ``current_user`` / ``current_user.is_admin`` gating as the
- original inline markup.
+ ``nav_list_class`` variable (default: ``navbar-nav``). Admin-only
+ entries (Workspace, Admin) render via ``_macros/permission_link.html``
+ so a non-admin still sees them as greyed-out lock affordances —
+ click surfaces a toast naming the missing role rather than a
+ silently-hidden link.
 #}
+{% from "_macros/permission_link.html" import permission_link %}
 {% set nav_list_class = nav_list_class or "navbar-nav" %}
 <ul class="{{ nav_list_class }}">
  <li class="nav-item dropdown">
@@ -45,14 +47,17 @@
  <li><a class="dropdown-item{% if active_page is defined and active_page == 'queries' %} active{% endif %}" href="/queries">History</a></li>
  </ul>
  </li>
- {% if current_user is defined and current_user and current_user.is_admin %}
  <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'workspace' %} active{% endif %}"
- href="/notebooks/workspace">
- <i class="bi bi-folder2-open"></i> Workspace
- </a>
+ {{ permission_link(
+      href="/notebooks/workspace",
+      icon="bi-folder2-open",
+      label="Workspace",
+      granted=(current_user is defined and current_user and current_user.is_admin),
+      required_role="admin",
+      css_class="nav-link d-flex align-items-center gap-1",
+      active=(active_page is defined and active_page == "workspace")
+ ) }}
  </li>
- {% endif %}
  <li class="nav-item">
  <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'jobs' %} active{% endif %}"
  href="/jobs">
@@ -77,12 +82,15 @@
  <i class="bi bi-speedometer2"></i> Dashboards
  </a>
  </li>
- {% if current_user is defined and current_user and current_user.is_admin %}
  <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page in ('admin', 'admin_audit') %} active{% endif %}"
- href="/admin">
- <i class="bi bi-shield-check"></i> Admin
- </a>
+ {{ permission_link(
+      href="/admin",
+      icon="bi-shield-check",
+      label="Admin",
+      granted=(current_user is defined and current_user and current_user.is_admin),
+      required_role="admin",
+      css_class="nav-link d-flex align-items-center gap-1",
+      active=(active_page is defined and active_page in ("admin", "admin_audit"))
+ ) }}
  </li>
- {% endif %}
 </ul>

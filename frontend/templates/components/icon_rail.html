@@ -13,9 +13,13 @@
   ``active_page`` — that keeps the catalog tree visible on the home
   dashboard, table-detail, schema-detail, etc.
 
-  Admin-only items render only when ``current_user.is_admin``.  The
-  user dropdown stays in the topbar (right side).
+  Admin-only items render via ``_macros/permission_link.html`` so a
+  non-admin still sees the entry (greyed out + lock icon, with a
+  click-toast naming the missing role) — which makes it obvious
+  what to ask the workspace admin for, instead of silently hiding
+  the surface.  The user dropdown stays in the topbar (right side).
 #}
+{% from "_macros/permission_link.html" import permission_link %}
 <nav class="pql-icon-rail" aria-label="Primary navigation">
     <ul class="pql-icon-rail__list">
         <li class="pql-icon-rail__item">
@@ -45,17 +49,20 @@
                 <span class="pql-icon-rail__label">SQL</span>
             </a>
         </li>
-        {% if current_user is defined and current_user and current_user.is_admin %}
         <li class="pql-icon-rail__item">
-            <a href="/notebooks/workspace"
-               data-section="workspace"
-               class="pql-icon-rail__link{% if active_section == 'workspace' %} active{% endif %}"
-               title="Notebook workspace">
-                <i class="bi bi-folder2-open"></i>
-                <span class="pql-icon-rail__label">Workspace</span>
-            </a>
+            {{ permission_link(
+                 href="/notebooks/workspace",
+                 icon="bi-folder2-open",
+                 label="Workspace",
+                 granted=(current_user is defined and current_user and current_user.is_admin),
+                 required_role="admin",
+                 css_class="pql-icon-rail__link",
+                 active=(active_section == "workspace"),
+                 title="Notebook workspace",
+                 data_section="workspace",
+                 label_class="pql-icon-rail__label"
+            ) }}
         </li>
-        {% endif %}
         <li class="pql-icon-rail__item">
             <a href="/jobs"
                data-section="jobs"
@@ -145,17 +152,20 @@
         </li>
         {% endif %}
     </ul>
-    {% if current_user is defined and current_user and current_user.is_admin %}
     <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
         <li class="pql-icon-rail__item">
-            <a href="/admin"
-               data-section="admin"
-               class="pql-icon-rail__link{% if active_section == 'admin' %} active{% endif %}"
-               title="Admin landing — audit log, sinks, destinations, workspaces">
-                <i class="bi bi-tools"></i>
-                <span class="pql-icon-rail__label">Admin</span>
-            </a>
+            {{ permission_link(
+                 href="/admin",
+                 icon="bi-tools",
+                 label="Admin",
+                 granted=(current_user is defined and current_user and current_user.is_admin),
+                 required_role="admin",
+                 css_class="pql-icon-rail__link",
+                 active=(active_section == "admin"),
+                 title="Admin landing — audit log, sinks, destinations, workspaces",
+                 data_section="admin",
+                 label_class="pql-icon-rail__label"
+            ) }}
         </li>
     </ul>
-    {% endif %}
 </nav>

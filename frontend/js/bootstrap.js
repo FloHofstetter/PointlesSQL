@@ -32,6 +32,12 @@ window.pqlApi = pqlApi;
 // rendered by ``_macros/copy_button.html``.
 import './copy_button.js';
 
+// Permission-locked nav-link delegated listener.  Captures clicks
+// on anchors rendered by ``_macros/permission_link.html`` when the
+// caller passed ``granted=False`` and surfaces a toast naming the
+// missing role instead of letting the dead ``href="#"`` swallow it.
+import './permission_link.js';
+
 // Bootstrap-tab URL-state sync (Sprint 59.2).  Self-bootstrapping;
 // reads ``?tab=…&subtab=…`` on DOMContentLoaded and mirrors active
 // tabs back via history.replaceState.  Idempotent on pages without

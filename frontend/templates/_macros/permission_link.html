@@ -1,0 +1,87 @@
+{#
+    Permission-gated navigation link.
+
+    Renders a normal anchor when ``granted=True``.  When the current
+    user lacks the required role, renders a visually de-emphasised
+    stub (greyed out, lock-icon suffix) that captures clicks and
+    surfaces a toast naming the missing role — handled centrally by
+    the delegated listener in ``frontend/js/permission_link.js``.
+
+    Why a single macro across icon-rail / sidebar / nav-links: the
+    three call-sites use different anchor classes and label-wrapping
+    styles, but the locked-state semantics (cursor, opacity, lock,
+    aria-disabled, click→toast) must stay identical so the discovery
+    affordance reads the same everywhere.
+
+    Usage::
+
+        {% from "_macros/permission_link.html" import permission_link %}
+
+        {{ permission_link(
+             href="/notebooks/workspace",
+             icon="bi-folder2-open",
+             label="Workspace",
+             granted=current_user.is_admin,
+             required_role="admin",
+             css_class="pql-icon-rail__link",
+             active=(active_section == "workspace"),
+             title="Notebook workspace",
+             data_section="workspace",
+             label_class="pql-icon-rail__label",
+        ) }}
+
+    Params:
+      - ``href``: target URL (used only when ``granted``).
+      - ``icon``: Bootstrap-Icons class for the leading glyph
+        (e.g. ``bi-folder2-open``).
+      - ``label``: visible link text.
+      - ``granted``: boolean — caller computes from
+        ``current_user.is_admin`` etc.; the macro itself stays
+        permission-policy agnostic.
+      - ``required_role``: string used in the toast message
+        ("Requires <role> role …").
+      - ``css_class``: anchor CSS class(es), e.g.
+        ``pql-icon-rail__link`` or ``nav-link``.
+      - ``active``: appends ``" active"`` to the class when truthy.
+      - ``title``: native ``title=`` tooltip (locked variant
+        appends a "(requires X role)" suffix so hovering reveals
+        the same hint the toast carries).
+      - ``data_section``: optional ``data-section=`` attribute
+        (icon-rail only — used by the htmx:afterSwap active-state
+        sync in base.html).
+      - ``label_class``: when set, the label is wrapped in
+        ``<span class="{{ label_class }}">…</span>`` (icon-rail
+        and sidebar use this); when empty, label is rendered as
+        plain text after the icon (nav-links).
+#}
+{% macro permission_link(href, icon, label, granted, required_role,
+                          css_class="", active=False, title="",
+                          data_section="", label_class="") -%}
+{%- set _full_class = (css_class ~ (" active" if active else "")) | trim -%}
+{%- if granted -%}
+<a href="{{ href }}"
+   {%- if data_section %} data-section="{{ data_section }}"{% endif %}
+   class="{{ _full_class }}"
+   {%- if title %} title="{{ title }}"{% endif %}>
+    <i class="bi {{ icon }}"></i>
+    {%- if label_class %}
+    <span class="{{ label_class }}">{{ label }}</span>
+    {%- else %} {{ label }}{% endif %}
+</a>
+{%- else -%}
+<a href="#"
+   {%- if data_section %} data-section="{{ data_section }}"{% endif %}
+   class="{{ _full_class }} permission-locked"
+   role="button"
+   tabindex="0"
+   aria-disabled="true"
+   data-permission-required="{{ required_role }}"
+   title="{{ title }}{% if title %} {% endif %}(requires {{ required_role }} role)">
+    <i class="bi {{ icon }}"></i>
+    {%- if label_class %}
+    <span class="{{ label_class }}">{{ label }}</span>
+    {%- else %} {{ label }}{% endif %}
+    <i class="bi bi-lock-fill ms-1 small" aria-hidden="true"></i>
+</a>
+{%- endif %}
+{%- endmacro %}

@@ -185,3 +185,24 @@
  box-shadow: none;
  background: transparent;
 }
+
+/* Permission-locked navigation links rendered by
+   _macros/permission_link.html.  The anchor stays in tab order so
+   the discovery affordance remains for keyboard / screen-reader
+   users; click + Enter + Space are intercepted in
+   frontend/js/permission_link.js to surface a toast naming the
+   missing role.  Visual treatment: dimmed + not-allowed cursor +
+   lock-icon suffix. */
+.permission-locked {
+ opacity: 0.55;
+ cursor: not-allowed;
+ color: var(--bs-secondary-color);
+}
+.permission-locked:hover,
+.permission-locked:focus {
+ opacity: 0.75;
+ color: var(--bs-secondary-color);
+}
+.permission-locked.bi-lock-fill {
+ opacity: 0.85;
+}

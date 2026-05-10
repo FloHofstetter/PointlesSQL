@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **UX — permission-locked navigation links visible instead of
+  hidden (2026-05-10).**  Admin-only links in the icon-rail
+  (Workspace, Admin), the catalog sidebar (Branches), and the
+  mobile nav drawer (Workspace, Admin) now render for every user.
+  Non-admins see the entry greyed out with a trailing lock icon
+  and `aria-disabled="true"`; click / Enter / Space surface a
+  toast naming the missing role ("Requires admin role — contact
+  your workspace admin.").  This restores discoverability — a
+  regular user can now see *that* a Branches page exists and ask
+  the admin for access — without weakening backend authorisation
+  (the routes still 403 if the dead `href="#"` is bypassed).
+  Added `frontend/templates/_macros/permission_link.html` (single
+  re-usable macro across icon-rail / sidebar / nav-links) +
+  `frontend/js/permission_link.js` (delegated click + keyboard
+  listener registered once via `bootstrap.js`) +
+  `.permission-locked` CSS in `frontend/css/layout.css`.  Five
+  inline `{% if current_user.is_admin %}` wrappers replaced by
+  one macro call each; user-menu admin badge stays unchanged
+  (status indicator, not a link).
+
+
 - **Phase 63 — Writeable SQL Editor (AST-dispatch refactor) ✅
   closed (2026-05-10).**  Turns the SELECT-only SQL editor into
   an AST-classifying dispatcher that routes each statement
