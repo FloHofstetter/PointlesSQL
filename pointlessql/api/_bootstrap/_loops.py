@@ -209,7 +209,7 @@ async def _lineage_pruner_loop(
             of the app.
         settings: Snapshotted :class:`Settings`.
     """
-    from pointlessql.services.lineage_pruner import prune_once_async
+    from pointlessql.services.lineage.pruner import prune_once_async
 
     interval = max(60, settings.audit.cleanup_interval_seconds)
     while True:

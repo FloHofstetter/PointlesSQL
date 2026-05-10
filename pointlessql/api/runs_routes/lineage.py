@@ -40,7 +40,7 @@ async def api_run_graph(
 
     Returns:
         ``{"run_id", "op_id", "nodes": [...], "edges": [...]}``.
-        See :func:`pointlessql.services.lineage_graph_builder.build_lineage_graph`
+        See :func:`pointlessql.services.lineage.graph_builder.build_lineage_graph`
         for the full per-element shape.
 
     Raises:
@@ -53,6 +53,6 @@ async def api_run_graph(
     with factory() as session:
         if session.scalar(select(AgentRun).where(AgentRun.id == run_id)) is None:
             raise CatalogNotFoundError(f"agent run {run_id!r} not found")
-    from pointlessql.services.lineage_graph_builder import build_lineage_graph
+    from pointlessql.services.lineage.graph_builder import build_lineage_graph
 
     return build_lineage_graph(request, run_id, op_id=op_id)

@@ -24,7 +24,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import current_workspace_id, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import ExpectedLineageInbound
-from pointlessql.services import lineage_freshness as freshness_service
+from pointlessql.services.lineage import freshness as freshness_service
 
 logger = logging.getLogger(__name__)
 

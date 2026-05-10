@@ -18,7 +18,7 @@ import pytest
 from pointlessql.api.main import app
 from pointlessql.models import AgentRun, AgentRunOperation, LineageRowEdge
 from pointlessql.services.lineage_edges import record_edges
-from pointlessql.services.models_lineage import (
+from pointlessql.services.lineage.models_lineage import (
     aggregate_prediction_tables_for_model,
     build_model_lineage_graph,
 )

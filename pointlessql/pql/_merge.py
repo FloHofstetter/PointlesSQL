@@ -283,7 +283,7 @@ def merge_table(
                 }
 
             if source_table_fqn:
-                from pointlessql.services.column_lineage_diff import infer_column_edges
+                from pointlessql.services.lineage.column_diff import infer_column_edges
 
                 target_columns = list(arrow_source.schema.names)
                 edges = infer_column_edges(

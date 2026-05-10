@@ -16,7 +16,7 @@ from sqlalchemy import delete
 
 from pointlessql.api.main import app
 from pointlessql.models import ExpectedLineageInbound, LineageColumnMap
-from pointlessql.services import lineage_freshness as fr
+from pointlessql.services.lineage import freshness as fr
 
 
 def _wipe() -> None:

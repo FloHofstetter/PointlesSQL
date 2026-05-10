@@ -8,7 +8,7 @@ documented in the helper's module docstring.
 
 from __future__ import annotations
 
-from pointlessql.services.column_lineage_diff import infer_column_edges
+from pointlessql.services.lineage.column_diff import infer_column_edges
 
 
 class TestIdentityVsUnknownOrigin:

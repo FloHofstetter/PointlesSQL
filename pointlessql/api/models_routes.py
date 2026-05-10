@@ -52,7 +52,7 @@ from pointlessql.exceptions import (
 from pointlessql.services import model_promotion
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.mlflow_soyuz_link import parse_link_marker
-from pointlessql.services.models_lineage import (
+from pointlessql.services.lineage.models_lineage import (
     aggregate_prediction_tables_for_model,
     aggregate_table_ml_relations,
     build_model_lineage_graph,

@@ -150,7 +150,7 @@ def write_table(
 
                 column_names = _frame_column_names(df)
                 if column_names:
-                    from pointlessql.services.column_lineage_diff import infer_column_edges
+                    from pointlessql.services.lineage.column_diff import infer_column_edges
                     from pointlessql.services.lineage_edges import ColumnEdgeSpec
 
                     edges = infer_column_edges(
