@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from pointlessql.web.help import HELP, HelpEntry, get_help
+from pointlessql.web import HELP, HelpEntry, get_help
 
 _TEMPLATES_ROOT = Path(__file__).resolve().parent.parent / "frontend" / "templates"
 _INFO_CALL_RE = re.compile(r"info\(\s*['\"]([a-z0-9.\-]+)['\"]\s*\)")

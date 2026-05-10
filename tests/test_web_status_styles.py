@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from pointlessql.web.status_styles import status_class
+from pointlessql.web import status_class
 
 
 @pytest.mark.parametrize(

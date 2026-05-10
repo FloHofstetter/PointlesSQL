@@ -114,8 +114,8 @@ from pointlessql.services.mlflow_subprocess import (
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.settings import Settings
-from pointlessql.web.help import get_help as _get_help
-from pointlessql.web.status_styles import status_class as _status_class
+from pointlessql.web import get_help as _get_help
+from pointlessql.web import status_class as _status_class
 
 # Configure logging at module import time so it takes effect in every
 # process that serves traffic — the uvicorn --reload worker imports

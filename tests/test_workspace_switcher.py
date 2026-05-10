@@ -230,7 +230,7 @@ async def test_switcher_renders_when_user_has_multiple_workspaces(
 
 def test_help_slug_resolves() -> None:
     """The new help slug is registered and length-compliant."""
-    from pointlessql.web.help import HELP, get_help
+    from pointlessql.web import HELP, get_help
 
     entry = get_help("workspace.what-is-a-workspace")
     assert "workspace" in entry.title.lower()
