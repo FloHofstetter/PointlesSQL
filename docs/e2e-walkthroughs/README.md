@@ -23,9 +23,10 @@ playbooks on top of the same harness (jobs, notebook, OIDC,
 
 ## Inventory (full)
 
-55 walkthroughs total. Each one carries a `> **Mode:**` tag in
-its first content block; this section is the grep-friendly
-index. Counts auto-generated 2026-05-07.
+58 walkthroughs total (55 + 1 lens-overview + 1 lens-mcp + 1
+playwright-MCP carve-out from Phase 53).  Each carries a
+`> **Mode:**` tag in its first content block; this section is the
+grep-friendly index.
 
 ### `Mode: browser` — Playwright MCP replay (41)
 
