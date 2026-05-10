@@ -54,7 +54,6 @@ from pointlessql.models.agent import (
     RewriteAttempt,
 )
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
-from pointlessql.models.api_keys import ApiKey
 from pointlessql.models.audit import (
     SINK_TYPES,
     AnomalyAck,
@@ -107,19 +106,18 @@ from pointlessql.models.scheduler import (
 )
 from pointlessql.models.sync import SyncRun
 from pointlessql.models.system_keys import SystemKey
-from pointlessql.models.workspace_repos import (
+from pointlessql.models.workspace import (
+    WORKSPACE_PIN_MODES,
     WORKSPACE_REPO_PROVIDER_KINDS,
     WORKSPACE_REPO_SECRET_KINDS,
     WORKSPACE_REPO_SYNC_STATES,
-    WorkspaceRepo,
-    WorkspaceRepoSecret,
-)
-from pointlessql.models.workspaces import (
-    WORKSPACE_PIN_MODES,
     WORKSPACE_ROLES,
+    ApiKey,
     Workspace,
     WorkspaceCatalogPin,
     WorkspaceMember,
+    WorkspaceRepo,
+    WorkspaceRepoSecret,
 )
 
 __all__ = [

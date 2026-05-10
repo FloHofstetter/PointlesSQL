@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from pointlessql.models.workspace_repos import WorkspaceRepo
+from pointlessql.models.workspace._repos import WorkspaceRepo
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

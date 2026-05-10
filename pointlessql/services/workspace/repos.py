@@ -52,7 +52,7 @@ from pointlessql.git import (
     WorkspaceRepoUnknownProvider,
     resolve_provider,
 )
-from pointlessql.models.workspace_repos import (
+from pointlessql.models.workspace._repos import (
     WORKSPACE_REPO_SECRET_KINDS,
     WorkspaceRepo,
     WorkspaceRepoSecret,

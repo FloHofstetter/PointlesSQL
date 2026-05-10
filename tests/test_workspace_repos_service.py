@@ -17,7 +17,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from pointlessql.git import WorkspaceRepoUnknownProvider
-from pointlessql.models.workspace_repos import (
+from pointlessql.models.workspace._repos import (
     WorkspaceRepo,
     WorkspaceRepoSecret,
 )

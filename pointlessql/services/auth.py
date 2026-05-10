@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models import User
-from pointlessql.models.workspaces import WorkspaceMember
+from pointlessql.models.workspace import WorkspaceMember
 from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)

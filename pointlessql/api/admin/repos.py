@@ -28,7 +28,7 @@ from sqlalchemy import select
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_admin
 from pointlessql.exceptions import ResourceNotFoundError, ValidationError
-from pointlessql.models.workspace_repos import (
+from pointlessql.models.workspace._repos import (
     WORKSPACE_REPO_PROVIDER_KINDS,
     WORKSPACE_REPO_SECRET_KINDS,
     WorkspaceRepo,
