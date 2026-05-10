@@ -17,7 +17,7 @@
  <i class="bi bi-person-circle"></i>
  <span class="d-none d-lg-inline">{{ current_user.display_name or current_user.email }}</span>
  </a>
- <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+ <ul class="dropdown-menu dropdown-menu-end">
  <li><span class="dropdown-item-text text-muted small">{{ current_user.email }}</span></li>
  {% if current_user.is_admin %}<li><span class="dropdown-item-text text-muted small"><i class="bi bi-shield-check"></i> Admin</span></li>{% endif %}
  <li><hr class="dropdown-divider"></li>

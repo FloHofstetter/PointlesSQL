@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/timestamps.html" import relative_time_epoch %}
+{% from "_macros/metadata.html" import section_header, copyable, copyable_id, owner_cell %}
 {% block title %}{{ catalog_name }}.{{ schema_name }}.{{ table_name }} · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -12,9 +14,19 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-4">
+<div x-data='mlTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})' x-init="init()">
+<div x-data='dbtTableContext({{ catalog_name|tojson }}, {{ schema_name|tojson }}, {{ table_name|tojson }})' x-init="init()">
+<div class="d-flex align-items-center gap-2 mb-4"
+     x-data='pqlStarToggle({kind: "table", catalog: {{ catalog_name|tojson }}, schema: {{ schema_name|tojson }}, table: {{ table_name|tojson }}})'>
  <i class="bi bi-table fs-3"></i>
  <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}.{{ table_name }}</h1>
+ <button type="button"
+         class="btn btn-sm btn-link p-0 ms-2 text-warning"
+         @click="toggle()"
+         :title="starred ? 'Unstar this table' : 'Star this table (pin to sidebar)'"
+         :aria-label="starred ? 'Unstar this table' : 'Star this table'">
+  <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
+ </button>
  <a href="/audit/by-table/{{ catalog_name }}.{{ schema_name }}.{{ table_name }}"
     class="btn btn-sm btn-outline-secondary ms-auto"
     title="Audit reverse-index — runs that touched, wrote, or read this table">
@@ -103,39 +115,151 @@
 </ul>
 <div class="tab-content" id="tableDetailTabContent">
  <div class="tab-pane fade show active" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview-btn">
+ {# Type / format → semantic badge classes.  MANAGED tables are
+    bg-success (PointlesSQL governs storage); EXTERNAL is amber
+    (caller-managed, more risk).  DELTA gets the blue lakehouse hue;
+    other formats fall back to neutral. #}
+ {% set _type_badge = {
+   'MANAGED': 'bg-success',
+   'EXTERNAL': 'bg-warning text-dark',
+   'VIEW': 'bg-info text-dark',
+ }.get(table.table_type, 'bg-secondary') %}
+ {% set _fmt_badge = {
+   'DELTA': 'bg-info text-dark',
+   'PARQUET': 'bg-secondary',
+   'ICEBERG': 'bg-primary',
+   'CSV': 'bg-warning text-dark',
+   'JSON': 'bg-warning text-dark',
+ }.get(table.data_source_format, 'bg-light text-dark border') %}
  <div class="card mb-4">
- <div class="card-header">Metadata</div>
- <div class="card-body">
- <dl class="row mb-0">
- <dt class="col-sm-3 text-muted">Full name</dt>
- <dd class="col-sm-9 font-monospace">{{ catalog_name }}.{{ schema_name }}.{{ table.name }}</dd>
+  <div class="card-header d-flex align-items-center">
+   <i class="bi bi-info-circle me-2"></i>
+   <span>Metadata</span>
+  </div>
+  <div class="card-body">
+   <div class="mb-3 pb-3 border-bottom">
+    {{ section_header('bi-card-text', 'Description') }}
+    {% if table.comment %}
+    <div>{{ table.comment }}</div>
+    {% else %}
+    <div class="text-muted fst-italic small">No description set.</div>
+    {% endif %}
+   </div>
 
- <dt class="col-sm-3 text-muted">Type{{ info('tables.external-vs-managed') }}</dt>
- <dd class="col-sm-9"><span class="badge bg-primary">{{ table.table_type }}</span></dd>
+   <div class="row g-4 mb-3 pb-3 border-bottom">
+    <div class="col-md-4">
+     {{ section_header('bi-fingerprint', 'Identity') }}
+     <dl class="mb-0 small">
+      <dt class="text-muted fw-normal">Full name</dt>
+      <dd class="font-monospace mb-2 text-break">{{ catalog_name }}.{{ schema_name }}.{{ table.name }}</dd>
 
- <dt class="col-sm-3 text-muted">Format</dt>
- <dd class="col-sm-9"><span class="badge bg-info text-dark">{{ table.data_source_format }}</span></dd>
+      <dt class="text-muted fw-normal">Table ID</dt>
+      <dd class="mb-0">{{ copyable_id(table.table_id, 'table ID') }}</dd>
+     </dl>
+    </div>
 
- <dt class="col-sm-3 text-muted">Comment</dt>
- <dd class="col-sm-9">{{ table.comment or "—" }}</dd>
+    <div class="col-md-4">
+     {{ section_header('bi-gear', 'Behavior') }}
+     <dl class="mb-0 small">
+      <dt class="text-muted fw-normal">
+       Type{{ info('tables.external-vs-managed') }}
+      </dt>
+      <dd class="mb-2"><span class="badge {{ _type_badge }}">{{ table.table_type }}</span></dd>
 
- <dt class="col-sm-3 text-muted">Owner</dt>
- <dd class="col-sm-9">{{ table.owner or "—" }}</dd>
+      <dt class="text-muted fw-normal">Format</dt>
+      <dd class="mb-0"><span class="badge {{ _fmt_badge }}">{{ table.data_source_format }}</span></dd>
+     </dl>
+    </div>
 
- <dt class="col-sm-3 text-muted">Table ID</dt>
- <dd class="col-sm-9 font-monospace small">{{ table.table_id or "—" }}</dd>
+    <div class="col-md-4">
+     {{ section_header('bi-clock-history', 'Lifecycle') }}
+     <dl class="mb-0 small">
+      <dt class="text-muted fw-normal">Owner</dt>
+      <dd class="mb-2">{{ owner_cell(table.owner) }}</dd>
 
- <dt class="col-sm-3 text-muted">Created</dt>
- <dd class="col-sm-9">{{ table.created_at|epoch_ms }}{% if table.created_by %} by {{ table.created_by }}{% endif %}</dd>
+      <dt class="text-muted fw-normal">Created</dt>
+      <dd class="mb-2">
+       {{ relative_time_epoch(table.created_at, klass="") }}
+       {%- if table.created_by %} <span class="text-muted">by {{ table.created_by }}</span>{% endif %}
+      </dd>
 
- <dt class="col-sm-3 text-muted">Updated</dt>
- <dd class="col-sm-9">{{ table.updated_at|epoch_ms }}{% if table.updated_by %} by {{ table.updated_by }}{% endif %}</dd>
+      <dt class="text-muted fw-normal">Updated</dt>
+      <dd class="mb-0">
+       {{ relative_time_epoch(table.updated_at, klass="") }}
+       {%- if table.updated_by %} <span class="text-muted">by {{ table.updated_by }}</span>{% endif %}
+      </dd>
+     </dl>
+    </div>
+   </div>
 
- <dt class="col-sm-3 text-muted">Storage location</dt>
- <dd class="col-sm-9 font-monospace small">{{ table.storage_location or "—" }}</dd>
- </dl>
+   <div>
+    {{ section_header('bi-hdd', 'Storage location') }}
+    {% if table.storage_location %}
+    {{ copyable(table.storage_location, 'storage location') }}
+    {% else %}
+    <span class="text-muted fst-italic small">No storage location set.</span>
+    {% endif %}
+   </div>
+  </div>
  </div>
+
+ <template x-if="dbtModel">
+ <div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+   <span><i class="bi bi-bezier2 me-1"></i>dbt model</span>
+   <a :href="'/dbt-docs/#!/model/' + dbtModel.unique_id"
+      target="_blank" rel="noopener"
+      class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-box-arrow-up-right me-1"></i>Open in dbt-docs
+   </a>
+  </div>
+  <div class="card-body">
+   <dl class="row mb-0 small">
+    <dt class="col-sm-3 text-muted fw-normal">Unique ID</dt>
+    <dd class="col-sm-9 font-monospace mb-2" x-text="dbtModel.unique_id"></dd>
+
+    <dt class="col-sm-3 text-muted fw-normal">Materialization</dt>
+    <dd class="col-sm-9 mb-2"><span class="badge bg-info text-dark" x-text="dbtModel.materialization || '—'"></span></dd>
+
+    <dt class="col-sm-3 text-muted fw-normal">Tests</dt>
+    <dd class="col-sm-9 mb-0" x-text="(dbtModel.tests || []).length + ' configured'"></dd>
+   </dl>
+  </div>
  </div>
+ </template>
+
+ <template x-if="hasMl">
+ <div class="card mb-4">
+  <div class="card-header d-flex align-items-center">
+   <i class="bi bi-graph-up me-1"></i>
+   <span>ML models</span>
+  </div>
+  <div class="card-body">
+   <template x-if="scoringModels.length > 0">
+    <div>
+     <div class="text-muted small mb-2">Scored INTO this table</div>
+     <ul class="list-unstyled mb-0">
+      <template x-for="m in scoringModels" :key="m.full_name + ':' + m.version">
+       <li class="mb-1">
+        <a :href="'/models/' + m.full_name"
+           class="font-monospace small text-decoration-none"
+           x-text="m.full_name"></a>
+        <span class="badge bg-secondary ms-1" x-text="'v' + m.version"></span>
+        <span class="text-muted small ms-2" x-text="'(' + m.edge_count + ' edges)'"></span>
+        <a :href="'/mlflow/#/models/' + m.full_name + '/versions/' + m.version"
+           target="_blank" rel="noopener"
+           class="btn btn-link btn-sm py-0 ms-1"
+           title="Open in MLflow UI">
+         <i class="bi bi-box-arrow-up-right"></i>
+        </a>
+       </li>
+      </template>
+     </ul>
+    </div>
+   </template>
+  </div>
+ </div>
+ </template>
 
  {% if table.properties %}
  <div class="card mb-4">
@@ -557,6 +681,8 @@
  {% endif %}
 </div>
 {% endif %}
+</div>
+</div>
 {% endblock %}
 
 {% block extra_js %}

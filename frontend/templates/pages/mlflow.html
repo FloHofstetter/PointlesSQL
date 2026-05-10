@@ -8,18 +8,15 @@
 <div class="d-flex align-items-center gap-2 mb-3">
     <i class="bi bi-robot fs-3"></i>
     <h1 class="h3 mb-0">MLflow Tracking</h1>
+    {% if mlflow_running %}
+    <a href="/mlflow/" target="_blank" rel="noopener"
+       class="btn btn-outline-secondary btn-sm ms-auto">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI
+    </a>
+    {% endif %}
 </div>
 
-{% if mlflow_running %}
-<div class="card mlflow-frame-card">
-    <div class="card-body p-0" style="height: calc(100vh - 220px); min-height: 480px;">
-        <iframe src="/mlflow/"
-                class="w-100 h-100 border-0"
-                title="MLflow Tracking UI"
-                allow="clipboard-write"></iframe>
-    </div>
-</div>
-{% else %}
+{% if not mlflow_running %}
 <div class="alert alert-warning" role="alert">
     <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>MLflow not running</h5>
     <p class="mb-1">
@@ -37,4 +34,110 @@
     </p>
 </div>
 {% endif %}
+
+<div x-data="mlflowCockpit()" x-init="init()">
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-box-seam me-1"></i>Recent model registrations</span>
+            <a href="/models" class="btn btn-link btn-sm py-0">All models</a>
+        </div>
+        <div class="card-body p-0">
+            <template x-if="modelsLoading">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="!modelsLoading && models.length === 0">
+                <div class="text-muted small p-3">No registered models yet.</div>
+            </template>
+            <template x-if="!modelsLoading && models.length > 0">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Catalog</th>
+                            <th>Schema</th>
+                            <th>Owner</th>
+                            <th>Updated</th>
+                            <th class="text-end">Open</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="m in models" :key="m.full_name">
+                            <tr>
+                                <td>
+                                    <a :href="'/models/' + m.full_name"
+                                       class="font-monospace small text-decoration-none"
+                                       x-text="m.name || m.full_name"></a>
+                                </td>
+                                <td class="text-muted small" x-text="m.catalog_name || '—'"></td>
+                                <td class="text-muted small" x-text="m.schema_name || '—'"></td>
+                                <td class="text-muted small" x-text="m.owner || '—'"></td>
+                                <td class="text-muted small font-monospace" x-text="m.updated_at || '—'"></td>
+                                <td class="text-end">
+                                    <a :href="'/mlflow/#/models/' + m.full_name"
+                                       target="_blank" rel="noopener"
+                                       class="btn btn-link btn-sm py-0"
+                                       title="Open in MLflow UI">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </template>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-activity me-1"></i>Recent training runs</span>
+            <a href="/runs" class="btn btn-link btn-sm py-0">All runs</a>
+        </div>
+        <div class="card-body p-0">
+            <template x-if="runsLoading">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="!runsLoading && runs.length === 0">
+                <div class="text-muted small p-3">No agent runs with an MLflow run-id yet.</div>
+            </template>
+            <template x-if="!runsLoading && runs.length > 0">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th>Agent run</th>
+                            <th>MLflow run</th>
+                            <th>Status</th>
+                            <th>Started</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="r in runs" :key="r.id">
+                            <tr>
+                                <td>
+                                    <a :href="'/runs/' + r.id"
+                                       class="font-monospace small text-decoration-none"
+                                       x-text="r.id ? r.id.slice(0, 8) : '—'"></a>
+                                </td>
+                                <td>
+                                    <a :href="'/mlflow/#/runs/' + r.mlflow_run_id"
+                                       target="_blank" rel="noopener"
+                                       class="font-monospace small text-decoration-none"
+                                       x-text="r.mlflow_run_id ? r.mlflow_run_id.slice(0, 8) : '—'"></a>
+                                </td>
+                                <td>
+                                    <span class="badge"
+                                          :class="r.status === 'completed' ? 'bg-success'
+                                                 : (r.status === 'failed' ? 'bg-danger'
+                                                 : 'bg-secondary')"
+                                          x-text="r.status || '—'"></span>
+                                </td>
+                                <td class="text-muted small font-monospace" x-text="r.started_at || '—'"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </template>
+        </div>
+    </div>
+</div>
 {% endblock %}

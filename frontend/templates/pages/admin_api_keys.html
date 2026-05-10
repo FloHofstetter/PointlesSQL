@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}API keys · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -106,7 +107,7 @@
                         <span class="text-muted">#{{ k.workspace_id }}</span>
                         {% endif %}
                     </td>
-                    <td data-label="Created" class="small text-nowrap">{{ k.created_at[:10] if k.created_at else '—' }}</td>
+                    <td data-label="Created" class="small text-nowrap">{{ relative_time(k.created_at) }}</td>
                     <td data-label="Last used" class="small text-nowrap">{{ k.last_used_at[:10] if k.last_used_at else '—' }}</td>
                     <td data-label="Status">
                         {% if k.revoked_at %}

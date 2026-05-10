@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% from "_macros/help_icon.html" import info %}
+{% block title %}{{ query.title }} — saved query · PointlesSQL{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumb mb-0 ms-3">
+    <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+    <li class="breadcrumb-item"><a href="/audit/queries" class="text-decoration-none">Audit cockpit</a></li>
+    <li class="breadcrumb-item active">{{ query.title }}</li>
+</ol>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.saq-detail-description :first-child { margin-top: 0; }
+.saq-detail-description :last-child  { margin-bottom: 0; }
+.saq-detail-description code         { font-size: .85em; padding: .1rem .3rem; background: var(--bs-secondary-bg-subtle); border-radius: .25rem; }
+.saq-detail-description pre code     { padding: 0; background: transparent; }
+.saq-detail-description ul, .saq-detail-description ol { padding-left: 1.25rem; }
+.pql-sql-viewer .cm-editor { border-radius: 0; }
+.pql-sql-viewer .cm-scroller { font-family: var(--bs-font-monospace); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-bookmark-star fs-3"></i>
+        <h1 class="h3 mb-0">{{ query.title }}</h1>
+        {% if query.is_starter %}
+        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-2">starter</span>
+        {% endif %}
+    </div>
+    <a href="/audit/queries" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Back to cockpit
+    </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        {% if query.description %}
+        <div class="saq-detail-description">
+            {{ query.description | render_markdown | safe }}
+        </div>
+        {% else %}
+        <p class="text-muted fst-italic mb-0">
+            No description yet.  Edit the row in the API or the
+            cockpit to add one — Markdown is supported.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+        <i class="bi bi-terminal"></i>
+        <span class="fw-semibold">SQL</span>
+        <span class="text-muted small ms-2">runs against the metadata DB, not the catalog</span>
+        <div class="ms-auto d-flex gap-2">
+            <button class="btn btn-sm btn-primary" id="saq-run">
+                <i class="bi bi-play-fill"></i> Run
+            </button>
+            <a class="btn btn-sm btn-outline-secondary"
+               href="/api/saved-audit-queries/{{ query.slug }}/export.csv"
+               target="_blank" rel="noopener">
+                <i class="bi bi-filetype-csv"></i> CSV
+            </a>
+            <a class="btn btn-sm btn-outline-secondary"
+               href="/api/saved-audit-queries/{{ query.slug }}/export.json"
+               target="_blank" rel="noopener">
+                <i class="bi bi-filetype-json"></i> JSON
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="pql-sql-viewer" data-sql='{{ query.sql_text|tojson }}'></div>
+    </div>
+</div>
+
+<div class="card" id="saq-result-wrap" hidden>
+    <div class="card-header py-2 small text-muted" id="saq-result-meta"></div>
+    <div class="table-responsive" style="max-height: 60vh">
+        <table class="table table-sm mb-0 small font-monospace align-middle">
+            <thead id="saq-result-thead"></thead>
+            <tbody id="saq-result-tbody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function () {
+    const slug = {{ query.slug | tojson }};
+    const runBtn = document.getElementById('saq-run');
+    const wrap = document.getElementById('saq-result-wrap');
+    const meta = document.getElementById('saq-result-meta');
+    const thead = document.getElementById('saq-result-thead');
+    const tbody = document.getElementById('saq-result-tbody');
+
+    runBtn.addEventListener('click', async () => {
+        runBtn.disabled = true;
+        runBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> running…';
+        try {
+            const resp = await fetch(`/api/saved-audit-queries/${slug}/run?row_cap=1000`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const body = await resp.json();
+            if (!resp.ok) {
+                meta.innerHTML = '<span class="text-danger">' + (body.detail || resp.status) + '</span>';
+                wrap.hidden = false;
+                return;
+            }
+            renderResult(body);
+        } finally {
+            runBtn.disabled = false;
+            runBtn.innerHTML = '<i class="bi bi-play-fill"></i> Run';
+        }
+    });
+
+    function renderResult(body) {
+        meta.innerHTML = `${body.row_count} row(s) · references ${body.referenced_tables.join(', ')}`
+            + (body.truncated ? ' · <span class="text-warning">truncated</span>' : '');
+        thead.innerHTML = '<tr>' + body.columns.map((c) => `<th>${c}</th>`).join('') + '</tr>';
+        tbody.innerHTML = body.rows.map((row) =>
+            '<tr>' + body.columns.map((c) => `<td>${row[c] === null || row[c] === undefined ? '<span class="text-muted fst-italic">NULL</span>' : escapeHtml(String(row[c]))}</td>`).join('') + '</tr>'
+        ).join('');
+        wrap.hidden = false;
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+    }
+})();
+</script>
+{% endblock %}

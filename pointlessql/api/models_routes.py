@@ -54,6 +54,7 @@ from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.mlflow_soyuz_link import parse_link_marker
 from pointlessql.services.models_lineage import (
     aggregate_prediction_tables_for_model,
+    aggregate_table_ml_relations,
     build_model_lineage_graph,
 )
 
@@ -266,6 +267,36 @@ async def api_model_predictions(request: Request, full_name: str) -> dict[str, A
     factory = request.app.state.session_factory
     rows = aggregate_prediction_tables_for_model(factory, full_name)
     return {"predictions": rows}
+
+
+@router.get("/api/ml/table-relations")
+async def api_ml_table_relations(
+    request: Request,
+    catalog: str | None = None,
+    schema: str | None = None,
+) -> dict[str, Any]:
+    """Reverse-index UC tables → ML models that scored into them.
+
+    Single-call analog of ``/api/dbt/manifest`` for the MLflow side.
+    Powers the catalog-tree ML pill, schema-detail badge, and the
+    table-detail "ML model" card.
+
+    Args:
+        request: FastAPI request.
+        catalog: Optional catalog filter — narrows the result to
+            tables under one catalog.
+        schema: Optional schema filter — narrows further within a
+            catalog.  Ignored when ``catalog`` is omitted.
+
+    Returns:
+        ``{"tables": {"catalog.schema.table": {"trained_models":
+        [], "scoring_models": [{"full_name", "version",
+        "edge_count"}, ...]}}}``.
+    """
+    _require_auth(request)
+    factory = request.app.state.session_factory
+    tables = aggregate_table_ml_relations(factory, catalog=catalog, schema=schema)
+    return {"tables": tables}
 
 
 @router.get("/api/models/{full_name}/runs")

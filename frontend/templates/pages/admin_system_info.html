@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}System info · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -76,7 +77,7 @@
                                 {% if pii_hash_secret_present %}
                                 <span class="badge bg-success">present</span>
                                 {% if pii_hash_secret_created_at %}
-                                <span class="text-muted small ms-1">since {{ pii_hash_secret_created_at[:10] }}</span>
+                                <span class="text-muted small ms-1">since {{ relative_time(pii_hash_secret_created_at) }}</span>
                                 {% endif %}
                                 {% else %}
                                 <span class="badge bg-light text-muted border">missing</span>
@@ -221,7 +222,7 @@
                         {% for k in system_keys %}
                         <tr>
                             <td><code>{{ k.name }}</code></td>
-                            <td class="small text-nowrap">{{ k.created_at[:10] }}</td>
+                            <td class="small text-nowrap">{{ relative_time(k.created_at) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

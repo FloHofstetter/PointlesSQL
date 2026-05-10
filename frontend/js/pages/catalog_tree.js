@@ -22,6 +22,7 @@ function workspaceSlug() {
 const STORAGE_KEY = () => 'pql.tree.' + workspaceSlug();
 const OPEN_KEY = () => 'pql.tree.open.' + workspaceSlug();
 const RECENTS_KEY = () => 'pql.recentTables.' + workspaceSlug();
+const STARRED_KEY = () => 'pql.starred.' + workspaceSlug();
 function primaryCatalog() {
  const meta = document.querySelector('meta[name="workspace-primary-catalog"]');
  return meta && meta.content ? meta.content : '';
@@ -78,6 +79,17 @@ function loadRecents() {
  }
 }
 
+function loadStarred() {
+ try {
+ const raw = localStorage.getItem(STARRED_KEY());
+ if (!raw) return [];
+ const parsed = JSON.parse(raw);
+ return Array.isArray(parsed) ? parsed : [];
+ } catch (e) {
+ return [];
+ }
+}
+
 function fqnParts(fqn) {
  const parts = (fqn || '').split('.');
  if (parts.length !== 3) return null;
@@ -93,6 +105,87 @@ export function catalogTree() {
  activePath: pathFromUrl(),
  query: '',
  recents: loadRecents(),
+ starred: loadStarred(),
+ dbtRelations: new Set(),
+ mlRelations: new Set(),
+
+ isDbtTable(c, s, t) {
+ if (!this.dbtRelations || this.dbtRelations.size === 0) return false;
+ return this.dbtRelations.has(c.name + '.' + s.name + '.' + t.name);
+ },
+
+ isMlTable(c, s, t) {
+ if (!this.mlRelations || this.mlRelations.size === 0) return false;
+ return this.mlRelations.has(c.name + '.' + s.name + '.' + t.name);
+ },
+
+ async fetchDbtManifest() {
+ try {
+ const res = await fetch('/api/dbt/manifest', { credentials: 'same-origin' });
+ if (!res.ok) return;
+ const data = await res.json();
+ const next = new Set();
+ for (const m of (data.models || [])) {
+ if (m.relation_name) next.add(String(m.relation_name));
+ }
+ this.dbtRelations = next;
+ } catch (e) { /* dbt not configured — silent no-op */ }
+ },
+
+ async fetchMlRelations() {
+ try {
+ const res = await fetch('/api/ml/table-relations', { credentials: 'same-origin' });
+ if (!res.ok) return;
+ const data = await res.json();
+ const next = new Set();
+ for (const fqn of Object.keys(data.tables || {})) {
+ next.add(String(fqn));
+ }
+ this.mlRelations = next;
+ } catch (e) { /* no ML edges — silent no-op */ }
+ },
+
+ starredKey(s) {
+ if (!s || !s.kind) return '';
+ if (s.kind === 'catalog') return 'cat:' + s.name;
+ if (s.kind === 'schema') return 'sch:' + s.catalog + '.' + s.schema;
+ if (s.kind === 'table') return 'tbl:' + s.catalog + '.' + s.schema + '.' + s.table;
+ return '';
+ },
+ starredHref(s) {
+ if (!s) return '#';
+ if (s.kind === 'catalog') return '/catalogs/' + s.name;
+ if (s.kind === 'schema') return '/catalogs/' + s.catalog + '/schemas/' + s.schema;
+ if (s.kind === 'table') return '/catalogs/' + s.catalog + '/schemas/' + s.schema + '/tables/' + s.table;
+ return '#';
+ },
+ starredIcon(s) {
+ if (!s) return 'bi-star';
+ if (s.kind === 'catalog') return 'bi-folder2';
+ if (s.kind === 'schema') return 'bi-collection';
+ if (s.kind === 'table') return 'bi-table';
+ return 'bi-star';
+ },
+ starredLabel(s) {
+ if (!s) return '';
+ if (s.kind === 'catalog') return s.name;
+ if (s.kind === 'schema') return s.schema;
+ if (s.kind === 'table') return s.table;
+ return '';
+ },
+ starredQualifier(s) {
+ if (!s) return '';
+ if (s.kind === 'schema') return s.catalog;
+ if (s.kind === 'table') return s.schema + '.' + s.catalog;
+ return '';
+ },
+ starredFqn(s) {
+ if (!s) return '';
+ if (s.kind === 'catalog') return s.name;
+ if (s.kind === 'schema') return s.catalog + '.' + s.schema;
+ if (s.kind === 'table') return s.catalog + '.' + s.schema + '.' + s.table;
+ return '';
+ },
  searchResults: [],
  searching: false,
  searchTruncated: false,
@@ -241,6 +334,8 @@ export function catalogTree() {
  if (!this.tree) await this.fetchTree();
  else this.fetchTree();
  this.fetchRecents();
+ this.fetchDbtManifest();
+ this.fetchMlRelations();
  },
 
  async reload() {

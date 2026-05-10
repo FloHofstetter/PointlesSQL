@@ -78,6 +78,7 @@ def serialize_agent_run(row: AgentRun) -> dict[str, Any]:
         "cost_gate_trigger": cost_gate_trigger,
         "anomaly_severity": row.anomaly_severity,
         "anomaly_metric": row.anomaly_metric,
+        "mlflow_run_id": row.mlflow_run_id,
     }
 
 

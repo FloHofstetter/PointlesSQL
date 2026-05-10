@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}Branches · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Branches"}] %}
@@ -92,7 +93,7 @@
  <code>{{ b.tags.strategy }}</code>
  </td>
  <td class="small text-muted" data-label="Created">
- {{ b.tags.created_at[:19] }}
+ {{ relative_time(b.tags.created_at) }}
  </td>
  <td class="text-end pe-3" data-label="Actions">
  <a class="btn btn-sm btn-outline-secondary"

@@ -105,16 +105,34 @@
 {% include "components/empty.html" %}
 {% endwith %}
 {% else %}
-<div class="row g-3" id="queries-grid">
-    {% for entry in entries %}
-    {% include "pages/_partials/_query_card.html" %}
-    {% endfor %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="pql-thead-sticky small text-muted">
+                <tr>
+                    <th class="ps-3">Status</th>
+                    <th>Source</th>
+                    <th>SQL</th>
+                    <th>User</th>
+                    <th>When</th>
+                    <th class="text-end">Duration</th>
+                    <th class="text-end">Rows</th>
+                    <th class="text-end pe-3"></th>
+                </tr>
+            </thead>
+            <tbody id="queries-tbody">
+                {% for entry in entries %}
+                {% include "pages/_partials/_query_row.html" %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 <div id="queries-pager" class="d-flex justify-content-center align-items-center gap-3 my-3">
     {% if next_offset is not none %}
     <button class="btn btn-outline-secondary btn-sm"
             hx-get="/queries?offset={{ next_offset }}{% if read_kind_filter %}&read_kind={{ read_kind_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if since_filter %}&since={{ since_filter }}{% endif %}{% if agent_run_filter %}&agent_run_id={{ agent_run_filter }}{% endif %}"
-            hx-target="#queries-grid"
+            hx-target="#queries-tbody"
             hx-swap="beforeend">
         <i class="bi bi-arrow-down-circle me-1"></i>
         Load {{ row_limit }} more · {{ remaining }} remaining

@@ -8,6 +8,12 @@
 <div class="d-flex align-items-center gap-2 mb-3">
     <i class="bi bi-bezier2 fs-3"></i>
     <h1 class="h3 mb-0">dbt Pipelines</h1>
+    {% if dbt_running %}
+    <a href="/dbt-docs/" target="_blank" rel="noopener"
+       class="btn btn-outline-secondary btn-sm ms-auto">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Open dbt-docs
+    </a>
+    {% endif %}
 </div>
 
 <div class="row g-3 mb-3" id="dbt-summary-row">
@@ -46,17 +52,33 @@
     </div>
 </div>
 
+{% if not dbt_running %}
+<div class="alert alert-warning" role="alert">
+    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>dbt-docs not running</h5>
+    <p class="mb-1">
+        The embedded dbt-docs subprocess is not running.  This is normal
+        on a fresh install — there is no compiled dbt project yet.
+    </p>
+    <ul class="mb-2 small">
+        <li>Install the optional <code>[dbt]</code> extra:
+            <code>pip install pointlessql[dbt]</code>
+            (or <code>uv sync --extra dbt</code> for development).</li>
+        <li>Place your dbt project under <code>dbt_project/</code>
+            (or override <code>POINTLESSQL_DBT_PROJECT_DIR</code>).</li>
+        <li>Run <code>dbt compile</code> once to generate
+            <code>target/manifest.json</code>.</li>
+        <li>Restart PointlesSQL — the subprocess starts during the
+            FastAPI lifespan hook.</li>
+    </ul>
+    <p class="mb-0 small text-muted">
+        See <code>pointlessql/services/dbt_subprocess.py</code> for the lifespan hook.
+    </p>
+</div>
+{% endif %}
+
 <ul class="nav nav-tabs mb-3" id="dbtTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="dbt-pipeline-btn"
-                data-bs-toggle="tab" data-bs-target="#dbt-pipeline"
-                type="button" role="tab"
-                data-pql-tab-key="pipeline">
-            <i class="bi bi-bezier2 me-1"></i> Pipeline docs
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="dbt-runs-btn"
+        <button class="nav-link active" id="dbt-runs-btn"
                 data-bs-toggle="tab" data-bs-target="#dbt-runs"
                 data-tab="runs"
                 type="button" role="tab"
@@ -76,42 +98,7 @@
 </ul>
 
 <div class="tab-content">
-    <div class="tab-pane fade show active" id="dbt-pipeline" role="tabpanel">
-        {% if dbt_running %}
-        <div class="card dbt-frame-card">
-            <div class="card-body p-0" style="height: calc(100vh - 360px); min-height: 420px;">
-                <iframe src="/dbt-docs/"
-                        class="w-100 h-100 border-0"
-                        title="dbt docs UI"
-                        allow="clipboard-write"></iframe>
-            </div>
-        </div>
-        {% else %}
-        <div class="alert alert-warning" role="alert">
-            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>dbt-docs not running</h5>
-            <p class="mb-1">
-                The embedded dbt-docs subprocess is not running.  This is normal
-                on a fresh install — there is no compiled dbt project yet.
-            </p>
-            <ul class="mb-2 small">
-                <li>Install the optional <code>[dbt]</code> extra:
-                    <code>pip install pointlessql[dbt]</code>
-                    (or <code>uv sync --extra dbt</code> for development).</li>
-                <li>Place your dbt project under <code>dbt_project/</code>
-                    (or override <code>POINTLESSQL_DBT_PROJECT_DIR</code>).</li>
-                <li>Run <code>dbt compile</code> once to generate
-                    <code>target/manifest.json</code>.</li>
-                <li>Restart PointlesSQL — the subprocess starts during the
-                    FastAPI lifespan hook.</li>
-            </ul>
-            <p class="mb-0 small text-muted">
-                See <code>pointlessql/services/dbt_subprocess.py</code> for the lifespan hook.
-            </p>
-        </div>
-        {% endif %}
-    </div>
-
-    <div class="tab-pane fade" id="dbt-runs" role="tabpanel">
+    <div class="tab-pane fade show active" id="dbt-runs" role="tabpanel">
         <div class="small text-muted mb-2" id="dbt-runs-meta">Loading…</div>
         <div class="card">
             <div class="card-body p-0">
@@ -179,6 +166,14 @@
         return '<span class="badge bg-danger">error</span>';
     }
 
+    function httpErrorMessage(status, what) {
+        if (status === 401) return `Sign in required to view ${what}.`;
+        if (status === 403) return `You don't have permission to view ${what}.`;
+        if (status === 404) return `${what} not available — no dbt manifest loaded yet.`;
+        if (status >= 500) return `Server error (${status}) while loading ${what}. Try refreshing.`;
+        return `Couldn't load ${what} (HTTP ${status}).`;
+    }
+
     async function loadSummary() {
         const elModels = document.getElementById('dbt-summary-models');
         const elModelsHint = document.getElementById('dbt-summary-models-hint');
@@ -236,8 +231,9 @@
         try {
             const r = await fetch('/api/dbt/runs?limit=20', { credentials: 'same-origin' });
             if (!r.ok) {
-                metaEl.textContent = 'Error ' + r.status;
-                rowsEl.innerHTML = `<tr><td colspan="6" class="text-danger py-3">Error ${r.status}</td></tr>`;
+                const msg = httpErrorMessage(r.status, 'recent dbt runs');
+                metaEl.textContent = msg;
+                rowsEl.innerHTML = `<tr><td colspan="6" class="text-muted py-3">${escapeHtml(msg)}</td></tr>`;
                 return;
             }
             const data = await r.json();
@@ -266,8 +262,9 @@
         try {
             const r = await fetch('/api/dbt/test-failures?limit=50', { credentials: 'same-origin' });
             if (!r.ok) {
-                metaEl.textContent = 'Error ' + r.status;
-                rowsEl.innerHTML = `<tr><td colspan="6" class="text-danger py-3">Error ${r.status}</td></tr>`;
+                const msg = httpErrorMessage(r.status, 'dbt test failures');
+                metaEl.textContent = msg;
+                rowsEl.innerHTML = `<tr><td colspan="6" class="text-muted py-3">${escapeHtml(msg)}</td></tr>`;
                 return;
             }
             const data = await r.json();
@@ -300,6 +297,8 @@
     });
 
     loadSummary();
+    loaded.runs = true;
+    loadRuns();
 })();
 </script>
 {% endblock %}

@@ -18,6 +18,7 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
 
 import pointlessql
 from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
@@ -178,9 +179,28 @@ def _format_hash(value: Any, sentinel_label: str = "(no source captured)") -> st
     return s
 
 
+_MARKDOWN_RENDERER = MarkdownIt("commonmark", {"html": False, "linkify": True}).enable(
+    ["table"]
+)
+
+
+def _render_markdown(value: Any) -> str:
+    """Render saved-query Markdown descriptions to an HTML fragment.
+
+    Uses markdown-it-py in CommonMark mode with ``html: false`` so any
+    raw ``<script>`` / ``<iframe>`` in user input is escaped at parse
+    time — descriptions are user-authored, so ``|safe`` would expose
+    us to script injection without this guard.
+    """
+    if not value:
+        return ""
+    return _MARKDOWN_RENDERER.render(str(value))
+
+
 _TEMPLATES.env.filters["epoch_ms"] = _format_epoch_ms
 _TEMPLATES.env.filters["format_uuid"] = _format_uuid
 _TEMPLATES.env.filters["format_hash"] = _format_hash
+_TEMPLATES.env.filters["render_markdown"] = _render_markdown
 
 # contextual help-popover registry (see ``pointlessql/web/
 # help.py``).  Templates resolve slugs via ``{{ help('runs.what-is-a-

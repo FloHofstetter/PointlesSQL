@@ -44,3 +44,25 @@ export function pqlRelativeTime(iso) {
  const d = new Date(t);
  return d.toISOString().slice(0, 10);
 }
+
+/**
+ * Absolute timestamp formatter — UTC-anchored, second precision.
+ * Pairs with ``pqlRelativeTime`` for the two-tier display
+ * convention: relative as the visible value, absolute as the
+ * tooltip.  Also used directly on detail pages where the exact
+ * moment matters more than the elapsed delta.
+ */
+export function pqlAbsTime(iso) {
+ if (!iso) return '';
+ const t = Date.parse(pqlParseServerIso(iso));
+ if (Number.isNaN(t)) return iso;
+ const d = new Date(t);
+ const pad = (n) => String(n).padStart(2, '0');
+ return (
+   d.getUTCFullYear() + '-' +
+   pad(d.getUTCMonth() + 1) + '-' +
+   pad(d.getUTCDate()) + ' ' +
+   pad(d.getUTCHours()) + ':' +
+   pad(d.getUTCMinutes()) + ' UTC'
+ );
+}

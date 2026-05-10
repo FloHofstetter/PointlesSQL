@@ -107,6 +107,18 @@ export const monacoMethods = {
  };
  }
 
+ // Apply the dark theme only when the page itself is in dark mode.
+ // CodeMirror's oneDark hard-codes a dark palette, so on a light
+ // page it leaves the editor as a black panel that doesn't match
+ // the surrounding card.  Bootstrap mirrors the user's pick onto
+ // the html element via ``data-bs-theme`` — read it here, and let
+ // the editor fall back to the default light syntax-highlight.
+ //
+ // Apply only ONE highlight style — ``defaultHighlightStyle`` is
+ // the light palette, ``oneDark`` ships its own.  Loading both
+ // makes the dark-mode keywords render in the light style's dark
+ // colors, invisible against the oneDark background.
+ const isDark = document.documentElement.dataset.bsTheme === 'dark';
  this._cmView = new EditorView({
  state: EditorState.create({
  doc: startingDoc,
@@ -115,9 +127,10 @@ export const monacoMethods = {
  highlightActiveLine(),
  history(),
  bracketMatching(),
- syntaxHighlighting(defaultHighlightStyle),
+ ...(isDark
+ ? [oneDark]
+ : [syntaxHighlighting(defaultHighlightStyle)]),
  sql(),
- oneDark,
  autocompletion({ override: [tableCompletionSource] }),
  keymap.of([
  runShortcut,

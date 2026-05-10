@@ -334,10 +334,18 @@ async def queries_page(
         "active_table": None,
         "list_page": True,
     }
-    is_htmx = request.headers.get("HX-Request") == "true"
+    # Distinguish a Load-More HTMX request (just rows + OOB pager)
+    # from a hx-boost page navigation (wants the full shell back so
+    # the body's ``hx-target="#main-content"`` swap has something to
+    # match).  Boosted nav sets ``HX-Boosted: true`` in addition to
+    # ``HX-Request: true``; the Load-More button does not.
+    is_load_more = (
+        request.headers.get("HX-Request") == "true"
+        and request.headers.get("HX-Boosted") != "true"
+    )
     template = (
         "pages/_partials/queries_list_append.html"
-        if is_htmx
+        if is_load_more
         else "pages/queries.html"
     )
     return _templates(request).TemplateResponse(request, template, ctx)

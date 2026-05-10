@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/timestamps.html" import relative_time_epoch %}
+{% from "_macros/metadata.html" import section_header, copyable, copyable_id, owner_cell %}
 {% block title %}{{ catalog_name }}.{{ schema_name }} · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -10,9 +12,18 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-4">
+<div x-data='dbtSchemaContext({{ catalog_name|tojson }}, {{ schema_name|tojson }})' x-init="init()">
+<div class="d-flex align-items-center gap-2 mb-4"
+     x-data='pqlStarToggle({kind: "schema", catalog: {{ catalog_name|tojson }}, schema: {{ schema_name|tojson }}})'>
     <i class="bi bi-collection fs-3"></i>
     <h1 class="h3 mb-0">{{ catalog_name }}.{{ schema_name }}{{ info('schemas.what-is-a-schema') }}</h1>
+    <button type="button"
+            class="btn btn-sm btn-link p-0 ms-2 text-warning"
+            @click="toggle()"
+            :title="starred ? 'Unstar this schema' : 'Star this schema (pin to sidebar)'"
+            :aria-label="starred ? 'Unstar this schema' : 'Star this schema'">
+        <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
+    </button>
 </div>
 
 {% if error %}
@@ -20,38 +31,68 @@
     <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
 </div>
 {% elif schema %}
-<div class="card">
-    <div class="card-header">Metadata</div>
+{% set _has_storage = schema.storage_root or schema.storage_location %}
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center">
+        <i class="bi bi-info-circle me-2"></i>
+        <span>Metadata</span>
+    </div>
     <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3 text-muted">Full name</dt>
-            <dd class="col-sm-9 font-monospace">{{ schema.full_name }}</dd>
+        <div class="mb-3 pb-3 border-bottom">
+            {{ section_header('bi-card-text', 'Description') }}
+            {% with patch_url="/api/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema.name, field="comment", value=schema.comment, placeholder="Click to add a description" %}
+                {% include "components/editable.html" %}
+            {% endwith %}
+        </div>
 
-            <dt class="col-sm-3 text-muted">Comment</dt>
-            <dd class="col-sm-9">
-                {% with patch_url="/api/catalogs/" ~ catalog_name ~ "/schemas/" ~ schema.name, field="comment", value=schema.comment, placeholder="Click to add comment" %}
-                    {% include "components/editable.html" %}
-                {% endwith %}
-            </dd>
+        <div class="row g-4 {% if _has_storage %}mb-3 pb-3 border-bottom{% endif %}">
+            <div class="col-md-6">
+                {{ section_header('bi-fingerprint', 'Identity') }}
+                <dl class="mb-0 small">
+                    <dt class="text-muted fw-normal">Full name</dt>
+                    <dd class="font-monospace mb-2">{{ schema.full_name }}</dd>
 
-            <dt class="col-sm-3 text-muted">Owner</dt>
-            <dd class="col-sm-9">{{ schema.owner or "—" }}</dd>
+                    <dt class="text-muted fw-normal">Schema ID</dt>
+                    <dd class="mb-0">{{ copyable_id(schema.schema_id, 'schema ID') }}</dd>
+                </dl>
+            </div>
 
-            <dt class="col-sm-3 text-muted">Schema ID</dt>
-            <dd class="col-sm-9 font-monospace small">{{ schema.schema_id or "—" }}</dd>
+            <div class="col-md-6">
+                {{ section_header('bi-clock-history', 'Lifecycle') }}
+                <dl class="mb-0 small">
+                    <dt class="text-muted fw-normal">Owner</dt>
+                    <dd class="mb-2">{{ owner_cell(schema.owner) }}</dd>
 
-            <dt class="col-sm-3 text-muted">Created</dt>
-            <dd class="col-sm-9">{{ schema.created_at|epoch_ms }}{% if schema.created_by %} by {{ schema.created_by }}{% endif %}</dd>
+                    <dt class="text-muted fw-normal">Created</dt>
+                    <dd class="mb-2">
+                        {{ relative_time_epoch(schema.created_at, klass="") }}
+                        {%- if schema.created_by %} <span class="text-muted">by {{ schema.created_by }}</span>{% endif %}
+                    </dd>
 
-            <dt class="col-sm-3 text-muted">Updated</dt>
-            <dd class="col-sm-9">{{ schema.updated_at|epoch_ms }}{% if schema.updated_by %} by {{ schema.updated_by }}{% endif %}</dd>
+                    <dt class="text-muted fw-normal">Updated</dt>
+                    <dd class="mb-0">
+                        {{ relative_time_epoch(schema.updated_at, klass="") }}
+                        {%- if schema.updated_by %} <span class="text-muted">by {{ schema.updated_by }}</span>{% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
 
-            <dt class="col-sm-3 text-muted">Storage root</dt>
-            <dd class="col-sm-9 font-monospace small">{{ schema.storage_root or "—" }}</dd>
-
-            <dt class="col-sm-3 text-muted">Storage location</dt>
-            <dd class="col-sm-9 font-monospace small">{{ schema.storage_location or "—" }}</dd>
-        </dl>
+        {% if _has_storage %}
+        <div>
+            {{ section_header('bi-hdd', 'Storage') }}
+            <dl class="mb-0 small">
+                {% if schema.storage_root %}
+                <dt class="text-muted fw-normal">Storage root</dt>
+                <dd class="mb-2">{{ copyable(schema.storage_root, 'storage root') }}</dd>
+                {% endif %}
+                {% if schema.storage_location %}
+                <dt class="text-muted fw-normal">Storage location</dt>
+                <dd class="mb-0">{{ copyable(schema.storage_location, 'storage location') }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -79,6 +120,17 @@
                     <tr>
                         <td class="font-monospace" data-label="Name">
                             <a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ tbl.name }}" class="text-decoration-none">{{ tbl.name }}</a>
+                            <template x-if='dbtModelByTable[{{ tbl.name|tojson }}]'>
+                                <a :href='"/dbt-docs/#!/model/" + dbtModelByTable[{{ tbl.name|tojson }}]'
+                                   target="_blank" rel="noopener"
+                                   class="badge bg-light text-muted text-decoration-none ms-1"
+                                   :title='"Materialized by dbt model " + dbtModelByTable[{{ tbl.name|tojson }}]'>dbt</a>
+                            </template>
+                            <template x-if='mlModelByTable[{{ tbl.name|tojson }}]'>
+                                <a :href='"/models/" + mlModelByTable[{{ tbl.name|tojson }}]'
+                                   class="badge bg-info text-dark text-decoration-none ms-1"
+                                   :title='"Output of model " + mlModelByTable[{{ tbl.name|tojson }}]'>ml</a>
+                            </template>
                         </td>
                         <td data-label="Type">
                             {% if tbl.table_type %}
@@ -106,6 +158,84 @@
     </div>
 </div>
 
+<template x-if="dbtAvailable && !dbtRunsLoading">
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-bezier2 me-1"></i>Recent dbt runs</span>
+            <a href="/dbt-docs/" target="_blank" rel="noopener"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Open dbt-docs
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Started</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="run in dbtRuns" :key="run.id">
+                        <tr>
+                            <td><a :href="'/runs/' + run.id"
+                                   class="font-monospace small text-decoration-none"
+                                   x-text="run.id.slice(0, 8)"></a></td>
+                            <td><span class="badge"
+                                     :class="run.status === 'succeeded' ? 'bg-success'
+                                            : (run.status === 'failed' ? 'bg-danger'
+                                            : 'bg-secondary')"
+                                     x-text="run.status || '—'"></span></td>
+                            <td class="font-monospace small text-muted" x-text="run.started_at || '—'"></td>
+                        </tr>
+                    </template>
+                    <template x-if="dbtRuns.length === 0">
+                        <tr><td colspan="3" class="text-center text-muted small py-3">No dbt runs yet.</td></tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</template>
+
+<template x-if="mlAvailable && !mlModelsLoading">
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-graph-up me-1"></i>Recent ML registrations</span>
+            <a href="/mlflow/" target="_blank" rel="noopener"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Owner</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="m in mlModels" :key="m.full_name">
+                        <tr>
+                            <td><a :href="'/models/' + m.full_name"
+                                   class="font-monospace small text-decoration-none"
+                                   x-text="m.name || m.full_name"></a></td>
+                            <td class="text-muted small" x-text="m.owner || '—'"></td>
+                            <td class="text-muted small font-monospace" x-text="m.updated_at || '—'"></td>
+                        </tr>
+                    </template>
+                    <template x-if="mlModels.length === 0">
+                        <tr><td colspan="3" class="text-center text-muted small py-3">No models registered in this schema yet.</td></tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</template>
+
 {% with tags_url="/api/tags/schema/" ~ catalog_name ~ "." ~ schema_name, tags=tags %}
     {% include "components/tags_editor.html" %}
 {% endwith %}
@@ -123,4 +253,5 @@
     {% include "components/properties_editor.html" %}
 {% endwith %}
 {% endif %}
+</div>
 {% endblock %}

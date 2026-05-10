@@ -38,10 +38,19 @@ Implementation highlights:
 The function is sync (consumed by an async route via
 ``asyncio.to_thread``-friendly call sites) — keeps the SQLAlchemy
 session usage straightforward.
+
+Phase 62 added :func:`aggregate_table_ml_relations`, the reverse
+index that powers the catalog-tree ML pill, schema-detail badge,
+and table-detail "ML model" card.  It groups
+``lineage_row_edges`` by ``(target_table, source_model_uri)`` so
+the UI can ask "given a UC table, which models scored into it?"
+in one call — the analog of ``/api/dbt/manifest`` for the dbt
+side.
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -49,6 +58,12 @@ from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
 from pointlessql.models import LineageRowEdge
+
+# ``models:/<full_name>/<version>`` is the only producer format
+# (see ``pql/_write.py`` + ``pql/_merge.py``); the parser is
+# anchored so future variants like ``runs:/...`` fall through to
+# ``None`` and are silently skipped instead of mis-attributed.
+_MODEL_URI_RE = re.compile(r"^models:/(?P<full_name>[^/]+)/(?P<version>[^/]+)$")
 
 
 def aggregate_source_tables_for_runs(
@@ -197,3 +212,84 @@ def build_model_lineage_graph(
         "nodes": nodes,
         "edges": edges,
     }
+
+
+def _parse_model_uri(uri: str | None) -> tuple[str, str] | None:
+    """Return ``(full_name, version)`` for a ``models:/...`` URI."""
+    if not uri:
+        return None
+    match = _MODEL_URI_RE.match(uri)
+    if match is None:
+        return None
+    return match.group("full_name"), match.group("version")
+
+
+def aggregate_table_ml_relations(
+    factory: Callable[[], Session],
+    *,
+    catalog: str | None = None,
+    schema: str | None = None,
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    """Reverse-index UC tables → ML models that scored into them.
+
+    Groups ``lineage_row_edges`` by ``(target_table,
+    source_model_uri)`` so the UI can mark every table that has an
+    inference edge pointing at it and list the responsible model
+    versions.  Phase 62's reverse index covers only the *scoring*
+    direction; "trained from this table" attribution would require
+    walking soyuz to map ``train_model`` ops back to registered
+    model versions, which is deferred.
+
+    Args:
+        factory: SQLAlchemy session factory bound to PointlesSQL's
+            audit DB.
+        catalog: Optional catalog filter — narrows the result to
+            tables whose FQN begins with ``"<catalog>."``.
+        schema: Optional schema filter — narrows further to
+            ``"<catalog>.<schema>."``.  Ignored when ``catalog`` is
+            ``None`` (a schema filter without a catalog is
+            ambiguous across UC instances).
+
+    Returns:
+        Mapping ``{ "catalog.schema.table": {"trained_models":
+        [], "scoring_models": [{"full_name", "version",
+        "edge_count"}, ...]}}``.  ``trained_models`` is always an
+        empty list; the key is preserved so the UI contract
+        survives a future Phase that adds the inverse direction.
+        Empty outer dict when no inference edges exist.
+    """
+    stmt = (
+        select(
+            LineageRowEdge.target_table,
+            LineageRowEdge.source_model_uri,
+            func.count(LineageRowEdge.id).label("edge_count"),
+        )
+        .where(LineageRowEdge.source_model_uri.isnot(None))
+        .group_by(LineageRowEdge.target_table, LineageRowEdge.source_model_uri)
+    )
+    if catalog:
+        prefix = f"{catalog}.{schema}." if schema else f"{catalog}."
+        stmt = stmt.where(LineageRowEdge.target_table.like(f"{prefix}%"))
+
+    with factory() as session:
+        rows = session.execute(stmt).all()
+
+    result: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for target_table, source_model_uri, edge_count in rows:
+        if not target_table:
+            continue
+        parsed = _parse_model_uri(source_model_uri)
+        if parsed is None:
+            continue
+        full_name, version = parsed
+        entry = result.setdefault(target_table, {"trained_models": [], "scoring_models": []})
+        entry["scoring_models"].append(
+            {
+                "full_name": full_name,
+                "version": version,
+                "edge_count": int(edge_count),
+            }
+        )
+    for entry in result.values():
+        entry["scoring_models"].sort(key=lambda m: (m["full_name"], m["version"]))
+    return result

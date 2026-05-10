@@ -1,0 +1,78 @@
+{#
+   Reusable building blocks for the redesigned metadata cards on
+   catalog / schema / table detail pages.  All three surfaces share
+   the same visual grammar:
+
+     * a single "Metadata" card-header with an info icon
+     * Description block at the top (full-width, italic placeholder
+       when empty so missing docs are visually obvious)
+     * a 2-or-3-column row with semantic section headers (Identity,
+       Behavior, Lifecycle) — each a dl of small key-value pairs
+     * an optional full-width Storage row at the bottom when storage
+       paths exist (with copy-to-clipboard so users do not have to
+       triple-click 200-char URIs)
+
+   These macros render the small repeating widgets so the per-page
+   templates stay short and the visual treatment stays in lock-step
+   across the three surfaces.
+#}
+
+{%- macro section_header(icon, label) -%}
+<div class="text-muted text-uppercase small fw-semibold mb-2">
+ <i class="bi {{ icon }} me-1"></i>{{ label }}
+</div>
+{%- endmacro %}
+
+{#
+   Inline value with a copy-to-clipboard button.  Used for IDs and
+   storage paths.  ``value`` is rendered both as the visible
+   ``<code>`` text and as the clipboard payload (via ``|tojson`` so
+   strings with backslashes / quotes round-trip safely).
+#}
+{%- macro copyable(value, aria_label) -%}
+<div class="d-flex align-items-center gap-2" x-data="{ copied: false }">
+ <code class="small flex-grow-1 text-break">{{ value }}</code>
+ <button type="button"
+         class="btn btn-link btn-sm p-0 text-muted flex-shrink-0"
+         @click='navigator.clipboard.writeText({{ value|tojson }}); copied = true; setTimeout(() => copied = false, 1500)'
+         :title="copied ? 'Copied!' : 'Copy {{ aria_label }}'"
+         aria-label="Copy {{ aria_label }}">
+  <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
+ </button>
+</div>
+{%- endmacro %}
+
+{#
+   Same pattern as ``copyable`` but for shorter values (IDs) where
+   we prefer a single-line layout with a truncating <code> + a tiny
+   copy chevron.  Falls back to "—" when value is None/empty.
+#}
+{%- macro copyable_id(value, aria_label) -%}
+{%- if value -%}
+<div class="d-flex align-items-center gap-1" x-data="{ copied: false }">
+ <code class="small text-truncate" title="{{ value }}">{{ value }}</code>
+ <button type="button"
+         class="btn btn-link btn-sm p-0 text-muted flex-shrink-0"
+         @click='navigator.clipboard.writeText({{ value|tojson }}); copied = true; setTimeout(() => copied = false, 1500)'
+         :title="copied ? 'Copied!' : 'Copy {{ aria_label }}'"
+         aria-label="Copy {{ aria_label }}">
+  <i class="bi" :class="copied ? 'bi-check-lg text-success' : 'bi-clipboard'"></i>
+ </button>
+</div>
+{%- else -%}
+<span class="text-muted">—</span>
+{%- endif -%}
+{%- endmacro %}
+
+{#
+   Render an "Owner" cell — falls back to an italic "unowned" hint
+   instead of a bare em-dash so the visual difference between "no
+   owner set" and "owner is empty string" is clear.
+#}
+{%- macro owner_cell(owner) -%}
+{%- if owner -%}
+<span class="font-monospace small">{{ owner }}</span>
+{%- else -%}
+<span class="text-muted fst-italic">unowned</span>
+{%- endif -%}
+{%- endmacro %}

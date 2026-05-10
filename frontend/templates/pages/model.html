@@ -17,6 +17,12 @@
     {% if model.owner %}
     <span class="badge bg-secondary ms-2">{{ model.owner }}</span>
     {% endif %}
+    {% if mlflow_running %}
+    <a href="/mlflow/#/models/{{ model.full_name }}" target="_blank" rel="noopener"
+       class="btn btn-outline-secondary btn-sm ms-auto">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI
+    </a>
+    {% endif %}
 </div>
 
 {% if model.comment %}
@@ -38,11 +44,6 @@
         <button class="nav-link" id="tab-lineage-btn" data-bs-toggle="tab"
                 data-bs-target="#tab-lineage" type="button" role="tab"
                 data-pql-tab-key="lineage">Lineage</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-mlflow-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-mlflow" type="button" role="tab"
-                data-pql-tab-key="mlflow">MLflow</button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-promotion-btn" data-bs-toggle="tab"
@@ -153,9 +154,23 @@
                             </td>
                             <td>
                                 {% if v.mlflow and v.mlflow.run_id %}
-                                <code class="small">{{ v.mlflow.run_id[:12] }}…</code>
+                                  {% if mlflow_running %}
+                                  <a href="/mlflow/#/runs/{{ v.mlflow.run_id }}" target="_blank" rel="noopener"
+                                     class="text-decoration-none">
+                                      <code class="small">{{ v.mlflow.run_id[:12] }}…</code>
+                                  </a>
+                                  {% else %}
+                                  <code class="small">{{ v.mlflow.run_id[:12] }}…</code>
+                                  {% endif %}
                                 {% elif v.run_id %}
-                                <code class="small">{{ v.run_id[:12] }}…</code>
+                                  {% if mlflow_running %}
+                                  <a href="/mlflow/#/runs/{{ v.run_id }}" target="_blank" rel="noopener"
+                                     class="text-decoration-none">
+                                      <code class="small">{{ v.run_id[:12] }}…</code>
+                                  </a>
+                                  {% else %}
+                                  <code class="small">{{ v.run_id[:12] }}…</code>
+                                  {% endif %}
                                 {% else %}
                                 <span class="text-muted small">—</span>
                                 {% endif %}
@@ -265,32 +280,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    {# MLflow #}
-    <div class="tab-pane fade" id="tab-mlflow" role="tabpanel">
-        <p class="text-muted small mb-2">
-            Embedded MLflow Tracking UI for this model.{{ info('models.mlflow-vs-pointlessql') }}
-        </p>
-        {% if mlflow_running %}
-        <div class="card">
-            <div class="card-body p-0" style="height: calc(100vh - 320px); min-height: 480px;">
-                <iframe src="/mlflow/#/models/{{ model.full_name }}"
-                        class="w-100 h-100 border-0"
-                        title="MLflow model {{ model.full_name }}"
-                        allow="clipboard-write"></iframe>
-            </div>
-        </div>
-        {% else %}
-        <div class="alert alert-warning" role="alert">
-            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-1"></i>MLflow not running</h5>
-            <p class="mb-0 small">
-                Start the MLflow subprocess to view the run-detail in MLflow's
-                native UI. PointlesSQL spawns it during the FastAPI lifespan
-                when <code>POINTLESSQL_MLFLOW_ENABLED=1</code>.
-            </p>
-        </div>
-        {% endif %}
     </div>
 
     {# Promotion — champion/challenger surface. #}

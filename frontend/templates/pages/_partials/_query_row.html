@@ -1,0 +1,70 @@
+{% from "_macros/detail_drawer.html" import detail_drawer %}
+{#
+ Single ``<tr>`` for one ``query_history`` entry.
+
+ Renders the row's metadata in scannable columns; the full SQL +
+ error live behind a "View" Offcanvas drawer so the table stays
+ dense and the user can drill in on demand.
+
+ Rendered both by the initial page paint in ``queries.html`` and
+ by the HTMX append fragment ``queries_list_append.html`` —
+ expects ``entry`` in context.
+#}
+<tr>
+  <td class="align-middle">
+    {% if entry.status == 'succeeded' %}
+    <span class="badge bg-success">succeeded</span>
+    {% elif entry.status == 'failed' %}
+    <span class="badge bg-danger">failed</span>
+    {% elif entry.status == 'cancelled' %}
+    <span class="badge bg-warning text-dark">cancelled</span>
+    {% else %}
+    <span class="badge bg-secondary">{{ entry.status }}</span>
+    {% endif %}
+  </td>
+  <td class="align-middle">
+    {% if entry.read_kind == 'pql_table' %}
+    <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
+    {% elif entry.read_kind == 'engine_direct' %}
+    <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
+    {% else %}
+    <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
+    {% endif %}
+  </td>
+  <td class="align-middle small font-monospace text-truncate" style="max-width: 32rem;"
+      title="{{ entry.sql_text or '' }}">
+    {{ (entry.sql_text or '') | truncate(120, killwords=False, end='…') }}
+  </td>
+  <td class="align-middle small text-muted">{{ entry.user_email }}</td>
+  <td class="align-middle small font-monospace text-muted"
+      x-data='{ iso: {{ (entry.started_at or "")|tojson }} }'
+      x-text="iso ? pqlRelativeTime(iso) : '—'"
+      x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">
+    {{ entry.started_at }}
+  </td>
+  <td class="align-middle small text-end">
+    {% if entry.duration_ms is not none %}{{ entry.duration_ms }} ms{% else %}—{% endif %}
+  </td>
+  <td class="align-middle small text-end">
+    {% if entry.row_count is not none %}{{ entry.row_count }}{% else %}—{% endif %}
+  </td>
+  <td class="align-middle text-end">
+    {% call detail_drawer('q-' ~ entry.id, 'View full SQL', title='Query #' ~ entry.id, icon='bi-eye') %}
+    <pre class="mb-3"><code class="language-sql">{{ entry.sql_text or '' }}</code></pre>
+    {% if entry.error_message %}
+    <h6 class="text-danger mt-3">Error</h6>
+    <pre class="small text-danger mb-0"><code>{{ entry.error_message }}</code></pre>
+    {% endif %}
+    {% if entry.tables %}
+    <h6 class="mt-3">Referenced tables</h6>
+    <div>{% for full in entry.tables %}<span class="badge text-bg-secondary me-1 font-monospace">{{ full }}</span>{% endfor %}</div>
+    {% endif %}
+    {% endcall %}
+    <a href="/sql?prefill={{ entry.sql_text|urlencode }}&history_id={{ entry.id }}"
+       class="btn btn-link btn-sm p-0 ms-1 align-baseline"
+       title="Re-run in SQL editor"
+       aria-label="Re-run in SQL editor">
+      <i class="bi bi-arrow-clockwise"></i>
+    </a>
+  </td>
+</tr>

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from "_macros/truncate.html" import truncate_cell %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/detail_drawer.html" import detail_drawer %}
 {% block title %}External writes · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -82,13 +83,14 @@
             </div>
         </form>
         <hr class="my-3">
-        <form method="post" action="/api/admin/external-writes/scan" hx-boost="false"
-              onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerText='Scanning…';">
-            <button type="submit" class="btn btn-outline-warning btn-sm">
-                <i class="bi bi-arrow-clockwise me-1"></i>Run scan now
-            </button>
-            <span class="text-muted small ms-2">Walks every UC table; idempotent thanks to (table, version) UNIQUE.</span>
-        </form>
+        <button type="button" class="btn btn-outline-warning btn-sm"
+                hx-post="/api/admin/external-writes/scan"
+                hx-swap="none"
+                hx-on::before-request="this.disabled=true; this.innerText='Scanning…';"
+                hx-on::after-request="window.location.reload();">
+            <i class="bi bi-arrow-clockwise me-1"></i>Run scan now
+        </button>
+        <span class="text-muted small ms-2">Walks every UC table; idempotent thanks to (table, version) UNIQUE.</span>
     </div>
 </div>
 
@@ -121,8 +123,14 @@
                         <td data-label="Table" class="font-monospace small">{{ w.table_fqn }}</td>
                         <td data-label="Delta v" class="font-monospace">{{ w.delta_version }}</td>
                         <td data-label="Commit ts" class="small font-monospace">{{ w.commit_timestamp or "—" }}</td>
-                        <td data-label="Commit info">
-                            {{ truncate_cell(w.commit_info, max=120, klass="font-monospace small") }}
+                        <td data-label="Commit info" class="small font-monospace text-truncate" style="max-width: 22rem;"
+                            title="{{ w.commit_info }}">
+                            {{ (w.commit_info or '') | truncate(60, killwords=False, end='…') }}
+                            {% if w.commit_info and (w.commit_info|length) > 60 %}
+                            {% call detail_drawer('xw-' ~ w.id, 'View full commit info', title='Commit info — ' ~ w.table_fqn) %}
+                            <pre class="mb-0 small"><code>{{ w.commit_info }}</code></pre>
+                            {% endcall %}
+                            {% endif %}
                         </td>
                         <td data-label="Acknowledged" class="small">
                             {% if w.acknowledged_at %}
@@ -134,12 +142,12 @@
                         </td>
                         <td data-label="Action" class="pe-3 text-end">
                             {% if not w.acknowledged_at %}
-                            <form method="post" action="/api/admin/external-writes/{{ w.id }}/acknowledge"
-                                  hx-boost="false" class="d-inline">
-                                <button type="submit" class="btn btn-success btn-sm">
-                                    <i class="bi bi-check2"></i> Acknowledge
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-success btn-sm"
+                                    hx-post="/api/admin/external-writes/{{ w.id }}/acknowledge"
+                                    hx-swap="none"
+                                    hx-on::after-request="window.location.reload();">
+                                <i class="bi bi-check2"></i> Acknowledge
+                            </button>
                             {% endif %}
                         </td>
                     </tr>

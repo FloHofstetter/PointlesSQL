@@ -17,9 +17,10 @@
      x-data="runsSidebar()"
      x-init="load()"
      @htmx:after-swap.window="activeId = (window.location.pathname.match(/^\/runs\/([^/]+)/) || [])[1] || ''">
+    {% set _runs_path = request.url.path if request else '' %}
     <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
         <span class="text-uppercase small fw-semibold text-muted">
-            <a href="/runs" class="text-muted text-decoration-none">Runs</a>
+            Runs &amp; Jobs
             {{ info('runs.context-panel') }}
         </span>
         <button class="btn btn-sm btn-link p-0 text-muted"
@@ -28,7 +29,29 @@
             <i class="bi bi-arrow-clockwise" :class="loading ? 'pql-spin' : ''"></i>
         </button>
     </div>
+    <ul class="pql-context-panel__list">
+        <li>
+            <a href="/runs"
+               class="pql-context-panel__link{% if _runs_path == '/runs' or _runs_path.startswith('/runs/') %} active{% endif %}">
+                <i class="bi bi-activity"></i>
+                <span>Recent runs</span>
+            </a>
+        </li>
+        <li>
+            <a href="/jobs"
+               class="pql-context-panel__link{% if _runs_path == '/jobs' or _runs_path.startswith('/jobs/') %} active{% endif %}">
+                <i class="bi bi-clock"></i>
+                <span>Scheduled jobs</span>
+            </a>
+        </li>
+    </ul>
 
+    {# Recent-runs quick-jump list is only useful on detail pages
+       (`/runs/<id>`).  On `/runs` and `/jobs` the table on the right
+       already shows the same data, so the sidebar list is duplicate
+       chrome.  Hide the body there. #}
+    {% set _runs_show_recent = _runs_path.startswith('/runs/') %}
+    {% if _runs_show_recent %}
     <div class="pql-sidebar-body">
         <template x-if="error">
             <div class="alert alert-danger m-2 small" x-text="error"></div>
@@ -104,13 +127,10 @@
             </div>
         </template>
 
-        {# Recent #}
+        {# Recent — header omitted: implicit when not Needs-approval / Running #}
         <template x-if="grouped().recent.length > 0">
             <div>
-                <div class="px-3 pt-2 pb-1 text-uppercase small fw-semibold text-muted">
-                    Recent
-                </div>
-                <ul class="list-unstyled mb-0">
+                <ul class="list-unstyled mb-0 pt-2">
                     <template x-for="r in grouped().recent" :key="r.id">
                         <li>
                             <a :href="'/runs/' + r.id"
@@ -129,9 +149,6 @@
                 </ul>
             </div>
         </template>
-
-        <div class="pql-context-panel__hint mt-2">
-            Cmd+K jumps to a specific run.
-        </div>
     </div>
+    {% endif %}
 </div>

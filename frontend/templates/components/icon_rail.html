@@ -63,15 +63,9 @@
                  label_class="pql-icon-rail__label"
             ) }}
         </li>
-        <li class="pql-icon-rail__item">
-            <a href="/jobs"
-               data-section="jobs"
-               class="pql-icon-rail__link{% if active_section == 'jobs' %} active{% endif %}"
-               title="Jobs">
-                <i class="bi bi-clock-history"></i>
-                <span class="pql-icon-rail__label">Jobs</span>
-            </a>
-        </li>
+        {# Scheduled jobs collapsed into the RUNS sub-pane — they're
+           the same workflow concept (definition vs. execution).
+           Reachable via /runs sub-pane "Scheduled jobs". #}
         <li class="pql-icon-rail__item">
             <a href="/alerts"
                data-section="alerts"
@@ -90,15 +84,9 @@
                 <span class="pql-icon-rail__label">Audit</span>
             </a>
         </li>
-        <li class="pql-icon-rail__item">
-            <a href="/agent-reviews"
-               data-section="reviews"
-               class="pql-icon-rail__link{% if active_section == 'reviews' %} active{% endif %}"
-               title="Agent reviews — automated review loops">
-                <i class="bi bi-clipboard-check"></i>
-                <span class="pql-icon-rail__label">Reviews</span>
-            </a>
-        </li>
+        {# Agent reviews collapsed into the AUDIT sub-pane — they're
+           post-run audit artefacts and don't deserve a top-level
+           rail item. Reachable via /audit/inbox sub-pane "Reviews". #}
         {# Volumes + Models intentionally have NO rail icon — they
            render inline under each schema in the catalog tree
            (sidebar.html), same as tables.  Direct URLs /volumes
@@ -140,17 +128,10 @@
                 <span class="pql-icon-rail__label">dbt</span>
             </a>
         </li>
-        {% if current_user is defined and current_user and current_user.is_admin %}
-        <li class="pql-icon-rail__item">
-            <a href="/branches"
-               data-section="branches"
-               class="pql-icon-rail__link{% if active_section == 'branches' %} active{% endif %}"
-               title="Delta branches">
-                <i class="bi bi-diagram-3"></i>
-                <span class="pql-icon-rail__label">Branches</span>
-            </a>
-        </li>
-        {% endif %}
+        {# Delta-Branches collapsed into the CATALOG sub-pane — they
+           branch catalog schemas/tables and don't deserve a top-level
+           rail item.  Reachable via the Catalog sidebar "Branches"
+           link, plus a Branches tab on each table-detail page. #}
     </ul>
     <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
         <li class="pql-icon-rail__item">

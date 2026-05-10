@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}Workspaces · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -87,7 +88,7 @@
                 <td data-label="Slug"><code>{{ ws.slug }}</code></td>
                 <td data-label="Name">{{ ws.name }}{% if ws.description %}<div class="text-muted small">{{ ws.description }}</div>{% endif %}</td>
                 <td data-label="Members" class="text-end">{{ member_counts.get(ws.id, 0) }}</td>
-                <td data-label="Created" class="text-muted small">{{ ws.created_at.strftime('%Y-%m-%d') if ws.created_at else '—' }}</td>
+                <td data-label="Created" class="text-muted small">{{ relative_time(ws.created_at.isoformat() if ws.created_at else None) }}</td>
                 <td data-label="Actions">
                     {% if ws.id != 1 %}
                     <button type="button" class="btn btn-sm btn-outline-warning"
@@ -123,7 +124,7 @@
             <tr>
                 <td data-label="Slug"><code>{{ ws.slug }}</code></td>
                 <td data-label="Name">{{ ws.name }}</td>
-                <td data-label="Archived at" class="text-muted small">{{ ws.archived_at.strftime('%Y-%m-%d %H:%M UTC') if ws.archived_at else '—' }}</td>
+                <td data-label="Archived at" class="text-muted small">{{ relative_time(ws.archived_at.isoformat() if ws.archived_at else None) }}</td>
             </tr>
             {% endfor %}
         </tbody>

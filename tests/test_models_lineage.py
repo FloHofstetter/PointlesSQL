@@ -13,6 +13,7 @@ from pointlessql.api.main import app
 from pointlessql.models import AgentRun, AgentRunOperation, LineageRowEdge
 from pointlessql.services.models_lineage import (
     aggregate_source_tables_for_runs,
+    aggregate_table_ml_relations,
     build_model_lineage_graph,
 )
 
@@ -185,3 +186,70 @@ async def test_api_model_lineage_unauthenticated(
 ) -> None:
     resp = await anonymous_client.get("/api/models/cat1.sch1.smoke_model/lineage")
     assert resp.status_code == 401
+
+
+# ---------- Phase 62: table-relations reverse-index ----------
+
+
+def _seed_inference_edge(
+    factory,
+    *,
+    target_table: str,
+    source_model_uri: str,
+    edges: int = 1,
+) -> None:
+    """Insert ``edges`` LineageRowEdge rows pointing at the given target."""
+    import datetime as _dt
+
+    now = _dt.datetime.now(_dt.UTC)
+    with factory() as session:
+        for i in range(edges):
+            session.add(
+                LineageRowEdge(
+                    run_id=None,
+                    op_id=None,
+                    source_table="cat1.sch1.scoring_input",
+                    source_row_id=f"src-{i}",
+                    target_table=target_table,
+                    target_row_id=f"tgt-{i}",
+                    source_model_uri=source_model_uri,
+                    created_at=now,
+                )
+            )
+        session.commit()
+
+
+def test_aggregate_table_ml_relations_groups_by_target_and_model(auth_cookies) -> None:
+    factory = app.state.session_factory
+    _seed_inference_edge(
+        factory,
+        target_table="cat1.sch1.predictions",
+        source_model_uri="models:/cat1.sch1.churn/3",
+        edges=2,
+    )
+    _seed_inference_edge(
+        factory,
+        target_table="cat1.sch1.predictions",
+        source_model_uri="models:/cat1.sch1.churn/4",
+        edges=1,
+    )
+    _seed_inference_edge(
+        factory,
+        target_table="cat2.sch9.scores",
+        source_model_uri="models:/cat2.sch9.fraud/1",
+        edges=5,
+    )
+
+    relations = aggregate_table_ml_relations(factory)
+
+    assert "cat1.sch1.predictions" in relations
+    pred = relations["cat1.sch1.predictions"]
+    assert pred["trained_models"] == []
+    assert pred["scoring_models"] == [
+        {"full_name": "cat1.sch1.churn", "version": "3", "edge_count": 2},
+        {"full_name": "cat1.sch1.churn", "version": "4", "edge_count": 1},
+    ]
+    assert relations["cat2.sch9.scores"]["scoring_models"][0]["edge_count"] == 5
+
+    scoped = aggregate_table_ml_relations(factory, catalog="cat1", schema="sch1")
+    assert set(scoped) == {"cat1.sch1.predictions"}

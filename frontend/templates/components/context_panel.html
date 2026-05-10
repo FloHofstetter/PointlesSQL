@@ -55,10 +55,13 @@
  <span>History</span>
  </a>
  </li>
+ <li>
+ <a href="/audit/queries" class="pql-context-panel__link">
+ <i class="bi bi-bookmark-star"></i>
+ <span>Saved queries</span>
+ </a>
+ </li>
  </ul>
- <div class="pql-context-panel__hint">
- Saved queries appear in the editor's right-hand drawer.
- </div>
  </div>
  {% elif active_section == 'workspace' %}
  {% include "components/sidebars/workspace_sidebar.html" %}
@@ -101,30 +104,14 @@
  <span>By query</span>
  </a>
  </li>
- </ul>
- <div class="pql-context-panel__hint">
- Drill into any row to open the source run, or use the agent
- <code>audit_history</code> tool for run-scoped retrieval.
- </div>
- </div>
- {% elif active_section == 'reviews' %}
- {% set _reviews_path = request.url.path if request else '' %}
- <div class="pql-context-panel__header">Agent reviews</div>
- <div class="pql-context-panel__body">
- <ul class="pql-context-panel__list">
  <li>
  <a href="/agent-reviews"
- class="pql-context-panel__link{% if _reviews_path == '/agent-reviews' %} active{% endif %}">
+ class="pql-context-panel__link{% if _audit_path == '/agent-reviews' %} active{% endif %}">
  <i class="bi bi-clipboard-check"></i>
- <span>All reviews</span>
+ <span>Reviews</span>
  </a>
  </li>
  </ul>
- <div class="pql-context-panel__hint">
- Automated review loops triggered post-run.  Configure
- destinations under <a href="/admin/review-destinations">Admin
- → Review destinations</a>.
- </div>
  </div>
  {% elif active_section == 'admin' %}
  {% set _admin_path = request.url.path if request else '' %}

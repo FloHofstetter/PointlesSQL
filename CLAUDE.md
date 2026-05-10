@@ -235,6 +235,18 @@ retry. Firefox itself runs fine standalone in that state, so the
 smoke test is to launch firefox by hand with the bundled binary
 before suspecting the install.
 
+If `claude mcp list` reports `playwright ✓ Connected` but
+`ToolSearch` finds no `mcp__playwright__*` tools (any query
+returns `No matching deferred tools found`), the MCP subprocess
+is running but its tool schemas were not registered into the
+session's deferred-tool surface at startup. There is no reload
+command (`claude mcp` exposes only add/remove/list/get/serve);
+the only fix is to exit and restart Claude Code. Confirm by
+calling `ToolSearch` with
+`select:mcp__playwright__browser_navigate` — empty result means
+restart needed. The CLI process being healthy is necessary but
+not sufficient for the in-session tool surface.
+
 ## Conventions
 
 - Apache-2.0 license

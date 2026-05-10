@@ -4,7 +4,7 @@
  x-data="catalogTree()"
  x-init="load()"
  @htmx:after-swap.window="activePath = pathFromUrl()"
- @pql:recent-tables-changed.window="recents = $event.detail.items">
+ @pql:starred-changed.window="starred = $event.detail.items">
  <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
  <span class="text-uppercase small fw-semibold text-muted">Catalog{{ info('catalog.what-is-a-catalog') }}</span>
  <button class="btn btn-sm btn-link p-0 text-muted" @click="reload()" title="Refresh">
@@ -45,30 +45,29 @@
  </li>
  </ul>
 
- {# Recent tables, last five visits keyed by FQN.
- Items come from the localStorage writer in base.html and stay
- in sync via the pql:recent-tables-changed CustomEvent. #}
- <template x-if="recents && recents.length > 0">
+ {# Starred catalogs / schemas / tables.  Pinned via the star button
+    on the corresponding detail page; persisted in
+    workspace-namespaced localStorage; kept in sync via the
+    pql:starred-changed event. #}
+ <template x-if="starred && starred.length > 0">
  <div class="px-2 pt-2 pb-1 border-bottom">
  <div class="d-flex justify-content-between align-items-center mb-1">
- <span class="text-uppercase small fw-semibold text-muted">Recent</span>
- <button class="btn btn-link btn-sm p-0 text-muted small"
- @click="clearRecents()"
- title="Clear recent tables">
- Clear
- </button>
+ <span class="text-uppercase small fw-semibold text-muted">Starred</span>
  </div>
  <ul class="list-unstyled mb-0">
- <template x-for="r in recents" :key="r.fqn">
+ <template x-for="s in starred" :key="starredKey(s)">
  <li>
- <a :href="'/catalogs/' + r.catalog + '/schemas/' + r.schema + '/tables/' + r.table"
+ <a :href="starredHref(s)"
  class="d-flex align-items-center gap-1 py-1 small text-decoration-none text-body"
- :title="r.fqn">
- <i class="bi bi-table flex-shrink-0"></i>
- <span class="text-truncate" x-text="r.table"></span>
- <span class="text-muted small ms-auto flex-shrink-0"
- style="font-size: 0.65rem;"
- x-text="r.schema + '.' + r.catalog"></span>
+ :title="starredFqn(s)">
+ <i class="bi flex-shrink-0"
+    :class="starredIcon(s)"></i>
+ <span class="text-truncate" x-text="starredLabel(s)"></span>
+ <template x-if="s.kind !== 'catalog'">
+   <span class="text-muted small ms-auto flex-shrink-0"
+         style="font-size: 0.65rem;"
+         x-text="starredQualifier(s)"></span>
+ </template>
  </a>
  </li>
  </template>
@@ -215,6 +214,18 @@
  <a :href="'/catalogs/' + c.name + '/schemas/' + s.name + '/tables/' + t.name" class="pql-tree-label">
  <i class="bi bi-table"></i>
  <span class="text-truncate" x-text="t.name"></span>
+ <span class="ms-auto d-inline-flex gap-1 flex-shrink-0">
+ <template x-if="isDbtTable(c, s, t)">
+ <span class="badge bg-light text-muted"
+ style="font-size: 0.55rem;"
+ title="Materialized by dbt">dbt</span>
+ </template>
+ <template x-if="isMlTable(c, s, t)">
+ <span class="badge bg-info text-dark"
+ style="font-size: 0.55rem;"
+ title="ML-model output">ml</span>
+ </template>
+ </span>
  </a>
  </div>
  </li>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}{{ branch_schema_fqn }} · Branch · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -209,7 +210,7 @@
                 <tbody>
                     {% for entry in audit_log %}
                     <tr>
-                        <td data-label="When" class="ps-3 small text-muted font-monospace">{{ entry.created_at[:19] }}</td>
+                        <td data-label="When" class="ps-3 small">{{ relative_time(entry.created_at) }}</td>
                         <td data-label="Action"><code>{{ entry.action }}</code></td>
                         <td data-label="Run" class="font-monospace small">
                             {% if entry.run_id %}

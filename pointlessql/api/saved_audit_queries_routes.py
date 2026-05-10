@@ -355,3 +355,40 @@ async def html_audit_queries(
             "active_table": None,
         },
     )
+
+
+@router.get("/audit/queries/{slug}", response_class=HTMLResponse)
+async def html_audit_query_detail(request: Request, slug: str) -> HTMLResponse:
+    """Render one saved query as a dedicated read-page.
+
+    Cards on ``/audit/queries`` link here so the user can read the
+    full markdown briefing without the cockpit's split-pane editor.
+    The detail page exposes the same Run / CSV / JSON / Open-in-
+    editor actions but with the description front and centre.
+
+    Args:
+        request: FastAPI request.
+        slug: URL-visible identifier of the saved query.
+
+    Returns:
+        Rendered ``pages/saved_audit_query_detail.html``.
+
+    Raises:
+        ResourceNotFoundError: When *slug* does not match any saved
+            query.
+    """
+    require_admin(request)
+    row = svc.get_by_slug(request.app.state.session_factory, slug)
+    if row is None:
+        raise ResourceNotFoundError(f"Saved audit query not found: {slug}")
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/saved_audit_query_detail.html",
+        {
+            "query": row,
+            "active_page": "audit",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )

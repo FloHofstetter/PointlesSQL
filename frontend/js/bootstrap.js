@@ -43,14 +43,20 @@ import './permission_link.js';
 // tabs back via history.replaceState.  Idempotent on pages without
 // tabs.
 import './tab_sync.js';
+// Read-only CodeMirror viewer for static SQL blocks (saved-query
+// detail page etc.).  Self-mounts on ``.pql-sql-viewer`` elements
+// and re-runs on ``htmx:afterSwap`` so HTMX-injected fragments
+// pick up the same syntax highlighting as the editor.
+import './sql_viewer.js';
 
 // Pure utility helpers — no Alpine factories, but used directly from
 // templates as ``x-text="pqlRelativeTime(iso)"`` etc.
-import { pqlParseServerIso, pqlRelativeTime } from './relative_time.js';
+import { pqlParseServerIso, pqlRelativeTime, pqlAbsTime } from './relative_time.js';
 import { pqlHumanizeCron } from './humanize_cron.js';
 
 window.pqlParseServerIso = pqlParseServerIso;
 window.pqlRelativeTime = pqlRelativeTime;
+window.pqlAbsTime = pqlAbsTime;
 window.pqlHumanizeCron = pqlHumanizeCron;
 
 // Inline-editor factories.
@@ -149,6 +155,10 @@ import { volumeDetail } from './pages/volume_detail.js';
 import { notebookWorkspace } from './pages/notebooks_workspace.js';
 import { tablePreview } from './pages/table_preview.js';
 import { catalogTree, pathFromUrl } from './pages/catalog_tree.js';
+import { dbtSchemaContext } from './pages/dbt_schema_context.js';
+import { dbtTableContext } from './pages/dbt_table_context.js';
+import { mlflowCockpit } from './pages/mlflow_cockpit.js';
+import { mlTableContext } from './pages/ml_table_context.js';
 
 // Per-section context-panel factories.  Each replaces a static link
 // list in components/context_panel.html with a navigable,
@@ -167,6 +177,10 @@ window.notebookWorkspace = notebookWorkspace;
 window.tablePreview = tablePreview;
 window.catalogTree = catalogTree;
 window.pathFromUrl = pathFromUrl;
+window.dbtSchemaContext = dbtSchemaContext;
+window.dbtTableContext = dbtTableContext;
+window.mlflowCockpit = mlflowCockpit;
+window.mlTableContext = mlTableContext;
 window.runsSidebar = runsSidebar;
 window.branchesSidebar = branchesSidebar;
 window.workspaceSidebar = workspaceSidebar;

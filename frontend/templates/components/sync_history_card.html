@@ -1,3 +1,4 @@
+{% from "_macros/timestamps.html" import relative_time %}
 {#
   Sync history card for a foreign catalog.
 
@@ -64,8 +65,8 @@
                         <span class="badge bg-secondary">{{ run.status }}</span>
                         {% endif %}
                     </td>
-                    <td class="small">{{ run.started_at.strftime("%Y-%m-%d %H:%M UTC") if run.started_at else "—" }}</td>
-                    <td class="small">{{ run.finished_at.strftime("%Y-%m-%d %H:%M UTC") if run.finished_at else "—" }}</td>
+                    <td class="small">{{ relative_time(run.started_at.isoformat() if run.started_at else None) }}</td>
+                    <td class="small">{{ relative_time(run.finished_at.isoformat() if run.finished_at else None) }}</td>
                     <td class="text-end font-monospace">{{ run.added_count }}</td>
                     <td class="text-end font-monospace">{{ run.changed_count }}</td>
                     <td class="text-end font-monospace">{{ run.dropped_count }}</td>

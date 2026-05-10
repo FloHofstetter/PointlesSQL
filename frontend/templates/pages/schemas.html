@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time_epoch %}
+{% from "_macros/metadata.html" import section_header, copyable, copyable_id, owner_cell %}
 {% block title %}{{ catalog_name }} · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -8,12 +10,20 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-4">
+<div class="d-flex align-items-center gap-2 mb-4"
+     x-data='pqlStarToggle({kind: "catalog", name: {{ catalog_name|tojson }}})'>
     <i class="bi bi-folder2 fs-3"></i>
     <h1 class="h3 mb-0">{{ catalog_name }}</h1>
     {% if catalog and catalog.connection_name %}
     <span class="badge bg-info text-dark ms-2">FOREIGN</span>
     {% endif %}
+    <button type="button"
+            class="btn btn-sm btn-link p-0 ms-2 text-warning"
+            @click="toggle()"
+            :title="starred ? 'Unstar this catalog' : 'Star this catalog (pin to sidebar)'"
+            :aria-label="starred ? 'Unstar this catalog' : 'Star this catalog'">
+        <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
+    </button>
 </div>
 
 {% if error %}
@@ -21,38 +31,68 @@
     <i class="bi bi-exclamation-triangle me-1"></i>{{ error }}
 </div>
 {% elif catalog %}
-<div class="card">
-    <div class="card-header">Metadata</div>
+{% set _has_storage = catalog.storage_root or catalog.storage_location %}
+<div class="card mb-3">
+    <div class="card-header d-flex align-items-center">
+        <i class="bi bi-info-circle me-2"></i>
+        <span>Metadata</span>
+    </div>
     <div class="card-body">
-        <dl class="row mb-0">
-            <dt class="col-sm-3 text-muted">Name</dt>
-            <dd class="col-sm-9 font-monospace">{{ catalog.name }}</dd>
+        <div class="mb-3 pb-3 border-bottom">
+            {{ section_header('bi-card-text', 'Description') }}
+            {% with patch_url="/api/catalogs/" ~ catalog.name, field="comment", value=catalog.comment, placeholder="Click to add a description" %}
+                {% include "components/editable.html" %}
+            {% endwith %}
+        </div>
 
-            <dt class="col-sm-3 text-muted">Comment</dt>
-            <dd class="col-sm-9">
-                {% with patch_url="/api/catalogs/" ~ catalog.name, field="comment", value=catalog.comment, placeholder="Click to add comment" %}
-                    {% include "components/editable.html" %}
-                {% endwith %}
-            </dd>
+        <div class="row g-4 {% if _has_storage %}mb-3 pb-3 border-bottom{% endif %}">
+            <div class="col-md-6">
+                {{ section_header('bi-fingerprint', 'Identity') }}
+                <dl class="mb-0 small">
+                    <dt class="text-muted fw-normal">Name</dt>
+                    <dd class="font-monospace mb-2">{{ catalog.name }}</dd>
 
-            <dt class="col-sm-3 text-muted">Owner</dt>
-            <dd class="col-sm-9">{{ catalog.owner or "—" }}</dd>
+                    <dt class="text-muted fw-normal">Catalog ID</dt>
+                    <dd class="mb-0">{{ copyable_id(catalog.id, 'catalog ID') }}</dd>
+                </dl>
+            </div>
 
-            <dt class="col-sm-3 text-muted">ID</dt>
-            <dd class="col-sm-9 font-monospace small">{{ catalog.id or "—" }}</dd>
+            <div class="col-md-6">
+                {{ section_header('bi-clock-history', 'Lifecycle') }}
+                <dl class="mb-0 small">
+                    <dt class="text-muted fw-normal">Owner</dt>
+                    <dd class="mb-2">{{ owner_cell(catalog.owner) }}</dd>
 
-            <dt class="col-sm-3 text-muted">Created</dt>
-            <dd class="col-sm-9">{{ catalog.created_at|epoch_ms }}{% if catalog.created_by %} by {{ catalog.created_by }}{% endif %}</dd>
+                    <dt class="text-muted fw-normal">Created</dt>
+                    <dd class="mb-2">
+                        {{ relative_time_epoch(catalog.created_at, klass="") }}
+                        {%- if catalog.created_by %} <span class="text-muted">by {{ catalog.created_by }}</span>{% endif %}
+                    </dd>
 
-            <dt class="col-sm-3 text-muted">Updated</dt>
-            <dd class="col-sm-9">{{ catalog.updated_at|epoch_ms }}{% if catalog.updated_by %} by {{ catalog.updated_by }}{% endif %}</dd>
+                    <dt class="text-muted fw-normal">Updated</dt>
+                    <dd class="mb-0">
+                        {{ relative_time_epoch(catalog.updated_at, klass="") }}
+                        {%- if catalog.updated_by %} <span class="text-muted">by {{ catalog.updated_by }}</span>{% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
 
-            <dt class="col-sm-3 text-muted">Storage root</dt>
-            <dd class="col-sm-9 font-monospace small">{{ catalog.storage_root or "—" }}</dd>
-
-            <dt class="col-sm-3 text-muted">Storage location</dt>
-            <dd class="col-sm-9 font-monospace small">{{ catalog.storage_location or "—" }}</dd>
-        </dl>
+        {% if _has_storage %}
+        <div>
+            {{ section_header('bi-hdd', 'Storage') }}
+            <dl class="mb-0 small">
+                {% if catalog.storage_root %}
+                <dt class="text-muted fw-normal">Storage root</dt>
+                <dd class="mb-2">{{ copyable(catalog.storage_root, 'storage root') }}</dd>
+                {% endif %}
+                {% if catalog.storage_location %}
+                <dt class="text-muted fw-normal">Storage location</dt>
+                <dd class="mb-0">{{ copyable(catalog.storage_location, 'storage location') }}</dd>
+                {% endif %}
+            </dl>
+        </div>
+        {% endif %}
     </div>
 </div>
 

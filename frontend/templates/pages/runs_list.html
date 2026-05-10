@@ -76,15 +76,17 @@
  data-sort-cost="{{ run.cost_est or 0 }}"
  data-sort-started_at="{{ run.started_at or '' }}"
  >
- <td data-label="ID"><a href="/runs/{{ run.id }}"
+ <td data-label="ID" class="text-nowrap"><a href="/runs/{{ run.id }}"
  class="text-decoration-none font-monospace small"
  title="{{ run.id|format_uuid }}">{{ run.id[:8] }}</a></td>
- <td data-label="Principal">{{ truncate_cell(run.principal or "—", max=40) }}</td>
- <td data-label="Agent">{{ truncate_cell(run.agent_id or "—", max=40) }}</td>
- <td data-label="Status">
+ <td data-label="Principal" class="text-truncate small" style="max-width: 14rem;"
+ title="{{ run.principal or '—' }}">{{ run.principal or "—" }}</td>
+ <td data-label="Agent" class="text-truncate small" style="max-width: 12rem;"
+ title="{{ run.agent_id or '—' }}">{{ run.agent_id or "—" }}</td>
+ <td data-label="Status" class="text-nowrap">
  <span class="badge {{ status_class(run.status) }}">{{ run.status }}</span>
  </td>
- <td data-label="Anomaly">
+ <td data-label="Anomaly" class="text-nowrap">
  {% if run.anomaly_severity == 'critical' %}
  <span class="badge bg-danger" title="{{ run.anomaly_metric or '' }}">critical</span>
  {% elif run.anomaly_severity == 'warn' %}
@@ -95,13 +97,19 @@
  <span class="text-muted small">—</span>
  {% endif %}
  </td>
- <td data-label="Cost est." class="font-monospace small text-muted">
+ <td data-label="Cost est." class="font-monospace small text-muted text-end text-nowrap">
  {% if run.cost_est is not none %}{{ run.cost_est }}{% else %}—{% endif %}
  </td>
- <td data-label="Started" class="font-monospace small text-muted">{{ run.started_at or "—" }}</td>
- <td data-label="Tables touched">
+ <td data-label="Started" class="small text-muted text-nowrap"
+ x-data='{ iso: {{ (run.started_at or "")|tojson }} }'
+ x-text="iso ? pqlRelativeTime(iso) : '—'"
+ x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">
+ {{ run.started_at or "—" }}
+ </td>
+ <td data-label="Tables touched" class="text-truncate small font-monospace text-muted" style="max-width: 18rem;"
+ title="{{ run.tables_touched | join(', ') if run.tables_touched else '' }}">
  {% if run.tables_touched %}
- {{ truncate_cell(run.tables_touched | join(', '), max=80, klass="font-monospace small text-muted") }}
+ {{ run.tables_touched | join(', ') }}
  {% else %}
  <span class="text-muted">—</span>
  {% endif %}

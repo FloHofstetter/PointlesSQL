@@ -35,6 +35,13 @@
                 // to the static ``dark`` attribute on <html>.
             }
         })();
+        (function () {
+            try {
+                if (localStorage.getItem('pql.context-panel.collapsed') === '1') {
+                    document.documentElement.setAttribute('data-pql-panel-collapsed', '1');
+                }
+            } catch (e) {}
+        })();
     </script>
     <link rel="preload" href="/static/fonts/inter-regular.woff2" as="font" type="font/woff2" crossorigin>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -61,16 +68,16 @@
     'sql': 'sql',
     'queries': 'sql',
     'workspace': 'workspace',
-    'jobs': 'jobs',
+    'jobs': 'runs',
     'alerts': 'alerts',
     'volumes': 'federation',
     'dashboards': 'dashboards',
-    'branches': 'branches',
+    'branches': 'federation',
     'mlflow': 'mlflow',
     'models': 'federation',
     'data_products': 'data_products',
     'audit': 'audit',
-    'agent_reviews': 'reviews',
+    'agent_reviews': 'audit',
     'admin': 'admin',
     'admin_audit': 'admin',
 } %}
@@ -188,6 +195,15 @@
         <main class="pql-content {% block content_class %}{% endblock %}"
               id="main-content"
               data-active-section="{{ active_section }}">
+            {% if not hide_sidebar %}
+            <button type="button"
+                    class="pql-panel-toggle"
+                    aria-label="Toggle side panel"
+                    title="Toggle side panel"
+                    data-pql-panel-toggle="toggle">
+                <i class="bi bi-chevron-double-left"></i>
+            </button>
+            {% endif %}
             {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
         </main>
@@ -374,6 +390,32 @@
                 });
         })();
     </script>
+    <script>
+        (function () {
+            const root = document.documentElement;
+            const KEY = 'pql.context-panel.collapsed';
+            function setCollapsed(flag) {
+                if (flag) {
+                    root.setAttribute('data-pql-panel-collapsed', '1');
+                } else {
+                    root.removeAttribute('data-pql-panel-collapsed');
+                }
+                try {
+                    if (flag) localStorage.setItem(KEY, '1');
+                    else localStorage.removeItem(KEY);
+                } catch (e) {}
+            }
+            document.addEventListener('click', function (ev) {
+                const btn = ev.target.closest('[data-pql-panel-toggle]');
+                if (!btn) return;
+                ev.preventDefault();
+                const mode = btn.dataset.pqlPanelToggle;
+                if (mode === 'collapse') setCollapsed(true);
+                else if (mode === 'expand') setCollapsed(false);
+                else setCollapsed(!root.hasAttribute('data-pql-panel-collapsed'));
+            });
+        })();
+    </script>
     <!-- toast.js + api.js are ES modules imported by bootstrap.js
          (loaded as <script type="module"> further up the body).
          bootstrap.js re-attaches the singletons to
@@ -459,6 +501,62 @@
     })();
     </script>
     {% endif %}
+    <script>
+    // Starred-items Alpine factory.  Reusable x-data wrapping
+    // a star-toggle button on catalog / schema / table detail pages.
+    // Stored in workspace-namespaced ``pql.starred.<slug>`` as a
+    // mixed-kind array; sidebar reads the same array and renders
+    // the appropriate icon + URL per kind.  Broadcasts
+    // ``pql:starred-changed`` so the open sidebar picks up changes
+    // without a hard reload.
+    //
+    // payload shape:
+    //   { kind: 'catalog', name }
+    //   { kind: 'schema',  catalog, schema }
+    //   { kind: 'table',   catalog, schema, table }
+    window.pqlStarKey = function (item) {
+        if (!item || !item.kind) return '';
+        if (item.kind === 'catalog') return 'cat:' + item.name;
+        if (item.kind === 'schema') return 'sch:' + item.catalog + '.' + item.schema;
+        if (item.kind === 'table') return 'tbl:' + item.catalog + '.' + item.schema + '.' + item.table;
+        return '';
+    };
+    window.pqlStarToggle = function (payload) {
+        const slugMeta = document.querySelector('meta[name="workspace-slug"]');
+        const slug = slugMeta && slugMeta.content ? slugMeta.content : 'default';
+        const KEY = 'pql.starred.' + slug;
+        const myKey = window.pqlStarKey(payload);
+        function read() {
+            try {
+                const raw = localStorage.getItem(KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) { return []; }
+        }
+        function write(items) {
+            try {
+                localStorage.setItem(KEY, JSON.stringify(items));
+                window.dispatchEvent(new CustomEvent(
+                    'pql:starred-changed', {detail: {items}}
+                ));
+            } catch (e) {}
+        }
+        return {
+            starred: read().some(i => window.pqlStarKey(i) === myKey),
+            toggle() {
+                let items = read();
+                if (items.some(i => window.pqlStarKey(i) === myKey)) {
+                    items = items.filter(i => window.pqlStarKey(i) !== myKey);
+                    this.starred = false;
+                } else {
+                    items.unshift(Object.assign({ ts: Date.now() }, payload));
+                    this.starred = true;
+                }
+                write(items);
+            },
+        };
+    };
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

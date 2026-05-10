@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.models import User
+from pointlessql.models.workspaces import WorkspaceMember
 from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
@@ -158,15 +159,34 @@ def register(
     first_user = is_first_user(factory)
 
     with factory() as session:
+        now = datetime.datetime.now(datetime.UTC)
         user = User(
             email=email,
             display_name=display_name.strip(),
             password_hash=hash_password(password),
             is_admin=first_user,
-            created_at=datetime.datetime.now(datetime.UTC),
+            created_at=now,
+            default_workspace_id=1,
         )
         try:
             session.add(user)
+            session.flush()
+            # Workspace membership for the seeded ``default`` workspace
+            # (id=1).  The middleware's ``X-Workspace`` enforcement
+            # requires an explicit ``workspace_members`` row — the
+            # ``users.default_workspace_id`` pointer alone is not
+            # membership.  HTMX-boosted clicks send the slug as a header
+            # on every nav, so a missing membership row 403s every
+            # boosted link.  Role mirrors ``is_admin`` so first-user
+            # gets workspace-admin rights too.
+            session.add(
+                WorkspaceMember(
+                    workspace_id=1,
+                    user_id=user.id,
+                    role="admin" if first_user else "member",
+                    created_at=now,
+                )
+            )
             session.commit()
             session.refresh(user)
             logger.info(
@@ -176,9 +196,11 @@ def register(
                 first_user,
             )
             return user
-        except IntegrityError:
+        except IntegrityError as exc:
             session.rollback()
-            logger.warning("Registration failed: email already exists (%s)", email)
+            logger.warning(
+                "Registration failed (email=%s): %s", email, exc.orig
+            )
             return None
 
 

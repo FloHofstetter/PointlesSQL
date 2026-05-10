@@ -52,9 +52,13 @@ def starter_rows(dialect_name: str) -> list[dict[str, object]]:
             "slug": "pii-writes-last-90d",
             "title": "PII writes — last 90 days",
             "description": (
-                "Every value-change row touching a column whose name "
-                "contains 'pii'.  Use the row-trace UI to drill into a "
-                "specific row.  Compliance: GDPR Art. 30 evidence."
+                "Every `lineage_value_changes` row whose `target_column` "
+                "contains the substring `pii` over the last 90 days.\n\n"
+                "**When to use:**\n\n"
+                "- GDPR Art. 30 evidence — show every PII mutation in a "
+                "compliance window.\n"
+                "- Investigate after a data-protection incident; pivot "
+                "into the row-trace UI from any returned `run_id`.\n"
             ),
             "sql_text": (
                 "SELECT vc.run_id, vc.op_id, vc.target_table, vc.target_column,"
@@ -70,9 +74,13 @@ def starter_rows(dialect_name: str) -> list[dict[str, object]]:
             "slug": "rollbacks-last-quarter",
             "title": "Rollbacks — last 90 days",
             "description": (
-                "Every pql.rollback operation in the last quarter, with "
-                "the principal who triggered the run.  Use this to spot "
-                "patterns of repeated rollbacks against the same target."
+                "Every `pql.rollback` operation in the last quarter, "
+                "with the principal who triggered it and the Delta "
+                "version range.\n\n"
+                "Patterns of repeated rollbacks against the same "
+                "`target_table` are a good signal that an upstream "
+                "agent prompt is unstable — flag those for the audit "
+                "reviewer."
             ),
             "sql_text": (
                 "SELECT r.id AS run_id, r.principal, r.agent_id,"
@@ -89,9 +97,11 @@ def starter_rows(dialect_name: str) -> list[dict[str, object]]:
             "slug": "cost-gate-denials-this-week",
             "title": "Cost-gate denials — this week",
             "description": (
-                "Runs that the EXPLAIN cost gate denied.  The "
-                "cost_gate_trigger column carries the engine's verdict "
-                "as JSON for the ones with a row."
+                "Runs the EXPLAIN cost gate **denied** in the last 7 "
+                "days. The `cost_gate_trigger` column carries the "
+                "engine's verdict as JSON.\n\n"
+                "Pair with the `runs/<id>/operations` tab to see which "
+                "specific operation hit the gate."
             ),
             "sql_text": (
                 "SELECT id, principal, agent_id, notebook_path, status,"
@@ -107,8 +117,11 @@ def starter_rows(dialect_name: str) -> list[dict[str, object]]:
             "slug": "unacknowledged-external-writes",
             "title": "Unacknowledged external writes",
             "description": (
-                "Delta-log commits that no agent_run_operations row "
-                "claims, still waiting for admin triage."
+                "Delta-log commits that **no `agent_run_operations` "
+                "row claims** — still waiting for admin triage.\n\n"
+                "These should be empty in steady state. Non-empty "
+                "rows mean either an out-of-band Spark/notebook "
+                "write or a missing audit hook on a new write path."
             ),
             "sql_text": (
                 "SELECT id, table_fqn, delta_version, commit_timestamp, detected_at\n"
@@ -121,9 +134,12 @@ def starter_rows(dialect_name: str) -> list[dict[str, object]]:
             "slug": "top-mutating-principals-30d",
             "title": "Top mutating principals — last 30 days",
             "description": (
-                "Sum of rows written via merge / write_table per "
-                "principal.  Mirror of the same panel in the Sprint "
-                "19.0 Grafana dashboard."
+                "Sum of `rows_affected` from `merge` and `write_table` "
+                "ops, grouped by `principal`, over the last 30 days. "
+                "Top 20.\n\n"
+                "Mirrors the same panel in the Grafana dashboard, but "
+                "in SQL so you can pivot into specific runs without "
+                "leaving the cockpit."
             ),
             "sql_text": (
                 "SELECT COALESCE(r.principal, '<unknown>') AS principal,"

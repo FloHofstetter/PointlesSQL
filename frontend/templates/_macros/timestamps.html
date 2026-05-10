@@ -1,0 +1,71 @@
+{#
+   Centralised datetime renderers (PointlesSQL date-display
+   convention).
+
+   Two-tier display:
+
+   * ``relative_time(iso)`` — visible: "2 hours ago" / "3 days
+     ago" / "2026-04-17" (≥30d).  Tooltip: full UTC timestamp.
+     Default for tables, lists, activity feeds.
+   * ``abs_time(iso)`` — visible: "2026-05-08 14:32 UTC".  No
+     tooltip.  Use on detail pages where the exact moment matters.
+
+   Both render an Alpine ``x-data`` block that calls the
+   ``window.pql{Relative,Abs}Time`` helpers (loaded once via
+   ``bootstrap.js``).  Server-rendered fallback shows the raw ISO
+   so non-JS environments still see something.
+
+   Why client-side rather than a Jinja filter: the relative string
+   must be computed against ``Date.now()`` and cannot be precomputed
+   server-side without going stale.  The absolute formatter mirrors
+   ``pqlAbsTime`` so both surfaces share one parser
+   (``pqlParseServerIso``) and one timezone handling rule.
+
+   Usage::
+
+       {% from "_macros/timestamps.html" import relative_time, abs_time %}
+       <td>{{ relative_time(run.started_at) }}</td>
+       <dd>{{ abs_time(run.created_at) }}</dd>
+
+   Both accept the optional ``klass`` argument to override the
+   wrapper's CSS classes (default ``"text-muted small"``).
+#}
+
+{%- macro relative_time(iso, klass="text-muted small") -%}
+{%- if iso -%}
+<span class="{{ klass }}"
+      x-data='{ iso: {{ iso|tojson }} }'
+      x-text="pqlRelativeTime(iso)"
+      x-bind:title="pqlAbsTime(iso)">{{ iso }}</span>
+{%- else -%}
+<span class="{{ klass }}">—</span>
+{%- endif -%}
+{%- endmacro %}
+
+{%- macro abs_time(iso, klass="text-muted small font-monospace") -%}
+{%- if iso -%}
+<span class="{{ klass }}"
+      x-data='{ iso: {{ iso|tojson }} }'
+      x-text="pqlAbsTime(iso)">{{ iso }}</span>
+{%- else -%}
+<span class="{{ klass }}">—</span>
+{%- endif -%}
+{%- endmacro %}
+
+{#
+   Variants for Unity-Catalog epoch-millisecond timestamps.  UC
+   returns ints (e.g. ``1746540301234``) which the ``epoch_ms``
+   filter renders as a static absolute string; here we render the
+   same data as a relative-time span with the absolute string as
+   the tooltip, matching the ISO-string macros above.
+#}
+{%- macro relative_time_epoch(epoch_ms, klass="text-muted small") -%}
+{%- if epoch_ms -%}
+<span class="{{ klass }}"
+      x-data='{ iso: new Date({{ epoch_ms|int }}).toISOString() }'
+      x-text="pqlRelativeTime(iso)"
+      x-bind:title="pqlAbsTime(iso)">{{ epoch_ms|epoch_ms }}</span>
+{%- else -%}
+<span class="{{ klass }}">—</span>
+{%- endif -%}
+{%- endmacro %}

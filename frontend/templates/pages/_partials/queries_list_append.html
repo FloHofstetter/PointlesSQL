@@ -3,26 +3,21 @@
 
  Two-part swap:
 
- * Card ``<div class="col-...">`` blocks below stream into
-   ``#queries-grid`` via the button's own ``hx-target`` +
-   ``beforeend`` settings.
+ * Table ``<tr>`` rows below stream into ``#queries-tbody`` via the
+   button's own ``hx-target`` + ``beforeend`` settings.
  * ``#queries-pager`` further down replaces the Load-More CTA with
    an updated copy via ``hx-swap-oob="true"`` so the next click
    points at the next ``offset``.
-
- highlight.js picks up the appended ``<code class="language-sql">``
- nodes via the ``htmx:afterSwap`` listener registered in
- ``frontend/js/sql_highlight.js``.
 #}
 {% for entry in entries %}
-{% include "pages/_partials/_query_card.html" %}
+{% include "pages/_partials/_query_row.html" %}
 {% endfor %}
 
 <div id="queries-pager" hx-swap-oob="true" class="d-flex justify-content-center align-items-center gap-3 my-3">
   {% if next_offset is not none %}
   <button class="btn btn-outline-secondary btn-sm"
           hx-get="/queries?offset={{ next_offset }}{% if read_kind_filter %}&read_kind={{ read_kind_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if since_filter %}&since={{ since_filter }}{% endif %}{% if agent_run_filter %}&agent_run_id={{ agent_run_filter }}{% endif %}"
-          hx-target="#queries-grid"
+          hx-target="#queries-tbody"
           hx-swap="beforeend">
     <i class="bi bi-arrow-down-circle me-1"></i>
     Load {{ row_limit }} more · {{ remaining }} remaining

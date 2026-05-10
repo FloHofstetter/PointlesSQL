@@ -26,7 +26,6 @@ All notable changes to this project will be documented in this file.
   one macro call each; user-menu admin badge stays unchanged
   (status indicator, not a link).
 
-
 - **Phase 63 — Writeable SQL Editor (AST-dispatch refactor) ✅
   closed (2026-05-10).**  Turns the SELECT-only SQL editor into
   an AST-classifying dispatcher that routes each statement
@@ -164,6 +163,121 @@ All notable changes to this project will be documented in this file.
   trail as Hermes-driven writes and the scanner correctly
   skips them as attributed.
 
+- **Phase 62 — MLflow slim-down + catalog hand-off ✅ closed
+  (2026-05-09).**  Symmetric application of the Phase-61 dbt
+  pattern to MLflow.  Both embedded MLflow iframes (the `/ml`
+  rail page and the model-detail "MLflow" tab) removed; `/ml`
+  becomes a slim cockpit (Recent model registrations + Recent
+  training runs + "Open in MLflow UI" external link), and the
+  truly integrative pieces (which UC tables are model-prediction
+  destinations, which recent registrations live in a given
+  schema) hoist into the catalog flow.  Subprocess + reverse-
+  proxy stay alive so the deep-links still resolve.
+
+  - 62.F-Server-1:
+    ``pointlessql/services/models_lineage.py`` gains
+    ``aggregate_table_ml_relations()`` — single-query reverse
+    index over ``lineage_row_edges.source_model_uri``,
+    grouped by ``(target_table, source_model_uri)`` and parsed
+    through ``models:/<full>/<version>``.  Exposed via the new
+    ``GET /api/ml/table-relations?catalog=&schema=`` route in
+    ``pointlessql/api/models_routes.py`` — analog of
+    ``/api/dbt/manifest`` for the dbt side.  One pytest case
+    in ``tests/test_models_lineage.py`` covers grouping +
+    catalog/schema scoping.  Phase-62 reverse index covers only
+    the *scoring* direction; "trained from this table"
+    attribution would need a soyuz cross-reference per request
+    and is deferred.
+  - 62.A: ``frontend/templates/pages/mlflow.html`` — drop
+    iframe + the inline "MLflow not running" alert (hoisted to
+    a top-level card).  Header gains an "Open in MLflow UI"
+    external button when subprocess is running.  Body becomes
+    two cockpit cards driven by the new
+    ``frontend/js/pages/mlflow_cockpit.js`` Alpine factory:
+    Recent model registrations (10 latest from ``/api/models``)
+    + Recent training runs (5 latest agent_runs filtered
+    client-side by ``mlflow_run_id``).
+    ``pointlessql/api/agent_runs_routes/_serializers.py``
+    adds ``mlflow_run_id`` to the run-serialization output so
+    the cockpit can filter + render deep-links.
+  - 62.B: ``frontend/templates/pages/model.html`` — drop the
+    iframe-bearing 4th tab ("MLflow") entirely; page is now
+    4 tabs (Overview / Versions / Lineage / Promotion).
+    Header gains an "Open in MLflow UI" external button
+    deep-linking to the model registry.  Each Versions-table
+    row's ``mlflow_run_id`` cell is now a deep-link to
+    ``/mlflow/#/runs/<id>``.
+  - 62.C: ``frontend/js/pages/dbt_schema_context.js`` extended
+    with ML state (``mlAvailable``, ``mlModelByTable``,
+    ``mlModels``, ``mlModelsLoading``).  ``init()`` fans out two
+    parallel fetches (``/api/ml/table-relations`` scoped to the
+    schema + ``/api/models`` filtered by catalog/schema).
+    ``frontend/templates/pages/tables.html`` gains an inline
+    "ml" badge on table-name rows that are model-prediction
+    destinations (next to the existing dbt badge) plus a
+    "Recent ML registrations" mini-card after the dbt card.
+    Single-quoted Alpine attributes per BUG-64-01.
+  - 62.D: New ``frontend/js/pages/ml_table_context.js`` Alpine
+    factory (registered through ``bootstrap.js``).
+    ``frontend/templates/pages/table.html`` wraps the existing
+    ``dbtTableContext`` div in an outer ``mlTableContext`` div
+    and renders a ``<template x-if="hasMl">`` "ML models" card
+    next to the dbt card listing scoring models with edge
+    counts + deep-links to ``/mlflow/#/models/<full>/versions/<v>``.
+  - 62.E: ``frontend/js/pages/catalog_tree.js`` extended with
+    ``mlRelations: Set`` + ``isMlTable(c, s, t)`` helper,
+    populated via ``fetchMlRelations()`` in ``load()``.
+    ``frontend/templates/components/sidebar.html`` table loop
+    wraps both pills in a single ``ms-auto`` flex container so
+    dbt + ml badges sit side-by-side without layout breakage.
+  - All five surfaces silently no-op on installs without
+    inference edges (empty response from ``/api/ml/table-relations``
+    → empty ``mlRelations`` / no badge).  Only one new Python
+    route; everything else reuses the existing ``/api/models/*``
+    + ``/api/runs`` endpoints client-side.  No DB-schema
+    changes — all data lives in
+    ``lineage_row_edges.source_model_uri`` (Phase 21.7).
+
+- **Phase 61 — dbt tab slim-down + catalog hand-off ✅ closed
+  (2026-05-09).**  Embedded dbt-docs iframe removed and the
+  truly integrative pieces (which UC tables are dbt-managed,
+  recent dbt runs while browsing the catalog) hoisted into the
+  catalog flow.  Subprocess + reverse-proxy stay alive so the
+  new "Open dbt-docs" external-tab link still resolves.
+  Established the pattern: **link out for tool-internal
+  features, keep cross-tool integrative views first-class** —
+  applies symmetrically to MLflow next.
+
+  - 61.A: ``frontend/templates/pages/dbt.html`` — drop "Pipeline
+    docs" tab + iframe; default-active flips to "Recent runs"
+    (auto-loads); header-row "Open dbt-docs" external button
+    when subprocess is running; setup-instructions alert hoists
+    above the tab strip when subprocess isn't.
+  - 61.B: New ``frontend/js/pages/dbt_schema_context.js`` Alpine
+    factory (registered through ``bootstrap.js``).
+    ``frontend/templates/pages/tables.html`` (schema-detail)
+    gains an inline "dbt" badge on table rows that match a dbt
+    model (deep-links to ``/dbt-docs/#!/model/<unique_id>``)
+    plus a "Recent dbt runs" mini-card after the Tables card.
+    Quoting bug caught in browser playbook: outer ``x-if=""``
+    collided with ``|tojson`` double quotes; fixed by
+    single-quoting the Alpine attributes.
+  - 61.C: ``frontend/js/pages/catalog_tree.js`` extended with
+    ``dbtRelations: Set`` + ``isDbtTable(c, s, t)`` helper,
+    populated via ``fetchDbtManifest()`` in ``load()``.
+    ``frontend/templates/components/sidebar.html`` table loop
+    renders a tiny "dbt" pill in the tree.
+  - 61.D: New ``frontend/js/pages/dbt_table_context.js``
+    resolves the manifest model for the current table.
+    ``frontend/templates/pages/table.html`` gains a
+    ``<template x-if="dbtModel">`` card after Metadata showing
+    unique_id, materialization badge, test count, and an
+    "Open in dbt-docs" deep link.
+  - All four surfaces silently no-op on installs without a
+    dbt manifest (404 from ``/api/dbt/manifest`` → empty
+    ``dbtRelations`` / null ``dbtModel``).  No new Python
+    routes; everything reuses the existing ``/api/dbt/*``
+    endpoints client-side.
 
 - **Phase 59 — Comprehensive UX-tour quality sweep ✅ closed
   (2026-05-08).**  60 implementable findings (out of 71 total,

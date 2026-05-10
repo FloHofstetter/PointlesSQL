@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/help_icon.html" import info %}
+{% from "_macros/timestamps.html" import relative_time %}
 {% block title %}Audit review #{{ review.id }} · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [
@@ -57,7 +58,7 @@
             <ul class="list-group list-group-flush small">
                 <li class="list-group-item d-flex justify-content-between">
                     <span class="text-muted">Created</span>
-                    <span>{{ review.created_at[:19] }}Z</span>
+                    {{ relative_time(review.created_at) }}
                 </li>
                 <li class="list-group-item d-flex justify-content-between">
                     <span class="text-muted">Run ID</span>

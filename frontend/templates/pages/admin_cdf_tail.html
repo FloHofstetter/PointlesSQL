@@ -80,13 +80,14 @@
             </div>
         </form>
         <hr class="my-3">
-        <form method="post" action="/api/admin/cdf-subscriptions/run-now" hx-boost="false"
-              onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerText='Tailing…';">
-            <button type="submit" class="btn btn-outline-warning btn-sm">
-                <i class="bi bi-arrow-clockwise me-1"></i>Run tail now
-            </button>
-            <span class="text-muted small ms-2">Walks every active subscription; idempotent thanks to (table, version, row_id, change_type) UNIQUE.</span>
-        </form>
+        <button type="button" class="btn btn-outline-warning btn-sm"
+                hx-post="/api/admin/cdf-subscriptions/run-now"
+                hx-swap="none"
+                hx-on::before-request="this.disabled=true; this.innerText='Tailing…';"
+                hx-on::after-request="window.location.reload();">
+            <i class="bi bi-arrow-clockwise me-1"></i>Run tail now
+        </button>
+        <span class="text-muted small ms-2">Walks every active subscription; idempotent thanks to (table, version, row_id, change_type) UNIQUE.</span>
     </div>
 </div>
 
@@ -176,16 +177,16 @@
                             {% endif %}
                         </td>
                         <td class="pe-3 text-end">
-                            <form method="post" action="/api/admin/cdf-subscriptions/{{ s.id }}/toggle"
-                                  hx-boost="false" class="d-inline">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">
-                                    {% if s.is_active %}
-                                    <i class="bi bi-pause"></i> Pause
-                                    {% else %}
-                                    <i class="bi bi-play"></i> Resume
-                                    {% endif %}
-                                </button>
-                            </form>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    hx-post="/api/admin/cdf-subscriptions/{{ s.id }}/toggle"
+                                    hx-swap="none"
+                                    hx-on::after-request="window.location.reload();">
+                                {% if s.is_active %}
+                                <i class="bi bi-pause"></i> Pause
+                                {% else %}
+                                <i class="bi bi-play"></i> Resume
+                                {% endif %}
+                            </button>
                             <form method="post" action="/api/admin/cdf-subscriptions/{{ s.id }}"
                                   hx-boost="false" class="d-inline"
                                   data-cdf-tail-delete-form

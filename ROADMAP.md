@@ -5035,6 +5035,180 @@ PointlesSQL
 │           pyright / pydoclint clean on every new or modified
 │           file.  CHANGELOG, ROADMAP, memory updated.
 │
+├── Phase 62 — MLflow slim-down + catalog hand-off          ✅ done 2026-05-09
+│   │
+│   │   Symmetric application of the Phase-61 dbt pattern to
+│   │   MLflow.  Both embedded MLflow iframes (the ``/ml`` rail
+│   │   page and the model-detail "MLflow" tab) removed; ``/ml``
+│   │   becomes a slim cockpit (Recent model registrations +
+│   │   Recent training runs + "Open in MLflow UI" external
+│   │   link), and the truly integrative pieces — *which UC
+│   │   tables are model-prediction destinations, which recent
+│   │   registrations live in a given schema* — hoist into the
+│   │   catalog browsing flow.  Subprocess + reverse-proxy stay
+│   │   alive so the deep-links still resolve.  Phase-61
+│   │   "link out for tool-internal, keep cross-tool views
+│   │   first-class" pattern is now applied to both major
+│   │   external tools.
+│   │
+│   ├── Sprint 62.F-Server-1 — Reverse-index aggregator route ✅
+│   │       New ``aggregate_table_ml_relations()`` in
+│   │       ``pointlessql/services/models_lineage.py`` —
+│   │       single-query reverse index over
+│   │       ``lineage_row_edges.source_model_uri``, grouped by
+│   │       ``(target_table, source_model_uri)`` and parsed
+│   │       through the ``models:/<full>/<version>`` URI form.
+│   │       Exposed via ``GET /api/ml/table-relations?catalog=
+│   │       &schema=`` in ``pointlessql/api/models_routes.py``
+│   │       — analog of ``/api/dbt/manifest`` for the dbt side.
+│   │       Phase-62 reverse index covers only the *scoring*
+│   │       direction (``trained_models`` is always ``[]``);
+│   │       "trained from this table" attribution would need a
+│   │       soyuz cross-reference per request and is deferred.
+│   │       One pytest case in
+│   │       ``tests/test_models_lineage.py`` covers grouping +
+│   │       catalog/schema scoping.
+│   │
+│   ├── Sprint 62.A — Slim ``/ml`` cockpit page                ✅
+│   │       Removed iframe from
+│   │       ``frontend/templates/pages/mlflow.html``.  Header
+│   │       gains an "Open in MLflow UI" external-link button
+│   │       (visible only when ``mlflow_running``).  Body
+│   │       becomes two cockpit cards driven by the new
+│   │       ``frontend/js/pages/mlflow_cockpit.js`` Alpine
+│   │       factory: Recent model registrations (10 latest from
+│   │       ``/api/models``) + Recent training runs (5 latest
+│   │       agent_runs filtered client-side by
+│   │       ``mlflow_run_id``).  When MLflow isn't running the
+│   │       existing setup-instruction alert hoists above the
+│   │       cockpit so it stays visible.
+│   │       ``pointlessql/api/agent_runs_routes/_serializers.py``
+│   │       additively exposes ``mlflow_run_id`` so the cockpit
+│   │       can filter + render deep-links.
+│   │
+│   ├── Sprint 62.B — Drop Model-Detail "MLflow" tab           ✅
+│   │       Removed the iframe-bearing 4th tab from
+│   │       ``frontend/templates/pages/model.html`` (page is
+│   │       now 4 tabs: Overview / Versions / Lineage /
+│   │       Promotion).  Header gains an "Open in MLflow UI"
+│   │       external button deep-linking to the model registry
+│   │       page.  Each Versions-table row's ``mlflow_run_id``
+│   │       cell becomes a deep-link to ``/mlflow/#/runs/<id>``.
+│   │
+│   ├── Sprint 62.C — Schema-detail ML integration             ✅
+│   │       Existing ``frontend/js/pages/dbt_schema_context.js``
+│   │       extended with ML state (``mlAvailable``,
+│   │       ``mlModelByTable``, ``mlModels``,
+│   │       ``mlModelsLoading``).  ``init()`` fans out two
+│   │       parallel fetches (``/api/ml/table-relations``
+│   │       scoped to the schema + ``/api/models`` filtered by
+│   │       catalog/schema).  ``frontend/templates/pages/
+│   │       tables.html`` gains an inline "ml" badge on table-
+│   │       name rows that are model-prediction destinations
+│   │       (next to the existing dbt badge) plus a "Recent ML
+│   │       registrations" mini-card after the dbt card.
+│   │       Single-quoted Alpine attributes per BUG-64-01.
+│   │
+│   ├── Sprint 62.D — Table-detail ML model card               ✅
+│   │       New ``frontend/js/pages/ml_table_context.js``
+│   │       Alpine factory (registered through ``bootstrap.js``)
+│   │       fetches ``/api/ml/table-relations`` scoped to the
+│   │       table's catalog + schema and surfaces the matching
+│   │       entry's scoring_models list.  ``frontend/templates/
+│   │       pages/table.html`` wraps the existing
+│   │       ``dbtTableContext`` div in an outer
+│   │       ``mlTableContext`` div and renders a
+│   │       ``<template x-if="hasMl">`` "ML models" card next
+│   │       to the dbt card listing scoring models with edge
+│   │       counts + deep-links to ``/mlflow/#/models/<full>/
+│   │       versions/<v>``.
+│   │
+│   ├── Sprint 62.E — Catalog-tree ML pill (sidebar)           ✅
+│   │       ``frontend/js/pages/catalog_tree.js`` extended:
+│   │       ``mlRelations: Set`` + ``isMlTable(c, s, t)``
+│   │       helper, populated via ``fetchMlRelations()`` in
+│   │       ``load()``.  ``frontend/templates/components/
+│   │       sidebar.html`` table loop wraps both pills in a
+│   │       single ``ms-auto`` flex container so dbt + ml
+│   │       badges sit side-by-side without layout breakage.
+│   │
+│   └── Sprint 62.F-Close — Phase close                        ✅ this commit
+│           ROADMAP.md flipped, CHANGELOG entry, memory file
+│           ``project_dbt_handoff_phase.md`` amended with the
+│           Phase-62 follow-through (one pattern, two
+│           applications: dbt + MLflow).  Browser playbook
+│           replay applies to 62.C and 62.D
+│           (``feedback_run_playbook_as_gate``) since both
+│           touch ``x-data`` + ``|tojson``; ``/ml`` cockpit
+│           verified with seeded inference edges, the
+│           catalog-flow surfaces deferred to user-side replay
+│           (test account lacks USE CATALOG).
+│
+├── Phase 61 — dbt tab slim-down + catalog hand-off         ✅ done 2026-05-09
+│   │
+│   │   Post-Phase-59 follow-up after a UX exploration: drop
+│   │   the embedded dbt-docs iframe (it duplicated dbt-docs's
+│   │   own DAG/SQL/test-result UI) and surface the truly
+│   │   integrative bits — *which UC tables are dbt-materialised*
+│   │   — inside the catalog browsing flow.  Subprocess + reverse-
+│   │   proxy stay alive so the new "Open dbt-docs" external-tab
+│   │   link still resolves.  Established the pattern: link out
+│   │   for tool-internal features, keep cross-tool integrative
+│   │   views first-class in PointlesSQL.  MLflow gets the same
+│   │   treatment in a follow-up phase when the user confirms.
+│   │
+│   ├── Sprint 61.A — Slim ``/dbt`` cockpit page              ✅
+│   │       Removed "Pipeline docs" tab + iframe from
+│   │       ``frontend/templates/pages/dbt.html``.  Default-
+│   │       active becomes "Recent runs"; on-load fetch wires up
+│   │       so the table populates without a tab click.  Added
+│   │       header-row "Open dbt-docs" external-link button
+│   │       (visible only when ``dbt_running``).  When dbt-docs
+│   │       isn't running the existing setup-instruction alert
+│   │       hoists above the tab strip so it stays visible
+│   │       regardless of the active tab.
+│   │
+│   ├── Sprint 61.B — Schema-detail dbt integration           ✅
+│   │       New ``frontend/js/pages/dbt_schema_context.js``
+│   │       Alpine factory (registered through ``bootstrap.js``)
+│   │       fetches ``/api/dbt/manifest`` once + ``/api/dbt/runs?
+│   │       limit=5``.  ``frontend/templates/pages/tables.html``
+│   │       (the schema-detail page) gains an inline "dbt" badge
+│   │       on table rows that match a dbt model (deep-link to
+│   │       ``/dbt-docs/#!/model/<unique_id>``) plus a "Recent
+│   │       dbt runs" mini-card after the Tables card.  Both
+│   │       silently absent when no manifest is loaded.
+│   │       Quoting bug caught in browser playbook: outer
+│   │       ``x-if=""`` collided with ``|tojson`` double quotes;
+│   │       fixed by single-quoting the Alpine attributes.
+│   │
+│   ├── Sprint 61.C — Catalog-tree dbt badge (sidebar)        ✅
+│   │       ``frontend/js/pages/catalog_tree.js`` extended:
+│   │       ``dbtRelations: Set`` + ``isDbtTable(c, s, t)``
+│   │       helper, populated via ``fetchDbtManifest()`` in
+│   │       ``load()``.  ``frontend/templates/components/
+│   │       sidebar.html`` table loop renders a tiny "dbt" pill
+│   │       inside the tree row when matched.  No badge / no
+│   │       error on installs without a manifest.
+│   │
+│   ├── Sprint 61.D — Table-detail dbt-model card             ✅
+│   │       New ``frontend/js/pages/dbt_table_context.js``
+│   │       resolves the manifest model for the current table
+│   │       (relation_name OR database/schema/name triple, mirror
+│   │       of ``_node_relation_name`` server-side).
+│   │       ``frontend/templates/pages/table.html`` gains a
+│   │       ``<template x-if="dbtModel">`` card after the
+│   │       Metadata card showing unique_id, materialization
+│   │       badge, test count, and an "Open in dbt-docs" deep
+│   │       link.  Existing tabs (Overview / Columns / Lineage
+│   │       / etc.) untouched.
+│   │
+│   └── Sprint 61.E — Phase close                             ✅ this commit
+│           ROADMAP.md flipped, CHANGELOG entry, memory file
+│           ``project_dbt_handoff_phase.md``.  Browser playbook
+│           replay used as gate (``feedback_run_playbook_as_gate``)
+│           since 61.B and 61.D both touch ``x-data`` + ``|tojson``.
+│
 ├── Phase 59 — Comprehensive UX-tour quality sweep         ✅ done 2026-05-08
 │   │
 │   │   Post-Phase-58 headed-Playwright tour through 8 thematic
