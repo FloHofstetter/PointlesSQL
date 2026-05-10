@@ -1,8 +1,8 @@
-"""ORM models for catalog metadata: queries, dashboards, recents, autoload, data products.
+"""ORM models for catalog metadata: queries, dashboards, recents, autoload, data products, sync.
 
-Four flat sibling modules consolidated into one
+Five flat sibling modules consolidated into one
 ``pointlessql.models.catalog`` package whose ``__init__.py``
-re-exports the 10 public symbols.
+re-exports the 11 public symbols.
 
 Layout:
 
@@ -16,6 +16,8 @@ Layout:
 * ``_data_products``  — :class:`DataProduct`,
                         :class:`DataProductContractEvent`
                         + ``CONTRACT_EVENT_OUTCOMES`` constant.
+* ``_sync``           — :class:`SyncRun` (foreign-catalog sync run
+                        history).
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from pointlessql.models.catalog._metadata import (
     TableStats,
 )
 from pointlessql.models.catalog._recents import RecentTable
+from pointlessql.models.catalog._sync import SyncRun
 
 __all__ = [
     "CONTRACT_EVENT_OUTCOMES",
@@ -47,5 +50,6 @@ __all__ = [
     "RateLimitEvent",
     "RecentTable",
     "SavedQuery",
+    "SyncRun",
     "TableStats",
 ]

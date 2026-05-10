@@ -25,7 +25,7 @@ if _url_override:
 # DESC on the model side, then proposes a drop+recreate every check.
 # These two indexes carry DESC ordering by design (see
 # :class:`pointlessql.models.scheduler.JobRun` and
-# :class:`pointlessql.models.sync.SyncRun` docstrings); skip them in
+# :class:`pointlessql.models.catalog.SyncRun` docstrings); skip them in
 # diff comparison so ``alembic check`` stays green on SQLite.
 # Postgres reflects expression-based indexes correctly and will still
 # notice real drift.

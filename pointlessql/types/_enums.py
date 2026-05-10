@@ -138,7 +138,7 @@ class EventOutcome(StrEnum):
 class BranchAction(StrEnum):
     """Action label on a :class:`BranchAuditLog` row.
 
-    Pinned to :data:`pointlessql.models.branch_audit.BRANCH_ACTIONS`.
+    Pinned to :data:`pointlessql.models.audit._branch.BRANCH_ACTIONS`.
     """
 
     CREATE = "create"

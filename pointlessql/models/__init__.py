@@ -8,23 +8,23 @@ below
 
 * ``base`` (Base class)
 * ``auth`` (User — referenced by Job, Dashboard, SavedQuery, Alert)
-* ``audit`` (AuditLog — no model FKs)
-* ``sync`` (SyncRun — no model FKs)
+* ``audit`` package (AuditLog, AuditSink, GovernanceEvent,
+  SavedAuditQuery, AnomalyAck, BranchAuditLog — no model FKs)
 * ``scheduler`` (Job, JobRun, JobTask, TaskRun, JobLog — Job FKs User)
-* ``catalog`` (Dashboard FKs Job/User; QueryHistory + RateLimitEvent
-  + SavedQuery + TableStats + QueryHistoryTable)
+* ``catalog`` package (Dashboard FKs Job/User; QueryHistory +
+  RateLimitEvent + SavedQuery + TableStats + QueryHistoryTable +
+  RecentTable + AutoloadCheckpoint + DataProduct +
+  DataProductContractEvent + SyncRun)
 * ``alerts`` (Alert FKs SavedQuery + User + Job; AlertDestination
   + AlertEvent FK Alert)
 * ``notebook`` (NotebookOutput, NotebookCellRun, NotebookCellRunSource
   — no model FKs; the ``agent_run_id`` column is logical-link only)
-* ``agent_runs`` (AgentRun — logical link to notebook tables via
-  ``agent_run_id``)
-* ``agent_run_audit`` (AgentRunSource, AgentRunOperation,
-  AgentRunEvent — FK to AgentRun)
-* ``autoload`` (AutoloadCheckpoint — no model FKs, scoped per
-  target_table)
-* ``workspaces`` (Workspace, WorkspaceMember, WorkspaceCatalogPin —
-  governance container; ``users.default_workspace_id`` and
+* ``agent`` package (AgentRun, AgentRunSource, AgentRunOperation,
+  AgentRunEvent, AgentRunToolCall, AgentReview, ReviewDestination,
+  RewriteAttempt — internal FKs to AgentRun)
+* ``workspace`` package (Workspace, WorkspaceMember,
+  WorkspaceCatalogPin, WorkspaceRepo, WorkspaceRepoSecret, ApiKey
+  — governance container; ``users.default_workspace_id`` and
   ``api_keys.workspace_id`` FKs are added in the same migration so
   this module imports last)
 
@@ -55,16 +55,17 @@ from pointlessql.models.agent import (
 )
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
 from pointlessql.models.audit import (
+    BRANCH_ACTIONS,
     SINK_TYPES,
     AnomalyAck,
     AuditLog,
     AuditSink,
+    BranchAuditLog,
     GovernanceEvent,
     SavedAuditQuery,
 )
 from pointlessql.models.auth import User
 from pointlessql.models.base import Base
-from pointlessql.models.branch_audit import BRANCH_ACTIONS, BranchAuditLog
 from pointlessql.models.catalog import (
     CONTRACT_EVENT_OUTCOMES,
     AutoloadCheckpoint,
@@ -76,6 +77,7 @@ from pointlessql.models.catalog import (
     RateLimitEvent,
     RecentTable,
     SavedQuery,
+    SyncRun,
     TableStats,
 )
 from pointlessql.models.lineage import (
@@ -102,7 +104,6 @@ from pointlessql.models.scheduler import (
     JobTask,
     TaskRun,
 )
-from pointlessql.models.sync import SyncRun
 from pointlessql.models.system_keys import SystemKey
 from pointlessql.models.workspace import (
     WORKSPACE_PIN_MODES,
