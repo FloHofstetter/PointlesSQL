@@ -36,9 +36,7 @@ from pointlessql.api.data_products_html_routes import (
     router as data_products_html_router,
 )
 from pointlessql.api.data_products_routes import router as data_products_router
-from pointlessql.api.dbt_html_routes import router as dbt_html_router
-from pointlessql.api.dbt_proxy import router as dbt_proxy_router
-from pointlessql.api.dbt_routes import router as dbt_router
+from pointlessql.api.dbt import router as dbt_router
 from pointlessql.api.dependencies import (
     require_admin as _require_admin,
 )
@@ -888,8 +886,6 @@ app.include_router(review_destinations_router)
 app.include_router(ml_router)
 app.include_router(mlflow_html_router)
 app.include_router(mlflow_proxy_router)
-app.include_router(dbt_html_router)
-app.include_router(dbt_proxy_router)
 app.include_router(dbt_router)
 app.include_router(models_router)
 app.include_router(models_html_router)

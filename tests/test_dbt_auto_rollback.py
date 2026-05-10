@@ -23,7 +23,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from pointlessql.api import dbt_routes
+from pointlessql.api.dbt import routes as dbt_routes
 from pointlessql.api.main import app
 from pointlessql.exceptions import ValidationError
 from pointlessql.models.audit_sinks import GovernanceEvent

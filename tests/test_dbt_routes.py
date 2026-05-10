@@ -140,7 +140,7 @@ async def test_run_populates_delta_versions_when_capture_succeeds(
     persisted ``dbt_model`` rows carry ``delta_version_before`` (7)
     and ``delta_version_after`` (8) end-to-end through ``/api/dbt/run``.
     """
-    from pointlessql.api import dbt_routes
+    from pointlessql.api.dbt import routes as dbt_routes
     from pointlessql.models import AgentRunOperation
 
     # Point project_dir at the fixture so post-capture sees the right
