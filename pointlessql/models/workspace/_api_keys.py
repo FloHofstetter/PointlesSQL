@@ -47,6 +47,14 @@ class ApiKey(Base):
             ``supervisor`` / ``auditor`` so a federation-only key
             can land lineage events without seeing run audit
             telemetry.
+        analyst: When ``True``, the key may invoke the Lens read-only
+            Q&A surface (``/api/lens/*`` and the MCP server).  The
+            scope is narrower than ``auditor`` (no audit-internals)
+            but wider than anonymous (catalog browsing, query
+            execution gated by EXPLAIN cost).  Lens promotes analyst
+            up the ladder so analyst-keys also pass auditor gates,
+            because "when did this table last change" is an
+            analyst-shaped question.
         created_at: Timestamp the key was created.
         created_by_user_id: Admin who created the key, or ``None``
             for env-var-bootstrapped keys + CLI-provisioned keys.
@@ -82,6 +90,9 @@ class ApiKey(Base):
     # Independent of ``supervisor`` / ``auditor`` so a federation-only key
     # can land lineage events without seeing run audit telemetry.
     lineage_inbound: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    analyst: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)

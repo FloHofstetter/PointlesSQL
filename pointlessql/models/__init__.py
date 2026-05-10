@@ -19,6 +19,9 @@ below
   + AlertEvent FK Alert)
 * ``notebook`` (NotebookOutput, NotebookCellRun, NotebookCellRunSource
   — no model FKs; the ``agent_run_id`` column is logical-link only)
+* ``lens`` package (LensSession, LensMessage, LensPinnedAnswer,
+  LensProviderCreds — Phase 65 read-only Q&A surface; FKs to
+  Workspace + User)
 * ``agent`` package (AgentRun, AgentRunSource, AgentRunOperation,
   AgentRunEvent, AgentRunToolCall, AgentReview, ReviewDestination,
   RewriteAttempt — internal FKs to AgentRun)
@@ -79,6 +82,13 @@ from pointlessql.models.catalog import (
     SavedQuery,
     SyncRun,
     TableStats,
+)
+from pointlessql.models.lens import (
+    LENS_PROVIDERS,
+    LensMessage,
+    LensPinnedAnswer,
+    LensProviderCreds,
+    LensSession,
 )
 from pointlessql.models.lineage import (
     REJECT_REASONS,
@@ -149,6 +159,11 @@ __all__ = [
     "JobLog",
     "JobRun",
     "JobTask",
+    "LENS_PROVIDERS",
+    "LensMessage",
+    "LensPinnedAnswer",
+    "LensProviderCreds",
+    "LensSession",
     "LineageColumnMap",
     "LineageRowEdge",
     "LineageRowReject",

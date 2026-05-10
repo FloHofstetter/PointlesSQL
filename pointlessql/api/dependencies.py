@@ -13,8 +13,8 @@ from fastapi import Request
 
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models import Workspace
-from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.services.unitycatalog import UnityCatalogClient
+from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.types import UserInfo
 
 
@@ -195,6 +195,52 @@ def require_auditor(request: Request) -> None:
         privilege="auditor",
         securable_type="system",
         full_name="audit_read",
+    )
+
+
+def require_analyst(request: Request) -> None:
+    """Raise :class:`AuthorizationError` if the caller lacks analyst scope.
+
+    Phase 65 Lens read-only Q&A surface: ``/api/lens/*`` routes,
+    the ``/lens`` browser chat UI, and the MCP server (stdio + SSE)
+    are gated by this scope.  The analyst sees catalog + lineage +
+    bounded-cost SELECT execution; write paths stay closed.
+
+    Pass conditions (any one is sufficient):
+
+    * Bearer key with ``analyst=True`` flag (the canonical Lens
+      consumer path — IDE / MCP).
+    * Bearer key with ``auditor=True`` flag (auditor sees a
+      superset; they can already read everything Lens exposes).
+    * Cookie-authenticated admin (admin is strictly stronger).
+    * Cookie-authenticated user with the ``is_auditor`` OIDC group
+      flag (analog the auditor scope path — auditors get Lens for
+      free as part of the read-only mandate).
+
+    Supervisor keys do NOT pass: the supervisor scope is run-scoped
+    write-supervision telemetry, which is orthogonal to analyst-style
+    data exploration.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Raises:
+        AuthorizationError: When the caller is none of the above.
+    """
+    if getattr(request.state, "api_key_analyst", False):
+        return
+    if getattr(request.state, "api_key_auditor", False):
+        return
+    user = get_user(request)
+    if user.get("is_admin"):
+        return
+    if user.get("is_auditor"):
+        return
+    raise AuthorizationError(
+        principal=user.get("email", ""),
+        privilege="analyst",
+        securable_type="system",
+        full_name="lens",
     )
 
 

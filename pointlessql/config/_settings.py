@@ -803,6 +803,38 @@ class MLflowSettings(BaseSettings):
     registry_uri: str | None = None
 
 
+class LensSettings(BaseSettings):
+    """Lens read-only Q&A surface configuration (Phase 65).
+
+    Reads ``POINTLESSQL_LENS_*`` environment variables.  Lens hosts a
+    chat-style analyst UI at ``/lens`` and an MCP (Model Context
+    Protocol) server for IDE consumers.  Both transports share the
+    same tool registry; the safety knobs below apply to every entry
+    point.
+
+    ``default_query_limit`` is the LIMIT auto-injected on every SELECT
+    that does not carry an explicit one (see
+    :func:`pointlessql.pql.sql_parser.inject_limit`).  ``max_query_cost``
+    + ``max_session_cost`` are the EXPLAIN-derived cost caps; queries
+    whose plan exceeds the per-query cap are denied outright, sessions
+    whose accumulated cost exceeds the per-session cap stop accepting
+    new tool calls until a new session is opened.
+
+    Provider model defaults are surfaced when the workspace's
+    :class:`LensProviderCreds.default_model` is ``NULL``.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_LENS_")
+
+    enabled: bool = True
+    default_query_limit: int = 1000
+    max_query_cost: float = 1_000_000.0
+    max_session_cost: float = 10_000_000.0
+    max_messages_per_session: int = 100
+    openai_model_default: str = "gpt-4o-mini"
+    anthropic_model_default: str = "claude-haiku-4-5-20251001"
+
+
 class Settings(BaseSettings):
     """Root settings aggregating every sub-model.
 
@@ -835,4 +867,5 @@ class Settings(BaseSettings):
     data_products: DataProductsSettings = Field(default_factory=DataProductsSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
+    lens: LensSettings = Field(default_factory=LensSettings)
     workspace_repos: WorkspaceReposSettings = Field(default_factory=WorkspaceReposSettings)
