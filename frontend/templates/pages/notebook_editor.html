@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ notebook_path }} · Notebook · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Workspace", "href": "/notebooks/workspace"},
+ {"label": notebook_path}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="pql-notebook-shell"
+     x-data="notebookEditor({ initialPath: {{ notebook_path | tojson }} })"
+     x-init="init()"
+     @beforeunload.window="destroy()">
+
+ <div class="pql-notebook-toolbar" role="toolbar" aria-label="Notebook toolbar">
+  <i class="bi bi-journal-code" aria-hidden="true"></i>
+  <span class="pql-notebook-path" x-text="path"></span>
+  <span class="badge bg-warning"
+        x-show="dirty"
+        x-cloak
+        title="Notebook has unsaved changes">
+   <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+   Unsaved
+  </span>
+  <span class="badge bg-secondary ms-auto"
+        x-show="loading"
+        x-cloak>
+   Loading…
+  </span>
+ </div>
+
+ <div class="pql-notebook-error"
+      x-show="errorMessage"
+      x-cloak
+      x-text="errorMessage"></div>
+
+ <div class="pql-notebook-empty"
+      x-show="!loading && !errorMessage && cells.length === 0"
+      x-cloak>
+  This notebook is empty. Add a cell to get started.
+ </div>
+
+ <template x-for="cell in cells" :key="cell.id">
+  <div class="pql-notebook-cell">
+   <div class="pql-notebook-cell__header">
+    <div class="d-flex align-items-center gap-2">
+     <span class="pql-notebook-cell__type-pill"
+           :data-cell-type="cell.cell_type"
+           x-text="cellLabel(cell)"></span>
+     <span class="text-muted"
+           x-text="cell.content_hash.slice(0, 8)"></span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+     <span class="text-muted"
+           x-show="cell._dirty"
+           title="Cell modified since last save">●</span>
+    </div>
+   </div>
+   <div class="pql-notebook-cell__editor"
+        :id="`pql-cell-host-${cell.id}`"></div>
+   <pre class="pql-notebook-cell__output"
+        x-text="outputsForCell(cell.content_hash)"></pre>
+  </div>
+ </template>
+</div>
+{% endblock %}

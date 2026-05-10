@@ -26,6 +26,7 @@ from pointlessql.api.dependencies import require_admin
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
 from pointlessql.services import scheduler as scheduler_service
+from pointlessql.services.notebook import _doc as notebook_doc_service
 from pointlessql.services.notebook import _workspace as notebook_workspace_service
 from pointlessql.services.notebook import outputs as notebook_outputs_service
 
@@ -216,6 +217,105 @@ async def api_delete_notebook(
     notebook_outputs_service.clear_path(request.app.state.session_factory, path)
     logger.info("deleted notebook %s", path)
     return JSONResponse({"path": path})
+
+
+@router.get("/api/notebooks/load")
+async def api_load_notebook(request: Request, path: str) -> JSONResponse:
+    """Load a ``.py`` notebook + its persisted outputs.
+
+    The browser editor calls this on page-mount.  Returns the cell list
+    (with content_hashes) plus every persisted output frame keyed by
+    ``(content_hash, kernel_session_id)``.  Re-render cost on a page
+    reload stays close to free — kernel-message replay happens
+    client-side from the embedded JSON, no extra fetch.
+
+    Args:
+        request: Incoming FastAPI request; admin-only for now (the
+            workspace gate matches the read-only notebooks page).
+        path: Relative notebook path under ``notebooks_dir``.
+
+    Returns:
+        JSON ``{path, dirty, cells: [...], outputs: [...]}``.
+        Each cell carries ``id`` (transient ordinal), ``content_hash``,
+        ``cell_type``, ``source``, ``result_var``.  Each output carries
+        ``content_hash``, ``kernel_session_id``, ``output_index``,
+        ``msg_type``, ``content``, ``metadata``, ``created_at``.
+
+    Raises:
+        ValidationError: When the path is missing / outside the
+            workspace / wrong suffix / does not exist.  Surfaces
+            via :func:`resolve_py_notebook_path`.
+    """  # noqa: DOC502
+    require_admin(request)
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    absolute = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, path, must_exist=True
+    )
+    relative = str(absolute.relative_to(notebooks_dir))
+    document = notebook_doc_service.load_document(absolute, relative)
+    outputs = notebook_outputs_service.load_outputs_for_path(
+        request.app.state.session_factory, relative
+    )
+    cells = [
+        {
+            "id": cell.id,
+            "content_hash": cell.content_hash,
+            "cell_type": cell.cell_type,
+            "source": cell.source,
+            "result_var": cell.result_var,
+        }
+        for cell in document.cells
+    ]
+    return JSONResponse(
+        {
+            "path": document.path,
+            "dirty": document.dirty,
+            "cells": cells,
+            "outputs": outputs,
+        }
+    )
+
+
+@router.get("/notebooks/edit/{path:path}", response_class=HTMLResponse)
+async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
+    """Render the browser notebook editor for a specific ``.py`` file.
+
+    The path is validated against the workspace root before render so
+    a bad path 422s before a stale editor frame paints.  The editor
+    boots itself from ``GET /api/notebooks/load`` after Alpine mounts.
+
+    Args:
+        request: Incoming FastAPI request; admin-only.
+        path: Relative notebook path, captured by the
+            ``{path:path}`` converter (slashes preserved).
+
+    Returns:
+        The rendered ``pages/notebook_editor.html`` template.
+
+    Raises:
+        ValidationError: When the path is missing / outside the
+            workspace / wrong suffix / does not exist.  Surfaces
+            via :func:`resolve_py_notebook_path`.
+    """  # noqa: DOC502
+    require_admin(request)
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    absolute = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, path, must_exist=True
+    )
+    relative = str(absolute.relative_to(notebooks_dir))
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/notebook_editor.html",
+        {
+            "notebook_path": relative,
+            "active_page": "workspace",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
 
 
 @router.get("/notebooks/workspace", response_class=HTMLResponse)

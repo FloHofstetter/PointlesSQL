@@ -100,6 +100,15 @@ window.listTable = listTable;
 window.jobRowActions = jobRowActions;
 window.sqlEditor = sqlEditor;
 
+// Phase 66 — browser notebook editor.  cellEditor is the per-cell
+// CodeMirror factory; notebookEditor is the top-level Alpine factory
+// mounted on /notebooks/edit/{path}.
+import { cellEditor } from './notebook/cell_editor.js';
+import { notebookEditor } from './notebook/notebook_editor.js';
+
+window.cellEditor = cellEditor;
+window.notebookEditor = notebookEditor;
+
 // Cmd+K command palette.  bootstrap.js re-attaches the factory under
 // the same window name so the partial's x-data="commandPalette()"
 // keeps working unchanged.
