@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ pin.title }} · Lens · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+ {"label": "Home", "href": "/"},
+ {"label": "Lens", "href": "/lens"},
+ {"label": pin.title}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h3 mb-0">
+      <i class="bi bi-pin-angle"></i> {{ pin.title }}
+    </h1>
+    <div class="text-secondary small">
+      Pinned {{ pin.created_at.strftime('%Y-%m-%d %H:%M') if pin.created_at else '' }}
+      {% if pin.is_shared %}<span class="badge bg-info ms-2">shared</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header py-2"><strong>Answer</strong></div>
+    <div class="card-body">
+      <pre class="mb-0" style="white-space: pre-wrap;">{{ pin.content_snapshot }}</pre>
+    </div>
+  </div>
+
+  {% if pin.sql_text %}
+  <div class="card mb-3">
+    <div class="card-header py-2"><strong>SQL</strong></div>
+    <div class="card-body">
+      <pre class="mb-0">{{ pin.sql_text }}</pre>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if pin.result_preview and pin.result_preview.rows %}
+  <div class="card mb-3">
+    <div class="card-header py-2">
+      <strong>Result preview</strong>
+      <span class="text-secondary small ms-2">
+        {{ pin.result_preview.rows | length }} of
+        {{ pin.result_preview.row_count or '?' }} rows
+      </span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        {% if pin.result_preview.columns %}
+        <thead>
+          <tr>
+            {% for col in pin.result_preview.columns %}
+            <th>{{ col.name if col.name is defined else col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        {% endif %}
+        <tbody>
+          {% for row in pin.result_preview.rows %}
+          <tr>
+            {% for cell in row %}
+            <td>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <a href="/lens" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Back to Lens
+  </a>
+</div>
+{% endblock %}

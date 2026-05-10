@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse
 
 from pointlessql.api.dependencies import require_analyst
 from pointlessql.api.lens.messages import router as _messages_router
+from pointlessql.api.lens.pinned import router as _pinned_router
 from pointlessql.api.lens.provenance import router as _provenance_router
 from pointlessql.api.lens.sessions import router as _sessions_router
 
@@ -29,6 +30,7 @@ _api_router = APIRouter(prefix="/api/lens")
 _api_router.include_router(_provenance_router)
 _api_router.include_router(_sessions_router)
 _api_router.include_router(_messages_router)
+_api_router.include_router(_pinned_router)
 router.include_router(_api_router)
 
 
