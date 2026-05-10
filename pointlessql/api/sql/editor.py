@@ -714,7 +714,7 @@ async def _rollback_run(request: Request, *, run_id: str) -> dict[str, Any]:
     from pointlessql.api.sql.write import (
         _build_pql,  # pyright: ignore[reportPrivateUsage]
     )
-    from pointlessql.models.agent_run_audit import AgentRunOperation
+    from pointlessql.models.agent._audit import AgentRunOperation
 
     factory = request.app.state.session_factory
     user = get_user(request)

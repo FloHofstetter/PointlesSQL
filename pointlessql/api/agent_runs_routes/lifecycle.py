@@ -19,7 +19,7 @@ from pointlessql.api.agent_runs_routes._anomaly_persist import persist_run_anoma
 from pointlessql.api.agent_runs_routes._serializers import serialize_agent_run
 from pointlessql.api.dependencies import get_user, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 from pointlessql.types import RunStatus
 
 router = APIRouter()

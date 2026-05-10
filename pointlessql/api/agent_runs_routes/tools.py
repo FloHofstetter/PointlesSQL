@@ -20,7 +20,7 @@ from sqlalchemy import select
 from pointlessql.api._audit_helpers import audit
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import AgentRunToolCall
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 from pointlessql.services.agent_runs import EVENT_TYPE_TOOL_CALL, emit_agent_run_event
 
 router = APIRouter()

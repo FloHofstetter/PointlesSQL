@@ -40,8 +40,8 @@ from pointlessql.exceptions import (
     EngineError,
     ResourceNotFoundError,
 )
-from pointlessql.models.agent_run_audit import AgentRunOperation
-from pointlessql.models.agent_runs import (
+from pointlessql.models.agent._audit import AgentRunOperation
+from pointlessql.models.agent._runs import (
     STATUS_FAILED,
     STATUS_RUNNING,
     STATUS_SUCCEEDED,

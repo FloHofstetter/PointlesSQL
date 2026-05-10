@@ -15,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from pointlessql.exceptions import CatalogNotFoundError
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 
 
 def templates(request: Request) -> Jinja2Templates:

@@ -27,7 +27,7 @@ import pytest
 from sqlalchemy import select
 
 from pointlessql.api.main import app
-from pointlessql.models.agent_runs import STATUS_RUNNING, AgentRun
+from pointlessql.models.agent._runs import STATUS_RUNNING, AgentRun
 from pointlessql.models.lineage import LineageRowReject
 from pointlessql.services.dbt import (
     DBTExecutor,

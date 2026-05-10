@@ -70,7 +70,7 @@ from pointlessql.exceptions import (
     SQLExecutionError,
     ValidationError,
 )
-from pointlessql.models.agent_runs import STATUS_RUNNING, AgentRun
+from pointlessql.models.agent._runs import STATUS_RUNNING, AgentRun
 from pointlessql.pql import (
     PreparedSQL,
     StmtType,

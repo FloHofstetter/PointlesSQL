@@ -35,7 +35,7 @@ from pointlessql.api.dependencies import (
 from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import AgentRunOperation
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 from pointlessql.services.agent_runs.events import (
     EVENT_TYPE_ROLLBACK_EXECUTED,
     emit_agent_run_event,

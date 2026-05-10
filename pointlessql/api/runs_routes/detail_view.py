@@ -177,7 +177,7 @@ def _run_anomaly_chip(request: Request, run_id: str) -> dict[str, Any] | None:
         breaches the threshold.
     """
     try:
-        from pointlessql.models.agent_runs import AgentRun
+        from pointlessql.models.agent._runs import AgentRun
         from pointlessql.services import audit_aggregator as agg
 
         settings = request.app.state.settings

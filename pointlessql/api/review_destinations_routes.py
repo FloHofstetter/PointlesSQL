@@ -23,7 +23,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import Workspace
-from pointlessql.models.agent_reviews import REVIEW_SEVERITIES, ReviewDestination
+from pointlessql.models.agent._reviews import REVIEW_SEVERITIES, ReviewDestination
 
 router = APIRouter(tags=["admin-review-destinations"])
 

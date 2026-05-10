@@ -27,7 +27,7 @@ from sqlalchemy import select
 from pointlessql.api.main import app
 from pointlessql.exceptions import AuditUnavailableError
 from pointlessql.models import AgentRunOperation
-from pointlessql.models.agent_runs import STATUS_RUNNING, AgentRun
+from pointlessql.models.agent._runs import STATUS_RUNNING, AgentRun
 from pointlessql.services.dbt import (
     DBTNodeResult,
     capture_delta_versions,

@@ -29,7 +29,7 @@ from pointlessql.api.agent_runs_routes._serializers import (
 )
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import AgentRunSource
-from pointlessql.models.agent_runs import (
+from pointlessql.models.agent._runs import (
     STATUS_QUEUED,
     TERMINAL_STATUSES,
     VALID_STATUSES,

@@ -55,7 +55,7 @@ class NotebookOutput(Base):
         output_metadata: Optional JSON-encoded ``metadata`` dict.
         created_at: When the message was forwarded.
         agent_run_id: UUID string of the owning
-            :class:`pointlessql.models.agent_runs.AgentRun` when the
+            :class:`pointlessql.models.agent._runs.AgentRun` when the
             output belongs to a Hermes-authored run; ``None`` for
             legacy editor sessions from before the agent-first
             pivot.
@@ -122,7 +122,7 @@ class NotebookCellRun(Base):
         finished_at: When the kernel transitioned back to idle
             for this cell, or ``None`` while still busy.
         agent_run_id: UUID string of the owning
-            :class:`pointlessql.models.agent_runs.AgentRun` when the
+            :class:`pointlessql.models.agent._runs.AgentRun` when the
             run belongs to a Hermes-authored execution; ``None``
             for legacy editor sessions from before the agent-first
             pivot.

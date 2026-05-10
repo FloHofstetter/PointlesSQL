@@ -322,7 +322,7 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
         try:
             from sqlalchemy import desc, select
 
-            from pointlessql.models.agent_reviews import AgentReview
+            from pointlessql.models.agent._reviews import AgentReview
 
             with request.app.state.session_factory() as session:
                 row = session.scalars(

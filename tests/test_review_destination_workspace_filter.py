@@ -19,7 +19,7 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.models import Workspace
-from pointlessql.models.agent_reviews import AgentReview, ReviewDestination
+from pointlessql.models.agent._reviews import AgentReview, ReviewDestination
 from pointlessql.services.review_dispatcher import _select_destinations
 
 

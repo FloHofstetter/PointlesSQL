@@ -35,7 +35,7 @@ from pointlessql.models import (
     QueryHistory,
     RewriteAttempt,
 )
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 from pointlessql.services import output_rendering as output_rendering_service
 
 

@@ -19,7 +19,7 @@ from sqlalchemy.pool import StaticPool
 from pointlessql.api.main import _TEMPLATES, app
 from pointlessql.config import Settings
 from pointlessql.models import Base
-from pointlessql.models.agent_reviews import ReviewDestination
+from pointlessql.models.agent._reviews import ReviewDestination
 from pointlessql.services import auth
 
 

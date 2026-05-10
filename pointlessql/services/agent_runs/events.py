@@ -66,7 +66,7 @@ def event_type_for_status(status: str) -> str | None:
 
     Args:
         status: A terminal status from
-            :data:`pointlessql.models.agent_runs.TERMINAL_STATUSES`.
+            :data:`pointlessql.models.agent._runs.TERMINAL_STATUSES`.
 
     Returns:
         The matching CloudEvents ``type``, or ``None`` when no event

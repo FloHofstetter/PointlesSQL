@@ -35,7 +35,7 @@ from pointlessql.api.dependencies import (
     require_auditor,
 )
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
-from pointlessql.models.agent_reviews import REVIEW_SEVERITIES, AgentReview
+from pointlessql.models.agent._reviews import REVIEW_SEVERITIES, AgentReview
 from pointlessql.services import output_rendering as output_rendering_service
 from pointlessql.services.review_dispatcher import dispatch_review
 

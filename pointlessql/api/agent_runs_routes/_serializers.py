@@ -15,7 +15,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from pointlessql.exceptions import ValidationError
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 
 
 def serialize_agent_run(row: AgentRun) -> dict[str, Any]:

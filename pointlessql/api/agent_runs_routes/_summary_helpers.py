@@ -26,7 +26,7 @@ from sqlalchemy import select
 
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import AgentRunOperation, AgentRunToolCall, QueryHistory
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 
 
 def summarize_run(

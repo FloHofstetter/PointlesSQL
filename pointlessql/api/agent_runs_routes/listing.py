@@ -19,7 +19,7 @@ from sqlalchemy import select
 from pointlessql.api.agent_runs_routes._serializers import serialize_agent_run
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import AgentRunOperation
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 
 router = APIRouter()
 

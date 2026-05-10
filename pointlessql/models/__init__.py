@@ -37,18 +37,22 @@ below.
 
 from __future__ import annotations
 
-from pointlessql.models.agent_reviews import (
+from pointlessql.models.agent import (
     REVIEW_SEVERITIES,
+    REWRITE_VERDICTS,
+    VERDICT_AUTO_REWRITE_FAILED,
+    VERDICT_AUTO_REWRITE_SUCCEEDED,
+    VERDICT_HUMAN_APPROVAL_REQUIRED,
+    VERDICT_ORIGINAL_APPROVED,
     AgentReview,
-    ReviewDestination,
-)
-from pointlessql.models.agent_run_audit import (
+    AgentRun,
     AgentRunEvent,
     AgentRunOperation,
     AgentRunSource,
     AgentRunToolCall,
+    ReviewDestination,
+    RewriteAttempt,
 )
-from pointlessql.models.agent_runs import AgentRun
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
 from pointlessql.models.anomaly import AnomalyAck
 from pointlessql.models.api_keys import ApiKey
@@ -88,14 +92,6 @@ from pointlessql.models.notebook import (
     NotebookOutput,
 )
 from pointlessql.models.recents import RecentTable
-from pointlessql.models.rewrite_attempts import (
-    REWRITE_VERDICTS,
-    VERDICT_AUTO_REWRITE_FAILED,
-    VERDICT_AUTO_REWRITE_SUCCEEDED,
-    VERDICT_HUMAN_APPROVAL_REQUIRED,
-    VERDICT_ORIGINAL_APPROVED,
-    RewriteAttempt,
-)
 from pointlessql.models.saved_audit_queries import SavedAuditQuery
 from pointlessql.models.scheduler import (
     Job,

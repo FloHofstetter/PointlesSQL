@@ -15,7 +15,7 @@ from sqlalchemy import select
 
 from pointlessql.api.dependencies import require_supervisor
 from pointlessql.exceptions import CatalogNotFoundError
-from pointlessql.models.agent_runs import AgentRun
+from pointlessql.models.agent._runs import AgentRun
 
 router = APIRouter()
 

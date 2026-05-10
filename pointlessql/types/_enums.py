@@ -21,7 +21,7 @@ from enum import StrEnum
 class RunStatus(StrEnum):
     """Lifecycle states of an :class:`AgentRun`.
 
-    Pinned to :data:`pointlessql.models.agent_runs.VALID_STATUSES`.
+    Pinned to :data:`pointlessql.models.agent._runs.VALID_STATUSES`.
     """
 
     QUEUED = "queued"
@@ -90,7 +90,7 @@ class QueryStatus(StrEnum):
 class ReviewSeverity(StrEnum):
     """Severity grade of an :class:`AgentReview`.
 
-    Pinned to :data:`pointlessql.models.agent_reviews.REVIEW_SEVERITIES`
+    Pinned to :data:`pointlessql.models.agent._reviews.REVIEW_SEVERITIES`
     and to the ``ck_agent_reviews_severity`` /
     ``ck_review_destinations_min_severity`` SQL CHECK constraints.
     """
@@ -103,7 +103,7 @@ class ReviewSeverity(StrEnum):
 class ReviewKind(StrEnum):
     """Variants of an :class:`AgentReview` row.
 
-    Pinned to :data:`pointlessql.models.agent_reviews.REVIEW_KINDS`.
+    Pinned to :data:`pointlessql.models.agent._reviews.REVIEW_KINDS`.
     """
 
     AUDIT_REVIEW = "audit_review"
