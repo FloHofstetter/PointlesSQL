@@ -55,6 +55,7 @@ from pointlessql.services.mlflow_subprocess import (
     MLflowSubprocess,
     mlflow_available,
 )
+from pointlessql.services.notebook.kernel_session import KernelRegistry
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
 from pointlessql.web import get_help as _get_help
@@ -477,13 +478,22 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
                 dbt_proc.manifest_path,
             )
 
-    # The browser notebook editor was retired; a future
-    # :class:`KernelRegistry` on ``app.state`` will serve as the
-    # execution backend for the ``agent_run`` scheduler kind.
-    # Nothing else to start here yet.
+    # Phase 66.0 — the browser notebook editor is back.  Build a
+    # process-global :class:`KernelRegistry` keyed by
+    # ``(user_id, notebook_path)`` and attach it to ``app.state``
+    # so the WebSocket handler in ``notebook_kernel_ws.py`` can
+    # get-or-start a kernel session per editor connection.  The
+    # registry's ``shutdown_all`` runs in the ``finally`` block to
+    # graceful-stop every live kernel subprocess on app exit.
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    notebooks_dir.mkdir(parents=True, exist_ok=True)
+    app.state.kernel_registry = KernelRegistry(notebooks_dir=notebooks_dir)
+
     try:
         yield
     finally:
+        if hasattr(app.state, "kernel_registry") and app.state.kernel_registry is not None:
+            await app.state.kernel_registry.shutdown_all()
         if app.state.mlflow_subprocess is not None:
             await app.state.mlflow_subprocess.stop()
         if app.state.dbt_subprocess is not None:
