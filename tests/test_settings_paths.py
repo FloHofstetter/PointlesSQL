@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import os
 
-from pointlessql.config import _settings as settings_mod  # noqa: PLC2701  # test reaches _PROJECT_ROOT
-
 from pointlessql.config import MLflowSettings, Settings
+from pointlessql.config import (
+    _settings as settings_mod,  # noqa: PLC2701  # test reaches _PROJECT_ROOT
+)
 from pointlessql.services.mlflow_subprocess import MLflowSubprocess
 
 

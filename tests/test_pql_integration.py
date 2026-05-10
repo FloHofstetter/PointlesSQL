@@ -33,7 +33,7 @@ from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.models.create_catalog import CreateCatalog
 from soyuz_catalog_client.models.create_schema import CreateSchema
 
-from pointlessql.pql.pql import PQL
+from pointlessql.pql import PQL
 from pointlessql.services.soyuz_client import make_soyuz_client
 
 _CATALOG = "pql_integration_test"

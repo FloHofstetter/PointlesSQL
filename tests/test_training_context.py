@@ -240,7 +240,7 @@ def test_training_context_get_run_failure_keeps_audit_row(monkeypatch) -> None:
 
 def test_training_context_pql_method_round_trip(monkeypatch) -> None:
     """``PQL.training_context()`` exposes the same wrapper through the facade."""
-    from pointlessql.pql.pql import PQL
+    from pointlessql.pql import PQL
 
     factory = app.state.session_factory
     run_id = str(uuid.uuid4())

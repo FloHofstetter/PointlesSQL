@@ -13,7 +13,7 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from pointlessql.pql.engine import (
+from pointlessql.pql import (
     DuckDBEngine,
     Engine,
     PandasEngine,

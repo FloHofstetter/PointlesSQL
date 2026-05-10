@@ -127,7 +127,7 @@ async def _read_delta_version(request: Request, target: str) -> int | None:
         location = info.get("storage_location")
         if not isinstance(location, str) or not location:
             return None
-        from pointlessql.pql._write import safe_delta_version
+        from pointlessql.pql import safe_delta_version
 
         return safe_delta_version(location)
     except Exception:  # noqa: BLE001 — preview route is best-effort
@@ -458,7 +458,7 @@ async def api_run_rollback(
     settings: Settings = request.app.state.settings
 
     def _run_rollback() -> dict[str, Any]:
-        from pointlessql.pql.pql import PQL  # noqa: PLC0415 — lazy
+        from pointlessql.pql import PQL  # noqa: PLC0415 — lazy
 
         pql = PQL(
             settings=settings,

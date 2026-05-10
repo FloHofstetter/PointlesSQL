@@ -175,7 +175,7 @@ class TestCleanupOldBranches:
         schemas_response = MagicMock()
         schemas_response.schemas = [schema]
 
-        from pointlessql.pql._branch_errors import BranchInUseError
+        from pointlessql.pql import BranchInUseError
 
         with (
             patch.object(cleanup_mod, "list_catalogs_api") as mock_catalogs,

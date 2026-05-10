@@ -175,7 +175,7 @@ def compute_stats(
     """
     import duckdb
 
-    from pointlessql.pql.engine import register_delta_view
+    from pointlessql.pql import register_delta_view
 
     should_close = False
     if conn is None:

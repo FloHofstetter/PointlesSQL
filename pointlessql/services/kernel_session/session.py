@@ -45,7 +45,7 @@ _NOTEBOOK_BOOTSTRAP_CODE = """\
 def __pql_sql_run(query, *, approved_tables, result_var, max_rows):
     import pandas as pd
     from IPython.display import display
-    from pointlessql.pql.pql import PQL
+    from pointlessql.pql import PQL
 
     res = PQL.sql(query, approved_tables=approved_tables, max_rows=max_rows)
     # SQLResult.columns is list[dict[str, str]] with ``name`` / ``type``

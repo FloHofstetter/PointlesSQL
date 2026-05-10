@@ -514,7 +514,7 @@ def _invoke_pql_rollback(
     Returns:
         The :class:`pointlessql.pql._rollback.RollbackResult`.
     """
-    from pointlessql.pql.pql import PQL  # noqa: PLC0415 — lazy
+    from pointlessql.pql import PQL  # noqa: PLC0415 — lazy
 
     pql = PQL(
         settings=settings,

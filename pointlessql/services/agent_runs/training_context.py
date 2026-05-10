@@ -28,7 +28,7 @@ of intent, not bit-replay" framing.
 
 Usage::
 
-    from pointlessql.pql.pql import PQL
+    from pointlessql.pql import PQL
 
     pql = PQL(agent_run_id="run-123")
     with pql.training_context() as tr:

@@ -27,12 +27,12 @@ import pytest
 from soyuz_catalog_client.models.table_info import TableInfo
 
 from pointlessql.exceptions import CatalogNotFoundError
+from pointlessql.pql import PQL
 from pointlessql.pql._update_delete import (
     _coerce_int,
     delete_table_rows,
     update_table,
 )
-from pointlessql.pql.pql import PQL
 
 _UD = "pointlessql.pql._update_delete"
 

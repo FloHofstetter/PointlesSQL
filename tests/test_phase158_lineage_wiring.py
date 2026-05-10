@@ -43,8 +43,7 @@ from pointlessql.models import (
     LineageRowEdge,
     LineageValueChange,
 )
-from pointlessql.pql.engine import PandasEngine
-from pointlessql.pql.pql import PQL
+from pointlessql.pql import PQL, PandasEngine
 
 
 def _seed_run(factory: Any, run_id: str) -> None:

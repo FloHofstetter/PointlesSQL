@@ -73,7 +73,7 @@ from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import app
 from pointlessql.models import ApiKey, Base, User, Workspace, WorkspaceMember
-from pointlessql.pql.pql import PQL
+from pointlessql.pql import PQL
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth, csrf
 from pointlessql.services.soyuz_client import make_soyuz_client

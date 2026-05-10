@@ -483,7 +483,7 @@ async def test_alert_check_executor_fires_and_records_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The executor evaluates the condition and records one event row."""
-    from pointlessql.pql.pql import SQLResult
+    from pointlessql.pql import SQLResult
     from pointlessql.services import scheduler as scheduler_module
     from pointlessql.types import UserInfo
 

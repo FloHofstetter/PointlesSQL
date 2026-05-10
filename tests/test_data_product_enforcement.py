@@ -335,8 +335,7 @@ def test_e2e_compliant_write_records_event(tmp_path: Path, monkeypatch: pytest.M
     from soyuz_catalog_client.errors import UnexpectedStatus
 
     import pointlessql.db as db_mod
-    from pointlessql.pql._write import write_table
-    from pointlessql.pql.engine import PandasEngine
+    from pointlessql.pql import PandasEngine, write_table
 
     yaml_path = _write_yaml(tmp_path)
     factory = app.state.session_factory
@@ -425,8 +424,7 @@ def test_e2e_breaking_write_blocks_delta_io(
 
     import pointlessql.db as db_mod
     import pointlessql.pql._write as write_mod
-    from pointlessql.pql._write import write_table
-    from pointlessql.pql.engine import PandasEngine
+    from pointlessql.pql import PandasEngine, write_table
 
     yaml_path = _write_yaml(tmp_path)
     factory = app.state.session_factory

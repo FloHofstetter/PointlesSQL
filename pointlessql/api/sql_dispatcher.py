@@ -71,7 +71,7 @@ from pointlessql.exceptions import (
     ValidationError,
 )
 from pointlessql.models.agent_runs import STATUS_RUNNING, AgentRun
-from pointlessql.pql.sql_parser import (
+from pointlessql.pql import (
     PreparedSQL,
     StmtType,
     extract_source_refs,
@@ -460,7 +460,7 @@ async def _execute_merge(ctx: DispatchContext) -> ExecutionResult:
         :class:`ExecutionResult` with ``kind='dml'`` and the
         merge stats (insert / update counts).
     """  # noqa: DOC501,DOC503 — translator + primitive failures propagate after agent_run finalisation
-    from pointlessql.pql.sql_merge_translator import translate_merge_ast
+    from pointlessql.pql import translate_merge_ast
 
     if not isinstance(ctx.ast, exp.Merge):  # defensive
         raise SQLExecutionError("Internal error: _execute_merge invoked on non-Merge AST.")

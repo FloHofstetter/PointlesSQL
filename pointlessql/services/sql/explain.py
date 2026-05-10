@@ -24,7 +24,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from pointlessql.pql.engine import register_delta_view
+from pointlessql.pql import register_delta_view
 from pointlessql.services.sql.cost_estimator import CostEstimate, estimate_cost
 
 

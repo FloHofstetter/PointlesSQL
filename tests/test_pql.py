@@ -22,10 +22,9 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
 )
+from pointlessql.pql import PQL, DuckDBEngine, Engine, PandasEngine, PolarsEngine
 from pointlessql.pql._columns import columns_from_dataframe
 from pointlessql.pql._parsing import parse_full_name
-from pointlessql.pql.engine import DuckDBEngine, Engine, PandasEngine, PolarsEngine
-from pointlessql.pql.pql import PQL
 
 # ------------------------------------------------------------------
 # parse_full_name

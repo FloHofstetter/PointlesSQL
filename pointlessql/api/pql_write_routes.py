@@ -192,8 +192,7 @@ def _materialise_select_to_pandas(sql: str, approved: dict[str, str]) -> Any:
     import duckdb  # noqa: PLC0415 — local import keeps the module lazy
 
     from pointlessql.exceptions import SQLExecutionError
-    from pointlessql.pql.engine import register_delta_view
-    from pointlessql.pql.sql_parser import prepare_sql
+    from pointlessql.pql import prepare_sql, register_delta_view
 
     prepared = prepare_sql(sql)
     conn = duckdb.connect()
@@ -226,7 +225,7 @@ def _build_pql(request: Request, *, principal: str, agent_run_id: str | None) ->
         A configured :class:`PQL` instance ready for sync dispatch
         from :func:`asyncio.to_thread`.
     """
-    from pointlessql.pql.pql import PQL  # noqa: PLC0415 — lazy
+    from pointlessql.pql import PQL  # noqa: PLC0415 — lazy
 
     settings: Settings = request.app.state.settings
     return PQL(
@@ -353,7 +352,7 @@ async def api_pql_write_table(request: Request, body: dict[str, Any] = Body(...)
         SQLExecutionError: When DuckDB rejects the SELECT.
     """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
     from pointlessql.exceptions import SQLExecutionError
-    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.pql import SQLParseError, prepare_sql
 
     sql = (body or {}).get("sql", "")
     target = (body or {}).get("target", "")
@@ -469,7 +468,7 @@ async def api_pql_merge(request: Request, body: dict[str, Any] = Body(...)) -> d
         SQLExecutionError: When DuckDB rejects the source SELECT.
     """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
     from pointlessql.exceptions import SQLExecutionError
-    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.pql import SQLParseError, prepare_sql
 
     sql = (body or {}).get("sql", "")
     target = (body or {}).get("target", "")

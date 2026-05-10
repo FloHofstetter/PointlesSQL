@@ -513,8 +513,7 @@ async def _alert_check_executor(
 
     from pointlessql.db import get_session_factory
     from pointlessql.models import Alert, AlertDestination, SavedQuery
-    from pointlessql.pql.pql import PQL
-    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.pql import PQL, SQLParseError, prepare_sql
     from pointlessql.services import alerts as alerts_service
     from pointlessql.services.alert_dispatcher import dispatch_webhook
     from pointlessql.services.authorization import SELECT, check_privilege

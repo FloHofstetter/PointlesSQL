@@ -23,7 +23,7 @@ from pathlib import Path
 import deltalake
 import pandas as pd
 
-from pointlessql.pql.engine import DuckDBEngine, PandasEngine, PolarsEngine
+from pointlessql.pql import DuckDBEngine, PandasEngine, PolarsEngine
 
 
 def test_pandas_overwrite_replaces_schema(tmp_path: Path) -> None:

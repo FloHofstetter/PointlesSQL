@@ -428,7 +428,7 @@ def run_table_preview(settings: Settings, principal: str, full_name: str) -> dic
         ``detail`` is humanised by :func:`humanize_preview_error`;
         ``kind`` lets the frontend render an actionable hint.
     """
-    from pointlessql.pql.pql import PQL
+    from pointlessql.pql import PQL
 
     try:
         client = (

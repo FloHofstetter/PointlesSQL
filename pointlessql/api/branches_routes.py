@@ -50,14 +50,12 @@ from pointlessql.api.dependencies import (
 from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import BranchAuditLog
-from pointlessql.pql._branch import (
+from pointlessql.pql import (
+    BranchError,
+    BranchPromotionConflictError,
     discard_branch_schema,
     preview_promote_conflicts,
     promote_branch_schema,
-)
-from pointlessql.pql._branch_errors import (
-    BranchError,
-    BranchPromotionConflictError,
 )
 from pointlessql.services import branch_tags
 from pointlessql.services.soyuz_client import make_soyuz_client

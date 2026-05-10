@@ -107,7 +107,7 @@ def run_sql_sync(
     Returns:
         A :class:`pointlessql.pql.pql.SQLResult` dataclass.
     """
-    from pointlessql.pql.pql import PQL
+    from pointlessql.pql import PQL
 
     del settings  # reserved for future engine selection
     return PQL.sql(
@@ -178,8 +178,7 @@ def run_sql_export_sync(
     import duckdb
 
     from pointlessql.exceptions import SQLExecutionError
-    from pointlessql.pql.engine import register_delta_view
-    from pointlessql.pql.sql_parser import prepare_sql
+    from pointlessql.pql import prepare_sql, register_delta_view
 
     del settings
     prepared = prepare_sql(query)
@@ -239,7 +238,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
 
     from pointlessql.api.sql_dispatcher import dispatch
     from pointlessql.exceptions import SQLExecutionError
-    from pointlessql.pql.sql_parser import (
+    from pointlessql.pql import (
         SQLParseError,
         StmtType,
         parse_and_classify,
@@ -298,7 +297,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
                 DispatchContext,
                 _enforce_select_per_table,  # pyright: ignore[reportPrivateUsage]
             )
-            from pointlessql.pql.sql_parser import prepare_sql
+            from pointlessql.pql import prepare_sql
 
             prepared = prepare_sql(query)
             user = get_user(request)
@@ -581,7 +580,7 @@ async def api_sql_execute_batch(
     """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
     from pointlessql.api.sql_dispatcher import dispatch
     from pointlessql.exceptions import SQLExecutionError
-    from pointlessql.pql.sql_parser import (
+    from pointlessql.pql import (
         SQLParseError,
         classify,
         parse_batch,
@@ -833,7 +832,7 @@ async def api_sql_download(
 
     from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
     from pointlessql.models import QueryHistory
-    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.pql import SQLParseError, prepare_sql
 
     settings: Settings = request.app.state.settings
     factory = getattr(request.app.state, "session_factory", None)
@@ -969,7 +968,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
     import uuid as _uuid
 
     from pointlessql.exceptions import CatalogNotFoundError, SQLExecutionError
-    from pointlessql.pql.sql_parser import SQLParseError, prepare_sql
+    from pointlessql.pql import SQLParseError, prepare_sql
     from pointlessql.services.agent_runs import operation_context
     from pointlessql.services.sql import run_explain
 

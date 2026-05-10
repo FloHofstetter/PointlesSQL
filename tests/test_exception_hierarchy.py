@@ -15,7 +15,7 @@ from pointlessql.exceptions import (
     PermissionDeniedError,
     PointlessSQLError,
 )
-from pointlessql.pql._branch_errors import (
+from pointlessql.pql import (
     BranchAlreadyExistsError,
     BranchCloudUnsupportedError,
     BranchError,
@@ -23,8 +23,8 @@ from pointlessql.pql._branch_errors import (
     BranchNotFoundError,
     BranchOfBranchError,
     BranchPromotionConflictError,
+    SQLParseError,
 )
-from pointlessql.pql.sql_parser import SQLParseError
 from pointlessql.services.agent_runs.operations import (
     RollbackAmbiguous,
     RollbackError,

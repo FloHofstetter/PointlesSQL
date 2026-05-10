@@ -24,8 +24,7 @@ from typing import Any
 from soyuz_catalog_client import Client
 
 from pointlessql.config import Settings
-from pointlessql.pql._branch import discard_branch_schema
-from pointlessql.pql._branch_errors import BranchError
+from pointlessql.pql import BranchError, discard_branch_schema
 from pointlessql.services import branch_tags
 from pointlessql.services.unitycatalog._api import (
     _list_catalogs as list_catalogs_api,
