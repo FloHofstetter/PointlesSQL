@@ -68,7 +68,7 @@ async def admin_index(request: Request) -> HTMLResponse:
 
     from pointlessql.models import ApiKey, CdfTailSubscription, Workspace
     from pointlessql.models.agent._reviews import ReviewDestination
-    from pointlessql.models.audit_sinks import AuditSink
+    from pointlessql.models.audit._sinks import AuditSink
     from pointlessql.services import external_write_scanner
 
     require_admin(request)
@@ -223,7 +223,7 @@ async def admin_audit_sinks_index(request: Request) -> HTMLResponse:
     from sqlalchemy import select as _select
 
     from pointlessql.models import Workspace
-    from pointlessql.models.audit_sinks import AuditSink
+    from pointlessql.models.audit._sinks import AuditSink
 
     require_admin(request)
     factory = request.app.state.session_factory

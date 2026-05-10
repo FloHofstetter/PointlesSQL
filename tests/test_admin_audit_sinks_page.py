@@ -21,7 +21,7 @@ from sqlalchemy.pool import StaticPool
 from pointlessql.api.main import _TEMPLATES, app
 from pointlessql.config import Settings
 from pointlessql.models import Base
-from pointlessql.models.audit_sinks import AuditSink
+from pointlessql.models.audit._sinks import AuditSink
 from pointlessql.services import auth
 
 

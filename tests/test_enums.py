@@ -25,7 +25,7 @@ from enum import StrEnum
 
 from pointlessql.models.agent._reviews import REVIEW_KINDS, REVIEW_SEVERITIES
 from pointlessql.models.agent._runs import VALID_STATUSES
-from pointlessql.models.audit_sinks import SINK_TYPES
+from pointlessql.models.audit._sinks import SINK_TYPES
 from pointlessql.models.branch_audit import BRANCH_ACTIONS
 from pointlessql.services.agent_runs.operations import VALID_OP_NAMES
 from pointlessql.services.query_history import VALID_READ_KINDS

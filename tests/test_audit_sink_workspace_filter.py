@@ -21,7 +21,7 @@ import pytest
 
 from pointlessql.api.main import app
 from pointlessql.models import Workspace
-from pointlessql.models.audit_sinks import AuditSink
+from pointlessql.models.audit._sinks import AuditSink
 from pointlessql.services.audit.sinks import _select_active_sinks
 
 

@@ -113,7 +113,7 @@ class ReviewKind(StrEnum):
 class AuditSinkType(StrEnum):
     """Recognised :class:`AuditSink.type` values.
 
-    Pinned to :data:`pointlessql.models.audit_sinks.SINK_TYPES`
+    Pinned to :data:`pointlessql.models.audit._sinks.SINK_TYPES`
     and to the ``ck_audit_sinks_type`` SQL CHECK constraint.
     """
 

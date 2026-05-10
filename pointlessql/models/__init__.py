@@ -54,10 +54,15 @@ from pointlessql.models.agent import (
     RewriteAttempt,
 )
 from pointlessql.models.alerts import Alert, AlertDestination, AlertEvent
-from pointlessql.models.anomaly import AnomalyAck
 from pointlessql.models.api_keys import ApiKey
-from pointlessql.models.audit import AuditLog
-from pointlessql.models.audit_sinks import SINK_TYPES, AuditSink, GovernanceEvent
+from pointlessql.models.audit import (
+    SINK_TYPES,
+    AnomalyAck,
+    AuditLog,
+    AuditSink,
+    GovernanceEvent,
+    SavedAuditQuery,
+)
 from pointlessql.models.auth import User
 from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.models.base import Base
@@ -92,7 +97,6 @@ from pointlessql.models.notebook import (
     NotebookOutput,
 )
 from pointlessql.models.recents import RecentTable
-from pointlessql.models.saved_audit_queries import SavedAuditQuery
 from pointlessql.models.scheduler import (
     Job,
     JobLog,

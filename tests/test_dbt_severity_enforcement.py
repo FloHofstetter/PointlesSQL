@@ -22,7 +22,7 @@ from sqlalchemy import select
 from pointlessql.api.dbt.routes import _classify_severity
 from pointlessql.api.main import app
 from pointlessql.models.agent._runs import STATUS_FAILED, STATUS_SUCCEEDED, AgentRun
-from pointlessql.models.audit_sinks import GovernanceEvent
+from pointlessql.models.audit._sinks import GovernanceEvent
 from pointlessql.services.dbt import (
     DBTExecutor,
     DBTNodeResult,

@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import select
 
 from pointlessql.config import Settings
-from pointlessql.models.audit_sinks import GovernanceEvent
+from pointlessql.models.audit._sinks import GovernanceEvent
 from pointlessql.services.audit.sinks import dispatch_to_sinks
 from pointlessql.types import EventOutcome
 

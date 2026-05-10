@@ -33,7 +33,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from pointlessql.models.audit_sinks import AuditSink
+from pointlessql.models.audit._sinks import AuditSink
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.aws_sigv4 import sign_request
 from pointlessql.types import AuditSinkType

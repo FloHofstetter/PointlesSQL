@@ -36,7 +36,7 @@ from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import Workspace
-from pointlessql.models.audit_sinks import SINK_TYPES, AuditSink, GovernanceEvent
+from pointlessql.models.audit._sinks import SINK_TYPES, AuditSink, GovernanceEvent
 
 router = APIRouter(tags=["admin-audit-sinks"])
 

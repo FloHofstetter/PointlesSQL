@@ -145,7 +145,7 @@ class ReviewDestination(Base):
             fan-out — every workspace's reviews fire this
             destination.  ``[1]`` restricts to reviews whose
             ``workspace_id`` matches.  Mirrors the same shape on
-            :class:`pointlessql.models.audit_sinks.AuditSink` for
+            :class:`pointlessql.models.audit._sinks.AuditSink` for
             consistency at the admin surface.
         created_at: Insert timestamp.
     """
