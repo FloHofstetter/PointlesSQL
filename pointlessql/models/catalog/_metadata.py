@@ -215,6 +215,9 @@ class QueryHistory(Base):
     chart_config: Mapped[str | None] = mapped_column(Text, nullable=True)
     agent_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     read_kind: Mapped[str] = mapped_column(String(32), nullable=False, server_default="sql_execute")
+    lens_session_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("lens_sessions.id"), nullable=True
+    )
 
 
 class QueryHistoryTable(Base):
