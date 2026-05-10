@@ -38,11 +38,7 @@ from pointlessql.api.admin_workspaces_routes import (
 from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
-from pointlessql.api.audit_by_table_routes import router as audit_by_table_router
-from pointlessql.api.audit_inbox_routes import router as audit_inbox_router
-from pointlessql.api.audit_routes import router as audit_router
-from pointlessql.api.audit_search_routes import router as audit_search_router
-from pointlessql.api.audit_sinks_routes import router as audit_sinks_router
+from pointlessql.api.audit import router as audit_router
 from pointlessql.api.auth_routes import router as auth_router
 from pointlessql.api.branches_routes import router as branches_router
 from pointlessql.api.catalog_html_routes import router as catalog_html_router
@@ -888,9 +884,6 @@ app.include_router(sql_router)
 app.include_router(queries_router)
 app.include_router(alerts_router)
 app.include_router(audit_router)
-app.include_router(audit_inbox_router)
-app.include_router(audit_search_router)
-app.include_router(audit_by_table_router)
 app.include_router(saved_audit_queries_router)
 app.include_router(volumes_router)
 app.include_router(lineage_router)
@@ -918,7 +911,6 @@ app.include_router(admin_repos_router)
 app.include_router(admin_workspace_pins_router)
 app.include_router(admin_workspaces_router)
 app.include_router(review_destinations_router)
-app.include_router(audit_sinks_router)
 app.include_router(ml_router)
 app.include_router(mlflow_html_router)
 app.include_router(mlflow_proxy_router)
