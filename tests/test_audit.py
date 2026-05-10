@@ -22,9 +22,11 @@ from sqlalchemy.pool import StaticPool
 from pointlessql.models import AuditLog, Base
 from pointlessql.services.audit import (
     AuditIntegrityError,
-    _allow_audit_mutation,
     cleanup_old_entries,
     log_action,
+)
+from pointlessql.services.audit._core import (
+    _allow_audit_mutation,  # noqa: PLC2701  # test reaches private contextmanager
 )
 
 

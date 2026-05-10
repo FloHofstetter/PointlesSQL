@@ -19,7 +19,7 @@ Two tables that together implement 's audit-stream forwarder:
 
 Run-tied lifecycle events keep flowing through
 :class:`AgentRunEvent` exactly as before; the new
-:func:`pointlessql.services.audit_sinks.dispatch_to_sinks` helper
+:func:`pointlessql.services.audit.sinks.dispatch_to_sinks` helper
 simply gains those envelopes as an additional fan-out destination.
 """
 

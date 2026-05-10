@@ -1,7 +1,7 @@
 """Saved-audit-query CRUD + run + export endpoints.
 
 Admin-only.  See
-:mod:`pointlessql.services.saved_audit_queries` for the
+:mod:`pointlessql.services.audit.saved_queries` for the
 allow-list, starter-row contract, and execution semantics.
 """
 
@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin
 from pointlessql.exceptions import ResourceNotFoundError, ValidationError
-from pointlessql.services import saved_audit_queries as svc
+from pointlessql.services.audit import saved_queries as svc
 
 logger = logging.getLogger(__name__)
 

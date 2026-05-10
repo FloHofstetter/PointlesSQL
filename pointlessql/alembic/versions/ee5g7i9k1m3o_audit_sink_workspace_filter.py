@@ -7,7 +7,7 @@ pre-29.1 behaviour.  A non-null list like ``[1, 3]`` restricts the
 sink to events whose ``workspace_id`` is one of the listed values.
 
 The dispatcher predicate is implemented in
-:func:`pointlessql.services.audit_sinks._select_active_sinks`; see
+:func:`pointlessql.services.audit.sinks._select_active_sinks`; see
 also :func:`pointlessql.services.governance_events.emit_governance_event`
 for the call site that threads ``workspace_id`` through.
 

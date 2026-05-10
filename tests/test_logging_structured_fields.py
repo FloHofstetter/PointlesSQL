@@ -46,7 +46,7 @@ def test_read_audit_attaches_read_kind_and_table(
     """``record_read`` carries ``read_kind`` + ``table_fqn`` on failure."""
     import datetime
 
-    from pointlessql.services import read_audit
+    from pointlessql.services.audit import _read as read_audit
 
     now = datetime.datetime.now(datetime.UTC)
     read_audit.record_read(

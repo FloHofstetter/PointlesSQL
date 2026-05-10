@@ -170,7 +170,7 @@ class QueryHistory(Base):
             execute`` traffic (the default and the only writer
             before ), ``"pql_table"`` for direct
             ``pql.table()`` reads recorded via
-            :func:`pointlessql.services.read_audit.record_read`,
+            :func:`pointlessql.services.audit._read.record_read`,
             and ``"engine_direct"`` for raw engine reads instrumented
             by the same helper.  Validation lives in
             :func:`pointlessql.services.query_history.record_query`.

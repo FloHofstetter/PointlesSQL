@@ -21,7 +21,7 @@ from pointlessql.exceptions import (
 )
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine
-from pointlessql.services.read_audit import record_read
+from pointlessql.services.audit._read import record_read
 from pointlessql.types import QueryStatus, ReadKind
 
 
@@ -35,7 +35,7 @@ def read_table(
     """Read a Delta table registered in Unity Catalog.
 
     On success a ``query_history`` row with ``read_kind="pql_table"``
-    is written via :func:`pointlessql.services.read_audit.record_read`
+    is written via :func:`pointlessql.services.audit._read.record_read`
     so the DSGVO read-audit gap is closed for this
     bypass path.  The audit insert is best-effort — it runs only
     when a session factory is available and never raises into the
@@ -120,7 +120,7 @@ def _record(
     the metadata-DB lifecycle.  When the factory is unbound (pure
     interactive PQL with no FastAPI lifespan and no run-id env), the
     audit row is silently skipped — see
-    :mod:`pointlessql.services.read_audit` for the contract.
+    :mod:`pointlessql.services.audit._read` for the contract.
     """
     if not os.environ.get("POINTLESSQL_AGENT_RUN_ID"):
         return

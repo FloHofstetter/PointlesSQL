@@ -38,7 +38,7 @@ from sqlalchemy import select
 from pointlessql.api.dependencies import current_workspace_id, require_lineage_inbound
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import LineageColumnMap, LineageRowEdge
-from pointlessql.services.audit_sinks import dispatch_to_sinks
+from pointlessql.services.audit.sinks import dispatch_to_sinks
 from pointlessql.services.lineage.inbound_parser import (
     OpenLineageInboundEvent,
     parse_to_column_maps,

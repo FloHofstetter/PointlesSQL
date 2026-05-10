@@ -320,7 +320,7 @@ async def load_uc_mutations_for_run(
         ``principal`` / ``agent_run_id`` / ``client_ip`` /
         ``detail`` / ``created_at``) ready for the template.
     """
-    from pointlessql.services import soyuz_audit
+    from pointlessql.services.audit import _soyuz as soyuz_audit
 
     uc = request.app.state.uc_client
     return await soyuz_audit.fetch_for_run(uc, run_id, limit=200)

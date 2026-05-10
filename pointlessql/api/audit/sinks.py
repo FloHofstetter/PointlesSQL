@@ -415,7 +415,7 @@ async def api_admin_test_audit_sink(request: Request, sink_id: int) -> dict[str,
         },
     }
     # Bypass the standard dispatch filter — call the per-sink dispatcher directly
-    from pointlessql.services.audit_sinks import dispatch_one
+    from pointlessql.services.audit.sinks import dispatch_one
 
     ok = await dispatch_one(row, envelope)
     await audit(

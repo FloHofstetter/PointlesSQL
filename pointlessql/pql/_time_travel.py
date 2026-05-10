@@ -42,7 +42,7 @@ from pointlessql.exceptions import (
     CatalogUnavailableError,
 )
 from pointlessql.pql._parsing import parse_full_name
-from pointlessql.services.read_audit import record_read
+from pointlessql.services.audit._read import record_read
 from pointlessql.types import QueryStatus, ReadKind
 
 if TYPE_CHECKING:
@@ -229,7 +229,7 @@ def _record(
     Lazy-load the session factory so the helper stays usable in
     interactive PQL sessions where no FastAPI lifespan is bound.
     The audit row is best-effort — failures are silenced inside
-    :func:`pointlessql.services.read_audit.record_read`.
+    :func:`pointlessql.services.audit._read.record_read`.
     """
     if not os.environ.get("POINTLESSQL_AGENT_RUN_ID"):
         return

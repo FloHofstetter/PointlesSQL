@@ -3,7 +3,7 @@
 Forward direction lives on the run-detail page (its
 ``tables_touched`` row).  This module flips the question: given a
 table FQN, which runs touched / wrote / read it?  Backed by
-:mod:`pointlessql.services.audit_by_table`.
+:mod:`pointlessql.services.audit.by_table`.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.dependencies import require_auditor
 from pointlessql.exceptions import ValidationError
-from pointlessql.services import audit_by_table
+from pointlessql.services.audit import by_table as audit_by_table
 
 logger = logging.getLogger(__name__)
 

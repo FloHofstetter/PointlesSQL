@@ -23,7 +23,7 @@ from sqlalchemy import select
 from pointlessql.api.main import app
 from pointlessql.exceptions import ValidationError
 from pointlessql.models import AgentRun, AuditLog, SavedAuditQuery
-from pointlessql.services import saved_audit_queries as svc
+from pointlessql.services.audit import saved_queries as svc
 
 
 @pytest.fixture(autouse=True)
