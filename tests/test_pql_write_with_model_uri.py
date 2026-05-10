@@ -17,7 +17,7 @@ import httpx
 import pandas as pd
 import pytest
 
-from pointlessql.api import pql_write_routes
+from pointlessql.api.sql import write as pql_write_routes
 from pointlessql.api.main import app
 from pointlessql.services.unitycatalog import UnityCatalogClient
 

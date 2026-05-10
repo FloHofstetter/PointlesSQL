@@ -233,7 +233,7 @@ async def _execute_select(ctx: DispatchContext) -> ExecutionResult:
         :class:`ExecutionResult` with ``kind='select'`` and the
         legacy SELECT fields populated.
     """
-    from pointlessql.api.sql_routes import run_sql_sync
+    from pointlessql.api.sql.editor import run_sql_sync
 
     prepared = prepare_sql(ctx.sql)
     approved = await _enforce_select_per_table(ctx, prepared.refs)
@@ -306,7 +306,7 @@ async def _execute_insert(
     op_name_label = "write_table"
 
     def _run() -> dict[str, Any]:
-        from pointlessql.api.pql_write_routes import (
+        from pointlessql.api.sql.write import (
             _build_pql,  # pyright: ignore[reportPrivateUsage]
             _materialise_select_to_pandas,  # pyright: ignore[reportPrivateUsage]
         )
@@ -365,7 +365,7 @@ async def _execute_update(ctx: DispatchContext) -> ExecutionResult:
     run_id = await _start_editor_agent_run(ctx, target_fqn=target_fqn)
 
     def _run() -> dict[str, Any]:
-        from pointlessql.api.pql_write_routes import (
+        from pointlessql.api.sql.write import (
             _build_pql,  # pyright: ignore[reportPrivateUsage]
         )
 
@@ -415,7 +415,7 @@ async def _execute_delete(ctx: DispatchContext) -> ExecutionResult:
     run_id = await _start_editor_agent_run(ctx, target_fqn=target_fqn)
 
     def _run() -> dict[str, Any]:
-        from pointlessql.api.pql_write_routes import (
+        from pointlessql.api.sql.write import (
             _build_pql,  # pyright: ignore[reportPrivateUsage]
         )
 
@@ -474,7 +474,7 @@ async def _execute_merge(ctx: DispatchContext) -> ExecutionResult:
     run_id = await _start_editor_agent_run(ctx, target_fqn=target_fqn)
 
     def _run() -> dict[str, Any]:
-        from pointlessql.api.pql_write_routes import (
+        from pointlessql.api.sql.write import (
             _build_pql,  # pyright: ignore[reportPrivateUsage]
         )
 

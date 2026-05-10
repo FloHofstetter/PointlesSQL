@@ -236,7 +236,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
     """  # noqa: DOC502,DOC503 — AuthorizationError is raised inside check_privilege
     import duckdb
 
-    from pointlessql.api.sql_dispatcher import dispatch
+    from pointlessql.api.sql._dispatcher import dispatch
     from pointlessql.exceptions import SQLExecutionError
     from pointlessql.pql import (
         SQLParseError,
@@ -293,7 +293,7 @@ async def api_sql_execute(request: Request, body: dict[str, Any] = Body(...)) ->
         if stype is StmtType.SELECT and explain:
             # Legacy EXPLAIN path stays inline — feeds the
             # pre-existing JSON-plan renderer below.
-            from pointlessql.api.sql_dispatcher import (
+            from pointlessql.api.sql._dispatcher import (
                 DispatchContext,
                 _enforce_select_per_table,  # pyright: ignore[reportPrivateUsage]
             )
@@ -578,7 +578,7 @@ async def api_sql_execute_batch(
         SQLExecutionError: When the SQL editor is disabled or the
             batch parse fails before any statement runs.
     """  # noqa: DOC502,DOC503 — exceptions bubble up to the centralised handler
-    from pointlessql.api.sql_dispatcher import dispatch
+    from pointlessql.api.sql._dispatcher import dispatch
     from pointlessql.exceptions import SQLExecutionError
     from pointlessql.pql import (
         SQLParseError,
@@ -711,7 +711,7 @@ async def _rollback_run(request: Request, *, run_id: str) -> dict[str, Any]:
     """
     from sqlalchemy import select
 
-    from pointlessql.api.pql_write_routes import (
+    from pointlessql.api.sql.write import (
         _build_pql,  # pyright: ignore[reportPrivateUsage]
     )
     from pointlessql.models.agent_run_audit import AgentRunOperation

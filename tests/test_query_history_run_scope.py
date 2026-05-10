@@ -122,7 +122,7 @@ async def test_sql_execute_tags_history_with_header(
     run_id = _create_run("45678901-4567-4567-4567-456789012345")
 
     # Stub run_sql_sync so the test doesn't need a real DuckDB context.
-    from pointlessql.api import sql_routes as sql_routes_mod
+    from pointlessql.api.sql import editor as sql_routes_mod
     from pointlessql.pql._types import SQLResult
 
     fake_result = SQLResult(

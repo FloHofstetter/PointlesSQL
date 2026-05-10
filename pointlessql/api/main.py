@@ -59,14 +59,12 @@ from pointlessql.api.models_routes import router as models_router
 from pointlessql.api.notebooks_routes import router as notebooks_router
 from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
 from pointlessql.api.pql_training_routes import router as pql_training_router
-from pointlessql.api.pql_write_routes import router as pql_write_router
-from pointlessql.api.queries_routes import router as queries_router
 from pointlessql.api.review_destinations_routes import router as review_destinations_router
 from pointlessql.api.runs_routes import router as runs_router
 from pointlessql.api.saved_audit_queries_routes import (
     router as saved_audit_queries_router,
 )
-from pointlessql.api.sql_routes import router as sql_router
+from pointlessql.api.sql import router as sql_router
 from pointlessql.api.time_travel_routes import router as time_travel_router
 from pointlessql.api.volumes_routes import (
     DELTA_PRIMITIVE_TO_UC as _DELTA_PRIMITIVE_TO_UC,  # noqa: F401  # pyright: ignore[reportUnusedImport]
@@ -868,7 +866,6 @@ app.include_router(catalog_router)
 app.include_router(catalog_html_router)
 app.include_router(conventions_router)
 app.include_router(sql_router)
-app.include_router(queries_router)
 app.include_router(alerts_router)
 app.include_router(audit_router)
 app.include_router(saved_audit_queries_router)
@@ -883,7 +880,6 @@ app.include_router(agent_runs_router)
 app.include_router(agent_reviews_router)
 app.include_router(branches_router)
 app.include_router(pql_introspect_router)
-app.include_router(pql_write_router)
 app.include_router(pql_training_router)
 app.include_router(federation_router)
 app.include_router(jobs_router)

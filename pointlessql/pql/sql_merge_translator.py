@@ -306,7 +306,7 @@ def _materialise_source(
             raise SQLMergeUnsupportedError(
                 "MERGE USING subquery must be a SELECT (or WITH … SELECT).",
             )
-        from pointlessql.api.pql_write_routes import (
+        from pointlessql.api.sql.write import (
             _materialise_select_to_pandas,  # pyright: ignore[reportPrivateUsage]
         )
 

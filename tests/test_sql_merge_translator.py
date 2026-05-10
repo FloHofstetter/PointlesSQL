@@ -176,7 +176,7 @@ def test_subquery_source_routes_through_materialisation(
     fake_df = pa.table({"id": [1], "name": ["x"]}).to_pandas()
     fake_helper = MagicMock(return_value=fake_df)
     monkeypatch.setattr(
-        "pointlessql.api.pql_write_routes._materialise_select_to_pandas",
+        "pointlessql.api.sql.write._materialise_select_to_pandas",
         fake_helper,
     )
 
