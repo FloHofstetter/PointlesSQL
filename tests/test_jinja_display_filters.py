@@ -7,8 +7,6 @@ environment in :mod:`pointlessql.api.main`.
 
 from __future__ import annotations
 
-import pytest
-
 from pointlessql.api.main import _format_hash, _format_uuid
 
 

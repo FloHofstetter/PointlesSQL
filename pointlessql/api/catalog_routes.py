@@ -37,7 +37,7 @@ from pointlessql.services.authorization import (
 )
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
 from pointlessql.settings import Settings
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 logger = logging.getLogger(__name__)
 

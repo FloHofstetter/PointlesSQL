@@ -35,8 +35,7 @@ from pointlessql.api.dependencies import get_uc_client, get_user
 from pointlessql.exceptions import CatalogUnavailableError, PointlessSQLError
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.settings import Settings
-from pointlessql.table_fqn import TableFqn
-from pointlessql.types import UserInfo
+from pointlessql.types import TableFqn, UserInfo
 
 logger = logging.getLogger(__name__)
 

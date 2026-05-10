@@ -35,9 +35,8 @@ from sqlglot.errors import ParseError
 from sqlglot.expressions.core import Expression
 from sqlglot.lineage import lineage as _sqlglot_lineage
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import ValidationError
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import ErrorCode, TableFqn
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import (
     AuditUnavailableError,
     AuthenticationError,
@@ -24,6 +23,7 @@ from pointlessql.exceptions import (
     SQLExecutionError,
     ValidationError,
 )
+from pointlessql.types import ErrorCode
 
 
 def test_every_domain_exception_carries_error_code_member() -> None:

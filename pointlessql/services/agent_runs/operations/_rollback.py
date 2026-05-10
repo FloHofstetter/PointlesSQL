@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
+from pointlessql.types import ErrorCode
 
 if TYPE_CHECKING:
     from pointlessql.models import AgentRunOperation

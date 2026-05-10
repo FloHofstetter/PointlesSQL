@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
+from pointlessql.types import ErrorCode
 
 
 class WorkspaceRepoError(PointlessSQLError):

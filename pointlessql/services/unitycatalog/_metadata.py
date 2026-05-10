@@ -31,7 +31,7 @@ from pointlessql.services.unitycatalog._api import (
     _update_tags,
     wrap_catalog_errors,
 )
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 
 class MetadataMixin:

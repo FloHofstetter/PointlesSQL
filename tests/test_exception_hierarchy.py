@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import pytest
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import (
     AuthorizationError,
     PermissionDeniedError,
@@ -40,6 +39,7 @@ from pointlessql.services.dbt_subprocess import DBTStartupError
 from pointlessql.services.mlflow_subprocess import MLflowStartupError
 from pointlessql.services.model_promotion import PromotionError
 from pointlessql.services.oidc import OIDCError
+from pointlessql.types import ErrorCode
 
 
 @pytest.mark.parametrize(

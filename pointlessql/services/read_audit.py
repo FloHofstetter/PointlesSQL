@@ -34,9 +34,8 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-from pointlessql.enums import QueryStatus, ReadKind
-from pointlessql.identifiers import RunId
 from pointlessql.services.query_history import record_query
+from pointlessql.types import QueryStatus, ReadKind, RunId
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

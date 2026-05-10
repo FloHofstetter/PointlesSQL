@@ -28,7 +28,7 @@ from pointlessql.api.dependencies import get_uc_client
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import AgentRunOperation
 from pointlessql.pql.pql import PQL
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 router = APIRouter(tags=["pql-introspect"])
 

@@ -20,9 +20,9 @@ from pathlib import Path
 import pytest
 
 from pointlessql.git import (
+    KNOWN_PROVIDER_KINDS,
     GenericGitProvider,
     GitHubProvider,
-    KNOWN_PROVIDER_KINDS,
     WebhookEvent,
     WorkspaceRepoCloneFailed,
     WorkspaceRepoUnknownProvider,

@@ -15,16 +15,15 @@ import os
 import time
 from typing import Any, cast
 
-from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     SQLExecutionError,
     ValidationError,
 )
-from pointlessql.identifiers import RunId
 from pointlessql.pql._types import SQLResult
 from pointlessql.pql.engine import register_delta_view
 from pointlessql.pql.sql_parser import SQLParseError, extract_column_lineage, prepare_sql
 from pointlessql.services.agent_runs import operation_context
+from pointlessql.types import OpName, RunId
 
 logger = logging.getLogger(__name__)
 

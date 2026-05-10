@@ -19,8 +19,6 @@ from __future__ import annotations
 
 from typing import Self
 
-from pointlessql.exceptions import ValidationError
-
 
 class TableFqn(str):
     """A validated ``catalog.schema.table`` UC identifier.
@@ -50,6 +48,10 @@ class TableFqn(str):
             ValidationError: ``full_name`` is not exactly three
                 non-empty period-separated parts.
         """
+        from pointlessql.exceptions import (
+            ValidationError,  # noqa: PLC0415  # break exceptions↔types cycle
+        )
+
         parts = [p.strip() for p in full_name.split(".")]
         if len(parts) != 3 or not all(parts):
             raise ValidationError(

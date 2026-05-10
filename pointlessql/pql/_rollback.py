@@ -39,12 +39,10 @@ from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 from sqlalchemy import select
 
-from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
 )
-from pointlessql.identifiers import RunId
 from pointlessql.models import AgentRunOperation
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.agent_runs.operations import (
@@ -53,6 +51,7 @@ from pointlessql.services.agent_runs.operations import (
     RollbackStale,
     RollbackTargetNotFound,
 )
+from pointlessql.types import OpName, RunId
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

@@ -14,7 +14,7 @@ import json
 import pytest
 
 from pointlessql.exceptions import ValidationError
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 
 def test_parse_strips_whitespace_around_segments() -> None:

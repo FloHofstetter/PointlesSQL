@@ -15,7 +15,6 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -23,6 +22,7 @@ from pointlessql.exceptions import (
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine
 from pointlessql.services.read_audit import record_read
+from pointlessql.types import QueryStatus, ReadKind
 
 
 def read_table(

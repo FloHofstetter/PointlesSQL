@@ -26,9 +26,8 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import desc, func, select
 
-from pointlessql.enums import QueryStatus, ReadKind
-from pointlessql.identifiers import QueryHistoryId, RunId
 from pointlessql.models import QueryHistory, QueryHistoryTable
+from pointlessql.types import QueryHistoryId, QueryStatus, ReadKind, RunId
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

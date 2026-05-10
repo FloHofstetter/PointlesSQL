@@ -33,12 +33,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pointlessql.enums import OpName
 from pointlessql.exceptions import AuditUnavailableError
-from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.operations import record_operation
 from pointlessql.services.lineage.rows import record_rejects
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import OpName, RunId, TableFqn
 
 if TYPE_CHECKING:
     from soyuz_catalog_client import Client

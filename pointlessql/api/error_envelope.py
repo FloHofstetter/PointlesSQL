@@ -20,7 +20,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from pointlessql.error_codes import ErrorCode
+from pointlessql.types import ErrorCode
 
 
 class ErrorEnvelope(BaseModel):

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pointlessql.error_codes import ErrorCode
+from pointlessql.types import ErrorCode
 
 
 class PointlessSQLError(Exception):

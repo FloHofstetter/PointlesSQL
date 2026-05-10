@@ -26,9 +26,9 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.settings import DBTSettings
+from pointlessql.types import ErrorCode
 
 _logger = logging.getLogger(__name__)
 

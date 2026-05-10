@@ -27,13 +27,12 @@ from typing import Any
 from fastapi import APIRouter, Body, Request
 
 from pointlessql.api._audit_helpers import audit, effective_agent_run_id
-from pointlessql.enums import OpName
 from pointlessql.exceptions import ValidationError
-from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.operations import (
     VALID_OP_NAMES,
     record_operation,
 )
+from pointlessql.types import OpName, RunId
 
 logger = logging.getLogger(__name__)
 

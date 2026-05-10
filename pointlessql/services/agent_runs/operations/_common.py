@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from pointlessql.enums import OpName
 from pointlessql.models import AgentRunOperation
+from pointlessql.types import OpName
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

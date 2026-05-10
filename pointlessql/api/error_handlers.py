@@ -27,8 +27,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
+from pointlessql.types import ErrorCode
 
 logger = logging.getLogger(__name__)
 

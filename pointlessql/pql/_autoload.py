@@ -53,12 +53,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from pointlessql.conventions import ConventionsConfig, load_conventions
-from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
 )
-from pointlessql.identifiers import RunId
 from pointlessql.models import AutoloadCheckpoint
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._hashing import concat_sha256
@@ -66,6 +64,7 @@ from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._write import derive_storage_location, safe_delta_version
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
+from pointlessql.types import OpName, RunId
 
 logger = logging.getLogger(__name__)
 

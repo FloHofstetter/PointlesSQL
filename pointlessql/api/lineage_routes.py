@@ -56,7 +56,7 @@ from pointlessql.services.lineage_edges import (
     walk_back,
     walk_back_columns,
 )
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 logger = logging.getLogger(__name__)
 

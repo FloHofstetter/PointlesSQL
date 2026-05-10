@@ -31,9 +31,7 @@ from soyuz_catalog_client.models.create_schema import CreateSchema
 from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 
-from pointlessql.enums import BranchAction, OpName
 from pointlessql.exceptions import CatalogUnavailableError
-from pointlessql.identifiers import RunId
 from pointlessql.pql._branch_errors import (
     BranchAlreadyExistsError,
     BranchCloudUnsupportedError,
@@ -59,6 +57,7 @@ from pointlessql.services.branch_tags import (
     STRATEGY_SYMLINK,
 )
 from pointlessql.settings import Settings
+from pointlessql.types import BranchAction, OpName, RunId
 
 
 def _list_source_tables(client: Client, catalog: str, schema: str) -> list[dict[str, Any]]:

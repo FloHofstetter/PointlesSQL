@@ -34,7 +34,6 @@ from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user, require_admin, require_supervisor
-from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     AuditUnavailableError,
     AuthenticationError,
@@ -69,6 +68,7 @@ from pointlessql.services.governance_events import (
     EVENT_TYPE_DBT_TEST_WARNED,
     emit_governance_event,
 )
+from pointlessql.types import OpName
 
 logger = logging.getLogger(__name__)
 

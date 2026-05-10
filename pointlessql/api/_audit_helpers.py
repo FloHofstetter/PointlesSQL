@@ -20,10 +20,9 @@ from typing import Any
 from fastapi import Request
 
 from pointlessql.api.dependencies import client_ip, effective_principal, get_user
-from pointlessql.enums import QueryStatus, ReadKind
-from pointlessql.identifiers import RunId
 from pointlessql.services import audit as audit_service
 from pointlessql.services import query_history as query_history_service
+from pointlessql.types import QueryStatus, ReadKind, RunId
 
 logger = logging.getLogger(__name__)
 

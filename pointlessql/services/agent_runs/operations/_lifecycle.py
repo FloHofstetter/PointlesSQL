@@ -22,9 +22,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
-from pointlessql.enums import OpName
 from pointlessql.exceptions import AuditUnavailableError
-from pointlessql.identifiers import OpId, RunId
 from pointlessql.models import AgentRun, AgentRunOperation
 from pointlessql.services.agent_runs.mlflow_detector import detect_mlflow_run_id
 from pointlessql.services.agent_runs.operations._common import (
@@ -46,6 +44,7 @@ from pointlessql.services.agent_runs.operations._rejects import (
 from pointlessql.services.agent_runs.operations._value_changes import (
     record_value_changes_after_commit,
 )
+from pointlessql.types import OpId, OpName, RunId
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

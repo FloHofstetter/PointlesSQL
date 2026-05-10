@@ -31,9 +31,9 @@ import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import AgentReview
+from pointlessql.types import ErrorCode
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

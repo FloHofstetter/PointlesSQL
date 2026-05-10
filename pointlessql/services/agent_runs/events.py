@@ -28,11 +28,11 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-from pointlessql.enums import EventOutcome, RunStatus
 from pointlessql.models import AgentRunEvent
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.audit_sinks import dispatch_to_sinks
 from pointlessql.settings import Settings
+from pointlessql.types import EventOutcome, RunStatus
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

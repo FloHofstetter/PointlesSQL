@@ -17,7 +17,6 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-from pointlessql.enums import RunStatus
 from pointlessql.models import AgentRun
 from pointlessql.services.audit_aggregator._query_builder import (
     Bin,
@@ -25,6 +24,7 @@ from pointlessql.services.audit_aggregator._query_builder import (
     Severity,
 )
 from pointlessql.services.audit_aggregator._timeseries import timeseries
+from pointlessql.types import RunStatus
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

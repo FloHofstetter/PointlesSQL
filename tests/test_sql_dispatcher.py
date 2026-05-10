@@ -25,7 +25,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import deltalake
 import httpx
-import pandas as pd
 import pyarrow as pa
 import pytest
 
@@ -91,9 +90,9 @@ def patched_primitives_table_lookup(
     ``agent_run_operations`` row into the same DB where the
     dispatcher inserted the parent ``agent_runs`` row.
     """
-    import pointlessql.db
     from soyuz_catalog_client.models.table_info import TableInfo
 
+    import pointlessql.db
     from pointlessql.pql import _update_delete as ud
 
     fake_get = MagicMock()

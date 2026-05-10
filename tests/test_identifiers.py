@@ -12,7 +12,7 @@ failure.
 
 from __future__ import annotations
 
-from pointlessql.identifiers import OpId, QueryHistoryId, RunId, WorkspaceId
+from pointlessql.types import OpId, QueryHistoryId, RunId, WorkspaceId
 
 
 def test_run_id_is_str_at_runtime() -> None:

@@ -34,15 +34,14 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
 )
-from pointlessql.identifiers import RunId
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._write import safe_delta_version
 from pointlessql.services.agent_runs import operation_context
+from pointlessql.types import OpName, RunId
 
 logger = logging.getLogger(__name__)
 

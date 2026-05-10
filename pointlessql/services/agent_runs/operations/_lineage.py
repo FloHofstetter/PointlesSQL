@@ -14,11 +14,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pointlessql.enums import OpName
 from pointlessql.services.agent_runs.operations._common import (
     LINEAGE_FAILED_MARKER,
     stamp_audit_marker,
 )
+from pointlessql.types import OpName
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

@@ -40,7 +40,7 @@ from sqlglot import expressions as exp
 from sqlglot.expressions.core import Expression
 
 from pointlessql.pql.sql_parser import SQLParseError
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 
 class SQLMergeUnsupportedError(SQLParseError):

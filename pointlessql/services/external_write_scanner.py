@@ -30,7 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from pointlessql.models import AgentRunOperation, UnattributedWrite
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

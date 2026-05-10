@@ -46,13 +46,12 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
-from pointlessql.enums import OpName
-from pointlessql.identifiers import RunId
 from pointlessql.services.agent_runs.mlflow_detector import get_mlflow_module
 from pointlessql.services.agent_runs.operations import (
     OperationRecorder,
     operation_context,
 )
+from pointlessql.types import OpName, RunId
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

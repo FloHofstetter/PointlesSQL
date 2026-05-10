@@ -41,8 +41,8 @@ from soyuz_catalog_client.models.update_tags_tags_securable_type_full_name_patch
     UpdateTagsTagsSecurableTypeFullNamePatchSecurableType,
 )
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
+from pointlessql.types import ErrorCode
 
 if TYPE_CHECKING:
     from soyuz_catalog_client import Client

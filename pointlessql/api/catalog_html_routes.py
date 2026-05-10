@@ -35,7 +35,7 @@ from pointlessql.services.authorization import (
     check_privilege_from_effective,
     has_privilege,
 )
-from pointlessql.table_fqn import TableFqn
+from pointlessql.types import TableFqn
 
 logger = logging.getLogger(__name__)
 

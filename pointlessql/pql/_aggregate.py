@@ -44,12 +44,10 @@ from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogUnavailableError,
     ValidationError,
 )
-from pointlessql.identifiers import RunId
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
@@ -60,6 +58,7 @@ from pointlessql.services.lineage_edges import (
     ColumnEdgeSpec,
     synth_aggregate_target_row_id,
 )
+from pointlessql.types import OpName, RunId
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence

@@ -41,9 +41,9 @@ from typing import Any
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from pointlessql.error_codes import ErrorCode
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import AuditLog
+from pointlessql.types import ErrorCode
 
 logger = logging.getLogger(__name__)
 

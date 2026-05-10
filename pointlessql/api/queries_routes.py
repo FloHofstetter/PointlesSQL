@@ -33,9 +33,9 @@ from fastapi.templating import Jinja2Templates
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_user
 from pointlessql.exceptions import ValidationError
-from pointlessql.identifiers import QueryHistoryId
 from pointlessql.services import query_history as query_history_service
 from pointlessql.services import saved_queries as saved_queries_service
+from pointlessql.types import QueryHistoryId
 
 logger = logging.getLogger(__name__)
 

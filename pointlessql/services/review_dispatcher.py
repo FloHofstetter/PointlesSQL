@@ -32,9 +32,9 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from pointlessql.enums import ReviewSeverity
 from pointlessql.models.agent_reviews import AgentReview, ReviewDestination
 from pointlessql.services.alert_dispatcher import dispatch_webhook
+from pointlessql.types import ReviewSeverity
 
 logger = logging.getLogger(__name__)
 

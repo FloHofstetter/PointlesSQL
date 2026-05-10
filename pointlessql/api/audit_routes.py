@@ -33,7 +33,6 @@ from pointlessql.api.dependencies import (
     require_auditor,
 )
 from pointlessql.api.error_responses import STANDARD_ERROR_RESPONSES
-from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     PermissionDeniedError,
@@ -42,6 +41,7 @@ from pointlessql.exceptions import (
 from pointlessql.models import AgentRun, AnomalyAck, LineageValueChange
 from pointlessql.services import audit_aggregator as agg
 from pointlessql.services.query_history import VALID_READ_KINDS, list_queries, record_query
+from pointlessql.types import QueryStatus, ReadKind
 
 logger = logging.getLogger(__name__)
 

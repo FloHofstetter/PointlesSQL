@@ -37,13 +37,13 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
 )
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.services.read_audit import record_read
+from pointlessql.types import QueryStatus, ReadKind
 
 if TYPE_CHECKING:
     pass

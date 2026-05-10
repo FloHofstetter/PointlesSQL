@@ -22,18 +22,17 @@ from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.models.table_info import TableInfo
 from soyuz_catalog_client.types import Unset
 
-from pointlessql.enums import OpName
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
 )
-from pointlessql.identifiers import RunId
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.lineage_edges import synth_target_row_id
+from pointlessql.types import OpName, RunId
 
 LINEAGE_ROW_ID_COLUMN = "_lineage_row_id"
 

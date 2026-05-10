@@ -32,7 +32,6 @@ from pointlessql.api.dependencies import (
     get_user,
     require_admin,
 )
-from pointlessql.enums import OpName
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import AgentRunOperation
 from pointlessql.models.agent_runs import AgentRun
@@ -48,6 +47,7 @@ from pointlessql.services.agent_runs.operations import (
 )
 from pointlessql.services.cascade import find_downstream_tables
 from pointlessql.settings import Settings
+from pointlessql.types import OpName
 
 router = APIRouter()
 

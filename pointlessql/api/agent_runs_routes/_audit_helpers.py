@@ -25,10 +25,10 @@ from fastapi import Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import get_user
-from pointlessql.enums import QueryStatus, ReadKind
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models.agent_runs import AgentRun
 from pointlessql.services.query_history import record_query
+from pointlessql.types import QueryStatus, ReadKind
 
 logger = logging.getLogger(__name__)
 
