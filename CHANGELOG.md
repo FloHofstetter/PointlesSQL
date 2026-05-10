@@ -6,6 +6,29 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 65 — Lens read-only Q&A surface (2026-05-10).**  New
+  analyst-facing chat-style surface that exposes read-only data
+  Q&A over two transports: a browser chat UI at `/lens` (BYO LLM
+  key per workspace, Fernet-encrypted at rest) and an MCP server
+  on stdio for IDE consumers (Claude Desktop, Cursor, Hermes).
+  Both transports share one Pydantic-typed tool registry covering
+  `provenance` (unified row/column/value lineage trace —
+  Phase 65's signature tool), `query` (SELECT-only, EXPLAIN-cost-
+  gated, auto-LIMIT), `list_catalogs` / `_schemas` / `_tables`,
+  `describe_table`, and `lineage_neighbors`.  New `analyst` scope
+  on `api_keys` (auditor passes too as superset).  Pure read-only
+  enforcement at the AST validator; per-query cost cap +
+  per-session budget cap; pinned-answer flow lets analysts
+  bookmark assistant answers for stable-URL re-rendering at
+  `/api/lens/pinned/<slug>/view`.  Phase 13/39 power-mode write
+  tools stay parallel as the engineering story; Lens is the new
+  default analyst surface.  hermes-plugin-pointlessql gains
+  `pql_lens_ask` + `pql_lens_get_pinned` for cron-bot consumption.
+  Two new walkthroughs (`lens-overview.md` + `lens-mcp.md`).
+  Adds `mcp[cli]`, `openai`, `anthropic` deps.  Two Alembic
+  migrations (`ff5g7i9k1m3o` lens tables, `gg6h8j0l2n4p`
+  query_history.lens_session_id FK).  77 new pytest cases.
+
 - **UX — permission-locked navigation links visible instead of
   hidden (2026-05-10).**  Admin-only links in the icon-rail
   (Workspace, Admin), the catalog sidebar (Branches), and the

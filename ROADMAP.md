@@ -4887,6 +4887,98 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 65 — Lens (read-only Q&A surface, MCP + Browser parallel) ✅ done 2026-05-10
+│   │
+│   │   New analyst-facing chat-style surface that exposes read-only
+│   │   data Q&A over two transports — a browser chat UI at ``/lens``
+│   │   (BYO LLM key per workspace, Fernet-encrypted at rest) and an
+│   │   MCP (Model Context Protocol) server on stdio for IDE
+│   │   consumers (Claude Desktop, Cursor, Hermes-as-MCP-client).
+│   │   Both transports share the same Pydantic-typed tool registry
+│   │   (provenance, query, list_catalogs/_schemas/_tables,
+│   │   describe_table, lineage_neighbors); audit-trail goes through
+│   │   ``lens_messages`` + ``query_history.lens_session_id``.
+│   │
+│   │   New ``analyst`` scope on ``api_keys`` (auditor passes too as
+│   │   superset).  Pure read-only enforcement — non-SELECT statements
+│   │   raise at the AST validator before EXPLAIN; auto-LIMIT 1000
+│   │   on every SELECT; per-query cost cap + per-session budget cap.
+│   │   Pinned-answer flow lets analysts bookmark assistant answers
+│   │   for stable-URL re-rendering.  Phase 13/39 power-mode write
+│   │   tools stay parallel; Lens is the new default analyst surface.
+│   │
+│   ├── Sprint 65.0 — Foundation (DB + scope + skeleton)         ✅ 2026-05-10
+│   │       Alembic ``ff5g7i9k1m3o``: lens_sessions + lens_messages
+│   │       + lens_pinned_answers + lens_provider_creds tables;
+│   │       ``api_keys.analyst`` boolean.  ``require_analyst()`` dep
+│   │       (auditor + admin pass-through).  Service skeleton for
+│   │       sessions/messages/provider-creds with Fernet roundtrip
+│   │       via the existing ``system_keys`` master key.  10 pytest.
+│   ├── Sprint 65.1 — Provenance tool (signature feature)        ✅ 2026-05-10
+│   │       Unified ``provenance(table_fqn, row_id?, column?, ...)``
+│   │       service folding row-edges (Phase 15) + column-map (15.6)
+│   │       + value-changes (15.7) into one ProvenanceTrace shape
+│   │       with four resolution modes (table / column / row /
+│   │       row+value).  Direct browser route GET /api/lens/provenance.
+│   │       12 pytest.
+│   ├── Sprint 65.2 — Tool registry (shared backbone)            ✅ 2026-05-10
+│   │       Pydantic-typed Lens tool registry + audit-hook wrapper
+│   │       persisting every dispatch as a lens_messages tool-row.
+│   │       Three provider-specific schema converters (OpenAI,
+│   │       Anthropic, MCP).  Six built-in tools: provenance,
+│   │       lineage_neighbors, list_catalogs/_schemas/_tables,
+│   │       describe_table.  Alembic ``gg6h8j0l2n4p`` adds nullable
+│   │       ``query_history.lens_session_id`` FK (batch_alter_table
+│   │       for SQLite).  11 pytest.
+│   ├── Sprint 65.3 — Auto-LIMIT + cost-gate + query tool         ✅ 2026-05-10
+│   │       ``inject_limit()`` in pql.sql_parser auto-injects LIMIT
+│   │       (preserves explicit LIMITs, rejects DML/DDL).
+│   │       cost_gate.gate_query() composes prepare_sql + inject_limit
+│   │       + EXPLAIN cost cap + per-session budget cap, raising
+│   │       typed Lens*Error exceptions on each axis.  Wire ``query``
+│   │       tool into the registry. 4 new ErrorCode StrEnum members.
+│   │       12 pytest.
+│   ├── Sprint 65.4 — MCP server (stdio + introspection routes)  ✅ 2026-05-10
+│   │       FastMCP-backed Lens server exposes the tool registry
+│   │       over stdio (canonical IDE-consumer transport).  HTTP
+│   │       introspection routes /mcp/health + /mcp/info for
+│   │       client-side connection probing.  ``pointlessql lens-mcp``
+│   │       CLI subcommand.  /mcp/* added to PUBLIC_PREFIXES so the
+│   │       auth middleware doesn't redirect IDE clients to login.
+│   │       SSE FastMCP app shape exists (``build_lens_mcp_sse_app``)
+│   │       but is not auto-mounted from the bootstrap (lifespan-time
+│   │       mount deferred to follow-up).  Adds ``mcp[cli]`` dep.
+│   │       12 pytest.
+│   ├── Sprint 65.5 — Browser chat UI + LLM provider adapters    ✅ 2026-05-10
+│   │       OpenAI + Anthropic SDK adapters wrapping chat.completions
+│   │       / messages tool-calling.  ``run_chat_turn`` drives one
+│   │       user→assistant round-trip with bounded tool-call iteration
+│   │       (cap 8) + per-turn cost accounting.  /api/lens/sessions
+│   │       CRUD, /api/lens/sessions/{id}/messages chat route,
+│   │       /lens HTML chat page (Alpine.js, non-streaming JSON).
+│   │       /api/admin/lens-providers JSON CRUD with Fernet-encrypted
+│   │       upsert + decrypt-test.  Icon-rail entry between SQL and
+│   │       Workspace.  Adds openai + anthropic deps.  12 pytest.
+│   ├── Sprint 65.6 — Pinned answers + saved questions           ✅ 2026-05-10
+│   │       /api/lens/pinned CRUD + /api/lens/pinned/{slug}/view
+│   │       standalone HTML page.  Snapshot captures assistant text
+│   │       + nearest-preceding query tool's executed SQL +
+│   │       result_preview (first 20 rows) so pin survives source-
+│   │       session deletion.  Owner+is_shared visibility analog
+│   │       SavedQuery.  Slug-collision auto-suffix.  8 pytest.
+│   │       Saved-questions surface (re-using SavedQuery for
+│   │       question templates) deferred — pinned answers cover
+│   │       the primary "find this answer again" use case.
+│   ├── Sprint 65.7 — Walkthroughs + plugin tools + docs         ✅ 2026-05-10
+│   │       lens-overview.md (browser-mode) + lens-mcp.md
+│   │       (hermes-mode) walkthroughs.  hermes-plugin-pointlessql
+│   │       gains pql_lens_ask + pql_lens_get_pinned (33→35 tools).
+│   │       README playbook count refreshed to 58.
+│   └── Sprint 65.8 — Phase close                                 ✅ 2026-05-10
+│           ROADMAP + CHANGELOG + memory entry.  Final pytest
+│           sweep all-green (77 lens-specific cases on top of
+│           the 1782-test baseline).
+│
 ├── Phase 64 — Permission-locked nav-link UX               ✅ done 2026-05-10
 │   │
 │   │   Admin-only navigation entries (Workspace + Admin in the
