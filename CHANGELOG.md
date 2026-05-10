@@ -6,6 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 66 — Browser Notebook editor v2 (2026-05-10).**  The
+  browser notebook editor returns, rebuilt around the marker
+  grammar (`# %%` jupytext-Percent + FNV-1a-64 content_hash),
+  the async kernel-bridge runtime (`KernelRegistry` +
+  `KernelSession`), and the persisted-output replay tables
+  that all survived the agent-first pivot.  New surface area:
+  `/notebooks/edit/{path:path}` cell-by-cell editor backed by
+  CodeMirror v6 instances per cell (no vendored bundles —
+  esm.sh import-map only); a `/ws/notebook/kernel` JSON-RPC
+  WebSocket route bridging browser → ipykernel; restored
+  notebook CRUD (`POST /api/notebooks/create`,
+  `POST /api/notebooks/rename`, `DELETE /api/notebooks/delete`)
+  and load / save / render-markdown / cell-history routes.
+  Cells render under a sandboxed iframe (text/html, image/svg)
+  or as DOM (image/png/jpeg → `<img>`, JSON → `<pre>`,
+  text/plain → monospace, error → red-bordered traceback).
+  SQL cells (`# %% [sql] df`) are wrapped server-side via
+  `__pql_sql_run(...)` after a per-table privilege check;
+  every SQL execution writes a `query_history` row with
+  `notebook_path` + `notebook_content_hash` so the audit
+  cockpit can deep-link back to the originating cell.  Markdown
+  cells switch between rendered HTML view-mode and CodeMirror
+  edit-mode (Shift+Enter / Esc / click).  Keyboard model
+  covers Shift+Enter (run + advance), Ctrl+Enter (run + stay),
+  Cmd/Ctrl+S (save).  5-second debounced autosave + per-cell
+  history popover via `GET /api/notebooks/cell-history`.  One
+  Alembic migration (`hh7i9k1m3o5q` — query_history notebook
+  columns) + one new walkthrough (`notebook-overview.md`).
+  ~37 new pytest cases (CRUD, load, save, cell ops, SQL cell
+  helpers, markdown render, cell history, kernel WS auth +
+  one integration test for the real-kernel execute round-trip).
+
 - **Phase 65 — Lens read-only Q&A surface (2026-05-10).**  New
   analyst-facing chat-style surface that exposes read-only data
   Q&A over two transports: a browser chat UI at `/lens` (BYO LLM

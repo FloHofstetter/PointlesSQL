@@ -23,8 +23,9 @@ playbooks on top of the same harness (jobs, notebook, OIDC,
 
 ## Inventory (full)
 
-58 walkthroughs total (55 + 1 lens-overview + 1 lens-mcp + 1
-playwright-MCP carve-out from Phase 53).  Each carries a
+59 walkthroughs total (55 + 1 lens-overview + 1 lens-mcp + 1
+playwright-MCP carve-out from Phase 53 + 1 notebook-overview from
+Phase 66).  Each carries a
 `> **Mode:**` tag in its first content block; this section is the
 grep-friendly index.
 
@@ -74,6 +75,7 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`volumes.md`](volumes.md) | `/volumes` + `/volumes/{fqn}` upload + convert | 12.5 |
 | [`dbt-pipeline.md`](dbt-pipeline.md) | `/dbt` cockpit + iframe | 36 |
 | [`branches.md`](branches.md) | `/branches`, `/branches/{fqn}` (notebook + UI) | 16.5 |
+| [`notebook-overview.md`](notebook-overview.md) | `/notebooks/edit/{path}` cell editor + WS kernel | 66 |
 
 ### `Mode: hybrid` — notebook / CLI + browser (8)
 

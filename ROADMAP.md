@@ -4887,6 +4887,118 @@ PointlesSQL
 │           ``operation_context`` cascade across 10 PQL
 │           primitives.
 │
+├── Phase 66 — Browser Notebook editor v2                  ✅ done 2026-05-10
+│   │
+│   │   The browser notebook editor, deleted in the agent-first
+│   │   pivot of 2026-04-24 (commits ``bc2ad07`` + ``ac5207e``),
+│   │   returns — rebuilt around the marker grammar
+│   │   (``# %%`` jupytext + FNV-1a-64 content_hash), the async
+│   │   kernel-bridge runtime (``KernelRegistry`` +
+│   │   ``KernelSession``), and the persisted-output replay tables
+│   │   that all survived the deletion.  The new surface is a
+│   │   cell-by-cell editor at ``/notebooks/edit/{path}`` backed
+│   │   by per-cell CodeMirror v6 instances (no vendored bundles
+│   │   — esm.sh import-map only) and a JSON-RPC WebSocket bridge
+│   │   at ``/ws/notebook/kernel`` (execute / interrupt / restart).
+│   │
+│   │   Three lessons from the Phase-12.6/12.10/12.12 catastrophe
+│   │   are encoded directly in the architecture:
+│   │
+│   │   1. **One CodeMirror instance per cell.**  No shared mutable
+│   │      EditorView; the per-cell ``cellEditor()`` factory carries
+│   │      its own closure-scoped state so cells cannot cross-talk.
+│   │   2. **Output zone in its own DOM subtree.**  Phase 12 had
+│   │      output rendered inline inside the same Codemirror host
+│   │      and the cursor-sync bugs were unsolvable.  Output now
+│   │      lives in a sibling ``<div>`` rendered as DOM (or a
+│   │      sandboxed iframe for ``text/html`` / ``image/svg+xml``).
+│   │   3. **No PointlesSQL-specific tokens in the file.**  The
+│   │      marker grammar is pure jupytext-Percent; cell identity
+│   │      is the FNV-1a-64 content_hash computed at load time.
+│   │      Files stay generically VSCode/Vim-editable.
+│   │
+│   ├── Sprint 66.0 — Foundation: WS route + KernelRegistry +
+│   │       Notebook CRUD                                       ✅ 2026-05-10
+│   │       Re-introduces the deleted /ws/notebook/kernel route
+│   │       around the surviving KernelRegistry + KernelSession.
+│   │       JSON-RPC frame shape (execute / interrupt / restart);
+│   │       persisted outputs land in notebook_outputs +
+│   │       notebook_cell_runs via the existing service helpers.
+│   │       Notebook CRUD restored: POST /api/notebooks/create,
+│   │       POST /api/notebooks/rename, DELETE /api/notebooks/delete.
+│   │       13 pytest.
+│   ├── Sprint 66.1 — Frontend skeleton + load route          ✅ 2026-05-10
+│   │       GET /api/notebooks/load returns parsed cells +
+│   │       persisted outputs.  GET /notebooks/edit/{path:path}
+│   │       renders the editor HTML page rooted at the new
+│   │       notebookEditor() Alpine factory.  Per-cell CodeMirror
+│   │       v6 instances mounted lazily after Alpine's x-for
+│   │       paints; no SQL-editor-specific extensions yet.
+│   │       7 pytest.
+│   ├── Sprint 66.2 — Save round-trip + dirty tracking        ✅ 2026-05-10
+│   │       POST /api/notebooks/save serialises cells back to
+│   │       the .py file via _doc.save_document; returns
+│   │       refreshed FNV-1a-64 content_hashes.  Optional
+│   │       expected_mtime triggers 409 conflict detection so
+│   │       the browser can reload before overwriting.  Cmd+S
+│   │       keymap, save indicator (Unsaved → Saving → Saved),
+│   │       per-cell dirty pill.  6 pytest.
+│   ├── Sprint 66.3 — Cell execution via WebSocket + outputs  ✅ 2026-05-10
+│   │       createKernelClient() — JSON-RPC client for the WS
+│   │       route.  renderOutputFrame() — MIME-bundle priority
+│   │       renderer (image/png|jpeg → <img>, image/svg+xml +
+│   │       text/html → sandboxed iframe, application/json →
+│   │       <pre>, text/plain → <pre>, error → red-bordered
+│   │       traceback).  notebookEditor.runCell() refreshes
+│   │       FNV-1a-64 hash client-side, executes via WS, routes
+│   │       iopub frames to the per-cell output zone.  Persisted
+│   │       outputs replay on load.  Toolbar: kernel-status pill,
+│   │       Interrupt + Restart buttons.  1 integration pytest
+│   │       (real ipykernel spawn, end-to-end execute round-trip).
+│   ├── Sprint 66.4 — Cell management ops                      ✅ 2026-05-10
+│   │       Client-side ops: addCellAbove, addCellBelow,
+│   │       addCellAtEnd, deleteCell, moveCellUp, moveCellDown,
+│   │       convertCellType.  Per-cell toolbar: insert above /
+│   │       below, move up / down, delete, cell-type dropdown.
+│   │       Empty-state CTA + bottom "Add cell" footer.
+│   │       4 pytest verifying save → load preserves layout
+│   │       under each op.
+│   ├── Sprint 66.5 — SQL cells (`# %% [sql] df`)              ✅ 2026-05-10
+│   │       Alembic ``hh7i9k1m3o5q`` adds query_history.notebook_path
+│   │       + notebook_content_hash columns.  build_kernel_wrapper()
+│   │       wraps raw SQL with __pql_sql_run(...) (validates
+│   │       result_var as identifier, repr()-escapes SQL).
+│   │       resolve_approved_tables() runs prepare_sql + per-ref
+│   │       privilege check + storage-location lookup.  WS handler
+│   │       routes execute frames carrying cell_type='sql' through
+│   │       the wrapper, captures (raw_sql, approved_tables) per
+│   │       (content_hash, kernel_session_id), and on the matching
+│   │       execute_reply writes a query_history row with
+│   │       notebook_path + notebook_content_hash.  Browser exposes
+│   │       a result_var input on SQL cells.  8 pytest.
+│   ├── Sprint 66.6 — Markdown cells with edit/view toggle    ✅ 2026-05-10
+│   │       POST /api/notebooks/render-markdown: server-side render
+│   │       via the existing markdown-it-py CommonMark renderer
+│   │       (html=False so embedded <script> / <iframe> escapes at
+│   │       parse time).  Markdown cells default to view-mode after
+│   │       load; click on the rendered HTML or Enter (focused)
+│   │       enters edit-mode; Shift+Enter or Esc renders + returns
+│   │       to view-mode.  5 pytest.
+│   ├── Sprint 66.7 — Keyboard model + autosave + history      ✅ 2026-05-10
+│   │       Shift+Enter (run + focus next; insert if last),
+│   │       Ctrl/Cmd+Enter (run + stay), Esc on a markdown cell
+│   │       exits edit-mode.  5-second debounced autosave on any
+│   │       cell-source change.  GET /api/notebooks/cell-history
+│   │       returns the last N NotebookCellRunSource rows for
+│   │       (path, content_hash); per-cell toolbar history-icon
+│   │       button toggles an inline popover with status pill +
+│   │       execution_count + started_at.  4 pytest.
+│   └── Sprint 66.8 — Phase close                              ✅ 2026-05-10
+│           ROADMAP + CHANGELOG + memory entry +
+│           docs/e2e-walkthroughs/notebook-overview.md (Browser
+│           Mode).  Walkthrough README playbook count refreshed
+│           to 59.  Final pytest sweep all-green.
+│
 ├── Phase 65 — Lens (read-only Q&A surface, MCP + Browser parallel) ✅ done 2026-05-10
 │   │
 │   │   New analyst-facing chat-style surface that exposes read-only
