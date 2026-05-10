@@ -17,43 +17,15 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from pointlessql.services.lens._messages import append_message
-from pointlessql.services.lens.tools._base import SessionContext, ToolDef
+from pointlessql.services.lens.tools._base import (
+    LensToolError,
+    SessionContext,
+    ToolDef,
+    UnknownLensToolError,
+)
 from pointlessql.services.lens.tools._registry import get_tool
 
 logger = logging.getLogger(__name__)
-
-
-class LensToolError(Exception):
-    """Wraps any executor-internal exception with tool context.
-
-    Carries enough metadata for the audit-hook to write a
-    ``tool_status='error'`` row without the chat-loop having to
-    parse the original traceback.
-    """
-
-    def __init__(
-        self,
-        *,
-        tool_name: str,
-        message: str,
-        status: str = "error",
-        tool_args: object | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.tool_name = tool_name
-        self.tool_args = tool_args
-        self.status = status
-
-
-class UnknownLensToolError(LensToolError):
-    """Raised when ``execute_tool_with_audit`` is asked for a tool not in registry."""
-
-    def __init__(self, tool_name: str) -> None:
-        super().__init__(
-            tool_name=tool_name,
-            message=f"Unknown Lens tool {tool_name!r}",
-            status="error",
-        )
 
 
 def _serialize_for_audit(payload: object) -> object:

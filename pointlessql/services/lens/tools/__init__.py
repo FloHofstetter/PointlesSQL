@@ -14,14 +14,12 @@ transcript carries an inline forensic record.
 
 from __future__ import annotations
 
-from pointlessql.services.lens.tools._audit_hook import (
-    LensToolError,
-    UnknownLensToolError,
-    execute_tool_with_audit,
-)
+from pointlessql.services.lens.tools._audit_hook import execute_tool_with_audit
 from pointlessql.services.lens.tools._base import (
+    LensToolError,
     SessionContext,
     ToolDef,
+    UnknownLensToolError,
     to_anthropic_schemas,
     to_mcp_schemas,
     to_openai_schemas,

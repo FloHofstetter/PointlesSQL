@@ -97,3 +97,9 @@ class ErrorCode(StrEnum):
     WORKSPACE_REPO_AUTH_FAILED = "workspace_repo_auth_failed"
     WORKSPACE_REPO_UNKNOWN_PROVIDER = "workspace_repo_unknown_provider"
     WORKSPACE_REPO_WEBHOOK_INVALID = "workspace_repo_webhook_invalid"
+
+    # Lens read-only Q&A surface (Phase 65).
+    LENS_QUERY_TOO_COSTLY = "lens_query_too_costly"
+    LENS_SESSION_BUDGET_EXCEEDED = "lens_session_budget_exceeded"
+    LENS_NON_SELECT_BLOCKED = "lens_non_select_blocked"
+    LENS_PROVIDER_NOT_CONFIGURED = "lens_provider_not_configured"

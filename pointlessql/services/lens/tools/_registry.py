@@ -18,6 +18,7 @@ from pointlessql.services.lens.tools.lineage import (
     LINEAGE_NEIGHBORS_TOOL,
     PROVENANCE_TOOL,
 )
+from pointlessql.services.lens.tools.query import QUERY_TOOL
 
 ALL_TOOLS: list[ToolDef] = [
     LIST_CATALOGS_TOOL,
@@ -26,6 +27,7 @@ ALL_TOOLS: list[ToolDef] = [
     DESCRIBE_TABLE_TOOL,
     LINEAGE_NEIGHBORS_TOOL,
     PROVENANCE_TOOL,
+    QUERY_TOOL,
 ]
 """Authoritative ordered list of every Lens tool.
 

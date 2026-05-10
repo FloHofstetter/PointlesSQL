@@ -30,6 +30,42 @@ if TYPE_CHECKING:
     from pointlessql.services.unitycatalog import UnityCatalogClient
 
 
+class LensToolError(Exception):
+    """Wraps any executor-internal exception with tool context.
+
+    Carries enough metadata for the audit-hook to write a
+    ``tool_status='error'`` row without the chat-loop having to
+    parse the original traceback.
+
+    Lives in ``_base`` (not ``_audit_hook``) so tool modules can
+    raise it without forming a circular import via the registry.
+    """
+
+    def __init__(
+        self,
+        *,
+        tool_name: str,
+        message: str,
+        status: str = "error",
+        tool_args: object | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.tool_name = tool_name
+        self.tool_args = tool_args
+        self.status = status
+
+
+class UnknownLensToolError(LensToolError):
+    """Raised when ``execute_tool_with_audit`` is asked for a tool not in registry."""
+
+    def __init__(self, tool_name: str) -> None:
+        super().__init__(
+            tool_name=tool_name,
+            message=f"Unknown Lens tool {tool_name!r}",
+            status="error",
+        )
+
+
 @dataclass(frozen=True)
 class SessionContext:
     """Per-tool-call context.
