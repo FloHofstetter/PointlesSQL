@@ -21,20 +21,7 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 
 import pointlessql
-from pointlessql.api.admin_api_keys_routes import router as admin_api_keys_router
-from pointlessql.api.admin_cdf_tail_routes import router as admin_cdf_tail_router
-from pointlessql.api.admin_expected_producers_routes import (
-    router as admin_expected_producers_router,
-)
-from pointlessql.api.admin_external_writes_routes import router as admin_external_writes_router
-from pointlessql.api.admin_repos_routes import router as admin_repos_router
-from pointlessql.api.admin_routes import router as admin_router
-from pointlessql.api.admin_workspace_pins_routes import (
-    router as admin_workspace_pins_router,
-)
-from pointlessql.api.admin_workspaces_routes import (
-    router as admin_workspaces_router,
-)
+from pointlessql.api.admin import router as admin_router
 from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
 from pointlessql.api.agent_runs_routes import router as agent_runs_router
 from pointlessql.api.alerts_routes import router as alerts_router
@@ -903,13 +890,6 @@ app.include_router(jobs_router)
 app.include_router(dashboards_router)
 app.include_router(home_router)
 app.include_router(admin_router)
-app.include_router(admin_api_keys_router)
-app.include_router(admin_cdf_tail_router)
-app.include_router(admin_expected_producers_router)
-app.include_router(admin_external_writes_router)
-app.include_router(admin_repos_router)
-app.include_router(admin_workspace_pins_router)
-app.include_router(admin_workspaces_router)
 app.include_router(review_destinations_router)
 app.include_router(ml_router)
 app.include_router(mlflow_html_router)
