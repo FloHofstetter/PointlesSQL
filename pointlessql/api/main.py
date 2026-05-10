@@ -21,62 +21,28 @@ from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
 
 import pointlessql
-from pointlessql.api.admin import router as admin_router
-from pointlessql.api.agent_reviews_routes import router as agent_reviews_router
-from pointlessql.api.agent_runs_routes import router as agent_runs_router
-from pointlessql.api.alerts_routes import router as alerts_router
-from pointlessql.api.audit import router as audit_router
-from pointlessql.api.auth_routes import router as auth_router
-from pointlessql.api.branches_routes import router as branches_router
-from pointlessql.api.catalog_html_routes import router as catalog_html_router
-from pointlessql.api.catalog_routes import router as catalog_router
-from pointlessql.api.conventions_routes import router as conventions_router
-from pointlessql.api.dashboards_routes import router as dashboards_router
-from pointlessql.api.data_products_html_routes import (
-    router as data_products_html_router,
+from pointlessql.api._bootstrap._loops import (
+    _audit_retention_loop,
+    _branch_cleanup_loop,
+    _cdf_tail_loop,
+    _data_product_freshness_loop,
+    _external_writes_loop,
+    _lineage_pruner_loop,
+    _workspace_repos_sync_loop,
 )
-from pointlessql.api.data_products_routes import router as data_products_router
-from pointlessql.api.dbt import router as dbt_router
 from pointlessql.api.dependencies import (
     require_admin as _require_admin,
 )
-from pointlessql.api.federation_routes import router as federation_router
-from pointlessql.api.governance_routes import router as governance_router
-from pointlessql.api.home_routes import router as home_router
-from pointlessql.api.jobs_routes import (
-    router as jobs_router,
-)
-from pointlessql.api.lineage import router as lineage_router
 from pointlessql.api.middleware import register_middleware
-from pointlessql.api.ml_routes import router as ml_router
-from pointlessql.api.mlflow_html_routes import router as mlflow_html_router
-from pointlessql.api.mlflow_proxy import router as mlflow_proxy_router
-from pointlessql.api.models_html_routes import router as models_html_router
-from pointlessql.api.models_routes import router as models_router
-from pointlessql.api.notebooks_routes import router as notebooks_router
-from pointlessql.api.pql_introspect_routes import router as pql_introspect_router
-from pointlessql.api.pql_training_routes import router as pql_training_router
-from pointlessql.api.review_destinations_routes import router as review_destinations_router
-from pointlessql.api.runs_routes import router as runs_router
-from pointlessql.api.saved_audit_queries_routes import (
-    router as saved_audit_queries_router,
-)
-from pointlessql.api.sql import router as sql_router
-from pointlessql.api.time_travel_routes import router as time_travel_router
 from pointlessql.api.volumes_routes import (
     DELTA_PRIMITIVE_TO_UC as _DELTA_PRIMITIVE_TO_UC,  # noqa: F401  # pyright: ignore[reportUnusedImport]
 )
 from pointlessql.api.volumes_routes import (
     delta_field_to_uc as _delta_field_to_uc,  # noqa: F401  # pyright: ignore[reportUnusedImport]
 )
-from pointlessql.api.volumes_routes import (
-    router as volumes_router,
-)
-from pointlessql.api.webhook_routes import router as webhook_router
 from pointlessql.config import Settings, configure_logging
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.services import api_keys as api_keys_service
-from pointlessql.services import audit as audit_service
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.dbt_subprocess import (
@@ -556,342 +522,16 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             await app.state.uc_client.aclose()
 
 
-async def _audit_retention_loop(
-    factory: Any,
-    settings: Settings,
-) -> None:
-    """Run ``cleanup_old_entries`` on a fixed cadence for the lifetime of the app.
-
-    A separate task rather than a scheduler-kind keeps the
-    cleanup path independent of the job scheduler — operators who
-    disable the scheduler (``POINTLESSQL_SCHEDULER_ENABLED=false``)
-    still want retention to run.
-
-    Args:
-        factory: SQLAlchemy session factory shared with the rest
-            of the app.
-        settings: Snapshotted :class:`Settings` — only
-            ``audit.retention_days`` and
-            ``audit.cleanup_interval_seconds`` are read.
-    """
-    interval = max(60, settings.audit.cleanup_interval_seconds)
-    retention = settings.audit.retention_days
-    while True:
-        try:
-            await asyncio.to_thread(audit_service.cleanup_old_entries, factory, retention)
-        except Exception:  # noqa: BLE001 — retention loop must survive everything
-            logger.exception("audit: retention loop tick raised")
-        try:
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            return
-
-
-async def _external_writes_loop(
-    factory: Any,
-    uc: Any,
-    settings: Settings,
-) -> None:
-    """Periodic scan for unattributed Delta commits.
-
-    Active only when
-    ``POINTLESSQL_EXTERNAL_WRITES_SCAN_INTERVAL_SECONDS`` is
-    explicitly non-zero — the default keeps the loop dormant on
-    single-node vServer deployments where per-table
-    ``DeltaTable.history()`` cost adds up.
-
-    Args:
-        factory: SQLAlchemy session factory shared with the rest
-            of the app.
-        uc: ``UnityCatalogClient`` used to enumerate tables.
-        settings: Snapshotted :class:`Settings` — only
-            ``external_writes.scan_interval_seconds`` and
-            ``external_writes.history_limit`` are read.
-    """
-    from pointlessql.services import external_write_scanner
-
-    interval = max(60, settings.external_writes.scan_interval_seconds)
-    history_limit = settings.external_writes.history_limit
-    while True:
-        try:
-            inserted = await external_write_scanner.scan_all(
-                factory, uc, history_limit=history_limit
-            )
-            if inserted:
-                logger.info(
-                    "external_writes: scan tick recorded %d unattributed commit(s)",
-                    inserted,
-                )
-        except Exception:  # noqa: BLE001 — scanner loop must survive everything
-            logger.exception("external_writes: scan tick raised")
-        try:
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            return
-
-
-async def _data_product_freshness_loop(
-    factory: Any,
-    uc: Any,
-    settings: Settings,
-) -> None:
-    """Periodic SLA scan across cached data products.
-
-    Active only when
-    ``POINTLESSQL_DATA_PRODUCTS_SCAN_INTERVAL_SECONDS`` is explicitly
-    non-zero — same opt-in discipline as the external-write scanner.
-    Per tick, walks every :class:`DataProduct` row whose
-    ``sla_minutes`` is set, observes the latest write timestamp via
-    ``DeltaTable.history()``, and emits a
-    ``pointlessql.data_product.sla_violated`` CloudEvent when the age
-    exceeds the SLA.  ``last_alerted_at`` suppresses re-alerts within
-    ``re_alert_suppress_minutes``.
-
-    Args:
-        factory: SQLAlchemy session factory shared with the rest of
-            the app.
-        uc: ``UnityCatalogClient`` used to enumerate the product's
-            tables (storage locations).
-        settings: Snapshotted :class:`Settings` — only
-            ``data_products.scan_interval_seconds`` and
-            ``data_products.re_alert_suppress_minutes`` are read.
-    """
-    from pointlessql.services import data_product_freshness_scanner
-
-    interval = max(60, settings.data_products.scan_interval_seconds)
-    suppress = settings.data_products.re_alert_suppress_minutes
-    while True:
-        try:
-            emitted = await data_product_freshness_scanner.scan_all(
-                factory,
-                uc,
-                re_alert_suppress_minutes=suppress,
-            )
-            if emitted:
-                logger.info(
-                    "data_product_freshness: tick emitted %d sla_violated event(s)",
-                    emitted,
-                )
-        except Exception:  # noqa: BLE001 — scanner loop must survive everything
-            logger.exception("data_product_freshness: scan tick raised")
-        try:
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            return
-
-
-async def _cdf_tail_loop(
-    factory: Any,
-    uc: Any,
-    settings: Settings,
-) -> None:
-    """Periodic CDF tail across active subscriptions.
-
-    Active only when
-    ``POINTLESSQL_CDF_TAIL_INTERVAL_SECONDS`` is explicitly non-zero
-    AND at least one :class:`CdfTailSubscription` row has
-    ``is_active=True``.  Same opt-in discipline as the external-write
-    scanner: zero-config installs see no extra Delta IO.
-
-    Args:
-        factory: SQLAlchemy session factory shared with the rest of
-            the app.
-        uc: ``UnityCatalogClient`` used to resolve each
-            subscription's ``storage_location`` per tick.
-        settings: Snapshotted :class:`Settings` — only
-            ``cdf_tail.interval_seconds`` and
-            ``cdf_tail.history_limit`` are read.
-    """
-    from pointlessql.services import cdf_tail
-
-    interval = max(60, settings.cdf_tail.interval_seconds)
-    history_limit = settings.cdf_tail.history_limit
-    while True:
-        try:
-            inserted = await cdf_tail.tail_all(factory, uc, history_limit=history_limit)
-            if inserted:
-                logger.info("cdf_tail: tick recorded %d new event(s)", inserted)
-        except Exception:  # noqa: BLE001 — tail loop must survive everything
-            logger.exception("cdf_tail: tick raised")
-        try:
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            return
-
-
-async def _lineage_pruner_loop(
-    factory: Any,
-    settings: Settings,
-) -> None:
-    """Periodic prune of the four lineage tables.
-
-    Active when at least one
-    :class:`LineageRetentionSettings` axis has a positive
-    ``*_days`` value.  The loop wakes every
-    ``audit.cleanup_interval_seconds`` (default 86400 = 24h),
-    matching the audit-log retention cadence — both run in the
-    operator-quiet hours.
-
-    Args:
-        factory: SQLAlchemy session factory shared with the rest
-            of the app.
-        settings: Snapshotted :class:`Settings`.
-    """
-    from pointlessql.services.lineage_pruner import prune_once_async
-
-    interval = max(60, settings.audit.cleanup_interval_seconds)
-    while True:
-        try:
-            deleted = await prune_once_async(factory, settings)
-            if deleted:
-                logger.info(
-                    "lineage_pruner: pruned %s",
-                    ", ".join(f"{axis}={count}" for axis, count in deleted.items()),
-                )
-        except Exception:  # noqa: BLE001 — pruner must survive everything
-            logger.exception("lineage_pruner: prune tick raised")
-        try:
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            return
-
-
-async def _workspace_repos_sync_loop(
-    factory: Any,
-    settings: Settings,
-) -> None:
-    """Periodic workspace-repo sync (Phase 51.4).
-
-    Active only when
-    ``POINTLESSQL_REPOS_SYNC_INTERVAL_SECONDS`` is non-zero — same
-    opt-in discipline as every other Phase-13.x+ scanner.  Each
-    tick lists the repos whose ``last_synced_at`` is older than
-    the configured cadence (or ``NULL``) and pulls them
-    sequentially.  Per-repo failures are recorded on the row
-    itself; the loop never aborts because of a single bad upstream.
-
-    Args:
-        factory: SQLAlchemy session factory shared with the rest of
-            the app.
-        settings: Snapshotted :class:`Settings` — only
-            ``workspace_repos.*`` is read.
-    """
-    from datetime import UTC, datetime, timedelta
-
-    from pointlessql.services.workspace_repos import (
-        build_post_pull_loader_hook,
-        list_repos_due_for_sync,
-        sync_repo,
-    )
-
-    interval = max(60, settings.workspace_repos.sync_interval_seconds)
-    base_dir = settings.workspace_repos.base_dir
-    hook = build_post_pull_loader_hook(factory, settings=settings)
-    while True:
-        try:
-            cutoff = datetime.now(UTC) - timedelta(seconds=interval)
-            for repo in list_repos_due_for_sync(factory, cutoff=cutoff):
-                try:
-                    await sync_repo(
-                        factory,
-                        repo_id=repo.id,
-                        base_dir=base_dir,
-                        trigger="cron",
-                        actor_user_id=None,
-                        on_post_pull=hook,
-                    )
-                except Exception:  # noqa: BLE001 — per-repo failure isolation
-                    # bare-broad-ok: sync persists the failure on the row;
-                    # the loop must continue to the next repo regardless.
-                    logger.exception("workspace_repos: cron sync of %s raised", repo.id)
-        except Exception:  # noqa: BLE001 — outer-loop guard
-            # bare-broad-ok: never let an unforeseen error kill the loop.
-            logger.exception("workspace_repos: cron tick raised")
-        try:
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            return
-
-
-async def _branch_cleanup_loop(
-    uc: Any,
-    settings: Settings,
-) -> None:
-    """Periodic  branch auto-cleanup pass.
-
-    Wakes once per ``audit.cleanup_interval_seconds`` (default
-    24h), then either short-circuits (when
-    ``branch.auto_cleanup_enabled=False``) or walks UC schemas and
-    discards active branches past
-    ``branch.auto_cleanup_retention_days``.  The 24h cadence is
-    deliberately coarse — branch cleanup is a maintenance op, not a
-    realtime concern.
-
-    Args:
-        uc: ``UnityCatalogClient`` whose underlying sync client
-            drives the cleanup pass.
-        settings: Snapshotted :class:`Settings`.
-    """
-    from pointlessql.services.branch_cleanup import cleanup_old_branches
-
-    interval = max(60, settings.audit.cleanup_interval_seconds)
-    while True:
-        try:
-            summary = await asyncio.to_thread(
-                cleanup_old_branches,
-                client=uc._client,  # noqa: SLF001 — sync soyuz client
-                settings=settings,
-            )
-            if summary.get("deleted"):
-                logger.info("branch_cleanup: %s", summary)
-        except Exception:  # noqa: BLE001 — cleanup loop must survive everything
-            logger.exception("branch_cleanup: tick raised")
-        try:
-            await asyncio.sleep(interval)
-        except asyncio.CancelledError:
-            return
 
 
 app = FastAPI(title="PointlesSQL", version="0.1.0", lifespan=_lifespan)
 
+from pointlessql.api._bootstrap._routers import register_routers  # noqa: E402
 from pointlessql.api.error_handlers import register_error_handlers  # noqa: E402
 
 register_error_handlers(app)
+register_routers(app)
 
-app.include_router(auth_router)
-app.include_router(catalog_router)
-app.include_router(catalog_html_router)
-app.include_router(conventions_router)
-app.include_router(sql_router)
-app.include_router(alerts_router)
-app.include_router(audit_router)
-app.include_router(saved_audit_queries_router)
-app.include_router(volumes_router)
-app.include_router(lineage_router)
-app.include_router(time_travel_router)
-app.include_router(governance_router)
-app.include_router(notebooks_router)
-app.include_router(runs_router)
-app.include_router(agent_runs_router)
-app.include_router(agent_reviews_router)
-app.include_router(branches_router)
-app.include_router(pql_introspect_router)
-app.include_router(pql_training_router)
-app.include_router(federation_router)
-app.include_router(jobs_router)
-app.include_router(dashboards_router)
-app.include_router(home_router)
-app.include_router(admin_router)
-app.include_router(review_destinations_router)
-app.include_router(ml_router)
-app.include_router(mlflow_html_router)
-app.include_router(mlflow_proxy_router)
-app.include_router(dbt_router)
-app.include_router(models_router)
-app.include_router(models_html_router)
-app.include_router(data_products_router)
-app.include_router(data_products_html_router)
-app.include_router(webhook_router)
 _STYLE_CSS_PATH = _FRONTEND_DIR / "css" / "style.css"
 
 
