@@ -14,11 +14,11 @@ from pathlib import Path
 
 import pytest
 
+from pointlessql.config import DBTSettings
 from pointlessql.services.dbt_subprocess import (
     DBTStartupError,
     DBTSubprocess,
 )
-from pointlessql.settings import DBTSettings
 
 
 def test_path_resolution_against_cwd(tmp_path: Path) -> None:

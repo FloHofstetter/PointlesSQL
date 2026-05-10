@@ -407,7 +407,7 @@ def _setup_oidc_app():
 
     app.state.templates = _TEMPLATES
 
-    from pointlessql.settings import Settings
+    from pointlessql.config import Settings
 
     app.state.settings = Settings(
         jupyter={"enabled": False},

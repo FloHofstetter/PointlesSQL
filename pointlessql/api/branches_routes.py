@@ -47,6 +47,7 @@ from pointlessql.api.dependencies import (
     require_admin,
     require_supervisor,
 )
+from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import BranchAuditLog
 from pointlessql.pql._branch import (
@@ -60,7 +61,6 @@ from pointlessql.pql._branch_errors import (
 )
 from pointlessql.services import branch_tags
 from pointlessql.services.soyuz_client import make_soyuz_client
-from pointlessql.settings import Settings
 
 logger = logging.getLogger(__name__)
 

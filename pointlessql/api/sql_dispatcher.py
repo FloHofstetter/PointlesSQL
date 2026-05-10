@@ -64,6 +64,7 @@ from pointlessql.api.dependencies import (
     get_user,
     require_admin,
 )
+from pointlessql.config import Settings
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     SQLExecutionError,
@@ -83,7 +84,6 @@ from pointlessql.services.authorization import (
     USE_SCHEMA,
     check_privilege,
 )
-from pointlessql.settings import Settings
 from pointlessql.types import TableFqn
 
 logger = logging.getLogger(__name__)

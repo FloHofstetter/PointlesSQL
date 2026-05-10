@@ -32,12 +32,13 @@ from croniter import croniter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from pointlessql.exceptions import PointlessSQLError, ValidationError
-from pointlessql.logging_config import (
+from pointlessql.config import (
+    Settings,
     job_run_id_var,
     request_id_var,
     task_id_var,
 )
+from pointlessql.exceptions import PointlessSQLError, ValidationError
 from pointlessql.models import (
     Job,
     JobLog,
@@ -54,7 +55,6 @@ from pointlessql.services.scheduler.dag import (
 )
 from pointlessql.services.scheduler.registry import KindRegistry
 from pointlessql.services.unitycatalog import UnityCatalogClient
-from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
@@ -342,7 +342,7 @@ async def _run_one_task(
 ) -> tuple[bool, str | None]:
     """Execute one task with retry support.
 
-    Sets :data:`~pointlessql.logging_config.task_id_var` for the
+    Sets :data:`~pointlessql.config.task_id_var` for the
     duration so log records emitted by the executor (including the
     :func:`log_job` rows this function writes) carry the task id.
 
@@ -600,9 +600,9 @@ async def _execute_run_core(
 
     1. Loads the job + run-as user.
     2. Inserts a ``running`` :class:`JobRun`, setting
-       :data:`~pointlessql.logging_config.job_run_id_var` and (for
+       :data:`~pointlessql.config.job_run_id_var` and (for
        backwards compatibility with the single-task scheduler era)
-       :data:`~pointlessql.logging_config.request_id_var` for the
+       :data:`~pointlessql.config.request_id_var` for the
        duration so downstream log lines carry correlation ids.
     3. If :class:`JobTask` rows exist, walks the DAG via :func:`_run_dag`.
        Otherwise falls back to the single-task shortcut.

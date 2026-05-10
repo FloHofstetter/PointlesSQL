@@ -16,6 +16,7 @@ from soyuz_catalog_client import Client
 from soyuz_catalog_client.errors import UnexpectedStatus
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 
+from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.pql._branch_errors import (
     BranchInUseError,
@@ -37,7 +38,6 @@ from pointlessql.services.branch_tags import (
     STATUS_DISCARDED,
     STATUS_PROMOTED,
 )
-from pointlessql.settings import Settings
 from pointlessql.types import BranchAction, OpName, RunId
 
 

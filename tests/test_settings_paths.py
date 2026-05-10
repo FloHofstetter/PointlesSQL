@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import os
 
-import pointlessql.settings as settings_mod
+from pointlessql.config import _settings as settings_mod  # noqa: PLC2701  # test reaches _PROJECT_ROOT
+
+from pointlessql.config import MLflowSettings, Settings
 from pointlessql.services.mlflow_subprocess import MLflowSubprocess
-from pointlessql.settings import MLflowSettings, Settings
 
 
 def test_database_url_default_is_absolute_project_anchor(tmp_path, monkeypatch) -> None:

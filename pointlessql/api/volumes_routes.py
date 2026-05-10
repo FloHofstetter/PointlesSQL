@@ -27,8 +27,8 @@ from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import get_uc_client, get_user, require_admin
+from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
-from pointlessql.settings import Settings
 
 logger = logging.getLogger(__name__)
 

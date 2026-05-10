@@ -13,11 +13,11 @@ from pathlib import Path
 
 import pytest
 
+from pointlessql.config import MLflowSettings
 from pointlessql.services.mlflow_subprocess import (
     MLflowSubprocess,
     mlflow_available,
 )
-from pointlessql.settings import MLflowSettings
 
 
 def test_mlflow_available_with_optional_extra_installed() -> None:

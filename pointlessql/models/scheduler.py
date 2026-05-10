@@ -53,7 +53,7 @@ class Job(Base):
         max_parallel_runs: Upper bound on concurrent :class:`JobRun`
             rows in ``running`` status for this job. Default ``1``
             preserves "one at a time" behaviour; the global ceiling
-            in :class:`~pointlessql.settings.Settings`
+            in :class:`~pointlessql.config.Settings`
             (``scheduler_max_concurrent_runs``) clamps this further.
         on_failure_url: Optional HTTPS URL that the scheduler POSTs a
             minimal JSON payload to whenever a :class:`JobRun` finishes

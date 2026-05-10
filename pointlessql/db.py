@@ -58,7 +58,7 @@ def init_db(url: str) -> Engine:
 
     Called once during application startup (FastAPI lifespan).
     Pool sizing + statement timeout are read from
-    :class:`pointlessql.settings.DatabaseSettings` so operators can
+    :class:`pointlessql.config.DatabaseSettings` so operators can
     tune long-running PG deployments without code changes.  SQLite
     ignores the PG-only knobs.
 
@@ -86,7 +86,7 @@ def init_db(url: str) -> Engine:
     # object here rather than threading it through ``init_db``'s
     # signature so the function stays backward-compatible with older
     # call-sites that pass the URL explicitly.
-    from pointlessql.settings import DatabaseSettings  # noqa: PLC0415
+    from pointlessql.config import DatabaseSettings  # noqa: PLC0415
 
     db_settings = DatabaseSettings()
 

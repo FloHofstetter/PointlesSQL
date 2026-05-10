@@ -19,6 +19,7 @@ from typing import Any, Literal
 
 from soyuz_catalog_client import Client
 
+from pointlessql.config import Settings
 from pointlessql.pql._aggregate import AggregateMode, AggSpec, aggregate_table
 from pointlessql.pql._autoload import AutoloadFormat, autoload_files
 from pointlessql.pql._branch import (
@@ -37,7 +38,6 @@ from pointlessql.pql._update_delete import delete_table_rows, update_table
 from pointlessql.pql._write import write_table
 from pointlessql.pql.engine import Engine, make_engine
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
-from pointlessql.settings import Settings
 from pointlessql.types import OpName
 
 __all__ = ["PQL", "SQLResult"]

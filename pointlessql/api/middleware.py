@@ -35,7 +35,7 @@ from pointlessql.api.csrf_middleware import csrf_middleware as _csrf_middleware
 from pointlessql.api.rate_limit_middleware import (
     rate_limit_middleware as _rate_limit_middleware,
 )
-from pointlessql.logging_config import request_id_var
+from pointlessql.config import request_id_var
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import auth as auth_service
 from pointlessql.services import workspaces as workspaces_service

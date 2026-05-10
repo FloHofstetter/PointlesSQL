@@ -236,7 +236,7 @@ async def test_emit_event_persists_and_updates_outcome(monkeypatch) -> None:
     fake_dispatch = AsyncMock(return_value=True)
     monkeypatch.setattr("pointlessql.services.agent_runs.events.dispatch_webhook", fake_dispatch)
 
-    from pointlessql.settings import Settings
+    from pointlessql.config import Settings
 
     settings = Settings()
     settings.agent_runs.webhook_url = "https://example.com/hook"
@@ -260,7 +260,7 @@ async def test_emit_event_marks_no_destination_without_url() -> None:
     run_id = _create_run("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee")
     factory = app.state.session_factory
 
-    from pointlessql.settings import Settings
+    from pointlessql.config import Settings
 
     settings = Settings()
     settings.agent_runs.webhook_url = None  # type: ignore[assignment]

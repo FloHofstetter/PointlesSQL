@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from soyuz_catalog_client import Client
 
-from pointlessql.settings import Settings
+from pointlessql.config import Settings
 
 
 def make_soyuz_client(

@@ -31,6 +31,7 @@ from pointlessql.api.dependencies import (
     get_uc_client,
     require_admin,
 )
+from pointlessql.config import Settings
 from pointlessql.data_products import (
     DataProductContract,
     diff_contract_against_delta_table,
@@ -44,7 +45,6 @@ from pointlessql.models.data_products import (
     DataProduct,
     DataProductContractEvent,
 )
-from pointlessql.settings import Settings
 
 router = APIRouter(tags=["data-products"])
 

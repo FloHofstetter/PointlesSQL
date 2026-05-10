@@ -31,6 +31,7 @@ from soyuz_catalog_client.models.create_schema import CreateSchema
 from soyuz_catalog_client.models.create_table import CreateTable
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 
+from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.pql._branch_errors import (
     BranchAlreadyExistsError,
@@ -56,7 +57,6 @@ from pointlessql.services.branch_tags import (
     STRATEGY_DEEP_COPY,
     STRATEGY_SYMLINK,
 )
-from pointlessql.settings import Settings
 from pointlessql.types import BranchAction, OpName, RunId
 
 

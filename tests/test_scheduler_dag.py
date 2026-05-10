@@ -14,11 +14,12 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
-from pointlessql.exceptions import ValidationError
-from pointlessql.logging_config import (
+from pointlessql.config import (
+    Settings,
     job_run_id_var,
     task_id_var,
 )
+from pointlessql.exceptions import ValidationError
 from pointlessql.models import (
     Base,
     Job,
@@ -37,7 +38,6 @@ from pointlessql.services.scheduler import (
     validate_dag,
 )
 from pointlessql.services.unitycatalog import UnityCatalogClient
-from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
 
 _SEED_COUNTER = itertools.count()

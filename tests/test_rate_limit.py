@@ -20,10 +20,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import _TEMPLATES, app
+from pointlessql.config import Settings
 from pointlessql.models import AuditLog, Base, RateLimitEvent
 from pointlessql.services import auth, csrf
 from pointlessql.services import rate_limit as rate_limit_service
-from pointlessql.settings import Settings
 
 
 @pytest.fixture(autouse=True)

@@ -11,6 +11,7 @@ from deltalake import write_deltalake
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.types import UNSET
 
+from pointlessql.config import Settings
 from pointlessql.pql._branch import (
     _delete_branch_storage,
     discard_branch_schema,
@@ -27,7 +28,6 @@ from pointlessql.services.branch_tags import (
     STRATEGY_SYMLINK,
     BranchTags,
 )
-from pointlessql.settings import Settings
 
 
 @pytest.fixture

@@ -14,12 +14,12 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from pointlessql.api.main import app
+from pointlessql.config import Settings
 from pointlessql.models import Base, Job, JobRun, User
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.scheduler import KindRegistry, execute_run
 from pointlessql.services.unitycatalog import UnityCatalogClient
-from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
 
 

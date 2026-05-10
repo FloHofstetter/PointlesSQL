@@ -299,8 +299,8 @@ def _discover_repo_yaml(
     workspace_id: int,
 ) -> list[Path]:
     """Reuse the existing helper for repo yaml discovery."""
+    from pointlessql.config import Settings
     from pointlessql.git import discover_repo_yaml_files
-    from pointlessql.settings import Settings
 
     settings = Settings()
     return discover_repo_yaml_files(

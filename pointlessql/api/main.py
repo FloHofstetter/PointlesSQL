@@ -95,8 +95,8 @@ from pointlessql.api.volumes_routes import (
     router as volumes_router,
 )
 from pointlessql.api.webhook_routes import router as webhook_router
+from pointlessql.config import Settings, configure_logging
 from pointlessql.db import get_session_factory, init_db
-from pointlessql.logging_config import configure_logging
 from pointlessql.services import api_keys as api_keys_service
 from pointlessql.services import audit as audit_service
 from pointlessql.services import metrics as metrics_service
@@ -113,7 +113,6 @@ from pointlessql.services.mlflow_subprocess import (
 )
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
-from pointlessql.settings import Settings
 from pointlessql.web import get_help as _get_help
 from pointlessql.web import status_class as _status_class
 

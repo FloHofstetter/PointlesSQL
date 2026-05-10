@@ -28,6 +28,7 @@ from pointlessql.api.dependencies import (
     get_uc_client,
     get_user,
 )
+from pointlessql.config import Settings
 from pointlessql.services.authorization import (
     SELECT,
     USE_CATALOG,
@@ -36,7 +37,6 @@ from pointlessql.services.authorization import (
     check_privilege_from_effective,
 )
 from pointlessql.services.soyuz_client import make_principal_client, make_soyuz_client
-from pointlessql.settings import Settings
 from pointlessql.types import TableFqn
 
 logger = logging.getLogger(__name__)

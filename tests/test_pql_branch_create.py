@@ -13,6 +13,7 @@ from deltalake import DeltaTable, write_deltalake
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.types import UNSET
 
+from pointlessql.config import BranchSettings, Settings
 from pointlessql.pql._branch import (
     _classify_storage_scheme,
     _clone_table_local,
@@ -33,7 +34,6 @@ from pointlessql.services.branch_tags import (
     STRATEGY_DEEP_COPY,
     STRATEGY_SYMLINK,
 )
-from pointlessql.settings import BranchSettings, Settings
 
 
 class TestClassifyStorageScheme:

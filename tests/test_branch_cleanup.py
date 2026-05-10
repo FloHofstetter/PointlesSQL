@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from pointlessql.config import BranchSettings, Settings
 from pointlessql.services import branch_cleanup as cleanup_mod
 from pointlessql.services.branch_cleanup import (
     _is_eligible_for_cleanup,
@@ -21,7 +22,6 @@ from pointlessql.services.branch_tags import (
     STRATEGY_SYMLINK,
     BranchTags,
 )
-from pointlessql.settings import BranchSettings, Settings
 
 
 def _settings(*, enabled: bool = True, retention_days: int = 30) -> Settings:

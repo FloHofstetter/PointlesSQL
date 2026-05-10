@@ -30,10 +30,10 @@ import httpx
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from pointlessql.config import GroupMapping, Settings
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.models import User, Workspace
 from pointlessql.services.auth import is_first_user
-from pointlessql.settings import GroupMapping, Settings
 from pointlessql.types import ErrorCode
 
 logger = logging.getLogger(__name__)

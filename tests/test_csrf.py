@@ -16,9 +16,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from pointlessql.api.main import _TEMPLATES, app
+from pointlessql.config import Settings
 from pointlessql.models import Base
 from pointlessql.services import auth, csrf
-from pointlessql.settings import Settings
 
 
 @pytest.fixture(autouse=True)

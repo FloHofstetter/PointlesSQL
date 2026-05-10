@@ -22,9 +22,9 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from pointlessql.config import Settings
 from pointlessql.conventions._defaults import DEFAULT_CONVENTIONS
 from pointlessql.conventions._schema import ConventionsConfig
-from pointlessql.settings import Settings
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker

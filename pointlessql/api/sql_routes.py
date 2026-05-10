@@ -38,8 +38,8 @@ from pointlessql.api.dependencies import (
     get_uc_client,
     get_user,
 )
+from pointlessql.config import Settings
 from pointlessql.services.authorization import SELECT, check_privilege
-from pointlessql.settings import Settings
 from pointlessql.types import OpName, QueryStatus, RunId
 
 logger = logging.getLogger(__name__)

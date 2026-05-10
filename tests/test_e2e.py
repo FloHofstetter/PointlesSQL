@@ -17,9 +17,9 @@ import pandas as pd
 import pytest
 
 from pointlessql.api.main import app
+from pointlessql.config import Settings
 from pointlessql.services.soyuz_client import make_soyuz_client
 from pointlessql.services.unitycatalog import UnityCatalogClient
-from pointlessql.settings import Settings
 
 
 @pytest.mark.integration

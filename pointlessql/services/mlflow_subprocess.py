@@ -46,8 +46,8 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+from pointlessql.config import MLflowSettings
 from pointlessql.exceptions import PointlessSQLError
-from pointlessql.settings import MLflowSettings
 from pointlessql.types import ErrorCode
 
 if TYPE_CHECKING:

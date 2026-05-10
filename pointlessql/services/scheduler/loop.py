@@ -16,6 +16,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from pointlessql.config import Settings
 from pointlessql.models import Job, JobRun
 from pointlessql.services import metrics as metrics_service
 from pointlessql.services.scheduler.registry import KindRegistry, build_default_registry
@@ -28,7 +29,6 @@ from pointlessql.services.scheduler.runs import (
     _utcnow,
     execute_run,
 )
-from pointlessql.settings import Settings
 
 logger = logging.getLogger(__name__)
 

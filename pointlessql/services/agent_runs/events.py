@@ -28,10 +28,10 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
+from pointlessql.config import Settings
 from pointlessql.models import AgentRunEvent
 from pointlessql.services.alert_dispatcher import dispatch_webhook
 from pointlessql.services.audit_sinks import dispatch_to_sinks
-from pointlessql.settings import Settings
 from pointlessql.types import EventOutcome, RunStatus
 
 if TYPE_CHECKING:
@@ -219,7 +219,7 @@ async def emit_agent_run_event(
     """Build the envelope, persist it, and POST to the configured webhook.
 
     Reads the webhook URL + optional HMAC secret from
-    :class:`pointlessql.settings.AgentRunsSettings`.  When no URL is
+    :class:`pointlessql.config.AgentRunsSettings`.  When no URL is
     configured this is a logged no-op for the dispatch path —
     the row is still persisted with ``outcome = "no_destination"``
     so the trail is complete.

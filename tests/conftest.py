@@ -329,7 +329,7 @@ def _auth_db(  # pyright: ignore[reportUnusedFunction]
     # so the background loop never ticks during normal test runs —
     # dedicated scheduler tests flip it back on via ``monkeypatch``.
     if not hasattr(app.state, "settings") or app.state.settings is None:
-        from pointlessql.settings import Settings
+        from pointlessql.config import Settings
 
         app.state.settings = Settings(
             jupyter={"enabled": False},

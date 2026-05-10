@@ -90,7 +90,7 @@ def _factory(_test_engine: tuple[Engine, sessionmaker]) -> sessionmaker:  # type
 
 
 def _settings_with_repo_base(tmp_path: Path):  # type: ignore[no-untyped-def]
-    from pointlessql.settings import Settings, WorkspaceReposSettings
+    from pointlessql.config import Settings, WorkspaceReposSettings
 
     return Settings(
         workspace_repos=WorkspaceReposSettings(

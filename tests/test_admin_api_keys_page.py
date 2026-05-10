@@ -18,9 +18,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import _TEMPLATES, app
+from pointlessql.config import Settings
 from pointlessql.models import ApiKey, Base, Workspace
 from pointlessql.services import auth
-from pointlessql.settings import Settings
 
 
 @pytest.fixture(autouse=True)

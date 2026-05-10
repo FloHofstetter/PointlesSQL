@@ -11,7 +11,7 @@ Five lineage tables grow proportionally with run count:
   little.)
 
 The pruner deletes rows older than per-table thresholds set on
-:class:`pointlessql.settings.LineageRetentionSettings`.  ``None`` on
+:class:`pointlessql.config.LineageRetentionSettings`.  ``None`` on
 a per-table threshold means "never prune that axis".  Defaults
 follow the  plan: row_edges 365d, row_rejects 365d,
 value_changes 730d, column_map forever.
@@ -46,7 +46,7 @@ from pointlessql.services import audit as audit_service
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session, sessionmaker
 
-    from pointlessql.settings import Settings
+    from pointlessql.config import Settings
 
 logger = logging.getLogger(__name__)
 

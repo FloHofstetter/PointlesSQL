@@ -27,11 +27,11 @@ _STARTUP_CWD = Path.cwd()
 
 # Repository root — derived from the location of this module on disk
 # so default paths are stable regardless of which CWD the server was
-# launched from.  ``settings.py`` lives at ``<repo>/pointlessql/``;
-# parent.parent is therefore ``<repo>/``.  Operators who want the
+# launched from.  ``_settings.py`` lives at ``<repo>/pointlessql/config/``;
+# parent.parent.parent is therefore ``<repo>/``.  Operators who want the
 # legacy CWD-relative behaviour can still override every default
 # via the matching env var.
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class ServerSettings(BaseSettings):
@@ -344,7 +344,7 @@ class LoggingSettings(BaseSettings):
     controls whether log records render as human-readable text or
     single-line JSON for ingestion.  ``third_party_levels`` overrides
     the per-library default suppression installed by
-    :func:`pointlessql.logging_config.configure_logging` —
+    :func:`pointlessql.config.configure_logging` —
     ``POINTLESSQL_LOG_THIRD_PARTY_LEVELS='{"httpx":"DEBUG"}'`` lifts
     the default WARNING gate for one upstream when debugging a
     transport issue.

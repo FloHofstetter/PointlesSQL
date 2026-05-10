@@ -10,13 +10,13 @@ import httpx
 import pytest
 
 from pointlessql.api.main import app
-from pointlessql.exceptions import CatalogUnavailableError
-from pointlessql.logging_config import (
+from pointlessql.config import (
     JSONFormatter,
     RequestIdFilter,
     configure_logging,
     request_id_var,
 )
+from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.services.unitycatalog import UnityCatalogClient
 
 

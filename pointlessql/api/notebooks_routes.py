@@ -22,9 +22,9 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.dependencies import require_admin
+from pointlessql.config import Settings
 from pointlessql.services import notebook_workspace as notebook_workspace_service
 from pointlessql.services import scheduler as scheduler_service
-from pointlessql.settings import Settings
 
 logger = logging.getLogger(__name__)
 

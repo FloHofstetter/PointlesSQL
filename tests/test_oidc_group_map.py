@@ -22,10 +22,10 @@ from pydantic import ValidationError
 
 from pointlessql.api.dependencies import require_auditor, require_supervisor
 from pointlessql.api.main import app
+from pointlessql.config import GroupMapping, OIDCSettings
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models import Workspace
 from pointlessql.services.oidc import find_or_create_oidc_user
-from pointlessql.settings import GroupMapping, OIDCSettings
 
 
 def _factory():

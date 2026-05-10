@@ -25,9 +25,9 @@ from typing import Any
 
 from sqlalchemy import select
 
+from pointlessql.config import Settings
 from pointlessql.exceptions import EngineError, ValidationError
 from pointlessql.services.unitycatalog import UnityCatalogClient
-from pointlessql.settings import Settings
 from pointlessql.types import UserInfo
 
 logger = logging.getLogger(__name__)
@@ -173,7 +173,7 @@ def _resolve_repo_notebook_path(spec: str) -> Path:
     """
     # Local import to avoid a top-level dependency on settings/git
     # for callers that never use the repo-prefix path.
-    from pointlessql.settings import Settings
+    from pointlessql.config import Settings
 
     body = spec[len(_REPO_PREFIX):]
     # Split on the first slash to separate the "<workspace_id>:<slug>"

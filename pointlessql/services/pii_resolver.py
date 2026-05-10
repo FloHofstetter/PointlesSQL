@@ -12,7 +12,7 @@ module wraps the lookup in a TTL cache:
 
 * keyed by ``(table_fqn, column)``;
 * default 600 s TTL, configurable via
-  :class:`pointlessql.settings.AuditSettings.pii_cache_ttl_seconds`;
+  :class:`pointlessql.config.AuditSettings.pii_cache_ttl_seconds`;
 * :func:`invalidate` clears one entry; :func:`invalidate_all`
   drains the cache (the eventual tag-edit UI calls one of these
   after a successful PATCH).

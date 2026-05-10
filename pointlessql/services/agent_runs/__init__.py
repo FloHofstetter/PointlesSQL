@@ -8,7 +8,7 @@ about runs without polling ``GET /api/agent-runs``.
 
 Webhook destination management is intentionally minimal: a single
 URL + optional HMAC secret pulled from
-:class:`pointlessql.settings.AgentRunsSettings`.  Richer
+:class:`pointlessql.config.AgentRunsSettings`.  Richer
 per-destination subscription would belong on top of this layer.
 """
 

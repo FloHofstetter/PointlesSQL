@@ -15,7 +15,7 @@ import logging
 
 import pytest
 
-from pointlessql.logging_config import configure_logging
+from pointlessql.config import configure_logging
 
 
 @pytest.fixture

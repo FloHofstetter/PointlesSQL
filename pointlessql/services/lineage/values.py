@@ -65,7 +65,7 @@ def record_value_changes(
             no-op.
         pii_mode: One of ``store_clear`` (default — no rewrite),
             ``hash_only``, ``redact_with_audit_log``.  Resolves
-            from :attr:`pointlessql.settings.AuditSettings.pii_mode`
+            from :attr:`pointlessql.config.AuditSettings.pii_mode`
             in production callers.
         pii_hash_secret: Pre-shared secret for ``hash_only`` mode.
             ``None`` triggers a lazy auto-generation via

@@ -11,9 +11,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from pointlessql.api.main import app
+from pointlessql.config import Settings
 from pointlessql.models import Base
 from pointlessql.services import auth
-from pointlessql.settings import Settings
 from tests.conftest import seed_csrf
 
 

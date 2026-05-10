@@ -39,9 +39,9 @@ from soyuz_catalog_client.api.tables import (
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.types import Unset
 
+from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.services import branch_tags
-from pointlessql.settings import Settings
 from pointlessql.types import BranchAction
 
 logger = logging.getLogger(__name__)

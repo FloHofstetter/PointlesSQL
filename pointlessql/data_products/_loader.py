@@ -282,7 +282,7 @@ def load_contracts_for_workspace(
             :func:`load_contracts_from_paths`) because the repo
             discovery walks ``WorkspaceRepo`` rows.
         workspace_id: Workspace owning the discovered repos.
-        settings: Optional :class:`pointlessql.settings.Settings`
+        settings: Optional :class:`pointlessql.config.Settings`
             override (pure-test inject).  Default builds a fresh
             ``Settings()`` reading the env.
         now: Override for the ``last_loaded_at`` timestamp.
@@ -296,8 +296,8 @@ def load_contracts_for_workspace(
     """
     # Local import to avoid a top-level dependency on settings/git
     # for callers that only use load_contract / load_contracts_from_paths.
+    from pointlessql.config import Settings
     from pointlessql.git import discover_repo_yaml_files
-    from pointlessql.settings import Settings
 
     resolved_settings = settings if settings is not None else Settings()
     # Cast helps pyright understand the attribute access.

@@ -303,16 +303,16 @@ class TestFederationAdminOnly:
 class TestPrincipalForwarding:
     def test_make_principal_client_sets_header(self) -> None:
         """make_principal_client creates a Client with X-Principal header."""
+        from pointlessql.config import Settings
         from pointlessql.services.soyuz_client import make_principal_client
-        from pointlessql.settings import Settings
 
         settings = Settings(jupyter={"enabled": False})
         client = make_principal_client(settings, "user@test.com")
         assert client._headers["X-Principal"] == "user@test.com"
 
     def test_make_principal_client_preserves_base_url(self) -> None:
+        from pointlessql.config import Settings
         from pointlessql.services.soyuz_client import make_principal_client
-        from pointlessql.settings import Settings
 
         settings = Settings(
             jupyter={"enabled": False},

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from pointlessql.logging_config import (
+from pointlessql.config import (
     JSONFormatter,
     RequestIdFilter,
     job_run_id_var,
@@ -139,7 +139,7 @@ def test_filter_strips_reserved_attrs_set_via_record_factory() -> None:
     take; the filter must still keep base fields off the extras
     map.
     """
-    from pointlessql.logging_config import _harvest_extras
+    from pointlessql.config._logging import _harvest_extras  # noqa: PLC2701  # test reaches private helper
 
     record = logging.LogRecord(
         name="pql_test.harvester",

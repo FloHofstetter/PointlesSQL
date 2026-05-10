@@ -39,8 +39,8 @@ def record_value_changes_after_commit(
     if not pending:
         return
 
+    from pointlessql.config import Settings
     from pointlessql.services.lineage_edges import record_value_changes
-    from pointlessql.settings import Settings
 
     settings = Settings()
     failure = record_value_changes(

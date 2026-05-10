@@ -11,10 +11,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from pointlessql.api.middleware import WORKSPACE_COOKIE_NAME
+from pointlessql.config import Settings
 from pointlessql.services import auth, csrf
 from pointlessql.services import oidc as oidc_service
 from pointlessql.services import workspaces as workspaces_service
-from pointlessql.settings import Settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

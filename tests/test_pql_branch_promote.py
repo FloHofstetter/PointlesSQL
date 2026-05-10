@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from soyuz_catalog_client.models.table_info import TableInfo
 
+from pointlessql.config import Settings
 from pointlessql.pql._branch import (
     _check_promotion_conflicts,
     preview_promote_conflicts,
@@ -25,7 +26,6 @@ from pointlessql.services.branch_tags import (
     STRATEGY_SYMLINK,
     BranchTags,
 )
-from pointlessql.settings import Settings
 
 
 @pytest.fixture

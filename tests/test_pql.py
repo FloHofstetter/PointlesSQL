@@ -16,6 +16,7 @@ from soyuz_catalog_client.models.list_tables_response import ListTablesResponse
 from soyuz_catalog_client.models.schema_info import SchemaInfo
 from soyuz_catalog_client.models.table_info import TableInfo
 
+from pointlessql.config import Settings
 from pointlessql.exceptions import (
     CatalogNotFoundError,
     CatalogUnavailableError,
@@ -25,7 +26,6 @@ from pointlessql.pql._columns import columns_from_dataframe
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql.engine import DuckDBEngine, Engine, PandasEngine, PolarsEngine
 from pointlessql.pql.pql import PQL
-from pointlessql.settings import Settings
 
 # ------------------------------------------------------------------
 # parse_full_name
