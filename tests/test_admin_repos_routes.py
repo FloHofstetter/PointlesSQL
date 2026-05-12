@@ -81,9 +81,14 @@ async def test_add_secret_then_revoke(admin_client: httpx.AsyncClient) -> None:
     )
     repo_id = create.json()["id"]
 
+    fake_key = (
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n"
+        "fake\n"
+        "-----END OPENSSH PRIVATE KEY-----\n"
+    )
     add = await admin_client.post(
         f"/api/admin/repos/{repo_id}/secrets",
-        json={"kind": "deploy_key", "plaintext": "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----\n"},
+        json={"kind": "deploy_key", "plaintext": fake_key},
     )
     assert add.status_code == 200
     assert add.json()["kind"] == "deploy_key"

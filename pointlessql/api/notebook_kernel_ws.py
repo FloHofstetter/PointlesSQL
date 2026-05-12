@@ -530,6 +530,9 @@ async def _handle_interrupt(
     try:
         await session.interrupt()
     except Exception as exc:  # noqa: BLE001 — surface as RPC error
+        # bare-broad-ok: kernel interrupt errors are surfaced to the
+        # browser via the structured JSON-RPC error envelope; that IS
+        # the diagnostic, server-side log would be noise.
         await _send_error(
             websocket,
             request_id=request_id,
@@ -557,6 +560,8 @@ async def _handle_restart(
     try:
         await session.restart()
     except Exception as exc:  # noqa: BLE001
+        # bare-broad-ok: kernel restart errors are surfaced to the
+        # browser via the structured JSON-RPC error envelope.
         await _send_error(
             websocket,
             request_id=request_id,

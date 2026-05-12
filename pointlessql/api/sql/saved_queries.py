@@ -273,6 +273,10 @@ async def queries_page(
         read_kind: Optional read-kind filter (``sql_execute`` /
             ``pql_table`` / ``engine_direct``); unknown values are
             dropped silently by the service layer.
+        status: Optional outcome filter (``succeeded`` / ``failed``
+            / ``cancelled``); same drop-on-unknown behaviour.
+        since: Optional time-range filter (``24h`` / ``7d`` /
+            ``30d``); applied as a ``WHERE started_at >`` clause.
         offset: Zero-based offset for pagination.  HTMX Load-More
             uses this to stream subsequent pages.
 

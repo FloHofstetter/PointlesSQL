@@ -302,8 +302,9 @@ HELP: dict[str, HelpEntry] = {
         body=(
             "MLflow runs the training tracking subprocess; "
             "PointlesSQL is the supervision + audit + UC catalog "
-            "layer on top. The MLflow tab embeds MLflow's native "
-            "UI, started when <code>POINTLESSQL_MLFLOW_ENABLED=1</code>."
+            "layer on top. The <em>Open in MLflow UI</em> button "
+            "above jumps to MLflow's native UI, started when "
+            "<code>POINTLESSQL_MLFLOW_ENABLED=1</code>."
         ),
         learn_more="/concepts/architecture/",
     ),

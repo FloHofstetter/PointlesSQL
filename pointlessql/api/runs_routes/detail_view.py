@@ -44,13 +44,13 @@ from pointlessql.api.runs_routes._shared import load_run, templates
 from pointlessql.api.runs_routes.rollback import rollback_targets_for_run
 from pointlessql.config import Settings
 from pointlessql.conventions import load_conventions
-from pointlessql.services.notebook import _doc as notebook_doc_service
 from pointlessql.services import output_rendering as output_rendering_service
 from pointlessql.services.conformance import (
     ConformanceFinding,
     check_table_against_layer,
     infer_layer_from_full_name,
 )
+from pointlessql.services.notebook import _doc as notebook_doc_service
 
 router = APIRouter()
 

@@ -82,7 +82,11 @@ async def agent_run_diff_page(
     # ``.badge`` whenever it is non-zero.
     lineage_diff_count = sum(
         1
-        for axis in ("reject_pattern_shift", "value_change_volume_per_table", "row_count_delta_per_table")
+        for axis in (
+            "reject_pattern_shift",
+            "value_change_volume_per_table",
+            "row_count_delta_per_table",
+        )
         for delta in lineage_diff[axis]["delta"].values()
         if delta != 0
     )

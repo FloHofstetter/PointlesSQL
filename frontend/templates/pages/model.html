@@ -20,7 +20,7 @@
     {% if mlflow_running %}
     <a href="/mlflow/#/models/{{ model.full_name }}" target="_blank" rel="noopener"
        class="btn btn-outline-secondary btn-sm ms-auto">
-        <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI
+        <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI{{ info('models.mlflow-vs-pointlessql') }}
     </a>
     {% endif %}
 </div>

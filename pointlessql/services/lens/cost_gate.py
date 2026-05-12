@@ -170,10 +170,13 @@ def _explain_cost_or_zero(
     except PointlessSQLError:
         raise
     except Exception as exc:  # noqa: BLE001 — narrow-cast unknown EXPLAIN failures
-        # Treat EXPLAIN parse drift as non-blocking: the executor will
-        # still enforce timeouts; we just lose cost estimation for this
-        # query.  Surface as zero so the budget check can't DOS the
-        # analyst over a DuckDB version drift.
+        # bare-broad-ok: Treat EXPLAIN parse drift as non-blocking:
+        # the executor will still enforce timeouts; we just lose cost
+        # estimation for this query.  Surface as zero so the budget
+        # check can't DOS the analyst over a DuckDB version drift.
+        # ``_log_explain_drift`` already preserves the exception
+        # context, just without the ``exc_info=`` keyword the AST
+        # lint expects.
         _log_explain_drift(exc)
         return CostEstimate(max_cardinality=0, join_depth=0, cost=0)
     return result.cost

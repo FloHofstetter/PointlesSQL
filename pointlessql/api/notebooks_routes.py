@@ -476,6 +476,10 @@ async def api_delete_notebook(
     """
     require_user(request)
     if not confirm:
+        # bare-http-ok: explicit opt-in flag for a destructive
+        # delete route; converting to a domain exception would add
+        # no information beyond the literal "confirm=true required"
+        # detail that the browser modal already special-cases.
         raise HTTPException(status_code=400, detail="confirm=true required")
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()

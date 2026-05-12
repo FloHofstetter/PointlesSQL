@@ -254,6 +254,8 @@ async def test_audit_queries_html_page_renders_with_pager(
     """GET /audit/queries renders the cockpit and accepts ``?offset=``."""
     r = await admin_client.get("/audit/queries")
     assert r.status_code == 200, r.text
-    assert "Saved queries" in r.text
+    # Page heading lower-cases "saved queries" per the breadcrumb style;
+    # match the actual rendered title.
+    assert "saved queries" in r.text
     r2 = await admin_client.get("/audit/queries?offset=0")
     assert r2.status_code == 200, r2.text

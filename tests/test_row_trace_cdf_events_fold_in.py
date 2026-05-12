@@ -22,8 +22,8 @@ from pointlessql.models import (
     CdfTailSubscription,
     LineageRowEdge,
 )
-from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.services.unitycatalog import UnityCatalogClient
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 @pytest.fixture

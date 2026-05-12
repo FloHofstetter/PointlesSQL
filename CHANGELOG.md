@@ -6,6 +6,29 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint H.1 — pre-existing pytest + ruff failures cleared
+  (2026-05-12).** Eight pytest tests that had been failing on
+  main since Phase 56–68 carve-outs landed all green:
+  `test_register_page_renders` (template casing drift),
+  `test_help_registry::*_used_in_some_template` +
+  `test_model_detail_renders_all_tabs` (Sprint 68.3 dropped
+  the inline ``tab-mlflow`` iframe — slug now wires the
+  ``Open in MLflow UI`` button popover instead),
+  `test_no_bare_http_exception` (one `# bare-http-ok:` marker
+  on `notebooks_routes.py` confirm-gate),
+  `test_no_lossy_broad_except` (six `# bare-broad-ok:` markers
+  on legit translate-to-structured-response sites in
+  `notebook_kernel_ws.py`, `sql/editor.py`, `lens/cost_gate.py`),
+  `test_query_history::*` ×2 (cards → table Phase 61/62 drift
+  + the `length > 700` drawer-gate that the test pair always
+  implied), `test_saved_audit_queries::*_renders_with_pager`
+  (heading case drift). Eight ruff errors (six auto-fixed I001
+  import-sort, two manual `E501` line-length breaks, one
+  `D417` missing-arg docs, one `F401` __all__ add) also cleared
+  to unbreak the `lint + type + docstring + alembic` CI job
+  that had been red since 2026-05-08. Pyright still reports 28
+  pre-existing errors — slated for Sprint H.2.
+
 - **Sprint H.5 — pip-audit CI integration + 11-CVE bump
   (2026-05-12).** Added a new `security-audit` job to
   `.github/workflows/test.yml` that runs `uv run pip-audit

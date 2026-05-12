@@ -43,8 +43,6 @@ from pointlessql.exceptions import (
     ValidationError,
 )
 from pointlessql.models import AgentRunOperation
-from pointlessql.services.pii import _mask as pii_mask
-from pointlessql.services.pii import _resolver as pii_resolver
 from pointlessql.services.authorization import SELECT, check_privilege
 from pointlessql.services.cdf_tail import fetch_events_for_row as fetch_cdf_events_for_row
 from pointlessql.services.lineage_edges import (
@@ -57,6 +55,8 @@ from pointlessql.services.lineage_edges import (
     walk_back,
     walk_back_columns,
 )
+from pointlessql.services.pii import _mask as pii_mask
+from pointlessql.services.pii import _resolver as pii_resolver
 from pointlessql.types import TableFqn
 
 logger = logging.getLogger(__name__)

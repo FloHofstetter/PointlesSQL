@@ -51,5 +51,6 @@ __all__ = [
     "rename_notebook",
     "resolve_notebook_target",
     "resolve_py_notebook_path",
+    "resolve_upload_target",
     "save_document",
 ]

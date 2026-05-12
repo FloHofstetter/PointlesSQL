@@ -360,21 +360,31 @@ async def test_queries_page_htmx_returns_partial(
     assert "All 80 entries loaded." in body
 
 
-async def test_queries_page_emits_cards_with_hljs_marker(
+async def test_queries_page_emits_rows_with_hljs_marker(
     orders_delta: str,
     admin_client: httpx.AsyncClient,
 ) -> None:
+    """The /queries page paints a row per history entry with hljs hooks.
+
+    The page went table → card-grid (Sprint 57.3) → table (Phase 61/62
+    drift roll-up); current shape is a Bootstrap table whose
+    ``<tbody>`` carries id ``queries-tbody`` and each drawer body
+    contains a ``<code class="language-sql">`` hook for highlight.js.
+    Seed a SQL long enough to surface the drawer so the
+    ``language-sql`` marker actually renders.
+    """
     app.state.uc_client = _make_uc_mock(storage_location=orders_delta)
     factory = app.state.session_factory
     with factory() as session:
         session.query(QueryHistoryTable).delete()
         session.query(QueryHistory).delete()
         session.commit()
+    long_sql = "SELECT " + ", ".join([f"c_{i}" for i in range(120)]) + " FROM main.t"
     qh.record_query(
         factory,
         user_id=1,
         user_email="x@y.z",
-        sql_text="SELECT 1",
+        sql_text=long_sql,
         started_at=datetime.datetime(2026, 4, 1, tzinfo=datetime.UTC),
         finished_at=datetime.datetime(2026, 4, 1, 0, 0, 0, 100000, tzinfo=datetime.UTC),
         status="succeeded",
@@ -385,9 +395,9 @@ async def test_queries_page_emits_cards_with_hljs_marker(
     resp = await admin_client.get("/queries")
     assert resp.status_code == 200
     body = resp.text
-    # Card-grid layout markers: stripe class + grid container + hljs hook.
-    assert "pql-query-card--succeeded" in body
-    assert 'id="queries-grid"' in body
+    # Table layout markers + status badge + hljs hook in drawer body.
+    assert 'id="queries-tbody"' in body
+    assert 'class="badge bg-success">succeeded' in body
     assert 'class="language-sql"' in body
     # hljs CDN + page-local highlight bridge are loaded only on /queries.
     assert "highlight.min.js" in body

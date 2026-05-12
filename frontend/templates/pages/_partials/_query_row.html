@@ -49,6 +49,10 @@
     {% if entry.row_count is not none %}{{ entry.row_count }}{% else %}—{% endif %}
   </td>
   <td class="align-middle text-end">
+    {# Drawer only when the SQL doesn't fit the truncated cell — short
+       queries are already visible in the SQL column, no need for the
+       extra trigger. Threshold matches the SQL-editor's prefill cap. #}
+    {% if (entry.sql_text or '')|length > 700 or entry.error_message or entry.tables %}
     {% call detail_drawer('q-' ~ entry.id, 'View full SQL', title='Query #' ~ entry.id, icon='bi-eye') %}
     <pre class="mb-3"><code class="language-sql">{{ entry.sql_text or '' }}</code></pre>
     {% if entry.error_message %}
@@ -60,6 +64,7 @@
     <div>{% for full in entry.tables %}<span class="badge text-bg-secondary me-1 font-monospace">{{ full }}</span>{% endfor %}</div>
     {% endif %}
     {% endcall %}
+    {% endif %}
     <a href="/sql?prefill={{ entry.sql_text|urlencode }}&history_id={{ entry.id }}"
        class="btn btn-link btn-sm p-0 ms-1 align-baseline"
        title="Re-run in SQL editor"

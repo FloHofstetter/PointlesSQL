@@ -95,7 +95,8 @@ def test_compound_object_alpine_init_safe(env: Environment) -> None:
     """The alert_detail.html / volume_detail.html pattern.
 
     Pattern:
-        x-data='alertDetail({slug: {{ alert.slug|tojson }}, destinations: {{ alert.destinations|tojson }}})'
+        x-data='alertDetail({slug: {{ alert.slug|tojson }},
+                             destinations: {{ alert.destinations|tojson }}})'
     """
     template = env.from_string(
         "x-data='alertDetail({slug: {{ slug|tojson }}, "

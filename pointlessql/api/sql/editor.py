@@ -623,6 +623,9 @@ async def api_sql_execute_batch(
                 conn=conn,
             )
         except Exception as exc:  # noqa: BLE001 — record then halt
+            # bare-broad-ok: the user gets a typed ``kind: "error"``
+            # result row with the stripped message; halting the batch
+            # here without a server-side log is the deliberate UX.
             failed_index = idx
             error_message = _ANSI_ESCAPE_RE.sub("", str(exc))
             results.append(
@@ -670,6 +673,9 @@ async def api_sql_execute_batch(
                     await _rollback_run(request, run_id=run_id)
                 )
             except Exception as exc:  # noqa: BLE001 — best-effort
+                # bare-broad-ok: per-run rollback errors are appended
+                # to the structured rollback_log returned to the
+                # caller; best-effort semantics, no server log.
                 rollback_log.append({"run_id": run_id, "error": str(exc)})
 
     await audit(
@@ -748,6 +754,8 @@ async def _rollback_run(request: Request, *, run_id: str) -> dict[str, Any]:
             await asyncio.to_thread(_do_rollback, ordinal, target)
             rolled.append(ordinal)
         except Exception as exc:  # noqa: BLE001 — best-effort
+            # bare-broad-ok: per-op rollback errors are returned in
+            # the structured ``errors`` list; best-effort semantics.
             errors.append({"ordinal": ordinal, "target": target, "error": str(exc)})
 
     return {"run_id": run_id, "ops_rolled_back": rolled, "errors": errors}

@@ -220,12 +220,15 @@ async def test_model_detail_renders_all_tabs(
     resp = await admin_client.get("/models/cat1.sch1.smoke_model")
     assert resp.status_code == 200
     body = resp.text
-    # Header + tab nav rendered.
+    # Header + tab nav rendered. Sprint 68.3 dropped the inline
+    # ``tab-mlflow`` iframe in favour of the standalone ``/mlflow/``
+    # page; the model-detail header now carries an "Open in MLflow
+    # UI" button instead, hosting the ``models.mlflow-vs-pointlessql``
+    # help-popover when ``mlflow_running`` is true.
     assert "cat1.sch1.smoke_model" in body
     assert 'id="tab-overview"' in body
     assert 'id="tab-versions"' in body
     assert 'id="tab-lineage"' in body
-    assert 'id="tab-mlflow"' in body
     assert 'id="tab-promotion"' in body
     # Versions table has both versions.
     assert ">v1<" in body

@@ -29,8 +29,8 @@ from pointlessql.models import (
 )
 from pointlessql.services import recents as recents_service
 from pointlessql.services import saved_queries as saved_queries_service
-from pointlessql.services.workspace import _crud as workspaces_service
 from pointlessql.services.scheduler.runs import _start_run, log_job
+from pointlessql.services.workspace import _crud as workspaces_service
 
 
 def _factory():

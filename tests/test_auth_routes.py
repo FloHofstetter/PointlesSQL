@@ -85,7 +85,7 @@ class TestRegisterFlow:
         ) as client:
             resp = await client.get("/auth/register")
         assert resp.status_code == 200
-        assert "Create Account" in resp.text
+        assert "Create account" in resp.text
 
     @pytest.mark.asyncio
     async def test_register_first_user_info(self):

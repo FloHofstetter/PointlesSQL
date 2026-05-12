@@ -51,7 +51,8 @@ def test_load_dashboards_from_yaml_inserts_row(tmp_path, _test_engine):  # type:
     )
     assert n == 1
     with factory() as session:
-        rows = list(session.execute(select(Dashboard).where(Dashboard.slug == "weekly-orders")).scalars())
+        stmt = select(Dashboard).where(Dashboard.slug == "weekly-orders")
+        rows = list(session.execute(stmt).scalars())
     assert len(rows) == 1
     assert rows[0].title == "Weekly orders"
     assert rows[0].source.startswith("repo:")
@@ -67,7 +68,8 @@ def test_load_saved_queries_from_yaml_inserts_row(tmp_path, _test_engine):  # ty
     )
     assert n == 1
     with factory() as session:
-        rows = list(session.execute(select(SavedQuery).where(SavedQuery.slug == "top-customers")).scalars())
+        stmt = select(SavedQuery).where(SavedQuery.slug == "top-customers")
+        rows = list(session.execute(stmt).scalars())
     assert len(rows) == 1
     assert rows[0].is_shared is True
     assert rows[0].source.startswith("repo:")
@@ -106,10 +108,18 @@ def test_loader_rejects_missing_required_field(tmp_path, _test_engine):  # type:
 def test_loader_handles_empty_yaml_blocks(tmp_path, _test_engine):  # type: ignore[no-untyped-def]
     factory = _factory(_test_engine)
     yaml_file = tmp_path / "pointlessql.yaml"
-    yaml_file.write_text("data_product:\n  name: x\n  catalog: c\n  schema: s\n  version: '1'\n  description: ''\n  tables: []\n")
+    yaml_file.write_text(
+        "data_product:\n"
+        "  name: x\n  catalog: c\n  schema: s\n"
+        "  version: '1'\n  description: ''\n  tables: []\n"
+    )
     # No dashboards: / saved_queries: keys → loader is a no-op.
-    n_d = load_dashboards_from_yaml(yaml_file, factory=factory, workspace_id=1, owner_user_id=1)
-    n_q = load_saved_queries_from_yaml(yaml_file, factory=factory, workspace_id=1, owner_user_id=1)
+    n_d = load_dashboards_from_yaml(
+        yaml_file, factory=factory, workspace_id=1, owner_user_id=1
+    )
+    n_q = load_saved_queries_from_yaml(
+        yaml_file, factory=factory, workspace_id=1, owner_user_id=1
+    )
     assert n_d == 0
     assert n_q == 0
 
