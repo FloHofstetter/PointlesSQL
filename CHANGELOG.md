@@ -6,6 +6,54 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint B.3 — Daily marketplace-digest loop (2026-05-12).**
+  Phase 71.4's ``users.digest_email_optin`` column + ``/me/settings``
+  toggle now have a backing drainer.  New
+  ``NotificationsSettings`` sub-model (env prefix
+  ``POINTLESSQL_NOTIFICATIONS_``) with ``digest_enabled``
+  (default False — install-level master switch),
+  ``digest_trigger_hour`` (UTC, default 6) and
+  ``digest_poll_interval_seconds``.  New constant
+  ``pointlessql.notification.digest`` in cloudevents/types +
+  governance.  New ``services/notifications/digest.py``
+  (``seconds_until_next_window`` planner +
+  ``fire_digests`` per-user emitter).  New
+  ``_user_notification_digest_loop`` coroutine registered in
+  ``_bootstrap/_loops.py`` + lifespan; when ``digest_enabled``
+  is false the loop sleeps forever (cheap no-op until the
+  operator flips the flag).  7 pytest cases.
+
+- **Sprint B.2 — contract_violated streaming emit (2026-05-12).**
+  The existing ``record_contract_event_after_commit`` hook
+  persists one ``data_product_contract_events`` row per
+  violated write — that stays the authoritative audit record.
+  The hook now also schedules a fire-and-forget
+  ``emit_governance_event(EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED,
+  …)`` via ``loop.create_task`` whenever an event loop is
+  running.  Outside an event loop (sync test harness, REPL) the
+  streaming leg is a no-op; the audit row still persists.
+  Workspace id is resolved at emit time from the
+  ``DataProduct`` row — no signature change for the two call
+  sites in ``_lifecycle.py``.  3 pytest cases.
+
+- **Sprint B.1 — schema_changed emit on yaml reload
+  (2026-05-12).** The ``EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED``
+  constant was registered in 71.4 but nothing emitted it.
+  ``POST /api/data-products/reload`` now snapshots the
+  pre-reload ``contract_yaml_hash`` per existing product in the
+  workspace, runs ``load_contracts_for_workspace``, and emits
+  one envelope per product whose hash changed.  First-load (no
+  prior hash) is creation, not change — does not emit.  3
+  pytest cases.
+
+- **Sprint B.4 — Live-replay deferred.**  The Phase 71
+  walkthrough sections in ``docs/e2e-walkthroughs/data_products.md``
+  were verified statically (every CSS selector exists in the
+  template source).  Browser-replay against the running
+  container is deferred until a docker rebuild lands the new
+  code — the in-process pytest suite (2248 cases at HEAD)
+  covers every route + Alpine handler URL contract.
+
 - **Sprint 71.6 — Browse-page rework (2026-05-12).** Reworked the
   data-product browse page (``/data-products``) around a
   sortable table with click-to-sort columns (Product, Version,
