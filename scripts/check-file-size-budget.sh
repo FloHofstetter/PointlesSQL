@@ -26,7 +26,10 @@ ALLOWLIST=(
     # FastAPI app boot + middleware wiring; coherent module.
     "pointlessql/api/main.py"
     # Pydantic settings tree; splitting hurts discoverability.
-    "pointlessql/settings.py"
+    # Path was ``pointlessql/settings.py``; refactored to a package
+    # ``pointlessql/config/_settings.py`` in a later sprint.  The
+    # cohesive-tree rationale carries across the rename.
+    "pointlessql/config/_settings.py"
     # Frozen alembic squash from Sprint 33-era housekeeping.
     "pointlessql/alembic/versions/b55f1020b8a4_initial_schema.py"
     # Cohesive scheduler core — Phase 21 ML registry adds.
@@ -34,12 +37,22 @@ ALLOWLIST=(
     # Cohesive jobs route surface; refused split in Phase 26 audit.
     "pointlessql/api/jobs_routes.py"
     # SQL editor route layer; cohesive query-handling concerns.
-    "pointlessql/api/sql_routes.py"
+    # Path was ``pointlessql/api/sql_routes.py``; refactored into a
+    # ``pointlessql/api/sql/`` package, but the two largest files
+    # (``editor.py`` and ``_dispatcher.py``) still share the
+    # dispatcher state machine.  Each is big-by-design; splitting
+    # them would create cross-handler state-passing seams.
+    "pointlessql/api/sql/editor.py"
+    "pointlessql/api/sql/_dispatcher.py"
     # PQL merge primitive; cohesive write-path concerns.
     "pointlessql/pql/_merge.py"
     # Audit cockpit metrics + inbox routes; share filter / aggregator
     # service layer.  Sprint 35 audit deemed split a false seam.
-    "pointlessql/api/audit_routes.py"
+    # Path was ``pointlessql/api/audit_routes.py``; refactored into a
+    # ``pointlessql/api/audit/`` package; the bulk lives in
+    # ``_legacy.py`` (the original module preserved through the
+    # package split).
+    "pointlessql/api/audit/_legacy.py"
     # Cohesive SQL aggregation layer; one shared filter / bin / metric
     # path used by summary / timeseries / anomalies endpoints.
     "pointlessql/services/audit_aggregator.py"
@@ -52,7 +65,10 @@ ALLOWLIST=(
     # already lives in services/dbt_bridge.py; what remains here is
     # one file's worth of route handlers that share the
     # ``_run_or_test`` pipeline state.
-    "pointlessql/api/dbt_routes.py"
+    # Path was ``pointlessql/api/dbt_routes.py``; refactored into a
+    # ``pointlessql/api/dbt/`` package later.  Same coherent-surface
+    # rationale carries across the rename.
+    "pointlessql/api/dbt/routes.py"
 )
 
 is_allowed() {
