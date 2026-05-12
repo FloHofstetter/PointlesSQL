@@ -219,3 +219,40 @@ jobs:
             --deselect tests/test_scheduler_papermill.py::test_download_ipynb_serves_raw_file \
             --deselect tests/test_scheduler_papermill.py::test_download_html_triggers_render \
             --deselect tests/test_table_stats.py::test_profile_enforces_select
+
+  security-audit:
+    name: dependency CVE scan (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure git for private soyuz-catalog pull
+        env:
+          SOYUZ_READ_TOKEN: ${{ secrets.SOYUZ_READ_TOKEN }}
+        run: |
+          LEN=$(printf '%s' "$SOYUZ_READ_TOKEN" | wc -c)
+          if [ "$LEN" -lt 30 ]; then
+            echo "::error::SOYUZ_READ_TOKEN is missing or truncated (${LEN} bytes)." >&2
+            exit 1
+          fi
+          git config --global \
+            url."https://x-access-token:${SOYUZ_READ_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.14
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: pip-audit
+        # ``--skip-editable`` excludes the local ``pointlessql`` install
+        # (editable wheel has no PyPI release to compare against). The
+        # private ``soyuz-catalog-client`` is also auto-skipped with a
+        # "could not be audited" reason since its source is a private
+        # git tag, not PyPI. We deliberately omit ``--strict`` so those
+        # skips don't fail the job; any third-party PyPI dep with a
+        # known CVE still fails because pip-audit exits non-zero on
+        # actual findings. Run on every PR to catch new advisories
+        # against the locked versions.
+        run: uv run pip-audit --skip-editable

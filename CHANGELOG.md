@@ -6,6 +6,29 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint H.5 — pip-audit CI integration + 11-CVE bump
+  (2026-05-12).** Added a new `security-audit` job to
+  `.github/workflows/test.yml` that runs `uv run pip-audit
+  --skip-editable` on every PR. `--skip-editable` excludes the
+  local `pointlessql` install and the private
+  `soyuz-catalog-client` git-tag source from the audit; any
+  third-party PyPI dep with a known CVE still fails the job.
+  Same run also bumped six packages whose locked versions
+  carried 11 known CVEs: `gitpython` 3.1.49 → 3.1.50,
+  `mako` 1.3.11 → 1.3.12, `mistune` 3.2.0 → 3.2.1, `pip`
+  26.0.1 → 26.1.1, `python-multipart` 0.0.26 → 0.0.28, `urllib3`
+  2.6.3 → 2.7.0.  `uv run pytest -n auto` post-bump confirms
+  0 new test regressions (8 pre-existing failures unchanged,
+  earmarked for Sprint H.1).
+
+- **Sprint H.7 — ROADMAP archive trigger clarification
+  (2026-05-12).** Rewrote the "When closed phases stack up"
+  section in `ROADMAP.md` to make the **both conditions**
+  requirement explicit: line-count (>2000) AND staleness (>30d
+  + >3mo since last reference).  Added a worked 2026-05-12
+  example so future sessions don't auto-archive recent
+  load-bearing phases.
+
 - **Phase 70 — Notebook track (member-access + JS-split,
   2026-05-12).**  Two bundled notebook concerns landed in one
   phase.  (1) Member-access: drop the Phase-12.12 admin-only
