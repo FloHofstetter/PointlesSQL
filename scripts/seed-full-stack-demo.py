@@ -44,6 +44,8 @@ from typing import Any
 import httpx
 import numpy as np
 import pandas as pd
+from pointlessql.models.autoload import AutoloadCheckpoint
+from pointlessql.settings import Settings
 from soyuz_catalog_client.api.catalogs import (
     create_catalog_api_2_1_unity_catalog_catalogs_post as _create_catalog,
 )
@@ -59,11 +61,9 @@ from soyuz_catalog_client.models.create_schema import CreateSchema
 
 from pointlessql.db import get_session_factory, init_db
 from pointlessql.models import AgentRun
-from pointlessql.models.autoload import AutoloadCheckpoint
 from pointlessql.pql.pql import PQL
 from pointlessql.services.agent_runs.mlflow_soyuz_link import link_model_version_to_run
 from pointlessql.services.soyuz_client import make_soyuz_client
-from pointlessql.settings import Settings
 
 # --------------------------------------------------------------------------- #
 # Constants — story-anchored, intentionally not configurable

@@ -36,7 +36,6 @@ import json
 import sys
 import uuid
 
-from pointlessql.db import get_session_factory, init_db
 from pointlessql.models.agent_run_audit import AgentRunOperation
 from pointlessql.models.agent_runs import (
     STATUS_FAILED,
@@ -44,8 +43,10 @@ from pointlessql.models.agent_runs import (
     AgentRun,
 )
 from pointlessql.models.external_writes import UnattributedWrite
-from pointlessql.models.lineage import LineageRowReject
 from pointlessql.settings import Settings
+
+from pointlessql.db import get_session_factory, init_db
+from pointlessql.models.lineage import LineageRowReject
 
 
 def _utc(offset_seconds: int = 0) -> datetime.datetime:
