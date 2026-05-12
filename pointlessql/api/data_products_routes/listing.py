@@ -16,6 +16,7 @@ from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.services.data_products import compute_badges_bulk
 
 router = APIRouter(tags=["data-products"])
 
@@ -147,6 +148,16 @@ async def list_data_products(request: Request) -> dict[str, Any]:
             ).all()
             has_readme_set = {int(r[0]) for r in readme_rows}
 
+            # Phase 72.2 — auto-computed badges (bulk).
+            badges_by_id = compute_badges_bulk(
+                session,
+                workspace_id=workspace_id,
+                dps=list(rows),
+                now=now,
+            )
+        else:
+            badges_by_id: dict[int, dict[str, Any]] = {}
+
         for row in rows:
             email, display = (
                 steward_map.get(row.steward_user_id, (None, None))
@@ -166,6 +177,15 @@ async def list_data_products(request: Request) -> dict[str, Any]:
             payload["has_readme"] = row.id in has_readme_set
             payload["freshness_status"] = _freshness_status(
                 row.last_loaded_at, row.sla_minutes, now
+            )
+            payload["badges"] = badges_by_id.get(
+                row.id,
+                {
+                    "downstream_count": 0,
+                    "agent_run_count_7d": 0,
+                    "last_rollback_passed": None,
+                    "freshness_on_time_30d_pct": 100.0,
+                },
             )
             items.append(payload)
 

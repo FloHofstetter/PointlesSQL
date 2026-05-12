@@ -11,6 +11,7 @@ from sqlalchemy import select
 from pointlessql.api.data_products_routes._shared import load_one, serialise_product
 from pointlessql.api.dependencies import current_workspace_id
 from pointlessql.models.catalog._data_products import DataProductContractEvent
+from pointlessql.services.data_products import compute_badges_for_dp
 
 router = APIRouter(tags=["data-products"])
 
@@ -49,6 +50,7 @@ async def get_data_product(
             .scalars()
             .all()
         )
+        badges = compute_badges_for_dp(session, workspace_id=workspace_id, dp=row)
         events_payload = [
             {
                 "id": e.id,
@@ -86,4 +88,5 @@ async def get_data_product(
         "name": contract.name,
         "tables": tables_payload,
         "recent_events": events_payload,
+        "badges": badges,
     }

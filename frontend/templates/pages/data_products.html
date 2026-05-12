@@ -145,6 +145,16 @@
                                 <i class="bi" :class="sortIcon('comment_count_7d')"></i>
                             </th>
                             <th class="pql-dp-th"
+                                @click="toggleSort('downstream_count')">
+                                Downstream
+                                <i class="bi" :class="sortIcon('downstream_count')"></i>
+                            </th>
+                            <th class="pql-dp-th"
+                                @click="toggleSort('agent_run_count_7d')">
+                                Agents 7d
+                                <i class="bi" :class="sortIcon('agent_run_count_7d')"></i>
+                            </th>
+                            <th class="pql-dp-th"
                                 @click="toggleSort('last_loaded_at')">
                                 Last loaded
                                 <i class="bi" :class="sortIcon('last_loaded_at')"></i>
@@ -183,6 +193,8 @@
                                 </td>
                                 <td x-text="p.follow_count || 0"></td>
                                 <td x-text="p.comment_count_7d || 0"></td>
+                                <td x-text="(p.badges && p.badges.downstream_count) || 0"></td>
+                                <td x-text="(p.badges && p.badges.agent_run_count_7d) || 0"></td>
                                 <td class="small">
                                     <span x-text="p.last_loaded_at"></span>
                                     <span class="badge ms-1"
@@ -344,8 +356,14 @@ window.dataProductsBrowse = function () {
             });
             const key = this.sortKey;
             const dir = this.sortDir === 'asc' ? 1 : -1;
+            const get = (p, k) => {
+                if (k === 'downstream_count' || k === 'agent_run_count_7d') {
+                    return (p.badges && p.badges[k]) || 0;
+                }
+                return p[k];
+            };
             arr.sort((a, b) => {
-                let av = a[key]; let bv = b[key];
+                let av = get(a, key); let bv = get(b, key);
                 if (av === undefined || av === null) av = '';
                 if (bv === undefined || bv === null) bv = '';
                 if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
