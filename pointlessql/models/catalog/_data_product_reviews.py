@@ -1,0 +1,91 @@
+"""Star ratings + text reviews per data product (Phase 71.2).
+
+One table:
+
+* ``data_product_reviews`` — one row per ``(workspace_id, data_product_id,
+  author_user_id)`` triple (unique constraint).  Captures stars,
+  free-form markdown body, and the data product's SemVer at write
+  time so a future "is this still relevant on v1.3?" UX can light up
+  without a migration.
+
+Reviews are hard-deleted (DELETE removes the row).  Aggregates
+(average stars + count) are computed on read; no cached column.
+"""
+
+from __future__ import annotations
+
+import datetime
+
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from pointlessql.models.base import Base
+
+
+class DataProductReview(Base):
+    """One user's review of a data product.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        workspace_id: Tenant scope.
+        data_product_id: FK on ``data_products.id`` with
+            ``ondelete='CASCADE'``.
+        author_user_id: FK on ``users.id``.  ``(workspace_id,
+            data_product_id, author_user_id)`` is unique — one
+            review per user per product.
+        stars: 1..5, enforced by a CHECK constraint.
+        body_md: Free-form markdown body (may be empty when the
+            user only wants to express a star rating).
+        dp_version_at_review: SemVer snapshot of the DP's
+            ``version`` at write time.
+        created_at: Wall-clock at first PUT.
+        updated_at: Wall-clock at most-recent PUT (idempotent
+            upsert).
+    """
+
+    __tablename__ = "data_product_reviews"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "data_product_id",
+            "author_user_id",
+            name="uq_dp_review_one_per_user",
+        ),
+        CheckConstraint("stars BETWEEN 1 AND 5", name="ck_dp_review_stars_range"),
+        Index("ix_dp_reviews_dp_stars", "data_product_id", "stars"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id"),
+        nullable=False,
+        server_default="1",
+    )
+    data_product_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("data_products.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    author_user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False
+    )
+    stars: Mapped[int] = mapped_column(Integer, nullable=False)
+    body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    dp_version_at_review: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

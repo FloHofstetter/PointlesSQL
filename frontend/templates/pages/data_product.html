@@ -22,6 +22,9 @@
             <span class="text-muted small ms-2" x-text="product.ref"></span>
         </h1>
         <span class="badge bg-secondary ms-2" x-text="'v' + product.version"></span>
+        <span class="badge bg-warning text-dark ms-2 pql-dp-stars-badge"
+              x-show="reviewSummary && reviewSummary.count > 0"
+              x-text="'★ ' + (reviewSummary && reviewSummary.avg_stars ? reviewSummary.avg_stars.toFixed(1) : '') + ' (' + (reviewSummary ? reviewSummary.count : 0) + ')'"></span>
     </div>
 
     <ul class="nav nav-tabs mb-3" id="dpTabs" role="tablist">
@@ -58,6 +61,16 @@
                 <span class="badge bg-secondary ms-1"
                       x-show="commentsTotal !== null"
                       x-text="commentsTotal"></span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-reviews-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-reviews" type="button" role="tab"
+                    data-pql-tab-key="reviews">
+                Reviews
+                <span class="badge bg-secondary ms-1"
+                      x-show="reviewSummary && reviewSummary.count > 0"
+                      x-text="reviewSummary ? reviewSummary.count : 0"></span>
             </button>
         </li>
     </ul>
@@ -383,6 +396,88 @@
                 </div>
             </template>
         </div>
+
+        <!-- Reviews (Phase 71.2) -->
+        <div class="tab-pane fade" id="tab-reviews" role="tabpanel">
+            <template x-if="!reviewsLoaded">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="reviewsLoaded">
+                <div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="mb-2">
+                                <span x-show="!myReview">Add your review</span>
+                                <span x-show="myReview">Update your review</span>
+                            </h6>
+                            <div class="mb-2 pql-review-star-input">
+                                <template x-for="n in [1,2,3,4,5]" :key="n">
+                                    <i class="bi"
+                                       :class="(reviewDraftStars >= n) ? 'bi-star-fill text-warning' : 'bi-star'"
+                                       style="cursor: pointer; font-size: 1.2rem;"
+                                       :data-star-value="n"
+                                       @click="reviewDraftStars = n"></i>
+                                </template>
+                                <span class="ms-2 small text-muted"
+                                      x-text="reviewDraftStars + ' / 5'"></span>
+                            </div>
+                            <textarea class="form-control pql-review-body"
+                                      rows="2"
+                                      x-model="reviewDraftBody"
+                                      placeholder="What did you think? (markdown supported)"></textarea>
+                            <div class="mt-2 d-flex gap-2">
+                                <button class="btn btn-sm btn-primary pql-review-submit"
+                                        :disabled="reviewDraftStars < 1"
+                                        @click="submitReview()">
+                                    <span x-show="!myReview">Post review</span>
+                                    <span x-show="myReview">Update review</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger pql-review-delete"
+                                        x-show="myReview"
+                                        @click="deleteOwnReview()">Delete my review</button>
+                                <select class="form-select form-select-sm w-auto ms-auto pql-review-sort"
+                                        x-model="reviewSort">
+                                    <option value="recent">Most recent</option>
+                                    <option value="stars-desc">Highest first</option>
+                                    <option value="stars-asc">Lowest first</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <template x-if="reviews.length === 0">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-star me-1"></i>
+                            No reviews yet — be the first.
+                        </div>
+                    </template>
+                    <template x-for="r in sortedReviews" :key="r.id">
+                        <div class="card mb-2 pql-review-card"
+                             :data-review-id="r.id">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="small text-muted">
+                                        <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
+                                        ·
+                                        <span class="text-warning"
+                                              x-text="'★'.repeat(r.stars) + '☆'.repeat(5 - r.stars)"></span>
+                                        ·
+                                        <span x-text="r.created_at"></span>
+                                        <template x-if="r.dp_version_at_review">
+                                            <span class="badge bg-light text-dark border ms-1"
+                                                  x-text="'v' + r.dp_version_at_review"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                                <template x-if="r.body_md">
+                                    <div class="pql-review-body" x-text="r.body_md"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
     </div>
 </div>
 
@@ -406,10 +501,90 @@ window.dataProductDetail = function (product, ctx) {
         newCommentDraft: '',
         replyingTo: null,
         replyDraft: '',
+        reviews: [],
+        reviewsLoaded: false,
+        reviewSummary: null,
+        myReview: null,
+        reviewDraftStars: 0,
+        reviewDraftBody: '',
+        reviewSort: 'recent',
 
         async init() {
             await this.loadDetail();
+            await this.loadReviewSummary();
             this.wireLazyTabs();
+        },
+
+        async loadReviewSummary() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/reviews');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.reviewSummary = data.summary;
+                this.myReview = data.my_review;
+            } catch (e) {
+                console.error('review summary failed', e);
+            }
+        },
+
+        get sortedReviews() {
+            const arr = (this.reviews || []).slice();
+            if (this.reviewSort === 'stars-desc') {
+                arr.sort((a, b) => b.stars - a.stars);
+            } else if (this.reviewSort === 'stars-asc') {
+                arr.sort((a, b) => a.stars - b.stars);
+            } else {
+                arr.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            }
+            return arr;
+        },
+
+        async loadReviews() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/reviews');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.reviews = data.reviews || [];
+                this.reviewSummary = data.summary;
+                this.myReview = data.my_review;
+                if (this.myReview) {
+                    this.reviewDraftStars = this.myReview.stars;
+                    this.reviewDraftBody = this.myReview.body_md || '';
+                }
+            } catch (e) {
+                console.error('reviews load failed', e);
+            } finally {
+                this.reviewsLoaded = true;
+            }
+        },
+
+        async submitReview() {
+            if (this.reviewDraftStars < 1 || this.reviewDraftStars > 5) return;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/reviews', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stars: this.reviewDraftStars, body_md: this.reviewDraftBody }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await this.loadReviews();
+            } catch (e) {
+                console.error('review post failed', e);
+            }
+        },
+
+        async deleteOwnReview() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/reviews', {
+                    method: 'DELETE',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.reviewDraftStars = 0;
+                this.reviewDraftBody = '';
+                await this.loadReviews();
+            } catch (e) {
+                console.error('review delete failed', e);
+            }
         },
 
         get topLevelComments() {
@@ -512,6 +687,10 @@ window.dataProductDetail = function (product, ctx) {
             const discussionBtn = document.querySelector('[data-bs-target="#tab-discussion"]');
             if (discussionBtn) {
                 discussionBtn.addEventListener('shown.bs.tab', () => this.loadComments(), { once: true });
+            }
+            const reviewsBtn = document.querySelector('[data-bs-target="#tab-reviews"]');
+            if (reviewsBtn) {
+                reviewsBtn.addEventListener('shown.bs.tab', () => this.loadReviews(), { once: true });
             }
         },
 

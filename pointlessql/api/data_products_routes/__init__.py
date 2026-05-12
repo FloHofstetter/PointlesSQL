@@ -24,6 +24,7 @@ from pointlessql.api.data_products_routes.diff import router as _diff_router
 from pointlessql.api.data_products_routes.lineage import router as _lineage_router
 from pointlessql.api.data_products_routes.listing import router as _listing_router
 from pointlessql.api.data_products_routes.reload import router as _reload_router
+from pointlessql.api.data_products_routes.reviews import router as _reviews_router
 
 router = APIRouter(tags=["data-products"])
 router.include_router(_listing_router)
@@ -32,6 +33,7 @@ router.include_router(_diff_router)
 router.include_router(_lineage_router)
 router.include_router(_reload_router)
 router.include_router(_comments_router)
+router.include_router(_reviews_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

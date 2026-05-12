@@ -73,7 +73,13 @@
                                         <span x-text="p.ref"></span>
                                     </a>
                                 </h5>
-                                <span class="badge bg-secondary" x-text="'v' + p.version"></span>
+                                <div class="d-flex gap-1">
+                                    <span class="badge bg-secondary" x-text="'v' + p.version"></span>
+                                    <template x-if="p.review_count > 0">
+                                        <span class="badge bg-warning text-dark pql-dp-stars-badge"
+                                              x-text="'★ ' + (p.avg_stars ? p.avg_stars.toFixed(1) : '') + ' (' + p.review_count + ')'"></span>
+                                    </template>
+                                </div>
                             </div>
                             <p class="card-text small text-muted"
                                x-text="(p.description || '').substring(0, 160) || 'No description.'"></p>
