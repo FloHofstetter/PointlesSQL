@@ -66,6 +66,16 @@
                     data-pql-tab-key="compliance">Compliance</button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-activity-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-activity" type="button" role="tab"
+                    data-pql-tab-key="activity">
+                Activity
+                <span class="badge bg-secondary ms-1"
+                      x-show="activityTotal !== null && activityTotal > 0"
+                      x-text="activityTotal"></span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
                     data-bs-target="#tab-discussion" type="button" role="tab"
                     data-pql-tab-key="discussion">
@@ -312,6 +322,60 @@
                                         </td>
                                         <td class="small">
                                             <code x-text="JSON.stringify(e.details).substring(0, 120)"></code>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- Activity (Phase 72.1) -->
+        <div class="tab-pane fade" id="tab-activity" role="tabpanel">
+            <template x-if="!activityLoaded">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="activityLoaded && activity.length === 0">
+                <div class="alert alert-secondary pql-activity-empty">
+                    <i class="bi bi-clock-history me-1"></i>
+                    No activity yet — the feed merges agent ops,
+                    audit log writes, contract validations, and
+                    freshness events as they happen.
+                </div>
+            </template>
+            <template x-if="activityLoaded && activity.length > 0">
+                <div class="card pql-activity-list">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>When</th>
+                                    <th>Kind</th>
+                                    <th>Summary</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="a in activity" :key="a.kind + '-' + a.source_id">
+                                    <tr class="pql-activity-row"
+                                        :data-activity-kind="a.kind"
+                                        :data-activity-id="a.source_id">
+                                        <td class="small text-muted text-nowrap" x-text="a.ts"></td>
+                                        <td>
+                                            <span class="badge"
+                                                  :class="{
+                                                      'bg-primary': a.kind === 'agent_op',
+                                                      'bg-secondary': a.kind === 'audit',
+                                                      'bg-warning text-dark': a.kind === 'contract',
+                                                      'bg-danger': a.kind === 'freshness',
+                                                  }"
+                                                  x-text="a.kind"></span>
+                                        </td>
+                                        <td>
+                                            <a :href="a.source_url"
+                                               class="text-decoration-none"
+                                               x-text="a.summary"></a>
                                         </td>
                                     </tr>
                                 </template>
@@ -629,6 +693,9 @@ window.dataProductDetail = function (product, ctx) {
         diffError: null,
         lineageLoaded: false,
         lineageEmpty: false,
+        activity: [],
+        activityLoaded: false,
+        activityTotal: null,
         comments: [],
         commentsLoaded: false,
         commentsTotal: null,
@@ -845,6 +912,20 @@ window.dataProductDetail = function (product, ctx) {
             this.replyDraft = '';
         },
 
+        async loadActivity() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/activity?limit=100');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.activity = data.activity || [];
+                this.activityTotal = this.activity.length;
+            } catch (e) {
+                console.error('activity load failed', e);
+            } finally {
+                this.activityLoaded = true;
+            }
+        },
+
         async loadComments() {
             try {
                 const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments');
@@ -928,6 +1009,10 @@ window.dataProductDetail = function (product, ctx) {
             const discussionBtn = document.querySelector('[data-bs-target="#tab-discussion"]');
             if (discussionBtn) {
                 discussionBtn.addEventListener('shown.bs.tab', () => this.loadComments(), { once: true });
+            }
+            const activityBtn = document.querySelector('[data-bs-target="#tab-activity"]');
+            if (activityBtn) {
+                activityBtn.addEventListener('shown.bs.tab', () => this.loadActivity(), { once: true });
             }
             const reviewsBtn = document.querySelector('[data-bs-target="#tab-reviews"]');
             if (reviewsBtn) {
