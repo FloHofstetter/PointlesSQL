@@ -8,6 +8,11 @@
 ] %}
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet" href="/static/css/notebook.css?v={{ asset_version }}">
+{% endblock %}
+
 {% block content %}
 <div class="pql-notebook-shell"
      x-data='notebookEditor({ initialPath: {{ notebook_path | tojson }} })'

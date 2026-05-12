@@ -33,5 +33,8 @@
 @import url("./components/list_table.css?v=ASSET_VERSION");     /* search input, chips, sortable headers, row actions */
 @import url("./components/cards.css?v=ASSET_VERSION");          /* card-grid surfaces (sprint 56.9) */
 @import url("./components/detail_drawer.css?v=ASSET_VERSION");  /* offcanvas detail drawers (sprint 56.8) */
-@import url("./notebook.css?v=ASSET_VERSION");                  /* Phase 66 notebook editor */
+@import url("./components/sql_editor.css?v=ASSET_VERSION");     /* SQL editor surfaces, explain-tree badges */
+/* notebook.css is loaded lazily by pages/notebook_editor.html via
+ * {% block extra_css %} — keeping ~300 LOC of editor-only rules
+ * out of every non-notebook page-load. */
 @import url("./responsive.css?v=ASSET_VERSION");                /* mobile breakpoints, reduced-motion */
