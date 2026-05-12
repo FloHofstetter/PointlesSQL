@@ -103,6 +103,253 @@ PointlesSQL
 │   │   ```
 │   │
 │
+├── Phase 71 — Data-Product Marketplace polish              ⏳ planned
+│   │
+│   │   Catch-up to enterprise-catalog collaboration table stakes
+│   │   (Atlan, Collibra, Alation, Snowflake Marketplace).
+│   │   Phase 50 already gives us the Data-Product contracts +
+│   │   freshness + dependency-graph; Phase 71 layers the social
+│   │   affordances analysts already expect from a modern catalog
+│   │   so PointlesSQL doesn't read as "no comments / no follow /
+│   │   no reviews" against the incumbents at trial time.
+│   │
+│   │   Scope is deliberately narrowed to well-trodden patterns
+│   │   (comment threads, star ratings + reviews, follow + email
+│   │   webhook, wiki README, browse-page rework).  The
+│   │   AI-native differentiation lives in Phase 72; the two
+│   │   phases are independent and can land in either order.
+│   │
+│   │   Cross-cutting picks (TBD at plan time):
+│   │   - threaded vs flat comments (recommend threaded with a
+│   │     2-level cap to avoid Reddit-depth UX);
+│   │   - markdown rendering reuses the existing `markdown-it`
+│   │     bundle (Phases 12.5/56);
+│   │   - rating widget = Bootstrap 5-star; one review per user
+│   │     per DP (upsert);
+│   │   - notifications fan out via the Phase-20 audit-stream
+│   │     forwarder (webhook + email sinks) — no new pub-sub
+│   │     plumbing.
+│   │
+│   ├── Sprint 71.1 — Comment threads per data product         ⏳ planned
+│   │   ├── New model: `DataProductComment` (id, dp_slug,
+│   │   │   parent_comment_id, author_user_id, body_md,
+│   │   │   created_at, deleted_at, workspace_id) + Alembic.
+│   │   ├── Soft-delete via `deleted_at` so audit-trail integrity
+│   │   │   holds; threading via parent_comment_id capped at
+│   │   │   depth 2.
+│   │   ├── `/api/data-products/{slug}/comments` GET (list) +
+│   │   │   POST (create) + DELETE (soft, author or
+│   │   │   workspace admin).
+│   │   ├── `@mention` resolution against OIDC users; resolved
+│   │   │   mentions feed into Sprint 71.4 notifications.
+│   │   ├── New "Discussion" tab on `/data-products/{slug}`.
+│   │   └── ~15 pytest cases (CRUD + soft-delete + auth +
+│   │       cross-workspace isolation).
+│   │
+│   ├── Sprint 71.2 — Star ratings + review text               ⏳ planned
+│   │   ├── New model: `DataProductReview` (id, dp_slug,
+│   │   │   author_user_id, stars 1-5, body_md, created_at,
+│   │   │   updated_at, dp_semver_at_review, workspace_id) +
+│   │   │   Alembic.
+│   │   ├── One review per (user, DP); idempotent upsert via
+│   │   │   `/api/data-products/{slug}/reviews` PUT.
+│   │   ├── Average-rating + count badge on
+│   │   │   `/data-products/{slug}` header + browse cards.
+│   │   ├── Reviews tab on the DP page with sorting (recent vs
+│   │   │   stars-desc).
+│   │   └── ~10 pytest cases.
+│   │
+│   ├── Sprint 71.3 — Follow / subscribe                       ⏳ planned
+│   │   ├── New model: `DataProductFollow` (user_id, dp_slug,
+│   │   │   workspace_id, created_at) — composite PK + Alembic.
+│   │   ├── `/api/data-products/{slug}/follow` POST/DELETE for
+│   │   │   self; followers-count exposed via `/api/data-
+│   │   │   products/{slug}` (full list only to steward, for
+│   │   │   privacy).
+│   │   ├── "Follow / Unfollow" button on the DP header.
+│   │   ├── New page `/data-products/followed` listing the
+│   │   │   current user's followed DPs.
+│   │   └── ~8 pytest cases.
+│   │
+│   ├── Sprint 71.4 — Notification fanout                      ⏳ planned
+│   │   ├── Wire follow + comment + review events into the
+│   │   │   Phase-20 audit-stream forwarder so existing
+│   │   │   webhook/S3/CloudTrail sinks receive them — no new
+│   │   │   pub-sub plumbing.
+│   │   ├── New event types: `pql.dataproduct.commented`,
+│   │   │   `pql.dataproduct.reviewed`,
+│   │   │   `pql.dataproduct.schema_changed`,
+│   │   │   `pql.dataproduct.contract_violated`.
+│   │   ├── Per-user inbox at `/notifications` rendering events
+│   │   │   for the user's followed DPs (reuses the audit-cockpit
+│   │   │   inbox pattern from Phase 18.6).
+│   │   ├── Email-digest opt-in via existing user-settings
+│   │   │   surface (Phase 33 admin precedent).
+│   │   └── ~12 pytest cases.
+│   │
+│   ├── Sprint 71.5 — Wiki / README per DP                     ⏳ planned
+│   │   ├── New model: `DataProductReadme` (dp_slug, body_md,
+│   │   │   version_int, updated_by_user_id, updated_at,
+│   │   │   workspace_id) — single row per DP, version_int
+│   │   │   monotonic.
+│   │   ├── Steward + workspace-admin can edit; markdown render
+│   │   │   via the existing `markdown-it` bundle.
+│   │   ├── README tab on the DP page: contract-derived autodoc
+│   │   │   at the top + free-form editorial below.
+│   │   ├── History view with side-by-side diff between two
+│   │   │   versions (reuses the diff macro from Phase 18.9).
+│   │   └── ~6 pytest cases.
+│   │
+│   └── Sprint 71.6 — Browse-page rework                       ⏳ planned
+│       ├── `/data-products` index gets sortable columns
+│       │   (rating-desc, recently-active, follow-count,
+│       │   freshness-on-time).
+│       ├── Filter chips (domain, steward, has-comments,
+│       │   has-readme).
+│       ├── "Recently active" surfaces DPs with new comments,
+│       │   reviews, contract bumps in last 7d.
+│       └── ~8 pytest cases.
+│
+├── Phase 72 — Agent-Aware Social Layer                     ⏳ planned
+│   │
+│   │   AI-native differentiation on top of (or alongside)
+│   │   Phase 71's catalog-collaboration foundation.  Treats
+│   │   *agent activity* as the currency of social engagement
+│   │   instead of human Likes — every endorsement badge is
+│   │   auto-computed from lineage + audit data, every "trend"
+│   │   is measured by `agent_run_operations` count, every
+│   │   discussion thread is itself an audit_log row.
+│   │
+│   │   Plays into the AI-native lakehouse vision (memory:
+│   │   `project_ai_native_vision.md`) and the supervision-first
+│   │   framing (memory: `project_agent_first_pivot.md`).  Heavy
+│   │   reuse of Phases 13 (agent_run_operations), 14 (audit_log),
+│   │   15.x (lineage), 18.7 (audit FTS), 19 (agent_reviews),
+│   │   20 (audit-stream + retention), 34 (cross-workspace
+│   │   Grafana lens).
+│   │
+│   │   Independent of Phase 71 — neither is a prerequisite to
+│   │   the other.  Land together for a unified Marketplace++
+│   │   story or split across two release windows.
+│   │
+│   │   Cross-cutting picks (TBD):
+│   │   - all endorsement badges are *typed* (no generic
+│   │     👍/❤️) so the system stays audit-clean;
+│   │   - comments-as-audit-rows (Sprint 72.5) is the canonical
+│   │     contract that distinguishes us from Slack-clone risk
+│   │     — if Phase 71.1's `DataProductComment` table ships
+│   │     first, 72.5 either supersedes it or co-exists (model
+│   │     decision at 72.5 plan time);
+│   │   - "trending" board is a rolling 7d window, refreshed by
+│   │     a new loop coroutine matching the freshness-loop
+│   │     cadence.
+│   │
+│   ├── Sprint 72.1 — Activity feed per DP                     ⏳ planned
+│   │   ├── New aggregator `services/data_products/activity.py`
+│   │   │   merges 4 source streams into a unified feed:
+│   │   │   - audit_log writes referencing DP tables (Phase 14);
+│   │   │   - agent_run_operations referencing DP tables
+│   │   │     (Phase 13);
+│   │   │   - freshness_scanner pass/miss events (Phase 50);
+│   │   │   - schema / contract changes (Phase 50).
+│   │   ├── `/api/data-products/{slug}/activity` GET with
+│   │   │   server-side offset pagination (mirrors /queries
+│   │   │   pattern from Sprint 57.2).
+│   │   ├── New "Activity" tab on the DP page; becomes the
+│   │   │   default landing tab when the DP has recent
+│   │   │   agent-run-ops in the last 7 days.
+│   │   ├── Per-row click-through to the run / audit row /
+│   │   │   lineage trace that generated the event.
+│   │   └── ~12 pytest cases.
+│   │
+│   ├── Sprint 72.2 — Auto-computed endorsement badges         ⏳ planned
+│   │   ├── New service `services/data_products/badges.py`
+│   │   │   computes each badge on-demand:
+│   │   │   - `downstream-count`: out-edges in
+│   │   │     `lineage_column_map` (Phase 15.6);
+│   │   │   - `agent-run-count-7d`: distinct `agent_runs`
+│   │   │     touching DP tables in last 7d (Phase 13);
+│   │   │   - `last-rollback-passed`: did the most recent
+│   │   │     rollback-preview succeed (Phase 16)?
+│   │   │   - `freshness-on-time-30d`: % of freshness checks
+│   │   │     in last 30d meeting SLA (Phase 50).
+│   │   ├── Rendered as Bootstrap badges on DP header + browse
+│   │   │   cards.
+│   │   ├── Sort / filter on the browse page by each badge.
+│   │   ├── No cache table — badges are cheap aggregates and
+│   │   │   recompute-per-render keeps them honest.
+│   │   └── ~10 pytest cases.
+│   │
+│   ├── Sprint 72.3 — "Trending in agent workloads" board      ⏳ planned
+│   │   ├── New page `/data-products/trending` ranking DPs by
+│   │   │   `agent_run_count` + `audit_log_write_count` over a
+│   │   │   rolling 7d window.
+│   │   ├── New cache table `data_product_trending` (dp_slug,
+│   │   │   window_start, agent_run_count, write_count, rank,
+│   │   │   workspace_id) + Alembic.
+│   │   ├── New loop coroutine in `_bootstrap/_loops.py`
+│   │   │   refreshes the window every 15min (matches
+│   │   │   `_data_product_freshness_loop` cadence).
+│   │   ├── Per-workspace by default; cross-workspace toggle
+│   │   │   gated by workspace-admin / auditor (Phase 34 lens
+│   │   │   precedent).
+│   │   ├── New Grafana panel "Top-10 trending DPs" added to
+│   │   │   both single-workspace + cross-workspace dashboards.
+│   │   └── ~10 pytest cases.
+│   │
+│   ├── Sprint 72.4 — Typed manual endorsements                ⏳ planned
+│   │   ├── New model: `DataProductEndorsement` (id, dp_slug,
+│   │   │   endorsement_type, applied_by_user_id, applied_at,
+│   │   │   removed_at, note_md, workspace_id) + Alembic.
+│   │   ├── Allowed types validated server-side:
+│   │   │   `verified-by-steward`, `production-ready`,
+│   │   │   `deprecated`, `under-review`.  No free-form
+│   │   │   user-typed strings.
+│   │   ├── Scope-gated: only the DP's steward OR
+│   │   │   workspace-admin / auditor can apply or remove.
+│   │   │   Every action audit-logged as
+│   │   │   `audit.endorsement.{applied,removed}`.
+│   │   ├── Endorsement badges rendered on DP header +
+│   │   │   browse cards; `deprecated` triggers a soft
+│   │   │   warning on writes to DP tables (Phase 50 pre-write
+│   │   │   hook).
+│   │   ├── New plugin tool `pql_endorse_data_product` so the
+│   │   │   Phase-19 reviewer-agent can apply
+│   │   │   `verified-by-steward` after a clean audit pass.
+│   │   └── ~12 pytest cases.
+│   │
+│   ├── Sprint 72.5 — Audit-bound discussions                  ⏳ planned
+│   │   ├── Comments land as `audit_log` rows with
+│   │   │   `kind=audit.discussion.posted` — supersedes or
+│   │   │   coexists with Phase 71.1's separate table (decision
+│   │   │   at plan time depending on whether 71.1 has
+│   │   │   landed).
+│   │   ├── Audit-log row carries body_md, parent_audit_log_id,
+│   │   │   dp_slug, author_user_id; FTS-indexed via the
+│   │   │   Phase-18.7 `audit_search` index so comments are
+│   │   │   discoverable alongside everything else.
+│   │   ├── Retention via the Phase-20 audit_retention loop —
+│   │   │   no separate policy.
+│   │   ├── Soft-hide model: `audit.discussion.hidden` follow-up
+│   │   │   row (never destructive); only steward +
+│   │   │   workspace-admin can hide.
+│   │   ├── UI: "Discussion" tab on DP page, threaded, mentions
+│   │   │   auto-link to user profile pages.
+│   │   └── ~15 pytest cases.
+│   │
+│   └── Sprint 72.6 — CloudEvent subscriptions for DP changes  ⏳ planned
+│       ├── New `pql.dataproduct.*` event types registered in
+│       │   the Phase-13.3 CloudEvent emitter
+│       │   (`schema_changed`, `contract_violated`,
+│       │   `freshness_missed`, `endorsement_applied`).
+│       ├── Per-user webhook subscriptions: user registers a
+│       │   webhook URL + filter expression ("only
+│       │   contract_violated on DPs I follow"); HMAC-signed
+│       │   delivery matches Phase-20 forwarder contract.
+│       ├── Self-service config UI on
+│       │   `/profile/notifications/subscriptions`.
+│       └── ~10 pytest cases.
+│
 ├── Phase 66 — Browser Notebook editor v2                  ✅ done 2026-05-10
 │   │
 │   │   The browser notebook editor, deleted in the agent-first
