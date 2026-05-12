@@ -27,8 +27,24 @@ from pointlessql.services import audit as audit_service
 
 logger = logging.getLogger(__name__)
 
+# The loop coroutines below are imported from ``main.py``'s
+# ``_lifespan`` and scheduled as ``asyncio.Task``s — the underscore
+# prefix on each name documents "do not call directly from
+# anywhere except the lifespan startup" but the cross-module wiring
+# IS intentional.  ``__all__`` makes pyright agree that these names
+# are deliberately exported to ``main.py``.
+__all__ = [
+    "_audit_retention_loop",
+    "_branch_cleanup_loop",
+    "_cdf_tail_loop",
+    "_data_product_freshness_loop",
+    "_external_writes_loop",
+    "_lineage_pruner_loop",
+    "_workspace_repos_sync_loop",
+]
 
-async def _audit_retention_loop(
+
+async def _audit_retention_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
@@ -59,7 +75,7 @@ async def _audit_retention_loop(
             return
 
 
-async def _external_writes_loop(
+async def _external_writes_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     uc: Any,
     settings: Settings,
@@ -102,7 +118,7 @@ async def _external_writes_loop(
             return
 
 
-async def _data_product_freshness_loop(
+async def _data_product_freshness_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     uc: Any,
     settings: Settings,
@@ -152,7 +168,7 @@ async def _data_product_freshness_loop(
             return
 
 
-async def _cdf_tail_loop(
+async def _cdf_tail_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     uc: Any,
     settings: Settings,
@@ -191,7 +207,7 @@ async def _cdf_tail_loop(
             return
 
 
-async def _lineage_pruner_loop(
+async def _lineage_pruner_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
@@ -228,7 +244,7 @@ async def _lineage_pruner_loop(
             return
 
 
-async def _workspace_repos_sync_loop(
+async def _workspace_repos_sync_loop(  # pyright: ignore[reportUnusedFunction]
     factory: Any,
     settings: Settings,
 ) -> None:
@@ -285,7 +301,7 @@ async def _workspace_repos_sync_loop(
             return
 
 
-async def _branch_cleanup_loop(
+async def _branch_cleanup_loop(  # pyright: ignore[reportUnusedFunction]
     uc: Any,
     settings: Settings,
 ) -> None:

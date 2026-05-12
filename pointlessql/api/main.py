@@ -22,13 +22,13 @@ from markdown_it import MarkdownIt
 
 import pointlessql
 from pointlessql.api._bootstrap._loops import (
-    _audit_retention_loop,
-    _branch_cleanup_loop,
-    _cdf_tail_loop,
-    _data_product_freshness_loop,
-    _external_writes_loop,
-    _lineage_pruner_loop,
-    _workspace_repos_sync_loop,
+    _audit_retention_loop,  # pyright: ignore[reportPrivateUsage]
+    _branch_cleanup_loop,  # pyright: ignore[reportPrivateUsage]
+    _cdf_tail_loop,  # pyright: ignore[reportPrivateUsage]
+    _data_product_freshness_loop,  # pyright: ignore[reportPrivateUsage]
+    _external_writes_loop,  # pyright: ignore[reportPrivateUsage]
+    _lineage_pruner_loop,  # pyright: ignore[reportPrivateUsage]
+    _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
 from pointlessql.api.dependencies import (
     require_admin as _require_admin,
@@ -492,8 +492,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
-        if hasattr(app.state, "kernel_registry") and app.state.kernel_registry is not None:
-            await app.state.kernel_registry.shutdown_all()
+        await app.state.kernel_registry.shutdown_all()
         if app.state.mlflow_subprocess is not None:
             await app.state.mlflow_subprocess.stop()
         if app.state.dbt_subprocess is not None:

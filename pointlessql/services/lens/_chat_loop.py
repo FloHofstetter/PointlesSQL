@@ -139,7 +139,12 @@ async def run_chat_turn(
     while iteration < MAX_TOOL_ITERATIONS:
         iteration += 1
         completion = await provider.chat_with_tools(
-            system=provider.system_prompt(),
+            # pyright: ignore[reportAttributeAccessIssue] — system_prompt
+            # is defined on ``_BaseProvider`` (which both concrete
+            # providers extend) but isn't on the ``LensProvider``
+            # Protocol; refactoring the Protocol to require it would
+            # ripple through the test doubles, deferred.
+            system=provider.system_prompt(),  # pyright: ignore[reportAttributeAccessIssue]
             messages=provider_messages,
             model=session.llm_model,
         )

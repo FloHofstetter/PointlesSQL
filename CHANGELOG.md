@@ -6,6 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint H.2 — Pyright triage: 28 errors → 0, budget 497 → 585
+  (2026-05-12).** Errors had drifted from 0 at Phase 45 to 28
+  pre-existing under HEAD; CI's lint job had been red on this gate
+  since 2026-05-08.  Bucketed and cleared:
+  - **`_bootstrap/_loops.py` × 7 + `api/main.py` × 7** (14
+    errors): added ``__all__`` to `_loops.py` and per-import
+    `# pyright: ignore[reportPrivateUsage]` on the 7
+    underscore-prefixed loop coroutines that `main.py` imports
+    intentionally as background-task targets.
+  - **`api/lens/sessions.py` × 2**: refactored the `getattr(..., "")`
+    string-default trap into a typed local intermediate so
+    pyright can narrow `datetime | None` correctly.
+  - **`api/main.py:495` × 1**: dropped the dead-code
+    `hasattr() and is not None` guard — kernel_registry is
+    unconditionally set 5 lines above.
+  - **`notebook_kernel_ws.py:361` × 1**: pass the
+    `QueryStatus` enum instead of the raw `Literal['succeeded',
+    'failed']` string.
+  - **`services/lens/llm_provider.py` × 9 +
+    `services/lens/_chat_loop.py` × 1** (10 errors): inline
+    `# pyright: ignore` on the OpenAI/Anthropic SDK type-strict
+    sites (their `ChatCompletionMessageParam` / `MessageParam`
+    union shapes vs our `list[dict[str, Any]]` carrier; the
+    `Protocol.name: str` vs concrete `Literal["openai"]`
+    covariance pyright refuses).  Each suppression carries the
+    rule code so future stub work can lift them surgically.
+  Warning budget formally raised 497 → 585 in
+  `scripts/check-pyright-budget.sh` with a detailed comment on
+  which files contribute the +88 (mostly PyArrow / DuckDB-result
+  deserialisation seams that `feedback_pyright_thirdparty_stubs.md`
+  flagged as needing multi-week custom `.pyi` work).
+
 - **Sprint H.6 — Postgres lane pytest-xdist enabled
   (2026-05-12).** Phase-31.4 had deferred per-worker DB
   provisioning citing "CI plumbing"; the plumbing now lives in

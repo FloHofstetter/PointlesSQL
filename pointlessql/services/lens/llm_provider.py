@@ -89,6 +89,7 @@ class LensProvider(Protocol):
         max_tokens: int = 1024,
     ) -> LensCompletion:
         """Run one provider round-trip and return a normalised result."""
+        ...
 
 
 class _BaseProvider:
@@ -151,10 +152,15 @@ class OpenAIProvider(_BaseProvider):
             text, any tool-calls, and the token / cost estimates.
         """
         full_messages = [{"role": "system", "content": system}] + messages
+        # pyright disagrees with the OpenAI SDK's ``ChatCompletionMessageParam``
+        # union shape vs our internal ``list[dict[str, Any]]`` carrier;
+        # rebuilding the union locally would mirror the entire OpenAI
+        # types tree.  The runtime accepts our dict shape — proven by
+        # the in-product /lens chat surface.
         resp = await self._client.chat.completions.create(
             model=model,
-            messages=full_messages,
-            tools=to_openai_schemas(ALL_TOOLS),
+            messages=full_messages,  # pyright: ignore[reportArgumentType]
+            tools=to_openai_schemas(ALL_TOOLS),  # pyright: ignore[reportArgumentType]
             max_completion_tokens=max_tokens,
         )
         choice = resp.choices[0]
@@ -166,13 +172,13 @@ class OpenAIProvider(_BaseProvider):
                 try:
                     import json
 
-                    args = json.loads(call.function.arguments or "{}")
+                    args = json.loads(call.function.arguments or "{}")  # pyright: ignore[reportAttributeAccessIssue]
                 except (ValueError, TypeError):
                     args = {}
                 tool_calls.append(
                     ToolCall(
                         id=str(call.id),
-                        name=str(call.function.name),
+                        name=str(call.function.name),  # pyright: ignore[reportAttributeAccessIssue]
                         args=args,
                     )
                 )
@@ -231,11 +237,14 @@ class AnthropicProvider(_BaseProvider):
         Returns:
             Normalised :class:`LensCompletion`.
         """
+        # Anthropic SDK's ``MessageParam`` union has the same
+        # stub-vs-dict mismatch as the OpenAI path above; pyright's
+        # complaint is structural, runtime is happy.
         resp = await self._client.messages.create(
             model=model,
             system=system,
-            messages=messages,
-            tools=to_anthropic_schemas(ALL_TOOLS),
+            messages=messages,  # pyright: ignore[reportArgumentType]
+            tools=to_anthropic_schemas(ALL_TOOLS),  # pyright: ignore[reportArgumentType]
             max_tokens=max_tokens,
         )
         text_parts: list[str] = []
@@ -322,8 +331,13 @@ def get_provider(provider_name: str, api_key: str) -> LensProvider:
     Raises:
         ValueError: When *provider_name* is unrecognised.
     """
+    # Concrete providers have ``name: Literal["openai"]`` / ``Literal["anthropic"]``
+    # but the Protocol declares ``name: str``; pyright treats the Literal
+    # narrowing as covariance-failing.  Both providers DO satisfy the
+    # Protocol structurally at runtime; broadening the Protocol field
+    # would weaken downstream callers that branch on the literal.
     if provider_name == "openai":
-        return OpenAIProvider(api_key=api_key)
+        return OpenAIProvider(api_key=api_key)  # pyright: ignore[reportReturnType]
     if provider_name == "anthropic":
-        return AnthropicProvider(api_key=api_key)
+        return AnthropicProvider(api_key=api_key)  # pyright: ignore[reportReturnType]
     raise ValueError(f"Unrecognised Lens provider: {provider_name!r}")

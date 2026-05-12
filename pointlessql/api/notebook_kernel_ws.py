@@ -55,6 +55,7 @@ from pointlessql.services.notebook.kernel_session import (
     drain,
 )
 from pointlessql.types import UserInfo
+from pointlessql.types._enums import QueryStatus
 
 logger = logging.getLogger(__name__)
 
@@ -358,7 +359,7 @@ async def _handle_kernel_message(
                     sql_text=str(sql_meta.get("raw_sql") or ""),
                     started_at=started_at,
                     finished_at=finished_at,
-                    status="succeeded" if status == "ok" else "failed",
+                    status=QueryStatus.SUCCEEDED if status == "ok" else QueryStatus.FAILED,
                     row_count=None,
                     duration_ms=duration_ms,
                     referenced_tables=list(

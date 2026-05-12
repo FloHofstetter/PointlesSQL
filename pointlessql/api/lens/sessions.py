@@ -170,18 +170,16 @@ def delete_session_endpoint(
 
 def _serialise_session(row: object) -> SessionRow:
     """Render a detached :class:`LensSession` to the wire shape."""
+    created_at_val = getattr(row, "created_at", None)
+    last_message_at_val = getattr(row, "last_message_at", None)
     return SessionRow(
         id=int(getattr(row, "id", 0)),
         title=str(getattr(row, "title", "")),
         llm_provider=str(getattr(row, "llm_provider", "")),
         llm_model=str(getattr(row, "llm_model", "")),
         total_cost_estimate=float(getattr(row, "total_cost_estimate", 0.0) or 0.0),
-        created_at=getattr(row, "created_at", "").isoformat()
-        if getattr(row, "created_at", None)
-        else "",
+        created_at=created_at_val.isoformat() if created_at_val else "",
         last_message_at=(
-            getattr(row, "last_message_at", "").isoformat()
-            if getattr(row, "last_message_at", None)
-            else None
+            last_message_at_val.isoformat() if last_message_at_val else None
         ),
     )
