@@ -139,13 +139,22 @@ async def test_save_traversal_blocked(
     assert resp.status_code == 422
 
 
-async def test_save_non_admin_forbidden(
+async def test_save_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Non-admins get a 403 envelope."""
+    """Phase 70: any authenticated user can save a notebook."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await non_admin_client.post(
         "/api/notebooks/save",
-        json={"path": "demo.py", "cells": []},
+        json={
+            "path": "demo.py",
+            "cells": [
+                {
+                    "cell_id": "0000000000000001",
+                    "cell_type": "code",
+                    "source": "print('member edit')\n",
+                }
+            ],
+        },
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200

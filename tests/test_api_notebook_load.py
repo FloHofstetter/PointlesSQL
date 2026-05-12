@@ -68,13 +68,14 @@ async def test_load_unknown_path(
     assert resp.status_code == 422
 
 
-async def test_load_non_admin_forbidden(
+async def test_load_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Non-admins get a 403 on the load route."""
+    """Phase 70: any authenticated user can load a notebook."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await non_admin_client.get("/api/notebooks/load?path=demo.py")
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    assert isinstance(resp.json().get("cells"), list)
 
 
 # -- GET /notebooks/edit/{path:path} HTML page --
@@ -100,10 +101,11 @@ async def test_editor_page_unknown_path_blocks(
     assert resp.status_code == 422
 
 
-async def test_editor_page_non_admin_forbidden(
+async def test_editor_page_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Non-admins bounce off the editor page."""
+    """Phase 70: any authenticated user reaches the editor page."""
     (workspace_dir / "demo.py").write_bytes(_DEMO_NOTEBOOK)
     resp = await non_admin_client.get("/notebooks/edit/demo.py")
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    assert "notebookEditor(" in resp.text
