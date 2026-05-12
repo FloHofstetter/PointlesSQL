@@ -114,7 +114,10 @@ from pointlessql.models.notebook import (
     NotebookJobLink,
     NotebookOutput,
 )
-from pointlessql.models.notifications import UserNotification
+from pointlessql.models.notifications import (
+    UserNotification,
+    UserWebhookSubscription,
+)
 from pointlessql.models.scheduler import (
     Job,
     JobLog,
@@ -210,6 +213,7 @@ __all__ = [
     "UnattributedWrite",
     "User",
     "UserNotification",
+    "UserWebhookSubscription",
     "WORKSPACE_PIN_MODES",
     "WORKSPACE_REPO_PROVIDER_KINDS",
     "WORKSPACE_REPO_SECRET_KINDS",

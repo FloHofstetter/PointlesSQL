@@ -441,4 +441,36 @@ async def dispatch_to_sinks(
                 "ok": ok,
             }
         )
+
+    # Phase 72.6 — also fan out to per-user webhook subscriptions
+    # for the data-product event family.  Best-effort; failures are
+    # stamped per-subscription, not surfaced to the emitter.
+    if event_type.startswith("pointlessql.data_product."):
+        try:
+            from pointlessql.services.notifications import (
+                deliver_to_user_subscriptions,
+            )
+
+            user_log = await deliver_to_user_subscriptions(
+                session_factory,
+                envelope,
+                workspace_id=workspace_id,
+                client=client,
+            )
+            for entry in user_log:
+                log.append(
+                    {
+                        "sub_id": entry["sub_id"],
+                        "name": f"user_webhook[{entry['user_id']}]",
+                        "type": "user_webhook",
+                        "delivered_at": entry["delivered_at"],
+                        "ok": entry["ok"],
+                    }
+                )
+        except Exception:  # noqa: BLE001 — emitter must never raise
+            logger.exception(
+                "user_webhook_subscriptions dispatch raised for event_id=%s",
+                envelope.get("id"),
+            )
+
     return log

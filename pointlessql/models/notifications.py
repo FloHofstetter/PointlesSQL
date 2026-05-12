@@ -96,3 +96,72 @@ class UserNotification(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class UserWebhookSubscription(Base):
+    """Per-user CloudEvent webhook subscription (Phase 72.6).
+
+    Attributes:
+        id: Auto-incremented primary key.
+        workspace_id: Tenant scope (the user's "default" workspace
+            is where the subscription lives).
+        user_id: Owner — only this user can read / modify / delete.
+        webhook_url: Delivery URL.  Limited to 1000 chars.
+        hmac_secret: Plaintext HMAC secret, generated server-side
+            at create time and returned to the caller ONCE in the
+            create response.  Never echoed afterwards.
+        event_type_filter: Either a fully-qualified event type
+            (e.g. ``pointlessql.data_product.commented``) or
+            ``"*"`` to match the entire ``pointlessql.data_product.*``
+            family.
+        dp_ref_filter: Optional ``"catalog.schema"`` filter; ``None``
+            matches all data products.
+        is_active: Toggle without delete.
+        created_at: Wall-clock at create.
+        last_delivered_at: Updated on each successful delivery.
+        last_error: Updated on each failed delivery (text);
+            cleared on the next success.
+    """
+
+    __tablename__ = "user_webhook_subscriptions"
+
+    __table_args__ = (
+        Index(
+            "ix_user_webhook_sub_user_active",
+            "user_id",
+            "is_active",
+        ),
+        Index(
+            "ix_user_webhook_sub_event_type",
+            "event_type_filter",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id"),
+        nullable=False,
+        server_default="1",
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    webhook_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    hmac_secret: Mapped[str] = mapped_column(String(128), nullable=False)
+    event_type_filter: Mapped[str] = mapped_column(String(120), nullable=False)
+    dp_ref_filter: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Integer, nullable=False, server_default="1"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    last_delivered_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)

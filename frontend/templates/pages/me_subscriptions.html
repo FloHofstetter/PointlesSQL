@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}My subscriptions · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "My settings", "href": "/me/settings"},
+    {"label": "Subscriptions"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="meSubscriptions()" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-webhook fs-3"></i>
+        <h1 class="h3 mb-0">CloudEvent subscriptions</h1>
+        <button class="btn btn-sm btn-primary ms-auto pql-me-sub-new"
+                @click="showCreate = true">
+            <i class="bi bi-plus-lg me-1"></i>New subscription
+        </button>
+    </div>
+
+    <template x-if="lastSecret">
+        <div class="alert alert-warning pql-me-sub-secret-alert">
+            <strong>Save this HMAC secret now</strong> — it is shown
+            exactly once and will not be retrievable later.
+            <pre class="mb-0 mt-2" x-text="lastSecret"></pre>
+            <button class="btn btn-sm btn-outline-dark mt-2"
+                    @click="lastSecret = ''">Dismiss</button>
+        </div>
+    </template>
+
+    <template x-if="showCreate">
+        <div class="card mb-3 pql-me-sub-create-card">
+            <div class="card-body">
+                <h6 class="mb-2">New subscription</h6>
+                <div class="mb-2">
+                    <label class="form-label small">Webhook URL</label>
+                    <input type="url"
+                           class="form-control form-control-sm pql-me-sub-url"
+                           x-model="form.webhook_url"
+                           placeholder="https://hooks.example.com/pql">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">Event type</label>
+                    <select class="form-select form-select-sm pql-me-sub-event-type"
+                            x-model="form.event_type_filter">
+                        <option value="*">All data-product events</option>
+                        <option value="pointlessql.data_product.commented">Comments</option>
+                        <option value="pointlessql.data_product.reviewed">Reviews</option>
+                        <option value="pointlessql.data_product.followed">Follows</option>
+                        <option value="pointlessql.data_product.schema_changed">Schema changes</option>
+                        <option value="pointlessql.data_product.contract_violated">Contract violations</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small">Data-product ref filter (optional, ``catalog.schema``)</label>
+                    <input type="text"
+                           class="form-control form-control-sm pql-me-sub-dp-ref"
+                           x-model="form.dp_ref_filter"
+                           placeholder="main.sales_gold">
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary pql-me-sub-create-submit"
+                            @click="create()">Create</button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            @click="cancelCreate()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="!loading && subs.length === 0">
+        <div class="alert alert-secondary pql-me-sub-empty">
+            <i class="bi bi-info-circle me-1"></i>
+            No subscriptions yet.  Click "New subscription" to
+            register a webhook URL.
+        </div>
+    </template>
+
+    <template x-if="subs.length > 0">
+        <div class="card pql-me-sub-list-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 pql-me-sub-table">
+                    <thead>
+                        <tr>
+                            <th>Webhook URL</th>
+                            <th>Event type</th>
+                            <th>DP filter</th>
+                            <th>Active</th>
+                            <th>Last delivered</th>
+                            <th>Last error</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="s in subs" :key="s.id">
+                            <tr class="pql-me-sub-row" :data-sub-id="s.id">
+                                <td class="small text-break" x-text="s.webhook_url"></td>
+                                <td><code x-text="s.event_type_filter"></code></td>
+                                <td x-text="s.dp_ref_filter || '—'"></td>
+                                <td>
+                                    <input type="checkbox"
+                                           class="form-check-input pql-me-sub-toggle"
+                                           :checked="s.is_active"
+                                           @change="toggle(s.id, $event.target.checked)">
+                                </td>
+                                <td class="small text-muted" x-text="s.last_delivered_at || '—'"></td>
+                                <td class="small text-danger" x-text="s.last_error || ''"></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger pql-me-sub-delete"
+                                            @click="remove(s.id)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+window.meSubscriptions = function () {
+    return {
+        subs: [],
+        loading: false,
+        showCreate: false,
+        lastSecret: '',
+        form: {
+            webhook_url: '',
+            event_type_filter: '*',
+            dp_ref_filter: '',
+        },
+
+        async init() {
+            await this.reload();
+        },
+
+        async reload() {
+            this.loading = true;
+            try {
+                const res = await fetch('/api/me/subscriptions');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.subs = data.subscriptions || [];
+            } catch (e) {
+                console.error('me-subs reload failed', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        cancelCreate() {
+            this.showCreate = false;
+            this.form = { webhook_url: '', event_type_filter: '*', dp_ref_filter: '' };
+        },
+
+        async create() {
+            const body = {
+                webhook_url: this.form.webhook_url,
+                event_type_filter: this.form.event_type_filter,
+                dp_ref_filter: this.form.dp_ref_filter || null,
+            };
+            try {
+                const res = await fetch('/api/me/subscriptions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.lastSecret = data.hmac_secret || '';
+                this.cancelCreate();
+                await this.reload();
+            } catch (e) {
+                console.error('subscription create failed', e);
+            }
+        },
+
+        async toggle(id, isActive) {
+            try {
+                await fetch('/api/me/subscriptions/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: !!isActive }),
+                });
+            } catch (e) {
+                console.error('subscription toggle failed', e);
+            }
+        },
+
+        async remove(id) {
+            try {
+                await fetch('/api/me/subscriptions/' + id, { method: 'DELETE' });
+                await this.reload();
+            } catch (e) {
+                console.error('subscription delete failed', e);
+            }
+        },
+    };
+};
+</script>
+{% endblock %}
