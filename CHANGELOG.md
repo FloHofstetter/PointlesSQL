@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint H.6 — Postgres lane pytest-xdist enabled
+  (2026-05-12).** Phase-31.4 had deferred per-worker DB
+  provisioning citing "CI plumbing"; the plumbing now lives in
+  `tests/conftest.py` and `.github/workflows/test.yml`.  The
+  conftest's `_test_engine` session-scope fixture appends
+  `_<worker_id>` (e.g. `_gw0`) to the `TEST_DATABASE_URL` path
+  component when both `PYTEST_XDIST_WORKER` is set and the URL
+  is a `postgresql://` one; SQLite stays in-memory-per-engine
+  and remains isolated for free.  CI provisions
+  `pointlessql_gw{0..3}` via four `CREATE DATABASE` statements
+  in a new step before `pytest -n 4 --dist loadfile` runs.
+  `--dist loadfile` keeps tests in the same file on the same
+  worker so module-scope fixtures don't get split across DBs.
+  Expected speedup: ~7 min → ~3 min on the PG lane (target
+  matches Phase-31.4's documented 50%).
+
 - **Sprint H.4 — Alembic PG-side autogen-drift gate + deeper
   drift script (2026-05-12).** Added `alembic check` to the PG
   CI lane so dialect-asymmetric drift (PG-only `server_default`,

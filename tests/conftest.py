@@ -106,6 +106,27 @@ def _test_engine() -> Iterator[tuple[Engine, sessionmaker[Any]]]:  # pyright: ig
         default) selects.
     """
     db_url = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
+    # Sprint H.6 — when running under ``pytest-xdist`` on Postgres,
+    # each worker gets its own ``<dbname>_<worker_id>`` database so
+    # the per-test ``TRUNCATE`` in one worker doesn't clobber the
+    # rows another worker is mid-test on.  SQLite stays in-memory
+    # per-engine, so it already enjoys worker isolation for free.
+    # The PG CI lane (``.github/workflows/test.yml``) pre-creates
+    # the ``pointlessql_gw{0,1,2,3}`` databases before invoking
+    # pytest.
+    _worker_id = os.environ.get("PYTEST_XDIST_WORKER")
+    if (
+        _worker_id
+        and _worker_id != "master"
+        and db_url.startswith("postgresql")
+    ):
+        from urllib.parse import urlsplit, urlunsplit
+
+        _parts = urlsplit(db_url)
+        _suffixed = f"{_parts.path}_{_worker_id}"
+        db_url = urlunsplit(
+            (_parts.scheme, _parts.netloc, _suffixed, _parts.query, _parts.fragment)
+        )
     engine_kwargs: dict[str, object] = {}
     if db_url.startswith("sqlite"):
         # ``sqlite:///:memory:`` creates a *per-connection* database, so

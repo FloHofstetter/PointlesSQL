@@ -200,20 +200,32 @@ jobs:
         run: |
           uv run alembic upgrade head
           uv run alembic check
+      - name: Provision per-worker Postgres databases
+        # Sprint H.6 — pytest-xdist needs each worker to operate on
+        # its own DB so per-test ``TRUNCATE`` doesn't clobber
+        # peers' rows.  Create ``pointlessql_gw{0..3}`` to match
+        # ``-n 4`` below; ``tests/conftest.py`` reads
+        # ``PYTEST_XDIST_WORKER`` (e.g. ``gw0``) and appends ``_gw0``
+        # to the ``TEST_DATABASE_URL`` path component.
+        env:
+          PGPASSWORD: pointlessql  # pragma: allowlist secret
+        run: |
+          for worker in gw0 gw1 gw2 gw3; do
+            PGPASSWORD="$PGPASSWORD" psql -h localhost -U pointlessql -d pointlessql \
+              -c "CREATE DATABASE pointlessql_${worker};"
+          done
       - name: Pytest against Postgres
         # Same deselects as the SQLite lane so we don't introduce a
         # silent regression — tests that were skipped on SQLite stay
         # skipped here.  Coverage reporting is dropped (the SQLite lane
         # already publishes the artifact) to keep the PG run fast.
-        # Phase 31.4 — single-worker on the PG lane on purpose: a live
-        # PG database can't be safely shared across workers because
-        # the per-test ``TRUNCATE`` in one worker would clobber
-        # another worker's rows mid-test.  Provisioning per-worker
-        # DBs would shave another 50% off the PG run but adds CI
-        # plumbing; deferred until the PG run becomes a cycle-time
-        # bottleneck again.
+        # Sprint H.6 — Phase-31.4's single-worker carve-out lifted.
+        # Per-worker DBs (above) plus the ``PYTEST_XDIST_WORKER``
+        # branch in ``tests/conftest.py`` keep TRUNCATEs isolated.
+        # ``--dist loadfile`` keeps tests in the same file on the
+        # same worker so module-scope fixtures don't get split.
         run: |
-          uv run pytest -q \
+          uv run pytest -q -n 4 --dist loadfile \
             --deselect tests/test_api_notebook_workspace.py::test_upload_happy_path \
             --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_non_ipynb_extension \
             --deselect tests/test_api_notebook_workspace.py::test_upload_rejects_invalid_json \
