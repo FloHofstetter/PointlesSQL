@@ -210,7 +210,7 @@ PointlesSQL
 │       │   reviews, contract bumps in last 7d.
 │       └── ~8 pytest cases.
 │
-├── Phase 72 — Agent-Aware Social Layer                     ⏳ in progress (Session A landed)
+├── Phase 72 — Agent-Aware Social Layer                     ✅ done 2026-05-13
 │   │
 │   │   AI-native differentiation on top of (or alongside)
 │   │   Phase 71's catalog-collaboration foundation.  Treats
@@ -297,7 +297,7 @@ PointlesSQL
 │   │   │   both single-workspace + cross-workspace dashboards.
 │   │   └── ~10 pytest cases.
 │   │
-│   ├── Sprint 72.4 — Typed manual endorsements                ⏳ planned
+│   ├── Sprint 72.4 — Typed manual endorsements                ✅ done 2026-05-13
 │   │   ├── New model: `DataProductEndorsement` (id, dp_slug,
 │   │   │   endorsement_type, applied_by_user_id, applied_at,
 │   │   │   removed_at, note_md, workspace_id) + Alembic.
@@ -318,7 +318,7 @@ PointlesSQL
 │   │   │   `verified-by-steward` after a clean audit pass.
 │   │   └── ~12 pytest cases.
 │   │
-│   ├── Sprint 72.5 — Audit-bound discussions                  ⏳ planned
+│   ├── Sprint 72.5 — Audit-bound discussions                  ✅ done 2026-05-13
 │   │   ├── Comments land as `audit_log` rows with
 │   │   │   `kind=audit.discussion.posted` — supersedes or
 │   │   │   coexists with Phase 71.1's separate table (decision
@@ -337,7 +337,7 @@ PointlesSQL
 │   │   │   auto-link to user profile pages.
 │   │   └── ~15 pytest cases.
 │   │
-│   └── Sprint 72.6 — CloudEvent subscriptions for DP changes  ⏳ planned
+│   └── Sprint 72.6 — CloudEvent subscriptions for DP changes  ✅ done 2026-05-13
 │       ├── New `pql.dataproduct.*` event types registered in
 │       │   the Phase-13.3 CloudEvent emitter
 │       │   (`schema_changed`, `contract_violated`,

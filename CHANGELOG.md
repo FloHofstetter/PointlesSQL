@@ -6,6 +6,56 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 72.6 — Per-user CloudEvent webhook subscriptions
+  (2026-05-13).** New ``user_webhook_subscriptions`` table +
+  alembic ``h4j6l8n0p2r4``.  Subscriptions filter by
+  ``event_type_filter`` (exact or ``*`` wildcard for the whole
+  ``pointlessql.data_product.*`` family) and optional
+  ``dp_ref_filter`` (``catalog.schema``).  HMAC secret
+  generated server-side at create time and returned exactly
+  once.  New ``services/notifications/webhook_delivery.py``
+  hooks into ``services/audit/sinks.dispatch_to_sinks`` *after*
+  the install-global sinks fan out, so every DP governance
+  event also reaches matching per-user webhooks via the
+  existing ``alert_dispatcher.sign_body`` HMAC signer.  New
+  ``pointlessql/api/me_subscriptions_routes.py`` (HTML
+  ``/me/subscriptions`` + four JSON endpoints).  Best-effort
+  throughout — one bad subscription never breaks the others.
+  10 pytest cases (CRUD round-trip, secret-once, cross-user
+  iso, matching event delivery via ``httpx.MockTransport``,
+  wildcard match, filter mismatch, DP-ref filter, HMAC header
+  shape).
+
+- **Sprint 72.5 — Audit-bound discussions mirror (2026-05-13).**
+  Coexist strategy: ``DataProductComment`` stays
+  system-of-record.  Each comment POST + DELETE now also
+  writes one ``audit_log`` row
+  (``audit.discussion.posted`` / ``.deleted``) via the
+  existing ``services.audit.log_action`` helper.  The
+  ``target`` carries the click-through anchor; the
+  ``detail`` JSON has ``data_product_id``, ``comment_id``,
+  and a ``body_preview`` truncated to 140 chars.  The
+  Phase-18.7 audit-search FTS index picks the mirror rows up
+  automatically.  DELETE only fires the audit row on the
+  *transition* (was-live → soft-deleted), never on an
+  idempotent re-DELETE.  No new model, no migration, no
+  template change.  5 pytest cases.
+
+- **Sprint 72.4 — Typed manual endorsements (2026-05-13).**
+  New ``DataProductEndorsement`` model with four
+  CHECK-constrained types: ``verified-by-steward``,
+  ``production-ready``, ``deprecated``, ``under-review``.
+  Composite UNIQUE on
+  ``(workspace, dp, endorsement_type, removed_at)`` so
+  re-applying after a remove creates a new row while still
+  enforcing one active row per type per DP.  New Alembic
+  ``g3i5k7m9o1q3``.  Three endpoints (GET list, POST apply
+  idempotent, DELETE soft-delete).  Steward + install-admin
+  can apply / remove; auditor can apply
+  ``verified-by-steward`` only.  Each POST + DELETE drops an
+  ``audit_log`` row (``endorsement.applied`` / ``.removed``).
+  10 pytest cases.
+
 - **Sprint 72.3 — Trending in agent workloads (2026-05-13).**
   New ``data_product_trending`` cache table + alembic
   ``f2h4j6l8n0p2``.  New ``_data_product_trending_loop``
