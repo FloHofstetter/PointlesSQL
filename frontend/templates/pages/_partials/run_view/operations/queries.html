@@ -1,0 +1,70 @@
+ <div class="tab-pane fade" id="tab-queries" role="tabpanel" aria-labelledby="tab-queries-btn">
+ {% if queries %}
+ <div class="card">
+ <div class="card-header small d-flex justify-content-between align-items-center">
+ <span class="text-muted">{{ queries | length }} read{% if queries | length != 1 %}s{% endif %} (SQL execute + pql.table)</span>
+ <a href="/queries?agent_run_id={{ run.id }}" class="btn btn-sm btn-outline-secondary">
+ <i class="bi bi-box-arrow-up-right me-1"></i>Open in /queries
+ </a>
+ </div>
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>Started</th>
+ <th>Kind</th>
+ <th>SQL / Table</th>
+ <th>Rows</th>
+ <th>Duration</th>
+ <th>Status</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for q in queries %}
+ <tr {% if q.status == 'failed' %}class="table-danger"{% endif %}>
+ <td class="font-monospace text-muted">{{ q.started_at or "&mdash;" | safe }}</td>
+ <td>
+ {% if q.read_kind == 'pql_table' %}
+ <span class="badge bg-info text-dark" title="pql.table() read">pql.table</span>
+ {% elif q.read_kind == 'engine_direct' %}
+ <span class="badge bg-warning text-dark" title="engine-direct read">engine</span>
+ {% else %}
+ <span class="badge bg-light text-dark border" title="/api/sql/execute">sql</span>
+ {% endif %}
+ </td>
+ <td>
+ {{ truncate_cell(q.sql_text, max=120, klass="font-monospace small") }}
+ {% if q.sql_text and q.sql_text|length > 120 %}
+ {%- call detail_drawer("query-" ~ q.id|string, "View full SQL", title="Query #" ~ q.id|string) %}
+ <pre><code class="language-sql">{{ q.sql_text }}</code></pre>
+ {%- endcall %}
+ {% endif %}
+ </td>
+ <td class="font-monospace">{{ q.row_count if q.row_count is not none else "&mdash;" | safe }}</td>
+ <td class="font-monospace text-muted">{{ q.duration_ms ~ ' ms' if q.duration_ms is not none else "&mdash;" | safe }}</td>
+ <td>
+ {% if q.status == 'succeeded' %}
+ <span class="badge bg-success-subtle text-success-emphasis">ok</span>
+ {% elif q.status == 'cancelled' %}
+ <span class="badge bg-warning-subtle text-warning-emphasis">cancelled</span>
+ {% else %}
+ <span class="badge bg-danger" title="{{ q.error_message or '' }}">{{ q.status }}</span>
+ {% endif %}
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No ad-hoc SQL or direct reads recorded for this run. Reads land here
+ when an agent calls <code>pql.sql()</code>, <code>pql.table()</code>,
+ or <code>POST /api/sql/execute</code> with
+ <code>X-Agent-Run-Id: {{ run.id }}</code>.
+ </div>
+ {% endif %}
+ </div>
+

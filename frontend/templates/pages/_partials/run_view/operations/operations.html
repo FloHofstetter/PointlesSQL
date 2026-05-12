@@ -1,0 +1,195 @@
+ <div class="tab-pane fade show active" id="tab-ops" role="tabpanel" aria-labelledby="tab-ops-btn">
+ {% if operations %}
+ <div class="card">
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>#</th>
+ <th>Op</th>
+ <th>Target</th>
+ <th>Rows</th>
+ <th>Δ version</th>
+ <th>Duration</th>
+ <th>Status</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for op in operations %}
+ <tr {% if op.status == 'error' %}class="table-danger"{% endif %}>
+ <td class="font-monospace text-muted">{{ op.ordinal }}</td>
+ <td><span class="badge bg-secondary text-uppercase">{{ op.op_name }}</span></td>
+ <td class="font-monospace">{{ op.target_table or "&mdash;" | safe }}</td>
+ <td class="font-monospace">{{ op.rows_affected if op.rows_affected is not none else "&mdash;" | safe }}</td>
+ <td class="font-monospace text-muted">
+ {% if op.delta_version_before is not none or op.delta_version_after is not none %}
+ {{ op.delta_version_before if op.delta_version_before is not none else "&minus;" | safe }}
+ &rarr;
+ {{ op.delta_version_after if op.delta_version_after is not none else "&minus;" | safe }}
+ {% else %}
+ &mdash;
+ {% endif %}
+ </td>
+ <td class="font-monospace text-muted">{{ op.duration_ms ~ ' ms' if op.duration_ms is not none else "&mdash;" | safe }}</td>
+ <td>
+ {% if op.status == 'error' %}
+ <span class="badge bg-danger" title="{{ op.error_message or '' }}">error</span>
+ {% else %}
+ <span class="badge bg-success-subtle text-success-emphasis">ok</span>
+ {% endif %}
+ {% if op.warnings %}
+ {# BUG-grand-08 — non-fatal post-commit markers stay separate from error status. #}
+ <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1"
+ title="{{ op.warnings | join('; ') }}">
+ <i class="bi bi-exclamation-triangle"></i> {{ op.warnings | length }} warning{% if op.warnings | length != 1 %}s{% endif %}
+ </span>
+ {% endif %}
+ {% if op.column_edges_count and op.column_edges_count > 0 %}
+ <a href="/runs/{{ run.id }}?op_id={{ op.id }}#tab-lineage"
+ class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1 text-decoration-none"
+ title="filter Lineage + Rejects + Operations to this op">
+ <i class="bi bi-bezier2"></i> column edges: {{ op.column_edges_count }}
+ </a>
+ {% endif %}
+ {% if op.value_changes_count and op.value_changes_count > 0 %}
+ <a href="/runs/{{ run.id }}?op_id={{ op.id }}#tab-lineage"
+ class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle ms-1 text-decoration-none"
+ title="filter Lineage + Rejects + Operations to this op">
+ <i class="bi bi-pencil-square"></i> value changes: {{ op.value_changes_count }}
+ </a>
+ {% endif %}
+ {% if not filter_op_id %}
+ <a href="/runs/{{ run.id }}?op_id={{ op.id }}#tab-ops"
+ class="text-decoration-none ms-2 small text-muted"
+ title="filter every cross-axis tab to this op">
+ <i class="bi bi-funnel"></i>
+ </a>
+ {% endif %}
+ </td>
+ </tr>
+ {% if op.input_sha or op.params %}
+ <tr {% if op.status == 'error' %}class="table-danger"{% endif %}>
+ <td></td>
+ <td colspan="6" class="small text-muted font-monospace">
+ {% if op.input_sha %}<span class="me-3">input_sha: {{ op.input_sha[:12] }}…</span>{% endif %}
+ {% if op.params %}params: {{ op.params | tojson }}{% endif %}
+ </td>
+ </tr>
+ {% endif %}
+ {% if op.env_snapshot %}
+ {# advisory env fingerprint. #}
+ <tr>
+ <td></td>
+ <td colspan="6" class="small">
+ <details>
+ <summary class="text-muted">
+ <i class="bi bi-cpu me-1"></i>
+ Environment fingerprint
+ {% if op.env_snapshot.python and op.env_snapshot.python.version %}
+ · Python {{ op.env_snapshot.python.version }}
+ {% endif %}
+ {% if op.env_snapshot.gpu %}
+ · {{ op.env_snapshot.gpu | length }} GPU(s)
+ {% endif %}
+ {% if op.env_snapshot.packages %}
+ · {{ op.env_snapshot.packages | length }} packages
+ {% endif %}
+ </summary>
+ <div class="ps-3 mt-2 small">
+ {% if op.env_snapshot.python %}
+ <div class="mb-2">
+ <span class="text-muted">Host:</span>
+ <code>{{ op.env_snapshot.python.platform }}</code>
+ {% if op.env_snapshot.python.machine %}
+ / <code>{{ op.env_snapshot.python.machine }}</code>
+ {% endif %}
+ {% if op.env_snapshot.python.cpu_count %}
+ / {{ op.env_snapshot.python.cpu_count }} CPU
+ {% endif %}
+ </div>
+ {% endif %}
+ {% if op.env_snapshot.gpu %}
+ <div class="mb-2">
+ <span class="text-muted">GPU:</span>
+ {% for g in op.env_snapshot.gpu %}
+ <code>{{ g.name }}</code>{% if not loop.last %}, {% endif %}
+ {% endfor %}
+ </div>
+ {% endif %}
+ {% if op.env_snapshot.packages %}
+ <details>
+ <summary class="text-muted">
+ Packages ({{ op.env_snapshot.packages | length }})
+ </summary>
+ <div class="font-monospace small text-muted ps-3">
+ {% for name, ver in op.env_snapshot.packages.items() %}
+ <span class="me-3">{{ name }}=={{ ver }}</span>
+ {% endfor %}
+ </div>
+ </details>
+ {% endif %}
+ </div>
+ </details>
+ </td>
+ </tr>
+ {% endif %}
+ {% if op.training_params %}
+ {# autolog snapshot. #}
+ <tr>
+ <td></td>
+ <td colspan="6" class="small">
+ <details>
+ <summary class="text-info">
+ <i class="bi bi-mortarboard me-1"></i>
+ Training params + metrics
+ ({{ op.training_params.params | length }} params,
+ {{ op.training_params.metrics | length }} metrics)
+ </summary>
+ <div class="row mt-2 ps-3">
+ {% if op.training_params.params %}
+ <div class="col-md-6">
+ <div class="text-muted">Params</div>
+ <table class="table table-sm table-borderless mb-0 small">
+ {% for name, val in op.training_params.params.items() %}
+ <tr>
+ <td class="font-monospace text-muted">{{ name }}</td>
+ <td class="font-monospace">{{ val }}</td>
+ </tr>
+ {% endfor %}
+ </table>
+ </div>
+ {% endif %}
+ {% if op.training_params.metrics %}
+ <div class="col-md-6">
+ <div class="text-muted">Metrics</div>
+ <table class="table table-sm table-borderless mb-0 small">
+ {% for name, val in op.training_params.metrics.items() %}
+ <tr>
+ <td class="font-monospace text-muted">{{ name }}</td>
+ <td class="font-monospace">{{ '%.4g' | format(val) if val is number else val }}</td>
+ </tr>
+ {% endfor %}
+ </table>
+ </div>
+ {% endif %}
+ </div>
+ </details>
+ </td>
+ </tr>
+ {% endif %}
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No operations recorded for this run. Operations are emitted by
+ <code>pql.autoload</code>, <code>pql.merge</code>,
+ <code>pql.write_table</code>, and <code>pql.sql</code> when
+ the agent runtime sets <code>POINTLESSQL_AGENT_RUN_ID</code>.
+ </div>
+ {% endif %}
+ </div>
+

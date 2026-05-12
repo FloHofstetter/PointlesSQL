@@ -1,0 +1,59 @@
+{% from "_macros/truncate.html" import truncate_cell %}
+{% from "_macros/detail_drawer.html" import detail_drawer %}
+ <div class="tab-pane fade" id="top-operations" role="tabpanel" aria-labelledby="top-operations-btn">
+ <p class="text-muted small mb-2">
+ Operations are the unit of supervision inside this run.{{ info('runs.what-is-an-operation') }}
+ </p>
+ <ul class="nav nav-pills mb-3 small" id="operationsSubTabs" role="tablist">
+ <li class="nav-item" role="presentation">
+ <button class="nav-link active" id="tab-ops-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-ops" type="button" role="tab"
+ aria-controls="tab-ops" aria-selected="true"
+ data-pql-tab-key="ops">
+ <i class="bi bi-list-ol me-1"></i>Operations
+ {% if operations %}<span class="badge bg-secondary ms-1">{{ operations | length }}</span>{% endif %}
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-rejects-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-rejects" type="button" role="tab"
+ aria-controls="tab-rejects" aria-selected="false"
+ data-pql-tab-key="rejects">
+ <i class="bi bi-x-octagon me-1"></i>Rejects
+ {% if rejects %}<span class="badge bg-warning text-dark ms-1">{{ rejects | length }}</span>{% endif %}
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-queries-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-queries" type="button" role="tab"
+ aria-controls="tab-queries" aria-selected="false"
+ data-pql-tab-key="queries">
+ <i class="bi bi-code-square me-1"></i>Queries
+ {% if queries %}<span class="badge bg-secondary ms-1">{{ queries | length }}</span>{% endif %}
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-rewrites-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-rewrites" type="button" role="tab"
+ aria-controls="tab-rewrites" aria-selected="false"
+ data-pql-tab-key="rewrites">
+ <i class="bi bi-arrow-repeat me-1"></i>Rewrites
+ {% if rewrite_attempts %}<span class="badge bg-info text-dark ms-1">{{ rewrite_attempts | length }}</span>{% endif %}
+ </button>
+ </li>
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-uc-mutations-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-uc-mutations" type="button" role="tab"
+ aria-controls="tab-uc-mutations" aria-selected="false"
+ data-pql-tab-key="uc-mutations">
+ <i class="bi bi-database-gear me-1"></i>UC mutations
+ {% if uc_mutations %}<span class="badge bg-secondary ms-1">{{ uc_mutations | length }}</span>{% endif %}
+ </button>
+ </li>
+ </ul>
+ <div class="tab-content">
+ {% include "pages/_partials/run_view/operations/operations.html" %}
+ {% include "pages/_partials/run_view/operations/rejects.html" %}
+ {% include "pages/_partials/run_view/operations/queries.html" %}
+ {% include "pages/_partials/run_view/operations/rewrites.html" %}
+ {% include "pages/_partials/run_view/operations/uc_mutations.html" %}

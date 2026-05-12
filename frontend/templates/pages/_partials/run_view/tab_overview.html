@@ -89,13 +89,13 @@
  <div class="border-top">
  {% for output in outputs %}
  {% if output.kind == 'stream' %}
- {% include "partials/_output_stream.html" %}
+ {% include "pages/_partials/notebook/output/stream.html" %}
  {% elif output.kind == 'error' %}
- {% include "partials/_output_error.html" %}
+ {% include "pages/_partials/notebook/output/error.html" %}
  {% elif output.kind == 'markdown' %}
- {% include "partials/_output_markdown.html" %}
+ {% include "pages/_partials/notebook/output/markdown.html" %}
  {% else %}
- {% include "partials/_output_display_data.html" %}
+ {% include "pages/_partials/notebook/output/display_data.html" %}
  {% endif %}
  {% endfor %}
  </div>

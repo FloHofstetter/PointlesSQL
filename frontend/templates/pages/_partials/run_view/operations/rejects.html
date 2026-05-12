@@ -1,0 +1,60 @@
+ <div class="tab-pane fade" id="tab-rejects" role="tabpanel" aria-labelledby="tab-rejects-btn">
+ {% if rejects %}
+ <div class="card">
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th class="ps-3">Op</th>
+ <th>Source table</th>
+ <th>Source row</th>
+ <th>Reason</th>
+ <th>Detail</th>
+ <th class="pe-3">Recorded at</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for r in rejects %}
+ <tr>
+ <td class="ps-3 font-monospace small">#{{ r.op_id }}</td>
+ <td class="font-monospace small">{{ r.source_table }}</td>
+ <td class="font-monospace small text-break">
+ {% set parts = r.source_table.split('.') %}
+ {% if parts|length == 3 %}
+ <a href="/catalogs/{{ parts[0] }}/schemas/{{ parts[1] }}/tables/{{ parts[2] }}/rows/{{ r.source_row_id }}/trace"
+ class="text-decoration-none" title="walk lineage from this rejected row">
+ {{ r.source_row_id[:16] }}…
+ </a>
+ {% else %}
+ {{ r.source_row_id[:16] }}…
+ {% endif %}
+ </td>
+ <td>
+ {% if r.reason == 'on_key_null' %}
+ <span class="badge bg-warning text-dark">{{ r.reason }}</span>
+ {% elif r.reason == 'duplicate_in_source' %}
+ <span class="badge bg-info text-dark">{{ r.reason }}</span>
+ {% elif r.reason == 'schema_mismatch' %}
+ <span class="badge bg-danger">{{ r.reason }}</span>
+ {% else %}
+ <span class="badge bg-secondary">{{ r.reason }}</span>
+ {% endif %}
+ </td>
+ <td class="small text-muted">{{ r.detail or '—' }}</td>
+ <td class="pe-3 small text-muted font-monospace">{{ r.created_at }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-info mb-0">
+ <i class="bi bi-info-circle me-1"></i>
+ No rows rejected in this run. Rejects are recorded only when
+ <code>pql.merge(track_rejects=True)</code> is set on the merge
+ call (opt-in, default off).
+ </div>
+ {% endif %}
+ </div>
+

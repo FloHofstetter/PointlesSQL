@@ -1,0 +1,89 @@
+ <div class="tab-pane fade" id="tab-rewrites" role="tabpanel" aria-labelledby="tab-rewrites-btn">
+ {% if rewrite_attempts %}
+ <div class="card">
+ <div class="card-header small text-muted">
+ {{ rewrite_attempts | length }} rewrite attempt{% if rewrite_attempts | length != 1 %}s{% endif %}
+ captured by the Phase-39 explain-first loop. Verdicts: agent rewrote
+ (<code>auto_rewrite_succeeded</code>), gave up
+ (<code>auto_rewrite_failed</code>), escalated
+ (<code>human_approval_required</code>), or accepted the original
+ (<code>original_approved</code>).
+ </div>
+ <div class="card-body p-0">
+ <table class="table table-sm mb-0 small align-middle">
+ <thead>
+ <tr>
+ <th>#</th>
+ <th>Verdict</th>
+ <th>Original SQL</th>
+ <th>Rewritten SQL</th>
+ <th>Cost before</th>
+ <th>Cost after</th>
+ <th>Δ cost</th>
+ <th>Reason</th>
+ <th>Created</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for attempt in rewrite_attempts %}
+ <tr>
+ <td>{{ attempt.attempt_no }}</td>
+ <td>
+ {% if attempt.verdict == 'auto_rewrite_succeeded' %}
+ <span class="badge bg-success">{{ attempt.verdict }}</span>
+ {% elif attempt.verdict == 'auto_rewrite_failed' %}
+ <span class="badge bg-warning text-dark">{{ attempt.verdict }}</span>
+ {% elif attempt.verdict == 'human_approval_required' %}
+ <span class="badge bg-danger">{{ attempt.verdict }}</span>
+ {% else %}
+ <span class="badge bg-info text-dark">{{ attempt.verdict }}</span>
+ {% endif %}
+ </td>
+ <td><code class="small">{{ attempt.original_sql_hash }}</code></td>
+ <td>
+ {% if attempt.rewritten_sql_hash %}
+ <code class="small">{{ attempt.rewritten_sql_hash }}</code>
+ {% else %}
+ <span class="text-muted">—</span>
+ {% endif %}
+ </td>
+ <td>{{ "{:,}".format(attempt.original_cost) }}</td>
+ <td>
+ {% if attempt.rewritten_cost is not none %}
+ {{ "{:,}".format(attempt.rewritten_cost) }}
+ {% else %}
+ <span class="text-muted">—</span>
+ {% endif %}
+ </td>
+ <td>
+ {% if attempt.cost_delta is not none %}
+ {% if attempt.cost_delta > 0 %}
+ <span class="text-success">−{{ "{:,}".format(attempt.cost_delta) }}</span>
+ {% elif attempt.cost_delta < 0 %}
+ <span class="text-danger">+{{ "{:,}".format(-attempt.cost_delta) }}</span>
+ {% else %}
+ <span class="text-muted">0</span>
+ {% endif %}
+ {% else %}
+ <span class="text-muted">—</span>
+ {% endif %}
+ </td>
+ <td class="text-truncate" style="max-width: 24ch;">
+ {% if attempt.reason %}{{ attempt.reason }}{% else %}<span class="text-muted">—</span>{% endif %}
+ </td>
+ <td class="small text-muted">
+ {% if attempt.created_at %}{{ attempt.created_at }}{% endif %}
+ </td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ {% else %}
+ <div class="alert alert-light small mb-0">
+ 0 rewrite attempts — the agent didn't trigger the cost-gate during this run.
+ </div>
+ {% endif %}
+ </div>
+

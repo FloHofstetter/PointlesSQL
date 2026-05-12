@@ -23,7 +23,7 @@
  path.
 
  The body is composed from per-section partials in
- ``frontend/templates/partials/_run_*.html``.  Each partial
+ ``frontend/templates/pages/_partials/run_view/*.html``.  Each partial
  is rendered inside the parent's Alpine scope (none of them
  declare their own top-level ``x-data``); the rollback panel
  + approval form carry their own scoped factories internally.
@@ -97,12 +97,12 @@
  </a>
 </div>
 {% endif %}
-{% include "partials/_run_header.html" %}
+{% include "pages/_partials/run_view/header.html" %}
 
 {% if run %}
-{% include "partials/_run_metadata.html" %}
-{% include "partials/_run_conformance.html" %}
-{% include "partials/_run_approval_form.html" %}
+{% include "pages/_partials/run_view/metadata.html" %}
+{% include "pages/_partials/run_view/conformance.html" %}
+{% include "pages/_partials/run_view/approval_form.html" %}
 {% endif %}
 
 {# Run-detail tabs. Cells stays the default tab so
@@ -180,10 +180,10 @@
 </ul>
 
 <div class="tab-content" id="runDetailTabContent">
-{% include "partials/_run_tab_overview.html" %}
-{% include "partials/_run_tab_operations.html" %}
-{% include "partials/_run_tab_lineage.html" %}
-{% include "partials/_run_tab_audit.html" %}
+{% include "pages/_partials/run_view/tab_overview.html" %}
+{% include "pages/_partials/run_view/tab_operations.html" %}
+{% include "pages/_partials/run_view/tab_lineage.html" %}
+{% include "pages/_partials/run_view/tab_audit.html" %}
 </div>
 
 <script>
