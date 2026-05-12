@@ -29,7 +29,16 @@ All notable changes to this project will be documented in this file.
   expecting 403 to expecting 200/201 with shape assertions; the
   `_user_can_use_editor` WS-gate test removed.  Asset version
   bumped 0.1.0rc3 → 0.1.0rc4 to invalidate the Firefox
-  ES-module cache.
+  ES-module cache.  Sprint 70.9 carry-over (2026-05-12): browser
+  replay against `docker-compose.e2e.yml` with admin + member
+  personas — green on both, 0 BUG-70 surfaced.  All 92 Alpine
+  state keys present (5 install functions wire correctly), all 9
+  notebook JS modules load 200, all six `/api/notebooks/*` route
+  classes return 200 for `flo@pql.test`, `/ws/notebook/kernel`
+  upgrades to 101 without 4403, `runCell` / `addCellAtEnd` /
+  `save` / `toggleInspector` / `enterMarkdownEdit` round-trip
+  end-to-end; cross-page CSS regression gate green
+  (`notebook.css` absent on `/runs`, `/sql`, `/admin`).
 
 - **Phase 69 — Vollständiger Browser-Replay der Plattform
   (2026-05-12).**  Browser-replay sweep of every UI surface across

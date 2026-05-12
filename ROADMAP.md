@@ -5346,16 +5346,34 @@ PointlesSQL
 │   │       run-history).  Coordinator drops 446 → 190 LOC and
 │   │       now holds only the state defaults, init/destroy,
 │   │       and five ``install*()`` calls.
-│   └── 70.8 — Asset-version bump (``0.1.0rc3`` → ``0.1.0rc4``)
-│           — seven JS files + two templates touched, so the
-│           ``?v=`` cache-buster has to flip (see
-│           ``feedback_asset_version_bump.md``).  Seven
-│           additional non-admin notebook tests flipped (inspect,
-│           jobs panel, run-once, render-markdown, cell-history,
-│           crud-create) + the ``_user_can_use_editor`` WS gate
-│           test removed (no longer reachable).  Pytest grün on
-│           all notebook surfaces (22+ tests); 7 pre-existing
-│           failures unrelated to Phase 70 left untouched.
+│   ├── 70.8 — Asset-version bump (``0.1.0rc3`` → ``0.1.0rc4``)
+│   │       — seven JS files + two templates touched, so the
+│   │       ``?v=`` cache-buster has to flip (see
+│   │       ``feedback_asset_version_bump.md``).  Seven
+│   │       additional non-admin notebook tests flipped (inspect,
+│   │       jobs panel, run-once, render-markdown, cell-history,
+│   │       crud-create) + the ``_user_can_use_editor`` WS gate
+│   │       test removed (no longer reachable).  Pytest grün on
+│   │       all notebook surfaces (22+ tests); 7 pre-existing
+│   │       failures unrelated to Phase 70 left untouched.
+│   └── 70.9 — Browser-replay carry-over (2026-05-12, autonomous
+│           Playwright-MCP session).  Sprint 70.8's verification
+│           gate was skipped in auto-mode; replayed against the
+│           ``docker-compose.e2e.yml`` stack with both admin
+│           (``admin@pql.test``) and member (``flo@pql.test``)
+│           personas.  Green on both: all 92 Alpine state keys
+│           present (5 install functions wire correctly), all 9
+│           notebook JS modules load 200, all six distinct
+│           ``/api/notebooks/*`` route classes return 200 for the
+│           member persona, ``/ws/notebook/kernel`` upgrades to
+│           101 without the 4403 close-code, ``runCell`` +
+│           ``addCellAtEnd`` + ``save`` + ``toggleInspector`` +
+│           ``enterMarkdownEdit`` round-trip end-to-end.
+│           Cross-page CSS regression gate (Sprint 68.6) holds:
+│           ``notebook.css`` absent on ``/runs``, ``/sql``,
+│           ``/admin``.  0 ``BUG-70`` surfaced, 0 console errors
+│           (only pre-existing font-preload warning).  No new
+│           fix-commits required; no asset-bump needed.
 │
 ├── Phase 65 — Lens (read-only Q&A surface, MCP + Browser parallel) ✅ done 2026-05-10
 │   │
