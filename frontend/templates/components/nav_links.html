@@ -11,11 +11,10 @@
  bottom.
 
  The caller can override the `<ul>` classes via the
- ``nav_list_class`` variable (default: ``navbar-nav``). Admin-only
- entries (Workspace, Admin) render via ``_macros/permission_link.html``
- so a non-admin still sees them as greyed-out lock affordances —
- click surfaces a toast naming the missing role rather than a
- silently-hidden link.
+ ``nav_list_class`` variable (default: ``navbar-nav``). The Admin
+ entry renders via ``_macros/permission_link.html`` so a non-admin
+ still sees it as a greyed-out lock affordance — click surfaces a
+ toast naming the missing role rather than a silently-hidden link.
 #}
 {% from "_macros/permission_link.html" import permission_link %}
 {% set nav_list_class = nav_list_class or "navbar-nav" %}
@@ -48,15 +47,10 @@
  </ul>
  </li>
  <li class="nav-item">
- {{ permission_link(
-      href="/notebooks/workspace",
-      icon="bi-folder2-open",
-      label="Workspace",
-      granted=(current_user is defined and current_user and current_user.is_admin),
-      required_role="admin",
-      css_class="nav-link d-flex align-items-center gap-1",
-      active=(active_page is defined and active_page == "workspace")
- ) }}
+ <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'workspace' %} active{% endif %}"
+    href="/notebooks/workspace">
+  <i class="bi bi-folder2-open"></i> Workspace
+ </a>
  </li>
  <li class="nav-item">
  <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'jobs' %} active{% endif %}"

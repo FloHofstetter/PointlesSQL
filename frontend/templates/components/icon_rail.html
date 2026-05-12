@@ -59,18 +59,13 @@
             </a>
         </li>
         <li class="pql-icon-rail__item">
-            {{ permission_link(
-                 href="/notebooks/workspace",
-                 icon="bi-folder2-open",
-                 label="Workspace",
-                 granted=(current_user is defined and current_user and current_user.is_admin),
-                 required_role="admin",
-                 css_class="pql-icon-rail__link",
-                 active=(active_section == "workspace"),
-                 title="Notebook workspace",
-                 data_section="workspace",
-                 label_class="pql-icon-rail__label"
-            ) }}
+            <a href="/notebooks/workspace"
+               data-section="workspace"
+               class="pql-icon-rail__link{% if active_section == 'workspace' %} active{% endif %}"
+               title="Notebook workspace">
+                <i class="bi bi-folder2-open"></i>
+                <span class="pql-icon-rail__label">Workspace</span>
+            </a>
         </li>
         {# Scheduled jobs collapsed into the RUNS sub-pane — they're
            the same workflow concept (definition vs. execution).

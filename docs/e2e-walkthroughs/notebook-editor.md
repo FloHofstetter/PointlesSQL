@@ -11,7 +11,9 @@ playbook (the embedded JupyterLab iframe retired).
 
 ## Preconditions
 
-- Stack up with the e2e overlay; admin user logged in.
+- Stack up with the e2e overlay; **any authenticated user** can
+  reach the editor (Phase 70 dropped the admin gate). Run both
+  admin and member personas through the full walkthrough.
 - `notebooks/` is writable by the PointlesSQL process (default
  for both local dev and the Docker overlay).
 - soyuz-catalog reachable on :8080 (Insert-from-catalog step
