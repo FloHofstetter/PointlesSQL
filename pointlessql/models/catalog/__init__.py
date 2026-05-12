@@ -24,6 +24,8 @@ Layout:
                         (Phase 71.3, composite-PK follow link).
 * ``_data_product_readme``   — :class:`DataProductReadme`
                         (Phase 71.5, versioned per-DP wiki).
+* ``_data_product_trending`` — :class:`DataProductTrending`
+                        (Phase 72.3, cached trending rank rows).
 * ``_sync``           — :class:`SyncRun` (foreign-catalog sync run
                         history).
 """
@@ -35,6 +37,7 @@ from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
+from pointlessql.models.catalog._data_product_trending import DataProductTrending
 from pointlessql.models.catalog._data_products import (
     CONTRACT_EVENT_OUTCOMES,
     DataProduct,
@@ -61,6 +64,7 @@ __all__ = [
     "DataProductFollow",
     "DataProductReadme",
     "DataProductReview",
+    "DataProductTrending",
     "QueryHistory",
     "QueryHistoryTable",
     "RateLimitEvent",

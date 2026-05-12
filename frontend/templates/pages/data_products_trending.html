@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Trending data products · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Data Products", "href": "/data-products"},
+    {"label": "Trending"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="dataProductsTrending({{ trending | tojson }}, {{ can_cross_workspace | tojson }})"
+     x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-fire fs-3"></i>
+        <h1 class="h3 mb-0">Trending in agent workloads</h1>
+        <small class="text-muted ms-2">7-day rolling window</small>
+        {% if can_cross_workspace %}
+        <div class="ms-auto">
+            <select class="form-select form-select-sm pql-dp-trending-scope"
+                    x-model="scope"
+                    @change="reload()">
+                <option value="current">Current workspace</option>
+                <option value="all">All workspaces</option>
+            </select>
+        </div>
+        {% endif %}
+    </div>
+
+    <template x-if="rows.length === 0">
+        <div class="alert alert-secondary pql-dp-trending-empty">
+            <i class="bi bi-info-circle me-1"></i>
+            No trending data yet — the loop populates this page
+            every <code>data_products.trending_refresh_interval_seconds</code>
+            (default disabled).
+        </div>
+    </template>
+
+    <template x-if="rows.length > 0">
+        <div class="card pql-dp-trending-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 pql-dp-trending-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Product</th>
+                            <th>Version</th>
+                            <th>Agent runs</th>
+                            <th>Writes</th>
+                            <th>Window end</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="r in rows" :key="r.data_product_id + '-' + r.window_end">
+                            <tr class="pql-dp-trending-row"
+                                :data-rank="r.rank"
+                                :data-dp-id="r.data_product_id">
+                                <td><strong x-text="'#' + r.rank"></strong></td>
+                                <td>
+                                    <a :href="'/data-products/' + r.data_product_ref.replace('.', '/')"
+                                       class="text-decoration-none">
+                                        <i class="bi bi-collection me-1"></i>
+                                        <span x-text="r.data_product_ref"></span>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary" x-text="'v' + r.version"></span>
+                                </td>
+                                <td x-text="r.agent_run_count"></td>
+                                <td x-text="r.write_count"></td>
+                                <td class="small text-muted" x-text="r.window_end"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+window.dataProductsTrending = function (initial, canCrossWorkspace) {
+    return {
+        rows: initial || [],
+        scope: 'current',
+        canCrossWorkspace: !!canCrossWorkspace,
+
+        init() { /* server already rendered the initial table */ },
+
+        async reload() {
+            try {
+                const params = new URLSearchParams({ workspace_scope: this.scope, limit: '10' });
+                const res = await fetch('/api/data-products/trending?' + params.toString());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.rows = data.trending || [];
+            } catch (e) {
+                console.error('trending reload failed', e);
+            }
+        },
+    };
+};
+</script>
+{% endblock %}

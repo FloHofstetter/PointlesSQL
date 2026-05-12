@@ -1424,6 +1424,68 @@
           "sort": "none"
         }
       }
+    },
+    {
+      "id": 22,
+      "type": "table",
+      "title": "Top-10 trending data products (7d)",
+      "description": "Phase 72.3 trending board. Latest snapshot from `data_product_trending`, sorted by rank within the freshest `window_end`. Reflects agent activity (distinct agent_run_id + write count) over the rolling 7-day window. Filtered by `$workspace`.",
+      "gridPos": {
+        "x": 0,
+        "y": 71,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "pointlessql-pg"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "pointlessql-pg"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT t.rank AS rank, (dp.catalog_name || '.' || dp.schema_name) AS data_product, t.agent_run_count AS agent_runs, t.write_count AS writes, t.window_end AS window_end FROM data_product_trending t JOIN data_products dp ON dp.id = t.data_product_id WHERE t.window_end = (SELECT MAX(window_end) FROM data_product_trending WHERE (0 = ANY(ARRAY[$workspace]::int[]) OR workspace_id = ANY(ARRAY[$workspace]::int[]))) AND (0 = ANY(ARRAY[$workspace]::int[]) OR t.workspace_id = ANY(ARRAY[$workspace]::int[])) ORDER BY t.rank ASC LIMIT 10"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no rows yet",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      }
     }
   ],
   "refresh": "30s",

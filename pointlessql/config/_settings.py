@@ -706,6 +706,13 @@ class DataProductsSettings(BaseSettings):
     scan_interval_seconds: int = 0
     yaml_search_paths: list[Path] = Field(default_factory=list[Path])
     re_alert_suppress_minutes: int = 60
+    # Phase 72.3 — cached "trending" rank refresh.  Default 0
+    # keeps the loop dormant so single-tenant installs don't run
+    # the join continuously; flipping to 900 (15 min) starts the
+    # standard cadence.
+    trending_refresh_interval_seconds: int = 0
+    trending_window_days: int = 7
+    trending_top_n: int = 10
 
 
 class NotificationsSettings(BaseSettings):
