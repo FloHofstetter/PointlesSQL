@@ -708,6 +708,27 @@ class DataProductsSettings(BaseSettings):
     re_alert_suppress_minutes: int = 60
 
 
+class NotificationsSettings(BaseSettings):
+    """Per-user notification + daily-digest configuration (Phase 71.4).
+
+    The ``digest_email_optin`` column on the User model is the
+    per-user opt-in.  ``digest_enabled`` is the install-level
+    master switch: existing deployments don't suddenly start
+    firing a daily loop after upgrade.  When both are true *and*
+    the user has unread notifications from the prior 24h, the
+    :func:`_user_notification_digest_loop` emits one
+    ``pointlessql.notification.digest`` governance event per
+    eligible recipient — the audit-stream forwarder's webhook /
+    SES-bound sink does the actual mail delivery.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="POINTLESSQL_NOTIFICATIONS_")
+
+    digest_enabled: bool = False
+    digest_trigger_hour: int = 6
+    digest_poll_interval_seconds: int = 300
+
+
 class WorkspaceReposSettings(BaseSettings):
     """Workspace-repo clone + sync configuration (Phase 51).
 
@@ -865,6 +886,7 @@ class Settings(BaseSettings):
     branch: BranchSettings = Field(default_factory=BranchSettings)
     conventions: ConventionsSettings = Field(default_factory=ConventionsSettings)
     data_products: DataProductsSettings = Field(default_factory=DataProductsSettings)
+    notifications: NotificationsSettings = Field(default_factory=NotificationsSettings)
     mlflow: MLflowSettings = Field(default_factory=MLflowSettings)
     dbt: DBTSettings = Field(default_factory=DBTSettings)
     lens: LensSettings = Field(default_factory=LensSettings)

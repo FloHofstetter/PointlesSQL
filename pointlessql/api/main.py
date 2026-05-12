@@ -28,6 +28,7 @@ from pointlessql.api._bootstrap._loops import (
     _data_product_freshness_loop,  # pyright: ignore[reportPrivateUsage]
     _external_writes_loop,  # pyright: ignore[reportPrivateUsage]
     _lineage_pruner_loop,  # pyright: ignore[reportPrivateUsage]
+    _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
     _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
 from pointlessql.api.dependencies import (
@@ -435,6 +436,18 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="branch-cleanup",
         )
 
+    # Phase 71.4 follow-up B.3 — daily marketplace digest.  Opt-in
+    # default-disabled (``notifications.digest_enabled=False``); the
+    # loop body itself short-circuits when disabled, so we always
+    # start it but it's a cheap no-op until the operator flips the
+    # flag.
+    user_notification_digest_task: asyncio.Task[None] | None = None
+    if not fast_test_lifespan:
+        user_notification_digest_task = asyncio.create_task(
+            _user_notification_digest_loop(app.state.session_factory, settings),
+            name="user-notification-digest",
+        )
+
     #  MLflow Tracking subprocess.  Optional — only spawned
     # when ``settings.mlflow.enabled`` AND the optional ``mlflow``
     # package is installed (``pip install pointlessql[ml]``).  A
@@ -525,6 +538,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             branch_cleanup_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await branch_cleanup_task
+        if user_notification_digest_task is not None:
+            user_notification_digest_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await user_notification_digest_task
         if scheduler is not None:
             await scheduler.stop()
         if not fast_test_lifespan and app.state.uc_client is not None:

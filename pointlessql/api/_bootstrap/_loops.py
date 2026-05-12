@@ -40,6 +40,7 @@ __all__ = [
     "_data_product_freshness_loop",
     "_external_writes_loop",
     "_lineage_pruner_loop",
+    "_user_notification_digest_loop",
     "_workspace_repos_sync_loop",
 ]
 
@@ -116,6 +117,56 @@ async def _external_writes_loop(  # pyright: ignore[reportUnusedFunction]
             await asyncio.sleep(interval)
         except asyncio.CancelledError:
             return
+
+
+async def _user_notification_digest_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Daily marketplace-digest delivery (Phase 71.4 follow-up B.3).
+
+    Active only when ``notifications.digest_enabled`` is true (off
+    by default).  Sleeps until the next ``digest_trigger_hour``
+    UTC boundary, then calls :func:`fire_digests` to emit one
+    ``pointlessql.notification.digest`` envelope per eligible user.
+
+    Args:
+        factory: SQLAlchemy session factory shared with the rest
+            of the app.
+        settings: Snapshotted :class:`Settings` — only the
+            ``notifications`` sub-tree is read.
+    """
+    from pointlessql.services.notifications import (
+        fire_digests,
+        seconds_until_next_window,
+    )
+
+    if not settings.notifications.digest_enabled:
+        # Loop registers but stays inert; cheaper than skipping
+        # registration entirely + lets the operator flip the env
+        # var on without a restart by relying on a future "settings
+        # reload" feature.  Until then we just no-op forever.
+        while True:
+            try:
+                await asyncio.sleep(3600)
+            except asyncio.CancelledError:
+                return
+
+    target_hour = settings.notifications.digest_trigger_hour
+    while True:
+        try:
+            wait = seconds_until_next_window(target_hour)
+            await asyncio.sleep(wait)
+        except asyncio.CancelledError:
+            return
+        try:
+            emitted = await fire_digests(factory, settings)
+            if emitted:
+                logger.info(
+                    "notification_digest: fired %d envelope(s)", emitted
+                )
+        except Exception:  # noqa: BLE001 — digest loop must survive everything
+            logger.exception("notification_digest: tick raised")
 
 
 async def _data_product_freshness_loop(  # pyright: ignore[reportUnusedFunction]

@@ -47,3 +47,6 @@ DATA_PRODUCT_REVIEWED: Final = "pointlessql.data_product.reviewed"
 DATA_PRODUCT_FOLLOWED: Final = "pointlessql.data_product.followed"
 DATA_PRODUCT_SCHEMA_CHANGED: Final = "pointlessql.data_product.schema_changed"
 DATA_PRODUCT_CONTRACT_VIOLATED: Final = "pointlessql.data_product.contract_violated"
+
+# Per-user marketplace digest (Phase 71.4 B.3).
+NOTIFICATION_DIGEST: Final = "pointlessql.notification.digest"
