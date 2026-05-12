@@ -128,6 +128,11 @@ async def get_followers_count(
 ) -> dict[str, Any]:
     """Return the follower count + whether the caller is following.
 
+    Args:
+        catalog: UC catalog segment.
+        schema: UC schema segment.
+        request: Incoming FastAPI request.
+
     Returns:
         ``{"count": int, "following": bool}``.
     """
@@ -169,6 +174,16 @@ async def list_followers(
     Privacy gate: the count is public (above) but the names are
     not.  Workspace-admin proxy is install-admin (``is_admin``)
     per the Phase-71 plan.
+
+    Args:
+        catalog: UC catalog segment.
+        schema: UC schema segment.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"data_product_id": int, "followers": [...]}`` with one
+        entry per follower (user_id + email + display_name +
+        ``created_at`` of the follow link).
 
     Raises:
         AuthorizationError: When the caller is neither steward nor

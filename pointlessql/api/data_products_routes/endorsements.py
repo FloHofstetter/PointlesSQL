@@ -147,9 +147,18 @@ async def apply_endorsement(
 
     Body: ``{"endorsement_type": str, "note_md": str?}``.
 
+    Args:
+        catalog: UC catalog segment.
+        schema: UC schema segment.
+        request: Incoming FastAPI request.
+
     Returns:
         Serialised endorsement row.  If an active row of the same
         type already exists, returns it unchanged (no second row).
+
+    Raises:
+        HTTPException: 400 when ``endorsement_type`` is missing or
+            outside the typed allow-list.
     """
     require_user(request)
     user = get_user(request)
@@ -234,10 +243,20 @@ async def remove_endorsement(
 ) -> dict[str, Any]:
     """Soft-delete an endorsement.
 
+    Args:
+        catalog: UC catalog segment.
+        schema: UC schema segment.
+        endorsement_id: PK of the endorsement row.
+        request: Incoming FastAPI request.
+
     Returns:
         ``{"id": int, "removed_at": str}``.  Idempotent on
         already-removed rows (returns the existing
         ``removed_at`` unchanged).
+
+    Raises:
+        HTTPException: 404 when the endorsement is missing or
+            scoped to a different product.
     """
     require_user(request)
     user = get_user(request)

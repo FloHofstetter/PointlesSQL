@@ -45,6 +45,12 @@ class User(Base):
             cookie field overrides it.  Backfilled to the seeded
             ``default`` workspace (id=1) by the bootstrap migration;
             flipped to NOT NULL once the admin UI exposed a chooser.
+        digest_email_optin: Phase 71.4 opt-in for the daily
+            marketplace-digest email.  The
+            ``_user_notification_digest_loop`` picks the user up
+            when this is ``True`` and unread notifications exist;
+            the audit-stream forwarder's webhook / SES-bound sink
+            performs the actual delivery.
     """
 
     __tablename__ = "users"

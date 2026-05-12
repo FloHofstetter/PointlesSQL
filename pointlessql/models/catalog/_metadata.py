@@ -174,6 +174,20 @@ class QueryHistory(Base):
             and ``"engine_direct"`` for raw engine reads instrumented
             by the same helper.  Validation lives in
             :func:`pointlessql.services.query_history.record_query`.
+        lens_session_id: Owning Lens chat session when the query
+            originated from a Lens tool-call; ``None`` otherwise.
+            Audit cross-reference only; no FK so deleting a Lens
+            session does not cascade-erase its query history.
+        notebook_path: Owning ``.py`` notebook path when the query
+            executed inside a notebook cell; ``None`` for plain
+            editor traffic.  Added in Phase 66.5 (SQL cells) so the
+            ``/queries`` page can deep-link back to the originating
+            notebook cell.
+        notebook_content_hash: FNV-1a-64 content hash of the cell
+            (Phase 66.5).  ``None`` outside the notebook path.
+            Lets a future replay-from-history feature distinguish a
+            re-run of "the same cell" from a re-run of "an edited
+            cell".
     """
 
     __tablename__ = "query_history"

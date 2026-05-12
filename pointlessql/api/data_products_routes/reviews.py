@@ -276,6 +276,11 @@ async def delete_data_product_review(
     (steward + admin do not get a "delete a customer review" gate).
     Idempotent on a missing row.
 
+    Args:
+        catalog: UC catalog segment.
+        schema: UC schema segment.
+        request: Incoming FastAPI request.
+
     Returns:
         ``{"deleted": bool}`` — true when a row was removed.
     """
