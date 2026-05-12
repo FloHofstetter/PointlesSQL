@@ -165,3 +165,63 @@ browser_evaluate(async () => {
  `credentialName` with a clear inline error message before
  issuing the request, matching the spec requirement surfaced
  by BUG-22-02.
+
+## BUGs — Phase 69 replay (2026-05-12)
+
+### BUG-69-01: asset_version not bumped on Phase 68 rebuild
+- **Surface**: every page after rebuilding the image with Phase 68
+ source on top of a pinned `0.1.0rc3` version.
+- **Symptom**: Firefox's ES-module cache served the **pre-Phase-68**
+ `bootstrap.js` (cache key = `?v=0.1.0rc3`, content unchanged from
+ cache perspective). The cached bootstrap.js still referenced the
+ old `/static/js/federation_*.js` paths, which now return 404 →
+ 37 console errors per page + cascading Alpine init regression
+ (command palette backdrop intercepted clicks; see BUG-69-02).
+- **Expected**: `pyproject.toml` version bump as part of the Phase 68
+ commit-range so all asset URLs gain a fresh `?v=` cache buster
+ on deploy.
+- **Actual**: Phase 68 was committed without bumping the version
+ string, even though the "Bekannte Stolperfallen" section of its
+ plan explicitly called this out for `notebook.css`.
+- **Fix in**: `pyproject.toml` (bump to `0.1.0rc4` next time
+ frontend assets change). For ad-hoc dev rebuilds, the Phase-69
+ replay used `0.1.0rc5` temporarily, then reverted.
+
+### BUG-69-02: command-palette backdrop intercepts clicks when Alpine init fails
+- **Surface**: any page after BUG-69-01 caused a module-load
+ failure.
+- **Symptom**: `<div class="pql-cmdk-backdrop">` with
+ `x-show="open"` stayed visible (or at least pointer-event-active)
+ because Alpine never finished initializing the
+ `commandPalette()` factory; clicks on legitimate buttons were
+ swallowed by the invisible backdrop.
+- **Repro**: open `/sql` after a stale-module cache state, try to
+ click Run — Playwright reports `pql-cmdk-backdrop subtree
+ intercepts pointer events`.
+- **Cause**: cascading from BUG-69-01 — when bootstrap.js fails to
+ import federation modules, the surrounding Alpine init chain
+ throws and the palette's `open` initializer never runs.
+- **Fix in**: resolve BUG-69-01 (asset_version bump). No
+ separate code change required; the cascade disappears once
+ module imports succeed.
+
+### BUG-69-03: federation JS imports broken after Phase 68.4 file-move
+- **Surface**: every page (`bootstrap.js` imports the three
+ federation modules unconditionally at startup).
+- **Symptom**: `/static/js/pages/federation/editor_base.js` → 404
+ because the three moved files
+ (`connections.js`, `credentials.js`, `catalogs.js`) still had
+ `import { validateRequired } from './editor_base.js';`.
+ With the move from `/js/` to `/js/pages/federation/`, the
+ relative `./editor_base.js` now resolves to
+ `/static/js/pages/federation/editor_base.js` (404), not the
+ actual file at `/static/js/editor_base.js`.
+- **Expected**: relative import rewritten to `../../editor_base.js`
+ as part of Phase 68.4's `git mv`.
+- **Actual**: imports were missed in the move sweep; only
+ `bootstrap.js`'s import path got updated.
+- **Fix in**: this Phase-69 commit-range —
+ `frontend/js/pages/federation/{connections,credentials,catalogs}.js`
+ each now use `from '../../editor_base.js'`. Verified by
+ reloading `/connections` → 0 console errors, all 3 federation
+ modals open + submit correctly.

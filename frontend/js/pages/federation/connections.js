@@ -8,7 +8,7 @@
  * ``/connections/<name>``.
  */
 
-import { validateRequired } from './editor_base.js';
+import { validateRequired } from '../../editor_base.js';
 
 export function createConnectionForm() {
  return {

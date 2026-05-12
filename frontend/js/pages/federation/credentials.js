@@ -12,7 +12,7 @@
  * redirects to the per-resource detail page.
  */
 
-import { validateRequired } from './editor_base.js';
+import { validateRequired } from '../../editor_base.js';
 
 export function createCredentialForm() {
  return {

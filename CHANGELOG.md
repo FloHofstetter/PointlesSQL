@@ -6,6 +6,56 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 70 — Notebook track (member-access + JS-split,
+  2026-05-12).**  Two bundled notebook concerns landed in one
+  phase.  (1) Member-access: drop the Phase-12.12 admin-only
+  restriction on the browser notebook editor — `/api/notebooks/*`
+  + `/notebooks/workspace` + `/notebooks/edit/*` now accept any
+  authenticated user via a new `require_user` dependency
+  (sibling of `require_admin` etc. in
+  `pointlessql/api/dependencies.py`); the Workspace
+  `permission_link` calls in `icon_rail.html` and `nav_links.html`
+  are replaced with direct `<a href>` tags (Branches + Admin stay
+  gated); the kernel WS `_user_can_use_editor` gate broadens to
+  any authenticated user.  (2) Defensive split of the 939-LOC
+  `notebook_editor.js` monolith following the Phase-68.2
+  plugin-mixin pattern: five new submodules in
+  `frontend/js/notebook/` (`jobs_orchestration`,
+  `kernel_execution`, `cell_operations`, `markdown_output`,
+  `persistence`) each exporting `installXxx(state, deps)` that
+  mutates the shared Alpine state object.  Coordinator shrinks
+  to 190 LOC (state defaults + init/destroy + five `install*()`
+  calls).  Twelve non-admin notebook tests flipped from
+  expecting 403 to expecting 200/201 with shape assertions; the
+  `_user_can_use_editor` WS-gate test removed.  Asset version
+  bumped 0.1.0rc3 → 0.1.0rc4 to invalidate the Firefox
+  ES-module cache.
+
+- **Phase 69 — Vollständiger Browser-Replay der Plattform
+  (2026-05-12).**  Browser-replay sweep of every UI surface across
+  multiple user roles and config flips on the
+  `docker-compose.e2e.yml` stack, primarily to verify Phase 68's
+  structural HTML/CSS/JS reorganization landed cleanly.  Three
+  bugs surfaced.  Two are deploy-hygiene cascades resolved by
+  bumping `pyproject.toml` version whenever `frontend/` changes
+  (BUG-69-01 + BUG-69-02 documented in
+  `docs/e2e-walkthroughs/federation.md`).  One is a real Phase
+  68.4 file-move regression, fixed in this commit-range:
+  `frontend/js/pages/federation/{connections,credentials,
+  catalogs}.js` each had a stale `import './editor_base.js'`
+  pointing one directory too deep after Phase 68.4's `git mv`;
+  now `from '../../editor_base.js'` (BUG-69-03).  Without the
+  fix, every page-load fired a 404 + cascaded into Alpine init
+  failure that left `pql-cmdk-backdrop` intercepting clicks.
+  Persona matrix exercised: admin@pql.test, flo@pql.test (member
+  403 sweep), supervisor + auditor + lineage_inbound Bearer key
+  generated via `/admin/api-keys`, OIDC via `mock-oidc` sidecar.
+  Verified: all 7 table-detail tabs, 4 run-view top tabs + 5
+  Operations sub-tabs, 4 model-detail tabs, 3 federation modals,
+  notebook.css absent on 6 non-notebook surfaces, sql_editor.css
+  cascade @import present, "Sign in with SSO" button flips with
+  OIDC env.
+
 - **Phase 68 — Frontend modularization (2026-05-12).**  Structural
   reorganization for LLM-context efficiency and one-convention
   hygiene; behavior unchanged.  Templates: 12 single-page partials

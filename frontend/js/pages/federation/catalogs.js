@@ -13,7 +13,7 @@
  * keeps the import surface tight.
  */
 
-import { validateRequired } from './editor_base.js';
+import { validateRequired } from '../../editor_base.js';
 
 export function createForeignCatalogForm({ connections }) {
  return {

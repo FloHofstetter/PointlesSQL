@@ -5223,6 +5223,140 @@ PointlesSQL
 │           federation); Browser-Replay als nächste Session-
 │           Aufgabe ausstehend.
 │
+├── Phase 69 — Vollständiger Browser-Replay der Plattform     ✅ done 2026-05-12
+│   │
+│   │   Browser-replay sweep of every UI surface across multiple
+│   │   user roles + config flips, primarily to verify Phase 68's
+│   │   structural HTML/CSS/JS reorganization landed cleanly.  All
+│   │   work on the ``docker-compose.e2e.yml`` stack with the
+│   │   ``scripts/seed-e2e.py`` baseline.  ~20 wave-shaped passes;
+│   │   3 bugs found, 1 fixed in-band (BUG-69-03), 1 cascade
+│   │   (BUG-69-02), 1 deploy-hygiene (BUG-69-01) documented.
+│   │
+│   │   Phase-68 surfaces re-verified end-to-end:
+│   │
+│   │   - **68.1 / table.html** — all 7 tab partials render
+│   │     (Overview / Preview / Columns / Lineage / Tags /
+│   │     Permissions + conditional CDF Events tab gated on
+│   │     ``{% if cdf_subscription %}``).
+│   │   - **68.0+68.2 / run_view operations** — all 4 top tabs
+│   │     (Overview / Operations / Lineage / Audit) plus all 5
+│   │     Operations sub-tabs (Operations / Rejects / Queries /
+│   │     Rewrites / UC mutations) render with 0 console errors.
+│   │   - **68.3 / model.html** — all 4 tab partials render
+│   │     (Overview / Versions / Lineage / Promotion) on a stub
+│   │     ``demo_ml.silver.churn`` model created via soyuz UC API.
+│   │   - **68.4 / federation JS move** — all 3 modals (new
+│   │     Connection / Credential / Foreign Catalog) open
+│   │     cleanly after fixing BUG-69-03 (broken relative
+│   │     imports).
+│   │   - **68.5 / sql_editor.css extract** — confirmed
+│   │     ``/static/css/components/sql_editor.css`` 200 + cascade
+│   │     ``@import`` in ``style.css``.
+│   │   - **68.6 / notebook.css lazy-load** — confirmed
+│   │     ``notebook.css`` loads only on
+│   │     ``/notebooks/edit/<path>`` and is absent on all 6
+│   │     non-notebook surfaces sampled.
+│   │
+│   │   Non-Phase-68 surfaces smoke-tested with 0 errors:
+│   │   ``/`` / ``/runs`` / ``/sql`` / ``/notebooks/workspace`` /
+│   │   ``/models`` / ``/branches`` / ``/audit/inbox`` /
+│   │   ``/audit/by-table`` / ``/volumes`` / ``/alerts`` /
+│   │   ``/dashboards`` / ``/data-products`` / ``/jobs`` /
+│   │   ``/dbt`` + 9 ``/admin/*`` surfaces (CDF subscriptions
+│   │   sits at ``/admin/cdf-subscriptions``, not
+│   │   ``/admin/cdf-tail`` as the plan-doc had it).
+│   │
+│   │   Persona + config matrix verified:
+│   │
+│   │   - admin@pql.test (full privileges) — every surface.
+│   │   - flo@pql.test (member) — 9 admin URLs + 3 federation
+│   │     URLs all return 403; ``/sql`` + ``/runs`` accessible.
+│   │   - Bearer-key (supervisor + auditor + lineage_inbound)
+│   │     via ``Authorization: Bearer <secret>`` — audit
+│   │     aggregates returned 200 / 422 (auth pass, params
+│   │     incomplete).  Key generated via ``/admin/api-keys``
+│   │     and revoked at session end.
+│   │   - OIDC config flip via ``POINTLESSQL_OIDC_*`` env +
+│   │     ``mock-oidc`` sidecar — ``/auth/login`` gains
+│   │     "Sign in with SSO" button as the visible marker.
+│   │
+│   ├── BUG-69-01 — asset_version not bumped on Phase 68
+│   │       rebuild → Firefox ES-module cache served stale
+│   │       bootstrap.js.  Deploy-hygiene fix: bump version
+│   │       string whenever ``frontend/`` changes.  Phase-69
+│   │       replay temporarily bumped to 0.1.0rc5; reverted
+│   │       at close.  Documented in
+│   │       ``docs/e2e-walkthroughs/federation.md``.
+│   ├── BUG-69-02 — command-palette backdrop intercepted
+│   │       clicks after BUG-69-01 broke Alpine init.  Pure
+│   │       cascade; resolves automatically once asset_version
+│   │       bump unblocks module imports.
+│   └── BUG-69-03 — fixed in this commit-range.
+│           ``frontend/js/pages/federation/{connections,
+│           credentials,catalogs}.js`` had stale
+│           ``import './editor_base.js'`` after Phase 68.4's
+│           ``git mv`` to ``js/pages/federation/`` — now
+│           ``../../editor_base.js``.  Without this fix, every
+│           page-load fired a 404 + cascaded into BUG-69-02.
+│
+├── Phase 70 — Notebook track (member-access + JS-split)        ✅ done 2026-05-12
+│   │
+│   │   Two thematically linked notebook concerns bundled into
+│   │   one phase: drop the Phase-12.12 admin-only restriction
+│   │   on the notebook editor + defensive split of the 939-LOC
+│   │   ``notebook_editor.js`` monolith.  Plan in
+│   │   ``.claude/plans/ja-plane-phase-28-tidy-feather.md``.
+│   │
+│   ├── 70.1 — ``require_user`` dep + 11+2 notebook routes
+│   │       flipped from ``require_admin`` to ``require_user``
+│   │       (+ WebSocket ``_user_can_use_editor`` broadened to
+│   │       accept any authenticated user).  Adds a new sibling
+│   │       to ``require_admin`` / ``require_supervisor`` etc.
+│   │       in ``api/dependencies.py``; explicit ``require_user``
+│   │       call sites keep the auth intent grep-able instead of
+│   │       silently dropping the gate.
+│   ├── 70.2 — ``permission_link`` macro calls for the Workspace
+│   │       icon-rail (``icon_rail.html:62``) and nav-links
+│   │       entry (``nav_links.html:51``) replaced with direct
+│   │       ``<a href>`` tags.  Branches (sidebar.html:36) and
+│   │       Admin (icon_rail.html:147 / nav_links.html:86)
+│   │       stay permission-gated.
+│   ├── 70.3 — Five non-admin-forbidden notebook tests flipped
+│   │       from ``assert status_code == 403`` to expect 200
+│   │       + JSON-shape assertions (tree, workspace page, load,
+│   │       editor page, save).
+│   ├── 70.4 — Extract ``jobs_orchestration.js`` (190 LOC):
+│   │       Schedule + Run-Once modals, Notebook-Jobs panel,
+│   │       ``_pollJobRun``.  Plugin-mixin pattern follows
+│   │       Phase-68.2 run_view split — ``installXxx(state, deps)``
+│   │       mutates the shared Alpine state.  Coordinator
+│   │       drops 939 → 755 LOC.
+│   ├── 70.5 — Extract ``kernel_execution.js`` (208 LOC):
+│   │       WS kernel client, cell-run lifecycle (run / interrupt
+│   │       / restart), Variable Inspector helpers.  Coordinator
+│   │       drops 755 → 572 LOC.
+│   ├── 70.6 — Extract ``cell_operations.js`` (146 LOC):
+│   │       add/delete/move/convert cells + per-cell editor
+│   │       lifecycle.  Coordinator drops 572 → 446 LOC.
+│   ├── 70.7 — Two-in-one: extract ``markdown_output.js``
+│   │       (122 LOC, output renderer + markdown edit/view +
+│   │       cell-editor mount) and ``persistence.js`` (144 LOC,
+│   │       save/autosave/keymap + params-tag toggle + cell
+│   │       run-history).  Coordinator drops 446 → 190 LOC and
+│   │       now holds only the state defaults, init/destroy,
+│   │       and five ``install*()`` calls.
+│   └── 70.8 — Asset-version bump (``0.1.0rc3`` → ``0.1.0rc4``)
+│           — seven JS files + two templates touched, so the
+│           ``?v=`` cache-buster has to flip (see
+│           ``feedback_asset_version_bump.md``).  Seven
+│           additional non-admin notebook tests flipped (inspect,
+│           jobs panel, run-once, render-markdown, cell-history,
+│           crud-create) + the ``_user_can_use_editor`` WS gate
+│           test removed (no longer reachable).  Pytest grün on
+│           all notebook surfaces (22+ tests); 7 pre-existing
+│           failures unrelated to Phase 70 left untouched.
+│
 ├── Phase 65 — Lens (read-only Q&A surface, MCP + Browser parallel) ✅ done 2026-05-10
 │   │
 │   │   New analyst-facing chat-style surface that exposes read-only
