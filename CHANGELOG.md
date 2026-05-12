@@ -6,6 +6,59 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 71.6 — Browse-page rework (2026-05-12).** Reworked the
+  data-product browse page (``/data-products``) around a
+  sortable table with click-to-sort columns (Product, Version,
+  Steward, ★, Followers, Comments 7d, Last loaded), a filter
+  chip row (``[All] [Has comments] [Has README] [Stale]``), a
+  view-mode toggle (table / cards) persisted in ``localStorage``,
+  and a "Recently active" pill row at the top scored by
+  ``comment_count_7d + 0.5 × review_count`` (top 5).  The
+  ``GET /api/data-products`` payload now carries ``follow_count``,
+  ``comment_count_7d`` (live comments only, last 7 days),
+  ``has_readme``, and ``freshness_status``
+  (``on_time`` / ``stale`` / ``no_sla``).  Aggregates compute via
+  four grouped LEFT OUTER JOIN-style queries; no N+1.  SQLite's
+  naive-datetime quirk on the ``last_loaded_at`` column is
+  handled by coercing to UTC before the SLA comparison.  7
+  pytest cases.
+
+- **Sprint 71.5 — Wiki / README per DP (2026-05-12).** New
+  ``data_product_readmes`` table — one row per *version*,
+  UNIQUE on ``(workspace, dp, version_int)``.  Latest =
+  ``max(version_int)``.  Five endpoints (GET latest /
+  history / specific version, PUT new version, GET unified
+  diff between two versions).  PUT is steward-or-admin only
+  and idempotent on unchanged body (no v+1 byte-identical
+  row).  Diff uses ``difflib.unified_diff`` so the History
+  modal can render a unified-diff text pane.  New README tab
+  in ``data_product.html`` with edit + history + diff
+  panels.  11 pytest cases.
+
+- **Sprint 71.4 — Notification fanout + per-user inbox
+  (2026-05-12).** New ``user_notifications`` per-recipient
+  inbox table (Alembic also adds ``users.digest_email_optin``).
+  Five new CloudEvent types in
+  ``services/cloudevents/types.py`` + ``governance.py``:
+  ``data_product.commented`` / ``.reviewed`` / ``.followed`` /
+  ``.schema_changed`` / ``.contract_violated``.  New
+  ``services/notifications/fanout.py`` ::
+  ``fanout_dataproduct_event`` resolves recipients
+  (followers ∪ mentions − actor) and bulk-inserts inbox rows.
+  Comment POST / review PUT / follow POST each emit the
+  matching governance event (and where applicable fan out
+  to inbox rows).  Best-effort wrapper: a fan-out failure
+  never breaks the originating audit row.  New routes in
+  ``pointlessql/api/notifications_routes.py``
+  (``/notifications`` HTML page + four JSON endpoints)
+  plus ``pointlessql/api/me_routes.py``
+  (``/me/settings`` page + ``GET/PUT /api/me/settings``).
+  Bell icon polled every 60s lands in the topbar via
+  ``components/notification_bell.html``.  12 pytest cases.
+  Schema-change + contract-violated emit sites stay queued
+  for a follow-up — they need a loader hook outside this
+  sprint's scope.
+
 - **Sprint 71.3 — Follow / subscribe (2026-05-12).** New
   ``data_product_follows`` composite-PK table (workspace +
   product + user) and four endpoints under

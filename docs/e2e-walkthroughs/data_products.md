@@ -155,6 +155,73 @@ Browser-only verifications after the curl reload completes:
 7. `browser_evaluate('() => fetch("/api/data-products").then(r => r.json())')`
    — assert the JSON keys match what the cards rendered.
 
+## Marketplace polish (Phase 71)
+
+> **Phase:** 71 · **Surface:** ``/data-products`` browse + the
+> per-product detail tabs (Discussion / Reviews / README) + the
+> new ``/notifications`` inbox.
+
+Phase 71 layered six social affordances on top of the Phase-50
+data-product surface.  Replay these after the curl-reload above
+has the cached product visible:
+
+1. **Discussion tab**:
+   - `browser_navigate('http://127.0.0.1:8000/data-products/main/sales_gold')`
+   - `browser_click('button[data-pql-tab-key="discussion"]')`
+   - Type a body in `textarea.pql-comment-new`, click
+     `button.pql-comment-submit`; assert the row appears with the
+     admin's display name.
+   - Reply via the inline "Reply" button + `textarea.pql-comment-reply`
+     + "Post reply".  Soft-delete the parent ("Delete" button);
+     assert the parent renders `[deleted]` with the reply still
+     attached.
+
+2. **Reviews tab**:
+   - `browser_click('button[data-pql-tab-key="reviews"]')`
+   - Click the 4th star (`i.bi-star[data-star-value="4"]`), fill
+     `textarea.pql-review-body`, click `button.pql-review-submit`.
+   - Assert the new `div.pql-review-card` carries `★★★★☆`.
+   - Reload — the header pill `span.pql-dp-stars-badge` shows
+     `★ 4.0 (1)`.
+
+3. **Follow + counter + ``/data-products/followed``**:
+   - On the detail page, click `button.pql-dp-follow-btn`; assert
+     it flips to "Following" + `pql-dp-follower-count` shows
+     "· 1 follower".
+   - Navigate to `/data-products/followed`; assert the row
+     `tr.pql-followed-row[data-followed-ref="main.sales_gold"]`
+     exists.
+
+4. **Notification fan-out + bell**:
+   - Log out, log in as `nonadmin@test.com`; follow the same DP.
+   - Switch back to admin, post a comment.
+   - Re-log as non-admin; the topbar bell
+     (`div.pql-notif-bell span.pql-notif-bell-badge`) shows "1".
+   - Click `/notifications`; assert the row references the
+     comment and clicking it deep-links to the discussion tab.
+   - Click "Mark all read"; assert the bell badge disappears.
+
+5. **README tab + diff**:
+   - As steward (or install-admin), open the DP detail page,
+     click `button[data-pql-tab-key="readme"]`.
+   - Click `button.pql-readme-edit-btn`, enter "v1 body",
+     click `button.pql-readme-save`.
+   - Edit again, save "v2 body".
+   - Click `button.pql-readme-history-btn`; tick `from=1`,
+     `to=2`, click `button.pql-readme-compare-btn`.  Assert
+     `pre.pql-readme-diff` carries `-v1 body` + `+v2 body`.
+
+6. **Browse-page rework**:
+   - Navigate to `/data-products`.
+   - Assert the table fingerprint (`.pql-dp-table-card .pql-dp-table`)
+     ships sortable columns.
+   - Click the **Followers** header twice; the rows resort
+     descending by `follow_count`.
+   - Toggle the chip `[Has README]`; the listing narrows to DPs
+     that have a README row.
+   - Click the cards-view button (`.pql-dp-view-toggle [data-view="cards"]`);
+     reload — `localStorage.pql.dp.view-mode` survives.
+
 ## Anti-goals
 
 - The yaml is canonical; the admin UI does **not** edit it.
@@ -163,3 +230,6 @@ Browser-only verifications after the curl reload completes:
   not an export target.
 - No domain-specific RBAC ladder — Workspace + scopes
   (admin/supervisor/auditor) reach everything that needs gating.
+- Phase 71 does **not** rebuild the user-graph: there are no
+  profile pages, no follow-user, no DM.  Social affordances stay
+  scoped to data-products.

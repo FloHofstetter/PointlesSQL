@@ -103,7 +103,7 @@ PointlesSQL
 │   │   ```
 │   │
 │
-├── Phase 71 — Data-Product Marketplace polish              ⏳ in progress (Session A landed)
+├── Phase 71 — Data-Product Marketplace polish              ✅ done 2026-05-12
 │   │
 │   │   Catch-up to enterprise-catalog collaboration table stakes
 │   │   (Atlan, Collibra, Alation, Snowflake Marketplace).
@@ -171,7 +171,7 @@ PointlesSQL
 │   │   │   current user's followed DPs.
 │   │   └── ~8 pytest cases.
 │   │
-│   ├── Sprint 71.4 — Notification fanout                      ⏳ planned
+│   ├── Sprint 71.4 — Notification fanout                      ✅ done 2026-05-12
 │   │   ├── Wire follow + comment + review events into the
 │   │   │   Phase-20 audit-stream forwarder so existing
 │   │   │   webhook/S3/CloudTrail sinks receive them — no new
@@ -187,7 +187,7 @@ PointlesSQL
 │   │   │   surface (Phase 33 admin precedent).
 │   │   └── ~12 pytest cases.
 │   │
-│   ├── Sprint 71.5 — Wiki / README per DP                     ⏳ planned
+│   ├── Sprint 71.5 — Wiki / README per DP                     ✅ done 2026-05-12
 │   │   ├── New model: `DataProductReadme` (dp_slug, body_md,
 │   │   │   version_int, updated_by_user_id, updated_at,
 │   │   │   workspace_id) — single row per DP, version_int
@@ -200,7 +200,7 @@ PointlesSQL
 │   │   │   versions (reuses the diff macro from Phase 18.9).
 │   │   └── ~6 pytest cases.
 │   │
-│   └── Sprint 71.6 — Browse-page rework                       ⏳ planned
+│   └── Sprint 71.6 — Browse-page rework                       ✅ done 2026-05-12
 │       ├── `/data-products` index gets sortable columns
 │       │   (rating-desc, recently-active, follow-count,
 │       │   freshness-on-time).
