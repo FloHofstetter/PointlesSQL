@@ -103,7 +103,7 @@ PointlesSQL
 │   │   ```
 │   │
 │
-├── Phase 71 — Data-Product Marketplace polish              ⏳ planned
+├── Phase 71 — Data-Product Marketplace polish              ⏳ in progress (Session A landed)
 │   │
 │   │   Catch-up to enterprise-catalog collaboration table stakes
 │   │   (Atlan, Collibra, Alation, Snowflake Marketplace).
@@ -130,7 +130,7 @@ PointlesSQL
 │   │     forwarder (webhook + email sinks) — no new pub-sub
 │   │     plumbing.
 │   │
-│   ├── Sprint 71.1 — Comment threads per data product         ⏳ planned
+│   ├── Sprint 71.1 — Comment threads per data product         ✅ done 2026-05-12
 │   │   ├── New model: `DataProductComment` (id, dp_slug,
 │   │   │   parent_comment_id, author_user_id, body_md,
 │   │   │   created_at, deleted_at, workspace_id) + Alembic.
@@ -146,7 +146,7 @@ PointlesSQL
 │   │   └── ~15 pytest cases (CRUD + soft-delete + auth +
 │   │       cross-workspace isolation).
 │   │
-│   ├── Sprint 71.2 — Star ratings + review text               ⏳ planned
+│   ├── Sprint 71.2 — Star ratings + review text               ✅ done 2026-05-12
 │   │   ├── New model: `DataProductReview` (id, dp_slug,
 │   │   │   author_user_id, stars 1-5, body_md, created_at,
 │   │   │   updated_at, dp_semver_at_review, workspace_id) +
@@ -159,7 +159,7 @@ PointlesSQL
 │   │   │   stars-desc).
 │   │   └── ~10 pytest cases.
 │   │
-│   ├── Sprint 71.3 — Follow / subscribe                       ⏳ planned
+│   ├── Sprint 71.3 — Follow / subscribe                       ✅ done 2026-05-12
 │   │   ├── New model: `DataProductFollow` (user_id, dp_slug,
 │   │   │   workspace_id, created_at) — composite PK + Alembic.
 │   │   ├── `/api/data-products/{slug}/follow` POST/DELETE for

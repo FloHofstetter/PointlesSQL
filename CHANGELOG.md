@@ -6,6 +6,50 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 71.3 — Follow / subscribe (2026-05-12).** New
+  ``data_product_follows`` composite-PK table (workspace +
+  product + user) and four endpoints under
+  ``/api/data-products/{catalog}/{schema}/`` (POST/DELETE
+  ``/follow``, GET ``/followers/count``, GET ``/followers``).
+  POST + DELETE are idempotent; the count endpoint is public to
+  any logged-in user; the full list is restricted to the
+  product's steward or install-admin so analyst privacy holds.
+  Detail-page header gains a Follow/Following button + follower
+  count badge.  New HTML page
+  ``GET /data-products/followed`` with a per-user table view.
+  9 pytest cases covering idempotency, privacy gate, HTML
+  index, cross-workspace iso.
+
+- **Sprint 71.2 — Star ratings + text reviews (2026-05-12).** New
+  ``data_product_reviews`` table with one row per ``(workspace,
+  product, user)`` (UNIQUE constraint), 1..5 stars (DB CHECK),
+  markdown body, SemVer snapshot at write time.  Three endpoints
+  (GET list + summary, PUT upsert, DELETE self).  The browse
+  listing now joins a grouped aggregate so each card carries
+  ``avg_stars`` + ``review_count`` for the star badge.  New
+  Reviews tab on the DP detail page with lazy load, 5-star input
+  widget, sort selector, delete-own-review.  Header gets the
+  same star badge.  10 pytest cases (upsert idempotency, DELETE
+  round-trip, stars-range, summary aggregation, browse
+  enrichment, cross-workspace iso).
+
+- **Sprint 71.1 — Comment threads per data product + routes-package
+  split (2026-05-12).** Refactored the 430-LOC
+  ``data_products_routes.py`` monolith into a Phase-26-style
+  package (listing / detail / diff / lineage / reload) and added
+  ``data_products_routes/comments.py`` on top.  New
+  ``data_product_comments`` table with self-FK threading capped
+  at depth 2, ``deleted_at`` soft-delete (placeholder rendering
+  when a parent with live replies is removed), JSON sidecar for
+  resolved ``@<email>`` mentions (fenced code blocks stripped
+  before regex).  Three endpoints (GET threaded list, POST
+  create, DELETE soft-delete by author / steward / install-admin).
+  New Discussion tab on the DP detail page with Alpine state
+  (lazy load on ``shown.bs.tab``, reply UI, markdown rendered
+  via ``x-text`` so no HTML injection).  16 pytest cases
+  covering CRUD, depth cap, soft-delete placeholder, auth
+  ladders, cross-workspace iso, and mention resolution.
+
 - **Sprint H.2 — Pyright triage: 28 errors → 0, budget 497 → 585
   (2026-05-12).** Errors had drifted from 0 at Phase 45 to 28
   pre-existing under HEAD; CI's lint job had been red on this gate
