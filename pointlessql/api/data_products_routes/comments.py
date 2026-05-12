@@ -28,11 +28,29 @@ from pointlessql.api.dependencies import current_workspace_id, get_user, require
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
+from pointlessql.services import audit as audit_service
 from pointlessql.services.notifications import fanout_dataproduct_event
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_COMMENTED,
     emit_governance_event,
 )
+
+# Phase 72.5 — audit-bound discussions sidecar.  Each comment
+# POST / DELETE drops an ``audit_log`` row alongside the
+# DataProductComment write so the Phase-18.7 audit-search FTS
+# index picks comments up.  The comments stay system-of-record;
+# the audit row is a discoverability mirror.
+_DISCUSSION_POSTED = "audit.discussion.posted"
+_DISCUSSION_DELETED = "audit.discussion.deleted"
+_BODY_PREVIEW_LEN = 140
+
+
+def _body_preview(body_md: str) -> str:
+    """Truncate a comment body for the audit-log detail JSON."""
+    snippet = body_md.strip().replace("\n", " ")
+    if len(snippet) > _BODY_PREVIEW_LEN:
+        return snippet[: _BODY_PREVIEW_LEN - 1] + "…"
+    return snippet
 
 router = APIRouter(tags=["data-products"])
 
@@ -252,6 +270,28 @@ async def post_data_product_comment(
         comment_id = comment.id
         comment_dp_id = comment.data_product_id
 
+    # Phase 72.5: audit-log mirror so the Phase-18.7 FTS picks
+    # comments up in `/audit/search`.  The DataProductComment
+    # table stays system-of-record; this row is discoverability
+    # only.  body_preview is truncated to keep storage bounded.
+    audit_service.log_action(
+        factory,
+        user_id=user["id"],
+        user_email=user.get("email", ""),
+        action=_DISCUSSION_POSTED,
+        target=(
+            f"data_product:{catalog}.{schema}#tab-discussion-comment-"
+            f"{comment_id}"
+        ),
+        detail={
+            "data_product_id": comment_dp_id,
+            "comment_id": comment_id,
+            "parent_comment_id": parent_comment_id,
+            "body_preview": _body_preview(body_md),
+        },
+        workspace_id=workspace_id,
+    )
+
     # Phase 71.4: per-user inbox fan-out + governance CloudEvent.
     source_url = (
         f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
@@ -346,11 +386,33 @@ async def delete_data_product_comment(
                 full_name=str(comment_id),
             )
 
+        was_already_deleted = comment.deleted_at is not None
         if comment.deleted_at is None:
             comment.deleted_at = datetime.datetime.now(datetime.UTC)
             session.add(comment)
             session.commit()
             session.refresh(comment)
+
+    # Phase 72.5: audit-log mirror — only fire on the *transition*
+    # (was-live → soft-deleted), not on idempotent re-DELETEs that
+    # find the row already gone.  This keeps the audit trail
+    # accurate at one row per actual moderation action.
+    if not was_already_deleted:
+        audit_service.log_action(
+            factory,
+            user_id=user["id"],
+            user_email=user.get("email", ""),
+            action=_DISCUSSION_DELETED,
+            target=(
+                f"data_product:{catalog}.{schema}#tab-discussion-comment-"
+                f"{comment.id}"
+            ),
+            detail={
+                "data_product_id": comment.data_product_id,
+                "comment_id": comment.id,
+            },
+            workspace_id=workspace_id,
+        )
 
     return {
         "id": comment.id,
