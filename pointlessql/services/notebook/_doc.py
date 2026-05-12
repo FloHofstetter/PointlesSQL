@@ -54,23 +54,30 @@ _CELL_METADATA_FILTER = "-all"
 
 # Marker grammar (UUID-free):
 #
-#   ``# %%``                 — code cell
-#   ``# %% [markdown]``      — markdown cell
-#   ``# %% [sql]``           — SQL cell without a result variable
-#   ``# %% [sql] df``        — SQL cell that binds its DataFrame to ``df``
+#   ``# %%``                                — code cell
+#   ``# %% [markdown]``                     — markdown cell
+#   ``# %% [sql]``                          — SQL cell without a result variable
+#   ``# %% [sql] df``                       — SQL cell that binds its DataFrame to ``df``
+#   ``# %% tags=["parameters"]``            — code cell tagged as papermill parameters
+#   ``# %% [markdown] tags=["aside"]``      — markdown cell with arbitrary tag(s)
+#   ``# %% [sql] df tags=["parameters"]``   — SQL cell with result_var + tag(s)
 #
 # Group 1 captures the optional bracketed tag (``markdown`` / ``sql``
 # / unknown → fall back to ``code``). Group 2 captures the optional
 # positional Python identifier that SQL cells use as their
-# ``result_var``. ``cell_parser.js`` on the client must stay in
-# lock-step with this shape.
+# ``result_var``. Group 3 captures the optional ``tags=[...]``
+# inner content (e.g. ``"parameters"`` or ``"a", "b"``); we parse it
+# with :func:`_parse_tags_list` into a tuple. ``cell_parser.js`` on
+# the client must stay in lock-step with this shape.
 _MARKER_RE = re.compile(
     r"^#\s*%%"
     r"(?:\s+\[(\w+)\])?"
     r"(?:\s+([A-Za-z_][A-Za-z0-9_]*))?"
+    r"(?:\s+tags=\[([^\]]*)\])?"
     r"\s*$",
     re.MULTILINE,
 )
+_TAG_LITERAL_RE = re.compile(r'"([^"]*)"')
 
 # Legacy grammar: every cell carried a ``pql_cell_id="<uuid>"``
 # token and SQL cells pinned ``result_var="<name>"`` via a named
@@ -165,6 +172,12 @@ class NotebookCell:
             its result to in the kernel namespace.  ``None`` for
             non-SQL cells and SQL cells without a positional
             identifier after the ``[sql]`` tag.
+        tags: Ordered, deduplicated tags carried by the cell marker
+            (``# %% tags=["parameters", "aside"]``). Acts as
+            metadata — never feeds into ``content_hash`` so a
+            params-tag-toggle is a no-op for cell identity. The
+            canonical use is ``"parameters"`` (papermill convention),
+            but arbitrary tags round-trip losslessly.
     """
 
     id: str
@@ -172,6 +185,7 @@ class NotebookCell:
     cell_type: str
     source: str
     result_var: str | None = None
+    tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -249,10 +263,33 @@ def resolve_py_notebook_path(
     return resolved
 
 
+def _parse_tags_list(raw_inner: str) -> tuple[str, ...]:
+    """Parse the inner contents of a ``tags=[...]`` marker segment.
+
+    The regex captures the bytes *between* the brackets, so we still
+    need to peel quoted literals out one by one. Deduplicates while
+    preserving first-seen order so a malformed ``tags=["a","a"]``
+    round-trips as ``["a"]`` rather than triggering a downstream
+    surprise.
+
+    Args:
+        raw_inner: The captured inner text (e.g. ``'"a", "b"'``).
+
+    Returns:
+        Ordered, deduplicated tags as a tuple of strings. Empty input
+        (``tags=[]``) yields ``()``.
+    """
+    seen: list[str] = []
+    for match in _TAG_LITERAL_RE.findall(raw_inner):
+        if match not in seen:
+            seen.append(match)
+    return tuple(seen)
+
+
 def _scan_marker_extensions(
     raw_text: str,
-) -> list[tuple[str | None, str | None]]:
-    """Walk a ``.py`` notebook line-by-line, return ``(tag, result_var)`` per marker.
+) -> list[tuple[str | None, str | None, tuple[str, ...]]]:
+    """Walk a ``.py`` notebook line-by-line, return marker metadata per cell.
 
     The list length equals the number of cells jupytext will produce,
     in order. Accepts both the canonical UUID-free grammar and the
@@ -263,19 +300,23 @@ def _scan_marker_extensions(
         raw_text: Full file content (UTF-8 decoded).
 
     Returns:
-        One tuple per detected marker line, in file order. ``tag`` is
-        ``"markdown"`` / ``"sql"`` / ``None``; ``result_var`` is the
-        positional SQL identifier when present, ``None`` otherwise.
+        One ``(tag, result_var, tags)`` tuple per detected marker line.
+        ``tag`` is ``"markdown"`` / ``"sql"`` / ``None``; ``result_var``
+        is the positional SQL identifier when present, ``None``
+        otherwise; ``tags`` is the parsed ``tags=[...]`` content
+        (empty tuple when absent). Legacy markers always return an
+        empty ``tags`` tuple — the next save rewrites them anyway.
     """
-    out: list[tuple[str | None, str | None]] = []
+    out: list[tuple[str | None, str | None, tuple[str, ...]]] = []
     for line in raw_text.split("\n"):
         m_legacy = _LEGACY_MARKER_RE.match(line)
         if m_legacy:
-            out.append((m_legacy.group(1), m_legacy.group(3)))
+            out.append((m_legacy.group(1), m_legacy.group(3), ()))
             continue
         m_new = _MARKER_RE.match(line)
         if m_new:
-            out.append((m_new.group(1), m_new.group(2)))
+            tags_inner = m_new.group(3) or ""
+            out.append((m_new.group(1), m_new.group(2), _parse_tags_list(tags_inner)))
     return out
 
 
@@ -414,8 +455,9 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
         raw_type = getattr(raw_cell, "cell_type", "code")
         cell_type = "markdown" if raw_type == "markdown" else "code"
         result_var: str | None = None
+        marker_tags: tuple[str, ...] = ()
         if index < len(marker_exts):
-            tag, rv = marker_exts[index]
+            tag, rv, marker_tags = marker_exts[index]
             if tag == "sql":
                 cell_type = "sql"
                 # rv may already be ``None`` for a ``# %% [sql]`` that
@@ -434,6 +476,7 @@ def load_document(absolute_path: Path, relative_path: str) -> NotebookDocument:
                 cell_type=cell_type,
                 source=source,
                 result_var=result_var,
+                tags=marker_tags,
             )
         )
     return NotebookDocument(
@@ -449,9 +492,11 @@ def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:
     Canonical grammar — no ``pql_cell_id`` / ``result_var="…"``
     segments in markers. Code cells emit ``# %%``, markdown cells
     emit ``# %% [markdown]``, SQL cells emit ``# %% [sql]`` or
-    ``# %% [sql] <result_var>``. The SQL variants are injected via
-    :func:`_rewrite_sql_markers` after jupytext has written the file
-    because jupytext does not know about the ``[sql]`` tag.
+    ``# %% [sql] <result_var>``. Optional ``tags=[...]`` suffixes
+    round-trip on any cell type. The SQL variants + tag suffixes are
+    injected via :func:`_rewrite_cell_markers` after jupytext has
+    written the file because jupytext does not know about the
+    PointlesSQL-specific marker extensions.
 
     Round-tripping a legacy file through :func:`load_document` +
     :func:`save_document` strips the old UUID markers losslessly in
@@ -465,7 +510,7 @@ def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:
         cells: Ordered cells to write.
     """
     nb_cells: list[Any] = []
-    extensions: list[tuple[str | None, str | None]] = []
+    extensions: list[tuple[str | None, str | None, tuple[str, ...]]] = []
     for cell in cells:
         if cell.cell_type == "markdown":
             nb_cell = nbformat.v4.new_markdown_cell(cell.source)
@@ -473,35 +518,89 @@ def save_document(absolute_path: Path, cells: list[NotebookCell]) -> None:
             nb_cell = nbformat.v4.new_code_cell(cell.source)
         nb_cells.append(nb_cell)
         if cell.cell_type == "sql":
-            extensions.append(("sql", cell.result_var))
+            extensions.append(("sql", cell.result_var, cell.tags))
+        elif cell.cell_type == "markdown":
+            extensions.append(("markdown", None, cell.tags))
         else:
-            extensions.append((None, None))
+            extensions.append((None, None, cell.tags))
     notebook = nbformat.v4.new_notebook(cells=nb_cells)
     notebook.metadata.setdefault("jupytext", {})["cell_metadata_filter"] = _CELL_METADATA_FILTER
     jupytext.write(notebook, absolute_path, fmt="py:percent")
-    if any(tag == "sql" for tag, _ in extensions):
-        _rewrite_sql_markers(absolute_path, extensions)
+    if any(_marker_needs_rewrite(ext) for ext in extensions):
+        _rewrite_cell_markers(absolute_path, extensions)
 
 
-def _rewrite_sql_markers(
+def _marker_needs_rewrite(
+    ext: tuple[str | None, str | None, tuple[str, ...]],
+) -> bool:
+    """Return True when this cell's marker needs PointlesSQL-side rewriting.
+
+    Jupytext writes plain ``# %%`` and ``# %% [markdown]`` lines on
+    its own; we only need to step in for SQL cells (jupytext doesn't
+    know our ``[sql]`` tag) and for any cell that carries tags
+    (``# %% tags=[...]``).
+
+    Args:
+        ext: Per-cell extension tuple ``(tag, result_var, tags)``.
+
+    Returns:
+        ``True`` when at least one piece of the marker needs to be
+        injected; ``False`` when the jupytext-emitted line is already
+        canonical.
+    """
+    tag, _, tags = ext
+    return tag == "sql" or bool(tags)
+
+
+def _format_marker(
+    tag: str | None,
+    result_var: str | None,
+    tags: tuple[str, ...],
+) -> str:
+    """Render a canonical marker line for one cell.
+
+    Order: cell-type bracket → positional ``result_var`` (SQL only) →
+    ``tags=[...]`` suffix. Empty pieces are elided. The grammar mirrors
+    what :data:`_MARKER_RE` accepts so write→read round-trips are
+    byte-identical on the marker line.
+
+    Args:
+        tag: ``"sql"`` / ``"markdown"`` / ``None`` for plain code.
+        result_var: Optional SQL ``result_var`` identifier.
+        tags: Ordered tags tuple (already deduplicated).
+
+    Returns:
+        The marker line without trailing newline.
+    """
+    parts = ["# %%"]
+    if tag in {"markdown", "sql"}:
+        parts.append(f"[{tag}]")
+    if tag == "sql" and result_var:
+        parts.append(result_var)
+    if tags:
+        joined = ", ".join(f'"{t}"' for t in tags)
+        parts.append(f"tags=[{joined}]")
+    return " ".join(parts)
+
+
+def _rewrite_cell_markers(
     absolute_path: Path,
-    extensions: list[tuple[str | None, str | None]],
+    extensions: list[tuple[str | None, str | None, tuple[str, ...]]],
 ) -> None:
-    """Inject the ``[sql]`` tag + positional ``result_var`` into SQL markers.
+    """Inject SQL tag + ``result_var`` + ``tags=[...]`` into cell markers.
 
     Walks the file jupytext just wrote, counts each marker line, and
-    rewrites the SQL ones to the canonical shape:
-
-    * ``# %% [sql]`` — SQL cell without a result variable
-    * ``# %% [sql] df`` — SQL cell binding its DataFrame to ``df``
-
-    Idempotent — running twice produces the same output.
+    rewrites the lines that need PointlesSQL-side polish (per
+    :func:`_marker_needs_rewrite`). Idempotent — running twice produces
+    the same output.
 
     Args:
         absolute_path: File jupytext just wrote.
-        extensions: One ``(tag, result_var)`` tuple per cell in the
-            same order jupytext emitted them. Non-SQL cells pass
-            ``(None, None)`` and their marker line is left as-is.
+        extensions: One ``(tag, result_var, tags)`` tuple per cell in
+            the same order jupytext emitted them. Cells whose marker
+            jupytext already emitted in canonical form
+            (``# %%`` plain code or ``# %% [markdown]`` without tags)
+            pass through untouched.
     """
     text = absolute_path.read_text()
     lines = text.split("\n")
@@ -512,11 +611,8 @@ def _rewrite_sql_markers(
         cell_index += 1
         if cell_index >= len(extensions):
             continue
-        tag, result_var = extensions[cell_index]
-        if tag != "sql":
+        ext = extensions[cell_index]
+        if not _marker_needs_rewrite(ext):
             continue
-        new_line = "# %% [sql]"
-        if result_var:
-            new_line += f" {result_var}"
-        lines[line_index] = new_line
+        lines[line_index] = _format_marker(*ext)
     absolute_path.write_text("\n".join(lines))
