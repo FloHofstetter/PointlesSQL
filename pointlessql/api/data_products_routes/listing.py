@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 from typing import Any
 
 from fastapi import APIRouter, Request
@@ -10,10 +11,37 @@ from sqlalchemy import func, select
 from pointlessql.api.data_products_routes._shared import serialise_product
 from pointlessql.api.dependencies import current_workspace_id
 from pointlessql.models.auth import User
+from pointlessql.models.catalog._data_product_comments import DataProductComment
+from pointlessql.models.catalog._data_product_follows import DataProductFollow
+from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
 
 router = APIRouter(tags=["data-products"])
+
+
+def _freshness_status(
+    last_loaded_at: datetime.datetime,
+    sla_minutes: int | None,
+    now: datetime.datetime,
+) -> str:
+    """Compute the per-product freshness status for the browse listing.
+
+    SQLite returns naive datetimes even for tz-aware columns; treat
+    those as UTC for the comparison so we never trip the "naive vs
+    aware" TypeError when ``now`` is the standard tz-aware
+    ``datetime.now(UTC)``.
+
+    Returns ``"on_time"`` when within SLA, ``"stale"`` when over,
+    and ``"no_sla"`` when no SLA expectation is set.
+    """
+    if sla_minutes is None:
+        return "no_sla"
+    loaded = last_loaded_at
+    if loaded.tzinfo is None:
+        loaded = loaded.replace(tzinfo=datetime.UTC)
+    deadline = loaded + datetime.timedelta(minutes=sla_minutes)
+    return "on_time" if now <= deadline else "stale"
 
 
 @router.get("/api/data-products")
@@ -57,8 +85,14 @@ async def list_data_products(request: Request) -> dict[str, Any]:
 
         dp_ids = [r.id for r in rows]
         review_agg: dict[int, tuple[float | None, int]] = {}
+        follow_agg: dict[int, int] = {}
+        comment_7d_agg: dict[int, int] = {}
+        has_readme_set: set[int] = set()
+        now = datetime.datetime.now(datetime.UTC)
+        seven_days_ago = now - datetime.timedelta(days=7)
+
         if dp_ids:
-            agg_rows = session.execute(
+            review_rows = session.execute(
                 select(
                     DataProductReview.data_product_id,
                     func.avg(DataProductReview.stars),
@@ -72,8 +106,46 @@ async def list_data_products(request: Request) -> dict[str, Any]:
             ).all()
             review_agg = {
                 int(dp_id): (float(avg) if avg is not None else None, int(cnt))
-                for dp_id, avg, cnt in agg_rows
+                for dp_id, avg, cnt in review_rows
             }
+
+            follow_rows = session.execute(
+                select(
+                    DataProductFollow.data_product_id,
+                    func.count(DataProductFollow.user_id),
+                )
+                .where(
+                    DataProductFollow.workspace_id == workspace_id,
+                    DataProductFollow.data_product_id.in_(dp_ids),
+                )
+                .group_by(DataProductFollow.data_product_id)
+            ).all()
+            follow_agg = {int(dp_id): int(cnt) for dp_id, cnt in follow_rows}
+
+            comment_rows = session.execute(
+                select(
+                    DataProductComment.data_product_id,
+                    func.count(DataProductComment.id),
+                )
+                .where(
+                    DataProductComment.workspace_id == workspace_id,
+                    DataProductComment.data_product_id.in_(dp_ids),
+                    DataProductComment.deleted_at.is_(None),
+                    DataProductComment.created_at >= seven_days_ago,
+                )
+                .group_by(DataProductComment.data_product_id)
+            ).all()
+            comment_7d_agg = {int(dp_id): int(cnt) for dp_id, cnt in comment_rows}
+
+            readme_rows = session.execute(
+                select(DataProductReadme.data_product_id)
+                .where(
+                    DataProductReadme.workspace_id == workspace_id,
+                    DataProductReadme.data_product_id.in_(dp_ids),
+                )
+                .distinct()
+            ).all()
+            has_readme_set = {int(r[0]) for r in readme_rows}
 
         for row in rows:
             email, display = (
@@ -89,6 +161,12 @@ async def list_data_products(request: Request) -> dict[str, Any]:
             avg, count = review_agg.get(row.id, (None, 0))
             payload["avg_stars"] = avg
             payload["review_count"] = count
+            payload["follow_count"] = follow_agg.get(row.id, 0)
+            payload["comment_count_7d"] = comment_7d_agg.get(row.id, 0)
+            payload["has_readme"] = row.id in has_readme_set
+            payload["freshness_status"] = _freshness_status(
+                row.last_loaded_at, row.sla_minutes, now
+            )
             items.append(payload)
 
     return {"workspace_id": workspace_id, "data_products": items}

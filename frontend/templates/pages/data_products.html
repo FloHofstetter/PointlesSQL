@@ -18,13 +18,48 @@
     <div class="card mb-3">
         <div class="card-body py-2">
             <div class="row gx-2 align-items-center">
-                <div class="col-md-8">
-                    <input type="text" class="form-control form-control-sm"
+                <div class="col-md-5">
+                    <input type="text" class="form-control form-control-sm pql-dp-filter-input"
                            placeholder="Filter by name, catalog or schema…"
-                           x-model="filter"
-                           @input="reload()">
+                           x-model="filter">
                 </div>
-                <div class="col-md-4 d-flex align-items-end justify-content-end gap-2">
+                <div class="col-md-4">
+                    <div class="d-flex flex-wrap gap-1 pql-dp-filter-chips">
+                        <button class="btn btn-sm"
+                                :class="activeChip === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                                @click="activeChip = 'all'"
+                                data-chip="all">All</button>
+                        <button class="btn btn-sm"
+                                :class="activeChip === 'has_comments' ? 'btn-primary' : 'btn-outline-secondary'"
+                                @click="activeChip = 'has_comments'"
+                                data-chip="has_comments">Has comments</button>
+                        <button class="btn btn-sm"
+                                :class="activeChip === 'has_readme' ? 'btn-primary' : 'btn-outline-secondary'"
+                                @click="activeChip = 'has_readme'"
+                                data-chip="has_readme">Has README</button>
+                        <button class="btn btn-sm"
+                                :class="activeChip === 'stale' ? 'btn-primary' : 'btn-outline-secondary'"
+                                @click="activeChip = 'stale'"
+                                data-chip="stale">Stale</button>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex align-items-end justify-content-end gap-2">
+                    <div class="btn-group btn-group-sm pql-dp-view-toggle" role="group">
+                        <button type="button"
+                                class="btn"
+                                :class="viewMode === 'table' ? 'btn-secondary' : 'btn-outline-secondary'"
+                                @click="setView('table')"
+                                data-view="table">
+                            <i class="bi bi-table"></i>
+                        </button>
+                        <button type="button"
+                                class="btn"
+                                :class="viewMode === 'cards' ? 'btn-secondary' : 'btn-outline-secondary'"
+                                @click="setView('cards')"
+                                data-view="cards">
+                            <i class="bi bi-grid"></i>
+                        </button>
+                    </div>
                     {% if is_admin %}
                     <button class="btn btn-sm btn-outline-primary" @click="reloadFromYaml()" :disabled="reloading">
                         <i class="bi bi-arrow-repeat"></i>
@@ -32,7 +67,7 @@
                     </button>
                     {% endif %}
                     <button class="btn btn-sm btn-outline-secondary" @click="reload()">
-                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                        <i class="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
             </div>
@@ -49,23 +84,123 @@
         <div class="alert alert-danger" x-text="error"></div>
     </template>
 
-    <template x-if="!loading && !error && filtered().length === 0">
-        <div class="alert alert-secondary">
-            <i class="bi bi-info-circle me-1"></i>
-            No data products are cached yet.
-            <span class="small text-muted">
-                Drop a <code>pointlessql.yaml</code> with a
-                <code>data_product:</code> block in your data team's
-                repo, point
-                <code>POINTLESSQL_DATA_PRODUCTS_YAML_SEARCH_PATHS</code>
-                at it, then click "Reload yaml".
-            </span>
+    <template x-if="!loading && !error && recentlyActive.length > 0">
+        <div class="card mb-3 pql-dp-recently-active">
+            <div class="card-body py-2">
+                <h6 class="mb-2 text-muted">
+                    <i class="bi bi-activity me-1"></i>Recently active
+                </h6>
+                <div class="d-flex flex-wrap gap-2 small">
+                    <template x-for="p in recentlyActive" :key="'recent-' + p.id">
+                        <a :href="'/data-products/' + p.catalog + '/' + p.schema"
+                           class="badge bg-light text-dark border text-decoration-none"
+                           :data-recent-ref="p.ref"
+                           x-text="p.ref + ' (' + (p.comment_count_7d || 0) + ' new)'"></a>
+                    </template>
+                </div>
+            </div>
         </div>
     </template>
 
-    <template x-if="!loading && !error && filtered().length > 0">
-        <div class="row g-3">
-            <template x-for="p in filtered()" :key="p.id">
+    <template x-if="!loading && !error && filtered.length === 0">
+        <div class="alert alert-secondary pql-dp-empty">
+            <i class="bi bi-info-circle me-1"></i>
+            No data products match.
+        </div>
+    </template>
+
+    <!-- Table view -->
+    <template x-if="!loading && !error && filtered.length > 0 && viewMode === 'table'">
+        <div class="card pql-dp-table-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 pql-dp-table">
+                    <thead>
+                        <tr>
+                            <th class="pql-dp-th"
+                                @click="toggleSort('ref')"
+                                :data-sort-key="'ref'">
+                                Product
+                                <i class="bi"
+                                   :class="sortIcon('ref')"></i>
+                            </th>
+                            <th class="pql-dp-th"
+                                @click="toggleSort('version')">
+                                Version
+                                <i class="bi" :class="sortIcon('version')"></i>
+                            </th>
+                            <th>Steward</th>
+                            <th class="pql-dp-th"
+                                @click="toggleSort('avg_stars')">
+                                ★
+                                <i class="bi" :class="sortIcon('avg_stars')"></i>
+                            </th>
+                            <th class="pql-dp-th"
+                                @click="toggleSort('follow_count')">
+                                Followers
+                                <i class="bi" :class="sortIcon('follow_count')"></i>
+                            </th>
+                            <th class="pql-dp-th"
+                                @click="toggleSort('comment_count_7d')">
+                                Comments 7d
+                                <i class="bi" :class="sortIcon('comment_count_7d')"></i>
+                            </th>
+                            <th class="pql-dp-th"
+                                @click="toggleSort('last_loaded_at')">
+                                Last loaded
+                                <i class="bi" :class="sortIcon('last_loaded_at')"></i>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="p in filtered" :key="p.id">
+                            <tr :data-dp-id="p.id" class="pql-dp-row">
+                                <td>
+                                    <a :href="'/data-products/' + p.catalog + '/' + p.schema"
+                                       class="text-decoration-none">
+                                        <i class="bi bi-collection me-1"></i>
+                                        <span x-text="p.ref"></span>
+                                    </a>
+                                    <template x-if="p.has_readme">
+                                        <span class="badge bg-light text-dark border ms-1 pql-dp-readme-badge">README</span>
+                                    </template>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary" x-text="'v' + p.version"></span>
+                                </td>
+                                <td>
+                                    <template x-if="p.steward.email">
+                                        <span x-text="p.steward.display_name || p.steward.email"></span>
+                                    </template>
+                                    <template x-if="!p.steward.email">
+                                        <span class="text-muted fst-italic">No steward</span>
+                                    </template>
+                                </td>
+                                <td>
+                                    <template x-if="p.review_count > 0">
+                                        <span class="badge bg-warning text-dark"
+                                              x-text="(p.avg_stars ? p.avg_stars.toFixed(1) : '') + ' (' + p.review_count + ')'"></span>
+                                    </template>
+                                </td>
+                                <td x-text="p.follow_count || 0"></td>
+                                <td x-text="p.comment_count_7d || 0"></td>
+                                <td class="small">
+                                    <span x-text="p.last_loaded_at"></span>
+                                    <span class="badge ms-1"
+                                          :class="p.freshness_status === 'stale' ? 'bg-danger' : (p.freshness_status === 'on_time' ? 'bg-success' : 'bg-light text-dark border')"
+                                          x-text="p.freshness_status"></span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <!-- Card view (backwards compat) -->
+    <template x-if="!loading && !error && filtered.length > 0 && viewMode === 'cards'">
+        <div class="row g-3 pql-dp-cards">
+            <template x-for="p in filtered" :key="p.id">
                 <div class="col-md-6 col-lg-4">
                     <div class="card h-100">
                         <div class="card-body">
@@ -105,6 +240,12 @@
                                         <span x-text="'SLA ' + p.sla_minutes + ' min'"></span>
                                     </span>
                                 </template>
+                                <template x-if="p.follow_count > 0">
+                                    <span class="text-muted">
+                                        <i class="bi bi-bookmark-star"></i>
+                                        <span x-text="p.follow_count + ' followers'"></span>
+                                    </span>
+                                </template>
                             </div>
                         </div>
                     </div>
@@ -122,9 +263,22 @@ window.dataProductsBrowse = function () {
         loading: false,
         reloading: false,
         error: null,
+        activeChip: 'all',
+        sortKey: 'ref',
+        sortDir: 'asc',
+        viewMode: 'table',
 
         async init() {
+            try {
+                const saved = localStorage.getItem('pql.dp.view-mode');
+                if (saved === 'cards' || saved === 'table') this.viewMode = saved;
+            } catch (e) { /* swallow */ }
             await this.reload();
+        },
+
+        setView(mode) {
+            this.viewMode = mode;
+            try { localStorage.setItem('pql.dp.view-mode', mode); } catch (e) { /* swallow */ }
         },
 
         async reload() {
@@ -162,13 +316,54 @@ window.dataProductsBrowse = function () {
             }
         },
 
-        filtered() {
-            if (!this.filter) return this.products;
-            const f = this.filter.toLowerCase();
-            return this.products.filter(p =>
-                p.ref.toLowerCase().includes(f)
-                || (p.description || '').toLowerCase().includes(f)
-            );
+        toggleSort(key) {
+            if (this.sortKey === key) {
+                this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.sortKey = key;
+                this.sortDir = 'asc';
+            }
+        },
+
+        sortIcon(key) {
+            if (this.sortKey !== key) return 'bi-chevron-expand text-muted';
+            return this.sortDir === 'asc' ? 'bi-chevron-up' : 'bi-chevron-down';
+        },
+
+        get filtered() {
+            const f = (this.filter || '').toLowerCase();
+            let arr = this.products.filter(p => {
+                if (f) {
+                    const hay = (p.ref + ' ' + (p.description || '')).toLowerCase();
+                    if (!hay.includes(f)) return false;
+                }
+                if (this.activeChip === 'has_comments' && !(p.comment_count_7d > 0)) return false;
+                if (this.activeChip === 'has_readme' && !p.has_readme) return false;
+                if (this.activeChip === 'stale' && p.freshness_status !== 'stale') return false;
+                return true;
+            });
+            const key = this.sortKey;
+            const dir = this.sortDir === 'asc' ? 1 : -1;
+            arr.sort((a, b) => {
+                let av = a[key]; let bv = b[key];
+                if (av === undefined || av === null) av = '';
+                if (bv === undefined || bv === null) bv = '';
+                if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+                return String(av).localeCompare(String(bv)) * dir;
+            });
+            return arr;
+        },
+
+        get recentlyActive() {
+            const scored = this.products
+                .map(p => ({
+                    p,
+                    score: (p.comment_count_7d || 0) + 0.5 * (p.review_count || 0),
+                }))
+                .filter(x => x.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 5);
+            return scored.map(x => x.p);
         },
     };
 };
