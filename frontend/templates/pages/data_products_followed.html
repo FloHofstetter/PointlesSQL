@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Followed data products · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Data Products", "href": "/data-products"},
+    {"label": "Followed"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-bookmark-star fs-3"></i>
+    <h1 class="h3 mb-0">Followed data products</h1>
+</div>
+
+{% if not followed %}
+<div class="alert alert-secondary pql-no-follows-empty">
+    <i class="bi bi-info-circle me-1"></i>
+    You're not following any data products yet.  Head to the
+    <a href="/data-products">browse page</a> and click "Follow" on
+    one to subscribe to its updates.
+</div>
+{% else %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 pql-followed-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Version</th>
+                    <th>Last loaded</th>
+                    <th>Followed since</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in followed %}
+                <tr class="pql-followed-row" data-followed-ref="{{ f.ref }}">
+                    <td>
+                        <a href="/data-products/{{ f.catalog }}/{{ f.schema }}"
+                           class="text-decoration-none">
+                            <i class="bi bi-collection me-1"></i>
+                            {{ f.ref }}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">v{{ f.version }}</span>
+                    </td>
+                    <td class="small text-muted">{{ f.last_loaded_at }}</td>
+                    <td class="small text-muted">{{ f.followed_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

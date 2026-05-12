@@ -25,6 +25,18 @@
         <span class="badge bg-warning text-dark ms-2 pql-dp-stars-badge"
               x-show="reviewSummary && reviewSummary.count > 0"
               x-text="'★ ' + (reviewSummary && reviewSummary.avg_stars ? reviewSummary.avg_stars.toFixed(1) : '') + ' (' + (reviewSummary ? reviewSummary.count : 0) + ')'"></span>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <button class="btn btn-sm pql-dp-follow-btn"
+                    :class="following ? 'btn-primary' : 'btn-outline-primary'"
+                    @click="toggleFollow()">
+                <i class="bi"
+                   :class="following ? 'bi-bookmark-check-fill' : 'bi-bookmark-plus'"></i>
+                <span x-text="following ? 'Following' : 'Follow'"></span>
+            </button>
+            <span class="small text-muted pql-dp-follower-count"
+                  x-show="followersCount > 0"
+                  x-text="'· ' + followersCount + ' follower' + (followersCount === 1 ? '' : 's')"></span>
+        </div>
     </div>
 
     <ul class="nav nav-tabs mb-3" id="dpTabs" role="tablist">
@@ -508,11 +520,39 @@ window.dataProductDetail = function (product, ctx) {
         reviewDraftStars: 0,
         reviewDraftBody: '',
         reviewSort: 'recent',
+        following: false,
+        followersCount: 0,
 
         async init() {
             await this.loadDetail();
             await this.loadReviewSummary();
+            await this.loadFollowState();
             this.wireLazyTabs();
+        },
+
+        async loadFollowState() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/followers/count');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.following = !!data.following;
+                this.followersCount = data.count || 0;
+            } catch (e) {
+                console.error('follow state failed', e);
+            }
+        },
+
+        async toggleFollow() {
+            const method = this.following ? 'DELETE' : 'POST';
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/follow', {
+                    method: method,
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await this.loadFollowState();
+            } catch (e) {
+                console.error('follow toggle failed', e);
+            }
         },
 
         async loadReviewSummary() {

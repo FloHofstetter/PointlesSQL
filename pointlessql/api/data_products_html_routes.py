@@ -16,9 +16,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from sqlalchemy import select
 
 from pointlessql.api.data_products_routes import _load_one  # pyright: ignore[reportPrivateUsage]
 from pointlessql.api.dependencies import current_workspace_id, get_user
+from pointlessql.models.catalog._data_product_follows import DataProductFollow
+from pointlessql.models.catalog._data_products import DataProduct
 
 router = APIRouter(tags=["data-products"])
 
@@ -41,6 +44,63 @@ async def data_products_index_page(
         {
             "active_page": "data_products",
             "is_admin": user["is_admin"],
+        },
+    )
+
+
+@router.get(
+    "/data-products/followed",
+    response_class=HTMLResponse,
+    response_model=None,
+)
+async def data_products_followed_page(
+    request: Request,
+) -> HTMLResponse | RedirectResponse:
+    """Render the per-user "Followed products" index (Phase 71.3).
+
+    Lists every data product the logged-in user has followed in
+    their current workspace, sorted by ``last_loaded_at`` desc.
+    """
+    user = get_user(request)
+    if user["id"] == 0:
+        return RedirectResponse(
+            url="/auth/login?next=/data-products/followed", status_code=303
+        )
+
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        rows = session.execute(
+            select(DataProduct, DataProductFollow)
+            .join(
+                DataProductFollow,
+                (DataProductFollow.data_product_id == DataProduct.id)
+                & (DataProductFollow.workspace_id == DataProduct.workspace_id),
+            )
+            .where(
+                DataProductFollow.workspace_id == workspace_id,
+                DataProductFollow.user_id == user["id"],
+            )
+            .order_by(DataProduct.last_loaded_at.desc())
+        ).all()
+    followed = [
+        {
+            "catalog": dp.catalog_name,
+            "schema": dp.schema_name,
+            "ref": f"{dp.catalog_name}.{dp.schema_name}",
+            "version": dp.version,
+            "last_loaded_at": dp.last_loaded_at.isoformat(),
+            "followed_at": follow.created_at.isoformat(),
+        }
+        for dp, follow in rows
+    ]
+    templates = request.app.state.templates
+    return templates.TemplateResponse(
+        request,
+        "pages/data_products_followed.html",
+        {
+            "active_page": "data_products",
+            "followed": followed,
         },
     )
 
