@@ -105,6 +105,7 @@ from pointlessql.models.lineage import (
 from pointlessql.models.notebook import (
     NotebookCellRun,
     NotebookCellRunSource,
+    NotebookJobLink,
     NotebookOutput,
 )
 from pointlessql.models.scheduler import (
@@ -172,6 +173,7 @@ __all__ = [
     "TRANSFORM_KINDS",
     "NotebookCellRun",
     "NotebookCellRunSource",
+    "NotebookJobLink",
     "NotebookOutput",
     "QueryHistory",
     "QueryHistoryTable",

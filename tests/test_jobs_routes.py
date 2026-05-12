@@ -267,3 +267,51 @@ async def test_compare_404_for_unknown_run(admin_client: httpx.AsyncClient) -> N
     job_id = _seed_job()
     resp = await admin_client.get(f"/jobs/{job_id}/runs/99999/compare?to=12345")
     assert resp.status_code == 404
+
+
+# -- /api/jobs/{job_id}/runs (Phase 67.3 listing) ----------------------
+
+
+async def test_list_job_runs_returns_newest_first(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """The list endpoint orders runs newest-first by started_at."""
+    job_id = _seed_job()
+    run_a = _seed_run(job_id)
+    run_b = _seed_run(job_id)
+    resp = await admin_client.get(f"/api/jobs/{job_id}/runs")
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()
+    ids = [r["id"] for r in rows]
+    assert run_a in ids
+    assert run_b in ids
+    # Newest first — _seed_run inserts both at "now"; primary-key order
+    # is the tiebreaker so the higher id wins when started_at ties.
+    assert ids.index(run_b) <= ids.index(run_a)
+
+
+async def test_list_job_runs_unknown_job_404(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    resp = await admin_client.get("/api/jobs/99999/runs")
+    assert resp.status_code == 404
+
+
+async def test_list_job_runs_non_owner_404(
+    non_admin_client: httpx.AsyncClient,
+) -> None:
+    job_id = _seed_job()
+    resp = await non_admin_client.get(f"/api/jobs/{job_id}/runs")
+    assert resp.status_code == 404
+
+
+async def test_list_job_runs_limit_clamped(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Asking for limit=1 trims the list."""
+    job_id = _seed_job()
+    _seed_run(job_id)
+    _seed_run(job_id)
+    resp = await admin_client.get(f"/api/jobs/{job_id}/runs?limit=1")
+    assert resp.status_code == 200, resp.text
+    assert len(resp.json()) == 1

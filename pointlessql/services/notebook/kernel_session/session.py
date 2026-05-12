@@ -56,6 +56,72 @@ def __pql_sql_run(query, *, approved_tables, result_var, max_rows):
         globals()[result_var] = df
     display(df)
     return None
+
+
+# Phase 67.5 — Variable Inspector helpers.
+#
+# `__pql_inspect__` emits a list of {name, type, repr, size?} dicts for
+# every user-visible global as a custom-MIME ``display_data`` frame.
+# The WS pump intercepts the MIME and forwards a ``variable_snapshot``
+# notify to the browser instead of persisting it.  Calling silently
+# after every successful cell run gives the editor a live namespace
+# pane without polling.
+def __pql_inspect__():
+    import types
+    from IPython.display import display
+
+    out = []
+    for k, v in list(globals().items()):
+        if k.startswith("_") or k.startswith("__pql_"):
+            continue
+        if isinstance(v, types.ModuleType):
+            continue
+        if callable(v) and not isinstance(v, type):
+            continue
+        try:
+            short = repr(v)
+        except Exception as exc:  # noqa: BLE001
+            short = f"<unreprable: {type(exc).__name__}>"
+        if len(short) > 200:
+            short = short[:197] + "..."
+        entry = {"name": k, "type": type(v).__name__, "repr": short}
+        try:
+            shape = getattr(v, "shape", None)
+            if isinstance(shape, tuple):
+                entry["shape"] = [int(d) for d in shape]
+            elif hasattr(v, "__len__") and not isinstance(v, (str, bytes)):
+                entry["len"] = len(v)
+        except Exception:  # noqa: BLE001
+            pass
+        out.append(entry)
+    display({"application/x-pql-vars+json": out}, raw=True)
+    return None
+
+
+def __pql_inspect_detail__(varname):
+    from IPython.display import display
+
+    if not isinstance(varname, str) or not varname:
+        return None
+    if varname.startswith("_") or varname.startswith("__pql_"):
+        return None
+    if varname not in globals():
+        return None
+    v = globals()[varname]
+    detail = {"name": varname, "type": type(v).__name__}
+    try:
+        detail["repr"] = repr(v)[:5000]
+    except Exception as exc:  # noqa: BLE001
+        detail["repr"] = f"<unreprable: {type(exc).__name__}>"
+    try:
+        if hasattr(v, "head") and callable(getattr(v, "head")):
+            head_df = v.head(5)
+            if hasattr(head_df, "_repr_html_"):
+                detail["html"] = head_df._repr_html_()
+    except Exception:  # noqa: BLE001
+        pass
+    display({"application/x-pql-vardetail+json": detail}, raw=True)
+    return None
 """
 
 

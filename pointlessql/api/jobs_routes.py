@@ -465,6 +465,27 @@ async def api_create_job(request: Request, body: dict[str, Any] = Body(...)) -> 
         session.commit()
         session.refresh(job)
         session.expunge(job)
+    # Phase 67.4: opportunistic notebook-job-link write. Lets the
+    # editor's "Jobs of this notebook" panel look up the schedule
+    # without scanning ``jobs.config`` JSON. Per-link rows are a
+    # derived index — if writing fails or skips, the canonical truth
+    # still lives in ``Job.config``.
+    if str(kind) == "papermill" and isinstance(config, dict):
+        nb_path = config.get("notebook_path")
+        if isinstance(nb_path, str) and nb_path:
+            from pointlessql.models import NotebookJobLink as _NJL
+
+            with factory() as link_session:
+                link_session.add(
+                    _NJL(
+                        workspace_id=1,
+                        notebook_path=nb_path,
+                        job_id=int(job.id),
+                        created_at=now,
+                    ),
+                )
+                link_session.commit()
+
     await audit(request, "create_job", f"job:{name}", json.dumps(body))
     return serialize_job(job)
 
@@ -511,6 +532,50 @@ async def api_list_job_tasks(request: Request, job_id: int) -> list[dict[str, An
         for r in rows:
             session.expunge(r)
     return [serialize_task(r) for r in rows]
+
+
+@router.get("/api/jobs/{job_id}/runs")
+async def api_list_job_runs(
+    request: Request,
+    job_id: int,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """Return the most-recent :class:`JobRun` rows for *job_id*.
+
+    Newest-first ordering rides the
+    ``(job_id, started_at DESC)`` index declared on
+    :class:`~pointlessql.models.JobRun`. The default cap of 50 keeps
+    the response payload small for the Phase 67 notebook-jobs panel
+    while still surfacing enough history for a quick scan; deeper
+    paging would land in a Sprint 67.4 follow-up if needed.
+
+    Args:
+        request: Incoming FastAPI request — gated via
+            :func:`load_job_or_404` so non-owners get a 404.
+        job_id: Target job id.
+        limit: Optional row cap, clamped to ``[1, 200]``.
+
+    Returns:
+        Serialised run rows, newest first.
+    """
+    from sqlalchemy import select as _select
+
+    from pointlessql.models import JobRun as JobRunModel
+
+    load_job_or_404(request, job_id)
+    limit = max(1, min(int(limit), 200))
+    factory = request.app.state.session_factory
+    with factory() as session:
+        stmt = (
+            _select(JobRunModel)
+            .where(JobRunModel.job_id == job_id)
+            .order_by(JobRunModel.started_at.desc())
+            .limit(limit)
+        )
+        rows = list(session.scalars(stmt).all())
+        for r in rows:
+            session.expunge(r)
+    return [serialize_run(r) for r in rows]
 
 
 @router.get("/api/jobs/{job_id}/runs/{run_id}/tasks")

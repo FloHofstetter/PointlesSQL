@@ -449,6 +449,128 @@ async def _papermill_executor(
                 logger.warning("failed to delete jupytext-convert temp %s", converted_temp)
     logger.info("papermill: finished %s", output_path)
 
+    # Phase 67.6 — bridge papermill outputs into ``notebook_outputs``
+    # so the editor's persisted-output replay AND a future "view job
+    # outputs" tab share one renderer. ``kernel_session_id`` carries a
+    # synthetic ``job:<run_id>`` prefix so the row never collides with
+    # an interactive kernel session UUID.
+    try:
+        await asyncio.to_thread(
+            _persist_papermill_outputs,
+            output_path,
+            notebook_path,
+            job_run_id,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("papermill: output-bridge failed for run %d", job_run_id)
+
+
+def _persist_papermill_outputs(
+    output_ipynb: Path,
+    notebook_path: str,
+    job_run_id: int,
+    *,
+    factory: Any = None,
+) -> None:
+    """Parse the executed ``.ipynb`` and write outputs to ``notebook_outputs``.
+
+    Idempotent — clears any existing rows for the synthetic
+    ``kernel_session_id`` first, so a retry produces the same final
+    state. Runs inside an :func:`asyncio.to_thread` worker because
+    nbformat parsing + DB writes are both synchronous.
+
+    Args:
+        output_ipynb: Path to the papermill-executed ``.ipynb``.
+        notebook_path: Relative source notebook path (the editor uses
+            this as the ``file_path`` column on ``notebook_outputs``).
+        job_run_id: Surfacing run identifier; the synthetic
+            ``kernel_session_id`` is ``f"job:{job_run_id}"``.
+        factory: Optional SQLAlchemy session factory. Defaults to the
+            globally-initialised factory from ``pointlessql.db`` so
+            production callers stay one-line; tests inject the
+            app-state factory directly because they never bootstrap
+            the global ``init_db`` path.
+    """
+    import json as _json
+
+    import nbformat  # type: ignore[import-untyped]
+
+    from pointlessql.services.notebook import _doc as _doc_module
+    from pointlessql.services.notebook import outputs as _outputs
+
+    if not output_ipynb.exists():
+        return
+
+    if factory is None:
+        from pointlessql.db import get_session_factory
+
+        factory = get_session_factory()
+    session_id = f"job:{job_run_id}"
+
+    # Clear any earlier rows for this synthetic session — retries land
+    # in a clean slate.
+    try:
+        _outputs.clear_session(
+            factory,
+            file_path=notebook_path,
+            kernel_session_id=session_id,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "papermill: failed to clear notebook_outputs for %s session %s",
+            notebook_path,
+            session_id,
+        )
+
+    notebook = nbformat.read(str(output_ipynb), as_version=4)
+    cell_index = 0
+    for raw_cell in notebook.cells:
+        if getattr(raw_cell, "cell_type", "code") != "code":
+            cell_index += 1
+            continue
+        source = raw_cell.source or ""
+        content_hash = _doc_module.compute_content_hash(source)
+        outputs = getattr(raw_cell, "outputs", []) or []
+        for output_index, out in enumerate(outputs):
+            out_dict: dict[str, Any] = dict(out)
+            msg_type = str(out_dict.get("output_type") or "execute_result")
+            # nbformat output dict already carries the iopub message
+            # shape (data/metadata for execute_result+display_data,
+            # text for stream, ename/evalue/traceback for error).
+            content_payload: dict[str, Any] = {
+                k: v for k, v in out_dict.items() if k != "output_type"
+            }
+            metadata = content_payload.pop("metadata", None)
+            try:
+                _outputs.append_output(
+                    factory,
+                    file_path=notebook_path,
+                    content_hash=content_hash,
+                    kernel_session_id=session_id,
+                    output_index=output_index,
+                    msg_type=msg_type,
+                    content=content_payload,
+                    metadata=metadata if isinstance(metadata, dict) else None,
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "papermill: append_output failed (run=%d, cell=%d, idx=%d)",
+                    job_run_id,
+                    cell_index,
+                    output_index,
+                )
+        cell_index += 1
+
+    # Tiny audit-trail breadcrumb so a SELECT against ``notebook_outputs``
+    # can be cross-checked against the papermill artefact path.
+    logger.info(
+        "papermill: persisted outputs for run %d (path=%s) ⇒ session=%s payload=%s",
+        job_run_id,
+        notebook_path,
+        session_id,
+        _json.dumps({"cells": cell_index}),
+    )
+
 
 def _jupytext_py_to_ipynb(src: Path, dst: Path) -> None:
     """Convert a jupytext Percent ``.py`` to an ``.ipynb`` on disk.

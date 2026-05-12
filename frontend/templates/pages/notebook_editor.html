@@ -10,13 +10,20 @@
 
 {% block content %}
 <div class="pql-notebook-shell"
-     x-data="notebookEditor({ initialPath: {{ notebook_path | tojson }} })"
+     x-data='notebookEditor({ initialPath: {{ notebook_path | tojson }} })'
      x-init="init()"
      @beforeunload.window="destroy()">
 
  <div class="pql-notebook-toolbar" role="toolbar" aria-label="Notebook toolbar">
   <i class="bi bi-journal-code" aria-hidden="true"></i>
   <span class="pql-notebook-path" x-text="path"></span>
+  <span class="badge bg-info text-dark"
+        x-show="parameters && parameters.length > 0"
+        x-cloak
+        :title="`This notebook declares ${parameters.length} papermill parameter(s).`">
+   <i class="bi bi-sliders" aria-hidden="true"></i>
+   <span x-text="`${parameters.length} param${parameters.length === 1 ? '' : 's'}`"></span>
+  </span>
   <span class="badge bg-warning"
         x-show="dirty && !saving"
         x-cloak
@@ -71,6 +78,44 @@
   <span class="text-muted small">
    <kbd>Cmd</kbd>+<kbd>S</kbd>
   </span>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="openScheduleModal()"
+          title="Schedule this notebook on cron">
+   <i class="bi bi-clock" aria-hidden="true"></i>
+   Schedule
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="openRunOnceModal()"
+          title="Run this notebook as a one-shot job">
+   <i class="bi bi-lightning" aria-hidden="true"></i>
+   Run as job
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="toggleJobsPanel()"
+          :class="{ active: jobsPanelOpen }"
+          title="Show scheduled jobs + recent runs for this notebook">
+   <i class="bi bi-list-task" aria-hidden="true"></i>
+   Jobs
+   <span class="badge bg-secondary ms-1"
+         x-show="jobsPanel && jobsPanel.scheduled_jobs && jobsPanel.scheduled_jobs.length > 0"
+         x-text="jobsPanel.scheduled_jobs.length"
+         x-cloak></span>
+  </button>
+  <button type="button"
+          class="btn btn-sm btn-outline-secondary"
+          @click="toggleInspector()"
+          :class="{ active: inspectorOpen }"
+          title="Live kernel variable inspector (refreshes after every cell run)">
+   <i class="bi bi-eye" aria-hidden="true"></i>
+   Variables
+   <span class="badge bg-secondary ms-1"
+         x-show="inspectorVars && inspectorVars.length > 0"
+         x-text="inspectorVars.length"
+         x-cloak></span>
+  </button>
   <span class="badge bg-secondary"
         x-show="loading"
         x-cloak>
@@ -78,10 +123,139 @@
   </span>
  </div>
 
+ {# Phase 67.5 Variable Inspector floating pane. #}
+ <div class="pql-notebook-inspector"
+      x-show="inspectorOpen"
+      x-cloak>
+  <div class="d-flex justify-content-between align-items-center mb-2">
+   <strong>
+    <i class="bi bi-eye me-1"></i>
+    Variables
+   </strong>
+   <div class="d-flex align-items-center gap-1">
+    <button type="button" class="btn btn-sm btn-link p-0"
+            @click="requestVariableSnapshot()"
+            title="Refresh">
+     <i class="bi bi-arrow-clockwise"></i>
+    </button>
+    <button type="button" class="btn-close btn-close-sm"
+            @click="inspectorOpen = false"
+            aria-label="Close"></button>
+   </div>
+  </div>
+  <template x-if="inspectorVars.length === 0">
+   <div class="text-muted small">
+    Run a cell — kernel namespace will appear here.
+   </div>
+  </template>
+  <template x-for="v in inspectorVars" :key="v.name">
+   <div class="pql-notebook-inspector__row"
+        @click="requestVariableDetail(v.name)">
+    <span class="pql-notebook-inspector__name" x-text="v.name"></span>
+    <span class="pql-notebook-inspector__type"
+          x-text="v.shape ? `${v.type}${v.shape ? '['+v.shape.join('x')+']' : ''}` : (v.len !== undefined ? `${v.type}[${v.len}]` : v.type)"></span>
+    <span class="pql-notebook-inspector__repr" x-text="v.repr"></span>
+   </div>
+  </template>
+  <div class="pql-notebook-inspector__detail mt-2"
+       x-show="inspectorDetail"
+       x-cloak>
+   <hr class="my-2">
+   <div class="small text-muted mb-1"
+        x-text="inspectorDetailFor"></div>
+   <template x-if="inspectorDetail && inspectorDetail.html">
+    <div x-html="inspectorDetail.html"></div>
+   </template>
+   <template x-if="inspectorDetail && !inspectorDetail.html">
+    <pre class="mb-0" x-text="inspectorDetail.repr"></pre>
+   </template>
+  </div>
+ </div>
+
  <div class="pql-notebook-error"
       x-show="errorMessage"
       x-cloak
       x-text="errorMessage"></div>
+
+ {# Phase 67.4 Jobs-of-this-notebook collapsible panel. #}
+ <div class="pql-notebook-jobs-panel card mt-2"
+      x-show="jobsPanelOpen"
+      x-cloak>
+  <div class="card-body small">
+   <div class="d-flex justify-content-between align-items-center mb-2">
+    <strong>
+     <i class="bi bi-list-task me-1"></i>
+     Jobs of this notebook
+    </strong>
+    <button type="button" class="btn-close btn-close-sm"
+            aria-label="Close"
+            @click="jobsPanelOpen = false"></button>
+   </div>
+   <template x-if="jobsPanel.scheduled_jobs.length === 0
+                   && jobsPanel.recent_runs.length === 0">
+    <div class="text-muted">
+     No scheduled jobs yet — click <em>Schedule</em> above or
+     <em>Run as job</em> for a one-shot.
+    </div>
+   </template>
+   <template x-if="jobsPanel.scheduled_jobs.length > 0">
+    <div class="mb-2">
+     <div class="text-muted text-uppercase small mb-1">Scheduled</div>
+     <ul class="list-unstyled mb-0">
+      <template x-for="j in jobsPanel.scheduled_jobs" :key="j.id">
+       <li>
+        <a :href="`/jobs/${j.id}`"
+           class="text-decoration-none">
+         <code x-text="j.name"></code>
+        </a>
+        <span class="text-muted ms-1"
+              x-text="`@ ${j.cron_expr}`"></span>
+        <span class="badge bg-warning ms-1"
+              x-show="j.is_paused"
+              x-cloak>paused</span>
+        <span class="badge ms-1"
+              :class="{
+                'bg-success': j.last_run_status === 'succeeded',
+                'bg-danger': j.last_run_status === 'failed',
+                'bg-secondary': !j.last_run_status,
+              }"
+              x-show="j.last_run_status"
+              x-cloak
+              x-text="j.last_run_status"></span>
+       </li>
+      </template>
+     </ul>
+    </div>
+   </template>
+   <template x-if="jobsPanel.recent_runs.length > 0">
+    <div>
+     <div class="text-muted text-uppercase small mb-1">Recent runs</div>
+     <ul class="list-unstyled mb-0">
+      <template x-for="r in jobsPanel.recent_runs" :key="r.id">
+       <li>
+        <a :href="`/jobs/${r.job_id}`"
+           class="text-decoration-none">
+         run #<span x-text="r.id"></span>
+        </a>
+        <span class="badge ms-1"
+              :class="{
+                'bg-success': r.status === 'succeeded',
+                'bg-danger': r.status === 'failed',
+                'bg-secondary': r.status === 'running',
+                'bg-warning': r.status === 'skipped',
+              }"
+              x-text="r.status"></span>
+        <span class="text-muted ms-1"
+              x-text="r.trigger"></span>
+        <span class="text-muted ms-1"
+              x-text="r.started_at"></span>
+       </li>
+      </template>
+     </ul>
+    </div>
+   </template>
+  </div>
+ </div>
 
  <div class="pql-notebook-empty"
       x-show="!loading && !errorMessage && cells.length === 0"
@@ -146,6 +320,18 @@
                    @click="convertCellType(cell, 'sql')">SQL</button></li>
        <li><button class="dropdown-item" type="button"
                    @click="convertCellType(cell, 'markdown')">Markdown</button></li>
+       <li><hr class="dropdown-divider"></li>
+       <li>
+        <button class="dropdown-item" type="button"
+                @click="toggleParamsTag(cell)">
+         <span x-show="!cellHasParamsTag(cell)" x-cloak>
+          <i class="bi bi-sliders me-1"></i>Mark as parameters
+         </span>
+         <span x-show="cellHasParamsTag(cell)" x-cloak>
+          <i class="bi bi-x-circle me-1"></i>Unmark parameters
+         </span>
+        </button>
+       </li>
       </ul>
      </div>
      <button type="button"
@@ -252,5 +438,160 @@
    </button>
   </div>
  </div>
+
+ {# Phase 67.2 Schedule modal — Bootstrap modal toggled via :class
+    instead of x-show per `feedback_bootstrap_modal_x_show.md`. #}
+ <div class="modal fade pql-notebook-modal"
+      :class="{ 'd-block': scheduleModalOpen }"
+      x-show="scheduleModalOpen"
+      x-cloak
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="scheduleNotebookModalLabel"
+      @keydown.escape.window="closeScheduleModal()">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h5 class="modal-title" id="scheduleNotebookModalLabel">
+      <i class="bi bi-clock me-1"></i>
+      Schedule notebook
+     </h5>
+     <button type="button" class="btn-close" @click="closeScheduleModal()"
+             aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+     <div class="alert alert-danger small"
+          x-show="scheduleError"
+          x-cloak
+          x-text="scheduleError"></div>
+     <div class="mb-3">
+      <label class="form-label" for="schedule-name-input">Job name</label>
+      <input id="schedule-name-input" type="text" class="form-control"
+             x-model="scheduleForm.name"
+             placeholder="notebook:demo:flo">
+     </div>
+     <div class="mb-3">
+      <label class="form-label" for="schedule-cron-input">Cron expression</label>
+      <input id="schedule-cron-input" type="text"
+             class="form-control font-monospace"
+             x-model="scheduleForm.cronExpr"
+             placeholder="0 5 * * *">
+      <small class="form-text text-muted"
+             x-text="describeCron(scheduleForm.cronExpr)"></small>
+     </div>
+     <div class="mb-2" x-show="parameters && parameters.length > 0" x-cloak>
+      <label class="form-label">Parameter overrides</label>
+      <template x-for="p in parameters" :key="p.name">
+       <div class="row align-items-center mb-2">
+        <div class="col-sm-4">
+         <code x-text="p.name"></code>
+         <small class="text-muted ms-1"
+                x-text="p.inferred_type || 'str'"></small>
+        </div>
+        <div class="col-sm-8">
+         <input type="text" class="form-control form-control-sm"
+                :placeholder="`default: ${p.default}`"
+                x-model="scheduleForm.parameters[p.name]">
+        </div>
+       </div>
+      </template>
+     </div>
+     <div class="form-text"
+          x-show="!parameters || parameters.length === 0">
+      This notebook declares no <code>parameters</code>-tagged cell.
+      Add one with <code>tags=["parameters"]</code> to expose
+      overridable inputs.
+     </div>
+    </div>
+    <div class="modal-footer">
+     <button type="button" class="btn btn-secondary"
+             @click="closeScheduleModal()">Cancel</button>
+     <button type="button" class="btn btn-primary"
+             :disabled="scheduleSubmitting"
+             @click="submitSchedule()">
+      <span x-show="scheduleSubmitting"
+            class="spinner-border spinner-border-sm me-1"
+            x-cloak></span>
+      Schedule
+     </button>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="modal-backdrop fade show"
+      x-show="scheduleModalOpen"
+      x-cloak
+      @click="closeScheduleModal()"></div>
+
+ {# Phase 67.3 Run-once modal — overrides without persisting a cron. #}
+ <div class="modal fade pql-notebook-modal"
+      :class="{ 'd-block': runOnceModalOpen }"
+      x-show="runOnceModalOpen"
+      x-cloak
+      tabindex="-1"
+      role="dialog"
+      aria-labelledby="runOnceNotebookModalLabel"
+      @keydown.escape.window="closeRunOnceModal()">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h5 class="modal-title" id="runOnceNotebookModalLabel">
+      <i class="bi bi-lightning me-1"></i>
+      Run notebook as one-shot job
+     </h5>
+     <button type="button" class="btn-close" @click="closeRunOnceModal()"
+             aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+     <div class="alert alert-danger small"
+          x-show="runOnceError"
+          x-cloak
+          x-text="runOnceError"></div>
+     <div class="mb-2" x-show="parameters && parameters.length > 0" x-cloak>
+      <label class="form-label">Parameter overrides</label>
+      <template x-for="p in parameters" :key="p.name">
+       <div class="row align-items-center mb-2">
+        <div class="col-sm-4">
+         <code x-text="p.name"></code>
+         <small class="text-muted ms-1"
+                x-text="p.inferred_type || 'str'"></small>
+        </div>
+        <div class="col-sm-8">
+         <input type="text" class="form-control form-control-sm"
+                :placeholder="`default: ${p.default}`"
+                x-model="runOnceForm.parameters[p.name]">
+        </div>
+       </div>
+      </template>
+     </div>
+     <div class="form-text"
+          x-show="!parameters || parameters.length === 0">
+      This notebook declares no parameters. The run uses the notebook
+      defaults as written on disk.
+     </div>
+     <div class="alert alert-info small mt-3"
+          x-show="runOnceStatus"
+          x-cloak
+          x-text="runOnceStatus"></div>
+    </div>
+    <div class="modal-footer">
+     <button type="button" class="btn btn-secondary"
+             @click="closeRunOnceModal()">Close</button>
+     <button type="button" class="btn btn-primary"
+             :disabled="runOnceSubmitting"
+             @click="submitRunOnce()">
+      <span x-show="runOnceSubmitting"
+            class="spinner-border spinner-border-sm me-1"
+            x-cloak></span>
+      Run
+     </button>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="modal-backdrop fade show"
+      x-show="runOnceModalOpen"
+      x-cloak
+      @click="closeRunOnceModal()"></div>
 </div>
 {% endblock %}

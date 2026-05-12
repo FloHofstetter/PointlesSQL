@@ -56,6 +56,31 @@ export function notebookEditor({ initialPath = '' } = {}) {
  mtimeConflict: false,
  kernelStatus: 'disconnected',
  kernelSessionId: null,
+ // Phase 67.1: Papermill parameters declared by the notebook's
+ // ``tags=["parameters"]`` cell, populated by ``loadParameters()``
+ // after the initial load. The Schedule + Run-Once modals read
+ // this array to render typed override forms.
+ parameters: [],
+ _parametersLoaded: false,
+ // Phase 67.2 Schedule modal state.
+ scheduleModalOpen: false,
+ scheduleSubmitting: false,
+ scheduleError: '',
+ scheduleForm: { name: '', cronExpr: '0 5 * * *', parameters: {} },
+ // Phase 67.3 Run-Once modal state.
+ runOnceModalOpen: false,
+ runOnceSubmitting: false,
+ runOnceError: '',
+ runOnceStatus: '',
+ runOnceForm: { parameters: {} },
+ // Phase 67.4 Notebook-Jobs panel state.
+ jobsPanelOpen: false,
+ jobsPanel: { scheduled_jobs: [], recent_runs: [] },
+ // Phase 67.5 Variable Inspector state.
+ inspectorOpen: false,
+ inspectorVars: [],
+ inspectorDetail: null,
+ inspectorDetailFor: null,
  _editors: {},
  _onKeydown: null,
  _kernel: null,
@@ -94,10 +119,231 @@ export function notebookEditor({ initialPath = '' } = {}) {
  this._renderAllOutputs();
  this._installKeymap();
  this._connectKernel();
+ // Fire-and-forget — populates ``this.parameters`` once papermill
+ // has introspected the notebook. The Schedule + Run-Once modals
+ // poll-on-open so a slow inspect call never blocks page load.
+ this.loadParameters();
+ this.loadNotebookJobs();
  } catch (err) {
  this.errorMessage = (err && err.message) || String(err);
  this.loading = false;
  }
+ },
+
+ /**
+ * Fetch the notebook's papermill parameter declarations.
+ *
+ * Cached in ``this.parameters`` after the first call. Re-call after
+ * a save that may have toggled the ``parameters`` tag on a cell so
+ * the UI stays in sync with the on-disk truth.
+ */
+ async loadParameters() {
+ if (!this.path) return;
+ try {
+ const res = await window.pqlApi.fetch(
+ `/api/notebooks/inspect?path=${encodeURIComponent(this.path)}`,
+ { silent: true },
+ );
+ if (res.ok && Array.isArray(res.data)) {
+ this.parameters = res.data;
+ this._parametersLoaded = true;
+ }
+ } catch {
+ // Non-fatal — the notebook may simply have no parameters cell.
+ this.parameters = [];
+ this._parametersLoaded = true;
+ }
+ },
+
+ // ---- Phase 67.2: Schedule modal ---------------------------------------
+
+ describeCron(expr) {
+ if (!expr) return '';
+ if (typeof window.pqlHumanizeCron === 'function') {
+ try { return window.pqlHumanizeCron(expr); } catch { /* fall through */ }
+ }
+ return '';
+ },
+
+ _buildDefaultJobName(suffix) {
+ const slug = String(this.path || 'notebook').replace(/[^A-Za-z0-9_-]+/g, '_');
+ const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+ return suffix ? `${slug}:${suffix}:${stamp}` : slug;
+ },
+
+ openScheduleModal() {
+ this.scheduleError = '';
+ // Re-fetch params in case the user just saved a cell as ``parameters``.
+ this.loadParameters();
+ this.scheduleForm = {
+ name: this._buildDefaultJobName('schedule'),
+ cronExpr: '0 5 * * *',
+ parameters: {},
+ };
+ this.scheduleModalOpen = true;
+ },
+
+ closeScheduleModal() {
+ this.scheduleModalOpen = false;
+ this.scheduleSubmitting = false;
+ },
+
+ async submitSchedule() {
+ if (this.scheduleSubmitting) return;
+ this.scheduleError = '';
+ const name = (this.scheduleForm.name || '').trim();
+ const cronExpr = (this.scheduleForm.cronExpr || '').trim();
+ if (!name) { this.scheduleError = 'Job name is required.'; return; }
+ if (!cronExpr) { this.scheduleError = 'Cron expression is required.'; return; }
+ // 5-field cron — basic shape check on the client (server re-validates).
+ if (cronExpr.split(/\s+/).filter(Boolean).length !== 5) {
+ this.scheduleError = 'Cron expression must have exactly 5 fields.';
+ return;
+ }
+ const overrides = {};
+ for (const p of this.parameters || []) {
+ const raw = this.scheduleForm.parameters[p.name];
+ if (raw !== undefined && raw !== '') overrides[p.name] = raw;
+ }
+ const body = {
+ name,
+ cron_expr: cronExpr,
+ kind: 'papermill',
+ config: {
+ notebook_path: this.path,
+ parameters: overrides,
+ },
+ };
+ this.scheduleSubmitting = true;
+ try {
+ const res = await window.pqlApi.fetch('/api/jobs', {
+ method: 'POST',
+ body: JSON.stringify(body),
+ headers: { 'Content-Type': 'application/json' },
+ });
+ if (res.ok) {
+ this.closeScheduleModal();
+ if (window.pqlToast) {
+ window.pqlToast.success(`Scheduled "${name}".`);
+ }
+ if (this.loadNotebookJobs) this.loadNotebookJobs();
+ } else {
+ const detail = (res.data && (res.data.detail || res.data.error)) || '';
+ this.scheduleError = detail || `Failed (HTTP ${res.status}).`;
+ }
+ } catch (err) {
+ this.scheduleError = (err && err.message) || String(err);
+ } finally {
+ this.scheduleSubmitting = false;
+ }
+ },
+
+ // ---- Phase 67.3: Run-Once modal ---------------------------------------
+
+ openRunOnceModal() {
+ this.runOnceError = '';
+ this.runOnceStatus = '';
+ this.loadParameters();
+ this.runOnceForm = { parameters: {} };
+ this.runOnceModalOpen = true;
+ },
+
+ closeRunOnceModal() {
+ this.runOnceModalOpen = false;
+ this.runOnceSubmitting = false;
+ this.runOnceStatus = '';
+ },
+
+ async submitRunOnce() {
+ if (this.runOnceSubmitting) return;
+ this.runOnceError = '';
+ const overrides = {};
+ for (const p of this.parameters || []) {
+ const raw = this.runOnceForm.parameters[p.name];
+ if (raw !== undefined && raw !== '') overrides[p.name] = raw;
+ }
+ this.runOnceSubmitting = true;
+ try {
+ const res = await window.pqlApi.fetch('/api/notebooks/run-once', {
+ method: 'POST',
+ body: JSON.stringify({ path: this.path, parameters: overrides }),
+ headers: { 'Content-Type': 'application/json' },
+ });
+ if (!res.ok) {
+ const detail = (res.data && (res.data.detail || res.data.error)) || '';
+ this.runOnceError = detail || `Failed (HTTP ${res.status}).`;
+ return;
+ }
+ const { job_id, job_run_id } = res.data || {};
+ this.runOnceStatus = `Run #${job_run_id} started — polling…`;
+ await this._pollJobRun(job_id, job_run_id);
+ if (this.loadNotebookJobs) this.loadNotebookJobs();
+ } catch (err) {
+ this.runOnceError = (err && err.message) || String(err);
+ } finally {
+ this.runOnceSubmitting = false;
+ }
+ },
+
+ // ---- Phase 67.4: Notebook-Jobs panel --------------------------------
+
+ async loadNotebookJobs() {
+ if (!this.path) return;
+ try {
+ const res = await window.pqlApi.fetch(
+ `/api/notebooks/jobs?path=${encodeURIComponent(this.path)}`,
+ { silent: true },
+ );
+ if (res.ok && res.data) {
+ this.jobsPanel = {
+ scheduled_jobs: res.data.scheduled_jobs || [],
+ recent_runs: res.data.recent_runs || [],
+ };
+ }
+ } catch { /* non-fatal */ }
+ },
+
+ toggleJobsPanel() {
+ this.jobsPanelOpen = !this.jobsPanelOpen;
+ if (this.jobsPanelOpen) this.loadNotebookJobs();
+ },
+
+ async _pollJobRun(jobId, runId) {
+ if (!jobId || !runId) return;
+ let delay = 500;
+ const cap = 5000;
+ for (let i = 0; i < 240; i++) {
+ await new Promise((r) => setTimeout(r, delay));
+ delay = Math.min(delay * 1.4, cap);
+ try {
+ const res = await window.pqlApi.fetch(
+ `/api/jobs/${jobId}/runs/${runId}/tasks`,
+ { silent: true },
+ );
+ if (!res.ok) continue;
+ // The run is considered complete when the parent job_run has
+ // a terminal status; we use the tasks endpoint as a proxy
+ // since it 404s if the run was deleted, otherwise returns
+ // task rows whose statuses reflect the run.
+ // A separate /api/jobs/{id}/runs/{run_id} endpoint would be
+ // cleaner — for now we re-poll the job listing as fallback.
+ const listing = await window.pqlApi.fetch(
+ `/api/jobs/${jobId}/runs`,
+ { silent: true },
+ );
+ if (listing.ok && Array.isArray(listing.data)) {
+ const run = listing.data.find((r) => r.id === runId);
+ if (run && run.status !== 'running') {
+ this.runOnceStatus =
+ `Run #${runId} ${run.status}` +
+ (run.error ? ` — ${run.error}` : '.');
+ return;
+ }
+ }
+ } catch { /* swallow + retry */ }
+ }
+ this.runOnceStatus =
+ `Run #${runId} still running after timeout — check /jobs.`;
  },
 
  _seedLiveOutputs() {
@@ -146,8 +392,23 @@ export function notebookEditor({ initialPath = '' } = {}) {
  onError: (e) => {
  this.errorMessage = (e && e.message) || 'Kernel error';
  },
+ onVariableSnapshot: (params) => this._onVariableSnapshot(params),
+ onVariableDetail: (params) => this._onVariableDetail(params),
  });
  this._kernel.connect();
+ },
+
+ _onVariableSnapshot(params) {
+ const payload = params && params.payload;
+ if (Array.isArray(payload)) this.inspectorVars = payload;
+ },
+
+ _onVariableDetail(params) {
+ const payload = params && params.payload;
+ if (payload && typeof payload === 'object') {
+ this.inspectorDetail = payload;
+ this.inspectorDetailFor = payload.name || null;
+ }
  },
 
  _onKernelFrame(frame) {
@@ -194,7 +455,44 @@ export function notebookEditor({ initialPath = '' } = {}) {
  cell.exec_count = execCount;
  cell.status = status;
  }
+ // Phase 67.5 — refresh the variable inspector after every cell
+ // run completes (ok or error). Silent execute so the user does
+ // not see the helper call in the cell output.
+ if (this.inspectorOpen) this.requestVariableSnapshot();
  }
+ },
+
+ requestVariableSnapshot() {
+ if (!this._kernel || this.kernelStatus !== 'ready') return;
+ // Silent execute via the existing JSON-RPC path. The helper emits
+ // a display_data frame carrying ``application/x-pql-vars+json``;
+ // the WS pump routes it to onVariableSnapshot for us.
+ try {
+ this._kernel.execute(
+ '__pql_vars__',
+ '__pql_inspect__()',
+ { cellType: 'code', silent: true },
+ ).catch(() => { /* swallow — fail-quiet for inspector refresh */ });
+ } catch { /* WS not ready — ignore */ }
+ },
+
+ async requestVariableDetail(name) {
+ if (!this._kernel || this.kernelStatus !== 'ready') return;
+ if (!name) return;
+ const safe = String(name).replace(/[^A-Za-z0-9_]/g, '');
+ if (!safe) return;
+ try {
+ await this._kernel.execute(
+ '__pql_vardetail__',
+ `__pql_inspect_detail__('${safe}')`,
+ { cellType: 'code', silent: true },
+ );
+ } catch { /* fail-quiet */ }
+ },
+
+ toggleInspector() {
+ this.inspectorOpen = !this.inspectorOpen;
+ if (this.inspectorOpen) this.requestVariableSnapshot();
  },
 
  async runCell(cell) {
@@ -450,6 +748,7 @@ export function notebookEditor({ initialPath = '' } = {}) {
  cell_type: cell.cell_type,
  source: cell.source,
  result_var: cell.result_var || null,
+ tags: Array.isArray(cell.tags) ? cell.tags : [],
  })),
  };
  const res = await window.pqlApi.fetch('/api/notebooks/save', {
@@ -589,6 +888,15 @@ export function notebookEditor({ initialPath = '' } = {}) {
  },
 
  cellLabel(cell) {
+ // Phase 67.7 — params-tagged cells render as a dedicated label so
+ // the user sees at a glance which cell the Schedule/Run-Once modals
+ // will read defaults from.
+ const tags = Array.isArray(cell.tags) ? cell.tags : [];
+ if (tags.includes('parameters')) {
+ if (cell.cell_type === 'sql') return 'SQL · PARAMS';
+ if (cell.cell_type === 'markdown') return 'Markdown · PARAMS';
+ return 'PARAMS';
+ }
  if (cell.cell_type === 'sql') {
  return cell.result_var
  ? `SQL → ${cell.result_var}`
@@ -596,6 +904,21 @@ export function notebookEditor({ initialPath = '' } = {}) {
  }
  if (cell.cell_type === 'markdown') return 'Markdown';
  return 'Code';
+ },
+
+ cellHasParamsTag(cell) {
+ return Array.isArray(cell.tags) && cell.tags.includes('parameters');
+ },
+
+ toggleParamsTag(cell) {
+ if (!cell) return;
+ if (!Array.isArray(cell.tags)) cell.tags = [];
+ const idx = cell.tags.indexOf('parameters');
+ if (idx >= 0) cell.tags.splice(idx, 1);
+ else cell.tags.push('parameters');
+ cell._dirty = true;
+ this.dirty = true;
+ this._scheduleAutosave();
  },
 
  destroy() {

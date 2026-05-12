@@ -27,6 +27,11 @@ export function createKernelClient({
  onReady = () => {},
  onClose = () => {},
  onError = () => {},
+ // Phase 67.5 — Variable Inspector frames arrive as separate notify
+ // types (``variable_snapshot`` / ``variable_detail``) so they bypass
+ // the per-cell output rendering pipe.
+ onVariableSnapshot = () => {},
+ onVariableDetail = () => {},
 } = {}) {
  if (!notebookPath) {
  throw new Error('createKernelClient: notebookPath is required');
@@ -46,6 +51,16 @@ export function createKernelClient({
  }
  if (payload.notify === 'kernel_message') {
  try { onMessage(payload.params || {}); }
+ catch (e) { onError(e); }
+ return;
+ }
+ if (payload.notify === 'variable_snapshot') {
+ try { onVariableSnapshot(payload.params || {}); }
+ catch (e) { onError(e); }
+ return;
+ }
+ if (payload.notify === 'variable_detail') {
+ try { onVariableDetail(payload.params || {}); }
  catch (e) { onError(e); }
  return;
  }
@@ -103,6 +118,7 @@ export function createKernelClient({
  source: source,
  cell_type: options.cellType || 'code',
  result_var: options.resultVar || null,
+ silent: !!options.silent,
  });
  },
 

@@ -221,3 +221,54 @@ class NotebookCellRunSource(Base):
             "started_at",
         ),
     )
+
+
+class NotebookJobLink(Base):
+    """Map a notebook path to the papermill jobs that target it.
+
+    Phase 67.4 surface: the notebook editor's "Jobs of this notebook"
+    panel needs to look up scheduled + recent jobs for the open
+    notebook path. The :class:`~pointlessql.models.Job` table stores
+    its ``notebook_path`` inside a JSON config blob (``Text`` column),
+    which neither SQLite nor Postgres can index without a custom
+    expression — so every editor open would scan the full jobs table
+    via ``WHERE config LIKE '%"notebook_path":"<path>"%'``.
+
+    This table is the trade-off: written opportunistically by the
+    ``POST /api/jobs`` + ``POST /api/notebooks/run-once`` handlers
+    when ``kind == "papermill"``, keyed for fast lookup on
+    ``notebook_path``. It is a derived index; if a row goes stale the
+    canonical state still lives in ``Job.config``.
+
+    Attributes:
+        id: Auto-incremented primary key.
+        workspace_id: FK to :class:`Workspace`. Denormalised from the
+            owning :class:`Job` so workspace-scoped reads can filter
+            without joining ``jobs``.
+        notebook_path: Relative notebook path the job's papermill
+            config targets — identical to the string stored in
+            ``Job.config['notebook_path']``.
+        job_id: FK to :class:`Job` (``ON DELETE CASCADE`` so a
+            future job-delete also clears this row).
+        created_at: Timestamp when the link row was written.
+    """
+
+    __tablename__ = "notebook_job_link"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
+    )
+    notebook_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    job_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_notebook_job_link_path", "notebook_path"),
+        Index("ix_notebook_job_link_workspace_path", "workspace_id", "notebook_path"),
+        Index("ix_notebook_job_link_job_id", "job_id"),
+    )

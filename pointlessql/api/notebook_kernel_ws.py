@@ -242,6 +242,43 @@ async def _handle_kernel_message(
     if msg.content_hash == _RESERVED_BOOTSTRAP_HASH:
         # Skip bootstrap echoes — the helper definition is internal.
         return
+
+    # Phase 67.5 — Variable Inspector custom-MIME interception.
+    # ``__pql_inspect__`` / ``__pql_inspect_detail__`` emit
+    # ``display_data`` frames carrying our private MIMEs. Route them as
+    # a dedicated ``variable_snapshot`` / ``variable_detail`` notify
+    # instead of persisting them in ``notebook_outputs``: variable
+    # snapshots are transient (re-emitted after every cell run) and
+    # would otherwise clutter cell-output replay.
+    if (
+        channel == "iopub"
+        and msg.msg_type in {"display_data", "execute_result"}
+    ):
+        data_bundle: Any = (
+            msg.content.get("data") if isinstance(msg.content, dict) else None
+        )
+        if isinstance(data_bundle, dict):
+            vars_payload = data_bundle.get("application/x-pql-vars+json")
+            detail_payload = data_bundle.get(
+                "application/x-pql-vardetail+json"
+            )
+            if vars_payload is not None or detail_payload is not None:
+                notify_payload: dict[str, Any] = {
+                    "notify": (
+                        "variable_detail"
+                        if detail_payload is not None
+                        else "variable_snapshot"
+                    ),
+                    "params": {
+                        "kernel_session_id": session.session_id,
+                        "payload": detail_payload
+                        if detail_payload is not None
+                        else vars_payload,
+                    },
+                }
+                await websocket.send_text(json.dumps(notify_payload))
+                return
+
     if (
         channel == "iopub"
         and msg.content_hash is not None
