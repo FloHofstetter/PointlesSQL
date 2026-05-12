@@ -6,6 +6,32 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 68 — Frontend modularization (2026-05-12).**  Structural
+  reorganization for LLM-context efficiency and one-convention
+  hygiene; behavior unchanged.  Templates: 12 single-page partials
+  moved from top-level `templates/partials/` into nested
+  `pages/_partials/run_view/` and `pages/_partials/notebook/output/`
+  (only 2 genuinely cross-page partials remain at top-level).
+  Three large templates split into per-tab partials using the Phase-38
+  playbook: `pages/table.html` 786 → 228 LOC (7 partials),
+  `pages/_partials/run_view/tab_operations.html` 726 → 59 LOC
+  (5 sub-tab partials), `pages/model.html` 589 → 209 LOC
+  (4 partials).  JS: 3 admin-only `federation_*.js` files moved
+  from top-level `frontend/js/` to `frontend/js/pages/federation/`;
+  `bootstrap.js` imports updated, window-attached names unchanged.
+  CSS: `pages/sql_editor.html` 146-LOC inline `<style>` extracted to
+  `frontend/css/components/sql_editor.css` (page 543 → 397 LOC);
+  `notebook.css` (292 LOC) removed from global `@import` cascade
+  and lazy-loaded via `{% block extra_css %}` in
+  `pages/notebook_editor.html`, so notebook-only CSS no longer
+  appears in LLM-context for non-notebook pages.  New
+  `docs/development/frontend-conventions.md` codifies the
+  conventions; `frontend/js/README.md` gains a folder-layout
+  section.  Deferred (out of scope for Phase 68): `notebook_editor.js`
+  939-LOC split (Alpine state tight-coupled across 8 seams, awaits
+  feature-driven anchor); `base.html` 565 LOC (mostly critical-path
+  init scripts, no splittable seams); `pages/notebook_editor.html`
+  597 LOC (single-page Alpine app, no static tab boundaries).
 - **Phase 67 — Notebook Operations (2026-05-12).**  Phase 66's
   live editor gains the four DBX-feel surfaces that close the
   notebook-from-the-editor gap without touching the existing

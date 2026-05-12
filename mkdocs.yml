@@ -195,6 +195,7 @@ nav:
   - Development:
       - development/index.md
       - Design tokens: development/design-tokens.md
+      - Frontend conventions: development/frontend-conventions.md
       - Test suite: development/test-suite.md
   - Decisions:
       - decisions/index.md

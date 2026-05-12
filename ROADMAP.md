@@ -5149,6 +5149,80 @@ PointlesSQL
 │           reportLiteralAssignment error at notebook_kernel_ws:361
 │           (unrelated to Phase 67) carried forward.
 │
+├── Phase 68 — Frontend modularization (HTML + JS + CSS hygiene)  ✅ done 2026-05-12
+│   │
+│   │   Frontend grew over 50+ sprints and accumulated two structural
+│   │   schwächen that made LLM-context lookups more expensive than
+│   │   needed: 6 templates >500 LOC and two parallel partial
+│   │   conventions side-by-side (top-level ``partials/`` vs
+│   │   page-scoped ``pages/_partials/``).  Phase 68 applies the
+│   │   Phase-38 split-into-partials playbook to the remaining large
+│   │   templates and unifies the partial convention.  No behaviour
+│   │   change — pure structural reorganization.
+│   │
+│   │   Anchor-decisions:
+│   │
+│   │   - **``notebook_editor.js`` (939 LOC) stays single-file.**  8
+│   │     real feature seams but Alpine state tight-coupled across
+│   │     them.  Defer split until a feature delivers a clean anchor.
+│   │   - **Nested per-page partial layout** —
+│   │     ``pages/_partials/<page>/<sub>.html``.  Verworfen: flat-
+│   │     with-prefix.  Grep on one folder shows all sub-views of a
+│   │     page; scales as more pages get split.
+│   │
+│   ├── Sprint 68.0 — Partials-Konvention vereinheitlichen     ✅ 2026-05-12
+│   │       12 of 13 top-level partials waren single-page (alle
+│   │       ``_run_*.html`` und ``_output_*.html``) — moved to
+│   │       ``pages/_partials/run_view/`` und
+│   │       ``pages/_partials/notebook/output/``.  Top-level
+│   │       ``partials/`` behält nur 2 echt-cross-page Files
+│   │       (``_cdf_change_type_pill.html``, ``_query_row.html``).
+│   │       ~25 ``{% include %}`` Pfade aktualisiert.
+│   ├── Sprint 68.1 — ``pages/table.html`` splitten            ✅ 2026-05-12
+│   │       786 → 228 LOC.  7 Tab-Partials unter
+│   │       ``pages/_partials/table/``: overview.html (~190),
+│   │       preview.html (~100), columns.html (~160),
+│   │       lineage.html (~10), tags.html (~7),
+│   │       permissions.html (~12), cdf_events.html (~85).
+│   ├── Sprint 68.2 — ``run_view/operations`` splitten         ✅ 2026-05-12
+│   │       ``tab_operations.html`` 726 → 59 LOC.  5 Sub-Tab-
+│   │       Partials unter
+│   │       ``pages/_partials/run_view/operations/``:
+│   │       operations.html (~195), rejects.html (~60),
+│   │       queries.html (~70), rewrites.html (~89),
+│   │       uc_mutations.html (~258).
+│   ├── Sprint 68.3 — ``pages/model.html`` splitten            ✅ 2026-05-12
+│   │       589 → 209 LOC.  4 Tab-Partials unter
+│   │       ``pages/_partials/model/``: overview.html (~62),
+│   │       versions.html (~104), lineage.html (~63),
+│   │       promotion.html (~155).
+│   ├── Sprint 68.4 — Federation-JS in ``js/pages/federation/`` ✅ 2026-05-12
+│   │       3 admin-only JS-Files (``federation_catalogs.js``,
+│   │       ``_connections.js``, ``_credentials.js``) per ``git mv``
+│   │       in ``js/pages/federation/`` einziehen.
+│   │       ``bootstrap.js``-Importe angepasst; Window-attached
+│   │       Namen unverändert, kein Template-Change.
+│   ├── Sprint 68.5 — sql_editor inline CSS extrahieren        ✅ 2026-05-12
+│   │       ``pages/sql_editor.html`` 543 → 397 LOC.  146 LOC
+│   │       inline ``<style>`` → ``frontend/css/components/
+│   │       sql_editor.css`` (Operator-Badges + Layout-Fixes);
+│   │       ``style.css`` @import in alphabetic cascade-position.
+│   ├── Sprint 68.6 — ``notebook.css`` lazy-load               ✅ 2026-05-12
+│   │       292 LOC CSS aus globalem ``style.css`` @import-cascade
+│   │       entfernt, stattdessen via ``{% block extra_css %}``
+│   │       in ``pages/notebook_editor.html`` lazy geladen.
+│   │       Notebook-only Selektoren erscheinen nicht mehr im
+│   │       LLM-Context jeder Nicht-Notebook-Page.
+│   └── Sprint 68.7 — Conventions doc + Phase-Close            ✅ 2026-05-12
+│           Neue ``docs/development/frontend-conventions.md``
+│           (in mkdocs nav).  ``frontend/js/README.md`` um
+│           Folder-Layout-Section ergänzt.  ROADMAP +
+│           CHANGELOG + Memory.  Pytest sweep grün auf den
+│           berührten Surfaces (table-detail, run-view,
+│           model-detail, sql-editor, notebook-editor,
+│           federation); Browser-Replay als nächste Session-
+│           Aufgabe ausstehend.
+│
 ├── Phase 65 — Lens (read-only Q&A surface, MCP + Browser parallel) ✅ done 2026-05-10
 │   │
 │   │   New analyst-facing chat-style surface that exposes read-only

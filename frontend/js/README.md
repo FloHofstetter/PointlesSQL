@@ -26,6 +26,26 @@ export to `window.<same-name>` so existing template
   These names appear in HTML, not JS, so the prefix would only add
   visual noise.
 
+## Folder layout
+
+- **`js/` top-level** — shared utilities + infrastructure that any page
+  may consume (`api.js`, `toast.js`, `tab_sync.js`, `editor_base.js`,
+  `list_table.js`, `relative_time.js`, `humanize_cron.js`, etc.).
+- **`js/pages/<page>/`** — page-affiliated factories that only run on
+  one page or surface (e.g.
+  `js/pages/federation/{connections,credentials,catalogs}.js` for the
+  admin Federation pages; `js/pages/dbt_table_context.js` for the
+  Table-detail dbt overlay).  Path-affiliation makes the page
+  ownership obvious without grepping templates.
+- **`js/components/`** — shared widgets that compose into pages but
+  are not pages themselves (`command_palette.js`, `lineage_panes.js`).
+  Feature-grouped sub-folders are fine — e.g. `lineage_dag/` (init +
+  factory + highlights) and `sidebars/` (one `_base.js` + 6 thin
+  per-section configs).
+- **`js/sql_editor/`, `js/notebook/`** — large per-feature surfaces
+  already split into multiple co-located files; treat as sub-folders
+  of pages, but kept at top-level for path-typing brevity.
+
 ## Shared helpers
 
 `editor_base.js` exports two cross-cutting helpers extracted from the
