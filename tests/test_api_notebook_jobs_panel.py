@@ -142,13 +142,14 @@ async def test_limit_honored(
     assert len(resp.json()["recent_runs"]) == 1
 
 
-async def test_non_admin_forbidden(
+async def test_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
+    """Phase 70: any authenticated user can read the jobs panel."""
     resp = await non_admin_client.get(
         "/api/notebooks/jobs", params={"path": "x.py"}
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 async def test_link_written_via_post_jobs(

@@ -55,12 +55,12 @@ async def test_render_markdown_bad_input(
     assert resp.status_code == 422
 
 
-async def test_render_markdown_non_admin_forbidden(
+async def test_render_markdown_non_admin_accessible(
     non_admin_client: httpx.AsyncClient,
 ) -> None:
-    """Non-admins get 403."""
+    """Phase 70: any authenticated user can render markdown."""
     resp = await non_admin_client.post(
         "/api/notebooks/render-markdown",
         json={"source": "x"},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200

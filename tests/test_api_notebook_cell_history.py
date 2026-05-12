@@ -53,14 +53,15 @@ async def test_cell_history_empty(admin_client: httpx.AsyncClient) -> None:
     assert resp.json()["runs"] == []
 
 
-async def test_cell_history_non_admin_forbidden(
+async def test_cell_history_non_admin_accessible(
     non_admin_client: httpx.AsyncClient,
 ) -> None:
-    """Non-admins get 403."""
+    """Phase 70: any authenticated user can read cell history."""
     resp = await non_admin_client.get(
         "/api/notebooks/cell-history?path=demo.py&content_hash=ff"
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200
+    assert resp.json()["runs"] == []
 
 
 async def test_cell_history_limit_clamp(

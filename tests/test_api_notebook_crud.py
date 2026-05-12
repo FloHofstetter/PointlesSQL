@@ -69,15 +69,16 @@ async def test_create_traversal_blocked(
     assert not (workspace_dir.parent / "escape.py").exists()
 
 
-async def test_create_non_admin_forbidden(
+async def test_create_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Non-admins get a 403 envelope."""
+    """Phase 70: any authenticated user can create a notebook."""
     resp = await non_admin_client.post(
         "/api/notebooks/create",
         json={"path": "denied.py"},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 201
+    assert (workspace_dir / "denied.py").exists()
 
 
 # -- POST /api/notebooks/rename --

@@ -85,12 +85,12 @@ async def test_traversal_blocked(
     assert resp.status_code == 422
 
 
-async def test_non_admin_forbidden(
+async def test_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
-    """Non-admins must not introspect notebooks."""
+    """Phase 70: any authenticated user can introspect notebooks."""
     _write(workspace_dir, "x.py", "# %%\nx = 1\n")
     resp = await non_admin_client.get(
         "/api/notebooks/inspect", params={"path": "x.py"}
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200

@@ -127,15 +127,16 @@ async def test_run_once_rejects_non_dict_parameters(
     assert resp.status_code == 422
 
 
-async def test_run_once_non_admin_forbidden(
+async def test_run_once_non_admin_accessible(
     workspace_dir: Path, non_admin_client: httpx.AsyncClient
 ) -> None:
+    """Phase 70: any authenticated user can trigger a run-once."""
     (workspace_dir / "demo.py").write_text(_PARAM_NOTEBOOK)
     resp = await non_admin_client.post(
         "/api/notebooks/run-once",
         json={"path": "demo.py", "parameters": {}},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 # Give event-loop cleanup a tick so the asyncio.create_task() spawned in

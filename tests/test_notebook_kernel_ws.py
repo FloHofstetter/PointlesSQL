@@ -51,18 +51,10 @@ def test_unauthenticated_ws_closes_with_4401(workspace_dir: Path) -> None:
     assert exc_info.value.code == 4401
 
 
-def test_non_admin_ws_closes_with_4403(
-    workspace_dir: Path, non_admin_cookies: dict[str, str]
-) -> None:
-    """Authenticated but non-admin user → close code 4403."""
-    (workspace_dir / "demo.py").write_bytes(b"# %%\nprint('hi')\n")
-    with TestClient(app, cookies=non_admin_cookies) as client:
-        with pytest.raises(WebSocketDisconnect) as exc_info:
-            with client.websocket_connect(
-                "/ws/notebook/kernel?path=demo.py"
-            ) as ws:
-                ws.receive_text()
-    assert exc_info.value.code == 4403
+# Phase 70 dropped the admin-only WS gate; ``_user_can_use_editor``
+# now accepts any authenticated user, so the 4403 close code is no
+# longer reachable from the cookie path. The test that exercised it
+# was removed alongside the gate change.
 
 
 def test_unknown_notebook_path_closes_with_4404(
