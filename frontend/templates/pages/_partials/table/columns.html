@@ -1,0 +1,162 @@
+ <div class="tab-pane fade" id="tab-columns" role="tabpanel" aria-labelledby="tab-columns-btn">
+ {% set _col_search = table.columns|length >= 20 %}
+ <div class="card"
+ {% if _col_search %}x-data="listTable({searchPlaceholder: 'Search columns…', initialSort: {key: 'position', dir: 'asc'}, mobileSort: true})"{% endif %}>
+ <div class="card-header d-flex align-items-center justify-content-between">
+ <span>Columns{{ info('tables.column-trace-badge') }}</span>
+ <span class="text-muted small">{{ table.columns|length }} total</span>
+ </div>
+ {% if _col_search %}
+ <div class="pql-list-controls p-2 border-bottom">
+ <input type="search" class="form-control form-control-sm"
+ x-ref="search" x-model="query" x-on:input="onInput()"
+ :placeholder="searchPlaceholder">
+ </div>
+ {% endif %}
+ <div class="card-body p-0">
+ <div class="table-responsive">
+ <table class="table table-sm mb-0 align-middle pql-list-table">
+ <thead>
+ <tr>
+ <th {% if _col_search %}data-sort-key="position"{% endif %} style="width: 3rem;">#</th>
+ <th {% if _col_search %}data-sort-key="name"{% endif %}>Name</th>
+ <th {% if _col_search %}data-sort-key="type"{% endif %}>Type</th>
+ <th {% if _col_search %}data-sort-key="nullable"{% endif %}>Nullable</th>
+ <th>Comment</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for col in table.columns|sort(attribute="position") %}
+ <tr {% if _col_search %}data-search="{{ col.name|lower }} {{ col.type_text|lower }} {{ (col.comment or '')|lower }}"
+ data-sort-position="{{ col.position }}"
+ data-sort-name="{{ col.name|lower }}"
+ data-sort-type="{{ col.type_text|lower }}"
+ data-sort-nullable="{{ '1' if col.nullable else '0' }}"{% endif %}>
+ <td class="text-muted small" data-label="#">{{ col.position }}</td>
+ <td class="font-monospace fw-medium" data-label="Name">
+ {{ col.name }}
+ {% if col.partition_index is not none %}
+ <span class="badge bg-warning text-dark ms-1" title="Partition column #{{ col.partition_index }}">
+ <i class="bi bi-diagram-3"></i> Part
+ </span>
+ {% endif %}
+ {% if lineage_columns and col.name in lineage_columns %}
+ <a href="/catalogs/{{ catalog_name }}/schemas/{{ schema_name }}/tables/{{ table_name }}/columns/{{ col.name }}/trace"
+ class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1 text-decoration-none"
+ title="Column-level lineage trace">
+ <i class="bi bi-bezier2"></i> lineage
+ </a>
+ {% endif %}
+ </td>
+ <td class="font-monospace small text-info" data-label="Type">{{ col.type_text }}</td>
+ <td data-label="Nullable">
+ {% if col.nullable %}
+ <span class="text-muted small">nullable</span>
+ {% else %}
+ <span class="badge bg-warning text-dark">NOT NULL</span>
+ {% endif %}
+ </td>
+ <td class="text-muted small" data-label="Comment">{{ col.comment or "—" }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+
+ <div class="card mt-4" x-data="tableStats()" x-init="init()">
+ <div class="card-header d-flex align-items-center justify-content-between">
+ <span>Column statistics{{ info('tables.column-statistics') }}</span>
+ <div class="d-flex gap-2 align-items-center">
+ <span class="text-muted small"
+ x-show="deltaVersion !== null"
+ x-cloak>
+ Delta v<span x-text="deltaVersion"></span>
+ <span x-show="cached" class="badge text-bg-secondary ms-1">cached</span>
+ </span>
+ {% if is_admin %}
+ <button type="button"
+ class="btn btn-outline-danger btn-sm"
+ x-show="columns.length > 0"
+ @click="clearCache()">
+ <i class="bi bi-trash"></i> Clear cache
+ </button>
+ {% endif %}
+ <button type="button"
+ class="btn btn-primary btn-sm"
+ @click="profile()"
+ :disabled="loading">
+ <span x-show="!loading">
+ <i class="bi bi-bar-chart-steps"></i>
+ <span x-text="columns.length > 0 ? 'Re-profile' : 'Profile columns'"></span>
+ </span>
+ <span x-show="loading" x-cloak>
+ <span class="spinner-border spinner-border-sm me-1"></span>Profiling…
+ </span>
+ </button>
+ </div>
+ </div>
+ <div class="card-body p-0">
+ <template x-if="columns.length === 0 && !loading">
+ <div class="p-3 text-muted small">
+ No statistics computed yet. Profiling issues one DuckDB
+ pass per column (count / null_count / distinct_count /
+ min / max / mean) plus a top-5 histogram for low-
+ cardinality columns.
+ </div>
+ </template>
+ <template x-if="columns.length > 0">
+ <div class="table-responsive">
+ <table class="table table-sm mb-0 align-middle">
+ <thead>
+ <tr>
+ <th>Column</th>
+ <th class="text-end">Count</th>
+ <th class="text-end">Nulls</th>
+ <th class="text-end">Distinct</th>
+ <th class="text-end">Min</th>
+ <th class="text-end">Max</th>
+ <th class="text-end">Mean</th>
+ <th>Top 5</th>
+ </tr>
+ </thead>
+ <tbody>
+ <template x-for="col in columns" :key="col.column_name">
+ <tr>
+ <td class="font-monospace">
+ <span x-text="col.column_name"></span>
+ <small class="text-info ms-1"
+ x-text="col.stats.column_type || ''"></small>
+ </td>
+ <td class="text-end font-monospace"
+ x-text="(col.stats.count ?? '') + ''"></td>
+ <td class="text-end font-monospace"
+ x-text="(col.stats.null_count ?? '') + ''"></td>
+ <td class="text-end font-monospace"
+ x-text="(col.stats.distinct_count ?? '') + ''"></td>
+ <td class="text-end font-monospace small"
+ x-text="col.stats.min ?? '—'"></td>
+ <td class="text-end font-monospace small"
+ x-text="col.stats.max ?? '—'"></td>
+ <td class="text-end font-monospace"
+ x-text="col.stats.mean !== null && col.stats.mean !== undefined ? col.stats.mean.toFixed(2) : '—'"></td>
+ <td>
+ <template x-if="Array.isArray(col.stats.top_5) && col.stats.top_5.length > 0">
+ <div class="pql-stats-sparkline"
+ :data-col-name="col.column_name"
+ style="width: 180px; height: 40px;"></div>
+ </template>
+ <template x-if="!col.stats.top_5 || col.stats.top_5.length === 0">
+ <span class="text-muted small">—</span>
+ </template>
+ </td>
+ </tr>
+ </template>
+ </tbody>
+ </table>
+ </div>
+ </template>
+ </div>
+ </div>
+ </div>

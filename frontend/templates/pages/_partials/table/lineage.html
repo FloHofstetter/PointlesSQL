@@ -1,0 +1,10 @@
+ <div class="tab-pane fade" id="tab-lineage" role="tabpanel" aria-labelledby="tab-lineage-btn">
+ <p class="text-muted small mb-3">
+ Lineage shows where this table's data came from and where it flows next.{{ info('lineage.what-is-lineage') }}
+ </p>
+ {% set _column_names = (table.columns | map(attribute="name") | list) if table and table.columns else [] %}
+ {% with lineage=lineage, table_columns=_column_names %}
+ {% include "components/lineage_card.html" %}
+ {% endwith %}
+
+ </div>

@@ -1,0 +1,84 @@
+ {% if cdf_subscription %}
+ <div class="tab-pane fade" id="tab-cdf-events" role="tabpanel" aria-labelledby="tab-cdf-events-btn">
+ <p class="text-muted small mb-3">
+ Foreign-Delta Change-Data-Feed capture for this table.  Pull-modell — admins
+ register a subscription, a background loop persists each new CDF row.
+ {% if is_admin %}
+ <a href="/admin/cdf-subscriptions" class="ms-1">Manage subscriptions →</a>
+ {% endif %}
+ </p>
+
+ <div class="card mb-3">
+ <div class="card-header">Subscription</div>
+ <div class="card-body">
+ <dl class="row mb-0 small">
+ <dt class="col-sm-3 text-muted">Status</dt>
+ <dd class="col-sm-9">
+ {% if cdf_subscription.is_active %}
+ <span class="badge bg-success">active</span>
+ {% else %}
+ <span class="badge bg-secondary">paused</span>
+ {% endif %}
+ </dd>
+ <dt class="col-sm-3 text-muted">Producer label</dt>
+ <dd class="col-sm-9 font-monospace">{{ cdf_subscription.producer_label }}</dd>
+ <dt class="col-sm-3 text-muted">Row-id column</dt>
+ <dd class="col-sm-9 font-monospace">{{ cdf_subscription.row_id_column }}</dd>
+ <dt class="col-sm-3 text-muted">Last version</dt>
+ <dd class="col-sm-9 font-monospace">
+ {% if cdf_subscription.last_version_processed is not none %}{{ cdf_subscription.last_version_processed }}{% else %}—{% endif %}
+ </dd>
+ <dt class="col-sm-3 text-muted">Last tailed</dt>
+ <dd class="col-sm-9 font-monospace">{{ cdf_subscription.last_tailed_at or "—" }}</dd>
+ {% if cdf_subscription.last_error %}
+ <dt class="col-sm-3 text-muted">Last error</dt>
+ <dd class="col-sm-9"><code class="text-danger">{{ cdf_subscription.last_error }}</code></dd>
+ {% endif %}
+ </dl>
+ </div>
+ </div>
+
+ {% if not cdf_recent_events %}
+ <div class="card">
+ <div class="card-body text-center text-muted py-4">
+ <i class="bi bi-inboxes display-5 d-block mb-2"></i>
+ <p class="mb-0 small">No CDF events captured yet.</p>
+ </div>
+ </div>
+ {% else %}
+ <div class="card">
+ <div class="card-header d-flex justify-content-between align-items-center">
+ <span>Recent events</span>
+ <span class="text-muted small">{{ cdf_recent_events|length }} most recent</span>
+ </div>
+ <div class="card-body p-0">
+ <div class="table-responsive">
+ <table class="table table-sm mb-0 align-middle">
+ <thead>
+ <tr>
+ <th class="ps-3">Delta v</th>
+ <th>Row id</th>
+ <th>Change</th>
+ <th>Commit ts</th>
+ <th class="pe-3">Captured</th>
+ </tr>
+ </thead>
+ <tbody>
+ {% for ev in cdf_recent_events %}
+ <tr>
+ <td class="ps-3 font-monospace">{{ ev.delta_version }}</td>
+ <td class="font-monospace small">{{ ev.row_id }}</td>
+ <td>{% include "partials/_cdf_change_type_pill.html" %}</td>
+ <td class="font-monospace small">{{ ev.commit_timestamp or "—" }}</td>
+ <td class="pe-3 font-monospace small">{{ ev.created_at or "—" }}</td>
+ </tr>
+ {% endfor %}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+ {% endif %}
+
+ </div>
+ {% endif %}
