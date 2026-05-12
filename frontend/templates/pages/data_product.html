@@ -9,7 +9,11 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="dataProductDetail({{ product | tojson }})" x-init="init()">
+<div x-data="dataProductDetail({{ product | tojson }}, {
+        current_user_id: {{ current_user_id | tojson }},
+        is_admin: {{ (is_admin or false) | tojson }},
+        is_steward: {{ (is_steward or false) | tojson }}
+    })" x-init="init()">
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <i class="bi bi-collection fs-3"></i>
@@ -45,6 +49,16 @@
             <button class="nav-link" id="tab-compliance-btn" data-bs-toggle="tab"
                     data-bs-target="#tab-compliance" type="button" role="tab"
                     data-pql-tab-key="compliance">Compliance</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-discussion" type="button" role="tab"
+                    data-pql-tab-key="discussion">
+                Discussion
+                <span class="badge bg-secondary ms-1"
+                      x-show="commentsTotal !== null"
+                      x-text="commentsTotal"></span>
+            </button>
         </li>
     </ul>
 
@@ -275,23 +289,205 @@
                 </div>
             </template>
         </div>
+
+        <!-- Discussion (Phase 71.1) -->
+        <div class="tab-pane fade" id="tab-discussion" role="tabpanel">
+            <template x-if="!commentsLoaded">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="commentsLoaded">
+                <div>
+                    <template x-if="topLevelComments.length === 0">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-chat-left-text me-1"></i>
+                            No comments yet — start the discussion below.
+                        </div>
+                    </template>
+                    <template x-for="c in topLevelComments" :key="c.id">
+                        <div class="card mb-2 pql-comment-card"
+                             :data-comment-id="c.id">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="small text-muted">
+                                        <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                        ·
+                                        <span x-text="c.created_at"></span>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-link"
+                                                x-show="!c.deleted_at"
+                                                @click="startReply(c.id)">Reply</button>
+                                        <button class="btn btn-sm btn-link text-danger"
+                                                x-show="!c.deleted_at && canDelete(c)"
+                                                @click="deleteComment(c.id)">Delete</button>
+                                    </div>
+                                </div>
+                                <template x-if="c.deleted_at">
+                                    <em class="small text-muted">[deleted]</em>
+                                </template>
+                                <template x-if="!c.deleted_at">
+                                    <div class="pql-comment-body" x-text="c.body_md"></div>
+                                </template>
+                                <template x-for="r in repliesOf(c.id)" :key="r.id">
+                                    <div class="ms-4 mt-2 ps-3 border-start"
+                                         :data-comment-id="r.id">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="small text-muted">
+                                                <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
+                                                ·
+                                                <span x-text="r.created_at"></span>
+                                            </div>
+                                            <button class="btn btn-sm btn-link text-danger"
+                                                    x-show="!r.deleted_at && canDelete(r)"
+                                                    @click="deleteComment(r.id)">Delete</button>
+                                        </div>
+                                        <template x-if="r.deleted_at">
+                                            <em class="small text-muted">[deleted]</em>
+                                        </template>
+                                        <template x-if="!r.deleted_at">
+                                            <div class="pql-comment-body" x-text="r.body_md"></div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="replyingTo === c.id">
+                                    <div class="mt-2 ms-4">
+                                        <textarea class="form-control form-control-sm pql-comment-reply"
+                                                  rows="2" x-model="replyDraft"></textarea>
+                                        <div class="mt-1 d-flex gap-2">
+                                            <button class="btn btn-sm btn-primary"
+                                                    :disabled="replyDraft.trim() === ''"
+                                                    @click="submitReply(c.id)">Post reply</button>
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                    @click="replyingTo = null">Cancel</button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <label class="form-label small">Add a comment</label>
+                            <textarea class="form-control pql-comment-new"
+                                      rows="3"
+                                      x-model="newCommentDraft"
+                                      placeholder="Markdown supported · @email to mention"></textarea>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-primary pql-comment-submit"
+                                        :disabled="newCommentDraft.trim() === ''"
+                                        @click="submitNew()">Post comment</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
     </div>
 </div>
 
 <script>
-window.dataProductDetail = function (product) {
+window.dataProductDetail = function (product, ctx) {
+    ctx = ctx || {};
     return {
         product: product,
+        currentUserId: ctx.current_user_id || 0,
+        isAdmin: !!ctx.is_admin,
+        isSteward: !!ctx.is_steward,
         detail: null,
         diff: null,
         diffLoading: false,
         diffError: null,
         lineageLoaded: false,
         lineageEmpty: false,
+        comments: [],
+        commentsLoaded: false,
+        commentsTotal: null,
+        newCommentDraft: '',
+        replyingTo: null,
+        replyDraft: '',
 
         async init() {
             await this.loadDetail();
             this.wireLazyTabs();
+        },
+
+        get topLevelComments() {
+            return (this.comments || []).filter(c => c.parent_comment_id === null);
+        },
+
+        repliesOf(parentId) {
+            return (this.comments || []).filter(c => c.parent_comment_id === parentId);
+        },
+
+        canDelete(c) {
+            return this.isAdmin || this.isSteward || c.author.user_id === this.currentUserId;
+        },
+
+        startReply(id) {
+            this.replyingTo = id;
+            this.replyDraft = '';
+        },
+
+        async loadComments() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.comments = data.comments || [];
+                this.commentsTotal = this.comments.length;
+            } catch (e) {
+                console.error('comments load failed', e);
+            } finally {
+                this.commentsLoaded = true;
+            }
+        },
+
+        async submitNew() {
+            const body = this.newCommentDraft.trim();
+            if (!body) return;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ body_md: body }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.newCommentDraft = '';
+                await this.loadComments();
+            } catch (e) {
+                console.error('comment post failed', e);
+            }
+        },
+
+        async submitReply(parentId) {
+            const body = this.replyDraft.trim();
+            if (!body) return;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ body_md: body, parent_comment_id: parentId }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.replyingTo = null;
+                this.replyDraft = '';
+                await this.loadComments();
+            } catch (e) {
+                console.error('reply post failed', e);
+            }
+        },
+
+        async deleteComment(id) {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments/' + id, {
+                    method: 'DELETE',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await this.loadComments();
+            } catch (e) {
+                console.error('comment delete failed', e);
+            }
         },
 
         async loadDetail() {
@@ -312,6 +508,10 @@ window.dataProductDetail = function (product) {
             const lineageBtn = document.querySelector('[data-bs-target="#tab-lineage"]');
             if (lineageBtn) {
                 lineageBtn.addEventListener('shown.bs.tab', () => this.loadLineage(), { once: true });
+            }
+            const discussionBtn = document.querySelector('[data-bs-target="#tab-discussion"]');
+            if (discussionBtn) {
+                discussionBtn.addEventListener('shown.bs.tab', () => this.loadComments(), { once: true });
             }
         },
 

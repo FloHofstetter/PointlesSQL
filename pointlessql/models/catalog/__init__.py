@@ -16,6 +16,8 @@ Layout:
 * ``_data_products``  — :class:`DataProduct`,
                         :class:`DataProductContractEvent`
                         + ``CONTRACT_EVENT_OUTCOMES`` constant.
+* ``_data_product_comments`` — :class:`DataProductComment`
+                        (Phase 71.1, threaded discussion rows).
 * ``_sync``           — :class:`SyncRun` (foreign-catalog sync run
                         history).
 """
@@ -23,6 +25,7 @@ Layout:
 from __future__ import annotations
 
 from pointlessql.models.catalog._autoload import AutoloadCheckpoint
+from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_products import (
     CONTRACT_EVENT_OUTCOMES,
     DataProduct,
@@ -44,6 +47,7 @@ __all__ = [
     "AutoloadCheckpoint",
     "Dashboard",
     "DataProduct",
+    "DataProductComment",
     "DataProductContractEvent",
     "QueryHistory",
     "QueryHistoryTable",

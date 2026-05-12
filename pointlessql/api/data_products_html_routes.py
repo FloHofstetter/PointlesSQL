@@ -3,9 +3,10 @@
 Two pages mirror the Phase-21 ``/models`` shape:
 
 * ``GET /data-products`` — index with a card per cached product.
-* ``GET /data-products/{catalog}/{schema}`` — detail page with five
-  tabs (Overview / Contract / Diff / Lineage / Compliance) backed
-  by the JSON routes in :mod:`pointlessql.api.data_products_routes`.
+* ``GET /data-products/{catalog}/{schema}`` — detail page with six
+  tabs (Overview / Contract / Diff / Lineage / Compliance /
+  Discussion — the latter added in Phase 71.1) backed by the JSON
+  routes in :mod:`pointlessql.api.data_products_routes`.
 
 Both redirect anonymous visitors to ``/auth/login?next=...`` so the
 deep-link survives the OIDC round-trip.
@@ -78,6 +79,9 @@ async def data_product_detail_page(
         factory, workspace_id, catalog, schema
     )
 
+    is_steward = (
+        row.steward_user_id is not None and row.steward_user_id == user["id"]
+    )
     templates = request.app.state.templates
     return templates.TemplateResponse(
         request,
@@ -85,6 +89,8 @@ async def data_product_detail_page(
         {
             "active_page": "data_products",
             "is_admin": user["id"] != 0 and user["is_admin"],
+            "current_user_id": user["id"],
+            "is_steward": is_steward,
             "product": {
                 "id": row.id,
                 "catalog": row.catalog_name,
