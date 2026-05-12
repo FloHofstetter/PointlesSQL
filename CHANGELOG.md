@@ -6,6 +6,53 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 72.3 — Trending in agent workloads (2026-05-13).**
+  New ``data_product_trending`` cache table + alembic
+  ``f2h4j6l8n0p2``.  New ``_data_product_trending_loop``
+  coroutine (opt-in via
+  ``POINTLESSQL_DATA_PRODUCTS_TRENDING_REFRESH_INTERVAL_SECONDS``;
+  default 0 = dormant).  ``services/data_products/trending.py``
+  carries the refresh helper (per-workspace top-N UPSERT over
+  the 7-day rolling window) + the read helper.  New
+  ``GET /api/data-products/trending`` JSON + ``/data-products/trending``
+  HTML page; ``?workspace_scope=all`` requires install-admin
+  or auditor (Phase 34 cross-workspace precedent).  New
+  Grafana panel 22 ("Top-10 trending data products (7d)")
+  added to both ``pointlessql_audit.json`` dashboards (sqlite
+  + postgres); ``scripts/check-grafana-dashboards.sh``
+  confirms matched panel counts.  8 pytest cases.
+
+- **Sprint 72.2 — Auto-computed endorsement badges
+  (2026-05-13).** Four read-time-computed badges (no cache
+  table): ``downstream_count`` (distinct out-edges in
+  ``lineage_column_map``), ``agent_run_count_7d`` (distinct
+  agent runs touching the DP in the last 7d),
+  ``last_rollback_passed`` (most recent ``rollback`` op,
+  ``True``/``False``/``None``), ``freshness_on_time_30d_pct``
+  (100 − 5pp per ``sla_violated`` envelope in the 30d window;
+  refined in Sprint 72.3's cache).  New
+  ``services/data_products/badges.py`` (single-DP +
+  bulk-for-listing helpers).  Listing + detail JSON payloads
+  carry a ``badges`` block; DP header renders the four pills;
+  browse table adds two sortable columns (``downstream``,
+  ``agents 7d``).  12 pytest cases.
+
+- **Sprint 72.1 — Activity feed per DP (2026-05-13).** New
+  ``services/data_products/`` package +
+  ``activity.py`` aggregator.  Merges four streams
+  (``agent_run_operations`` by ``target_table`` prefix,
+  ``audit_log`` by free-form ``target`` substring,
+  ``data_product_contract_events`` by FK, ``governance_events``
+  filtered to ``pointlessql.data_product.sla_violated``).
+  Per-stream cap = ``max(50, 2*limit)`` so one stream can't
+  starve the others; post-merge sort + pagination.  New
+  ``GET /api/data-products/{cat}/{sch}/activity`` route + new
+  Activity tab on the DP detail page inserted between
+  Compliance and Discussion.  ``AuditLog.target`` matching is
+  documented as a heuristic (free-form substring);
+  ``agent_run_operations`` is the authoritative stream.  11
+  pytest cases.
+
 - **Sprint B.3 — Daily marketplace-digest loop (2026-05-12).**
   Phase 71.4's ``users.digest_email_optin`` column + ``/me/settings``
   toggle now have a backing drainer.  New

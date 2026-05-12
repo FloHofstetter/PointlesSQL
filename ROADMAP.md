@@ -210,7 +210,7 @@ PointlesSQL
 │       │   reviews, contract bumps in last 7d.
 │       └── ~8 pytest cases.
 │
-├── Phase 72 — Agent-Aware Social Layer                     ⏳ planned
+├── Phase 72 — Agent-Aware Social Layer                     ⏳ in progress (Session A landed)
 │   │
 │   │   AI-native differentiation on top of (or alongside)
 │   │   Phase 71's catalog-collaboration foundation.  Treats
@@ -244,7 +244,7 @@ PointlesSQL
 │   │     a new loop coroutine matching the freshness-loop
 │   │     cadence.
 │   │
-│   ├── Sprint 72.1 — Activity feed per DP                     ⏳ planned
+│   ├── Sprint 72.1 — Activity feed per DP                     ✅ done 2026-05-13
 │   │   ├── New aggregator `services/data_products/activity.py`
 │   │   │   merges 4 source streams into a unified feed:
 │   │   │   - audit_log writes referencing DP tables (Phase 14);
@@ -262,7 +262,7 @@ PointlesSQL
 │   │   │   lineage trace that generated the event.
 │   │   └── ~12 pytest cases.
 │   │
-│   ├── Sprint 72.2 — Auto-computed endorsement badges         ⏳ planned
+│   ├── Sprint 72.2 — Auto-computed endorsement badges         ✅ done 2026-05-13
 │   │   ├── New service `services/data_products/badges.py`
 │   │   │   computes each badge on-demand:
 │   │   │   - `downstream-count`: out-edges in
@@ -280,7 +280,7 @@ PointlesSQL
 │   │   │   recompute-per-render keeps them honest.
 │   │   └── ~10 pytest cases.
 │   │
-│   ├── Sprint 72.3 — "Trending in agent workloads" board      ⏳ planned
+│   ├── Sprint 72.3 — "Trending in agent workloads" board      ✅ done 2026-05-13
 │   │   ├── New page `/data-products/trending` ranking DPs by
 │   │   │   `agent_run_count` + `audit_log_write_count` over a
 │   │   │   rolling 7d window.
