@@ -4999,6 +4999,156 @@ PointlesSQL
 │           Mode).  Walkthrough README playbook count refreshed
 │           to 59.  Final pytest sweep all-green.
 │
+├── Phase 67 — Notebook Operations (Schedule / Parametrize / Inspect)  ✅ done 2026-05-12
+│   │
+│   │   Phase 66 shipped the live cell-by-cell editor; Phase 67
+│   │   closes the DBX-Notebook gap by wiring four surfaces on top
+│   │   of the existing scheduler / papermill / kernel-session
+│   │   stack — without duplicating any of it.  The papermill
+│   │   executor + cron loop + Job/JobRun tables + jobs.html page
+│   │   were already production; Phase 67 is the editor-side
+│   │   verkabelung that finally lets a user schedule a notebook
+│   │   without leaving the editor.
+│   │
+│   │   The four shipped surfaces:
+│   │
+│   │   1. **Schedule-from-Notebook** — Toolbar "Schedule" button →
+│   │      modal pre-built from ``papermill.inspect_notebook`` →
+│   │      POST /api/jobs with kind="papermill"; new job lands in
+│   │      /jobs + writes a notebook_job_link row for editor look-up.
+│   │   2. **Parametrized runs** — Mark a code cell as papermill
+│   │      ``parameters`` via the jupytext-canonical
+│   │      ``tags=["parameters"]`` marker (round-trip-stable through
+│   │      load → save → reopen, byte-identical).  Schedule + Run-
+│   │      once modals render a typed override form per declared
+│   │      parameter.
+│   │   3. **Run-Once-with-Parameters** — Editor "Run as job" creates
+│   │      a paused permanent job + fires execute_run as a fire-and-
+│   │      forget asyncio task; browser polls /api/jobs/{id}/runs
+│   │      (new listing endpoint) until terminal.  Keeps a full
+│   │      audit-trail row.
+│   │   4. **Variable Inspector** — Live side-pane refreshes after
+│   │      every cell run.  Kernel bootstrap learns
+│   │      ``__pql_inspect__()`` + ``__pql_inspect_detail__()`` that
+│   │      emit a custom ``application/x-pql-vars+json`` MIME bundle
+│   │      the WS pump routes to a dedicated ``variable_snapshot``
+│   │      notify (NOT persisted to notebook_outputs — transient).
+│   │      Click a variable → detail view with truncated repr +
+│   │      DataFrame ``_repr_html_()`` head when applicable.
+│   │
+│   │   Anchor-decisions (preserved from the plan):
+│   │
+│   │   - **No new job-runner**.  papermill stays the single headless
+│   │     execution path; ``_papermill_executor`` already converts
+│   │     ``.py`` → ``.ipynb`` on-the-fly via jupytext so the
+│   │     canonical ``.py``-with-jupytext-markers invariant holds.
+│   │   - **Cell tags = metadata**.  ``compute_content_hash`` ignores
+│   │     ``cell.tags`` so toggling the parameters flag does not
+│   │     rewrite cell identity (kept run history stable).
+│   │   - **One link table, opportunistic writes**.  Phase 67.4's
+│   │     ``notebook_job_link`` table is a derived index; ``Job.config``
+│   │     stays canonical so a stale link row at worst shows a phantom
+│   │     entry in the editor panel.
+│   │   - **Job-output bridge re-uses notebook_outputs**.  Papermill
+│   │     output cells land at ``kernel_session_id = "job:<run_id>"``
+│   │     so both the editor reload-replay and a future "view job
+│   │     outputs" tab share one render path.
+│   │
+│   ├── Sprint 67.0 — Marker grammar: `tags=[...]` parsing       ✅ 2026-05-12
+│   │       ``_MARKER_RE`` extended with optional
+│   │       ``tags=["a","b"]`` suffix; ``NotebookCell.tags`` field
+│   │       added (frozen tuple, default ``()``);
+│   │       ``_scan_marker_extensions`` returns
+│   │       ``(tag, result_var, tags)`` triples.  Save path
+│   │       ``_rewrite_cell_markers`` emits the canonical marker
+│   │       line for every cell whose marker needs PointlesSQL-side
+│   │       polish (SQL ``result_var`` and/or ``tags=[…]``).
+│   │       ``compute_content_hash`` is **unchanged** — tags are
+│   │       metadata, not source.  10 pytest.
+│   ├── Sprint 67.1 — Inspect endpoint hardening + plumbing     ✅ 2026-05-12
+│   │       ``GET /api/notebooks/inspect`` learns ``.py`` ⇒
+│   │       jupytext + nbformat-tempfile convert ⇒
+│   │       ``papermill.inspect_notebook``; canonical
+│   │       ``kernelspec`` stamped so papermill's Jinja default
+│   │       rewrites succeed.  Browser ``loadParameters()`` cached
+│   │       in Alpine state + tiny "N params" toolbar badge so the
+│   │       user knows the notebook has overridable inputs.  5
+│   │       pytest.
+│   ├── Sprint 67.2 — Schedule-from-Notebook modal              ✅ 2026-05-12
+│   │       Editor toolbar gains "Schedule" + "Run as job" +
+│   │       "Jobs" + "Variables" buttons.  Schedule modal
+│   │       (``:class="{'d-block': flag}"`` per the feedback memory
+│   │       on Bootstrap modal + Alpine x-show) submits to the
+│   │       existing ``POST /api/jobs`` with kind="papermill" +
+│   │       config={notebook_path, parameters} + cron 5-field
+│   │       client-side check.  Uses existing ``pqlHumanizeCron``
+│   │       for the human-readable hint.  Zero backend change.
+│   ├── Sprint 67.3 — Run-Once-with-Parameters                  ✅ 2026-05-12
+│   │       New ``POST /api/notebooks/run-once`` creates a paused
+│   │       Job + fires ``execute_run`` via ``asyncio.create_task``;
+│   │       returns ``{job_id, job_run_id, status: "started"}``.
+│   │       New ``GET /api/jobs/{id}/runs`` listing endpoint feeds
+│   │       the browser-side polling loop (exponential backoff
+│   │       0.5 → 5 s, 240-iter cap).  Audit-row written via
+│   │       ``audit("run_once_notebook")``.  9 pytest (5 run-once +
+│   │       4 list-runs).
+│   ├── Sprint 67.4 — Notebook-Jobs panel + link table          ✅ 2026-05-12
+│   │       Alembic ``i9j1k3m5o7q9_notebook_job_link.py`` adds
+│   │       ``notebook_job_link(id, workspace_id, notebook_path,
+│   │       job_id, created_at)`` + three indexes (notebook_path,
+│   │       (workspace_id, notebook_path), job_id).  POST /api/jobs
+│   │       + POST /api/notebooks/run-once write a link row
+│   │       opportunistically when kind="papermill".  New
+│   │       ``GET /api/notebooks/jobs?path=…`` returns
+│   │       ``{scheduled_jobs, recent_runs}`` joined through the
+│   │       link.  Collapsible "Jobs ▾" toolbar button +
+│   │       in-editor panel listing scheduled jobs + last 10 runs.
+│   │       7 pytest.
+│   ├── Sprint 67.5 — Variable Inspector (live + auto-refresh)  ✅ 2026-05-12
+│   │       Kernel bootstrap ``_NOTEBOOK_BOOTSTRAP_CODE`` extended
+│   │       with ``__pql_inspect__()`` + ``__pql_inspect_detail__()``
+│   │       (excludes dunder / modules / plain callables; classes +
+│   │       DataFrames + sequences kept with shape/len hints).
+│   │       WS pump ``_handle_kernel_message`` intercepts
+│   │       ``application/x-pql-vars+json`` and
+│   │       ``application/x-pql-vardetail+json`` and routes them as
+│   │       dedicated ``variable_snapshot`` / ``variable_detail``
+│   │       notify frames — NOT persisted in ``notebook_outputs``.
+│   │       After every ``execute_reply`` the editor sends a silent
+│   │       ``execute("__pql_inspect__()")`` via the existing
+│   │       JSON-RPC client; click on a variable triggers a detail
+│   │       fetch with HTML head when the variable has
+│   │       ``_repr_html_()``.  11 pytest (bootstrap-eval style with
+│   │       monkey-patched ``IPython.display``).
+│   ├── Sprint 67.6 — Job-Run-Output ↔ notebook_outputs bridge  ✅ 2026-05-12
+│   │       ``_papermill_executor`` post-execute path now reads the
+│   │       result ``.ipynb`` via nbformat, computes
+│   │       ``compute_content_hash`` per cell-source, and persists
+│   │       every output row to ``notebook_outputs`` with
+│   │       ``kernel_session_id = "job:<run_id>"``.  Idempotent
+│   │       (clear-then-append) so retries replace prior rows
+│   │       cleanly.  5 pytest (stream + execute_result + idempotent
+│   │       + skip-markdown + missing-file no-op +
+│   │       content-hash-lookup).
+│   ├── Sprint 67.7 — Param-cell UI-Branding                    ✅ 2026-05-12
+│   │       ``cellLabel(cell)`` renders "PARAMS" / "SQL · PARAMS" /
+│   │       "Markdown · PARAMS" when the cell carries the
+│   │       ``parameters`` tag.  Per-cell toolbar gains a
+│   │       "Mark/Unmark as parameters" menu entry that toggles
+│   │       ``cell.tags`` + flips ``_dirty`` + triggers the
+│   │       autosave debouncer.  ``GET /api/notebooks/load`` +
+│   │       ``POST /api/notebooks/save`` carry the ``tags`` list
+│   │       in both directions.  3 pytest (mark + unmark +
+│   │       end-to-end inspect-sees-tag).
+│   └── Sprint 67.8 — Phase close                              ✅ 2026-05-12
+│           ROADMAP + CHANGELOG + memory entry +
+│           docs/e2e-walkthroughs/notebook-jobs.md + docs/features/
+│           notebook-jobs.md.  Walkthrough README playbook count
+│           refreshed to 60.  Final pytest sweep + ruff + pydoclint
+│           + alembic check all-green.  Pyright budget: pre-existing
+│           reportLiteralAssignment error at notebook_kernel_ws:361
+│           (unrelated to Phase 67) carried forward.
+│
 ├── Phase 65 — Lens (read-only Q&A surface, MCP + Browser parallel) ✅ done 2026-05-10
 │   │
 │   │   New analyst-facing chat-style surface that exposes read-only

@@ -6,6 +6,44 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 67 — Notebook Operations (2026-05-12).**  Phase 66's
+  live editor gains the four DBX-feel surfaces that close the
+  notebook-from-the-editor gap without touching the existing
+  scheduler / papermill / kernel-session stack:
+  (1) **Schedule-from-Notebook** — toolbar "Schedule" button +
+  modal pre-built from `papermill.inspect_notebook` posts to
+  the existing `POST /api/jobs` with `kind="papermill"`;
+  (2) **Parametrized runs** — papermill-canonical
+  `# %% tags=["parameters"]` jupytext marker (round-trip-stable;
+  ignored by `compute_content_hash` so the parameters-tag flip
+  doesn't rewrite cell identity); inspect endpoint accepts `.py`
+  via in-memory jupytext + nbformat conversion;
+  (3) **Run-Once-with-Parameters** — `POST /api/notebooks/run-once`
+  creates a paused permanent Job + fires
+  `scheduler_service.execute_run` as fire-and-forget asyncio task,
+  returning `{job_id, job_run_id, status}`; new
+  `GET /api/jobs/{id}/runs` listing endpoint feeds browser polling;
+  (4) **Variable Inspector** — kernel bootstrap learns
+  `__pql_inspect__()` + `__pql_inspect_detail__()` that emit a
+  custom `application/x-pql-vars+json` MIME bundle; the WS pump
+  routes them to dedicated `variable_snapshot` /
+  `variable_detail` notify frames (NOT persisted) so the editor
+  side-pane refreshes after every cell run.  Plus a job-run
+  output bridge — `_papermill_executor` post-execute persists
+  per-cell outputs to `notebook_outputs` with
+  `kernel_session_id = "job:<run_id>"` so the same renderer
+  surfaces job artefacts and live cell outputs.  New
+  `notebook_job_link` table (Alembic `i9j1k3m5o7q9`) gives the
+  editor's in-context "Jobs of this notebook" panel an indexed
+  look-up against `notebook_path` instead of a JSON-LIKE scan
+  on `Job.config`.  Per-cell "Mark as parameters" dropdown
+  action toggles `cell.tags` and triggers the autosave
+  debouncer; the params-tag round-trips byte-identically
+  through `load → save`.  46+ new pytest cases; 110/110 green
+  on the notebook + jobs slice.  Pyright budget: pre-existing
+  reportLiteralAssignment at `notebook_kernel_ws:361` carried
+  forward (Sprint 66.5 SQL-cell `record_query`; unrelated to
+  Phase 67).
 - **Phase 66 — Browser Notebook editor v2 (2026-05-10).**  The
   browser notebook editor returns, rebuilt around the marker
   grammar (`# %%` jupytext-Percent + FNV-1a-64 content_hash),
