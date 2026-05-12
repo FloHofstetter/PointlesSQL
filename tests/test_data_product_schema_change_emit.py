@@ -62,12 +62,21 @@ data_product:
 def _set_yaml_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Wire ``settings.data_products.yaml_search_paths`` to *tmp_path*.
 
+    Uses ``monkeypatch.setattr`` so the patched attribute is restored
+    after the test exits — otherwise subsequent tests in the same
+    session see a stale ``yaml_search_paths`` and the
+    ``test_reload_400_when_search_paths_empty`` assertion flips.
+
     Returns the seeded yaml path so callers can rewrite its contents
     between reloads.
     """
     yaml_path = tmp_path / "pointlessql.yaml"
     yaml_path.write_text(YAML_V1, encoding="utf-8")
-    app.state.settings.data_products.yaml_search_paths = (yaml_path,)
+    monkeypatch.setattr(
+        app.state.settings.data_products,
+        "yaml_search_paths",
+        (yaml_path,),
+    )
     return yaml_path
 
 
