@@ -17,6 +17,7 @@
  */
 
 import { cellEditor } from './cell_editor.js';
+import { installJobsOrchestration } from './jobs_orchestration.js';
 import { createKernelClient } from './kernel_ws.js';
 import { renderOutputFrame } from './output_renderer.js';
 
@@ -43,7 +44,7 @@ async function _computeContentHash(source) {
 }
 
 export function notebookEditor({ initialPath = '' } = {}) {
- return {
+ const state = {
  path: initialPath,
  cells: [],
  outputs: [],
@@ -155,196 +156,9 @@ export function notebookEditor({ initialPath = '' } = {}) {
  }
  },
 
- // ---- Phase 67.2: Schedule modal ---------------------------------------
-
- describeCron(expr) {
- if (!expr) return '';
- if (typeof window.pqlHumanizeCron === 'function') {
- try { return window.pqlHumanizeCron(expr); } catch { /* fall through */ }
- }
- return '';
- },
-
- _buildDefaultJobName(suffix) {
- const slug = String(this.path || 'notebook').replace(/[^A-Za-z0-9_-]+/g, '_');
- const stamp = new Date().toISOString().replace(/[:.]/g, '-');
- return suffix ? `${slug}:${suffix}:${stamp}` : slug;
- },
-
- openScheduleModal() {
- this.scheduleError = '';
- // Re-fetch params in case the user just saved a cell as ``parameters``.
- this.loadParameters();
- this.scheduleForm = {
- name: this._buildDefaultJobName('schedule'),
- cronExpr: '0 5 * * *',
- parameters: {},
- };
- this.scheduleModalOpen = true;
- },
-
- closeScheduleModal() {
- this.scheduleModalOpen = false;
- this.scheduleSubmitting = false;
- },
-
- async submitSchedule() {
- if (this.scheduleSubmitting) return;
- this.scheduleError = '';
- const name = (this.scheduleForm.name || '').trim();
- const cronExpr = (this.scheduleForm.cronExpr || '').trim();
- if (!name) { this.scheduleError = 'Job name is required.'; return; }
- if (!cronExpr) { this.scheduleError = 'Cron expression is required.'; return; }
- // 5-field cron — basic shape check on the client (server re-validates).
- if (cronExpr.split(/\s+/).filter(Boolean).length !== 5) {
- this.scheduleError = 'Cron expression must have exactly 5 fields.';
- return;
- }
- const overrides = {};
- for (const p of this.parameters || []) {
- const raw = this.scheduleForm.parameters[p.name];
- if (raw !== undefined && raw !== '') overrides[p.name] = raw;
- }
- const body = {
- name,
- cron_expr: cronExpr,
- kind: 'papermill',
- config: {
- notebook_path: this.path,
- parameters: overrides,
- },
- };
- this.scheduleSubmitting = true;
- try {
- const res = await window.pqlApi.fetch('/api/jobs', {
- method: 'POST',
- body: JSON.stringify(body),
- headers: { 'Content-Type': 'application/json' },
- });
- if (res.ok) {
- this.closeScheduleModal();
- if (window.pqlToast) {
- window.pqlToast.success(`Scheduled "${name}".`);
- }
- if (this.loadNotebookJobs) this.loadNotebookJobs();
- } else {
- const detail = (res.data && (res.data.detail || res.data.error)) || '';
- this.scheduleError = detail || `Failed (HTTP ${res.status}).`;
- }
- } catch (err) {
- this.scheduleError = (err && err.message) || String(err);
- } finally {
- this.scheduleSubmitting = false;
- }
- },
-
- // ---- Phase 67.3: Run-Once modal ---------------------------------------
-
- openRunOnceModal() {
- this.runOnceError = '';
- this.runOnceStatus = '';
- this.loadParameters();
- this.runOnceForm = { parameters: {} };
- this.runOnceModalOpen = true;
- },
-
- closeRunOnceModal() {
- this.runOnceModalOpen = false;
- this.runOnceSubmitting = false;
- this.runOnceStatus = '';
- },
-
- async submitRunOnce() {
- if (this.runOnceSubmitting) return;
- this.runOnceError = '';
- const overrides = {};
- for (const p of this.parameters || []) {
- const raw = this.runOnceForm.parameters[p.name];
- if (raw !== undefined && raw !== '') overrides[p.name] = raw;
- }
- this.runOnceSubmitting = true;
- try {
- const res = await window.pqlApi.fetch('/api/notebooks/run-once', {
- method: 'POST',
- body: JSON.stringify({ path: this.path, parameters: overrides }),
- headers: { 'Content-Type': 'application/json' },
- });
- if (!res.ok) {
- const detail = (res.data && (res.data.detail || res.data.error)) || '';
- this.runOnceError = detail || `Failed (HTTP ${res.status}).`;
- return;
- }
- const { job_id, job_run_id } = res.data || {};
- this.runOnceStatus = `Run #${job_run_id} started — polling…`;
- await this._pollJobRun(job_id, job_run_id);
- if (this.loadNotebookJobs) this.loadNotebookJobs();
- } catch (err) {
- this.runOnceError = (err && err.message) || String(err);
- } finally {
- this.runOnceSubmitting = false;
- }
- },
-
- // ---- Phase 67.4: Notebook-Jobs panel --------------------------------
-
- async loadNotebookJobs() {
- if (!this.path) return;
- try {
- const res = await window.pqlApi.fetch(
- `/api/notebooks/jobs?path=${encodeURIComponent(this.path)}`,
- { silent: true },
- );
- if (res.ok && res.data) {
- this.jobsPanel = {
- scheduled_jobs: res.data.scheduled_jobs || [],
- recent_runs: res.data.recent_runs || [],
- };
- }
- } catch { /* non-fatal */ }
- },
-
- toggleJobsPanel() {
- this.jobsPanelOpen = !this.jobsPanelOpen;
- if (this.jobsPanelOpen) this.loadNotebookJobs();
- },
-
- async _pollJobRun(jobId, runId) {
- if (!jobId || !runId) return;
- let delay = 500;
- const cap = 5000;
- for (let i = 0; i < 240; i++) {
- await new Promise((r) => setTimeout(r, delay));
- delay = Math.min(delay * 1.4, cap);
- try {
- const res = await window.pqlApi.fetch(
- `/api/jobs/${jobId}/runs/${runId}/tasks`,
- { silent: true },
- );
- if (!res.ok) continue;
- // The run is considered complete when the parent job_run has
- // a terminal status; we use the tasks endpoint as a proxy
- // since it 404s if the run was deleted, otherwise returns
- // task rows whose statuses reflect the run.
- // A separate /api/jobs/{id}/runs/{run_id} endpoint would be
- // cleaner — for now we re-poll the job listing as fallback.
- const listing = await window.pqlApi.fetch(
- `/api/jobs/${jobId}/runs`,
- { silent: true },
- );
- if (listing.ok && Array.isArray(listing.data)) {
- const run = listing.data.find((r) => r.id === runId);
- if (run && run.status !== 'running') {
- this.runOnceStatus =
- `Run #${runId} ${run.status}` +
- (run.error ? ` — ${run.error}` : '.');
- return;
- }
- }
- } catch { /* swallow + retry */ }
- }
- this.runOnceStatus =
- `Run #${runId} still running after timeout — check /jobs.`;
- },
+ // Job-orchestration methods (Schedule modal, Run-Once modal,
+ // Notebook-Jobs panel) live in ``./jobs_orchestration.js`` and
+ // get installed onto ``state`` below.
 
  _seedLiveOutputs() {
  this._liveOutputs = {};
@@ -936,4 +750,6 @@ export function notebookEditor({ initialPath = '' } = {}) {
  }
  },
  };
+ installJobsOrchestration(state);
+ return state;
 }
