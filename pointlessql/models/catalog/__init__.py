@@ -26,6 +26,8 @@ Layout:
                         (Phase 71.5, versioned per-DP wiki).
 * ``_data_product_trending`` — :class:`DataProductTrending`
                         (Phase 72.3, cached trending rank rows).
+* ``_data_product_endorsement`` — :class:`DataProductEndorsement`
+                        (Phase 72.4, typed manual endorsements).
 * ``_sync``           — :class:`SyncRun` (foreign-catalog sync run
                         history).
 """
@@ -34,6 +36,10 @@ from __future__ import annotations
 
 from pointlessql.models.catalog._autoload import AutoloadCheckpoint
 from pointlessql.models.catalog._data_product_comments import DataProductComment
+from pointlessql.models.catalog._data_product_endorsement import (
+    ENDORSEMENT_TYPES,
+    DataProductEndorsement,
+)
 from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
@@ -56,11 +62,13 @@ from pointlessql.models.catalog._sync import SyncRun
 
 __all__ = [
     "CONTRACT_EVENT_OUTCOMES",
+    "ENDORSEMENT_TYPES",
     "AutoloadCheckpoint",
     "Dashboard",
     "DataProduct",
     "DataProductComment",
     "DataProductContractEvent",
+    "DataProductEndorsement",
     "DataProductFollow",
     "DataProductReadme",
     "DataProductReview",

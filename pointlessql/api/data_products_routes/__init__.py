@@ -22,6 +22,9 @@ from pointlessql.api.data_products_routes.activity import router as _activity_ro
 from pointlessql.api.data_products_routes.comments import router as _comments_router
 from pointlessql.api.data_products_routes.detail import router as _detail_router
 from pointlessql.api.data_products_routes.diff import router as _diff_router
+from pointlessql.api.data_products_routes.endorsements import (
+    router as _endorsements_router,
+)
 from pointlessql.api.data_products_routes.follows import router as _follows_router
 from pointlessql.api.data_products_routes.lineage import router as _lineage_router
 from pointlessql.api.data_products_routes.listing import router as _listing_router
@@ -42,6 +45,7 @@ router.include_router(_follows_router)
 router.include_router(_readme_router)
 router.include_router(_activity_router)
 router.include_router(_trending_router)
+router.include_router(_endorsements_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original
