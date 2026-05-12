@@ -111,6 +111,7 @@ from pointlessql.models.notebook import (
     NotebookJobLink,
     NotebookOutput,
 )
+from pointlessql.models.notifications import UserNotification
 from pointlessql.models.scheduler import (
     Job,
     JobLog,
@@ -202,6 +203,7 @@ __all__ = [
     "TaskRun",
     "UnattributedWrite",
     "User",
+    "UserNotification",
     "WORKSPACE_PIN_MODES",
     "WORKSPACE_REPO_PROVIDER_KINDS",
     "WORKSPACE_REPO_SECRET_KINDS",

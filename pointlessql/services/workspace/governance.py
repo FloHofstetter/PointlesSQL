@@ -76,6 +76,19 @@ EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED = "pointlessql.dbt.auto_rollback.executed"
 # the steward and render age in their preferred timezone.
 EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED = "pointlessql.data_product.sla_violated"
 
+# Phase 71.4 — data-product marketplace social events.  Comment +
+# review + follow events go through the same forwarder as the rest
+# of the governance lane so existing webhook/S3/CloudTrail sinks
+# pick them up without new pub-sub plumbing; the per-user inbox
+# fan-out happens *next to* this emit (not as part of it).
+EVENT_TYPE_DATA_PRODUCT_COMMENTED = "pointlessql.data_product.commented"
+EVENT_TYPE_DATA_PRODUCT_REVIEWED = "pointlessql.data_product.reviewed"
+EVENT_TYPE_DATA_PRODUCT_FOLLOWED = "pointlessql.data_product.followed"
+EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED = "pointlessql.data_product.schema_changed"
+EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED = (
+    "pointlessql.data_product.contract_violated"
+)
+
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_EXTERNAL_WRITE,
     EVENT_TYPE_POLICY_VIOLATION,
@@ -90,6 +103,11 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DBT_TEST_WARNED,
     EVENT_TYPE_DBT_AUTO_ROLLBACK_EXECUTED,
     EVENT_TYPE_DATA_PRODUCT_SLA_VIOLATED,
+    EVENT_TYPE_DATA_PRODUCT_COMMENTED,
+    EVENT_TYPE_DATA_PRODUCT_REVIEWED,
+    EVENT_TYPE_DATA_PRODUCT_FOLLOWED,
+    EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED,
+    EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED,
 )
 
 

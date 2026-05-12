@@ -23,6 +23,11 @@ from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
+from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.workspace.governance import (
+    EVENT_TYPE_DATA_PRODUCT_REVIEWED,
+    emit_governance_event,
+)
 
 router = APIRouter(tags=["data-products"])
 
@@ -216,6 +221,41 @@ async def upsert_data_product_review(
         author = session.get(User, review.author_user_id)
         author_email = author.email if author else None
         author_display = author.display_name if author else None
+        review_id = review.id
+        review_dp_id = review.data_product_id
+        review_stars = review.stars
+
+    # Phase 71.4: fan-out + governance event.  We always emit on
+    # PUT — including the upsert case — because a star change is
+    # something followers want to know about.
+    source_url = f"/data-products/{catalog}/{schema}#tab-reviews"
+    summary = (
+        f"@{author_email or 'someone'} reviewed {catalog}.{schema} "
+        f"({stars}/5)"
+    )
+    fanout_dataproduct_event(
+        factory,
+        event_type=EVENT_TYPE_DATA_PRODUCT_REVIEWED,
+        data_product_id=review_dp_id,
+        workspace_id=workspace_id,
+        actor_user_id=user["id"],
+        source_url=source_url,
+        summary_md=summary,
+    )
+    await emit_governance_event(
+        EVENT_TYPE_DATA_PRODUCT_REVIEWED,
+        {
+            "data_product_id": review_dp_id,
+            "data_product_ref": f"{catalog}.{schema}",
+            "review_id": review_id,
+            "author_user_id": user["id"],
+            "author_email": author_email,
+            "stars": review_stars,
+        },
+        settings=request.app.state.settings,
+        session_factory=factory,
+        workspace_id=workspace_id,
+    )
 
     return _serialise_review(
         review,

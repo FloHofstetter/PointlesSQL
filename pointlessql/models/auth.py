@@ -107,3 +107,12 @@ class User(Base):
     default_workspace_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("workspaces.id"), nullable=False, server_default="1"
     )
+    # Phase 71.4: opt-in for the daily marketplace digest email.
+    # When ``True`` the ``_user_notification_digest_loop`` picks
+    # this user up at the daily wake-window if they have unread
+    # notifications.  The actual mail delivery is handled by the
+    # audit-stream forwarder's webhook / SES sink — this column is
+    # just the opt-in gate.
+    digest_email_optin: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )

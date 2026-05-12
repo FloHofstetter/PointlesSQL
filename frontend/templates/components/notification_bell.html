@@ -1,0 +1,42 @@
+{#
+ Phase 71.4 — bell icon in the topbar that polls
+ ``/api/notifications/unread-count`` every 60s and renders a red
+ badge with the count when non-zero.  Click jumps to
+ ``/notifications`` (rendered by ``pages/notifications.html``).
+
+ Hidden for anonymous visitors (``current_user`` falsy) so we
+ don't fire the count poll before login.
+#}
+{% if current_user is defined and current_user %}
+<div class="nav-item d-flex align-items-center me-2 pql-notif-bell"
+     x-data="notificationBell()"
+     x-init="init()">
+    <a class="nav-link position-relative px-2"
+       href="/notifications"
+       title="Notifications">
+        <i class="bi bi-bell fs-5"></i>
+        <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle pql-notif-bell-badge"
+              x-show="unread > 0"
+              x-text="unread"></span>
+    </a>
+</div>
+<script>
+window.notificationBell = window.notificationBell || function () {
+    return {
+        unread: 0,
+        async init() {
+            await this.refresh();
+            setInterval(() => this.refresh(), 60000);
+        },
+        async refresh() {
+            try {
+                const res = await fetch('/api/notifications/unread-count');
+                if (!res.ok) return;
+                const data = await res.json();
+                this.unread = data.unread || 0;
+            } catch (e) { /* swallow */ }
+        },
+    };
+};
+</script>
+{% endif %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}My settings · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "My settings"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="meSettingsForm({{ settings | tojson }})" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-person-gear fs-3"></i>
+        <h1 class="h3 mb-0">My settings</h1>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9 text-muted" x-text="settings.email"></dd>
+                <dt class="col-sm-3">Display name</dt>
+                <dd class="col-sm-9 text-muted" x-text="settings.display_name"></dd>
+            </dl>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h2 class="h5">Notifications</h2>
+            <div class="form-check form-switch pql-me-digest-toggle">
+                <input class="form-check-input"
+                       type="checkbox"
+                       id="pql-me-digest-optin"
+                       :checked="settings.digest_email_optin"
+                       @change="toggle($event.target.checked)">
+                <label class="form-check-label" for="pql-me-digest-optin">
+                    Daily marketplace digest email
+                </label>
+            </div>
+            <small class="text-muted d-block mt-1">
+                When enabled, a daily summary of new comments, reviews,
+                and contract changes on your followed data products is
+                delivered via the configured audit-stream webhook /
+                email sinks (Phase 20).
+            </small>
+            <div class="mt-2 small"
+                 x-show="status"
+                 :class="statusOk ? 'text-success' : 'text-danger'"
+                 x-text="status"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.meSettingsForm = function (initial) {
+    return {
+        settings: initial,
+        status: '',
+        statusOk: true,
+        init() { /* no async load — server already injected ``settings`` */ },
+
+        async toggle(checked) {
+            this.status = '';
+            try {
+                const res = await fetch('/api/me/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ digest_email_optin: checked }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.settings = await res.json();
+                this.status = 'Saved.';
+                this.statusOk = true;
+            } catch (e) {
+                this.status = 'Save failed.';
+                this.statusOk = false;
+            }
+        },
+    };
+};
+</script>
+{% endblock %}

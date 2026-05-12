@@ -40,3 +40,10 @@ DBT_RUN_COMPLETED: Final = "pointlessql.dbt.run.completed"
 DBT_TEST_FAILED: Final = "pointlessql.dbt.test.failed"
 DBT_TEST_WARNED: Final = "pointlessql.dbt.test.warned"
 DBT_AUTO_ROLLBACK_EXECUTED: Final = "pointlessql.dbt.auto_rollback.executed"
+
+# Data-product marketplace (Phase 71.4).
+DATA_PRODUCT_COMMENTED: Final = "pointlessql.data_product.commented"
+DATA_PRODUCT_REVIEWED: Final = "pointlessql.data_product.reviewed"
+DATA_PRODUCT_FOLLOWED: Final = "pointlessql.data_product.followed"
+DATA_PRODUCT_SCHEMA_CHANGED: Final = "pointlessql.data_product.schema_changed"
+DATA_PRODUCT_CONTRACT_VIOLATED: Final = "pointlessql.data_product.contract_violated"

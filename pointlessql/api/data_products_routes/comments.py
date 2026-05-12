@@ -28,6 +28,11 @@ from pointlessql.api.dependencies import current_workspace_id, get_user, require
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
+from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.workspace.governance import (
+    EVENT_TYPE_DATA_PRODUCT_COMMENTED,
+    emit_governance_event,
+)
 
 router = APIRouter(tags=["data-products"])
 
@@ -244,6 +249,39 @@ async def post_data_product_comment(
         author = session.get(User, comment.author_user_id)
         author_email = author.email if author else None
         author_display = author.display_name if author else None
+        comment_id = comment.id
+        comment_dp_id = comment.data_product_id
+
+    # Phase 71.4: per-user inbox fan-out + governance CloudEvent.
+    source_url = (
+        f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
+    )
+    summary = f"@{author_email or 'someone'} commented on {catalog}.{schema}"
+    fanout_dataproduct_event(
+        factory,
+        event_type=EVENT_TYPE_DATA_PRODUCT_COMMENTED,
+        data_product_id=comment_dp_id,
+        workspace_id=workspace_id,
+        actor_user_id=user["id"],
+        source_url=source_url,
+        summary_md=summary,
+        extra_recipients=mentioned_ids,
+    )
+    await emit_governance_event(
+        EVENT_TYPE_DATA_PRODUCT_COMMENTED,
+        {
+            "data_product_id": comment_dp_id,
+            "data_product_ref": f"{catalog}.{schema}",
+            "comment_id": comment_id,
+            "author_user_id": user["id"],
+            "author_email": author_email,
+            "mentioned_user_ids": mentioned_ids,
+            "parent_comment_id": parent_comment_id,
+        },
+        settings=request.app.state.settings,
+        session_factory=factory,
+        workspace_id=workspace_id,
+    )
 
     return _serialise_comment(
         comment,

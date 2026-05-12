@@ -23,6 +23,10 @@ from pointlessql.api.dependencies import current_workspace_id, get_user, require
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_follows import DataProductFollow
+from pointlessql.services.workspace.governance import (
+    EVENT_TYPE_DATA_PRODUCT_FOLLOWED,
+    emit_governance_event,
+)
 
 router = APIRouter(tags=["data-products"])
 
@@ -64,6 +68,22 @@ async def follow_data_product(
             )
         )
         session.commit()
+
+    # Phase 71.4: governance event only — no inbox fan-out for a
+    # follow (the actor is the only person who cares; their own
+    # rows would self-suppress anyway).
+    await emit_governance_event(
+        EVENT_TYPE_DATA_PRODUCT_FOLLOWED,
+        {
+            "data_product_id": row.id,
+            "data_product_ref": f"{catalog}.{schema}",
+            "follower_user_id": user["id"],
+            "follower_email": user.get("email", ""),
+        },
+        settings=request.app.state.settings,
+        session_factory=factory,
+        workspace_id=workspace_id,
+    )
     return {"followed": True, "already": False}
 
 

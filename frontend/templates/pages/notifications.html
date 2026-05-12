@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Notifications · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Notifications"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="notificationsInbox()" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-bell fs-3"></i>
+        <h1 class="h3 mb-0">Notifications</h1>
+        <span class="badge bg-danger ms-1 pql-notif-unread-badge"
+              x-show="unreadCount > 0"
+              x-text="unreadCount"></span>
+        <div class="ms-auto d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary pql-notif-mark-all"
+                    x-show="unreadCount > 0"
+                    @click="markAllRead()">
+                Mark all read
+            </button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @click="reload()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center small">
+                <span class="text-muted">Filter:</span>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input pql-notif-unread-toggle"
+                           type="checkbox" id="pql-notif-unread-toggle"
+                           x-model="unreadOnly"
+                           @change="reload()">
+                    <label class="form-check-label" for="pql-notif-unread-toggle">
+                        Unread only
+                    </label>
+                </div>
+                <select class="form-select form-select-sm w-auto pql-notif-type-filter"
+                        x-model="eventTypeFilter"
+                        @change="reload()">
+                    <option value="">All event types</option>
+                    <option value="pointlessql.data_product.commented">Comments</option>
+                    <option value="pointlessql.data_product.reviewed">Reviews</option>
+                    <option value="pointlessql.data_product.followed">Follows</option>
+                    <option value="pointlessql.data_product.schema_changed">Schema changes</option>
+                    <option value="pointlessql.data_product.contract_violated">Contract violations</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <template x-if="loading">
+        <div class="text-muted small p-3">Loading…</div>
+    </template>
+
+    <template x-if="!loading && notifications.length === 0">
+        <div class="alert alert-secondary pql-notif-empty">
+            <i class="bi bi-inbox me-1"></i>
+            Nothing here yet.  Follow a data product or wait for an
+            event you've subscribed to.
+        </div>
+    </template>
+
+    <template x-if="!loading && notifications.length > 0">
+        <div class="list-group pql-notif-list">
+            <template x-for="n in notifications" :key="n.id">
+                <a :href="n.source_url"
+                   class="list-group-item list-group-item-action pql-notif-row"
+                   :class="n.read_at ? 'pql-notif-row--read' : 'pql-notif-row--unread'"
+                   :data-notification-id="n.id"
+                   :data-event-type="n.event_type"
+                   @click="markRead(n.id)">
+                    <div class="d-flex w-100 justify-content-between">
+                        <span class="small">
+                            <span class="badge bg-light text-dark border me-1"
+                                  x-text="shortEventType(n.event_type)"></span>
+                            <strong x-text="n.summary_md"></strong>
+                        </span>
+                        <small class="text-muted" x-text="n.created_at"></small>
+                    </div>
+                    <small class="text-muted"
+                           x-show="n.actor && n.actor.email"
+                           x-text="'by ' + (n.actor.display_name || n.actor.email)"></small>
+                </a>
+            </template>
+        </div>
+    </template>
+</div>
+
+<script>
+window.notificationsInbox = function () {
+    return {
+        notifications: [],
+        unreadCount: 0,
+        unreadOnly: false,
+        eventTypeFilter: '',
+        loading: false,
+
+        async init() {
+            await this.reload();
+            await this.refreshUnread();
+        },
+
+        shortEventType(et) {
+            const tail = (et || '').split('.').pop() || et;
+            return tail.replace(/_/g, ' ');
+        },
+
+        async reload() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.unreadOnly) params.set('unread', 'true');
+                if (this.eventTypeFilter) params.set('event_type', this.eventTypeFilter);
+                const res = await fetch('/api/notifications?' + params.toString());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.notifications = data.notifications || [];
+            } catch (e) {
+                console.error('notifications load failed', e);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async refreshUnread() {
+            try {
+                const res = await fetch('/api/notifications/unread-count');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.unreadCount = data.unread || 0;
+            } catch (e) {
+                console.error('unread count failed', e);
+            }
+        },
+
+        async markRead(id) {
+            try {
+                await fetch('/api/notifications/' + id + '/read', { method: 'POST' });
+                await this.refreshUnread();
+                const row = this.notifications.find(n => n.id === id);
+                if (row && !row.read_at) {
+                    row.read_at = new Date().toISOString();
+                }
+            } catch (e) {
+                console.error('mark read failed', e);
+            }
+        },
+
+        async markAllRead() {
+            try {
+                await fetch('/api/notifications/read-all', { method: 'POST' });
+                await this.reload();
+                await this.refreshUnread();
+            } catch (e) {
+                console.error('mark all read failed', e);
+            }
+        },
+    };
+};
+</script>
+{% endblock %}
