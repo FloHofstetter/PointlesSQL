@@ -7057,12 +7057,21 @@ PointlesSQL
 - **When closed phases stack up:** roll older completed phases
   out of `ROADMAP.md` into [`ROADMAP_ARCHIVE.md`](ROADMAP_ARCHIVE.md)
   using the existing collapse pattern (one-line summary in a
-  table, full detail moved verbatim to the archive).  Trigger:
-  whenever `ROADMAP.md` exceeds ~2000 lines or whenever a
-  completed phase has no expected reference for >3 months.
-  Recently-closed phases (last ~30 days) stay full-detail in
-  `ROADMAP.md` because they're still load-bearing for follow-up
-  conversations.
+  table, full detail moved verbatim to the archive). Both
+  conditions must hold before a phase qualifies for the roll:
+  1. **Line-count trigger:** `ROADMAP.md` exceeds ~2000 lines —
+     a soft "consider rolling" signal, not an automatic roll.
+  2. **Staleness trigger:** the phase has been closed for
+     **≥30 days** *and* no subsequent phase has actively
+     referenced it for >3 months. Recently-closed phases
+     stay full-detail because they're still load-bearing for
+     follow-up conversations, even when the file is long.
+
+  Example (2026-05-12): `ROADMAP.md` is 7068 lines (line-count
+  trigger fires) but Phases 12.9–20 closed 2026-04-29 to
+  2026-05-05 are all <30 days old → no roll yet. Reassess once
+  a follow-up phase has shipped on top of each and stayed
+  stable for 30 days.
 
 This file is read first by every new Claude Code session (see
 [`CLAUDE.md`](CLAUDE.md)).
