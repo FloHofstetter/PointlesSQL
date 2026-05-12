@@ -22,7 +22,7 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import require_admin
+from pointlessql.api.dependencies import require_user
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
 from pointlessql.services import output_rendering as notebook_render_service
@@ -58,7 +58,7 @@ async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, An
     caller never sees the difference.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         path: Relative notebook path, resolved under
             :attr:`Settings.notebooks_dir`. Must not escape the
             directory — uses the same validator as the executor.
@@ -74,7 +74,7 @@ async def api_inspect_notebook(request: Request, path: str) -> list[dict[str, An
     import nbformat  # type: ignore[import-untyped]
     import papermill  # type: ignore[import-untyped]
 
-    require_admin(request)
+    require_user(request)
     settings: Settings = request.app.state.settings
     resolved = scheduler_service.resolve_notebook_path(
         settings.jupyter.notebooks_dir.resolve(),
@@ -135,8 +135,7 @@ async def api_notebook_jobs(
     jobs.
 
     Args:
-        request: Incoming FastAPI request; admin-only (matches the
-            other notebook routes — non-admins do not schedule jobs).
+        request: Incoming FastAPI request; any authenticated user.
         path: Relative notebook path the editor is open on.
         limit: Optional cap on the recent-runs list, clamped to
             ``[1, 50]``. Default 10 mirrors the panel design.
@@ -158,7 +157,7 @@ async def api_notebook_jobs(
     from pointlessql.models import JobRun as JobRunModel
     from pointlessql.models import NotebookJobLink as _NJL
 
-    require_admin(request)
+    require_user(request)
     if not isinstance(path, str) or not path:
         raise ValidationError("`path` is required")
     limit = max(1, min(int(limit), 50))
@@ -199,7 +198,7 @@ async def api_run_once(
     request: Request,
     body: dict[str, Any] = Body(...),
 ) -> JSONResponse:
-    """Trigger a one-shot papermill run of a notebook (admin-only).
+    """Trigger a one-shot papermill run of a notebook.
 
     Creates a paused :class:`~pointlessql.models.Job` row carrying
     ``kind="papermill"`` + ``config={notebook_path, parameters}`` so
@@ -213,7 +212,7 @@ async def api_run_once(
     on a cron tick and stays around purely as an audit-trail anchor.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         body: JSON with keys ``path`` (relative notebook path) and
             optional ``parameters`` (dict of papermill overrides).
 
@@ -237,7 +236,7 @@ async def api_run_once(
     from pointlessql.models import Job as JobModel
     from pointlessql.models import JobRun as JobRunModel
 
-    require_admin(request)
+    require_user(request)
     user = get_user(request)
     settings: Settings = request.app.state.settings
 
@@ -359,14 +358,14 @@ async def api_notebooks_tree(request: Request) -> list[dict[str, Any]]:
     files will render a typed form in the create-job modal.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
 
     Returns:
         A list of directory and notebook nodes. See
         :func:`pointlessql.services.notebook._workspace.list_workspace_tree`
         for the shape of each node.
     """
-    require_admin(request)
+    require_user(request)
     settings: Settings = request.app.state.settings
     return notebook_workspace_service.list_workspace_tree(settings.jupyter.notebooks_dir.resolve())
 
@@ -379,7 +378,7 @@ async def api_create_notebook(
     """Create an empty ``.py`` notebook under the workspace root.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         body: JSON body with key ``path`` (required, relative path
             ending in ``.py``).
 
@@ -392,7 +391,7 @@ async def api_create_notebook(
             escapes the workspace root, has the wrong suffix, or
             already exists on disk.
     """
-    require_admin(request)
+    require_user(request)
     raw_path = body.get("path") if isinstance(body, dict) else None
     if not isinstance(raw_path, str):
         raise ValidationError("body.path must be a string")
@@ -421,7 +420,7 @@ async def api_rename_notebook(
     new path replays the prior session's outputs verbatim.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         body: JSON body with keys ``from_path`` and ``to_path``.
 
     Returns:
@@ -431,7 +430,7 @@ async def api_rename_notebook(
         ValidationError: On any of the shared resolver guards
             (traversal, suffix, missing source, existing target).
     """
-    require_admin(request)
+    require_user(request)
     from_path = body.get("from_path") if isinstance(body, dict) else None
     to_path = body.get("to_path") if isinstance(body, dict) else None
     if not isinstance(from_path, str) or not isinstance(to_path, str):
@@ -462,7 +461,7 @@ async def api_delete_notebook(
     confirm modal.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         path: Relative path of the notebook to delete.
         confirm: Must be ``true`` to actually delete; ``false`` is
             a 400 with a clear envelope.
@@ -475,7 +474,7 @@ async def api_delete_notebook(
             browser editor sets it after the confirm-modal pick;
             curl callers must opt in explicitly.
     """
-    require_admin(request)
+    require_user(request)
     if not confirm:
         raise HTTPException(status_code=400, detail="confirm=true required")
     settings: Settings = request.app.state.settings
@@ -497,8 +496,7 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
     client-side from the embedded JSON, no extra fetch.
 
     Args:
-        request: Incoming FastAPI request; admin-only for now (the
-            workspace gate matches the read-only notebooks page).
+        request: Incoming FastAPI request; any authenticated user.
         path: Relative notebook path under ``notebooks_dir``.
 
     Returns:
@@ -513,7 +511,7 @@ async def api_load_notebook(request: Request, path: str) -> JSONResponse:
             workspace / wrong suffix / does not exist.  Surfaces
             via :func:`resolve_py_notebook_path`.
     """  # noqa: DOC502
-    require_admin(request)
+    require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
     absolute = notebook_doc_service.resolve_py_notebook_path(
@@ -561,7 +559,7 @@ async def api_save_notebook(
     browser can prompt the user to reload before overwriting.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         body: JSON body with ``path``, ``cells``, optional
             ``expected_mtime`` (float seconds since epoch).
 
@@ -574,7 +572,7 @@ async def api_save_notebook(
         ValidationError: When path / cells are malformed or escape
             the workspace root.
     """
-    require_admin(request)
+    require_user(request)
     raw_path = body.get("path") if isinstance(body, dict) else None
     raw_cells = body.get("cells") if isinstance(body, dict) else None
     if not isinstance(raw_path, str):
@@ -672,7 +670,7 @@ async def api_cell_history(
     surfaces in Sprint 66.7.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         path: Relative notebook path under ``notebooks_dir``.
         content_hash: FNV-1a-64 cell identity.
         limit: Maximum rows to return (1-100, default 20).
@@ -683,7 +681,7 @@ async def api_cell_history(
         / ``started_at`` / ``finished_at`` / ``status`` /
         ``kernel_session_id``.
     """
-    require_admin(request)
+    require_user(request)
     runs = notebook_outputs_service.list_cell_run_sources(
         request.app.state.session_factory,
         file_path=path,
@@ -710,7 +708,7 @@ async def api_render_markdown(
     ``<script>`` / ``<iframe>`` tags are escaped at parse time).
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         body: JSON body with key ``source`` (markdown text).
 
     Returns:
@@ -719,7 +717,7 @@ async def api_render_markdown(
     Raises:
         ValidationError: When ``body.source`` is missing / non-string.
     """
-    require_admin(request)
+    require_user(request)
     raw = body.get("source") if isinstance(body, dict) else None
     if not isinstance(raw, str):
         raise ValidationError("body.source must be a string")
@@ -736,7 +734,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
     boots itself from ``GET /api/notebooks/load`` after Alpine mounts.
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
         path: Relative notebook path, captured by the
             ``{path:path}`` converter (slashes preserved).
 
@@ -748,7 +746,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
             workspace / wrong suffix / does not exist.  Surfaces
             via :func:`resolve_py_notebook_path`.
     """  # noqa: DOC502
-    require_admin(request)
+    require_user(request)
     settings: Settings = request.app.state.settings
     notebooks_dir = settings.jupyter.notebooks_dir.resolve()
     absolute = notebook_doc_service.resolve_py_notebook_path(
@@ -770,7 +768,7 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
 
 @router.get("/notebooks/workspace", response_class=HTMLResponse)
 async def notebooks_workspace_page(request: Request) -> HTMLResponse:
-    """Render the workspace file browser (admin-only, read-only).
+    """Render the workspace file browser (member-accessible).
 
     Post-pivot: the page lists ``.py`` / ``.ipynb`` notebooks the
     scheduler can pick up and offers a *Schedule…* button per leaf
@@ -780,12 +778,12 @@ async def notebooks_workspace_page(request: Request) -> HTMLResponse:
     notebooks directory).
 
     Args:
-        request: Incoming FastAPI request; admin-only.
+        request: Incoming FastAPI request; any authenticated user.
 
     Returns:
         The rendered ``pages/notebooks_workspace.html`` template.
     """
-    require_admin(request)
+    require_user(request)
     return _templates(request).TemplateResponse(
         request,
         "pages/notebooks_workspace.html",

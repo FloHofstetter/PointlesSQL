@@ -112,6 +112,35 @@ def require_admin(request: Request) -> None:
         )
 
 
+def require_user(request: Request) -> None:
+    """Raise :class:`AuthorizationError` if no authenticated user is bound.
+
+    Member-accessible routes (notebook workspace, SQL editor read,
+    runs list) use this in place of :func:`require_admin` to drop the
+    role gate while keeping anonymous callers out.  The auth
+    middleware already redirects HTML routes and 401s API routes for
+    anonymous traffic, so this dep is a backstop for the rare path
+    where middleware did not run (unit tests bypassing it, mounted
+    sub-app).
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Raises:
+        AuthorizationError: When ``request.state.user`` is the
+            zero-id placeholder returned by :func:`get_user` for
+            anonymous requests.
+    """
+    user = get_user(request)
+    if not user.get("id"):
+        raise AuthorizationError(
+            principal=user.get("email", ""),
+            privilege="authenticated",
+            securable_type="system",
+            full_name="session",
+        )
+
+
 def require_supervisor(request: Request) -> None:
     """Raise :class:`AuthorizationError` if the caller lacks supervisor scope.
 

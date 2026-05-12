@@ -114,11 +114,11 @@ def _resolve_websocket_user(websocket: WebSocket) -> UserInfo | None:
 def _user_can_use_editor(user: UserInfo) -> bool:
     """Return whether the resolved user is permitted to drive the editor.
 
-    Phase 66.0 keeps the gate at admin-or-auditor parity with the
-    read-only workspace page; future sprints can broaden once the
-    workspace-membership model lands a ``notebook_author`` role.
+    Phase 70 broadened the gate from admin-or-auditor to any
+    authenticated user (matches the workspace + edit HTTP routes,
+    which dropped ``require_admin`` for ``require_user``).
     """
-    return bool(user.get("is_admin") or user.get("is_auditor"))
+    return bool(user.get("id"))
 
 
 async def _send_error(
