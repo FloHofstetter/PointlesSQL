@@ -85,6 +85,13 @@
                       x-text="reviewSummary ? reviewSummary.count : 0"></span>
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-readme-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-readme" type="button" role="tab"
+                    data-pql-tab-key="readme">
+                README
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content" id="dpTabsContent">
@@ -490,6 +497,121 @@
                 </div>
             </template>
         </div>
+
+        <!-- README (Phase 71.5) -->
+        <div class="tab-pane fade" id="tab-readme" role="tabpanel">
+            <template x-if="!readmeLoaded">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="readmeLoaded">
+                <div>
+                    <div class="d-flex justify-content-end gap-2 mb-2">
+                        <button class="btn btn-sm btn-outline-secondary pql-readme-history-btn"
+                                @click="toggleHistory()">
+                            <i class="bi bi-clock-history"></i>
+                            <span x-text="historyOpen ? 'Hide history' : 'History'"></span>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary pql-readme-edit-btn"
+                                x-show="canEditReadme"
+                                @click="startReadmeEdit()">
+                            <i class="bi bi-pencil"></i>
+                            <span x-text="readme ? 'Edit' : 'Add README'"></span>
+                        </button>
+                    </div>
+
+                    <template x-if="!readme && !editingReadme">
+                        <div class="alert alert-secondary pql-readme-empty">
+                            <i class="bi bi-file-earmark-text me-1"></i>
+                            No README yet.
+                            <span x-show="canEditReadme">Click "Add README" to write one.</span>
+                        </div>
+                    </template>
+
+                    <template x-if="editingReadme">
+                        <div class="card mb-3 pql-readme-editor">
+                            <div class="card-body">
+                                <label class="form-label small">README body (markdown)</label>
+                                <textarea class="form-control pql-readme-body-input"
+                                          rows="12"
+                                          x-model="readmeDraft"></textarea>
+                                <div class="mt-2 d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary pql-readme-save"
+                                            @click="saveReadme()">Save</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            @click="cancelReadmeEdit()">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="readme && !editingReadme">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="small text-muted mb-2">
+                                    <span x-text="'v' + readme.version_int"></span>
+                                    · updated by
+                                    <strong x-text="(readme.updated_by.display_name || readme.updated_by.email) || 'unknown'"></strong>
+                                    ·
+                                    <span x-text="readme.updated_at"></span>
+                                </div>
+                                <pre class="pql-readme-body mb-0" style="white-space: pre-wrap;" x-text="readme.body_md"></pre>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="historyOpen">
+                        <div class="card pql-readme-history">
+                            <div class="card-body">
+                                <h6 class="mb-2">Version history</h6>
+                                <template x-if="readmeHistory.length === 0">
+                                    <div class="text-muted small">No history yet.</div>
+                                </template>
+                                <template x-if="readmeHistory.length > 0">
+                                    <div>
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Version</th>
+                                                    <th>Updated by</th>
+                                                    <th>When</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template x-for="v in readmeHistory" :key="v.id">
+                                                    <tr :data-readme-version="v.version_int">
+                                                        <td>
+                                                            <span class="badge bg-light text-dark border"
+                                                                  x-text="'v' + v.version_int"></span>
+                                                        </td>
+                                                        <td x-text="(v.updated_by.display_name || v.updated_by.email) || 'unknown'"></td>
+                                                        <td class="small text-muted" x-text="v.updated_at"></td>
+                                                        <td>
+                                                            <label class="small me-1">
+                                                                <input type="radio" :value="v.version_int" x-model.number="diffFrom"> from
+                                                            </label>
+                                                            <label class="small">
+                                                                <input type="radio" :value="v.version_int" x-model.number="diffTo"> to
+                                                            </label>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                        <button class="btn btn-sm btn-outline-secondary pql-readme-compare-btn"
+                                                :disabled="!diffFrom || !diffTo || diffFrom === diffTo"
+                                                @click="loadDiff()">Compare</button>
+                                        <template x-if="diffText">
+                                            <pre class="pql-readme-diff mt-3 p-2 border bg-body-tertiary" style="white-space: pre-wrap;" x-text="diffText"></pre>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
     </div>
 </div>
 
@@ -522,12 +644,91 @@ window.dataProductDetail = function (product, ctx) {
         reviewSort: 'recent',
         following: false,
         followersCount: 0,
+        readme: null,
+        readmeLoaded: false,
+        readmeHistory: [],
+        editingReadme: false,
+        readmeDraft: '',
+        historyOpen: false,
+        diffFrom: null,
+        diffTo: null,
+        diffText: '',
+
+        get canEditReadme() {
+            return this.isAdmin || this.isSteward;
+        },
 
         async init() {
             await this.loadDetail();
             await this.loadReviewSummary();
             await this.loadFollowState();
             this.wireLazyTabs();
+        },
+
+        async loadReadme() {
+            this.readmeLoaded = false;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme');
+                if (res.status === 404) {
+                    this.readme = null;
+                } else if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                } else {
+                    this.readme = await res.json();
+                }
+                const histRes = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme/history');
+                if (histRes.ok) {
+                    const data = await histRes.json();
+                    this.readmeHistory = data.versions || [];
+                }
+            } catch (e) {
+                console.error('readme load failed', e);
+            } finally {
+                this.readmeLoaded = true;
+            }
+        },
+
+        startReadmeEdit() {
+            this.readmeDraft = this.readme ? this.readme.body_md : '';
+            this.editingReadme = true;
+        },
+
+        cancelReadmeEdit() {
+            this.editingReadme = false;
+            this.readmeDraft = '';
+        },
+
+        async saveReadme() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ body_md: this.readmeDraft }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.editingReadme = false;
+                this.readmeDraft = '';
+                await this.loadReadme();
+            } catch (e) {
+                console.error('readme save failed', e);
+            }
+        },
+
+        toggleHistory() {
+            this.historyOpen = !this.historyOpen;
+            this.diffText = '';
+        },
+
+        async loadDiff() {
+            if (!this.diffFrom || !this.diffTo || this.diffFrom === this.diffTo) return;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/readme/diff?from=' + this.diffFrom + '&to=' + this.diffTo);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.diffText = data.diff || '(no diff)';
+            } catch (e) {
+                console.error('diff failed', e);
+            }
         },
 
         async loadFollowState() {
@@ -731,6 +932,10 @@ window.dataProductDetail = function (product, ctx) {
             const reviewsBtn = document.querySelector('[data-bs-target="#tab-reviews"]');
             if (reviewsBtn) {
                 reviewsBtn.addEventListener('shown.bs.tab', () => this.loadReviews(), { once: true });
+            }
+            const readmeBtn = document.querySelector('[data-bs-target="#tab-readme"]');
+            if (readmeBtn) {
+                readmeBtn.addEventListener('shown.bs.tab', () => this.loadReadme(), { once: true });
             }
         },
 

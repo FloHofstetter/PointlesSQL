@@ -22,6 +22,8 @@ Layout:
                         (Phase 71.2, one-per-user star + body row).
 * ``_data_product_follows``  — :class:`DataProductFollow`
                         (Phase 71.3, composite-PK follow link).
+* ``_data_product_readme``   — :class:`DataProductReadme`
+                        (Phase 71.5, versioned per-DP wiki).
 * ``_sync``           — :class:`SyncRun` (foreign-catalog sync run
                         history).
 """
@@ -31,6 +33,7 @@ from __future__ import annotations
 from pointlessql.models.catalog._autoload import AutoloadCheckpoint
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_follows import DataProductFollow
+from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import (
     CONTRACT_EVENT_OUTCOMES,
@@ -56,6 +59,7 @@ __all__ = [
     "DataProductComment",
     "DataProductContractEvent",
     "DataProductFollow",
+    "DataProductReadme",
     "DataProductReview",
     "QueryHistory",
     "QueryHistoryTable",
