@@ -184,7 +184,7 @@ jobs:
         run: uv python install 3.14
       - name: Install dependencies
         run: uv sync --all-extras
-      - name: Alembic — fresh upgrade against Postgres
+      - name: Alembic — fresh upgrade + autogen-drift against Postgres
         # Sprint 30.0 dialect-drift fence.  The SQLite-side gate already
         # runs ``alembic upgrade head`` on a fresh sqlite file; this PG
         # job runs the same chain against a fresh Postgres so any
@@ -192,7 +192,14 @@ jobs:
         # PRAGMA, FTS5 vtables) surfaces in CI rather than at deploy
         # time.  The ``POINTLESSQL_DB_URL`` override is honoured by
         # ``pointlessql/alembic/env.py``.
-        run: uv run alembic upgrade head
+        # Sprint H.4 — add the missing ``alembic check`` against the
+        # freshly upgraded PG.  SQLite-side has caught autogen drift
+        # since Phase 30; the PG side did not, so dialect-asymmetric
+        # drift (PG-only ``server_default``, partial indexes, etc.)
+        # could accumulate silently.
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
       - name: Pytest against Postgres
         # Same deselects as the SQLite lane so we don't introduce a
         # silent regression — tests that were skipped on SQLite stay

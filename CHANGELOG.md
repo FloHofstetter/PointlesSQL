@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint H.4 — Alembic PG-side autogen-drift gate + deeper
+  drift script (2026-05-12).** Added `alembic check` to the PG
+  CI lane so dialect-asymmetric drift (PG-only `server_default`,
+  partial indexes, etc.) cannot accumulate silently — the SQLite
+  side has had this gate since Phase 30 but the PG side only ran
+  `alembic upgrade head` without the diff check.  New
+  `scripts/check-alembic-fresh-drift.sh` performs a deeper drift
+  check (fresh SQLite + upgrade head + alembic check + schema
+  dump for human review) — intended for periodic manual use, not
+  per-commit pre-commit overhead.  Both gates green at run-time
+  ("No new upgrade operations detected"); no drift to repair.
+
 - **Sprint H.3 — notebook-walkthrough doc selector refresh
   (2026-05-12).** Partial refresh of `notebook-editor.md` +
   `notebook_full_walkthrough.md`: all `/notebook/editor?path=`
