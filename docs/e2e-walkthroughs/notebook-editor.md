@@ -2,6 +2,23 @@
 
 > **Mode:** `browser` · **Phase:** 12.10 · **Surface:** Native .py notebook editor
 
+> **⚠️ Partial refresh status (Sprint H.3, 2026-05-12):**  Routes
+> updated for Phase-12.12's `/notebooks/edit/` →
+> `/notebooks/edit/{path}` rename and the `pql-notebook-shell` →
+> `pql-notebook-shell` + `pql-notebook-toolbar` →
+> `pql-notebook-toolbar` Phase-67 renames; **per-feature class
+> selectors below remain stale**.  Many `pql-nbedit-*` references
+> describe features that were renamed or restructured across
+> Phases 67/68 (cell toolbar, status pill, history popover,
+> outline, settings drawer, etc.) without the playbook being
+> propagated.  Replay-driver should look up the current class
+> name in DevTools rather than treating the selectors here as
+> the source of truth.  Comprehensive refresh queued as a
+> follow-up phase (out of scope for the Sprint-H.3 sweep).
+> File-path links in the "Critical files" footers may also point
+> at pre-Phase-12.12 module locations (e.g.
+> `notebook_workspace.py` is now `notebook/_workspace.py`).
+
 Verifies the Monaco-based notebook editor end-to-end —
 load + save round-trip, kernel execute, output persistence across
 page reload, kernel restart, Pyright LSP (completion + hover),
@@ -28,21 +45,22 @@ playbook (the embedded JupyterLab iframe retired).
 ### Part A — First open: UUID mint + autosave
 
 1. **Landing route**.
- - Action: `browser_navigate('http://127.0.0.1:8000/notebook')`
- - Assert: 302 redirect to
- `/notebook/editor?path=scratch.py`, page title contains
- `Editor · scratch.py`, navbar "Notebook" link is active.
+ - Action: `browser_navigate('http://127.0.0.1:8000/notebooks/workspace')`
+ - Assert: workspace page renders with file-tree, the "Open"
+   affordance on `scratch.py` navigates to
+   `/notebooks/edit/scratch.py`, page title contains
+   `Editor · scratch.py`, navbar "Notebook" link is active.
 
 2. **Monaco boots + single empty cell**.
  - Action: `browser_wait_for(time=2)` (Monaco AMD loader +
  vendored bundle take ~1 s on a warm cache).
- - Assert: the `.pql-nbedit-editor` div has a Monaco editor
+ - Assert: the `.pql-notebook-shell` div has a Monaco editor
  instance; the buffer contains exactly one `# %%
  pql_cell_id="…"` marker (empty cell scaffold from
  `notebook_editor_page` when the file doesn't exist yet).
 
 3. **Toolbar pills**.
- - Action: `browser_snapshot()` of the `.pql-nbedit-toolbar`.
+ - Action: `browser_snapshot()` of the `.pql-notebook-toolbar`.
  - Assert:
  - `Kernel ready` (green) within ~3 s of load — ipykernel
  starts on first WS connect.
@@ -82,7 +100,7 @@ playbook (the embedded JupyterLab iframe retired).
 
 7. **Outputs persist across reload**.
  - Action: `browser_navigate` away (e.g. to `/`) and back to
- `/notebook/editor?path=scratch.py`.
+ `/notebooks/edit/scratch.py`.
  - Assert: before the kernel WS opens, the rendered pandas
  HTML is *already* visible in the output zone — the
  replay path runs synchronously on Alpine
@@ -199,7 +217,7 @@ playbook (the embedded JupyterLab iframe retired).
  - Action: from a UC table detail page, admin-click "Open
  in notebook".
  - Assert: the browser navigates to
- `/notebook/editor?path=scratch/<generated>.py` (not to a
+ `/notebooks/edit/scratch/<generated>.py` (not to a
  JupyterLab tree URL). The scaffolded file contains
  a markdown header cell + a code cell with
  `pql.table("cat.schema.tbl")` + `df.head()` — jupytext
@@ -241,7 +259,7 @@ the root `x-data` attribute with double quotes and pasted the
 ``{{ notebook_path|tojson }}`` expression straight inside:
 
 ```html
-<div class="pql-nbedit-root"
+<div class="pql-notebook-shell"
  x-data="notebookEditor({ path: {{ notebook_path|tojson }},... })">
 ```
 
@@ -257,7 +275,7 @@ editor page with 25 console errors.
 Fixed by switching the outer attribute to single quotes:
 
 ```html
-<div class="pql-nbedit-root"
+<div class="pql-notebook-shell"
  x-data='notebookEditor({ path: {{ notebook_path|tojson }},... })'>
 ```
 
@@ -494,7 +512,7 @@ Setup: start with at least two ``.py`` notebooks in the workspace
 directory (e.g. ``scratch/one.py`` and ``scratch/two.py``).
 
 1. **Sidebar renders on first open** — navigate to
- ``/notebook/editor?path=scratch/one.py``. Expect a 260px left
+ ``/notebooks/edit/scratch/one.py``. Expect a 260px left
  panel titled ``NOTEBOOKS`` listing every directory + ``.py``
  file under the notebooks root. The currently-open row
  (``one.py``) has a faint blue tint. ``.ipynb`` leaves render
@@ -509,7 +527,7 @@ directory (e.g. ``scratch/one.py`` and ``scratch/two.py``).
  restore; reload again; sidebar stays open.
 
 3. **Open another notebook** — click ``two.py`` in the sidebar.
- Expect a hard navigation to ``/notebook/editor?path=scratch/
+ Expect a hard navigation to ``/notebooks/edit/scratch/
  two.py``. Monaco re-mounts against the new buffer; kernel
  reconnects against the new ``(user_id, path)`` key; the
  sidebar's current-row highlight moves to ``two.py``.
@@ -656,7 +674,7 @@ Setup: start with two ``.py`` notebooks in the workspace
 hydration starts from a known state.
 
 1. **Tab bar on first open** — navigate to
- ``/notebook/editor?path=scratch.py``. Expect:
+ ``/notebooks/edit/scratch.py``. Expect:
  - A horizontal tab strip directly below the nav bar with one
  tab labelled ``scratch.py`` (the basename of the URL path).
  - The tab has the "active" visual treatment (filled
@@ -882,7 +900,7 @@ new optional ``affordances`` array.
 Setup: run ``bash scripts/vendor-markdown-libs.sh`` once to populate
 the three gitignored vendor dirs. Clear
 ``localStorage['pql.nbedit.tabs.v1']`` and open
-``/notebook/editor?path=scratch.py`` in Firefox (Playwright MCP's
+``/notebooks/edit/scratch.py`` in Firefox (Playwright MCP's
 bundled Firefox; the Chrome channel is unsupported per the
  backstory).
 
@@ -1034,7 +1052,7 @@ markdown vendor bundle fails to load.
 
 ### Fixture
 
-Open ``/notebook/editor?path=scratch.py`` in Firefox (Playwright
+Open ``/notebooks/edit/scratch.py`` in Firefox (Playwright
 MCP's bundled Firefox; the system Chrome channel is unsupported
 per the backstory). The fixture used when replaying
  is four cells:

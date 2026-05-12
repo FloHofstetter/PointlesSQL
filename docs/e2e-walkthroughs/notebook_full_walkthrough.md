@@ -2,6 +2,17 @@
 
 > **Mode:** `browser` · **Phase:** 12.10 · **Surface:** .py notebook full lifecycle
 
+> **⚠️ Partial refresh status (Sprint H.3, 2026-05-12):**  Routes
+> updated for Phase-12.12's `/notebook/editor?path=` →
+> `/notebooks/edit/{path}` rename; the two
+> `pql-nbedit-output-stderr` / `pql-nbedit-output-stream`
+> selectors below were not part of the proven Phase-67 mapping
+> and may now live under a `pql-notebook-output-*` or
+> `pql-cell-output-*` namespace — confirm in DevTools before
+> asserting.  File-path links to `services/notebook_doc.py` etc.
+> may point at pre-Phase-12.12 module locations (now
+> `services/notebook/_doc.py` etc.).
+
 Deterministic click-through of every output-rendering + editing
 surface in the native Python notebook editor. Pairs with the
  (UUID-free marker grammar) and (manual-edit
@@ -30,7 +41,7 @@ bundled chrome-for-testing works too). Screenshots land under
 ## Walkthrough
 
 1. **Open a fresh notebook** — navigate to
- ``/notebook/editor?path=sprint98_walkthrough.py``. The editor
+ ``/notebooks/edit/sprint98_walkthrough.py``. The editor
  opens with a single empty cell whose marker is exactly ``# %%``
  — **no** ``pql_cell_id="…"`` segment ( invariant).
  - Assert: the toolbar shows "Kernel ready", "Pyright ready",
@@ -143,7 +154,7 @@ bundled chrome-for-testing works too). Screenshots land under
 13. **Markerless file tolerance** — create a
  ``plain.py`` via ``/api/notebooks/create`` then write
  ``echo 'print(1)' > notebooks/plain.py`` from the shell
- and open ``/notebook/editor?path=plain.py``.
+ and open ``/notebooks/edit/plain.py``.
  - Assert: the file loads as a single code cell. ``Saved``
  flips to ``Pending`` immediately (dirty=True), and the
  next save normalises the file by inserting a ``# %%``
@@ -163,7 +174,7 @@ Condensed kernel-replay. Each numbered step in the prose flows
 through these MCP verbs. Run-cell assertions check the output
 zone for the expected mime-bundle render.
 
-1. `browser_navigate('http://127.0.0.1:8000/notebook/editor?path=sprint98_walkthrough.py')`
+1. `browser_navigate('http://127.0.0.1:8000/notebooks/edit/sprint98_walkthrough.py')`
    — `browser_wait_for("Kernel ready")`.
 2. `browser_evaluate('() => window.monaco.editor.getEditors()[0].getModel().setValue("# %%\\nprint(\\"hello world\\")\\n")')`
    then `browser_click("Run cell")`

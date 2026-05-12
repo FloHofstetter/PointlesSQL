@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint H.3 — notebook-walkthrough doc selector refresh
+  (2026-05-12).** Partial refresh of `notebook-editor.md` +
+  `notebook_full_walkthrough.md`: all `/notebook/editor?path=`
+  route references rewritten to the Phase-12.12
+  `/notebooks/edit/{path}` form (19 sites); the workspace landing
+  step swapped from `/notebook` (302-redirect, gone) to
+  `/notebooks/workspace` (direct); three confirmed Phase-67 class
+  renames bulk-applied (`pql-nbedit-editor`/`-root` →
+  `pql-notebook-shell`, `pql-nbedit-toolbar` →
+  `pql-notebook-toolbar`).  Per-feature `pql-nbedit-*` selectors
+  (cell toolbar, status pill, history popover, outline, settings
+  drawer, etc.) remain stale and are explicitly gated by a
+  ⚠️-banner at the top of each file telling the replay driver to
+  look up the current class in DevTools rather than trusting the
+  selector — comprehensive feature-by-feature refresh queued as
+  a follow-up phase, out of scope for the Sprint-H.3 sweep.
+
 - **Sprint H.1 — pre-existing pytest + ruff failures cleared
   (2026-05-12).** Eight pytest tests that had been failing on
   main since Phase 56–68 carve-outs landed all green:
