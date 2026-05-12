@@ -18,7 +18,7 @@
 
 import { cellEditor } from './cell_editor.js';
 import { installJobsOrchestration } from './jobs_orchestration.js';
-import { createKernelClient } from './kernel_ws.js';
+import { installKernelExecution } from './kernel_execution.js';
 import { renderOutputFrame } from './output_renderer.js';
 
 // Mirrors `pointlessql.services.notebook._doc.compute_content_hash`
@@ -190,183 +190,10 @@ export function notebookEditor({ initialPath = '' } = {}) {
  }
  },
 
- _connectKernel() {
- if (this._kernel) return;
- this.kernelStatus = 'connecting';
- this._kernel = createKernelClient({
- notebookPath: this.path,
- onMessage: (frame) => this._onKernelFrame(frame),
- onReady: (info) => {
- this.kernelStatus = 'ready';
- this.kernelSessionId = info.kernel_session_id || null;
- },
- onClose: () => {
- this.kernelStatus = 'closed';
- },
- onError: (e) => {
- this.errorMessage = (e && e.message) || 'Kernel error';
- },
- onVariableSnapshot: (params) => this._onVariableSnapshot(params),
- onVariableDetail: (params) => this._onVariableDetail(params),
- });
- this._kernel.connect();
- },
-
- _onVariableSnapshot(params) {
- const payload = params && params.payload;
- if (Array.isArray(payload)) this.inspectorVars = payload;
- },
-
- _onVariableDetail(params) {
- const payload = params && params.payload;
- if (payload && typeof payload === 'object') {
- this.inspectorDetail = payload;
- this.inspectorDetailFor = payload.name || null;
- }
- },
-
- _onKernelFrame(frame) {
- if (!frame || typeof frame !== 'object') return;
- const hash = frame.content_hash;
- if (!hash) return;
- const cell = this.cells.find((c) => c.content_hash === hash);
- if (frame.channel === 'iopub') {
- const msgType = frame.msg_type;
- if (msgType === 'status') {
- if (cell) {
- const state = (frame.content && frame.content.execution_state) || '';
- if (state === 'busy') this._runStatus[hash] = 'running';
- else if (state === 'idle' && this._runStatus[hash] === 'running') {
- // The execute_reply on the shell channel will set the
- // final ok/error status; "idle" alone just means the
- // kernel is no longer busy with this request.
- }
- }
- return;
- }
- if (msgType === 'execute_input') {
- // First iopub frame for a fresh execute — clear stale outputs.
- this._liveOutputs[hash] = [];
- if (cell) this._renderCellOutput(cell);
- return;
- }
- if (msgType === 'stream'
- || msgType === 'execute_result'
- || msgType === 'display_data'
- || msgType === 'error') {
- if (!this._liveOutputs[hash]) this._liveOutputs[hash] = [];
- this._liveOutputs[hash].push(frame);
- if (cell) {
- const host = this._outputContainerFor(cell);
- if (host) host.appendChild(renderOutputFrame(frame));
- }
- }
- } else if (frame.channel === 'shell' && frame.msg_type === 'execute_reply') {
- const status = frame.content && frame.content.status;
- const execCount = frame.content && frame.content.execution_count;
- this._runStatus[hash] = status || 'ok';
- if (cell) {
- cell.exec_count = execCount;
- cell.status = status;
- }
- // Phase 67.5 — refresh the variable inspector after every cell
- // run completes (ok or error). Silent execute so the user does
- // not see the helper call in the cell output.
- if (this.inspectorOpen) this.requestVariableSnapshot();
- }
- },
-
- requestVariableSnapshot() {
- if (!this._kernel || this.kernelStatus !== 'ready') return;
- // Silent execute via the existing JSON-RPC path. The helper emits
- // a display_data frame carrying ``application/x-pql-vars+json``;
- // the WS pump routes it to onVariableSnapshot for us.
- try {
- this._kernel.execute(
- '__pql_vars__',
- '__pql_inspect__()',
- { cellType: 'code', silent: true },
- ).catch(() => { /* swallow — fail-quiet for inspector refresh */ });
- } catch { /* WS not ready — ignore */ }
- },
-
- async requestVariableDetail(name) {
- if (!this._kernel || this.kernelStatus !== 'ready') return;
- if (!name) return;
- const safe = String(name).replace(/[^A-Za-z0-9_]/g, '');
- if (!safe) return;
- try {
- await this._kernel.execute(
- '__pql_vardetail__',
- `__pql_inspect_detail__('${safe}')`,
- { cellType: 'code', silent: true },
- );
- } catch { /* fail-quiet */ }
- },
-
- toggleInspector() {
- this.inspectorOpen = !this.inspectorOpen;
- if (this.inspectorOpen) this.requestVariableSnapshot();
- },
-
- async runCell(cell) {
- if (!cell) return;
- if (!this._kernel || this._kernel.readyState !== WebSocket.OPEN) {
- this.errorMessage = 'Kernel not connected.';
- return;
- }
- // Markdown cells don't go through the kernel.
- if (cell.cell_type === 'markdown') return;
- // Refresh content_hash before sending so the kernel routes
- // outputs to the right identity even if the user edited the
- // cell since the last save.
- const fresh = await this._refreshCellHash(cell);
- try {
- await this._kernel.execute(fresh.contentHash, fresh.source, {
- cellType: cell.cell_type,
- resultVar: cell.result_var || null,
- });
- } catch (e) {
- this.errorMessage = (e && e.message) || String(e);
- }
- },
-
- async _refreshCellHash(cell) {
- // Ask the per-cell editor for the current source, recompute the
- // FNV-1a-64 hash client-side, and update the cell.
- const editor = this._editors[cell.id];
- const source = editor ? editor.getSource() : cell.source;
- const newHash = await _computeContentHash(source);
- if (newHash !== cell.content_hash) {
- // Move any persisted live-outputs over to the new hash so
- // the visual state survives a hash change.
- this._liveOutputs[newHash] = this._liveOutputs[cell.content_hash] || [];
- delete this._liveOutputs[cell.content_hash];
- cell.content_hash = newHash;
- }
- cell.source = source;
- return { contentHash: newHash, source: source };
- },
-
- async interruptKernel() {
- if (!this._kernel) return;
- try { await this._kernel.interrupt(); }
- catch (e) { this.errorMessage = (e && e.message) || String(e); }
- },
-
- async runCellAndAdvance(cell) {
- // Shift-Enter: run + move focus to the next cell, or insert a new
- // code cell if this is the last one.
- await this.runCell(cell);
- const idx = this.cells.findIndex((c) => c.id === cell.id);
- if (idx < 0) return;
- if (idx === this.cells.length - 1) {
- await this.addCellAtEnd('code');
- } else {
- const next = this.cells[idx + 1];
- if (next && this._editors[next.id]) this._editors[next.id].focus();
- }
- },
+ // Kernel + execution methods (_connectKernel, _onKernelFrame,
+ // runCell, runCellAndAdvance, interrupt/restart, Variable
+ // Inspector helpers) live in ``./kernel_execution.js`` and get
+ // installed onto ``state`` below.
 
  async toggleHistoryFor(cell) {
  if (this.historyOpenFor === cell.id) {
@@ -394,17 +221,6 @@ export function notebookEditor({ initialPath = '' } = {}) {
 
  historyForCell(cell) {
  return this._historyByCell[cell.id] || [];
- },
-
- async restartKernel() {
- if (!this._kernel) return;
- try {
- await this._kernel.restart();
- this._liveOutputs = {};
- this._runStatus = {};
- this._renderAllOutputs();
- }
- catch (e) { this.errorMessage = (e && e.message) || String(e); }
  },
 
  // -- Cell management ops --
@@ -751,5 +567,6 @@ export function notebookEditor({ initialPath = '' } = {}) {
  },
  };
  installJobsOrchestration(state);
+ installKernelExecution(state, { computeContentHash: _computeContentHash });
  return state;
 }
