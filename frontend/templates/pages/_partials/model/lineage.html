@@ -1,0 +1,63 @@
+    <div class="tab-pane fade" id="tab-lineage" role="tabpanel">
+        <div x-data="modelLineageDag('{{ model.full_name }}')" x-init="init()">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="text-muted small">
+                    <span class="me-3">
+                        <span class="d-inline-block" style="width: 12px; height: 2px; background: #76b900; vertical-align: middle;"></span>
+                        Sources <code>trained_from</code>
+                    </span>
+                    <span class="me-3">
+                        <span class="d-inline-block" style="width: 12px; height: 0; border-top: 2px dashed #3b82f6; vertical-align: middle;"></span>
+                        Predictions <code>inferred_to</code>
+                    </span>
+                </div>
+                <button class="btn btn-sm btn-link" @click="reload()" x-show="loaded">
+                    <i class="bi bi-arrow-clockwise"></i> Reload
+                </button>
+            </div>
+            <div x-show="!loaded && !loading && !empty" class="text-muted small p-3">
+                Click here to render lineage…
+                <button class="btn btn-sm btn-outline-secondary ms-2" @click="render()">
+                    Render now
+                </button>
+            </div>
+            <div x-show="loading" class="text-muted small p-3">
+                <span class="spinner-border spinner-border-sm me-1"></span>Loading lineage…
+            </div>
+            <div x-show="error" class="alert alert-danger small" x-text="error"></div>
+            <div x-show="empty" class="text-muted small p-3">
+                No lineage edges recorded yet — train the model with an
+                instrumented Hermes plugin or call
+                <code>pql.write_table(predictions, target,
+                source_model_uri=...)</code> to populate the graph.
+            </div>
+            <div id="model-cy" style="width: 100%; height: 600px;" x-show="loaded"></div>
+
+            <div class="card mt-3" x-show="loaded && predictions.length > 0">
+                <div class="card-header">
+                    <i class="bi bi-arrow-down-right-circle me-1 text-primary"></i>
+                    Prediction tables{{ info('models.inference-lineage') }}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Target table</th>
+                                <th class="text-end">Edges</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="p in predictions" :key="p.target_table">
+                                <tr>
+                                    <td><code x-text="p.target_table"></code></td>
+                                    <td class="text-end" x-text="p.edge_count"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Promotion — champion/challenger surface. #}

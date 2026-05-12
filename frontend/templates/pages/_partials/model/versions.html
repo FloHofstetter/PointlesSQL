@@ -1,0 +1,104 @@
+    <div class="tab-pane fade" id="tab-versions" role="tabpanel"
+         x-data="modelVersions()">
+        <div class="card">
+            <div class="card-header d-flex align-items-center">
+                <span>Versions{{ info('models.versions-table') }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Version</th>
+                            <th>Status</th>
+                            <th>MLflow Run</th>
+                            <th>Linked Agent Run</th>
+                            <th>Top Metrics</th>
+                            <th>Compare</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in versions %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-secondary">v{{ v.version }}</span>
+                                {% if champion_version is not none and v.version == champion_version %}
+                                <span class="badge bg-warning text-dark ms-1" title="Current champion">
+                                    <i class="bi bi-star-fill"></i> Champion
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.status == "READY" %}
+                                <span class="badge bg-success">{{ v.status }}</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">{{ v.status or "—" }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.mlflow and v.mlflow.run_id %}
+                                  {% if mlflow_running %}
+                                  <a href="/mlflow/#/runs/{{ v.mlflow.run_id }}" target="_blank" rel="noopener"
+                                     class="text-decoration-none">
+                                      <code class="small">{{ v.mlflow.run_id[:12] }}…</code>
+                                  </a>
+                                  {% else %}
+                                  <code class="small">{{ v.mlflow.run_id[:12] }}…</code>
+                                  {% endif %}
+                                {% elif v.run_id %}
+                                  {% if mlflow_running %}
+                                  <a href="/mlflow/#/runs/{{ v.run_id }}" target="_blank" rel="noopener"
+                                     class="text-decoration-none">
+                                      <code class="small">{{ v.run_id[:12] }}…</code>
+                                  </a>
+                                  {% else %}
+                                  <code class="small">{{ v.run_id[:12] }}…</code>
+                                  {% endif %}
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.link_marker and v.link_marker.agent_run_id %}
+                                <a href="/runs/{{ v.link_marker.agent_run_id }}" class="small">
+                                    {{ v.link_marker.agent_run_id[:8] }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="small">
+                                {% if v.mlflow and v.mlflow.metrics %}
+                                {% for name, val in (v.mlflow.metrics.items() | list)[:3] %}
+                                <span class="me-2">
+                                    <code>{{ name }}</code>=<span class="fw-semibold">{{ '%.4g' | format(val) if val is number else val }}</span>
+                                </span>
+                                {% endfor %}
+                                {% elif v.mlflow and v.mlflow.error %}
+                                <span class="text-muted small fst-italic">{{ v.mlflow.error }}</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @click="selectForCompare({{ v.version }})">
+                                    <span x-show="firstSelected === null || firstSelected === {{ v.version }}">
+                                        <i class="bi bi-bar-chart"></i> Compare
+                                    </span>
+                                    <span x-show="firstSelected !== null && firstSelected !== {{ v.version }}">
+                                        <i class="bi bi-arrow-right"></i> vs v{{ v.version }}
+                                    </span>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="text-muted small mt-2" x-show="firstSelected !== null">
+            Selected v<span x-text="firstSelected"></span>. Click another version to compare.
+        </div>
+    </div>
+
+    {# Lineage — populated lazily by modelLineageDag. #}

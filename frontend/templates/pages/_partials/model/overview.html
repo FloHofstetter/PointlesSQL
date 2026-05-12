@@ -1,0 +1,62 @@
+    <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">Metadata</div>
+                    <div class="card-body small">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Catalog</dt>
+                            <dd class="col-sm-8">{{ model.catalog_name }}</dd>
+                            <dt class="col-sm-4">Schema</dt>
+                            <dd class="col-sm-8">{{ model.schema_name }}</dd>
+                            <dt class="col-sm-4">Name</dt>
+                            <dd class="col-sm-8">{{ model.name }}</dd>
+                            <dt class="col-sm-4">Owner</dt>
+                            <dd class="col-sm-8">{{ model.owner or "—" }}</dd>
+                            <dt class="col-sm-4">Storage</dt>
+                            <dd class="col-sm-8 text-break">
+                                <code>{{ model.storage_location or "—" }}</code>
+                            </dd>
+                            <dt class="col-sm-4">Versions</dt>
+                            <dd class="col-sm-8">{{ versions | length }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header">Linked Hermes runs{{ info('models.linked-hermes-runs') }}</div>
+                    <div class="card-body small">
+                        {% set linked = versions | selectattr("link_marker") | list %}
+                        {% if linked %}
+                        <ul class="list-unstyled mb-0">
+                            {% for v in linked[:5] %}
+                            <li class="mb-2">
+                                <span class="badge bg-secondary">v{{ v.version }}</span>
+                                {% if v.link_marker.agent_run_id %}
+                                <a href="/runs/{{ v.link_marker.agent_run_id }}"
+                                   class="text-decoration-none">
+                                    <i class="bi bi-arrow-right-short"></i>
+                                    run <code>{{ v.link_marker.agent_run_id[:8] }}</code>
+                                </a>
+                                {% endif %}
+                                {% if v.link_marker.linked_at %}
+                                <span class="text-muted ms-2">{{ v.link_marker.linked_at }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted mb-0">
+                            No PointlesSQL run cross-links recorded yet.
+                            Hermes-driven training runs auto-populate the
+                            <code>_pql_link</code> marker via the recorder hook.
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Versions #}
