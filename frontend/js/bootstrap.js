@@ -75,15 +75,15 @@ window.optionsEditor = optionsEditor;
 // into three sibling modules; bootstrap.js imports from each directly
 // so the window-name surface stays identical without an extra façade
 // layer.
-import { createConnectionForm } from './federation_connections.js';
+import { createConnectionForm } from './pages/federation/connections.js';
 import {
     createCredentialForm,
     createExternalLocationForm,
-} from './federation_credentials.js';
+} from './pages/federation/credentials.js';
 import {
     createForeignCatalogForm,
     deleteConfirm,
-} from './federation_catalogs.js';
+} from './pages/federation/catalogs.js';
 
 window.createConnectionForm = createConnectionForm;
 window.createExternalLocationForm = createExternalLocationForm;
