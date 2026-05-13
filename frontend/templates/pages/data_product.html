@@ -509,6 +509,16 @@
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <div class="small text-muted">
                                         <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                        <template x-if="c.agent">
+                                            <span class="badge bg-info ms-1 pql-comment-agent-badge"
+                                                  :title="'Posted via agent ' + c.agent.slug">
+                                                <i class="bi bi-robot"></i>
+                                                <a :href="'/agents/' + c.agent.slug"
+                                                   class="text-white text-decoration-none"
+                                                   x-text="c.agent.display_name || c.agent.slug"></a>
+                                                <span x-show="c.agent.is_verified" class="ms-1">✓</span>
+                                            </span>
+                                        </template>
                                         ·
                                         <span x-text="c.created_at"></span>
                                         <!-- Phase 76.1: category badge -->
@@ -529,7 +539,8 @@
                                     <em class="small text-muted">[deleted]</em>
                                 </template>
                                 <template x-if="!c.deleted_at">
-                                    <div class="pql-comment-body" x-text="c.body_md"></div>
+                                    <div class="pql-comment-body"
+                                         x-html="window.pqlRenderCitations(c.body_md_resolved || c.body_md)"></div>
                                 </template>
                                 <!-- Phase 76.1: reaction row on the comment -->
                                 <div class="mt-1 d-flex gap-1 flex-wrap pql-comment-reactions"
@@ -549,6 +560,16 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div class="small text-muted">
                                                 <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
+                                                <template x-if="r.agent">
+                                                    <span class="badge bg-info ms-1 pql-comment-agent-badge"
+                                                          :title="'Posted via agent ' + r.agent.slug">
+                                                        <i class="bi bi-robot"></i>
+                                                        <a :href="'/agents/' + r.agent.slug"
+                                                           class="text-white text-decoration-none"
+                                                           x-text="r.agent.display_name || r.agent.slug"></a>
+                                                        <span x-show="r.agent.is_verified" class="ms-1">✓</span>
+                                                    </span>
+                                                </template>
                                                 ·
                                                 <span x-text="r.created_at"></span>
                                                 <span class="badge bg-success ms-1 pql-accepted-answer-badge"
@@ -567,7 +588,8 @@
                                             <em class="small text-muted">[deleted]</em>
                                         </template>
                                         <template x-if="!r.deleted_at">
-                                            <div class="pql-comment-body" x-text="r.body_md"></div>
+                                            <div class="pql-comment-body"
+                                                 x-html="window.pqlRenderCitations(r.body_md_resolved || r.body_md)"></div>
                                         </template>
                                         <div class="mt-1 d-flex gap-1 flex-wrap pql-comment-reactions"
                                              x-show="!r.deleted_at">
@@ -691,6 +713,16 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="small text-muted">
                                         <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
+                                        <template x-if="r.agent">
+                                            <span class="badge bg-info ms-1 pql-review-agent-badge"
+                                                  :title="'Posted via agent ' + r.agent.slug">
+                                                <i class="bi bi-robot"></i>
+                                                <a :href="'/agents/' + r.agent.slug"
+                                                   class="text-white text-decoration-none"
+                                                   x-text="r.agent.display_name || r.agent.slug"></a>
+                                                <span x-show="r.agent.is_verified" class="ms-1">✓</span>
+                                            </span>
+                                        </template>
                                         ·
                                         <span class="text-warning"
                                               x-text="'★'.repeat(r.stars) + '☆'.repeat(5 - r.stars)"></span>
@@ -703,7 +735,8 @@
                                     </div>
                                 </div>
                                 <template x-if="r.body_md">
-                                    <div class="pql-review-body" x-text="r.body_md"></div>
+                                    <div class="pql-review-body"
+                                         x-html="window.pqlRenderCitations(r.body_md_resolved || r.body_md)"></div>
                                 </template>
                             </div>
                         </div>
@@ -1473,4 +1506,5 @@ window.dataProductDetail = function (product, ctx) {
 </script>
 <script src="/static/js/mention_autocomplete.js?v={{ asset_version }}"></script>
 <script src="/static/js/comments_collapse.js?v={{ asset_version }}"></script>
+<script src="/static/js/citation_render.js?v={{ asset_version }}"></script>
 {% endblock %}

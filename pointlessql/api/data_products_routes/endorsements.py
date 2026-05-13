@@ -44,6 +44,7 @@ from pointlessql.models.catalog._data_product_endorsement import (
     DataProductEndorsement,
 )
 from pointlessql.services import audit as audit_service
+from pointlessql.services.social import resolve_citations
 
 router = APIRouter(tags=["data-products"])
 
@@ -79,6 +80,7 @@ def _serialise(
     *,
     author_email: str | None,
     author_display_name: str | None,
+    note_md_resolved: str,
     agent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Render one endorsement row as JSON.
@@ -86,6 +88,12 @@ def _serialise(
     The ``agent`` payload mirrors the comment-serialiser shape
     (Phase 76.5): present when ``applied_by_agent_id`` is set,
     ``None`` otherwise.
+
+    ``note_md_resolved`` carries the cite-token render projection
+    (Phase 76.7) — same string as ``note_md`` with ``#dp:`` /
+    ``#topic:`` / ``#user:`` / ``#agent:`` tokens replaced by
+    markdown anchors.  Frontend reads this via
+    ``pqlRenderCitations``.
     """
     return {
         "id": endorsement.id,
@@ -102,6 +110,7 @@ def _serialise(
             endorsement.removed_at.isoformat() if endorsement.removed_at else None
         ),
         "note_md": endorsement.note_md or "",
+        "note_md_resolved": note_md_resolved,
     }
 
 
@@ -168,6 +177,9 @@ async def list_endorsements(
             r,
             author_email=author_map.get(r.applied_by_user_id, (None, None))[0],
             author_display_name=author_map.get(r.applied_by_user_id, (None, None))[1],
+            note_md_resolved=resolve_citations(
+                r.note_md or "", factory, workspace_id,
+            ),
             agent=_agent_payload(
                 agent_map.get(r.applied_by_agent_id)
                 if r.applied_by_agent_id is not None
@@ -261,6 +273,9 @@ async def apply_endorsement(
                 existing,
                 author_email=author.email if author else None,
                 author_display_name=author.display_name if author else None,
+                note_md_resolved=resolve_citations(
+                    existing.note_md or "", factory, workspace_id,
+                ),
                 agent=_agent_payload(existing_agent),
             )
 
@@ -306,6 +321,9 @@ async def apply_endorsement(
         new_row,
         author_email=author_email,
         author_display_name=author_display,
+        note_md_resolved=resolve_citations(
+            new_row.note_md or "", factory, workspace_id,
+        ),
         agent=new_agent_payload,
     )
 

@@ -30,6 +30,7 @@ from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.social import resolve_citations
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_REVIEWED,
     emit_governance_event,
@@ -43,6 +44,7 @@ def _serialise_review(
     *,
     author_email: str | None,
     author_display_name: str | None,
+    body_md_resolved: str,
     agent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Render one review row as a JSON-friendly dict.
@@ -50,6 +52,12 @@ def _serialise_review(
     The ``agent`` payload mirrors the comment-serialiser shape
     (Phase 76.5): present when ``author_agent_id`` is set,
     ``None`` otherwise.
+
+    ``body_md_resolved`` carries the cite-token render projection
+    (Phase 76.7) — same string as ``body_md`` with ``#dp:`` /
+    ``#topic:`` / ``#user:`` / ``#agent:`` tokens replaced by
+    markdown anchors.  Frontend reads this via
+    ``pqlRenderCitations``.
     """
     return {
         "id": row.id,
@@ -62,6 +70,7 @@ def _serialise_review(
         "agent": agent,
         "stars": row.stars,
         "body_md": row.body_md,
+        "body_md_resolved": body_md_resolved,
         "dp_version_at_review": row.dp_version_at_review,
         "created_at": row.created_at.isoformat(),
         "updated_at": row.updated_at.isoformat(),
@@ -172,6 +181,9 @@ async def list_data_product_reviews(
             r,
             author_email=author_email,
             author_display_name=author_display,
+            body_md_resolved=resolve_citations(
+                r.body_md, factory, workspace_id,
+            ),
             agent=_agent_payload(agent_obj),
         )
         payload.append(s)
@@ -336,6 +348,9 @@ async def upsert_data_product_review(
         review,
         author_email=author_email,
         author_display_name=author_display,
+        body_md_resolved=resolve_citations(
+            review.body_md, factory, workspace_id,
+        ),
         agent=review_agent_payload,
     )
 

@@ -44,6 +44,7 @@ from pointlessql.models.catalog._data_product_comment_reaction import (
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.services import audit as audit_service
 from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.social import resolve_citations
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED,
     EVENT_TYPE_DATA_PRODUCT_COMMENTED,
@@ -242,6 +243,7 @@ def _serialise_comment(
     *,
     author_email: str | None,
     author_display_name: str | None,
+    body_md_resolved: str,
     reactions: list[dict[str, Any]] | None = None,
     agent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -260,6 +262,12 @@ def _serialise_comment(
         # ``author.user_id`` is None in that case.
         "agent": agent,
         "body_md": "" if row.deleted_at else row.body_md,
+        # Phase 76.7 — cite-token render projection.  Carries the
+        # same string as ``body_md`` with ``#dp:`` / ``#topic:`` /
+        # ``#user:`` / ``#agent:`` tokens replaced by markdown
+        # anchors.  The frontend reads this field via the
+        # ``pqlRenderCitations`` helper.
+        "body_md_resolved": body_md_resolved,
         "mentioned_user_ids": json.loads(row.mentioned_user_ids_json or "[]"),
         "category": row.category,
         "is_accepted_answer": bool(row.is_accepted_answer),
@@ -366,11 +374,17 @@ async def list_data_product_comments(
             if c.author_agent_id is not None
             else None
         )
+        body_md_resolved = (
+            ""
+            if c.deleted_at
+            else resolve_citations(c.body_md, factory, workspace_id)
+        )
         payload.append(
             _serialise_comment(
                 c,
                 author_email=author_email,
                 author_display_name=author_display,
+                body_md_resolved=body_md_resolved,
                 agent=agent_payload,
                 reactions=reactions_by_comment.get(c.id),
             )
@@ -599,6 +613,7 @@ async def post_data_product_comment(
         comment,
         author_email=author_email,
         author_display_name=author_display,
+        body_md_resolved=resolve_citations(body_md, factory, workspace_id),
         agent=agent_payload,
         reactions=[
             {"emoji": e, "count": 0, "has_current_user_reacted": False}
