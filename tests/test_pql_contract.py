@@ -168,10 +168,12 @@ async def test_draft_preview_invalid_400(
 
 @pytest.mark.asyncio
 async def test_save_route_creates_row(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path,
+    admin_client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """POST /api/contracts/save persists the file + DB row."""
-    app.state.settings.data_products.draft_dir = tmp_path
+    monkeypatch.setattr(app.state.settings.data_products, "draft_dir", tmp_path)
     res = await admin_client.post(
         "/api/contracts/save",
         json={
@@ -193,10 +195,12 @@ async def test_save_route_creates_row(
 
 @pytest.mark.asyncio
 async def test_drafts_list_route(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path,
+    admin_client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """GET /api/contracts/drafts lists saved drafts."""
-    app.state.settings.data_products.draft_dir = tmp_path
+    monkeypatch.setattr(app.state.settings.data_products, "draft_dir", tmp_path)
     await admin_client.post(
         "/api/contracts/save",
         json={
@@ -215,14 +219,18 @@ async def test_drafts_list_route(
 
 @pytest.mark.asyncio
 async def test_promote_draft_loads_contract(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path,
+    admin_client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """POST .../promote copies into the search path + loads the contract."""
     draft_dir = tmp_path / "drafts"
     active_dir = tmp_path / "active"
     active_dir.mkdir(parents=True)
-    app.state.settings.data_products.draft_dir = draft_dir
-    app.state.settings.data_products.yaml_search_paths = [active_dir]
+    monkeypatch.setattr(app.state.settings.data_products, "draft_dir", draft_dir)
+    monkeypatch.setattr(
+        app.state.settings.data_products, "yaml_search_paths", [active_dir]
+    )
 
     save_res = await admin_client.post(
         "/api/contracts/save",
@@ -253,20 +261,26 @@ async def test_promote_draft_loads_contract(
 
 @pytest.mark.asyncio
 async def test_promote_unknown_draft_404(
-    admin_client: httpx.AsyncClient, tmp_path: Path
+    admin_client: httpx.AsyncClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Promote on a non-existent draft id → 404."""
-    app.state.settings.data_products.yaml_search_paths = [tmp_path]
+    monkeypatch.setattr(
+        app.state.settings.data_products, "yaml_search_paths", [tmp_path]
+    )
     res = await admin_client.post("/api/contracts/drafts/99999/promote")
     assert res.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_discard_draft_route(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path,
+    admin_client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """POST .../discard stamps discarded_at."""
-    app.state.settings.data_products.draft_dir = tmp_path
+    monkeypatch.setattr(app.state.settings.data_products, "draft_dir", tmp_path)
     save_res = await admin_client.post(
         "/api/contracts/save",
         json={

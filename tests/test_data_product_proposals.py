@@ -52,16 +52,29 @@ data_product:
 """
 
 
-def _seed_dp(tmp_path: Path, search_path: Path) -> int:
+def _seed_dp(
+    tmp_path: Path,
+    search_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> int:
     """Seed a DP under ``main.sales_gold`` + configure yaml search path.
+
+    Args:
+        tmp_path: pytest tmp_path.
+        search_path: Per-test yaml search-path directory.
+        monkeypatch: pytest monkeypatch (auto-restores the
+            mutated setting after the test exits).
 
     Returns:
         The DP id.
     """
+    del tmp_path
     target = search_path / "main__sales_gold.yaml"
     search_path.mkdir(parents=True, exist_ok=True)
     target.write_text(VALID_YAML, encoding="utf-8")
-    app.state.settings.data_products.yaml_search_paths = [search_path]
+    monkeypatch.setattr(
+        app.state.settings.data_products, "yaml_search_paths", [search_path]
+    )
     factory = app.state.session_factory
     load_contract(target, factory=factory)
     with factory() as session:
@@ -92,10 +105,10 @@ def _seed_agent_run() -> str:
 
 @pytest.mark.asyncio
 async def test_open_proposal_as_human(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """POST proposal sets proposer_user_id from the session cookie."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={
@@ -116,10 +129,10 @@ async def test_open_proposal_as_human(
 
 @pytest.mark.asyncio
 async def test_open_proposal_as_agent(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """POST proposal via X-Agent-Run-Id sets proposer_agent_run_id."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     run_id = _seed_agent_run()
     res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
@@ -131,9 +144,11 @@ async def test_open_proposal_as_agent(
     assert body["proposer_agent_run_id"] == run_id
 
 
-def test_check_rejects_proposal_without_proposer(tmp_path: Path) -> None:
+def test_check_rejects_proposal_without_proposer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Direct insert with neither proposer set is rejected by the CHECK."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     factory = app.state.session_factory
     with factory() as session:
         dp = session.execute(select(DataProduct)).scalar_one()
@@ -153,11 +168,11 @@ def test_check_rejects_proposal_without_proposer(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_approve_inplace_safe_diff(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Approve in-place on a safe diff rewrites yaml + reloads DP."""
     search_path = tmp_path / "yaml"
-    _seed_dp(tmp_path, search_path)
+    _seed_dp(tmp_path, search_path, monkeypatch)
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={
@@ -184,10 +199,10 @@ async def test_approve_inplace_safe_diff(
 
 @pytest.mark.asyncio
 async def test_approve_inplace_unsafe_diff_400(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Approve in-place on a destructive diff is rejected with 400."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={
@@ -205,11 +220,13 @@ async def test_approve_inplace_unsafe_diff_400(
 
 @pytest.mark.asyncio
 async def test_approve_draft_writes_yaml_draft(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Approve with kind='draft' writes a DataProductYamlDraft row."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
-    app.state.settings.data_products.draft_dir = tmp_path / "drafts"
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
+    monkeypatch.setattr(
+        app.state.settings.data_products, "draft_dir", tmp_path / "drafts"
+    )
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={
@@ -235,10 +252,10 @@ async def test_approve_draft_writes_yaml_draft(
 
 @pytest.mark.asyncio
 async def test_reject_proposal(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """POST reject stamps status='rejected'."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={"diff": {"add_columns": {"orders": []}}, "summary_md": "nope"},
@@ -259,10 +276,10 @@ async def test_reject_proposal(
 
 @pytest.mark.asyncio
 async def test_list_proposals(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """GET returns open + historical."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={"diff": {"add_columns": {"orders": []}}, "summary_md": "a"},
@@ -279,10 +296,10 @@ async def test_list_proposals(
 
 @pytest.mark.asyncio
 async def test_double_resolve_400(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Resolving an already-resolved proposal returns 400."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={"diff": {"add_columns": {"orders": []}}, "summary_md": "x"},
@@ -299,10 +316,10 @@ async def test_double_resolve_400(
 
 @pytest.mark.asyncio
 async def test_approve_unknown_404(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Approve / reject on a non-existent proposal → 404."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals/99999/approve",
         json={"kind": "inplace"},
@@ -312,10 +329,10 @@ async def test_approve_unknown_404(
 
 @pytest.mark.asyncio
 async def test_emits_governance_events(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Open + approve each emit one governance_events row."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={"diff": {"add_columns": {"orders": []}}, "summary_md": "x"},
@@ -352,10 +369,10 @@ async def test_emits_governance_events(
 
 @pytest.mark.asyncio
 async def test_audit_log_rows_written(
-    tmp_path: Path, admin_client: httpx.AsyncClient
+    tmp_path: Path, admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Open + approve each write one audit_log row."""
-    _seed_dp(tmp_path, tmp_path / "yaml")
+    _seed_dp(tmp_path, tmp_path / "yaml", monkeypatch)
     open_res = await admin_client.post(
         "/api/data-products/main/sales_gold/proposals",
         json={"diff": {"add_columns": {"orders": []}}, "summary_md": "x"},

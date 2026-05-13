@@ -6,6 +6,44 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 73.3 — Schema-change proposal flow (2026-05-14).**
+  New ``DataProductSchemaProposal`` model + alembic
+  ``l8n0p2r4t6v8``.  Row-level CHECK enforces that at least
+  one of ``proposer_user_id`` / ``proposer_agent_run_id`` is
+  set, so both humans and agents flow through the same
+  surface.  Two new governance event types
+  (``data_product.proposal_opened``, ``.proposal_resolved``)
+  + matching cloudevent constants.  New routes
+  (GET list, POST open, POST ``/{id}/approve`` with
+  ``kind='inplace' | 'draft'``, POST ``/{id}/reject``).
+  In-place approval only accepts safe diffs
+  (``add_columns`` + ``change_descriptions``); destructive
+  ops route through the draft path which writes a
+  ``DataProductYamlDraft`` row with
+  ``source_kind='agent_proposal'``.  DP detail Overview tab
+  gets an "Open schema-change proposals" card.  12 pytest
+  cases.  Pyright budget bumped 585 → 612 for the yaml-diff
+  applier (yaml.safe_load returns ``Any`` cascade).
+
+- **Sprint 73.2 — pql.contract() inline DSL (2026-05-14).**
+  New ``pointlessql/pql/_contracts.py`` with
+  ``pql.contract(...)`` builder + ``DraftContract``
+  dataclass.  Validates the payload against the existing
+  ``DataProductContract`` pydantic model, wraps it in a
+  ``data_product:`` top-level key so the existing loader
+  accepts it as-is.  ``.save()`` writes the yaml to
+  ``settings.data_products.draft_dir/<workspace>/...`` and
+  optionally inserts a ``DataProductYamlDraft`` row.  Five
+  new routes under ``/api/contracts``: ``POST /draft``
+  (preview), ``POST /save``, ``GET /drafts``,
+  ``POST /drafts/{id}/promote`` (copies into the first
+  writable ``yaml_search_paths`` entry + runs
+  ``load_contract``), ``POST /drafts/{id}/discard``.
+  Steward-or-admin gate on the privileged routes.  Also
+  fixes Sprint 73.1's ``build_draft_yaml`` to emit the same
+  ``data_product:``-wrapped shape so admin-promote round-
+  trips through the loader.  12 pytest cases.
+
 - **Sprint 73.5 — Cross-DP recommendations (2026-05-14).**
   New ``DataProductCooccurrence`` model + alembic
   ``k7m9o1q3s5u7``.  ``services/data_products/cooccurrence.py``

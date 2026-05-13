@@ -350,7 +350,7 @@ PointlesSQL
 │       │   `/profile/notifications/subscriptions`.
 │       └── ~10 pytest cases.
 │
-├── Phase 73 — Agent-authored data products                 ⏳ planned
+├── Phase 73 — Agent-authored data products                 ✅ done
 │   │
 │   │   Phase 72 made the data-product surface *aware* of
 │   │   agents (badges, trending, activity feed).  Phase 73
@@ -405,7 +405,7 @@ PointlesSQL
 │   │   │   into a `_drafts/` directory the admin can review.
 │   │   └── ~12 pytest cases.
 │   │
-│   ├── Sprint 73.2 — pql.contract() inline DSL                 ⏳ planned
+│   ├── Sprint 73.2 — pql.contract() inline DSL                 ✅ done
 │   │   ├── New `pql.contract(catalog, schema, *, tables=...)`
 │   │   │   API that builds and persists the same yaml
 │   │   │   payload from inside a notebook cell.  Returns a
@@ -422,7 +422,7 @@ PointlesSQL
 │   │   │   the "preview yaml before save" UX.
 │   │   └── ~10 pytest cases.
 │   │
-│   ├── Sprint 73.3 — Schema-change proposal flow              ⏳ planned
+│   ├── Sprint 73.3 — Schema-change proposal flow              ✅ done
 │   │   ├── New model `DataProductSchemaProposal` (id,
 │   │   │   data_product_id, proposer_user_id, proposer_kind,
 │   │   │   diff_json, status, created_at, resolved_at,

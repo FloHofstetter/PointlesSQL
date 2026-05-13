@@ -326,10 +326,12 @@ async def test_dismiss_route_flips_status(
 
 @pytest.mark.asyncio
 async def test_generate_draft_writes_file_and_row(
-    admin_client: httpx.AsyncClient, tmp_path: Path
+    admin_client: httpx.AsyncClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """POST .../generate-draft writes file + inserts YamlDraft row."""
-    app.state.settings.data_products.draft_dir = tmp_path
+    monkeypatch.setattr(app.state.settings.data_products, "draft_dir", tmp_path)
     app.state.dp_draft_schema_reader = _stub_schema_reader
     try:
         candidate = _seed_candidate_basic()
