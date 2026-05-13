@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}{{ target_user.display_name or target_user.email }} · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Users"},
+    {"label": target_user.display_name or target_user.email}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="userProfile({{ target_user | tojson }}, { current_user_id: {{ current_user_id }}, is_admin: {{ is_admin|tojson }} })"
+     x-init="init()">
+
+    <template x-if="!loaded">
+        <div class="text-muted small p-3">Loading…</div>
+    </template>
+
+    <template x-if="loaded">
+        <div>
+            <div class="card mb-3">
+                <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+                    <i class="bi bi-person-circle fs-1 text-muted"></i>
+                    <div class="flex-grow-1">
+                        <h2 class="h4 mb-1 pql-profile-display-name"
+                            x-text="profile.display_name || profile.email"></h2>
+                        <div class="text-muted small pql-profile-email"
+                             x-text="profile.email"></div>
+                        <div class="text-muted small pql-profile-location"
+                             x-show="profile.location"
+                             x-text="profile.location"></div>
+                        <!-- Phase 76.2: badge row -->
+                        <div class="d-flex gap-1 flex-wrap mt-2 pql-profile-badges">
+                            <template x-for="b in (badges || [])" :key="b.badge_key">
+                                <span class="badge bg-info"
+                                      :data-badge-key="b.badge_key"
+                                      x-text="b.badge_key.replace(/_/g, ' ')"></span>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <button class="btn btn-sm btn-primary pql-profile-follow-btn"
+                                x-show="profile.user_id !== currentUserId && !viewerFollows"
+                                @click="follow()">
+                            <i class="bi bi-person-plus me-1"></i>Follow
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary pql-profile-unfollow-btn"
+                                x-show="profile.user_id !== currentUserId && viewerFollows"
+                                @click="unfollow()">
+                            <i class="bi bi-person-dash me-1"></i>Unfollow
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary ms-1 pql-profile-edit-btn"
+                                x-show="canEdit"
+                                @click="editing = !editing">
+                            <i class="bi bi-pencil me-1"></i>
+                            <span x-text="editing ? 'Cancel' : 'Edit profile'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Counts row -->
+            <div class="row mb-3 g-2 pql-profile-counts">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <div class="h4 mb-0 pql-counts-followers"
+                                 x-text="counts.followers || 0"></div>
+                            <div class="text-muted small">Followers</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <div class="h4 mb-0 pql-counts-following"
+                                 x-text="counts.following || 0"></div>
+                            <div class="text-muted small">Following</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <div class="h4 mb-0 pql-counts-stewarded"
+                                 x-text="counts.stewarded_dps || 0"></div>
+                            <div class="text-muted small">Stewarded DPs</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <div class="h4 mb-0 pql-counts-reviews"
+                                 x-text="counts.reviews || 0"></div>
+                            <div class="text-muted small">Reviews</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bio + edit form -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title h6 text-muted">Bio</h5>
+                    <template x-if="!editing">
+                        <div class="pql-profile-bio"
+                             x-text="profile.bio_md || '(no bio yet)'"></div>
+                    </template>
+                    <template x-if="editing">
+                        <div>
+                            <textarea class="form-control mb-2 pql-profile-bio-input"
+                                      rows="4"
+                                      x-model="bioDraft"
+                                      placeholder="Markdown supported"></textarea>
+                            <input class="form-control form-control-sm mb-2 pql-profile-location-input"
+                                   x-model="locationDraft"
+                                   placeholder="Location (optional)">
+                            <button class="btn btn-sm btn-primary pql-profile-save-btn"
+                                    @click="save()">Save</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Stewarded DPs -->
+            <div class="card mb-3" x-show="(stewarded || []).length > 0">
+                <div class="card-body">
+                    <h5 class="card-title h6 text-muted">Stewarded data products</h5>
+                    <ul class="list-unstyled mb-0 pql-profile-stewarded">
+                        <template x-for="dp in (stewarded || [])" :key="dp.id">
+                            <li>
+                                <a :href="'/data-products/' + dp.catalog + '/' + dp.schema"
+                                   x-text="dp.catalog + '.' + dp.schema"></a>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Recent activity -->
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title h6 text-muted">Recent comments</h5>
+                            <template x-if="(recentComments || []).length === 0">
+                                <div class="text-muted small">No comments yet.</div>
+                            </template>
+                            <ul class="list-unstyled mb-0 small pql-profile-recent-comments">
+                                <template x-for="c in (recentComments || [])" :key="c.id">
+                                    <li class="mb-1">
+                                        <span class="badge bg-secondary me-1"
+                                              x-show="c.category && c.category !== 'general'"
+                                              x-text="c.category"></span>
+                                        <span x-text="c.body_md.slice(0, 80)"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title h6 text-muted">Recent reviews</h5>
+                            <template x-if="(recentReviews || []).length === 0">
+                                <div class="text-muted small">No reviews yet.</div>
+                            </template>
+                            <ul class="list-unstyled mb-0 small pql-profile-recent-reviews">
+                                <template x-for="r in (recentReviews || [])" :key="r.id">
+                                    <li class="mb-1">
+                                        <span class="text-warning"
+                                              x-text="'★'.repeat(r.stars)"></span>
+                                        ·
+                                        <span class="text-muted"
+                                              x-text="r.created_at"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+window.userProfile = function (target, ctx) {
+    ctx = ctx || {};
+    return {
+        target: target,
+        currentUserId: ctx.current_user_id || 0,
+        isAdmin: !!ctx.is_admin,
+        loaded: false,
+        profile: { user_id: target.user_id, email: target.email, display_name: target.display_name, bio_md: '', location: null },
+        counts: {},
+        stewarded: [],
+        badges: [],
+        recentComments: [],
+        recentReviews: [],
+        viewerFollows: false,
+        editing: false,
+        bioDraft: '',
+        locationDraft: '',
+
+        get canEdit() {
+            return this.isAdmin || this.profile.user_id === this.currentUserId;
+        },
+
+        async init() {
+            await this.load();
+        },
+
+        async load() {
+            try {
+                const res = await fetch('/api/users/' + this.target.user_id + '/profile');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.profile = data.profile;
+                this.counts = data.counts || {};
+                this.stewarded = data.stewarded_dps || [];
+                this.badges = data.badges || [];
+                this.recentComments = data.recent_comments || [];
+                this.recentReviews = data.recent_reviews || [];
+                this.viewerFollows = !!data.viewer_follows;
+                this.bioDraft = this.profile.bio_md || '';
+                this.locationDraft = this.profile.location || '';
+            } catch (e) {
+                console.error('profile load failed', e);
+            } finally {
+                this.loaded = true;
+            }
+        },
+
+        async save() {
+            try {
+                const res = await fetch('/api/users/' + this.target.user_id + '/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bio_md: this.bioDraft,
+                        location: this.locationDraft || null,
+                    }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.editing = false;
+                await this.load();
+            } catch (e) {
+                console.error('profile save failed', e);
+            }
+        },
+
+        async follow() {
+            try {
+                const res = await fetch('/api/users/' + this.target.user_id + '/follow', { method: 'POST' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.viewerFollows = true;
+                await this.load();
+            } catch (e) {
+                console.error('follow failed', e);
+            }
+        },
+
+        async unfollow() {
+            try {
+                const res = await fetch('/api/users/' + this.target.user_id + '/follow', { method: 'DELETE' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.viewerFollows = false;
+                await this.load();
+            } catch (e) {
+                console.error('unfollow failed', e);
+            }
+        },
+    };
+};
+</script>
+{% endblock %}

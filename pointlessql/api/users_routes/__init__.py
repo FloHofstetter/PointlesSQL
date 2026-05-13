@@ -15,10 +15,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from pointlessql.api.users_routes.follows import router as _follows_router
+from pointlessql.api.users_routes.profile import router as _profile_router
 from pointlessql.api.users_routes.search import router as _search_router
 
 router = APIRouter(tags=["users"])
 router.include_router(_search_router)
+router.include_router(_profile_router)
+router.include_router(_follows_router)
 
 
 __all__ = ["router"]

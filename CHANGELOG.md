@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 76.2 — User profiles + user-to-user follows + sticky
+  badges (2026-05-13).**  New tables ``user_profiles``,
+  ``user_follows``, ``user_badges`` (Alembic
+  ``q8s0u2w4y6a8``).  Adds ``GET/PUT /api/users/{id}/profile``
+  (owner-or-admin gated), ``POST/DELETE /api/users/{id}/follow``
+  (self-follow rejected app-side + DB CHECK), and
+  ``GET /api/users/{id}/followers`` + ``/following``.  New
+  ``GET /users/{id}`` HTML page (and ``/users/me`` redirect)
+  renders bio, gravatar fallback, follow/unfollow button,
+  badges row, count cards (followers / following / stewarded /
+  reviews), and recent activity (last 10 comments + reviews).
+  Two new governance event types
+  (``pointlessql.user.followed``,
+  ``pointlessql.user.badge_awarded``) feed the Phase-20 SIEM
+  forwarder.  Background loop ``_user_badges_loop`` recomputes
+  five positive-only thresholds every 24 h
+  (``steward_3plus``, ``reviewer_100plus``,
+  ``mention_magnet_20plus``, ``accepted_answer_5plus``,
+  ``endorser_50plus``); awards are sticky, never revoked.
+  12 new pytest cases.
+
 - **Phase 76.1 — Deeper Conversations on data-product
   comments (2026-05-13).**  Lifts threading-depth cap from 2 to
   5 (app-level walk-the-parent-chain in

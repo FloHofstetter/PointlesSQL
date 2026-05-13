@@ -33,6 +33,7 @@ from pointlessql.api._bootstrap._loops import (
     _data_product_trending_loop,  # pyright: ignore[reportPrivateUsage]
     _external_writes_loop,  # pyright: ignore[reportPrivateUsage]
     _lineage_pruner_loop,  # pyright: ignore[reportPrivateUsage]
+    _user_badges_loop,  # pyright: ignore[reportPrivateUsage]
     _user_notification_digest_loop,  # pyright: ignore[reportPrivateUsage]
     _workspace_repos_sync_loop,  # pyright: ignore[reportPrivateUsage]
 )
@@ -518,6 +519,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="user-notification-digest",
         )
 
+    # Phase 76.2 — sticky reputation badges recomputed every 24h.
+    user_badges_task: asyncio.Task[None] | None = None
+    if not fast_test_lifespan:
+        user_badges_task = asyncio.create_task(
+            _user_badges_loop(app.state.session_factory, settings),
+            name="user-badges",
+        )
+
     #  MLflow Tracking subprocess.  Optional — only spawned
     # when ``settings.mlflow.enabled`` AND the optional ``mlflow``
     # package is installed (``pip install pointlessql[ml]``).  A
@@ -612,6 +621,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             user_notification_digest_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await user_notification_digest_task
+        if user_badges_task is not None:
+            user_badges_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await user_badges_task
         if data_product_trending_task is not None:
             data_product_trending_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

@@ -38,6 +38,7 @@ __all__ = [
     "_branch_cleanup_loop",
     "_cdf_tail_loop",
     "_active_reviewer_loop",
+    "_user_badges_loop",
     "_data_product_cooccurrence_loop",
     "_data_product_freshness_loop",
     "_data_product_passport_loop",
@@ -371,6 +372,41 @@ async def _active_reviewer_loop(  # pyright: ignore[reportUnusedFunction]
             logger.exception("active_reviewer: outer tick raised")
         try:
             await asyncio.sleep(60)  # belt-and-braces wake-floor
+        except asyncio.CancelledError:
+            return
+
+
+async def _user_badges_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Sticky reputation-badge recompute (Phase 76.2).
+
+    Wakes once every 24 h, calls :func:`award_badges` to INSERT
+    any newly-met badge thresholds, and sleeps again.  Badges are
+    positive-only; the helper never deletes rows, so the loop is
+    safe even if the underlying metric briefly regresses (e.g. a
+    review is rolled back).
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings` — currently
+            unused; reserved for a future ``social.badges_enabled``
+            kill-switch.
+    """
+    del settings
+    from pointlessql.services.social.badges import award_badges
+
+    interval = 24 * 3600
+    while True:
+        try:
+            inserted = await asyncio.to_thread(award_badges, factory)
+            if inserted:
+                logger.info("user_badges: awarded %d new badge(s)", inserted)
+        except Exception:  # noqa: BLE001 — badges loop must survive everything
+            logger.exception("user_badges: tick raised")
+        try:
+            await asyncio.sleep(interval)
         except asyncio.CancelledError:
             return
 

@@ -107,6 +107,13 @@ EVENT_TYPE_DATA_PRODUCT_REACTED = "pointlessql.data_product.reacted"
 EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED = (
     "pointlessql.data_product.answer_accepted"
 )
+# Phase 76.2 — user-to-user follow signal.  Recipient is the
+# followed user (single inbox row), governance envelope carries
+# follower + followed ids for SIEM correlation.
+EVENT_TYPE_USER_FOLLOWED = "pointlessql.user.followed"
+# Phase 76.2 — sticky positive-only reputation badge.  The badges
+# loop awards rows once per (user, badge_key) threshold crossing.
+EVENT_TYPE_USER_BADGE_AWARDED = "pointlessql.user.badge_awarded"
 EVENT_TYPE_NOTIFICATION_DIGEST = "pointlessql.notification.digest"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
@@ -133,6 +140,8 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DATA_PRODUCT_COMMENT_REACTED,
     EVENT_TYPE_DATA_PRODUCT_REACTED,
     EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED,
+    EVENT_TYPE_USER_FOLLOWED,
+    EVENT_TYPE_USER_BADGE_AWARDED,
     EVENT_TYPE_NOTIFICATION_DIGEST,
 )
 

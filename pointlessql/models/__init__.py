@@ -125,6 +125,12 @@ from pointlessql.models.scheduler import (
     JobTask,
     TaskRun,
 )
+from pointlessql.models.social import (
+    BADGE_KEYS,
+    UserBadge,
+    UserFollow,
+    UserProfile,
+)
 from pointlessql.models.system_keys import SystemKey
 from pointlessql.models.workspace import (
     WORKSPACE_PIN_MODES,
@@ -152,6 +158,7 @@ __all__ = [
     "AlertEvent",
     "AnomalyAck",
     "ApiKey",
+    "BADGE_KEYS",
     "AuditLog",
     "AuditSink",
     "AutoloadCheckpoint",
@@ -212,7 +219,10 @@ __all__ = [
     "TaskRun",
     "UnattributedWrite",
     "User",
+    "UserBadge",
+    "UserFollow",
     "UserNotification",
+    "UserProfile",
     "UserWebhookSubscription",
     "WORKSPACE_PIN_MODES",
     "WORKSPACE_REPO_PROVIDER_KINDS",
