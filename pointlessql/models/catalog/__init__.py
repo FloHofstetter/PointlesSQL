@@ -39,6 +39,11 @@ Layout:
 from __future__ import annotations
 
 from pointlessql.models.catalog._autoload import AutoloadCheckpoint
+from pointlessql.models.catalog._data_product_active_reviewer_config import (
+    ACTIVE_REVIEWER_PROVIDERS,
+    ACTIVE_REVIEWER_RUNNERS,
+    DataProductActiveReviewerConfig,
+)
 from pointlessql.models.catalog._data_product_candidate import (
     CANDIDATE_STATUSES,
     DataProductPromotionCandidate,
@@ -84,6 +89,8 @@ from pointlessql.models.catalog._recents import RecentTable
 from pointlessql.models.catalog._sync import SyncRun
 
 __all__ = [
+    "ACTIVE_REVIEWER_PROVIDERS",
+    "ACTIVE_REVIEWER_RUNNERS",
     "CANDIDATE_STATUSES",
     "CONTRACT_EVENT_OUTCOMES",
     "ENDORSEMENT_TYPES",
@@ -93,6 +100,7 @@ __all__ = [
     "AutoloadCheckpoint",
     "Dashboard",
     "DataProduct",
+    "DataProductActiveReviewerConfig",
     "DataProductComment",
     "DataProductContractEvent",
     "DataProductCooccurrence",

@@ -729,6 +729,12 @@ class DataProductsSettings(BaseSettings):
     cooccurrence_refresh_interval_seconds: int = 21_600
     cooccurrence_window_days: int = 7
     cooccurrence_top_n: int = 10
+    # Phase 74.1 — active reviewer (in-proc daily steward delegate).
+    active_reviewer_enabled: bool = False
+    active_reviewer_trigger_hour: int = 3  # UTC
+    active_reviewer_llm_provider: str = "anthropic"
+    active_reviewer_model: str = "claude-haiku-4-5-20251001"
+    active_reviewer_max_concurrent: int = 3
 
 
 class NotificationsSettings(BaseSettings):

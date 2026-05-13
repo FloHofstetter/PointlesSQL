@@ -37,6 +37,7 @@ __all__ = [
     "_audit_retention_loop",
     "_branch_cleanup_loop",
     "_cdf_tail_loop",
+    "_active_reviewer_loop",
     "_data_product_cooccurrence_loop",
     "_data_product_freshness_loop",
     "_data_product_passport_loop",
@@ -295,6 +296,81 @@ async def _data_product_promotion_loop(  # pyright: ignore[reportUnusedFunction]
             logger.exception("data_product_promotion: tick raised")
         try:
             await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _active_reviewer_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Phase 74 active-reviewer daily tick.
+
+    Active only when
+    ``data_products.active_reviewer_enabled`` is true.  Sleeps
+    until the next ``active_reviewer_trigger_hour`` UTC boundary,
+    then iterates every DP with
+    ``DataProductActiveReviewerConfig.runner='inproc'``,
+    rendering the prompt + calling the configured LLM provider
+    + posting the result.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings` — only the
+            ``data_products`` sub-tree is read.
+    """
+    from pointlessql.services.data_products import (
+        iter_opted_in_dp_ids,
+        run_reviewer_for_dp,
+    )
+    from pointlessql.services.notifications import seconds_until_next_window
+
+    if not settings.data_products.active_reviewer_enabled:
+        return
+
+    trigger_hour = settings.data_products.active_reviewer_trigger_hour
+    provider_default = settings.data_products.active_reviewer_llm_provider
+    model_default = settings.data_products.active_reviewer_model
+    max_concurrent = max(1, settings.data_products.active_reviewer_max_concurrent)
+
+    while True:
+        try:
+            wait = seconds_until_next_window(trigger_hour)
+            await asyncio.sleep(wait)
+            targets = await asyncio.to_thread(
+                iter_opted_in_dp_ids, factory, runner="inproc"
+            )
+            if not targets:
+                continue
+            sem = asyncio.Semaphore(max_concurrent)
+
+            async def _one(ws_id: int, dp_id: int) -> None:
+                async with sem:
+                    try:
+                        await run_reviewer_for_dp(
+                            factory,
+                            workspace_id=ws_id,
+                            data_product_id=dp_id,
+                            trigger="loop",
+                            provider_default=provider_default,
+                            model_default=model_default,
+                        )
+                    except Exception:  # noqa: BLE001
+                        logger.exception(
+                            "active_reviewer: dp=%s ws=%s tick raised",
+                            dp_id,
+                            ws_id,
+                        )
+
+            await asyncio.gather(
+                *[_one(ws, dp) for ws, dp, _c, _s in targets]
+            )
+        except asyncio.CancelledError:
+            return
+        except Exception:  # noqa: BLE001 — reviewer loop must survive everything
+            logger.exception("active_reviewer: outer tick raised")
+        try:
+            await asyncio.sleep(60)  # belt-and-braces wake-floor
         except asyncio.CancelledError:
             return
 

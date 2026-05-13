@@ -22,6 +22,7 @@ from markdown_it import MarkdownIt
 
 import pointlessql
 from pointlessql.api._bootstrap._loops import (
+    _active_reviewer_loop,  # pyright: ignore[reportPrivateUsage]
     _audit_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _branch_cleanup_loop,  # pyright: ignore[reportPrivateUsage]
     _cdf_tail_loop,  # pyright: ignore[reportPrivateUsage]
@@ -491,6 +492,20 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="data-product-cooccurrence",
         )
 
+    # Phase 74.1 — active-reviewer daily tick.  Opt-in
+    # default-disabled (``data_products.active_reviewer_enabled``);
+    # the loop body short-circuits when disabled, so registering it
+    # is cheap.
+    active_reviewer_task: asyncio.Task[None] | None = None
+    if (
+        settings.data_products.active_reviewer_enabled
+        and not fast_test_lifespan
+    ):
+        active_reviewer_task = asyncio.create_task(
+            _active_reviewer_loop(app.state.session_factory, settings),
+            name="active-reviewer",
+        )
+
     # Phase 71.4 follow-up B.3 — daily marketplace digest.  Opt-in
     # default-disabled (``notifications.digest_enabled=False``); the
     # loop body itself short-circuits when disabled, so we always
@@ -613,6 +628,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             data_product_cooccurrence_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await data_product_cooccurrence_task
+        if active_reviewer_task is not None:
+            active_reviewer_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await active_reviewer_task
         if scheduler is not None:
             await scheduler.stop()
         if not fast_test_lifespan and app.state.uc_client is not None:
