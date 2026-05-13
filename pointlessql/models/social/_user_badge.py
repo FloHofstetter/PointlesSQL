@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -46,6 +46,7 @@ class UserBadge(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "badge_key", name="uq_user_badge"),
+        Index("ix_user_badges_user", "user_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
