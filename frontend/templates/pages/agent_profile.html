@@ -9,7 +9,7 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="agentProfile({{ agent | tojson }})" x-init="init()">
+<div x-data='agentProfile({{ agent | tojson }})' x-init="init()">
 
     <div class="d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-robot fs-3"></i>
