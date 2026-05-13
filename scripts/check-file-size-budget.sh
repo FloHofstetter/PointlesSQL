@@ -69,6 +69,12 @@ ALLOWLIST=(
     # ``pointlessql/api/dbt/`` package later.  Same coherent-surface
     # rationale carries across the rename.
     "pointlessql/api/dbt/routes.py"
+    # Admin console — cohesive admin-level dashboard + audit-export
+    # + sink + review-destination + api-key + system-info pages.
+    # Phase 75.1 added the tamper-evidence ``.tar.gz`` variant which
+    # pushed the file past 800 LOC; the surface stays coherent
+    # (one router, one auth gate, one filter helper-set).
+    "pointlessql/api/admin/console.py"
 )
 
 is_allowed() {

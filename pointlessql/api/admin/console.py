@@ -22,6 +22,7 @@ reads.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 from datetime import UTC, datetime, timedelta
@@ -31,6 +32,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
+import pointlessql
 from pointlessql.api.dependencies import get_user, require_admin
 
 logger = logging.getLogger(__name__)
@@ -709,5 +711,108 @@ async def admin_audit_export(
         media_type="text/csv",
         headers={
             "Content-Disposition": (f'attachment; filename="pql-audit-{timestamp}.csv"'),
+        },
+    )
+
+
+@router.get("/admin/audit/export.tar.gz")
+async def admin_audit_export_tarball(
+    request: Request,
+    fmt: Literal["json", "csv"] = "json",
+    action: str | None = None,
+    user: str | None = None,
+    target: str | None = None,
+    since: Literal["24h", "7d", "30d", "all"] = "7d",
+) -> Response:
+    """Stream a ``.tar.gz`` bundle of the export + tamper-evidence sidecars.
+
+    Phase 75.1.  Same filter surface as :func:`admin_audit_export`;
+    the response body is a gzipped tarball containing three files:
+
+    * ``pql-audit-<ts>.<fmt>`` — data.
+    * ``pql-audit-<ts>.<fmt>.sha256`` — sha256sum-compatible sidecar.
+    * ``pql-audit-<ts>.<fmt>.manifest.json`` — filters + counts +
+      tool version + recorded ``data_sha256``.
+
+    Auditors verify the export by:
+
+    1. Extracting the tarball.
+    2. Running ``sha256sum -c <out>.sha256``.
+    3. Cross-checking the manifest's ``data_sha256`` field.
+
+    Args:
+        request: Incoming FastAPI request.
+        fmt: ``'json'`` or ``'csv'``.
+        action: Optional exact-match action filter.
+        user: Optional substring filter on ``user_email``.
+        target: Optional substring filter on ``target``.
+        since: Time-window preset.
+
+    Returns:
+        Response: gzipped tarball as
+            ``application/gzip`` with attachment header.
+    """
+    import io as _io
+    import tarfile
+
+    from pointlessql.cli.audit_export import (
+        ExportFilters,
+        encode_payload,
+        serialise_rows,
+    )
+
+    require_admin(request)
+    factory = request.app.state.session_factory
+
+    since_delta = ADMIN_AUDIT_SINCE_WINDOWS[since]
+    since_cutoff = (
+        datetime.now(UTC) - since_delta if since_delta is not None else None
+    )
+    filters = ExportFilters(
+        since=since_cutoff,
+        until=None,
+        action=action,
+        actor=user,
+        target=target,
+    )
+    rows = await asyncio.to_thread(serialise_rows, factory, filters)
+    exported_at = datetime.now(UTC)
+    timestamp = exported_at.strftime("%Y%m%dT%H%M%SZ")
+    payload = encode_payload(rows, fmt=fmt, exported_at=exported_at)
+    data_name = f"pql-audit-{timestamp}.{fmt}"
+    sha = hashlib.sha256(payload).hexdigest()
+    sha_body = f"{sha}  {data_name}\n".encode("ascii")
+    manifest = {
+        "schema_version": "1",
+        "tool_version": pointlessql.__version__,
+        "exported_at": exported_at.isoformat(),
+        "fmt": fmt,
+        "filters": filters.to_manifest_dict(),
+        "entry_count": len(rows),
+        "data_sha256": sha,
+        "data_filename": data_name,
+    }
+    manifest_body = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8")
+
+    buf = _io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for member_name, member_bytes in (
+            (data_name, payload),
+            (f"{data_name}.sha256", sha_body),
+            (f"{data_name}.manifest.json", manifest_body),
+        ):
+            info = tarfile.TarInfo(name=member_name)
+            info.size = len(member_bytes)
+            info.mtime = int(exported_at.timestamp())
+            info.mode = 0o600
+            tar.addfile(info, _io.BytesIO(member_bytes))
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/gzip",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="pql-audit-{timestamp}.tar.gz"'
+            ),
         },
     )

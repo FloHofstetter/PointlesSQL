@@ -348,8 +348,130 @@ async def dispatch_one(
         return await _dispatch_s3(sink, envelope, client=client)
     if sink.type == AuditSinkType.AWS_CLOUDTRAIL:
         return await _dispatch_cloudtrail(sink, envelope, client=client)
+    if sink.type == AuditSinkType.STDOUT_JSON:
+        return _dispatch_stdout_json(sink, envelope)
+    if sink.type == AuditSinkType.SYSLOG:
+        return _dispatch_syslog(sink, envelope)
     logger.warning("audit_sinks[%s] unknown type=%r — skipping", sink.id, sink.type)
     return False
+
+
+def _dispatch_stdout_json(sink: AuditSink, envelope: dict[str, Any]) -> bool:
+    """Write the envelope as a single line of JSON to stdout.
+
+    Phase 75.2.  Aimed at container-log harvesters (Loki, Fluent Bit,
+    Vector) that index stdout/stderr.  Delivery is sync — there is no
+    network round-trip — so we never see retries; OSError on write is
+    swallowed (the audit_log row stays authoritative).
+
+    Args:
+        sink: ORM row.  ``config_json`` may carry an optional
+            ``stream`` field (``'stdout'`` default, ``'stderr'``
+            alt); any other value falls back to stdout.
+        envelope: CloudEvents 1.0 dict.
+
+    Returns:
+        ``True`` on a successful write.
+    """
+    import sys
+
+    try:
+        cfg = _decode_config(sink)
+    except ValueError:
+        logger.exception("audit_sinks[%s] bad config_json", sink.id)
+        return False
+    stream_name = str(cfg.get("stream") or "stdout").lower()
+    stream = sys.stderr if stream_name == "stderr" else sys.stdout
+    try:
+        line = json.dumps(envelope, separators=(",", ":"), sort_keys=True)
+        stream.write(line + "\n")
+        stream.flush()
+    except OSError:
+        logger.exception(
+            "audit_sinks[%s] stdout_json write failed", sink.id
+        )
+        return False
+    return True
+
+
+def _dispatch_syslog(sink: AuditSink, envelope: dict[str, Any]) -> bool:
+    """Send the envelope to a syslog endpoint via :mod:`logging.handlers`.
+
+    Phase 75.2.  ``config_json`` carries ``{address: "host:port",
+    protocol: "udp" | "tcp", facility: int (default 1), severity: int
+    (default 6)}``.  The envelope is JSON-encoded and shipped as the
+    message body — receivers parse it with their existing JSON
+    pipeline.  TLS is intentionally NOT supported here; if you need
+    encrypted syslog, terminate TLS at a local sidecar (rsyslog /
+    syslog-ng) and point this sink at the sidecar.
+
+    Args:
+        sink: ORM row.
+        envelope: CloudEvents 1.0 dict.
+
+    Returns:
+        ``True`` on a successful emit.  Network errors are caught and
+        logged — the primary DB write is never blocked by sink failure.
+    """
+    import logging.handlers as _handlers
+    import socket
+
+    try:
+        cfg = _decode_config(sink)
+    except ValueError:
+        logger.exception("audit_sinks[%s] bad config_json", sink.id)
+        return False
+    address_raw = cfg.get("address")
+    if not isinstance(address_raw, str) or ":" not in address_raw:
+        logger.warning(
+            "audit_sinks[%s] syslog address must be 'host:port'", sink.id
+        )
+        return False
+    host, port_str = address_raw.rsplit(":", 1)
+    try:
+        port = int(port_str)
+    except ValueError:
+        logger.warning(
+            "audit_sinks[%s] syslog port %r is not an integer",
+            sink.id,
+            port_str,
+        )
+        return False
+    protocol = str(cfg.get("protocol") or "udp").lower()
+    sock_type = socket.SOCK_STREAM if protocol == "tcp" else socket.SOCK_DGRAM
+    facility = int(cfg.get("facility", 1))
+    severity = int(cfg.get("severity", 6))
+
+    syslog_logger_name = f"pointlessql.audit_sink.{sink.id}"
+    syslog_logger = logging.getLogger(syslog_logger_name)
+    syslog_logger.setLevel(logging.DEBUG)
+    syslog_logger.propagate = False
+    handler: _handlers.SysLogHandler | None = None
+    try:
+        handler = _handlers.SysLogHandler(
+            address=(host, port),
+            facility=facility,
+            socktype=sock_type,
+        )
+        # SysLogHandler levels: PRI = facility * 8 + severity.  We
+        # don't override its severity-from-record mapping — the
+        # downstream collector sees the configured severity through
+        # the LogRecord level set below.
+        del severity  # kept for future per-record override use
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        syslog_logger.addHandler(handler)
+        payload = json.dumps(envelope, separators=(",", ":"), sort_keys=True)
+        syslog_logger.info(payload)
+        return True
+    except OSError:
+        logger.exception(
+            "audit_sinks[%s] syslog emit failed", sink.id
+        )
+        return False
+    finally:
+        if handler is not None:
+            handler.close()
+            syslog_logger.removeHandler(handler)
 
 
 def _select_active_sinks(

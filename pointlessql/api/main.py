@@ -819,6 +819,80 @@ def _lens_mcp_cmd() -> None:  # pyright: ignore[reportUnusedFunction]
         raise typer.Exit(code=2) from exc
 
 
+@cli.command("audit-export")
+def _audit_export_cmd(  # pyright: ignore[reportUnusedFunction]
+    out: Path = typer.Option(
+        ...,
+        "--out",
+        help="Destination path for the data file.  Sidecars go next to it.",
+    ),
+    fmt: str = typer.Option(
+        "json",
+        "--fmt",
+        help="Output format: 'json' (default) or 'csv'.",
+    ),
+    since: str | None = typer.Option(
+        None,
+        "--since",
+        help="ISO-8601 cutoff (inclusive).  Omit for no lower bound.",
+    ),
+    until: str | None = typer.Option(
+        None,
+        "--until",
+        help="ISO-8601 end (exclusive).  Omit for no upper bound.",
+    ),
+    action: str | None = typer.Option(
+        None,
+        "--action",
+        help="Optional exact-match action filter.",
+    ),
+    actor: str | None = typer.Option(
+        None,
+        "--actor",
+        help="Optional substring filter on user_email.",
+    ),
+    target: str | None = typer.Option(
+        None,
+        "--target",
+        help="Optional substring filter on target.",
+    ),
+    db_url: str | None = typer.Option(
+        None,
+        "--db-url",
+        help="SQLAlchemy URL override; defaults to POINTLESSQL_DB_URL.",
+    ),
+) -> None:
+    """Export the audit log + tamper-evidence sidecars (Phase 75.1).
+
+    Writes three mode-0600 files at ``--out``:
+
+    * ``<out>`` — JSON array or CSV table.
+    * ``<out>.sha256`` — sha256sum-compatible.
+    * ``<out>.manifest.json`` — filters + count + tool version.
+
+    Compliance buyers run ``sha256sum -c <out>.sha256`` to verify
+    the data file wasn't tampered with after export, and match
+    the manifest's ``entry_count`` + filter set against their
+    expected scope.
+    """
+    from pointlessql.cli.audit_export import cli_entrypoint as audit_export_run
+
+    if fmt not in ("json", "csv"):
+        typer.echo(f"--fmt must be 'json' or 'csv' (got {fmt!r})", err=True)
+        raise typer.Exit(code=2)
+    code = audit_export_run(
+        out=out,
+        fmt=fmt,  # type: ignore[arg-type]
+        since=since,
+        until=until,
+        action=action,
+        actor=actor,
+        target=target,
+        db_url=db_url,
+    )
+    raise typer.Exit(code=code)
+
+
 @cli.command("migrate-to-postgres")
 def _migrate_to_postgres_cmd(  # pyright: ignore[reportUnusedFunction]
     source: str = typer.Option(

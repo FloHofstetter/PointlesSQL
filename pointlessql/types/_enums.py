@@ -120,6 +120,8 @@ class AuditSinkType(StrEnum):
     WEBHOOK = "webhook"
     S3 = "s3"
     AWS_CLOUDTRAIL = "aws_cloudtrail"
+    STDOUT_JSON = "stdout_json"
+    SYSLOG = "syslog"
 
 
 class EventOutcome(StrEnum):
