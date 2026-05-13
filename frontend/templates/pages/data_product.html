@@ -9,11 +9,11 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="dataProductDetail({{ product | tojson }}, {
+<div x-data='dataProductDetail({{ product | tojson }}, {
         current_user_id: {{ current_user_id | tojson }},
         is_admin: {{ (is_admin or false) | tojson }},
         is_steward: {{ (is_steward or false) | tojson }}
-    })" x-init="init()">
+    })' x-init="init()">
 
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
         <i class="bi bi-collection fs-3"></i>
@@ -932,6 +932,24 @@ window.dataProductDetail = function (product, ctx) {
             this.loadRelated();
             this.loadProposals();
             this.wireLazyTabs();
+            this.maybeTriggerInitialTabLoad();
+        },
+
+        maybeTriggerInitialTabLoad() {
+            const active = document.querySelector(
+                '.nav-link.active[data-pql-tab-key]',
+            );
+            if (!active) return;
+            const key = active.dataset.pqlTabKey;
+            const loaders = {
+                'discussion': () => { this.loadComments(); this.loadDpReactions(); },
+                'lineage': () => this.loadLineage(),
+                'activity': () => this.loadActivity(),
+                'reviews': () => this.loadReviews(),
+                'diff': () => this.loadDiff(),
+                'readme': () => this.loadReadme(),
+            };
+            if (loaders[key]) loaders[key]();
         },
 
         get openProposals() {
