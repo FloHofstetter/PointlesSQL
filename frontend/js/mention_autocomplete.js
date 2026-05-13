@@ -25,7 +25,7 @@
         {
             prefix: "@",
             url: (q) => `/api/users/search?q=${encodeURIComponent(q)}`,
-            parse: (data) => (data.users || []).slice(0, 8),
+            parse: (data) => (data.results || data.users || []).slice(0, 8),
             label: (row) => row.display_name || row.email,
             insert: (row) => `@${row.email}`,
         },
