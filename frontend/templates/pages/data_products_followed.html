@@ -9,10 +9,36 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
+<div x-data="dataProductsFollowed()" x-init="init()">
 <div class="d-flex align-items-center gap-2 mb-3">
     <i class="bi bi-bookmark-star fs-3"></i>
     <h1 class="h3 mb-0">Followed data products</h1>
 </div>
+
+<!-- Phase 73.5: Recommended-for-you strip above the followed list. -->
+<template x-if="recommendationsLoaded && recommendations.length > 0">
+    <div class="card mb-3 pql-dp-recommendations-card">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="bi bi-stars"></i>
+            <strong>Recommended for you</strong>
+            <small class="text-muted ms-2">Co-occurring with what you follow</small>
+        </div>
+        <ul class="list-group list-group-flush pql-dp-recommendations-list">
+            <template x-for="r in recommendations" :key="r.data_product_id">
+                <li class="list-group-item d-flex align-items-center gap-2 pql-dp-recommendation-row">
+                    <a :href="'/data-products/' + r.data_product_ref.replace('.', '/')"
+                       class="text-decoration-none flex-grow-1">
+                        <i class="bi bi-collection me-1"></i>
+                        <span x-text="r.data_product_ref"></span>
+                    </a>
+                    <span class="badge bg-secondary" x-text="'v' + r.version"></span>
+                    <span class="badge bg-light text-dark"
+                          x-text="r.cooccurrence_count + ' run' + (r.cooccurrence_count === 1 ? '' : 's')"></span>
+                </li>
+            </template>
+        </ul>
+    </div>
+</template>
 
 {% if not followed %}
 <div class="alert alert-secondary pql-no-follows-empty">
@@ -55,4 +81,33 @@
     </div>
 </div>
 {% endif %}
+</div>
+
+<script>
+window.dataProductsFollowed = function () {
+    return {
+        recommendations: [],
+        recommendationsLoaded: false,
+
+        init() {
+            this.loadRecommendations();
+        },
+
+        async loadRecommendations() {
+            this.recommendationsLoaded = false;
+            try {
+                const res = await fetch('/api/data-products/recommendations?limit=5');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.recommendations = data.recommendations || [];
+            } catch (e) {
+                console.error('recommendations load failed', e);
+                this.recommendations = [];
+            } finally {
+                this.recommendationsLoaded = true;
+            }
+        },
+    };
+};
+</script>
 {% endblock %}

@@ -37,6 +37,7 @@ __all__ = [
     "_audit_retention_loop",
     "_branch_cleanup_loop",
     "_cdf_tail_loop",
+    "_data_product_cooccurrence_loop",
     "_data_product_freshness_loop",
     "_data_product_passport_loop",
     "_data_product_promotion_loop",
@@ -158,6 +159,51 @@ async def _data_product_trending_loop(  # pyright: ignore[reportUnusedFunction]
                 )
         except Exception:  # noqa: BLE001 — trending loop must survive everything
             logger.exception("data_product_trending: tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _data_product_cooccurrence_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Cross-DP co-occurrence cache refresh (Phase 73.5).
+
+    Active only when ``data_products.cooccurrence_enabled`` is
+    true.  Per tick, recomputes the per-workspace pair counts
+    over the rolling window and UPSERTs
+    ``data_product_cooccurrence``.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings` — only the
+            ``data_products`` sub-tree is read.
+    """
+    from pointlessql.services.data_products import refresh_cooccurrence
+
+    if not settings.data_products.cooccurrence_enabled:
+        return
+
+    interval = max(60, settings.data_products.cooccurrence_refresh_interval_seconds)
+    window_days = settings.data_products.cooccurrence_window_days
+    top_n = settings.data_products.cooccurrence_top_n
+    while True:
+        try:
+            inserted = await asyncio.to_thread(
+                refresh_cooccurrence,
+                factory,
+                window_days=window_days,
+                top_n=top_n,
+            )
+            if inserted:
+                logger.info(
+                    "data_product_cooccurrence: tick refreshed %d row(s)",
+                    inserted,
+                )
+        except Exception:  # noqa: BLE001 — cooccurrence loop must survive everything
+            logger.exception("data_product_cooccurrence: tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:

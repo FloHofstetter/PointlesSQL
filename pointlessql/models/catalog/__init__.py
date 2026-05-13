@@ -44,6 +44,9 @@ from pointlessql.models.catalog._data_product_candidate import (
     DataProductPromotionCandidate,
 )
 from pointlessql.models.catalog._data_product_comments import DataProductComment
+from pointlessql.models.catalog._data_product_cooccurrence import (
+    DataProductCooccurrence,
+)
 from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
     DataProductEndorsement,
@@ -87,6 +90,7 @@ __all__ = [
     "DataProduct",
     "DataProductComment",
     "DataProductContractEvent",
+    "DataProductCooccurrence",
     "DataProductEndorsement",
     "DataProductFollow",
     "DataProductPassport",

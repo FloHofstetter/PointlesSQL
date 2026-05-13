@@ -25,6 +25,7 @@ from pointlessql.api._bootstrap._loops import (
     _audit_retention_loop,  # pyright: ignore[reportPrivateUsage]
     _branch_cleanup_loop,  # pyright: ignore[reportPrivateUsage]
     _cdf_tail_loop,  # pyright: ignore[reportPrivateUsage]
+    _data_product_cooccurrence_loop,  # pyright: ignore[reportPrivateUsage]
     _data_product_freshness_loop,  # pyright: ignore[reportPrivateUsage]
     _data_product_passport_loop,  # pyright: ignore[reportPrivateUsage]
     _data_product_promotion_loop,  # pyright: ignore[reportPrivateUsage]
@@ -479,6 +480,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             name="data-product-passport",
         )
 
+    # Phase 73.5 — cross-DP cooccurrence cache refresh.  Opt-in.
+    data_product_cooccurrence_task: asyncio.Task[None] | None = None
+    if (
+        settings.data_products.cooccurrence_enabled
+        and not fast_test_lifespan
+    ):
+        data_product_cooccurrence_task = asyncio.create_task(
+            _data_product_cooccurrence_loop(app.state.session_factory, settings),
+            name="data-product-cooccurrence",
+        )
+
     # Phase 71.4 follow-up B.3 — daily marketplace digest.  Opt-in
     # default-disabled (``notifications.digest_enabled=False``); the
     # loop body itself short-circuits when disabled, so we always
@@ -597,6 +609,10 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             data_product_passport_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await data_product_passport_task
+        if data_product_cooccurrence_task is not None:
+            data_product_cooccurrence_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await data_product_cooccurrence_task
         if scheduler is not None:
             await scheduler.stop()
         if not fast_test_lifespan and app.state.uc_client is not None:

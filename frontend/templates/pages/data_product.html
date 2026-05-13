@@ -165,6 +165,31 @@
                     </dl>
                 </div>
             </div>
+
+            <!-- Phase 73.5: Related data products. -->
+            <template x-if="relatedLoaded && related.length > 0">
+                <div class="card mt-3 pql-dp-related-card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-share"></i>
+                        <strong>Related products</strong>
+                        <small class="text-muted ms-2">Agents who touch this also touch:</small>
+                    </div>
+                    <ul class="list-group list-group-flush pql-dp-related-list">
+                        <template x-for="r in related" :key="r.data_product_id">
+                            <li class="list-group-item d-flex align-items-center gap-2 pql-dp-related-row">
+                                <a :href="'/data-products/' + r.data_product_ref.replace('.', '/')"
+                                   class="text-decoration-none flex-grow-1">
+                                    <i class="bi bi-collection me-1"></i>
+                                    <span x-text="r.data_product_ref"></span>
+                                </a>
+                                <span class="badge bg-secondary" x-text="'v' + r.version"></span>
+                                <span class="badge bg-light text-dark"
+                                      x-text="r.cooccurrence_count + ' run' + (r.cooccurrence_count === 1 ? '' : 's')"></span>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
         </div>
 
         <!-- Contract -->
@@ -781,6 +806,9 @@ window.dataProductDetail = function (product, ctx) {
         // Phase 73.4 — auto-generated system passport.
         passport: null,
         passportLoaded: false,
+        // Phase 73.5 — related products from cooccurrence cache.
+        related: [],
+        relatedLoaded: false,
 
         get canEditReadme() {
             return this.isAdmin || this.isSteward;
@@ -790,7 +818,23 @@ window.dataProductDetail = function (product, ctx) {
             await this.loadDetail();
             await this.loadReviewSummary();
             await this.loadFollowState();
+            this.loadRelated();
             this.wireLazyTabs();
+        },
+
+        async loadRelated() {
+            this.relatedLoaded = false;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/related?limit=5');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.related = data.related || [];
+            } catch (e) {
+                console.error('related load failed', e);
+                this.related = [];
+            } finally {
+                this.relatedLoaded = true;
+            }
         },
 
         async loadReadme() {

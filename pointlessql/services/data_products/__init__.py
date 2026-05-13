@@ -10,6 +10,11 @@ from pointlessql.services.data_products.badges import (
     compute_badges_bulk,
     compute_badges_for_dp,
 )
+from pointlessql.services.data_products.cooccurrence import (
+    fetch_recommendations_for_user,
+    fetch_related,
+    refresh_cooccurrence,
+)
 from pointlessql.services.data_products.passport import (
     refresh_passport_for_dp,
     refresh_stale_passports,
@@ -32,7 +37,10 @@ __all__ = [
     "compute_badges_bulk",
     "compute_badges_for_dp",
     "fetch_activity_for_dp",
+    "fetch_recommendations_for_user",
+    "fetch_related",
     "fetch_trending",
+    "refresh_cooccurrence",
     "refresh_passport_for_dp",
     "refresh_stale_passports",
     "refresh_trending",
