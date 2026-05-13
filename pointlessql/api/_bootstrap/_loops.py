@@ -38,6 +38,7 @@ __all__ = [
     "_branch_cleanup_loop",
     "_cdf_tail_loop",
     "_data_product_freshness_loop",
+    "_data_product_passport_loop",
     "_data_product_promotion_loop",
     "_data_product_trending_loop",
     "_external_writes_loop",
@@ -157,6 +158,48 @@ async def _data_product_trending_loop(  # pyright: ignore[reportUnusedFunction]
                 )
         except Exception:  # noqa: BLE001 — trending loop must survive everything
             logger.exception("data_product_trending: tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _data_product_passport_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Auto-passport stale-refresh loop (Phase 73.4).
+
+    Active only when ``data_products.passport_loop_enabled`` is
+    true.  Per tick, refreshes every DP whose latest passport
+    is older than ``passport_loop_stale_threshold_seconds``.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings` — only the
+            ``data_products`` sub-tree is read.
+    """
+    from pointlessql.services.data_products import refresh_stale_passports
+
+    if not settings.data_products.passport_loop_enabled:
+        return
+
+    interval = max(60, settings.data_products.passport_loop_interval_seconds)
+    threshold = settings.data_products.passport_loop_stale_threshold_seconds
+    while True:
+        try:
+            refreshed = await asyncio.to_thread(
+                refresh_stale_passports,
+                factory,
+                stale_threshold_seconds=threshold,
+            )
+            if refreshed:
+                logger.info(
+                    "data_product_passport: tick refreshed %d row(s)",
+                    refreshed,
+                )
+        except Exception:  # noqa: BLE001 — passport loop must survive everything
+            logger.exception("data_product_passport: tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:

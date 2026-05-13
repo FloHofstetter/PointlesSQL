@@ -583,8 +583,45 @@
             </template>
         </div>
 
-        <!-- README (Phase 71.5) -->
+        <!-- README (Phase 71.5) + System passport (Phase 73.4) -->
         <div class="tab-pane fade" id="tab-readme" role="tabpanel">
+            <!-- Phase 73.4: auto-generated system passport above the steward README. -->
+            <template x-if="passportLoaded && passport">
+                <div class="card mb-3 pql-dp-passport-card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-passport"></i>
+                        <strong>System passport</strong>
+                        <small class="text-muted ms-auto">
+                            <span x-text="'v' + passport.version_int"></span>
+                            · <span x-text="passport.refresh_trigger"></span>
+                            · <span x-text="passport.refreshed_at"></span>
+                        </small>
+                        <button class="btn btn-sm btn-outline-secondary pql-dp-passport-refresh"
+                                x-show="canEditReadme"
+                                @click="refreshPassport()">
+                            <i class="bi bi-arrow-repeat"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <pre class="pql-dp-passport-body mb-0" style="white-space: pre-wrap;"
+                             x-text="passport.body_md"></pre>
+                    </div>
+                </div>
+            </template>
+            <template x-if="passportLoaded && !passport">
+                <div class="alert alert-secondary pql-dp-passport-empty mb-3">
+                    <i class="bi bi-passport me-1"></i>
+                    No system passport yet.
+                    <span x-show="canEditReadme">
+                        <button class="btn btn-sm btn-link p-0 align-baseline pql-dp-passport-refresh"
+                                @click="refreshPassport()">
+                            Generate one now
+                        </button>.
+                    </span>
+                </div>
+            </template>
+
             <template x-if="!readmeLoaded">
                 <div class="text-muted small p-3">Loading…</div>
             </template>
@@ -741,6 +778,9 @@ window.dataProductDetail = function (product, ctx) {
         diffFrom: null,
         diffTo: null,
         diffText: '',
+        // Phase 73.4 — auto-generated system passport.
+        passport: null,
+        passportLoaded: false,
 
         get canEditReadme() {
             return this.isAdmin || this.isSteward;
@@ -769,10 +809,38 @@ window.dataProductDetail = function (product, ctx) {
                     const data = await histRes.json();
                     this.readmeHistory = data.versions || [];
                 }
+                await this.loadPassport();
             } catch (e) {
                 console.error('readme load failed', e);
             } finally {
                 this.readmeLoaded = true;
+            }
+        },
+
+        async loadPassport() {
+            this.passportLoaded = false;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/passport');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.passport = data.latest || null;
+            } catch (e) {
+                console.error('passport load failed', e);
+                this.passport = null;
+            } finally {
+                this.passportLoaded = true;
+            }
+        },
+
+        async refreshPassport() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/passport/refresh', {
+                    method: 'POST',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await this.loadPassport();
+            } catch (e) {
+                console.error('passport refresh failed', e);
             }
         },
 

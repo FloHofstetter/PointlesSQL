@@ -49,6 +49,10 @@ from pointlessql.models.catalog._data_product_endorsement import (
     DataProductEndorsement,
 )
 from pointlessql.models.catalog._data_product_follows import DataProductFollow
+from pointlessql.models.catalog._data_product_passport import (
+    PASSPORT_TRIGGERS,
+    DataProductPassport,
+)
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_product_trending import DataProductTrending
@@ -76,6 +80,7 @@ __all__ = [
     "CANDIDATE_STATUSES",
     "CONTRACT_EVENT_OUTCOMES",
     "ENDORSEMENT_TYPES",
+    "PASSPORT_TRIGGERS",
     "YAML_DRAFT_SOURCE_KINDS",
     "AutoloadCheckpoint",
     "Dashboard",
@@ -84,6 +89,7 @@ __all__ = [
     "DataProductContractEvent",
     "DataProductEndorsement",
     "DataProductFollow",
+    "DataProductPassport",
     "DataProductPromotionCandidate",
     "DataProductReadme",
     "DataProductReview",

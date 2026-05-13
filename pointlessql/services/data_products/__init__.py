@@ -10,6 +10,11 @@ from pointlessql.services.data_products.badges import (
     compute_badges_bulk,
     compute_badges_for_dp,
 )
+from pointlessql.services.data_products.passport import (
+    refresh_passport_for_dp,
+    refresh_stale_passports,
+    render_passport,
+)
 from pointlessql.services.data_products.promote import (
     build_draft_yaml,
     candidate_row_count,
@@ -28,6 +33,9 @@ __all__ = [
     "compute_badges_for_dp",
     "fetch_activity_for_dp",
     "fetch_trending",
+    "refresh_passport_for_dp",
+    "refresh_stale_passports",
     "refresh_trending",
+    "render_passport",
     "scan_candidates",
 ]

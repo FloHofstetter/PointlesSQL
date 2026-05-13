@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
+import logging
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -16,6 +18,8 @@ from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED,
     emit_governance_event,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["data-products"])
 
@@ -119,6 +123,33 @@ async def reload_data_products(request: Request) -> dict[str, Any]:
                 workspace_id=workspace_id,
             )
             emitted += 1
+            # Phase 73.4: fire-and-forget passport refresh so
+            # the new schema gets surfaced in the briefing.
+            row_id = row.id
+
+            async def _refresh(dp_id: int = row_id) -> None:
+                try:
+                    from pointlessql.services.data_products import (
+                        refresh_passport_for_dp,
+                    )
+
+                    await asyncio.to_thread(
+                        refresh_passport_for_dp,
+                        factory,
+                        workspace_id=workspace_id,
+                        data_product_id=dp_id,
+                        trigger="schema_changed",
+                    )
+                except Exception:  # noqa: BLE001 — best-effort
+                    logger.exception(
+                        "dp_passport: schema_changed refresh raised"
+                    )
+
+            try:
+                asyncio.create_task(_refresh())  # noqa: RUF006
+            except RuntimeError:
+                # No running loop — sync test harness; not an error.
+                pass
 
     return {
         "loaded": len(contracts),
