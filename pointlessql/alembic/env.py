@@ -47,16 +47,20 @@ _SQLITE_EXPRESSION_INDEX_ALLOWLIST = frozenset(
 # ``alembic check`` green on both backends.
 _FTS_TABLE_PREFIXES: tuple[str, ...] = ("audit_search",)
 
-# Phase 76.5 + 76.5.1 — agent-authorship columns (``author_agent_id``
-# on comments + reviews; ``applied_by_agent_id`` on endorsements) are
-# added via raw ``ALTER TABLE ADD COLUMN`` because batch_alter_table
+# Phase 76.5 + 76.5.1 + 77.0.B — columns whose FK is added via raw
+# ``ALTER TABLE ADD COLUMN ... REFERENCES`` because batch_alter_table
 # fails on these tables (unnamed legacy CHECKs).  The ORM models
-# declare the FK to ``agents.id`` for relationship loading, but the
-# constraint is only physically enforced on Postgres.  Without this
-# filter ``alembic check`` keeps proposing to re-add the FK on every
-# run.  See ``u2w4y6a8c0e3_endorse_review_agent_author.py``.
+# declare the FK for relationship loading, but the constraint is
+# only physically enforced on Postgres.  Without this filter
+# ``alembic check`` keeps proposing to re-add the FK on every run.
+# See ``u2w4y6a8c0e3_endorse_review_agent_author.py`` +
+# ``w4z6b8d0f2h4_phase77b_social_target_id_columns.py``.
 _AGENT_AUTHOR_FK_COLUMNS: frozenset[str] = frozenset(
-    {"author_agent_id", "applied_by_agent_id"},
+    {
+        "author_agent_id",
+        "applied_by_agent_id",
+        "social_target_id",
+    },
 )
 
 

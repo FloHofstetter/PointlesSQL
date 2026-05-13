@@ -37,6 +37,10 @@ class DataProductReaction(Base):
             name="pk_dp_reactions",
         ),
         Index("ix_dp_reactions_dp", "data_product_id"),
+        Index(
+            "ix_data_product_reactions_social_target",
+            "social_target_id",
+        ),
     )
 
     data_product_id: Mapped[int] = mapped_column(
@@ -52,4 +56,10 @@ class DataProductReaction(Base):
     emoji: Mapped[str] = mapped_column(String(10), nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    social_target_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("social_targets.id"),
+        nullable=True,
     )

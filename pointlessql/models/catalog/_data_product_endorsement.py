@@ -85,6 +85,10 @@ class DataProductEndorsement(Base):
             "data_product_id",
             "endorsement_type",
         ),
+        Index(
+            "ix_data_product_endorsements_social_target",
+            "social_target_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -98,6 +102,12 @@ class DataProductEndorsement(Base):
         Integer,
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    social_target_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("social_targets.id"),
+        nullable=True,
     )
     endorsement_type: Mapped[str] = mapped_column(Text, nullable=False)
     applied_by_user_id: Mapped[int] = mapped_column(

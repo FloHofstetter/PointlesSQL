@@ -78,6 +78,10 @@ class DataProductComment(Base):
             "created_at",
         ),
         Index("ix_dp_comments_parent", "parent_comment_id"),
+        Index(
+            "ix_data_product_comments_social_target",
+            "social_target_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -91,6 +95,15 @@ class DataProductComment(Base):
         Integer,
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    # Phase 77.0.B — polymorphic anchor.  Nullable in this
+    # revision so the legacy DP write path keeps working while
+    # the dual-write phase rolls out; flipped to NOT NULL +
+    # ``data_product_id`` dropped in Phase 77.0.G.
+    social_target_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("social_targets.id"),
+        nullable=True,
     )
     parent_comment_id: Mapped[int | None] = mapped_column(
         Integer,

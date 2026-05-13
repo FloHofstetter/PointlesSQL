@@ -62,6 +62,10 @@ class DataProductReadme(Base):
             "data_product_id",
             "version_int",
         ),
+        Index(
+            "ix_data_product_readmes_social_target",
+            "social_target_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -75,6 +79,12 @@ class DataProductReadme(Base):
         Integer,
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    social_target_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("social_targets.id"),
+        nullable=True,
     )
     version_int: Mapped[int] = mapped_column(Integer, nullable=False)
     body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")

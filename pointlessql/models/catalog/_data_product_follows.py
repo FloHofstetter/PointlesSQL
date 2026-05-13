@@ -39,6 +39,10 @@ class DataProductFollow(Base):
 
     __table_args__ = (
         Index("ix_dp_follows_user", "user_id", "created_at"),
+        Index(
+            "ix_data_product_follows_social_target",
+            "social_target_id",
+        ),
     )
 
     workspace_id: Mapped[int] = mapped_column(
@@ -59,4 +63,10 @@ class DataProductFollow(Base):
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    social_target_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("social_targets.id"),
+        nullable=True,
     )

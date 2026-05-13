@@ -69,6 +69,10 @@ class DataProductReview(Base):
         ),
         CheckConstraint("stars BETWEEN 1 AND 5", name="ck_dp_review_stars_range"),
         Index("ix_dp_reviews_dp_stars", "data_product_id", "stars"),
+        Index(
+            "ix_data_product_reviews_social_target",
+            "social_target_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -82,6 +86,12 @@ class DataProductReview(Base):
         Integer,
         ForeignKey("data_products.id", ondelete="CASCADE"),
         nullable=False,
+    )
+    # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
+    social_target_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("social_targets.id"),
+        nullable=True,
     )
     author_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
