@@ -11,7 +11,7 @@ import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.exceptions import AuthorizationError
@@ -53,11 +53,16 @@ def _serialise_agent(agent: Agent, principal_email: str | None = None) -> dict[s
 
 
 @router.get("/api/agents")
-async def list_agents(request: Request) -> dict[str, Any]:
+async def list_agents(
+    request: Request, q: str | None = None
+) -> dict[str, Any]:
     """Return the workspace's registered agents.
 
     Args:
         request: Incoming FastAPI request.
+        q: Optional name / slug filter (Phase 76.6.1) — case-
+            insensitive prefix match against ``display_name`` or
+            ``slug`` used by the mention-autocomplete picker.
 
     Returns:
         ``{"agents": [...]}`` sorted by display name.
@@ -66,15 +71,18 @@ async def list_agents(request: Request) -> dict[str, Any]:
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        rows = (
-            session.execute(
-                select(Agent)
-                .where(Agent.workspace_id == workspace_id)
-                .order_by(Agent.display_name)
-            )
-            .scalars()
-            .all()
+        stmt = (
+            select(Agent)
+            .where(Agent.workspace_id == workspace_id)
+            .order_by(Agent.display_name)
         )
+        if q:
+            needle = f"{q.strip().lower()}%"
+            stmt = stmt.where(
+                func.lower(Agent.slug).like(needle)
+                | func.lower(Agent.display_name).like(needle)
+            )
+        rows = session.execute(stmt).scalars().all()
         principals = {
             int(uid): email
             for uid, email in session.execute(

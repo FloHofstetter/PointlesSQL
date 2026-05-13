@@ -46,7 +46,9 @@ def _freshness_status(
 
 
 @router.get("/api/data-products")
-async def list_data_products(request: Request) -> dict[str, Any]:
+async def list_data_products(
+    request: Request, q: str | None = None
+) -> dict[str, Any]:
     """Return every cached data product in the active workspace.
 
     Each row is enriched with the Phase-71.2 ``avg_stars`` +
@@ -56,6 +58,10 @@ async def list_data_products(request: Request) -> dict[str, Any]:
 
     Args:
         request: Incoming FastAPI request.
+        q: Optional case-insensitive prefix filter on
+            ``catalog_name``, ``schema_name``, or the
+            ``catalog.schema`` reference (Phase 76.6.1) used by
+            the ``#dp:`` mention-autocomplete picker.
 
     Returns:
         ``{"workspace_id": int, "data_products": [...]}`` ordered by
@@ -65,15 +71,23 @@ async def list_data_products(request: Request) -> dict[str, Any]:
     factory = request.app.state.session_factory
     items: list[dict[str, Any]] = []
     with factory() as session:
-        rows = (
-            session.execute(
-                select(DataProduct)
-                .where(DataProduct.workspace_id == workspace_id)
-                .order_by(DataProduct.catalog_name, DataProduct.schema_name)
-            )
-            .scalars()
-            .all()
+        stmt = (
+            select(DataProduct)
+            .where(DataProduct.workspace_id == workspace_id)
+            .order_by(DataProduct.catalog_name, DataProduct.schema_name)
         )
+        if q:
+            needle = f"{q.strip().lower()}%"
+            stmt = stmt.where(
+                func.lower(DataProduct.catalog_name).like(needle)
+                | func.lower(DataProduct.schema_name).like(needle)
+                | func.lower(
+                    func.coalesce(DataProduct.catalog_name, "")
+                    + "."
+                    + func.coalesce(DataProduct.schema_name, "")
+                ).like(needle)
+            )
+        rows = session.execute(stmt).scalars().all()
         steward_ids = [r.steward_user_id for r in rows if r.steward_user_id is not None]
         steward_map: dict[int, tuple[str, str]] = {}
         if steward_ids:

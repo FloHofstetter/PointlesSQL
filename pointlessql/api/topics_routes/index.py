@@ -55,6 +55,7 @@ async def list_topics(
     sort: str = "dp_count",
     limit: int = 50,
     offset: int = 0,
+    q: str | None = None,
 ) -> dict[str, Any]:
     """Return the workspace's topics, paginated + sorted.
 
@@ -64,6 +65,9 @@ async def list_topics(
             ``name``.  Unknown values fall back to ``dp_count``.
         limit: Result-set cap; clamped to ``[1, 200]``.
         offset: Skip count for pagination.
+        q: Optional case-insensitive prefix filter on slug or
+            display_name (Phase 76.6.1) used by the mention-
+            autocomplete picker.
 
     Returns:
         ``{"sort": str, "topics": [{id, slug, display_name,
@@ -89,15 +93,18 @@ async def list_topics(
                 ).group_by(UserTopicFollow.topic_id)
             ).all()
         )
-        rows = (
-            session.execute(
-                select(Topic)
-                .where(Topic.workspace_id == workspace_id)
-                .order_by(Topic.display_name)
-            )
-            .scalars()
-            .all()
+        stmt = (
+            select(Topic)
+            .where(Topic.workspace_id == workspace_id)
+            .order_by(Topic.display_name)
         )
+        if q:
+            needle = f"{q.strip().lower()}%"
+            stmt = stmt.where(
+                func.lower(Topic.slug).like(needle)
+                | func.lower(Topic.display_name).like(needle)
+            )
+        rows = session.execute(stmt).scalars().all()
 
     payload = [
         {
