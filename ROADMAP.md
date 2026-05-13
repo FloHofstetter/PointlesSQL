@@ -350,6 +350,172 @@ PointlesSQL
 │       │   `/profile/notifications/subscriptions`.
 │       └── ~10 pytest cases.
 │
+├── Phase 73 — Agent-authored data products                 ⏳ planned
+│   │
+│   │   Phase 72 made the data-product surface *aware* of
+│   │   agents (badges, trending, activity feed).  Phase 73
+│   │   inverts the flow: agents *author* and *evolve* data
+│   │   products.  Today a DP exists when a human commits a
+│   │   `pointlessql.yaml`; tomorrow the platform suggests one
+│   │   when an agent run-pattern consistently produces a
+│   │   stable schema, and lets the agent declare quality
+│   │   contracts from inside the notebook.  This is the
+│   │   AI-native pitch the incumbents can't match: catalogs
+│   │   that grow from observed behaviour, not just human
+│   │   curation.
+│   │
+│   │   Reuse heavy: Phase 13 (`agent_run_operations`),
+│   │   Phase 15.6 (`lineage_column_map`), Phase 50
+│   │   (`DataProduct` + yaml loader), Phase 72.1
+│   │   (`fetch_activity_for_dp`).
+│   │
+│   │   Cross-cutting picks (TBD at plan time):
+│   │   - YAML write path — does the platform write the yaml
+│   │     directly (in-process) or open a PR against the
+│   │     workspace-repo (Phase 51 path)?  PR path is
+│   │     cleaner audit-wise but blocks single-tenant
+│   │     installs without a git remote;
+│   │   - contract DSL — pydantic-validated dict-from-yaml
+│   │     stays canonical; `pql.contract()` builds the same
+│   │     dict from inside notebooks and persists alongside
+│   │     `pointlessql.yaml`;
+│   │   - schema-change proposal model — does an agent
+│   │     `propose` go through `AgentReview` (Phase 19) or
+│   │     a new `DataProductSchemaProposal` table?  Reuse
+│   │     of AgentReview is tempting but the surface is
+│   │     write-oriented, not review-oriented.
+│   │
+│   ├── Sprint 73.1 — Promote-to-DP suggestion                  ⏳ planned
+│   │   ├── New service `services/data_products/promote.py`
+│   │   │   scans `agent_run_operations` for `target_table`
+│   │   │   values that match a stable signature
+│   │   │   (≥3 distinct runs / 14d, ≥10 row-affected ops,
+│   │   │   no agent-flagged schema instability).
+│   │   ├── New `DataProductPromotionCandidate` cache table
+│   │   │   refreshed by a new loop coroutine
+│   │   │   (`_data_product_promotion_loop`); same opt-in
+│   │   │   cadence pattern as the trending loop.
+│   │   ├── New `/data-products/candidates` HTML page +
+│   │   │   `GET /api/data-products/candidates` JSON; admin /
+│   │   │   steward dismiss / "Generate yaml".
+│   │   ├── `POST /api/data-products/candidates/{id}/generate`
+│   │   │   builds a draft `pointlessql.yaml` from the
+│   │   │   schema-snapshot stream + lineage edges; either
+│   │   │   writes to the active workspace-repo (PR path) or
+│   │   │   into a `_drafts/` directory the admin can review.
+│   │   └── ~12 pytest cases.
+│   │
+│   ├── Sprint 73.2 — pql.contract() inline DSL                 ⏳ planned
+│   │   ├── New `pql.contract(catalog, schema, *, tables=...)`
+│   │   │   API that builds and persists the same yaml
+│   │   │   payload from inside a notebook cell.  Returns a
+│   │   │   `DataProductContract` object so the notebook
+│   │   │   can chain validations (row count, freshness
+│   │   │   bounds, value distribution checks) before commit.
+│   │   ├── On `pql.contract().save()`, the file lands in
+│   │   │   the workspace-repo (Phase 51) under
+│   │   │   `pointlessql.yaml` next to the notebook OR is
+│   │   │   merged into the existing yaml when one exists
+│   │   │   for the schema (declarative merge — explicit
+│   │   │   conflict raises).
+│   │   ├── New `/api/contracts/draft` JSON endpoint backing
+│   │   │   the "preview yaml before save" UX.
+│   │   └── ~10 pytest cases.
+│   │
+│   ├── Sprint 73.3 — Schema-change proposal flow              ⏳ planned
+│   │   ├── New model `DataProductSchemaProposal` (id,
+│   │   │   data_product_id, proposer_user_id, proposer_kind,
+│   │   │   diff_json, status, created_at, resolved_at,
+│   │   │   resolved_by, resolution_note_md) + Alembic.
+│   │   ├── New `POST /api/data-products/{cat}/{sch}/proposals`
+│   │   │   for agents (plugin tool `pql_propose_schema_change`)
+│   │   │   + humans (UI button in the Discussion tab).
+│   │   ├── Inbox card on the DP detail page surfaces open
+│   │   │   proposals; steward + admin can approve / reject
+│   │   │   with one click.  Approval triggers either the PR
+│   │   │   flow (workspace-repo) or in-place yaml rewrite.
+│   │   └── ~12 pytest cases.
+│   │
+│   ├── Sprint 73.4 — Data passport / auto-README              ⏳ planned
+│   │   ├── New `services/data_products/passport.py` renders
+│   │   │   a markdown briefing from the lineage graph
+│   │   │   (sources, transforms, downstream consumers,
+│   │   │   freshness profile).  Output drops into the
+│   │   │   `DataProductReadme` table as version 0 (auto)
+│   │   │   when no human README exists yet; stays visible
+│   │   │   as a "system passport" tab even after a steward
+│   │   │   writes their own README.
+│   │   ├── Re-generates on schema-change emits (Sprint B.1
+│   │   │   ``EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED``) so
+│   │   │   the passport reflects the current shape.
+│   │   └── ~8 pytest cases.
+│   │
+│   └── Sprint 73.5 — Cross-DP recommendations                  ⏳ planned
+│       ├── "Agents who read X also read Y" — co-occurrence
+│       │   over `agent_run_operations.target_table` joined
+│       │   to `agent_runs.id`.  Materialised as a 7d-rolling
+│       │   `data_product_cooccurrence` cache table.
+│       ├── New "Related products" card on the DP detail
+│       │   header + a "Recommended for you" strip on
+│       │   `/data-products/followed`.
+│       └── ~8 pytest cases.
+│
+├── Phase 74 — Reviewer-Agent v2 (Active steward delegate)  ⏳ planned
+│   │
+│   │   Phase 19 shipped a *passive* Audit-Reviewer-Agent
+│   │   (writes one summary row per run when triggered).
+│   │   Phase 74 promotes it to an *active* steward
+│   │   delegate: a Hermes-cron bot runs nightly against
+│   │   every followed DP, posts a digest comment with the
+│   │   day's contract / freshness / agent-touch deltas, and
+│   │   conditionally applies `verified-by-steward` when the
+│   │   audit comes back green.
+│   │
+│   │   Reuses Phase 19 (`agent_reviews`), Phase 71.1
+│   │   (DataProductComment POST), Phase 72.4
+│   │   (DataProductEndorsement POST), Phase 72.5
+│   │   (audit-log mirror).  Almost no new model surface —
+│   │   the value is in wiring the existing primitives into
+│   │   a coherent daily ritual.
+│   │
+│   │   Cross-cutting picks (TBD):
+│   │   - Hermes-side (plugin) vs PointlesSQL-side (loop
+│   │     coroutine + LLM call) hosting of the reviewer
+│   │     prompt;
+│   │   - per-DP opt-in (steward toggles "active reviewer
+│   │     enabled") vs install-wide default-on with
+│   │     per-DP off-switch.
+│   │
+│   ├── Sprint 74.1 — Daily DP audit prompt + post              ⏳ planned
+│   │   ├── New service `services/data_products/active_reviewer.py`
+│   │   │   builds a per-DP audit prompt from
+│   │   │   `fetch_activity_for_dp` + `compute_badges_for_dp`
+│   │   │   + recent contract events.
+│   │   ├── Loop coroutine `_active_reviewer_loop` (opt-in
+│   │   │   default-disabled) wakes at
+│   │   │   `data_products.active_reviewer_trigger_hour`,
+│   │   │   iterates DPs with the per-DP opt-in flag, calls
+│   │   │   the LLM provider, posts the response as a
+│   │   │   comment on the Discussion tab.
+│   │   ├── Each posted comment also writes a
+│   │   │   ``DataProductEndorsement`` of type
+│   │   │   ``verified-by-steward`` (or
+│   │   │   ``under-review`` on red flags).
+│   │   └── ~10 pytest cases (prompt builder, comment-write,
+│   │       endorsement-write, opt-out, dry-run).
+│   │
+│   └── Sprint 74.2 — Steward UX surface                        ⏳ planned
+│       ├── New ``Active reviewer`` toggle in the DP detail
+│       │   header (steward + admin).  Shows the last run
+│       │   timestamp + the most recent review-comment
+│       │   anchor.
+│       ├── New ``/me/reviewer-config`` page so stewards
+│       │   can pick the LLM provider + model + per-DP
+│       │   prompt overrides.
+│       ├── New ``DataProductActiveReviewerConfig`` table
+│       │   (dp-scoped) + Alembic.
+│       └── ~8 pytest cases.
+│
 ├── Phase 66 — Browser Notebook editor v2                  ✅ done 2026-05-10
 │   │
 │   │   The browser notebook editor, deleted in the agent-first
