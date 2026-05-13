@@ -56,6 +56,10 @@ from pointlessql.models.catalog._data_product_passport import (
     PASSPORT_TRIGGERS,
     DataProductPassport,
 )
+from pointlessql.models.catalog._data_product_proposal import (
+    PROPOSAL_STATUSES,
+    DataProductSchemaProposal,
+)
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_product_trending import DataProductTrending
@@ -84,6 +88,7 @@ __all__ = [
     "CONTRACT_EVENT_OUTCOMES",
     "ENDORSEMENT_TYPES",
     "PASSPORT_TRIGGERS",
+    "PROPOSAL_STATUSES",
     "YAML_DRAFT_SOURCE_KINDS",
     "AutoloadCheckpoint",
     "Dashboard",
@@ -97,6 +102,7 @@ __all__ = [
     "DataProductPromotionCandidate",
     "DataProductReadme",
     "DataProductReview",
+    "DataProductSchemaProposal",
     "DataProductTrending",
     "DataProductYamlDraft",
     "QueryHistory",

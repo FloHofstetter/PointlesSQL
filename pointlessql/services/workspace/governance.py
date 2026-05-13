@@ -88,6 +88,12 @@ EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED = "pointlessql.data_product.schema_change
 EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED = (
     "pointlessql.data_product.contract_violated"
 )
+EVENT_TYPE_DATA_PRODUCT_PROPOSAL_OPENED = (
+    "pointlessql.data_product.proposal_opened"
+)
+EVENT_TYPE_DATA_PRODUCT_PROPOSAL_RESOLVED = (
+    "pointlessql.data_product.proposal_resolved"
+)
 EVENT_TYPE_NOTIFICATION_DIGEST = "pointlessql.notification.digest"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
@@ -109,6 +115,8 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DATA_PRODUCT_FOLLOWED,
     EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED,
     EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED,
+    EVENT_TYPE_DATA_PRODUCT_PROPOSAL_OPENED,
+    EVENT_TYPE_DATA_PRODUCT_PROPOSAL_RESOLVED,
     EVENT_TYPE_NOTIFICATION_DIGEST,
 )
 

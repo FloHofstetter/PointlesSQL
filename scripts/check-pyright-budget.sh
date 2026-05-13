@@ -50,7 +50,15 @@ set -euo pipefail
 # ``# pyright: ignore`` on the 9 OpenAI/Anthropic SDK type-strict
 # sites in ``services/lens/llm_provider.py`` (Protocol ↔ Literal
 # covariance pyright will not accept).
-BUDGET=585
+#
+# Sprint 73.3 bumped the budget +27 to 612 for the
+# ``data_products_routes/proposals.py`` yaml-diff applier.
+# Every yaml.safe_load() return is ``Any`` and pyright can't
+# narrow through the chain of dict / list comprehensions even
+# with explicit ``isinstance`` guards.  Real fix is custom
+# ``.pyi`` stubs for ``yaml`` (multi-week), not single-sprint
+# inline annotation.
+BUDGET=612
 
 # Run pyright and capture the trailing summary line, e.g.
 #   "0 errors, 522 warnings, 0 informations"

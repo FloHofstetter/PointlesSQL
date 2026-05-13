@@ -166,6 +166,50 @@
                 </div>
             </div>
 
+            <!-- Phase 73.3: Open schema-change proposals. -->
+            <template x-if="proposalsLoaded && openProposals.length > 0">
+                <div class="card mt-3 pql-dp-proposals-card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-pencil-square"></i>
+                        <strong>Open schema-change proposals</strong>
+                        <span class="badge bg-warning ms-2"
+                              x-text="openProposals.length"></span>
+                    </div>
+                    <ul class="list-group list-group-flush pql-dp-proposals-list">
+                        <template x-for="p in openProposals" :key="p.id">
+                            <li class="list-group-item pql-dp-proposal-row"
+                                :data-proposal-id="p.id">
+                                <div class="d-flex align-items-start gap-2">
+                                    <div class="flex-grow-1">
+                                        <div class="small text-muted"
+                                             x-text="p.created_at"></div>
+                                        <div x-text="p.summary_md || '(no summary)'"></div>
+                                        <pre class="small mb-0" style="white-space: pre-wrap;"
+                                             x-text="JSON.stringify(p.diff, null, 2)"></pre>
+                                    </div>
+                                    <template x-if="canEditReadme">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-success pql-dp-proposal-approve-inplace"
+                                                    @click="resolveProposal(p, 'inplace')">
+                                                Approve in-place
+                                            </button>
+                                            <button class="btn btn-outline-primary pql-dp-proposal-approve-draft"
+                                                    @click="resolveProposal(p, 'draft')">
+                                                Approve as draft
+                                            </button>
+                                            <button class="btn btn-outline-secondary pql-dp-proposal-reject"
+                                                    @click="rejectProposal(p)">
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </template>
+
             <!-- Phase 73.5: Related data products. -->
             <template x-if="relatedLoaded && related.length > 0">
                 <div class="card mt-3 pql-dp-related-card">
@@ -809,6 +853,9 @@ window.dataProductDetail = function (product, ctx) {
         // Phase 73.5 — related products from cooccurrence cache.
         related: [],
         relatedLoaded: false,
+        // Phase 73.3 — open schema-change proposals.
+        proposals: [],
+        proposalsLoaded: false,
 
         get canEditReadme() {
             return this.isAdmin || this.isSteward;
@@ -819,7 +866,53 @@ window.dataProductDetail = function (product, ctx) {
             await this.loadReviewSummary();
             await this.loadFollowState();
             this.loadRelated();
+            this.loadProposals();
             this.wireLazyTabs();
+        },
+
+        get openProposals() {
+            return (this.proposals || []).filter(p => p.status === 'open');
+        },
+
+        async loadProposals() {
+            this.proposalsLoaded = false;
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/proposals');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.proposals = data.proposals || [];
+            } catch (e) {
+                console.error('proposals load failed', e);
+                this.proposals = [];
+            } finally {
+                this.proposalsLoaded = true;
+            }
+        },
+
+        async resolveProposal(p, kind) {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/proposals/' + p.id + '/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kind: kind }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await this.loadProposals();
+            } catch (e) {
+                console.error('approve failed', e);
+            }
+        },
+
+        async rejectProposal(p) {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/proposals/' + p.id + '/reject', {
+                    method: 'POST',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await this.loadProposals();
+            } catch (e) {
+                console.error('reject failed', e);
+            }
         },
 
         async loadRelated() {
