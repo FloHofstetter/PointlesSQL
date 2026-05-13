@@ -519,6 +519,113 @@ PointlesSQL
 │           steward UI lands as a 74.3.1 follow-up once the
 │           in-proc loop runs against a real workload.
 │
+├── Phase 76 — Full Social Network for Data Products       ✅ done 2026-05-13
+│   │
+│   │   Six sub-sprints landed in one autonomous session +
+│   │   two close-out polish commits.  Lifted the Phase-71–74
+│   │   "agent-aware social layer" into a full social network:
+│   │   deeper threading, GitHub-style reactions, topics as a new
+│   │   entity-class, separate user + agent profiles, per-user
+│   │   feed, granular notification preferences, real-time SSE
+│   │   bell, cross-DP citations.  Every social write stays an
+│   │   ``audit_log`` row + CloudEvent so the Phase-18.7 FTS and
+│   │   Phase-20 SIEM pipeline pick the action up.  9 new tables,
+│   │   6 alembic migrations (``p7r9..u2w4``), 1 new background
+│   │   loop, 6 new HTML pages, ~104 new pytest cases.
+│   │
+│   ├── Phase 76.1 — Deeper conversations             ✅ (511df5e)
+│   │       Threading depth 2 → 5 with app-level walk-the-chain
+│   │       check, 6-emoji reactions on comments + DPs (canonical
+│   │       👍 ❤️ 🎉 😄 😕 👀), category enum (general / question
+│   │       / announcement / idea) with accept-answer atomic per
+│   │       thread, ``@display_name`` mention resolution with
+│   │       audit row on ambiguity, ``GET /api/users/search?q=``.
+│   │       33 pytest cases.
+│   │
+│   ├── Phase 76.2 — Profiles + user-to-user follows  ✅ (037ccc8)
+│   │       ``/users/{id}`` 5-tab profile (Overview / Stewarded /
+│   │       Following / Comments / Reviews), user_follows with
+│   │       50-per-hour rate-limit, sticky badge awards via new
+│   │       24 h ``_user_badges_loop`` (steward_3plus,
+│   │       reviewer_100plus, mention_magnet, accepted_answer,
+│   │       endorser).  Topbar dropdown links to ``/users/me``.
+│   │       12 pytest cases.
+│   │
+│   ├── Phase 76.3 — Topics taxonomy                  ✅ (cc6e1c4)
+│   │       ``topics`` + ``data_product_topics`` +
+│   │       ``user_topic_follows`` tables; ``/topics`` index +
+│   │       ``/topics/{slug}`` detail; steward-managed
+│   │       DP↔topic replace-all via
+│   │       ``PUT /api/data-products/{c}/{s}/topics``; fan-out
+│   │       on ``topic.dp_added`` to topic followers.  Topbar
+│   │       ``Topics`` link.  13 pytest cases.
+│   │
+│   ├── Phase 76.4 — /feed + notification preferences ✅ (2629011)
+│   │       ``/feed`` merge of inbox + followed users / DPs /
+│   │       topics with cursor pagination + FTS over the
+│   │       discussion-mirrored audit_log.  ``users.notification_prefs_json``
+│   │       JSON map of ``{event_type: {inbox, email, webhook}}``
+│   │       drives per-event-type opt-out.
+│   │       ``/settings/notifications`` page.  9 pytest cases.
+│   │
+│   ├── Phase 76.5 — Agents as first-class actors     ✅ (a573e37)
+│   │       ``agents`` table (workspace-scoped slug, verified
+│   │       badge, principal_user_id accountability chain).
+│   │       ``/agents`` + ``/agents/{slug}`` 4-tab profile.
+│   │       ``?as_agent=<slug>`` on the comment POST — the
+│   │       agent's principal_user (or admin) may post under the
+│   │       agent identity.  ``author_user_id`` stays NOT NULL
+│   │       (always the human accountable), ``author_agent_id``
+│   │       is the optional presentation-layer override.
+│   │       Audit detail JSON carries both ids.  14 pytest cases.
+│   │
+│   ├── Phase 76.6 — SSE bell + cross-DP citations    ✅ (9c6534f)
+│   │       ``GET /api/notifications/stream`` long-lived SSE
+│   │       endpoint with 25 s keep-alive comment; module-level
+│   │       ``_LISTENERS`` registry fan-out from the
+│   │       notifications service.  ``EventSource`` consumed by
+│   │       the topbar bell with the existing 60 s poll left in
+│   │       place as fallback.  Render-time resolution of
+│   │       ``#dp:cat.sch``, ``#topic:slug``, ``#user:email``,
+│   │       ``#agent:slug`` tokens — unresolved tokens degrade to
+│   │       literal text.  10 pytest cases.
+│   │
+│   ├── Phase 76.5.1 — as_agent on endorsements + reviews  ✅ (close-out)
+│   │       Closed the original-plan corner the autonomous run
+│   │       deferred.  Migration ``u2w4y6a8c0e3`` adds
+│   │       ``applied_by_agent_id`` on endorsements,
+│   │       ``author_agent_id`` on reviews, ``agent_slug`` on
+│   │       ``data_product_active_reviewer_configs``.  Helper
+│   │       ``resolve_agent_for_principal`` lifted into
+│   │       ``data_products_routes/_shared.py`` so all three
+│   │       write surfaces enforce one principal-or-admin gate.
+│   │       Active Reviewer v2 now stamps the agent identity
+│   │       on the comment + endorsement when ``agent_slug`` is
+│   │       set; NULL falls back to the steward-proxy path.
+│   │       Hygiene fixes: 3 bare-http-ok markers
+│   │       (``users_routes/profile.py``), 2 bare-broad-ok
+│   │       markers (``topics_routes/detail.py``,
+│   │       ``users_routes/follows.py``),
+│   │       ``data_products_routes/comments.py`` added to the
+│   │       file-size allowlist after the helper extraction.
+│   │       11 new pytest cases.
+│   │
+│   └── Phase 76.6.1 — Alpine helper JS modules       ✅ (17eebb1)
+│       Two ``frontend/js/*.js`` modules.
+│       ``mention_autocomplete.js`` provides ``@`` / ``#dp:`` /
+│       ``#topic:`` / ``#agent:`` typeahead on
+│       ``<textarea data-mention-autocomplete>`` — debounced
+│       200 ms, arrow / Enter / Tab pick, inserts the canonical
+│       token.  ``comments_collapse.js`` auto-collapses
+│       ``data-pql-comment-depth >= 3`` rows with a
+│       "Show N more replies" toggle on the depth-2 anchor —
+│       forward-compatible: current Alpine renders 2 levels so
+│       the script is a no-op until a recursive renderer lands.
+│       Three endpoints (``/api/data-products``, ``/api/topics``,
+│       ``/api/agents``) now accept ``?q=<prefix>`` for the
+│       picker.  Smoke-parse via ``node -c`` covers both
+│       modules.  2 pytest cases.
+│
 ├── Phase 75 — Verifiable audit export + SIEM sinks         ✅ done 2026-05-15
 │   │
 │   │   Two ⏳-promoted Icebox items.  Compliance-grade export
