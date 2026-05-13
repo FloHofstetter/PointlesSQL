@@ -41,12 +41,14 @@ below.
 from __future__ import annotations
 
 from pointlessql.models.agent import (
+    AVATAR_KINDS,
     REVIEW_SEVERITIES,
     REWRITE_VERDICTS,
     VERDICT_AUTO_REWRITE_FAILED,
     VERDICT_AUTO_REWRITE_SUCCEEDED,
     VERDICT_HUMAN_APPROVAL_REQUIRED,
     VERDICT_ORIGINAL_APPROVED,
+    Agent,
     AgentReview,
     AgentRun,
     AgentRunEvent,
@@ -159,6 +161,8 @@ __all__ = [
     "Alert",
     "AlertDestination",
     "AlertEvent",
+    "AVATAR_KINDS",
+    "Agent",
     "AnomalyAck",
     "ApiKey",
     "BADGE_KEYS",

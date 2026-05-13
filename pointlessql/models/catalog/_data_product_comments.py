@@ -94,6 +94,16 @@ class DataProductComment(Base):
     author_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
     )
+    # Phase 76.5 — presentation-layer override.  When set, the
+    # comment is rendered as authored *by the agent on behalf of*
+    # ``author_user_id`` (the principal).  The audit chain stays
+    # intact because the human accountable stays in the
+    # non-nullable column.
+    author_agent_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("agents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     body_md: Mapped[str] = mapped_column(Text, nullable=False)
     mentioned_user_ids_json: Mapped[str] = mapped_column(
         Text, nullable=False, default="[]", server_default="[]"

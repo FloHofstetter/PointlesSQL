@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ agent.display_name }} · Agents · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Agents", "href": "/agents"},
+    {"label": agent.display_name}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="agentProfile({{ agent | tojson }})" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-robot fs-3"></i>
+        <h1 class="h3 mb-0 pql-agent-display-name" x-text="profile.display_name || agent.display_name"></h1>
+        <span class="badge bg-success pql-agent-verified-badge"
+              x-show="profile.is_verified">✓ verified</span>
+    </div>
+
+    <template x-if="!loaded">
+        <div class="text-muted small">Loading…</div>
+    </template>
+
+    <template x-if="loaded">
+        <div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="text-muted small mb-2 pql-agent-principal">
+                        speaks for
+                        <a :href="'/users/' + profile.principal.user_id"
+                           x-text="profile.principal.display_name || profile.principal.email"></a>
+                    </div>
+                    <div x-text="profile.bio_md || '(no bio yet)'"></div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <div class="h4 mb-0 pql-agent-run-count"
+                                 x-text="runStats.count || 0"></div>
+                            <div class="text-muted small">Agent runs</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <div class="h4 mb-0" x-text="(recentComments || []).length"></div>
+                            <div class="text-muted small">Recent comments</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center">
+                        <div class="card-body py-2">
+                            <div class="h4 mb-0" x-text="profile.avatar_kind"></div>
+                            <div class="text-muted small">Avatar kind</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="h5">Recent comments</h2>
+            <template x-if="(recentComments || []).length === 0">
+                <div class="text-muted small">No comments yet.</div>
+            </template>
+            <ul class="list-group pql-agent-comments"
+                x-show="(recentComments || []).length > 0">
+                <template x-for="c in recentComments" :key="c.id">
+                    <li class="list-group-item">
+                        <span class="badge bg-secondary me-1"
+                              x-show="c.category && c.category !== 'general'"
+                              x-text="c.category"></span>
+                        <span x-text="(c.body_md || '').slice(0, 200)"></span>
+                    </li>
+                </template>
+            </ul>
+        </div>
+    </template>
+</div>
+
+<script>
+window.agentProfile = function (agent) {
+    return {
+        agent: agent,
+        loaded: false,
+        profile: { display_name: agent.display_name, avatar_kind: agent.avatar_kind, principal: {} },
+        recentComments: [],
+        runStats: {},
+        async init() { await this.load(); },
+        async load() {
+            try {
+                const res = await fetch('/api/agents/' + this.agent.slug + '/profile');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.profile = data.agent || this.profile;
+                this.recentComments = data.recent_comments || [];
+                this.runStats = data.run_stats || {};
+            } catch (e) { console.error('agent profile load failed', e); }
+            finally { this.loaded = true; }
+        },
+    };
+};
+</script>
+{% endblock %}

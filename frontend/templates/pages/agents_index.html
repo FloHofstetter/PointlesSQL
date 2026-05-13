@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Agents · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Agents"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="agentsIndex({ is_admin: {{ is_admin|tojson }} })" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-robot fs-3"></i>
+        <h1 class="h3 mb-0">Agents</h1>
+    </div>
+
+    <template x-if="!loaded">
+        <div class="text-muted small">Loading…</div>
+    </template>
+    <template x-if="loaded && agents.length === 0">
+        <div class="alert alert-secondary">
+            No agents registered in this workspace yet.
+        </div>
+    </template>
+
+    <ul class="list-group pql-agents-list" x-show="loaded && agents.length > 0">
+        <template x-for="a in agents" :key="a.slug">
+            <li class="list-group-item d-flex gap-2 align-items-start">
+                <i class="bi bi-robot fs-4 text-muted"></i>
+                <div class="flex-grow-1">
+                    <a class="pql-agent-name" :href="'/agents/' + a.slug" x-text="a.display_name"></a>
+                    <span class="badge bg-success ms-1 pql-agent-verified-badge"
+                          x-show="a.is_verified">✓ verified</span>
+                    <div class="small text-muted pql-agent-principal">
+                        speaks for <span x-text="a.principal_email || '?'"></span>
+                    </div>
+                </div>
+            </li>
+        </template>
+    </ul>
+</div>
+
+<script>
+window.agentsIndex = function (ctx) {
+    return {
+        isAdmin: !!ctx.is_admin,
+        loaded: false,
+        agents: [],
+        async init() { await this.load(); },
+        async load() {
+            try {
+                const res = await fetch('/api/agents');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.agents = (await res.json()).agents || [];
+            } catch (e) { console.error('agents load failed', e); }
+            finally { this.loaded = true; }
+        },
+    };
+};
+</script>
+{% endblock %}

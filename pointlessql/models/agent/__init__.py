@@ -20,6 +20,7 @@ Layout (all private — consumers go through ``pointlessql.models``):
 
 from __future__ import annotations
 
+from pointlessql.models.agent._agents import AVATAR_KINDS, Agent
 from pointlessql.models.agent._audit import (
     AgentRunEvent,
     AgentRunOperation,
@@ -42,12 +43,14 @@ from pointlessql.models.agent._rewrites import (
 from pointlessql.models.agent._runs import AgentRun
 
 __all__ = [
+    "AVATAR_KINDS",
     "REVIEW_SEVERITIES",
     "REWRITE_VERDICTS",
     "VERDICT_AUTO_REWRITE_FAILED",
     "VERDICT_AUTO_REWRITE_SUCCEEDED",
     "VERDICT_HUMAN_APPROVAL_REQUIRED",
     "VERDICT_ORIGINAL_APPROVED",
+    "Agent",
     "AgentReview",
     "AgentRun",
     "AgentRunEvent",

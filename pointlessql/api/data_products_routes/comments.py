@@ -33,6 +33,7 @@ from sqlalchemy import func, select
 from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.exceptions import AuthorizationError
+from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
@@ -239,6 +240,7 @@ def _serialise_comment(
     author_email: str | None,
     author_display_name: str | None,
     reactions: list[dict[str, Any]] | None = None,
+    agent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Render one comment row as a JSON-friendly dict."""
     return {
@@ -250,6 +252,10 @@ def _serialise_comment(
             "email": author_email,
             "display_name": author_display_name,
         },
+        # Phase 76.5 — when the comment is authored by an agent
+        # the ``agent`` payload carries the slug + display name;
+        # ``author.user_id`` is None in that case.
+        "agent": agent,
         "body_md": "" if row.deleted_at else row.body_md,
         "mentioned_user_ids": json.loads(row.mentioned_user_ids_json or "[]"),
         "category": row.category,
@@ -313,6 +319,26 @@ async def list_data_product_comments(
                 .all()
             )
             author_map = {u.id: (u.email, u.display_name) for u in users}
+        agent_ids = {
+            c.author_agent_id for c in rows if c.author_agent_id is not None
+        }
+        agent_map: dict[int, dict[str, Any]] = {}
+        if agent_ids:
+            agents = (
+                session.execute(select(Agent).where(Agent.id.in_(agent_ids)))
+                .scalars()
+                .all()
+            )
+            agent_map = {
+                a.id: {
+                    "slug": a.slug,
+                    "display_name": a.display_name,
+                    "avatar_kind": a.avatar_kind,
+                    "is_verified": bool(a.is_verified),
+                    "principal_user_id": a.principal_user_id,
+                }
+                for a in agents
+            }
         reactions_by_comment = _collect_reactions(
             session, [c.id for c in rows], user["id"]
         )
@@ -329,12 +355,20 @@ async def list_data_product_comments(
         if c.deleted_at is not None and not live_children_by_parent.get(c.id):
             # Soft-deleted leaf — drop entirely.
             continue
-        author_email, author_display = author_map.get(c.author_user_id, (None, None))
+        author_email, author_display = author_map.get(
+            c.author_user_id, (None, None)
+        )
+        agent_payload = (
+            agent_map.get(c.author_agent_id)
+            if c.author_agent_id is not None
+            else None
+        )
         payload.append(
             _serialise_comment(
                 c,
                 author_email=author_email,
                 author_display_name=author_display,
+                agent=agent_payload,
                 reactions=reactions_by_comment.get(c.id),
             )
         )
@@ -347,6 +381,7 @@ async def post_data_product_comment(
     catalog: str,
     schema: str,
     request: Request,
+    as_agent: str | None = None,
 ) -> dict[str, Any]:
     """Create a comment on the product.
 
@@ -363,13 +398,22 @@ async def post_data_product_comment(
         catalog: UC catalog segment.
         schema: UC schema segment.
         request: Incoming FastAPI request.
+        as_agent: Optional agent slug — when set, the comment is
+            posted *by* the agent on behalf of the caller (who
+            must be the agent's ``principal_user_id``, or admin).
+            The ``author_user_id`` column still records the
+            principal so the audit chain stays intact (Phase 76.5).
 
     Returns:
         Serialised comment row.
 
     Raises:
+        AuthorizationError: When ``?as_agent=`` is supplied and
+            the caller is not the agent's principal_user_id or
+            install-admin.
         HTTPException: 400 on empty body, missing parent, unknown
-            category, or over-deep nesting.
+            category, or over-deep nesting; 404 on unknown
+            ``?as_agent=`` slug.
     """
     require_user(request)
     user = get_user(request)
@@ -398,6 +442,35 @@ async def post_data_product_comment(
             status_code=400,
             detail=f"category must be one of {ALLOWED_CATEGORIES}",
         )
+
+    # Phase 76.5 — resolve the optional ``as_agent`` slug *before*
+    # writing the comment so the authorship-discriminator is set
+    # atomically.  Only the agent's principal_user_id (or admin)
+    # may post as the agent.
+    author_agent_id: int | None = None
+    if as_agent is not None:
+        agent_slug = as_agent.strip().lower()
+        with factory() as session:
+            agent = session.execute(
+                select(Agent).where(
+                    Agent.workspace_id == workspace_id, Agent.slug == agent_slug
+                )
+            ).scalar_one_or_none()
+            if agent is None:
+                # bare-http-ok: as_agent must resolve.
+                raise HTTPException(
+                    status_code=404, detail=f"unknown agent slug: {agent_slug}"
+                )
+            is_principal = agent.principal_user_id == user["id"]
+            is_admin = bool(user.get("is_admin"))
+            if not (is_principal or is_admin):
+                raise AuthorizationError(
+                    principal=user.get("email", ""),
+                    privilege="post_as_agent",
+                    securable_type="agent",
+                    full_name=agent_slug,
+                )
+            author_agent_id = int(agent.id)
 
     ambiguous_displaynames: list[str] = []
     with factory() as session:
@@ -433,11 +506,16 @@ async def post_data_product_comment(
         # Combine + de-duplicate while preserving order.
         mentioned_ids = list(dict.fromkeys(mentioned_ids + resolved_dn))
         now = datetime.datetime.now(datetime.UTC)
+        # Phase 76.5 — ``author_user_id`` always carries the
+        # human accountable (caller if direct, principal_user
+        # when speaking-as-agent).  ``author_agent_id`` is the
+        # optional presentation-layer override.
         comment = DataProductComment(
             workspace_id=workspace_id,
             data_product_id=row.id,
             parent_comment_id=parent_comment_id,
             author_user_id=user["id"],
+            author_agent_id=author_agent_id,
             body_md=body_md,
             mentioned_user_ids_json=json.dumps(mentioned_ids),
             category=effective_category,
@@ -448,9 +526,20 @@ async def post_data_product_comment(
         session.commit()
         session.refresh(comment)
 
-        author = session.get(User, comment.author_user_id)
-        author_email = author.email if author else None
-        author_display = author.display_name if author else None
+        author_row = session.get(User, comment.author_user_id)
+        author_email = author_row.email if author_row else None
+        author_display = author_row.display_name if author_row else None
+        agent_payload: dict[str, Any] | None = None
+        if comment.author_agent_id is not None:
+            agent_row = session.get(Agent, comment.author_agent_id)
+            if agent_row is not None:
+                agent_payload = {
+                    "slug": agent_row.slug,
+                    "display_name": agent_row.display_name,
+                    "avatar_kind": agent_row.avatar_kind,
+                    "is_verified": bool(agent_row.is_verified),
+                    "principal_user_id": agent_row.principal_user_id,
+                }
         comment_id = comment.id
         comment_dp_id = comment.data_product_id
 
@@ -525,6 +614,7 @@ async def post_data_product_comment(
         comment,
         author_email=author_email,
         author_display_name=author_display,
+        agent=agent_payload,
         reactions=[
             {"emoji": e, "count": 0, "has_current_user_reacted": False}
             for e in ALLOWED_EMOJI

@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 76.5 — Agents as first-class social actors
+  (2026-05-13).**  New ``agents`` table (Alembic
+  ``t1v3x5z7b9d1``) registers LLM reviewers / bots under a
+  workspace-scoped slug with a ``principal_user_id`` FK that
+  anchors the human accountability chain.  ``data_product_comments``
+  gains an optional ``author_agent_id`` FK — when set the UI
+  renders the comment as authored *by the agent on behalf of*
+  the principal; ``author_user_id`` stays non-nullable + still
+  records the human so the audit log + Phase-15 lineage chain
+  remain intact.  Comment POST accepts a ``?as_agent=<slug>``
+  query param (only the agent's principal_user or install-admin
+  may post under the agent's identity).  Two new HTML pages
+  (``/agents`` index + ``/agents/{slug}`` profile).  Three new
+  governance event types reuse the existing audit pipeline
+  (``audit.agent.created``, ``audit.agent.verified``).  14 new
+  pytest cases; ruff / pyright (budget 623, 0 errors) /
+  pydoclint green.  *Note*: extending agent authorship to
+  reviews + endorsements is deferred to a Phase-76.5.x follow-
+  up; this sub-sprint sticks to comments to keep the migration
+  + route diff bounded.
+
 - **Phase 76.4 — Per-user feed + notification preferences
   (2026-05-13).**  New ``GET /api/feed`` endpoint that merges
   the caller's inbox + activity from followed users (comments
