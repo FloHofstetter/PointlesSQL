@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Topics · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Topics"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="topicsIndex({ is_admin: {{ is_admin|tojson }} })" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-tags fs-3"></i>
+        <h1 class="h3 mb-0">Topics</h1>
+        <button class="btn btn-sm btn-primary ms-auto pql-topics-new-btn"
+                @click="creating = !creating">
+            <i class="bi bi-plus-lg me-1"></i>New topic
+        </button>
+    </div>
+
+    <template x-if="creating">
+        <div class="card mb-3">
+            <div class="card-body">
+                <label class="form-label small">Display name</label>
+                <input class="form-control mb-2 pql-topics-new-name"
+                       x-model="newName"
+                       placeholder="e.g. finance, gold-tier, ml-feature-store">
+                <label class="form-label small">Description (markdown)</label>
+                <textarea class="form-control mb-2 pql-topics-new-desc"
+                          rows="2" x-model="newDesc"></textarea>
+                <button class="btn btn-sm btn-primary pql-topics-new-save"
+                        :disabled="!newName.trim()"
+                        @click="create()">Create</button>
+                <button class="btn btn-sm btn-outline-secondary"
+                        @click="creating = false">Cancel</button>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="!loaded">
+        <div class="text-muted small p-3">Loading…</div>
+    </template>
+    <template x-if="loaded && topics.length === 0">
+        <div class="alert alert-secondary">
+            No topics in this workspace yet.
+        </div>
+    </template>
+    <div class="row g-2 pql-topics-grid" x-show="loaded && topics.length > 0">
+        <template x-for="t in topics" :key="t.slug">
+            <div class="col-md-4">
+                <div class="card pql-topic-card">
+                    <div class="card-body">
+                        <h5 class="card-title h6">
+                            <a :href="'/topics/' + t.slug"
+                               x-text="t.display_name"></a>
+                        </h5>
+                        <p class="card-text small text-muted text-truncate"
+                           x-text="t.description_md || '(no description)'"></p>
+                        <div class="d-flex justify-content-between small">
+                            <span><i class="bi bi-box me-1"></i><span x-text="t.dp_count"></span> DPs</span>
+                            <span><i class="bi bi-people me-1"></i><span x-text="t.follower_count"></span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+
+<script>
+window.topicsIndex = function (ctx) {
+    ctx = ctx || {};
+    return {
+        isAdmin: !!ctx.is_admin,
+        loaded: false,
+        topics: [],
+        creating: false,
+        newName: '',
+        newDesc: '',
+        async init() { await this.load(); },
+        async load() {
+            try {
+                const res = await fetch('/api/topics');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.topics = data.topics || [];
+            } catch (e) { console.error('topics load failed', e); }
+            finally { this.loaded = true; }
+        },
+        async create() {
+            try {
+                const res = await fetch('/api/topics', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        display_name: this.newName.trim(),
+                        description_md: this.newDesc.trim(),
+                    }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.newName = '';
+                this.newDesc = '';
+                this.creating = false;
+                await this.load();
+            } catch (e) { console.error('topic create failed', e); }
+        },
+    };
+};
+</script>
+{% endblock %}

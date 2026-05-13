@@ -127,9 +127,12 @@ from pointlessql.models.scheduler import (
 )
 from pointlessql.models.social import (
     BADGE_KEYS,
+    DataProductTopic,
+    Topic,
     UserBadge,
     UserFollow,
     UserProfile,
+    UserTopicFollow,
 )
 from pointlessql.models.system_keys import SystemKey
 from pointlessql.models.workspace import (
@@ -218,11 +221,14 @@ __all__ = [
     "TableStats",
     "TaskRun",
     "UnattributedWrite",
+    "Topic",
+    "DataProductTopic",
     "User",
     "UserBadge",
     "UserFollow",
     "UserNotification",
     "UserProfile",
+    "UserTopicFollow",
     "UserWebhookSubscription",
     "WORKSPACE_PIN_MODES",
     "WORKSPACE_REPO_PROVIDER_KINDS",

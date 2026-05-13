@@ -8,6 +8,11 @@ namespace stays focused on data-product metadata.
 
 from __future__ import annotations
 
+from pointlessql.models.social._topic import (
+    DataProductTopic,
+    Topic,
+    UserTopicFollow,
+)
 from pointlessql.models.social._user_badge import (
     BADGE_KEYS,
     UserBadge,
@@ -17,7 +22,10 @@ from pointlessql.models.social._user_profile import UserProfile
 
 __all__ = [
     "BADGE_KEYS",
+    "DataProductTopic",
+    "Topic",
     "UserBadge",
     "UserFollow",
     "UserProfile",
+    "UserTopicFollow",
 ]

@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 76.3 — Topic taxonomy + topic-follows (2026-05-13).**
+  Three new tables — ``topics``, ``data_product_topics``,
+  ``user_topic_follows`` (Alembic ``r9t1v3x5z7b9``) — wired
+  through a new ``topics_routes`` package: ``GET /api/topics``
+  with sort + pagination, ``POST /api/topics`` (steward+ tier
+  with auto-slugify + collision-suffix), ``GET /api/topics/{slug}``,
+  ``PUT /api/data-products/{c}/{s}/topics`` replace-all
+  assignment (steward-only), ``GET /api/data-products/{c}/{s}/topics``,
+  and ``POST/DELETE /api/topics/{slug}/follow``.  Two new HTML
+  pages (``/topics`` index, ``/topics/{slug}`` detail) render
+  follow toggles + DP listings.  Adding a DP to a topic fans
+  out ``pointlessql.topic.dp_added`` to every topic follower —
+  inbox row + Phase-20 SIEM envelope.  13 new pytest cases.
+
 - **Phase 76.2 — User profiles + user-to-user follows + sticky
   badges (2026-05-13).**  New tables ``user_profiles``,
   ``user_follows``, ``user_badges`` (Alembic

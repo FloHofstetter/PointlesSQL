@@ -114,6 +114,9 @@ EVENT_TYPE_USER_FOLLOWED = "pointlessql.user.followed"
 # Phase 76.2 — sticky positive-only reputation badge.  The badges
 # loop awards rows once per (user, badge_key) threshold crossing.
 EVENT_TYPE_USER_BADGE_AWARDED = "pointlessql.user.badge_awarded"
+# Phase 76.3 — topic-membership signal.  Fans out to topic
+# followers when a new DP joins a topic they follow.
+EVENT_TYPE_TOPIC_DP_ADDED = "pointlessql.topic.dp_added"
 EVENT_TYPE_NOTIFICATION_DIGEST = "pointlessql.notification.digest"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
@@ -142,6 +145,7 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED,
     EVENT_TYPE_USER_FOLLOWED,
     EVENT_TYPE_USER_BADGE_AWARDED,
+    EVENT_TYPE_TOPIC_DP_ADDED,
     EVENT_TYPE_NOTIFICATION_DIGEST,
 )
 
