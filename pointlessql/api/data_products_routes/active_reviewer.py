@@ -91,6 +91,7 @@ def _serialise_config(
         ),
         "last_run_comment_id": row.last_run_comment_id,
         "acting_user_id": row.acting_user_id,
+        "agent_slug": row.agent_slug,
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
     }
@@ -187,10 +188,11 @@ async def upsert_active_reviewer_config(
     row, _c, _e, _d = load_one(factory, workspace_id, catalog, schema)
     _require_steward_or_admin(user, row)
 
-    body = await request.json()
-    if not isinstance(body, dict):
+    raw_body = await request.json()
+    if not isinstance(raw_body, dict):
         # bare-http-ok: malformed body shape.
         raise HTTPException(status_code=400, detail="body must be a JSON object")
+    body: dict[str, Any] = raw_body
     enabled = bool(body.get("enabled", False))
     runner = str(body.get("runner") or "")
     if runner not in ACTIVE_REVIEWER_RUNNERS:
@@ -227,6 +229,18 @@ async def upsert_active_reviewer_config(
         )
     if prompt_override is not None and not prompt_override.strip():
         prompt_override = None
+    agent_slug_raw = body.get("agent_slug")
+    if agent_slug_raw is not None and not isinstance(agent_slug_raw, str):
+        # bare-http-ok: malformed agent_slug type.
+        raise HTTPException(
+            status_code=400,
+            detail="agent_slug must be a string or null",
+        )
+    agent_slug = (
+        agent_slug_raw.strip().lower() if isinstance(agent_slug_raw, str) else None
+    )
+    if agent_slug == "":
+        agent_slug = None
 
     with factory() as session:
         cfg = upsert_config(
@@ -239,6 +253,7 @@ async def upsert_active_reviewer_config(
             llm_model=str(llm_model) if isinstance(llm_model, str) else None,
             prompt_override_md=prompt_override,
             acting_user_id=user["id"],
+            agent_slug=agent_slug,
         )
         session.commit()
         session.refresh(cfg)

@@ -1,11 +1,13 @@
-"""``/api/data-products/{catalog}/{schema}/endorsements`` — typed badges (Phase 72.4).
+"""``/api/data-products/{catalog}/{schema}/endorsements`` — typed badges (Phase 72.4 + 76.5.1).
 
 Three endpoints:
 
 * ``GET`` — list every endorsement (active + historical),
   newest first.
 * ``POST`` — apply one type.  Body: ``{endorsement_type,
-  note_md?}``.  Gate: steward + install-admin (auditor also
+  note_md?}``.  Accepts ``?as_agent=<slug>`` (Phase 76.5.1) so an
+  endorsement can be applied *by an agent on behalf of* its
+  principal.  Gate: steward + install-admin (auditor also
   passes for ``verified-by-steward`` only).  Re-applying the
   same type when there is already an active row is a no-op
   that returns the existing row.
@@ -25,13 +27,17 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
-from pointlessql.api.data_products_routes._shared import load_one
+from pointlessql.api.data_products_routes._shared import (
+    load_one,
+    resolve_agent_for_principal,
+)
 from pointlessql.api.dependencies import (
     current_workspace_id,
     get_user,
     require_user,
 )
 from pointlessql.exceptions import AuthorizationError
+from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
@@ -73,8 +79,14 @@ def _serialise(
     *,
     author_email: str | None,
     author_display_name: str | None,
+    agent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Render one endorsement row as JSON."""
+    """Render one endorsement row as JSON.
+
+    The ``agent`` payload mirrors the comment-serialiser shape
+    (Phase 76.5): present when ``applied_by_agent_id`` is set,
+    ``None`` otherwise.
+    """
     return {
         "id": endorsement.id,
         "data_product_id": endorsement.data_product_id,
@@ -84,11 +96,25 @@ def _serialise(
             "email": author_email,
             "display_name": author_display_name,
         },
+        "agent": agent,
         "applied_at": endorsement.applied_at.isoformat(),
         "removed_at": (
             endorsement.removed_at.isoformat() if endorsement.removed_at else None
         ),
         "note_md": endorsement.note_md or "",
+    }
+
+
+def _agent_payload(agent: Agent | None) -> dict[str, Any] | None:
+    """Render an Agent ORM row as a JSON-friendly dict (or ``None``)."""
+    if agent is None:
+        return None
+    return {
+        "slug": agent.slug,
+        "display_name": agent.display_name,
+        "avatar_kind": agent.avatar_kind,
+        "is_verified": bool(agent.is_verified),
+        "principal_user_id": agent.principal_user_id,
     }
 
 
@@ -126,11 +152,27 @@ async def list_endorsements(
                 .all()
             )
             author_map = {u.id: (u.email, u.display_name) for u in users}
+        agent_ids = {
+            r.applied_by_agent_id for r in rows if r.applied_by_agent_id is not None
+        }
+        agent_map: dict[int, Agent] = {}
+        if agent_ids:
+            agents = (
+                session.execute(select(Agent).where(Agent.id.in_(agent_ids)))
+                .scalars()
+                .all()
+            )
+            agent_map = {a.id: a for a in agents}
     payload = [
         _serialise(
             r,
             author_email=author_map.get(r.applied_by_user_id, (None, None))[0],
             author_display_name=author_map.get(r.applied_by_user_id, (None, None))[1],
+            agent=_agent_payload(
+                agent_map.get(r.applied_by_agent_id)
+                if r.applied_by_agent_id is not None
+                else None
+            ),
         )
         for r in rows
     ]
@@ -142,6 +184,7 @@ async def apply_endorsement(
     catalog: str,
     schema: str,
     request: Request,
+    as_agent: str | None = None,
 ) -> dict[str, Any]:
     """Apply an endorsement of the given type.
 
@@ -151,14 +194,25 @@ async def apply_endorsement(
         catalog: UC catalog segment.
         schema: UC schema segment.
         request: Incoming FastAPI request.
+        as_agent: Optional agent slug (Phase 76.5.1) — when set,
+            the endorsement is applied *by the agent on behalf of*
+            the caller (who must be the agent's
+            ``principal_user_id``, or admin).  ``applied_by_user_id``
+            still records the principal so the audit chain stays
+            intact.
 
     Returns:
         Serialised endorsement row.  If an active row of the same
         type already exists, returns it unchanged (no second row).
+        When ``?as_agent=`` is supplied the caller must be the
+        agent's ``principal_user_id`` or admin; otherwise the
+        helper raises :class:`AuthorizationError` (rendered as a
+        403 by middleware).
 
     Raises:
         HTTPException: 400 when ``endorsement_type`` is missing or
-            outside the typed allow-list.
+            outside the typed allow-list; 404 on unknown
+            ``?as_agent=`` slug.
     """
     require_user(request)
     user = get_user(request)
@@ -180,6 +234,12 @@ async def apply_endorsement(
     _check_gate(user, row, endorsement_type)
     note_md = (body.get("note_md") or "").strip()
 
+    applied_by_agent_id: int | None = None
+    if as_agent is not None:
+        applied_by_agent_id = resolve_agent_for_principal(
+            factory, workspace_id=workspace_id, slug=as_agent, user=user
+        )
+
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         existing = session.execute(
@@ -192,10 +252,16 @@ async def apply_endorsement(
         ).scalar_one_or_none()
         if existing is not None:
             author = session.get(User, existing.applied_by_user_id)
+            existing_agent = (
+                session.get(Agent, existing.applied_by_agent_id)
+                if existing.applied_by_agent_id is not None
+                else None
+            )
             return _serialise(
                 existing,
                 author_email=author.email if author else None,
                 author_display_name=author.display_name if author else None,
+                agent=_agent_payload(existing_agent),
             )
 
         new_row = DataProductEndorsement(
@@ -203,6 +269,7 @@ async def apply_endorsement(
             data_product_id=row.id,
             endorsement_type=endorsement_type,
             applied_by_user_id=user["id"],
+            applied_by_agent_id=applied_by_agent_id,
             applied_at=now,
             note_md=note_md,
         )
@@ -212,23 +279,34 @@ async def apply_endorsement(
         author = session.get(User, new_row.applied_by_user_id)
         author_email = author.email if author else None
         author_display = author.display_name if author else None
+        new_agent = (
+            session.get(Agent, new_row.applied_by_agent_id)
+            if new_row.applied_by_agent_id is not None
+            else None
+        )
+        new_agent_payload = _agent_payload(new_agent)
 
+    audit_detail: dict[str, Any] = {
+        "endorsement_type": endorsement_type,
+        "endorsement_id": new_row.id,
+    }
+    if applied_by_agent_id is not None:
+        audit_detail["agent_id"] = applied_by_agent_id
+        audit_detail["principal_user_id"] = user["id"]
     audit_service.log_action(
         factory,
         user_id=user["id"],
         user_email=user.get("email", ""),
         action="endorsement.applied",
         target=f"data_product:{catalog}.{schema}",
-        detail={
-            "endorsement_type": endorsement_type,
-            "endorsement_id": new_row.id,
-        },
+        detail=audit_detail,
         workspace_id=workspace_id,
     )
     return _serialise(
         new_row,
         author_email=author_email,
         author_display_name=author_display,
+        agent=new_agent_payload,
     )
 
 

@@ -53,7 +53,13 @@ class DataProductEndorsement(Base):
         data_product_id: FK on ``data_products.id``,
             ``ondelete='CASCADE'``.
         endorsement_type: One of :data:`ENDORSEMENT_TYPES`.
-        applied_by_user_id: Who applied the endorsement.
+        applied_by_user_id: Who applied the endorsement.  Always
+            a human — caller when direct, agent's principal when
+            ``applied_by_agent_id`` is set (Phase 76.5.1).
+        applied_by_agent_id: Optional agent identity that posted
+            the endorsement on behalf of the principal.  When set,
+            the UI renders the endorsement as authored *by the
+            agent on behalf of* the principal.  Nullable.
         applied_at: Wall-clock at apply.
         removed_at: ``None`` while active; wall-clock at remove.
         note_md: Optional free-form context.
@@ -96,6 +102,11 @@ class DataProductEndorsement(Base):
     endorsement_type: Mapped[str] = mapped_column(Text, nullable=False)
     applied_by_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
+    )
+    applied_by_agent_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("agents.id", ondelete="SET NULL"),
+        nullable=True,
     )
     applied_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False

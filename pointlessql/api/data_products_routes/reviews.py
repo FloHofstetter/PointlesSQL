@@ -1,11 +1,13 @@
-"""``/api/data-products/{catalog}/{schema}/reviews`` — stars + body (Phase 71.2).
+"""``/api/data-products/{catalog}/{schema}/reviews`` — stars + body (Phase 71.2 + 76.5.1).
 
 Three endpoints:
 
 * ``GET`` — list every review for the product + summary
   ``{avg_stars, count, my_review?}``.
 * ``PUT`` — idempotent upsert of the caller's review (one per
-  ``(user, DP)``).
+  ``(user, DP)``).  Accepts ``?as_agent=<slug>`` (Phase 76.5.1)
+  so a review can be authored *by an agent on behalf of* its
+  principal.
 * ``DELETE`` — remove the caller's review (self only).
 
 Reviews are hard-deleted; aggregates are computed on read.
@@ -19,8 +21,12 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
-from pointlessql.api.data_products_routes._shared import load_one
+from pointlessql.api.data_products_routes._shared import (
+    load_one,
+    resolve_agent_for_principal,
+)
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.services.notifications import fanout_dataproduct_event
@@ -37,8 +43,14 @@ def _serialise_review(
     *,
     author_email: str | None,
     author_display_name: str | None,
+    agent: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Render one review row as a JSON-friendly dict."""
+    """Render one review row as a JSON-friendly dict.
+
+    The ``agent`` payload mirrors the comment-serialiser shape
+    (Phase 76.5): present when ``author_agent_id`` is set,
+    ``None`` otherwise.
+    """
     return {
         "id": row.id,
         "data_product_id": row.data_product_id,
@@ -47,11 +59,25 @@ def _serialise_review(
             "email": author_email,
             "display_name": author_display_name,
         },
+        "agent": agent,
         "stars": row.stars,
         "body_md": row.body_md,
         "dp_version_at_review": row.dp_version_at_review,
         "created_at": row.created_at.isoformat(),
         "updated_at": row.updated_at.isoformat(),
+    }
+
+
+def _agent_payload(agent: Agent | None) -> dict[str, Any] | None:
+    """Render an Agent ORM row as a JSON-friendly dict (or ``None``)."""
+    if agent is None:
+        return None
+    return {
+        "slug": agent.slug,
+        "display_name": agent.display_name,
+        "avatar_kind": agent.avatar_kind,
+        "is_verified": bool(agent.is_verified),
+        "principal_user_id": agent.principal_user_id,
     }
 
 
@@ -119,6 +145,17 @@ async def list_data_product_reviews(
                 .all()
             )
             author_map = {u.id: (u.email, u.display_name) for u in users}
+        agent_ids = {
+            r.author_agent_id for r in rows if r.author_agent_id is not None
+        }
+        agent_map: dict[int, Agent] = {}
+        if agent_ids:
+            agents = (
+                session.execute(select(Agent).where(Agent.id.in_(agent_ids)))
+                .scalars()
+                .all()
+            )
+            agent_map = {a.id: a for a in agents}
 
         summary = _summary_for(session, workspace_id, row.id)
 
@@ -126,10 +163,16 @@ async def list_data_product_reviews(
     my_review: dict[str, Any] | None = None
     for r in rows:
         author_email, author_display = author_map.get(r.author_user_id, (None, None))
+        agent_obj = (
+            agent_map.get(r.author_agent_id)
+            if r.author_agent_id is not None
+            else None
+        )
         s = _serialise_review(
             r,
             author_email=author_email,
             author_display_name=author_display,
+            agent=_agent_payload(agent_obj),
         )
         payload.append(s)
         if r.author_user_id == user["id"]:
@@ -148,6 +191,7 @@ async def upsert_data_product_review(
     catalog: str,
     schema: str,
     request: Request,
+    as_agent: str | None = None,
 ) -> dict[str, Any]:
     """Idempotent upsert of the caller's review on this product.
 
@@ -157,12 +201,22 @@ async def upsert_data_product_review(
         catalog: UC catalog segment.
         schema: UC schema segment.
         request: Incoming FastAPI request.
+        as_agent: Optional agent slug (Phase 76.5.1) — when set,
+            the review is authored *by the agent on behalf of* the
+            caller (who must be the agent's ``principal_user_id``,
+            or admin).  ``author_user_id`` still records the
+            principal so the audit chain stays intact.
 
     Returns:
-        Serialised review row.
+        Serialised review row.  When ``?as_agent=`` is supplied
+        the caller must be the agent's ``principal_user_id`` or
+        admin; otherwise the helper raises
+        :class:`pointlessql.exceptions.AuthorizationError` (the
+        middleware turns it into a 403).
 
     Raises:
-        HTTPException: 400 on invalid stars or missing payload.
+        HTTPException: 400 on invalid stars or missing payload;
+            404 on unknown ``?as_agent=`` slug.
     """
     require_user(request)
     user = get_user(request)
@@ -186,6 +240,12 @@ async def upsert_data_product_review(
         raise HTTPException(status_code=400, detail="stars must be in 1..5")
     body_md = (body.get("body_md") or "").strip()
 
+    author_agent_id: int | None = None
+    if as_agent is not None:
+        author_agent_id = resolve_agent_for_principal(
+            factory, workspace_id=workspace_id, slug=as_agent, user=user
+        )
+
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         existing = session.execute(
@@ -201,6 +261,10 @@ async def upsert_data_product_review(
             existing.body_md = body_md
             existing.dp_version_at_review = row.version
             existing.updated_at = now
+            # An UPSERT with ``?as_agent=`` flips the agent
+            # discriminator; without it the column is cleared so a
+            # follow-up direct edit doesn't keep the agent badge.
+            existing.author_agent_id = author_agent_id
             session.add(existing)
             review = existing
         else:
@@ -208,6 +272,7 @@ async def upsert_data_product_review(
                 workspace_id=workspace_id,
                 data_product_id=row.id,
                 author_user_id=user["id"],
+                author_agent_id=author_agent_id,
                 stars=stars,
                 body_md=body_md,
                 dp_version_at_review=row.version,
@@ -224,6 +289,12 @@ async def upsert_data_product_review(
         review_id = review.id
         review_dp_id = review.data_product_id
         review_stars = review.stars
+        review_agent = (
+            session.get(Agent, review.author_agent_id)
+            if review.author_agent_id is not None
+            else None
+        )
+        review_agent_payload = _agent_payload(review_agent)
 
     # Phase 71.4: fan-out + governance event.  We always emit on
     # PUT — including the upsert case — because a star change is
@@ -242,16 +313,20 @@ async def upsert_data_product_review(
         source_url=source_url,
         summary_md=summary,
     )
+    governance_payload: dict[str, Any] = {
+        "data_product_id": review_dp_id,
+        "data_product_ref": f"{catalog}.{schema}",
+        "review_id": review_id,
+        "author_user_id": user["id"],
+        "author_email": author_email,
+        "stars": review_stars,
+        "actor_kind": "agent" if review_agent is not None else "user",
+    }
+    if review_agent is not None:
+        governance_payload["agent_slug"] = review_agent.slug
     await emit_governance_event(
         EVENT_TYPE_DATA_PRODUCT_REVIEWED,
-        {
-            "data_product_id": review_dp_id,
-            "data_product_ref": f"{catalog}.{schema}",
-            "review_id": review_id,
-            "author_user_id": user["id"],
-            "author_email": author_email,
-            "stars": review_stars,
-        },
+        governance_payload,
         settings=request.app.state.settings,
         session_factory=factory,
         workspace_id=workspace_id,
@@ -261,6 +336,7 @@ async def upsert_data_product_review(
         review,
         author_email=author_email,
         author_display_name=author_display,
+        agent=review_agent_payload,
     )
 
 

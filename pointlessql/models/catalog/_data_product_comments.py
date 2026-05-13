@@ -43,7 +43,13 @@ class DataProductComment(Base):
             top-level comments.  App-level guard caps the chain
             depth (Phase 76.1 lifted 2 → 5 with auto-collapse on
             render at depth ≥ 3).
-        author_user_id: FK on ``users.id``.  Who posted.
+        author_user_id: FK on ``users.id``.  Who posted.  Always
+            a human — caller when direct, agent's principal when
+            ``author_agent_id`` is set (Phase 76.5).
+        author_agent_id: Optional FK on ``agents.id`` (Phase 76.5)
+            — when set, the row renders as authored *by the agent
+            on behalf of* ``author_user_id``.  Nullable; falls
+            back to the existing user-only path when ``None``.
         body_md: Markdown body, rendered via the shared
             ``render_markdown`` Jinja filter (``html: False``).
         mentioned_user_ids_json: JSON-encoded list of resolved

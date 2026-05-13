@@ -75,6 +75,15 @@ ALLOWLIST=(
     # pushed the file past 800 LOC; the surface stays coherent
     # (one router, one auth gate, one filter helper-set).
     "pointlessql/api/admin/console.py"
+    # Data-product discussion route surface — GET/POST/DELETE plus
+    # accept-answer plus mention resolution (email + display-name)
+    # plus reaction aggregator plus agent-author payload.  Phase 76
+    # lifted threading 2→5, added the category enum + accept-answer +
+    # reactions + agent-author discriminator; splitting now would
+    # create cross-handler seams (mention + reaction + agent payload
+    # all flow through ``_serialise_comment``).  Allowlisted at the
+    # close-out of Phase 76 alongside the helper-extraction refactor.
+    "pointlessql/api/data_products_routes/comments.py"
 )
 
 is_allowed() {

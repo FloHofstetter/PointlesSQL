@@ -260,6 +260,7 @@ async def update_user_profile(
         )
     if links is not None:
         if not isinstance(links, list):
+            # bare-http-ok: malformed links payload type.
             raise HTTPException(
                 status_code=400,
                 detail=f"links must be a list of at most {_LINKS_MAX} entries",
@@ -276,6 +277,7 @@ async def update_user_profile(
                 or "url" not in entry
                 or not isinstance(entry.get("url"), str)  # pyright: ignore[reportUnknownMemberType]
             ):
+                # bare-http-ok: per-link shape boundary.
                 raise HTTPException(
                     status_code=400,
                     detail="each link must be an object with a 'url' string",
@@ -286,6 +288,7 @@ async def update_user_profile(
     with factory() as session:
         target = session.get(User, user_id)
         if target is None:
+            # bare-http-ok: unknown user_id.
             raise HTTPException(status_code=404, detail="user not found")
         profile = session.get(UserProfile, user_id)
         if profile is None:

@@ -36,6 +36,7 @@ from typing import Any, Literal
 
 from sqlalchemy import select
 
+from pointlessql.models.agent._agents import Agent
 from pointlessql.models.agent._reviews import AgentReview
 from pointlessql.models.catalog._data_product_active_reviewer_config import (
     DataProductActiveReviewerConfig,
@@ -244,6 +245,7 @@ def upsert_config(
     llm_model: str | None,
     prompt_override_md: str | None,
     acting_user_id: int,
+    agent_slug: str | None = None,
 ) -> DataProductActiveReviewerConfig:
     """UPSERT one per-DP active-reviewer config row.
 
@@ -259,6 +261,11 @@ def upsert_config(
         acting_user_id: Steward / admin who enabled or updated the
             reviewer.  Future comments + endorsements written by the
             in-proc runner carry this as the author.
+        agent_slug: Optional agent slug (Phase 76.5.1) — when set,
+            the reviewer's comment + endorsement are additionally
+            stamped with the agent identity so the row renders as
+            authored *by the agent on behalf of* ``acting_user_id``.
+            ``None`` falls back to the steward-proxy posting path.
 
     Returns:
         The persisted row (attached to *session*).
@@ -280,6 +287,7 @@ def upsert_config(
             llm_model=llm_model,
             prompt_override_md=prompt_override_md,
             acting_user_id=acting_user_id,
+            agent_slug=agent_slug,
             created_at=now,
             updated_at=now,
         )
@@ -291,6 +299,7 @@ def upsert_config(
     existing.llm_model = llm_model
     existing.prompt_override_md = prompt_override_md
     existing.acting_user_id = acting_user_id
+    existing.agent_slug = agent_slug
     existing.updated_at = now
     session.add(existing)
     return existing
@@ -304,6 +313,7 @@ def _post_comment(
     author_user_id: int,
     body_md: str,
     now: datetime.datetime,
+    author_agent_id: int | None = None,
 ) -> int:
     """Insert one :class:`DataProductComment` row.
 
@@ -316,6 +326,9 @@ def _post_comment(
             :attr:`DataProductActiveReviewerConfig.acting_user_id`).
         body_md: Comment body.
         now: Wall-clock anchor.
+        author_agent_id: Optional agent identity (Phase 76.5.1) —
+            when set, the comment renders as authored *by the
+            agent on behalf of* ``author_user_id``.
 
     Returns:
         The new comment's id.
@@ -325,6 +338,7 @@ def _post_comment(
         data_product_id=data_product_id,
         parent_comment_id=None,
         author_user_id=author_user_id,
+        author_agent_id=author_agent_id,
         body_md=body_md,
         mentioned_user_ids_json="[]",
         created_at=now,
@@ -343,6 +357,7 @@ def _write_endorsement(
     endorsement_type: str,
     note_md: str | None,
     now: datetime.datetime,
+    applied_by_agent_id: int | None = None,
 ) -> int | None:
     """Insert one :class:`DataProductEndorsement` row when not duplicate.
 
@@ -359,6 +374,10 @@ def _write_endorsement(
             :data:`ENDORSEMENT_TYPES`.
         note_md: Optional rationale.
         now: Wall-clock anchor.
+        applied_by_agent_id: Optional agent identity (Phase
+            76.5.1) — when set, the endorsement renders as
+            applied *by the agent on behalf of*
+            ``applied_by_user_id``.
 
     Returns:
         The new endorsement id, or ``None`` when the same
@@ -379,6 +398,7 @@ def _write_endorsement(
         data_product_id=data_product_id,
         endorsement_type=endorsement_type,
         applied_by_user_id=applied_by_user_id,
+        applied_by_agent_id=applied_by_agent_id,
         applied_at=now,
         removed_at=None,
         note_md=note_md or "",
@@ -546,6 +566,17 @@ async def run_reviewer_for_dp(
                 f"in workspace {workspace_id}"
             )
         acting_user_id = config.acting_user_id
+        config_agent_slug = config.agent_slug
+        agent_id: int | None = None
+        if config_agent_slug:
+            agent_row = session.execute(
+                select(Agent).where(
+                    Agent.workspace_id == workspace_id,
+                    Agent.slug == config_agent_slug,
+                )
+            ).scalar_one_or_none()
+            if agent_row is not None:
+                agent_id = int(agent_row.id)
         prompt = build_prompt(
             session, workspace_id=workspace_id, dp=dp, config=config
         )
@@ -601,6 +632,7 @@ async def run_reviewer_for_dp(
             author_user_id=acting_user_id,
             body_md=verdict.comment_md,
             now=now,
+            author_agent_id=agent_id,
         )
         endorsement_id: int | None = None
         if verdict.endorsement_type is not None:
@@ -612,6 +644,7 @@ async def run_reviewer_for_dp(
                 endorsement_type=verdict.endorsement_type,
                 note_md=f"active reviewer ({trigger})",
                 now=now,
+                applied_by_agent_id=agent_id,
             )
         dp = session.execute(
             select(DataProduct).where(DataProduct.id == data_product_id)

@@ -111,6 +111,9 @@ async def follow_user(
                     )
                 )
                 session.commit()
+        # bare-broad-ok: inbox fan-out is best-effort — a
+        # transient DB error must not abort the surrounding POST
+        # handler that already committed the follow row.
         except Exception:  # noqa: BLE001 — inbox fan-out is best-effort.
             pass
         await emit_governance_event(

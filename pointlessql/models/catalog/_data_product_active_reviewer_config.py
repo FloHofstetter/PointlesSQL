@@ -77,6 +77,12 @@ class DataProductActiveReviewerConfig(Base):
             runner posts the comment + endorsement *as* this user
             so the audit row carries a real author and the existing
             comment / endorsement schemas stay non-nullable.
+        agent_slug: Optional agent slug (Phase 76.5.1) — when set,
+            the in-proc runner additionally stamps
+            ``author_agent_id`` on the posted comment + endorsement
+            so the row renders as authored *by the agent on behalf
+            of* ``acting_user_id``.  ``None`` falls back to the
+            steward-proxy posting path (existing Phase 74 behaviour).
         created_at: Wall-clock at insert.
         updated_at: Wall-clock of the most recent UPSERT.
     """
@@ -133,6 +139,7 @@ class DataProductActiveReviewerConfig(Base):
         ForeignKey("users.id"),
         nullable=False,
     )
+    agent_slug: Mapped[str | None] = mapped_column(String(60), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

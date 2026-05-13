@@ -51,6 +51,12 @@ class User(Base):
             when this is ``True`` and unread notifications exist;
             the audit-stream forwarder's webhook / SES-bound sink
             performs the actual delivery.
+        notification_prefs_json: Phase 76.4 per-event-type
+            opt-out matrix.  JSON map of
+            ``{event_type: {inbox: bool, email: bool,
+            webhook: bool}}``.  Missing keys default to ``true``
+            on every channel; default is the empty object
+            ``"{}"`` (= everything opted-in).
     """
 
     __tablename__ = "users"

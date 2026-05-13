@@ -15,13 +15,16 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import select
 
 from pointlessql.data_products import DataProductContract
 from pointlessql.data_products._diff import ContractDiffResult
-from pointlessql.exceptions import ResourceNotFoundError
+from pointlessql.exceptions import AuthorizationError, ResourceNotFoundError
+from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.types._user_types import UserInfo
 
 
 def serialise_product(
@@ -117,3 +120,56 @@ def diff_to_payload(
     if isinstance(diff, str):
         return {"name": table_name, "error": diff}
     return {"name": table_name, **diff.as_dict()}
+
+
+def resolve_agent_for_principal(
+    session_factory: Any,
+    *,
+    workspace_id: int,
+    slug: str,
+    user: UserInfo,
+) -> int:
+    """Resolve an ``?as_agent=<slug>`` token to an :class:`Agent` PK.
+
+    Authorisation rule (Phase 76.5+): only the agent's
+    ``principal_user_id`` (or install-admin) may speak as the
+    agent.  Anyone else gets an :class:`AuthorizationError`.
+
+    Args:
+        session_factory: SQLAlchemy sessionmaker from app state.
+        workspace_id: Active workspace id resolved from the request.
+        slug: Agent slug straight from the query string.  Trimmed
+            and lower-cased before lookup.
+        user: Decoded session :class:`UserInfo` typed-dict.
+
+    Returns:
+        The persisted agent id ready to write into
+        ``author_agent_id`` / ``applied_by_agent_id``.
+
+    Raises:
+        HTTPException: 404 when the slug doesn't resolve.
+        AuthorizationError: When the caller is neither the agent's
+            ``principal_user_id`` nor install-admin.
+    """
+    agent_slug = slug.strip().lower()
+    with session_factory() as session:
+        agent = session.execute(
+            select(Agent).where(
+                Agent.workspace_id == workspace_id, Agent.slug == agent_slug
+            )
+        ).scalar_one_or_none()
+        if agent is None:
+            # bare-http-ok: as_agent must resolve.
+            raise HTTPException(
+                status_code=404, detail=f"unknown agent slug: {agent_slug}"
+            )
+        is_principal = agent.principal_user_id == user["id"]
+        is_admin = bool(user["is_admin"])
+        if not (is_principal or is_admin):
+            raise AuthorizationError(
+                principal=user["email"],
+                privilege="post_as_agent",
+                securable_type="agent",
+                full_name=agent_slug,
+            )
+        return int(agent.id)

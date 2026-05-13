@@ -277,6 +277,9 @@ async def set_dp_topics(
                         ]
                     )
                     session.commit()
+            # bare-broad-ok: inbox fan-out is best-effort — a
+            # transient DB error must not abort the surrounding
+            # POST handler that already committed the topic-link.
             except Exception:  # noqa: BLE001 — fan-out is best-effort.
                 pass
         await emit_governance_event(

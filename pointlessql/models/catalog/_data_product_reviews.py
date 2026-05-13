@@ -41,7 +41,13 @@ class DataProductReview(Base):
             ``ondelete='CASCADE'``.
         author_user_id: FK on ``users.id``.  ``(workspace_id,
             data_product_id, author_user_id)`` is unique — one
-            review per user per product.
+            review per user per product.  Always a human — caller
+            when direct, agent's principal when
+            ``author_agent_id`` is set (Phase 76.5.1).
+        author_agent_id: Optional agent identity that authored the
+            review on behalf of the principal.  When set, the UI
+            renders the review as authored *by the agent on behalf
+            of* the principal.  Nullable.
         stars: 1..5, enforced by a CHECK constraint.
         body_md: Free-form markdown body (may be empty when the
             user only wants to express a star rating).
@@ -79,6 +85,11 @@ class DataProductReview(Base):
     )
     author_user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False
+    )
+    author_agent_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("agents.id", ondelete="SET NULL"),
+        nullable=True,
     )
     stars: Mapped[int] = mapped_column(Integer, nullable=False)
     body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")

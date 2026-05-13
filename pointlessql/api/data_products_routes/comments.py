@@ -30,7 +30,10 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
-from pointlessql.api.data_products_routes._shared import load_one
+from pointlessql.api.data_products_routes._shared import (
+    load_one,
+    resolve_agent_for_principal,
+)
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.agent._agents import Agent
@@ -405,12 +408,13 @@ async def post_data_product_comment(
             principal so the audit chain stays intact (Phase 76.5).
 
     Returns:
-        Serialised comment row.
+        Serialised comment row.  When ``?as_agent=`` is supplied
+        the caller must be the agent's ``principal_user_id`` or
+        install-admin; otherwise the helper raises an
+        :class:`pointlessql.exceptions.AuthorizationError` (the
+        middleware turns it into a 403).
 
     Raises:
-        AuthorizationError: When ``?as_agent=`` is supplied and
-            the caller is not the agent's principal_user_id or
-            install-admin.
         HTTPException: 400 on empty body, missing parent, unknown
             category, or over-deep nesting; 404 on unknown
             ``?as_agent=`` slug.
@@ -445,32 +449,13 @@ async def post_data_product_comment(
 
     # Phase 76.5 — resolve the optional ``as_agent`` slug *before*
     # writing the comment so the authorship-discriminator is set
-    # atomically.  Only the agent's principal_user_id (or admin)
-    # may post as the agent.
+    # atomically.  Helper enforces the principal-or-admin gate;
+    # see ``_shared.resolve_agent_for_principal``.
     author_agent_id: int | None = None
     if as_agent is not None:
-        agent_slug = as_agent.strip().lower()
-        with factory() as session:
-            agent = session.execute(
-                select(Agent).where(
-                    Agent.workspace_id == workspace_id, Agent.slug == agent_slug
-                )
-            ).scalar_one_or_none()
-            if agent is None:
-                # bare-http-ok: as_agent must resolve.
-                raise HTTPException(
-                    status_code=404, detail=f"unknown agent slug: {agent_slug}"
-                )
-            is_principal = agent.principal_user_id == user["id"]
-            is_admin = bool(user.get("is_admin"))
-            if not (is_principal or is_admin):
-                raise AuthorizationError(
-                    principal=user.get("email", ""),
-                    privilege="post_as_agent",
-                    securable_type="agent",
-                    full_name=agent_slug,
-                )
-            author_agent_id = int(agent.id)
+        author_agent_id = resolve_agent_for_principal(
+            factory, workspace_id=workspace_id, slug=as_agent, user=user
+        )
 
     ambiguous_displaynames: list[str] = []
     with factory() as session:
