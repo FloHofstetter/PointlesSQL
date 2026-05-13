@@ -83,6 +83,19 @@ class UserNotification(Base):
         ForeignKey("data_products.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Phase 77.0.D — polymorphic source markers.  Populated when
+    # the row is fanned out via ``fanout_event(entity_kind=…,
+    # entity_ref=…)``.  ``source_data_product_id`` stays as the
+    # legacy back-compat path for kind='dp' rows so existing
+    # client code that joins on it keeps working.
+    source_entity_kind: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+    source_entity_ref: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
     source_url: Mapped[str] = mapped_column(String(500), nullable=False)
     summary_md: Mapped[str] = mapped_column(Text, nullable=False)
     actor_user_id: Mapped[int | None] = mapped_column(

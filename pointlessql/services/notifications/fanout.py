@@ -55,29 +55,47 @@ def _opted_in_inbox(prefs_json: str | None, event_type: str) -> bool:
     return inbox is None or bool(inbox)
 
 
-def fanout_dataproduct_event(
+def fanout_event(
     session_factory: Any,
     *,
     event_type: str,
-    data_product_id: int,
+    entity_kind: str,
+    entity_ref: str,
     workspace_id: int,
     actor_user_id: int | None,
     source_url: str,
     summary_md: str,
+    data_product_id: int | None = None,
     extra_recipients: list[int] | None = None,
 ) -> int:
-    """Fan a data-product event out to one row per recipient.
+    """Fan a social event out to one row per recipient.
+
+    Phase 77.0.D generalisation of the Phase-71.4
+    :func:`fanout_dataproduct_event` helper.  The interface is
+    polymorphic on ``entity_kind`` / ``entity_ref``; the
+    implementation in this revision resolves followers only for
+    ``entity_kind='dp'`` (the only follower table that exists
+    today).  Later Phase-77 sub-phases register follower lookups
+    per kind as they ship.
 
     Args:
-        session_factory: SQLAlchemy session factory from app state.
-        event_type: One of the Phase-71.4 governance event types.
-        data_product_id: PK of the data product the event is about.
-        workspace_id: Workspace the event belongs to.
-        actor_user_id: Optional user that triggered the event.
-            Removed from the resolved recipient set.
-        source_url: Click-through URL persisted on each
-            notification row.
-        summary_md: One-line markdown summary for the inbox row.
+        session_factory: SQLAlchemy session factory.
+        event_type: Governance event type (one of the Phase-71.4
+            / Phase-20 strings; new kinds may introduce new
+            event_type strings without a schema change).
+        entity_kind: Discriminator from
+            :data:`pointlessql.models.social.ENTITY_KINDS`.
+        entity_ref: Reference string within *entity_kind*.
+        workspace_id: Tenant scope.
+        actor_user_id: Optional id of the user who triggered the
+            event.  Removed from the recipient set so people are
+            not notified about their own actions.
+        source_url: Click-through URL persisted on each row.
+        summary_md: One-line markdown summary for the inbox.
+        data_product_id: Optional legacy back-pointer — populated
+            iff ``entity_kind='dp'``.  Stamped on the
+            ``UserNotification.source_data_product_id`` column so
+            existing client code keyed on that FK keeps working.
         extra_recipients: Optional list of additional user ids
             (e.g. resolved @mentions).  De-duplicated against the
             follower set.
@@ -87,15 +105,18 @@ def fanout_dataproduct_event(
     """
     try:
         with session_factory() as session:
-            follower_ids = {
-                int(uid)
-                for (uid,) in session.execute(
-                    select(DataProductFollow.user_id).where(
-                        DataProductFollow.workspace_id == workspace_id,
-                        DataProductFollow.data_product_id == data_product_id,
-                    )
-                ).all()
-            }
+            follower_ids: set[int] = set()
+            if entity_kind == "dp" and data_product_id is not None:
+                follower_ids = {
+                    int(uid)
+                    for (uid,) in session.execute(
+                        select(DataProductFollow.user_id).where(
+                            DataProductFollow.workspace_id == workspace_id,
+                            DataProductFollow.data_product_id
+                            == data_product_id,
+                        )
+                    ).all()
+                }
             recipients = follower_ids | set(extra_recipients or [])
             if actor_user_id is not None:
                 recipients.discard(int(actor_user_id))
@@ -124,6 +145,8 @@ def fanout_dataproduct_event(
                         recipient_user_id=rid,
                         event_type=event_type,
                         source_data_product_id=data_product_id,
+                        source_entity_kind=entity_kind,
+                        source_entity_ref=entity_ref,
                         source_url=source_url,
                         summary_md=summary_md,
                         actor_user_id=actor_user_id,
@@ -144,6 +167,8 @@ def fanout_dataproduct_event(
 
                 payload = {
                     "event_type": event_type,
+                    "source_entity_kind": entity_kind,
+                    "source_entity_ref": entity_ref,
                     "source_data_product_id": data_product_id,
                     "source_url": source_url,
                     "summary_md": summary_md,
@@ -160,8 +185,81 @@ def fanout_dataproduct_event(
         # underlying audit row + governance event already persisted;
         # losing an inbox row is annoying but never load-bearing.
         logger.exception(
-            "user_notifications fan-out failed for event_type=%s dp_id=%s",
+            "user_notifications fan-out failed for event_type=%s "
+            "kind=%s ref=%s",
             event_type,
-            data_product_id,
+            entity_kind,
+            entity_ref,
         )
         return 0
+
+
+def fanout_dataproduct_event(
+    session_factory: Any,
+    *,
+    event_type: str,
+    data_product_id: int,
+    workspace_id: int,
+    actor_user_id: int | None,
+    source_url: str,
+    summary_md: str,
+    extra_recipients: list[int] | None = None,
+) -> int:
+    """Legacy DP-scoped wrapper around :func:`fanout_event`.
+
+    Kept around for Phase-71.4 callers + hermes-plugin-pointlessql
+    H.3 tools that haven't been swapped to :func:`fanout_event`
+    yet.  Phase 77.11 deletes this wrapper after the plugin
+    upgrade.  Builds the polymorphic ``entity_ref`` by looking
+    up the DP's catalog/schema and joining them into the canonical
+    ``catalog.schema`` form.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        event_type: Governance event type string.
+        data_product_id: PK of the data product the event is about.
+        workspace_id: Tenant scope.
+        actor_user_id: Optional user that triggered the event.
+        source_url: Click-through URL.
+        summary_md: One-line markdown summary.
+        extra_recipients: Optional additional user ids
+            (resolved @mentions etc.).
+
+    Returns:
+        Count of rows inserted.
+    """
+    # Resolve the DP FQN so the polymorphic ``entity_ref`` carries
+    # the same shape ``#dp:`` citation tokens and ``social_target``
+    # rows already use.  If the DP cannot be found (deleted mid-
+    # flight), fall through with ``entity_ref`` set to the numeric
+    # id — best-effort, the row still lands on the recipient's
+    # inbox via the legacy ``source_data_product_id`` column.
+    from pointlessql.models.catalog._data_products import DataProduct
+
+    entity_ref = str(data_product_id)
+    try:
+        with session_factory() as session:
+            row = session.execute(
+                select(
+                    DataProduct.catalog_name, DataProduct.schema_name
+                ).where(DataProduct.id == data_product_id)
+            ).first()
+            if row is not None:
+                entity_ref = f"{row[0]}.{row[1]}"
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "DP FQN lookup failed in fanout_dataproduct_event "
+            "wrapper; falling back to numeric id"
+        )
+    return fanout_event(
+        session_factory,
+        event_type=event_type,
+        entity_kind="dp",
+        entity_ref=entity_ref,
+        workspace_id=workspace_id,
+        actor_user_id=actor_user_id,
+        source_url=source_url,
+        summary_md=summary_md,
+        data_product_id=data_product_id,
+        extra_recipients=extra_recipients,
+    )
