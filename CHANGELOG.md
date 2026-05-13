@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 76.1 — Deeper Conversations on data-product
+  comments (2026-05-13).**  Lifts threading-depth cap from 2 to
+  5 (app-level walk-the-parent-chain in
+  ``data_products_routes/comments.py``); introduces four
+  comment categories (``general`` / ``question`` /
+  ``announcement`` / ``idea``) with reply-inherits-parent-
+  category semantics; adds GitHub-style six-emoji reactions on
+  both comments and on data products themselves
+  (``data_product_comment_reactions`` + ``data_product_reactions``,
+  Alembic ``p7r9t1v3x5z7``); adds the ``POST
+  /api/data-products/{c}/{s}/comments/{id}/accept-answer``
+  endpoint for Q&A-style threads (steward / install-admin /
+  question-OP authorised, atomic per thread); extends the
+  ``@`` mention regex to resolve display-name tokens in
+  addition to e-mail tokens with case-insensitive lookup and
+  an ``audit.discussion.mention_ambiguous`` row when two users
+  share a display name; ships a new
+  ``GET /api/users/search`` typeahead under a new
+  ``users_routes`` package.  Three new governance event types
+  (``pointlessql.data_product.comment_reacted``,
+  ``pointlessql.data_product.reacted``,
+  ``pointlessql.data_product.answer_accepted``) feed the
+  Phase-20 SIEM forwarder.  Discussion-tab UI extended in
+  ``frontend/templates/pages/data_product.html``: category
+  selector on the new-comment form, category badge per
+  thread, reaction row on every comment + on the DP itself
+  (top of the tab), accept-answer button on question-thread
+  replies.  33 new pytest cases; ruff/pyright/pydoclint green;
+  migrations round-trip on SQLite.
+
 ### Pre-OSS hygiene
 
 - **Pre-OSS hygiene files (2026-05-13).**  Adds the governance

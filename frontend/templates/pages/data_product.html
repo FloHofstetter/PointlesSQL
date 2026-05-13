@@ -489,6 +489,18 @@
                             No comments yet — start the discussion below.
                         </div>
                     </template>
+                    <!-- Phase 76.1: DP-level reaction row -->
+                    <div class="mb-3 d-flex gap-1 flex-wrap align-items-center pql-dp-reactions">
+                        <span class="small text-muted me-1">React:</span>
+                        <template x-for="emoji in ['👍','❤️','🎉','😄','😕','👀']" :key="emoji">
+                            <button class="btn btn-sm btn-outline-secondary pql-dp-reaction-btn"
+                                    :class="(dpReactions[emoji] && dpReactions[emoji].mine) ? 'active' : ''"
+                                    :data-emoji="emoji"
+                                    @click="toggleDpReaction(emoji)"
+                                    x-text="emoji + ' ' + ((dpReactions[emoji] && dpReactions[emoji].count) || 0)"></button>
+                        </template>
+                    </div>
+
                     <template x-for="c in topLevelComments" :key="c.id">
                         <div class="card mb-2 pql-comment-card"
                              :data-comment-id="c.id">
@@ -498,6 +510,10 @@
                                         <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
                                         ·
                                         <span x-text="c.created_at"></span>
+                                        <!-- Phase 76.1: category badge -->
+                                        <span class="badge bg-secondary ms-1 pql-comment-category"
+                                              x-show="c.category && c.category !== 'general'"
+                                              x-text="c.category"></span>
                                     </div>
                                     <div class="d-flex gap-2">
                                         <button class="btn btn-sm btn-link"
@@ -514,6 +530,17 @@
                                 <template x-if="!c.deleted_at">
                                     <div class="pql-comment-body" x-text="c.body_md"></div>
                                 </template>
+                                <!-- Phase 76.1: reaction row on the comment -->
+                                <div class="mt-1 d-flex gap-1 flex-wrap pql-comment-reactions"
+                                     x-show="!c.deleted_at">
+                                    <template x-for="r in (c.reactions || [])" :key="r.emoji">
+                                        <button class="btn btn-sm btn-outline-secondary py-0 pql-comment-reaction-btn"
+                                                :class="r.has_current_user_reacted ? 'active' : ''"
+                                                :data-emoji="r.emoji"
+                                                @click="toggleCommentReaction(c.id, r.emoji)"
+                                                x-text="r.emoji + ' ' + (r.count || 0)"></button>
+                                    </template>
+                                </div>
                                 <template x-for="r in repliesOf(c.id)" :key="r.id">
                                     <div class="ms-4 mt-2 ps-3 border-start"
                                          :data-comment-id="r.id">
@@ -522,10 +549,17 @@
                                                 <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
                                                 ·
                                                 <span x-text="r.created_at"></span>
+                                                <span class="badge bg-success ms-1 pql-accepted-answer-badge"
+                                                      x-show="r.is_accepted_answer">✓ Answer</span>
                                             </div>
-                                            <button class="btn btn-sm btn-link text-danger"
-                                                    x-show="!r.deleted_at && canDelete(r)"
-                                                    @click="deleteComment(r.id)">Delete</button>
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-sm btn-link text-success pql-accept-answer-btn"
+                                                        x-show="!r.deleted_at && c.category === 'question' && !r.is_accepted_answer && canAcceptAnswer(c, r)"
+                                                        @click="acceptAnswer(r.id)">Mark as answer</button>
+                                                <button class="btn btn-sm btn-link text-danger"
+                                                        x-show="!r.deleted_at && canDelete(r)"
+                                                        @click="deleteComment(r.id)">Delete</button>
+                                            </div>
                                         </div>
                                         <template x-if="r.deleted_at">
                                             <em class="small text-muted">[deleted]</em>
@@ -533,6 +567,16 @@
                                         <template x-if="!r.deleted_at">
                                             <div class="pql-comment-body" x-text="r.body_md"></div>
                                         </template>
+                                        <div class="mt-1 d-flex gap-1 flex-wrap pql-comment-reactions"
+                                             x-show="!r.deleted_at">
+                                            <template x-for="rx in (r.reactions || [])" :key="rx.emoji">
+                                                <button class="btn btn-sm btn-outline-secondary py-0 pql-comment-reaction-btn"
+                                                        :class="rx.has_current_user_reacted ? 'active' : ''"
+                                                        :data-emoji="rx.emoji"
+                                                        @click="toggleCommentReaction(r.id, rx.emoji)"
+                                                        x-text="rx.emoji + ' ' + (rx.count || 0)"></button>
+                                            </template>
+                                        </div>
                                     </div>
                                 </template>
                                 <template x-if="replyingTo === c.id">
@@ -555,10 +599,21 @@
                     <div class="card mt-3">
                         <div class="card-body">
                             <label class="form-label small">Add a comment</label>
+                            <!-- Phase 76.1: category selector -->
+                            <div class="mb-2 d-flex align-items-center gap-2">
+                                <label class="small text-muted mb-0">Category:</label>
+                                <select class="form-select form-select-sm w-auto pql-comment-category-select"
+                                        x-model="newCommentCategory">
+                                    <option value="general">General</option>
+                                    <option value="question">Question</option>
+                                    <option value="announcement">Announcement</option>
+                                    <option value="idea">Idea</option>
+                                </select>
+                            </div>
                             <textarea class="form-control pql-comment-new"
                                       rows="3"
                                       x-model="newCommentDraft"
-                                      placeholder="Markdown supported · @email to mention"></textarea>
+                                      placeholder="Markdown supported · @email or @display_name to mention"></textarea>
                             <div class="mt-2">
                                 <button class="btn btn-sm btn-primary pql-comment-submit"
                                         :disabled="newCommentDraft.trim() === ''"
@@ -827,6 +882,10 @@ window.dataProductDetail = function (product, ctx) {
         commentsLoaded: false,
         commentsTotal: null,
         newCommentDraft: '',
+        // Phase 76.1 — category for the next top-level comment.
+        newCommentCategory: 'general',
+        // Phase 76.1 — DP-level reactions, keyed by emoji.
+        dpReactions: {},
         replyingTo: null,
         replyDraft: '',
         reviews: [],
@@ -1173,13 +1232,99 @@ window.dataProductDetail = function (product, ctx) {
                 const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ body_md: body }),
+                    body: JSON.stringify({
+                        body_md: body,
+                        category: this.newCommentCategory || 'general',
+                    }),
                 });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 this.newCommentDraft = '';
+                this.newCommentCategory = 'general';
                 await this.loadComments();
             } catch (e) {
                 console.error('comment post failed', e);
+            }
+        },
+
+        // Phase 76.1 — accept-answer authz mirrors the server: steward,
+        // install-admin, or the OP (top-level question author).
+        canAcceptAnswer(topLevel, reply) {
+            if (!topLevel || !reply) return false;
+            if (topLevel.category !== 'question') return false;
+            return this.isAdmin
+                || this.isSteward
+                || (topLevel.author && topLevel.author.user_id === this.currentUserId);
+        },
+
+        async acceptAnswer(replyId) {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments/' + replyId + '/accept-answer', {
+                    method: 'POST',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await this.loadComments();
+            } catch (e) {
+                console.error('accept-answer failed', e);
+            }
+        },
+
+        async toggleCommentReaction(commentId, emoji) {
+            // Find the comment + emoji-row in current state; if already
+            // reacted, DELETE — else POST.
+            const comment = (this.comments || []).find(c => c.id === commentId);
+            const row = comment && (comment.reactions || []).find(r => r.emoji === emoji);
+            const url = '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/comments/' + commentId + '/reactions';
+            try {
+                if (row && row.has_current_user_reacted) {
+                    const res = await fetch(url + '/' + encodeURIComponent(emoji), { method: 'DELETE' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                } else {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ emoji: emoji }),
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                }
+                await this.loadComments();
+            } catch (e) {
+                console.error('comment reaction toggle failed', e);
+            }
+        },
+
+        async loadDpReactions() {
+            try {
+                const res = await fetch('/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/reactions');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                const next = {};
+                for (const r of (data.reactions || [])) {
+                    next[r.emoji] = { count: r.count, mine: r.has_current_user_reacted };
+                }
+                this.dpReactions = next;
+            } catch (e) {
+                console.error('dp reactions load failed', e);
+            }
+        },
+
+        async toggleDpReaction(emoji) {
+            const current = this.dpReactions[emoji];
+            const url = '/api/data-products/' + this.product.catalog + '/' + this.product.schema + '/reactions';
+            try {
+                if (current && current.mine) {
+                    const res = await fetch(url + '/' + encodeURIComponent(emoji), { method: 'DELETE' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                } else {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ emoji: emoji }),
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                }
+                await this.loadDpReactions();
+            } catch (e) {
+                console.error('dp reaction toggle failed', e);
             }
         },
 
@@ -1234,7 +1379,10 @@ window.dataProductDetail = function (product, ctx) {
             }
             const discussionBtn = document.querySelector('[data-bs-target="#tab-discussion"]');
             if (discussionBtn) {
-                discussionBtn.addEventListener('shown.bs.tab', () => this.loadComments(), { once: true });
+                discussionBtn.addEventListener('shown.bs.tab', () => {
+                    this.loadComments();
+                    this.loadDpReactions();
+                }, { once: true });
             }
             const activityBtn = document.querySelector('[data-bs-target="#tab-activity"]');
             if (activityBtn) {

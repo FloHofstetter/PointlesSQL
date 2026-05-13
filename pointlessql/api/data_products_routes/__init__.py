@@ -39,6 +39,7 @@ from pointlessql.api.data_products_routes.passport import router as _passport_ro
 from pointlessql.api.data_products_routes.proposals import (
     router as _proposals_router,
 )
+from pointlessql.api.data_products_routes.reactions import router as _reactions_router
 from pointlessql.api.data_products_routes.readme import router as _readme_router
 from pointlessql.api.data_products_routes.recommendations import (
     router as _recommendations_router,
@@ -66,6 +67,7 @@ router.include_router(_recommendations_router)
 router.include_router(_contracts_router)
 router.include_router(_proposals_router)
 router.include_router(_active_reviewer_router)
+router.include_router(_reactions_router)
 
 
 # Backwards-compatible aliases — ``_load_one`` was the original

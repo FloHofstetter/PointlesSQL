@@ -131,29 +131,25 @@ async def test_post_threaded_reply_depth_one_ok(
 
 
 @pytest.mark.asyncio
-async def test_reject_reply_at_depth_two(
+async def test_threading_accepts_up_to_depth_five(
     tmp_path: Path, admin_client: httpx.AsyncClient
 ) -> None:
-    """A reply to a reply is rejected with 400."""
+    """Phase 76.1 lifted the cap to 5 — five-deep is fine, six is rejected."""
     _seed_product(tmp_path)
-    parent_id = (
-        await admin_client.post(
+    parent_id: int | None = None
+    for level in range(5):
+        res = await admin_client.post(
             "/api/data-products/main/sales_gold/comments",
-            json={"body_md": "parent"},
+            json={"body_md": f"level-{level}", "parent_comment_id": parent_id},
         )
-    ).json()["id"]
-    reply_id = (
-        await admin_client.post(
-            "/api/data-products/main/sales_gold/comments",
-            json={"body_md": "reply", "parent_comment_id": parent_id},
-        )
-    ).json()["id"]
-    deep = await admin_client.post(
+        assert res.status_code == 200, (level, res.text)
+        parent_id = res.json()["id"]
+    too_deep = await admin_client.post(
         "/api/data-products/main/sales_gold/comments",
-        json={"body_md": "deep", "parent_comment_id": reply_id},
+        json={"body_md": "level-6", "parent_comment_id": parent_id},
     )
-    assert deep.status_code == 400
-    assert "depth" in deep.json()["detail"]
+    assert too_deep.status_code == 400
+    assert "depth" in too_deep.json()["detail"]
 
 
 @pytest.mark.asyncio

@@ -94,6 +94,19 @@ EVENT_TYPE_DATA_PRODUCT_PROPOSAL_OPENED = (
 EVENT_TYPE_DATA_PRODUCT_PROPOSAL_RESOLVED = (
     "pointlessql.data_product.proposal_resolved"
 )
+# Phase 76.1 — six-emoji reactions on comments + on the product
+# itself, plus the typed-Q&A "answer accepted" event.  Same
+# governance lane as the rest of the marketplace events; the
+# fanout-side recipient policy differs (comment reactions only
+# notify the comment author; DP reactions notify followers; an
+# accepted answer notifies the answer's author + the asker).
+EVENT_TYPE_DATA_PRODUCT_COMMENT_REACTED = (
+    "pointlessql.data_product.comment_reacted"
+)
+EVENT_TYPE_DATA_PRODUCT_REACTED = "pointlessql.data_product.reacted"
+EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED = (
+    "pointlessql.data_product.answer_accepted"
+)
 EVENT_TYPE_NOTIFICATION_DIGEST = "pointlessql.notification.digest"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
@@ -117,6 +130,9 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_DATA_PRODUCT_CONTRACT_VIOLATED,
     EVENT_TYPE_DATA_PRODUCT_PROPOSAL_OPENED,
     EVENT_TYPE_DATA_PRODUCT_PROPOSAL_RESOLVED,
+    EVENT_TYPE_DATA_PRODUCT_COMMENT_REACTED,
+    EVENT_TYPE_DATA_PRODUCT_REACTED,
+    EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED,
     EVENT_TYPE_NOTIFICATION_DIGEST,
 )
 

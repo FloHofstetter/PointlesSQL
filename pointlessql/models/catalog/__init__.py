@@ -48,6 +48,9 @@ from pointlessql.models.catalog._data_product_candidate import (
     CANDIDATE_STATUSES,
     DataProductPromotionCandidate,
 )
+from pointlessql.models.catalog._data_product_comment_reaction import (
+    DataProductCommentReaction,
+)
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_cooccurrence import (
     DataProductCooccurrence,
@@ -65,6 +68,7 @@ from pointlessql.models.catalog._data_product_proposal import (
     PROPOSAL_STATUSES,
     DataProductSchemaProposal,
 )
+from pointlessql.models.catalog._data_product_reaction import DataProductReaction
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_product_trending import DataProductTrending
@@ -102,12 +106,14 @@ __all__ = [
     "DataProduct",
     "DataProductActiveReviewerConfig",
     "DataProductComment",
+    "DataProductCommentReaction",
     "DataProductContractEvent",
     "DataProductCooccurrence",
     "DataProductEndorsement",
     "DataProductFollow",
     "DataProductPassport",
     "DataProductPromotionCandidate",
+    "DataProductReaction",
     "DataProductReadme",
     "DataProductReview",
     "DataProductSchemaProposal",

@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -40,14 +40,24 @@ class DataProductComment(Base):
             ``ondelete='CASCADE'`` so a yaml deletion cleans up
             stray comments.
         parent_comment_id: Optional self-FK for replies.  NULL on
-            top-level comments.  App-level guard caps the chain at
-            depth 2 (no replies-to-replies).
+            top-level comments.  App-level guard caps the chain
+            depth (Phase 76.1 lifted 2 → 5 with auto-collapse on
+            render at depth ≥ 3).
         author_user_id: FK on ``users.id``.  Who posted.
         body_md: Markdown body, rendered via the shared
             ``render_markdown`` Jinja filter (``html: False``).
         mentioned_user_ids_json: JSON-encoded list of resolved
             mention ids (``[12, 47]``).  Empty list when no
             mentions matched.
+        category: GitHub-Discussions-style category — one of
+            ``general`` / ``question`` / ``announcement`` /
+            ``idea``.  Top-level only (replies inherit from
+            their parent at serialise time).  Phase 76.1.
+        is_accepted_answer: True when a steward or the OP marked
+            this reply as the answer to a ``question`` thread.
+            Atomicity is enforced in the accept-answer route —
+            at most one reply per thread carries the flag.
+            Phase 76.1.
         created_at: Wall-clock at POST time.
         deleted_at: Wall-clock when soft-deleted; NULL while live.
             Filters in list queries.
@@ -87,6 +97,12 @@ class DataProductComment(Base):
     body_md: Mapped[str] = mapped_column(Text, nullable=False)
     mentioned_user_ids_json: Mapped[str] = mapped_column(
         Text, nullable=False, default="[]", server_default="[]"
+    )
+    category: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="general", server_default="general"
+    )
+    is_accepted_answer: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
