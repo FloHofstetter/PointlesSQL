@@ -38,6 +38,7 @@ __all__ = [
     "_branch_cleanup_loop",
     "_cdf_tail_loop",
     "_data_product_freshness_loop",
+    "_data_product_promotion_loop",
     "_data_product_trending_loop",
     "_external_writes_loop",
     "_lineage_pruner_loop",
@@ -156,6 +157,53 @@ async def _data_product_trending_loop(  # pyright: ignore[reportUnusedFunction]
                 )
         except Exception:  # noqa: BLE001 — trending loop must survive everything
             logger.exception("data_product_trending: tick raised")
+        try:
+            await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            return
+
+
+async def _data_product_promotion_loop(  # pyright: ignore[reportUnusedFunction]
+    factory: Any,
+    settings: Settings,
+) -> None:
+    """Promote-to-DP candidate scanner (Phase 73.1).
+
+    Active only when ``data_products.promote_enabled`` is true.
+    Per tick, calls :func:`scan_candidates` to UPSERT the
+    candidate cache so the ``/data-products/candidates`` page
+    stays fresh without per-request recomputation.
+
+    Args:
+        factory: SQLAlchemy session factory.
+        settings: Snapshotted :class:`Settings` — only the
+            ``data_products`` sub-tree is read.
+    """
+    from pointlessql.services.data_products import scan_candidates
+
+    if not settings.data_products.promote_enabled:
+        return
+
+    interval = max(60, settings.data_products.promote_scan_interval_seconds)
+    window_days = settings.data_products.promote_window_days
+    min_runs = settings.data_products.promote_min_runs
+    min_ops = settings.data_products.promote_min_ops
+    while True:
+        try:
+            inserted = await asyncio.to_thread(
+                scan_candidates,
+                factory,
+                window_days=window_days,
+                min_runs=min_runs,
+                min_ops=min_ops,
+            )
+            if inserted:
+                logger.info(
+                    "data_product_promotion: tick refreshed %d candidate(s)",
+                    inserted,
+                )
+        except Exception:  # noqa: BLE001 — promotion loop must survive everything
+            logger.exception("data_product_promotion: tick raised")
         try:
             await asyncio.sleep(interval)
         except asyncio.CancelledError:

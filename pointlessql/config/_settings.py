@@ -713,6 +713,22 @@ class DataProductsSettings(BaseSettings):
     trending_refresh_interval_seconds: int = 0
     trending_window_days: int = 7
     trending_top_n: int = 10
+    # Phase 73.1 — promote-to-DP candidate scanner.
+    promote_enabled: bool = False
+    promote_scan_interval_seconds: int = 1800
+    promote_window_days: int = 14
+    promote_min_runs: int = 3
+    promote_min_ops: int = 10
+    draft_dir: Path = Field(default_factory=lambda: _PROJECT_ROOT / "dp_drafts")
+    # Phase 73.4 — auto-passport background refresh loop.
+    passport_loop_enabled: bool = False
+    passport_loop_interval_seconds: int = 86_400
+    passport_loop_stale_threshold_seconds: int = 86_400
+    # Phase 73.5 — cross-DP co-occurrence cache.
+    cooccurrence_enabled: bool = False
+    cooccurrence_refresh_interval_seconds: int = 21_600
+    cooccurrence_window_days: int = 7
+    cooccurrence_top_n: int = 10
 
 
 class NotificationsSettings(BaseSettings):

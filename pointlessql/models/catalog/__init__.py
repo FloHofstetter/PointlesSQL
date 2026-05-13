@@ -28,6 +28,10 @@ Layout:
                         (Phase 72.3, cached trending rank rows).
 * ``_data_product_endorsement`` — :class:`DataProductEndorsement`
                         (Phase 72.4, typed manual endorsements).
+* ``_data_product_candidate`` — :class:`DataProductPromotionCandidate`
+                        (Phase 73.1, promote-to-DP candidate cache).
+* ``_data_product_yaml_draft`` — :class:`DataProductYamlDraft`
+                        (Phase 73.1, draft yaml file tracking).
 * ``_sync``           — :class:`SyncRun` (foreign-catalog sync run
                         history).
 """
@@ -35,6 +39,10 @@ Layout:
 from __future__ import annotations
 
 from pointlessql.models.catalog._autoload import AutoloadCheckpoint
+from pointlessql.models.catalog._data_product_candidate import (
+    CANDIDATE_STATUSES,
+    DataProductPromotionCandidate,
+)
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
@@ -44,6 +52,10 @@ from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_product_trending import DataProductTrending
+from pointlessql.models.catalog._data_product_yaml_draft import (
+    YAML_DRAFT_SOURCE_KINDS,
+    DataProductYamlDraft,
+)
 from pointlessql.models.catalog._data_products import (
     CONTRACT_EVENT_OUTCOMES,
     DataProduct,
@@ -61,8 +73,10 @@ from pointlessql.models.catalog._recents import RecentTable
 from pointlessql.models.catalog._sync import SyncRun
 
 __all__ = [
+    "CANDIDATE_STATUSES",
     "CONTRACT_EVENT_OUTCOMES",
     "ENDORSEMENT_TYPES",
+    "YAML_DRAFT_SOURCE_KINDS",
     "AutoloadCheckpoint",
     "Dashboard",
     "DataProduct",
@@ -70,9 +84,11 @@ __all__ = [
     "DataProductContractEvent",
     "DataProductEndorsement",
     "DataProductFollow",
+    "DataProductPromotionCandidate",
     "DataProductReadme",
     "DataProductReview",
     "DataProductTrending",
+    "DataProductYamlDraft",
     "QueryHistory",
     "QueryHistoryTable",
     "RateLimitEvent",

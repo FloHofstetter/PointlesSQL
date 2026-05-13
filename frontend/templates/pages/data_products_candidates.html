@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Promote-to-DP candidates · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Data Products", "href": "/data-products"},
+    {"label": "Candidates"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="dataProductsCandidates({{ candidates | tojson }}, {{ is_admin | tojson }})"
+     x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-lightbulb fs-3"></i>
+        <h1 class="h3 mb-0">Promote-to-DP candidates</h1>
+        <small class="text-muted ms-2">Agent-driven schemas the scanner spotted as stable</small>
+    </div>
+
+    <template x-if="rows.length === 0">
+        <div class="alert alert-secondary pql-dp-candidates-empty">
+            <i class="bi bi-info-circle me-1"></i>
+            No candidates yet — the promotion loop populates this page
+            every <code>data_products.promote_scan_interval_seconds</code>
+            (opt-in via <code>POINTLESSQL_DATA_PRODUCTS_PROMOTE_ENABLED=1</code>).
+        </div>
+    </template>
+
+    <template x-if="rows.length > 0">
+        <div class="card pql-dp-candidates-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 pql-dp-candidates-table">
+                    <thead>
+                        <tr>
+                            <th>Schema</th>
+                            <th>Tables</th>
+                            <th>Runs (window)</th>
+                            <th>Write ops</th>
+                            <th>Last seen</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="r in rows" :key="r.id">
+                            <tr class="pql-dp-candidates-row"
+                                :data-candidate-id="r.id"
+                                :data-status="r.status">
+                                <td>
+                                    <strong x-text="r.catalog_name + '.' + r.schema_name"></strong>
+                                    <div class="small text-muted" x-text="'e.g. ' + r.sample_target_table"></div>
+                                </td>
+                                <td x-text="r.distinct_table_count"></td>
+                                <td x-text="r.distinct_run_count"></td>
+                                <td x-text="r.write_op_count"></td>
+                                <td class="small text-muted" x-text="r.last_seen_at"></td>
+                                <td>
+                                    <span class="badge"
+                                          :class="r.status === 'open' ? 'bg-success' : (r.status === 'dismissed' ? 'bg-secondary' : 'bg-info')"
+                                          x-text="r.status"></span>
+                                </td>
+                                <td class="text-end">
+                                    <template x-if="isAdmin && r.status === 'open'">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary pql-dp-candidates-generate"
+                                                    @click="generate(r)">
+                                                <i class="bi bi-file-earmark-plus me-1"></i>
+                                                Generate draft
+                                            </button>
+                                            <button class="btn btn-outline-secondary pql-dp-candidates-dismiss"
+                                                    @click="dismiss(r)">
+                                                <i class="bi bi-x-lg me-1"></i>
+                                                Dismiss
+                                            </button>
+                                        </div>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="lastDraftPath">
+        <div class="alert alert-info mt-3 pql-dp-candidates-draft-msg">
+            <i class="bi bi-check-circle me-1"></i>
+            Draft yaml written to <code x-text="lastDraftPath"></code>.
+            Review and copy into one of your <code>yaml_search_paths</code>
+            entries, then hit
+            <a href="/api/data-products/reload" class="alert-link">/api/data-products/reload</a>.
+        </div>
+    </template>
+</div>
+
+<script>
+window.dataProductsCandidates = function (initial, isAdmin) {
+    return {
+        rows: initial || [],
+        isAdmin: !!isAdmin,
+        lastDraftPath: '',
+
+        init() {},
+
+        async dismiss(row) {
+            try {
+                const res = await fetch('/api/data-products/candidates/' + row.id + '/dismiss', {
+                    method: 'POST',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                row.status = 'dismissed';
+            } catch (e) {
+                console.error('dismiss failed', e);
+            }
+        },
+
+        async generate(row) {
+            try {
+                const res = await fetch('/api/data-products/candidates/' + row.id + '/generate-draft', {
+                    method: 'POST',
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.lastDraftPath = data.draft_path || '';
+            } catch (e) {
+                console.error('generate draft failed', e);
+            }
+        },
+    };
+};
+</script>
+{% endblock %}
