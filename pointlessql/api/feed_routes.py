@@ -29,8 +29,10 @@ from sqlalchemy import select
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
+from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._user_follow import UserFollow
+from pointlessql.services.social import entity_registry
 
 router = APIRouter(tags=["feed"])
 
@@ -38,46 +40,97 @@ _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
 
 
-def _row_from_notification(row: UserNotification) -> dict[str, Any]:
+def _dp_url_from_id(fqn_map: dict[int, str], dp_id: int | None) -> str:
+    """Build the DP detail URL from an id via the entity registry.
+
+    Phase 77.0.I — the URL is built through
+    :func:`entity_registry.url_for` so the same lookup table
+    powers every future kind (table / model / branch / …).
+    ``fqn_map`` is the per-request ``{dp_id: 'cat.sch'}`` cache
+    pre-fetched by the feed handler.  Falls back to the legacy
+    fragment-anchor format when the id is unknown (e.g.
+    historic row whose DP was deleted) so the link is at least
+    parseable.
+    """
+    fqn = fqn_map.get(int(dp_id)) if dp_id is not None else None
+    if fqn is None:
+        return f"/data-products/#{dp_id}"
+    return entity_registry.url_for("dp", fqn)
+
+
+def _row_from_notification(
+    row: UserNotification, fqn_map: dict[int, str]
+) -> dict[str, Any]:
     """Normalise a ``UserNotification`` to the feed row shape."""
+    # Phase 77.0.D / 77.0.I — polymorphic source_url:
+    # rows fanned out via fanout_event already carry a
+    # source_url that the dispatcher built, so prefer that.
+    source_url = row.source_url or _dp_url_from_id(
+        fqn_map, row.source_data_product_id
+    )
     return {
         "kind": "notification",
         "event_type": row.event_type,
         "summary_md": row.summary_md,
-        "source_url": row.source_url,
+        "source_url": source_url,
         "data_product_id": row.source_data_product_id,
+        "entity_kind": row.source_entity_kind,
+        "entity_ref": row.source_entity_ref,
         "actor_user_id": row.actor_user_id,
         "created_at": row.created_at.isoformat(),
         "read_at": row.read_at.isoformat() if row.read_at else None,
     }
 
 
-def _row_from_comment(comment: DataProductComment) -> dict[str, Any]:
+def _row_from_comment(
+    comment: DataProductComment, fqn_map: dict[int, str]
+) -> dict[str, Any]:
     """Normalise a comment to the feed row shape."""
     return {
         "kind": "comment",
         "event_type": "pointlessql.data_product.commented",
         "summary_md": comment.body_md[:160],
-        "source_url": f"/data-products/#{comment.data_product_id}",
+        "source_url": _dp_url_from_id(fqn_map, comment.data_product_id),
         "data_product_id": comment.data_product_id,
+        "entity_kind": "dp",
+        "entity_ref": fqn_map.get(int(comment.data_product_id)),
         "actor_user_id": comment.author_user_id,
         "created_at": comment.created_at.isoformat(),
         "read_at": None,
     }
 
 
-def _row_from_review(review: DataProductReview) -> dict[str, Any]:
+def _row_from_review(
+    review: DataProductReview, fqn_map: dict[int, str]
+) -> dict[str, Any]:
     """Normalise a review to the feed row shape."""
     return {
         "kind": "review",
         "event_type": "pointlessql.data_product.reviewed",
         "summary_md": f"{'★' * review.stars} — {review.body_md[:120]}",
-        "source_url": f"/data-products/#{review.data_product_id}",
+        "source_url": _dp_url_from_id(fqn_map, review.data_product_id),
         "data_product_id": review.data_product_id,
+        "entity_kind": "dp",
+        "entity_ref": fqn_map.get(int(review.data_product_id)),
         "actor_user_id": review.author_user_id,
         "created_at": review.created_at.isoformat(),
         "read_at": None,
     }
+
+
+def _build_fqn_map(session: Any, workspace_id: int) -> dict[int, str]:
+    """Cache ``{dp_id: 'cat.sch'}`` for every DP in the workspace.
+
+    The feed handler pre-fetches this once per request so the row
+    builders can synthesise URLs via the entity registry without
+    re-issuing one SELECT per row.
+    """
+    rows = session.execute(
+        select(
+            DataProduct.id, DataProduct.catalog_name, DataProduct.schema_name
+        ).where(DataProduct.workspace_id == workspace_id)
+    ).all()
+    return {int(dp_id): f"{cat}.{sch}" for dp_id, cat, sch in rows}
 
 
 @router.get("/api/feed")
@@ -111,6 +164,11 @@ async def get_feed(
     factory = request.app.state.session_factory
     rows: list[dict[str, Any]] = []
     with factory() as session:
+        # Phase 77.0.I — per-request DP-FQN cache feeds the
+        # registry-driven URL builder so every feed row carries
+        # the same shape ``social_target.entity_ref`` rows use.
+        fqn_map = _build_fqn_map(session, workspace_id)
+
         # Inbox rows — always pulled, the filter trims after merge.
         inbox = (
             session.execute(
@@ -125,7 +183,7 @@ async def get_feed(
             .scalars()
             .all()
         )
-        rows.extend(_row_from_notification(n) for n in inbox)
+        rows.extend(_row_from_notification(n, fqn_map) for n in inbox)
 
         # Followed-users overlay (comments + reviews).
         followed_user_ids: list[int] = [
@@ -151,7 +209,7 @@ async def get_feed(
                 .scalars()
                 .all()
             )
-            rows.extend(_row_from_comment(c) for c in comments)
+            rows.extend(_row_from_comment(c, fqn_map) for c in comments)
 
             reviews = (
                 session.execute(
@@ -166,7 +224,7 @@ async def get_feed(
                 .scalars()
                 .all()
             )
-            rows.extend(_row_from_review(r) for r in reviews)
+            rows.extend(_row_from_review(r, fqn_map) for r in reviews)
 
         # Mentions filter — resolve to the user's id and check
         # ``mentioned_user_ids_json``.  Authored ``my`` filter
@@ -191,7 +249,7 @@ async def get_feed(
                 except (ValueError, TypeError):
                     mentioned = []
                 if caller["id"] in mentioned:
-                    mention_rows.append(_row_from_comment(c))
+                    mention_rows.append(_row_from_comment(c, fqn_map))
             rows = mention_rows
         elif filter == "my":
             mine_comments = (
@@ -217,9 +275,9 @@ async def get_feed(
                 .scalars()
                 .all()
             )
-            rows = [_row_from_comment(c) for c in mine_comments] + [
-                _row_from_review(r) for r in mine_reviews
-            ]
+            rows = [
+                _row_from_comment(c, fqn_map) for c in mine_comments
+            ] + [_row_from_review(r, fqn_map) for r in mine_reviews]
         elif filter == "followed_users":
             rows = [r for r in rows if r["kind"] in ("comment", "review")]
         elif filter == "followed_dps":
