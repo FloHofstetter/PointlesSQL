@@ -108,8 +108,8 @@ class DataProductYamlDraft(Base):
     created_by_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
-    created_by_agent_run_id: Mapped[int | None] = mapped_column(
-        Integer,
+    created_by_agent_run_id: Mapped[str | None] = mapped_column(
+        String(64),
         ForeignKey("agent_runs.id", ondelete="SET NULL"),
         nullable=True,
     )

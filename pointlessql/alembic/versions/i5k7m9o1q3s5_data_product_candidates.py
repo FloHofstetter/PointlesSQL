@@ -101,7 +101,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "created_by_agent_run_id",
-            sa.Integer(),
+            sa.String(length=64),
             sa.ForeignKey("agent_runs.id", ondelete="SET NULL"),
             nullable=True,
         ),
