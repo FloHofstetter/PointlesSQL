@@ -81,3 +81,8 @@ pointlessql.db-wal
 # Phase 31 local benchmarking output — ``scripts/bench_test_suite.sh``
 # writes timestamped wall-clock files here.  Per-machine, never committed.
 .bench/
+
+# Replay-session diagnostic logs — dropped in the repo root by
+# Playwright-MCP / browser-replay sessions.  Always per-session,
+# never useful in history.
+*.log
