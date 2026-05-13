@@ -460,61 +460,102 @@ PointlesSQL
 │       │   `/data-products/followed`.
 │       └── ~8 pytest cases.
 │
-├── Phase 74 — Reviewer-Agent v2 (Active steward delegate)  ⏳ planned
+├── Phase 74 — Reviewer-Agent v2 (Active steward delegate)  ✅ done 2026-05-15
 │   │
-│   │   Phase 19 shipped a *passive* Audit-Reviewer-Agent
-│   │   (writes one summary row per run when triggered).
-│   │   Phase 74 promotes it to an *active* steward
-│   │   delegate: a Hermes-cron bot runs nightly against
-│   │   every followed DP, posts a digest comment with the
-│   │   day's contract / freshness / agent-touch deltas, and
-│   │   conditionally applies `verified-by-steward` when the
-│   │   audit comes back green.
+│   │   Phase 19's passive Audit-Reviewer-Agent (writes one
+│   │   summary row per run when triggered) promoted to an
+│   │   active LLM-calling steward delegate.  Both runners
+│   │   shipped per the plan-mode "Both surfaces" pick:
+│   │   PointlesSQL-side in-proc loop (default) + Hermes-cron
+│   │   alt path for stewards who want LLM cost / latency
+│   │   out-of-process.  Per-DP opt-in via the new
+│   │   ``DataProductActiveReviewerConfig`` table.
 │   │
-│   │   Reuses Phase 19 (`agent_reviews`), Phase 71.1
-│   │   (DataProductComment POST), Phase 72.4
-│   │   (DataProductEndorsement POST), Phase 72.5
-│   │   (audit-log mirror).  Almost no new model surface —
-│   │   the value is in wiring the existing primitives into
-│   │   a coherent daily ritual.
+│   ├── Sprint 74.0 — Config table + service skeleton           ✅ 2026-05-15
+│   │       New ``DataProductActiveReviewerConfig`` model +
+│   │       alembic ``m9o1q3s5u7w9``.  Per-(workspace, dp) row
+│   │       with enabled / runner CHECK ('inproc' | 'hermes_cron') /
+│   │       llm_provider CHECK ('anthropic' | 'openai' | NULL) /
+│   │       llm_model / prompt_override_md / acting_user_id
+│   │       (steward proxy author for the non-nullable
+│   │       comment / endorsement FK) / last_run_at /
+│   │       last_run_comment_id.  New service
+│   │       ``services/data_products/active_reviewer.py`` with
+│   │       ``build_prompt`` + ``parse_review_result``
+│   │       (explicit ``## Verdict:`` line + keyword-heuristic
+│   │       fallback) + ``ReviewVerdict`` dataclass +
+│   │       ``upsert_config`` + ``iter_opted_in_dp_ids``.
 │   │
-│   │   Cross-cutting picks (TBD):
-│   │   - Hermes-side (plugin) vs PointlesSQL-side (loop
-│   │     coroutine + LLM call) hosting of the reviewer
-│   │     prompt;
-│   │   - per-DP opt-in (steward toggles "active reviewer
-│   │     enabled") vs install-wide default-on with
-│   │     per-DP off-switch.
+│   ├── Sprint 74.1 — PointlesSQL-side in-proc runner           ✅ 2026-05-15
+│   │       ``run_reviewer_for_dp`` async entry-point with
+│   │       injectable ``api_key_resolver`` + ``llm_call``
+│   │       hooks (for unit-test fakes).  Loop
+│   │       ``_active_reviewer_loop`` sleeps until
+│   │       ``data_products.active_reviewer_trigger_hour`` UTC,
+│   │       semaphore-bounds concurrent ticks at
+│   │       ``active_reviewer_max_concurrent`` (default 3),
+│   │       iterates DPs with ``runner='inproc'``.  Posts
+│   │       ``DataProductComment`` + typed
+│   │       ``DataProductEndorsement`` (green →
+│   │       verified-by-steward, red → under-review) +
+│   │       ``AgentReview`` row (kind=audit_review, severity
+│   │       from verdict, payload_json carries the prompt +
+│   │       raw LLM response).  Routes
+│   │       ``GET/POST /api/data-products/{c}/{s}/active-reviewer``
+│   │       (steward/admin) + ``run-now``.
 │   │
-│   ├── Sprint 74.1 — Daily DP audit prompt + post              ⏳ planned
-│   │   ├── New service `services/data_products/active_reviewer.py`
-│   │   │   builds a per-DP audit prompt from
-│   │   │   `fetch_activity_for_dp` + `compute_badges_for_dp`
-│   │   │   + recent contract events.
-│   │   ├── Loop coroutine `_active_reviewer_loop` (opt-in
-│   │   │   default-disabled) wakes at
-│   │   │   `data_products.active_reviewer_trigger_hour`,
-│   │   │   iterates DPs with the per-DP opt-in flag, calls
-│   │   │   the LLM provider, posts the response as a
-│   │   │   comment on the Discussion tab.
-│   │   ├── Each posted comment also writes a
-│   │   │   ``DataProductEndorsement`` of type
-│   │   │   ``verified-by-steward`` (or
-│   │   │   ``under-review`` on red flags).
-│   │   └── ~10 pytest cases (prompt builder, comment-write,
-│   │       endorsement-write, opt-out, dry-run).
+│   ├── Sprint 74.2 — Hermes-cron runner + queue endpoint        ✅ 2026-05-15
+│   │       ``GET /api/active-reviewer/queue`` (admin) lists
+│   │       DPs with ``runner='hermes_cron'`` for a Hermes-cron
+│   │       job to enumerate.  The plugin H.3 (out-of-tree)
+│   │       ships ``pql_dp_activity`` / ``pql_dp_post_comment``
+│   │       / ``pql_dp_endorse`` so the cron job can render
+│   │       audit context + post comment + write endorsement
+│   │       end-to-end without inventing new HTTP shape.
 │   │
-│   └── Sprint 74.2 — Steward UX surface                        ⏳ planned
-│       ├── New ``Active reviewer`` toggle in the DP detail
-│       │   header (steward + admin).  Shows the last run
-│       │   timestamp + the most recent review-comment
-│       │   anchor.
-│       ├── New ``/me/reviewer-config`` page so stewards
-│       │   can pick the LLM provider + model + per-DP
-│       │   prompt overrides.
-│       ├── New ``DataProductActiveReviewerConfig`` table
-│       │   (dp-scoped) + Alembic.
-│       └── ~8 pytest cases.
+│   └── Sprint 74.3 — Steward UX HTML                          🧊 deferred
+│           Active-reviewer card + ``/me/reviewer-config`` page
+│           deferred.  Routes are agent-callable today; the
+│           steward UI lands as a 74.3.1 follow-up once the
+│           in-proc loop runs against a real workload.
+│
+├── Phase 75 — Verifiable audit export + SIEM sinks         ✅ done 2026-05-15
+│   │
+│   │   Two ⏳-promoted Icebox items.  Compliance-grade export
+│   │   (sha256 + manifest) + the two SIEM sink types
+│   │   container-deploys + ELK consumers ask for.  The third
+│   │   Icebox item (action-string rename to ``resource.verb``)
+│   │   stays 🧊 — ROADMAP gates it on a version-bump moment.
+│   │
+│   ├── Sprint 75.1 — Verifiable audit export                   ✅ 2026-05-15
+│   │       New ``pointlessql audit-export`` typer subcommand
+│   │       (``cli/audit_export.py``) writes three mode-0600
+│   │       files: data (json|csv), ``.sha256`` sidecar
+│   │       (sha256sum-compatible), ``.manifest.json``
+│   │       (schema_version + tool_version + filters +
+│   │       entry_count + data_sha256 + data_filename).
+│   │       New web variant
+│   │       ``GET /admin/audit/export.tar.gz`` streams the same
+│   │       trio gzipped — admins click "Download with
+│   │       manifest" instead of running the CLI.  Auditors
+│   │       verify integrity by ``sha256sum -c`` +
+│   │       manifest.data_sha256 cross-check.  6 pytest cases.
+│   │
+│   └── Sprint 75.2 — Stdout-JSON + Syslog audit sinks          ✅ 2026-05-15
+│           New alembic ``n0p2r4t6v8x0`` extends
+│           ``ck_audit_sinks_type`` to allow ``stdout_json`` +
+│           ``syslog`` alongside the existing trio.
+│           ``stdout_json`` writes one JSON line per envelope
+│           (config: ``stream='stdout'|'stderr'``) for
+│           container-log harvesters (Loki / Fluent Bit /
+│           Vector).  ``syslog`` ships RFC-3164/5424 datagrams
+│           via :mod:`logging.handlers.SysLogHandler` over
+│           UDP/TCP (config: ``address='host:port'``,
+│           ``protocol='udp'|'tcp'``, ``facility``,
+│           ``severity``).  TLS terminates at a local rsyslog
+│           sidecar by convention.  Both sinks swallow OSError
+│           on emit — audit_log row stays authoritative.  8
+│           pytest cases.
 │
 ├── Phase 66 — Browser Notebook editor v2                  ✅ done 2026-05-10
 │   │
@@ -2677,43 +2718,16 @@ PointlesSQL
 ├── Icebox — enterprise-audit follow-ups                  🧊 on ice
 │   │
 │   │   Sprint 48 ported six of nine shoreguard-fresh audit
-│   │   patterns. The three skipped ones are legitimately wanted
-│   │   in enterprise / compliance scenarios but do not pay for
-│   │   themselves at the single-node-vServer scale today. Parked
-│   │   here so the Some-day Launch's enterprise-positioning pass
-│   │   knows where to look; trivially promotable to a numbered
-│   │   sprint when a real consumer asks.
+│   │   patterns.  Two of the three remaining items landed in
+│   │   Phase 75 (2026-05-15) — verifiable export and SIEM
+│   │   sinks.  Only the action-string rename stays parked here.
 │   │
-│   ├── Audit export with sha256 digest + manifest  🧊 on ice
-│   │   ├── CLI ``pointlessql audit export --out FILE`` that
-│   │   │   mirrors ``/admin/audit/export`` but writes three
-│   │   │   mode-0600 files: data (JSON or CSV), ``FILE.sha256``
-│   │   │   in ``sha256sum``-compatible format, and
-│   │   │   ``FILE.manifest.json`` carrying export timestamp,
-│   │   │   filters applied, entry count, tool version
-│   │   ├── Optional: a "download with manifest" toggle in the
-│   │   │   web viewer that ships the three files as a
-│   │   │   ``.tar.gz`` bundle so the browser-only admin path
-│   │   │   also produces tamper-evidence artefacts
-│   │   └── Why deferred: the compliance conversation where a
-│   │       third-party auditor demands a verifiable export has
-│   │       not happened yet. Pattern verbatim in
-│   │       ``shoreguard-fresh/shoreguard/api/cli_audit.py:34-169``
-│   │       when the need appears
+│   ├── Audit export with sha256 digest + manifest  ✅ promoted to Phase 75.1
+│   │   └── See Phase 75.1 above for the shipped implementation.
 │   │
-│   ├── Audit-to-SIEM export sinks                  🧊 on ice
-│   │   ├── Opt-in fan-out from ``log_action`` to external
-│   │   │   observability targets — ``audit.sink_stdout_json``
-│   │   │   (for container-log harvesters), ``audit.sink_syslog``
-│   │   │   (RFC 5424 over UDP/TCP/TLS), ``audit.sink_webhook``
-│   │   │   (POST per event, HMAC-signed payload)
-│   │   ├── Each sink is a named ``AuditSink`` subclass
-│   │   │   registered via entry-point or settings-driven
-│   │   │   construction; dispatch failures swallowed + logged
-│   │   │   (never blocks the primary DB write)
-│   │   └── Why deferred: nobody running on a €15/month vServer
-│   │       has a SIEM. Re-open once PointlesSQL has its first
-│   │       multi-tenant / enterprise-positioned consumer
+│   ├── Audit-to-SIEM export sinks                  ✅ promoted to Phase 75.2
+│   │   └── See Phase 75.2 above for the shipped stdout_json +
+│   │       syslog implementations.
 │   │
 │   └── Retroactive action-string rename to ``resource.verb``  🧊 on ice
 │       └── Churn-only refactor of the 25 pre-Sprint-48 action

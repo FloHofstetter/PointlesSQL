@@ -6,6 +6,90 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Phase 75.2 — Stdout-JSON + Syslog audit sinks (2026-05-15).**
+  Two Icebox items promoted to ⏳ → ✅.  Alembic
+  ``n0p2r4t6v8x0`` extends ``ck_audit_sinks_type`` to allow
+  ``stdout_json`` + ``syslog``.  Stdout sink writes one JSON
+  line per envelope (config ``stream='stdout'|'stderr'``) for
+  container-log harvesters; syslog sink ships RFC-3164/5424
+  datagrams via :mod:`logging.handlers.SysLogHandler` over
+  UDP/TCP.  TLS terminates at a local rsyslog sidecar by
+  convention.  Both sinks swallow OSError on emit — audit_log
+  row stays authoritative.  8 pytest cases.
+
+- **Phase 75.1 — Verifiable audit export (2026-05-15).**
+  New ``pointlessql audit-export`` typer subcommand
+  (``cli/audit_export.py``) writes three mode-0600 files:
+  data (json|csv), ``.sha256`` sidecar (sha256sum-compatible),
+  ``.manifest.json`` (schema_version + tool_version + filters
+  + entry_count + data_sha256 + data_filename).  Web variant
+  ``GET /admin/audit/export.tar.gz`` streams the same trio
+  gzipped — admins click "Download with manifest" instead of
+  running the CLI.  Auditors verify by ``sha256sum -c`` +
+  cross-checking ``manifest.data_sha256``.  6 pytest cases.
+
+- **Phase 74.2 — Hermes-cron alt runner (2026-05-15).**
+  New ``GET /api/active-reviewer/queue`` (admin/steward) lists
+  DPs with ``runner='hermes_cron'`` so a Hermes-cron job can
+  enumerate work.  The plugin H.3 batch (out-of-tree in
+  ``hermes-plugin-pointlessql``) ships ``pql_dp_activity`` /
+  ``pql_dp_post_comment`` / ``pql_dp_endorse`` so the cron
+  job can render context + post comment + write endorsement
+  end-to-end via plugin tools.
+
+- **Phase 74.1 — PointlesSQL-side active reviewer (2026-05-15).**
+  ``run_reviewer_for_dp`` async entry-point with injectable
+  ``api_key_resolver`` + ``llm_call`` hooks.
+  ``_active_reviewer_loop`` sleeps until
+  ``data_products.active_reviewer_trigger_hour`` UTC,
+  semaphore-bounds concurrent ticks at
+  ``active_reviewer_max_concurrent`` (default 3), iterates
+  DPs with ``runner='inproc'``.  Posts ``DataProductComment``
+  + typed ``DataProductEndorsement`` (green →
+  verified-by-steward, red → under-review) + ``AgentReview``
+  row (kind=audit_review, payload_json carries prompt + raw
+  LLM response).  Routes
+  ``GET/POST /api/data-products/{c}/{s}/active-reviewer``
+  (steward/admin gate) + ``run-now``.  Pyright budget bumped
+  612 → 623 (+11) for LLM-boundary Any-cascades.
+
+- **Phase 74.0 — Reviewer-Agent v2 config table (2026-05-15).**
+  New ``DataProductActiveReviewerConfig`` model + alembic
+  ``m9o1q3s5u7w9``.  Per-(workspace, dp) row with enabled /
+  runner CHECK (``'inproc'`` | ``'hermes_cron'``) /
+  llm_provider CHECK / llm_model / prompt_override_md /
+  acting_user_id (steward proxy author for the non-nullable
+  comment / endorsement FK) / last_run_at /
+  last_run_comment_id.  New service
+  ``services/data_products/active_reviewer.py``:
+  ``build_prompt`` + ``parse_review_result`` (explicit
+  ``## Verdict:`` line + keyword-heuristic fallback) +
+  ``ReviewVerdict`` dataclass + ``upsert_config`` +
+  ``iter_opted_in_dp_ids``.  13 pytest cases total across
+  74.0+74.1+74.2.  Sprint 74.3 (steward UX HTML) deferred —
+  routes are agent-callable today.
+
+- **Phase 74.CI.1 — docstring-parser collision fix (2026-05-15).**
+  Anthropic 0.40+ (Phase 74 active-reviewer LLM call surface)
+  transitively pulls upstream ``docstring-parser`` 0.18.0,
+  which collides with ``docstring-parser-fork`` 0.0.14 that
+  pydoclint requires.  Two complementary fixes: explicit
+  ``docstring-parser-fork`` dev dep + a
+  ``uv pip install --force-reinstall docstring-parser-fork``
+  step in the CI workflow immediately before pydoclint runs.
+  Guarantees the fork's files (with ``DocstringYields`` in
+  ``common.py``) win the on-disk race.
+
+- **Plugin Phase 73 + 74 prereq bindings (2026-05-15).**
+  Out-of-tree in ``~/git/hermes-plugin-pointlessql``: 12 new
+  tools wired to the Phase-73 endpoints + the Phase-74 prereq
+  triad (activity / post-comment / endorse).  H.1 contracts
+  (preview / save / drafts-list / promote / discard),
+  H.2 proposals (propose / list / approve / reject),
+  H.3 DP helpers (activity / post-comment / endorse).  Plugin
+  total 58 → 71 tools.  23 new pytest cases.  Local commit
+  ``ea8adde``.
+
 - **Sprint 73.3 — Schema-change proposal flow (2026-05-14).**
   New ``DataProductSchemaProposal`` model + alembic
   ``l8n0p2r4t6v8``.  Row-level CHECK enforces that at least
