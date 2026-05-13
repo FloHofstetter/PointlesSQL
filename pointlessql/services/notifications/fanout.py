@@ -133,6 +133,27 @@ def fanout_dataproduct_event(
                 ]
             )
             session.commit()
+            # Phase 76.6: push to live SSE listeners.  Best-effort —
+            # we import inside the try/except so a circular import
+            # is impossible and a missing module never breaks the
+            # originating write.
+            try:
+                from pointlessql.api.notifications_stream import (
+                    publish_notification,
+                )
+
+                payload = {
+                    "event_type": event_type,
+                    "source_data_product_id": data_product_id,
+                    "source_url": source_url,
+                    "summary_md": summary_md,
+                    "actor_user_id": actor_user_id,
+                    "created_at": now.isoformat(),
+                }
+                for rid in opted_in:
+                    publish_notification(rid, payload)
+            except Exception:  # noqa: BLE001 — SSE delivery is best-effort
+                logger.exception("SSE fan-out failed for event %s", event_type)
             return len(opted_in)
     except Exception:  # noqa: BLE001 — fan-out must never break the originating write
         # bare-broad-ok: notification fan-out is best-effort.  The

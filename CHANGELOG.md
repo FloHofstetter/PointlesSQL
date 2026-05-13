@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 76.6 — SSE notifications + cross-DP citations
+  (2026-05-13).**  New ``GET /api/notifications/stream`` SSE
+  endpoint pushes inbox rows in real-time; the topbar bell now
+  opens an ``EventSource`` on page load and increments the unread
+  badge live, with a transparent fall-back to the existing
+  60-second poll on disconnect.  The fan-out helper in
+  ``services.notifications.fanout`` publishes to the SSE
+  registry (a module-level keyed dict) after each successful
+  inbox INSERT — full queues drop rather than block.  New
+  ``resolve_citations`` helper in
+  ``pointlessql.services.social.citations`` renders four cite
+  tokens in markdown bodies into anchor links — ``#dp:cat.sch``,
+  ``#topic:slug``, ``#user:email``, ``#agent:slug``.  Resolution
+  happens at *render* time, not POST time, so a citation to a
+  deleted entity gracefully degrades to literal text.  10 new
+  pytest cases; ruff / pyright (budget 623, 0 errors) /
+  pydoclint green.
+
 - **Phase 76.5 — Agents as first-class social actors
   (2026-05-13).**  New ``agents`` table (Alembic
   ``t1v3x5z7b9d1``) registers LLM reviewers / bots under a

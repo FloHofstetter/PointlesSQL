@@ -1,8 +1,12 @@
 {#
- Phase 71.4 — bell icon in the topbar that polls
- ``/api/notifications/unread-count`` every 60s and renders a red
- badge with the count when non-zero.  Click jumps to
- ``/notifications`` (rendered by ``pages/notifications.html``).
+ Phase 71.4 — bell icon in the topbar.  Polls
+ ``/api/notifications/unread-count`` every 60 s as the baseline
+ freshness mechanic.  Phase 76.6 layers ``EventSource`` on top:
+ a live SSE stream from ``/api/notifications/stream`` pushes
+ increments in real-time so the badge moves the instant another
+ user comments / reviews / reacts.  The poll stays in place as
+ the fallback path when the SSE connection drops (proxy idle
+ timeout, network blip, browser tab throttling, etc).
 
  Hidden for anonymous visitors (``current_user`` falsy) so we
  don't fire the count poll before login.
@@ -24,9 +28,11 @@
 window.notificationBell = window.notificationBell || function () {
     return {
         unread: 0,
+        _sse: null,
         async init() {
             await this.refresh();
             setInterval(() => this.refresh(), 60000);
+            this._openSse();
         },
         async refresh() {
             try {
@@ -34,6 +40,21 @@ window.notificationBell = window.notificationBell || function () {
                 if (!res.ok) return;
                 const data = await res.json();
                 this.unread = data.unread || 0;
+            } catch (e) { /* swallow */ }
+        },
+        _openSse() {
+            if (this._sse) return;
+            try {
+                const es = new EventSource('/api/notifications/stream');
+                this._sse = es;
+                es.addEventListener('notification', (ev) => {
+                    this.unread = (this.unread || 0) + 1;
+                });
+                es.addEventListener('error', () => {
+                    es.close();
+                    this._sse = null;
+                    // Fall back to the 60 s poll already running.
+                });
             } catch (e) { /* swallow */ }
         },
     };
