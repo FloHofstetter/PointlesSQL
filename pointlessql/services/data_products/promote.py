@@ -353,7 +353,7 @@ def build_draft_yaml(
         "schema": candidate.schema_name,
         "tables": tables_payload,
     }
-    yaml_text = yaml.safe_dump(payload, sort_keys=False)
+    yaml_text = yaml.safe_dump({"data_product": payload}, sort_keys=False)
     return yaml_text
 
 

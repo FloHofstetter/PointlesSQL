@@ -294,7 +294,8 @@ def test_build_draft_yaml_round_trips_through_contract() -> None:
             schema_reader=_stub_schema_reader,
         )
     payload = yaml.safe_load(text)
-    contract = DataProductContract.model_validate(payload)
+    inner = payload["data_product"]
+    contract = DataProductContract.model_validate(inner)
     assert contract.catalog == "catH"
     assert contract.schema_name == "schemH"
     assert any(t.name == "orders" for t in contract.tables)

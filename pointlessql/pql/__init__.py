@@ -68,6 +68,7 @@ from pointlessql.pql._branch_errors import (
     BranchOfBranchError,
     BranchPromotionConflictError,
 )
+from pointlessql.pql._contracts import DraftContract, contract
 from pointlessql.pql._types import SQLResult
 from pointlessql.pql._write import safe_delta_version, write_table
 from pointlessql.pql.branch import (
@@ -113,6 +114,7 @@ __all__ = [
     "BranchNotFoundError",
     "BranchOfBranchError",
     "BranchPromotionConflictError",
+    "DraftContract",
     "DuckDBEngine",
     "Engine",
     "MergeCallSpec",
@@ -124,6 +126,7 @@ __all__ = [
     "SQLResult",
     "StmtType",
     "classify",
+    "contract",
     "create_branch_schema",
     "discard_branch_schema",
     "extract_column_lineage",
