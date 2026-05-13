@@ -519,6 +519,131 @@ PointlesSQL
 │           steward UI lands as a 74.3.1 follow-up once the
 │           in-proc loop runs against a real workload.
 │
+├── Phase 77 — Social-as-Connective-Tissue across the platform  ⏳ in progress
+│   │
+│   │   "PointlesSQL is to Unity Catalog + Spark/DuckDB what
+│   │   GitHub is to Git."  Lifts the Phase-76 social surface
+│   │   (comments / reviews / endorsements / citations / mentions
+│   │   / follows / topics) from DP-only to the connective tissue
+│   │   over every named platform object: UC tables, schemas,
+│   │   catalogs, models, branches, runs, queries, notebooks,
+│   │   saved audit queries — and adds GitHub-Issues / Stars /
+│   │   READMEs-everywhere / PR-style branch-promote-gate /
+│   │   workspace-as-Organization primitives.
+│   │
+│   │   Architecture locked: social layer lives entirely in
+│   │   PointlesSQL — soyuz stays pure-UC-spec.  Schema strategy
+│   │   = sidecar polymorphic anchor (``social_targets`` keyed by
+│   │   ``(workspace_id, entity_kind, entity_ref)``).  Comments /
+│   │   reviews / endorsements / follows / reactions / readmes
+│   │   point at ``social_targets.id`` instead of
+│   │   ``data_products.id`` directly.  CASCADE-on-DP-delete
+│   │   preserved via a back-pointer on the anchor row.  Audit-
+│   │   log target string keeps the legacy ``data_product:``
+│   │   prefix for kind='dp' rows forever (locked decision #9);
+│   │   every new kind writes the generic ``{kind}:{ref}`` form.
+│   │   Branch promote-gate is opt-in per workspace
+│   │   (``branch_promote_requires_endorsement DEFAULT FALSE``);
+│   │   default never auto-flips.  Notebook ``entity_ref`` is
+│   │   an immutable UUID, not the file path.
+│   │
+│   ├── Phase 77.0 — Polymorphic foundation (zero new entity types)  ⏳ in progress
+│   │       ``social_targets`` anchor table + ``entity_registry``
+│   │       single-source-of-truth + ``get_or_create_target`` /
+│   │       ``resolve_workspace_for_entity`` resolver.  Migration
+│   │       ``v3y5a7c9e1g3`` creates the anchor + backfills one
+│   │       row per existing DP.  Subsequent 77.0 migrations add
+│   │       ``social_target_id`` columns to the seven existing
+│   │       social tables, ship the generic ``mirror_social_to_audit``
+│   │       helper + ``fanout_event`` dispatcher + citations-
+│   │       registry refactor + ``/api/social/{kind}/{ref}/...``
+│   │       router + frontend partial extraction +
+│   │       feed-URL-builder via registry.  Drops the now-
+│   │       redundant ``data_product_id`` columns at the end.
+│   │       End-user behaviour unchanged; the entire DP-social
+│   │       test suite must pass unmodified.
+│   │
+│   ├── Phase 77.1 — Tables                                          ⏳ planned
+│   │       First new entity type.  Discussion + Endorsements +
+│   │       Followers + README + Stars tabs on every UC table
+│   │       page.  Reviews hidden (tables don't get star-ratings).
+│   │       ``#table:cat.sch.tbl`` citation token registered.
+│   │       Federated / foreign tables get the same tabs (no
+│   │       banning) plus a "external catalog" banner.
+│   │
+│   ├── Phase 77.3 — Branches (with promote-gate, opt-in)            ⏳ planned
+│   │       Branch detail page gains 4 social tabs + the killer
+│   │       GitHub-PR analog: workspace setting
+│   │       ``branch_promote_requires_endorsement`` (default OFF,
+│   │       never auto-flipped).  When true, ``pql.promote()``
+│   │       requires ≥1 ``branch-approved-for-promotion``
+│   │       endorsement by a user other than the caller; rejects
+│   │       with 412 otherwise.  ``#branch:<id>`` citation.
+│   │
+│   ├── Phase 77.2 — Models                                          ⏳ planned
+│   │       Full social parity with DPs on
+│   │       ``/ml/models/{full_name}``.  6 tabs (Discussion /
+│   │       Reviews / Endorsements / Followers / README / Issues).
+│   │       ``#model:cat.sch.name`` citation.  Endorsement type
+│   │       "approved-for-production-deployment" replaces ad-hoc
+│   │       MLflow-tag pattern.
+│   │
+│   ├── Phase 77.4 — Runs                                            ⏳ planned
+│   │       Agent-run pages gain Discussion + Endorsements +
+│   │       Followers + Issues.  Reviews / README hidden (runs
+│   │       are transient outcomes).  Forensics-auditor can open
+│   │       a tracked issue against a specific run.
+│   │       ``#run:<uuid>`` citation.
+│   │
+│   ├── Phase 77.5 — Schemas + Catalogs (gated on 77.1 dogfooding)   ⏳ planned (gated)
+│   │       Header social card + 4 social tabs in a side-drawer.
+│   │       Gated: proceed only if 77.1 shows ≥3 distinct users
+│   │       each posting ≥1 table-comment within 2 weeks of
+│   │       77.1 landing.  Otherwise downgrade to README-only.
+│   │
+│   ├── Phase 77.6 — Notebooks + Saved Queries                       ⏳ planned
+│   │       Per-notebook + per-saved-query social tabs.  New
+│   │       ``notebooks.id UUID`` column (locked decision #8 —
+│   │       stable across path renames).
+│   │       ``#notebook:{uuid}`` + ``#query:{slug}`` citations.
+│   │
+│   ├── Phase 77.7 — Issues (the GitHub-Issues entity)               ⏳ planned
+│   │       Separate ``issues`` entity with state / assignee /
+│   │       labels_json / milestone_id / closed_reason.  Threaded
+│   │       comments under each issue reuse the polymorphic
+│   │       comments table; an issue is itself a
+│   │       ``social_target``-able entity (full self-similarity).
+│   │       Existing Discussions ``category`` enum +
+│   │       ``accept_answer`` untouched.
+│   │
+│   ├── Phase 77.8 — READMEs polymorphic + Stars                     ⏳ planned
+│   │       Rename ``data_product_readmes`` → ``entity_readmes``.
+│   │       New ``social_stars`` table — lightweight bookmarks
+│   │       distinct from Follows (= "watch with notifications").
+│   │       Wires the existing ``pqlStarToggle`` Alpine component
+│   │       (in ``table.html``) to a real server.
+│   │
+│   ├── Phase 77.9 — Cross-entity feed + full-body FTS               ⏳ planned
+│   │       ``/feed`` becomes entity-agnostic with a kind-pill
+│   │       filter row.  ``audit_search`` FTS indexes full
+│   │       ``body_md`` (not just 140-char preview) across every
+│   │       entity kind.
+│   │
+│   ├── Phase 77.10 — Workspace-as-Organization landing page         ⏳ planned
+│   │       ``/workspaces/{slug}`` is the workspace's GitHub-org-
+│   │       style landing page.  ``workspace_pinned_entities``
+│   │       table + 3 rows of pinned cards (DPs / tables /
+│   │       models) + workspace-scoped activity feed + workspace
+│   │       README (entity_readmes with kind='workspace').
+│   │
+│   └── Phase 77.11 — Polish + generalized badges + announce         ⏳ planned
+│           Badge thresholds generalize beyond DPs
+│           (``commenter_table_50plus``, ``endorser_model_20plus``,
+│           ``issue_resolver_10plus``).  ``fanout_dataproduct_event``
+│           legacy wrapper deleted; ``hermes-plugin-pointlessql``
+│           H.3 tool migrated.  ``docs/phase-77.md`` write-up +
+│           CHANGELOG entries.
+│
 ├── Phase 76 — Full Social Network for Data Products       ✅ done 2026-05-13
 │   │
 │   │   Six sub-sprints landed in one autonomous session +
