@@ -19,15 +19,40 @@ notified about their own actions.
 from __future__ import annotations
 
 import datetime
+import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 
+from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.notifications import UserNotification
 
 logger = logging.getLogger(__name__)
+
+
+def _opted_in_inbox(prefs_json: str | None, event_type: str) -> bool:
+    """Return True when the user's prefs do NOT disable inbox delivery.
+
+    Missing column / missing event_type key / missing inbox key all
+    default to True (Phase 76.4 backwards-compat).
+    """
+    if not prefs_json:
+        return True
+    try:
+        prefs_any: Any = json.loads(prefs_json)
+    except (ValueError, TypeError):
+        return True
+    if not isinstance(prefs_any, dict):
+        return True
+    prefs = cast(dict[str, Any], prefs_any)
+    per_event = prefs.get(event_type)
+    if not isinstance(per_event, dict):
+        return True
+    per_event_typed = cast(dict[str, Any], per_event)
+    inbox = per_event_typed.get("inbox")
+    return inbox is None or bool(inbox)
 
 
 def fanout_dataproduct_event(
@@ -77,6 +102,20 @@ def fanout_dataproduct_event(
             if not recipients:
                 return 0
 
+            # Phase 76.4: filter recipients by per-user inbox opt-out.
+            pref_rows = session.execute(
+                select(User.id, User.notification_prefs_json).where(
+                    User.id.in_(recipients)
+                )
+            ).all()
+            opted_in: set[int] = {
+                int(uid)
+                for uid, prefs in pref_rows
+                if _opted_in_inbox(prefs, event_type)
+            }
+            if not opted_in:
+                return 0
+
             now = datetime.datetime.now(datetime.UTC)
             session.add_all(
                 [
@@ -90,11 +129,11 @@ def fanout_dataproduct_event(
                         actor_user_id=actor_user_id,
                         created_at=now,
                     )
-                    for rid in recipients
+                    for rid in opted_in
                 ]
             )
             session.commit()
-            return len(recipients)
+            return len(opted_in)
     except Exception:  # noqa: BLE001 — fan-out must never break the originating write
         # bare-broad-ok: notification fan-out is best-effort.  The
         # underlying audit row + governance event already persisted;

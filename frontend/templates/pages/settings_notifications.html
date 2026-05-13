@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Notification settings · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Settings"},
+    {"label": "Notifications"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="notificationSettings()" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-bell fs-3"></i>
+        <h1 class="h3 mb-0">Notification preferences</h1>
+    </div>
+
+    <p class="text-muted small">
+        Toggle per-event-type delivery channels.  Missing channels default
+        to <em>on</em>; opt out by un-checking and clicking <em>Save</em>.
+    </p>
+
+    <template x-if="!loaded">
+        <div class="text-muted small">Loading…</div>
+    </template>
+    <table class="table table-sm align-middle pql-notif-prefs-table"
+           x-show="loaded">
+        <thead>
+            <tr>
+                <th>Event type</th>
+                <th class="text-center" style="width: 70px;">Inbox</th>
+                <th class="text-center" style="width: 70px;">Email</th>
+                <th class="text-center" style="width: 70px;">Webhook</th>
+            </tr>
+        </thead>
+        <tbody>
+            <template x-for="evt in events" :key="evt">
+                <tr :data-event-type="evt">
+                    <td>
+                        <code class="small" x-text="evt"></code>
+                    </td>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input pql-pref-inbox"
+                               :data-event-type="evt"
+                               x-model="prefs[evt].inbox">
+                    </td>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input pql-pref-email"
+                               :data-event-type="evt"
+                               x-model="prefs[evt].email">
+                    </td>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input pql-pref-webhook"
+                               :data-event-type="evt"
+                               x-model="prefs[evt].webhook">
+                    </td>
+                </tr>
+            </template>
+        </tbody>
+    </table>
+    <button class="btn btn-primary pql-notif-save-btn"
+            x-show="loaded"
+            @click="save()">
+        Save
+    </button>
+    <span class="text-success ms-2" x-show="savedAt">Saved.</span>
+</div>
+
+<script>
+window.notificationSettings = function () {
+    return {
+        loaded: false,
+        events: [],
+        prefs: {},
+        savedAt: null,
+        async init() { await this.load(); },
+        async load() {
+            try {
+                const res = await fetch('/api/settings/notifications');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this.events = data.known_event_types || [];
+                this.prefs = data.prefs || {};
+            } catch (e) { console.error('prefs load failed', e); }
+            finally { this.loaded = true; }
+        },
+        async save() {
+            try {
+                const res = await fetch('/api/settings/notifications', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.prefs),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.savedAt = Date.now();
+                setTimeout(() => { this.savedAt = null; }, 2500);
+            } catch (e) { console.error('prefs save failed', e); }
+        },
+    };
+};
+</script>
+{% endblock %}

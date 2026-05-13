@@ -122,3 +122,10 @@ class User(Base):
     digest_email_optin: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # Phase 76.4: per-event-type opt-in toggles, JSON-encoded.
+    # Shape: ``{event_type: {inbox, email, webhook}}``; missing
+    # keys default to all-true so newly-shipped event types reach
+    # users until they explicitly opt out.
+    notification_prefs_json: Mapped[str] = mapped_column(
+        Text, nullable=False, default="{}", server_default="{}"
+    )

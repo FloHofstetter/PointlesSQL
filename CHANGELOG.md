@@ -6,6 +6,25 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 76.4 — Per-user feed + notification preferences
+  (2026-05-13).**  New ``GET /api/feed`` endpoint that merges
+  the caller's inbox + activity from followed users (comments
+  + reviews) with the existing ``mentions`` / ``my`` /
+  ``followed_users`` / ``followed_dps`` filter family and a
+  ``q`` substring search.  New ``GET/PUT
+  /api/settings/notifications`` endpoint backed by a fresh
+  ``notification_prefs_json`` column on ``users``
+  (Alembic ``s0u2w4y6a8c0``) — per-event-type inbox / email /
+  webhook toggles; missing keys + missing column default to
+  all-true so the migration is backwards-compatible.  The fan-
+  out helper in ``services/notifications/fanout.py`` now drops
+  recipients with the event type's ``inbox`` flag set to
+  ``false`` before inserting rows.  Two new HTML pages —
+  ``/feed`` (merged stream + filter tabs + search box) and
+  ``/settings/notifications`` (per-event-type toggle grid).  9
+  new pytest cases; ruff / pyright (budget 623, 0 errors) /
+  pydoclint green.
+
 - **Phase 76.3 — Topic taxonomy + topic-follows (2026-05-13).**
   Three new tables — ``topics``, ``data_product_topics``,
   ``user_topic_follows`` (Alembic ``r9t1v3x5z7b9``) — wired

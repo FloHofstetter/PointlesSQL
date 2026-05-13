@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Feed · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Feed"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="feedPage()" x-init="init()">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-rss fs-3"></i>
+        <h1 class="h3 mb-0">Feed</h1>
+        <a class="btn btn-sm btn-outline-secondary ms-auto" href="/settings/notifications">
+            <i class="bi bi-gear me-1"></i>Notification settings
+        </a>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3 pql-feed-filters">
+        <template x-for="f in filters" :key="f.key">
+            <button class="btn btn-sm pql-feed-filter"
+                    :class="filter === f.key ? 'btn-primary' : 'btn-outline-secondary'"
+                    :data-filter="f.key"
+                    @click="setFilter(f.key)"
+                    x-text="f.label"></button>
+        </template>
+        <input class="form-control form-control-sm w-auto ms-2 pql-feed-search"
+               x-model="searchDraft"
+               @keyup.enter="reload()"
+               placeholder="Search…">
+    </div>
+
+    <template x-if="!loaded">
+        <div class="text-muted small">Loading…</div>
+    </template>
+    <template x-if="loaded && rows.length === 0">
+        <div class="alert alert-secondary">Nothing here yet.</div>
+    </template>
+    <ul class="list-group pql-feed-rows" x-show="loaded && rows.length > 0">
+        <template x-for="r in rows" :key="r.kind + ':' + r.created_at + ':' + r.event_type">
+            <li class="list-group-item d-flex gap-2 align-items-start">
+                <span class="badge bg-secondary pql-feed-kind" x-text="r.kind"></span>
+                <div class="flex-grow-1">
+                    <a class="pql-feed-row-link" :href="r.source_url || '#'" x-text="r.summary_md || r.event_type"></a>
+                </div>
+                <span class="text-muted small pql-feed-row-time" x-text="r.created_at"></span>
+            </li>
+        </template>
+    </ul>
+</div>
+
+<script>
+window.feedPage = function () {
+    return {
+        loaded: false,
+        filter: 'all',
+        searchDraft: '',
+        rows: [],
+        filters: [
+            { key: 'all', label: 'All' },
+            { key: 'mentions', label: 'Mentions' },
+            { key: 'followed_users', label: 'Followed users' },
+            { key: 'followed_dps', label: 'Followed DPs' },
+            { key: 'my', label: 'My activity' },
+        ],
+        async init() { await this.reload(); },
+        async setFilter(key) {
+            this.filter = key;
+            await this.reload();
+        },
+        async reload() {
+            this.loaded = false;
+            try {
+                const params = new URLSearchParams({ filter: this.filter });
+                if (this.searchDraft.trim()) params.set('q', this.searchDraft.trim());
+                const res = await fetch('/api/feed?' + params.toString());
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.rows = (await res.json()).rows || [];
+            } catch (e) { console.error('feed load failed', e); }
+            finally { this.loaded = true; }
+        },
+    };
+};
+</script>
+{% endblock %}
