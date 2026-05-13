@@ -71,7 +71,19 @@ jobs:
         # explicitly in scripts/check-file-size-budget.sh's allowlist.
         run: bash scripts/check-file-size-budget.sh
       - name: Pydoclint (Google style)
-        run: uv run pydoclint --style=google pointlessql/
+        # Phase 74.CI.1 — force-reinstall docstring-parser-fork
+        # immediately before pydoclint runs.  pydoclint imports
+        # ``DocstringYields`` from ``docstring_parser.common``; the
+        # symbol only ships in the fork variant.  anthropic>=0.40
+        # transitively pulls the upstream ``docstring-parser`` and
+        # the two wheels share the ``site-packages/docstring_parser/``
+        # directory — uv's parallel wheel extraction is non-
+        # deterministic, so the upstream files can win the race.  A
+        # ``--force-reinstall`` of the fork right before pydoclint
+        # runs guarantees the fork's files are the ones on disk.
+        run: |
+          uv pip install --force-reinstall docstring-parser-fork
+          uv run pydoclint --style=google pointlessql/
       - name: Alembic — no autogen drift
         # Fresh runner has no pointlessql.db — `alembic check`
         # needs a migrated target to compare against, not an empty

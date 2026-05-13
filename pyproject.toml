@@ -83,6 +83,17 @@ dev = [
     "pyright>=1.1",
     "hatchling>=1.29.0",
     "pydoclint>=0.8",
+    # Phase 74.CI.1 — explicit dep on the fork so the post-install
+    # state is deterministic.  pydoclint 0.8.3 imports
+    # ``DocstringYields`` from ``docstring_parser.common``; the
+    # symbol only ships in the fork variant.  anthropic>=0.40 pulls
+    # the upstream ``docstring-parser`` transitively, and both
+    # packages install into ``site-packages/docstring_parser/`` —
+    # whichever wheel writes last wins.  Pinning the fork
+    # explicitly + listing it AFTER pydoclint ensures uv records
+    # both in the resolved env and the fork's files land last on
+    # CI's clean install.
+    "docstring-parser-fork>=0.0.14",
     "pip-audit>=2.10.0",
     "pre-commit>=4.0",
     "detect-secrets>=1.5",

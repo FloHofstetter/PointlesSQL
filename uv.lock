@@ -2669,6 +2669,7 @@ ml = [
 dev = [
     { name = "bandit" },
     { name = "detect-secrets" },
+    { name = "docstring-parser-fork" },
     { name = "hatchling" },
     { name = "httpx" },
     { name = "mlflow" },
@@ -2737,6 +2738,7 @@ provides-extras = ["ml", "dbt"]
 dev = [
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "detect-secrets", specifier = ">=1.5" },
+    { name = "docstring-parser-fork", specifier = ">=0.0.14" },
     { name = "hatchling", specifier = ">=1.29.0" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "mlflow", specifier = ">=3.11,<3.12" },
