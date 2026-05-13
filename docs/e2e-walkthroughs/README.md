@@ -23,13 +23,13 @@ playbooks on top of the same harness (jobs, notebook, OIDC,
 
 ## Inventory (full)
 
-60 walkthroughs total (55 + 1 lens-overview + 1 lens-mcp + 1
+61 walkthroughs total (55 + 1 lens-overview + 1 lens-mcp + 1
 playwright-MCP carve-out from Phase 53 + 1 notebook-overview from
-Phase 66 + 1 notebook-jobs from Phase 67).  Each carries a
+Phase 66 + 1 notebook-jobs from Phase 67 + 1 social from Phase 76).  Each carries a
 `> **Mode:**` tag in its first content block; this section is the
 grep-friendly index.
 
-### `Mode: browser` — Playwright MCP replay (41)
+### `Mode: browser` — Playwright MCP replay (42)
 
 Reload `auth.md` first; later ones reuse seeded users + catalog.
 
@@ -77,6 +77,7 @@ Reload `auth.md` first; later ones reuse seeded users + catalog.
 | [`branches.md`](branches.md) | `/branches`, `/branches/{fqn}` (notebook + UI) | 16.5 |
 | [`notebook-overview.md`](notebook-overview.md) | `/notebooks/edit/{path}` cell editor + WS kernel | 66 |
 | [`notebook-jobs.md`](notebook-jobs.md) | Schedule + Run-Once + Variable Inspector + Jobs panel | 67 |
+| [`social.md`](social.md) | DP Discussion+Reviews tabs · `/users` · `/agents` · `/topics` · `/feed` · `/notifications` · `/me/settings` | 76 |
 
 ### `Mode: hybrid` — notebook / CLI + browser (8)
 
@@ -312,6 +313,24 @@ during Phase-37 Wave 0a — the original "no UI yet" caveat is
 gone.  Wave 0a also surfaced BUG-37-01 (Alpine ``x-data``
 attribute escaping on four admin row templates), fixed in
 ``a744b52``.
+
+**Phase 76 — full social network**.  Replay after
+``auth.md`` and ``data_products.md``:
+
+26. [`social.md`](social.md) — Phase-76 close-out replay.
+ Walks the full social surface: the new DP Discussion tab
+ (cite-token render via ``body_md_resolved`` + ``@``-mention
+ picker + threaded replies + accepted-answer marking +
+ reactions + agent author badge), Reviews tab (same render
+ path), endorsement serialiser (curl-only — no UI block
+ yet), ``/users/{id}`` user profile + follow-user,
+ ``/agents/{slug}`` agent profile, ``/topics/{slug}`` topic
+ follow, ``/feed`` aggregation, ``/notifications`` + topbar
+ SSE bell, ``/me/settings`` digest toggle, and the Alpine
+ x-data smoke across all six social pages that inherited
+ the Phase-76.6.4 quote-fix. Closes Bug 1 / 4 / 5 / 6 / 7 /
+ 12 / 14 surfaced during the Phase-76 replay; Bug 13
+ (endorsement render block) stays deferred to Phase 77.
 
 ## Stack start
 
