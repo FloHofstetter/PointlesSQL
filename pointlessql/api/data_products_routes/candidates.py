@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["data-products"])
 
 
-def _require_steward_or_admin(request: Request) -> dict[str, Any]:
+def _require_steward_or_admin(request: Request) -> Any:
     """Gate: install-admin OR session-cookie steward.
 
     Candidate-level actions are not row-scoped (no DP exists

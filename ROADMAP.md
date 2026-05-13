@@ -385,7 +385,7 @@ PointlesSQL
 │   │     of AgentReview is tempting but the surface is
 │   │     write-oriented, not review-oriented.
 │   │
-│   ├── Sprint 73.1 — Promote-to-DP suggestion                  ⏳ planned
+│   ├── Sprint 73.1 — Promote-to-DP suggestion                  ✅ done
 │   │   ├── New service `services/data_products/promote.py`
 │   │   │   scans `agent_run_operations` for `target_table`
 │   │   │   values that match a stable signature
@@ -436,7 +436,7 @@ PointlesSQL
 │   │   │   flow (workspace-repo) or in-place yaml rewrite.
 │   │   └── ~12 pytest cases.
 │   │
-│   ├── Sprint 73.4 — Data passport / auto-README              ⏳ planned
+│   ├── Sprint 73.4 — Data passport / auto-README              ✅ done
 │   │   ├── New `services/data_products/passport.py` renders
 │   │   │   a markdown briefing from the lineage graph
 │   │   │   (sources, transforms, downstream consumers,
@@ -450,7 +450,7 @@ PointlesSQL
 │   │   │   the passport reflects the current shape.
 │   │   └── ~8 pytest cases.
 │   │
-│   └── Sprint 73.5 — Cross-DP recommendations                  ⏳ planned
+│   └── Sprint 73.5 — Cross-DP recommendations                  ✅ done
 │       ├── "Agents who read X also read Y" — co-occurrence
 │       │   over `agent_run_operations.target_table` joined
 │       │   to `agent_runs.id`.  Materialised as a 7d-rolling

@@ -236,9 +236,8 @@ def render_passport(
     parts.append("")
     if recent_activity:
         for entry in recent_activity[:5]:
-            ts = entry.ts.isoformat() if hasattr(entry.ts, "isoformat") else str(entry.ts)
             summary = entry.summary or entry.kind
-            parts.append(f"- `{ts}` — {summary}")
+            parts.append(f"- `{entry.ts}` — {summary}")
     else:
         parts.append("_No activity in the last 7 days._")
     parts.append("")

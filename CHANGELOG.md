@@ -6,6 +6,60 @@ All notable changes to this project will be documented in this file.
 
 ### Notes
 
+- **Sprint 73.5 — Cross-DP recommendations (2026-05-14).**
+  New ``DataProductCooccurrence`` model + alembic
+  ``k7m9o1q3s5u7``.  ``services/data_products/cooccurrence.py``
+  ships ``refresh_cooccurrence`` (walks
+  ``agent_run_operations`` per ``agent_run_id``, projects
+  ``target_table`` → DP via ``(catalog, schema)`` prefix,
+  UPSERTs top-N partners per source DP per workspace),
+  ``fetch_related``, and
+  ``fetch_recommendations_for_user``.  New opt-in
+  ``_data_product_cooccurrence_loop`` (default off).  Two
+  new routes:
+  ``GET /api/data-products/{cat}/{sch}/related`` and
+  ``GET /api/data-products/recommendations``.  DP detail
+  page Overview tab gets a "Related products" card;
+  ``/data-products/followed`` gets a "Recommended for
+  you" strip above the followed list.  8 pytest cases.
+
+- **Sprint 73.4 — Data passport / auto-README (2026-05-14).**
+  New ``DataProductPassport`` model + alembic
+  ``j6l8n0p2r4t6``.  Auto-generated, versioned markdown
+  briefing per DP — distinct from the steward-authored
+  ``DataProductReadme``.  ``services/data_products/passport.py``
+  ships ``render_passport`` (walks lineage_column_map,
+  contract-event freshness, and the activity feed to emit
+  a 4-section markdown body), ``refresh_passport_for_dp``
+  (monotonic ``version_int`` UPSERT), and
+  ``refresh_stale_passports`` (loop driver).  New opt-in
+  ``_data_product_passport_loop`` coroutine + lifespan
+  wire-in.  ``reload.py`` fires a fire-and-forget
+  ``asyncio.to_thread(refresh_passport_for_dp, …,
+  trigger='schema_changed')`` after every
+  ``EVENT_TYPE_DATA_PRODUCT_SCHEMA_CHANGED`` emit.  Two
+  new routes:
+  ``GET /api/data-products/{cat}/{sch}/passport`` and
+  ``POST .../passport/refresh``.  README tab now renders
+  a "System passport" card above the steward README block.
+  8 pytest cases.
+
+- **Sprint 73.1 — Promote-to-DP candidate scanner
+  (2026-05-14).**  New ``DataProductPromotionCandidate``
+  + ``DataProductYamlDraft`` models + alembic
+  ``i5k7m9o1q3s5``.  ``services/data_products/promote.py``
+  ships ``scan_candidates`` (UPSERTs per-schema candidates
+  that pass min_runs / min_ops in the rolling window,
+  skips schemas already covered by an active DataProduct,
+  never resurrects dismissed rows) and ``build_draft_yaml``
+  (pulls live Delta schemas, emits a pydantic-validated
+  yaml payload).  New opt-in ``_data_product_promotion_loop``
+  background coroutine + lifespan wire-in.  New routes
+  under ``/api/data-products/candidates``: list, dismiss,
+  generate-draft (admin-gated).  HTML page at
+  ``/data-products/candidates`` with dismiss + generate
+  buttons.  13 pytest cases.
+
 - **Sprint 72.6 — Per-user CloudEvent webhook subscriptions
   (2026-05-13).** New ``user_webhook_subscriptions`` table +
   alembic ``h4j6l8n0p2r4``.  Subscriptions filter by

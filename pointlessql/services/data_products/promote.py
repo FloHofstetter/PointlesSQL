@@ -200,6 +200,12 @@ def _delta_schema_for_table(target_table: str) -> list[tuple[str, str, bool]]:
     reads the schema with ``deltalake.DeltaTable``.  Returns an
     empty list when the table does not exist yet — callers
     handle this as a candidate with no concrete columns.
+
+    Args:
+        target_table: ``"catalog.schema.table"`` FQN.
+
+    Returns:
+        ``[(column_name, normalised_type, nullable), ...]``.
     """
     try:
         from pointlessql import pql as pql_module
@@ -208,17 +214,22 @@ def _delta_schema_for_table(target_table: str) -> list[tuple[str, str, bool]]:
         if split is None:
             return []
         catalog_name, schema_name, table_name = split
-        uc = pql_module._get_default_uc()  # type: ignore[attr-defined]
-        info = uc.get_table_sync(
+        uc: Any = pql_module._get_default_uc()  # type: ignore[attr-defined]
+        info: Any = uc.get_table_sync(  # pyright: ignore[reportUnknownMemberType]
             catalog_name=catalog_name,
             schema_name=schema_name,
             table_name=table_name,
         )
         columns: list[tuple[str, str, bool]] = []
-        for col in info.columns or ():
-            type_str = (col.type_text or col.type_name or "string").lower()
+        raw_columns: Any = getattr(info, "columns", ()) or ()  # pyright: ignore[reportUnknownArgumentType]
+        for col in raw_columns:  # pyright: ignore[reportUnknownVariableType]
+            type_text = getattr(col, "type_text", None)
+            type_name = getattr(col, "type_name", None)
+            type_str = str(type_text or type_name or "string").lower()
             primitive = _normalise_delta_type(type_str)
-            columns.append((col.name, primitive, bool(col.nullable)))
+            col_name = str(getattr(col, "name", ""))
+            col_nullable = bool(getattr(col, "nullable", True))
+            columns.append((col_name, primitive, col_nullable))
         return columns
     except Exception:  # noqa: BLE001
         logger.exception("dp_promote: could not read schema for %s", target_table)
