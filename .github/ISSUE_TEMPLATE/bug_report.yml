@@ -1,0 +1,91 @@
+name: Bug report
+description: A defect, regression, or unexpected behaviour in PointlesSQL.
+title: "[bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please give
+        us enough detail to reproduce the issue locally — that is the
+        single biggest accelerator for a fix.
+
+        **Security vulnerabilities should NOT be filed here** — see
+        [SECURITY.md](../../SECURITY.md) for the responsible-disclosure
+        process.
+
+  - type: input
+    id: version
+    attributes:
+      label: PointlesSQL version
+      description: Output of `uv run pointlessql --version` or the docker image tag you pulled.
+      placeholder: "v0.1.0rc3 / ghcr.io/flohofstetter/pointlessql:v0.1.0rc3"
+    validations:
+      required: true
+
+  - type: input
+    id: soyuz-version
+    attributes:
+      label: soyuz-catalog version
+      description: The `soyuz-catalog` tag PointlesSQL is wired to.
+      placeholder: "v0.3.0rc1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-mode
+    attributes:
+      label: Installation mode
+      options:
+        - Docker compose (GHCR pull)
+        - Docker compose (local build)
+        - Source checkout + uv sync (pinned)
+        - Source checkout + uv sync (editable soyuz)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A numbered list of actions. Include exact commands, SQL, or UI clicks.
+      placeholder: |
+        1. Start the stack with `docker compose up -d`
+        2. Open http://localhost:8000/catalog/main
+        3. Click on table X
+        4. Observe …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include screenshots / stack traces / log excerpts.
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Python version, OS, browser, database backend (SQLite or Postgres).
+      placeholder: |
+        - Python: 3.14.0
+        - OS: Manjaro 6.12 / macOS 14.4 / Ubuntu 22.04
+        - Browser: Firefox 124
+        - DB: SQLite (default) / Postgres 16
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Pointlessql server logs (`uv run pointlessql` stdout) plus any browser console output.
+      render: shell

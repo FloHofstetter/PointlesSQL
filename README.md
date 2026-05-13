@@ -1,15 +1,49 @@
 # PointlesSQL
 
-**Databricks-shaped, Python-only, agent-native.**
+**Per-cell auditable lakehouse for agent-driven data engineering, EU-AI-Act-native.**
+
 A web UI and Python bridge over
 [soyuz-catalog](https://github.com/FloHofstetter/soyuz-catalog)
 (Unity-Catalog REST), Delta Lake, and MLflow — with a forced
-audit trail every agent action falls into.
+audit trail every agent action falls into, at the row, column,
+and value level.
 
 📚 **Documentation**: run `uv run mkdocs serve` and open
 <http://127.0.0.1:8000>.  The docs site goes public as part of
 the launch sprint; until then, browse the markdown source under
 [`docs/`](docs/).
+
+## Why PointlesSQL
+
+The EU AI Act (Article 12), SOC 2, and GDPR all require verifiable
+audit trails for data work performed by automated systems. Agents
+writing notebooks today leave no per-row, per-column, per-value
+lineage — when an auditor or incident-responder asks *"which agent
+run produced this value, from which inputs, using which prompt and
+model?"*, the answer has to be reconstructed by hand from logs that
+were never designed to carry that semantic load.
+
+PointlesSQL closes that gap as part of the runtime, not as an
+add-on observability layer:
+
+- **Forced audit trail** at row, column, and value level — every
+  PQL write, merge, branch, rollback, and read goes into
+  `agent_run_operations` automatically. Opt-out is a deliberate
+  config decision, not the default.
+- **Branch isolation per agent run** — Delta-Lake-native shallow
+  clones let each agent run write to an isolated branch that
+  promotes via human review (Phase 16.5).
+- **First-class rollback** — `pql.rollback(run_id)` is a
+  supervised action with cryptographic preview, not a manual
+  Delta `RESTORE` ritual.
+- **Review-bot infrastructure** — the same audit primitives feed
+  a daily Audit-Reviewer, a Compliance-Bot, and an Incident-
+  Responder agent (Phase 19), so the audit trail becomes
+  actionable rather than just stored.
+
+PointlesSQL doesn't replace your query engine, your catalog, or
+your agent framework — it composes them under a forced-audit
+contract.
 
 ## Status
 
@@ -268,6 +302,18 @@ Prometheus metrics are exposed at `GET /metrics` (admin-only).
 - `~/git/spark` -- optional; relevant once PointlesSQL grows into
   query execution
 
+## Contributing
+
+PRs welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
+development environment, local gates, and PR conventions. Bugs and
+feature requests go through GitHub Issues (pick the right template
+from the *New Issue* picker).
+
+## Security
+
+Vulnerabilities should be reported privately. See
+[`SECURITY.md`](SECURITY.md) for the responsible-disclosure path.
+
 ## License
 
-Apache-2.0. See [`LICENSE`](LICENSE).
+Apache-2.0. See [`LICENSE`](LICENSE) and [`NOTICE.txt`](NOTICE.txt).

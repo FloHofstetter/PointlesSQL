@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest a new capability or extension for PointlesSQL.
+title: "[feat] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for thinking about PointlesSQL's future. Please describe
+        the problem first, then the proposal — the why is more valuable
+        than the what.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user-facing pain motivates this request? Be specific.
+      placeholder: |
+        When an agent run authors 200+ tables in one go, the run-detail
+        page becomes hard to navigate because …
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would the user-facing change look like? UI, API, CLI, or all three.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you think about? Why is the proposal above better?
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Links to related issues, prior art in other tools, screenshots, mockups.

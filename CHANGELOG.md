@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Pre-OSS hygiene
+
+- **Pre-OSS hygiene files (2026-05-13).**  Adds the governance
+  scaffolding the Some-day "Pre-OSS-release hygiene" roadmap
+  block calls for: ``NOTICE.txt`` (solo-author copyright
+  anchor, Apache-2.0 conventional), ``CONTRIBUTING.md``,
+  ``SECURITY.md`` (ported from shoreguard-fresh and adapted to
+  PointlesSQL scope), ``.github/PULL_REQUEST_TEMPLATE.md`` with
+  per-repo gate-command checklist, and three GitHub
+  form-style issue templates under ``.github/ISSUE_TEMPLATE/``
+  (bug report, feature request, contact-link config).  README
+  hero swaps the "Databricks-shaped" framing for the
+  "per-cell auditable lakehouse for agent-driven data
+  engineering, EU-AI-Act-native" positioning and adds an
+  explicit *Why* section.  ``docs/internal/oss-launch-checklist.md``
+  captures the external user actions (EUIPO trademark filings,
+  domain registrations, LinkedIn update, CLA-Assistant install,
+  CODE_OF_CONDUCT + CLA text drop-in) that need to land before
+  the visibility flip.  Repository visibility stays private —
+  this is the substrate that the launch-day sprint flips on.
+
 ### Notes
 
 - **Phase 75.2 — Stdout-JSON + Syslog audit sinks (2026-05-15).**

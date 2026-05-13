@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/FloHofstetter/PointlesSQL/security/policy
+    about: Please report security issues responsibly per the SECURITY.md policy — do not open a public issue.
+  - name: Question or discussion
+    url: https://github.com/FloHofstetter/PointlesSQL/discussions
+    about: For open-ended questions, design discussions, or "how do I …" — use Discussions, not Issues.
