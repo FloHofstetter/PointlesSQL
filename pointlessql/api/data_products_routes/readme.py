@@ -27,6 +27,7 @@ from pointlessql.api.dependencies import current_workspace_id, get_user, require
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
+from pointlessql.services.social._target_resolver import resolve_dp_target
 
 router = APIRouter(tags=["data-products"])
 
@@ -243,9 +244,16 @@ async def upsert_readme(
             ).scalar_one()
             + 1
         )
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         new_row = DataProductReadme(
             workspace_id=workspace_id,
             data_product_id=row.id,
+            social_target_id=target.id,
             version_int=int(next_version),
             body_md=body_md,
             updated_by_user_id=user["id"],

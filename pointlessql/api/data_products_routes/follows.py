@@ -23,6 +23,7 @@ from pointlessql.api.dependencies import current_workspace_id, get_user, require
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_follows import DataProductFollow
+from pointlessql.services.social._target_resolver import resolve_dp_target
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_FOLLOWED,
     emit_governance_event,
@@ -59,10 +60,17 @@ async def follow_data_product(
         )
         if existing is not None:
             return {"followed": True, "already": True}
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         session.add(
             DataProductFollow(
                 workspace_id=workspace_id,
                 data_product_id=row.id,
+                social_target_id=target.id,
                 user_id=user["id"],
                 created_at=datetime.datetime.now(datetime.UTC),
             )

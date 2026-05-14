@@ -29,8 +29,9 @@ from pointlessql.api.dependencies import current_workspace_id, get_user, require
 from pointlessql.models.agent._agents import Agent
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
-from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.notifications.fanout import fanout_event
 from pointlessql.services.social import resolve_citations
+from pointlessql.services.social._target_resolver import resolve_dp_target
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_REVIEWED,
     emit_governance_event,
@@ -260,6 +261,12 @@ async def upsert_data_product_review(
 
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         existing = session.execute(
             select(DataProductReview).where(
                 DataProductReview.workspace_id == workspace_id,
@@ -273,6 +280,7 @@ async def upsert_data_product_review(
             existing.body_md = body_md
             existing.dp_version_at_review = row.version
             existing.updated_at = now
+            existing.social_target_id = target.id
             # An UPSERT with ``?as_agent=`` flips the agent
             # discriminator; without it the column is cleared so a
             # follow-up direct edit doesn't keep the agent badge.
@@ -283,6 +291,7 @@ async def upsert_data_product_review(
             review = DataProductReview(
                 workspace_id=workspace_id,
                 data_product_id=row.id,
+                social_target_id=target.id,
                 author_user_id=user["id"],
                 author_agent_id=author_agent_id,
                 stars=stars,
@@ -316,14 +325,16 @@ async def upsert_data_product_review(
         f"@{author_email or 'someone'} reviewed {catalog}.{schema} "
         f"({stars}/5)"
     )
-    fanout_dataproduct_event(
+    fanout_event(
         factory,
         event_type=EVENT_TYPE_DATA_PRODUCT_REVIEWED,
-        data_product_id=review_dp_id,
+        entity_kind="dp",
+        entity_ref=f"{catalog}.{schema}",
         workspace_id=workspace_id,
         actor_user_id=user["id"],
         source_url=source_url,
         summary_md=summary,
+        data_product_id=review_dp_id,
     )
     governance_payload: dict[str, Any] = {
         "data_product_id": review_dp_id,

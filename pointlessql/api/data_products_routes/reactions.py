@@ -30,8 +30,9 @@ from pointlessql.models.catalog._data_product_comment_reaction import (
 )
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reaction import DataProductReaction
-from pointlessql.services import audit as audit_service
-from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.notifications.fanout import fanout_event
+from pointlessql.services.social._target_resolver import resolve_dp_target
+from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_COMMENT_REACTED,
     EVENT_TYPE_DATA_PRODUCT_REACTED,
@@ -108,11 +109,19 @@ async def add_comment_reaction(
             # bare-http-ok: target comment must exist + be live.
             raise HTTPException(status_code=404, detail="comment not found")
         comment_author_id = int(comment.author_user_id)
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
+        target_id = int(target.id)
 
         try:
             session.add(
                 DataProductCommentReaction(
                     comment_id=comment_id,
+                    social_target_id=target_id,
                     user_id=user["id"],
                     emoji=emoji,
                     created_at=datetime.datetime.now(datetime.UTC),
@@ -125,15 +134,14 @@ async def add_comment_reaction(
             added = False
 
     if added:
-        audit_service.log_action(
+        mirror_social_to_audit(
             factory,
             user_id=user["id"],
             user_email=user.get("email", ""),
             action=_AUDIT_REACTION_COMMENT_ADDED,
-            target=(
-                f"data_product:{catalog}.{schema}#tab-discussion-comment-"
-                f"{comment_id}"
-            ),
+            entity_kind="dp",
+            entity_ref=f"{catalog}.{schema}",
+            suffix=f"tab-discussion-comment-{comment_id}",
             detail={
                 "comment_id": comment_id,
                 "emoji": emoji,
@@ -149,14 +157,16 @@ async def add_comment_reaction(
                 f"@{user.get('email') or 'someone'} reacted "
                 f"{emoji} to your comment on {catalog}.{schema}"
             )
-            fanout_dataproduct_event(
+            fanout_event(
                 factory,
                 event_type=EVENT_TYPE_DATA_PRODUCT_COMMENT_REACTED,
-                data_product_id=row.id,
+                entity_kind="dp",
+                entity_ref=f"{catalog}.{schema}",
                 workspace_id=workspace_id,
                 actor_user_id=user["id"],
                 source_url=source_url,
                 summary_md=summary,
+                data_product_id=row.id,
                 # Reactions only ping the comment author — the
                 # follower fanout path would storm inboxes.
                 extra_recipients=[comment_author_id],
@@ -237,15 +247,14 @@ async def remove_comment_reaction(
         removed = bool(result.rowcount)
 
     if removed:
-        audit_service.log_action(
+        mirror_social_to_audit(
             factory,
             user_id=user["id"],
             user_email=user.get("email", ""),
             action=_AUDIT_REACTION_COMMENT_REMOVED,
-            target=(
-                f"data_product:{catalog}.{schema}#tab-discussion-comment-"
-                f"{comment_id}"
-            ),
+            entity_kind="dp",
+            entity_ref=f"{catalog}.{schema}",
+            suffix=f"tab-discussion-comment-{comment_id}",
             detail={"comment_id": comment_id, "emoji": emoji},
             workspace_id=workspace_id,
         )
@@ -351,10 +360,17 @@ async def add_dp_reaction(
 
     added = False
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         try:
             session.add(
                 DataProductReaction(
                     data_product_id=row.id,
+                    social_target_id=target.id,
                     user_id=user["id"],
                     emoji=emoji,
                     created_at=datetime.datetime.now(datetime.UTC),
@@ -367,12 +383,13 @@ async def add_dp_reaction(
             added = False
 
     if added:
-        audit_service.log_action(
+        mirror_social_to_audit(
             factory,
             user_id=user["id"],
             user_email=user.get("email", ""),
             action=_AUDIT_REACTION_DP_ADDED,
-            target=f"data_product:{catalog}.{schema}",
+            entity_kind="dp",
+            entity_ref=f"{catalog}.{schema}",
             detail={"emoji": emoji},
             workspace_id=workspace_id,
         )
@@ -381,14 +398,16 @@ async def add_dp_reaction(
             f"@{user.get('email') or 'someone'} reacted "
             f"{emoji} to {catalog}.{schema}"
         )
-        fanout_dataproduct_event(
+        fanout_event(
             factory,
             event_type=EVENT_TYPE_DATA_PRODUCT_REACTED,
-            data_product_id=row.id,
+            entity_kind="dp",
+            entity_ref=f"{catalog}.{schema}",
             workspace_id=workspace_id,
             actor_user_id=user["id"],
             source_url=source_url,
             summary_md=summary,
+            data_product_id=row.id,
         )
         await emit_governance_event(
             EVENT_TYPE_DATA_PRODUCT_REACTED,
@@ -444,12 +463,13 @@ async def remove_dp_reaction(
         removed = bool(result.rowcount)
 
     if removed:
-        audit_service.log_action(
+        mirror_social_to_audit(
             factory,
             user_id=user["id"],
             user_email=user.get("email", ""),
             action=_AUDIT_REACTION_DP_REMOVED,
-            target=f"data_product:{catalog}.{schema}",
+            entity_kind="dp",
+            entity_ref=f"{catalog}.{schema}",
             detail={"emoji": emoji},
             workspace_id=workspace_id,
         )

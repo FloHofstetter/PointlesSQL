@@ -43,8 +43,9 @@ from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
     DataProductEndorsement,
 )
-from pointlessql.services import audit as audit_service
 from pointlessql.services.social import resolve_citations
+from pointlessql.services.social._target_resolver import resolve_dp_target
+from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 
 router = APIRouter(tags=["data-products"])
 
@@ -279,9 +280,16 @@ async def apply_endorsement(
                 agent=_agent_payload(existing_agent),
             )
 
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         new_row = DataProductEndorsement(
             workspace_id=workspace_id,
             data_product_id=row.id,
+            social_target_id=target.id,
             endorsement_type=endorsement_type,
             applied_by_user_id=user["id"],
             applied_by_agent_id=applied_by_agent_id,
@@ -308,12 +316,13 @@ async def apply_endorsement(
     if applied_by_agent_id is not None:
         audit_detail["agent_id"] = applied_by_agent_id
         audit_detail["principal_user_id"] = user["id"]
-    audit_service.log_action(
+    mirror_social_to_audit(
         factory,
         user_id=user["id"],
         user_email=user.get("email", ""),
         action="endorsement.applied",
-        target=f"data_product:{catalog}.{schema}",
+        entity_kind="dp",
+        entity_ref=f"{catalog}.{schema}",
         detail=audit_detail,
         workspace_id=workspace_id,
     )
@@ -376,12 +385,13 @@ async def remove_endorsement(
             session.commit()
             session.refresh(endorsement)
 
-    audit_service.log_action(
+    mirror_social_to_audit(
         factory,
         user_id=user["id"],
         user_email=user.get("email", ""),
         action="endorsement.removed",
-        target=f"data_product:{catalog}.{schema}",
+        entity_kind="dp",
+        entity_ref=f"{catalog}.{schema}",
         detail={
             "endorsement_type": endorsement.endorsement_type,
             "endorsement_id": endorsement.id,

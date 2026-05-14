@@ -42,9 +42,10 @@ from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
 )
 from pointlessql.models.catalog._data_product_comments import DataProductComment
-from pointlessql.services import audit as audit_service
-from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.notifications.fanout import fanout_event
 from pointlessql.services.social import resolve_citations
+from pointlessql.services.social._target_resolver import resolve_dp_target
+from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED,
     EVENT_TYPE_DATA_PRODUCT_COMMENTED,
@@ -505,6 +506,12 @@ async def post_data_product_comment(
         # Combine + de-duplicate while preserving order.
         mentioned_ids = list(dict.fromkeys(mentioned_ids + resolved_dn))
         now = datetime.datetime.now(datetime.UTC)
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         # Phase 76.5 — ``author_user_id`` always carries the
         # human accountable (caller if direct, principal_user
         # when speaking-as-agent).  ``author_agent_id`` is the
@@ -512,6 +519,7 @@ async def post_data_product_comment(
         comment = DataProductComment(
             workspace_id=workspace_id,
             data_product_id=row.id,
+            social_target_id=target.id,
             parent_comment_id=parent_comment_id,
             author_user_id=user["id"],
             author_agent_id=author_agent_id,
@@ -543,15 +551,14 @@ async def post_data_product_comment(
         comment_dp_id = comment.data_product_id
 
     for token in ambiguous_displaynames:
-        audit_service.log_action(
+        mirror_social_to_audit(
             factory,
             user_id=user["id"],
             user_email=user.get("email", ""),
             action=_DISCUSSION_MENTION_AMBIGUOUS,
-            target=(
-                f"data_product:{catalog}.{schema}#tab-discussion-comment-"
-                f"{comment_id}"
-            ),
+            entity_kind="dp",
+            entity_ref=f"{catalog}.{schema}",
+            suffix=f"tab-discussion-comment-{comment_id}",
             detail={"comment_id": comment_id, "ambiguous_token": token},
             workspace_id=workspace_id,
         )
@@ -560,15 +567,14 @@ async def post_data_product_comment(
     # comments up in `/audit/search`.  The DataProductComment
     # table stays system-of-record; this row is discoverability
     # only.  body_preview is truncated to keep storage bounded.
-    audit_service.log_action(
+    mirror_social_to_audit(
         factory,
         user_id=user["id"],
         user_email=user.get("email", ""),
         action=_DISCUSSION_POSTED,
-        target=(
-            f"data_product:{catalog}.{schema}#tab-discussion-comment-"
-            f"{comment_id}"
-        ),
+        entity_kind="dp",
+        entity_ref=f"{catalog}.{schema}",
+        suffix=f"tab-discussion-comment-{comment_id}",
         detail={
             "data_product_id": comment_dp_id,
             "comment_id": comment_id,
@@ -583,14 +589,16 @@ async def post_data_product_comment(
         f"/data-products/{catalog}/{schema}#tab-discussion-comment-{comment_id}"
     )
     summary = f"@{author_email or 'someone'} commented on {catalog}.{schema}"
-    fanout_dataproduct_event(
+    fanout_event(
         factory,
         event_type=EVENT_TYPE_DATA_PRODUCT_COMMENTED,
-        data_product_id=comment_dp_id,
+        entity_kind="dp",
+        entity_ref=f"{catalog}.{schema}",
         workspace_id=workspace_id,
         actor_user_id=user["id"],
         source_url=source_url,
         summary_md=summary,
+        data_product_id=comment_dp_id,
         extra_recipients=mentioned_ids,
     )
     await emit_governance_event(
@@ -736,15 +744,14 @@ async def accept_answer(
         op_user_id = int(top_level.author_user_id)
         answer_author_id = int(comment.author_user_id)
 
-    audit_service.log_action(
+    mirror_social_to_audit(
         factory,
         user_id=user["id"],
         user_email=user.get("email", ""),
         action=_DISCUSSION_ANSWER_ACCEPTED,
-        target=(
-            f"data_product:{catalog}.{schema}#tab-discussion-comment-"
-            f"{comment_id}"
-        ),
+        entity_kind="dp",
+        entity_ref=f"{catalog}.{schema}",
+        suffix=f"tab-discussion-comment-{comment_id}",
         detail={
             "data_product_id": row.id,
             "comment_id": comment_id,
@@ -762,14 +769,16 @@ async def accept_answer(
     )
     recipients = {answer_author_id, op_user_id}
     recipients.discard(user["id"])
-    fanout_dataproduct_event(
+    fanout_event(
         factory,
         event_type=EVENT_TYPE_DATA_PRODUCT_ANSWER_ACCEPTED,
-        data_product_id=row.id,
+        entity_kind="dp",
+        entity_ref=f"{catalog}.{schema}",
         workspace_id=workspace_id,
         actor_user_id=user["id"],
         source_url=source_url,
         summary_md=summary,
+        data_product_id=row.id,
         extra_recipients=list(recipients),
     )
     await emit_governance_event(
@@ -859,15 +868,14 @@ async def delete_data_product_comment(
     # find the row already gone.  This keeps the audit trail
     # accurate at one row per actual moderation action.
     if not was_already_deleted:
-        audit_service.log_action(
+        mirror_social_to_audit(
             factory,
             user_id=user["id"],
             user_email=user.get("email", ""),
             action=_DISCUSSION_DELETED,
-            target=(
-                f"data_product:{catalog}.{schema}#tab-discussion-comment-"
-                f"{comment.id}"
-            ),
+            entity_kind="dp",
+            entity_ref=f"{catalog}.{schema}",
+            suffix=f"tab-discussion-comment-{comment.id}",
             detail={
                 "data_product_id": comment.data_product_id,
                 "comment_id": comment.id,
