@@ -31,7 +31,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -213,7 +213,17 @@ def _resolve_table(
         treated as "hits" and rendered as anchors.
     """
     del session, workspace_id
-    return {t for t in triples if isinstance(t, tuple) and len(t) == 3}
+    hits: set[tuple[str, str, str]] = set()
+    for raw in triples:
+        if not isinstance(raw, tuple):
+            continue
+        parts = cast(tuple[Any, ...], raw)
+        if len(parts) != 3:
+            continue
+        c, s, t = parts
+        if isinstance(c, str) and isinstance(s, str) and isinstance(t, str):
+            hits.add((c, s, t))
+    return hits
 
 
 def _render_table(

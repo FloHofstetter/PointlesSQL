@@ -169,7 +169,7 @@ async def list_data_product_reviews(
 
         summary = _summary_for(session, workspace_id, row.id)
 
-    payload = []
+    payload: list[dict[str, Any]] = []
     my_review: dict[str, Any] | None = None
     for r in rows:
         author_email, author_display = author_map.get(r.author_user_id, (None, None))

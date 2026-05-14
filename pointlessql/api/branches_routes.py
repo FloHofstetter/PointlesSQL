@@ -111,12 +111,12 @@ def _enumerate_branches(client: Any) -> list[dict[str, Any]]:
     catalogs_response = list_catalogs_api.sync(client=client)
     catalog_rows: list[Any] = []
     if catalogs_response is not None:
-        catalogs_attr = getattr(catalogs_response, "catalogs", None)
+        catalogs_attr: Any = getattr(catalogs_response, "catalogs", None)
         if isinstance(catalogs_attr, list):
-            catalog_rows = catalogs_attr
+            catalog_rows = list(catalogs_attr)  # type: ignore[arg-type]
 
     for catalog in catalog_rows:
-        catalog_name = getattr(catalog, "name", None)
+        catalog_name: Any = getattr(catalog, "name", None)
         if not isinstance(catalog_name, str):
             continue
         try:
@@ -130,11 +130,12 @@ def _enumerate_branches(client: Any) -> list[dict[str, Any]]:
             continue
         if schemas_response is None:
             continue
-        schema_rows = getattr(schemas_response, "schemas", None)
+        schema_rows: Any = getattr(schemas_response, "schemas", None)
         if not isinstance(schema_rows, list):
             continue
-        for schema in schema_rows:
-            schema_name = getattr(schema, "name", None)
+        schema_iter: list[Any] = list(schema_rows)  # type: ignore[arg-type]
+        for schema in schema_iter:
+            schema_name: Any = getattr(schema, "name", None)
             if not isinstance(schema_name, str):
                 continue
             schema_fqn = f"{catalog_name}.{schema_name}"
