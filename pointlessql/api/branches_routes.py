@@ -38,11 +38,12 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import desc, select
 
 from pointlessql.api.dependencies import (
+    current_workspace_id,
     get_user,
     require_admin,
     require_supervisor,
@@ -50,6 +51,11 @@ from pointlessql.api.dependencies import (
 from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models import BranchAuditLog
+from pointlessql.models.catalog._data_product_endorsement import (
+    DataProductEndorsement,
+)
+from pointlessql.models.social._social_target import SocialTarget
+from pointlessql.models.workspace import Workspace
 from pointlessql.pql import (
     BranchError,
     BranchPromotionConflictError,
@@ -221,10 +227,89 @@ async def api_preview_promote(request: Request, branch_fqn: str) -> dict[str, An
     return preview_promote_conflicts(client=client, branch_schema_fqn=branch_fqn)
 
 
+def _branch_promote_gate_check(request: Request, branch_fqn: str) -> None:
+    """Phase 77.3 — opt-in promote-gate enforcement.
+
+    When ``workspaces.branch_promote_requires_endorsement`` is on
+    for the active workspace, the caller must have at least one
+    active ``branch-approved-for-promotion`` endorsement on the
+    branch's :class:`SocialTarget`, applied by a user other than
+    the caller.  Returns silently when the gate is off or the
+    endorsement is present; raises 412 otherwise.
+
+    Args:
+        request: The active FastAPI request — used to read the
+            workspace id, the caller's user id, and the session
+            factory.
+        branch_fqn: The branch schema's full reference
+            (``catalog.schema__branch_xxx``), used as the
+            ``social_target.entity_ref`` for ``kind='branch'``.
+
+    Raises:
+        HTTPException: 412 Precondition Failed when the gate is
+            on but no qualifying endorsement exists.
+    """
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    user = get_user(request)
+    caller_id = int(user["id"])
+    with factory() as session:
+        workspace = session.get(Workspace, workspace_id)
+        if workspace is None or not workspace.branch_promote_requires_endorsement:
+            return
+        anchor = session.execute(
+            select(SocialTarget).where(
+                SocialTarget.workspace_id == workspace_id,
+                SocialTarget.entity_kind == "branch",
+                SocialTarget.entity_ref == branch_fqn,
+            )
+        ).scalar_one_or_none()
+        if anchor is None:
+            # bare-http-ok: the gate is on; no endorsement row means
+            # the precondition fails by construction.
+            raise HTTPException(
+                status_code=412,
+                detail=(
+                    "branch_promote_requires_endorsement: no "
+                    "'branch-approved-for-promotion' endorsement found "
+                    "on this branch"
+                ),
+            )
+        endorsement = session.execute(
+            select(DataProductEndorsement).where(
+                DataProductEndorsement.workspace_id == workspace_id,
+                DataProductEndorsement.social_target_id == anchor.id,
+                DataProductEndorsement.endorsement_type
+                == "branch-approved-for-promotion",
+                DataProductEndorsement.removed_at.is_(None),
+                DataProductEndorsement.applied_by_user_id != caller_id,
+            )
+        ).scalar_one_or_none()
+        if endorsement is None:
+            # bare-http-ok: the gate is on; self-endorsement only is
+            # an explicit precondition failure.
+            raise HTTPException(
+                status_code=412,
+                detail=(
+                    "branch_promote_requires_endorsement: at least one "
+                    "active 'branch-approved-for-promotion' endorsement "
+                    "by a different user is required"
+                ),
+            )
+
+
 @router.post("/api/branches/{branch_fqn}/promote")
 async def api_promote_branch(request: Request, branch_fqn: str) -> dict[str, Any]:
-    """Promote a branch to be the new parent (admin-only)."""
+    """Promote a branch to be the new parent (admin-only).
+
+    Phase 77.3 adds the opt-in promote-gate.  When the workspace's
+    ``branch_promote_requires_endorsement`` flag is on, the caller
+    must already hold an active
+    ``branch-approved-for-promotion`` endorsement applied by a
+    non-self user.  Returns 412 Precondition Failed otherwise.
+    """
     require_admin(request)
+    _branch_promote_gate_check(request, branch_fqn)
     client, settings = _make_settings_client(request)
     try:
         result = promote_branch_schema(

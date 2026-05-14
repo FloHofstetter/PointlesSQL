@@ -41,6 +41,11 @@ ENDORSEMENT_TYPES: tuple[str, ...] = (
     "production-ready",
     "deprecated",
     "under-review",
+    # Phase 77.3 — opt-in branch promote-gate (locked decision #3).
+    # Only meaningful on kind='branch' anchors; the workspace
+    # toggle ``branch_promote_requires_endorsement`` decides
+    # whether ``POST /api/branches/.../promote`` checks for it.
+    "branch-approved-for-promotion",
 )
 
 
@@ -77,7 +82,7 @@ class DataProductEndorsement(Base):
         ),
         CheckConstraint(
             "endorsement_type IN ('verified-by-steward', 'production-ready', "
-            "'deprecated', 'under-review')",
+            "'deprecated', 'under-review', 'branch-approved-for-promotion')",
             name="ck_dp_endorsement_type",
         ),
         Index(

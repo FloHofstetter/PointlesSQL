@@ -107,6 +107,17 @@ def _table_url(entity_ref: str) -> str:
     return f"/catalogs/{parts[0]}/schemas/{parts[1]}/tables/{parts[2]}"
 
 
+def _branch_url(entity_ref: str) -> str:
+    """Map a branch FQN to the branch detail URL.
+
+    Phase 77.3 — branches are referenced by their full schema
+    FQN (e.g. ``catalog.schema__branch_xxx``).  The detail page
+    lives at ``/branches/{fqn}`` so the registry's URL builder
+    can drop straight into the existing route.
+    """
+    return f"/branches/{entity_ref}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -153,6 +164,27 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "endorsements",
             "followers",
             "readme",
+        ),
+    ),
+    # Phase 77.3 — branches get Discussion + Endorsements +
+    # Followers tabs.  The single endorsement type that matters
+    # here is ``branch-approved-for-promotion`` — used by the
+    # opt-in promote-gate.  No reviews / README / issues until
+    # later phases prove they're worth the surface.
+    "branch": EntityKindSpec(
+        key="branch",
+        label="Branch",
+        url_for=_branch_url,
+        audit_target_prefix="branch",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=False,
+        supports_issues=False,
+        supports_stars=False,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
         ),
     ),
 }

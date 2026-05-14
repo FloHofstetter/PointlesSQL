@@ -28,7 +28,17 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
@@ -69,6 +79,13 @@ class Workspace(Base):
             ``None`` for active workspaces.  Archived workspaces hide
             from the switcher and from default listings but keep their
             data so historical audit rows still resolve.
+        branch_promote_requires_endorsement: Phase 77.3 opt-in gate
+            on ``POST /api/branches/{fqn}/promote``.  Default
+            ``False``; flipped on by an admin per workspace to
+            require ≥1 active ``branch-approved-for-promotion``
+            endorsement from a non-self user before promotion
+            succeeds.  Locked decision #3 — the runtime never
+            auto-flips this; admins enable it consciously.
     """
 
     __tablename__ = "workspaces"
@@ -82,6 +99,12 @@ class Workspace(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     archived_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    branch_promote_requires_endorsement: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=sa_text("0"),
+        default=False,
     )
 
 
