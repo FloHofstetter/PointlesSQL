@@ -1,0 +1,174 @@
+        <div class="tab-pane fade" id="tab-discussion" role="tabpanel">
+            <template x-if="!commentsLoaded">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="commentsLoaded">
+                <div>
+                    <template x-if="topLevelComments.length === 0">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-chat-left-text me-1"></i>
+                            No comments yet — start the discussion below.
+                        </div>
+                    </template>
+                    <!-- Phase 76.1: DP-level reaction row -->
+                    <div class="mb-3 d-flex gap-1 flex-wrap align-items-center pql-dp-reactions">
+                        <span class="small text-muted me-1">React:</span>
+                        <template x-for="emoji in ['👍','❤️','🎉','😄','😕','👀']" :key="emoji">
+                            <button class="btn btn-sm btn-outline-secondary pql-dp-reaction-btn"
+                                    :class="(dpReactions[emoji] && dpReactions[emoji].mine) ? 'active' : ''"
+                                    :data-emoji="emoji"
+                                    @click="toggleDpReaction(emoji)"
+                                    x-text="emoji + ' ' + ((dpReactions[emoji] && dpReactions[emoji].count) || 0)"></button>
+                        </template>
+                    </div>
+
+                    <template x-for="c in topLevelComments" :key="c.id">
+                        <div class="card mb-2 pql-comment-card"
+                             data-pql-comment-depth="1"
+                             :data-comment-id="c.id">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="small text-muted">
+                                        <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                        <template x-if="c.agent">
+                                            <span class="badge bg-info ms-1 pql-comment-agent-badge"
+                                                  :title="'Posted via agent ' + c.agent.slug">
+                                                <i class="bi bi-robot"></i>
+                                                <a :href="'/agents/' + c.agent.slug"
+                                                   class="text-white text-decoration-none"
+                                                   x-text="c.agent.display_name || c.agent.slug"></a>
+                                                <span x-show="c.agent.is_verified" class="ms-1">✓</span>
+                                            </span>
+                                        </template>
+                                        ·
+                                        <span x-text="c.created_at"></span>
+                                        <!-- Phase 76.1: category badge -->
+                                        <span class="badge bg-secondary ms-1 pql-comment-category"
+                                              x-show="c.category && c.category !== 'general'"
+                                              x-text="c.category"></span>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-link"
+                                                x-show="!c.deleted_at"
+                                                @click="startReply(c.id)">Reply</button>
+                                        <button class="btn btn-sm btn-link text-danger"
+                                                x-show="!c.deleted_at && canDelete(c)"
+                                                @click="deleteComment(c.id)">Delete</button>
+                                    </div>
+                                </div>
+                                <template x-if="c.deleted_at">
+                                    <em class="small text-muted">[deleted]</em>
+                                </template>
+                                <template x-if="!c.deleted_at">
+                                    <div class="pql-comment-body"
+                                         x-html="window.pqlRenderCitations(c.body_md_resolved || c.body_md)"></div>
+                                </template>
+                                <!-- Phase 76.1: reaction row on the comment -->
+                                <div class="mt-1 d-flex gap-1 flex-wrap pql-comment-reactions"
+                                     x-show="!c.deleted_at">
+                                    <template x-for="r in (c.reactions || [])" :key="r.emoji">
+                                        <button class="btn btn-sm btn-outline-secondary py-0 pql-comment-reaction-btn"
+                                                :class="r.has_current_user_reacted ? 'active' : ''"
+                                                :data-emoji="r.emoji"
+                                                @click="toggleCommentReaction(c.id, r.emoji)"
+                                                x-text="r.emoji + ' ' + (r.count || 0)"></button>
+                                    </template>
+                                </div>
+                                <template x-for="r in repliesOf(c.id)" :key="r.id">
+                                    <div class="ms-4 mt-2 ps-3 border-start pql-comment-reply-row"
+                                         data-pql-comment-depth="2"
+                                         :data-comment-id="r.id">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="small text-muted">
+                                                <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
+                                                <template x-if="r.agent">
+                                                    <span class="badge bg-info ms-1 pql-comment-agent-badge"
+                                                          :title="'Posted via agent ' + r.agent.slug">
+                                                        <i class="bi bi-robot"></i>
+                                                        <a :href="'/agents/' + r.agent.slug"
+                                                           class="text-white text-decoration-none"
+                                                           x-text="r.agent.display_name || r.agent.slug"></a>
+                                                        <span x-show="r.agent.is_verified" class="ms-1">✓</span>
+                                                    </span>
+                                                </template>
+                                                ·
+                                                <span x-text="r.created_at"></span>
+                                                <span class="badge bg-success ms-1 pql-accepted-answer-badge"
+                                                      x-show="r.is_accepted_answer">✓ Answer</span>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-sm btn-link text-success pql-accept-answer-btn"
+                                                        x-show="!r.deleted_at && c.category === 'question' && !r.is_accepted_answer && canAcceptAnswer(c, r)"
+                                                        @click="acceptAnswer(r.id)">Mark as answer</button>
+                                                <button class="btn btn-sm btn-link text-danger"
+                                                        x-show="!r.deleted_at && canDelete(r)"
+                                                        @click="deleteComment(r.id)">Delete</button>
+                                            </div>
+                                        </div>
+                                        <template x-if="r.deleted_at">
+                                            <em class="small text-muted">[deleted]</em>
+                                        </template>
+                                        <template x-if="!r.deleted_at">
+                                            <div class="pql-comment-body"
+                                                 x-html="window.pqlRenderCitations(r.body_md_resolved || r.body_md)"></div>
+                                        </template>
+                                        <div class="mt-1 d-flex gap-1 flex-wrap pql-comment-reactions"
+                                             x-show="!r.deleted_at">
+                                            <template x-for="rx in (r.reactions || [])" :key="rx.emoji">
+                                                <button class="btn btn-sm btn-outline-secondary py-0 pql-comment-reaction-btn"
+                                                        :class="rx.has_current_user_reacted ? 'active' : ''"
+                                                        :data-emoji="rx.emoji"
+                                                        @click="toggleCommentReaction(r.id, rx.emoji)"
+                                                        x-text="rx.emoji + ' ' + (rx.count || 0)"></button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="replyingTo === c.id">
+                                    <div class="mt-2 ms-4">
+                                        <textarea class="form-control form-control-sm pql-comment-reply"
+                                                  rows="2"
+                                                  data-mention-autocomplete
+                                                  x-model="replyDraft"></textarea>
+                                        <div class="mt-1 d-flex gap-2">
+                                            <button class="btn btn-sm btn-primary"
+                                                    :disabled="replyDraft.trim() === ''"
+                                                    @click="submitReply(c.id)">Post reply</button>
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                    @click="replyingTo = null">Cancel</button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <label class="form-label small">Add a comment</label>
+                            <!-- Phase 76.1: category selector -->
+                            <div class="mb-2 d-flex align-items-center gap-2">
+                                <label class="small text-muted mb-0">Category:</label>
+                                <select class="form-select form-select-sm w-auto pql-comment-category-select"
+                                        x-model="newCommentCategory">
+                                    <option value="general">General</option>
+                                    <option value="question">Question</option>
+                                    <option value="announcement">Announcement</option>
+                                    <option value="idea">Idea</option>
+                                </select>
+                            </div>
+                            <textarea class="form-control pql-comment-new"
+                                      rows="3"
+                                      data-mention-autocomplete
+                                      x-model="newCommentDraft"
+                                      placeholder="Markdown supported · @email · #dp: · #topic: · #agent: typeahead"></textarea>
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-primary pql-comment-submit"
+                                        :disabled="newCommentDraft.trim() === ''"
+                                        @click="submitNew()">Post comment</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>

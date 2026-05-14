@@ -1,0 +1,92 @@
+        <!-- Reviews (Phase 71.2) -->
+        <div class="tab-pane fade" id="tab-reviews" role="tabpanel">
+            <template x-if="!reviewsLoaded">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="reviewsLoaded">
+                <div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h6 class="mb-2">
+                                <span x-show="!myReview">Add your review</span>
+                                <span x-show="myReview">Update your review</span>
+                            </h6>
+                            <div class="mb-2 pql-review-star-input">
+                                <template x-for="n in [1,2,3,4,5]" :key="n">
+                                    <i class="bi"
+                                       :class="(reviewDraftStars >= n) ? 'bi-star-fill text-warning' : 'bi-star'"
+                                       style="cursor: pointer; font-size: 1.2rem;"
+                                       :data-star-value="n"
+                                       @click="reviewDraftStars = n"></i>
+                                </template>
+                                <span class="ms-2 small text-muted"
+                                      x-text="reviewDraftStars + ' / 5'"></span>
+                            </div>
+                            <textarea class="form-control pql-review-body"
+                                      rows="2"
+                                      x-model="reviewDraftBody"
+                                      placeholder="What did you think? (markdown supported)"></textarea>
+                            <div class="mt-2 d-flex gap-2">
+                                <button class="btn btn-sm btn-primary pql-review-submit"
+                                        :disabled="reviewDraftStars < 1"
+                                        @click="submitReview()">
+                                    <span x-show="!myReview">Post review</span>
+                                    <span x-show="myReview">Update review</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger pql-review-delete"
+                                        x-show="myReview"
+                                        @click="deleteOwnReview()">Delete my review</button>
+                                <select class="form-select form-select-sm w-auto ms-auto pql-review-sort"
+                                        x-model="reviewSort">
+                                    <option value="recent">Most recent</option>
+                                    <option value="stars-desc">Highest first</option>
+                                    <option value="stars-asc">Lowest first</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <template x-if="reviews.length === 0">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-star me-1"></i>
+                            No reviews yet — be the first.
+                        </div>
+                    </template>
+                    <template x-for="r in sortedReviews" :key="r.id">
+                        <div class="card mb-2 pql-review-card"
+                             :data-review-id="r.id">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="small text-muted">
+                                        <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
+                                        <template x-if="r.agent">
+                                            <span class="badge bg-info ms-1 pql-review-agent-badge"
+                                                  :title="'Posted via agent ' + r.agent.slug">
+                                                <i class="bi bi-robot"></i>
+                                                <a :href="'/agents/' + r.agent.slug"
+                                                   class="text-white text-decoration-none"
+                                                   x-text="r.agent.display_name || r.agent.slug"></a>
+                                                <span x-show="r.agent.is_verified" class="ms-1">✓</span>
+                                            </span>
+                                        </template>
+                                        ·
+                                        <span class="text-warning"
+                                              x-text="'★'.repeat(r.stars) + '☆'.repeat(5 - r.stars)"></span>
+                                        ·
+                                        <span x-text="r.created_at"></span>
+                                        <template x-if="r.dp_version_at_review">
+                                            <span class="badge bg-light text-dark border ms-1"
+                                                  x-text="'v' + r.dp_version_at_review"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                                <template x-if="r.body_md">
+                                    <div class="pql-review-body"
+                                         x-html="window.pqlRenderCitations(r.body_md_resolved || r.body_md)"></div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>

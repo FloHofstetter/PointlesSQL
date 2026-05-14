@@ -1,0 +1,151 @@
+        <!-- README (Phase 71.5) + System passport (Phase 73.4) -->
+        <div class="tab-pane fade" id="tab-readme" role="tabpanel">
+            <!-- Phase 73.4: auto-generated system passport above the steward README. -->
+            <template x-if="passportLoaded && passport">
+                <div class="card mb-3 pql-dp-passport-card">
+                    <div class="card-header d-flex align-items-center gap-2">
+                        <i class="bi bi-passport"></i>
+                        <strong>System passport</strong>
+                        <small class="text-muted ms-auto">
+                            <span x-text="'v' + passport.version_int"></span>
+                            · <span x-text="passport.refresh_trigger"></span>
+                            · <span x-text="passport.refreshed_at"></span>
+                        </small>
+                        <button class="btn btn-sm btn-outline-secondary pql-dp-passport-refresh"
+                                x-show="canEditReadme"
+                                @click="refreshPassport()">
+                            <i class="bi bi-arrow-repeat"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <pre class="pql-dp-passport-body mb-0" style="white-space: pre-wrap;"
+                             x-text="passport.body_md"></pre>
+                    </div>
+                </div>
+            </template>
+            <template x-if="passportLoaded && !passport">
+                <div class="alert alert-secondary pql-dp-passport-empty mb-3">
+                    <i class="bi bi-passport me-1"></i>
+                    No system passport yet.
+                    <span x-show="canEditReadme">
+                        <button class="btn btn-sm btn-link p-0 align-baseline pql-dp-passport-refresh"
+                                @click="refreshPassport()">
+                            Generate one now
+                        </button>.
+                    </span>
+                </div>
+            </template>
+
+            <template x-if="!readmeLoaded">
+                <div class="text-muted small p-3">Loading…</div>
+            </template>
+            <template x-if="readmeLoaded">
+                <div>
+                    <div class="d-flex justify-content-end gap-2 mb-2">
+                        <button class="btn btn-sm btn-outline-secondary pql-readme-history-btn"
+                                @click="toggleHistory()">
+                            <i class="bi bi-clock-history"></i>
+                            <span x-text="historyOpen ? 'Hide history' : 'History'"></span>
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary pql-readme-edit-btn"
+                                x-show="canEditReadme"
+                                @click="startReadmeEdit()">
+                            <i class="bi bi-pencil"></i>
+                            <span x-text="readme ? 'Edit' : 'Add README'"></span>
+                        </button>
+                    </div>
+
+                    <template x-if="!readme && !editingReadme">
+                        <div class="alert alert-secondary pql-readme-empty">
+                            <i class="bi bi-file-earmark-text me-1"></i>
+                            No README yet.
+                            <span x-show="canEditReadme">Click "Add README" to write one.</span>
+                        </div>
+                    </template>
+
+                    <template x-if="editingReadme">
+                        <div class="card mb-3 pql-readme-editor">
+                            <div class="card-body">
+                                <label class="form-label small">README body (markdown)</label>
+                                <textarea class="form-control pql-readme-body-input"
+                                          rows="12"
+                                          x-model="readmeDraft"></textarea>
+                                <div class="mt-2 d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary pql-readme-save"
+                                            @click="saveReadme()">Save</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            @click="cancelReadmeEdit()">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="readme && !editingReadme">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="small text-muted mb-2">
+                                    <span x-text="'v' + readme.version_int"></span>
+                                    · updated by
+                                    <strong x-text="(readme.updated_by.display_name || readme.updated_by.email) || 'unknown'"></strong>
+                                    ·
+                                    <span x-text="readme.updated_at"></span>
+                                </div>
+                                <pre class="pql-readme-body mb-0" style="white-space: pre-wrap;" x-text="readme.body_md"></pre>
+                            </div>
+                        </div>
+                    </template>
+
+                    <template x-if="historyOpen">
+                        <div class="card pql-readme-history">
+                            <div class="card-body">
+                                <h6 class="mb-2">Version history</h6>
+                                <template x-if="readmeHistory.length === 0">
+                                    <div class="text-muted small">No history yet.</div>
+                                </template>
+                                <template x-if="readmeHistory.length > 0">
+                                    <div>
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Version</th>
+                                                    <th>Updated by</th>
+                                                    <th>When</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <template x-for="v in readmeHistory" :key="v.id">
+                                                    <tr :data-readme-version="v.version_int">
+                                                        <td>
+                                                            <span class="badge bg-light text-dark border"
+                                                                  x-text="'v' + v.version_int"></span>
+                                                        </td>
+                                                        <td x-text="(v.updated_by.display_name || v.updated_by.email) || 'unknown'"></td>
+                                                        <td class="small text-muted" x-text="v.updated_at"></td>
+                                                        <td>
+                                                            <label class="small me-1">
+                                                                <input type="radio" :value="v.version_int" x-model.number="diffFrom"> from
+                                                            </label>
+                                                            <label class="small">
+                                                                <input type="radio" :value="v.version_int" x-model.number="diffTo"> to
+                                                            </label>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                        <button class="btn btn-sm btn-outline-secondary pql-readme-compare-btn"
+                                                :disabled="!diffFrom || !diffTo || diffFrom === diffTo"
+                                                @click="loadDiff()">Compare</button>
+                                        <template x-if="diffText">
+                                            <pre class="pql-readme-diff mt-3 p-2 border bg-body-tertiary" style="white-space: pre-wrap;" x-text="diffText"></pre>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+        </div>
