@@ -51,6 +51,7 @@ from pointlessql.models.catalog._data_products import (
 )
 from pointlessql.services.data_products.activity import fetch_activity_for_dp
 from pointlessql.services.data_products.badges import compute_badges_for_dp
+from pointlessql.services.social._target_resolver import get_or_create_target
 
 logger = logging.getLogger(__name__)
 
@@ -310,6 +311,7 @@ def _post_comment(
     *,
     workspace_id: int,
     data_product_id: int,
+    dp_ref: str,
     author_user_id: int,
     body_md: str,
     now: datetime.datetime,
@@ -321,6 +323,8 @@ def _post_comment(
         session: Live SQLAlchemy session.
         workspace_id: Tenant scope.
         data_product_id: FK on ``data_products.id``.
+        dp_ref: Canonical ``catalog.schema`` reference used to
+            resolve the polymorphic ``social_target`` anchor.
         author_user_id: The steward / admin acting as comment
             author (from
             :attr:`DataProductActiveReviewerConfig.acting_user_id`).
@@ -333,9 +337,17 @@ def _post_comment(
     Returns:
         The new comment's id.
     """
+    target = get_or_create_target(
+        session,
+        workspace_id=workspace_id,
+        kind="dp",
+        ref=dp_ref,
+        data_product_id=data_product_id,
+    )
     row = DataProductComment(
         workspace_id=workspace_id,
         data_product_id=data_product_id,
+        social_target_id=target.id,
         parent_comment_id=None,
         author_user_id=author_user_id,
         author_agent_id=author_agent_id,
@@ -353,6 +365,7 @@ def _write_endorsement(
     *,
     workspace_id: int,
     data_product_id: int,
+    dp_ref: str,
     applied_by_user_id: int,
     endorsement_type: str,
     note_md: str | None,
@@ -393,9 +406,17 @@ def _write_endorsement(
     ).scalar_one_or_none()
     if existing is not None:
         return None
+    target = get_or_create_target(
+        session,
+        workspace_id=workspace_id,
+        kind="dp",
+        ref=dp_ref,
+        data_product_id=data_product_id,
+    )
     row = DataProductEndorsement(
         workspace_id=workspace_id,
         data_product_id=data_product_id,
+        social_target_id=target.id,
         endorsement_type=endorsement_type,
         applied_by_user_id=applied_by_user_id,
         applied_by_agent_id=applied_by_agent_id,
@@ -624,11 +645,13 @@ async def run_reviewer_for_dp(
         "raw_response": verdict.raw_response,
     }
 
+    dp_ref = f"{catalog_name}.{schema_name}"
     with factory() as session:
         comment_id = _post_comment(
             session,
             workspace_id=workspace_id,
             data_product_id=data_product_id,
+            dp_ref=dp_ref,
             author_user_id=acting_user_id,
             body_md=verdict.comment_md,
             now=now,
@@ -640,6 +663,7 @@ async def run_reviewer_for_dp(
                 session,
                 workspace_id=workspace_id,
                 data_product_id=data_product_id,
+                dp_ref=dp_ref,
                 applied_by_user_id=acting_user_id,
                 endorsement_type=verdict.endorsement_type,
                 note_md=f"active reviewer ({trigger})",
