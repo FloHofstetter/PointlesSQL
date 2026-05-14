@@ -547,7 +547,7 @@ PointlesSQL
 │   │   default never auto-flips.  Notebook ``entity_ref`` is
 │   │   an immutable UUID, not the file path.
 │   │
-│   ├── Phase 77.0 — Polymorphic foundation (zero new entity types)  ⏳ in progress
+│   ├── Phase 77.0 — Polymorphic foundation (zero new entity types)  ✅ done (2026-05-15)
 │   │       ``social_targets`` anchor table + ``entity_registry``
 │   │       single-source-of-truth + ``get_or_create_target`` /
 │   │       ``resolve_workspace_for_entity`` resolver.  Migration
@@ -563,15 +563,18 @@ PointlesSQL
 │   │       End-user behaviour unchanged; the entire DP-social
 │   │       test suite must pass unmodified.
 │   │
-│   ├── Phase 77.1 — Tables                                          ⏳ planned
+│   ├── Phase 77.1 — Tables                                          ⏳ in progress
 │   │       First new entity type.  Discussion + Endorsements +
 │   │       Followers + README + Stars tabs on every UC table
 │   │       page.  Reviews hidden (tables don't get star-ratings).
 │   │       ``#table:cat.sch.tbl`` citation token registered.
 │   │       Federated / foreign tables get the same tabs (no
 │   │       banning) plus a "external catalog" banner.
+│   │       Phase 77.1.A landed 2026-05-15: registry + citations
+│   │       backbone scaffolded.  table.html tab strip + per-kind
+│   │       /api/social/table/* handlers queued for 77.1.5.
 │   │
-│   ├── Phase 77.3 — Branches (with promote-gate, opt-in)            ⏳ planned
+│   ├── Phase 77.3 — Branches (with promote-gate, opt-in)            ⏳ in progress
 │   │       Branch detail page gains 4 social tabs + the killer
 │   │       GitHub-PR analog: workspace setting
 │   │       ``branch_promote_requires_endorsement`` (default OFF,
@@ -579,6 +582,10 @@ PointlesSQL
 │   │       requires ≥1 ``branch-approved-for-promotion``
 │   │       endorsement by a user other than the caller; rejects
 │   │       with 412 otherwise.  ``#branch:<id>`` citation.
+│   │       Phase 77.3.A landed 2026-05-15: workspaces column +
+│   │       endorsement type extended + branch entity-kind +
+│   │       /api/branches/.../promote gate.  Branch detail HTML
+│   │       social tabs queued for 77.3.B.
 │   │
 │   ├── Phase 77.2 — Models                                          ⏳ planned
 │   │       Full social parity with DPs on

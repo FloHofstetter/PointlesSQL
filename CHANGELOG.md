@@ -6,6 +6,57 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.0 closed — polymorphic foundation (2026-05-15).**
+  Ten autonomous chunks landed: 77.0.A (``social_targets``
+  anchor table + ``entity_registry`` + ``_target_resolver``),
+  77.0.B (``social_target_id`` columns on 7 DP-social tables),
+  77.0.C (``mirror_social_to_audit`` helper preserving the
+  legacy ``data_product:`` audit prefix for kind='dp' per
+  locked decision #9), 77.0.D (generic ``fanout_event``
+  dispatcher + nullable ``source_entity_*`` columns on
+  ``user_notifications``), 77.0.E (``citations.py`` registry
+  refactor: 4 hand-rolled branches → ``_CITATION_KINDS`` list
+  with ``register_citation_kind()`` extension point), 77.0.I
+  (feed URL builder via ``entity_registry.url_for()``), 77.0.F.1
+  (DP-route call-site swap on all 6 sub-routers — every social
+  INSERT writes ``social_target_id`` via ``resolve_dp_target``),
+  77.0.F.2 (new polymorphic router package
+  ``pointlessql.api.social_routes`` exposing
+  ``/api/social/{kind}/{ref:path}/...`` — kind='dp' delegates to
+  the existing DP handlers; non-dp kinds raise 501 until 77.1+
+  wires them), 77.0.F.3 (active-reviewer service writes
+  ``social_target_id``), 77.0.H (3 social tab-panes lifted out
+  of ``data_product.html`` (1528 → 1114 LOC) into
+  ``frontend/templates/partials/social/``), 77.0.G (migration
+  ``y6b8d0f2h4j6`` flips ``social_target_id`` to NOT NULL +
+  ``data_product_id`` to NULLABLE on the 6 non-PK tables;
+  ``data_product_follows`` keeps the composite PK structure
+  intact).  Zero end-user behaviour change; the 86-test
+  DP-social regression suite passes unchanged.
+- **Phase 77.1 (partial) — UC table entity-kind registered
+  (2026-05-15).**  Registers ``table`` in the entity registry
+  with the URL builder routing to
+  ``/catalogs/{cat}/schemas/{sch}/tables/{tbl}``, registers the
+  ``#table:cat.sch.tbl`` citation token, and tags the
+  polymorphic audit-target prefix (``table:`` from day 1; the
+  legacy ``data_product:`` prefix only protects kind='dp').  7
+  new tests cover the registry, citations, and the dispatcher's
+  501 response for table writes — handler wiring queued for
+  77.1.5.
+- **Phase 77.3 (partial) — branch promote-gate (2026-05-15).**
+  Migration ``z7c9e1g3i5k7`` adds
+  ``workspaces.branch_promote_requires_endorsement BOOLEAN
+  DEFAULT FALSE NOT NULL`` and extends the endorsement CHECK to
+  allow ``branch-approved-for-promotion``.  ``POST
+  /api/branches/{fqn}/promote`` gains a gate-check helper that,
+  when the workspace flag is on, requires at least one active
+  ``branch-approved-for-promotion`` endorsement applied by a
+  user other than the caller; returns 412 Precondition Failed
+  otherwise (locked decision #3 — default OFF forever, admins
+  flip it consciously per workspace).  The ``branch`` entity
+  kind is registered in the registry.  4 new tests cover the
+  full gate matrix (off, on+missing, on+self, on+peer).
+
 - **Phase 76.6 — SSE notifications + cross-DP citations
   (2026-05-13).**  New ``GET /api/notifications/stream`` SSE
   endpoint pushes inbox rows in real-time; the topbar bell now
