@@ -92,6 +92,21 @@ def _dp_url(entity_ref: str) -> str:
     return f"/data-products/{parts[0]}/{parts[1]}"
 
 
+def _table_url(entity_ref: str) -> str:
+    """Map ``cat.sch.tbl`` to the UC table detail URL.
+
+    Phase 77.1 — tables live under the UC catalog browser at
+    ``/catalogs/{cat}/schemas/{sch}/tables/{tbl}``.  Federated
+    tables share the same route so the social tabs work across
+    every UC backend.  Returns a safe fallback when the ref is
+    malformed so audit-log rendering never crashes.
+    """
+    parts = entity_ref.split(".", 2)
+    if len(parts) != 3:
+        return "/catalogs"
+    return f"/catalogs/{parts[0]}/schemas/{parts[1]}/tables/{parts[2]}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -116,6 +131,27 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "activity",
             "discussion",
             "reviews",
+            "readme",
+        ),
+    ),
+    # Phase 77.1 — UC tables get Discussion + Endorsements +
+    # Followers + README + (later) Stars tabs.  Reviews stay off
+    # for now (locked: star ratings only make sense on curated
+    # DPs).  Issues open in 77.7 once the issues entity ships.
+    "table": EntityKindSpec(
+        key="table",
+        label="Table",
+        url_for=_table_url,
+        audit_target_prefix="table",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=True,
+        supports_issues=False,  # Issues land in 77.7
+        supports_stars=True,    # Stars wire-up lands in 77.8
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
             "readme",
         ),
     ),

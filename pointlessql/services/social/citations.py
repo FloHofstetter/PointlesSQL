@@ -187,6 +187,48 @@ def _render_agent(match: re.Match[str], hits: set[str]) -> str:
     return f"[@{slug}](/agents/{slug})"
 
 
+# Phase 77.1 — UC table citations (``#table:cat.sch.tbl``).  No
+# existence check against the UC backend in this iteration — the
+# resolver accepts every well-formed triple and emits a link via
+# the entity registry.  A later sub-phase may add a backend probe
+# once soyuz exposes a low-cost ``table exists?`` endpoint.
+_TABLE_CITE_RE = re.compile(
+    r"#table:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)"
+)
+
+
+def _resolve_table(
+    session: Session, workspace_id: int, triples: set[Any]
+) -> set[tuple[str, str, str]]:
+    """Pass every well-formed triple through (no UC probe in 77.1).
+
+    Args:
+        session: Active SQLAlchemy session (unused — present so the
+            signature matches every other resolver).
+        workspace_id: Tenant scope (unused for table refs today).
+        triples: Set of ``(catalog, schema, table)`` capture tuples.
+
+    Returns:
+        The same set the resolver received — all triples are
+        treated as "hits" and rendered as anchors.
+    """
+    del session, workspace_id
+    return {t for t in triples if isinstance(t, tuple) and len(t) == 3}
+
+
+def _render_table(
+    match: re.Match[str], hits: set[tuple[str, str, str]]
+) -> str:
+    """Build the anchor for ``#table:cat.sch.tbl`` or pass through."""
+    catalog, schema, table = match.group(1), match.group(2), match.group(3)
+    if (catalog, schema, table) not in hits:
+        return match.group(0)
+    return (
+        f"[#{catalog}.{schema}.{table}]"
+        f"(/catalogs/{catalog}/schemas/{schema}/tables/{table})"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -216,6 +258,12 @@ _CITATION_KINDS: list[CitationKind] = [
         regex=_AGENT_CITE_RE,
         resolve=_resolve_agent,
         render=_render_agent,
+    ),
+    CitationKind(
+        key="table",
+        regex=_TABLE_CITE_RE,
+        resolve=_resolve_table,
+        render=_render_table,
     ),
 ]
 
