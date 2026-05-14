@@ -189,13 +189,23 @@ def test_fetch_recommendations_filters_followed(tmp_path: Path) -> None:
     refresh_cooccurrence(app.state.session_factory)
     factory = app.state.session_factory
     # User follows DP-A (the source) and DP-C.
+    from pointlessql.services.social import get_or_create_target
+
     with factory() as session:
-        for dp_id in (dp_a, dp_c):
+        for dp_id, fqn in ((dp_a, "cat.schemaA"), (dp_c, "cat.schemaC")):
+            anchor = get_or_create_target(
+                session,
+                workspace_id=1,
+                kind="dp",
+                ref=fqn,
+                data_product_id=dp_id,
+            )
             session.add(
                 DataProductFollow(
                     workspace_id=1,
                     user_id=1,
                     data_product_id=dp_id,
+                    social_target_id=int(anchor.id),
                     created_at=datetime.datetime.now(datetime.UTC),
                 )
             )
@@ -233,12 +243,22 @@ async def test_recommendations_route(
     _seed_run_touching(["cat.schemaA.t", "cat.schemaB.t"])
     refresh_cooccurrence(app.state.session_factory)
     factory = app.state.session_factory
+    from pointlessql.services.social import get_or_create_target
+
     with factory() as session:
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="cat.schemaA",
+            data_product_id=dp_a,
+        )
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 user_id=1,
                 data_product_id=dp_a,
+                social_target_id=int(anchor.id),
                 created_at=datetime.datetime.now(datetime.UTC),
             )
         )

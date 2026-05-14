@@ -75,16 +75,16 @@ class DataProductReadme(Base):
         nullable=False,
         server_default="1",
     )
-    data_product_id: Mapped[int] = mapped_column(
+    data_product_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("data_products.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
-    social_target_id: Mapped[int | None] = mapped_column(
+    social_target_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("social_targets.id"),
-        nullable=True,
+        nullable=False,
     )
     version_int: Mapped[int] = mapped_column(Integer, nullable=False)
     body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")

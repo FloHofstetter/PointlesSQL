@@ -89,10 +89,20 @@ async def test_feed_comment_row_carries_entity_kind_and_registry_url(
                 select(User.id).where(User.email == "test@test.com")
             ).scalar_one()
         )
+        from pointlessql.services.social import get_or_create_target
+
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="main.sales_gold",
+            data_product_id=dp_id,
+        )
         session.add(
             DataProductComment(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(anchor.id),
                 author_user_id=admin_id,
                 body_md="phase77i feed test",
                 mentioned_user_ids_json="[]",

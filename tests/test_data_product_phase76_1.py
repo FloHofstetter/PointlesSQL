@@ -379,14 +379,24 @@ async def test_dp_reaction_notifies_followers(
     """DP-level reactions fan out to followers."""
     dp_id = _seed_product(tmp_path)
     factory = app.state.session_factory
+    from pointlessql.services.social import get_or_create_target
+
     with factory() as session:
         nonadmin = session.execute(
             select(User).where(User.email == "nonadmin@test.com")
         ).scalar_one()
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="main.sales_gold",
+            data_product_id=dp_id,
+        )
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(anchor.id),
                 user_id=nonadmin.id,
                 created_at=datetime.datetime.now(datetime.UTC),
             )

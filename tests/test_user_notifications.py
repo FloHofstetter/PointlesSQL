@@ -118,10 +118,24 @@ def test_fanout_inserts_one_row_per_recipient(tmp_path: Path) -> None:
     from pointlessql.models.catalog._data_product_follows import DataProductFollow
 
     with factory() as session:
+        from pointlessql.models.catalog._data_products import DataProduct
+        from pointlessql.services.social import get_or_create_target
+
+        dp_row = session.get(DataProduct, dp_id)
+        assert dp_row is not None
+        _anchor_77g = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref=f"{dp_row.catalog_name}.{dp_row.schema_name}",
+            data_product_id=dp_id,
+        )
+
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(_anchor_77g.id),
                 user_id=bob_id,
                 created_at=datetime.datetime.now(datetime.UTC),
             )
@@ -154,10 +168,24 @@ def test_fanout_suppresses_actor(tmp_path: Path) -> None:
     from pointlessql.models.catalog._data_product_follows import DataProductFollow
 
     with factory() as session:
+        from pointlessql.models.catalog._data_products import DataProduct
+        from pointlessql.services.social import get_or_create_target
+
+        dp_row = session.get(DataProduct, dp_id)
+        assert dp_row is not None
+        _anchor_77g = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref=f"{dp_row.catalog_name}.{dp_row.schema_name}",
+            data_product_id=dp_id,
+        )
+
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(_anchor_77g.id),
                 user_id=admin_id,
                 created_at=datetime.datetime.now(datetime.UTC),
             )

@@ -86,14 +86,19 @@ def _row_from_comment(
     comment: DataProductComment, fqn_map: dict[int, str]
 ) -> dict[str, Any]:
     """Normalise a comment to the feed row shape."""
+    # Phase 77.0.G — ``data_product_id`` is now nullable on
+    # ``data_product_comments``; for kind='dp' rows it stays populated
+    # but the type hint widened to ``int | None``.  Comments authored
+    # against non-dp kinds in 77.1+ leave the legacy id NULL.
+    dp_id = comment.data_product_id
     return {
         "kind": "comment",
         "event_type": "pointlessql.data_product.commented",
         "summary_md": comment.body_md[:160],
-        "source_url": _dp_url_from_id(fqn_map, comment.data_product_id),
-        "data_product_id": comment.data_product_id,
+        "source_url": _dp_url_from_id(fqn_map, dp_id),
+        "data_product_id": dp_id,
         "entity_kind": "dp",
-        "entity_ref": fqn_map.get(int(comment.data_product_id)),
+        "entity_ref": fqn_map.get(int(dp_id)) if dp_id is not None else None,
         "actor_user_id": comment.author_user_id,
         "created_at": comment.created_at.isoformat(),
         "read_at": None,
@@ -104,14 +109,15 @@ def _row_from_review(
     review: DataProductReview, fqn_map: dict[int, str]
 ) -> dict[str, Any]:
     """Normalise a review to the feed row shape."""
+    dp_id = review.data_product_id
     return {
         "kind": "review",
         "event_type": "pointlessql.data_product.reviewed",
         "summary_md": f"{'★' * review.stars} — {review.body_md[:120]}",
-        "source_url": _dp_url_from_id(fqn_map, review.data_product_id),
-        "data_product_id": review.data_product_id,
+        "source_url": _dp_url_from_id(fqn_map, dp_id),
+        "data_product_id": dp_id,
         "entity_kind": "dp",
-        "entity_ref": fqn_map.get(int(review.data_product_id)),
+        "entity_ref": fqn_map.get(int(dp_id)) if dp_id is not None else None,
         "actor_user_id": review.author_user_id,
         "created_at": review.created_at.isoformat(),
         "read_at": None,

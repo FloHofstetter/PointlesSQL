@@ -9,9 +9,12 @@ Coverage:
   row's ``data_product_id``.
 * Comment-reactions piggy-back on the comment's anchor (special-
   case in the backfill).
-* The column is nullable in this revision — the legacy DP write
-  path can keep inserting rows that briefly carry ``NULL``
-  before the dual-write phase wires the new column.
+
+Phase 77.0.G flipped ``social_target_id`` to NOT NULL — the
+former "column nullable for legacy writes" test was removed
+because the column now rejects NULL at INSERT.  The remaining
+backfill-shape test seeds rows through the resolver so the
+shape contract is preserved end-to-end.
 """
 
 from __future__ import annotations
@@ -111,28 +114,34 @@ def test_social_target_id_columns_exist_on_all_seven_tables() -> None:
             session.execute(select(cls).limit(1)).all()
 
 
-def test_social_target_id_backfill_points_at_dp_anchor(
+def test_social_target_id_anchor_points_at_dp(
     tmp_path: Path, admin_user_id: int
 ) -> None:
-    """A freshly-seeded DP + child row pair share one anchor.
+    """Seeded rows resolve through the polymorphic anchor.
 
-    This test runs the 77.0.B migration's *backfill* logic by
-    seeding a DP via the existing route stack, posting a row in
-    each table, and then *manually* running the same UPDATE the
-    migration would run on a stale row.  The fixture covers the
-    "exactly the rows that existed at migration time have their
-    column backfilled" contract; new rows post-migration carry
-    NULL until the dual-write phase wires them.
+    After 77.0.G the column is NOT NULL so every insert routes
+    through :func:`get_or_create_target`.  This test seeds one
+    row per social table through the resolver and asserts the
+    anchor points back at the DP it was created for.
     """
+    from pointlessql.services.social import get_or_create_target
+
     dp_id = _seed_dp(tmp_path)
     factory = app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
-        # Insert one row per table without writing social_target_id
-        # (legacy DP-write-path simulation).
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="main.sales_gold",
+            data_product_id=dp_id,
+        )
+        anchor_id = int(anchor.id)
         comment = DataProductComment(
             workspace_id=1,
             data_product_id=dp_id,
+            social_target_id=anchor_id,
             author_user_id=admin_user_id,
             body_md="phase77b backfill seed",
             mentioned_user_ids_json="[]",
@@ -145,6 +154,7 @@ def test_social_target_id_backfill_points_at_dp_anchor(
             DataProductReview(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=anchor_id,
                 author_user_id=admin_user_id,
                 stars=5,
                 body_md="phase77b backfill seed",
@@ -157,6 +167,7 @@ def test_social_target_id_backfill_points_at_dp_anchor(
             DataProductEndorsement(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=anchor_id,
                 endorsement_type="verified-by-steward",
                 applied_by_user_id=admin_user_id,
                 applied_at=now,
@@ -167,6 +178,7 @@ def test_social_target_id_backfill_points_at_dp_anchor(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=anchor_id,
                 user_id=admin_user_id,
                 created_at=now,
             )
@@ -174,6 +186,7 @@ def test_social_target_id_backfill_points_at_dp_anchor(
         session.add(
             DataProductReaction(
                 data_product_id=dp_id,
+                social_target_id=anchor_id,
                 user_id=admin_user_id,
                 emoji="👍",
                 created_at=now,
@@ -183,6 +196,7 @@ def test_social_target_id_backfill_points_at_dp_anchor(
             DataProductReadme(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=anchor_id,
                 version_int=1,
                 body_md="# phase77b",
                 updated_by_user_id=admin_user_id,
@@ -190,10 +204,10 @@ def test_social_target_id_backfill_points_at_dp_anchor(
             )
         )
         session.flush()
-        # comment-reaction needs the comment id
         session.add(
             DataProductCommentReaction(
                 comment_id=int(comment.id),
+                social_target_id=anchor_id,
                 user_id=admin_user_id,
                 emoji="🎉",
                 created_at=now,
@@ -201,34 +215,6 @@ def test_social_target_id_backfill_points_at_dp_anchor(
         )
         session.commit()
 
-    # Manually run the same UPDATE the 77.0.B migration runs.
-    # The conftest ran ``alembic upgrade head`` before any DPs
-    # were seeded, so 77.0.A's backfill produced zero anchors.
-    # Re-create the missing anchor explicitly via the resolver
-    # (this is the get-or-create path every post-77.0 social
-    # write will use) so we can verify the backfill SQL itself.
-    from pointlessql.services.social import get_or_create_target
-
-    with factory() as session:
-        anchor = get_or_create_target(
-            session,
-            workspace_id=1,
-            kind="dp",
-            ref="main.sales_gold",
-            data_product_id=dp_id,
-        )
-        anchor_id = int(anchor.id)
-        session.commit()
-    with factory() as session:
-        session.execute(
-            DataProductComment.__table__.update()
-            .where(DataProductComment.social_target_id.is_(None))
-            .where(DataProductComment.data_product_id == dp_id)
-            .values(social_target_id=anchor_id)
-        )
-        session.commit()
-
-    # Verify the comment now carries a non-NULL anchor.
     with factory() as session:
         row = session.execute(
             select(DataProductComment).where(
@@ -237,34 +223,35 @@ def test_social_target_id_backfill_points_at_dp_anchor(
             )
         ).scalar_one()
         assert row.social_target_id is not None
-        anchor = session.execute(
+        anchor_row = session.execute(
             select(SocialTarget).where(SocialTarget.id == row.social_target_id)
         ).scalar_one()
-        assert anchor.entity_kind == "dp"
-        assert anchor.data_product_id == dp_id
+        assert anchor_row.entity_kind == "dp"
+        assert anchor_row.data_product_id == dp_id
 
 
-def test_social_target_id_is_nullable_for_new_inserts(
+def test_social_target_id_is_not_nullable_after_77_0_g(
     tmp_path: Path, admin_user_id: int
 ) -> None:
-    """The column accepts NULL in 77.0.B; flipped to NOT NULL in 77.0.G.
+    """Phase 77.0.G flipped the column to NOT NULL.
 
-    This is the explicit contract that keeps the legacy DP write
-    path functional during the dual-write phase.  77.0.G drops
-    ``data_product_id`` and flips ``social_target_id`` to NOT NULL
-    only *after* all routes have been refactored to write it.
+    An attempt to insert a comment without ``social_target_id``
+    now raises :class:`sqlalchemy.exc.IntegrityError`.  This is the
+    explicit gate that 77.0.F.1 / F.2 / F.3 unblocks by routing
+    every writer through :func:`get_or_create_target`.
     """
+    from sqlalchemy.exc import IntegrityError
+
     dp_id = _seed_dp(tmp_path)
     factory = app.state.session_factory
     now = datetime.datetime.now(datetime.UTC)
-    with factory() as session:
-        # Insert without populating social_target_id — must succeed.
+    with factory() as session, pytest.raises(IntegrityError):
         session.add(
             DataProductComment(
                 workspace_id=1,
                 data_product_id=dp_id,
                 author_user_id=admin_user_id,
-                body_md="null-anchor row",
+                body_md="should-fail-row",
                 mentioned_user_ids_json="[]",
                 category="general",
                 is_accepted_answer=False,
@@ -272,11 +259,3 @@ def test_social_target_id_is_nullable_for_new_inserts(
             )
         )
         session.commit()
-    with factory() as session:
-        row = session.execute(
-            select(DataProductComment).where(
-                DataProductComment.data_product_id == dp_id,
-                DataProductComment.body_md == "null-anchor row",
-            )
-        ).scalar_one()
-        assert row.social_target_id is None

@@ -382,6 +382,8 @@ def _write_endorsement(
         session: Live SQLAlchemy session.
         workspace_id: Tenant scope.
         data_product_id: FK on ``data_products.id``.
+        dp_ref: Canonical ``catalog.schema`` reference used to
+            resolve the polymorphic ``social_target`` anchor.
         applied_by_user_id: The acting user from the config row.
         endorsement_type: One of
             :data:`ENDORSEMENT_TYPES`.

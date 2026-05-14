@@ -91,19 +91,19 @@ class DataProductComment(Base):
         nullable=False,
         server_default="1",
     )
-    data_product_id: Mapped[int] = mapped_column(
+    data_product_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("data_products.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
     # Phase 77.0.B — polymorphic anchor.  Nullable in this
     # revision so the legacy DP write path keeps working while
     # the dual-write phase rolls out; flipped to NOT NULL +
     # ``data_product_id`` dropped in Phase 77.0.G.
-    social_target_id: Mapped[int | None] = mapped_column(
+    social_target_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("social_targets.id"),
-        nullable=True,
+        nullable=False,
     )
     parent_comment_id: Mapped[int | None] = mapped_column(
         Integer,

@@ -126,10 +126,19 @@ def test_fanout_event_dp_stamps_polymorphic_marker(
     with factory() as session:
         from datetime import UTC, datetime
 
+        from pointlessql.services.social import get_or_create_target
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="main.sales_gold",
+            data_product_id=dp_id,
+        )
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(anchor.id),
                 user_id=nonadmin_user_id,
                 created_at=datetime.now(UTC),
             )
@@ -217,10 +226,19 @@ def test_legacy_fanout_dataproduct_event_wrapper_dispatches_correctly(
     with factory() as session:
         from datetime import UTC, datetime
 
+        from pointlessql.services.social import get_or_create_target
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="main.sales_gold",
+            data_product_id=dp_id,
+        )
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(anchor.id),
                 user_id=nonadmin_user_id,
                 created_at=datetime.now(UTC),
             )
@@ -259,10 +277,20 @@ def test_fanout_event_skips_actor(
     with factory() as session:
         from datetime import UTC, datetime
 
+        from pointlessql.services.social import get_or_create_target
+
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="main.sales_gold",
+            data_product_id=dp_id,
+        )
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(anchor.id),
                 user_id=admin_user_id,
                 created_at=datetime.now(UTC),
             )
@@ -307,10 +335,19 @@ def test_fanout_event_honours_per_user_inbox_opt_out(
         from datetime import UTC, datetime
 
         # follower + opted-out pref
+        from pointlessql.services.social import get_or_create_target
+        anchor = get_or_create_target(
+            session,
+            workspace_id=1,
+            kind="dp",
+            ref="main.sales_gold",
+            data_product_id=dp_id,
+        )
         session.add(
             DataProductFollow(
                 workspace_id=1,
                 data_product_id=dp_id,
+                social_target_id=int(anchor.id),
                 user_id=nonadmin_user_id,
                 created_at=datetime.now(UTC),
             )

@@ -65,8 +65,8 @@ class DataProductCommentReaction(Base):
     # Phase 77.0.B — polymorphic anchor (see _data_product_comments.py).
     # On a comment-reaction the anchor matches the *comment's* target,
     # not a separate one — see services/social/_target_resolver.py.
-    social_target_id: Mapped[int | None] = mapped_column(
+    social_target_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("social_targets.id"),
-        nullable=True,
+        nullable=False,
     )
