@@ -342,11 +342,122 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
             logger.warning("home: latest review lookup failed", exc_info=True)
             return None
 
-    catalogs_block, db_block, anomalies_block, latest_review = await asyncio.gather(
-        _catalogs_block(),
-        asyncio.to_thread(_db_block),
-        asyncio.to_thread(_anomalies_block),
-        asyncio.to_thread(_latest_review_block),
+    def _today_blocks() -> dict[str, Any]:
+        """Compute the Phase-80.3 Today-digest blocks in one session.
+
+        Three aggregates power the new home cards (approval queue,
+        unread inbox, firing alerts) plus the rail badges threaded
+        via :func:`_resolve_nav_badges`.  Each query is workspace-
+        or user-scoped; failures degrade silently to empty rows so
+        the home dashboard never breaks because one aggregator does.
+        """
+        from sqlalchemy import desc, func
+        from sqlalchemy import select as _select
+
+        try:
+            from pointlessql.models import Alert as AlertModel
+            from pointlessql.models.agent._runs import (
+                STATUS_NEEDS_APPROVAL,
+            )
+            from pointlessql.models.agent._runs import (
+                AgentRun as AgentRunModel,
+            )
+            from pointlessql.models.notifications import UserNotification
+
+            factory = request.app.state.session_factory
+            workspace_id = int(user.get("workspace_id") or 0)
+            with factory() as session:
+                pending_stmt = (
+                    _select(AgentRunModel)
+                    .where(AgentRunModel.status == STATUS_NEEDS_APPROVAL)
+                    .order_by(desc(AgentRunModel.started_at))
+                    .limit(5)
+                )
+                if workspace_id:
+                    pending_stmt = pending_stmt.where(
+                        AgentRunModel.workspace_id == workspace_id
+                    )
+                pending_rows = list(session.scalars(pending_stmt).all())
+                pending_count_stmt = _select(func.count()).select_from(AgentRunModel).where(
+                    AgentRunModel.status == STATUS_NEEDS_APPROVAL
+                )
+                if workspace_id:
+                    pending_count_stmt = pending_count_stmt.where(
+                        AgentRunModel.workspace_id == workspace_id
+                    )
+                pending_count = int(session.scalar(pending_count_stmt) or 0)
+
+                inbox_stmt = (
+                    _select(UserNotification)
+                    .where(UserNotification.recipient_user_id == user_id)
+                    .where(UserNotification.read_at.is_(None))
+                    .order_by(desc(UserNotification.created_at))
+                    .limit(5)
+                )
+                inbox_rows = list(session.scalars(inbox_stmt).all())
+                inbox_count_stmt = (
+                    _select(func.count())
+                    .select_from(UserNotification)
+                    .where(UserNotification.recipient_user_id == user_id)
+                    .where(UserNotification.read_at.is_(None))
+                )
+                inbox_count = int(session.scalar(inbox_count_stmt) or 0)
+
+                alerts_stmt = _select(func.count()).select_from(AlertModel).where(
+                    AlertModel.is_active.is_(True)
+                )
+                if workspace_id:
+                    alerts_stmt = alerts_stmt.where(
+                        AlertModel.workspace_id == workspace_id
+                    )
+                alerts_count = int(session.scalar(alerts_stmt) or 0)
+
+                return {
+                    "approval_queue": {
+                        "count": pending_count,
+                        "items": [
+                            {
+                                "id": r.id,
+                                "principal": getattr(r, "principal_user_id", None),
+                                "status": r.status,
+                                "started_at": (
+                                    r.started_at.isoformat() if r.started_at else None
+                                ),
+                            }
+                            for r in pending_rows
+                        ],
+                    },
+                    "unread_inbox": {
+                        "count": inbox_count,
+                        "items": [
+                            {
+                                "id": n.id,
+                                "event_type": getattr(n, "event_type", "notification"),
+                                "created_at": (
+                                    n.created_at.isoformat() if n.created_at else None
+                                ),
+                            }
+                            for n in inbox_rows
+                        ],
+                    },
+                    "alerts_firing": {"count": alerts_count},
+                }
+        except Exception:  # noqa: BLE001 — Today surface is best-effort
+            logger.warning("home: today aggregates failed", exc_info=True)
+            return {
+                "approval_queue": {"count": 0, "items": []},
+                "unread_inbox": {"count": 0, "items": []},
+                "alerts_firing": {"count": 0},
+            }
+
+    catalogs_block, db_block, anomalies_block, latest_review, today_block = (
+        await asyncio.gather(
+            _catalogs_block(),
+            asyncio.to_thread(_db_block),
+            asyncio.to_thread(_anomalies_block),
+            asyncio.to_thread(_latest_review_block),
+            asyncio.to_thread(_today_blocks),
+        )
     )
 
     have_catalogs = bool(catalogs_block["has_catalogs"])
@@ -373,6 +484,9 @@ async def build_home_summary(request: Request, user: UserInfo) -> dict[str, Any]
         "sparkline": db_block["sparkline"],
         "anomalies": anomalies_block,
         "latest_review": latest_review,
+        "approval_queue": today_block["approval_queue"],
+        "unread_inbox": today_block["unread_inbox"],
+        "alerts_firing": today_block["alerts_firing"],
         "onboarding": {
             "show": show_onboarding,
             "have_catalogs": have_catalogs,

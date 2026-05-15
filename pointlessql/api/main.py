@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, Request
 from fastapi.responses import (
@@ -270,25 +270,35 @@ def _resolve_workspace_context(request: Request) -> dict[str, Any]:
 def _resolve_nav_badges(request: Request) -> dict[str, int]:
     """Compute the primary-rail badge counts for one TemplateResponse.
 
-    Phase 80.1 ships the plumbing with an empty default; Phase 80.3
-    (Today landing) wires the actual counts.  Keys consumed by
+    Delegates to :func:`pointlessql.services.nav_badges.compute_nav_badges`
+    so the query lives next to the other audit aggregators rather than
+    in the templates wrapper.  Keys consumed by
     ``components/primary_rail.html``:
 
     * ``runs_pending``  — agent runs awaiting approval.
-    * ``audit_unread``  — unread anomaly inbox entries.
-    * ``alerts_firing`` — currently-firing alert definitions.
+    * ``audit_unread``  — unread notification count.
+    * ``alerts_firing`` — active alert definitions.
 
     Args:
         request: Starlette request whose ``state.workspace_id`` /
-            ``state.user`` resolve the workspace scope.  Threaded
-            for the Phase 80.3 follow-up; unused today.
+            ``state.user`` resolve the workspace scope.
 
     Returns:
-        Dict mapping badge key to integer count.  Missing keys render
-        no badge (the template guards each with ``and value > 0``).
+        Dict mapping badge key to integer count.  Empty if the request
+        has no DB factory or the aggregator throws.  Zero-valued keys
+        are filtered template-side via ``and value > 0``.
     """
-    _ = request  # plumbed for future per-workspace queries
-    return {}
+    factory = getattr(request.app.state, "session_factory", None)
+    user = getattr(request.state, "user", None)
+    workspace_id = int(getattr(request.state, "workspace_id", 0) or 0)
+    user_id = int((user or {}).get("id") or 0)
+    from pointlessql.services.nav_badges import compute_nav_badges
+
+    badges = compute_nav_badges(factory, user_id, workspace_id)
+    # NavBadges is a TypedDict with int values; cast each via
+    # ``cast(int, …)`` for the Jinja consumer.  ``.items()`` returns
+    # the values as ``object`` because TypedDict is invariant.
+    return {key: cast(int, value) for key, value in badges.items()}
 
 
 def _template_response_with_user(request: Request, *args: Any, **kwargs: Any) -> Response:

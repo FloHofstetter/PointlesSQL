@@ -64,11 +64,81 @@
     {% endif %}
 
     <header class="pql-stack pql-stack--tight">
-        <h1 class="h3 m-0">Welcome, {{ summary.user.display_name }}{{ info('home.what-is-the-cockpit') }}</h1>
+        <h1 class="h3 m-0">Today, {{ summary.user.display_name }}{{ info('home.what-is-the-cockpit') }}</h1>
         <p class="text-muted m-0">
-            Jump back in — recent activity across your PointlesSQL workspace.
+            Overnight activity across your PointlesSQL workspace.
         </p>
     </header>
+
+    {# Phase 80.3 — Today digest cards.  Three stat tiles surface
+       the three primary supervisor concerns (approvals, unread,
+       firing) right under the header so first-glance triage doesn't
+       require scrolling.  Each card click jumps to its full surface. #}
+    {% set _approval = summary.approval_queue if summary.approval_queue is defined else {'count': 0, 'items': []} %}
+    {% set _inbox = summary.unread_inbox if summary.unread_inbox is defined else {'count': 0, 'items': []} %}
+    {% set _alerts = summary.alerts_firing if summary.alerts_firing is defined else {'count': 0} %}
+    <section class="row g-3" aria-label="Today digest">
+        <div class="col-12 col-md-4">
+            <a href="/runs?status=needs_approval"
+               class="pql-card d-block text-decoration-none h-100"
+               data-pql-today-card="approvals">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-hourglass-split text-warning fs-5"></i>
+                    <span class="text-uppercase small fw-semibold text-muted">Approval queue</span>
+                </div>
+                <div class="h3 m-0 {% if _approval.count > 0 %}text-warning{% else %}text-muted{% endif %}">
+                    {{ _approval.count }}
+                </div>
+                <p class="small text-muted mb-0">
+                    {% if _approval.count > 0 %}
+                    Runs awaiting your approval.
+                    {% else %}
+                    Inbox zero. Nothing waiting on you.
+                    {% endif %}
+                </p>
+            </a>
+        </div>
+        <div class="col-12 col-md-4">
+            <a href="/notifications"
+               class="pql-card d-block text-decoration-none h-100"
+               data-pql-today-card="inbox">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-bell-fill text-info fs-5"></i>
+                    <span class="text-uppercase small fw-semibold text-muted">Unread inbox</span>
+                </div>
+                <div class="h3 m-0 {% if _inbox.count > 0 %}text-info{% else %}text-muted{% endif %}">
+                    {{ _inbox.count }}
+                </div>
+                <p class="small text-muted mb-0">
+                    {% if _inbox.count > 0 %}
+                    Notifications since you last looked.
+                    {% else %}
+                    All caught up.
+                    {% endif %}
+                </p>
+            </a>
+        </div>
+        <div class="col-12 col-md-4">
+            <a href="/alerts"
+               class="pql-card d-block text-decoration-none h-100"
+               data-pql-today-card="alerts">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-bell text-danger fs-5"></i>
+                    <span class="text-uppercase small fw-semibold text-muted">Alerts</span>
+                </div>
+                <div class="h3 m-0 {% if _alerts.count > 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {{ _alerts.count }}
+                </div>
+                <p class="small text-muted mb-0">
+                    {% if _alerts.count > 0 %}
+                    Active alert definitions in this workspace.
+                    {% else %}
+                    No alerts configured.
+                    {% endif %}
+                </p>
+            </a>
+        </div>
+    </section>
 
     {% if onboard.show %}
     <section class="pql-card pql-home-onboarding" aria-labelledby="onboardingHeader">
