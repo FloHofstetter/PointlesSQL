@@ -84,6 +84,15 @@ ALLOWLIST=(
     # all flow through ``_serialise_comment``).  Allowlisted at the
     # close-out of Phase 76 alongside the helper-extraction refactor.
     "pointlessql/api/data_products_routes/comments.py"
+    # Polymorphic social handlers (Phase 77.1.5) — 12 handlers
+    # across 4 axes (comments / endorsements / followers / readme)
+    # built on a shared serializer + capability-check layer.  Split
+    # candidates would force a 5th ``_shared.py`` and duplicate the
+    # docstring / capability checks across files.  Phase 77.11
+    # plans to unify these with the DP handlers into a single
+    # service layer; splitting now would create churn that gets
+    # undone weeks later.  Allowlisted at 77.1.5 close-out.
+    "pointlessql/api/social_routes/_polymorphic_handlers.py"
 )
 
 is_allowed() {

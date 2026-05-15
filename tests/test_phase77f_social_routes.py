@@ -246,20 +246,19 @@ async def test_social_unknown_kind_returns_400(
 async def test_social_registered_but_not_wired_kind_returns_501(
     seeded_dp: int, admin_socket: httpx.AsyncClient
 ) -> None:
-    """A registered non-dp kind raises 501 until 77.1+ wires it.
+    """A registered kind without a polymorphic handler returns 501.
 
-    No non-dp kinds are registered in 77.0; this test confirms the
-    dispatcher's 400 path covers all unknowns.  Once 77.1 registers
-    ``table`` the dispatcher's 501 branch becomes exercisable.
+    Phase 77.1.5 wired ``table`` and ``branch`` through the
+    polymorphic backend; older sub-phases registered ``dp`` only.
+    Reviews + reactions on non-DP kinds remain DP-only this phase
+    (registry ``supports_reviews=False`` for table / branch), so
+    they're the load-bearing 501-return-paths now.
     """
     del seeded_dp
     res = await admin_socket.get(
-        "/api/social/table/cat.sch.tbl/comments"
+        "/api/social/table/cat.sch.tbl/reviews"
     )
-    # Until 77.1 the registry has no ``table`` entry, so the
-    # dispatcher's 400 branch fires.  Either status is acceptable
-    # while the registry is still single-kind.
-    assert res.status_code in (400, 501), res.text
+    assert res.status_code == 501, res.text
 
 
 @pytest.mark.asyncio

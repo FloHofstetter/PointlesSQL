@@ -64,13 +64,15 @@ export function socialTabs(params) {
         },
 
         async loadEndorsements() {
-            const res = await window.pqlApi.fetch(url('/endorsements'));
+            const res = await window.pqlApi.fetch(
+                url('/endorsements'),
+                { silent: true },
+            );
             if (!res.ok) {
                 this.endorsementsLoaded = true;
                 return;
             }
-            const j = await res.json();
-            this.endorsements = j.endorsements || [];
+            this.endorsements = (res.data && res.data.endorsements) || [];
             this.endorsementsLoaded = true;
         },
 
@@ -114,14 +116,16 @@ export function socialTabs(params) {
         },
 
         async loadFollowState() {
-            const res = await window.pqlApi.fetch(url('/followers/count'));
+            const res = await window.pqlApi.fetch(
+                url('/followers/count'),
+                { silent: true },
+            );
             if (!res.ok) {
                 this.followersLoaded = true;
                 return;
             }
-            const j = await res.json();
-            this.followerCount = j.count || 0;
-            this.following = !!j.following;
+            this.followerCount = (res.data && res.data.count) || 0;
+            this.following = !!(res.data && res.data.following);
             this.followersLoaded = true;
         },
 
