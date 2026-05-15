@@ -72,13 +72,12 @@ def fanout_event(
 ) -> int:
     """Fan a social event out to one row per recipient.
 
-    Phase 77.0.D generalisation of the Phase-71.4
-    :func:`fanout_dataproduct_event` helper.  The interface is
-    polymorphic on ``entity_kind`` / ``entity_ref``; the
-    implementation in this revision resolves followers only for
-    ``entity_kind='dp'`` (the only follower table that exists
-    today).  Later Phase-77 sub-phases register follower lookups
-    per kind as they ship.
+    Phase 77.0.D generalised the Phase-71.4 helper into this
+    polymorphic shape.  Followers come from :class:`SocialFollow`
+    joined through :class:`SocialTarget` so the lookup works
+    uniformly for every kind that registers a polymorphic
+    anchor.  ``data_product_id`` stays a legacy back-pointer for
+    callers that still want to stamp the column.
 
     Args:
         session_factory: SQLAlchemy session factory.

@@ -834,22 +834,43 @@ PointlesSQL
 │   │
 │   └── Phase 77.11 — Polish + announce                              ✅ done (2026-05-15)
 │           Phase 77 close-out doc at ``docs/phase-77.md``.  The
-│           heavy consolidation work (schema rename batch, badge
-│           generalisation, ``fanout_dataproduct_event`` deletion,
-│           ``data_product.html`` socialTabs migration, comment-
-│           reaction polymorphism unlock, full-body FTS) is
-│           scoped + tracked in the plan file but deliberately
-│           deferred to a future "Phase 77 polish" sub-phase
-│           since each item is independent of the foundation and
-│           the cumulative risk-vs-reward stayed unfavourable for
-│           the close-out sweep.  Foundation + every entity-type
-│           addition is shipped.
-│           Badge thresholds generalize beyond DPs
-│           (``commenter_table_50plus``, ``endorser_model_20plus``,
-│           ``issue_resolver_10plus``).  ``fanout_dataproduct_event``
-│           legacy wrapper deleted; ``hermes-plugin-pointlessql``
-│           H.3 tool migrated.  ``docs/phase-77.md`` write-up +
-│           CHANGELOG entries.
+│           heavy consolidation work was deliberately deferred at
+│           close-out and landed in Phase 78 polish (below).
+│
+├── Phase 78 — Polish bundle                              ✅ done 2026-05-16
+│       Six items deferred from the Phase-77 close-out, landed
+│       in one autonomous session as eight self-contained
+│       commits + four alembic migrations:
+│       1. ``fanout_dataproduct_event`` wrapper deletion (the
+│          legacy DP-scoped helper had zero active call-sites;
+│          three test references rewritten to call
+│          ``fanout_event`` directly).
+│       2. Comment-reaction polymorphism unlock — removed the
+│          ``_require_dp_kind_for_comment_reactions`` guard;
+│          three new polymorphic handlers in
+│          ``_polymorphic_handlers.py`` cover the non-DP path.
+│       3. ``model.html`` social-tab inline blocks extracted
+│          into per-page partials following the existing
+│          ``pages/_partials/model/`` pattern; ``data_product.html``
+│          stale 77.11 comment cleaned up.
+│       4. ``audit_search`` gets a new ``entity_kind`` column +
+│          full-body comment indexing.  ``/api/audit/search``
+│          accepts ``?kind=X``.  Migration ``h5j7l9n1p3r5``.
+│       5. ``data_product_follows`` consolidated into
+│          ``social_follows`` (migration ``i6k8m0o2q4s6``).
+│       6. ``data_product_readmes`` renamed to ``entity_readmes``
+│          + legacy DP-id column dropped (migration
+│          ``j7l9n1p3r5t7``).
+│       7. ``data_product_reactions`` consolidated into
+│          ``social_reactions`` via the sibling-table pattern,
+│          and legacy ``uq_dp_review_one_per_user`` UNIQUE
+│          dropped (migration ``k8m0o2q4s6u8``).
+│       8. Badges: documented that the existing five thresholds
+│          were already cross-kind; added three new per-kind
+│          badges (``commenter_table_50plus``,
+│          ``endorser_model_20plus``, ``issue_resolver_10plus``).
+│       2724 pytest pass / 0 fail; pyright budget stays at
+│       609/623 across the entire bundle.
 │
 ├── Phase 76 — Full Social Network for Data Products       ✅ done 2026-05-13
 │   │

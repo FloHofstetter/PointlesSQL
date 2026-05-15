@@ -6,6 +6,57 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 78 polish bundle closed (2026-05-16).**  Six items
+  explicitly deferred from the Phase-77 close-out landed in one
+  autonomous session as eight self-contained commits:
+
+  1. ``fanout_dataproduct_event`` wrapper deleted (zero active
+     call-sites; three test references rewritten to call
+     ``fanout_event`` directly).
+  2. Comment-reaction polymorphism unlocked — the
+     ``_require_dp_kind_for_comment_reactions`` guard is gone;
+     non-DP comment reactions now route through three new
+     polymorphic handlers in ``_polymorphic_handlers.py``.
+  3. ``model.html`` social-tab inline blocks (discussion /
+     reviews / readme, ~165 LOC) extracted into per-page
+     partials following the existing ``_partials/model/``
+     pattern; ``data_product.html``'s "deferred to 77.11"
+     comment cleaned up.
+  4. ``audit_search`` gets a new ``entity_kind`` column +
+     full-body comment indexing.  ``GET /api/audit/search``
+     accepts ``?kind=X``; the SQLite FTS5 trigger and the PG
+     ``audit_search_index`` table both populate the column at
+     write time, normalising the legacy ``data_product:``
+     prefix to ``dp``.  Migration ``h5j7l9n1p3r5``.
+  5. ``data_product_follows`` consolidated into
+     ``social_follows``; legacy table dropped (migration
+     ``i6k8m0o2q4s6``).  Every consumer (follows route, fanout,
+     listing, cooccurrence, the followed HTML page) joins
+     through ``social_targets`` to recover the DP affinity.
+  6. ``data_product_readmes`` renamed to ``entity_readmes``;
+     legacy DP-only ``data_product_id`` column dropped + new
+     polymorphic UNIQUE on ``(workspace_id, social_target_id,
+     version_int)``.  Model moved to
+     ``models/social/_entity_readme.py`` as ``EntityReadme``
+     (migration ``j7l9n1p3r5t7``).
+  7. ``data_product_reactions`` consolidated into
+     ``social_reactions`` via the sibling-table pattern
+     (migration ``k8m0o2q4s6u8``).  Same migration drops the
+     legacy ``uq_dp_review_one_per_user`` UNIQUE — the
+     polymorphic ``uq_dp_review_polymorphic_one_per_user`` covers
+     DP rows.
+  8. Badges generalised: documented that the existing five
+     thresholds were already cross-kind (no per-kind filtering
+     was ever applied).  Three new per-kind badges added —
+     ``commenter_table_50plus``, ``endorser_model_20plus``,
+     ``issue_resolver_10plus``.
+
+  4 alembic migrations, 8 commits, ~25 new tests, three obsolete
+  pre-consolidation tests deleted (dual-write + backfill
+  verification).  Pyright budget stays at 609/623 across the
+  entire bundle.  Push posture preserved (commits local until
+  user authorises).
+
 - **Phase 77 closed — Social as Connective Tissue (2026-05-15).**
   Eleven sub-phases over the run lifted PointlesSQL's social
   layer from a DP-only surface into kind-agnostic connective
