@@ -20,8 +20,6 @@ Layout:
                         (Phase 71.1, threaded discussion rows).
 * ``_data_product_reviews``  — :class:`DataProductReview`
                         (Phase 71.2, one-per-user star + body row).
-* ``_data_product_readme``   — :class:`DataProductReadme`
-                        (Phase 71.5, versioned per-DP wiki).
 * ``_data_product_trending`` — :class:`DataProductTrending`
                         (Phase 72.3, cached trending rank rows).
 * ``_data_product_endorsement`` — :class:`DataProductEndorsement`
@@ -66,7 +64,6 @@ from pointlessql.models.catalog._data_product_proposal import (
     DataProductSchemaProposal,
 )
 from pointlessql.models.catalog._data_product_reaction import DataProductReaction
-from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_product_trending import DataProductTrending
 from pointlessql.models.catalog._data_product_yaml_draft import (
@@ -110,7 +107,6 @@ __all__ = [
     "DataProductPassport",
     "DataProductPromotionCandidate",
     "DataProductReaction",
-    "DataProductReadme",
     "DataProductReview",
     "DataProductSchemaProposal",
     "DataProductTrending",

@@ -1,7 +1,7 @@
 """Auto-generated data-product passport rows (Phase 73.4).
 
 Markdown briefing built from the lineage graph + freshness
-profile.  Distinct from :class:`DataProductReadme`: the
+profile.  Distinct from :class:`EntityReadme`: the
 passport is *system-authored*; readme is *steward-authored*.
 The DP detail page renders both stacked on the README tab.
 

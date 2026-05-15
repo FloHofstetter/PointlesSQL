@@ -35,9 +35,7 @@ from pointlessql.models.catalog._data_product_comments import (
 from pointlessql.models.catalog._data_product_endorsement import (
     DataProductEndorsement,
 )
-from pointlessql.models.catalog._data_product_readme import (
-    DataProductReadme,
-)
+from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.social._social_target import SocialTarget
 
 _TABLE_REF = "main.sales_gold.orders"
@@ -282,11 +280,13 @@ async def test_table_readme_put_and_get(
     factory = app.state.session_factory
     with factory() as session:
         row = session.execute(
-            select(DataProductReadme).where(
-                DataProductReadme.body_md.like("%Bronze layer%")
+            select(EntityReadme).where(
+                EntityReadme.body_md.like("%Bronze layer%")
             )
         ).scalar_one()
-        assert row.data_product_id is None
+        anchor = session.get(SocialTarget, row.social_target_id)
+        assert anchor is not None
+        assert anchor.entity_kind == "table"
 
 
 @pytest.mark.asyncio

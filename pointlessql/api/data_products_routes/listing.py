@@ -12,9 +12,9 @@ from pointlessql.api.data_products_routes._shared import serialise_product
 from pointlessql.api.dependencies import current_workspace_id
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
-from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.services.data_products import compute_badges_bulk
@@ -159,14 +159,16 @@ async def list_data_products(
             comment_7d_agg = {int(dp_id): int(cnt) for dp_id, cnt in comment_rows}
 
             readme_rows = session.execute(
-                select(DataProductReadme.data_product_id)
+                select(SocialTarget.data_product_id)
+                .join(EntityReadme, EntityReadme.social_target_id == SocialTarget.id)
                 .where(
-                    DataProductReadme.workspace_id == workspace_id,
-                    DataProductReadme.data_product_id.in_(dp_ids),
+                    EntityReadme.workspace_id == workspace_id,
+                    SocialTarget.entity_kind == "dp",
+                    SocialTarget.data_product_id.in_(dp_ids),
                 )
                 .distinct()
             ).all()
-            has_readme_set = {int(r[0]) for r in readme_rows}
+            has_readme_set = {int(r[0]) for r in readme_rows if r[0] is not None}
 
             # Phase 72.2 — auto-computed badges (bulk).
             badges_by_id = compute_badges_bulk(

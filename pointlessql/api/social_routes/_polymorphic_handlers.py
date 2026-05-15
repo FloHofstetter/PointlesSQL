@@ -60,8 +60,8 @@ from pointlessql.models.catalog._data_product_endorsement import (
     DataProductEndorsement,
 )
 from pointlessql.models.catalog._data_product_reaction import DataProductReaction
-from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
+from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.models.social._social_star import SocialStar
 from pointlessql.services.notifications.fanout import fanout_event
@@ -240,7 +240,7 @@ def _serialise_endorsement(
 
 
 def _serialise_readme(
-    row: DataProductReadme,
+    row: EntityReadme,
     *,
     author_email: str | None,
     author_display_name: str | None,
@@ -1827,12 +1827,12 @@ async def get_polymorphic_readme(
 
     with factory() as session:
         latest = session.execute(
-            select(DataProductReadme)
+            select(EntityReadme)
             .where(
-                DataProductReadme.workspace_id == workspace_id,
-                DataProductReadme.social_target_id == target_id,
+                EntityReadme.workspace_id == workspace_id,
+                EntityReadme.social_target_id == target_id,
             )
-            .order_by(desc(DataProductReadme.version_int))
+            .order_by(desc(EntityReadme.version_int))
             .limit(1)
         ).scalar_one_or_none()
         if latest is None:
@@ -1895,12 +1895,12 @@ async def put_polymorphic_readme(
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
         latest = session.execute(
-            select(DataProductReadme)
+            select(EntityReadme)
             .where(
-                DataProductReadme.workspace_id == workspace_id,
-                DataProductReadme.social_target_id == target_id,
+                EntityReadme.workspace_id == workspace_id,
+                EntityReadme.social_target_id == target_id,
             )
-            .order_by(desc(DataProductReadme.version_int))
+            .order_by(desc(EntityReadme.version_int))
             .limit(1)
         ).scalar_one_or_none()
         if latest is not None and latest.body_md == body_md:
@@ -1916,18 +1916,17 @@ async def put_polymorphic_readme(
             session.execute(
                 select(
                     func.coalesce(
-                        func.max(DataProductReadme.version_int), 0
+                        func.max(EntityReadme.version_int), 0
                     )
                 ).where(
-                    DataProductReadme.workspace_id == workspace_id,
-                    DataProductReadme.social_target_id == target_id,
+                    EntityReadme.workspace_id == workspace_id,
+                    EntityReadme.social_target_id == target_id,
                 )
             ).scalar_one()
             + 1
         )
-        new_row = DataProductReadme(
+        new_row = EntityReadme(
             workspace_id=workspace_id,
-            data_product_id=None,
             social_target_id=target_id,
             version_int=int(next_version),
             body_md=body_md,

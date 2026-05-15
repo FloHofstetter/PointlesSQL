@@ -8,6 +8,7 @@ namespace stays focused on data-product metadata.
 
 from __future__ import annotations
 
+from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.social._issue import (
     ISSUE_CLOSED_REASONS,
     ISSUE_STATES,
@@ -40,6 +41,7 @@ __all__ = [
     "ISSUE_CLOSED_REASONS",
     "ISSUE_STATES",
     "DataProductTopic",
+    "EntityReadme",
     "Issue",
     "IssueLabel",
     "IssueMilestone",

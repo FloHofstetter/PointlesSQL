@@ -19,8 +19,8 @@ from sqlalchemy import select
 from pointlessql.api.main import app
 from pointlessql.data_products import load_contract
 from pointlessql.models.auth import User
-from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.workspace import Workspace, WorkspaceMember
 
 VALID_YAML = """\
@@ -97,7 +97,7 @@ async def test_second_put_bumps_version(
     assert res.json()["version_int"] == 2
     factory = app.state.session_factory
     with factory() as session:
-        rows = session.execute(select(DataProductReadme)).scalars().all()
+        rows = session.execute(select(EntityReadme)).scalars().all()
         versions = sorted(r.version_int for r in rows)
         assert versions == [1, 2]
 

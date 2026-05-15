@@ -11,6 +11,11 @@ Five endpoints:
   bodies (no row inserted when body is unchanged).
 * ``GET /readme/diff?from=A&to=B`` — unified diff between two
   versions for the History modal.
+
+Phase 78 polish renamed the underlying table to ``entity_readmes``
+and dropped the DP-only ``data_product_id`` column.  This route
+resolves the polymorphic ``social_target_id`` once per request
+and uses it as the version-stream key.
 """
 
 from __future__ import annotations
@@ -26,22 +31,23 @@ from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.auth import User
-from pointlessql.models.catalog._data_product_readme import DataProductReadme
+from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.services.social._target_resolver import resolve_dp_target
 
 router = APIRouter(tags=["data-products"])
 
 
 def _serialise_version(
-    row: DataProductReadme,
+    row: EntityReadme,
     *,
+    data_product_id: int,
     author_email: str | None,
     author_display_name: str | None,
 ) -> dict[str, Any]:
     """Render one README version as JSON."""
     return {
         "id": row.id,
-        "data_product_id": row.data_product_id,
+        "data_product_id": data_product_id,
         "version_int": row.version_int,
         "body_md": row.body_md,
         "updated_by": {
@@ -81,13 +87,19 @@ async def get_latest_readme(
     row, _contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         latest = session.execute(
-            select(DataProductReadme)
+            select(EntityReadme)
             .where(
-                DataProductReadme.workspace_id == workspace_id,
-                DataProductReadme.data_product_id == row.id,
+                EntityReadme.workspace_id == workspace_id,
+                EntityReadme.social_target_id == int(target.id),
             )
-            .order_by(desc(DataProductReadme.version_int))
+            .order_by(desc(EntityReadme.version_int))
             .limit(1)
         ).scalar_one_or_none()
         if latest is None:
@@ -98,7 +110,10 @@ async def get_latest_readme(
         author_email = author.email if author else None
         author_display = author.display_name if author else None
     return _serialise_version(
-        latest, author_email=author_email, author_display_name=author_display
+        latest,
+        data_product_id=row.id,
+        author_email=author_email,
+        author_display_name=author_display,
     )
 
 
@@ -115,14 +130,20 @@ async def list_readme_history(
     row, _c, _e, _d = load_one(factory, workspace_id, catalog, schema)
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         rows = (
             session.execute(
-                select(DataProductReadme)
+                select(EntityReadme)
                 .where(
-                    DataProductReadme.workspace_id == workspace_id,
-                    DataProductReadme.data_product_id == row.id,
+                    EntityReadme.workspace_id == workspace_id,
+                    EntityReadme.social_target_id == int(target.id),
                 )
-                .order_by(desc(DataProductReadme.version_int))
+                .order_by(desc(EntityReadme.version_int))
             )
             .scalars()
             .all()
@@ -168,11 +189,17 @@ async def get_readme_version(
     row, _c, _e, _d = load_one(factory, workspace_id, catalog, schema)
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         version = session.execute(
-            select(DataProductReadme).where(
-                DataProductReadme.workspace_id == workspace_id,
-                DataProductReadme.data_product_id == row.id,
-                DataProductReadme.version_int == version_int,
+            select(EntityReadme).where(
+                EntityReadme.workspace_id == workspace_id,
+                EntityReadme.social_target_id == int(target.id),
+                EntityReadme.version_int == version_int,
             )
         ).scalar_one_or_none()
         if version is None:
@@ -182,7 +209,10 @@ async def get_readme_version(
         author_email = author.email if author else None
         author_display = author.display_name if author else None
     return _serialise_version(
-        version, author_email=author_email, author_display_name=author_display
+        version,
+        data_product_id=row.id,
+        author_email=author_email,
+        author_display_name=author_display,
     )
 
 
@@ -216,13 +246,20 @@ async def upsert_readme(
 
     now = datetime.datetime.now(datetime.UTC)
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
+        target_id = int(target.id)
         latest = session.execute(
-            select(DataProductReadme)
+            select(EntityReadme)
             .where(
-                DataProductReadme.workspace_id == workspace_id,
-                DataProductReadme.data_product_id == row.id,
+                EntityReadme.workspace_id == workspace_id,
+                EntityReadme.social_target_id == target_id,
             )
-            .order_by(desc(DataProductReadme.version_int))
+            .order_by(desc(EntityReadme.version_int))
             .limit(1)
         ).scalar_one_or_none()
         if latest is not None and latest.body_md == body_md:
@@ -231,29 +268,23 @@ async def upsert_readme(
             author = session.get(User, latest.updated_by_user_id)
             return _serialise_version(
                 latest,
+                data_product_id=row.id,
                 author_email=author.email if author else None,
                 author_display_name=author.display_name if author else None,
             )
 
         next_version = (
             session.execute(
-                select(func.coalesce(func.max(DataProductReadme.version_int), 0)).where(
-                    DataProductReadme.workspace_id == workspace_id,
-                    DataProductReadme.data_product_id == row.id,
+                select(func.coalesce(func.max(EntityReadme.version_int), 0)).where(
+                    EntityReadme.workspace_id == workspace_id,
+                    EntityReadme.social_target_id == target_id,
                 )
             ).scalar_one()
             + 1
         )
-        target = resolve_dp_target(
-            session,
+        new_row = EntityReadme(
             workspace_id=workspace_id,
-            catalog_name=catalog,
-            schema_name=schema,
-        )
-        new_row = DataProductReadme(
-            workspace_id=workspace_id,
-            data_product_id=row.id,
-            social_target_id=target.id,
+            social_target_id=target_id,
             version_int=int(next_version),
             body_md=body_md,
             updated_by_user_id=user["id"],
@@ -268,7 +299,10 @@ async def upsert_readme(
         author_display = author.display_name if author else None
 
     return _serialise_version(
-        new_row, author_email=author_email, author_display_name=author_display
+        new_row,
+        data_product_id=row.id,
+        author_email=author_email,
+        author_display_name=author_display,
     )
 
 
@@ -298,12 +332,18 @@ async def readme_diff(
         ) from None
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         rows = (
             session.execute(
-                select(DataProductReadme).where(
-                    DataProductReadme.workspace_id == workspace_id,
-                    DataProductReadme.data_product_id == row.id,
-                    DataProductReadme.version_int.in_([from_v, to_v]),
+                select(EntityReadme).where(
+                    EntityReadme.workspace_id == workspace_id,
+                    EntityReadme.social_target_id == int(target.id),
+                    EntityReadme.version_int.in_([from_v, to_v]),
                 )
             )
             .scalars()
