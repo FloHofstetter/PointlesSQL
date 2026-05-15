@@ -29,11 +29,57 @@ function isSubTab(btn) {
     return btn.closest('.tab-pane') !== null;
 }
 
+function pageTypeKey() {
+    // ``<main data-active-page="...">`` carries a stable page-type
+    // identifier set by base.html (catalog, models, table-detail,
+    // run-detail, …).  Without it tab-persistence is a no-op.
+    const main = document.getElementById('main-content');
+    return main ? main.dataset.activePage || '' : '';
+}
+
+function storageKey() {
+    const key = pageTypeKey();
+    return key ? 'pql:tab:' + key : null;
+}
+
+function readStoredTabs() {
+    const k = storageKey();
+    if (!k) return null;
+    try {
+        const raw = localStorage.getItem(k);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function writeStoredTabs(patch) {
+    const k = storageKey();
+    if (!k) return;
+    try {
+        const current = readStoredTabs() || {};
+        const next = { ...current, ...patch };
+        localStorage.setItem(k, JSON.stringify(next));
+    } catch (e) {}
+}
+
 function activateOnLoad() {
     if (!window.bootstrap || !window.bootstrap.Tab) return;
     const params = new URLSearchParams(window.location.search);
-    const topKey = params.get('tab');
-    const subKey = params.get('subtab');
+    let topKey = params.get('tab');
+    let subKey = params.get('subtab');
+
+    // Fallback to localStorage when URL has no tab params — restores
+    // the last-active tab for this page-type across cold navigations.
+    if (!topKey && !subKey) {
+        const stored = readStoredTabs();
+        if (stored) {
+            topKey = stored.top || null;
+            subKey = stored.sub || null;
+        }
+    }
     if (!topKey && !subKey) return;
 
     const Tab = window.bootstrap.Tab;
@@ -62,8 +108,10 @@ function mirrorToUrl(event) {
     const params = new URLSearchParams(window.location.search);
     if (isSubTab(btn)) {
         params.set('subtab', btn.dataset.pqlTabKey);
+        writeStoredTabs({ sub: btn.dataset.pqlTabKey });
     } else {
         params.set('tab', btn.dataset.pqlTabKey);
+        writeStoredTabs({ top: btn.dataset.pqlTabKey });
         // Clearing subtab on top-tab change would clobber a fresh
         // ``?tab=X&subtab=Y`` deep-link: Bootstrap fires
         // ``shown.bs.tab`` for the top-tab milliseconds before the

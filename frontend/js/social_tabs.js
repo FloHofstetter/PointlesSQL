@@ -95,21 +95,46 @@ export function socialTabs(params) {
         async toggleEndorsement(typeKey) {
             if (this.endorsementBusy) return;
             this.endorsementBusy = true;
+            const mine = this.mineForType(typeKey);
+            // Optimistic update — flip the row in-memory before the
+            // network round-trip so the UI feels instant.  On failure
+            // we revert by reloading the canonical list.
+            const snapshot = this.endorsements.slice();
+            if (mine) {
+                this.endorsements = this.endorsements.map((e) =>
+                    e.id === mine.id ? { ...e, removed_at: new Date().toISOString() } : e,
+                );
+            } else {
+                this.endorsements = this.endorsements.concat([{
+                    id: 'optimistic-' + Date.now(),
+                    endorsement_type: typeKey,
+                    removed_at: null,
+                    applied_by: { user_id: window.pqlCurrentUserId },
+                }]);
+            }
             try {
-                const mine = this.mineForType(typeKey);
+                let res;
                 if (mine) {
-                    await window.pqlApi.fetch(
+                    res = await window.pqlApi.fetch(
                         url('/endorsements/' + mine.id),
                         { method: 'DELETE' },
                     );
                 } else {
-                    await window.pqlApi.fetch(url('/endorsements'), {
+                    res = await window.pqlApi.fetch(url('/endorsements'), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ endorsement_type: typeKey }),
                     });
                 }
+                if (!res || !res.ok) {
+                    this.endorsements = snapshot;
+                    if (window.pqlToast) window.pqlToast.error('Endorsement toggle failed.');
+                    return;
+                }
                 await this.loadEndorsements();
+            } catch (e) {
+                this.endorsements = snapshot;
+                if (window.pqlToast) window.pqlToast.error('Endorsement toggle failed: ' + e.message);
             } finally {
                 this.endorsementBusy = false;
             }
@@ -132,18 +157,26 @@ export function socialTabs(params) {
         async toggleFollow() {
             if (this.followLocked || this.followBusy) return;
             this.followBusy = true;
+            // Optimistic flip — toggle local state before the request
+            // resolves so the button reacts instantly.
+            const wasFollowing = this.following;
+            const prevCount = this.followerCount;
+            this.following = !wasFollowing;
+            this.followerCount = wasFollowing ? prevCount - 1 : prevCount + 1;
             try {
-                const method = this.following ? 'DELETE' : 'POST';
-                const res = await window.pqlApi.fetch(url('/follow'), {
-                    method,
-                });
+                const method = wasFollowing ? 'DELETE' : 'POST';
+                const res = await window.pqlApi.fetch(url('/follow'), { method });
                 if (!res.ok) {
-                    if (window.pqlToast) {
-                        window.pqlToast.error('Follow toggle failed.');
-                    }
+                    this.following = wasFollowing;
+                    this.followerCount = prevCount;
+                    if (window.pqlToast) window.pqlToast.error('Follow toggle failed.');
                     return;
                 }
                 await this.loadFollowState();
+            } catch (e) {
+                this.following = wasFollowing;
+                this.followerCount = prevCount;
+                if (window.pqlToast) window.pqlToast.error('Follow toggle failed: ' + e.message);
             } finally {
                 this.followBusy = false;
             }

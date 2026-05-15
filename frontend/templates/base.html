@@ -438,6 +438,10 @@
          data-rail-hidden on each <li> so the icon_rail.css rule
          applies display:none. -->
     <script src="/static/js/rail_customise.js"></script>
+    <!-- Phase 81.G.1 — prefetch links on hover so rail / breadcrumb /
+         sidebar navigations resolve from cache.  Skips slow networks
+         and Data-Saver. -->
+    <script src="/static/js/prefetch.js"></script>
     <script>
         // Theme color-modes click-handler.  The init script in <head>
         // already applied the right ``data-bs-theme`` before paint;
