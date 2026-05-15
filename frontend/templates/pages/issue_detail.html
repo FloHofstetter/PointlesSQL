@@ -17,7 +17,7 @@
     <h1 class="h4 mb-0 d-flex align-items-center gap-2 flex-grow-1">
       <span class="text-muted">#{{ issue_id }}</span>
       <template x-if="!canEdit">
-        <span x-text="issue.title || {{ issue_title|tojson }}"></span>
+        <span x-text='issue.title || {{ issue_title|tojson }}'></span>
       </template>
       <template x-if="canEdit">
         <span class="flex-grow-1">
