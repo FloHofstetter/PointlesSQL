@@ -563,29 +563,30 @@ PointlesSQL
 │   │       End-user behaviour unchanged; the entire DP-social
 │   │       test suite must pass unmodified.
 │   │
-│   ├── Phase 77.1 — Tables                                          ⏳ in progress
+│   ├── Phase 77.1 — Tables                                          ✅ done (2026-05-15)
 │   │       First new entity type.  Discussion + Endorsements +
-│   │       Followers + README + Stars tabs on every UC table
-│   │       page.  Reviews hidden (tables don't get star-ratings).
+│   │       Followers + README tabs on every UC table page.
+│   │       Reviews hidden (tables don't get star-ratings).
 │   │       ``#table:cat.sch.tbl`` citation token registered.
 │   │       Federated / foreign tables get the same tabs (no
-│   │       banning) plus a "external catalog" banner.
-│   │       Phase 77.1.A landed 2026-05-15: registry + citations
-│   │       backbone scaffolded.  table.html tab strip + per-kind
-│   │       /api/social/table/* handlers queued for 77.1.5.
+│   │       banning).  Stars left to Phase 77.8.
+│   │       77.1.A: registry + citations backbone.
+│   │       77.1.5: polymorphic backend handlers (12 fns across 4
+│   │       axes) + socialTabs Alpine factory + 2 new partials +
+│   │       table.html tab strip.
 │   │
-│   ├── Phase 77.3 — Branches (with promote-gate, opt-in)            ⏳ in progress
-│   │       Branch detail page gains 4 social tabs + the killer
-│   │       GitHub-PR analog: workspace setting
-│   │       ``branch_promote_requires_endorsement`` (default OFF,
-│   │       never auto-flipped).  When true, ``pql.promote()``
-│   │       requires ≥1 ``branch-approved-for-promotion``
-│   │       endorsement by a user other than the caller; rejects
-│   │       with 412 otherwise.  ``#branch:<id>`` citation.
-│   │       Phase 77.3.A landed 2026-05-15: workspaces column +
-│   │       endorsement type extended + branch entity-kind +
-│   │       /api/branches/.../promote gate.  Branch detail HTML
-│   │       social tabs queued for 77.3.B.
+│   ├── Phase 77.3 — Branches (with promote-gate, opt-in)            ✅ done (2026-05-15)
+│   │       Branch detail page has 4 social tabs + Promote tab
+│   │       (Danger Zone) + the killer GitHub-PR analog: workspace
+│   │       setting ``branch_promote_requires_endorsement`` (default
+│   │       OFF, never auto-flipped).  When true, ``pql.promote()``
+│   │       requires ≥1 ``branch-approved-for-promotion`` endorsement
+│   │       by a user other than the caller; rejects with 412
+│   │       otherwise.  Promote button greys out + shows "Needs ≥1
+│   │       peer endorsement" hint when gate is on and unsatisfied.
+│   │       77.3.A: workspaces column + endorsement type +
+│   │       /api/branches/.../promote gate (412).
+│   │       77.3.B: branch_detail.html tab strip + gate-state UI.
 │   │
 │   ├── Phase 77.2 — Models                                          ⏳ planned
 │   │       Full social parity with DPs on

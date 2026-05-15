@@ -33,29 +33,58 @@ All notable changes to this project will be documented in this file.
   ``data_product_follows`` keeps the composite PK structure
   intact).  Zero end-user behaviour change; the 86-test
   DP-social regression suite passes unchanged.
-- **Phase 77.1 (partial) — UC table entity-kind registered
-  (2026-05-15).**  Registers ``table`` in the entity registry
-  with the URL builder routing to
-  ``/catalogs/{cat}/schemas/{sch}/tables/{tbl}``, registers the
-  ``#table:cat.sch.tbl`` citation token, and tags the
-  polymorphic audit-target prefix (``table:`` from day 1; the
-  legacy ``data_product:`` prefix only protects kind='dp').  7
-  new tests cover the registry, citations, and the dispatcher's
-  501 response for table writes — handler wiring queued for
-  77.1.5.
-- **Phase 77.3 (partial) — branch promote-gate (2026-05-15).**
-  Migration ``z7c9e1g3i5k7`` adds
-  ``workspaces.branch_promote_requires_endorsement BOOLEAN
-  DEFAULT FALSE NOT NULL`` and extends the endorsement CHECK to
-  allow ``branch-approved-for-promotion``.  ``POST
-  /api/branches/{fqn}/promote`` gains a gate-check helper that,
-  when the workspace flag is on, requires at least one active
-  ``branch-approved-for-promotion`` endorsement applied by a
-  user other than the caller; returns 412 Precondition Failed
-  otherwise (locked decision #3 — default OFF forever, admins
-  flip it consciously per workspace).  The ``branch`` entity
-  kind is registered in the registry.  4 new tests cover the
-  full gate matrix (off, on+missing, on+self, on+peer).
+- **Phase 77.1 closed — UC tables get social tabs (2026-05-15).**
+  Builds on 77.1.A (registry + citations).  77.1.5 adds the
+  polymorphic backend handler module
+  ``pointlessql.api.social_routes._polymorphic_handlers`` — 12
+  kind-agnostic write paths (3 comment / 3 endorsement / 4
+  follow / 2 README) that resolve ``social_target_id`` via
+  ``get_or_create_target``, mirror the audit row via the
+  registry-driven prefix (generic ``table:`` for table writes),
+  and fan out via the polymorphic ``fanout_event``.  The 6
+  ``social_routes/*.py`` dispatchers gained a kind switch:
+  ``kind='dp'`` keeps delegating to the Phase-76 DP handlers
+  (zero behavioural drift), ``kind∈{table, branch}`` route
+  through polymorphic.  Reviews + reactions on non-DP kinds
+  return 501 (capability-flag opt-in via the registry).
+  Follow / unfollow on non-DP returns 501 — composite-PK
+  constraint blocks polymorphic writes; lifted in Phase 77.8.
+  Frontend: new ``socialTabs(kind, ref, endorsementTypes)``
+  Alpine factory + 2 new kind-agnostic partials
+  (``_endorsements_pane.html`` + ``_followers_pane.html``).
+  ``table.html`` gains a 4-tab strip (Discussion / Endorsements
+  / Followers / README) — Discussion + README use inline
+  ``tableDiscussion`` + ``tableReadme`` factories (existing
+  77.0.H partials are DP-coupled; unification deferred to
+  77.11).  Allowlist ``_polymorphic_handlers.py`` (1161 LOC)
+  on the file-size budget alongside the existing
+  ``data_products_routes/comments.py`` entry — cohesive surface,
+  splitting now would churn against the 77.11 unification.  19
+  + 4 + 5 = 28 new pytest cases cover the end-to-end table
+  paths, capability gates, audit-prefix verification, partial
+  drift guards, and the rendered tab strip.
+- **Phase 77.3 closed — branch detail social tabs + promote-gate UI
+  (2026-05-15).**  Builds on 77.3.A (workspace flag + endorsement
+  type + 412 gate at POST /api/branches/.../promote).  77.3.B
+  restructures ``branch_detail.html`` into 5 tabs (Overview /
+  Discussion / Endorsements / Followers / Promote).  The Danger
+  Zone moves into the Promote tab — admin guard unchanged.
+  Promote button state machine: gate OFF = enabled, gate ON +
+  0 peer endorsements = ``disabled`` + lock icon + "Needs ≥1
+  peer endorsement" hint, gate ON + 1+ peer endorsements =
+  enabled + "Gate satisfied" affordance.  Header strip carries
+  a "gate on" badge when the workspace flag is enabled so the
+  state is visible without opening the Promote tab.  Backend
+  helper ``_branch_promote_gate_ui_state`` mirrors the existing
+  ``_branch_promote_gate_check`` lookup but returns a state
+  dict for template rendering instead of raising 412.
+  Polymorphic backend handles ``kind='branch'`` writes via the
+  same 77.1.5 module.  Inline ``branchDiscussion`` factory backs
+  the Discussion tab (separate name from ``tableDiscussion``
+  to avoid Alpine-state collisions when navigating quickly
+  between branch and table pages).  7 new pytest cases cover
+  all five tab buttons + the three gate-state UI branches +
+  a polymorphic comment roundtrip.
 
 - **Phase 76.6 — SSE notifications + cross-DP citations
   (2026-05-13).**  New ``GET /api/notifications/stream`` SSE
