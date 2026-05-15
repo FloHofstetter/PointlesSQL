@@ -32,6 +32,7 @@ from pointlessql.models.social._user_badge import (
 )
 from pointlessql.models.social._user_follow import UserFollow
 from pointlessql.models.social._user_profile import UserProfile
+from pointlessql.models.social._workspace_pin import WorkspacePinnedEntity
 
 __all__ = [
     "BADGE_KEYS",
@@ -50,4 +51,5 @@ __all__ = [
     "UserFollow",
     "UserProfile",
     "UserTopicFollow",
+    "WorkspacePinnedEntity",
 ]

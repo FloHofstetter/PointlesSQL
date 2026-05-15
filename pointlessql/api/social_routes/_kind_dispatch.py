@@ -28,6 +28,7 @@ _POLYMORPHIC_KINDS: frozenset[str] = frozenset(
         "catalog",
         "notebook",
         "saved_query",
+        "workspace",
     }
 )
 
@@ -194,6 +195,15 @@ def parse_ref(kind: str, ref: str) -> str:
             raise HTTPException(
                 status_code=400,
                 detail="kind='saved_query' ref must be a slug",
+            )
+        return ref
+    if kind == "workspace":
+        # Phase 77.10 — workspace refs are the workspace slug.
+        if not ref or "/" in ref or "." in ref:
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='workspace' ref must be a slug",
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:

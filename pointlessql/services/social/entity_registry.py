@@ -209,6 +209,18 @@ def _saved_query_url(entity_ref: str) -> str:
     return f"/audit/queries/{entity_ref}"
 
 
+def _workspace_url(entity_ref: str) -> str:
+    """Map a workspace slug to its landing page URL.
+
+    Phase 77.10 — workspace landing pages live at
+    ``/workspaces/{slug}``.  Falls back to the workspaces index
+    on empty refs.
+    """
+    if not entity_ref:
+        return "/workspaces"
+    return f"/workspaces/{entity_ref}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -443,6 +455,28 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "endorsements",
             "followers",
             "readme",
+        ),
+    ),
+    # Phase 77.10 — workspaces themselves get a Discussion +
+    # README surface plus the landing-page tabs (members /
+    # activity).  Endorsements off (workspaces aren't curated
+    # artefacts the way tables/models are); issues off; stars
+    # off — bookmarking a workspace doesn't make sense.
+    "workspace": EntityKindSpec(
+        key="workspace",
+        label="Workspace",
+        url_for=_workspace_url,
+        audit_target_prefix="workspace",
+        supports_reviews=False,
+        supports_endorsements=False,
+        supports_readme=True,
+        supports_issues=False,
+        supports_stars=False,
+        tab_keys=(
+            "discussion",
+            "readme",
+            "members",
+            "activity",
         ),
     ),
 }
