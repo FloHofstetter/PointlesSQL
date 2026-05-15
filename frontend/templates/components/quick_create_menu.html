@@ -1,0 +1,88 @@
+{#
+  Topbar quick-create menu — Phase 80.8.
+
+  Mirrors GitHub's top-bar `+` dropdown: one-click access to every
+  primary "Create" surface so authors don't have to navigate to a
+  list page first.  Each option deep-links into the existing
+  create-route; no in-line modals (those add Alpine complexity
+  for little UX win over a 2-click create flow).
+
+  Surfaced only for authenticated users.  The "Data product" entry
+  is admin-gated because authoring DPs is a steward-level action;
+  Phase 73 plumbing assumes a workspace admin OR an agent with the
+  right scope.
+#}
+{% if current_user is defined and current_user %}
+<div class="dropdown me-2 d-none d-md-block">
+    <button class="btn btn-link text-body p-0 d-flex align-items-center pql-quick-create-trigger"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+            aria-label="Create new"
+            title="Create new…">
+        <i class="bi bi-plus-square fs-5"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quickCreateMenu">
+        <li><h6 class="dropdown-header">Create new</h6></li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/notebooks/workspace"
+               data-pql-quick-create="notebook">
+                <i class="bi bi-journal-code"></i> Notebook
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/sql"
+               data-pql-quick-create="sql-query">
+                <i class="bi bi-code-square"></i> SQL query
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/dashboards"
+               data-pql-quick-create="dashboard">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/topics/new"
+               data-pql-quick-create="topic">
+                <i class="bi bi-hash"></i> Topic
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/issues/new"
+               data-pql-quick-create="issue">
+                <i class="bi bi-bug"></i> Issue
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/alerts/new"
+               data-pql-quick-create="alert">
+                <i class="bi bi-bell"></i> Alert
+            </a>
+        </li>
+        {% if current_user.is_admin %}
+        <li><hr class="dropdown-divider"></li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/data-products"
+               data-pql-quick-create="data-product">
+                <i class="bi bi-collection"></i> Data product
+            </a>
+        </li>
+        <li>
+            <a class="dropdown-item d-flex align-items-center gap-2"
+               href="/jobs"
+               data-pql-quick-create="job">
+                <i class="bi bi-clock-history"></i> Scheduled job
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
