@@ -65,6 +65,13 @@
         </button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-reviews-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-reviews" type="button" role="tab"
+                data-pql-tab-key="reviews">
+            <i class="bi bi-star me-1"></i>Reviews
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-endorsements-btn" data-bs-toggle="tab"
                 data-bs-target="#tab-endorsements" type="button" role="tab"
                 data-pql-tab-key="endorsements">
@@ -157,6 +164,81 @@
                     <button class="btn btn-primary btn-sm" type="submit"
                             :disabled="postBusy || !draftBody.trim()">
                         <i class="bi bi-send me-1"></i>Post
+                    </button>
+                </form>
+            </div>
+        </template>
+    </div>
+
+    {# Reviews pane — inline kind-agnostic x-data.  Talks to the
+       polymorphic /api/social/model/{ref}/reviews endpoints (added
+       in 77.2.1 alongside the polymorphic UNIQUE migration). #}
+    <div class="tab-pane fade" id="tab-reviews" role="tabpanel"
+         x-data='modelReviews({{ model.full_name|tojson }})'
+         x-init="init()">
+        <template x-if="!reviewsLoaded">
+            <div class="text-muted small p-3">Loading reviews…</div>
+        </template>
+        <template x-if="reviewsLoaded">
+            <div>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <template x-if="summary.count > 0">
+                        <div>
+                            <span class="h4 mb-0" x-text="(summary.avg_stars || 0).toFixed(1)"></span>
+                            <span class="text-warning"><i class="bi bi-star-fill"></i></span>
+                            <span class="text-muted small">
+                                (<span x-text="summary.count"></span> review<span x-text="summary.count === 1 ? '' : 's'"></span>)
+                            </span>
+                        </div>
+                    </template>
+                    <template x-if="summary.count === 0">
+                        <div class="text-muted small">No reviews yet — be the first.</div>
+                    </template>
+                </div>
+                <template x-for="r in reviews" :key="r.id">
+                    <div class="card mb-2 pql-review-card">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="small">
+                                    <strong x-text="(r.author && (r.author.display_name || r.author.email)) || 'unknown'"></strong>
+                                    <span class="text-warning ms-2">
+                                        <template x-for="n in r.stars" :key="n"><i class="bi bi-star-fill"></i></template><template x-for="n in (5 - r.stars)" :key="'e' + n"><i class="bi bi-star"></i></template>
+                                    </span>
+                                    <span class="text-muted ms-2" x-text="r.created_at"></span>
+                                </div>
+                                <template x-if="myReview && r.id === myReview.id">
+                                    <button class="btn btn-sm btn-link text-danger p-0"
+                                            @click="deleteMine()" title="Remove my review">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </template>
+                            </div>
+                            <div class="pql-review-body" x-html="r.body_md_resolved || r.body_md"></div>
+                        </div>
+                    </div>
+                </template>
+
+                <form class="mt-3" @submit.prevent="submitMine()">
+                    <div class="mb-2">
+                        <label class="form-label small">Your rating</label>
+                        <div>
+                            <template x-for="n in 5" :key="n">
+                                <button type="button" class="btn btn-link p-0 me-1 text-warning"
+                                        @click="draftStars = n">
+                                    <i class="bi" :class="n <= draftStars ? 'bi-star-fill' : 'bi-star'"></i>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <textarea class="form-control" rows="3"
+                                  placeholder="Optional comment — markdown welcome"
+                                  x-model="draftBody"></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-sm" type="submit"
+                            :disabled="postBusy || draftStars < 1">
+                        <i class="bi bi-send me-1"></i>
+                        <span x-text="myReview ? 'Update review' : 'Post review'"></span>
                     </button>
                 </form>
             </div>
@@ -433,8 +515,79 @@ window.modelPromotion = function (fullName, initialChampion) {
         };
     }
 
+    function modelReviews(ref) {
+        const url = '/api/social/model/' + encodeURI(ref) + '/reviews';
+        return {
+            ref,
+            reviewsLoaded: false,
+            reviews: [],
+            summary: { avg_stars: null, count: 0 },
+            myReview: null,
+            draftStars: 0,
+            draftBody: '',
+            postBusy: false,
+
+            async init() {
+                await this.load();
+            },
+
+            async load() {
+                const res = await window.pqlApi.fetch(url, { silent: true });
+                if (!res.ok) {
+                    this.reviewsLoaded = true;
+                    return;
+                }
+                const data = res.data || {};
+                this.reviews = data.reviews || [];
+                this.summary = data.summary || { avg_stars: null, count: 0 };
+                this.myReview = data.my_review || null;
+                if (this.myReview) {
+                    this.draftStars = this.myReview.stars;
+                    this.draftBody = this.myReview.body_md || '';
+                }
+                this.reviewsLoaded = true;
+            },
+
+            async submitMine() {
+                if (this.postBusy || this.draftStars < 1) return;
+                this.postBusy = true;
+                try {
+                    const res = await window.pqlApi.fetch(url, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            stars: this.draftStars,
+                            body_md: this.draftBody,
+                        }),
+                    });
+                    if (!res.ok) {
+                        if (window.pqlToast) window.pqlToast.error('Review save failed.');
+                        return;
+                    }
+                    await this.load();
+                } finally {
+                    this.postBusy = false;
+                }
+            },
+
+            async deleteMine() {
+                if (!this.myReview) return;
+                if (!window.confirm('Remove your review?')) return;
+                const res = await window.pqlApi.fetch(url, { method: 'DELETE' });
+                if (!res.ok) {
+                    if (window.pqlToast) window.pqlToast.error('Delete failed.');
+                    return;
+                }
+                this.draftStars = 0;
+                this.draftBody = '';
+                await this.load();
+            },
+        };
+    }
+
     window.modelDiscussion = modelDiscussion;
     window.modelReadme = modelReadme;
+    window.modelReviews = modelReviews;
 })();
 
 window.modelLineageDag = function (fullName) {

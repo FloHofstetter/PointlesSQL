@@ -590,16 +590,29 @@ PointlesSQL
 │   │
 │   ├── Phase 77.2 — Models                                          ✅ done (2026-05-15)
 │   │       Registered-model detail (``/models/{full_name}``) gains
-│   │       4 social tabs: Discussion / Endorsements / Followers /
-│   │       README.  ``#model:cat.sch.name`` citation resolves to
-│   │       the detail URL.  Polymorphic backend reused as-is —
-│   │       the model kind joins ``table`` + ``branch`` in
-│   │       ``_kind_dispatch.parse_ref``.  Reviews + Issues + full
-│   │       Stars stay queued: reviews need a partial-unique-index
-│   │       migration (legacy unique keys off ``data_product_id``,
-│   │       NULL on model rows → SQL NULL-distinct breaks upsert
-│   │       idempotency); deferred to 77.2.1 / 77.11.  Issues land
-│   │       in 77.7, polymorphic follow/star in 77.8.
+│   │       5 social tabs: Discussion / Reviews / Endorsements /
+│   │       Followers / README.  ``#model:cat.sch.name`` citation
+│   │       resolves to the detail URL.  Polymorphic backend reused
+│   │       as-is — the model kind joins ``table`` + ``branch`` in
+│   │       ``_kind_dispatch.parse_ref``.  Issues + full Stars stay
+│   │       queued: Issues land in 77.7, polymorphic follow/star in
+│   │       77.8.
+│   │       77.2.1: polymorphic UNIQUE
+│   │       ``(workspace_id, social_target_id, author_user_id)`` on
+│   │       ``data_product_reviews`` + polymorphic review handlers
+│   │       (list/upsert/delete) + ``model.supports_reviews=True``.
+│   │
+│   ├── Phase 77.2.1 — Polymorphic reviews enable                     ✅ done (2026-05-15)
+│   │       Alembic migration ``a8d0f2g4i6k8`` adds the kind-
+│   │       agnostic UNIQUE so polymorphic upsert is idempotent
+│   │       (legacy ``(ws, data_product_id, user)`` UNIQUE doesn't
+│   │       apply when ``data_product_id`` is NULL).  Three new
+│   │       polymorphic handlers in ``_polymorphic_handlers.py``
+│   │       + dispatcher switch in ``social_routes/reviews.py``.
+│   │       Registry flag flipped → Reviews tab now renders on
+│   │       model.html with the inline ``modelReviews`` Alpine
+│   │       factory.  Tables + branches stay reviews-off (still
+│   │       ``supports_reviews=False`` in the registry).
 │   │
 │   ├── Phase 77.4 — Runs                                            ⏳ planned
 │   │       Agent-run pages gain Discussion + Endorsements +

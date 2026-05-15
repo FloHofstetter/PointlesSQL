@@ -6,6 +6,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.2.1 closed — polymorphic reviews enable (2026-05-15).**
+  Alembic migration ``a8d0f2g4i6k8`` adds a kind-agnostic UNIQUE
+  on ``data_product_reviews(workspace_id, social_target_id,
+  author_user_id)`` so polymorphic upsert is idempotent (the
+  legacy DP-id-based UNIQUE doesn't apply when
+  ``data_product_id`` is NULL).  Three new polymorphic handlers
+  (``list_polymorphic_reviews`` / ``upsert_polymorphic_review`` /
+  ``delete_polymorphic_review``) reuse the social_target_id
+  resolver + governance/fanout pattern; ``dp_version_at_review``
+  stays empty for non-DP kinds until a future entity-version
+  generalisation.  ``social_routes/reviews.py`` dispatcher
+  switches on kind: ``dp`` → existing DP service, anything else
+  → polymorphic handler.  ``model.supports_reviews`` flipped to
+  ``True`` and ``model.html`` gains a Reviews tab + inline
+  ``modelReviews`` Alpine factory (5-tab strip now: Discussion /
+  Reviews / Endorsements / Followers / README).  Tables +
+  branches stay reviews-off in the registry.  11 new tests
+  covering migration UNIQUE in schema, idempotent upsert, list
+  summary, delete, 400 on invalid stars, kept-501 on table/branch,
+  null-DP-id persistence + HTML render of the new tab.
+
 - **Phase 77.2 closed — registered models get social tabs (2026-05-15).**
   Mirrors the 77.1.5 table-kind pattern for the UC ML registry.
   Two commits: registry + dispatch + ``#model:cat.sch.name``
