@@ -6,20 +6,39 @@
     field       — JSON key to send (e.g. "comment", "owner")
     value       — current value (may be None/empty)
     placeholder — shown when empty, also used as the "click to add" hint
+    multiline   — when truthy, renders a <textarea> instead of <input>
+                  (Phase 81.G.C — descriptions / long-form bodies)
 #}
 {% set _placeholder = placeholder or ("Click to add " ~ field) %}
+{% set _multiline = multiline if multiline is defined else false %}
 <div class="pql-editable" x-data='editable({
         patchUrl: {{ patch_url|tojson }},
         field: {{ field|tojson }},
         initial: {{ (value or "")|tojson }},
-        placeholder: {{ _placeholder|tojson }}
+        placeholder: {{ _placeholder|tojson }},
+        multiline: {{ (_multiline)|tojson }}
     })'>
     <span x-show="!editing" @click="start()" class="pql-editable-view" :class="{ 'text-muted fst-italic': !current }">
-        <span x-text="current || placeholder"></span>
+        <span x-text="current || placeholder" {% if _multiline %}style="white-space: pre-wrap;"{% endif %}></span>
         <i class="bi bi-pencil ms-2 small opacity-0 pql-editable-pencil"></i>
     </span>
 
-    <span x-show="editing" x-cloak style="display: flex; align-items: center; gap: 0.5rem;">
+    <span x-show="editing" x-cloak style="display: flex; align-items: flex-start; gap: 0.5rem; {% if _multiline %}flex-direction: column;{% endif %}">
+        {% if _multiline %}
+        <textarea class="form-control form-control-sm w-100"
+                  rows="4"
+                  x-model="draft"
+                  @keydown.escape.prevent="cancel()"
+                  x-ref="input"></textarea>
+        <div class="d-flex gap-2 align-self-end">
+            <button class="btn btn-sm btn-success" @click="save()" :disabled="saving">
+                <i class="bi" :class="saving ? 'bi-hourglass-split' : 'bi-check-lg'"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" @click="cancel()" :disabled="saving">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        {% else %}
         <input type="text"
                class="form-control form-control-sm"
                x-model="draft"
@@ -32,6 +51,7 @@
         <button class="btn btn-sm btn-outline-secondary" @click="cancel()" :disabled="saving">
             <i class="bi bi-x-lg"></i>
         </button>
+        {% endif %}
     </span>
 
     <div x-show="error" x-cloak class="text-danger small mt-1" x-text="error"></div>

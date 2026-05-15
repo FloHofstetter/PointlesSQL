@@ -12,10 +12,17 @@
 {% block content %}
 <div x-data='alertDetail({slug: {{ alert.slug|tojson }}, destinations: {{ alert.destinations|tojson }}})' x-init="init()">
  <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
- <div class="d-flex align-items-center gap-2">
+ <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
  <i class="bi bi-bell fs-3"></i>
- <h1 class="h3 mb-0">{{ alert.title }}</h1>
- <span class="badge ms-2
+ <div class="flex-grow-1">
+ {% with patch_url="/api/alerts/" ~ alert.slug,
+         field="title",
+         value=alert.title,
+         placeholder="Click to set a title" %}
+     {% include "components/editable.html" %}
+ {% endwith %}
+ </div>
+ <span class="badge ms-2 flex-shrink-0
  {% if alert.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
  {{ 'active' if alert.is_active else 'paused' }}
  </span>

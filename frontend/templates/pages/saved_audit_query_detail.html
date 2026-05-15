@@ -26,14 +26,23 @@
 <div class="d-flex align-items-start justify-content-between gap-3 mb-3"
      x-data='pqlStarToggle({kind: "saved_query", ref: {{ query.slug|tojson }}})'
      x-init="init()">
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
         <i class="bi bi-bookmark-star fs-3"></i>
-        <h1 class="h3 mb-0">{{ query.title }}</h1>
         {% if query.is_starter %}
+        <h1 class="h3 mb-0">{{ query.title }}</h1>
         <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-2">starter</span>
+        {% else %}
+        <div class="flex-grow-1">
+            {% with patch_url="/api/saved-audit-queries/" ~ query.slug,
+                    field="title",
+                    value=query.title,
+                    placeholder="Click to set a title" %}
+                {% include "components/editable.html" %}
+            {% endwith %}
+        </div>
         {% endif %}
         <button type="button"
-                class="btn btn-sm"
+                class="btn btn-sm flex-shrink-0"
                 :class="starred ? 'btn-warning' : 'btn-outline-warning'"
                 @click="toggle()" title="Bookmark this saved query">
             <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>

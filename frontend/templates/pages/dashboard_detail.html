@@ -11,9 +11,20 @@
 
 {% block content %}
 <div class="d-flex align-items-center justify-content-between mb-4">
-    <div class="d-flex align-items-center gap-2">
+    <div class="d-flex align-items-center gap-2 flex-grow-1 me-3">
         <i class="bi bi-speedometer2 fs-3"></i>
+        {% if is_admin %}
+        <div class="flex-grow-1">
+            {% with patch_url="/api/dashboards/" ~ dashboard.slug,
+                    field="title",
+                    value=dashboard.title,
+                    placeholder="Click to set a title" %}
+                {% include "components/editable.html" %}
+            {% endwith %}
+        </div>
+        {% else %}
         <h1 class="h3 mb-0">{{ dashboard.title }}</h1>
+        {% endif %}
     </div>
     {% if is_admin and dashboard.job_id is not none %}
     <div class="d-flex gap-2"
@@ -46,10 +57,20 @@
         <dl class="row mb-0">
             <dt class="col-sm-2">Slug</dt>
             <dd class="col-sm-10 font-monospace">{{ dashboard.slug }}</dd>
-            {% if dashboard.description %}
             <dt class="col-sm-2">Description</dt>
-            <dd class="col-sm-10">{{ dashboard.description }}</dd>
-            {% endif %}
+            <dd class="col-sm-10">
+                {% if is_admin %}
+                {% with patch_url="/api/dashboards/" ~ dashboard.slug,
+                        field="description",
+                        value=dashboard.description,
+                        placeholder="Click to add a description",
+                        multiline=true %}
+                    {% include "components/editable.html" %}
+                {% endwith %}
+                {% else %}
+                {{ dashboard.description or "" }}
+                {% endif %}
+            </dd>
             <dt class="col-sm-2">Notebook</dt>
             <dd class="col-sm-10 font-monospace">{{ dashboard.notebook_path }}</dd>
             <dt class="col-sm-2">Bound job</dt>

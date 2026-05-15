@@ -14,9 +14,21 @@
        x-data='pqlStarToggle({kind: "issue", ref: {{ issue_id|tojson }}})'
        x-init="init()">
     <i class="bi bi-exclamation-circle fs-3"></i>
-    <h1 class="h4 mb-0">
+    <h1 class="h4 mb-0 d-flex align-items-center gap-2 flex-grow-1">
       <span class="text-muted">#{{ issue_id }}</span>
-      <span x-text="issue.title || {{ issue_title|tojson }}"></span>
+      <template x-if="!canEdit">
+        <span x-text="issue.title || {{ issue_title|tojson }}"></span>
+      </template>
+      <template x-if="canEdit">
+        <span class="flex-grow-1">
+          {% with patch_url="/api/issues/" ~ issue_id|string,
+                  field="title",
+                  value=issue_title,
+                  placeholder="Click to set a title" %}
+              {% include "components/editable.html" %}
+          {% endwith %}
+        </span>
+      </template>
     </h1>
     <span class="badge ms-2"
           :class="issue.state === 'open' ? 'bg-success' : 'bg-secondary'"

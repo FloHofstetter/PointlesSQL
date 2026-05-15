@@ -1,10 +1,17 @@
 // Generic single-field inline editor — native ES module;
 // bootstrap.js re-attaches the factory to ``window.editable`` for
 // Alpine x-data lookup.
-export function editable({ patchUrl, field, initial, placeholder }) {
+//
+// Phase 81.G.C — added the ``multiline`` flag so the same factory
+// powers both single-line title edits and multi-line description
+// edits.  The partial chooses <input> vs <textarea> off the same
+// flag; no behavioural difference here other than skipping
+// Enter-to-save when multiline so newlines stay typeable.
+export function editable({ patchUrl, field, initial, placeholder, multiline }) {
  return {
  current: initial || '',
  placeholder: placeholder || '',
+ multiline: !!multiline,
  draft: '',
  editing: false,
  saving: false,
@@ -36,8 +43,10 @@ export function editable({ patchUrl, field, initial, placeholder }) {
  if (res.ok) {
  this.current = (res.data && res.data[field] !== undefined) ? res.data[field] : this.draft;
  this.editing = false;
+ if (window.pqlToast) window.pqlToast.success('Saved.');
  } else {
  this.error = 'Save failed: ' + res.error;
+ if (window.pqlToast) window.pqlToast.error('Save failed: ' + res.error);
  }
  this.saving = false;
  },
