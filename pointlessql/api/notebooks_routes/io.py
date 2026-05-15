@@ -1,0 +1,260 @@
+"""Notebook document I/O: load / save / cell history / markdown render."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from fastapi import APIRouter, Body, Query, Request
+from fastapi.responses import JSONResponse
+
+from pointlessql.api.dependencies import require_user
+from pointlessql.config import Settings
+from pointlessql.exceptions import ValidationError
+from pointlessql.services import output_rendering as notebook_render_service
+from pointlessql.services.notebook import _doc as notebook_doc_service
+from pointlessql.services.notebook import outputs as notebook_outputs_service
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["notebooks"])
+
+
+@router.get("/api/notebooks/load")
+async def api_load_notebook(request: Request, path: str) -> JSONResponse:
+    """Load a ``.py`` notebook + its persisted outputs.
+
+    The browser editor calls this on page-mount.  Returns the cell list
+    (with content_hashes) plus every persisted output frame keyed by
+    ``(content_hash, kernel_session_id)``.  Re-render cost on a page
+    reload stays close to free — kernel-message replay happens
+    client-side from the embedded JSON, no extra fetch.
+
+    Args:
+        request: Incoming FastAPI request; any authenticated user.
+        path: Relative notebook path under ``notebooks_dir``.
+
+    Returns:
+        JSON ``{path, dirty, cells: [...], outputs: [...]}``.
+        Each cell carries ``id`` (transient ordinal), ``content_hash``,
+        ``cell_type``, ``source``, ``result_var``.  Each output carries
+        ``content_hash``, ``kernel_session_id``, ``output_index``,
+        ``msg_type``, ``content``, ``metadata``, ``created_at``.
+
+    Raises:
+        ValidationError: When the path is missing / outside the
+            workspace / wrong suffix / does not exist.  Surfaces
+            via :func:`resolve_py_notebook_path`.
+    """  # noqa: DOC502
+    require_user(request)
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    absolute = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, path, must_exist=True
+    )
+    relative = str(absolute.relative_to(notebooks_dir))
+    document = notebook_doc_service.load_document(absolute, relative)
+    outputs = notebook_outputs_service.load_outputs_for_path(
+        request.app.state.session_factory, relative
+    )
+    cells = [
+        {
+            "id": cell.id,
+            "content_hash": cell.content_hash,
+            "cell_type": cell.cell_type,
+            "source": cell.source,
+            "result_var": cell.result_var,
+            "tags": list(cell.tags),
+        }
+        for cell in document.cells
+    ]
+    return JSONResponse(
+        {
+            "path": document.path,
+            "dirty": document.dirty,
+            "mtime": absolute.stat().st_mtime,
+            "cells": cells,
+            "outputs": outputs,
+        }
+    )
+
+
+@router.post("/api/notebooks/save")
+async def api_save_notebook(
+    request: Request,
+    body: dict[str, Any] = Body(...),
+) -> JSONResponse:
+    """Persist a notebook's cells back to disk.
+
+    The browser editor sends ``{path, cells, expected_mtime?}``;
+    cells are an ordered list of ``{cell_type, source, result_var?}``
+    dicts.  When ``expected_mtime`` is supplied and disagrees with
+    the current on-disk mtime, the route 409s with
+    ``{"error": "mtime_conflict", "current_mtime": <iso>}`` so the
+    browser can prompt the user to reload before overwriting.
+
+    Args:
+        request: Incoming FastAPI request; any authenticated user.
+        body: JSON body with ``path``, ``cells``, optional
+            ``expected_mtime`` (float seconds since epoch).
+
+    Returns:
+        JSON ``{path, mtime, cells: [{content_hash, ...}]}`` on
+        success — cells carry the freshly-computed FNV-1a-64
+        content_hashes so the browser can clear ``_dirty`` flags.
+
+    Raises:
+        ValidationError: When path / cells are malformed or escape
+            the workspace root.
+    """
+    require_user(request)
+    raw_path = body.get("path") if isinstance(body, dict) else None
+    raw_cells = body.get("cells") if isinstance(body, dict) else None
+    if not isinstance(raw_path, str):
+        raise ValidationError("body.path must be a string")
+    if not isinstance(raw_cells, list):
+        raise ValidationError("body.cells must be a list")
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    absolute = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, raw_path, must_exist=True
+    )
+    expected_mtime = body.get("expected_mtime")
+    if isinstance(expected_mtime, (int, float)):
+        current_mtime = absolute.stat().st_mtime
+        if abs(current_mtime - float(expected_mtime)) > 0.001:
+            # Return JSONResponse directly so the structured 409 body
+            # survives the central error handler's str-coercion of
+            # HTTPException.detail.
+            return JSONResponse(
+                {
+                    "error": "mtime_conflict",
+                    "current_mtime": current_mtime,
+                },
+                status_code=409,
+            )
+    cells: list[notebook_doc_service.NotebookCell] = []
+    for index, raw in enumerate(raw_cells):
+        if not isinstance(raw, dict):
+            raise ValidationError(
+                f"body.cells[{index}] must be an object, got {type(raw).__name__}"
+            )
+        cell_type = raw.get("cell_type", "code")
+        if cell_type not in {"code", "markdown", "sql"}:
+            raise ValidationError(
+                f"body.cells[{index}].cell_type must be one of code/markdown/sql"
+            )
+        source = raw.get("source", "")
+        if not isinstance(source, str):
+            raise ValidationError(
+                f"body.cells[{index}].source must be a string"
+            )
+        result_var = raw.get("result_var")
+        if result_var is not None and not isinstance(result_var, str):
+            raise ValidationError(
+                f"body.cells[{index}].result_var must be a string or null"
+            )
+        raw_tags = raw.get("tags") or []
+        if not isinstance(raw_tags, list):
+            raise ValidationError(
+                f"body.cells[{index}].tags must be a list of strings"
+            )
+        tags: tuple[str, ...] = tuple(
+            t for t in raw_tags if isinstance(t, str) and t
+        )
+        cells.append(
+            notebook_doc_service.NotebookCell(
+                id=f"cell-{index}",
+                content_hash=notebook_doc_service.compute_content_hash(source),
+                cell_type=cell_type,
+                source=source,
+                result_var=result_var if cell_type == "sql" else None,
+                tags=tags,
+            )
+        )
+    notebook_doc_service.save_document(absolute, cells)
+    new_mtime = absolute.stat().st_mtime
+    out_cells = [
+        {
+            "id": cell.id,
+            "content_hash": cell.content_hash,
+            "cell_type": cell.cell_type,
+            "source": cell.source,
+            "result_var": cell.result_var,
+            "tags": list(cell.tags),
+        }
+        for cell in cells
+    ]
+    relative = str(absolute.relative_to(notebooks_dir))
+    logger.info("saved notebook %s (%d cells)", relative, len(cells))
+    return JSONResponse(
+        {"path": relative, "mtime": new_mtime, "cells": out_cells}
+    )
+
+
+@router.get("/api/notebooks/cell-history")
+async def api_cell_history(
+    request: Request,
+    path: str = Query(..., min_length=1),
+    content_hash: str = Query(..., min_length=1),
+    limit: int = Query(20, ge=1, le=100),
+) -> JSONResponse:
+    """Return the last *limit* run-source rows for one cell.
+
+    Backs the per-cell run-history popover the notebook editor
+    surfaces in Sprint 66.7.
+
+    Args:
+        request: Incoming FastAPI request; any authenticated user.
+        path: Relative notebook path under ``notebooks_dir``.
+        content_hash: FNV-1a-64 cell identity.
+        limit: Maximum rows to return (1-100, default 20).
+
+    Returns:
+        JSON ``{"cell": {"path", "content_hash"}, "runs": [...]}``.
+        Each run row carries ``id`` / ``execution_count`` / ``source``
+        / ``started_at`` / ``finished_at`` / ``status`` /
+        ``kernel_session_id``.
+    """
+    require_user(request)
+    runs = notebook_outputs_service.list_cell_run_sources(
+        request.app.state.session_factory,
+        file_path=path,
+        content_hash=content_hash,
+        limit=limit,
+    )
+    return JSONResponse(
+        {
+            "cell": {"path": path, "content_hash": content_hash},
+            "runs": runs,
+        }
+    )
+
+
+@router.post("/api/notebooks/render-markdown")
+async def api_render_markdown(
+    request: Request,
+    body: dict[str, Any] = Body(...),
+) -> JSONResponse:
+    """Render a markdown cell to sanitised HTML.
+
+    Server-side render via the existing markdown-it-py CommonMark
+    renderer (HTML disabled in the parser → embedded
+    ``<script>`` / ``<iframe>`` tags are escaped at parse time).
+
+    Args:
+        request: Incoming FastAPI request; any authenticated user.
+        body: JSON body with key ``source`` (markdown text).
+
+    Returns:
+        JSON ``{"html": "<rendered fragment>"}``.
+
+    Raises:
+        ValidationError: When ``body.source`` is missing / non-string.
+    """
+    require_user(request)
+    raw = body.get("source") if isinstance(body, dict) else None
+    if not isinstance(raw, str):
+        raise ValidationError("body.source must be a string")
+    html = notebook_render_service.render_markdown_source(raw)
+    return JSONResponse({"html": html})

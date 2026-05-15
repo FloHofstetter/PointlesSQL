@@ -50,7 +50,7 @@ async def test_run_once_creates_job_and_returns_ids(
     """Happy path: route returns job_id + job_run_id (or None during stub)."""
     (workspace_dir / "demo.py").write_text(_PARAM_NOTEBOOK)
     with patch(
-        "pointlessql.api.notebooks_routes.scheduler_service.execute_run",
+        "pointlessql.api.notebooks_routes.jobs.scheduler_service.execute_run",
         new=_noop_execute_run,
     ):
         resp = await admin_client.post(
@@ -73,7 +73,7 @@ async def test_run_once_persists_parameters_in_config(
     (workspace_dir / "demo.py").write_text(_PARAM_NOTEBOOK)
     overrides = {"cutoff_date": "2026-05-10", "window": 14}
     with patch(
-        "pointlessql.api.notebooks_routes.scheduler_service.execute_run",
+        "pointlessql.api.notebooks_routes.jobs.scheduler_service.execute_run",
         new=_noop_execute_run,
     ):
         resp = await admin_client.post(
