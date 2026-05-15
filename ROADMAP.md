@@ -667,12 +667,48 @@ PointlesSQL
 │   │         permitted both kinds since Phase 77.0.
 │   │
 
-│   ├── Phase 77.6 — Notebooks + Saved Queries                       ⏳ planned
+│   ├── Phase 77.6 — Notebooks + Saved Queries                       ✅ done (2026-05-15)
 │   │       Per-notebook + per-saved-query social tabs.  New
 │   │       ``notebooks.id UUID`` column (locked decision #8 —
 │   │       stable across path renames).
 │   │       ``#notebook:{uuid}`` + ``#query:{slug}`` citations.
 │   │
+│   │       Four sub-commits:
+│   │       * 77.6.A — alembic ``f3h5j7l9n1p3`` creates the
+│   │         ``notebooks`` table (36-char UUID PK, workspace
+│   │         + path UNIQUE).  Backfills every distinct
+│   │         ``(workspace_id, file_path)`` tuple across
+│   │         ``notebook_outputs`` + ``notebook_cell_runs`` +
+│   │         ``notebook_cell_run_sources`` (the latter two are
+│   │         path-keyed without a workspace column, coalesce
+│   │         to ``workspace_id=1``).
+│   │       * 77.6.B — registry registers ``kind='notebook'`` +
+│   │         ``kind='saved_query'`` (4 social tabs each; stars
+│   │         on, reviews + issues off).  Adds
+│   │         ``#notebook:<uuid>`` (36-char UUID) +
+│   │         ``#query:slug`` citation regex with pass-through
+│   │         resolvers.  ``_POLYMORPHIC_KINDS`` + ``parse_ref``
+│   │         extended.
+│   │       * 77.6.C — ``_get_or_create_notebook_uuid`` helper
+│   │         + new ``GET /notebooks/uuid/{uuid}`` alias route
+│   │         that resolves the UUID back to the path-based
+│   │         render.  Existing ``/notebooks/edit/{path}`` now
+│   │         threads ``notebook_uuid`` into the template.
+│   │         ``notebook_editor.html`` gains a Social toolbar
+│   │         button + Bootstrap ``offcanvas-end`` side-drawer
+│   │         (full tab strip would crowd the editor; side-
+│   │         drawer was the locked decision in the plan).  4
+│   │         tabs inside driven by
+│   │         ``socialTabs({kind:"notebook", ref:uuid})``.
+│   │       * 77.6.D — ``saved_audit_query_detail.html`` full
+│   │         tab strip: existing SQL + result cards wrapped
+│   │         into an Overview tab, 4 social tabs added with
+│   │         ``socialTabs({kind:"saved_query", ref:slug})``.
+│   │         Header gains a server-backed star button.
+│   │       * 77.6.E — 17 new pytest cases (schema + registry +
+│   │         citation + dispatch + round-trip + DOM smoke).
+│   │
+
 │   ├── Phase 77.7 — Issues (the GitHub-Issues entity)               ✅ done (2026-05-15)
 │   │       Separate ``issues`` entity with state / assignee /
 │   │       labels_json / milestone_id / closed_reason.  Threaded

@@ -6,6 +6,56 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.6 closed — Notebooks + Saved Queries social surface (2026-05-15).**
+  Per-notebook + per-saved-query polymorphic social surface +
+  stable UUID identity for notebooks (locked decision #8).
+
+  - 77.6.A (alembic ``f3h5j7l9n1p3``) creates ``notebooks(id
+    VARCHAR(36) PK, workspace_id, file_path, created_at)`` +
+    UNIQUE on ``(workspace_id, file_path)`` + index on
+    ``file_path``.  Backfills every distinct
+    ``(workspace_id, file_path)`` tuple across the three
+    history tables (``notebook_outputs`` is workspace-aware;
+    ``notebook_cell_runs`` + ``notebook_cell_run_sources``
+    are path-keyed only, coalesce to workspace 1).
+  - 77.6.B registers ``kind='notebook'`` +
+    ``kind='saved_query'`` in the entity registry (4 social
+    tabs each: Discussion + Endorsements + Followers +
+    README; stars on, reviews + issues off).  Adds
+    ``#notebook:<uuid>`` + ``#query:slug`` citation regex
+    with pass-through resolvers.  Extends ``_POLYMORPHIC_KINDS``
+    + ``parse_ref`` with the notebook (36-char UUID) and
+    saved-query (slug) shapes.
+  - 77.6.C adds ``_get_or_create_notebook_uuid(request, file_path)``
+    in ``notebooks_routes.py`` — single chokepoint that maps
+    a notebook ``file_path`` to its stable ``notebooks.id``,
+    creating the row on demand for paths that pre-date the
+    77.6.A backfill.  ``GET /notebooks/edit/{path:path}`` now
+    threads ``notebook_uuid`` into the template context; the
+    new ``GET /notebooks/uuid/{uuid}`` alias route resolves
+    the UUID back to ``file_path`` and delegates to the same
+    render path so audit-log citations + future path renames
+    keep working.  ``notebook_editor.html`` gains a Social
+    toolbar button + a Bootstrap ``offcanvas-end`` side-drawer
+    carrying ``socialTabs({kind:"notebook", ref:uuid})`` with
+    4 panes (Discussion / Endorsements / Followers / README).
+    Side-drawer was the locked decision in the plan — full
+    tab strip would crowd the full-screen editor.
+  - 77.6.D restructures ``saved_audit_query_detail.html``:
+    existing SQL + result cards wrapped into an Overview tab,
+    4 social tabs added with
+    ``socialTabs({kind:"saved_query", ref:slug})``.  Header
+    gains a server-backed star button.  Inline
+    ``savedQueryDiscussion`` + ``savedQueryReadme`` x-data
+    factories talk to ``/api/social/saved_query/{slug}/...``.
+  - 77.6.E lands 17 new pytest cases (schema presence,
+    Notebook ORM round-trip, registry shape, URL builders,
+    citation render, parse_ref accept/reject, comment +
+    endorsement round-trip on both kinds, DOM smoke on
+    notebook drawer + saved-query tab strip).
+
+  Phase 77 test count: 199 → 216.
+
 - **Phase 77.5 closed — Schemas + Catalogs social surface (2026-05-15).**
   ``/catalogs/{cat}`` and ``/catalogs/{cat}/schemas/{sch}`` gain
   the polymorphic social surface.  Four commits across the
