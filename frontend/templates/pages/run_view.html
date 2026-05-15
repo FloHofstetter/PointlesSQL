@@ -177,6 +177,20 @@
  <i class="bi bi-shield-check me-1"></i>Audit
  </button>
  </li>
+ {% if run %}
+ {# Phase 77.4 — Social top-tab.  Only renders when a real ``run``
+    row exists; pre-agent-executor notebook views (run=None) skip
+    it because there's no UUID to anchor the polymorphic
+    social_target row to. #}
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="top-social-btn" data-bs-toggle="tab"
+ data-bs-target="#top-social" type="button" role="tab"
+ aria-controls="top-social" aria-selected="false"
+ data-pql-tab-key="social">
+ <i class="bi bi-chat-square-text me-1"></i>Social
+ </button>
+ </li>
+ {% endif %}
 </ul>
 
 <div class="tab-content" id="runDetailTabContent">
@@ -184,6 +198,9 @@
 {% include "pages/_partials/run_view/tab_operations.html" %}
 {% include "pages/_partials/run_view/tab_lineage.html" %}
 {% include "pages/_partials/run_view/tab_audit.html" %}
+{% if run %}
+{% include "pages/_partials/run_view/tab_social.html" %}
+{% endif %}
 </div>
 
 <script>

@@ -1,0 +1,191 @@
+{# Phase 77.4 — Social top-tab for the run-detail page.
+
+   Three sub-tabs (Discussion / Endorsements / Followers) hang off
+   the polymorphic backbone landed in 77.1.5.  Reviews + README are
+   intentionally omitted — runs are transient execution outcomes,
+   not curated artefacts (registry has ``supports_reviews=False`` +
+   ``supports_readme=False`` for ``kind='run'``).
+
+   The sub-tabs reuse the kind-agnostic ``_endorsements_pane.html``
+   + ``_followers_pane.html`` partials extracted in 77.1.5; the
+   Discussion sub-tab declares its own inline ``runDiscussion``
+   factory because the existing ``_discussion_pane.html`` is still
+   data_product.html-coupled (full polymorphic extraction is 77.11
+   territory).
+#}
+<div class="tab-pane fade" id="top-social" role="tabpanel" aria-labelledby="top-social-btn">
+    <ul class="nav nav-pills mb-3 small" id="socialSubTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-discussion-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-discussion" type="button" role="tab"
+                    aria-controls="tab-discussion" aria-selected="true"
+                    data-pql-tab-key="discussion">
+                <i class="bi bi-chat-left-text me-1"></i>Discussion
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-endorsements-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-endorsements" type="button" role="tab"
+                    aria-controls="tab-endorsements" aria-selected="false"
+                    data-pql-tab-key="endorsements">
+                <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-followers-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-followers" type="button" role="tab"
+                    aria-controls="tab-followers" aria-selected="false"
+                    data-pql-tab-key="followers">
+                <i class="bi bi-bell me-1"></i>Followers
+            </button>
+        </li>
+    </ul>
+
+    {# socialTabs factory hosts the Endorsements + Followers state.
+       Endorsement types reuse the DP-flavoured set so humans can flag
+       quality signals on individual agent runs (the same vocabulary
+       stewards use on data products / models). #}
+    <div class="tab-content" id="socialTabsContent"
+         x-data='socialTabs({
+            kind: "run",
+            ref: {{ run.id|tojson }},
+            endorsementTypes: [
+                {key: "verified-by-steward", label: "Verified by steward",
+                 description: "Steward reviewed the run output + side effects."},
+                {key: "production-ready", label: "Production ready",
+                 description: "Outcomes are safe to promote downstream."},
+                {key: "deprecated", label: "Deprecated",
+                 description: "Soft warning — output should not be reused."},
+                {key: "under-review", label: "Under review",
+                 description: "Actively being audited; expect churn."}
+            ]
+         })'>
+
+        {# Discussion pane — inline kind-agnostic x-data.  Talks to
+           the polymorphic /api/social/run/{run_id}/comments endpoints. #}
+        <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
+             x-data='runDiscussion({{ run.id|tojson }})'
+             x-init="init()">
+            <template x-if="!commentsLoaded">
+                <div class="text-muted small p-3">Loading discussion…</div>
+            </template>
+            <template x-if="commentsLoaded">
+                <div>
+                    <template x-if="comments.length === 0">
+                        <div class="alert alert-secondary">
+                            <i class="bi bi-chat-left-text me-1"></i>
+                            No comments yet — start the discussion below.
+                        </div>
+                    </template>
+                    <template x-for="c in comments" :key="c.id">
+                        <div class="card mb-2 pql-comment-card" :data-comment-id="c.id">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <div class="small text-muted">
+                                        <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                        · <span x-text="c.created_at"></span>
+                                    </div>
+                                    <button class="btn btn-sm btn-link text-danger p-0"
+                                            @click="deleteComment(c.id)"
+                                            title="Soft-delete this comment">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <form class="mt-3" @submit.prevent="submitNew()">
+                        <div class="mb-2">
+                            <textarea class="form-control" rows="3"
+                                      placeholder="Add a comment… markdown welcome"
+                                      x-model="draftBody"></textarea>
+                        </div>
+                        <button class="btn btn-primary btn-sm" type="submit"
+                                :disabled="postBusy || !draftBody.trim()">
+                            <i class="bi bi-send me-1"></i>Post
+                        </button>
+                    </form>
+                </div>
+            </template>
+        </div>
+
+        {# Endorsements + Followers panes reuse the polymorphic partials.
+           They inherit socialTabs state from the tab-content x-data above. #}
+        {% include 'partials/social/_endorsements_pane.html' %}
+        {% include 'partials/social/_followers_pane.html' %}
+    </div>
+</div>
+
+<script>
+// Phase 77.4 — runDiscussion Alpine factory for the inline
+// Discussion sub-tab on /runs/{id}.  Mirrors modelDiscussion exactly
+// — the only difference is the endpoint base.  The existing
+// _discussion_pane.html partial is data_product.html-coupled, so
+// this inline copy lives until Phase 77.11 unifies the discussion
+// surface across every kind.
+(function () {
+    'use strict';
+
+    function runDiscussion(ref) {
+        const url = '/api/social/run/' + encodeURI(ref) + '/comments';
+        return {
+            ref,
+            commentsLoaded: false,
+            comments: [],
+            draftBody: '',
+            postBusy: false,
+
+            async init() {
+                await this.loadComments();
+            },
+
+            async loadComments() {
+                const res = await window.pqlApi.fetch(url, { silent: true });
+                if (!res.ok) {
+                    this.commentsLoaded = true;
+                    return;
+                }
+                this.comments = (res.data && res.data.comments) || [];
+                this.commentsLoaded = true;
+            },
+
+            async submitNew() {
+                const body = this.draftBody.trim();
+                if (!body || this.postBusy) return;
+                this.postBusy = true;
+                try {
+                    const res = await window.pqlApi.fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ body_md: body }),
+                    });
+                    if (!res.ok) {
+                        if (window.pqlToast) window.pqlToast.error('Comment failed to post.');
+                        return;
+                    }
+                    this.draftBody = '';
+                    await this.loadComments();
+                } finally {
+                    this.postBusy = false;
+                }
+            },
+
+            async deleteComment(commentId) {
+                if (!window.confirm('Soft-delete this comment?')) return;
+                const res = await window.pqlApi.fetch(url + '/' + commentId, {
+                    method: 'DELETE',
+                });
+                if (!res.ok) {
+                    if (window.pqlToast) window.pqlToast.error('Delete failed.');
+                    return;
+                }
+                await this.loadComments();
+            },
+        };
+    }
+
+    window.runDiscussion = runDiscussion;
+})();
+</script>
