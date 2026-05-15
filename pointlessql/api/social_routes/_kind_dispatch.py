@@ -18,7 +18,7 @@ from pointlessql.services.social import entity_registry
 # that accepts the post-split parts and raises 400 with a clean
 # message when the shape doesn't match.
 _POLYMORPHIC_KINDS: frozenset[str] = frozenset(
-    {"table", "branch", "model", "run"}
+    {"table", "branch", "model", "run", "issue"}
 )
 
 
@@ -129,6 +129,18 @@ def parse_ref(kind: str, ref: str) -> str:
             raise HTTPException(
                 status_code=400,
                 detail="kind='run' ref must be a 36-char UUID",
+            )
+        return ref
+    if kind == "issue":
+        # Phase 77.7 — issue refs are the integer issues.id serialised
+        # as a base-10 string.  Validate digits-only + non-empty
+        # upfront so a malformed ref doesn't fall through to a
+        # downstream lookup with a fuzzy error.
+        if not ref or not ref.isdigit():
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='issue' ref must be a numeric issue id",
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:

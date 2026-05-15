@@ -118,6 +118,13 @@ EVENT_TYPE_USER_BADGE_AWARDED = "pointlessql.user.badge_awarded"
 # followers when a new DP joins a topic they follow.
 EVENT_TYPE_TOPIC_DP_ADDED = "pointlessql.topic.dp_added"
 EVENT_TYPE_NOTIFICATION_DIGEST = "pointlessql.notification.digest"
+# Phase 77.7 — GitHub-Issues entity events.  Two events split the
+# lifecycle: ``opened`` fires once at issue creation; ``state_changed``
+# fires on every close / reopen / mark-not-planned.  Both events
+# carry the parent entity (kind + ref) so SIEM / Grafana can route
+# by parent kind without joining ``issues`` to ``social_targets``.
+EVENT_TYPE_ISSUE_OPENED = "pointlessql.issue.opened"
+EVENT_TYPE_ISSUE_STATE_CHANGED = "pointlessql.issue.state_changed"
 
 GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_EXTERNAL_WRITE,
@@ -147,6 +154,8 @@ GOVERNANCE_EVENT_TYPES: tuple[str, ...] = (
     EVENT_TYPE_USER_BADGE_AWARDED,
     EVENT_TYPE_TOPIC_DP_ADDED,
     EVENT_TYPE_NOTIFICATION_DIGEST,
+    EVENT_TYPE_ISSUE_OPENED,
+    EVENT_TYPE_ISSUE_STATE_CHANGED,
 )
 
 

@@ -331,6 +331,39 @@ def _render_run(match: re.Match[str], hits: set[str]) -> str:
     return f"[#run:{short}](/runs/{run_id})"
 
 
+# Phase 77.7 — issue citations (``#issue:42``).  Resolver passes every
+# well-formed integer-id through (no DB existence probe in this
+# iteration — the typical comment body rarely cites issue ids that
+# don't exist, and the literal-fallback render path is harmless).
+_ISSUE_CITE_RE = re.compile(r"#issue:(\d{1,9})")
+
+
+def _resolve_issue(
+    session: Session, workspace_id: int, ids: set[Any]
+) -> set[str]:
+    """Pass every well-formed issue-id string through (no existence probe).
+
+    Args:
+        session: Active SQLAlchemy session (unused — present so the
+            signature matches every other resolver).
+        workspace_id: Tenant scope (unused for issue refs today).
+        ids: Set of captured digit strings.
+
+    Returns:
+        The same set the resolver received after filtering to strings.
+    """
+    del session, workspace_id
+    return {i for i in ids if isinstance(i, str)}
+
+
+def _render_issue(match: re.Match[str], hits: set[str]) -> str:
+    """Build the anchor for ``#issue:42`` or pass through."""
+    issue_id = match.group(1)
+    if issue_id not in hits:
+        return match.group(0)
+    return f"[#issue:{issue_id}](/issues/{issue_id})"
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -378,6 +411,12 @@ _CITATION_KINDS: list[CitationKind] = [
         regex=_RUN_CITE_RE,
         resolve=_resolve_run,
         render=_render_run,
+    ),
+    CitationKind(
+        key="issue",
+        regex=_ISSUE_CITE_RE,
+        resolve=_resolve_issue,
+        render=_render_issue,
     ),
 ]
 

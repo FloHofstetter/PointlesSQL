@@ -146,6 +146,19 @@ def _run_url(entity_ref: str) -> str:
     return f"/runs/{entity_ref}"
 
 
+def _issue_url(entity_ref: str) -> str:
+    """Map a numeric issue id to its detail URL.
+
+    Phase 77.7 — issues are referenced by their integer primary key
+    serialised as a base-10 string.  The detail page lives at
+    ``/issues/{id}``.  Falls back to the issues index on malformed
+    refs so audit-log rendering never crashes.
+    """
+    if not entity_ref.isdigit():
+        return "/issues"
+    return f"/issues/{entity_ref}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -159,7 +172,7 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         supports_reviews=True,
         supports_endorsements=True,
         supports_readme=True,
-        supports_issues=False,  # Issues land in 77.7
+        supports_issues=True,   # Issues against DPs land in 77.7
         supports_stars=False,   # Stars land in 77.8
         tab_keys=(
             "overview",
@@ -171,12 +184,13 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "discussion",
             "reviews",
             "readme",
+            "issues",
         ),
     ),
     # Phase 77.1 — UC tables get Discussion + Endorsements +
     # Followers + README + (later) Stars tabs.  Reviews stay off
     # for now (locked: star ratings only make sense on curated
-    # DPs).  Issues open in 77.7 once the issues entity ships.
+    # DPs).  Issues opened against tables land in 77.7.
     "table": EntityKindSpec(
         key="table",
         label="Table",
@@ -185,20 +199,22 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         supports_reviews=False,
         supports_endorsements=True,
         supports_readme=True,
-        supports_issues=False,  # Issues land in 77.7
+        supports_issues=True,   # Issues opened against tables (77.7)
         supports_stars=True,    # Stars wire-up lands in 77.8
         tab_keys=(
             "discussion",
             "endorsements",
             "followers",
             "readme",
+            "issues",
         ),
     ),
     # Phase 77.3 — branches get Discussion + Endorsements +
     # Followers tabs.  The single endorsement type that matters
     # here is ``branch-approved-for-promotion`` — used by the
-    # opt-in promote-gate.  No reviews / README / issues until
-    # later phases prove they're worth the surface.
+    # opt-in promote-gate.  77.7 flips ``supports_issues`` to
+    # ``True`` so branch quality concerns get a tracked-work
+    # surface; README stays off.
     "branch": EntityKindSpec(
         key="branch",
         label="Branch",
@@ -207,12 +223,13 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         supports_reviews=False,
         supports_endorsements=True,
         supports_readme=False,
-        supports_issues=False,
+        supports_issues=True,
         supports_stars=False,
         tab_keys=(
             "discussion",
             "endorsements",
             "followers",
+            "issues",
         ),
     ),
     # Phase 77.4 — agent runs get Discussion + Endorsements +
@@ -245,8 +262,9 @@ _REGISTRY: dict[str, EntityKindSpec] = {
     # upsert idempotency required a kind-agnostic UNIQUE on
     # ``(workspace_id, social_target_id, author_user_id)``;
     # 77.2.1's migration added that UNIQUE so the flag flips
-    # ``True`` here.  Issues are 77.7 territory; full Stars wire-up
-    # is 77.8.
+    # ``True`` here.  77.7 flips ``supports_issues`` to ``True`` so
+    # tracked-work concerns get a model-scoped surface; full Stars
+    # wire-up is 77.8.
     "model": EntityKindSpec(
         key="model",
         label="Model",
@@ -255,7 +273,7 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         supports_reviews=True,
         supports_endorsements=True,
         supports_readme=True,
-        supports_issues=False,
+        supports_issues=True,
         supports_stars=True,
         tab_keys=(
             "discussion",
@@ -263,6 +281,29 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "endorsements",
             "followers",
             "readme",
+            "issues",
+        ),
+    ),
+    # Phase 77.7 — issues are themselves polymorphic anchors so the
+    # issue gets a Discussion thread + endorsements + followers.
+    # ``supports_issues`` stays ``False`` (no recursion into nested
+    # issues); README stays off too (the issue body itself is the
+    # long-form surface).  Stars flip ``True`` so users can bookmark
+    # an issue without needing a Follow.
+    "issue": EntityKindSpec(
+        key="issue",
+        label="Issue",
+        url_for=_issue_url,
+        audit_target_prefix="issue",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=False,
+        supports_issues=False,
+        supports_stars=True,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
         ),
     ),
 }
