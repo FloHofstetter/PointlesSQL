@@ -16,7 +16,7 @@
  <option :value="null">current</option>
  <template x-for="v in versions" :key="v.version">
  <option :value="v.version"
- x-text="`v${v.version}` + (v.timestamp ? ` (${new Date(v.timestamp).toLocaleDateString()})` : '') + (v.run_id ? ` — run ${v.run_id.slice(0,8)}…` : '')">
+ x-text="`v${v.version}` + (v.timestamp ? ` (${pqlAbsTime(v.timestamp).slice(0, 10)})` : '') + (v.run_id ? ` — run ${v.run_id.slice(0,8)}…` : '')">
  </option>
  </template>
  </select>

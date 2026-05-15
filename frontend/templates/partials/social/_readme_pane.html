@@ -9,7 +9,8 @@
                         <small class="text-muted ms-auto">
                             <span x-text="'v' + passport.version_int"></span>
                             · <span x-text="passport.refresh_trigger"></span>
-                            · <span x-text="passport.refreshed_at"></span>
+                            · <span x-text="pqlRelativeTime(passport.refreshed_at)"
+                                     :title="pqlAbsTime(passport.refreshed_at)"></span>
                         </small>
                         <button class="btn btn-sm btn-outline-secondary pql-dp-passport-refresh"
                                 x-show="canEditReadme"
@@ -89,7 +90,8 @@
                                     · updated by
                                     <strong x-text="(readme.updated_by.display_name || readme.updated_by.email) || 'unknown'"></strong>
                                     ·
-                                    <span x-text="readme.updated_at"></span>
+                                    <span x-text="pqlRelativeTime(readme.updated_at)"
+                                          :title="pqlAbsTime(readme.updated_at)"></span>
                                 </div>
                                 <pre class="pql-readme-body mb-0" style="white-space: pre-wrap;" x-text="readme.body_md"></pre>
                             </div>
@@ -122,7 +124,9 @@
                                                                   x-text="'v' + v.version_int"></span>
                                                         </td>
                                                         <td x-text="(v.updated_by.display_name || v.updated_by.email) || 'unknown'"></td>
-                                                        <td class="small text-muted" x-text="v.updated_at"></td>
+                                                        <td class="small text-muted"
+                                                            x-text="pqlRelativeTime(v.updated_at)"
+                                                            :title="pqlAbsTime(v.updated_at)"></td>
                                                         <td>
                                                             <label class="small me-1">
                                                                 <input type="radio" :value="v.version_int" x-model.number="diffFrom"> from

@@ -179,7 +179,7 @@
                     <div class="card-body py-2">
                         <div class="small text-muted mb-1">
                             <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
-                            · <span x-text="c.created_at"></span>
+                            · <span x-text="pqlRelativeTime(c.created_at)" :title="pqlAbsTime(c.created_at)"></span>
                         </div>
                         <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
                     </div>

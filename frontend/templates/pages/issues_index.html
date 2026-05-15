@@ -108,7 +108,9 @@
                 <span class="text-muted" x-show="!row.assignee">–</span>
               </td>
               <td>
-                <span class="text-muted small" x-text="formatTime(row.opened_at)"></span>
+                <span class="text-muted small"
+                      x-text="pqlRelativeTime(row.opened_at)"
+                      :title="pqlAbsTime(row.opened_at)"></span>
               </td>
             </tr>
           </template>
@@ -150,11 +152,6 @@ function issuesIndex() {
         if ((r.labels || []).some(l => l.toLowerCase().includes(q))) return true;
         return false;
       });
-    },
-    formatTime(iso) {
-      if (!iso) return '';
-      try { return new Date(iso).toLocaleString(); }
-      catch (e) { return iso; }
     },
     async bulkClose() {
       await this._bulkTransition('close', 'Closed');

@@ -47,7 +47,8 @@
                             <span class="badge bg-info ms-1" x-text="lbl"></span>
                         </template>
                         <span class="text-muted small ms-auto"
-                              x-text="formatTime(row.opened_at)"></span>
+                              x-text="pqlRelativeTime(row.opened_at)"
+                              :title="pqlAbsTime(row.opened_at)"></span>
                     </li>
                 </template>
             </ul>
@@ -129,11 +130,6 @@ function issuesPane(args) {
                 this.newBody = '';
                 await this.refresh();
             }
-        },
-        formatTime(iso) {
-            if (!iso) return '';
-            try { return new Date(iso).toLocaleString(); }
-            catch (e) { return iso; }
         },
     };
 }

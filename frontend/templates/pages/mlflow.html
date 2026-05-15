@@ -71,7 +71,9 @@
                                 <td class="text-muted small" x-text="m.catalog_name || '—'"></td>
                                 <td class="text-muted small" x-text="m.schema_name || '—'"></td>
                                 <td class="text-muted small" x-text="m.owner || '—'"></td>
-                                <td class="text-muted small font-monospace" x-text="m.updated_at || '—'"></td>
+                                <td class="text-muted small font-monospace"
+                                    x-text="m.updated_at ? pqlRelativeTime(m.updated_at) : '—'"
+                                    :title="pqlAbsTime(m.updated_at)"></td>
                                 <td class="text-end">
                                     <a :href="'/mlflow/#/models/' + m.full_name"
                                        target="_blank" rel="noopener"
@@ -131,7 +133,9 @@
                                                  : 'bg-secondary')"
                                           x-text="r.status || '—'"></span>
                                 </td>
-                                <td class="text-muted small font-monospace" x-text="r.started_at || '—'"></td>
+                                <td class="text-muted small font-monospace"
+                                    x-text="r.started_at ? pqlRelativeTime(r.started_at) : '—'"
+                                    :title="pqlAbsTime(r.started_at)"></td>
                             </tr>
                         </template>
                     </tbody>

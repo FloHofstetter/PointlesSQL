@@ -178,7 +178,8 @@
                                               x-text="'★'.repeat(r.stars)"></span>
                                         ·
                                         <span class="text-muted"
-                                              x-text="r.created_at"></span>
+                                              x-text="pqlRelativeTime(r.created_at)"
+                                              :title="pqlAbsTime(r.created_at)"></span>
                                     </li>
                                 </template>
                             </ul>

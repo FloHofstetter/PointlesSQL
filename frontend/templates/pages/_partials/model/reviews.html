@@ -32,7 +32,9 @@
                                 <span class="text-warning ms-2">
                                     <template x-for="n in r.stars" :key="n"><i class="bi bi-star-fill"></i></template><template x-for="n in (5 - r.stars)" :key="'e' + n"><i class="bi bi-star"></i></template>
                                 </span>
-                                <span class="text-muted ms-2" x-text="r.created_at"></span>
+                                <span class="text-muted ms-2"
+                                      x-text="pqlRelativeTime(r.created_at)"
+                                      :title="pqlAbsTime(r.created_at)"></span>
                             </div>
                             <template x-if="myReview && r.id === myReview.id">
                                 <button class="btn btn-sm btn-link text-danger p-0"

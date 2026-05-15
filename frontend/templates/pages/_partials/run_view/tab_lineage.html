@@ -497,7 +497,9 @@
  <td class="text-muted"><i class="bi bi-arrow-right"></i></td>
  <td class="font-monospace text-break"
  x-text="change.new_value === null ? 'NULL' : change.new_value"></td>
- <td class="small text-muted text-nowrap" x-text="change.created_at"></td>
+ <td class="small text-muted text-nowrap"
+ x-text="pqlRelativeTime(change.created_at)"
+ :title="pqlAbsTime(change.created_at)"></td>
  </tr>
  </template>
  </tbody>

@@ -83,7 +83,9 @@
                                   x-text="shortEventType(n.event_type)"></span>
                             <strong x-text="n.summary_md"></strong>
                         </span>
-                        <small class="text-muted" x-text="n.created_at"></small>
+                        <small class="text-muted"
+                               x-text="pqlRelativeTime(n.created_at)"
+                               :title="pqlAbsTime(n.created_at)"></small>
                     </div>
                     <small class="text-muted"
                            x-show="n.actor && n.actor.email"

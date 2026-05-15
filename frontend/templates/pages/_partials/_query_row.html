@@ -39,7 +39,7 @@
   <td class="align-middle small font-monospace text-muted"
       x-data='{ iso: {{ (entry.started_at or "")|tojson }} }'
       x-text="iso ? pqlRelativeTime(iso) : '—'"
-      x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">
+      x-bind:title="pqlAbsTime(iso)">
     {{ entry.started_at }}
   </td>
   <td class="align-middle small text-end">

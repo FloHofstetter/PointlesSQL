@@ -73,7 +73,8 @@
                                         <span class="text-warning"
                                               x-text="'★'.repeat(r.stars) + '☆'.repeat(5 - r.stars)"></span>
                                         ·
-                                        <span x-text="r.created_at"></span>
+                                        <span x-text="pqlRelativeTime(r.created_at)"
+                                              :title="pqlAbsTime(r.created_at)"></span>
                                         <template x-if="r.dp_version_at_review">
                                             <span class="badge bg-light text-dark border ms-1"
                                                   x-text="'v' + r.dp_version_at_review"></span>

@@ -163,7 +163,9 @@
           <h6 class="card-subtitle text-muted mb-2">Opened by</h6>
           <div class="font-monospace small"
                x-text="(issue.opened_by && issue.opened_by.email) || '?'"></div>
-          <div class="text-muted small" x-text="formatTime(issue.opened_at)"></div>
+          <div class="text-muted small"
+               x-text="pqlRelativeTime(issue.opened_at)"
+               :title="pqlAbsTime(issue.opened_at)"></div>
         </div>
       </div>
     </div>
@@ -216,11 +218,6 @@ function issueDetail(issueId) {
     async reopen() {
       await window.pqlApi.fetch('/api/issues/' + issueId + '/reopen', { method: 'POST' });
       await this.refresh();
-    },
-    formatTime(iso) {
-      if (!iso) return '';
-      try { return new Date(iso).toLocaleString(); }
-      catch (e) { return iso; }
     },
   };
 }

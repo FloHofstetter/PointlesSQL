@@ -128,7 +128,9 @@
                                 <td>
                                     <span class="badge bg-light text-dark" x-text="m.linked_run_count || 0"></span>
                                 </td>
-                                <td class="small text-muted" x-text="formatTime(m.updated_at)"></td>
+                                <td class="small text-muted"
+                                    x-text="pqlRelativeTime(m.updated_at)"
+                                    :title="pqlAbsTime(m.updated_at)"></td>
                             </tr>
                         </template>
                     </tbody>
@@ -175,14 +177,6 @@ window.modelsBrowse = function () {
             }
         },
 
-        formatTime(ts) {
-            if (!ts) return '';
-            try {
-                const d = new Date(ts);
-                if (isNaN(d.getTime())) return '';
-                return d.toLocaleString();
-            } catch (e) { return ''; }
-        },
     };
 };
 </script>

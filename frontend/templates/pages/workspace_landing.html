@@ -109,7 +109,9 @@
           <li class="list-group-item d-flex align-items-center gap-2">
             <span class="badge bg-secondary" x-text="a.entity_kind || '—'"></span>
             <a :href="a.source_url || '#'" x-text="a.summary_md || a.event_type"></a>
-            <span class="text-muted small ms-auto" x-text="a.created_at"></span>
+            <span class="text-muted small ms-auto"
+                  x-text="pqlRelativeTime(a.created_at)"
+                  :title="pqlAbsTime(a.created_at)"></span>
           </li>
         </template>
       </ul>

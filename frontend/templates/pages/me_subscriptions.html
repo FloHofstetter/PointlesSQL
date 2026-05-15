@@ -105,7 +105,9 @@
                                            :checked="s.is_active"
                                            @change="toggle(s.id, $event.target.checked)">
                                 </td>
-                                <td class="small text-muted" x-text="s.last_delivered_at || '—'"></td>
+                                <td class="small text-muted"
+                                    x-text="s.last_delivered_at ? pqlRelativeTime(s.last_delivered_at) : '—'"
+                                    :title="pqlAbsTime(s.last_delivered_at)"></td>
                                 <td class="small text-danger" x-text="s.last_error || ''"></td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-danger pql-me-sub-delete"

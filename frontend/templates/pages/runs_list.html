@@ -109,7 +109,7 @@
  <td data-label="Started" class="small text-muted text-nowrap"
  x-data='{ iso: {{ (run.started_at or "")|tojson }} }'
  x-text="iso ? pqlRelativeTime(iso) : '—'"
- x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">
+ x-bind:title="pqlAbsTime(iso)">
  {{ run.started_at or "—" }}
  </td>
  <td data-label="Tables touched" class="text-truncate small font-monospace text-muted" style="max-width: 18rem;"

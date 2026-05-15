@@ -290,7 +290,7 @@
                                 <td class="small text-muted font-monospace"
                                     x-data="{ iso: '{{ run.started_at }}' }"
                                     x-text="pqlRelativeTime(iso)"
-                                    :title="new Date(pqlParseServerIso(iso)).toLocaleString()">
+                                    :title="pqlAbsTime(iso)">
                                     {{ run.started_at }}
                                 </td>
                                 <td class="text-end small font-monospace text-muted">

@@ -69,7 +69,9 @@
                 <div class="flex-grow-1">
                     <a class="pql-feed-row-link" :href="r.source_url || '#'" x-text="r.summary_md || r.event_type"></a>
                 </div>
-                <span class="text-muted small pql-feed-row-time" x-text="r.created_at"></span>
+                <span class="text-muted small pql-feed-row-time"
+                      x-text="pqlRelativeTime(r.created_at)"
+                      :title="pqlAbsTime(r.created_at)"></span>
             </li>
         </template>
     </ul>

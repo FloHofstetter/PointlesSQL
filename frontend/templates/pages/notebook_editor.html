@@ -206,7 +206,7 @@
          <div class="card-body py-2">
           <div class="small text-muted mb-1">
            <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
-           · <span x-text="c.created_at"></span>
+           · <span x-text="pqlRelativeTime(c.created_at)" :title="pqlAbsTime(c.created_at)"></span>
           </div>
           <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
          </div>
@@ -375,7 +375,8 @@
         <span class="text-muted ms-1"
               x-text="r.trigger"></span>
         <span class="text-muted ms-1"
-              x-text="r.started_at"></span>
+              x-text="pqlRelativeTime(r.started_at)"
+              :title="pqlAbsTime(r.started_at)"></span>
        </li>
       </template>
      </ul>
@@ -538,7 +539,8 @@
         <span class="text-muted small"
               x-text="run.execution_count != null ? `[${run.execution_count}]` : '[ ]'"></span>
         <span class="text-muted small flex-grow-1"
-              x-text="run.started_at"></span>
+              x-text="pqlRelativeTime(run.started_at)"
+              :title="pqlAbsTime(run.started_at)"></span>
        </li>
       </template>
      </ul>

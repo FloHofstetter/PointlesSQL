@@ -196,7 +196,8 @@
                                 <td x-text="(p.badges && p.badges.downstream_count) || 0"></td>
                                 <td x-text="(p.badges && p.badges.agent_run_count_7d) || 0"></td>
                                 <td class="small">
-                                    <span x-text="p.last_loaded_at"></span>
+                                    <span x-text="pqlRelativeTime(p.last_loaded_at)"
+                                          :title="pqlAbsTime(p.last_loaded_at)"></span>
                                     <span class="badge ms-1"
                                           :class="p.freshness_status === 'stale' ? 'bg-danger' : (p.freshness_status === 'on_time' ? 'bg-success' : 'bg-light text-dark border')"
                                           x-text="p.freshness_status"></span>

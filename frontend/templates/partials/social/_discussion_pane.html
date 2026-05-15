@@ -41,7 +41,8 @@
                                             </span>
                                         </template>
                                         ·
-                                        <span x-text="c.created_at"></span>
+                                        <span x-text="pqlRelativeTime(c.created_at)"
+                                              :title="pqlAbsTime(c.created_at)"></span>
                                         <!-- Phase 76.1: category badge -->
                                         <span class="badge bg-secondary ms-1 pql-comment-category"
                                               x-show="c.category && c.category !== 'general'"
@@ -92,7 +93,8 @@
                                                     </span>
                                                 </template>
                                                 ·
-                                                <span x-text="r.created_at"></span>
+                                                <span x-text="pqlRelativeTime(r.created_at)"
+                                                      :title="pqlAbsTime(r.created_at)"></span>
                                                 <span class="badge bg-success ms-1 pql-accepted-answer-badge"
                                                       x-show="r.is_accepted_answer">✓ Answer</span>
                                             </div>

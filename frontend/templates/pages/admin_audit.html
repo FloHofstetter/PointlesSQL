@@ -142,7 +142,7 @@
  <td class="ps-3 small text-muted font-monospace" data-label="Time">
  <span x-data='{ iso: {{ entry.created_at|tojson }} }'
  x-text="pqlRelativeTime(iso)"
- x-bind:title="iso ? new Date(pqlParseServerIso(iso)).toLocaleString() : ''">{{ entry.created_at }}</span>
+ x-bind:title="pqlAbsTime(iso)">{{ entry.created_at }}</span>
  </td>
  <td data-label="User" class="small">{{ entry.user_email }}</td>
  <td data-label="Role">

@@ -206,7 +206,9 @@
                                             : (run.status === 'failed' ? 'bg-danger'
                                             : 'bg-secondary')"
                                      x-text="run.status || '—'"></span></td>
-                            <td class="font-monospace small text-muted" x-text="run.started_at || '—'"></td>
+                            <td class="font-monospace small text-muted"
+                                x-text="run.started_at ? pqlRelativeTime(run.started_at) : '—'"
+                                :title="pqlAbsTime(run.started_at)"></td>
                         </tr>
                     </template>
                     <template x-if="dbtRuns.length === 0">
@@ -243,7 +245,9 @@
                                    class="font-monospace small text-decoration-none"
                                    x-text="m.name || m.full_name"></a></td>
                             <td class="text-muted small" x-text="m.owner || '—'"></td>
-                            <td class="text-muted small font-monospace" x-text="m.updated_at || '—'"></td>
+                            <td class="text-muted small font-monospace"
+                                x-text="m.updated_at ? pqlRelativeTime(m.updated_at) : '—'"
+                                :title="pqlAbsTime(m.updated_at)"></td>
                         </tr>
                     </template>
                     <template x-if="mlModels.length === 0">
@@ -359,7 +363,7 @@
                    <div class="d-flex justify-content-between align-items-center mb-1">
                     <div class="small text-muted">
                      <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
-                     · <span x-text="c.created_at"></span>
+                     · <span x-text="pqlRelativeTime(c.created_at)" :title="pqlAbsTime(c.created_at)"></span>
                     </div>
                    </div>
                    <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
