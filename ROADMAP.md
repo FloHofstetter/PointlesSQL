@@ -642,7 +642,7 @@ PointlesSQL
 │   │       stable across path renames).
 │   │       ``#notebook:{uuid}`` + ``#query:{slug}`` citations.
 │   │
-│   ├── Phase 77.7 — Issues (the GitHub-Issues entity)               ⏳ planned
+│   ├── Phase 77.7 — Issues (the GitHub-Issues entity)               ✅ done (2026-05-15)
 │   │       Separate ``issues`` entity with state / assignee /
 │   │       labels_json / milestone_id / closed_reason.  Threaded
 │   │       comments under each issue reuse the polymorphic
@@ -651,6 +651,53 @@ PointlesSQL
 │   │       Existing Discussions ``category`` enum +
 │   │       ``accept_answer`` untouched.
 │   │
+│   │       Six sub-commits in one autonomous session:
+│   │       * 77.7.A — alembic ``e2g4i6k8m0o2`` creating
+│   │         ``issues`` + ``issue_labels`` + ``issue_milestones``
+│   │         (3 ORM models, two CHECK constraints locking
+│   │         state + close-reason vocab, three indexes on
+│   │         ``issues`` for the workspace+state / parent /
+│   │         assignee lookup axes).
+│   │       * 77.7.B — registry registration for ``kind='issue'``
+│   │         (label "Issue", url ``/issues/{id}``, three social
+│   │         tabs Discussion+Endorsements+Followers, stars
+│   │         on, issues off — no recursion); flipped
+│   │         ``supports_issues=True`` on dp/table/model/branch.
+│   │         Added ``#issue:\d+`` citation regex + render.
+│   │         Added ``EVENT_TYPE_ISSUE_OPENED`` and
+│   │         ``EVENT_TYPE_ISSUE_STATE_CHANGED`` governance
+│   │         events.  Built ``social_routes/issues.py`` with
+│   │         eight endpoint families: open + list (parent-
+│   │         scoped + global) + GET + PATCH + close + reopen
+│   │         + labels CRUD + milestones CRUD.  Issue create
+│   │         uses a three-step pattern (anchor placeholder
+│   │         ref → insert issue → rewrite anchor ref to
+│   │         ``str(issue.id)``) so the social_target row is
+│   │         consistent on commit.
+│   │       * 77.7.C — ``/issues`` HTML index + ``/issues/{id}``
+│   │         detail page with two-column layout (left: title
+│   │         + body_md + 3 social tabs; right: state controls
+│   │         + assignee + labels + milestone + parent badge +
+│   │         star button via the server-backed pqlStarToggle
+│   │         from 77.8.E).
+│   │       * 77.7.D — kind-agnostic Issues tab partial
+│   │         wired into table.html, model.html,
+│   │         branch_detail.html, and data_product.html.
+│   │         DP page wraps the partial in a tiny x-data
+│   │         that surfaces kind+ref since data_product.html
+│   │         pre-dates the socialTabs factory.
+│   │       * 77.7.E — 31 new pytest cases (schema + routes +
+│   │         DOM smoke) plus issue helper extraction
+│   │         (``_issue_helpers.py`` + ``_issue_taxonomy.py``)
+│   │         to stay under the file-size budget after adding
+│   │         ``bare-http-ok:`` markers on every raise.  Two
+│   │         pre-existing assertions in 77.1 + 77.2 flipped
+│   │         to match the new ``supports_issues=True`` reality.
+│   │       * 77.7.F — close-out (this entry + CHANGELOG).
+│   │       Comment-reactions on issue comments stay 501 by
+│   │       design — unlock lands in 77.11.
+│   │
+
 │   ├── Phase 77.8 — Stars + polymorphic Follow + Reactions          ✅ done (2026-05-15)
 │   │       Three migrations + the polymorphic backend that flips
 │   │       Star / Follow / Reaction from 501 to functional across

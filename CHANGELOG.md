@@ -6,6 +6,79 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.7 closed — Issues entity (GitHub-Issues) (2026-05-15).**
+  The polymorphic Issues entity ships across the platform.  Six
+  commits across the sub-phase:
+
+  - 77.7.A (alembic ``e2g4i6k8m0o2``) creates ``issues`` +
+    ``issue_labels`` + ``issue_milestones``.  ``issues`` carries
+    two ``social_target`` FKs: ``social_target_id`` (the issue's
+    own polymorphic anchor — comment-able / follow-able /
+    star-able through the existing routes), and
+    ``parent_social_target_id`` (the entity the issue is opened
+    against — table / model / branch / dp).  Two CHECK
+    constraints lock the ``state`` and ``closed_reason`` vocab
+    at the DB layer.  Labels live as a JSON slug list inside
+    ``labels_json`` — no M:N junction (filtering goes through
+    77.9 FTS).
+  - 77.7.B registers ``kind='issue'`` in the entity registry
+    (label "Issue", tab keys Discussion + Endorsements +
+    Followers, ``supports_stars=True``,
+    ``supports_issues=False`` — no recursion).  Flips
+    ``supports_issues=True`` on the four parent kinds dp /
+    table / model / branch.  Adds the ``#issue:\d+`` citation
+    regex with a pass-through resolver.  Adds
+    ``EVENT_TYPE_ISSUE_OPENED`` + ``EVENT_TYPE_ISSUE_STATE_CHANGED``
+    governance events.  Ships
+    ``pointlessql/api/social_routes/issues.py`` with the eight
+    endpoint families: open + parent-scoped list + global
+    cross-entity index + GET + PATCH + close + reopen + labels
+    CRUD + milestones CRUD.  Issue create uses a three-step
+    pattern (anchor placeholder ref → insert issue → rewrite
+    anchor ref to ``str(issue.id)``) so the social_target row
+    is consistent on commit.  Audit prefix is ``issue:{id}``
+    (locked decision #9 — only ``kind='dp'`` keeps the legacy
+    ``data_product:`` prefix).
+  - 77.7.C ships ``frontend/templates/pages/issues_index.html``
+    + ``frontend/templates/pages/issue_detail.html``.  The
+    index renders chip filters (All / Open / Closed / Assigned
+    to me / Opened by me) feeding the global ``/api/issues``
+    query.  The detail page has a two-column layout: left =
+    title + inline-editable body_md + three social sub-tabs
+    (Discussion / Endorsements / Followers driven by
+    ``socialTabs(kind='issue')``); right sidebar = state
+    controls (close-with-reason + reopen) + assignee + labels
+    + milestone + parent badge + star button via the
+    server-backed ``pqlStarToggle`` from 77.8.E.
+  - 77.7.D adds the kind-agnostic
+    ``frontend/templates/partials/social/_issues_pane.html``
+    tab.  Wired into ``table.html``, ``model.html``,
+    ``branch_detail.html``, and ``data_product.html``.  Lists
+    issues opened against the entity + opens a modal for new
+    issues that POSTs to
+    ``/api/social/{kind}/{ref}/issues``.  ``data_product.html``
+    pre-dates the socialTabs factory (deferred to 77.11), so
+    the partial there is wrapped in a tiny inline x-data that
+    surfaces ``kind="dp"`` + the ``catalog.schema`` ref.
+  - 77.7.E lands 31 new pytest cases across three files
+    (schema constraints + route round-trips + DOM smoke).  Two
+    pre-existing 77.1 + 77.2 assertions on
+    ``supports_issues is False`` flip to ``True`` to match the
+    new registry state.  After adding ``bare-http-ok:`` markers
+    on every ``raise HTTPException`` (Sprint 43.3 lint
+    contract), ``issues.py`` crossed the 800-LOC file-size
+    budget — split into ``_issue_helpers.py`` (pure helpers:
+    target resolver, label JSON validator, row serialiser,
+    parent hydrator, can_edit_issue ACL) and
+    ``_issue_taxonomy.py`` (labels + milestones CRUD router).
+    Two pre-existing bare HTTPExceptions in
+    ``_polymorphic_handlers.py`` (lines 290 + 302 from
+    77.8.D's DP routing) get the marker as drive-by fix.
+  - 77.7.F — ROADMAP + CHANGELOG close-out.
+
+  Comment-reactions on issue comments stay 501 by design —
+  unlocked in 77.11.  Phase 77 test count: 140 → 172.
+
 - **Phase 77.8 closed — Stars + polymorphic Follow + Reactions (2026-05-15).**
   Three alembic migrations + the polymorphic backend that lifts
   Star / Follow / Reaction from 501-gated to functional across
