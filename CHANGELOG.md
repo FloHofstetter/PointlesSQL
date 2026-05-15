@@ -6,6 +6,66 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.8 closed — Stars + polymorphic Follow + Reactions (2026-05-15).**
+  Three alembic migrations + the polymorphic backend that lifts
+  Star / Follow / Reaction from 501-gated to functional across
+  every registered entity kind (table / model / branch / run /
+  dp).  Six commits across the sub-phase:
+
+  - 77.8.A (alembic ``b9e1g3i5k7m9``) creates the polymorphic
+    ``social_stars`` bookmark table.  Composite PK on
+    ``(workspace_id, user_id, social_target_id)``; two indexes
+    for star-count aggregations + per-user starred lists.  No
+    backfill — localStorage stars are not migrated.
+  - 77.8.B (alembic ``c0f2h4j6l8n0``) creates the sibling
+    ``social_follows`` polymorphic follow table.  77.0.G's own
+    docstring suggested this path because
+    ``data_product_follows`` has an implicit unnamed composite
+    PK on ``(workspace_id, data_product_id, user_id)`` that
+    SQLite cannot drop in batch-alter mode (the reflected
+    metadata has no constraint name to target).  Cleaner
+    long-term: 77.11 collapses both tables into one.
+  - 77.8.C (alembic ``d1g3i5k7m9o1``) adds an additive UNIQUE
+    on ``data_product_reactions(social_target_id, user_id,
+    emoji)`` — mirrors 77.2.1's review fix.  The legacy
+    DP-id PK survives; for non-DP rows only the new UNIQUE
+    enforces idempotency (NULL ``data_product_id`` defeats the
+    legacy PK's NULL-distinct semantics).
+  - 77.8.D ships ``pointlessql/api/social_routes/stars.py``
+    with GET/POST/DELETE under
+    ``/api/social/{kind}/{ref:path}/star`` and the
+    ``GET /api/users/{user_id}/stars`` profile endpoint.  The
+    polymorphic follow / reaction handlers in
+    ``_polymorphic_handlers.py`` flip from 501 to functional —
+    follow writes to ``social_follows``, reaction writes to
+    ``data_product_reactions`` with NULL ``data_product_id``.
+    DP follow + reaction routes stay bit-identical via the
+    legacy tables.  ``_resolve_target_id`` now routes DP refs
+    through ``resolve_dp_target`` so the ``data_product_id``
+    back-pointer gets populated correctly.
+  - 77.8.E rewrites ``window.pqlStarToggle`` to be server-backed
+    with localStorage fallback for kinds not yet registered
+    (catalog + schema, until 77.5).  The component now exposes
+    ``async init()`` + ``async toggle()`` + ``starred`` + ``count``
+    via ``/api/social/{kind}/{ref}/star``.  Visible star buttons
+    land on ``model.html`` (header), ``branch_detail.html``
+    (header), and ``run_view.html`` (via the run_view header
+    partial — only renders when ``run`` is not None).
+  - 77.8.F flips the ROADMAP marker to ✅ + this CHANGELOG
+    entry.
+
+  18 new pytest cases across two new test files +
+  ``test_phase77_1_5_polymorphic_handlers``'s two formerly-501
+  tests inverted to assert functional behaviour.  Comment-
+  reactions on non-DP kinds stay 501 (deferred to 77.11 — the
+  underlying comment-reaction table is polymorphic-safe but the
+  route still needs a DP context).  Table renames
+  (``data_product_readmes`` → ``entity_readmes``,
+  ``data_product_follows`` → ``social_follows``,
+  ``data_product_reactions`` → ``social_reactions``) deferred to
+  77.11 as a single rename batch.  Full Phase-77 suite at 109
+  passing (was 91 pre-77.8).
+
 - **Phase 77.4 closed — agent-run social tabs (2026-05-15).**
   Fourth entity kind onto the polymorphic backbone, smallest mirror
   of the 77.1.5 pattern: no schema work, three commits.  77.4.A

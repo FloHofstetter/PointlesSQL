@@ -651,12 +651,31 @@ PointlesSQL
 │   │       Existing Discussions ``category`` enum +
 │   │       ``accept_answer`` untouched.
 │   │
-│   ├── Phase 77.8 — READMEs polymorphic + Stars                     ⏳ planned
-│   │       Rename ``data_product_readmes`` → ``entity_readmes``.
-│   │       New ``social_stars`` table — lightweight bookmarks
-│   │       distinct from Follows (= "watch with notifications").
-│   │       Wires the existing ``pqlStarToggle`` Alpine component
-│   │       (in ``table.html``) to a real server.
+│   ├── Phase 77.8 — Stars + polymorphic Follow + Reactions          ✅ done (2026-05-15)
+│   │       Three migrations + the polymorphic backend that flips
+│   │       Star / Follow / Reaction from 501 to functional across
+│   │       every registered entity kind.  77.8.A added the new
+│   │       ``social_stars`` polymorphic bookmark table; 77.8.B
+│   │       added the sibling ``social_follows`` table (sidesteps
+│   │       the SQLite PK-swap difficulty on ``data_product_follows``
+│   │       — 77.0.G's docstring already flagged this path);
+│   │       77.8.C added a polymorphic UNIQUE on
+│   │       ``data_product_reactions(social_target_id, user_id,
+│   │       emoji)`` so polymorphic upsert is idempotent.  77.8.D
+│   │       shipped ``stars_routes.py`` + flipped the polymorphic
+│   │       follow/reaction handlers to use the new tables (DP
+│   │       follow + DP reaction routes stay bit-identical via the
+│   │       legacy ``data_product_follows`` / DP-id PK path).
+│   │       77.8.E rewrote ``pqlStarToggle`` to be server-backed
+│   │       with localStorage fallback for kinds not yet registered
+│   │       (catalog + schema land in 77.5); model.html +
+│   │       branch_detail.html + run_view.html headers gained
+│   │       visible star buttons.  The ``data_product_readmes`` →
+│   │       ``entity_readmes`` table rename is deferred to Phase
+│   │       77.11 alongside the rename of follows + reactions.
+│   │       18 new pytest cases across 2 new test files + 2
+│   │       existing 501-gated tests flipped to assert functional
+│   │       behaviour.  Full Phase-77 suite at 109 passing.
 │   │
 │   ├── Phase 77.9 — Cross-entity feed + full-body FTS               ⏳ planned
 │   │       ``/feed`` becomes entity-agnostic with a kind-pill
