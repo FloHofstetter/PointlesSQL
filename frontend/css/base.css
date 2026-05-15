@@ -10,7 +10,12 @@
  --pointless-accent: #76b900;
  --pql-sidebar-width: 280px;
  --pql-topbar-height: 56px;
- --pql-icon-rail-width: 80px;
+ /* Phase 80.1: primary rail switches between collapsed (64 px,
+    icon-only) and expanded (220 px, icon + label + group headers).
+    The default is expanded so new users see the IA structure on
+    first paint; the value is overridden via
+    ``html[data-pql-rail-state="collapsed"]`` below. */
+ --pql-icon-rail-width: 220px;
  --pql-context-panel-width: 240px;
 
  /* Spacing — 4-px scale, eight steps cover every utility we use today */
@@ -78,6 +83,10 @@
  --pql-color-info-fg: #7fb1ff;
  --pql-color-neutral-bg: rgba(255, 255, 255, 0.08);
  --pql-color-neutral-fg: var(--bs-body-color);
+}
+
+:root[data-pql-rail-state="collapsed"] {
+ --pql-icon-rail-width: 64px;
 }
 
 :root[data-bs-theme="light"] {

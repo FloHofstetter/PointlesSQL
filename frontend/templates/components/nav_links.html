@@ -1,90 +1,185 @@
 {#
- : this partial now renders ONLY inside the mobile
- offcanvas drawer (< md, 768 px). At >= md the icon-rail
- (``components/icon_rail.html``) replaces the topbar nav, and the
- topbar carries the user menu via ``components/user_menu.html``
- separately.
+  Mobile offcanvas navigation links (Phase 80.1 IA mirror).
 
- The drawer is the single entry point on phones / portrait tablets:
- hamburger toggles it, and it carries the same nine sections the
- icon-rail exposes on desktop, plus the user dropdown at the
- bottom.
+  This partial renders ONLY inside the mobile offcanvas drawer
+  (< md, 768 px).  At >= md the primary rail
+  (``components/primary_rail.html``) replaces the topbar nav, and
+  the topbar carries the user menu via ``components/user_menu.html``
+  separately.
 
- The caller can override the `<ul>` classes via the
- ``nav_list_class`` variable (default: ``navbar-nav``). The Admin
- entry renders via ``_macros/permission_link.html`` so a non-admin
- still sees it as a greyed-out lock affordance — click surfaces a
- toast naming the missing role rather than a silently-hidden link.
+  Mirrors the rail's five-group IA (HOME / WATCH / BUILD / DATA /
+  COMMUNITY / WORKSPACE) so phones see the same surfaces, with the
+  same group headers, that desktop users see in the expanded rail.
+
+  Admin entry renders via ``_macros/permission_link.html`` so a
+  non-admin still sees it as a greyed-out lock affordance.
 #}
 {% from "_macros/permission_link.html" import permission_link %}
 {% set nav_list_class = nav_list_class or "navbar-nav" %}
-<ul class="{{ nav_list_class }}">
- <li class="nav-item dropdown">
- <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('connections', 'external_locations', 'credentials') %} active{% endif %}"
- href="#" data-bs-toggle="dropdown">
- <i class="bi bi-plug"></i> Federation
- </a>
- <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
- <li><a class="dropdown-item{% if active_page is defined and active_page == 'connections' %} active{% endif %}" href="/connections">Connections</a></li>
- <li><a class="dropdown-item{% if active_page is defined and active_page == 'external_locations' %} active{% endif %}" href="/external-locations">External Locations</a></li>
- <li><a class="dropdown-item{% if active_page is defined and active_page == 'credentials' %} active{% endif %}" href="/credentials">Credentials</a></li>
- </ul>
- </li>
- <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'runs' %} active{% endif %}"
- href="/runs">
- <i class="bi bi-activity"></i> Runs
- </a>
- </li>
- <li class="nav-item dropdown">
- <a class="nav-link dropdown-toggle d-flex align-items-center gap-1{% if active_page is defined and active_page in ('sql', 'queries') %} active{% endif %}"
- href="#" data-bs-toggle="dropdown">
- <i class="bi bi-code-square"></i> SQL
- </a>
- <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
- <li><a class="dropdown-item{% if active_page is defined and active_page == 'sql' %} active{% endif %}" href="/sql">Editor</a></li>
- <li><a class="dropdown-item{% if active_page is defined and active_page == 'queries' %} active{% endif %}" href="/queries">History</a></li>
- </ul>
- </li>
- <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'workspace' %} active{% endif %}"
-    href="/notebooks/workspace">
-  <i class="bi bi-folder2-open"></i> Workspace
- </a>
- </li>
- <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'jobs' %} active{% endif %}"
- href="/jobs">
- <i class="bi bi-clock-history"></i> Jobs
- </a>
- </li>
- <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'alerts' %} active{% endif %}"
- href="/alerts">
- <i class="bi bi-bell"></i> Alerts
- </a>
- </li>
- <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'volumes' %} active{% endif %}"
- href="/volumes">
- <i class="bi bi-hdd-stack"></i> Volumes
- </a>
- </li>
- <li class="nav-item">
- <a class="nav-link d-flex align-items-center gap-1{% if active_page is defined and active_page == 'dashboards' %} active{% endif %}"
- href="/dashboards">
- <i class="bi bi-speedometer2"></i> Dashboards
- </a>
- </li>
- <li class="nav-item">
- {{ permission_link(
-      href="/admin",
-      icon="bi-shield-check",
-      label="Admin",
-      granted=(current_user is defined and current_user and current_user.is_admin),
-      required_role="admin",
-      css_class="nav-link d-flex align-items-center gap-1",
-      active=(active_page is defined and active_page in ("admin", "admin_audit"))
- ) }}
- </li>
+<ul class="{{ nav_list_class }} pql-mobile-nav">
+
+    {# HOME #}
+    <li class="pql-mobile-nav__group">Home</li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'home' %} active{% endif %}"
+           href="/">
+            <i class="bi bi-house-door"></i> Today
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'feed' %} active{% endif %}"
+           href="/feed">
+            <i class="bi bi-rss"></i> Feed
+        </a>
+    </li>
+
+    {# WATCH #}
+    <li class="pql-mobile-nav__group">Watch</li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'runs' %} active{% endif %}"
+           href="/runs">
+            <i class="bi bi-activity"></i> Agent runs
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'audit' %} active{% endif %}"
+           href="/audit/inbox">
+            <i class="bi bi-shield-check"></i> Audit
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'alerts' %} active{% endif %}"
+           href="/alerts">
+            <i class="bi bi-bell"></i> Alerts
+        </a>
+    </li>
+
+    {# BUILD #}
+    <li class="pql-mobile-nav__group">Build</li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'sql' %} active{% endif %}"
+           href="/sql">
+            <i class="bi bi-code-square"></i> SQL editor
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'lens' %} active{% endif %}"
+           href="/lens">
+            <i class="bi bi-eye"></i> Lens
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'workspace' %} active{% endif %}"
+           href="/notebooks/workspace">
+            <i class="bi bi-journal-code"></i> Notebooks
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'dashboards' %} active{% endif %}"
+           href="/dashboards">
+            <i class="bi bi-speedometer2"></i> Dashboards
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'jobs' %} active{% endif %}"
+           href="/jobs">
+            <i class="bi bi-clock-history"></i> Scheduled jobs
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'dbt' %} active{% endif %}"
+           href="/dbt">
+            <i class="bi bi-bezier2"></i> dbt
+        </a>
+    </li>
+
+    {# DATA #}
+    <li class="pql-mobile-nav__group">Data</li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'federation' %} active{% endif %}"
+           href="/">
+            <i class="bi bi-database"></i> Catalog
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'data_products' %} active{% endif %}"
+           href="/data-products">
+            <i class="bi bi-collection"></i> Data products
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_page is defined and active_page == 'models' %} active{% endif %}"
+           href="/models">
+            <i class="bi bi-cpu"></i> ML models
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'mlflow' %} active{% endif %}"
+           href="/ml">
+            <i class="bi bi-robot"></i> MLflow
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'branches' %} active{% endif %}"
+           href="/branches">
+            <i class="bi bi-diagram-3"></i> Delta branches
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'lineage' %} active{% endif %}"
+           href="/lineage">
+            <i class="bi bi-share"></i> Lineage
+        </a>
+    </li>
+
+    {# COMMUNITY #}
+    <li class="pql-mobile-nav__group">Community</li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'topics' %} active{% endif %}"
+           href="/topics">
+            <i class="bi bi-hash"></i> Topics
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'issues' %} active{% endif %}"
+           href="/issues">
+            <i class="bi bi-bug"></i> Issues
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'people' and (active_page is not defined or active_page != 'agents') %} active{% endif %}"
+           href="/users">
+            <i class="bi bi-people"></i> People
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_page is defined and active_page == 'agents' %} active{% endif %}"
+           href="/agents">
+            <i class="bi bi-cpu-fill"></i> Agents
+        </a>
+    </li>
+
+    {# WORKSPACE #}
+    {% if current_workspace and current_workspace.slug %}
+    <li class="pql-mobile-nav__group">Workspace</li>
+    <li class="nav-item">
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'workspace_home' %} active{% endif %}"
+           href="/workspaces/{{ current_workspace.slug }}">
+            <i class="bi bi-folder2-open"></i> Workspace home
+        </a>
+    </li>
+    {% endif %}
+
+    {# ADMIN — gated #}
+    <li class="nav-item">
+        {{ permission_link(
+             href="/admin",
+             icon="bi-tools",
+             label="Admin",
+             granted=(current_user is defined and current_user and current_user.is_admin),
+             required_role="admin",
+             css_class="nav-link d-flex align-items-center gap-2",
+             active=(active_section == "admin")
+        ) }}
+    </li>
 </ul>

@@ -267,21 +267,48 @@ def _resolve_workspace_context(request: Request) -> dict[str, Any]:
         }
 
 
+def _resolve_nav_badges(request: Request) -> dict[str, int]:
+    """Compute the primary-rail badge counts for one TemplateResponse.
+
+    Phase 80.1 ships the plumbing with an empty default; Phase 80.3
+    (Today landing) wires the actual counts.  Keys consumed by
+    ``components/primary_rail.html``:
+
+    * ``runs_pending``  — agent runs awaiting approval.
+    * ``audit_unread``  — unread anomaly inbox entries.
+    * ``alerts_firing`` — currently-firing alert definitions.
+
+    Args:
+        request: Starlette request whose ``state.workspace_id`` /
+            ``state.user`` resolve the workspace scope.  Threaded
+            for the Phase 80.3 follow-up; unused today.
+
+    Returns:
+        Dict mapping badge key to integer count.  Missing keys render
+        no badge (the template guards each with ``and value > 0``).
+    """
+    _ = request  # plumbed for future per-workspace queries
+    return {}
+
+
 def _template_response_with_user(request: Request, *args: Any, **kwargs: Any) -> Response:
-    """Wrap TemplateResponse to inject user + workspace context."""
+    """Wrap TemplateResponse to inject user + workspace + nav-badge context."""
     # TemplateResponse(request, name, context) or (name, context, request=request)
     # Starlette 0.37+ signature: TemplateResponse(request, name, context={}, ...)
     workspace_ctx = _resolve_workspace_context(request)
+    nav_badges = _resolve_nav_badges(request)
     user = getattr(request.state, "user", None)
     if "context" in kwargs:
         ctx = kwargs["context"]
         ctx.setdefault("current_user", user)
+        ctx.setdefault("nav_badges", nav_badges)
         for key, value in workspace_ctx.items():
             ctx.setdefault(key, value)
     elif len(args) >= 2 and isinstance(args[1], dict):
         mutable = list(args)
         ctx = mutable[1]
         ctx.setdefault("current_user", user)
+        ctx.setdefault("nav_badges", nav_badges)
         for key, value in workspace_ctx.items():
             ctx.setdefault(key, value)
         args = tuple(mutable)

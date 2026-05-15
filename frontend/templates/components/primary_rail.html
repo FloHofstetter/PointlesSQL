@@ -1,0 +1,292 @@
+{#
+  Primary sidebar — "Haupt-Seitenleiste" (Phase 80.1).
+
+  Renamed from ``icon_rail.html``.  Expandable rail with two states:
+
+  * ``data-pql-rail-state="expanded"`` (default): 220 px wide; icons
+    + labels; group headers visible.
+  * ``data-pql-rail-state="collapsed"``: 64 px wide; icons only; group
+    headers hidden.  Equivalent to the pre-Phase-80 icon-rail.
+
+  Each entry threads the same Bootstrap-Icons glyph + label.  Group
+  headers are ``<li class="pql-icon-rail__group">`` elements styled
+  uppercase + muted; hidden via display:none in collapsed mode.
+
+  IA ordering: HOME → WATCH → BUILD → DATA → COMMUNITY → WORKSPACE
+  followed by the admin footer item.  See
+  ``docs/internal/navigation_ia.md`` for the canonical spec.
+
+  Badges (red unread pills) are sourced from a ``nav_badges`` dict
+  threaded by ``main._resolve_nav_badges``.  Keys:
+
+  * ``nav_badges.runs_pending``: pending approval queue count.
+  * ``nav_badges.audit_unread``: anomaly count.
+  * ``nav_badges.alerts_firing``: firing alerts count.
+
+  Empty values are not rendered.
+
+  Admin-gated items render via the existing permission_link macro so
+  non-admins still see the entry with a lock icon and discover what
+  role they need (instead of silently hiding the surface).
+
+  The chevron at the top toggles between expanded ↔ collapsed and
+  writes back to ``localStorage["pql.primary-rail.collapsed"]`` via
+  the delegated listener in base.html.
+#}
+{% from "_macros/permission_link.html" import permission_link %}
+{% set _badges = nav_badges if nav_badges is defined and nav_badges else {} %}
+<nav class="pql-icon-rail" aria-label="Primary navigation">
+    <div class="pql-icon-rail__header">
+        <button type="button"
+                class="pql-icon-rail__toggle"
+                data-pql-rail-toggle="toggle"
+                aria-label="Toggle sidebar width"
+                title="Toggle sidebar width">
+            <i class="bi bi-chevron-double-left"></i>
+        </button>
+    </div>
+    <ul class="pql-icon-rail__list">
+        {# ── HOME ────────────────────────────────────────────── #}
+        <li class="pql-icon-rail__group">Home</li>
+        <li class="pql-icon-rail__item">
+            <a href="/"
+               data-section="home"
+               class="pql-icon-rail__link{% if active_section == 'home' %} active{% endif %}"
+               title="Today — anomalies, approvals, unread, recent">
+                <i class="bi bi-house-door"></i>
+                <span class="pql-icon-rail__label">Today</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/feed"
+               data-section="feed"
+               class="pql-icon-rail__link{% if active_section == 'feed' %} active{% endif %}"
+               title="Activity feed across this workspace">
+                <i class="bi bi-rss"></i>
+                <span class="pql-icon-rail__label">Feed</span>
+            </a>
+        </li>
+
+        {# ── WATCH (supervision) ─────────────────────────────── #}
+        <li class="pql-icon-rail__group">Watch</li>
+        <li class="pql-icon-rail__item">
+            <a href="/runs"
+               data-section="runs"
+               class="pql-icon-rail__link{% if active_section == 'runs' %} active{% endif %}"
+               title="Agent runs — approval queue, recent, scheduled">
+                <i class="bi bi-activity"></i>
+                <span class="pql-icon-rail__label">Agent runs</span>
+                {% if _badges.runs_pending and _badges.runs_pending > 0 %}
+                <span class="pql-icon-rail__badge" aria-label="{{ _badges.runs_pending }} pending approvals">{{ _badges.runs_pending }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/audit/inbox"
+               data-section="audit"
+               class="pql-icon-rail__link{% if active_section == 'audit' %} active{% endif %}"
+               title="Audit cockpit — anomaly inbox, search, by-table, by-query">
+                <i class="bi bi-shield-check"></i>
+                <span class="pql-icon-rail__label">Audit</span>
+                {% if _badges.audit_unread and _badges.audit_unread > 0 %}
+                <span class="pql-icon-rail__badge" aria-label="{{ _badges.audit_unread }} unread anomalies">{{ _badges.audit_unread }}</span>
+                {% endif %}
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/alerts"
+               data-section="alerts"
+               class="pql-icon-rail__link{% if active_section == 'alerts' %} active{% endif %}"
+               title="Alert definitions and firing state">
+                <i class="bi bi-bell"></i>
+                <span class="pql-icon-rail__label">Alerts</span>
+                {% if _badges.alerts_firing and _badges.alerts_firing > 0 %}
+                <span class="pql-icon-rail__badge" aria-label="{{ _badges.alerts_firing }} alerts firing">{{ _badges.alerts_firing }}</span>
+                {% endif %}
+            </a>
+        </li>
+
+        {# ── BUILD (authoring) ───────────────────────────────── #}
+        <li class="pql-icon-rail__group">Build</li>
+        <li class="pql-icon-rail__item">
+            <a href="/sql"
+               data-section="sql"
+               class="pql-icon-rail__link{% if active_section == 'sql' %} active{% endif %}"
+               title="SQL editor and query history">
+                <i class="bi bi-code-square"></i>
+                <span class="pql-icon-rail__label">SQL editor</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/lens"
+               data-section="lens"
+               class="pql-icon-rail__link{% if active_section == 'lens' %} active{% endif %}"
+               title="Lens — read-only Q&amp;A over your data">
+                <i class="bi bi-eye"></i>
+                <span class="pql-icon-rail__label">Lens</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/notebooks/workspace"
+               data-section="workspace"
+               class="pql-icon-rail__link{% if active_section == 'workspace' %} active{% endif %}"
+               title="Notebook workspace">
+                <i class="bi bi-journal-code"></i>
+                <span class="pql-icon-rail__label">Notebooks</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/dashboards"
+               data-section="dashboards"
+               class="pql-icon-rail__link{% if active_section == 'dashboards' %} active{% endif %}"
+               title="Dashboards">
+                <i class="bi bi-speedometer2"></i>
+                <span class="pql-icon-rail__label">Dashboards</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/jobs"
+               data-section="jobs"
+               class="pql-icon-rail__link{% if active_section == 'jobs' %} active{% endif %}"
+               title="Scheduled jobs">
+                <i class="bi bi-clock-history"></i>
+                <span class="pql-icon-rail__label">Scheduled jobs</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/dbt"
+               data-section="dbt"
+               class="pql-icon-rail__link{% if active_section == 'dbt' %} active{% endif %}"
+               title="dbt Pipelines">
+                <i class="bi bi-bezier2"></i>
+                <span class="pql-icon-rail__label">dbt</span>
+            </a>
+        </li>
+
+        {# ── DATA (browse + lineage) ─────────────────────────── #}
+        <li class="pql-icon-rail__group">Data</li>
+        <li class="pql-icon-rail__item">
+            <a href="/"
+               data-section="federation"
+               class="pql-icon-rail__link{% if active_section == 'federation' %} active{% endif %}"
+               title="Catalog (catalogs, schemas, tables, foreign connections, volumes, models)">
+                <i class="bi bi-database"></i>
+                <span class="pql-icon-rail__label">Catalog</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/data-products"
+               data-section="data_products"
+               class="pql-icon-rail__link{% if active_section == 'data_products' %} active{% endif %}"
+               title="Data products (YAML-declared UC schemas)">
+                <i class="bi bi-collection"></i>
+                <span class="pql-icon-rail__label">Data products</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/models"
+               data-section="federation"
+               class="pql-icon-rail__link{% if active_page is defined and active_page == 'models' %} active{% endif %}"
+               title="ML models (UC-registered)">
+                <i class="bi bi-cpu"></i>
+                <span class="pql-icon-rail__label">ML models</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/ml"
+               data-section="mlflow"
+               class="pql-icon-rail__link{% if active_section == 'mlflow' %} active{% endif %}"
+               title="MLflow Tracking — experiments, runs, model registry">
+                <i class="bi bi-robot"></i>
+                <span class="pql-icon-rail__label">MLflow</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/branches"
+               data-section="branches"
+               class="pql-icon-rail__link{% if active_section == 'branches' %} active{% endif %}"
+               title="Delta branches — active, promoted, discarded">
+                <i class="bi bi-diagram-3"></i>
+                <span class="pql-icon-rail__label">Delta branches</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/lineage"
+               data-section="lineage"
+               class="pql-icon-rail__link{% if active_section == 'lineage' %} active{% endif %}"
+               title="Lineage explorer — row trace, column trace, recent traces">
+                <i class="bi bi-share"></i>
+                <span class="pql-icon-rail__label">Lineage</span>
+            </a>
+        </li>
+
+        {# ── COMMUNITY (social) ──────────────────────────────── #}
+        <li class="pql-icon-rail__group">Community</li>
+        <li class="pql-icon-rail__item">
+            <a href="/topics"
+               data-section="topics"
+               class="pql-icon-rail__link{% if active_section == 'topics' %} active{% endif %}"
+               title="Topics — trending, subscribed, knowledge hubs">
+                <i class="bi bi-hash"></i>
+                <span class="pql-icon-rail__label">Topics</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/issues"
+               data-section="issues"
+               class="pql-icon-rail__link{% if active_section == 'issues' %} active{% endif %}"
+               title="Issues — open, mine, assigned to me, by label">
+                <i class="bi bi-bug"></i>
+                <span class="pql-icon-rail__label">Issues</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/users"
+               data-section="people"
+               class="pql-icon-rail__link{% if active_section == 'people' and (active_page is not defined or active_page != 'agents') %} active{% endif %}"
+               title="People — workspace members and contributors">
+                <i class="bi bi-people"></i>
+                <span class="pql-icon-rail__label">People</span>
+            </a>
+        </li>
+        <li class="pql-icon-rail__item">
+            <a href="/agents"
+               data-section="people"
+               class="pql-icon-rail__link{% if active_page is defined and active_page == 'agents' %} active{% endif %}"
+               title="Agents — registered LLM agents and their profiles">
+                <i class="bi bi-cpu-fill"></i>
+                <span class="pql-icon-rail__label">Agents</span>
+            </a>
+        </li>
+
+        {# ── WORKSPACE ───────────────────────────────────────── #}
+        {% if current_workspace and current_workspace.slug %}
+        <li class="pql-icon-rail__group">Workspace</li>
+        <li class="pql-icon-rail__item">
+            <a href="/workspaces/{{ current_workspace.slug }}"
+               data-section="workspace_home"
+               class="pql-icon-rail__link{% if active_section == 'workspace_home' %} active{% endif %}"
+               title="Workspace home — pinned entities, members, activity, README">
+                <i class="bi bi-folder2-open"></i>
+                <span class="pql-icon-rail__label">Workspace home</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+    <ul class="pql-icon-rail__list pql-icon-rail__list--footer">
+        <li class="pql-icon-rail__item">
+            {{ permission_link(
+                 href="/admin",
+                 icon="bi-tools",
+                 label="Admin",
+                 granted=(current_user is defined and current_user and current_user.is_admin),
+                 required_role="admin",
+                 css_class="pql-icon-rail__link",
+                 active=(active_section == "admin"),
+                 title="Admin landing — audit log, sinks, destinations, workspaces",
+                 data_section="admin",
+                 label_class="pql-icon-rail__label"
+            ) }}
+        </li>
+    </ul>
+</nav>
