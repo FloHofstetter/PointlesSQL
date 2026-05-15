@@ -11,7 +11,9 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="d-flex align-items-center justify-content-between mb-4"
+     x-data='pqlStarToggle({kind: "branch", ref: {{ branch_schema_fqn|tojson }}})'
+     x-init="init()">
     <div class="d-flex align-items-center gap-2">
         <i class="bi bi-diagram-3 fs-3"></i>
         <h1 class="h3 mb-0 font-monospace">{{ branch_schema_fqn }}</h1>
@@ -33,6 +35,14 @@
         </span>
         {% endif %}
     </div>
+    {# Phase 77.8.E — server-backed Star button. #}
+    <button class="btn btn-sm"
+            :class="starred ? 'btn-warning' : 'btn-outline-warning'"
+            @click="toggle()"
+            title="Bookmark this branch">
+        <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
+        <span class="ms-1" x-show="count > 0" x-text="count"></span>
+    </button>
 </div>
 
 {# Phase 77.3.B — branch detail tab strip.  5 tabs: Overview

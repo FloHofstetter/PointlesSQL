@@ -11,15 +11,27 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center gap-2 mb-2">
+<div class="d-flex align-items-center gap-2 mb-2"
+     x-data='pqlStarToggle({kind: "model", ref: {{ model.full_name|tojson }}})'
+     x-init="init()">
     <i class="bi bi-box-seam fs-3"></i>
     <h1 class="h3 mb-0">{{ model.full_name }}{{ copy_btn(model.full_name, label="Copy model URI") }}</h1>
     {% if model.owner %}
     <span class="badge bg-secondary ms-2">{{ model.owner }}</span>
     {% endif %}
+    {# Phase 77.8.E — server-backed Star button.  Inert until the
+       Alpine factory's init() fetch resolves; localStorage fallback
+       is only relevant for catalog/schema kinds (those land in 77.5). #}
+    <button class="btn btn-sm ms-auto"
+            :class="starred ? 'btn-warning' : 'btn-outline-warning'"
+            @click="toggle()"
+            title="Bookmark this model">
+        <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
+        <span class="ms-1" x-show="count > 0" x-text="count"></span>
+    </button>
     {% if mlflow_running %}
     <a href="/mlflow/#/models/{{ model.full_name }}" target="_blank" rel="noopener"
-       class="btn btn-outline-secondary btn-sm ms-auto">
+       class="btn btn-outline-secondary btn-sm">
         <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI{{ info('models.mlflow-vs-pointlessql') }}
     </a>
     {% endif %}
