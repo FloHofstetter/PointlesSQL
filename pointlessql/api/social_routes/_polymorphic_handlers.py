@@ -59,10 +59,10 @@ from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
     DataProductEndorsement,
 )
-from pointlessql.models.catalog._data_product_reaction import DataProductReaction
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.social._entity_readme import EntityReadme
 from pointlessql.models.social._social_follow import SocialFollow
+from pointlessql.models.social._social_reaction import SocialReaction
 from pointlessql.models.social._social_star import SocialStar
 from pointlessql.services.notifications.fanout import fanout_event
 from pointlessql.services.social import (
@@ -1224,9 +1224,9 @@ async def list_polymorphic_reactions(
     with factory() as session:
         rows = session.execute(
             select(
-                DataProductReaction.emoji,
-                DataProductReaction.user_id,
-            ).where(DataProductReaction.social_target_id == target_id)
+                SocialReaction.emoji,
+                SocialReaction.user_id,
+            ).where(SocialReaction.social_target_id == target_id)
         ).all()
 
     counts: dict[str, int] = {e: 0 for e in ALLOWED_EMOJI}
@@ -1283,8 +1283,8 @@ async def apply_polymorphic_reaction(
     with factory() as session:
         try:
             session.add(
-                DataProductReaction(
-                    data_product_id=None,
+                SocialReaction(
+                    workspace_id=workspace_id,
                     social_target_id=target_id,
                     user_id=user["id"],
                     emoji=emoji,
@@ -1342,10 +1342,10 @@ async def remove_polymorphic_reaction(
     removed = False
     with factory() as session:
         result = session.execute(
-            _delete(DataProductReaction).where(
-                DataProductReaction.social_target_id == target_id,
-                DataProductReaction.user_id == user["id"],
-                DataProductReaction.emoji == emoji,
+            _delete(SocialReaction).where(
+                SocialReaction.social_target_id == target_id,
+                SocialReaction.user_id == user["id"],
+                SocialReaction.emoji == emoji,
             )
         )
         session.commit()

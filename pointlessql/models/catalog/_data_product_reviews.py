@@ -61,19 +61,10 @@ class DataProductReview(Base):
     __tablename__ = "data_product_reviews"
 
     __table_args__ = (
-        UniqueConstraint(
-            "workspace_id",
-            "data_product_id",
-            "author_user_id",
-            name="uq_dp_review_one_per_user",
-        ),
-        # Phase 77.2.1 — kind-agnostic upsert idempotency.  The
-        # legacy UNIQUE above doesn't apply when
-        # ``data_product_id`` is NULL (SQL NULL-distinct), so
-        # polymorphic kinds (model, …) need their own UNIQUE.
-        # Both UNIQUEs apply for DP rows but never conflict
-        # because ``social_targets.data_product_id`` is a 1:1
-        # back-pointer for ``kind='dp'``.
+        # Phase 77.2.1 — kind-agnostic upsert idempotency.  Phase
+        # 78 polish dropped the legacy DP-only UNIQUE because this
+        # one already covers DP rows via the 1:1
+        # ``social_targets.data_product_id`` back-pointer.
         UniqueConstraint(
             "workspace_id",
             "social_target_id",

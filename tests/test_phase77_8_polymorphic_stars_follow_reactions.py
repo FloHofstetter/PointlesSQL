@@ -29,8 +29,8 @@ from sqlalchemy import select
 
 from pointlessql.api.main import app
 from pointlessql.models import AgentRun, AgentRunSource
-from pointlessql.models.catalog._data_product_reaction import DataProductReaction
 from pointlessql.models.social import SocialFollow, SocialStar, SocialTarget
+from pointlessql.models.social._social_reaction import SocialReaction
 
 _TABLE_REF = "main.sales_gold.orders"
 _MODEL_REF = "main.ml_silver.churn"
@@ -89,15 +89,13 @@ def test_social_follows_table_exists() -> None:
 
 
 def test_polymorphic_reaction_unique_present() -> None:
-    """77.8.C UNIQUE is wired into the model + reaches the schema."""
+    """Phase 78 polish — SocialReaction is keyed on the polymorphic UNIQUE."""
     constraints = [
         c.name
-        for c in DataProductReaction.__table__.constraints
+        for c in SocialReaction.__table__.constraints
         if c.name is not None
     ]
-    assert "uq_dp_reactions_polymorphic" in constraints
-    # Legacy DP PK survives — additive migration.
-    assert "pk_dp_reactions" in constraints
+    assert "uq_social_reactions_one_per_user_per_emoji" in constraints
 
 
 # ---------------------------------------------------------------------------
@@ -271,12 +269,11 @@ async def test_reactions_polymorphic_persist_null_dp_id(
             )
         ).scalar_one()
         rxn = session.execute(
-            select(DataProductReaction).where(
-                DataProductReaction.social_target_id == target.id,
-                DataProductReaction.emoji == "❤️",
+            select(SocialReaction).where(
+                SocialReaction.social_target_id == target.id,
+                SocialReaction.emoji == "❤️",
             )
         ).scalar_one()
-        assert rxn.data_product_id is None
         assert rxn.social_target_id == target.id
 
 

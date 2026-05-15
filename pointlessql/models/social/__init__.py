@@ -17,6 +17,7 @@ from pointlessql.models.social._issue import (
 from pointlessql.models.social._issue_label import IssueLabel
 from pointlessql.models.social._issue_milestone import IssueMilestone
 from pointlessql.models.social._social_follow import SocialFollow
+from pointlessql.models.social._social_reaction import SocialReaction
 from pointlessql.models.social._social_star import SocialStar
 from pointlessql.models.social._social_target import (
     ENTITY_KINDS,
@@ -46,6 +47,7 @@ __all__ = [
     "IssueLabel",
     "IssueMilestone",
     "SocialFollow",
+    "SocialReaction",
     "SocialStar",
     "SocialTarget",
     "Topic",

@@ -29,7 +29,7 @@ from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
 )
 from pointlessql.models.catalog._data_product_comments import DataProductComment
-from pointlessql.models.catalog._data_product_reaction import DataProductReaction
+from pointlessql.models.social._social_reaction import SocialReaction
 from pointlessql.services.notifications.fanout import fanout_event
 from pointlessql.services.social._target_resolver import resolve_dp_target
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
@@ -368,9 +368,9 @@ async def add_dp_reaction(
         )
         try:
             session.add(
-                DataProductReaction(
-                    data_product_id=row.id,
-                    social_target_id=target.id,
+                SocialReaction(
+                    workspace_id=workspace_id,
+                    social_target_id=int(target.id),
                     user_id=user["id"],
                     emoji=emoji,
                     created_at=datetime.datetime.now(datetime.UTC),
@@ -452,11 +452,17 @@ async def remove_dp_reaction(
 
     removed = False
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         result = session.execute(
-            delete(DataProductReaction).where(
-                DataProductReaction.data_product_id == row.id,
-                DataProductReaction.user_id == user["id"],
-                DataProductReaction.emoji == emoji,
+            delete(SocialReaction).where(
+                SocialReaction.social_target_id == int(target.id),
+                SocialReaction.user_id == user["id"],
+                SocialReaction.emoji == emoji,
             )
         )
         session.commit()
@@ -490,12 +496,18 @@ async def list_dp_reactions(
     row, _contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         rows = (
             session.execute(
                 select(
-                    DataProductReaction.emoji,
-                    DataProductReaction.user_id,
-                ).where(DataProductReaction.data_product_id == row.id)
+                    SocialReaction.emoji,
+                    SocialReaction.user_id,
+                ).where(SocialReaction.social_target_id == int(target.id))
             )
             .all()
         )

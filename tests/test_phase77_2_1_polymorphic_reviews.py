@@ -41,8 +41,10 @@ def test_polymorphic_unique_present_in_schema() -> None:
         if c.name is not None
     ]
     assert "uq_dp_review_polymorphic_one_per_user" in constraints
-    # Legacy DP-id UNIQUE survives (additive migration, not replace).
-    assert "uq_dp_review_one_per_user" in constraints
+    # Phase 78 polish dropped the legacy DP-id UNIQUE; the
+    # polymorphic constraint covers DP rows via the 1:1
+    # social_targets.data_product_id back-pointer.
+    assert "uq_dp_review_one_per_user" not in constraints
 
 
 @pytest.mark.asyncio

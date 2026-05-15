@@ -30,10 +30,10 @@ from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
 )
 from pointlessql.models.catalog._data_product_comments import DataProductComment
-from pointlessql.models.catalog._data_product_reaction import DataProductReaction
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
 from pointlessql.models.social._social_follow import SocialFollow
+from pointlessql.models.social._social_reaction import SocialReaction
 
 VALID_YAML = """\
 data_product:
@@ -440,7 +440,7 @@ async def test_dp_reaction_idempotent(
     factory = app.state.session_factory
     with factory() as session:
         rows = (
-            session.execute(select(DataProductReaction)).scalars().all()
+            session.execute(select(SocialReaction)).scalars().all()
         )
     assert len(rows) == 1
 
