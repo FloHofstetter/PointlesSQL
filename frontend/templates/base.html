@@ -315,6 +315,20 @@
     <script type="module" src="/static/js/bootstrap.js?v={{ asset_version }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script>
+        // Phase 81.D — opt every HTMX boost-swap into the
+        // View-Transitions API.  Modern browsers (Chrome 111+, Safari
+        // 18+, Firefox 144 behind-flag) intercept the swap, snapshot
+        // old + new state, and cross-fade between them; the visible
+        // result is a smooth page change instead of the previous
+        // "click → flash → new layout" jolt.  Older browsers (and
+        // anyone with ``prefers-reduced-motion: reduce``) fall back
+        // to the instant swap automatically because HTMX itself
+        // probes ``document.startViewTransition`` before using it.
+        // The cross-fade duration is tuned in base.css via the
+        // ``::view-transition-old/new`` pseudo-elements.
+        if (typeof htmx !== 'undefined') {
+            htmx.config.globalViewTransitions = true;
+        }
         // Auto-attach the CSRF token from the <meta> tag to every HTMX
         // request that uses a non-safe verb. The server-side middleware
         // accepts either this header or a hidden ``csrf_token`` form

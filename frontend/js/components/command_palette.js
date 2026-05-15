@@ -83,6 +83,9 @@ export function commandPalette() {
             { keys: ['g', 's'],  combiner: ' ', label: 'Go to SQL editor' },
             { keys: ['g', 'q'],  combiner: ' ', label: 'Go to query history' },
             { keys: ['r'],       combiner: '',  label: 'Refresh current list' },
+            // Page-specific shortcuts — only fire on the matching surface.
+            { keys: [mod, 'S'],  combiner: '+', label: 'Save (notebook editor)' },
+            { keys: ['c'],       combiner: '',  label: 'Toggle preview (SQL editor)' },
         ],
         _debounceTimer: null,
         _seq: 0,
@@ -91,6 +94,16 @@ export function commandPalette() {
 
         init() {
             this.recent = loadRecent();
+            // Phase 81.E — wire the footer-bar "Show keyboard shortcuts"
+            // button to the existing help overlay.  The button has
+            // dispatched ``pql:show-shortcuts`` since the footer landed
+            // in Phase 80.7, but no listener was attached — clicking it
+            // did nothing.  Listening here (instead of a free-floating
+            // window listener) keeps the help state co-located with the
+            // ``helpOpen`` Alpine flag that drives the dialog template.
+            window.addEventListener('pql:show-shortcuts', () => {
+                this.helpOpen = true;
+            });
         },
 
         openPalette() {

@@ -208,3 +208,34 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
 .pql-theme-option--active .pql-theme-active-check {
  visibility: visible;
 }
+
+/* Phase 81.D — HTMX boost-nav cross-fade via the View-Transitions
+ * API.  ``htmx.config.globalViewTransitions = true`` wraps every
+ * swap in ``document.startViewTransition`` on browsers that support
+ * it.  Each transition produces two pseudo-elements at the page
+ * root: ``::view-transition-old(root)`` (the outgoing snapshot) and
+ * ``::view-transition-new(root)`` (the incoming snapshot).  Default
+ * UA styling already cross-fades them over 250 ms; the rules below
+ * shorten that to a punchier 180 ms so the swap feels responsive,
+ * and disable the animation entirely under reduced-motion.  Tokens
+ * stay in lock-step with ``--pql-duration-normal``. */
+@keyframes pql-vt-fade-in {
+ from { opacity: 0; }
+ to   { opacity: 1; }
+}
+@keyframes pql-vt-fade-out {
+ from { opacity: 1; }
+ to   { opacity: 0; }
+}
+::view-transition-old(root) {
+ animation: pql-vt-fade-out var(--pql-duration-normal) var(--pql-ease) both;
+}
+::view-transition-new(root) {
+ animation: pql-vt-fade-in var(--pql-duration-normal) var(--pql-ease) both;
+}
+@media (prefers-reduced-motion: reduce) {
+ ::view-transition-old(root),
+ ::view-transition-new(root) {
+  animation: none;
+ }
+}
