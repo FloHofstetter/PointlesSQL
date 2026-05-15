@@ -1,0 +1,141 @@
+{# Phase 77.7 — kind-agnostic issues tab pane.
+
+   Lists issues opened against the surrounding entity (table / model
+   / branch / dp).  The pane lives inside a parent ``socialTabs(kind,
+   ref)`` x-data scope but uses its own inner ``x-data='issuesPane'``
+   factory so the API calls stay isolated from the discussion /
+   endorsement / followers panes.  "Open new issue" pops a modal that
+   POSTs to ``/api/social/{kind}/{ref}/issues``.
+
+   The factory carries five reactive fields:
+     issues       — array of issue rows from /api/social/<kind>/<ref>/issues
+     loading      — true while the first fetch is in flight
+     showCreate   — controls the new-issue modal visibility
+     newTitle     — title input model
+     newBody      — body_md input model
+#}
+<div class="tab-pane fade" id="tab-issues" role="tabpanel"
+     x-data='issuesPane({kind: kind, ref: ref})' x-init="init()">
+    <template x-if="loading">
+        <div class="text-muted small p-3">Loading issues…</div>
+    </template>
+    <template x-if="!loading">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <h5 class="mb-0">Issues</h5>
+                <span class="badge bg-secondary" x-text="issues.length"></span>
+                <button class="btn btn-sm btn-primary ms-auto"
+                        @click="showCreate = true">
+                    <i class="bi bi-plus-circle me-1"></i>Open new issue
+                </button>
+            </div>
+
+            <template x-if="issues.length === 0">
+                <p class="text-muted small">No issues opened yet.</p>
+            </template>
+
+            <ul class="list-group">
+                <template x-for="row in issues" :key="row.id">
+                    <li class="list-group-item d-flex align-items-center gap-2">
+                        <span class="badge"
+                              :class="row.state === 'open' ? 'bg-success' : 'bg-secondary'"
+                              x-text="row.state"></span>
+                        <a :href="'/issues/' + row.id"
+                           class="font-monospace"
+                           x-text="'#' + row.id + ' · ' + row.title"></a>
+                        <template x-for="lbl in row.labels" :key="lbl">
+                            <span class="badge bg-info ms-1" x-text="lbl"></span>
+                        </template>
+                        <span class="text-muted small ms-auto"
+                              x-text="formatTime(row.opened_at)"></span>
+                    </li>
+                </template>
+            </ul>
+
+            <!-- New-issue modal -->
+            <div class="modal fade" tabindex="-1"
+                 :class="{ 'show d-block': showCreate }"
+                 :style="showCreate ? 'background: rgba(0,0,0,0.5)' : ''">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Open new issue</h5>
+                            <button type="button" class="btn-close"
+                                    @click="showCreate = false"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Title</label>
+                                <input type="text" class="form-control"
+                                       x-model="newTitle"
+                                       placeholder="Short summary of the issue">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Body (markdown)</label>
+                                <textarea class="form-control" rows="6"
+                                          x-model="newBody"
+                                          placeholder="Describe the issue in detail."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-outline-secondary"
+                                    @click="showCreate = false">Cancel</button>
+                            <button class="btn btn-primary"
+                                    :disabled="!newTitle.trim()"
+                                    @click="submit()">
+                                <i class="bi bi-plus-circle me-1"></i>Open issue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+function issuesPane(args) {
+    return {
+        kind: args.kind,
+        ref: args.ref,
+        issues: [],
+        loading: true,
+        showCreate: false,
+        newTitle: '',
+        newBody: '',
+        async init() { await this.refresh(); },
+        async refresh() {
+            this.loading = true;
+            try {
+                const url = `/api/social/${encodeURIComponent(this.kind)}/${encodeURI(this.ref)}/issues`;
+                const res = await window.pqlApi.fetch(url);
+                this.issues = (res && res.ok && res.data && res.data.issues) || [];
+            } finally {
+                this.loading = false;
+            }
+        },
+        async submit() {
+            const url = `/api/social/${encodeURIComponent(this.kind)}/${encodeURI(this.ref)}/issues`;
+            const res = await window.pqlApi.fetch(url, {
+                method: 'POST',
+                body: JSON.stringify({
+                    title: this.newTitle.trim(),
+                    body_md: this.newBody || '',
+                }),
+            });
+            if (res && res.ok) {
+                this.showCreate = false;
+                this.newTitle = '';
+                this.newBody = '';
+                await this.refresh();
+            }
+        },
+        formatTime(iso) {
+            if (!iso) return '';
+            try { return new Date(iso).toLocaleString(); }
+            catch (e) { return iso; }
+        },
+    };
+}
+window.issuesPane = issuesPane;
+</script>

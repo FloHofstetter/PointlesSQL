@@ -148,6 +148,15 @@
  <i class="bi bi-file-text me-1"></i>README
  </button>
  </li>
+ {# Phase 77.7 — Issues tab, registry-driven supports_issues=True for tables. #}
+ <li class="nav-item" role="presentation">
+ <button class="nav-link" id="tab-issues-btn" data-bs-toggle="tab"
+ data-bs-target="#tab-issues" type="button" role="tab"
+ aria-controls="tab-issues" aria-selected="false"
+ data-pql-tab-key="issues">
+ <i class="bi bi-exclamation-circle me-1"></i>Issues
+ </button>
+ </li>
 </ul>
 {# socialTabs factory powers the polymorphic Endorsements + Followers
    tabs (and is inherited by the inline Discussion + README panes,
@@ -231,6 +240,10 @@
     They inherit socialTabs state from the tab-content x-data above. #}
  {% include 'partials/social/_endorsements_pane.html' %}
  {% include 'partials/social/_followers_pane.html' %}
+ {# Phase 77.7 — Issues pane.  ``issuesPane`` factory carries its own
+    x-data scope; reads ``kind`` + ``ref`` from the surrounding
+    ``socialTabs`` scope. #}
+ {% include 'partials/social/_issues_pane.html' %}
 
  {# README pane — inline kind-agnostic x-data.  Talks to the
     polymorphic /api/social/table/{ref}/readme endpoints.  No
