@@ -11,8 +11,8 @@ Coverage:
   query the polymorphic table.
 * Reactions: POST creates a row in ``data_product_reactions`` with
   ``data_product_id=NULL`` and ``social_target_id`` populated;
-  idempotent via the 77.8.C UNIQUE; comment-reactions still 501
-  for non-DP (deferred to 77.11).
+  idempotent via the 77.8.C UNIQUE; comment-reactions round-trip
+  on non-DP kinds after the Phase 78 polish unlock.
 * DP follow / reaction routes still work bit-identically through
   the legacy tables — regression guard.
 * Audit prefix uses the generic ``{kind}:`` form for non-DP rows.
@@ -300,15 +300,93 @@ async def test_reactions_polymorphic_list_aggregates(
 
 
 @pytest.mark.asyncio
-async def test_reactions_comment_kind_still_501_for_non_dp(
+async def test_comment_reaction_missing_comment_returns_404_on_non_dp(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Comment reactions stay DP-only this phase (deferred to 77.11)."""
+    """A POST against a non-existent comment-id is now 404, not 501."""
     res = await admin_client.post(
         f"/api/social/table/{_TABLE_REF}/comments/9999/reactions",
         json={"emoji": "👍"},
     )
-    assert res.status_code == 501
+    assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_comment_reaction_round_trip_on_table(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """POST + GET + DELETE round-trip on a kind='table' comment reaction."""
+    seed = await admin_client.post(
+        f"/api/social/table/{_TABLE_REF}/comments",
+        json={"body_md": "table comment for reaction test"},
+    )
+    assert seed.status_code == 200, seed.text
+    comment_id = int(seed.json()["id"])
+
+    add = await admin_client.post(
+        f"/api/social/table/{_TABLE_REF}/comments/{comment_id}/reactions",
+        json={"emoji": "🎉"},
+    )
+    assert add.status_code == 200, add.text
+    assert add.json()["added"] is True
+
+    listing = await admin_client.get(
+        f"/api/social/table/{_TABLE_REF}/comments/{comment_id}/reactions"
+    )
+    assert listing.status_code == 200
+    rows = {r["emoji"]: r for r in listing.json()["reactions"]}
+    assert rows["🎉"]["count"] >= 1
+    assert rows["🎉"]["has_current_user_reacted"] is True
+
+    remove = await admin_client.delete(
+        f"/api/social/table/{_TABLE_REF}/comments/{comment_id}/reactions/🎉"
+    )
+    assert remove.status_code == 200, remove.text
+    assert remove.json()["removed"] is True
+
+
+@pytest.mark.asyncio
+async def test_comment_reaction_round_trip_on_model(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """POST + GET round-trip on a kind='model' comment reaction."""
+    seed = await admin_client.post(
+        f"/api/social/model/{_MODEL_REF}/comments",
+        json={"body_md": "model comment for reaction test"},
+    )
+    assert seed.status_code == 200, seed.text
+    comment_id = int(seed.json()["id"])
+
+    add = await admin_client.post(
+        f"/api/social/model/{_MODEL_REF}/comments/{comment_id}/reactions",
+        json={"emoji": "👍"},
+    )
+    assert add.status_code == 200, add.text
+    listing = await admin_client.get(
+        f"/api/social/model/{_MODEL_REF}/comments/{comment_id}/reactions"
+    )
+    assert listing.status_code == 200
+    rows = {r["emoji"]: r for r in listing.json()["reactions"]}
+    assert rows["👍"]["count"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_comment_reaction_rejects_mismatched_entity(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """A comment seeded on a table 404s when addressed via a model URL."""
+    seed = await admin_client.post(
+        f"/api/social/table/{_TABLE_REF}/comments",
+        json={"body_md": "table comment for mismatch test"},
+    )
+    assert seed.status_code == 200, seed.text
+    comment_id = int(seed.json()["id"])
+
+    mismatched = await admin_client.post(
+        f"/api/social/model/{_MODEL_REF}/comments/{comment_id}/reactions",
+        json={"emoji": "👀"},
+    )
+    assert mismatched.status_code == 404
 
 
 # ---------------------------------------------------------------------------

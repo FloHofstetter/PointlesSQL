@@ -1,21 +1,20 @@
 """Polymorphic reactions router (Phase 77.0.F.2 + 77.1.5 + 77.8.D dispatch).
 
 For ``kind='dp'`` the call delegates to the existing DP reaction
-handlers.  For non-DP kinds the entity-level reaction endpoints
-route to the polymorphic handlers landed in Phase 77.8.D
-(``data_product_reactions`` carries a polymorphic UNIQUE on
-``(social_target_id, user_id, emoji)`` since 77.8.C).  Comment-
-reactions stay DP-only this phase — the underlying comment-reaction
-table is keyed by ``comment_id`` which is already polymorphic-safe;
-the open work item is wiring the route to look up the comment row
-without a DP context.  Deferred to 77.11.
+handlers so that the legacy fan-out + audit prefix semantics
+stay intact.  For every other kind the entity-level **and**
+comment-level reaction endpoints route to the polymorphic
+handlers landed in Phase 77.8.D (entity) and Phase 78 polish
+(comment).  ``data_product_comment_reactions`` is already
+polymorphic-safe — it keys on ``comment_id`` — so the unlock
+is purely a routing change.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from pointlessql.api.data_products_routes.reactions import (
     add_comment_reaction,
@@ -30,26 +29,15 @@ from pointlessql.api.social_routes._kind_dispatch import (
     parse_ref,
 )
 from pointlessql.api.social_routes._polymorphic_handlers import (
+    apply_polymorphic_comment_reaction,
     apply_polymorphic_reaction,
+    list_polymorphic_comment_reactions,
     list_polymorphic_reactions,
+    remove_polymorphic_comment_reaction,
     remove_polymorphic_reaction,
 )
 
 router = APIRouter(tags=["social"])
-
-
-def _require_dp_kind_for_comment_reactions(kind: str) -> None:
-    """Raise 501 when *kind* is not ``'dp'`` (comment reactions stay DP-only)."""
-    if kind != "dp":
-        # bare-http-ok: comment-reaction polymorphism is deferred.
-        raise HTTPException(
-            status_code=501,
-            detail=(
-                f"comment reactions for kind={kind!r} are deferred to "
-                "Phase 77.11 — the underlying table is polymorphic-safe "
-                "but the route still needs a DP context"
-            ),
-        )
 
 
 @router.post(
@@ -58,10 +46,14 @@ def _require_dp_kind_for_comment_reactions(kind: str) -> None:
 async def add_social_comment_reaction(
     kind: str, ref: str, comment_id: int, request: Request
 ) -> dict[str, Any]:
-    """Dispatch a comment-reaction POST (DP only this phase)."""
-    _require_dp_kind_for_comment_reactions(kind)
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await add_comment_reaction(catalog, schema, comment_id, request)
+    """Dispatch a comment-reaction POST polymorphically."""
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await add_comment_reaction(catalog, schema, comment_id, request)
+    polymorphic_ref = parse_ref(kind, ref)
+    return await apply_polymorphic_comment_reaction(
+        kind, polymorphic_ref, comment_id, request
+    )
 
 
 @router.delete(
@@ -70,11 +62,15 @@ async def add_social_comment_reaction(
 async def remove_social_comment_reaction(
     kind: str, ref: str, comment_id: int, emoji: str, request: Request
 ) -> dict[str, Any]:
-    """Dispatch a comment-reaction DELETE (DP only this phase)."""
-    _require_dp_kind_for_comment_reactions(kind)
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await remove_comment_reaction(
-        catalog, schema, comment_id, emoji, request
+    """Dispatch a comment-reaction DELETE polymorphically."""
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await remove_comment_reaction(
+            catalog, schema, comment_id, emoji, request
+        )
+    polymorphic_ref = parse_ref(kind, ref)
+    return await remove_polymorphic_comment_reaction(
+        kind, polymorphic_ref, comment_id, emoji, request
     )
 
 
@@ -84,11 +80,15 @@ async def remove_social_comment_reaction(
 async def list_social_comment_reactions(
     kind: str, ref: str, comment_id: int, request: Request
 ) -> dict[str, Any]:
-    """Dispatch a comment-reaction list (DP only this phase)."""
-    _require_dp_kind_for_comment_reactions(kind)
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await list_comment_reactions(
-        catalog, schema, comment_id, request
+    """Dispatch a comment-reaction list polymorphically."""
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await list_comment_reactions(
+            catalog, schema, comment_id, request
+        )
+    polymorphic_ref = parse_ref(kind, ref)
+    return await list_polymorphic_comment_reactions(
+        kind, polymorphic_ref, comment_id, request
     )
 
 
