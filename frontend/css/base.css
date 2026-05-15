@@ -173,3 +173,38 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  background-color: var(--pql-color-accent);
  color: var(--pql-color-accent-fg);
 }
+
+/* Phase 80.10.6 — unread-badge attention pulse.
+ *
+ * Slow scale loop on any element carrying
+ * ``data-pql-badge-pulse="1"``.  Used on the notification bell badge
+ * and the primary-rail count badges so unread state reads as "new
+ * activity" without aggressive flashing.  ``prefers-reduced-motion``
+ * disables the animation per WCAG. */
+@keyframes pql-badge-pulse {
+ 0%, 100% { transform: scale(1); }
+ 50% { transform: scale(1.18); }
+}
+[data-pql-badge-pulse="1"] {
+ animation: pql-badge-pulse 1.4s ease-in-out infinite;
+ transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+ [data-pql-badge-pulse="1"] {
+  animation: none;
+ }
+}
+
+/* Phase 80.10.6 — active check-mark in single-select dropdowns
+ * (theme toggle).  The button always renders the check icon; CSS
+ * hides it unless the parent button carries the
+ * ``pql-theme-option--active`` class (toggled by the theme JS so the
+ * dropdown reflects the user's current pick).  Keeps the markup
+ * uniform and avoids server-template duplication. */
+.pql-theme-option .pql-theme-active-check {
+ visibility: hidden;
+ color: var(--pql-color-accent);
+}
+.pql-theme-option--active .pql-theme-active-check {
+ visibility: visible;
+}

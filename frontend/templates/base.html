@@ -164,24 +164,27 @@
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pql-theme-toggle">
                 <li>
-                    <button class="dropdown-item d-flex align-items-center gap-2"
+                    <button class="dropdown-item d-flex align-items-center gap-2 pql-theme-option"
                             type="button"
                             data-bs-theme-value="light">
                         <i class="bi bi-sun-fill"></i> Light
+                        <i class="bi bi-check ms-auto pql-theme-active-check" aria-hidden="true"></i>
                     </button>
                 </li>
                 <li>
-                    <button class="dropdown-item d-flex align-items-center gap-2"
+                    <button class="dropdown-item d-flex align-items-center gap-2 pql-theme-option"
                             type="button"
                             data-bs-theme-value="dark">
                         <i class="bi bi-moon-stars-fill"></i> Dark
+                        <i class="bi bi-check ms-auto pql-theme-active-check" aria-hidden="true"></i>
                     </button>
                 </li>
                 <li>
-                    <button class="dropdown-item d-flex align-items-center gap-2"
+                    <button class="dropdown-item d-flex align-items-center gap-2 pql-theme-option"
                             type="button"
                             data-bs-theme-value="auto">
                         <i class="bi bi-circle-half"></i> Auto
+                        <i class="bi bi-check ms-auto pql-theme-active-check" aria-hidden="true"></i>
                     </button>
                 </li>
             </ul>
@@ -256,6 +259,8 @@
          id="pql-toast-root"
          aria-live="polite"
          aria-atomic="true"></div>
+
+    {% include "components/confirm_modal.html" %}
 
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
     <!-- Chart.js 4.x UMD.  Loaded non-module so every page gets
@@ -390,6 +395,10 @@
          help-icons emitted by ``_macros/help_icon.html``.
          Must load AFTER the Bootstrap bundle above. -->
     <script src="/static/js/help_popovers.js"></script>
+    <!-- Phase 80.10.6 — Bootstrap-modal-backed confirm helper.
+         Exposes window.pqlConfirm() so destructive actions can
+         replace the bare window.confirm() dialog. -->
+    <script src="/static/js/confirm.js"></script>
     <script>
         // Theme color-modes click-handler.  The init script in <head>
         // already applied the right ``data-bs-theme`` before paint;
@@ -413,11 +422,20 @@
                     : 'bi-circle-half'
                 );
             }
+            function syncCheck(choice) {
+                document.querySelectorAll('.pql-theme-option').forEach((btn) => {
+                    btn.classList.toggle(
+                        'pql-theme-option--active',
+                        btn.getAttribute('data-bs-theme-value') === choice,
+                    );
+                });
+            }
             function apply(choice) {
                 root.setAttribute('data-bs-theme', resolved(choice));
                 root.setAttribute('data-pql-theme-choice', choice);
                 try { localStorage.setItem('pql.theme', choice); } catch (e) { /* quota / disabled */ }
                 syncIcon(choice);
+                syncCheck(choice);
             }
             document.body.addEventListener('click', (e) => {
                 const btn = e.target.closest('[data-bs-theme-value]');
@@ -425,6 +443,7 @@
                 apply(btn.getAttribute('data-bs-theme-value'));
             });
             syncIcon(root.getAttribute('data-pql-theme-choice') || 'auto');
+            syncCheck(root.getAttribute('data-pql-theme-choice') || 'auto');
             window.matchMedia('(prefers-color-scheme: dark)')
                 .addEventListener('change', () => {
                     if ((root.getAttribute('data-pql-theme-choice') || 'auto') === 'auto') {

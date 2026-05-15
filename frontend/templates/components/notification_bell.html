@@ -24,6 +24,7 @@
         <i class="bi bi-bell fs-5"></i>
         <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle pql-notif-bell-badge"
               x-show="unread > 0"
+              :data-pql-badge-pulse="unread > 0 ? '1' : '0'"
               x-text="unread"></span>
     </a>
 </div>

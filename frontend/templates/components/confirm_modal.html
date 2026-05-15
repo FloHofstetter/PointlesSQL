@@ -1,0 +1,41 @@
+{#
+  Phase 80.10.6 — global confirm modal.
+
+  One hidden Bootstrap modal in the base shell, driven by the
+  ``window.pqlConfirm(title, body, opts)`` helper in
+  ``frontend/js/confirm.js``.  Callers replace ``window.confirm()``
+  with ``await window.pqlConfirm("Delete X?", "This cannot be
+  undone.")`` and branch on the boolean result.
+
+  Hidden for anonymous users — destructive flows only happen behind
+  the login wall, so the markup is not needed there.
+#}
+{% if current_user is defined and current_user %}
+<div class="modal fade"
+     id="pql-confirm-modal"
+     tabindex="-1"
+     aria-hidden="true"
+     aria-labelledby="pql-confirm-title">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pql-confirm-title">Confirm</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="pql-confirm-body"></div>
+            <div class="modal-footer">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-dismiss="modal"
+                        id="pql-confirm-cancel">Cancel</button>
+                <button type="button"
+                        class="btn btn-danger"
+                        id="pql-confirm-ok">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

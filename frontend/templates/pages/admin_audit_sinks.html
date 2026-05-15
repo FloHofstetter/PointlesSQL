@@ -303,9 +303,13 @@ window.auditSinkRow = function (sinkId, name, isActive) {
         },
 
         async remove() {
-            if (!window.confirm('Delete sink "' + this.name + '"? Historical fan-out lines survive.')) {
-                return;
-            }
+            const ok = window.pqlConfirm
+                ? await window.pqlConfirm(
+                    'Delete sink?',
+                    'Delete "' + this.name + '". Historical fan-out lines survive.',
+                )
+                : window.confirm('Delete sink "' + this.name + '"? Historical fan-out lines survive.');
+            if (!ok) return;
             this.busy = true;
             const res = await window.pqlApi.fetch(
                 '/api/admin/audit-sinks/' + this.sinkId,

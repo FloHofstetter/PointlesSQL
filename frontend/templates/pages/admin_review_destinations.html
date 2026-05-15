@@ -252,9 +252,13 @@ window.reviewDestRow = function (destId, name, isActive, minSeverity) {
         },
 
         async remove() {
-            if (!window.confirm('Delete destination "' + this.name + '"? Historical fan-out lines survive.')) {
-                return;
-            }
+            const ok = window.pqlConfirm
+                ? await window.pqlConfirm(
+                    'Delete destination?',
+                    'Delete "' + this.name + '". Historical fan-out lines survive.',
+                )
+                : window.confirm('Delete destination "' + this.name + '"? Historical fan-out lines survive.');
+            if (!ok) return;
             this.busy = true;
             const res = await window.pqlApi.fetch(
                 '/api/admin/review-destinations/' + this.destId,

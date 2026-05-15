@@ -99,7 +99,13 @@ export function alertsPage({ alerts, savedQueries } = {}) {
  },
 
  async deleteAlert(alert) {
- if (!window.confirm('Delete alert "' + alert.title + '"?')) return;
+ const ok = window.pqlConfirm
+  ? await window.pqlConfirm(
+   'Delete alert?',
+   'Permanently delete "' + alert.title + '". This cannot be undone.',
+  )
+  : window.confirm('Delete alert "' + alert.title + '"?');
+ if (!ok) return;
  const res = await window.pqlApi.fetch(
  '/api/alerts/' + encodeURIComponent(alert.slug),
  { method: 'DELETE', silent: true },
