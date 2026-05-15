@@ -67,6 +67,19 @@ class DataProductReview(Base):
             "author_user_id",
             name="uq_dp_review_one_per_user",
         ),
+        # Phase 77.2.1 — kind-agnostic upsert idempotency.  The
+        # legacy UNIQUE above doesn't apply when
+        # ``data_product_id`` is NULL (SQL NULL-distinct), so
+        # polymorphic kinds (model, …) need their own UNIQUE.
+        # Both UNIQUEs apply for DP rows but never conflict
+        # because ``social_targets.data_product_id`` is a 1:1
+        # back-pointer for ``kind='dp'``.
+        UniqueConstraint(
+            "workspace_id",
+            "social_target_id",
+            "author_user_id",
+            name="uq_dp_review_polymorphic_one_per_user",
+        ),
         CheckConstraint("stars BETWEEN 1 AND 5", name="ck_dp_review_stars_range"),
         Index("ix_dp_reviews_dp_stars", "data_product_id", "stars"),
         Index(
