@@ -40,7 +40,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 
 from pointlessql.api.dependencies import (
     current_workspace_id,
@@ -368,6 +368,91 @@ async def html_branches_list(request: Request) -> HTMLResponse:
     )
 
 
+def _branch_promote_gate_ui_state(
+    request: Request, branch_fqn: str
+) -> dict[str, Any]:
+    """Phase 77.3.B — promote-gate state for the branch detail UI.
+
+    Mirrors :func:`_branch_promote_gate_check`'s lookup but returns
+    a (gate_on, peer_count, caller_endorsed) tuple rather than
+    raising 412 — the UI needs to render the button as
+    greyed-out + hint instead of crashing the page render.
+
+    Args:
+        request: Active FastAPI request — used for workspace +
+            caller id resolution.
+        branch_fqn: The branch schema FQN.
+
+    Returns:
+        Dict with three keys:
+        ``branch_promote_requires_endorsement: bool`` — workspace
+        flag value, ``False`` when the workspace row is missing;
+        ``branch_endorsement_count: int`` — active peer-endorsement
+        count (excludes the caller's own endorsement);
+        ``branch_caller_endorsed: bool`` — true when the caller
+        has an active endorsement on the branch (so the UI can
+        show the "you already endorsed" affordance).
+    """
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    user = get_user(request)
+    caller_id = int(user["id"])
+    with factory() as session:
+        workspace = session.get(Workspace, workspace_id)
+        gate_on = bool(
+            workspace
+            and workspace.branch_promote_requires_endorsement
+        )
+        anchor = session.execute(
+            select(SocialTarget).where(
+                SocialTarget.workspace_id == workspace_id,
+                SocialTarget.entity_kind == "branch",
+                SocialTarget.entity_ref == branch_fqn,
+            )
+        ).scalar_one_or_none()
+        peer_count = 0
+        caller_endorsed = False
+        if anchor is not None:
+            peer_count = int(
+                session.execute(
+                    select(func.count())
+                    .select_from(DataProductEndorsement)
+                    .where(
+                        DataProductEndorsement.workspace_id
+                        == workspace_id,
+                        DataProductEndorsement.social_target_id
+                        == anchor.id,
+                        DataProductEndorsement.endorsement_type
+                        == "branch-approved-for-promotion",
+                        DataProductEndorsement.removed_at.is_(None),
+                        DataProductEndorsement.applied_by_user_id
+                        != caller_id,
+                    )
+                ).scalar_one()
+            )
+            caller_endorsed = (
+                session.execute(
+                    select(DataProductEndorsement).where(
+                        DataProductEndorsement.workspace_id
+                        == workspace_id,
+                        DataProductEndorsement.social_target_id
+                        == anchor.id,
+                        DataProductEndorsement.endorsement_type
+                        == "branch-approved-for-promotion",
+                        DataProductEndorsement.removed_at.is_(None),
+                        DataProductEndorsement.applied_by_user_id
+                        == caller_id,
+                    )
+                ).scalar_one_or_none()
+                is not None
+            )
+    return {
+        "branch_promote_requires_endorsement": gate_on,
+        "branch_endorsement_count": peer_count,
+        "branch_caller_endorsed": caller_endorsed,
+    }
+
+
 @router.get("/branches/{branch_fqn}", response_class=HTMLResponse)
 async def html_branch_detail(request: Request, branch_fqn: str) -> HTMLResponse:
     """Render the branch-detail page (admin-only)."""
@@ -378,6 +463,7 @@ async def html_branch_detail(request: Request, branch_fqn: str) -> HTMLResponse:
     if tags is None:
         raise CatalogNotFoundError(f"branch {branch_fqn!r} not found")
     audit_log = _branch_audit_rows(request, branch_fqn)
+    gate_state = _branch_promote_gate_ui_state(request, branch_fqn)
     return request.app.state.templates.TemplateResponse(
         request,
         "pages/branch_detail.html",
@@ -390,5 +476,6 @@ async def html_branch_detail(request: Request, branch_fqn: str) -> HTMLResponse:
             "active_catalog": None,
             "active_schema": None,
             "active_table": None,
+            **gate_state,
         },
     )

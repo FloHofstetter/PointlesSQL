@@ -26,208 +26,448 @@
         <span class="badge bg-warning-subtle text-warning-emphasis"
               title="Pre-promote backup of a previous parent">pre-promote backup</span>
         {% endif %}
+        {% if branch_promote_requires_endorsement %}
+        <span class="badge bg-info-subtle text-info-emphasis"
+              title="Promote-gate is enabled — peer endorsement required before promote">
+            <i class="bi bi-shield-check me-1"></i>gate on
+        </span>
+        {% endif %}
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header">Metadata</div>
-            <div class="card-body">
-                <dl class="row mb-0 small">
-                    <dt class="col-sm-5">Parent schema</dt>
-                    <dd class="col-sm-7 font-monospace">{{ tags.parent_schema }}</dd>
-                    <dt class="col-sm-5">Strategy{{ info('branches.cleanup-loop') }}</dt>
-                    <dd class="col-sm-7"><code>{{ tags.strategy }}</code></dd>
-                    <dt class="col-sm-5">Created at</dt>
-                    <dd class="col-sm-7">{{ tags.created_at }}</dd>
-                    <dt class="col-sm-5">Created by run</dt>
-                    <dd class="col-sm-7 font-monospace">
-                        {% if tags.created_by_run_id %}
-                        <a href="/runs/{{ tags.created_by_run_id }}">{{ tags.created_by_run_id }}</a>
+{# Phase 77.3.B — branch detail tab strip.  5 tabs: Overview
+   (metadata cards + audit log), Discussion (polymorphic comments),
+   Endorsements (peer-review including branch-approved-for-promotion),
+   Followers (count + 501 placeholder until 77.8), Promote
+   (Danger Zone moved in here with gate-state visualisation).
+   The .tab-content carries the kind-agnostic socialTabs x-data so
+   the partials' Alpine bindings resolve. #}
+<ul class="nav nav-tabs mb-3" id="branchDetailTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-overview-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-overview" type="button" role="tab"
+                aria-controls="tab-overview" aria-selected="true"
+                data-pql-tab-key="overview">
+            <i class="bi bi-info-circle me-1"></i>Overview
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-discussion" type="button" role="tab"
+                aria-controls="tab-discussion" aria-selected="false"
+                data-pql-tab-key="discussion">
+            <i class="bi bi-chat-left-text me-1"></i>Discussion
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-endorsements-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-endorsements" type="button" role="tab"
+                aria-controls="tab-endorsements" aria-selected="false"
+                data-pql-tab-key="endorsements">
+            <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
+            {% if branch_endorsement_count > 0 %}
+            <span class="badge bg-success ms-1">{{ branch_endorsement_count }}</span>
+            {% endif %}
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-followers-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-followers" type="button" role="tab"
+                aria-controls="tab-followers" aria-selected="false"
+                data-pql-tab-key="followers">
+            <i class="bi bi-bell me-1"></i>Followers
+        </button>
+    </li>
+    {% if is_admin and tags.status == "active" and not tags.is_pre_promote_backup %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-promote-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-promote" type="button" role="tab"
+                aria-controls="tab-promote" aria-selected="false"
+                data-pql-tab-key="promote">
+            <i class="bi bi-exclamation-triangle me-1"></i>Promote
+            {% if branch_promote_requires_endorsement and branch_endorsement_count < 1 %}
+            <span class="badge bg-warning text-dark ms-1" title="Peer endorsement required">
+                <i class="bi bi-lock"></i>
+            </span>
+            {% endif %}
+        </button>
+    </li>
+    {% endif %}
+</ul>
+
+<div class="tab-content" id="branchDetailTabContent"
+     x-data='socialTabs({
+        kind: "branch",
+        ref: {{ branch_schema_fqn|tojson }},
+        endorsementTypes: [
+            {key: "branch-approved-for-promotion",
+             label: "Approved for promotion",
+             description: "Required peer endorsement when the workspace promote-gate is on."}
+        ]
+     })'>
+
+    {# Overview tab — metadata cards + audit log (the pre-77.3.B page). #}
+    <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Metadata</div>
+                    <div class="card-body">
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-5">Parent schema</dt>
+                            <dd class="col-sm-7 font-monospace">{{ tags.parent_schema }}</dd>
+                            <dt class="col-sm-5">Strategy{{ info('branches.cleanup-loop') }}</dt>
+                            <dd class="col-sm-7"><code>{{ tags.strategy }}</code></dd>
+                            <dt class="col-sm-5">Created at</dt>
+                            <dd class="col-sm-7">{{ tags.created_at }}</dd>
+                            <dt class="col-sm-5">Created by run</dt>
+                            <dd class="col-sm-7 font-monospace">
+                                {% if tags.created_by_run_id %}
+                                <a href="/runs/{{ tags.created_by_run_id }}">{{ tags.created_by_run_id }}</a>
+                                {% else %}
+                                <span class="text-muted">— (admin / interactive)</span>
+                                {% endif %}
+                            </dd>
+                            {% if tags.promoted_at %}
+                            <dt class="col-sm-5">Promoted at</dt>
+                            <dd class="col-sm-7">{{ tags.promoted_at }}</dd>
+                            {% endif %}
+                            {% if tags.discarded_at %}
+                            <dt class="col-sm-5">Discarded at</dt>
+                            <dd class="col-sm-7">{{ tags.discarded_at }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">Parent versions at branch creation</div>
+                    <div class="card-body">
+                        {% if tags.parent_version_at_create %}
+                        <table class="table table-sm small mb-0">
+                            <thead><tr><th>Table</th><th class="text-end">Version</th></tr></thead>
+                            <tbody>
+                                {% for table_name, version in tags.parent_version_at_create.items() %}
+                                <tr>
+                                    <td class="font-monospace">{{ table_name }}</td>
+                                    <td class="text-end font-monospace">{{ version }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                         {% else %}
-                        <span class="text-muted">— (admin / interactive)</span>
+                        <p class="text-muted mb-0 small">No tables tracked.</p>
                         {% endif %}
-                    </dd>
-                    {% if tags.promoted_at %}
-                    <dt class="col-sm-5">Promoted at</dt>
-                    <dd class="col-sm-7">{{ tags.promoted_at }}</dd>
-                    {% endif %}
-                    {% if tags.discarded_at %}
-                    <dt class="col-sm-5">Discarded at</dt>
-                    <dd class="col-sm-7">{{ tags.discarded_at }}</dd>
-                    {% endif %}
-                </dl>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header">Parent versions at branch creation</div>
-            <div class="card-body">
-                {% if tags.parent_version_at_create %}
-                <table class="table table-sm small mb-0">
-                    <thead><tr><th>Table</th><th class="text-end">Version</th></tr></thead>
-                    <tbody>
-                        {% for table_name, version in tags.parent_version_at_create.items() %}
-                        <tr>
-                            <td class="font-monospace">{{ table_name }}</td>
-                            <td class="text-end font-monospace">{{ version }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+
+        <div class="card">
+            <div class="card-header">Audit log</div>
+            <div class="card-body p-0">
+                {% if audit_log %}
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle pql-list-table">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">When</th>
+                                <th>Action</th>
+                                <th>Run</th>
+                                <th>Payload</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in audit_log %}
+                            <tr>
+                                <td data-label="When" class="ps-3 small">{{ relative_time(entry.created_at) }}</td>
+                                <td data-label="Action"><code>{{ entry.action }}</code></td>
+                                <td data-label="Run" class="font-monospace small">
+                                    {% if entry.run_id %}
+                                    <a href="/runs/{{ entry.run_id }}">{{ entry.run_id[:8] }}</a>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Payload"><pre class="small mb-0">{{ entry.payload | tojson(indent=2) if entry.payload else "" }}</pre></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
-                <p class="text-muted mb-0 small">No tables tracked.</p>
+                <p class="text-muted small p-3 mb-0">No audit-log entries yet.</p>
                 {% endif %}
             </div>
         </div>
     </div>
-</div>
 
-{% if is_admin and tags.status == "active" and not tags.is_pre_promote_backup %}
-<div class="card border-danger mb-4"
-     x-data='{
-        previewing: false,
-        promoting: false,
-        discarding: false,
-        previewResult: null,
-        previewError: null,
-
-        previewPromote() {
-            this.previewing = true;
-            this.previewResult = null;
-            this.previewError = null;
-            window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/preview-promote", { method: "GET" })
-                .then(r => r.json())
-                .then(j => { this.previewResult = j; this.previewing = false; })
-                .catch(e => { this.previewError = String(e); this.previewing = false; });
-        },
-
-        promote() {
-            if (!confirm("Promote {{ branch_schema_fqn }} to {{ tags.parent_schema }}?\n\nThe current parent will be renamed to {{ tags.parent_schema }}_pre_promote_<ts> as a backup.")) return;
-            this.promoting = true;
-            window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/promote", { method: "POST" })
-                .then(r => r.json())
-                .then(j => {
-                    this.promoting = false;
-                    if (!j.ok) {
-                        if (window.pqlToast) window.pqlToast.error("Promote failed: " + (j.message || j.error));
-                        return;
-                    }
-                    if (window.pqlToast) window.pqlToast.success("Promoted to " + j.new_parent);
-                    setTimeout(() => window.location.href = "/branches", 800);
-                })
-                .catch(e => { this.promoting = false; if (window.pqlToast) window.pqlToast.error(String(e)); });
-        },
-
-        discard() {
-            if (!confirm("Permanently discard {{ branch_schema_fqn }}?\n\nThe branch storage and UC schema will be removed. The source parent stays untouched.")) return;
-            this.discarding = true;
-            window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/discard", { method: "POST" })
-                .then(r => r.json())
-                .then(j => {
-                    this.discarding = false;
-                    if (!j.ok) {
-                        if (window.pqlToast) window.pqlToast.error("Discard failed: " + (j.message || j.error));
-                        return;
-                    }
-                    if (window.pqlToast) window.pqlToast.success("Branch discarded");
-                    setTimeout(() => window.location.href = "/branches", 800);
-                })
-                .catch(e => { this.discarding = false; if (window.pqlToast) window.pqlToast.error(String(e)); });
-        },
-     }'>
-    <div class="card-header bg-danger-subtle text-danger-emphasis">
-        <i class="bi bi-exclamation-triangle me-1"></i>Danger zone{{ info('branches.promote-vs-discard') }}
-    </div>
-    <div class="card-body">
-        <div class="d-flex gap-2 flex-wrap mb-3">
-            <button class="btn btn-outline-secondary btn-sm"
-                    x-on:click="previewPromote()"
-                    x-bind:disabled="previewing">
-                <span x-show="previewing" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
-                Preview promote{{ info('branches.preview-tab') }}
-            </button>
-            <button class="btn btn-primary btn-sm"
-                    x-on:click="promote()"
-                    x-bind:disabled="promoting">
-                <span x-show="promoting" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
-                Promote
-            </button>
-            <button class="btn btn-danger btn-sm ms-auto"
-                    x-on:click="discard()"
-                    x-bind:disabled="discarding">
-                <span x-show="discarding" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
-                Discard
-            </button>
-        </div>
-        <div class="alert alert-danger small" x-show="previewError" x-text="previewError" x-cloak></div>
-        <template x-if="previewResult && previewResult.ok">
-            <div class="alert alert-success small mb-0">
-                <i class="bi bi-check-circle me-1"></i>No conflicts detected — promote is safe.
+    {# Discussion pane — inline x-data via branchDiscussion factory.
+       Talks to /api/social/branch/{fqn}/comments. #}
+    <div class="tab-pane fade" id="tab-discussion" role="tabpanel"
+         x-data='branchDiscussion({{ branch_schema_fqn|tojson }})'
+         x-init="init()">
+        <template x-if="!commentsLoaded">
+            <div class="text-muted small p-3">Loading discussion…</div>
+        </template>
+        <template x-if="commentsLoaded">
+            <div>
+                <template x-if="comments.length === 0">
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-chat-left-text me-1"></i>
+                        No comments yet — start the discussion below.
+                    </div>
+                </template>
+                <template x-for="c in comments" :key="c.id">
+                    <div class="card mb-2 pql-comment-card" :data-comment-id="c.id">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="small text-muted">
+                                    <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                    · <span x-text="c.created_at"></span>
+                                </div>
+                                <button class="btn btn-sm btn-link text-danger p-0"
+                                        @click="deleteComment(c.id)"
+                                        title="Soft-delete this comment">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+                        </div>
+                    </div>
+                </template>
+                <form class="mt-3" @submit.prevent="submitNew()">
+                    <div class="mb-2">
+                        <textarea class="form-control" rows="3"
+                                  placeholder="Add a comment… markdown welcome"
+                                  x-model="draftBody"></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-sm" type="submit"
+                            :disabled="postBusy || !draftBody.trim()">
+                        <i class="bi bi-send me-1"></i>Post
+                    </button>
+                </form>
             </div>
         </template>
-        <template x-if="previewResult && !previewResult.ok">
-            <div class="alert alert-warning small mb-0">
-                <strong><i class="bi bi-exclamation-circle me-1"></i>Promotion conflicts detected</strong>
-                <table class="table table-sm small mt-2 mb-0">
-                    <thead><tr><th>Table</th><th>Expected</th><th>Actual</th><th>Reason</th></tr></thead>
-                    <tbody>
-                        <template x-for="c in previewResult.conflicts" :key="c.table">
-                            <tr>
-                                <td class="font-monospace" x-text="c.table"></td>
-                                <td class="font-monospace" x-text="c.expected_version"></td>
-                                <td class="font-monospace" x-text="c.actual_version"></td>
-                                <td x-text="c.reason"></td>
-                            </tr>
-                        </template>
-                    </tbody>
-                </table>
-                <div class="mt-2 mb-0">
-                    Discard and re-branch from the current parent state to resolve.
+    </div>
+
+    {# Endorsements + Followers panes — reuse the polymorphic partials. #}
+    {% include 'partials/social/_endorsements_pane.html' %}
+    {% include 'partials/social/_followers_pane.html' %}
+
+    {# Promote tab — Danger Zone with gate-state visualisation.
+       Renders only for admin on an active non-backup branch (same
+       guard as before, just moved into a tab pane). #}
+    {% if is_admin and tags.status == "active" and not tags.is_pre_promote_backup %}
+    {% set gate_locked = branch_promote_requires_endorsement and branch_endorsement_count < 1 %}
+    <div class="tab-pane fade" id="tab-promote" role="tabpanel">
+        <div class="card border-danger mb-4"
+             x-data='{
+                previewing: false,
+                promoting: false,
+                discarding: false,
+                previewResult: null,
+                previewError: null,
+
+                previewPromote() {
+                    this.previewing = true;
+                    this.previewResult = null;
+                    this.previewError = null;
+                    window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/preview-promote", { method: "GET", silent: true })
+                        .then(r => {
+                            if (!r.ok) {
+                                this.previewError = r.error || ("HTTP " + r.status);
+                                this.previewing = false;
+                                return;
+                            }
+                            this.previewResult = r.data;
+                            this.previewing = false;
+                        });
+                },
+
+                promote() {
+                    if (!confirm("Promote {{ branch_schema_fqn }} to {{ tags.parent_schema }}?\n\nThe current parent will be renamed to {{ tags.parent_schema }}_pre_promote_<ts> as a backup.")) return;
+                    this.promoting = true;
+                    window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/promote", { method: "POST", silent: true })
+                        .then(r => {
+                            this.promoting = false;
+                            if (!r.ok) {
+                                if (window.pqlToast) window.pqlToast.error("Promote failed: " + (r.error || ("HTTP " + r.status)));
+                                return;
+                            }
+                            const j = r.data || {};
+                            if (window.pqlToast) window.pqlToast.success("Promoted to " + j.new_parent);
+                            setTimeout(() => window.location.href = "/branches", 800);
+                        });
+                },
+
+                discard() {
+                    if (!confirm("Permanently discard {{ branch_schema_fqn }}?\n\nThe branch storage and UC schema will be removed. The source parent stays untouched.")) return;
+                    this.discarding = true;
+                    window.pqlApi.fetch("/api/branches/{{ branch_schema_fqn }}/discard", { method: "POST", silent: true })
+                        .then(r => {
+                            this.discarding = false;
+                            if (!r.ok) {
+                                if (window.pqlToast) window.pqlToast.error("Discard failed: " + (r.error || ("HTTP " + r.status)));
+                                return;
+                            }
+                            if (window.pqlToast) window.pqlToast.success("Branch discarded");
+                            setTimeout(() => window.location.href = "/branches", 800);
+                        });
+                },
+             }'>
+            <div class="card-header bg-danger-subtle text-danger-emphasis">
+                <i class="bi bi-exclamation-triangle me-1"></i>Danger zone{{ info('branches.promote-vs-discard') }}
+            </div>
+            <div class="card-body">
+                {% if branch_promote_requires_endorsement %}
+                <div class="alert {% if gate_locked %}alert-warning{% else %}alert-info{% endif %} small mb-3">
+                    <i class="bi bi-shield-check me-1"></i>
+                    <strong>Promote-gate is enabled.</strong>
+                    {% if gate_locked %}
+                    Promote stays locked until at least one peer applies
+                    the <code>branch-approved-for-promotion</code>
+                    endorsement on this branch.  Self-endorsement
+                    doesn&rsquo;t count — switch to the Endorsements
+                    tab to see the current state.
+                    {% else %}
+                    Gate satisfied: <strong>{{ branch_endorsement_count }}</strong>
+                    peer endorsement<span x-show="false">s</span> on file.
+                    Promote is unlocked.
+                    {% endif %}
                 </div>
-            </div>
-        </template>
-    </div>
-</div>
-{% endif %}
+                {% endif %}
 
-<div class="card">
-    <div class="card-header">Audit log</div>
-    <div class="card-body p-0">
-        {% if audit_log %}
-        <div class="table-responsive">
-            <table class="table table-sm mb-0 align-middle pql-list-table">
-                <thead>
-                    <tr>
-                        <th class="ps-3">When</th>
-                        <th>Action</th>
-                        <th>Run</th>
-                        <th>Payload</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for entry in audit_log %}
-                    <tr>
-                        <td data-label="When" class="ps-3 small">{{ relative_time(entry.created_at) }}</td>
-                        <td data-label="Action"><code>{{ entry.action }}</code></td>
-                        <td data-label="Run" class="font-monospace small">
-                            {% if entry.run_id %}
-                            <a href="/runs/{{ entry.run_id }}">{{ entry.run_id[:8] }}</a>
-                            {% else %}
-                            <span class="text-muted">—</span>
-                            {% endif %}
-                        </td>
-                        <td data-label="Payload"><pre class="small mb-0">{{ entry.payload | tojson(indent=2) if entry.payload else "" }}</pre></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <button class="btn btn-outline-secondary btn-sm"
+                            x-on:click="previewPromote()"
+                            x-bind:disabled="previewing">
+                        <span x-show="previewing" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                        Preview promote{{ info('branches.preview-tab') }}
+                    </button>
+                    <button class="btn btn-primary btn-sm pql-promote-btn"
+                            x-on:click="promote()"
+                            x-bind:disabled="promoting"
+                            {% if gate_locked %}disabled
+                            title="Needs ≥1 peer endorsement — switch to the Endorsements tab"
+                            {% endif %}>
+                        <span x-show="promoting" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                        Promote
+                        {% if gate_locked %}
+                        <i class="bi bi-lock ms-1"></i>
+                        {% endif %}
+                    </button>
+                    <button class="btn btn-danger btn-sm ms-auto"
+                            x-on:click="discard()"
+                            x-bind:disabled="discarding">
+                        <span x-show="discarding" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>
+                        Discard
+                    </button>
+                </div>
+                <div class="alert alert-danger small" x-show="previewError" x-text="previewError" x-cloak></div>
+                <template x-if="previewResult && previewResult.ok">
+                    <div class="alert alert-success small mb-0">
+                        <i class="bi bi-check-circle me-1"></i>No conflicts detected — promote is safe.
+                    </div>
+                </template>
+                <template x-if="previewResult && !previewResult.ok">
+                    <div class="alert alert-warning small mb-0">
+                        <strong><i class="bi bi-exclamation-circle me-1"></i>Promotion conflicts detected</strong>
+                        <table class="table table-sm small mt-2 mb-0">
+                            <thead><tr><th>Table</th><th>Expected</th><th>Actual</th><th>Reason</th></tr></thead>
+                            <tbody>
+                                <template x-for="c in previewResult.conflicts" :key="c.table">
+                                    <tr>
+                                        <td class="font-monospace" x-text="c.table"></td>
+                                        <td class="font-monospace" x-text="c.expected_version"></td>
+                                        <td class="font-monospace" x-text="c.actual_version"></td>
+                                        <td x-text="c.reason"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <div class="mt-2 mb-0">
+                            Discard and re-branch from the current parent state to resolve.
+                        </div>
+                    </div>
+                </template>
+            </div>
         </div>
-        {% else %}
-        <p class="text-muted small p-3 mb-0">No audit-log entries yet.</p>
-        {% endif %}
     </div>
+    {% endif %}
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Phase 77.3.B — branchDiscussion Alpine factory (mirrors
+// tableDiscussion on the table page; separate name so the two
+// don't share state when a single Alpine app is mounted across
+// both pages by the same user navigating quickly).
+(function () {
+    'use strict';
+
+    function branchDiscussion(ref) {
+        const url = '/api/social/branch/' + encodeURI(ref) + '/comments';
+        return {
+            ref,
+            commentsLoaded: false,
+            comments: [],
+            draftBody: '',
+            postBusy: false,
+
+            async init() {
+                await this.loadComments();
+            },
+
+            async loadComments() {
+                const res = await window.pqlApi.fetch(url, { silent: true });
+                if (!res.ok) {
+                    this.commentsLoaded = true;
+                    return;
+                }
+                this.comments = (res.data && res.data.comments) || [];
+                this.commentsLoaded = true;
+            },
+
+            async submitNew() {
+                const body = this.draftBody.trim();
+                if (!body || this.postBusy) return;
+                this.postBusy = true;
+                try {
+                    const res = await window.pqlApi.fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ body_md: body }),
+                    });
+                    if (!res.ok) {
+                        if (window.pqlToast) window.pqlToast.error('Comment failed to post.');
+                        return;
+                    }
+                    this.draftBody = '';
+                    await this.loadComments();
+                } finally {
+                    this.postBusy = false;
+                }
+            },
+
+            async deleteComment(commentId) {
+                if (!window.confirm('Soft-delete this comment?')) return;
+                const res = await window.pqlApi.fetch(url + '/' + commentId, {
+                    method: 'DELETE',
+                });
+                if (!res.ok) {
+                    if (window.pqlToast) window.pqlToast.error('Delete failed.');
+                    return;
+                }
+                await this.loadComments();
+            },
+        };
+    }
+
+    window.branchDiscussion = branchDiscussion;
+})();
+</script>
 {% endblock %}

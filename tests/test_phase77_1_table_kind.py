@@ -84,17 +84,21 @@ def test_table_citation_ignores_malformed_token() -> None:
 
 
 @pytest.mark.asyncio
-async def test_social_dispatcher_returns_501_for_table_writes(
+async def test_social_dispatcher_routes_table_writes_after_77_1_5(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Table writes through /api/social still raise 501 in 77.1.
+    """Table writes through /api/social succeed after Phase 77.1.5.
 
-    The kind is registered (no longer 400) but the dispatcher
-    lacks the per-kind handler glue — 77.1.5+ fills this in.
+    Pre-77.1.5 this returned 501 because the dispatcher had no
+    per-kind handler.  77.1.5 wired the polymorphic backend, so
+    the same POST now creates a row anchored on a kind='table'
+    social_target.
     """
     res = await admin_client.post(
         "/api/social/table/main.sales_gold.orders/comments",
-        json={"body_md": "ignored until 77.1.5"},
+        json={"body_md": "polymorphic write OK"},
     )
-    assert res.status_code == 501, res.text
-    assert "not yet wired" in res.text.lower()
+    assert res.status_code == 200, res.text
+    payload = res.json()
+    assert payload["body_md"] == "polymorphic write OK"
+    assert "social_target_id" in payload
