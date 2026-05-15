@@ -26,6 +26,10 @@ BADGE_KEYS: tuple[str, ...] = (
     "mention_magnet_20plus",
     "accepted_answer_5plus",
     "endorser_50plus",
+    # Phase 78 polish — per-kind badges.
+    "commenter_table_50plus",
+    "endorser_model_20plus",
+    "issue_resolver_10plus",
 )
 
 

@@ -334,3 +334,183 @@ async def test_profile_html_anonymous_redirects(
     """Anonymous visitor → 303 to login."""
     res = await anonymous_client.get("/users/1")
     assert res.status_code in (302, 303, 401, 403)
+
+
+# ---------------------------------------------------------------------------
+# Phase 78 polish — per-kind badges
+# ---------------------------------------------------------------------------
+
+
+def test_badge_keys_carry_per_kind_additions() -> None:
+    """The three Phase-78 polish badges are registered."""
+    from pointlessql.models.social._user_badge import BADGE_KEYS
+
+    assert "commenter_table_50plus" in BADGE_KEYS
+    assert "endorser_model_20plus" in BADGE_KEYS
+    assert "issue_resolver_10plus" in BADGE_KEYS
+
+
+@pytest.mark.asyncio
+async def test_award_badges_commenter_table_50plus_threshold() -> None:
+    """50 comments on kind='table' targets earn the per-kind badge."""
+    import asyncio as _aio
+    import datetime as _dt
+
+    from pointlessql.models.catalog._data_product_comments import (
+        DataProductComment,
+    )
+    from pointlessql.models.social._social_target import SocialTarget
+
+    factory = app.state.session_factory
+    with factory() as session:
+        admin = session.execute(
+            select(User).where(User.email == "test@test.com")
+        ).scalar_one()
+        admin_id = admin.id
+        target = SocialTarget(
+            workspace_id=1,
+            entity_kind="table",
+            entity_ref="main.silver.badge_probe",
+        )
+        session.add(target)
+        session.flush()
+        for i in range(50):
+            session.add(
+                DataProductComment(
+                    workspace_id=1,
+                    social_target_id=int(target.id),
+                    author_user_id=admin_id,
+                    body_md=f"comment {i}",
+                    category="general",
+                    created_at=_dt.datetime.now(_dt.UTC),
+                )
+            )
+        session.commit()
+
+    inserted = await _aio.to_thread(award_badges, factory)
+    assert inserted >= 1
+    with factory() as session:
+        badges = {
+            b.badge_key
+            for b in session.execute(
+                select(UserBadge).where(UserBadge.user_id == admin_id)
+            )
+            .scalars()
+            .all()
+        }
+    assert "commenter_table_50plus" in badges
+
+
+@pytest.mark.asyncio
+async def test_award_badges_endorser_model_20plus_threshold() -> None:
+    """20 active endorsements on kind='model' targets earn the badge."""
+    import asyncio as _aio
+    import datetime as _dt
+
+    from pointlessql.models.auth import User as _User
+    from pointlessql.models.catalog._data_product_endorsement import (
+        DataProductEndorsement,
+    )
+    from pointlessql.models.social._social_target import SocialTarget
+
+    factory = app.state.session_factory
+    with factory() as session:
+        admin = session.execute(
+            select(_User).where(_User.email == "test@test.com")
+        ).scalar_one()
+        admin_id = admin.id
+        # 20 distinct model targets so the UNIQUE on
+        # (social_target_id, applied_by_user_id, endorsement_type)
+        # doesn't dedupe them.
+        for i in range(20):
+            target = SocialTarget(
+                workspace_id=1,
+                entity_kind="model",
+                entity_ref=f"main.silver.badge_model_{i}",
+            )
+            session.add(target)
+            session.flush()
+            session.add(
+                DataProductEndorsement(
+                    workspace_id=1,
+                    social_target_id=int(target.id),
+                    endorsement_type="verified-by-steward",
+                    applied_by_user_id=admin_id,
+                    applied_at=_dt.datetime.now(_dt.UTC),
+                )
+            )
+        session.commit()
+
+    await _aio.to_thread(award_badges, factory)
+    with factory() as session:
+        badges = {
+            b.badge_key
+            for b in session.execute(
+                select(UserBadge).where(UserBadge.user_id == admin_id)
+            )
+            .scalars()
+            .all()
+        }
+    assert "endorser_model_20plus" in badges
+
+
+@pytest.mark.asyncio
+async def test_award_badges_issue_resolver_10plus_threshold() -> None:
+    """10 closed issues with the same assignee earn the resolver badge."""
+    import asyncio as _aio
+    import datetime as _dt
+
+    from pointlessql.models.auth import User as _User
+    from pointlessql.models.social._issue import Issue
+    from pointlessql.models.social._social_target import SocialTarget
+
+    factory = app.state.session_factory
+    with factory() as session:
+        admin = session.execute(
+            select(_User).where(_User.email == "test@test.com")
+        ).scalar_one()
+        admin_id = admin.id
+        parent = SocialTarget(
+            workspace_id=1,
+            entity_kind="table",
+            entity_ref="main.silver.resolver_parent",
+        )
+        session.add(parent)
+        session.flush()
+        parent_id = int(parent.id)
+        for i in range(10):
+            anchor = SocialTarget(
+                workspace_id=1,
+                entity_kind="issue",
+                entity_ref=f"resolver-probe-{i}",
+            )
+            session.add(anchor)
+            session.flush()
+            anchor_id = int(anchor.id)
+            session.add(
+                Issue(
+                    workspace_id=1,
+                    social_target_id=anchor_id,
+                    parent_social_target_id=parent_id,
+                    title=f"closed probe {i}",
+                    body_md="",
+                    state="closed",
+                    opened_by_user_id=admin_id,
+                    assignee_user_id=admin_id,
+                    opened_at=_dt.datetime.now(_dt.UTC),
+                    closed_at=_dt.datetime.now(_dt.UTC),
+                )
+            )
+        session.commit()
+
+    await _aio.to_thread(award_badges, factory)
+    with factory() as session:
+        badges = {
+            b.badge_key
+            for b in session.execute(
+                select(UserBadge).where(UserBadge.user_id == admin_id)
+            )
+            .scalars()
+            .all()
+        }
+    assert "issue_resolver_10plus" in badges
