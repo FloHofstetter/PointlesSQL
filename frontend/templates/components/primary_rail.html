@@ -170,7 +170,7 @@
         <li class="pql-icon-rail__item">
             <a href="/"
                data-section="federation"
-               class="pql-icon-rail__link{% if active_section == 'federation' %} active{% endif %}"
+               class="pql-icon-rail__link{% if active_section == 'federation' and (active_page is not defined or active_page != 'models') %} active{% endif %}"
                title="Catalog (catalogs, schemas, tables, foreign connections, volumes, models)">
                 <i class="bi bi-database"></i>
                 <span class="pql-icon-rail__label">Catalog</span>

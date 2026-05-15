@@ -96,7 +96,7 @@
     {# DATA #}
     <li class="pql-mobile-nav__group">Data</li>
     <li class="nav-item">
-        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'federation' %} active{% endif %}"
+        <a class="nav-link d-flex align-items-center gap-2{% if active_section == 'federation' and (active_page is not defined or active_page != 'models') %} active{% endif %}"
            href="/">
             <i class="bi bi-database"></i> Catalog
         </a>

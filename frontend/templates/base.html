@@ -70,11 +70,12 @@
    not thread active_page (home, table-detail, schema-detail, etc.)
    keeps showing the catalog tree.
 
-   Volumes + models no longer have their own rail icon (they render
-   inline in the catalog tree alongside tables).  Their pages still
-   set ``active_page='volumes'`` / ``='models'``, but the section
-   maps to ``federation`` so the catalog tree stays visible in the
-   context-panel. #}
+   Volumes still render inline in the catalog tree, so their pages
+   map to ``federation``.  Models get their own rail entry now
+   (Phase 80) but stay in the ``federation`` section so the catalog
+   tree remains visible in the context-panel; the rail Catalog
+   entry suppresses its active state when ``active_page == 'models'``
+   so the highlight does not double up. #}
 {% set _section_map = {
     'connections': 'federation',
     'external_locations': 'federation',
@@ -107,8 +108,10 @@
     'me_settings': 'me',
     'me_subscriptions': 'me',
     'notifications': 'me',
+    'settings': 'me',
     'dbt': 'dbt',
     'workspace_home': 'workspace_home',
+    'workspaces': 'workspace_home',
 } %}
 {% set active_section = _section_map.get(active_page if active_page is defined else None, 'federation') %}
 <body hx-boost="true"
