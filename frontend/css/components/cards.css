@@ -22,6 +22,18 @@
     box-shadow: var(--bs-box-shadow-sm);
 }
 
+/* Phase 81.F — Social drawer width.  Bootstrap 5.3 sizes
+ * ``.offcanvas-end`` via the ``--bs-offcanvas-width`` custom
+ * property (default 400 px); we bump it to 520 px on
+ * ``.pql-social-drawer`` so comment threads + issues forms get a
+ * focused side surface instead of a cramped column.  Setting the
+ * variable (rather than ``width``) avoids fighting Bootstrap's
+ * ``width: var(...)`` declaration on ``.offcanvas-end``. */
+.pql-social-drawer {
+    --bs-offcanvas-width: 520px;
+    max-width: 90vw;
+}
+
 /* Agent-review card — severity stripe on the left edge. */
 .pql-review-card {
     color: inherit;

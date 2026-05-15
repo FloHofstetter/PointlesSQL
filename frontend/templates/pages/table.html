@@ -32,6 +32,17 @@
     title="Audit reverse-index — runs that touched, wrote, or read this table">
   <i class="bi bi-clock-history me-1"></i>Runs that touched this table
  </a>
+ {# Phase 81.F — Social tabs consolidated into a right-side drawer.
+    Pre-81.F the table page carried 12 inline tabs; after this commit
+    the social cluster (Discussion + Endorsements + Followers + README
+    + Issues) lives in the offcanvas below, leaving 7 core tabs. #}
+ <button type="button"
+         class="btn btn-sm btn-outline-secondary"
+         data-bs-toggle="offcanvas"
+         data-bs-target="#pql-table-social-drawer"
+         title="Open social drawer (Discussion / Endorsements / Followers / README / Issues)">
+  <i class="bi bi-people me-1"></i>Social
+ </button>
 </div>
 
 {% if error %}
@@ -112,58 +123,35 @@
  <i class="bi bi-shield-lock me-1"></i>Permissions
  </button>
  </li>
- {# Phase 77.1.5 — kind-agnostic social tab strip for UC tables.
-    Discussion + README panes carry inline x-data; Endorsements +
-    Followers reuse the polymorphic partials backed by the
-    socialTabs(kind='table', ref='...') factory on .tab-content. #}
- <li class="nav-item" role="presentation">
- <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
- data-bs-target="#tab-discussion" type="button" role="tab"
- aria-controls="tab-discussion" aria-selected="false"
- data-pql-tab-key="discussion">
- <i class="bi bi-chat-left-text me-1"></i>Discussion
- </button>
- </li>
- <li class="nav-item" role="presentation">
- <button class="nav-link" id="tab-endorsements-btn" data-bs-toggle="tab"
- data-bs-target="#tab-endorsements" type="button" role="tab"
- aria-controls="tab-endorsements" aria-selected="false"
- data-pql-tab-key="endorsements">
- <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
- </button>
- </li>
- <li class="nav-item" role="presentation">
- <button class="nav-link" id="tab-followers-btn" data-bs-toggle="tab"
- data-bs-target="#tab-followers" type="button" role="tab"
- aria-controls="tab-followers" aria-selected="false"
- data-pql-tab-key="followers">
- <i class="bi bi-bell me-1"></i>Followers
- </button>
- </li>
- <li class="nav-item" role="presentation">
- <button class="nav-link" id="tab-readme-btn" data-bs-toggle="tab"
- data-bs-target="#tab-readme" type="button" role="tab"
- aria-controls="tab-readme" aria-selected="false"
- data-pql-tab-key="readme">
- <i class="bi bi-file-text me-1"></i>README
- </button>
- </li>
- {# Phase 77.7 — Issues tab, registry-driven supports_issues=True for tables. #}
- <li class="nav-item" role="presentation">
- <button class="nav-link" id="tab-issues-btn" data-bs-toggle="tab"
- data-bs-target="#tab-issues" type="button" role="tab"
- aria-controls="tab-issues" aria-selected="false"
- data-pql-tab-key="issues">
- <i class="bi bi-exclamation-circle me-1"></i>Issues
- </button>
- </li>
+ {# Phase 81.F — Social tabs (Discussion / Endorsements / Followers /
+    README / Issues) moved into the offcanvas drawer at the bottom of
+    this template.  The "Social" button in the page header opens it. #}
 </ul>
-{# socialTabs factory powers the polymorphic Endorsements + Followers
-   tabs (and is inherited by the inline Discussion + README panes,
-   though those carry their own x-data scopes and don't read from
-   socialTabs).  ``endorsementTypes`` is the four DP-flavoured types
-   minus ``branch-approved-for-promotion`` (which is branch-only). #}
-<div class="tab-content" id="tableDetailTabContent"
+{# Phase 81.F — Core tabs only.  The five social tabs (Discussion +
+   Endorsements + Followers + README + Issues) live in the offcanvas
+   drawer below this block, scoped by their own socialTabs() factory. #}
+<div class="tab-content" id="tableDetailTabContent">
+ {% include "pages/_partials/table/overview.html" %}
+ {% include "pages/_partials/table/preview.html" %}
+ {% include "pages/_partials/table/columns.html" %}
+ {% include "pages/_partials/table/lineage.html" %}
+ {% include "pages/_partials/table/tags.html" %}
+ {% include "pages/_partials/table/permissions.html" %}
+ {% include "pages/_partials/table/cdf_events.html" %}
+</div>
+
+{# Phase 81.F — Social drawer.  Replaces the previous inline
+   nav-tabs entries; opens via the "Social" button in the page
+   header.  Bootstrap offcanvas-end gives a right-side slide-out
+   wide enough for comment threads without forcing the rest of the
+   page off-screen.  The ``socialTabs()`` x-data scope here carries
+   the same kind/ref/endorsementTypes the inline tabs used pre-81.F,
+   so the polymorphic Endorsements / Followers / Issues partials
+   work unchanged. #}
+<div class="offcanvas offcanvas-end pql-social-drawer"
+     tabindex="-1"
+     id="pql-table-social-drawer"
+     aria-labelledby="pql-table-social-drawer-title"
      x-data='socialTabs({
         kind: "table",
         ref: {{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }},
@@ -178,115 +166,160 @@
              description: "Actively being audited; expect schema churn."}
         ]
      })'>
- {% include "pages/_partials/table/overview.html" %}
- {% include "pages/_partials/table/preview.html" %}
- {% include "pages/_partials/table/columns.html" %}
- {% include "pages/_partials/table/lineage.html" %}
- {% include "pages/_partials/table/tags.html" %}
- {% include "pages/_partials/table/permissions.html" %}
- {% include "pages/_partials/table/cdf_events.html" %}
+ <div class="offcanvas-header">
+  <h5 class="offcanvas-title" id="pql-table-social-drawer-title">
+   <i class="bi bi-people me-1"></i>Table social
+  </h5>
+  <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+          aria-label="Close"></button>
+ </div>
+ <div class="offcanvas-body">
+  <ul class="nav nav-tabs mb-3" role="tablist">
+   <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="tab-discussion-btn"
+            data-bs-toggle="tab" data-bs-target="#tab-discussion"
+            type="button" role="tab" aria-controls="tab-discussion"
+            aria-selected="true" data-pql-tab-key="discussion">
+     <i class="bi bi-chat-left-text me-1"></i>Discussion
+    </button>
+   </li>
+   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-endorsements-btn"
+            data-bs-toggle="tab" data-bs-target="#tab-endorsements"
+            type="button" role="tab" aria-controls="tab-endorsements"
+            aria-selected="false" data-pql-tab-key="endorsements">
+     <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
+    </button>
+   </li>
+   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-followers-btn"
+            data-bs-toggle="tab" data-bs-target="#tab-followers"
+            type="button" role="tab" aria-controls="tab-followers"
+            aria-selected="false" data-pql-tab-key="followers">
+     <i class="bi bi-bell me-1"></i>Followers
+    </button>
+   </li>
+   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-readme-btn"
+            data-bs-toggle="tab" data-bs-target="#tab-readme"
+            type="button" role="tab" aria-controls="tab-readme"
+            aria-selected="false" data-pql-tab-key="readme">
+     <i class="bi bi-file-text me-1"></i>README
+    </button>
+   </li>
+   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-issues-btn"
+            data-bs-toggle="tab" data-bs-target="#tab-issues"
+            type="button" role="tab" aria-controls="tab-issues"
+            aria-selected="false" data-pql-tab-key="issues">
+     <i class="bi bi-exclamation-circle me-1"></i>Issues
+    </button>
+   </li>
+  </ul>
+  <div class="tab-content">
+   {# Discussion pane — inline kind-agnostic x-data.  Talks to the
+      polymorphic /api/social/table/{ref}/comments endpoints.  Default
+      active because Discussion is the most-touched surface. #}
+   <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
+        x-data='tableDiscussion({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'
+        x-init="init()">
+    <template x-if="!commentsLoaded">
+     <div class="text-muted small p-3">Loading discussion…</div>
+    </template>
+    <template x-if="commentsLoaded">
+     <div>
+      <template x-if="comments.length === 0">
+       <div class="alert alert-secondary">
+        <i class="bi bi-chat-left-text me-1"></i>
+        No comments yet — start the discussion below.
+       </div>
+      </template>
+      <template x-for="c in comments" :key="c.id">
+       <div class="card mb-2 pql-comment-card" :data-comment-id="c.id">
+        <div class="card-body py-2">
+         <div class="d-flex justify-content-between align-items-center mb-1">
+          <div class="small text-muted">
+           <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+           · <span x-text="c.created_at"></span>
+          </div>
+          <button class="btn btn-sm btn-link text-danger p-0"
+                  @click="deleteComment(c.id)"
+                  title="Soft-delete this comment">
+           <i class="bi bi-trash"></i>
+          </button>
+         </div>
+         <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+        </div>
+       </div>
+      </template>
 
- {# Discussion pane — inline kind-agnostic x-data.  Talks to the
-    polymorphic /api/social/table/{ref}/comments endpoints. #}
- <div class="tab-pane fade" id="tab-discussion" role="tabpanel"
-      x-data='tableDiscussion({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'
-      x-init="init()">
-  <template x-if="!commentsLoaded">
-   <div class="text-muted small p-3">Loading discussion…</div>
-  </template>
-  <template x-if="commentsLoaded">
-   <div>
-    <template x-if="comments.length === 0">
-     <div class="alert alert-secondary">
-      <i class="bi bi-chat-left-text me-1"></i>
-      No comments yet — start the discussion below.
+      <form class="mt-3" @submit.prevent="submitNew()">
+       <div class="mb-2">
+        <textarea class="form-control" rows="3"
+                  placeholder="Add a comment… markdown welcome"
+                  x-model="draftBody"></textarea>
+       </div>
+       <button class="btn btn-primary btn-sm" type="submit"
+               :disabled="postBusy || !draftBody.trim()">
+        <i class="bi bi-send me-1"></i>Post
+       </button>
+      </form>
      </div>
     </template>
-    <template x-for="c in comments" :key="c.id">
-     <div class="card mb-2 pql-comment-card" :data-comment-id="c.id">
-      <div class="card-body py-2">
-       <div class="d-flex justify-content-between align-items-center mb-1">
-        <div class="small text-muted">
-         <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
-         · <span x-text="c.created_at"></span>
-        </div>
-        <button class="btn btn-sm btn-link text-danger p-0"
-                @click="deleteComment(c.id)"
-                title="Soft-delete this comment">
-         <i class="bi bi-trash"></i>
-        </button>
+   </div>
+
+   {# Endorsements + Followers panes reuse the polymorphic partials.
+      They inherit socialTabs state from the offcanvas x-data above. #}
+   {% include 'partials/social/_endorsements_pane.html' %}
+   {% include 'partials/social/_followers_pane.html' %}
+   {# Phase 77.7 — Issues pane.  ``issuesPane`` factory carries its own
+      x-data scope; reads ``kind`` + ``ref`` from the surrounding
+      ``socialTabs`` scope. #}
+   {% include 'partials/social/_issues_pane.html' %}
+
+   {# README pane — inline kind-agnostic x-data.  Talks to the
+      polymorphic /api/social/table/{ref}/readme endpoints. #}
+   <div class="tab-pane fade" id="tab-readme" role="tabpanel"
+        x-data='tableReadme({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'
+        x-init="init()">
+    <template x-if="!readmeLoaded">
+     <div class="text-muted small p-3">Loading README…</div>
+    </template>
+    <template x-if="readmeLoaded && !editing">
+     <div>
+      <div class="d-flex justify-content-end mb-2">
+       <button class="btn btn-sm btn-outline-secondary" @click="startEdit()">
+        <i class="bi bi-pencil me-1"></i>Edit README
+       </button>
+      </div>
+      <template x-if="body">
+       <div class="border rounded p-3 pql-readme-body" x-html="renderedBody"></div>
+      </template>
+      <template x-if="!body">
+       <div class="alert alert-secondary">
+        <i class="bi bi-file-text me-1"></i>
+        No README yet — click Edit to write one (admin only).
        </div>
-       <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+      </template>
+     </div>
+    </template>
+    <template x-if="readmeLoaded && editing">
+     <div>
+      <textarea class="form-control mb-2" rows="14"
+                x-model="draftBody"
+                placeholder="# Heading&#10;&#10;Long-form context, examples, intended use…"></textarea>
+      <div class="d-flex gap-2">
+       <button class="btn btn-primary btn-sm" @click="save()" :disabled="saveBusy">
+        <i class="bi bi-check-lg me-1"></i>Save
+       </button>
+       <button class="btn btn-outline-secondary btn-sm" @click="cancelEdit()">
+        Cancel
+       </button>
       </div>
      </div>
     </template>
-
-    <form class="mt-3" @submit.prevent="submitNew()">
-     <div class="mb-2">
-      <textarea class="form-control" rows="3"
-                placeholder="Add a comment… markdown welcome"
-                x-model="draftBody"></textarea>
-     </div>
-     <button class="btn btn-primary btn-sm" type="submit"
-             :disabled="postBusy || !draftBody.trim()">
-      <i class="bi bi-send me-1"></i>Post
-     </button>
-    </form>
    </div>
-  </template>
- </div>
-
- {# Endorsements + Followers panes reuse the polymorphic partials.
-    They inherit socialTabs state from the tab-content x-data above. #}
- {% include 'partials/social/_endorsements_pane.html' %}
- {% include 'partials/social/_followers_pane.html' %}
- {# Phase 77.7 — Issues pane.  ``issuesPane`` factory carries its own
-    x-data scope; reads ``kind`` + ``ref`` from the surrounding
-    ``socialTabs`` scope. #}
- {% include 'partials/social/_issues_pane.html' %}
-
- {# README pane — inline kind-agnostic x-data.  Talks to the
-    polymorphic /api/social/table/{ref}/readme endpoints.  No
-    history / diff UX this phase (deferred to 77.11). #}
- <div class="tab-pane fade" id="tab-readme" role="tabpanel"
-      x-data='tableReadme({{ (catalog_name ~ "." ~ schema_name ~ "." ~ table_name)|tojson }})'
-      x-init="init()">
-  <template x-if="!readmeLoaded">
-   <div class="text-muted small p-3">Loading README…</div>
-  </template>
-  <template x-if="readmeLoaded && !editing">
-   <div>
-    <div class="d-flex justify-content-end mb-2">
-     <button class="btn btn-sm btn-outline-secondary" @click="startEdit()">
-      <i class="bi bi-pencil me-1"></i>Edit README
-     </button>
-    </div>
-    <template x-if="body">
-     <div class="border rounded p-3 pql-readme-body" x-html="renderedBody"></div>
-    </template>
-    <template x-if="!body">
-     <div class="alert alert-secondary">
-      <i class="bi bi-file-text me-1"></i>
-      No README yet — click Edit to write one (admin only).
-     </div>
-    </template>
-   </div>
-  </template>
-  <template x-if="readmeLoaded && editing">
-   <div>
-    <textarea class="form-control mb-2" rows="14"
-              x-model="draftBody"
-              placeholder="# Heading&#10;&#10;Long-form context, examples, intended use…"></textarea>
-    <div class="d-flex gap-2">
-     <button class="btn btn-primary btn-sm" @click="save()" :disabled="saveBusy">
-      <i class="bi bi-check-lg me-1"></i>Save
-     </button>
-     <button class="btn btn-outline-secondary btn-sm" @click="cancelEdit()">
-      Cancel
-     </button>
-    </div>
-   </div>
-  </template>
+  </div>
  </div>
 </div>
 {% endif %}
