@@ -143,11 +143,17 @@
         <button type="button"
                 class="btn btn-link text-body p-0 me-3 d-md-none"
                 aria-label="Search"
+                data-bs-toggle="tooltip"
+                data-bs-placement="bottom"
+                data-bs-title="Search (Cmd+K)"
                 onclick="window.dispatchEvent(new CustomEvent('pql:open-palette'))">
             <i class="bi bi-search fs-5"></i>
         </button>
         {% include "components/quick_create_menu.html" %}
-        <div class="dropdown me-2 d-none d-md-block">
+        <div class="dropdown me-2 d-none d-md-block"
+             data-bs-toggle="tooltip"
+             data-bs-placement="bottom"
+             data-bs-title="Toggle colour theme">
             <button class="btn btn-link text-body p-0 d-flex align-items-center"
                     type="button"
                     id="pql-theme-toggle"
@@ -480,6 +486,32 @@
                 if (mode === 'collapse') setCollapsed(true);
                 else if (mode === 'expand') setCollapsed(false);
                 else setCollapsed(!isCollapsed);
+            });
+        })();
+    </script>
+    <script>
+        // Phase 80.10.3 — auto-initialise Bootstrap tooltips.
+        //
+        // Any element carrying ``data-bs-toggle="tooltip"`` gets a
+        // ``new bootstrap.Tooltip(el)`` on first paint, plus an
+        // ``htmx:afterSwap`` re-init so tooltips on swapped HTML
+        // (#main-content) still work.  The ``data-bs-tooltip-init``
+        // marker prevents double-init when a partial swap re-visits a
+        // node that already has a Tooltip instance attached.
+        (function () {
+            function initTooltips(root) {
+                (root || document)
+                    .querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-tooltip-init])')
+                    .forEach((el) => {
+                        try {
+                            new bootstrap.Tooltip(el);
+                            el.setAttribute('data-bs-tooltip-init', '1');
+                        } catch (_) { /* Bootstrap missing on auth pages */ }
+                    });
+            }
+            document.addEventListener('DOMContentLoaded', () => initTooltips());
+            document.body.addEventListener('htmx:afterSwap', (e) => {
+                initTooltips(e.target);
             });
         })();
     </script>

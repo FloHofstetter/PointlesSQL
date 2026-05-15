@@ -13,13 +13,15 @@
   right scope.
 #}
 {% if current_user is defined and current_user %}
-<div class="dropdown me-2 d-none d-md-block">
+<div class="dropdown me-2 d-none d-md-block"
+     data-bs-toggle="tooltip"
+     data-bs-placement="bottom"
+     data-bs-title="Create new…">
     <button class="btn btn-link text-body p-0 d-flex align-items-center pql-quick-create-trigger"
             type="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
-            aria-label="Create new"
-            title="Create new…">
+            aria-label="Create new">
         <i class="bi bi-plus-square fs-5"></i>
     </button>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="quickCreateMenu">

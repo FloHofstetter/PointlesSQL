@@ -54,6 +54,9 @@
         <button type="button"
                 class="pql-footer-bar__hint"
                 aria-label="Show keyboard shortcuts"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-title="Show keyboard shortcuts"
                 onclick="window.dispatchEvent(new CustomEvent('pql:show-shortcuts'))">
             <kbd>?</kbd>
             <span class="ms-1">shortcuts</span>
@@ -61,6 +64,9 @@
         <button type="button"
                 class="pql-footer-bar__hint"
                 aria-label="Open command palette"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                data-bs-title="Open command palette (Cmd+K)"
                 onclick="window.dispatchEvent(new CustomEvent('pql:open-palette'))">
             <kbd>⌘K</kbd>
             <span class="ms-1">search</span>
