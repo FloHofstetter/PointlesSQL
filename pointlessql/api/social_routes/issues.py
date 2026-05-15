@@ -48,24 +48,22 @@ from pointlessql.api.dependencies import (
     get_user,
     require_user,
 )
-from pointlessql.api.social_routes._kind_dispatch import (
-    parse_dp_ref,
-    parse_ref,
+from pointlessql.api.social_routes._issue_helpers import (
+    can_edit_issue,
+    ensure_parent_supports_issues,
+    hydrate_emails,
+    hydrate_parent,
+    normalise_parent_ref,
+    resolve_parent_target_id,
+    serialise_issue,
+    validate_labels,
 )
-from pointlessql.models.auth import User
 from pointlessql.models.social._issue import (
     ISSUE_CLOSED_REASONS,
     Issue,
 )
-from pointlessql.models.social._issue_label import IssueLabel
-from pointlessql.models.social._issue_milestone import IssueMilestone
 from pointlessql.models.social._social_target import SocialTarget
-from pointlessql.services.social._target_resolver import (
-    get_or_create_target,
-    resolve_dp_target,
-)
 from pointlessql.services.social.audit_mirror import mirror_social_to_audit
-from pointlessql.services.social.entity_registry import get as registry_get
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_ISSUE_OPENED,
     EVENT_TYPE_ISSUE_STATE_CHANGED,
@@ -75,189 +73,11 @@ from pointlessql.services.workspace.governance import (
 router = APIRouter(tags=["social"])
 
 _MAX_TITLE = 255
-_MAX_LABELS = 20
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _ensure_parent_supports_issues(kind: str) -> None:
-    """Raise 404 when the parent kind has ``supports_issues=False``."""
-    spec = registry_get(kind)
-    if not spec.supports_issues:
-        # bare-http-ok: issues are entity-kind opt-in.
-        raise HTTPException(
-            status_code=404,
-            detail=f"kind={kind!r} does not support issues",
-        )
-
-
-def _resolve_parent_target_id(
-    session: Any,
-    workspace_id: int,
-    kind: str,
-    ref: str,
-) -> int:
-    """Return the parent's ``social_targets.id`` for an issue create.
-
-    Args:
-        session: Active SQLAlchemy session.
-        workspace_id: Tenant scope for both the parent + the issue.
-        kind: Parent entity kind discriminator.
-        ref: Parent entity reference.
-
-    Returns:
-        The parent's ``social_targets.id``.  Created on demand for
-        non-DP kinds; looked up via ``resolve_dp_target`` for
-        ``kind='dp'`` so the back-pointer is populated.
-
-    Raises:
-        HTTPException: 404 when ``kind='dp'`` and the DP row is
-            missing in the workspace.
-    """
-    if kind == "dp":
-        try:
-            target = resolve_dp_target(
-                session,
-                workspace_id=workspace_id,
-                catalog_name=ref.split(".", 1)[0],
-                schema_name=ref.split(".", 1)[1],
-            )
-        except LookupError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
-    else:
-        target = get_or_create_target(
-            session,
-            workspace_id=workspace_id,
-            kind=kind,
-            ref=ref,
-        )
-    return int(target.id)
-
-
-def _normalise_parent_ref(kind: str, ref: str) -> str:
-    """Validate the parent ``(kind, ref)`` pair and return the canonical ref."""
-    if kind == "dp":
-        catalog, schema = parse_dp_ref(kind, ref)
-        return f"{catalog}.{schema}"
-    return parse_ref(kind, ref)
-
-
-def _validate_labels(raw: Any) -> str:
-    """Coerce a labels-input value into a JSON string of slugs.
-
-    Args:
-        raw: Either a Python list of strings, or a JSON-encoded
-            string already.  Anything else triggers a 400.
-
-    Returns:
-        Canonical JSON-encoded list of label slugs.
-
-    Raises:
-        HTTPException: 400 on malformed input or > :data:`_MAX_LABELS`.
-    """
-    if raw is None:
-        return "[]"
-    parsed: Any
-    if isinstance(raw, str):
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise HTTPException(
-                status_code=400, detail=f"labels not JSON: {exc}"
-            ) from exc
-    else:
-        parsed = raw
-    if not isinstance(parsed, list):
-        raise HTTPException(
-            status_code=400, detail="labels must be a JSON array of strings"
-        )
-    parsed_list = cast(list[Any], parsed)
-    if len(parsed_list) > _MAX_LABELS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"too many labels (max {_MAX_LABELS})",
-        )
-    cleaned: list[str] = []
-    for item in parsed_list:
-        if not isinstance(item, str) or not item:
-            raise HTTPException(
-                status_code=400,
-                detail="every label must be a non-empty string slug",
-            )
-        cleaned.append(item)
-    return json.dumps(cleaned)
-
-
-def _serialise_issue(
-    issue: Issue,
-    *,
-    parent_kind: str | None = None,
-    parent_ref: str | None = None,
-    assignee_email: str | None = None,
-    opener_email: str | None = None,
-) -> dict[str, Any]:
-    """Render one issue row as a JSON-friendly dict."""
-    return {
-        "id": issue.id,
-        "social_target_id": issue.social_target_id,
-        "parent_social_target_id": issue.parent_social_target_id,
-        "parent_kind": parent_kind,
-        "parent_ref": parent_ref,
-        "title": issue.title,
-        "body_md": issue.body_md,
-        "state": issue.state,
-        "assignee": {
-            "user_id": issue.assignee_user_id,
-            "email": assignee_email,
-        }
-        if issue.assignee_user_id is not None
-        else None,
-        "opened_by": {
-            "user_id": issue.opened_by_user_id,
-            "email": opener_email,
-        },
-        "opened_at": issue.opened_at.isoformat(),
-        "closed_at": issue.closed_at.isoformat()
-        if issue.closed_at
-        else None,
-        "closed_reason": issue.closed_reason,
-        "milestone_id": issue.milestone_id,
-        "labels": json.loads(issue.labels_json or "[]"),
-    }
-
-
-def _hydrate_parent(
-    session: Any, parent_social_target_id: int
-) -> tuple[str | None, str | None]:
-    """Look up ``(parent_kind, parent_ref)`` for a parent social_target id."""
-    row = session.execute(
-        select(
-            SocialTarget.entity_kind, SocialTarget.entity_ref
-        ).where(SocialTarget.id == parent_social_target_id)
-    ).first()
-    if row is None:
-        return None, None
-    return str(row[0]), str(row[1])
-
-
-def _hydrate_emails(
-    session: Any, user_ids: list[int]
-) -> dict[int, str]:
-    """Bulk-resolve user ids to email strings."""
-    if not user_ids:
-        return {}
-    rows = session.execute(
-        select(User.id, User.email).where(User.id.in_(user_ids))
-    ).all()
-    return {int(uid): str(email) for uid, email in rows}
-
 
 # ---------------------------------------------------------------------------
 # POST — create an issue against a parent
 # ---------------------------------------------------------------------------
+
 
 
 @router.post("/api/social/{parent_kind}/{parent_ref:path}/issues")
@@ -286,41 +106,47 @@ async def open_issue(
     """
     require_user(request)
     user = get_user(request)
-    _ensure_parent_supports_issues(parent_kind)
-    canonical_parent_ref = _normalise_parent_ref(parent_kind, parent_ref)
+    ensure_parent_supports_issues(parent_kind)
+    canonical_parent_ref = normalise_parent_ref(parent_kind, parent_ref)
 
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400, detail="request body must be a JSON object"
         )
     payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
     title_raw = payload.get("title")
     if not isinstance(title_raw, str) or not title_raw.strip():
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400, detail="title is required and non-empty"
         )
     title: str = title_raw
     if len(title) > _MAX_TITLE:
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400,
             detail=f"title too long (max {_MAX_TITLE} chars)",
         )
     body_md_raw = payload.get("body_md", "") or ""
     if not isinstance(body_md_raw, str):
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400, detail="body_md must be a string"
         )
     body_md: str = body_md_raw
-    labels_json = _validate_labels(payload.get("labels"))
+    labels_json = validate_labels(payload.get("labels"))
     assignee_raw = payload.get("assignee_user_id")
     if assignee_raw is not None and not isinstance(assignee_raw, int):
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400, detail="assignee_user_id must be an int or null"
         )
     assignee_user_id: int | None = assignee_raw
     milestone_raw = payload.get("milestone_id")
     if milestone_raw is not None and not isinstance(milestone_raw, int):
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400, detail="milestone_id must be an int or null"
         )
@@ -329,7 +155,7 @@ async def open_issue(
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        parent_target_id = _resolve_parent_target_id(
+        parent_target_id = resolve_parent_target_id(
             session, workspace_id, parent_kind, canonical_parent_ref
         )
 
@@ -370,15 +196,15 @@ async def open_issue(
         session.commit()
 
         # Hydration for the response.
-        parent_kind_hyd, parent_ref_hyd = _hydrate_parent(
+        parent_kind_hyd, parent_ref_hyd = hydrate_parent(
             session, parent_target_id
         )
-        emails = _hydrate_emails(
+        emails = hydrate_emails(
             session,
             [int(user["id"])]
             + ([assignee_user_id] if assignee_user_id else []),
         )
-        result = _serialise_issue(
+        result = serialise_issue(
             issue,
             parent_kind=parent_kind_hyd,
             parent_ref=parent_ref_hyd,
@@ -436,13 +262,13 @@ async def list_issues_for_parent(
 ) -> dict[str, Any]:
     """List every issue opened against ``parent_kind/parent_ref``."""
     require_user(request)
-    _ensure_parent_supports_issues(parent_kind)
-    canonical_parent_ref = _normalise_parent_ref(parent_kind, parent_ref)
+    ensure_parent_supports_issues(parent_kind)
+    canonical_parent_ref = normalise_parent_ref(parent_kind, parent_ref)
 
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        parent_target_id = _resolve_parent_target_id(
+        parent_target_id = resolve_parent_target_id(
             session, workspace_id, parent_kind, canonical_parent_ref
         )
         conditions = [
@@ -465,13 +291,13 @@ async def list_issues_for_parent(
             {r.opened_by_user_id for r in rows}
             | {r.assignee_user_id for r in rows if r.assignee_user_id}
         )
-        emails = _hydrate_emails(session, user_ids)
+        emails = hydrate_emails(session, user_ids)
         return {
             "parent_kind": parent_kind,
             "parent_ref": canonical_parent_ref,
             "count": len(rows),
             "issues": [
-                _serialise_issue(
+                serialise_issue(
                     r,
                     parent_kind=parent_kind,
                     parent_ref=canonical_parent_ref,
@@ -542,7 +368,7 @@ async def list_issues_global(
             {r.opened_by_user_id for r in rows}
             | {r.assignee_user_id for r in rows if r.assignee_user_id}
         )
-        emails = _hydrate_emails(session, user_ids)
+        emails = hydrate_emails(session, user_ids)
         parent_ids = [r.parent_social_target_id for r in rows]
         parent_lookup: dict[int, tuple[str | None, str | None]] = {}
         if parent_ids:
@@ -557,7 +383,7 @@ async def list_issues_global(
         return {
             "count": len(rows),
             "issues": [
-                _serialise_issue(
+                serialise_issue(
                     r,
                     parent_kind=parent_lookup.get(
                         r.parent_social_target_id, (None, None)
@@ -591,11 +417,12 @@ async def get_issue(issue_id: int, request: Request) -> dict[str, Any]:
             )
         ).scalar_one_or_none()
         if issue is None:
+            # bare-http-ok: API contract / request validation.
             raise HTTPException(status_code=404, detail="issue not found")
-        parent_kind, parent_ref = _hydrate_parent(
+        parent_kind, parent_ref = hydrate_parent(
             session, issue.parent_social_target_id
         )
-        emails = _hydrate_emails(
+        emails = hydrate_emails(
             session,
             [issue.opened_by_user_id]
             + (
@@ -604,7 +431,7 @@ async def get_issue(issue_id: int, request: Request) -> dict[str, Any]:
                 else []
             ),
         )
-        return _serialise_issue(
+        return serialise_issue(
             issue,
             parent_kind=parent_kind,
             parent_ref=parent_ref,
@@ -618,16 +445,6 @@ async def get_issue(issue_id: int, request: Request) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _can_edit_issue(user: Any, issue: Issue) -> bool:
-    """Return whether *user* may PATCH *issue*.
-
-    Opener + admin only.  Mirrors GitHub's perms.
-    """
-    if user.get("is_admin"):
-        return True
-    return int(user.get("id") or 0) == int(issue.opened_by_user_id)
-
-
 @router.patch("/api/issues/{issue_id}")
 async def patch_issue(
     issue_id: int, request: Request
@@ -638,6 +455,7 @@ async def patch_issue(
     workspace_id = current_workspace_id(request)
     payload_raw = await request.json()
     if not isinstance(payload_raw, dict):
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400, detail="request body must be a JSON object"
         )
@@ -650,19 +468,22 @@ async def patch_issue(
             )
         ).scalar_one_or_none()
         if issue is None:
+            # bare-http-ok: API contract / request validation.
             raise HTTPException(status_code=404, detail="issue not found")
-        if not _can_edit_issue(user, issue):
+        if not can_edit_issue(user, issue):
             raise HTTPException(
                 status_code=403, detail="only opener or admin may edit"
             )
         if "title" in payload:
             new_title_raw = payload["title"]
             if not isinstance(new_title_raw, str) or not new_title_raw.strip():
+                # bare-http-ok: API contract / request validation.
                 raise HTTPException(
                     status_code=400,
                     detail="title must be a non-empty string",
                 )
             if len(new_title_raw) > _MAX_TITLE:
+                # bare-http-ok: API contract / request validation.
                 raise HTTPException(
                     status_code=400, detail="title too long"
                 )
@@ -670,6 +491,7 @@ async def patch_issue(
         if "body_md" in payload:
             new_body_raw = payload["body_md"]
             if not isinstance(new_body_raw, str):
+                # bare-http-ok: API contract / request validation.
                 raise HTTPException(
                     status_code=400, detail="body_md must be a string"
                 )
@@ -679,6 +501,7 @@ async def patch_issue(
             if new_assignee_raw is not None and not isinstance(
                 new_assignee_raw, int
             ):
+                # bare-http-ok: API contract / request validation.
                 raise HTTPException(
                     status_code=400,
                     detail="assignee_user_id must be int or null",
@@ -689,18 +512,19 @@ async def patch_issue(
             if new_milestone_raw is not None and not isinstance(
                 new_milestone_raw, int
             ):
+                # bare-http-ok: API contract / request validation.
                 raise HTTPException(
                     status_code=400,
                     detail="milestone_id must be int or null",
                 )
             issue.milestone_id = new_milestone_raw
         if "labels" in payload:
-            issue.labels_json = _validate_labels(payload["labels"])
+            issue.labels_json = validate_labels(payload["labels"])
         session.commit()
-        parent_kind, parent_ref = _hydrate_parent(
+        parent_kind, parent_ref = hydrate_parent(
             session, issue.parent_social_target_id
         )
-        emails = _hydrate_emails(
+        emails = hydrate_emails(
             session,
             [issue.opened_by_user_id]
             + (
@@ -709,7 +533,7 @@ async def patch_issue(
                 else []
             ),
         )
-        result = _serialise_issue(
+        result = serialise_issue(
             issue,
             parent_kind=parent_kind,
             parent_ref=parent_ref,
@@ -758,8 +582,9 @@ async def _transition_state(
             )
         ).scalar_one_or_none()
         if issue is None:
+            # bare-http-ok: API contract / request validation.
             raise HTTPException(status_code=404, detail="issue not found")
-        if not _can_edit_issue(user, issue):
+        if not can_edit_issue(user, issue):
             raise HTTPException(
                 status_code=403,
                 detail="only opener or admin may transition state",
@@ -773,10 +598,10 @@ async def _transition_state(
             issue.closed_at = datetime.datetime.now(datetime.UTC)
             issue.closed_reason = closed_reason
         session.commit()
-        parent_kind, parent_ref = _hydrate_parent(
+        parent_kind, parent_ref = hydrate_parent(
             session, issue.parent_social_target_id
         )
-        emails = _hydrate_emails(
+        emails = hydrate_emails(
             session,
             [issue.opened_by_user_id]
             + (
@@ -785,7 +610,7 @@ async def _transition_state(
                 else []
             ),
         )
-        result = _serialise_issue(
+        result = serialise_issue(
             issue,
             parent_kind=parent_kind,
             parent_ref=parent_ref,
@@ -848,6 +673,7 @@ async def close_issue(
         closed_reason_raw is not None
         and closed_reason_raw not in ISSUE_CLOSED_REASONS
     ):
+        # bare-http-ok: API contract / request validation.
         raise HTTPException(
             status_code=400,
             detail=f"closed_reason must be one of {ISSUE_CLOSED_REASONS}",
@@ -872,243 +698,6 @@ async def reopen_issue(
     """Reopen a closed issue.  Clears ``closed_at`` + ``closed_reason``."""
     return await _transition_state(issue_id, request, new_state="open")
 
-
-# ---------------------------------------------------------------------------
-# Labels CRUD
-# ---------------------------------------------------------------------------
-
-
-def _serialise_label(label: IssueLabel) -> dict[str, Any]:
-    """Render an :class:`IssueLabel` row as a JSON-friendly dict."""
-    return {
-        "id": label.id,
-        "slug": label.slug,
-        "label_text": label.label_text,
-        "color_hex": label.color_hex,
-        "created_at": label.created_at.isoformat(),
-    }
-
-
-@router.get("/api/workspaces/{workspace_id}/labels")
-async def list_labels(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
-    """List every label registered for a workspace."""
-    require_user(request)
-    if workspace_id != current_workspace_id(request):
-        raise HTTPException(
-            status_code=403, detail="cross-workspace label read forbidden"
-        )
-    factory = request.app.state.session_factory
-    with factory() as session:
-        rows = (
-            session.execute(
-                select(IssueLabel)
-                .where(IssueLabel.workspace_id == workspace_id)
-                .order_by(IssueLabel.slug)
-            )
-            .scalars()
-            .all()
-        )
-        return {"labels": [_serialise_label(r) for r in rows]}
-
-
-@router.post("/api/workspaces/{workspace_id}/labels")
-async def create_label(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
-    """Register a new label."""
-    require_user(request)
-    if workspace_id != current_workspace_id(request):
-        raise HTTPException(
-            status_code=403, detail="cross-workspace label write forbidden"
-        )
-    payload_raw = await request.json()
-    if not isinstance(payload_raw, dict):
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
-    payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
-    slug_raw = payload.get("slug")
-    if not isinstance(slug_raw, str) or not slug_raw:
-        raise HTTPException(
-            status_code=400, detail="slug must be a non-empty string"
-        )
-    slug: str = slug_raw
-    label_text_raw = payload.get("label_text") or slug
-    label_text: str = str(label_text_raw)
-    color_hex: str = str(payload.get("color_hex", "#cccccc"))
-    factory = request.app.state.session_factory
-    with factory() as session:
-        existing = session.execute(
-            select(IssueLabel).where(
-                IssueLabel.workspace_id == workspace_id,
-                IssueLabel.slug == slug,
-            )
-        ).scalar_one_or_none()
-        if existing is not None:
-            raise HTTPException(
-                status_code=409, detail=f"label slug {slug!r} already exists"
-            )
-        label = IssueLabel(
-            workspace_id=workspace_id,
-            slug=slug,
-            label_text=label_text,
-            color_hex=color_hex,
-        )
-        session.add(label)
-        session.commit()
-        session.refresh(label)
-        return _serialise_label(label)
-
-
-@router.delete("/api/workspaces/{workspace_id}/labels/{label_id}")
-async def delete_label(
-    workspace_id: int, label_id: int, request: Request
-) -> dict[str, Any]:
-    """Drop a label.  Existing issue label-arrays are NOT updated."""
-    require_user(request)
-    if workspace_id != current_workspace_id(request):
-        raise HTTPException(
-            status_code=403, detail="cross-workspace label write forbidden"
-        )
-    factory = request.app.state.session_factory
-    with factory() as session:
-        label = session.execute(
-            select(IssueLabel).where(
-                IssueLabel.id == label_id,
-                IssueLabel.workspace_id == workspace_id,
-            )
-        ).scalar_one_or_none()
-        if label is None:
-            raise HTTPException(status_code=404, detail="label not found")
-        session.delete(label)
-        session.commit()
-    return {"deleted": True, "id": label_id}
-
-
-# ---------------------------------------------------------------------------
-# Milestones CRUD
-# ---------------------------------------------------------------------------
-
-
-def _serialise_milestone(m: IssueMilestone) -> dict[str, Any]:
-    """Render an :class:`IssueMilestone` row as a JSON-friendly dict."""
-    return {
-        "id": m.id,
-        "title": m.title,
-        "description_md": m.description_md,
-        "due_at": m.due_at.isoformat() if m.due_at else None,
-        "closed_at": m.closed_at.isoformat() if m.closed_at else None,
-        "created_at": m.created_at.isoformat(),
-    }
-
-
-@router.get("/api/workspaces/{workspace_id}/milestones")
-async def list_milestones(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
-    """List every milestone for a workspace."""
-    require_user(request)
-    if workspace_id != current_workspace_id(request):
-        raise HTTPException(
-            status_code=403,
-            detail="cross-workspace milestone read forbidden",
-        )
-    factory = request.app.state.session_factory
-    with factory() as session:
-        rows = (
-            session.execute(
-                select(IssueMilestone)
-                .where(IssueMilestone.workspace_id == workspace_id)
-                .order_by(IssueMilestone.due_at.is_(None), IssueMilestone.due_at)
-            )
-            .scalars()
-            .all()
-        )
-        return {"milestones": [_serialise_milestone(r) for r in rows]}
-
-
-@router.post("/api/workspaces/{workspace_id}/milestones")
-async def create_milestone(
-    workspace_id: int, request: Request
-) -> dict[str, Any]:
-    """Create a milestone."""
-    require_user(request)
-    if workspace_id != current_workspace_id(request):
-        raise HTTPException(
-            status_code=403,
-            detail="cross-workspace milestone write forbidden",
-        )
-    payload_raw = await request.json()
-    if not isinstance(payload_raw, dict):
-        raise HTTPException(
-            status_code=400, detail="request body must be a JSON object"
-        )
-    payload: dict[str, Any] = cast(dict[str, Any], payload_raw)
-    title_raw = payload.get("title")
-    if not isinstance(title_raw, str) or not title_raw.strip():
-        raise HTTPException(
-            status_code=400, detail="title is required"
-        )
-    title: str = title_raw
-    description_raw = payload.get("description_md")
-    description_md: str | None = (
-        description_raw if isinstance(description_raw, str) else None
-    )
-    due_at_raw = payload.get("due_at")
-    due_at: datetime.datetime | None = None
-    if due_at_raw is not None:
-        if not isinstance(due_at_raw, str):
-            raise HTTPException(
-                status_code=400, detail="due_at must be an ISO 8601 string"
-            )
-        try:
-            due_at = datetime.datetime.fromisoformat(due_at_raw)
-        except (TypeError, ValueError) as exc:
-            raise HTTPException(
-                status_code=400, detail=f"due_at not ISO 8601: {exc}"
-            ) from exc
-    factory = request.app.state.session_factory
-    with factory() as session:
-        m = IssueMilestone(
-            workspace_id=workspace_id,
-            title=title.strip(),
-            description_md=description_md,
-            due_at=due_at,
-        )
-        session.add(m)
-        session.commit()
-        session.refresh(m)
-        return _serialise_milestone(m)
-
-
-@router.delete("/api/workspaces/{workspace_id}/milestones/{milestone_id}")
-async def delete_milestone(
-    workspace_id: int, milestone_id: int, request: Request
-) -> dict[str, Any]:
-    """Drop a milestone.  Issues stay; their ``milestone_id`` may dangle."""
-    require_user(request)
-    if workspace_id != current_workspace_id(request):
-        raise HTTPException(
-            status_code=403,
-            detail="cross-workspace milestone write forbidden",
-        )
-    factory = request.app.state.session_factory
-    with factory() as session:
-        m = session.execute(
-            select(IssueMilestone).where(
-                IssueMilestone.id == milestone_id,
-                IssueMilestone.workspace_id == workspace_id,
-            )
-        ).scalar_one_or_none()
-        if m is None:
-            raise HTTPException(
-                status_code=404, detail="milestone not found"
-            )
-        session.delete(m)
-        session.commit()
-    return {"deleted": True, "id": milestone_id}
 
 
 __all__: list[str] = ["router"]

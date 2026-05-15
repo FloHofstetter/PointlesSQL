@@ -38,7 +38,7 @@ def test_model_kind_is_registered() -> None:
     # UNIQUE migration on ``data_product_reviews``.
     assert spec.supports_reviews is True
     assert spec.supports_stars is True
-    assert spec.supports_issues is False  # ships in 77.7
+    assert spec.supports_issues is True  # flipped in 77.7
 
 
 def test_model_url_builder_routes_to_model_detail_page() -> None:

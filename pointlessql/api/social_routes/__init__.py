@@ -16,6 +16,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from pointlessql.api.social_routes import (
+    _issue_taxonomy,
     comments,
     endorsements,
     follows,
@@ -35,6 +36,7 @@ router.include_router(reactions.router)
 router.include_router(readme.router)
 router.include_router(stars.router)
 router.include_router(issues.router)
+router.include_router(_issue_taxonomy.router)
 
 
 __all__: list[str] = ["router"]

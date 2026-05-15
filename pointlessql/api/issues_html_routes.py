@@ -64,6 +64,7 @@ async def issue_detail_page(
             )
         ).scalar_one_or_none()
         if issue is None:
+            # bare-http-ok: HTML route for an issue id that doesn't exist.
             raise HTTPException(status_code=404, detail="issue not found")
         parent_row = session.execute(
             select(

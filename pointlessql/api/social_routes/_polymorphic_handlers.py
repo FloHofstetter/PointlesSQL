@@ -287,6 +287,7 @@ def _resolve_target_id(
         if kind == "dp":
             parts = ref.split(".", 1)
             if len(parts) != 2 or not all(parts):
+                # bare-http-ok: ref shape is the API contract.
                 raise HTTPException(
                     status_code=400,
                     detail="kind='dp' ref must be 'catalog.schema'",
@@ -299,6 +300,7 @@ def _resolve_target_id(
                     schema_name=parts[1],
                 )
             except LookupError as exc:
+                # bare-http-ok: DP not found in this workspace.
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
         else:
             target = get_or_create_target(
