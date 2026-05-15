@@ -1,0 +1,84 @@
+{#
+  Feed context-panel — Phase 80.2.
+
+  Filter chips for the activity-feed page.  Each chip toggles a
+  query-param on ``/feed`` (kind, author, event_type).  The page
+  itself reads the params server-side.  RSS link surfaces the
+  subscribe URL.
+
+  Static today; Alpine factory can pre-fill saved filters in a
+  later phase.
+#}
+<div class="pql-sidebar border-end" aria-label="Feed filters">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/feed" class="text-muted text-decoration-none">Feed</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <div class="px-3 py-2 text-uppercase small fw-semibold text-muted">
+            Filter by kind
+        </div>
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/feed" class="pql-context-panel__link">
+                    <i class="bi bi-funnel"></i>
+                    <span>All activity</span>
+                </a>
+            </li>
+            <li>
+                <a href="/feed?kind=dp" class="pql-context-panel__link">
+                    <i class="bi bi-collection"></i>
+                    <span>Data products</span>
+                </a>
+            </li>
+            <li>
+                <a href="/feed?kind=table" class="pql-context-panel__link">
+                    <i class="bi bi-table"></i>
+                    <span>Tables</span>
+                </a>
+            </li>
+            <li>
+                <a href="/feed?kind=model" class="pql-context-panel__link">
+                    <i class="bi bi-cpu"></i>
+                    <span>ML models</span>
+                </a>
+            </li>
+            <li>
+                <a href="/feed?kind=run" class="pql-context-panel__link">
+                    <i class="bi bi-activity"></i>
+                    <span>Runs</span>
+                </a>
+            </li>
+            <li>
+                <a href="/feed?kind=issue" class="pql-context-panel__link">
+                    <i class="bi bi-bug"></i>
+                    <span>Issues</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 text-uppercase small fw-semibold text-muted border-top">
+            Author
+        </div>
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/feed?author=me" class="pql-context-panel__link">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Authored by me</span>
+                </a>
+            </li>
+            <li>
+                <a href="/feed?author=agents" class="pql-context-panel__link">
+                    <i class="bi bi-cpu-fill"></i>
+                    <span>Authored by agents</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 border-top">
+            <a href="/feed.rss" class="pql-context-panel__link text-muted">
+                <i class="bi bi-rss"></i>
+                <span>Subscribe (RSS)</span>
+            </a>
+        </div>
+    </div>
+</div>

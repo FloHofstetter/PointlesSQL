@@ -1,0 +1,43 @@
+{#
+  Lineage explorer context-panel — Phase 80.2.
+
+  Lineage hub (Phase 80.4 lands /lineage as the index page) holds
+  three primary actions: trace a row, trace a column, browse recent
+  traces.  Recent traces live in localStorage; Phase 81 can promote
+  them to a DB-backed table.
+#}
+<div class="pql-sidebar border-end" aria-label="Lineage explorer">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/lineage" class="text-muted text-decoration-none">Lineage</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/lineage" class="pql-context-panel__link">
+                    <i class="bi bi-share"></i>
+                    <span>Explorer</span>
+                </a>
+            </li>
+            <li>
+                <a href="/lineage#trace-row" class="pql-context-panel__link">
+                    <i class="bi bi-arrow-down-up"></i>
+                    <span>Trace a row</span>
+                </a>
+            </li>
+            <li>
+                <a href="/lineage#trace-column" class="pql-context-panel__link">
+                    <i class="bi bi-columns-gap"></i>
+                    <span>Trace a column</span>
+                </a>
+            </li>
+            <li>
+                <a href="/lineage#recent" class="pql-context-panel__link">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Recent traces</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

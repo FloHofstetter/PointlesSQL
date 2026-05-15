@@ -1,0 +1,49 @@
+{#
+  dbt context-panel — Phase 80.2.
+
+  dbt is a thin iframe surface today.  Side panel offers the
+  three obvious sub-views (recent runs, projects, docs) as static
+  shortcuts.  Phase 81+ can replace this with live data from the
+  dbt API when the iframe gets richer.
+#}
+<div class="pql-sidebar border-end" aria-label="dbt">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/dbt" class="text-muted text-decoration-none">dbt</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/dbt" class="pql-context-panel__link">
+                    <i class="bi bi-bezier2"></i>
+                    <span>Project home</span>
+                </a>
+            </li>
+            <li>
+                <a href="/dbt?view=runs" class="pql-context-panel__link">
+                    <i class="bi bi-activity"></i>
+                    <span>Recent runs</span>
+                </a>
+            </li>
+            <li>
+                <a href="/dbt?view=models" class="pql-context-panel__link">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>Models</span>
+                </a>
+            </li>
+            <li>
+                <a href="/dbt?view=tests" class="pql-context-panel__link">
+                    <i class="bi bi-check2-square"></i>
+                    <span>Tests</span>
+                </a>
+            </li>
+            <li>
+                <a href="/dbt?view=docs" class="pql-context-panel__link">
+                    <i class="bi bi-book"></i>
+                    <span>Docs</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

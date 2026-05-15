@@ -1,0 +1,64 @@
+{#
+  Issues context-panel — Phase 80.2.
+
+  Filter chips for the issues index page.  State (open / closed),
+  assignment (mine / assigned to me), and label filtering.
+#}
+<div class="pql-sidebar border-end" aria-label="Issues filters">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/issues" class="text-muted text-decoration-none">Issues</a>
+        </span>
+        <a href="/issues/new" class="btn btn-sm btn-outline-primary py-0">
+            <i class="bi bi-plus-lg"></i>
+        </a>
+    </div>
+    <div class="pql-sidebar-body">
+        <div class="px-3 py-2 text-uppercase small fw-semibold text-muted">
+            State
+        </div>
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/issues?state=open" class="pql-context-panel__link">
+                    <i class="bi bi-circle text-success"></i>
+                    <span>Open</span>
+                </a>
+            </li>
+            <li>
+                <a href="/issues?state=closed" class="pql-context-panel__link">
+                    <i class="bi bi-check-circle text-secondary"></i>
+                    <span>Closed</span>
+                </a>
+            </li>
+            <li>
+                <a href="/issues" class="pql-context-panel__link">
+                    <i class="bi bi-bug"></i>
+                    <span>All issues</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 text-uppercase small fw-semibold text-muted border-top">
+            Assignment
+        </div>
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/issues?author=me" class="pql-context-panel__link">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Authored by me</span>
+                </a>
+            </li>
+            <li>
+                <a href="/issues?assignee=me" class="pql-context-panel__link">
+                    <i class="bi bi-person-check"></i>
+                    <span>Assigned to me</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 border-top">
+            <a href="/issues/new" class="pql-context-panel__link">
+                <i class="bi bi-plus-circle"></i>
+                <span>Open a new issue</span>
+            </a>
+        </div>
+    </div>
+</div>

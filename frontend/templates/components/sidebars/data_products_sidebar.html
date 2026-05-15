@@ -1,0 +1,47 @@
+{#
+  Data products context-panel — Phase 80.2.
+
+  Filter chips for /data-products.  Trending / Followed / Mine /
+  Candidates (Phase 73 promote-scanner output).
+#}
+<div class="pql-sidebar border-end" aria-label="Data products">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/data-products" class="text-muted text-decoration-none">Data products</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/data-products" class="pql-context-panel__link">
+                    <i class="bi bi-collection"></i>
+                    <span>All products</span>
+                </a>
+            </li>
+            <li>
+                <a href="/data-products/trending" class="pql-context-panel__link">
+                    <i class="bi bi-graph-up"></i>
+                    <span>Trending</span>
+                </a>
+            </li>
+            <li>
+                <a href="/data-products/followed" class="pql-context-panel__link">
+                    <i class="bi bi-bookmark-star"></i>
+                    <span>Followed</span>
+                </a>
+            </li>
+            <li>
+                <a href="/data-products?author=me" class="pql-context-panel__link">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Mine</span>
+                </a>
+            </li>
+            <li>
+                <a href="/data-products/candidates" class="pql-context-panel__link">
+                    <i class="bi bi-lightning-charge"></i>
+                    <span>Candidates</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

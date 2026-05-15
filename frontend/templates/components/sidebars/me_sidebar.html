@@ -1,0 +1,64 @@
+{#
+  Me-hub context-panel — Phase 80.2.
+
+  Consolidates the previously-fragmented "my stuff" pages (/users/me,
+  /me/settings, /settings/notifications, /me/subscriptions) into
+  one sub-nav.  The actual hub landing (/me) ships in Phase 80.5.
+#}
+{% from "_macros/csrf.html" import csrf_input with context %}
+<div class="pql-sidebar border-end" aria-label="Me hub">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/me" class="text-muted text-decoration-none">Me</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/me" class="pql-context-panel__link">
+                    <i class="bi bi-house"></i>
+                    <span>Overview</span>
+                </a>
+            </li>
+            <li>
+                <a href="/users/me" class="pql-context-panel__link">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Profile</span>
+                </a>
+            </li>
+            <li>
+                <a href="/notifications" class="pql-context-panel__link">
+                    <i class="bi bi-bell"></i>
+                    <span>Inbox</span>
+                </a>
+            </li>
+            <li>
+                <a href="/me/subscriptions" class="pql-context-panel__link">
+                    <i class="bi bi-bookmark-star"></i>
+                    <span>Subscriptions</span>
+                </a>
+            </li>
+            <li>
+                <a href="/settings/notifications" class="pql-context-panel__link">
+                    <i class="bi bi-sliders"></i>
+                    <span>Notification settings</span>
+                </a>
+            </li>
+            <li>
+                <a href="/me/settings" class="pql-context-panel__link">
+                    <i class="bi bi-gear"></i>
+                    <span>Account settings</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 border-top">
+            <form method="post" action="/auth/logout" hx-boost="false" class="m-0">
+                {{ csrf_input() }}
+                <button type="submit" class="pql-context-panel__link border-0 bg-transparent w-100 text-start">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Sign out</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>

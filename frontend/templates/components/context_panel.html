@@ -1,26 +1,15 @@
 {#
- contextual side-panel (240 px).
- — six static branches replaced by per-section
- ``components/sidebars/*_sidebar.html`` partials with their own
- Alpine factories (see ``frontend/js/components/sidebars/``).
+ Contextual side-panel (240 px).  Phase 80.2 expanded the partial
+ set from 9 to 21 sections covering the full IA tree in
+ ``docs/internal/navigation_ia.md``.
 
- Sits to the right of the icon-rail at >= md. The contents are a
- function of ``active_section`` (computed in base.html from
- ``active_page``):
-
- * federation → catalog tree (components/sidebar.html)
- * dashboards → dashboards tree (components/dashboards_sidebar.html)
- * runs → recent agent runs grouped by status
- * branches → active/promoted/discarded delta-branches
- * workspace → flat list of every notebook
- * jobs → active/paused jobs
- * alerts → enabled/disabled alerts
- * mlflow → recent UC-registered models
- * sql / admin → small static link lists (kept inline below)
+ Sits to the right of the primary rail at >= md.  The contents are
+ a function of ``active_section`` (computed in base.html from
+ ``active_page``).
 
  Federation is the catch-all default for sections without a
- dedicated branch (volumes, models — both already render inside
- the catalog tree per.x).
+ dedicated branch (volumes, models — both render inline under each
+ schema in the catalog tree).
 
  On mobile, ``base.html`` mounts this same partial inside the
  bootstrap offcanvas drawer; ``components/context_panel.css``
@@ -176,6 +165,28 @@
  </li>
  </ul>
  </div>
+ {% elif active_section == 'home' %}
+ {% include "components/sidebars/home_sidebar.html" %}
+ {% elif active_section == 'feed' %}
+ {% include "components/sidebars/feed_sidebar.html" %}
+ {% elif active_section == 'topics' %}
+ {% include "components/sidebars/topics_sidebar.html" %}
+ {% elif active_section == 'issues' %}
+ {% include "components/sidebars/issues_sidebar.html" %}
+ {% elif active_section == 'people' %}
+ {% include "components/sidebars/people_sidebar.html" %}
+ {% elif active_section == 'workspace_home' %}
+ {% include "components/sidebars/workspace_home_sidebar.html" %}
+ {% elif active_section == 'lens' %}
+ {% include "components/sidebars/lens_sidebar.html" %}
+ {% elif active_section == 'dbt' %}
+ {% include "components/sidebars/dbt_sidebar.html" %}
+ {% elif active_section == 'me' %}
+ {% include "components/sidebars/me_sidebar.html" %}
+ {% elif active_section == 'lineage' %}
+ {% include "components/sidebars/lineage_sidebar.html" %}
+ {% elif active_section == 'data_products' %}
+ {% include "components/sidebars/data_products_sidebar.html" %}
  {% else %}
  {% include "components/sidebar.html" %}
  {% endif %}

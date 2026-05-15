@@ -1,0 +1,49 @@
+{#
+  Lens context-panel — Phase 80.2.
+
+  Lens is the read-only Q&A surface (Phase 65).  Side panel offers
+  the three sub-views: saved questions, recent answers, suggested.
+  Static today; Phase 81 can pull saved questions from a DB-backed
+  store.
+#}
+<div class="pql-sidebar border-end" aria-label="Lens">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/lens" class="text-muted text-decoration-none">Lens</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/lens" class="pql-context-panel__link">
+                    <i class="bi bi-chat-square-quote"></i>
+                    <span>Ask a question</span>
+                </a>
+            </li>
+            <li>
+                <a href="/lens?tab=saved" class="pql-context-panel__link">
+                    <i class="bi bi-bookmark-star"></i>
+                    <span>Saved questions</span>
+                </a>
+            </li>
+            <li>
+                <a href="/lens?tab=recent" class="pql-context-panel__link">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Recent answers</span>
+                </a>
+            </li>
+            <li>
+                <a href="/lens?tab=suggested" class="pql-context-panel__link">
+                    <i class="bi bi-lightbulb"></i>
+                    <span>Suggested</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 border-top">
+            <a href="/sql" class="pql-context-panel__link text-muted">
+                <i class="bi bi-code-square"></i>
+                <span>Switch to SQL editor</span>
+            </a>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,60 @@
+{#
+  Workspace home context-panel — Phase 80.2.
+
+  Surfaces the four primary sections of the workspace landing page
+  (pinned · members · activity · README) as one-click jumps.  The
+  workspace_landing.html template already exposes anchors with
+  these ids; the panel uses fragment links to scroll to them.
+#}
+{% set _slug = current_workspace.slug if current_workspace else '' %}
+<div class="pql-sidebar border-end" aria-label="Workspace home">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            {% if _slug %}
+            <a href="/workspaces/{{ _slug }}" class="text-muted text-decoration-none">Workspace</a>
+            {% else %}
+            <span>Workspace</span>
+            {% endif %}
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        {% if _slug %}
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/workspaces/{{ _slug }}#pins" class="pql-context-panel__link">
+                    <i class="bi bi-pin-angle-fill"></i>
+                    <span>Pinned entities</span>
+                </a>
+            </li>
+            <li>
+                <a href="/workspaces/{{ _slug }}#members" class="pql-context-panel__link">
+                    <i class="bi bi-people"></i>
+                    <span>Members</span>
+                </a>
+            </li>
+            <li>
+                <a href="/workspaces/{{ _slug }}#activity" class="pql-context-panel__link">
+                    <i class="bi bi-activity"></i>
+                    <span>Recent activity</span>
+                </a>
+            </li>
+            <li>
+                <a href="/workspaces/{{ _slug }}#readme" class="pql-context-panel__link">
+                    <i class="bi bi-book"></i>
+                    <span>README</span>
+                </a>
+            </li>
+        </ul>
+        {% if current_user and current_user.is_admin %}
+        <div class="px-3 py-2 border-top">
+            <a href="/workspaces/{{ _slug }}/settings" class="pql-context-panel__link">
+                <i class="bi bi-gear"></i>
+                <span>Workspace settings</span>
+            </a>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-muted small p-3">No active workspace.</div>
+        {% endif %}
+    </div>
+</div>

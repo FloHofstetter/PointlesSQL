@@ -1,0 +1,62 @@
+{#
+  Home (Today) context-panel — Phase 80.2.
+
+  Shortcuts into the four deep surfaces the Today digest aggregates:
+  approvals, unread inbox, recent runs, and pinned workspace
+  entities.  The Today page itself (Phase 80.3) renders the actual
+  card grid in main content; this side panel offers single-click
+  jumps to the full surface for each card.
+
+  Static today; Phase 81 can attach an Alpine factory that polls
+  ``/api/notifications/unread-count`` etc.
+#}
+<div class="pql-sidebar border-end" aria-label="Home context">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/" class="text-muted text-decoration-none">Today</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-0">
+            <li>
+                <a href="/runs?status=pending" class="pql-context-panel__link">
+                    <i class="bi bi-hourglass-split"></i>
+                    <span>Approval queue</span>
+                </a>
+            </li>
+            <li>
+                <a href="/notifications" class="pql-context-panel__link">
+                    <i class="bi bi-bell-fill"></i>
+                    <span>Unread inbox</span>
+                </a>
+            </li>
+            <li>
+                <a href="/runs" class="pql-context-panel__link">
+                    <i class="bi bi-activity"></i>
+                    <span>Recent runs</span>
+                </a>
+            </li>
+            <li>
+                <a href="/audit/inbox" class="pql-context-panel__link">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Anomaly inbox</span>
+                </a>
+            </li>
+            {% if current_workspace and current_workspace.slug %}
+            <li>
+                <a href="/workspaces/{{ current_workspace.slug }}"
+                   class="pql-context-panel__link">
+                    <i class="bi bi-pin-angle-fill"></i>
+                    <span>Pinned in workspace</span>
+                </a>
+            </li>
+            {% endif %}
+            <li>
+                <a href="/feed" class="pql-context-panel__link">
+                    <i class="bi bi-rss"></i>
+                    <span>Workspace feed</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>

@@ -1,0 +1,50 @@
+{#
+  Topics context-panel — Phase 80.2.
+
+  Filter chips for the topics index page.  Static today; Alpine
+  factory can fetch trending and subscribed lists in a later phase.
+#}
+<div class="pql-sidebar border-end" aria-label="Topics filters">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/topics" class="text-muted text-decoration-none">Topics</a>
+        </span>
+        <a href="/topics/new" class="btn btn-sm btn-outline-primary py-0">
+            <i class="bi bi-plus-lg"></i>
+        </a>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/topics" class="pql-context-panel__link">
+                    <i class="bi bi-hash"></i>
+                    <span>All topics</span>
+                </a>
+            </li>
+            <li>
+                <a href="/topics?filter=trending" class="pql-context-panel__link">
+                    <i class="bi bi-graph-up"></i>
+                    <span>Trending</span>
+                </a>
+            </li>
+            <li>
+                <a href="/topics?filter=subscribed" class="pql-context-panel__link">
+                    <i class="bi bi-bookmark-star"></i>
+                    <span>Subscribed</span>
+                </a>
+            </li>
+            <li>
+                <a href="/topics?filter=mine" class="pql-context-panel__link">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Authored by me</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 border-top">
+            <a href="/topics/new" class="pql-context-panel__link">
+                <i class="bi bi-plus-circle"></i>
+                <span>Create a topic</span>
+            </a>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,65 @@
+{#
+  People context-panel — Phase 80.2.
+
+  Cross-filters for the People + Agents indexes.  Both URLs
+  (/users + /agents) share the ``people`` section so the same panel
+  surfaces when on either landing page.
+#}
+<div class="pql-sidebar border-end" aria-label="People filters">
+    <div class="p-3 d-flex align-items-center justify-content-between border-bottom">
+        <span class="text-uppercase small fw-semibold text-muted">
+            <a href="/users" class="text-muted text-decoration-none">People</a>
+        </span>
+    </div>
+    <div class="pql-sidebar-body">
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/users" class="pql-context-panel__link">
+                    <i class="bi bi-people"></i>
+                    <span>All users</span>
+                </a>
+            </li>
+            <li>
+                <a href="/agents" class="pql-context-panel__link">
+                    <i class="bi bi-cpu-fill"></i>
+                    <span>Agents</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 text-uppercase small fw-semibold text-muted border-top">
+            Filter
+        </div>
+        <ul class="pql-context-panel__list list-unstyled mb-2">
+            <li>
+                <a href="/users?role=admin" class="pql-context-panel__link">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Admins</span>
+                </a>
+            </li>
+            <li>
+                <a href="/users?role=supervisor" class="pql-context-panel__link">
+                    <i class="bi bi-eye-fill"></i>
+                    <span>Supervisors</span>
+                </a>
+            </li>
+            <li>
+                <a href="/users?role=auditor" class="pql-context-panel__link">
+                    <i class="bi bi-clipboard-check"></i>
+                    <span>Auditors</span>
+                </a>
+            </li>
+            <li>
+                <a href="/users?recent=1" class="pql-context-panel__link">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Recently active</span>
+                </a>
+            </li>
+        </ul>
+        <div class="px-3 py-2 border-top">
+            <a href="/me" class="pql-context-panel__link">
+                <i class="bi bi-person-circle"></i>
+                <span>My profile</span>
+            </a>
+        </div>
+    </div>
+</div>
