@@ -57,6 +57,17 @@
             <span class="small text-muted pql-dp-follower-count"
                   x-show="followersCount > 0"
                   x-text="'· ' + followersCount + ' follower' + (followersCount === 1 ? '' : 's')"></span>
+            {# Phase 81.F.3 — Social drawer trigger.  Discussion +
+               Reviews + README + Issues moved out of the inline tab
+               strip; Activity stays inline because it's a
+               build-history surface, not a social surface. #}
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary ms-auto"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#pql-dp-social-drawer"
+                    title="Open social drawer (Discussion / Reviews / README / Issues)">
+                <i class="bi bi-people me-1"></i>Social
+            </button>
         </div>
     </div>
 
@@ -96,41 +107,11 @@
                       x-text="activityTotal"></span>
             </button>
         </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
-                    data-bs-target="#tab-discussion" type="button" role="tab"
-                    data-pql-tab-key="discussion">
-                Discussion
-                <span class="badge bg-secondary ms-1"
-                      x-show="commentsTotal !== null"
-                      x-text="commentsTotal"></span>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-reviews-btn" data-bs-toggle="tab"
-                    data-bs-target="#tab-reviews" type="button" role="tab"
-                    data-pql-tab-key="reviews">
-                Reviews
-                <span class="badge bg-secondary ms-1"
-                      x-show="reviewSummary && reviewSummary.count > 0"
-                      x-text="reviewSummary ? reviewSummary.count : 0"></span>
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-readme-btn" data-bs-toggle="tab"
-                    data-bs-target="#tab-readme" type="button" role="tab"
-                    data-pql-tab-key="readme">
-                README
-            </button>
-        </li>
-        {# Phase 77.7 — Issues tab, registry-driven supports_issues=True for DPs. #}
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-issues-btn" data-bs-toggle="tab"
-                    data-bs-target="#tab-issues" type="button" role="tab"
-                    data-pql-tab-key="issues">
-                <i class="bi bi-exclamation-circle me-1"></i>Issues
-            </button>
-        </li>
+        {# Phase 81.F.3 — Discussion / Reviews / README / Issues
+           moved into the offcanvas drawer at the bottom of this
+           template.  Count badges still update via dataProductDetail
+           state (commentsTotal / reviewSummary) but live alongside
+           the drawer toggle button in the page header. #}
     </ul>
 
     <div class="tab-content" id="dpTabsContent">
@@ -502,24 +483,101 @@
             </template>
         </div>
 
-        <!-- Discussion (Phase 71.1) -->
-        {% include "partials/social/_discussion_pane.html" %}
+    </div>
 
-        {% include "partials/social/_reviews_pane.html" %}
-
-        {% include "partials/social/_readme_pane.html" %}
-
-        {# Issues pane.  data_product.html uses the dataProductDetail
-           factory (not socialTabs) for the rest of the page, so wrap
-           the kind-agnostic partial in a tiny inline scope that
-           exposes the polymorphic (kind, ref) pair it expects. #}
-        <div x-data='{
-            kind: "dp",
-            ref: product.catalog_name + "." + product.schema_name
-        }'>
-            {% include "partials/social/_issues_pane.html" %}
+    {# Phase 81.F.3 — Social drawer for data products.  Discussion +
+       Reviews + README + Issues moved out of the inline tab strip.
+       The drawer sits inside the surrounding ``dataProductDetail``
+       Alpine scope so the panes inherit ``product``, ``commentsTotal``,
+       ``reviewSummary``, ``loadComments``, ``loadReviews``,
+       ``loadReadme`` etc. just like they did pre-81.F.  The
+       lazy-load handlers in ``wireLazyTabs()`` still find the buttons
+       via ``data-bs-target=`` lookup regardless of which container
+       they live in. #}
+    <div class="offcanvas offcanvas-end pql-social-drawer"
+         tabindex="-1"
+         id="pql-dp-social-drawer"
+         aria-labelledby="pql-dp-social-drawer-title">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="pql-dp-social-drawer-title">
+                <i class="bi bi-people me-1"></i>Data product social
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                    aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-discussion-btn"
+                            data-bs-toggle="tab" data-bs-target="#tab-discussion"
+                            type="button" role="tab" aria-controls="tab-discussion"
+                            aria-selected="true" data-pql-tab-key="discussion">
+                        Discussion
+                        <span class="badge bg-secondary ms-1"
+                              x-show="commentsTotal !== null"
+                              x-text="commentsTotal"></span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-reviews-btn"
+                            data-bs-toggle="tab" data-bs-target="#tab-reviews"
+                            type="button" role="tab" aria-controls="tab-reviews"
+                            aria-selected="false" data-pql-tab-key="reviews">
+                        Reviews
+                        <span class="badge bg-secondary ms-1"
+                              x-show="reviewSummary && reviewSummary.count > 0"
+                              x-text="reviewSummary ? reviewSummary.count : 0"></span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-readme-btn"
+                            data-bs-toggle="tab" data-bs-target="#tab-readme"
+                            type="button" role="tab" aria-controls="tab-readme"
+                            aria-selected="false" data-pql-tab-key="readme">
+                        README
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-issues-btn"
+                            data-bs-toggle="tab" data-bs-target="#tab-issues"
+                            type="button" role="tab" aria-controls="tab-issues"
+                            aria-selected="false" data-pql-tab-key="issues">
+                        <i class="bi bi-exclamation-circle me-1"></i>Issues
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content">
+                {% include "partials/social/_discussion_pane.html" %}
+                {% include "partials/social/_reviews_pane.html" %}
+                {% include "partials/social/_readme_pane.html" %}
+                {# Issues pane.  Wrapped in a tiny inline scope that exposes
+                   the polymorphic (kind, ref) pair the partial expects;
+                   ``dataProductDetail`` doesn't provide those names. #}
+                <div x-data='{
+                    kind: "dp",
+                    ref: product.catalog_name + "." + product.schema_name
+                }'>
+                    {% include "partials/social/_issues_pane.html" %}
+                </div>
+            </div>
         </div>
     </div>
+    {# Phase 81.F.3 — Default-activate the Discussion pane.  The
+       shared polymorphic ``_discussion_pane.html`` ships with
+       ``class="tab-pane fade"`` (no ``show active``) because other
+       consumers default to a different tab.  Promote it inside the
+       DP drawer at first paint so opening the drawer shows
+       Discussion immediately instead of a blank body. #}
+    <script>
+        (function () {
+            const pane = document.querySelector(
+                '#pql-dp-social-drawer #tab-discussion'
+            );
+            if (pane && !pane.classList.contains('active')) {
+                pane.classList.add('show', 'active');
+            }
+        })();
+    </script>
 </div>
 
 <script>

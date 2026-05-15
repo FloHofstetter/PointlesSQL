@@ -35,6 +35,16 @@
         <i class="bi bi-box-arrow-up-right me-1"></i>Open in MLflow UI{{ info('models.mlflow-vs-pointlessql') }}
     </a>
     {% endif %}
+    {# Phase 81.F.2 — Social drawer trigger.  Discussion + Reviews +
+       Endorsements + Followers + README + Issues live in the
+       offcanvas at the bottom of this template. #}
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#pql-model-social-drawer"
+            title="Open social drawer (Discussion / Reviews / Endorsements / Followers / README / Issues)">
+        <i class="bi bi-people me-1"></i>Social
+    </button>
 </div>
 
 {% if model.comment %}
@@ -62,64 +72,29 @@
                 data-bs-target="#tab-promotion" type="button" role="tab"
                 data-pql-tab-key="promotion">Promotion</button>
     </li>
-    {# Phase 77.2 — kind-agnostic social tab strip for registered
-       models.  Discussion + README panes carry inline x-data;
-       Endorsements + Followers reuse the polymorphic partials
-       backed by the socialTabs(kind='model', ref='...') factory
-       on .tab-content.  Reviews stay hidden because polymorphic
-       upsert idempotency needs a partial unique index migration
-       (deferred to 77.2.1 / 77.11). #}
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-discussion" type="button" role="tab"
-                data-pql-tab-key="discussion">
-            <i class="bi bi-chat-left-text me-1"></i>Discussion
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-reviews-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-reviews" type="button" role="tab"
-                data-pql-tab-key="reviews">
-            <i class="bi bi-star me-1"></i>Reviews
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-endorsements-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-endorsements" type="button" role="tab"
-                data-pql-tab-key="endorsements">
-            <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-followers-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-followers" type="button" role="tab"
-                data-pql-tab-key="followers">
-            <i class="bi bi-bell me-1"></i>Followers
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-readme-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-readme" type="button" role="tab"
-                data-pql-tab-key="readme">
-            <i class="bi bi-file-text me-1"></i>README
-        </button>
-    </li>
-    {# Phase 77.7 — Issues tab, registry-driven supports_issues=True for models. #}
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-issues-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-issues" type="button" role="tab"
-                data-pql-tab-key="issues">
-            <i class="bi bi-exclamation-circle me-1"></i>Issues
-        </button>
-    </li>
+    {# Phase 81.F.2 — Social tabs moved into the offcanvas drawer
+       below.  See the "Social" button in the page header. #}
 </ul>
 
-{# socialTabs factory powers the polymorphic Endorsements + Followers
-   tabs (Discussion + README declare their own inline x-data).  The
-   four endorsement types are the DP-flavoured set since models are
-   curated, stable, versioned artefacts that benefit from the same
-   stewardship surface as DPs. #}
-<div class="tab-content" id="modelTabsContent"
+{# Phase 81.F.2 — Core tabs only.  Social cluster lives in the
+   offcanvas drawer below this block, scoped by its own
+   ``socialTabs()`` factory. #}
+<div class="tab-content" id="modelTabsContent">
+    {% include "pages/_partials/model/overview.html" %}
+    {% include "pages/_partials/model/versions.html" %}
+    {% include "pages/_partials/model/lineage.html" %}
+    {% include "pages/_partials/model/promotion.html" %}
+</div>
+
+{# Phase 81.F.2 — Social drawer for registered models.  Carries
+   Discussion + Reviews + Endorsements + Followers + README + Issues.
+   The ``socialTabs()`` scope here matches the pre-81.F inline scope
+   so the polymorphic Endorsements / Followers / Issues partials
+   keep working unchanged. #}
+<div class="offcanvas offcanvas-end pql-social-drawer"
+     tabindex="-1"
+     id="pql-model-social-drawer"
+     aria-labelledby="pql-model-social-drawer-title"
      x-data='socialTabs({
         kind: "model",
         ref: {{ model.full_name|tojson }},
@@ -134,23 +109,76 @@
              description: "Actively being audited; expect promotion churn."}
         ]
      })'>
-    {# Overview #}
-    {% include "pages/_partials/model/overview.html" %}
-    {% include "pages/_partials/model/versions.html" %}
-    {% include "pages/_partials/model/lineage.html" %}
-    {% include "pages/_partials/model/promotion.html" %}
-
-    {% include 'pages/_partials/model/discussion.html' %}
-    {% include 'pages/_partials/model/reviews.html' %}
-
-    {# Endorsements + Followers panes reuse the polymorphic partials.
-       They inherit socialTabs state from the tab-content x-data above. #}
-    {% include 'partials/social/_endorsements_pane.html' %}
-    {% include 'partials/social/_followers_pane.html' %}
-    {# Phase 77.7 — Issues pane.  Reads kind/ref from socialTabs scope. #}
-    {% include 'partials/social/_issues_pane.html' %}
-
-    {% include 'pages/_partials/model/readme.html' %}
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="pql-model-social-drawer-title">
+            <i class="bi bi-people me-1"></i>Model social
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-discussion-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-discussion"
+                        type="button" role="tab" aria-controls="tab-discussion"
+                        aria-selected="true" data-pql-tab-key="discussion">
+                    <i class="bi bi-chat-left-text me-1"></i>Discussion
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-reviews-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-reviews"
+                        type="button" role="tab" aria-controls="tab-reviews"
+                        aria-selected="false" data-pql-tab-key="reviews">
+                    <i class="bi bi-star me-1"></i>Reviews
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-endorsements-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-endorsements"
+                        type="button" role="tab" aria-controls="tab-endorsements"
+                        aria-selected="false" data-pql-tab-key="endorsements">
+                    <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-followers-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-followers"
+                        type="button" role="tab" aria-controls="tab-followers"
+                        aria-selected="false" data-pql-tab-key="followers">
+                    <i class="bi bi-bell me-1"></i>Followers
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-readme-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-readme"
+                        type="button" role="tab" aria-controls="tab-readme"
+                        aria-selected="false" data-pql-tab-key="readme">
+                    <i class="bi bi-file-text me-1"></i>README
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-issues-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-issues"
+                        type="button" role="tab" aria-controls="tab-issues"
+                        aria-selected="false" data-pql-tab-key="issues">
+                    <i class="bi bi-exclamation-circle me-1"></i>Issues
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            {% include 'pages/_partials/model/discussion.html' %}
+            {% include 'pages/_partials/model/reviews.html' %}
+            {# Endorsements + Followers panes inherit socialTabs state from
+               this offcanvas x-data scope. #}
+            {% include 'partials/social/_endorsements_pane.html' %}
+            {% include 'partials/social/_followers_pane.html' %}
+            {% include 'pages/_partials/model/readme.html' %}
+            {# Phase 77.7 — Issues pane.  Reads kind/ref from socialTabs scope. #}
+            {% include 'partials/social/_issues_pane.html' %}
+        </div>
+    </div>
 </div>
 
 <script>

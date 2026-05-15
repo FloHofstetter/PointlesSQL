@@ -43,6 +43,14 @@
         <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
         <span class="ms-1" x-show="count > 0" x-text="count"></span>
     </button>
+    {# Phase 81.F.4 — Social drawer trigger. #}
+    <button type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#pql-branch-social-drawer"
+            title="Open social drawer (Discussion / Endorsements / Followers / Issues)">
+        <i class="bi bi-people me-1"></i>Social
+    </button>
 </div>
 
 {# Phase 77.3.B — branch detail tab strip.  5 tabs: Overview
@@ -61,42 +69,10 @@
             <i class="bi bi-info-circle me-1"></i>Overview
         </button>
     </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-discussion" type="button" role="tab"
-                aria-controls="tab-discussion" aria-selected="false"
-                data-pql-tab-key="discussion">
-            <i class="bi bi-chat-left-text me-1"></i>Discussion
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-endorsements-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-endorsements" type="button" role="tab"
-                aria-controls="tab-endorsements" aria-selected="false"
-                data-pql-tab-key="endorsements">
-            <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
-            {% if branch_endorsement_count > 0 %}
-            <span class="badge bg-success ms-1">{{ branch_endorsement_count }}</span>
-            {% endif %}
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-followers-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-followers" type="button" role="tab"
-                aria-controls="tab-followers" aria-selected="false"
-                data-pql-tab-key="followers">
-            <i class="bi bi-bell me-1"></i>Followers
-        </button>
-    </li>
-    {# Phase 77.7 — Issues tab, registry-driven supports_issues=True for branches. #}
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-issues-btn" data-bs-toggle="tab"
-                data-bs-target="#tab-issues" type="button" role="tab"
-                aria-controls="tab-issues" aria-selected="false"
-                data-pql-tab-key="issues">
-            <i class="bi bi-exclamation-circle me-1"></i>Issues
-        </button>
-    </li>
+    {# Phase 81.F.4 — Discussion / Endorsements / Followers /
+       Issues moved into the offcanvas drawer at the bottom of this
+       template.  The endorsement count badge stays alive there via
+       branch_endorsement_count. #}
     {% if is_admin and tags.status == "active" and not tags.is_pre_promote_backup %}
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab-promote-btn" data-bs-toggle="tab"
@@ -114,16 +90,7 @@
     {% endif %}
 </ul>
 
-<div class="tab-content" id="branchDetailTabContent"
-     x-data='socialTabs({
-        kind: "branch",
-        ref: {{ branch_schema_fqn|tojson }},
-        endorsementTypes: [
-            {key: "branch-approved-for-promotion",
-             label: "Approved for promotion",
-             description: "Required peer endorsement when the workspace promote-gate is on."}
-        ]
-     })'>
+<div class="tab-content" id="branchDetailTabContent">
 
     {# Overview tab — metadata cards + audit log (the pre-77.3.B page). #}
     <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
@@ -221,61 +188,6 @@
             </div>
         </div>
     </div>
-
-    {# Discussion pane — inline x-data via branchDiscussion factory.
-       Talks to /api/social/branch/{fqn}/comments. #}
-    <div class="tab-pane fade" id="tab-discussion" role="tabpanel"
-         x-data='branchDiscussion({{ branch_schema_fqn|tojson }})'
-         x-init="init()">
-        <template x-if="!commentsLoaded">
-            <div class="text-muted small p-3">Loading discussion…</div>
-        </template>
-        <template x-if="commentsLoaded">
-            <div>
-                <template x-if="comments.length === 0">
-                    <div class="alert alert-secondary">
-                        <i class="bi bi-chat-left-text me-1"></i>
-                        No comments yet — start the discussion below.
-                    </div>
-                </template>
-                <template x-for="c in comments" :key="c.id">
-                    <div class="card mb-2 pql-comment-card" :data-comment-id="c.id">
-                        <div class="card-body py-2">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <div class="small text-muted">
-                                    <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
-                                    · <span x-text="c.created_at"></span>
-                                </div>
-                                <button class="btn btn-sm btn-link text-danger p-0"
-                                        @click="deleteComment(c.id)"
-                                        title="Soft-delete this comment">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                            <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
-                        </div>
-                    </div>
-                </template>
-                <form class="mt-3" @submit.prevent="submitNew()">
-                    <div class="mb-2">
-                        <textarea class="form-control" rows="3"
-                                  placeholder="Add a comment… markdown welcome"
-                                  x-model="draftBody"></textarea>
-                    </div>
-                    <button class="btn btn-primary btn-sm" type="submit"
-                            :disabled="postBusy || !draftBody.trim()">
-                        <i class="bi bi-send me-1"></i>Post
-                    </button>
-                </form>
-            </div>
-        </template>
-    </div>
-
-    {# Endorsements + Followers panes — reuse the polymorphic partials. #}
-    {% include 'partials/social/_endorsements_pane.html' %}
-    {% include 'partials/social/_followers_pane.html' %}
-    {# Phase 77.7 — Issues pane.  Reads kind/ref from socialTabs scope. #}
-    {% include 'partials/social/_issues_pane.html' %}
 
     {# Promote tab — Danger Zone with gate-state visualisation.
        Renders only for admin on an active non-backup branch (same
@@ -417,7 +329,127 @@
         </div>
     </div>
     {% endif %}
+</div>
 
+{# Phase 81.F.4 — Social drawer for branches.  Carries Discussion +
+   Endorsements + Followers + Issues, scoped by a ``socialTabs()``
+   factory so the polymorphic Endorsements / Followers / Issues
+   partials inherit the kind="branch" + ref + endorsementTypes the
+   inline tabs used pre-81.F.  branchDiscussion is page-specific and
+   declares its own x-data, so it nests safely inside. #}
+<div class="offcanvas offcanvas-end pql-social-drawer"
+     tabindex="-1"
+     id="pql-branch-social-drawer"
+     aria-labelledby="pql-branch-social-drawer-title"
+     x-data='socialTabs({
+        kind: "branch",
+        ref: {{ branch_schema_fqn|tojson }},
+        endorsementTypes: [
+            {key: "branch-approved-for-promotion",
+             label: "Approved for promotion",
+             description: "Required peer endorsement when the workspace promote-gate is on."}
+        ]
+     })'>
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="pql-branch-social-drawer-title">
+            <i class="bi bi-people me-1"></i>Branch social
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-discussion-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-discussion"
+                        type="button" role="tab" aria-controls="tab-discussion"
+                        aria-selected="true" data-pql-tab-key="discussion">
+                    <i class="bi bi-chat-left-text me-1"></i>Discussion
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-endorsements-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-endorsements"
+                        type="button" role="tab" aria-controls="tab-endorsements"
+                        aria-selected="false" data-pql-tab-key="endorsements">
+                    <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
+                    {% if branch_endorsement_count > 0 %}
+                    <span class="badge bg-success ms-1">{{ branch_endorsement_count }}</span>
+                    {% endif %}
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-followers-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-followers"
+                        type="button" role="tab" aria-controls="tab-followers"
+                        aria-selected="false" data-pql-tab-key="followers">
+                    <i class="bi bi-bell me-1"></i>Followers
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-issues-btn"
+                        data-bs-toggle="tab" data-bs-target="#tab-issues"
+                        type="button" role="tab" aria-controls="tab-issues"
+                        aria-selected="false" data-pql-tab-key="issues">
+                    <i class="bi bi-exclamation-circle me-1"></i>Issues
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            {# Discussion pane — inline x-data via branchDiscussion. #}
+            <div class="tab-pane fade show active" id="tab-discussion" role="tabpanel"
+                 x-data='branchDiscussion({{ branch_schema_fqn|tojson }})'
+                 x-init="init()">
+                <template x-if="!commentsLoaded">
+                    <div class="text-muted small p-3">Loading discussion…</div>
+                </template>
+                <template x-if="commentsLoaded">
+                    <div>
+                        <template x-if="comments.length === 0">
+                            <div class="alert alert-secondary">
+                                <i class="bi bi-chat-left-text me-1"></i>
+                                No comments yet — start the discussion below.
+                            </div>
+                        </template>
+                        <template x-for="c in comments" :key="c.id">
+                            <div class="card mb-2 pql-comment-card" :data-comment-id="c.id">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="small text-muted">
+                                            <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                            · <span x-text="c.created_at"></span>
+                                        </div>
+                                        <button class="btn btn-sm btn-link text-danger p-0"
+                                                @click="deleteComment(c.id)"
+                                                title="Soft-delete this comment">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+                                </div>
+                            </div>
+                        </template>
+                        <form class="mt-3" @submit.prevent="submitNew()">
+                            <div class="mb-2">
+                                <textarea class="form-control" rows="3"
+                                          placeholder="Add a comment… markdown welcome"
+                                          x-model="draftBody"></textarea>
+                            </div>
+                            <button class="btn btn-primary btn-sm" type="submit"
+                                    :disabled="postBusy || !draftBody.trim()">
+                                <i class="bi bi-send me-1"></i>Post
+                            </button>
+                        </form>
+                    </div>
+                </template>
+            </div>
+            {# Endorsements + Followers panes — reuse polymorphic partials. #}
+            {% include 'partials/social/_endorsements_pane.html' %}
+            {% include 'partials/social/_followers_pane.html' %}
+            {# Phase 77.7 — Issues pane.  Reads kind/ref from socialTabs scope. #}
+            {% include 'partials/social/_issues_pane.html' %}
+        </div>
+    </div>
 </div>
 {% endblock %}
 
