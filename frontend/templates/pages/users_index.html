@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}People · PointlesSQL{% endblock %}
+
+{% block content %}
+<div class="pql-stack pql-stack--loose" data-pql-page="users-index">
+    <header class="pql-stack pql-stack--tight">
+        <nav aria-label="breadcrumb" class="small text-muted">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/" class="text-muted text-decoration-none">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">People</li>
+            </ol>
+        </nav>
+        <h1 class="h3 m-0">People</h1>
+        <p class="text-muted m-0">
+            {{ users|length }} member{{ '' if users|length == 1 else 's' }}
+            in this workspace.
+            {% if role_filter %}
+            <span class="badge bg-secondary ms-2">filter: {{ role_filter }}</span>
+            <a href="/users" class="ms-2 small text-decoration-none">clear filter</a>
+            {% endif %}
+        </p>
+    </header>
+
+    {% if users|length == 0 %}
+    <div class="alert alert-secondary m-0" role="status">
+        <i class="bi bi-people me-2"></i>
+        No members match this filter.
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover m-0 align-middle">
+                <thead class="table-light small text-uppercase text-muted">
+                    <tr>
+                        <th>Display name</th>
+                        <th>Email</th>
+                        <th>Roles</th>
+                        <th class="text-end">Registered</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr data-pql-user-id="{{ u.id }}">
+                        <td>
+                            <a href="/users/{{ u.id }}" class="d-flex align-items-center gap-2 text-decoration-none">
+                                <i class="bi bi-person-circle fs-5 text-muted"></i>
+                                <span>{{ u.display_name }}</span>
+                            </a>
+                        </td>
+                        <td class="small text-muted">{{ u.email }}</td>
+                        <td>
+                            {% if u.is_admin %}
+                            <span class="badge bg-danger-subtle text-danger-emphasis me-1">admin</span>
+                            {% endif %}
+                            {% if u.is_supervisor %}
+                            <span class="badge bg-primary-subtle text-primary-emphasis me-1">supervisor</span>
+                            {% endif %}
+                            {% if u.is_auditor %}
+                            <span class="badge bg-info-subtle text-info-emphasis me-1">auditor</span>
+                            {% endif %}
+                            {% if not (u.is_admin or u.is_supervisor or u.is_auditor) %}
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis">member</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end small text-muted">
+                            {% if u.registered_at %}
+                            <time datetime="{{ u.registered_at }}">{{ u.registered_at[:10] }}</time>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <p class="text-muted small m-0">
+        Looking for agents? See <a href="/agents">the agent registry</a>.
+    </p>
+</div>
+{% endblock %}

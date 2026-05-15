@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Lineage explorer · PointlesSQL{% endblock %}
+
+{% block content %}
+<div class="pql-stack pql-stack--loose"
+     data-pql-page="lineage-index"
+     x-data="lineageExplorerForm()"
+     x-init="loadRecent()">
+    <header class="pql-stack pql-stack--tight">
+        <nav aria-label="breadcrumb" class="small text-muted">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/" class="text-muted text-decoration-none">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Lineage</li>
+            </ol>
+        </nav>
+        <h1 class="h3 m-0">Lineage explorer</h1>
+        <p class="text-muted m-0">
+            Trace a row or a column back through the pipeline.  Both
+            traces walk the full DAG to the bronze source, surfacing
+            every transform that touched the value.
+        </p>
+    </header>
+
+    <section class="row g-3">
+        <div class="col-12 col-md-6">
+            <div class="pql-card h-100" id="trace-row">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-arrow-down-up text-info fs-5"></i>
+                    <h2 class="h6 m-0">Trace a row</h2>
+                </div>
+                <p class="text-muted small">
+                    Enter the full-qualified table name and the row's
+                    <code>_lineage_row_id</code>; the trace walks back
+                    through every silver/gold transform to bronze.
+                </p>
+                <form @submit.prevent="goRow()" class="d-flex flex-column gap-2">
+                    <label class="small fw-semibold mb-0">
+                        Table (catalog.schema.table)
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               x-model="rowTable"
+                               placeholder="catalog.schema.table_name"
+                               required>
+                    </label>
+                    <label class="small fw-semibold mb-0">
+                        Row id
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               x-model="rowId"
+                               placeholder="UUID or numeric id"
+                               required>
+                    </label>
+                    <button type="submit"
+                            class="btn btn-primary btn-sm align-self-start"
+                            data-pql-action="trace-row">
+                        <i class="bi bi-arrow-up-right me-1"></i>Trace row
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="col-12 col-md-6">
+            <div class="pql-card h-100" id="trace-column">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-columns-gap text-success fs-5"></i>
+                    <h2 class="h6 m-0">Trace a column</h2>
+                </div>
+                <p class="text-muted small">
+                    Column-level lineage walks back the upstream
+                    columns that contributed to a target column,
+                    surfacing the transform kind for each step.
+                </p>
+                <form @submit.prevent="goColumn()" class="d-flex flex-column gap-2">
+                    <label class="small fw-semibold mb-0">
+                        Table (catalog.schema.table)
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               x-model="colTable"
+                               placeholder="catalog.schema.table_name"
+                               required>
+                    </label>
+                    <label class="small fw-semibold mb-0">
+                        Column
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               x-model="colName"
+                               placeholder="column_name"
+                               required>
+                    </label>
+                    <button type="submit"
+                            class="btn btn-primary btn-sm align-self-start"
+                            data-pql-action="trace-column">
+                        <i class="bi bi-arrow-up-right me-1"></i>Trace column
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section id="recent" class="pql-card">
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <i class="bi bi-clock-history fs-5 text-muted"></i>
+            <h2 class="h6 m-0">Recent traces</h2>
+            <button type="button"
+                    class="btn btn-sm btn-link p-0 text-muted ms-auto"
+                    @click="clearRecent()"
+                    x-show="recent.length > 0">
+                Clear
+            </button>
+        </div>
+        <template x-if="recent.length === 0">
+            <p class="text-muted small m-0">No recent traces yet.</p>
+        </template>
+        <ul class="list-unstyled m-0" x-show="recent.length > 0">
+            <template x-for="(r, idx) in recent" :key="idx">
+                <li>
+                    <a :href="r.url" class="d-flex gap-2 py-1 text-decoration-none small">
+                        <i :class="r.kind === 'row' ? 'bi bi-arrow-down-up text-info' : 'bi bi-columns-gap text-success'"></i>
+                        <span class="font-monospace" x-text="r.label"></span>
+                    </a>
+                </li>
+            </template>
+        </ul>
+    </section>
+</div>
+
+<script>
+    // Lineage explorer Alpine factory — localStorage-backed recent
+    // traces.  Trace forms redirect into the existing per-row /
+    // per-column pages; the factory records each navigation here
+    // so the "Recent traces" card surfaces them.
+    window.lineageExplorerForm = function () {
+        const KEY = 'pql.recentTraces';
+        const MAX = 10;
+
+        function readRecent() {
+            try {
+                const raw = localStorage.getItem(KEY);
+                const parsed = raw ? JSON.parse(raw) : [];
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) { return []; }
+        }
+        function push(kind, label, url) {
+            const items = readRecent().filter(r => r.url !== url);
+            items.unshift({ kind, label, url, ts: Date.now() });
+            if (items.length > MAX) items.length = MAX;
+            try { localStorage.setItem(KEY, JSON.stringify(items)); } catch (e) {}
+        }
+
+        return {
+            rowTable: '',
+            rowId: '',
+            colTable: '',
+            colName: '',
+            recent: [],
+            loadRecent() {
+                this.recent = readRecent();
+            },
+            goRow() {
+                const t = this.rowTable.trim();
+                const id = this.rowId.trim();
+                if (!t || !id) return;
+                const url = `/tables/${encodeURIComponent(t)}/rows/${encodeURIComponent(id)}/trace`;
+                push('row', `${t} · row ${id}`, url);
+                window.location.href = url;
+            },
+            goColumn() {
+                const t = this.colTable.trim();
+                const c = this.colName.trim();
+                if (!t || !c) return;
+                const url = `/tables/${encodeURIComponent(t)}/columns/${encodeURIComponent(c)}/trace`;
+                push('column', `${t} · ${c}`, url);
+                window.location.href = url;
+            },
+            clearRecent() {
+                try { localStorage.removeItem(KEY); } catch (e) {}
+                this.recent = [];
+            },
+        };
+    };
+</script>
+{% endblock %}
