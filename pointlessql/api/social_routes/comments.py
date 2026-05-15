@@ -1,16 +1,19 @@
-"""Polymorphic comments router (Phase 77.0.F.2).
+"""Polymorphic comments router (Phase 77.0.F.2 + 77.1.5 dispatch).
 
-Wraps the DP-scoped comment routes at
-``/api/social/{kind}/{ref:path}/comments`` so future kinds (table /
-model / branch / run / ...) can plug into the same path shape.  In
-77.0 only ``kind='dp'`` is wired; other kinds raise 501.
+Wraps the polymorphic ``/api/social/{kind}/{ref:path}/comments``
+namespace.  For ``kind='dp'`` the call is delegated in-process to
+the existing Phase-76 DP comment handlers (zero behavioural drift,
+legacy ``data_product:`` audit-prefix preserved per locked
+decision #9).  For ``kind='table'`` and ``kind='branch'`` Phase
+77.1.5 routes the call through the generic kind-agnostic handlers
+in :mod:`_polymorphic_handlers`.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from pointlessql.api.data_products_routes.comments import (
     accept_answer,
@@ -18,7 +21,15 @@ from pointlessql.api.data_products_routes.comments import (
     list_data_product_comments,
     post_data_product_comment,
 )
-from pointlessql.api.social_routes._kind_dispatch import parse_dp_ref
+from pointlessql.api.social_routes._kind_dispatch import (
+    parse_dp_ref,
+    parse_ref,
+)
+from pointlessql.api.social_routes._polymorphic_handlers import (
+    delete_polymorphic_comment,
+    list_polymorphic_comments,
+    post_polymorphic_comment,
+)
 
 router = APIRouter(tags=["social"])
 
@@ -27,25 +38,33 @@ router = APIRouter(tags=["social"])
 async def list_social_comments(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Delegate to the DP comment list handler for ``kind='dp'``."""
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await list_data_product_comments(catalog, schema, request)
+    """Dispatch a list-comments request by entity kind."""
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await list_data_product_comments(catalog, schema, request)
+    polymorphic_ref = parse_ref(kind, ref)
+    return await list_polymorphic_comments(kind, polymorphic_ref, request)
 
 
 @router.post("/api/social/{kind}/{ref:path}/comments")
 async def post_social_comment(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Delegate to the DP comment POST handler for ``kind='dp'``.
+    """Dispatch a comment POST by entity kind.
 
-    Re-extracts ``?as_agent=`` so the speak-as-agent path survives
-    the indirection.
+    Re-extracts ``?as_agent=`` for the DP path so the speak-as-agent
+    flow survives the indirection.  Non-DP kinds ignore the query
+    param this iteration — agent-author support for table / branch
+    lands in Phase 77.11.
     """
-    catalog, schema = parse_dp_ref(kind, ref)
-    as_agent = request.query_params.get("as_agent")
-    return await post_data_product_comment(
-        catalog, schema, request, as_agent=as_agent
-    )
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        as_agent = request.query_params.get("as_agent")
+        return await post_data_product_comment(
+            catalog, schema, request, as_agent=as_agent
+        )
+    polymorphic_ref = parse_ref(kind, ref)
+    return await post_polymorphic_comment(kind, polymorphic_ref, request)
 
 
 @router.post(
@@ -54,17 +73,37 @@ async def post_social_comment(
 async def accept_social_answer(
     kind: str, ref: str, comment_id: int, request: Request
 ) -> dict[str, Any]:
-    """Delegate to the DP accept-answer handler for ``kind='dp'``."""
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await accept_answer(catalog, schema, comment_id, request)
+    """Dispatch the accept-answer flow by entity kind.
+
+    Only ``kind='dp'`` supports accepted-answers in 77.1.5 (Question
+    threads were a DP-discussion feature; not yet generalised to
+    table / branch entities).
+    """
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await accept_answer(catalog, schema, comment_id, request)
+    # bare-http-ok: feature is DP-only this phase.
+    raise HTTPException(
+        status_code=501,
+        detail=(
+            f"accept-answer for kind={kind!r} is deferred — "
+            "Phase 77.7 (Issues) brings question/answer flow to "
+            "polymorphic entities"
+        ),
+    )
 
 
 @router.delete("/api/social/{kind}/{ref:path}/comments/{comment_id}")
 async def delete_social_comment(
     kind: str, ref: str, comment_id: int, request: Request
 ) -> dict[str, Any]:
-    """Delegate to the DP comment soft-delete handler."""
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await delete_data_product_comment(
-        catalog, schema, comment_id, request
+    """Dispatch a comment soft-delete by entity kind."""
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await delete_data_product_comment(
+            catalog, schema, comment_id, request
+        )
+    polymorphic_ref = parse_ref(kind, ref)
+    return await delete_polymorphic_comment(
+        kind, polymorphic_ref, comment_id, request
     )
