@@ -123,13 +123,30 @@
 </form>
 {% endcall %}
 
-<div id="inbox-meta" class="small text-muted mb-2"></div>
+<div class="d-flex align-items-center justify-content-between mb-2 gap-2">
+    <div id="inbox-meta" class="small text-muted"></div>
+    <div id="inbox-bulk-bar" class="d-none align-items-center gap-2">
+        <span class="small text-muted">
+            <span id="inbox-bulk-count">0</span> selected
+        </span>
+        <button type="button" id="inbox-bulk-clear" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <button type="button" id="inbox-bulk-ack" class="btn btn-primary btn-sm">
+            <i class="bi bi-check2-all me-1"></i>Acknowledge selected
+        </button>
+    </div>
+</div>
 
 <div class="card">
     <div class="card-body p-0">
         <table class="table table-hover table-sm mb-0">
             <thead>
                 <tr>
+                    <th class="pql-checkbox-col">
+                        <input type="checkbox" class="form-check-input" id="inbox-select-all"
+                               aria-label="Select all visible anomalies">
+                    </th>
                     <th>Severity</th>
                     <th>Metric</th>
                     <th>Bin</th>
@@ -142,7 +159,7 @@
             </thead>
             <tbody id="inbox-rows">
                 <tr>
-                    <td colspan="8" class="py-3">
+                    <td colspan="9" class="py-3">
                         <div class="placeholder-glow" aria-hidden="true">
                             <div class="placeholder col-7 mb-2"></div>
                             <div class="placeholder col-9 mb-2"></div>
@@ -166,6 +183,41 @@
     const formEl = document.getElementById('inbox-filter');
     const rowsEl = document.getElementById('inbox-rows');
     const metaEl = document.getElementById('inbox-meta');
+    const selectAllEl = document.getElementById('inbox-select-all');
+    const bulkBarEl = document.getElementById('inbox-bulk-bar');
+    const bulkCountEl = document.getElementById('inbox-bulk-count');
+    const bulkClearBtn = document.getElementById('inbox-bulk-clear');
+    const bulkAckBtn = document.getElementById('inbox-bulk-ack');
+
+    const selected = new Map();  // composite-key -> {metric, bin_iso, bin_kind}
+    let lastAnomalies = [];
+
+    function rowKey(a) {
+        return a.metric + '|' + a.bin_kind + '|' + a.bin_iso;
+    }
+
+    function ackableAnomalies() {
+        return lastAnomalies.filter((a) => !a.ack);
+    }
+
+    function syncBulkBar() {
+        const n = selected.size;
+        bulkCountEl.textContent = String(n);
+        bulkBarEl.classList.toggle('d-none', n === 0);
+        bulkBarEl.classList.toggle('d-flex', n > 0);
+        const ackable = ackableAnomalies();
+        selectAllEl.checked = ackable.length > 0 && ackable.every((a) => selected.has(rowKey(a)));
+        selectAllEl.indeterminate = n > 0 && !selectAllEl.checked;
+    }
+
+    function clearSelection() {
+        selected.clear();
+        // Re-render any visible checkboxes to unchecked.
+        rowsEl.querySelectorAll('input[data-anomaly-key]').forEach((cb) => {
+            cb.checked = false;
+        });
+        syncBulkBar();
+    }
 
     function severityBadge(sev) {
         const cls = sev === 'critical' ? 'bg-danger' : (sev === 'warn' ? 'bg-warning text-dark' : 'bg-secondary');
@@ -187,17 +239,19 @@
         if (sinceEl.value.trim()) params.set('since', sinceEl.value.trim());
         if (tableEl.value.trim()) params.set('table', tableEl.value.trim());
         if (includeAckedEl.checked) params.set('include_acked', 'true');
-        rowsEl.innerHTML = '<tr><td colspan="8" class="py-3"><div class="placeholder-glow" aria-hidden="true"><div class="placeholder col-7 mb-2"></div><div class="placeholder col-9 mb-2"></div><div class="placeholder col-5"></div></div></td></tr>';
+        rowsEl.innerHTML = '<tr><td colspan="9" class="py-3"><div class="placeholder-glow" aria-hidden="true"><div class="placeholder col-7 mb-2"></div><div class="placeholder col-9 mb-2"></div><div class="placeholder col-5"></div></div></td></tr>';
         const resp = await fetch('/api/audit/inbox?' + params.toString(), { credentials: 'same-origin' });
         if (!resp.ok) {
-            rowsEl.innerHTML = `<tr><td colspan="8" class="text-danger py-3">Error ${resp.status}</td></tr>`;
+            rowsEl.innerHTML = `<tr><td colspan="9" class="text-danger py-3">Error ${resp.status}</td></tr>`;
             metaEl.textContent = '';
             return;
         }
         const data = await resp.json();
+        lastAnomalies = data.anomalies || [];
+        clearSelection();
         metaEl.textContent = `${data.anomalies.length} of ${data.total_count} breach(es) — metrics ${data.metrics.join(', ')}, ${data.window_days}d baseline at ${data.threshold_sigma}σ`;
         if (!data.anomalies.length) {
-            rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No active anomalies for the chosen filters.</td></tr>';
+            rowsEl.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No active anomalies for the chosen filters.</td></tr>';
             return;
         }
         rowsEl.innerHTML = data.anomalies.map((a) => {
@@ -207,7 +261,11 @@
             const actionCell = a.ack
                 ? `<button class="btn btn-sm btn-outline-secondary" data-action="unack" data-ack-id="${a.ack.id}"><i class="bi bi-arrow-counterclockwise me-1"></i>Unacknowledge</button>`
                 : `<button class="btn btn-sm btn-primary" data-action="ack" data-metric="${escapeHtml(a.metric)}" data-bin-iso="${escapeHtml(a.bin_iso)}" data-bin-kind="${escapeHtml(a.bin_kind)}"><i class="bi bi-check2 me-1"></i>Acknowledge</button>`;
+            const checkboxCell = a.ack
+                ? '<td></td>'
+                : `<td><input type="checkbox" class="form-check-input" data-anomaly-key="${escapeHtml(rowKey(a))}" data-metric="${escapeHtml(a.metric)}" data-bin-iso="${escapeHtml(a.bin_iso)}" data-bin-kind="${escapeHtml(a.bin_kind)}" aria-label="Select anomaly"></td>`;
             return `<tr>
+                ${checkboxCell}
                 <td>${severityBadge(a.severity)}</td>
                 <td class="font-monospace small">${escapeHtml(a.metric)}</td>
                 <td class="font-monospace small">${escapeHtml(a.bin_iso)}</td>
@@ -218,7 +276,69 @@
                 <td>${actionCell}</td>
             </tr>`;
         }).join('');
+        syncBulkBar();
     }
+
+    rowsEl.addEventListener('change', (ev) => {
+        const cb = ev.target.closest('input[data-anomaly-key]');
+        if (!cb) return;
+        const key = cb.dataset.anomalyKey;
+        if (cb.checked) {
+            selected.set(key, {
+                metric: cb.dataset.metric,
+                bin_iso: cb.dataset.binIso,
+                bin_kind: cb.dataset.binKind,
+            });
+        } else {
+            selected.delete(key);
+        }
+        syncBulkBar();
+    });
+
+    selectAllEl.addEventListener('change', () => {
+        const ackable = ackableAnomalies();
+        if (selectAllEl.checked) {
+            ackable.forEach((a) => selected.set(rowKey(a), {
+                metric: a.metric, bin_iso: a.bin_iso, bin_kind: a.bin_kind,
+            }));
+        } else {
+            selected.clear();
+        }
+        rowsEl.querySelectorAll('input[data-anomaly-key]').forEach((cb) => {
+            cb.checked = selected.has(cb.dataset.anomalyKey);
+        });
+        syncBulkBar();
+    });
+
+    bulkClearBtn.addEventListener('click', () => clearSelection());
+
+    bulkAckBtn.addEventListener('click', async () => {
+        if (selected.size === 0) return;
+        const comment = prompt('Optional ack comment for all ' + selected.size + ' (leave blank for none)');
+        bulkAckBtn.disabled = true;
+        let failed = 0;
+        const entries = Array.from(selected.values());
+        await Promise.all(entries.map(async (e) => {
+            const body = { metric: e.metric, bin_iso: e.bin_iso, bin_kind: e.bin_kind };
+            if (comment) body.comment = comment;
+            const r = await fetch('/api/audit/anomaly-acks', {
+                method: 'POST', credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body),
+            });
+            if (!r.ok) failed++;
+        }));
+        bulkAckBtn.disabled = false;
+        if (window.pqlToast) {
+            if (failed === 0) {
+                window.pqlToast.success('Acknowledged ' + entries.length + ' anomalies.');
+            } else {
+                window.pqlToast.error(failed + ' of ' + entries.length + ' acks failed.');
+            }
+        }
+        clearSelection();
+        await loadInbox();
+    });
 
     rowsEl.addEventListener('click', async (ev) => {
         const btn = ev.target.closest('button[data-action]');

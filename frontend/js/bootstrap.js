@@ -59,6 +59,12 @@ window.pqlRelativeTime = pqlRelativeTime;
 window.pqlAbsTime = pqlAbsTime;
 window.pqlHumanizeCron = pqlHumanizeCron;
 
+// Multi-select state mixin (Phase 81.G.B).  Re-attached to window
+// so inline-script Alpine factories on alerts / audit_inbox /
+// issues_index can spread the mixin into their own x-data return.
+import { bulkSelect } from './bulk_actions.js';
+window.bulkSelect = bulkSelect;
+
 // Inline-editor factories.
 import { editable } from './editable.js';
 import { permissionsEditor } from './permissions_editor.js';

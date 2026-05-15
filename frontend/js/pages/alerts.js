@@ -13,6 +13,7 @@
 
 export function alertsPage({ alerts, savedQueries } = {}) {
  return {
+ ...window.bulkSelect(),
  alerts: alerts || [],
  savedQueries: savedQueries || [],
  creating: false,
@@ -115,6 +116,66 @@ export function alertsPage({ alerts, savedQueries } = {}) {
  if (window.pqlToast) window.pqlToast.success('Alert "' + alert.title + '" deleted.');
  } else if (window.pqlToast) {
  window.pqlToast.error(res.error || 'Failed to delete alert.');
+ }
+ },
+
+ async bulkDelete() {
+ const slugs = this.selectedKeys;
+ if (!slugs.length) return;
+ const ok = window.pqlConfirm
+  ? await window.pqlConfirm(
+   'Delete ' + slugs.length + ' alert' + (slugs.length === 1 ? '' : 's') + '?',
+   'Permanently delete the selected alerts. This cannot be undone.',
+  )
+  : window.confirm('Delete ' + slugs.length + ' alert(s)?');
+ if (!ok) return;
+ let failed = 0;
+ await Promise.all(slugs.map(async (slug) => {
+ const res = await window.pqlApi.fetch(
+ '/api/alerts/' + encodeURIComponent(slug),
+ { method: 'DELETE', silent: true },
+ );
+ if (!(res.ok || res.status === 204)) failed++;
+ }));
+ // Drop every slug we tried to delete from the local list.
+ // Failed ones will reappear on next page load; the toast below
+ // tells the user how many ops failed.
+ const slugSet = new Set(slugs);
+ this.alerts = this.alerts.filter((a) => !slugSet.has(a.slug));
+ this.clearSelection();
+ if (window.pqlToast) {
+ if (failed === 0) {
+ window.pqlToast.success('Deleted ' + slugs.length + ' alert' + (slugs.length === 1 ? '' : 's') + '.');
+ } else {
+ window.pqlToast.error(failed + ' of ' + slugs.length + ' deletions failed.');
+ }
+ }
+ },
+
+ async bulkToggleActive() {
+ const slugs = this.selectedKeys;
+ if (!slugs.length) return;
+ const selectedAlerts = this.alerts.filter((a) => slugs.includes(a.slug));
+ // Mixed selection: if any are active, pause them all; else resume.
+ const anyActive = selectedAlerts.some((a) => a.is_active);
+ const targetActive = !anyActive;
+ let failed = 0;
+ await Promise.all(selectedAlerts.map(async (a) => {
+ if (a.is_active === targetActive) return;
+ const res = await window.pqlApi.fetch(
+ '/api/alerts/' + encodeURIComponent(a.slug),
+ { method: 'PATCH', body: { is_active: targetActive }, silent: true },
+ );
+ if (res.ok && res.data) a.is_active = res.data.is_active;
+ else failed++;
+ }));
+ this.clearSelection();
+ if (window.pqlToast) {
+ if (failed === 0) {
+ window.pqlToast.success((targetActive ? 'Resumed ' : 'Paused ') + selectedAlerts.length + ' alert(s).');
+ } else {
+ window.pqlToast.error(failed + ' of ' + selectedAlerts.length + ' updates failed.');
+ }
  }
  },
  };

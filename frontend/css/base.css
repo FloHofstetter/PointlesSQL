@@ -239,3 +239,12 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
   animation: none;
  }
 }
+
+/* Phase 81.G.B — checkbox column on multi-select list/table views.
+ * Holds the per-row selector tight against the left edge so titles
+ * and metadata still get the visual weight. */
+.pql-checkbox-col {
+ width: 2.25rem;
+ text-align: center;
+ vertical-align: middle;
+}
