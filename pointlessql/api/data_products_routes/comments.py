@@ -566,7 +566,9 @@ async def post_data_product_comment(
     # Phase 72.5: audit-log mirror so the Phase-18.7 FTS picks
     # comments up in `/audit/search`.  The DataProductComment
     # table stays system-of-record; this row is discoverability
-    # only.  body_preview is truncated to keep storage bounded.
+    # only.  body_preview keeps the 140-char display affordance;
+    # body_md ships the full body so the Phase-78 FTS unlock can
+    # find comments by long-form content.
     mirror_social_to_audit(
         factory,
         user_id=user["id"],
@@ -580,6 +582,7 @@ async def post_data_product_comment(
             "comment_id": comment_id,
             "parent_comment_id": parent_comment_id,
             "body_preview": _body_preview(body_md),
+            "body_md": body_md,
         },
         workspace_id=workspace_id,
     )

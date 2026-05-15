@@ -61,6 +61,10 @@ async def api_audit_search(
     until: str | None = Query(default=None, description="ISO-8601 upper bound (exclusive)"),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    kind: str | None = Query(
+        default=None,
+        description="Polymorphic entity kind (dp|table|model|branch|…)",
+    ),
 ) -> dict[str, Any]:
     """Free-text search across the audit lake.
 
@@ -82,6 +86,10 @@ async def api_audit_search(
         until: ISO-8601 upper bound (exclusive).
         limit: Max rows (1–500); FTS rank-ascending.
         offset: Zero-based offset for the page.
+        kind: Restrict to a polymorphic entity kind (Phase 78
+            polish).  Only the ``audit_log`` axis carries a
+            kind discriminator; filtering on other axes narrows
+            to zero rows.  ``None`` keeps the filter off.
 
     Returns:
         ``{"available", "query", "axis", "since", "until", "limit",
@@ -108,6 +116,7 @@ async def api_audit_search(
         limit=limit,
         offset=offset,
         workspace_id=workspace_id,
+        kind=kind,
     )
 
 

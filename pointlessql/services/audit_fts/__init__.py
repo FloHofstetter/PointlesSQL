@@ -103,6 +103,7 @@ def search(
     limit: int = 50,
     offset: int = 0,
     workspace_id: int | None = None,
+    kind: str | None = None,
 ) -> dict[str, Any]:
     """Search the audit lake; returns a JSON-shaped result dict.
 
@@ -120,10 +121,14 @@ def search(
         workspace_id: Restrict to a single workspace's audit corpus.
             ``None`` skips the filter (super-admin cross-workspace
             lens).
+        kind: Restrict to one polymorphic entity kind (``'dp'``,
+            ``'table'``, ``'model'``, …).  Only populated for the
+            ``audit_log`` axis; non-audit axes match no rows when
+            the filter is set.  ``None`` keeps the filter off.
 
     Returns:
         ``{"available", "query", "axis", "since", "until", "limit",
-        "offset", "next_offset", "workspace_id", "results",
+        "offset", "next_offset", "workspace_id", "kind", "results",
         "total_count"}``.  ``next_offset`` is ``offset + limit`` when
         the page came back full and ``None`` once the page is the
         tail of the result set.
@@ -147,6 +152,7 @@ def search(
         "offset": safe_offset,
         "next_offset": None,
         "workspace_id": workspace_id,
+        "kind": kind,
         "results": [],
         "total_count": 0,
     }
@@ -163,6 +169,7 @@ def search(
                 limit=limit,
                 offset=safe_offset,
                 workspace_id=workspace_id,
+                kind=kind,
             )
         elif _is_postgres(session):
             results = _postgres.search(
@@ -172,6 +179,7 @@ def search(
                 limit=limit,
                 offset=safe_offset,
                 workspace_id=workspace_id,
+                kind=kind,
             )
         else:
             return response

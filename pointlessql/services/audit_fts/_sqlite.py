@@ -40,6 +40,20 @@ _AUDIT_LOG_TEXT = (
 )
 
 
+# Phase 78 polish — derive entity_kind for the audit_log axis from
+# the target column.  The locked back-compat rule keeps the legacy
+# ``data_product:`` prefix mapped to ``dp``; every other target
+# encodes ``{kind}:{ref}`` directly.  Non-audit_log axes carry no
+# kind notion, so the column is left blank for them.
+_AUDIT_LOG_KIND_EXPR = (
+    "CASE "
+    "WHEN NEW.target LIKE 'data_product:%' THEN 'dp' "
+    "WHEN instr(NEW.target, ':') > 0 "
+    "  THEN substr(NEW.target, 1, instr(NEW.target, ':') - 1) "
+    "ELSE '' END"
+)
+
+
 _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
     {
         "table": "agent_runs",
@@ -49,6 +63,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "principal_expr": "IFNULL(NEW.principal,'')",
         "table_fqn_expr": "''",
         "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
+        "entity_kind_expr": "''",
         "text_expr": _RUNS_TEXT,
     },
     {
@@ -59,6 +74,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "principal_expr": "''",
         "table_fqn_expr": "IFNULL(NEW.target_table,'')",
         "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
+        "entity_kind_expr": "''",
         "text_expr": _OPS_TEXT,
     },
     {
@@ -69,6 +85,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "principal_expr": "IFNULL(NEW.user_email,'')",
         "table_fqn_expr": "''",
         "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
+        "entity_kind_expr": "''",
         "text_expr": _QUERIES_TEXT,
     },
     {
@@ -79,6 +96,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "principal_expr": "''",
         "table_fqn_expr": "''",
         "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
+        "entity_kind_expr": "''",
         "text_expr": _TOOL_CALLS_TEXT,
     },
     {
@@ -89,6 +107,7 @@ _TRIGGER_SPECS: tuple[dict[str, str], ...] = (
         "principal_expr": "IFNULL(NEW.user_email,'')",
         "table_fqn_expr": "IFNULL(NEW.target,'')",
         "workspace_id_expr": "IFNULL(NEW.workspace_id, 1)",
+        "entity_kind_expr": _AUDIT_LOG_KIND_EXPR,
         "text_expr": _AUDIT_LOG_TEXT,
     },
 )
@@ -102,6 +121,7 @@ CREATE VIRTUAL TABLE audit_search USING fts5(
     principal UNINDEXED,
     table_fqn UNINDEXED,
     workspace_id UNINDEXED,
+    entity_kind UNINDEXED,
     text,
     tokenize="unicode61 separators '._-'"
 )
@@ -111,10 +131,11 @@ CREATE VIRTUAL TABLE audit_search USING fts5(
 _INITIAL_POPULATION_SQL: tuple[str, ...] = (
     """
     INSERT INTO audit_search(
-        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+        axis, entity_id, run_id, principal, table_fqn,
+        workspace_id, entity_kind, text
     )
     SELECT 'runs', id, id, IFNULL(principal,''), '',
-           IFNULL(workspace_id, 1),
+           IFNULL(workspace_id, 1), '',
            IFNULL(id,'') || ' ' || IFNULL(principal,'') || ' ' ||
            IFNULL(agent_id,'') || ' ' || IFNULL(status,'') || ' ' ||
            IFNULL(denied_reason,'') || ' ' || IFNULL(tables_touched,'') || ' ' ||
@@ -123,40 +144,50 @@ _INITIAL_POPULATION_SQL: tuple[str, ...] = (
     """,
     """
     INSERT INTO audit_search(
-        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+        axis, entity_id, run_id, principal, table_fqn,
+        workspace_id, entity_kind, text
     )
     SELECT 'ops', CAST(id AS TEXT), IFNULL(agent_run_id,''), '', IFNULL(target_table,''),
-           IFNULL(workspace_id, 1),
+           IFNULL(workspace_id, 1), '',
            IFNULL(op_name,'') || ' ' || IFNULL(target_table,'') || ' ' ||
            IFNULL(error_message,'') || ' ' || IFNULL(params_json,'')
     FROM agent_run_operations
     """,
     """
     INSERT INTO audit_search(
-        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+        axis, entity_id, run_id, principal, table_fqn,
+        workspace_id, entity_kind, text
     )
     SELECT 'queries', CAST(id AS TEXT), IFNULL(agent_run_id,''), IFNULL(user_email,''), '',
-           IFNULL(workspace_id, 1),
+           IFNULL(workspace_id, 1), '',
            IFNULL(sql_text,'') || ' ' || IFNULL(user_email,'') || ' ' ||
            IFNULL(read_kind,'') || ' ' || IFNULL(status,'')
     FROM query_history
     """,
     """
     INSERT INTO audit_search(
-        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+        axis, entity_id, run_id, principal, table_fqn,
+        workspace_id, entity_kind, text
     )
     SELECT 'tool_calls', CAST(id AS TEXT), IFNULL(agent_run_id,''), '', '',
-           IFNULL(workspace_id, 1),
+           IFNULL(workspace_id, 1), '',
            IFNULL(tool_name,'') || ' ' || IFNULL(args_json,'') || ' ' ||
            IFNULL(result_summary,'')
     FROM agent_run_tool_calls
     """,
     """
     INSERT INTO audit_search(
-        axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+        axis, entity_id, run_id, principal, table_fqn,
+        workspace_id, entity_kind, text
     )
     SELECT 'audit_log', CAST(id AS TEXT), '', IFNULL(user_email,''), IFNULL(target,''),
            IFNULL(workspace_id, 1),
+           CASE
+               WHEN target LIKE 'data_product:%' THEN 'dp'
+               WHEN instr(IFNULL(target,''), ':') > 0
+                 THEN substr(target, 1, instr(target, ':') - 1)
+               ELSE ''
+           END,
            IFNULL(action,'') || ' ' || IFNULL(target,'') || ' ' ||
            IFNULL(detail,'') || ' ' || IFNULL(user_email,'')
     FROM audit_log
@@ -173,13 +204,15 @@ def _trigger_statements(spec: dict[str, str]) -> list[str]:
     principal_expr = spec["principal_expr"]
     table_fqn_expr = spec["table_fqn_expr"]
     workspace_id_expr = spec.get("workspace_id_expr", "1")
+    entity_kind_expr = spec.get("entity_kind_expr", "''")
     text_expr = spec["text_expr"]
     return [
         f"""
         CREATE TRIGGER audit_search_{axis}_ai AFTER INSERT ON {table}
         BEGIN
             INSERT INTO audit_search(
-                axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+                axis, entity_id, run_id, principal, table_fqn,
+                workspace_id, entity_kind, text
             )
             VALUES (
                 '{axis}',
@@ -188,6 +221,7 @@ def _trigger_statements(spec: dict[str, str]) -> list[str]:
                 {principal_expr},
                 {table_fqn_expr},
                 {workspace_id_expr},
+                {entity_kind_expr},
                 {text_expr}
             );
         END
@@ -205,7 +239,8 @@ def _trigger_statements(spec: dict[str, str]) -> list[str]:
             DELETE FROM audit_search
             WHERE axis = '{axis}' AND entity_id = CAST(OLD.{entity_col} AS TEXT);
             INSERT INTO audit_search(
-                axis, entity_id, run_id, principal, table_fqn, workspace_id, text
+                axis, entity_id, run_id, principal, table_fqn,
+                workspace_id, entity_kind, text
             )
             VALUES (
                 '{axis}',
@@ -214,6 +249,7 @@ def _trigger_statements(spec: dict[str, str]) -> list[str]:
                 {principal_expr},
                 {table_fqn_expr},
                 {workspace_id_expr},
+                {entity_kind_expr},
                 {text_expr}
             );
         END
@@ -241,6 +277,7 @@ def search(
     limit: int,
     offset: int = 0,
     workspace_id: int | None,
+    kind: str | None = None,
 ) -> list[dict[str, Any]] | None:
     """SQLite path: ``audit_search MATCH :query``."""
     if not is_available(session):
@@ -253,8 +290,8 @@ def search(
     }
     sql_parts: list[str] = [
         "SELECT s.axis, s.entity_id, s.run_id, s.principal, s.table_fqn, "
-        "s.workspace_id, "
-        "snippet(audit_search, 6, '<mark>', '</mark>', '…', 16) AS snippet, "
+        "s.workspace_id, s.entity_kind, "
+        "snippet(audit_search, 7, '<mark>', '</mark>', '…', 16) AS snippet, "
         "rank "
         "FROM audit_search s "
         "WHERE audit_search MATCH :query"
@@ -265,6 +302,12 @@ def search(
     if workspace_id is not None:
         sql_parts.append("AND s.workspace_id = :workspace_id")
         params["workspace_id"] = workspace_id
+    if kind is not None:
+        # entity_kind is only populated for the audit_log axis;
+        # other axes carry the empty string so a kind filter
+        # naturally narrows the result set to audit_log rows.
+        sql_parts.append("AND s.entity_kind = :entity_kind")
+        params["entity_kind"] = kind
     sql_parts.append("ORDER BY rank LIMIT :limit OFFSET :offset")
     sql = " ".join(sql_parts)
 
@@ -282,6 +325,7 @@ def search(
             "principal": row.principal or None,
             "table_fqn": row.table_fqn or None,
             "workspace_id": int(row.workspace_id) if row.workspace_id is not None else 1,
+            "entity_kind": row.entity_kind or None,
             "snippet": row.snippet,
             "rank": float(row.rank) if row.rank is not None else None,
         }

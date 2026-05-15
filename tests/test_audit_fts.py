@@ -422,3 +422,102 @@ async def test_api_audit_search_offset_route(
     body = r.json()
     assert body["offset"] == 1
     assert "next_offset" in body
+
+
+# ---------------------------------------------------------------------------
+# Phase 78 polish — full body + entity_kind filtering
+# ---------------------------------------------------------------------------
+
+
+def test_search_finds_full_body_beyond_140_chars(fts_index: None) -> None:
+    """A long comment-body keyword lands in FTS even past the preview cutoff.
+
+    Phase-78 polish: audit-mirror callers now ship the full
+    ``body_md`` in their detail JSON alongside the historical
+    140-char ``body_preview``.  This test seeds an audit_log row
+    whose detail JSON carries a marker keyword more than 200
+    characters into the body and confirms FTS surfaces it via
+    ``/api/audit/search``.
+    """
+    long_body_filler = "filler " * 50  # well past the 140-char cutoff
+    marker = "phase78MarkerXYZ"
+    detail = json.dumps(
+        {
+            "comment_id": 999,
+            "body_preview": long_body_filler[:140],
+            "body_md": long_body_filler + marker,
+        }
+    )
+    _seed_audit_log(
+        action="audit.discussion.posted",
+        target="dp:main.gold#tab-discussion-comment-999",
+        detail=detail,
+    )
+    result = audit_fts.search(
+        app.state.session_factory, query=marker, axis="audit_log"
+    )
+    assert result["available"]
+    assert result["total_count"] >= 1
+    assert any(marker in (r["snippet"] or "") for r in result["results"])
+
+
+def test_search_kind_filter_narrows_to_audit_log_axis(fts_index: None) -> None:
+    """``?kind=table`` returns only audit_log rows with that kind."""
+    _seed_audit_log(
+        action="audit.discussion.posted",
+        target="table:main.silver.t#tab-discussion-comment-1",
+        detail='{"kindfilter78token": true}',
+    )
+    _seed_audit_log(
+        action="audit.discussion.posted",
+        target="dp:main.gold#tab-discussion-comment-2",
+        detail='{"kindfilter78token": true}',
+    )
+    table_only = audit_fts.search(
+        app.state.session_factory,
+        query="kindfilter78token",
+        axis="audit_log",
+        kind="table",
+    )
+    assert table_only["available"]
+    assert table_only["total_count"] == 1
+    assert table_only["results"][0]["entity_kind"] == "table"
+
+
+def test_search_kind_dp_matches_legacy_data_product_prefix(fts_index: None) -> None:
+    """``kind='dp'`` matches both new ``dp:`` and legacy ``data_product:``."""
+    _seed_audit_log(
+        action="audit.review.posted",
+        target="data_product:main.legacy#tab-reviews-1",
+        detail='{"legacyMarker78": true}',
+    )
+    _seed_audit_log(
+        action="audit.review.posted",
+        target="dp:main.modern#tab-reviews-1",
+        detail='{"legacyMarker78": true}',
+    )
+    dp_only = audit_fts.search(
+        app.state.session_factory,
+        query="legacyMarker78",
+        axis="audit_log",
+        kind="dp",
+    )
+    assert dp_only["available"]
+    # Both rows count as kind=dp — the legacy ``data_product:``
+    # prefix is normalized to ``dp`` at index time.
+    kinds = {r["entity_kind"] for r in dp_only["results"]}
+    assert kinds == {"dp"}
+    assert dp_only["total_count"] == 2
+
+
+def test_search_response_carries_kind_field(fts_index: None) -> None:
+    """``search()`` echoes the ``kind`` arg in the response envelope."""
+    out = audit_fts.search(
+        app.state.session_factory,
+        query="phase78NoMatch",
+        axis="audit_log",
+        kind="model",
+    )
+    assert out["kind"] == "model"
+    # No-match path still echoes; the field is contract-stable.
+    assert "results" in out

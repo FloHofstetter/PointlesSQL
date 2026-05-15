@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS audit_search_index (
     principal TEXT,
     table_fqn TEXT,
     workspace_id INTEGER,
+    entity_kind TEXT NOT NULL DEFAULT '',
     text_corpus TEXT,
     text_search TSVECTOR GENERATED ALWAYS AS
         (to_tsvector('simple',
@@ -113,12 +114,35 @@ CREATE TABLE IF NOT EXISTS audit_search_index (
 """
 
 
+# Phase 78 polish — kind derivation expression for the audit_log
+# axis.  ``data_product:`` legacy prefix maps to ``dp`` (locked
+# decision #3); every other ``{kind}:{ref}`` carries its own kind.
+_PG_AUDIT_LOG_KIND_EXPR = (
+    "CASE "
+    "WHEN NEW.target LIKE 'data_product:%' THEN 'dp' "
+    "WHEN position(':' IN COALESCE(NEW.target, '')) > 0 "
+    "  THEN split_part(NEW.target, ':', 1) "
+    "ELSE '' END"
+)
+
+
+def _pg_kind_expr_for(axis: str) -> str:
+    """Return the SQL expression that populates ``entity_kind``.
+
+    Only the ``audit_log`` axis carries a kind discriminator; every
+    other axis stores the empty string so a kind filter narrows
+    naturally to audit-log rows.
+    """
+    return _PG_AUDIT_LOG_KIND_EXPR if axis == "audit_log" else "''"
+
+
 _PG_INITIAL_POPULATE_SQL: dict[str, str] = {
     "runs": (
         "INSERT INTO audit_search_index "
-        "(axis, entity_id, run_id, principal, table_fqn, workspace_id, text_corpus) "
+        "(axis, entity_id, run_id, principal, table_fqn, "
+        " workspace_id, entity_kind, text_corpus) "
         "SELECT 'runs', id::text, id, COALESCE(principal, ''), '', "
-        "       COALESCE(workspace_id, 1), "
+        "       COALESCE(workspace_id, 1), '', "
         "       COALESCE(id::text, '') || ' ' || COALESCE(principal, '') || ' ' || "
         "       COALESCE(agent_id, '') || ' ' || COALESCE(status, '') || ' ' || "
         "       COALESCE(denied_reason, '') || ' ' || COALESCE(tables_touched, '') || ' ' || "
@@ -127,36 +151,46 @@ _PG_INITIAL_POPULATE_SQL: dict[str, str] = {
     ),
     "ops": (
         "INSERT INTO audit_search_index "
-        "(axis, entity_id, run_id, principal, table_fqn, workspace_id, text_corpus) "
+        "(axis, entity_id, run_id, principal, table_fqn, "
+        " workspace_id, entity_kind, text_corpus) "
         "SELECT 'ops', id::text, COALESCE(agent_run_id, ''), '', "
-        "       COALESCE(target_table, ''), COALESCE(workspace_id, 1), "
+        "       COALESCE(target_table, ''), COALESCE(workspace_id, 1), '', "
         "       COALESCE(op_name, '') || ' ' || COALESCE(target_table, '') || ' ' || "
         "       COALESCE(error_message, '') || ' ' || COALESCE(params_json, '') "
         "FROM agent_run_operations ON CONFLICT DO NOTHING"
     ),
     "queries": (
         "INSERT INTO audit_search_index "
-        "(axis, entity_id, run_id, principal, table_fqn, workspace_id, text_corpus) "
+        "(axis, entity_id, run_id, principal, table_fqn, "
+        " workspace_id, entity_kind, text_corpus) "
         "SELECT 'queries', id::text, COALESCE(agent_run_id, ''), "
-        "       COALESCE(user_email, ''), '', COALESCE(workspace_id, 1), "
+        "       COALESCE(user_email, ''), '', COALESCE(workspace_id, 1), '', "
         "       COALESCE(sql_text, '') || ' ' || COALESCE(user_email, '') || ' ' || "
         "       COALESCE(read_kind, '') || ' ' || COALESCE(status, '') "
         "FROM query_history ON CONFLICT DO NOTHING"
     ),
     "tool_calls": (
         "INSERT INTO audit_search_index "
-        "(axis, entity_id, run_id, principal, table_fqn, workspace_id, text_corpus) "
+        "(axis, entity_id, run_id, principal, table_fqn, "
+        " workspace_id, entity_kind, text_corpus) "
         "SELECT 'tool_calls', id::text, COALESCE(agent_run_id, ''), '', '', "
-        "       COALESCE(workspace_id, 1), "
+        "       COALESCE(workspace_id, 1), '', "
         "       COALESCE(tool_name, '') || ' ' || COALESCE(args_json, '') || ' ' || "
         "       COALESCE(result_summary, '') "
         "FROM agent_run_tool_calls ON CONFLICT DO NOTHING"
     ),
     "audit_log": (
         "INSERT INTO audit_search_index "
-        "(axis, entity_id, run_id, principal, table_fqn, workspace_id, text_corpus) "
+        "(axis, entity_id, run_id, principal, table_fqn, "
+        " workspace_id, entity_kind, text_corpus) "
         "SELECT 'audit_log', id::text, '', COALESCE(user_email, ''), "
         "       COALESCE(target, ''), COALESCE(workspace_id, 1), "
+        "       CASE "
+        "           WHEN target LIKE 'data_product:%' THEN 'dp' "
+        "           WHEN position(':' IN COALESCE(target, '')) > 0 "
+        "             THEN split_part(target, ':', 1) "
+        "           ELSE '' "
+        "       END, "
         "       COALESCE(action, '') || ' ' || COALESCE(target, '') || ' ' || "
         "       COALESCE(detail, '') || ' ' || COALESCE(user_email, '') "
         "FROM audit_log ON CONFLICT DO NOTHING"
@@ -166,11 +200,13 @@ _PG_INITIAL_POPULATE_SQL: dict[str, str] = {
 
 def _pg_upsert_function_sql(axis: str, spec: dict[str, str]) -> str:
     """Build the PL/pgSQL upsert function for a single source axis."""
+    kind_expr = _pg_kind_expr_for(axis)
     return f"""
 CREATE OR REPLACE FUNCTION audit_search_{axis}_upsert() RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO audit_search_index (
-        axis, entity_id, run_id, principal, table_fqn, workspace_id, text_corpus
+        axis, entity_id, run_id, principal, table_fqn,
+        workspace_id, entity_kind, text_corpus
     ) VALUES (
         '{axis}',
         NEW.{spec["entity_col"]}::text,
@@ -178,6 +214,7 @@ BEGIN
         ({spec["principal_expr"]})::text,
         ({spec["table_fqn_expr"]})::text,
         ({spec["workspace_id_expr"]})::int,
+        ({kind_expr})::text,
         ({spec["text_expr"]})::text
     )
     ON CONFLICT (axis, entity_id) DO UPDATE SET
@@ -185,6 +222,7 @@ BEGIN
         principal = EXCLUDED.principal,
         table_fqn = EXCLUDED.table_fqn,
         workspace_id = EXCLUDED.workspace_id,
+        entity_kind = EXCLUDED.entity_kind,
         text_corpus = EXCLUDED.text_corpus;
     RETURN NEW;
 END;
@@ -270,6 +308,7 @@ def search(
     limit: int,
     offset: int = 0,
     workspace_id: int | None,
+    kind: str | None = None,
 ) -> list[dict[str, Any]] | None:
     """Postgres path: ``text_search @@ plainto_tsquery``.
 
@@ -295,7 +334,7 @@ def search(
     }
     sql_parts: list[str] = [
         "SELECT s.axis, s.entity_id, s.run_id, s.principal, s.table_fqn, "
-        "       s.workspace_id, "
+        "       s.workspace_id, s.entity_kind, "
         "       ts_headline('simple', COALESCE(s.text_corpus, ''), "
         "                   plainto_tsquery('simple', :query), "
         "                   'StartSel=<mark>, StopSel=</mark>, "
@@ -312,6 +351,9 @@ def search(
     if workspace_id is not None:
         sql_parts.append("AND s.workspace_id = :workspace_id")
         params["workspace_id"] = workspace_id
+    if kind is not None:
+        sql_parts.append("AND s.entity_kind = :entity_kind")
+        params["entity_kind"] = kind
     sql_parts.append("ORDER BY rank DESC LIMIT :limit OFFSET :offset")
     sql = " ".join(sql_parts)
 
@@ -329,6 +371,7 @@ def search(
             "principal": row.principal or None,
             "table_fqn": row.table_fqn or None,
             "workspace_id": int(row.workspace_id) if row.workspace_id is not None else 1,
+            "entity_kind": row.entity_kind or None,
             "snippet": _merge_pg_marks(row.snippet),
             "rank": float(row.rank) if row.rank is not None else None,
         }

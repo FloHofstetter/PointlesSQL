@@ -628,6 +628,7 @@ async def post_polymorphic_comment(
             "comment_id": comment_id,
             "parent_comment_id": parent_comment_id,
             "body_preview": _body_preview(body_md),
+            "body_md": body_md,
         },
         workspace_id=workspace_id,
     )
