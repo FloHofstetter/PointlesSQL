@@ -111,6 +111,7 @@ from pointlessql.models.lineage import (
     UnattributedWrite,
 )
 from pointlessql.models.notebook import (
+    Notebook,
     NotebookCellRun,
     NotebookCellRunSource,
     NotebookJobLink,
@@ -201,6 +202,7 @@ __all__ = [
     "LineageValueChange",
     "REJECT_REASONS",
     "TRANSFORM_KINDS",
+    "Notebook",
     "NotebookCellRun",
     "NotebookCellRunSource",
     "NotebookJobLink",

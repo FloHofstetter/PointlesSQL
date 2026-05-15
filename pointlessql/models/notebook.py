@@ -4,10 +4,64 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
+
+
+class Notebook(Base):
+    """Stable UUID identity for a notebook (Phase 77.6).
+
+    Pre-77.6 notebooks lived as bare files on disk referenced by
+    ``file_path`` directly.  Path-keyed addressing breaks every
+    social link / audit trail / lineage edge when the notebook is
+    renamed.  77.6 adds this thin metadata table so the social
+    layer can address notebooks by an opaque UUID
+    (``kind='notebook', entity_ref=<uuid>``); rename becomes a
+    single ``UPDATE notebooks SET file_path = ...`` without losing
+    cross-references.
+
+    Attributes:
+        id: 36-char UUID4 string.  Stable across path renames.
+        workspace_id: Tenant scope.
+        file_path: Notebook path under the workspace's notebooks
+            directory.  Unique per workspace.
+        created_at: Wall-clock when the identity row was created.
+    """
+
+    __tablename__ = "notebooks"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "file_path",
+            name="uq_notebooks_path_per_workspace",
+        ),
+        Index("ix_notebooks_path", "file_path"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workspace_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("workspaces.id"),
+        nullable=False,
+    )
+    file_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
 
 
 class NotebookOutput(Base):
