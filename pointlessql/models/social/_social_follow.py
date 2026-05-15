@@ -1,20 +1,16 @@
-"""Polymorphic follow rows for non-DP entity kinds (Phase 77.8).
+"""Polymorphic follow rows for every entity kind (Phase 77.8 + 78).
 
-The legacy ``data_product_follows`` table has a composite PK on
-``(workspace_id, data_product_id, user_id)`` that 77.0.G couldn't
-relax without an SQLite-unfriendly PK swap.  77.8 sidesteps that
-by introducing a sibling polymorphic table — kind-agnostic from
-day 1, keyed by ``(workspace_id, social_target_id, user_id)``.
+Phase 77.8 introduced this kind-agnostic sibling alongside the
+legacy ``data_product_follows`` (which had a composite PK on
+``(workspace_id, data_product_id, user_id)`` that the 77.0.G
+polymorphic rewrite couldn't relax without an SQLite-unfriendly
+PK swap).  Phase 78 polish consolidated the two: every follow,
+DP or otherwise, now lives in this table keyed by
+``(workspace_id, social_target_id, user_id)``.
 
-The DP follow route keeps using ``data_product_follows``
-unchanged (zero behaviour drift).  Polymorphic follows for
-tables / models / branches / runs / etc. land in this table
-through the upcoming ``/api/social/{kind}/{ref}/follow`` path.
-
-Phase 77.11 collapses the two tables into one — keeps the legacy
-DP follow rows in the same place as polymorphic rows.  Until
-then, ``fanout_event`` queries both tables (DP via legacy, non-DP
-via this table) so the inbox keeps working uniformly.
+DP follower lookups join through :class:`SocialTarget` (where
+``entity_kind='dp'`` and ``data_product_id`` is the back-pointer)
+to recover the legacy DP affinity at query time.
 """
 
 from __future__ import annotations

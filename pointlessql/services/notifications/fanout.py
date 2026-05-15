@@ -6,8 +6,9 @@ resolve the recipient set and bulk-insert one
 
 Recipients are the union of:
 
-* every follower of the data product
-  (:class:`DataProductFollow`), and
+* every follower of the entity (:class:`SocialFollow` joined
+  through :class:`SocialTarget` to find the DP back-pointer),
+  and
 * any explicitly named additional recipients (``extra_recipients``)
   — used to deliver @mention pings even when the mentioned user
   doesn't follow the product.
@@ -26,8 +27,9 @@ from typing import Any, cast
 from sqlalchemy import select
 
 from pointlessql.models.auth import User
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.notifications import UserNotification
+from pointlessql.models.social._social_follow import SocialFollow
+from pointlessql.models.social._social_target import SocialTarget
 
 logger = logging.getLogger(__name__)
 
@@ -107,13 +109,21 @@ def fanout_event(
         with session_factory() as session:
             follower_ids: set[int] = set()
             if entity_kind == "dp" and data_product_id is not None:
+                # Phase 78 polish: follows live in social_follows
+                # keyed by social_target_id; join through
+                # social_targets to find the DP's anchor row.
                 follower_ids = {
                     int(uid)
                     for (uid,) in session.execute(
-                        select(DataProductFollow.user_id).where(
-                            DataProductFollow.workspace_id == workspace_id,
-                            DataProductFollow.data_product_id
-                            == data_product_id,
+                        select(SocialFollow.user_id)
+                        .join(
+                            SocialTarget,
+                            SocialTarget.id == SocialFollow.social_target_id,
+                        )
+                        .where(
+                            SocialFollow.workspace_id == workspace_id,
+                            SocialTarget.entity_kind == "dp",
+                            SocialTarget.data_product_id == data_product_id,
                         )
                     ).all()
                 }

@@ -29,8 +29,8 @@ from pointlessql.models.agent._runs import AgentRun
 from pointlessql.models.catalog._data_product_cooccurrence import (
     DataProductCooccurrence,
 )
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.services.data_products import (
     fetch_recommendations_for_user,
     fetch_related,
@@ -201,10 +201,9 @@ def test_fetch_recommendations_filters_followed(tmp_path: Path) -> None:
                 data_product_id=dp_id,
             )
             session.add(
-                DataProductFollow(
+                SocialFollow(
                     workspace_id=1,
                     user_id=1,
-                    data_product_id=dp_id,
                     social_target_id=int(anchor.id),
                     created_at=datetime.datetime.now(datetime.UTC),
                 )
@@ -254,10 +253,9 @@ async def test_recommendations_route(
             data_product_id=dp_a,
         )
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=1,
                 user_id=1,
-                data_product_id=dp_a,
                 social_target_id=int(anchor.id),
                 created_at=datetime.datetime.now(datetime.UTC),
             )

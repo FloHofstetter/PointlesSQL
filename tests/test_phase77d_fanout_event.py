@@ -29,11 +29,9 @@ from sqlalchemy import delete, select
 from pointlessql.api.main import app
 from pointlessql.data_products import load_contract
 from pointlessql.models.auth import User
-from pointlessql.models.catalog._data_product_follows import (
-    DataProductFollow,
-)
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
+from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.services.notifications import fanout_event
 
 _CONTRACT_YAML = """\
@@ -128,9 +126,8 @@ def test_fanout_event_dp_stamps_polymorphic_marker(
             data_product_id=dp_id,
         )
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=1,
-                data_product_id=dp_id,
                 social_target_id=int(anchor.id),
                 user_id=nonadmin_user_id,
                 created_at=datetime.now(UTC),
@@ -228,9 +225,8 @@ def test_fanout_event_skips_actor(
             data_product_id=dp_id,
         )
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=1,
-                data_product_id=dp_id,
                 social_target_id=int(anchor.id),
                 user_id=admin_user_id,
                 created_at=datetime.now(UTC),
@@ -285,9 +281,8 @@ def test_fanout_event_honours_per_user_inbox_opt_out(
             data_product_id=dp_id,
         )
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=1,
-                data_product_id=dp_id,
                 social_target_id=int(anchor.id),
                 user_id=nonadmin_user_id,
                 created_at=datetime.now(UTC),

@@ -20,8 +20,9 @@ from sqlalchemy import select
 
 from pointlessql.api.data_products_routes import _load_one  # pyright: ignore[reportPrivateUsage]
 from pointlessql.api.dependencies import current_workspace_id, get_user
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.social._social_follow import SocialFollow
+from pointlessql.models.social._social_target import SocialTarget
 
 router = APIRouter(tags=["data-products"])
 
@@ -71,15 +72,20 @@ async def data_products_followed_page(
     factory = request.app.state.session_factory
     with factory() as session:
         rows = session.execute(
-            select(DataProduct, DataProductFollow)
+            select(DataProduct, SocialFollow)
             .join(
-                DataProductFollow,
-                (DataProductFollow.data_product_id == DataProduct.id)
-                & (DataProductFollow.workspace_id == DataProduct.workspace_id),
+                SocialTarget,
+                (SocialTarget.data_product_id == DataProduct.id)
+                & (SocialTarget.entity_kind == "dp"),
+            )
+            .join(
+                SocialFollow,
+                (SocialFollow.social_target_id == SocialTarget.id)
+                & (SocialFollow.workspace_id == DataProduct.workspace_id),
             )
             .where(
-                DataProductFollow.workspace_id == workspace_id,
-                DataProductFollow.user_id == user["id"],
+                SocialFollow.workspace_id == workspace_id,
+                SocialFollow.user_id == user["id"],
             )
             .order_by(DataProduct.last_loaded_at.desc())
         ).all()

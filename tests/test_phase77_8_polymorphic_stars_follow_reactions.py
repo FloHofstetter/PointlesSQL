@@ -390,17 +390,21 @@ async def test_comment_reaction_rejects_mismatched_entity(
 
 
 # ---------------------------------------------------------------------------
-# DP regression — legacy DP follow path keeps working
+# DP regression — DP follow route writes to social_follows after Phase 78
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_dp_follow_route_still_writes_to_data_product_follows(
+async def test_dp_follow_route_writes_to_social_follows(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """The /api/data-products/.../follow path stays bit-identical."""
-    # First, ensure a DP exists by hitting the existing infra.  The
-    # data_products test fixtures seed common DPs.
+    """The /api/data-products/.../follow path lands in social_follows.
+
+    Phase 78 polish consolidated data_product_follows into the
+    polymorphic ``social_follows`` sibling table; the DP route now
+    looks up the social_target_id via :func:`resolve_dp_target`
+    and writes through the same path as every other kind.
+    """
     res = await admin_client.post(
         "/api/data-products/main/sales_gold/follow"
     )

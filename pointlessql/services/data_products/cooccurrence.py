@@ -234,15 +234,20 @@ def fetch_recommendations_for_user(
         List of ``{data_product_id, data_product_ref, version,
         cooccurrence_count}`` dicts.
     """
-    from pointlessql.models.catalog._data_product_follows import DataProductFollow
+    from pointlessql.models.social._social_follow import SocialFollow
+    from pointlessql.models.social._social_target import SocialTarget
 
     followed_rows = session.execute(
-        select(DataProductFollow.data_product_id).where(
-            DataProductFollow.workspace_id == workspace_id,
-            DataProductFollow.user_id == user_id,
+        select(SocialTarget.data_product_id)
+        .join(SocialFollow, SocialFollow.social_target_id == SocialTarget.id)
+        .where(
+            SocialFollow.workspace_id == workspace_id,
+            SocialFollow.user_id == user_id,
+            SocialTarget.entity_kind == "dp",
+            SocialTarget.data_product_id.is_not(None),
         )
     ).all()
-    followed_ids: set[int] = {row[0] for row in followed_rows}
+    followed_ids: set[int] = {row[0] for row in followed_rows if row[0] is not None}
     if not followed_ids:
         return []
 

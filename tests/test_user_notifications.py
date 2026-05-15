@@ -115,7 +115,7 @@ def test_fanout_inserts_one_row_per_recipient(tmp_path: Path) -> None:
     carol_id = _make_user("carol@example.com")
     # Bob follows; carol is only a mention.
     factory = app.state.session_factory
-    from pointlessql.models.catalog._data_product_follows import DataProductFollow
+    from pointlessql.models.social._social_follow import SocialFollow
 
     with factory() as session:
         from pointlessql.models.catalog._data_products import DataProduct
@@ -132,9 +132,8 @@ def test_fanout_inserts_one_row_per_recipient(tmp_path: Path) -> None:
         )
 
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=1,
-                data_product_id=dp_id,
                 social_target_id=int(_anchor_77g.id),
                 user_id=bob_id,
                 created_at=datetime.datetime.now(datetime.UTC),
@@ -167,7 +166,7 @@ def test_fanout_suppresses_actor(tmp_path: Path) -> None:
     dp_id = _seed_product(tmp_path)
     admin_id = _admin_user_id()
     factory = app.state.session_factory
-    from pointlessql.models.catalog._data_product_follows import DataProductFollow
+    from pointlessql.models.social._social_follow import SocialFollow
 
     with factory() as session:
         from pointlessql.models.catalog._data_products import DataProduct
@@ -184,9 +183,8 @@ def test_fanout_suppresses_actor(tmp_path: Path) -> None:
         )
 
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=1,
-                data_product_id=dp_id,
                 social_target_id=int(_anchor_77g.id),
                 user_id=admin_id,
                 created_at=datetime.datetime.now(datetime.UTC),

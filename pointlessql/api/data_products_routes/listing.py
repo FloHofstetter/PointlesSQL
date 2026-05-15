@@ -12,10 +12,11 @@ from pointlessql.api.data_products_routes._shared import serialise_product
 from pointlessql.api.dependencies import current_workspace_id
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.social._social_follow import SocialFollow
+from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.services.data_products import compute_badges_bulk
 
 router = APIRouter(tags=["data-products"])
@@ -126,14 +127,19 @@ async def list_data_products(
 
             follow_rows = session.execute(
                 select(
-                    DataProductFollow.data_product_id,
-                    func.count(DataProductFollow.user_id),
+                    SocialTarget.data_product_id,
+                    func.count(SocialFollow.user_id),
+                )
+                .join(
+                    SocialFollow,
+                    SocialFollow.social_target_id == SocialTarget.id,
                 )
                 .where(
-                    DataProductFollow.workspace_id == workspace_id,
-                    DataProductFollow.data_product_id.in_(dp_ids),
+                    SocialFollow.workspace_id == workspace_id,
+                    SocialTarget.entity_kind == "dp",
+                    SocialTarget.data_product_id.in_(dp_ids),
                 )
-                .group_by(DataProductFollow.data_product_id)
+                .group_by(SocialTarget.data_product_id)
             ).all()
             follow_agg = {int(dp_id): int(cnt) for dp_id, cnt in follow_rows}
 

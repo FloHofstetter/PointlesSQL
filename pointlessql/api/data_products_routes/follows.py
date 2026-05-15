@@ -8,6 +8,12 @@ Four endpoints:
   logged-in-user gate.
 * ``GET /followers`` — full list, restricted to steward + admin
   for privacy.
+
+Phase 78 polish consolidated the legacy ``data_product_follows``
+table into the polymorphic ``social_follows`` sibling.  This
+route resolves the DP's ``social_target_id`` via
+:func:`resolve_dp_target` and runs every query against
+``social_follows`` keyed on that anchor.
 """
 
 from __future__ import annotations
@@ -22,7 +28,7 @@ from pointlessql.api.data_products_routes._shared import load_one
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.models.auth import User
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
+from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.services.social._target_resolver import resolve_dp_target
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_FOLLOWED,
@@ -50,27 +56,26 @@ async def follow_data_product(
     row, _contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
 
     with factory() as session:
-        existing = session.get(
-            DataProductFollow,
-            {
-                "workspace_id": workspace_id,
-                "data_product_id": row.id,
-                "user_id": user["id"],
-            },
-        )
-        if existing is not None:
-            return {"followed": True, "already": True}
         target = resolve_dp_target(
             session,
             workspace_id=workspace_id,
             catalog_name=catalog,
             schema_name=schema,
         )
+        existing = session.get(
+            SocialFollow,
+            {
+                "workspace_id": workspace_id,
+                "social_target_id": int(target.id),
+                "user_id": user["id"],
+            },
+        )
+        if existing is not None:
+            return {"followed": True, "already": True}
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=workspace_id,
-                data_product_id=row.id,
-                social_target_id=target.id,
+                social_target_id=int(target.id),
                 user_id=user["id"],
                 created_at=datetime.datetime.now(datetime.UTC),
             )
@@ -111,13 +116,20 @@ async def unfollow_data_product(
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     row, _contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
+    del row  # unused — kept for the load_one membership check
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         existing = session.get(
-            DataProductFollow,
+            SocialFollow,
             {
                 "workspace_id": workspace_id,
-                "data_product_id": row.id,
+                "social_target_id": int(target.id),
                 "user_id": user["id"],
             },
         )
@@ -149,20 +161,28 @@ async def get_followers_count(
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     row, _contract, _email, _display = load_one(factory, workspace_id, catalog, schema)
+    del row
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
+        target_id = int(target.id)
         count = session.execute(
-            select(func.count(DataProductFollow.user_id)).where(
-                DataProductFollow.workspace_id == workspace_id,
-                DataProductFollow.data_product_id == row.id,
+            select(func.count(SocialFollow.user_id)).where(
+                SocialFollow.workspace_id == workspace_id,
+                SocialFollow.social_target_id == target_id,
             )
         ).scalar_one()
         following = (
             session.get(
-                DataProductFollow,
+                SocialFollow,
                 {
                     "workspace_id": workspace_id,
-                    "data_product_id": row.id,
+                    "social_target_id": target_id,
                     "user_id": user["id"],
                 },
             )
@@ -216,14 +236,20 @@ async def list_followers(
         )
 
     with factory() as session:
+        target = resolve_dp_target(
+            session,
+            workspace_id=workspace_id,
+            catalog_name=catalog,
+            schema_name=schema,
+        )
         rows = session.execute(
-            select(DataProductFollow, User)
-            .join(User, User.id == DataProductFollow.user_id)
+            select(SocialFollow, User)
+            .join(User, User.id == SocialFollow.user_id)
             .where(
-                DataProductFollow.workspace_id == workspace_id,
-                DataProductFollow.data_product_id == row.id,
+                SocialFollow.workspace_id == workspace_id,
+                SocialFollow.social_target_id == int(target.id),
             )
-            .order_by(DataProductFollow.created_at.desc())
+            .order_by(SocialFollow.created_at.desc())
         ).all()
 
     followers = [

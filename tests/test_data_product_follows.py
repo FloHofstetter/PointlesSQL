@@ -18,8 +18,8 @@ from sqlalchemy import select
 from pointlessql.api.main import app
 from pointlessql.data_products import load_contract
 from pointlessql.models.auth import User
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_products import DataProduct
+from pointlessql.models.social._social_follow import SocialFollow
 from pointlessql.models.workspace import Workspace, WorkspaceMember
 
 VALID_YAML = """\
@@ -93,7 +93,7 @@ async def test_follow_is_idempotent(
     assert res.json()["already"] is True
     factory = app.state.session_factory
     with factory() as session:
-        assert len(session.execute(select(DataProductFollow)).all()) == 1
+        assert len(session.execute(select(SocialFollow)).all()) == 1
 
 
 @pytest.mark.asyncio

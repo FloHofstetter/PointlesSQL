@@ -30,10 +30,10 @@ from pointlessql.models.catalog._data_product_comment_reaction import (
     DataProductCommentReaction,
 )
 from pointlessql.models.catalog._data_product_comments import DataProductComment
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_product_reaction import DataProductReaction
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
+from pointlessql.models.social._social_follow import SocialFollow
 
 VALID_YAML = """\
 data_product:
@@ -393,9 +393,8 @@ async def test_dp_reaction_notifies_followers(
             data_product_id=dp_id,
         )
         session.add(
-            DataProductFollow(
+            SocialFollow(
                 workspace_id=1,
-                data_product_id=dp_id,
                 social_target_id=int(anchor.id),
                 user_id=nonadmin.id,
                 created_at=datetime.datetime.now(datetime.UTC),

@@ -20,8 +20,6 @@ Layout:
                         (Phase 71.1, threaded discussion rows).
 * ``_data_product_reviews``  — :class:`DataProductReview`
                         (Phase 71.2, one-per-user star + body row).
-* ``_data_product_follows``  — :class:`DataProductFollow`
-                        (Phase 71.3, composite-PK follow link).
 * ``_data_product_readme``   — :class:`DataProductReadme`
                         (Phase 71.5, versioned per-DP wiki).
 * ``_data_product_trending`` — :class:`DataProductTrending`
@@ -59,7 +57,6 @@ from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
     DataProductEndorsement,
 )
-from pointlessql.models.catalog._data_product_follows import DataProductFollow
 from pointlessql.models.catalog._data_product_passport import (
     PASSPORT_TRIGGERS,
     DataProductPassport,
@@ -110,7 +107,6 @@ __all__ = [
     "DataProductContractEvent",
     "DataProductCooccurrence",
     "DataProductEndorsement",
-    "DataProductFollow",
     "DataProductPassport",
     "DataProductPromotionCandidate",
     "DataProductReaction",
