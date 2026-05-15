@@ -290,6 +290,47 @@ def _render_model(
     return f"[#{catalog}.{schema}.{name}](/models/{catalog}.{schema}.{name})"
 
 
+# Phase 77.4 — agent-run citations (``#run:<uuid>``).  Matches the
+# canonical 36-char UUID shape used by ``agent_runs.id``.  Pass-
+# through resolver: every well-formed UUID is treated as a hit and
+# rendered as an anchor, falling back to literal text only when the
+# regex doesn't match.  A future sub-phase may probe ``agent_runs``
+# for existence once the cost is justified.
+_RUN_CITE_RE = re.compile(
+    r"#run:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+)
+
+
+def _resolve_run(
+    session: Session, workspace_id: int, uuids: set[Any]
+) -> set[str]:
+    """Pass every well-formed run UUID through (no existence probe).
+
+    Args:
+        session: Active SQLAlchemy session (unused — present so the
+            signature matches every other resolver).
+        workspace_id: Tenant scope (unused for run refs today —
+            ``agent_runs.id`` is globally unique).
+        uuids: Set of captured UUID strings.
+
+    Returns:
+        The same set the resolver received (after dropping any
+        non-string entries).
+    """
+    del session, workspace_id
+    return {u for u in uuids if isinstance(u, str)}
+
+
+def _render_run(match: re.Match[str], hits: set[str]) -> str:
+    """Build the anchor for ``#run:<uuid>`` or pass through."""
+    run_id = match.group(1)
+    if run_id not in hits:
+        return match.group(0)
+    short = run_id[:8]
+    return f"[#run:{short}](/runs/{run_id})"
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -331,6 +372,12 @@ _CITATION_KINDS: list[CitationKind] = [
         regex=_MODEL_CITE_RE,
         resolve=_resolve_model,
         render=_render_model,
+    ),
+    CitationKind(
+        key="run",
+        regex=_RUN_CITE_RE,
+        resolve=_resolve_run,
+        render=_render_run,
     ),
 ]
 

@@ -17,7 +17,9 @@ from pointlessql.services.social import entity_registry
 # Per-kind ref-shape contract.  Keys map to a one-line validator
 # that accepts the post-split parts and raises 400 with a clean
 # message when the shape doesn't match.
-_POLYMORPHIC_KINDS: frozenset[str] = frozenset({"table", "branch", "model"})
+_POLYMORPHIC_KINDS: frozenset[str] = frozenset(
+    {"table", "branch", "model", "run"}
+)
 
 
 def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
@@ -118,6 +120,15 @@ def parse_ref(kind: str, ref: str) -> str:
             raise HTTPException(
                 status_code=400,
                 detail="kind='model' ref must be 'catalog.schema.name'",
+            )
+        return ref
+    if kind == "run":
+        # Phase 77.4 — run refs are canonical 36-char UUIDs as text.
+        if len(ref) != 36 or ref.count("-") != 4:
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='run' ref must be a 36-char UUID",
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:

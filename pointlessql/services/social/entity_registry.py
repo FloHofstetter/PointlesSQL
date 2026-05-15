@@ -133,6 +133,19 @@ def _model_url(entity_ref: str) -> str:
     return f"/models/{entity_ref}"
 
 
+def _run_url(entity_ref: str) -> str:
+    """Map an agent-run UUID to its detail URL.
+
+    Phase 77.4 — agent runs are addressed by the
+    ``agent_runs.id`` UUID stored as a 36-char string.  The detail
+    page lives at ``/runs/{run_id}``.  Falls back to the runs
+    index on malformed refs so audit-log rendering never crashes.
+    """
+    if len(entity_ref) != 36 or entity_ref.count("-") != 4:
+        return "/runs"
+    return f"/runs/{entity_ref}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -196,6 +209,30 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         supports_readme=False,
         supports_issues=False,
         supports_stars=False,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
+        ),
+    ),
+    # Phase 77.4 — agent runs get Discussion + Endorsements +
+    # Followers tabs.  Reviews / README hidden: runs are transient
+    # execution outcomes, not curated artefacts.  Endorsements
+    # reuse the DP set ("verified-by-steward", "production-ready",
+    # "under-review", "deprecated") so humans can flag quality
+    # signals on individual runs.  Issues stay off until 77.7
+    # decides whether agent runs are worth the issue-against-run
+    # use-case.  Stars wire-up lands in 77.8.
+    "run": EntityKindSpec(
+        key="run",
+        label="Run",
+        url_for=_run_url,
+        audit_target_prefix="run",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=False,
+        supports_issues=False,
+        supports_stars=True,
         tab_keys=(
             "discussion",
             "endorsements",
