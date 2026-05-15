@@ -9,45 +9,62 @@
 // the keys mean (alert slug, anomaly composite key, issue id, …)
 // and which bulk action(s) to expose.
 //
+// Properties:
+//   selectedCount       — int (reactive)
+//   selectedKeys        — string[] (reactive)
 // Methods:
-//   toggleOne(key)              — flip membership
-//   selectAll(keys)             — add all
-//   clearSelection()            — empty the set
+//   toggleOne(key)
+//   selectAll(keys)
+//   clearSelection()
 //   isSelected(key) -> bool
 //   allSelected(keys) -> bool
+//   toggleAllVisible(keys)
 //   noneSelected() -> bool
-//   selectedCount -> int        (getter)
-//   selectedKeys -> string[]    (getter)
 //
-// Keys are coerced to String on insert so numeric / UUID / composite
-// keys all live happily together.
+// Implementation note: ``selectedCount`` and ``selectedKeys`` are
+// kept as plain reactive own-properties (not getters).  The spread
+// operator (``...bulkSelect()``) evaluates getters at spread time
+// and stores the result as a static value — so a naive getter
+// implementation would always read 0.  Keeping them as values that
+// toggleOne / selectAll / clearSelection maintain in lock-step
+// sidesteps the spread trap and gives Alpine straightforward
+// reactivity tracking.
+//
+// Keys are coerced to String on insert so numeric / UUID /
+// composite keys all live happily together.
 
 export function bulkSelect() {
     return {
         _selected: new Set(),
+        selectedCount: 0,
+        selectedKeys: [],
+
+        _sync() {
+            this.selectedCount = this._selected.size;
+            this.selectedKeys = Array.from(this._selected);
+        },
 
         toggleOne(key) {
             const k = String(key);
             if (this._selected.has(k)) this._selected.delete(k);
             else this._selected.add(k);
-            // Alpine doesn't auto-react to Set mutations; tickle a
-            // reactive flag so :class / x-show re-evaluate.
-            this._selectionTick++;
+            this._sync();
         },
 
         selectAll(keys) {
             keys.forEach((k) => this._selected.add(String(k)));
-            this._selectionTick++;
+            this._sync();
         },
 
         clearSelection() {
             this._selected.clear();
-            this._selectionTick++;
+            this._sync();
         },
 
         isSelected(key) {
-            // Read the tick so Alpine tracks the dependency.
-            return this._selectionTick >= 0 && this._selected.has(String(key));
+            // Read selectedCount so Alpine tracks the dependency
+            // (Set membership isn't reactive on its own).
+            return this.selectedCount >= 0 && this._selected.has(String(key));
         },
 
         allSelected(keys) {
@@ -61,18 +78,8 @@ export function bulkSelect() {
         },
 
         noneSelected() {
-            return this._selectionTick >= 0 && this._selected.size === 0;
+            return this.selectedCount === 0;
         },
-
-        get selectedCount() {
-            return this._selectionTick >= 0 ? this._selected.size : 0;
-        },
-
-        get selectedKeys() {
-            return this._selectionTick >= 0 ? Array.from(this._selected) : [];
-        },
-
-        _selectionTick: 0,
     };
 }
 
