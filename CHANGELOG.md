@@ -6,6 +6,52 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.5 closed — Schemas + Catalogs social surface (2026-05-15).**
+  ``/catalogs/{cat}`` and ``/catalogs/{cat}/schemas/{sch}`` gain
+  the polymorphic social surface.  Four commits across the
+  sub-phase:
+
+  - 77.5.A — registers ``kind='schema'`` + ``kind='catalog'`` in
+    the entity registry (4 social tabs each: Discussion +
+    Endorsements + Followers + README; stars on, reviews + issues
+    off).  Adds ``#schema:cat.sch`` + ``#catalog:name`` citation
+    regex with pass-through resolvers (soyuz UC existence probes
+    intentionally skipped — catalog-browser pages must stay
+    responsive even when the backend is slow).  Extends
+    ``_POLYMORPHIC_KINDS`` + ``parse_ref`` with schema (``cat.sch``)
+    and catalog (bare identifier) branches.  Workspace resolver
+    gets a factored-out ``_workspace_for_catalog`` probe so
+    schemas + catalogs share the same ``workspace_catalog_pins``
+    lookup.
+  - 77.5.B — restructures ``frontend/templates/pages/schemas.html``:
+    existing five cards (Metadata / Schemas list / Tags /
+    Permissions / Properties) wrapped into an Overview tab; four
+    social tabs added driven by
+    ``socialTabs({kind:"catalog", ref:catalog_name})``.  Header
+    star button switched to the server-backed
+    ``pqlStarToggle({kind:"catalog", ref:catalog_name})`` shape
+    (was localStorage-only).  Inline ``catalogDiscussion`` +
+    ``catalogReadme`` x-data factories talk to
+    ``/api/social/catalog/{name}/...``.
+  - 77.5.C — restructures ``frontend/templates/pages/tables.html``:
+    existing schema-detail cards (Metadata + dbt registration +
+    ML registration + Tables list + Tags + Permissions +
+    Properties) wrapped into an Overview tab; four social tabs
+    added driven by
+    ``socialTabs({kind:"schema", ref:"cat.sch"})``.  Header star
+    button switched to ``pqlStarToggle({kind:"schema", ref})``.
+    Inline ``schemaDiscussion`` + ``schemaReadme`` x-data
+    factories talk to ``/api/social/schema/{cat.sch}/...``.
+  - 77.5.D — lands 27 new pytest cases across two files
+    (``test_phase77_5_schema_catalog_kinds.py`` 19 cases on
+    registry / citations / dispatch / round-trips;
+    ``test_phase77_5_schema_catalog_html.py`` 8 cases on DOM
+    smoke).  Zero schema work — the
+    ``social_targets.entity_kind`` CHECK already permitted both
+    kinds since Phase 77.0.
+
+  Phase 77 test count: 172 → 199.
+
 - **Phase 77.7 closed — Issues entity (GitHub-Issues) (2026-05-15).**
   The polymorphic Issues entity ships across the platform.  Six
   commits across the sub-phase:

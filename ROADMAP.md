@@ -630,12 +630,43 @@ PointlesSQL
 │   │       polymorphic comment/endorsement round-trips + HTML
 │   │       social tab + sub-tabs + factory exposure + partials).
 │   │
-│   ├── Phase 77.5 — Schemas + Catalogs (gated on 77.1 dogfooding)   ⏳ planned (gated)
-│   │       Header social card + 4 social tabs in a side-drawer.
-│   │       Gated: proceed only if 77.1 shows ≥3 distinct users
-│   │       each posting ≥1 table-comment within 2 weeks of
-│   │       77.1 landing.  Otherwise downgrade to README-only.
+│   ├── Phase 77.5 — Schemas + Catalogs                              ✅ done (2026-05-15)
+│   │       ``/catalogs/{cat}`` and ``/catalogs/{cat}/schemas/{sch}``
+│   │       gain the polymorphic social surface.  Four sub-commits:
+│   │       * 77.5.A — registry registers ``kind='schema'`` +
+│   │         ``kind='catalog'`` (4 social tabs each: Discussion
+│   │         + Endorsements + Followers + README; stars on,
+│   │         reviews + issues off).  ``#schema:cat.sch`` and
+│   │         ``#catalog:name`` citation regex + pass-through
+│   │         resolvers.  ``_POLYMORPHIC_KINDS`` extended +
+│   │         ``parse_ref`` validates ``cat.sch`` for schemas and
+│   │         a bare identifier for catalogs.  Workspace
+│   │         resolver gets a factored-out
+│   │         ``_workspace_for_catalog`` probe so schemas +
+│   │         catalogs share the lookup.
+│   │       * 77.5.B — ``schemas.html`` restructured: existing
+│   │         5 cards (Metadata / Schemas list / Tags /
+│   │         Permissions / Properties) wrapped into an
+│   │         Overview tab; 4 social tabs added with
+│   │         ``socialTabs({kind:"catalog", ref:catalog_name})``.
+│   │         Header star button switched to the server-backed
+│   │         ``pqlStarToggle({kind, ref})`` shape.  Inline
+│   │         ``catalogDiscussion`` + ``catalogReadme`` x-data
+│   │         factories.
+│   │       * 77.5.C — ``tables.html`` restructured: existing
+│   │         schema-detail cards (Metadata + dbt registration
+│   │         + ML registration + Tables list + Tags +
+│   │         Permissions + Properties) wrapped into an Overview
+│   │         tab; 4 social tabs added with
+│   │         ``socialTabs({kind:"schema", ref:"cat.sch"})``.
+│   │         Inline ``schemaDiscussion`` + ``schemaReadme``
+│   │         x-data factories.
+│   │       * 77.5.D — 27 new pytest cases (19 kind/registry +
+│   │         8 HTML smoke).  Zero schema work — the
+│   │         ``social_targets.entity_kind`` CHECK already
+│   │         permitted both kinds since Phase 77.0.
 │   │
+
 │   ├── Phase 77.6 — Notebooks + Saved Queries                       ⏳ planned
 │   │       Per-notebook + per-saved-query social tabs.  New
 │   │       ``notebooks.id UUID`` column (locked decision #8 —
