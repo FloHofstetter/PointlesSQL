@@ -202,30 +202,27 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "followers",
         ),
     ),
-    # Phase 77.2 — registered models get Discussion +
-    # Endorsements + Followers + README tabs.  Reviews stay
-    # ``False`` for now even though the original sketch planned
-    # full DP parity — the polymorphic upsert idempotency
-    # requires a partial unique index on
-    # ``(workspace_id, social_target_id, author_user_id)``
-    # (today's legacy unique constraint keys off ``data_product_id``
-    # which is NULL for model rows, so SQL NULL-distinct semantics
-    # let a single user post multiple reviews).  That migration
-    # belongs to a later sub-phase (77.2.1 or 77.11 unification)
-    # so 77.2 ships without reviews rather than racing it.
-    # Issues are 77.7 territory; Stars are 77.8.
+    # Phase 77.2 (+ 77.2.1) — registered models get Discussion +
+    # Reviews + Endorsements + Followers + README tabs.  Reviews
+    # was off in the initial 77.2 landing because the polymorphic
+    # upsert idempotency required a kind-agnostic UNIQUE on
+    # ``(workspace_id, social_target_id, author_user_id)``;
+    # 77.2.1's migration added that UNIQUE so the flag flips
+    # ``True`` here.  Issues are 77.7 territory; full Stars wire-up
+    # is 77.8.
     "model": EntityKindSpec(
         key="model",
         label="Model",
         url_for=_model_url,
         audit_target_prefix="model",
-        supports_reviews=False,
+        supports_reviews=True,
         supports_endorsements=True,
         supports_readme=True,
         supports_issues=False,
         supports_stars=True,
         tab_keys=(
             "discussion",
+            "reviews",
             "endorsements",
             "followers",
             "readme",

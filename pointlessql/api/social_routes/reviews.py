@@ -1,8 +1,9 @@
-"""Polymorphic reviews router (Phase 77.0.F.2 + 77.1.5 dispatch).
+"""Polymorphic reviews router (Phase 77.0.F.2 + 77.1.5 + 77.2.1).
 
-Reviews (star ratings) stay DP-only for now per the entity-registry
-``supports_reviews`` flag — tables / branches set ``False``.  Any
-non-DP kind returns a clean 501 with a pointer at the registry flag.
+The dispatcher delegates ``kind='dp'`` to the existing DP-scoped
+service handlers (unchanged for behaviour parity) and any other
+``supports_reviews=True`` kind to the polymorphic handlers added in
+Phase 77.2.1.  Kinds with ``supports_reviews=False`` return 501.
 """
 
 from __future__ import annotations
@@ -16,7 +17,15 @@ from pointlessql.api.data_products_routes.reviews import (
     list_data_product_reviews,
     upsert_data_product_review,
 )
-from pointlessql.api.social_routes._kind_dispatch import parse_dp_ref
+from pointlessql.api.social_routes._kind_dispatch import (
+    parse_dp_ref,
+    parse_ref,
+)
+from pointlessql.api.social_routes._polymorphic_handlers import (
+    delete_polymorphic_review,
+    list_polymorphic_reviews,
+    upsert_polymorphic_review,
+)
 from pointlessql.services.social.entity_registry import get as registry_get
 
 router = APIRouter(tags=["social"])
@@ -46,30 +55,39 @@ def _require_reviews_kind(kind: str) -> None:
 async def list_social_reviews(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Dispatch a reviews list by entity kind (DP only this phase)."""
+    """Dispatch a reviews list by entity kind."""
     _require_reviews_kind(kind)
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await list_data_product_reviews(catalog, schema, request)
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await list_data_product_reviews(catalog, schema, request)
+    resolved_ref = parse_ref(kind, ref)
+    return await list_polymorphic_reviews(kind, resolved_ref, request)
 
 
 @router.put("/api/social/{kind}/{ref:path}/reviews")
 async def put_social_review(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Dispatch a review upsert by entity kind (DP only this phase)."""
+    """Dispatch a review upsert by entity kind."""
     _require_reviews_kind(kind)
-    catalog, schema = parse_dp_ref(kind, ref)
-    as_agent = request.query_params.get("as_agent")
-    return await upsert_data_product_review(
-        catalog, schema, request, as_agent=as_agent
-    )
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        as_agent = request.query_params.get("as_agent")
+        return await upsert_data_product_review(
+            catalog, schema, request, as_agent=as_agent
+        )
+    resolved_ref = parse_ref(kind, ref)
+    return await upsert_polymorphic_review(kind, resolved_ref, request)
 
 
 @router.delete("/api/social/{kind}/{ref:path}/reviews")
 async def delete_social_review(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Dispatch a review DELETE by entity kind (DP only this phase)."""
+    """Dispatch a review DELETE by entity kind."""
     _require_reviews_kind(kind)
-    catalog, schema = parse_dp_ref(kind, ref)
-    return await delete_data_product_review(catalog, schema, request)
+    if kind == "dp":
+        catalog, schema = parse_dp_ref(kind, ref)
+        return await delete_data_product_review(catalog, schema, request)
+    resolved_ref = parse_ref(kind, ref)
+    return await delete_polymorphic_review(kind, resolved_ref, request)

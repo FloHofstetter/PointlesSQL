@@ -34,9 +34,9 @@ def test_model_kind_is_registered() -> None:
     assert spec.audit_target_prefix == "model"
     assert spec.supports_endorsements is True
     assert spec.supports_readme is True
-    # Reviews deferred until a partial unique-index migration
-    # lands; tests/branches/models all stay False until then.
-    assert spec.supports_reviews is False
+    # Phase 77.2.1 flipped this True alongside the polymorphic
+    # UNIQUE migration on ``data_product_reviews``.
+    assert spec.supports_reviews is True
     assert spec.supports_stars is True
     assert spec.supports_issues is False  # ships in 77.7
 
@@ -147,12 +147,13 @@ async def test_model_readme_roundtrip(
 
 
 @pytest.mark.asyncio
-async def test_model_reviews_return_501_pending_migration(
+async def test_model_reviews_now_supported_after_77_2_1(
     admin_client: httpx.AsyncClient,
 ) -> None:
-    """Reviews stay 501 on models until the unique-index migration lands."""
+    """Reviews now work on models — 77.2.1 added the polymorphic UNIQUE."""
     res = await admin_client.get(
         "/api/social/model/main.ml_silver.churn/reviews"
     )
-    assert res.status_code == 501, res.text
-    assert "does not support reviews" in res.text
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert "summary" in body and "reviews" in body

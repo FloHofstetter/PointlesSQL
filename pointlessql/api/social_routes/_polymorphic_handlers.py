@@ -60,6 +60,7 @@ from pointlessql.models.catalog._data_product_endorsement import (
     DataProductEndorsement,
 )
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
+from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.services.notifications.fanout import fanout_event
 from pointlessql.services.social import (
     get_or_create_target,
@@ -69,6 +70,7 @@ from pointlessql.services.social.audit_mirror import mirror_social_to_audit
 from pointlessql.services.social.entity_registry import get as registry_get
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_COMMENTED,
+    EVENT_TYPE_DATA_PRODUCT_REVIEWED,
     emit_governance_event,
 )
 
@@ -308,6 +310,54 @@ def _endorsements_supported(kind: str) -> None:
             status_code=404,
             detail=f"kind={kind!r} does not support endorsements",
         )
+
+
+def _reviews_supported(kind: str) -> None:
+    """Raise 501 when *kind* has ``supports_reviews=False``."""
+    spec = registry_get(kind)
+    if not spec.supports_reviews:
+        # bare-http-ok: reviews are entity-kind opt-in.
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                f"kind={kind!r} does not support reviews "
+                "(supports_reviews=False in the entity registry)"
+            ),
+        )
+
+
+def _serialise_review(
+    row: DataProductReview,
+    *,
+    author_email: str | None,
+    author_display_name: str | None,
+    body_md_resolved: str,
+) -> dict[str, Any]:
+    """Render one polymorphic review row as JSON.
+
+    Mirrors the DP-route serialiser shape minus the ``agent``
+    payload — agent-on-behalf-of authoring is a DP-only affordance
+    today and lifting it polymorphic-wide is a Phase 77.11 ask.
+    The ``data_product_id`` field stays in the payload for backward
+    JSON-shape compat; it is ``None`` for non-DP kinds.
+    """
+    return {
+        "id": row.id,
+        "data_product_id": row.data_product_id,
+        "social_target_id": row.social_target_id,
+        "author": {
+            "user_id": row.author_user_id,
+            "email": author_email,
+            "display_name": author_display_name,
+        },
+        "agent": None,
+        "stars": row.stars,
+        "body_md": row.body_md,
+        "body_md_resolved": body_md_resolved,
+        "dp_version_at_review": row.dp_version_at_review,
+        "created_at": row.created_at.isoformat(),
+        "updated_at": row.updated_at.isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1145,17 +1195,285 @@ async def put_polymorphic_readme(
     )
 
 
+# ---------------------------------------------------------------------------
+# Reviews (Phase 77.2.1 — polymorphic enable for kind='model')
+# ---------------------------------------------------------------------------
+
+
+async def list_polymorphic_reviews(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Return every review on a polymorphic entity + summary.
+
+    Args:
+        kind: Entity kind (must have ``supports_reviews=True``).
+        ref: Entity reference.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"social_target_id": int, "summary": {avg_stars, count},
+        "my_review": {...} | None, "reviews": [...]}``.
+
+    Raises:
+        HTTPException: 501 when *kind* has reviews disabled.
+    """
+    require_user(request)
+    _reviews_supported(kind)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        rows = (
+            session.execute(
+                select(DataProductReview)
+                .where(
+                    DataProductReview.workspace_id == workspace_id,
+                    DataProductReview.social_target_id == target_id,
+                )
+                .order_by(DataProductReview.created_at.desc())
+            )
+            .scalars()
+            .all()
+        )
+        author_ids = {r.author_user_id for r in rows}
+        author_map: dict[int, tuple[str, str | None]] = {}
+        if author_ids:
+            users = (
+                session.execute(select(User).where(User.id.in_(author_ids)))
+                .scalars()
+                .all()
+            )
+            author_map = {u.id: (u.email, u.display_name) for u in users}
+
+        avg_stars, count = (
+            session.execute(
+                select(
+                    func.avg(DataProductReview.stars),
+                    func.count(DataProductReview.id),
+                ).where(
+                    DataProductReview.workspace_id == workspace_id,
+                    DataProductReview.social_target_id == target_id,
+                )
+            )
+        ).one()
+        summary = {
+            "avg_stars": float(avg_stars) if avg_stars is not None else None,
+            "count": int(count),
+        }
+
+    payload: list[dict[str, Any]] = []
+    my_review: dict[str, Any] | None = None
+    for r in rows:
+        author_email, author_display = author_map.get(
+            r.author_user_id, (None, None)
+        )
+        body_resolved = resolve_citations(
+            r.body_md, factory, workspace_id,
+        )
+        s = _serialise_review(
+            r,
+            author_email=author_email,
+            author_display_name=author_display,
+            body_md_resolved=body_resolved,
+        )
+        payload.append(s)
+        if r.author_user_id == user["id"]:
+            my_review = s
+
+    return {
+        "social_target_id": target_id,
+        "summary": summary,
+        "my_review": my_review,
+        "reviews": payload,
+    }
+
+
+async def upsert_polymorphic_review(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Idempotent upsert of the caller's review on a polymorphic entity.
+
+    Body: ``{"stars": int (1..5), "body_md": str?}``.
+
+    Args:
+        kind: Entity kind (must have ``supports_reviews=True``).
+        ref: Entity reference.
+        request: Incoming FastAPI request.
+
+    Returns:
+        Serialised review row.
+
+    Raises:
+        HTTPException: 400 on invalid stars or missing payload; 501
+            when *kind* has reviews disabled.
+    """
+    require_user(request)
+    _reviews_supported(kind)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    body = await request.json()
+    raw_stars = body.get("stars")
+    if raw_stars is None:
+        # bare-http-ok: required field.
+        raise HTTPException(status_code=400, detail="stars is required")
+    try:
+        stars = int(raw_stars)
+    except (TypeError, ValueError):
+        # bare-http-ok: stars must be int.
+        raise HTTPException(
+            status_code=400, detail="stars must be an int"
+        ) from None
+    if stars < 1 or stars > 5:
+        # bare-http-ok: stars range — DB CHECK is the canonical gate.
+        raise HTTPException(status_code=400, detail="stars must be in 1..5")
+    body_md = (body.get("body_md") or "").strip()
+
+    now = datetime.datetime.now(datetime.UTC)
+    with factory() as session:
+        existing = session.execute(
+            select(DataProductReview).where(
+                DataProductReview.workspace_id == workspace_id,
+                DataProductReview.social_target_id == target_id,
+                DataProductReview.author_user_id == user["id"],
+            )
+        ).scalar_one_or_none()
+
+        if existing is not None:
+            existing.stars = stars
+            existing.body_md = body_md
+            existing.updated_at = now
+            # Polymorphic kinds don't carry a per-row "DP version"
+            # the way the DP path does — leave the column at its
+            # existing value (it was set on first insert).
+            session.add(existing)
+            review = existing
+        else:
+            review = DataProductReview(
+                workspace_id=workspace_id,
+                data_product_id=None,
+                social_target_id=target_id,
+                author_user_id=user["id"],
+                author_agent_id=None,
+                stars=stars,
+                body_md=body_md,
+                # Non-DP kinds have no DP-style version string;
+                # empty is the agreed sentinel until a future
+                # entity_version migration generalises the column.
+                dp_version_at_review="",
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(review)
+        session.commit()
+        session.refresh(review)
+
+        author = session.get(User, review.author_user_id)
+        author_email = author.email if author else None
+        author_display = author.display_name if author else None
+        review_id = review.id
+        review_stars = review.stars
+
+    # Governance + fanout fire on every PUT (including upsert): a
+    # star change is something followers want to know about.
+    spec = registry_get(kind)
+    source_url = f"{spec.url_for(ref)}#tab-reviews"
+    summary = f"@{author_email or 'someone'} reviewed {ref} ({stars}/5)"
+    fanout_event(
+        factory,
+        event_type=EVENT_TYPE_DATA_PRODUCT_REVIEWED,
+        entity_kind=kind,
+        entity_ref=ref,
+        workspace_id=workspace_id,
+        actor_user_id=user["id"],
+        source_url=source_url,
+        summary_md=summary,
+        data_product_id=None,
+    )
+    governance_payload: dict[str, Any] = {
+        "entity_kind": kind,
+        "entity_ref": ref,
+        "social_target_id": target_id,
+        "review_id": review_id,
+        "author_user_id": user["id"],
+        "author_email": author_email,
+        "stars": review_stars,
+        "actor_kind": "user",
+    }
+    await emit_governance_event(
+        EVENT_TYPE_DATA_PRODUCT_REVIEWED,
+        governance_payload,
+        settings=request.app.state.settings,
+        session_factory=factory,
+        workspace_id=workspace_id,
+    )
+
+    return _serialise_review(
+        review,
+        author_email=author_email,
+        author_display_name=author_display,
+        body_md_resolved=resolve_citations(
+            review.body_md, factory, workspace_id,
+        ),
+    )
+
+
+async def delete_polymorphic_review(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Remove the caller's review on a polymorphic entity.
+
+    Self only — there is no per-entity moderator role for reviews.
+    Idempotent on a missing row.
+
+    Args:
+        kind: Entity kind (must have ``supports_reviews=True``).
+        ref: Entity reference.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"deleted": bool}``.
+
+    Raises:
+        HTTPException: 501 when *kind* has reviews disabled.
+    """
+    require_user(request)
+    _reviews_supported(kind)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        existing = session.execute(
+            select(DataProductReview).where(
+                DataProductReview.workspace_id == workspace_id,
+                DataProductReview.social_target_id == target_id,
+                DataProductReview.author_user_id == user["id"],
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            return {"deleted": False}
+        session.delete(existing)
+        session.commit()
+    return {"deleted": True}
+
+
 __all__: list[str] = [
     "apply_polymorphic_endorsement",
     "delete_polymorphic_comment",
+    "delete_polymorphic_review",
     "follow_polymorphic_entity",
     "get_polymorphic_followers_count",
     "get_polymorphic_readme",
     "list_polymorphic_comments",
     "list_polymorphic_endorsements",
     "list_polymorphic_followers",
+    "list_polymorphic_reviews",
     "post_polymorphic_comment",
     "put_polymorphic_readme",
     "remove_polymorphic_endorsement",
     "unfollow_polymorphic_entity",
+    "upsert_polymorphic_review",
 ]
