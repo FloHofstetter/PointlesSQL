@@ -1,0 +1,118 @@
+{#
+  Status footer bar — "schmale Footer Bar für Sonderfälle"
+  (Phase 80.7).
+
+  28 px sticky bottom strip with three slots:
+
+  * Left:   workspace slug pill + role chips (auditor / supervisor /
+            admin shown if the user holds them).
+  * Center: backend health pills (soyuz · MLflow · dbt · Hermes)
+            polled from /api/health/backends every 60 s.
+  * Right:  help-and-keyboard hint (`?` shortcuts · ⌘K search).
+
+  Hidden on mobile (offcanvas handles the slots there) and on auth
+  pages (where the user context is null).
+#}
+{% if current_user is defined and current_user %}
+<footer class="pql-footer-bar"
+        aria-label="Status"
+        x-data="footerBar()"
+        x-init="load()">
+    <div class="pql-footer-bar__slot pql-footer-bar__slot--left">
+        {% if current_workspace %}
+        <span class="pql-footer-bar__workspace" title="Active workspace">
+            <i class="bi bi-folder2-open"></i>
+            <span>{{ current_workspace.slug }}</span>
+        </span>
+        {% endif %}
+        {% if current_user.is_admin %}
+        <span class="pql-footer-bar__chip pql-footer-bar__chip--admin">admin</span>
+        {% endif %}
+        {% if current_user.is_supervisor %}
+        <span class="pql-footer-bar__chip pql-footer-bar__chip--supervisor">supervisor</span>
+        {% endif %}
+        {% if current_user.is_auditor %}
+        <span class="pql-footer-bar__chip pql-footer-bar__chip--auditor">auditor</span>
+        {% endif %}
+    </div>
+
+    <div class="pql-footer-bar__slot pql-footer-bar__slot--center">
+        <template x-for="backend in backends" :key="backend.name">
+            <span class="pql-footer-bar__pill"
+                  :class="'pql-footer-bar__pill--' + backend.status"
+                  :title="backend.title">
+                <span class="pql-footer-bar__pill-dot" aria-hidden="true"></span>
+                <span x-text="backend.label"></span>
+            </span>
+        </template>
+        <span x-show="loading"
+              class="pql-footer-bar__loading text-muted small"
+              x-cloak>checking…</span>
+    </div>
+
+    <div class="pql-footer-bar__slot pql-footer-bar__slot--right">
+        <button type="button"
+                class="pql-footer-bar__hint"
+                aria-label="Show keyboard shortcuts"
+                onclick="window.dispatchEvent(new CustomEvent('pql:show-shortcuts'))">
+            <kbd>?</kbd>
+            <span class="ms-1">shortcuts</span>
+        </button>
+        <button type="button"
+                class="pql-footer-bar__hint"
+                aria-label="Open command palette"
+                onclick="window.dispatchEvent(new CustomEvent('pql:open-palette'))">
+            <kbd>⌘K</kbd>
+            <span class="ms-1">search</span>
+        </button>
+    </div>
+</footer>
+
+<script>
+    // Phase 80.7 — footer-bar status poller.
+    window.footerBar = function () {
+        return {
+            loading: false,
+            backends: [
+                { name: 'soyuz', label: 'soyuz', status: 'na', title: '' },
+                { name: 'mlflow', label: 'mlflow', status: 'na', title: '' },
+                { name: 'dbt', label: 'dbt', status: 'na', title: '' },
+                { name: 'hermes', label: 'hermes', status: 'na', title: '' },
+            ],
+            async load() {
+                this.loading = true;
+                try {
+                    if (!window.pqlApi) return;
+                    const res = await window.pqlApi.fetch(
+                        '/api/health/backends',
+                        { silent: true }
+                    );
+                    if (!res || !res.ok || !res.data) return;
+                    const data = res.data;
+                    this.backends = this.backends.map(b => ({
+                        ...b,
+                        status: data[b.name] || 'na',
+                        title: b.name === 'soyuz' && data.soyuz_url
+                            ? data.soyuz_url + ' · last checked: ' + new Date().toLocaleTimeString()
+                            : 'last checked: ' + new Date().toLocaleTimeString(),
+                    }));
+                } catch (e) {
+                    // Silent — footer is ambient awareness only.
+                } finally {
+                    this.loading = false;
+                }
+            },
+        };
+    };
+    // Poll every 60 s.
+    document.addEventListener('alpine:initialized', () => {
+        setInterval(() => {
+            const root = document.querySelector('.pql-footer-bar');
+            if (root && root._x_dataStack) {
+                const ctx = root._x_dataStack[0];
+                if (ctx && typeof ctx.load === 'function') ctx.load();
+            }
+        }, 60000);
+    });
+</script>
+{% endif %}

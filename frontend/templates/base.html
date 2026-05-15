@@ -241,6 +241,10 @@
 
     {% include "components/command_palette.html" %}
 
+    {% if not hide_sidebar %}
+    {% include "components/footer_bar.html" %}
+    {% endif %}
+
     <div class="toast-container position-fixed bottom-0 end-0 p-3"
          id="pql-toast-root"
          aria-live="polite"

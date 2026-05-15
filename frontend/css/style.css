@@ -25,6 +25,7 @@
 @import url("./components/icon_rail.css?v=ASSET_VERSION");      /* 60 px nav-rail */
 @import url("./components/context_panel.css?v=ASSET_VERSION");  /* 240 px contextual panel */
 @import url("./components/context_sidebars.css?v=ASSET_VERSION"); /* per-section sidebars */
+@import url("./components/footer_bar.css?v=ASSET_VERSION");      /* Phase 80.7 status footer */
 @import url("./components/breadcrumbs.css?v=ASSET_VERSION");
 @import url("./components/empty_state.css?v=ASSET_VERSION");    /* + error-shell variant */
 @import url("./components/toast.css?v=ASSET_VERSION");

@@ -1,0 +1,136 @@
+/* ---------------------------------------------------------------
+ * Status footer bar — Phase 80.7.
+ *
+ * 28 px sticky bottom strip rendered on every authenticated page.
+ * Hidden on mobile (the offcanvas drawer carries the same info).
+ * Hidden on auth pages where the user context is null (the
+ * partial guard `{% if current_user %}` handles that server-side).
+ * ------------------------------------------------------------- */
+
+.pql-footer-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    background: var(--bs-tertiary-bg);
+    border-top: 1px solid var(--bs-border-color-translucent);
+    padding: 0 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    z-index: 1015;
+}
+
+@media (min-width: 768px) {
+    .pql-footer-bar {
+        display: flex;
+    }
+    /* Reserve room at the bottom of main content so the fixed
+       footer doesn't eclipse the last line of text. */
+    body {
+        padding-bottom: 28px;
+    }
+}
+
+.pql-footer-bar__slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+    overflow: hidden;
+}
+.pql-footer-bar__slot--left {
+    flex: 0 0 auto;
+}
+.pql-footer-bar__slot--center {
+    flex: 1 1 auto;
+    justify-content: center;
+}
+.pql-footer-bar__slot--right {
+    flex: 0 0 auto;
+}
+
+.pql-footer-bar__workspace {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--bs-secondary-color);
+}
+
+.pql-footer-bar__chip {
+    display: inline-block;
+    padding: 0.05rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+.pql-footer-bar__chip--admin {
+    background: var(--pql-color-danger-bg);
+    color: var(--pql-color-danger-fg);
+}
+.pql-footer-bar__chip--supervisor {
+    background: var(--pql-color-info-bg);
+    color: var(--pql-color-info-fg);
+}
+.pql-footer-bar__chip--auditor {
+    background: var(--pql-color-warning-bg);
+    color: var(--pql-color-warning-fg);
+}
+
+.pql-footer-bar__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.05rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 0.7rem;
+}
+
+.pql-footer-bar__pill-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bs-secondary-color);
+    flex: 0 0 auto;
+}
+.pql-footer-bar__pill--ok .pql-footer-bar__pill-dot {
+    background: var(--pql-color-accent);
+    box-shadow: 0 0 4px var(--pql-color-accent);
+}
+.pql-footer-bar__pill--down .pql-footer-bar__pill-dot {
+    background: var(--pql-color-danger-fg);
+    box-shadow: 0 0 4px var(--pql-color-danger-fg);
+}
+.pql-footer-bar__pill--na {
+    opacity: 0.55;
+}
+
+.pql-footer-bar__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    background: transparent;
+    border: 0;
+    color: var(--bs-secondary-color);
+    font-size: 0.7rem;
+    padding: 0.05rem 0.3rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+.pql-footer-bar__hint:hover {
+    color: var(--bs-body-color);
+    background: var(--bs-secondary-bg);
+}
+.pql-footer-bar__hint kbd {
+    font-size: 0.7rem;
+    padding: 0 0.25rem;
+    background: var(--bs-secondary-bg);
+    border-radius: 0.2rem;
+}
