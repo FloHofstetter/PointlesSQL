@@ -170,6 +170,7 @@
         <li class="pql-icon-rail__item">
             <a href="/"
                data-section="federation"
+               data-exclude-active-page="models"
                class="pql-icon-rail__link{% if active_section == 'federation' and (active_page is not defined or active_page != 'models') %} active{% endif %}"
                title="Catalog (catalogs, schemas, tables, foreign connections, volumes, models)">
                 <i class="bi bi-database"></i>
@@ -188,6 +189,7 @@
         <li class="pql-icon-rail__item">
             <a href="/models"
                data-section="federation"
+               data-active-page="models"
                class="pql-icon-rail__link{% if active_page is defined and active_page == 'models' %} active{% endif %}"
                title="ML models (UC-registered)">
                 <i class="bi bi-cpu"></i>
@@ -245,6 +247,7 @@
         <li class="pql-icon-rail__item">
             <a href="/users"
                data-section="people"
+               data-exclude-active-page="agents"
                class="pql-icon-rail__link{% if active_section == 'people' and (active_page is not defined or active_page != 'agents') %} active{% endif %}"
                title="People — workspace members and contributors">
                 <i class="bi bi-people"></i>
@@ -254,6 +257,7 @@
         <li class="pql-icon-rail__item">
             <a href="/agents"
                data-section="people"
+               data-active-page="agents"
                class="pql-icon-rail__link{% if active_page is defined and active_page == 'agents' %} active{% endif %}"
                title="Agents — registered LLM agents and their profiles">
                 <i class="bi bi-cpu-fill"></i>

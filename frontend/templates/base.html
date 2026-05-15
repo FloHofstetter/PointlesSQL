@@ -237,7 +237,8 @@
         {% endif %}
         <main class="pql-content {% block content_class %}{% endblock %}"
               id="main-content"
-              data-active-section="{{ active_section }}">
+              data-active-section="{{ active_section }}"
+              data-active-page="{{ active_page if active_page is defined else '' }}">
             {% if not hide_sidebar %}
             <button type="button"
                     class="pql-panel-toggle"
@@ -362,13 +363,28 @@
             const main = document.getElementById('main-content');
             if (!main) return;
             const section = main.dataset.activeSection || '';
+            const page = main.dataset.activePage || '';
             document
                 .querySelectorAll('.pql-icon-rail__link[data-section]')
                 .forEach((link) => {
-                    link.classList.toggle(
-                        'active',
-                        link.dataset.section === section,
-                    );
+                    // Page-specific entries (ML Models, Agents) opt out
+                    // of section matching with ``data-active-page``;
+                    // they highlight only when the page matches.
+                    const matchPage = link.dataset.activePage || '';
+                    let active;
+                    if (matchPage) {
+                        active = page === matchPage;
+                    } else {
+                        // Section-matching entries (Catalog, People) can
+                        // ALSO exclude specific pages via
+                        // ``data-exclude-active-page`` so they do not
+                        // double-light when a page-specific sibling is
+                        // the real target.
+                        const exclude = link.dataset.excludeActivePage || '';
+                        active = link.dataset.section === section
+                            && (!exclude || page !== exclude);
+                    }
+                    link.classList.toggle('active', active);
                 });
         }
         document.body.addEventListener('htmx:afterSwap', syncActiveSection);
