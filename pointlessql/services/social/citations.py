@@ -239,6 +239,57 @@ def _render_table(
     )
 
 
+# Phase 77.2 — registered-model citations (``#model:cat.sch.name``).
+# Mirrors the table resolver — every well-formed triple becomes an
+# anchor; existence-against-MLflow is deferred (the model registry
+# does not have a low-cost "exists?" probe that's worth the request
+# count for a comment-render path).
+_MODEL_CITE_RE = re.compile(
+    r"#model:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)"
+)
+
+
+def _resolve_model(
+    session: Session, workspace_id: int, triples: set[Any]
+) -> set[tuple[str, str, str]]:
+    """Pass every well-formed model triple through (no MLflow probe).
+
+    Args:
+        session: Active SQLAlchemy session (unused — present so the
+            signature matches every other resolver).
+        workspace_id: Tenant scope (unused for model refs today —
+            model full_names are globally unique inside their UC
+            backend).
+        triples: Set of ``(catalog, schema, name)`` capture tuples.
+
+    Returns:
+        The same set the resolver received — all triples are
+        treated as "hits" and rendered as anchors.
+    """
+    del session, workspace_id
+    hits: set[tuple[str, str, str]] = set()
+    for raw in triples:
+        if not isinstance(raw, tuple):
+            continue
+        parts = cast(tuple[Any, ...], raw)
+        if len(parts) != 3:
+            continue
+        c, s, n = parts
+        if isinstance(c, str) and isinstance(s, str) and isinstance(n, str):
+            hits.add((c, s, n))
+    return hits
+
+
+def _render_model(
+    match: re.Match[str], hits: set[tuple[str, str, str]]
+) -> str:
+    """Build the anchor for ``#model:cat.sch.name`` or pass through."""
+    catalog, schema, name = match.group(1), match.group(2), match.group(3)
+    if (catalog, schema, name) not in hits:
+        return match.group(0)
+    return f"[#{catalog}.{schema}.{name}](/models/{catalog}.{schema}.{name})"
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -274,6 +325,12 @@ _CITATION_KINDS: list[CitationKind] = [
         regex=_TABLE_CITE_RE,
         resolve=_resolve_table,
         render=_render_table,
+    ),
+    CitationKind(
+        key="model",
+        regex=_MODEL_CITE_RE,
+        resolve=_resolve_model,
+        render=_render_model,
     ),
 ]
 

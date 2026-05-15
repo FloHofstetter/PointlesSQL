@@ -118,6 +118,21 @@ def _branch_url(entity_ref: str) -> str:
     return f"/branches/{entity_ref}"
 
 
+def _model_url(entity_ref: str) -> str:
+    """Map a registered-model full_name to its detail URL.
+
+    Phase 77.2 — registered models (UC ML registry) are addressed
+    by their three-part ``catalog.schema.name`` full_name.  The
+    MLflow-backed detail page lives at ``/models/{full_name}`` so
+    the registry's URL builder mirrors the live HTML route and
+    falls back to the models index on malformed refs.
+    """
+    parts = entity_ref.split(".", 2)
+    if len(parts) != 3 or not all(parts):
+        return "/models"
+    return f"/models/{entity_ref}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -185,6 +200,35 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "discussion",
             "endorsements",
             "followers",
+        ),
+    ),
+    # Phase 77.2 — registered models get Discussion +
+    # Endorsements + Followers + README tabs.  Reviews stay
+    # ``False`` for now even though the original sketch planned
+    # full DP parity — the polymorphic upsert idempotency
+    # requires a partial unique index on
+    # ``(workspace_id, social_target_id, author_user_id)``
+    # (today's legacy unique constraint keys off ``data_product_id``
+    # which is NULL for model rows, so SQL NULL-distinct semantics
+    # let a single user post multiple reviews).  That migration
+    # belongs to a later sub-phase (77.2.1 or 77.11 unification)
+    # so 77.2 ships without reviews rather than racing it.
+    # Issues are 77.7 territory; Stars are 77.8.
+    "model": EntityKindSpec(
+        key="model",
+        label="Model",
+        url_for=_model_url,
+        audit_target_prefix="model",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=True,
+        supports_issues=False,
+        supports_stars=True,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
+            "readme",
         ),
     ),
 }

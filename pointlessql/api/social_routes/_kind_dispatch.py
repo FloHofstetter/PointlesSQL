@@ -17,7 +17,7 @@ from pointlessql.services.social import entity_registry
 # Per-kind ref-shape contract.  Keys map to a one-line validator
 # that accepts the post-split parts and raises 400 with a clean
 # message when the shape doesn't match.
-_POLYMORPHIC_KINDS: frozenset[str] = frozenset({"table", "branch"})
+_POLYMORPHIC_KINDS: frozenset[str] = frozenset({"table", "branch", "model"})
 
 
 def parse_dp_ref(kind: str, ref: str) -> tuple[str, str]:
@@ -109,6 +109,15 @@ def parse_ref(kind: str, ref: str) -> str:
                     "kind='branch' ref must be a branch FQN "
                     "('catalog.schema__branch_xxx')"
                 ),
+            )
+        return ref
+    if kind == "model":
+        parts = ref.split(".", 2)
+        if len(parts) != 3 or not all(parts):
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='model' ref must be 'catalog.schema.name'",
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:
