@@ -235,6 +235,40 @@ class TestPaletteOperators:
         assert hits, "expected at least one hit"
         assert all(h["type"] == "topic" for h in hits), hits
 
+    @pytest.mark.asyncio
+    async def test_bare_at_lists_all_users(self):
+        """Slack-style: ``@`` with no term should list every user."""
+        factory = app.state.session_factory
+        token = _seed_user(factory)
+        _seed_topic(factory, "Whatever Topic", "whatever-topic")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies={auth.COOKIE_NAME: token},
+        ) as client:
+            resp = await client.get("/api/search?q=%40")
+        assert resp.status_code == 200
+        hits = resp.json()
+        assert hits, "bare @ should still return all users"
+        assert all(h["type"] == "user" for h in hits), hits
+
+    @pytest.mark.asyncio
+    async def test_bare_hash_lists_all_topics(self):
+        """Slack-style: ``#`` with no term should list every topic."""
+        factory = app.state.session_factory
+        token = _seed_user(factory)
+        _seed_topic(factory, "Anything Topic", "anything-topic")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://test",
+            cookies={auth.COOKIE_NAME: token},
+        ) as client:
+            resp = await client.get("/api/search?q=%23")
+        assert resp.status_code == 200
+        hits = resp.json()
+        assert hits, "bare # should still return all topics"
+        assert all(h["type"] == "topic" for h in hits), hits
+
 
 class TestPaletteCopy:
     """The placeholder copy mentions the new operators."""

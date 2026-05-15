@@ -50,6 +50,10 @@ export function listTable(config) {
 
     const activeChips = {};
     for (const c of chips) activeChips[c.id] = false;
+    // Pre-activate a chip via `initialChip` config (used by deep-links
+    // such as /runs?status=needs_approval from the home digest card).
+    const initialChip = typeof cfg.initialChip === 'string' ? cfg.initialChip : null;
+    if (initialChip && initialChip in activeChips) activeChips[initialChip] = true;
 
     return {
         query: '',

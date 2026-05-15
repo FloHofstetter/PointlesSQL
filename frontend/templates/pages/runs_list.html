@@ -31,6 +31,11 @@
  <h1 class="h3 mb-0">Agent runs{{ info('runs.what-is-a-run') }}</h1>
 </div>
 
+{# Phase 80 polish: respect ?status=<chip-id> from deep-links (home
+   approval-queue card, audit-cockpit shortcuts).  ``pending`` is a
+   legacy alias for ``needs_approval`` so older bookmarks stay live. #}
+{% set _status_q = request.query_params.get('status') if request and request.query_params else '' %}
+{% if _status_q == 'pending' %}{% set _status_q = 'needs_approval' %}{% endif %}
 {% if runs %}
 <div x-data="listTable({
  searchPlaceholder: 'Filter principal / agent / id / status / table…',
@@ -42,6 +47,7 @@
  { id: 'failed', label: 'Failed', match: (tr) => tr.dataset.status === 'failed' },
  { id: 'denied', label: 'Denied', match: (tr) => tr.dataset.status === 'denied' }
  ],
+ initialChip: {{ _status_q | tojson }},
  initialSort: { key: 'started_at', dir: 'desc' },
  emptyMessage: 'No runs match the current filter.'
  })"

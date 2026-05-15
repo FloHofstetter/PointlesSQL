@@ -571,16 +571,19 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
 
     # Phase 80.6 operator parsing — Slack convention.  ``@<term>``
     # narrows to ``user`` results; ``#<term>`` narrows to ``topic``
-    # results.  The leading sigil is stripped before scoring.
+    # results.  The leading sigil is stripped before scoring; a bare
+    # ``@`` or ``#`` (no term) lists every member of the selected kind
+    # — matches the Slack/Linear muscle-memory for "show me people /
+    # topics" without making the user type a substring first.
     kind_filter: str | None = None
-    if raw.startswith("@") and len(raw) > 1:
+    if raw.startswith("@"):
         kind_filter = "user"
         raw = raw[1:]
-    elif raw.startswith("#") and len(raw) > 1:
+    elif raw.startswith("#"):
         kind_filter = "topic"
         raw = raw[1:]
     needle = raw.casefold()
-    if not needle:
+    if not needle and kind_filter is None:
         return []
 
     user = get_user(request)

@@ -78,7 +78,17 @@ window.topicsIndex = function (ctx) {
         creating: false,
         newName: '',
         newDesc: '',
-        async init() { await this.load(); },
+        async init() {
+            // Phase 80 polish: ``/topics?new=1`` deep-links open the
+            // inline create form so the quick-create menu + topics
+            // sidebar can drop the user straight into authoring.
+            try {
+                if (new URL(location.href).searchParams.get('new') === '1') {
+                    this.creating = true;
+                }
+            } catch (_) { /* URL parse never throws in practice */ }
+            await this.load();
+        },
         async load() {
             try {
                 const res = await fetch('/api/topics');
