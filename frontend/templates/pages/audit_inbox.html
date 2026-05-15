@@ -141,7 +141,15 @@
                 </tr>
             </thead>
             <tbody id="inbox-rows">
-                <tr><td colspan="8" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading…</td></tr>
+                <tr>
+                    <td colspan="8" class="py-3">
+                        <div class="placeholder-glow" aria-hidden="true">
+                            <div class="placeholder col-7 mb-2"></div>
+                            <div class="placeholder col-9 mb-2"></div>
+                            <div class="placeholder col-5"></div>
+                        </div>
+                    </td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -179,7 +187,7 @@
         if (sinceEl.value.trim()) params.set('since', sinceEl.value.trim());
         if (tableEl.value.trim()) params.set('table', tableEl.value.trim());
         if (includeAckedEl.checked) params.set('include_acked', 'true');
-        rowsEl.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading…</td></tr>';
+        rowsEl.innerHTML = '<tr><td colspan="8" class="py-3"><div class="placeholder-glow" aria-hidden="true"><div class="placeholder col-7 mb-2"></div><div class="placeholder col-9 mb-2"></div><div class="placeholder col-5"></div></div></td></tr>';
         const resp = await fetch('/api/audit/inbox?' + params.toString(), { credentials: 'same-origin' });
         if (!resp.ok) {
             rowsEl.innerHTML = `<tr><td colspan="8" class="text-danger py-3">Error ${resp.status}</td></tr>`;

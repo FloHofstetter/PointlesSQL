@@ -33,8 +33,10 @@
             </template>
 
             <template x-if="!tree && !error">
-                <div class="text-muted small p-2">
-                    <span class="spinner-border spinner-border-sm me-1"></span>Loading…
+                <div class="placeholder-glow p-2" aria-hidden="true">
+                    <div class="placeholder col-9 mb-2"></div>
+                    <div class="placeholder col-7 mb-2"></div>
+                    <div class="placeholder col-8"></div>
                 </div>
             </template>
 
