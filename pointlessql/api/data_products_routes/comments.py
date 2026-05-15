@@ -30,6 +30,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import func, select
 
+from pointlessql.api._social_serializers import agent_payload
 from pointlessql.api.data_products_routes._shared import (
     load_one,
     resolve_agent_for_principal,
@@ -334,23 +335,14 @@ async def list_data_product_comments(
         agent_ids = {
             c.author_agent_id for c in rows if c.author_agent_id is not None
         }
-        agent_map: dict[int, dict[str, Any]] = {}
+        agent_map: dict[int, dict[str, Any] | None] = {}
         if agent_ids:
             agents = (
                 session.execute(select(Agent).where(Agent.id.in_(agent_ids)))
                 .scalars()
                 .all()
             )
-            agent_map = {
-                a.id: {
-                    "slug": a.slug,
-                    "display_name": a.display_name,
-                    "avatar_kind": a.avatar_kind,
-                    "is_verified": bool(a.is_verified),
-                    "principal_user_id": a.principal_user_id,
-                }
-                for a in agents
-            }
+            agent_map = {a.id: agent_payload(a) for a in agents}
         reactions_by_comment = _collect_reactions(
             session, [c.id for c in rows], user["id"]
         )
@@ -370,7 +362,7 @@ async def list_data_product_comments(
         author_email, author_display = author_map.get(
             c.author_user_id, (None, None)
         )
-        agent_payload = (
+        comment_agent_payload = (
             agent_map.get(c.author_agent_id)
             if c.author_agent_id is not None
             else None
@@ -386,7 +378,7 @@ async def list_data_product_comments(
                 author_email=author_email,
                 author_display_name=author_display,
                 body_md_resolved=body_md_resolved,
-                agent=agent_payload,
+                agent=comment_agent_payload,
                 reactions=reactions_by_comment.get(c.id),
             )
         )
@@ -536,17 +528,10 @@ async def post_data_product_comment(
         author_row = session.get(User, comment.author_user_id)
         author_email = author_row.email if author_row else None
         author_display = author_row.display_name if author_row else None
-        agent_payload: dict[str, Any] | None = None
+        post_agent_payload: dict[str, Any] | None = None
         if comment.author_agent_id is not None:
             agent_row = session.get(Agent, comment.author_agent_id)
-            if agent_row is not None:
-                agent_payload = {
-                    "slug": agent_row.slug,
-                    "display_name": agent_row.display_name,
-                    "avatar_kind": agent_row.avatar_kind,
-                    "is_verified": bool(agent_row.is_verified),
-                    "principal_user_id": agent_row.principal_user_id,
-                }
+            post_agent_payload = agent_payload(agent_row)
         comment_id = comment.id
         comment_dp_id = comment.data_product_id
 
@@ -625,7 +610,7 @@ async def post_data_product_comment(
         author_email=author_email,
         author_display_name=author_display,
         body_md_resolved=resolve_citations(body_md, factory, workspace_id),
-        agent=agent_payload,
+        agent=post_agent_payload,
         reactions=[
             {"emoji": e, "count": 0, "has_current_user_reacted": False}
             for e in ALLOWED_EMOJI

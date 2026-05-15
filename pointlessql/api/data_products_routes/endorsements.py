@@ -27,6 +27,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import select
 
+from pointlessql.api._social_serializers import agent_payload as _agent_payload
 from pointlessql.api.data_products_routes._shared import (
     load_one,
     resolve_agent_for_principal,
@@ -112,19 +113,6 @@ def _serialise(
         ),
         "note_md": endorsement.note_md or "",
         "note_md_resolved": note_md_resolved,
-    }
-
-
-def _agent_payload(agent: Agent | None) -> dict[str, Any] | None:
-    """Render an Agent ORM row as a JSON-friendly dict (or ``None``)."""
-    if agent is None:
-        return None
-    return {
-        "slug": agent.slug,
-        "display_name": agent.display_name,
-        "avatar_kind": agent.avatar_kind,
-        "is_verified": bool(agent.is_verified),
-        "principal_user_id": agent.principal_user_id,
     }
 
 
