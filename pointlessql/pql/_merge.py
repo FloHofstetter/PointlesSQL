@@ -55,6 +55,7 @@ from pointlessql.exceptions import (
 from pointlessql.pql._hashing import arrow_ipc_sha256
 from pointlessql.pql._parsing import parse_full_name
 from pointlessql.pql._read import read_table
+from pointlessql.pql._types import ArrowArray, ArrowTable
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
 from pointlessql.services.lineage_edges import ColumnEdgeSpec, synth_target_row_id
@@ -232,11 +233,9 @@ def merge_table(
 
             target_catalog, target_schema, target_table = parse_full_name(target)
             arrow_columns: list[tuple[str, str, str, bool]] = []
-            for field in arrow_source.schema:  # pyright: ignore[reportUnknownVariableType,reportUnknownMemberType]
-                fname = cast(str, field.name)  # pyright: ignore[reportUnknownMemberType]
-                ftype = str(field.type)  # pyright: ignore[reportUnknownArgumentType,reportUnknownMemberType]
-                fnullable = cast(bool, field.nullable)  # pyright: ignore[reportUnknownMemberType]
-                arrow_columns.append((fname, ftype.upper(), ftype, fnullable))
+            for field in arrow_source.schema:
+                ftype = str(field.type)
+                arrow_columns.append((field.name, ftype.upper(), ftype, field.nullable))
             enforcement = check_contract_for_write(
                 factory=factory,
                 agent_run_id=agent_run_id,
@@ -395,8 +394,8 @@ def _capture_value_changes(
 
 
 def _detect_rejects(
-    arrow_source: pa.Table, on: list[str]
-) -> tuple[pa.Table, list[tuple[str, str, str | None]]]:
+    arrow_source: ArrowTable, on: list[str]
+) -> tuple[ArrowTable, list[tuple[str, str, str | None]]]:
     """Identify pre-merge reject rows and return the cleaned source.
 
     opt-in via ``track_rejects=True``.  Only two
@@ -481,10 +480,15 @@ def _detect_rejects(
     final_mask.loc[surviving.index[dup_mask]] = False
     cleaned_df = df[final_mask].reset_index(drop=True)
 
-    return pa.Table.from_pandas(cleaned_df, preserve_index=False), rejects
+    return (
+        cast(ArrowTable, pa.Table.from_pandas(cleaned_df, preserve_index=False)),
+        rejects,
+    )
 
 
-def _prepare_lineage(arrow_source: pa.Table, target: str) -> tuple[list[str], list[str], pa.Table]:
+def _prepare_lineage(
+    arrow_source: ArrowTable, target: str
+) -> tuple[list[str], list[str], ArrowTable]:
     """Extract source ``_lineage_row_id`` values and synthesise target IDs.
 
     When the source has a ``_lineage_row_id`` column the target gets
@@ -508,11 +512,14 @@ def _prepare_lineage(arrow_source: pa.Table, target: str) -> tuple[list[str], li
 
     column = arrow_source.column(LINEAGE_ROW_ID_COLUMN)
     source_row_ids: list[str] = [
-        v if isinstance(v, str) else ""
-        for v in column.to_pylist()  # pyright: ignore[reportUnknownVariableType]
+        v if isinstance(v, str) else "" for v in column.to_pylist()
     ]
-    target_row_ids = [synth_target_row_id(src, target) if src else "" for src in source_row_ids]
-    target_array = pa.array(target_row_ids, type=pa.string())
+    target_row_ids = [
+        synth_target_row_id(src, target) if src else "" for src in source_row_ids
+    ]
+    target_array = cast(
+        ArrowArray, pa.array(target_row_ids, type=pa.string())
+    )
     rebuilt = arrow_source.set_column(
         arrow_source.schema.get_field_index(LINEAGE_ROW_ID_COLUMN),
         LINEAGE_ROW_ID_COLUMN,
@@ -631,7 +638,7 @@ def _resolve_source_frame(client: Client, engine: Engine, source: Any, unreachab
     return source
 
 
-def _frame_to_arrow(frame: Any) -> pa.Table:
+def _frame_to_arrow(frame: Any) -> ArrowTable:
     """Coerce a frame into a PyArrow Table for ``DeltaTable.merge``.
 
     Accepts pandas DataFrames (the default engine output) and any
@@ -649,11 +656,11 @@ def _frame_to_arrow(frame: Any) -> pa.Table:
         ValidationError: When the frame cannot be converted.
     """
     if isinstance(frame, pa.Table):
-        return frame
+        return cast(ArrowTable, frame)
     if hasattr(frame, "to_arrow"):
-        return pa.Table.from_pandas(frame.to_arrow())  # type: ignore[no-any-return]
+        return cast(ArrowTable, pa.Table.from_pandas(frame.to_arrow()))
     try:
-        return pa.Table.from_pandas(frame)
+        return cast(ArrowTable, pa.Table.from_pandas(frame))
     except (TypeError, ValueError) as exc:
         raise ValidationError(
             f"merge source must be a pandas DataFrame, PyArrow Table, or "
@@ -661,7 +668,7 @@ def _frame_to_arrow(frame: Any) -> pa.Table:
         ) from exc
 
 
-def _do_upsert(target_location: str, arrow_source: pa.Table, on: list[str]) -> dict[str, Any]:
+def _do_upsert(target_location: str, arrow_source: ArrowTable, on: list[str]) -> dict[str, Any]:
     """Run an upsert MERGE against the Delta table at *target_location*.
 
     Args:
@@ -674,9 +681,11 @@ def _do_upsert(target_location: str, arrow_source: pa.Table, on: list[str]) -> d
     """
     dt = deltalake.DeltaTable(target_location)
     predicate = " AND ".join(f"target.{col} = source.{col}" for col in on)
+    # deltalake.merge typing wants its own ArrowArrayExportable union;
+    # cast to Any at the boundary — runtime is still pyarrow.Table.
     stats = (
         dt.merge(
-            source=arrow_source,
+            source=cast(Any, arrow_source),
             predicate=predicate,
             source_alias="source",
             target_alias="target",
@@ -688,7 +697,7 @@ def _do_upsert(target_location: str, arrow_source: pa.Table, on: list[str]) -> d
     return {"strategy": "upsert", **stats}
 
 
-def _do_scd2(target_location: str, arrow_source: pa.Table, on: list[str]) -> dict[str, Any]:
+def _do_scd2(target_location: str, arrow_source: ArrowTable, on: list[str]) -> dict[str, Any]:
     """Run an SCD-2 close-and-append against the Delta table.
 
     Two-phase: the merge step closes any currently-open target row
@@ -717,7 +726,7 @@ def _do_scd2(target_location: str, arrow_source: pa.Table, on: list[str]) -> dic
     close_iso = now.isoformat()
     close_stats = (
         dt.merge(
-            source=augmented,
+            source=cast(Any, augmented),
             predicate=predicate_close,
             source_alias="source",
             target_alias="target",
@@ -731,7 +740,7 @@ def _do_scd2(target_location: str, arrow_source: pa.Table, on: list[str]) -> dic
         .execute()
     )
 
-    deltalake.write_deltalake(target_location, augmented, mode="append")
+    deltalake.write_deltalake(target_location, cast(Any, augmented), mode="append")
     return {
         "strategy": "scd2",
         "rows_appended": augmented.num_rows,
@@ -739,7 +748,7 @@ def _do_scd2(target_location: str, arrow_source: pa.Table, on: list[str]) -> dic
     }
 
 
-def _augment_for_scd2(arrow_source: pa.Table, now: datetime) -> pa.Table:
+def _augment_for_scd2(arrow_source: ArrowTable, now: datetime) -> ArrowTable:
     """Add ``_valid_from`` / ``_valid_to`` / ``_is_current`` to *arrow_source*.
 
     Args:

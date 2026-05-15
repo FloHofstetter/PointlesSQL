@@ -33,7 +33,10 @@ import glob
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
+
+if TYPE_CHECKING:
+    from pointlessql.services.lineage_edges import ColumnEdgeSpec
 
 import deltalake
 import httpx
@@ -61,6 +64,12 @@ from pointlessql.models import AutoloadCheckpoint
 from pointlessql.pql._columns import columns_from_tuples
 from pointlessql.pql._hashing import concat_sha256
 from pointlessql.pql._parsing import parse_full_name
+from pointlessql.pql._types import (
+    ArrowArray,
+    ArrowTable,
+    DeltaSchema,
+    DuckdbCursor,
+)
 from pointlessql.pql._write import derive_storage_location, safe_delta_version
 from pointlessql.pql.engine import Engine
 from pointlessql.services.agent_runs import operation_context
@@ -263,7 +272,7 @@ def _build_autoload_column_edges(
     target: str,
     audit_columns: tuple[str, ...],
     source_volume_fqn: str | None,
-) -> list:  # type: ignore[type-arg]
+) -> list[ColumnEdgeSpec]:
     """Construct ``ColumnEdgeSpec`` entries for an autoload op.
 
     Reads the target Delta schema (post-append) so the edges
@@ -286,7 +295,7 @@ def _build_autoload_column_edges(
     from pointlessql.services.lineage_edges import ColumnEdgeSpec
 
     try:
-        schema = deltalake.DeltaTable(target_location).schema()
+        schema = cast(DeltaSchema, deltalake.DeltaTable(target_location).schema())
         delta_columns = [field.name for field in schema.fields]
     except Exception:  # noqa: BLE001 — best-effort metadata read
         # bare-broad-ok: column-edge derivation skipped on Delta read failure
@@ -400,7 +409,7 @@ def _resolve_file_format(file_path: str, file_format: AutoloadFormat) -> Autoloa
     return inferred
 
 
-def _read_file_via_duckdb(file_path: str, file_format: AutoloadFormat) -> pa.Table:
+def _read_file_via_duckdb(file_path: str, file_format: AutoloadFormat) -> ArrowTable:
     """Read *file_path* through DuckDB and return a PyArrow Table.
 
     Args:
@@ -419,21 +428,21 @@ def _read_file_via_duckdb(file_path: str, file_format: AutoloadFormat) -> pa.Tab
         # tolerate arbitrary file system paths; the SQL injection
         # surface is bounded because file_path comes from a directory
         # walk we just did, not from user input.
-        cursor = conn.execute(f"SELECT * FROM {reader}(?)", [file_path])
+        cursor = cast(DuckdbCursor, conn.execute(f"SELECT * FROM {reader}(?)", [file_path]))
         return cursor.fetch_arrow_table()
     finally:
         conn.close()
 
 
 def _inject_audit_columns(
-    arrow_table: pa.Table,
+    arrow_table: ArrowTable,
     audit_columns: tuple[str, ...],
     *,
     file_path: str,
     file_sha: str,
     source_system: str,
     ingested_at: datetime.datetime,
-) -> pa.Table:
+) -> ArrowTable:
     """Append the configured audit columns to *arrow_table*.
 
     Skips any audit column already present on the source so a
@@ -467,13 +476,23 @@ def _inject_audit_columns(
 
     n = arrow_table.num_rows
     base_name = Path(file_path).name
-    column_values: dict[str, pa.Array] = {
-        "_ingested_at": pa.array([ingested_at] * n, type=pa.timestamp("us", tz="UTC")),
-        "_source_file": pa.array([base_name] * n, type=pa.string()),
-        "_source_system": pa.array([source_system] * n, type=pa.string()),
-        "_lineage_row_id": pa.array(
-            [_row_lineage_id(file_sha, idx) for idx in range(n)],
-            type=pa.string(),
+    column_values: dict[str, ArrowArray] = {
+        "_ingested_at": cast(
+            ArrowArray,
+            pa.array([ingested_at] * n, type=pa.timestamp("us", tz="UTC")),
+        ),
+        "_source_file": cast(
+            ArrowArray, pa.array([base_name] * n, type=pa.string())
+        ),
+        "_source_system": cast(
+            ArrowArray, pa.array([source_system] * n, type=pa.string())
+        ),
+        "_lineage_row_id": cast(
+            ArrowArray,
+            pa.array(
+                [_row_lineage_id(file_sha, idx) for idx in range(n)],
+                type=pa.string(),
+            ),
         ),
     }
     augmented = arrow_table
@@ -622,7 +641,7 @@ def _resolve_target_or_derive(
     return (derived, False)
 
 
-def _append_to_delta(target_location: str, arrow_table: pa.Table) -> None:
+def _append_to_delta(target_location: str, arrow_table: ArrowTable) -> None:
     """Append *arrow_table* to the Delta table at *target_location*.
 
     Uses ``deltalake.write_deltalake(mode="append")`` which creates
@@ -634,7 +653,12 @@ def _append_to_delta(target_location: str, arrow_table: pa.Table) -> None:
         target_location: Delta table storage URI.
         arrow_table: Augmented data to append.
     """
-    deltalake.write_deltalake(target_location, arrow_table, mode="append")
+    # ``ArrowTable`` Protocol matches the pyarrow.Table runtime shape;
+    # deltalake's stub typing wants its own ArrowArrayExportable union,
+    # so we drop to Any at the boundary.
+    deltalake.write_deltalake(
+        target_location, cast(Any, arrow_table), mode="append"
+    )
 
 
 def _register_target_in_uc(
@@ -645,7 +669,7 @@ def _register_target_in_uc(
     schema: str,
     table: str,
     location: str,
-    arrow_for_columns: pa.Table,
+    arrow_for_columns: ArrowTable,
     unreachable_msg: str,
 ) -> None:
     """Register a freshly-created Delta table in soyuz-catalog.

@@ -86,9 +86,11 @@ class ArrowArray(Protocol):
     """Placeholder for ``pyarrow.Array`` — opaque payload type.
 
     PQL never inspects array contents through this Protocol; it
-    only hands arrays to ``append_column`` and lets pyarrow do its
-    thing.
+    only hands arrays to ``append_column`` / ``set_column`` (and
+    reads back via ``to_pylist`` for the lineage-row-id path).
     """
+
+    def to_pylist(self) -> list[Any]: ...
 
 
 class ArrowTable(Protocol):
@@ -108,6 +110,12 @@ class ArrowTable(Protocol):
 
     def append_column(
         self, field_or_name: str, column: ArrowArray
+    ) -> ArrowTable: ...
+
+    def column(self, name: str) -> ArrowArray: ...
+
+    def set_column(
+        self, index: int, field_or_name: str, column: ArrowArray
     ) -> ArrowTable: ...
 
     def to_pandas(self) -> Any: ...
