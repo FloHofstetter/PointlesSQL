@@ -463,7 +463,9 @@
                                     <tr class="pql-activity-row"
                                         :data-activity-kind="a.kind"
                                         :data-activity-id="a.source_id">
-                                        <td class="small text-muted text-nowrap" x-text="a.ts"></td>
+                                        <td class="small text-muted text-nowrap"
+                                            x-text="pqlRelativeTime(a.ts)"
+                                            :title="pqlAbsTime(a.ts)"></td>
                                         <td>
                                             <span class="badge"
                                                   :class="{

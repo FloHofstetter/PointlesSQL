@@ -105,7 +105,7 @@
                             <dt class="col-sm-5">Strategy{{ info('branches.cleanup-loop') }}</dt>
                             <dd class="col-sm-7"><code>{{ tags.strategy }}</code></dd>
                             <dt class="col-sm-5">Created at</dt>
-                            <dd class="col-sm-7">{{ tags.created_at }}</dd>
+                            <dd class="col-sm-7">{{ relative_time(tags.created_at, klass="") }}</dd>
                             <dt class="col-sm-5">Created by run</dt>
                             <dd class="col-sm-7 font-monospace">
                                 {% if tags.created_by_run_id %}

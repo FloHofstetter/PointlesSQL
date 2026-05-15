@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import abs_time %}
 {% block title %}Compare runs · {{ job.name }} · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -35,9 +36,9 @@
             <div class="card-body p-2 small">
                 <dl class="row mb-0">
                     <dt class="col-4">Started</dt>
-                    <dd class="col-8 font-monospace">{{ run.started_at or "—" }}</dd>
+                    <dd class="col-8">{{ abs_time(run.started_at) if run.started_at else '—' }}</dd>
                     <dt class="col-4">Finished</dt>
-                    <dd class="col-8 font-monospace">{{ run.finished_at or "—" }}</dd>
+                    <dd class="col-8">{{ abs_time(run.finished_at) if run.finished_at else '—' }}</dd>
                     <dt class="col-4">Duration</dt>
                     <dd class="col-8">
                         {% if run.duration_seconds is not none %}{{ "%.1f"|format(run.duration_seconds) }}s{% else %}—{% endif %}

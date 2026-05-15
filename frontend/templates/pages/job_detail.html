@@ -156,7 +156,9 @@
                             <div x-show="loading" class="text-muted">Loading logs…</div>
                             <template x-for="line in logs" :key="line.id">
                                 <div class="font-monospace small">
-                                    <span class="text-muted" x-text="line.ts"></span>
+                                    <span class="text-muted"
+                                          x-text="pqlAbsTime(line.ts)"
+                                          :title="line.ts"></span>
                                     <span class="badge bg-secondary" x-text="line.level"></span>
                                     <span x-text="line.message"></span>
                                 </div>

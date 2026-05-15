@@ -54,7 +54,9 @@
                                 <td x-text="r.distinct_table_count"></td>
                                 <td x-text="r.distinct_run_count"></td>
                                 <td x-text="r.write_op_count"></td>
-                                <td class="small text-muted" x-text="r.last_seen_at"></td>
+                                <td class="small text-muted"
+                                    x-text="pqlRelativeTime(r.last_seen_at)"
+                                    :title="pqlAbsTime(r.last_seen_at)"></td>
                                 <td>
                                     <span class="badge"
                                           :class="r.status === 'open' ? 'bg-success' : (r.status === 'dismissed' ? 'bg-secondary' : 'bg-info')"

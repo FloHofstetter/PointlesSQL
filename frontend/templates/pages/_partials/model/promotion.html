@@ -23,7 +23,8 @@
                                         <dt class="col-sm-4">Promoted by</dt>
                                         <dd class="col-sm-8" x-text="latestPromotion.promoted_by"></dd>
                                         <dt class="col-sm-4">Promoted at</dt>
-                                        <dd class="col-sm-8" x-text="latestPromotion.promoted_at"></dd>
+                                        <dd class="col-sm-8"
+                                            x-text="pqlAbsTime(latestPromotion.promoted_at)"></dd>
                                         <dt class="col-sm-4">Reason</dt>
                                         <dd class="col-sm-8" x-text="latestPromotion.reason"></dd>
                                     </dl>
@@ -100,7 +101,9 @@
                                 <span class="text-muted me-2">(was v<span x-text="entry.previous_champion"></span>)</span>
                             </template>
                             <span class="me-2">by <code x-text="entry.promoted_by"></code></span>
-                            <span class="text-muted me-2" x-text="entry.promoted_at"></span>
+                            <span class="text-muted me-2"
+                                  x-text="pqlRelativeTime(entry.promoted_at)"
+                                  :title="pqlAbsTime(entry.promoted_at)"></span>
                             <div class="text-muted ps-4" x-text="entry.reason"></div>
                         </li>
                     </template>
