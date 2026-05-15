@@ -59,8 +59,11 @@ from pointlessql.models.catalog._data_product_endorsement import (
     ENDORSEMENT_TYPES,
     DataProductEndorsement,
 )
+from pointlessql.models.catalog._data_product_reaction import DataProductReaction
 from pointlessql.models.catalog._data_product_readme import DataProductReadme
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
+from pointlessql.models.social._social_follow import SocialFollow
+from pointlessql.models.social._social_star import SocialStar
 from pointlessql.services.notifications.fanout import fanout_event
 from pointlessql.services.social import (
     get_or_create_target,
@@ -93,11 +96,6 @@ ALLOWED_CATEGORIES: tuple[str, ...] = (
     "idea",
 )
 ALLOWED_EMOJI: tuple[str, ...] = ("👍", "❤️", "🎉", "😄", "😕", "👀")
-
-_NOT_WIRED_FOR_KIND_FOLLOW = (
-    "follow / unfollow on non-DP kinds is deferred to Phase 77.8 "
-    "(needs a polymorphic followers table)."
-)
 
 
 # ---------------------------------------------------------------------------
@@ -262,24 +260,53 @@ def _resolve_target_id(
 ) -> tuple[int, int]:
     """Resolve ``(workspace_id, social_target_id)`` for the kind+ref.
 
+    For ``kind='dp'`` routes through :func:`resolve_dp_target` so the
+    ``data_product_id`` back-pointer gets populated correctly; the
+    plain :func:`get_or_create_target` requires the caller to know
+    that id upfront, which the polymorphic Star / Follow paths
+    don't until they resolve the DP themselves.
+
     Args:
         request: Active FastAPI request — used for workspace scope.
-        kind: Non-DP entity kind discriminator.
+        kind: Entity kind discriminator.
         ref: Opaque entity reference within *kind*.
 
     Returns:
         Tuple of ``(workspace_id, social_target_id)``.  The anchor
         row is created on demand if it does not yet exist.
+
+    Raises:
+        HTTPException: 404 when ``kind='dp'`` and no DataProduct
+            exists at the requested ``catalog.schema``.
     """
+    from pointlessql.services.social._target_resolver import resolve_dp_target
+
     workspace_id = current_workspace_id(request)
     factory = request.app.state.session_factory
     with factory() as session:
-        target = get_or_create_target(
-            session,
-            workspace_id=workspace_id,
-            kind=kind,
-            ref=ref,
-        )
+        if kind == "dp":
+            parts = ref.split(".", 1)
+            if len(parts) != 2 or not all(parts):
+                raise HTTPException(
+                    status_code=400,
+                    detail="kind='dp' ref must be 'catalog.schema'",
+                )
+            try:
+                target = resolve_dp_target(
+                    session,
+                    workspace_id=workspace_id,
+                    catalog_name=parts[0],
+                    schema_name=parts[1],
+                )
+            except LookupError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+        else:
+            target = get_or_create_target(
+                session,
+                workspace_id=workspace_id,
+                kind=kind,
+                ref=ref,
+            )
         session.commit()
         return workspace_id, int(target.id)
 
@@ -974,12 +1001,11 @@ async def remove_polymorphic_endorsement(
 async def get_polymorphic_followers_count(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Return the follower count for the polymorphic entity.
+    """Return the follower count + caller-following flag (Phase 77.8).
 
-    Non-DP follow writes return 501 (the underlying composite-PK
-    constraint blocks them; Phase 77.8 introduces a polymorphic
-    follow table).  Count read still works — there are simply
-    zero rows.
+    Counts rows on the polymorphic ``social_follows`` table for
+    ``social_target_id == target_id``.  The ``following`` flag
+    reports whether the caller has an outstanding follow row.
 
     Args:
         kind: Entity kind discriminator.
@@ -987,23 +1013,39 @@ async def get_polymorphic_followers_count(
         request: Incoming FastAPI request.
 
     Returns:
-        ``{"count": 0, "following": false}`` until 77.8.
+        ``{"count": int, "following": bool}``.
     """
     require_user(request)
-    # Ensure the target row exists so the count query is consistent
-    # with the apply/remove side once 77.8 lands.
-    _resolve_target_id(request, kind, ref)
-    # Phase 77.1.5: no polymorphic follower rows exist yet — the
-    # composite-PK constraint on ``data_product_follows`` requires
-    # a real DP id, so non-DP follows can't be written.  Return a
-    # bit-stable zero for now so the UI doesn't need a kind switch.
-    return {"count": 0, "following": False}
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        count = session.execute(
+            select(func.count(SocialFollow.user_id)).where(
+                SocialFollow.workspace_id == workspace_id,
+                SocialFollow.social_target_id == target_id,
+            )
+        ).scalar_one()
+        mine = session.get(
+            SocialFollow,
+            {
+                "workspace_id": workspace_id,
+                "social_target_id": target_id,
+                "user_id": user["id"],
+            },
+        )
+    return {"count": int(count), "following": mine is not None}
 
 
 async def list_polymorphic_followers(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Return the (currently empty) follower list for non-DP kinds.
+    """Return the follower roster for the polymorphic entity (Phase 77.8).
+
+    The list is gated to the caller themselves + workspace admins —
+    privacy mirrors the DP follower list.  Non-admin callers see an
+    empty ``followers`` array but accurate ``count``.
 
     Args:
         kind: Entity kind discriminator.
@@ -1011,37 +1053,515 @@ async def list_polymorphic_followers(
         request: Incoming FastAPI request.
 
     Returns:
-        ``{"entity_kind", "entity_ref", "followers": []}`` — Phase
-        77.8 will fill the list once the polymorphic follow table
-        lands.
+        ``{"entity_kind", "entity_ref", "followers": [...]}`` where
+        each follower entry carries ``user_id``, ``email``,
+        ``display_name`` and the ``created_at`` of the follow row.
     """
     require_user(request)
-    _resolve_target_id(request, kind, ref)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        is_admin = bool(user.get("is_admin"))
+        if not is_admin:
+            return {
+                "entity_kind": kind,
+                "entity_ref": ref,
+                "followers": [],
+            }
+        rows = session.execute(
+            select(SocialFollow, User)
+            .join(User, User.id == SocialFollow.user_id)
+            .where(
+                SocialFollow.workspace_id == workspace_id,
+                SocialFollow.social_target_id == target_id,
+            )
+            .order_by(SocialFollow.created_at.desc())
+        ).all()
+    followers = [
+        {
+            "user_id": user_row.id,
+            "email": user_row.email,
+            "display_name": user_row.display_name,
+            "created_at": follow.created_at.isoformat(),
+        }
+        for follow, user_row in rows
+    ]
     return {
         "entity_kind": kind,
         "entity_ref": ref,
-        "followers": [],
+        "followers": followers,
     }
 
 
 async def follow_polymorphic_entity(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Reject non-DP follow attempts with 501 until Phase 77.8."""
+    """Idempotently follow a polymorphic entity (Phase 77.8).
+
+    Writes one row to ``social_follows``.  Repeat POSTs no-op via
+    the composite-PK ``(workspace_id, social_target_id, user_id)``.
+
+    Args:
+        kind: Entity kind discriminator.
+        ref: Opaque entity reference within *kind*.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"followed": True, "already": bool}`` — ``already`` is
+        true on the second consecutive POST.
+    """
     require_user(request)
-    del kind, ref
-    # bare-http-ok: deferred per locked decision.
-    raise HTTPException(status_code=501, detail=_NOT_WIRED_FOR_KIND_FOLLOW)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        existing = session.get(
+            SocialFollow,
+            {
+                "workspace_id": workspace_id,
+                "social_target_id": target_id,
+                "user_id": user["id"],
+            },
+        )
+        if existing is not None:
+            return {"followed": True, "already": True}
+        session.add(
+            SocialFollow(
+                workspace_id=workspace_id,
+                social_target_id=target_id,
+                user_id=user["id"],
+                created_at=datetime.datetime.now(datetime.UTC),
+            )
+        )
+        session.commit()
+    return {"followed": True, "already": False}
 
 
 async def unfollow_polymorphic_entity(
     kind: str, ref: str, request: Request
 ) -> dict[str, Any]:
-    """Reject non-DP unfollow attempts with 501 until Phase 77.8."""
+    """Idempotently unfollow a polymorphic entity (Phase 77.8).
+
+    Drops the matching ``social_follows`` row if present.
+
+    Args:
+        kind: Entity kind discriminator.
+        ref: Opaque entity reference within *kind*.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"followed": False, "removed": bool}`` — ``removed`` is
+        true on the call that actually dropped a row.
+    """
     require_user(request)
-    del kind, ref
-    # bare-http-ok: deferred per locked decision.
-    raise HTTPException(status_code=501, detail=_NOT_WIRED_FOR_KIND_FOLLOW)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        existing = session.get(
+            SocialFollow,
+            {
+                "workspace_id": workspace_id,
+                "social_target_id": target_id,
+                "user_id": user["id"],
+            },
+        )
+        if existing is None:
+            return {"followed": False, "removed": False}
+        session.delete(existing)
+        session.commit()
+    return {"followed": False, "removed": True}
+
+
+# ---------------------------------------------------------------------------
+# Entity-level reactions (Phase 77.8.C UNIQUE + 77.8.D handlers)
+# ---------------------------------------------------------------------------
+
+
+def _validate_emoji_field(emoji: str | None) -> str:
+    """Normalise + validate a reaction emoji against the GitHub-6 set."""
+    if not emoji or emoji not in ALLOWED_EMOJI:
+        # bare-http-ok: emoji is a fixed allow-list.
+        raise HTTPException(
+            status_code=400,
+            detail=f"emoji must be one of {ALLOWED_EMOJI}",
+        )
+    return emoji
+
+
+async def list_polymorphic_reactions(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Return aggregated entity-level reactions for a polymorphic entity.
+
+    Args:
+        kind: Entity kind discriminator.
+        ref: Opaque entity reference within *kind*.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"entity_kind", "entity_ref", "reactions": [...]}`` where
+        each row is ``{"emoji", "count", "has_current_user_reacted"}``.
+    """
+    require_user(request)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    del workspace_id
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        rows = session.execute(
+            select(
+                DataProductReaction.emoji,
+                DataProductReaction.user_id,
+            ).where(DataProductReaction.social_target_id == target_id)
+        ).all()
+
+    counts: dict[str, int] = {e: 0 for e in ALLOWED_EMOJI}
+    mine: set[str] = set()
+    for emoji_row, uid in rows:
+        if emoji_row in counts:
+            counts[emoji_row] += 1
+        if uid == user["id"]:
+            mine.add(emoji_row)
+
+    return {
+        "entity_kind": kind,
+        "entity_ref": ref,
+        "reactions": [
+            {
+                "emoji": e,
+                "count": counts[e],
+                "has_current_user_reacted": e in mine,
+            }
+            for e in ALLOWED_EMOJI
+        ],
+    }
+
+
+async def apply_polymorphic_reaction(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Add an emoji reaction on a polymorphic entity (Phase 77.8.D).
+
+    Idempotency is enforced by the
+    ``uq_dp_reactions_polymorphic`` UNIQUE constraint that 77.8.C
+    added (legacy DP-id PK is unable to dedupe rows with NULL
+    ``data_product_id``).  Re-applying the same emoji no-ops.
+
+    Args:
+        kind: Entity kind discriminator.
+        ref: Opaque entity reference within *kind*.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"entity_kind", "entity_ref", "emoji", "added": bool}``.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    require_user(request)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    payload = await request.json()
+    emoji = _validate_emoji_field(payload.get("emoji"))
+
+    added = False
+    with factory() as session:
+        try:
+            session.add(
+                DataProductReaction(
+                    data_product_id=None,
+                    social_target_id=target_id,
+                    user_id=user["id"],
+                    emoji=emoji,
+                    created_at=datetime.datetime.now(datetime.UTC),
+                )
+            )
+            session.commit()
+            added = True
+        except IntegrityError:
+            session.rollback()
+            added = False
+
+    if added:
+        mirror_social_to_audit(
+            factory,
+            user_id=user["id"],
+            user_email=user.get("email", ""),
+            action="audit.reaction.dp_added",
+            entity_kind=kind,
+            entity_ref=ref,
+            detail={"emoji": emoji},
+            workspace_id=workspace_id,
+        )
+
+    return {
+        "entity_kind": kind,
+        "entity_ref": ref,
+        "emoji": emoji,
+        "added": added,
+    }
+
+
+async def remove_polymorphic_reaction(
+    kind: str, ref: str, emoji: str, request: Request
+) -> dict[str, Any]:
+    """Remove the caller's emoji reaction on a polymorphic entity.
+
+    Args:
+        kind: Entity kind discriminator.
+        ref: Opaque entity reference within *kind*.
+        emoji: The emoji to remove (must be in the allow-list).
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"entity_kind", "entity_ref", "emoji", "removed": bool}``.
+    """
+    from sqlalchemy import delete as _delete
+
+    require_user(request)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+    emoji = _validate_emoji_field(emoji)
+
+    removed = False
+    with factory() as session:
+        result = session.execute(
+            _delete(DataProductReaction).where(
+                DataProductReaction.social_target_id == target_id,
+                DataProductReaction.user_id == user["id"],
+                DataProductReaction.emoji == emoji,
+            )
+        )
+        session.commit()
+        removed = bool(result.rowcount)
+
+    if removed:
+        mirror_social_to_audit(
+            factory,
+            user_id=user["id"],
+            user_email=user.get("email", ""),
+            action="audit.reaction.dp_removed",
+            entity_kind=kind,
+            entity_ref=ref,
+            detail={"emoji": emoji},
+            workspace_id=workspace_id,
+        )
+    return {
+        "entity_kind": kind,
+        "entity_ref": ref,
+        "emoji": emoji,
+        "removed": removed,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Stars (Phase 77.8)
+# ---------------------------------------------------------------------------
+
+
+async def get_polymorphic_star(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Return the star count for the entity + whether caller starred it.
+
+    Args:
+        kind: Entity kind discriminator.
+        ref: Opaque entity reference within *kind*.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"starred": bool, "count": int}``.
+    """
+    require_user(request)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        count = session.execute(
+            select(func.count(SocialStar.user_id)).where(
+                SocialStar.workspace_id == workspace_id,
+                SocialStar.social_target_id == target_id,
+            )
+        ).scalar_one()
+        mine = session.get(
+            SocialStar,
+            {
+                "workspace_id": workspace_id,
+                "user_id": user["id"],
+                "social_target_id": target_id,
+            },
+        )
+    return {"starred": mine is not None, "count": int(count)}
+
+
+async def star_polymorphic_entity(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Idempotently star a polymorphic entity (Phase 77.8).
+
+    Args:
+        kind: Entity kind discriminator.
+        ref: Opaque entity reference within *kind*.
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"starred": True, "count": int}`` — the updated count
+        reflects the post-write state.
+    """
+    require_user(request)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        existing = session.get(
+            SocialStar,
+            {
+                "workspace_id": workspace_id,
+                "user_id": user["id"],
+                "social_target_id": target_id,
+            },
+        )
+        first_star = existing is None
+        if first_star:
+            session.add(
+                SocialStar(
+                    workspace_id=workspace_id,
+                    user_id=user["id"],
+                    social_target_id=target_id,
+                    created_at=datetime.datetime.now(datetime.UTC),
+                )
+            )
+            session.commit()
+        count = session.execute(
+            select(func.count(SocialStar.user_id)).where(
+                SocialStar.workspace_id == workspace_id,
+                SocialStar.social_target_id == target_id,
+            )
+        ).scalar_one()
+
+    if first_star:
+        mirror_social_to_audit(
+            factory,
+            user_id=user["id"],
+            user_email=user.get("email", ""),
+            action="audit.star.added",
+            entity_kind=kind,
+            entity_ref=ref,
+            detail={},
+            workspace_id=workspace_id,
+        )
+    return {"starred": True, "count": int(count)}
+
+
+async def unstar_polymorphic_entity(
+    kind: str, ref: str, request: Request
+) -> dict[str, Any]:
+    """Idempotently unstar a polymorphic entity (Phase 77.8)."""
+    from sqlalchemy import delete as _delete
+
+    require_user(request)
+    user = get_user(request)
+    workspace_id, target_id = _resolve_target_id(request, kind, ref)
+    factory = request.app.state.session_factory
+
+    with factory() as session:
+        result = session.execute(
+            _delete(SocialStar).where(
+                SocialStar.workspace_id == workspace_id,
+                SocialStar.user_id == user["id"],
+                SocialStar.social_target_id == target_id,
+            )
+        )
+        session.commit()
+        removed = bool(result.rowcount)
+        count = session.execute(
+            select(func.count(SocialStar.user_id)).where(
+                SocialStar.workspace_id == workspace_id,
+                SocialStar.social_target_id == target_id,
+            )
+        ).scalar_one()
+
+    if removed:
+        mirror_social_to_audit(
+            factory,
+            user_id=user["id"],
+            user_email=user.get("email", ""),
+            action="audit.star.removed",
+            entity_kind=kind,
+            entity_ref=ref,
+            detail={},
+            workspace_id=workspace_id,
+        )
+    return {"starred": False, "count": int(count)}
+
+
+async def list_user_stars(
+    user_id: int, request: Request, kind: str | None = None, limit: int = 50
+) -> dict[str, Any]:
+    """Return the starred-entity list for a given user.
+
+    Args:
+        user_id: Target user whose stars to list.  Only the caller
+            themselves or an admin may list anyone else's stars.
+        request: Incoming FastAPI request.
+        kind: Optional filter to a single entity kind.
+        limit: Max number of rows to return.
+
+    Returns:
+        ``{"user_id", "count", "stars": [...]}``.
+
+    Raises:
+        AuthorizationError: When the caller is not the target user
+            and not an admin.
+    """
+    from pointlessql.models.social._social_target import SocialTarget
+
+    require_user(request)
+    caller = get_user(request)
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+
+    if caller["id"] != user_id and not bool(caller.get("is_admin")):
+        raise AuthorizationError(
+            principal=caller.get("email", ""),
+            privilege="stars-list",
+            securable_type="user",
+            full_name=str(user_id),
+        )
+
+    with factory() as session:
+        stmt = (
+            select(SocialStar, SocialTarget)
+            .join(SocialTarget, SocialTarget.id == SocialStar.social_target_id)
+            .where(
+                SocialStar.workspace_id == workspace_id,
+                SocialStar.user_id == user_id,
+            )
+            .order_by(desc(SocialStar.created_at))
+            .limit(limit)
+        )
+        if kind is not None:
+            stmt = stmt.where(SocialTarget.entity_kind == kind)
+        rows = session.execute(stmt).all()
+    stars = [
+        {
+            "entity_kind": target.entity_kind,
+            "entity_ref": target.entity_ref,
+            "starred_at": star.created_at.isoformat(),
+        }
+        for star, target in rows
+    ]
+    return {"user_id": user_id, "count": len(stars), "stars": stars}
 
 
 # ---------------------------------------------------------------------------
@@ -1462,18 +1982,25 @@ async def delete_polymorphic_review(
 
 __all__: list[str] = [
     "apply_polymorphic_endorsement",
+    "apply_polymorphic_reaction",
     "delete_polymorphic_comment",
     "delete_polymorphic_review",
     "follow_polymorphic_entity",
     "get_polymorphic_followers_count",
     "get_polymorphic_readme",
+    "get_polymorphic_star",
     "list_polymorphic_comments",
     "list_polymorphic_endorsements",
     "list_polymorphic_followers",
+    "list_polymorphic_reactions",
     "list_polymorphic_reviews",
+    "list_user_stars",
     "post_polymorphic_comment",
     "put_polymorphic_readme",
     "remove_polymorphic_endorsement",
+    "remove_polymorphic_reaction",
+    "star_polymorphic_entity",
     "unfollow_polymorphic_entity",
+    "unstar_polymorphic_entity",
     "upsert_polymorphic_review",
 ]

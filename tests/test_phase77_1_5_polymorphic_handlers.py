@@ -307,31 +307,55 @@ async def test_table_readme_put_noop_on_unchanged_body(
 
 
 # ---------------------------------------------------------------------------
-# kind='table' — follow (501) + count (0)
+# kind='table' — polymorphic follow (Phase 77.8) + count
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_table_follow_returns_501(
+async def test_table_follow_now_writes_polymorphic_row(
     admin_socket: httpx.AsyncClient,
 ) -> None:
-    """Follow on non-DP returns 501 — polymorphic table lands in 77.8."""
+    """Follow on kind='table' writes a ``social_follows`` row (77.8.D).
+
+    Pre-77.8 the route returned 501 because ``data_product_follows``
+    composite-PK required a real DP id.  77.8.B introduced the
+    sibling polymorphic table; 77.8.D flipped the handler to use
+    it.  Two consecutive POSTs are idempotent.
+    """
     res = await admin_socket.post(
         f"/api/social/table/{_TABLE_REF}/follow"
     )
-    assert res.status_code == 501, res.text
+    assert res.status_code == 200, res.text
+    assert res.json() == {"followed": True, "already": False}
+    again = await admin_socket.post(
+        f"/api/social/table/{_TABLE_REF}/follow"
+    )
+    assert again.status_code == 200, again.text
+    assert again.json() == {"followed": True, "already": True}
 
 
 @pytest.mark.asyncio
-async def test_table_followers_count_returns_zero(
+async def test_table_followers_count_reflects_polymorphic_writes(
     admin_socket: httpx.AsyncClient,
 ) -> None:
-    """Follower count on non-DP is bit-stable zero until 77.8."""
+    """Follower count now mirrors the actual polymorphic row state."""
+    await admin_socket.delete(
+        f"/api/social/table/{_TABLE_REF}/follow"
+    )
     res = await admin_socket.get(
         f"/api/social/table/{_TABLE_REF}/followers/count"
     )
     assert res.status_code == 200, res.text
     assert res.json() == {"count": 0, "following": False}
+
+    await admin_socket.post(
+        f"/api/social/table/{_TABLE_REF}/follow"
+    )
+    res2 = await admin_socket.get(
+        f"/api/social/table/{_TABLE_REF}/followers/count"
+    )
+    assert res2.status_code == 200, res2.text
+    assert res2.json() == {"count": 1, "following": True}
 
 
 # ---------------------------------------------------------------------------
@@ -426,15 +450,32 @@ async def test_table_reviews_return_501(
 
 
 @pytest.mark.asyncio
-async def test_table_reactions_return_501(
+async def test_table_reactions_now_work_polymorphic(
     admin_socket: httpx.AsyncClient,
 ) -> None:
-    """Reactions on non-DP entities return 501 — deferred to 77.8."""
+    """Reactions on kind='table' work end-to-end after 77.8.
+
+    Pre-77.8 the route returned 501 because the legacy DP-id PK
+    on ``data_product_reactions`` couldn't dedupe NULL rows.
+    77.8.C added a polymorphic UNIQUE on
+    ``(social_target_id, user_id, emoji)``; 77.8.D flipped the
+    handler to use it.  Re-applying the same emoji no-ops.
+    """
     res = await admin_socket.post(
         f"/api/social/table/{_TABLE_REF}/reactions",
         json={"emoji": "🎉"},
     )
-    assert res.status_code == 501, res.text
+    assert res.status_code == 200, res.text
+    payload = res.json()
+    assert payload["added"] is True
+    assert payload["emoji"] == "🎉"
+
+    again = await admin_socket.post(
+        f"/api/social/table/{_TABLE_REF}/reactions",
+        json={"emoji": "🎉"},
+    )
+    assert again.status_code == 200, again.text
+    assert again.json()["added"] is False
 
 
 # ---------------------------------------------------------------------------

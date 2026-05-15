@@ -22,6 +22,7 @@ from pointlessql.api.social_routes import (
     reactions,
     readme,
     reviews,
+    stars,
 )
 
 router = APIRouter()
@@ -31,6 +32,7 @@ router.include_router(endorsements.router)
 router.include_router(follows.router)
 router.include_router(reactions.router)
 router.include_router(readme.router)
+router.include_router(stars.router)
 
 
 __all__: list[str] = ["router"]
