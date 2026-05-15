@@ -1,0 +1,69 @@
+{# Phase 77.1.5 — kind-agnostic endorsements tab pane.
+   Consumed via socialTabs(kind, ref) Alpine factory.  Parent template
+   passes ``endorsement_kinds`` as a list of ``{key, label, description}``
+   triples — typically driven by the registry's endorsement allow-list
+   for the kind (table → 4 DP-flavoured types; branch → just
+   ``branch-approved-for-promotion``). #}
+<div class="tab-pane fade" id="tab-endorsements" role="tabpanel">
+    <template x-if="!endorsementsLoaded">
+        <div class="text-muted small p-3">Loading endorsements…</div>
+    </template>
+    <template x-if="endorsementsLoaded">
+        <div>
+            <p class="text-muted small mb-3">
+                Endorsements express peer trust.  Anyone in the workspace
+                can apply or remove their own; you can&rsquo;t remove
+                another user&rsquo;s row unless you&rsquo;re an admin.
+            </p>
+
+            <template x-for="t in endorsementTypes" :key="t.key">
+                <div class="card mb-2">
+                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-semibold" x-text="t.label"></div>
+                            <div class="small text-muted" x-text="t.description || ''"></div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary"
+                                  x-text="countForType(t.key)"></span>
+                            <button class="btn btn-sm"
+                                    :class="mineForType(t.key) ? 'btn-success' : 'btn-outline-success'"
+                                    :disabled="endorsementBusy"
+                                    @click="toggleEndorsement(t.key)">
+                                <span x-show="mineForType(t.key)">
+                                    <i class="bi bi-check-circle me-1"></i>You endorsed
+                                </span>
+                                <span x-show="!mineForType(t.key)">
+                                    <i class="bi bi-hand-thumbs-up me-1"></i>Endorse
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="endorsementTypes.length === 0">
+                <div class="alert alert-secondary small">
+                    No endorsement types are configured for this entity.
+                </div>
+            </template>
+
+            <div class="mt-4" x-show="endorsements.length > 0">
+                <h6 class="text-muted small text-uppercase">Recent activity</h6>
+                <template x-for="e in endorsements" :key="e.id">
+                    <div class="border-start ps-3 mb-2 small"
+                         :class="e.removed_at ? 'border-secondary text-muted' : 'border-success'">
+                        <div>
+                            <strong x-text="(e.applied_by && (e.applied_by.display_name || e.applied_by.email)) || 'unknown'"></strong>
+                            <span x-show="!e.removed_at">applied</span>
+                            <span x-show="e.removed_at">removed</span>
+                            <code x-text="e.endorsement_type"></code>
+                        </div>
+                        <div class="text-muted"
+                             x-text="(e.removed_at || e.applied_at)"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </template>
+</div>

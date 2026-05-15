@@ -100,6 +100,15 @@ window.listTable = listTable;
 window.jobRowActions = jobRowActions;
 window.sqlEditor = sqlEditor;
 
+// Phase 77.1.5 — polymorphic social-tabs Alpine factory.  Used by
+// table.html + branch_detail.html via the kind-agnostic
+// ``_endorsements_pane.html`` + ``_followers_pane.html`` partials.
+// ``data_product.html`` keeps its inline x-data + DP-flavoured
+// partials until Phase 77.11 polish unifies the two.
+import { socialTabs } from './social_tabs.js';
+
+window.socialTabs = socialTabs;
+
 // Phase 66 — browser notebook editor.  cellEditor is the per-cell
 // CodeMirror factory; notebookEditor is the top-level Alpine factory
 // mounted on /notebooks/edit/{path}.

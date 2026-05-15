@@ -1,0 +1,48 @@
+{# Phase 77.1.5 — kind-agnostic followers tab pane.
+   Consumed via socialTabs(kind, ref) Alpine factory.  Follower writes
+   on non-DP kinds return 501 today (composite-PK constraint blocks
+   polymorphic writes; Phase 77.8 lifts this).  The factory exposes
+   the locked state as ``followLocked``; this pane disables the button
+   and renders a one-line hint when set. #}
+<div class="tab-pane fade" id="tab-followers" role="tabpanel">
+    <template x-if="!followersLoaded">
+        <div class="text-muted small p-3">Loading followers…</div>
+    </template>
+    <template x-if="followersLoaded">
+        <div>
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="display-6 fw-bold text-primary"
+                     x-text="followerCount">0</div>
+                <div class="small text-muted">
+                    follower<span x-show="followerCount !== 1">s</span>
+                </div>
+            </div>
+
+            <button class="btn"
+                    :class="following ? 'btn-secondary' : 'btn-outline-primary'"
+                    :disabled="followLocked || followBusy"
+                    @click="toggleFollow()">
+                <span x-show="following">
+                    <i class="bi bi-bell-slash me-1"></i>Unfollow
+                </span>
+                <span x-show="!following">
+                    <i class="bi bi-bell me-1"></i>Follow
+                </span>
+            </button>
+
+            <p class="small text-muted mt-3" x-show="followLocked">
+                <i class="bi bi-info-circle me-1"></i>
+                Following non-data-product entities lands in Phase 77.8 once
+                the polymorphic follower table ships.  The button stays
+                disabled until then; you can still post comments and apply
+                endorsements.
+            </p>
+
+            <p class="small text-muted mt-3" x-show="!followLocked && following">
+                You&rsquo;ll receive an inbox notification whenever someone
+                comments here, applies an endorsement, or pushes a related
+                event.
+            </p>
+        </div>
+    </template>
+</div>
