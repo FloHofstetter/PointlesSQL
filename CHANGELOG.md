@@ -6,6 +6,38 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77 closed — Social as Connective Tissue (2026-05-15).**
+  Eleven sub-phases over the run lifted PointlesSQL's social
+  layer from a DP-only surface into kind-agnostic connective
+  tissue.  Every named platform entity (catalog / schema / table
+  / dp / model / branch / run / notebook / saved query / issue /
+  workspace) now carries the same Discussion / Endorsements /
+  Followers / README / Stars / Issues primitives.
+
+  77.11 ships the close-out documentation at
+  ``docs/phase-77.md`` (architecture overview + locked decisions
+  + test surface + deferred polish backlog).  Phase 77 marker
+  flipped ✅ done in ROADMAP.
+
+  Deferred to a future "Phase 77 polish" sub-phase (each
+  independent of the foundation; cumulative risk-vs-reward
+  stayed unfavourable for the close-out sweep):
+
+  - Schema consolidation migration (rename
+    ``data_product_follows`` → ``social_follows`` etc; drop the
+    legacy ``uq_dp_review_one_per_user`` UNIQUE).
+  - Full-body FTS extension to ``audit_search``.
+  - Comment-reaction polymorphism unlock (currently 501 for
+    non-DP comments — underlying table is polymorphic-safe but
+    the route still needs a DP context).
+  - Generalised badges (``badges.py`` thresholds still query
+    DP-only).
+  - ``data_product.html`` socialTabs migration.
+  - ``fanout_dataproduct_event`` wrapper deletion.
+
+  Phase 77 test count: ~232 incremental across the eleven sub-
+  phases.  Pyright budget stays at 609 warnings (no regressions).
+
 - **Phase 77.10 closed — Workspace-as-Organization landing (2026-05-15).**
   Every workspace gets a GitHub-org-style landing page at
   ``/workspaces/{slug}``.  Alembic ``g4i6k8m0o2q4`` creates

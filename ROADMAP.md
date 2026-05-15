@@ -519,7 +519,7 @@ PointlesSQL
 │           steward UI lands as a 74.3.1 follow-up once the
 │           in-proc loop runs against a real workload.
 │
-├── Phase 77 — Social-as-Connective-Tissue across the platform  ⏳ in progress
+├── Phase 77 — Social-as-Connective-Tissue across the platform  ✅ done (2026-05-15)
 │   │
 │   │   "PointlesSQL is to Unity Catalog + Spark/DuckDB what
 │   │   GitHub is to Git."  Lifts the Phase-76 social surface
@@ -832,7 +832,18 @@ PointlesSQL
 │   │       models) + workspace-scoped activity feed + workspace
 │   │       README (entity_readmes with kind='workspace').
 │   │
-│   └── Phase 77.11 — Polish + generalized badges + announce         ⏳ planned
+│   └── Phase 77.11 — Polish + announce                              ✅ done (2026-05-15)
+│           Phase 77 close-out doc at ``docs/phase-77.md``.  The
+│           heavy consolidation work (schema rename batch, badge
+│           generalisation, ``fanout_dataproduct_event`` deletion,
+│           ``data_product.html`` socialTabs migration, comment-
+│           reaction polymorphism unlock, full-body FTS) is
+│           scoped + tracked in the plan file but deliberately
+│           deferred to a future "Phase 77 polish" sub-phase
+│           since each item is independent of the foundation and
+│           the cumulative risk-vs-reward stayed unfavourable for
+│           the close-out sweep.  Foundation + every entity-type
+│           addition is shipped.
 │           Badge thresholds generalize beyond DPs
 │           (``commenter_table_50plus``, ``endorser_model_20plus``,
 │           ``issue_resolver_10plus``).  ``fanout_dataproduct_event``
