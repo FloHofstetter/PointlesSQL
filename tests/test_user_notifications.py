@@ -22,7 +22,7 @@ from pointlessql.data_products import load_contract
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
-from pointlessql.services.notifications import fanout_dataproduct_event
+from pointlessql.services.notifications import fanout_event
 from pointlessql.services.workspace.governance import (
     EVENT_TYPE_DATA_PRODUCT_COMMENTED,
 )
@@ -142,14 +142,16 @@ def test_fanout_inserts_one_row_per_recipient(tmp_path: Path) -> None:
         )
         session.commit()
 
-    count = fanout_dataproduct_event(
+    count = fanout_event(
         factory,
         event_type=EVENT_TYPE_DATA_PRODUCT_COMMENTED,
-        data_product_id=dp_id,
+        entity_kind="dp",
+        entity_ref="main.sales_gold",
         workspace_id=1,
         actor_user_id=_admin_user_id(),
         source_url="/data-products/main/sales_gold#x",
         summary_md="ping",
+        data_product_id=dp_id,
         extra_recipients=[carol_id, bob_id],  # bob is followers AND mentions
     )
     assert count == 2  # bob (dedup) + carol; admin is suppressed
@@ -192,14 +194,16 @@ def test_fanout_suppresses_actor(tmp_path: Path) -> None:
         )
         session.commit()
 
-    fanout_dataproduct_event(
+    fanout_event(
         factory,
         event_type=EVENT_TYPE_DATA_PRODUCT_COMMENTED,
-        data_product_id=dp_id,
+        entity_kind="dp",
+        entity_ref="main.sales_gold",
         workspace_id=1,
         actor_user_id=admin_id,
         source_url="/x",
         summary_md="self",
+        data_product_id=dp_id,
     )
     with factory() as session:
         assert session.execute(select(UserNotification)).all() == []

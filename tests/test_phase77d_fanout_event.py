@@ -12,10 +12,6 @@ Coverage:
   follower table for tables in 77.0); ``extra_recipients`` is
   the only path for non-DP events until 77.1+ ships per-kind
   follow tables.
-* Legacy ``fanout_dataproduct_event(data_product_id=..., ...)``
-  wrapper resolves the DP FQN and dispatches via fanout_event
-  with the same per-row outcome as before — zero behaviour
-  drift for the existing call sites.
 * Actor is removed from the recipient set.
 * Per-user inbox opt-out via
   ``users.notification_prefs_json`` is honoured for the new path.
@@ -38,10 +34,7 @@ from pointlessql.models.catalog._data_product_follows import (
 )
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
-from pointlessql.services.notifications import (
-    fanout_dataproduct_event,
-    fanout_event,
-)
+from pointlessql.services.notifications import fanout_event
 
 _CONTRACT_YAML = """\
 data_product:
@@ -211,58 +204,6 @@ def test_fanout_event_table_stamps_polymorphic_only_no_dp_id(
         assert row.source_entity_ref == "main.sales_gold.orders"
         # Legacy column NOT populated for non-DP kinds.
         assert row.source_data_product_id is None
-
-
-def test_legacy_fanout_dataproduct_event_wrapper_dispatches_correctly(
-    tmp_path: Path,
-    admin_user_id: int,
-    nonadmin_user_id: int,
-    clean_notifications: None,
-) -> None:
-    """Legacy wrapper produces the same per-row outcome as before."""
-    del clean_notifications
-    dp_id = _seed_dp(tmp_path)
-    factory = app.state.session_factory
-    with factory() as session:
-        from datetime import UTC, datetime
-
-        from pointlessql.services.social import get_or_create_target
-        anchor = get_or_create_target(
-            session,
-            workspace_id=1,
-            kind="dp",
-            ref="main.sales_gold",
-            data_product_id=dp_id,
-        )
-        session.add(
-            DataProductFollow(
-                workspace_id=1,
-                data_product_id=dp_id,
-                social_target_id=int(anchor.id),
-                user_id=nonadmin_user_id,
-                created_at=datetime.now(UTC),
-            )
-        )
-        session.commit()
-    fanout_dataproduct_event(
-        factory,
-        event_type="phase77d.test.legacy_wrapper",
-        data_product_id=dp_id,
-        workspace_id=1,
-        actor_user_id=admin_user_id,
-        source_url="/data-products/main/sales_gold",
-        summary_md="legacy wrapper test",
-    )
-    with factory() as session:
-        row = session.execute(
-            select(UserNotification).where(
-                UserNotification.event_type == "phase77d.test.legacy_wrapper",
-            )
-        ).scalar_one()
-        # The wrapper now stamps both columns.
-        assert row.source_entity_kind == "dp"
-        assert row.source_entity_ref == "main.sales_gold"
-        assert row.source_data_product_id == dp_id
 
 
 def test_fanout_event_skips_actor(

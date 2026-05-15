@@ -25,7 +25,7 @@ from pointlessql.data_products import load_contract
 from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
-from pointlessql.services.notifications.fanout import fanout_dataproduct_event
+from pointlessql.services.notifications.fanout import fanout_event
 
 VALID_YAML = """\
 data_product:
@@ -204,14 +204,16 @@ async def test_fanout_respects_inbox_optout(
         )
         session.commit()
 
-    inserted = fanout_dataproduct_event(
+    inserted = fanout_event(
         factory,
         event_type="pointlessql.data_product.commented",
-        data_product_id=dp_id,
+        entity_kind="dp",
+        entity_ref="main.sales_gold",
         workspace_id=1,
         actor_user_id=nonadmin_id,
         source_url="/test",
         summary_md="test",
+        data_product_id=dp_id,
         extra_recipients=[admin_id],
     )
     # Admin opted out, so the only recipient eligibility drops to

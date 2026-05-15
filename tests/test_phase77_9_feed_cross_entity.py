@@ -24,7 +24,6 @@ import httpx
 import pytest
 
 from pointlessql.api.feed_routes import _row_from_comment, _row_from_review
-from pointlessql.api.main import app
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.social._social_target import SocialTarget
