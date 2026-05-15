@@ -174,7 +174,8 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" x-bind:disabled="submitting" x-on:click="submit()">
-                    <span x-show="submitting" x-cloak><i class="bi bi-hourglass-split me-1"></i></span>Create
+                    <span x-show="submitting" x-cloak class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                    <span x-text="submitting ? 'Creating…' : 'Create'"></span>
                 </button>
             </div>
         </div>

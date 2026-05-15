@@ -173,31 +173,39 @@ window.meSubscriptions = function () {
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 this.lastSecret = data.hmac_secret || '';
+                window.pqlToast?.success('Subscription created.');
                 this.cancelCreate();
                 await this.reload();
             } catch (e) {
                 console.error('subscription create failed', e);
+                window.pqlToast?.error(`Failed to create subscription: ${e.message}`);
             }
         },
 
         async toggle(id, isActive) {
             try {
-                await fetch('/api/me/subscriptions/' + id, {
+                const res = await fetch('/api/me/subscriptions/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ is_active: !!isActive }),
                 });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                window.pqlToast?.success(`Subscription ${isActive ? 'enabled' : 'paused'}.`);
             } catch (e) {
                 console.error('subscription toggle failed', e);
+                window.pqlToast?.error(`Failed to update subscription: ${e.message}`);
             }
         },
 
         async remove(id) {
             try {
-                await fetch('/api/me/subscriptions/' + id, { method: 'DELETE' });
+                const res = await fetch('/api/me/subscriptions/' + id, { method: 'DELETE' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                window.pqlToast?.success('Subscription removed.');
                 await this.reload();
             } catch (e) {
                 console.error('subscription delete failed', e);
+                window.pqlToast?.error(`Failed to remove subscription: ${e.message}`);
             }
         },
     };

@@ -106,6 +106,9 @@ export function alertsPage({ alerts, savedQueries } = {}) {
  );
  if (res.ok || res.status === 204) {
  this.alerts = this.alerts.filter((a) => a.slug !== alert.slug);
+ if (window.pqlToast) window.pqlToast.success('Alert "' + alert.title + '" deleted.');
+ } else if (window.pqlToast) {
+ window.pqlToast.error(res.error || 'Failed to delete alert.');
  }
  },
  };

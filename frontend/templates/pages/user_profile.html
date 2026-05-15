@@ -257,9 +257,11 @@ window.userProfile = function (target, ctx) {
                 const res = await fetch('/api/users/' + this.target.user_id + '/follow', { method: 'POST' });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 this.viewerFollows = true;
+                window.pqlToast?.success(`Now following ${this.target.display_name || 'user'}.`);
                 await this.load();
             } catch (e) {
                 console.error('follow failed', e);
+                window.pqlToast?.error(`Failed to follow: ${e.message}`);
             }
         },
 
@@ -268,9 +270,11 @@ window.userProfile = function (target, ctx) {
                 const res = await fetch('/api/users/' + this.target.user_id + '/follow', { method: 'DELETE' });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 this.viewerFollows = false;
+                window.pqlToast?.success(`Unfollowed ${this.target.display_name || 'user'}.`);
                 await this.load();
             } catch (e) {
                 console.error('unfollow failed', e);
+                window.pqlToast?.error(`Failed to unfollow: ${e.message}`);
             }
         },
     };

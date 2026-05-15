@@ -30,8 +30,11 @@
                 <textarea class="form-control mb-2 pql-topics-new-desc"
                           rows="2" x-model="newDesc"></textarea>
                 <button class="btn btn-sm btn-primary pql-topics-new-save"
-                        :disabled="!newName.trim()"
-                        @click="create()">Create</button>
+                        :disabled="!newName.trim() || submitting"
+                        @click="create()">
+                    <span x-show="submitting" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                    <span x-text="submitting ? 'Creating…' : 'Create'"></span>
+                </button>
                 <button class="btn btn-sm btn-outline-secondary"
                         @click="creating = false">Cancel</button>
             </div>
@@ -76,6 +79,7 @@ window.topicsIndex = function (ctx) {
         loaded: false,
         topics: [],
         creating: false,
+        submitting: false,
         newName: '',
         newDesc: '',
         async init() {
@@ -99,21 +103,29 @@ window.topicsIndex = function (ctx) {
             finally { this.loaded = true; }
         },
         async create() {
+            this.submitting = true;
+            const name = this.newName.trim();
             try {
                 const res = await fetch('/api/topics', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        display_name: this.newName.trim(),
+                        display_name: name,
                         description_md: this.newDesc.trim(),
                     }),
                 });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
+                window.pqlToast?.success(`Topic "${name}" created.`);
                 this.newName = '';
                 this.newDesc = '';
                 this.creating = false;
                 await this.load();
-            } catch (e) { console.error('topic create failed', e); }
+            } catch (e) {
+                console.error('topic create failed', e);
+                window.pqlToast?.error(`Failed to create topic: ${e.message}`);
+            } finally {
+                this.submitting = false;
+            }
         },
     };
 };

@@ -321,12 +321,14 @@ window.apiKeyCreate = function () {
                 if (modal) {
                     modal.show(res.data.name, res.data.secret);
                 }
+                window.pqlToast?.success(`API key "${res.data.name}" created.`);
                 this.form.name = '';
                 this.form.supervisor = false;
                 this.form.auditor = false;
                 this.form.lineageInbound = false;
             } else {
                 this.error = res.error || 'Failed to create key.';
+                window.pqlToast?.error(this.error);
             }
         },
     };
