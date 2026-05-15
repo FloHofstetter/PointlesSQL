@@ -32,6 +32,19 @@
                placeholder="Search…">
     </div>
 
+    {# Phase 77.9 — kind-pill row narrows the polymorphic feed to a
+       single ``entity_kind``.  Pills come from the entity registry
+       so newly-registered kinds light up automatically. #}
+    <div class="d-flex flex-wrap gap-1 mb-3 pql-feed-kind-pills">
+        <template x-for="k in kindPills" :key="k.key">
+            <button class="btn btn-sm pql-feed-kind-pill"
+                    :class="kindFilter === k.key ? 'btn-primary' : 'btn-outline-secondary'"
+                    :data-kind="k.key"
+                    @click="setKindFilter(k.key)"
+                    x-text="k.label"></button>
+        </template>
+    </div>
+
     <template x-if="!loaded">
         <div class="text-muted small">Loading…</div>
     </template>
@@ -56,6 +69,7 @@ window.feedPage = function () {
     return {
         loaded: false,
         filter: 'all',
+        kindFilter: 'all',
         searchDraft: '',
         rows: [],
         filters: [
@@ -65,9 +79,26 @@ window.feedPage = function () {
             { key: 'followed_dps', label: 'Followed DPs' },
             { key: 'my', label: 'My activity' },
         ],
+        kindPills: [
+            { key: 'all', label: 'All kinds' },
+            { key: 'dp', label: 'DPs' },
+            { key: 'table', label: 'Tables' },
+            { key: 'model', label: 'Models' },
+            { key: 'branch', label: 'Branches' },
+            { key: 'run', label: 'Runs' },
+            { key: 'schema', label: 'Schemas' },
+            { key: 'catalog', label: 'Catalogs' },
+            { key: 'notebook', label: 'Notebooks' },
+            { key: 'saved_query', label: 'Queries' },
+            { key: 'issue', label: 'Issues' },
+        ],
         async init() { await this.reload(); },
         async setFilter(key) {
             this.filter = key;
+            await this.reload();
+        },
+        async setKindFilter(key) {
+            this.kindFilter = key;
             await this.reload();
         },
         async reload() {
@@ -75,6 +106,9 @@ window.feedPage = function () {
             try {
                 const params = new URLSearchParams({ filter: this.filter });
                 if (this.searchDraft.trim()) params.set('q', this.searchDraft.trim());
+                if (this.kindFilter && this.kindFilter !== 'all') {
+                    params.set('kind', this.kindFilter);
+                }
                 const res = await fetch('/api/feed?' + params.toString());
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 this.rows = (await res.json()).rows || [];

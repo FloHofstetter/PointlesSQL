@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.9 closed — cross-entity feed (2026-05-15).**
+  The activity feed lists comments + reviews across every
+  polymorphic entity kind, not just data products.
+  ``_row_from_comment`` + ``_row_from_review`` JOIN the
+  ``social_targets`` anchor and build ``source_url`` through
+  ``entity_registry.url_for`` so links land on the right detail
+  page regardless of kind.  ``GET /api/feed`` gains an optional
+  ``?kind=X`` narrow (``dp``/``table``/``model``/…) which echoes
+  back as ``response.kind``.  ``feed.html`` carries a kind-pill
+  row above the existing filter chips driven by a new
+  ``setKindFilter`` Alpine state.  7 new pytest cases (3 unit on
+  the row builders + 4 e2e on the feed handler + DOM smoke).
+
+  Full-body FTS migration is deferred to 77.11 — the visible win
+  here was the cross-entity feed; the FTS plumbing is independent
+  and can land alongside the polish sweep.
+
 - **Phase 77.6 closed — Notebooks + Saved Queries social surface (2026-05-15).**
   Per-notebook + per-saved-query polymorphic social surface +
   stable UUID identity for notebooks (locked decision #8).

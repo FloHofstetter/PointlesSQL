@@ -31,6 +31,7 @@ from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
+from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.models.social._user_follow import UserFollow
 from pointlessql.services.social import entity_registry
 
@@ -83,22 +84,46 @@ def _row_from_notification(
 
 
 def _row_from_comment(
-    comment: DataProductComment, fqn_map: dict[int, str]
+    comment: DataProductComment,
+    fqn_map: dict[int, str],
+    target: SocialTarget | None = None,
 ) -> dict[str, Any]:
-    """Normalise a comment to the feed row shape."""
-    # Phase 77.0.G — ``data_product_id`` is now nullable on
-    # ``data_product_comments``; for kind='dp' rows it stays populated
-    # but the type hint widened to ``int | None``.  Comments authored
-    # against non-dp kinds in 77.1+ leave the legacy id NULL.
+    """Normalise a comment to the feed row shape.
+
+    Phase 77.9 — when *target* is supplied, the row's
+    ``entity_kind``/``entity_ref`` + ``source_url`` come from the
+    polymorphic anchor row.  When *target* is ``None`` (legacy
+    fast-path) we fall back to the DP-only kind/ref reconstruction
+    used pre-77.9.
+
+    Args:
+        comment: The comment row to normalise.
+        fqn_map: ``{dp_id: 'cat.sch'}`` cache for the DP fallback.
+        target: Optional joined ``social_targets`` row.
+
+    Returns:
+        Feed-row dict (kind / event_type / summary / source_url /
+        entity_kind / entity_ref / actor / timestamps).
+    """
     dp_id = comment.data_product_id
+    if target is not None:
+        entity_kind = str(target.entity_kind)
+        entity_ref = str(target.entity_ref)
+        source_url = entity_registry.url_for(entity_kind, entity_ref)
+    else:
+        entity_kind = "dp"
+        entity_ref = (
+            fqn_map.get(int(dp_id)) if dp_id is not None else None
+        )
+        source_url = _dp_url_from_id(fqn_map, dp_id)
     return {
         "kind": "comment",
         "event_type": "pointlessql.data_product.commented",
         "summary_md": comment.body_md[:160],
-        "source_url": _dp_url_from_id(fqn_map, dp_id),
+        "source_url": source_url,
         "data_product_id": dp_id,
-        "entity_kind": "dp",
-        "entity_ref": fqn_map.get(int(dp_id)) if dp_id is not None else None,
+        "entity_kind": entity_kind,
+        "entity_ref": entity_ref,
         "actor_user_id": comment.author_user_id,
         "created_at": comment.created_at.isoformat(),
         "read_at": None,
@@ -106,18 +131,43 @@ def _row_from_comment(
 
 
 def _row_from_review(
-    review: DataProductReview, fqn_map: dict[int, str]
+    review: DataProductReview,
+    fqn_map: dict[int, str],
+    target: SocialTarget | None = None,
 ) -> dict[str, Any]:
-    """Normalise a review to the feed row shape."""
+    """Normalise a review to the feed row shape.
+
+    Phase 77.9 — same shape as :func:`_row_from_comment`: when
+    *target* is supplied the polymorphic anchor drives the URL +
+    kind/ref; otherwise the DP-only legacy reconstruction kicks in.
+
+    Args:
+        review: The review row to normalise.
+        fqn_map: ``{dp_id: 'cat.sch'}`` cache for the DP fallback.
+        target: Optional joined ``social_targets`` row.
+
+    Returns:
+        Feed-row dict with the same shape as the comment row.
+    """
     dp_id = review.data_product_id
+    if target is not None:
+        entity_kind = str(target.entity_kind)
+        entity_ref = str(target.entity_ref)
+        source_url = entity_registry.url_for(entity_kind, entity_ref)
+    else:
+        entity_kind = "dp"
+        entity_ref = (
+            fqn_map.get(int(dp_id)) if dp_id is not None else None
+        )
+        source_url = _dp_url_from_id(fqn_map, dp_id)
     return {
         "kind": "review",
         "event_type": "pointlessql.data_product.reviewed",
         "summary_md": f"{'★' * review.stars} — {review.body_md[:120]}",
-        "source_url": _dp_url_from_id(fqn_map, dp_id),
+        "source_url": source_url,
         "data_product_id": dp_id,
-        "entity_kind": "dp",
-        "entity_ref": fqn_map.get(int(dp_id)) if dp_id is not None else None,
+        "entity_kind": entity_kind,
+        "entity_ref": entity_ref,
         "actor_user_id": review.author_user_id,
         "created_at": review.created_at.isoformat(),
         "read_at": None,
@@ -145,8 +195,18 @@ async def get_feed(
     filter: str = "all",  # noqa: A002 — query param shadows builtin intentionally
     limit: int = _DEFAULT_LIMIT,
     q: str = "",
+    kind: str | None = None,
 ) -> dict[str, Any]:
     """Return the caller's merged feed.
+
+    Phase 77.9 — the feed now lists comments + reviews across every
+    polymorphic entity kind (table / model / branch / run / etc.),
+    not just data products.  The new optional ``kind`` query
+    parameter narrows the result set to one ``entity_kind`` value;
+    legacy ``kind=dp`` keeps the historical DP-only view available.
+    Each row's ``source_url`` is built through
+    :func:`entity_registry.url_for` so the link lands on the right
+    detail page regardless of kind.
 
     Args:
         request: Incoming FastAPI request.
@@ -156,10 +216,13 @@ async def get_feed(
         limit: Result cap; clamped to ``[1, 200]``.
         q: Optional substring match on the row summary.  Case-
             insensitive; an empty value disables filtering.
+        kind: Optional ``entity_kind`` narrow — e.g. ``table`` keeps
+            only table comments/reviews/notifications.  ``None``
+            disables the filter.
 
     Returns:
-        ``{"filter": str, "rows": [...]}`` sorted by
-        ``created_at`` descending.
+        ``{"filter": str, "kind": str | None, "rows": [...]}``
+        sorted by ``created_at`` descending.
     """
     require_user(request)
     caller = get_user(request)
@@ -201,36 +264,43 @@ async def get_feed(
             ).all()
         ]
         if followed_user_ids:
-            comments = (
-                session.execute(
-                    select(DataProductComment)
-                    .where(
-                        DataProductComment.author_user_id.in_(followed_user_ids),
-                        DataProductComment.workspace_id == workspace_id,
-                        DataProductComment.deleted_at.is_(None),
-                    )
-                    .order_by(DataProductComment.created_at.desc())
-                    .limit(limit)
+            # Phase 77.9 — JOIN the polymorphic anchor so cross-kind
+            # comments + reviews flow into the feed with the right
+            # entity_kind/entity_ref + source_url.
+            comments_rows = session.execute(
+                select(DataProductComment, SocialTarget)
+                .outerjoin(
+                    SocialTarget,
+                    DataProductComment.social_target_id == SocialTarget.id,
                 )
-                .scalars()
-                .all()
+                .where(
+                    DataProductComment.author_user_id.in_(followed_user_ids),
+                    DataProductComment.workspace_id == workspace_id,
+                    DataProductComment.deleted_at.is_(None),
+                )
+                .order_by(DataProductComment.created_at.desc())
+                .limit(limit)
+            ).all()
+            rows.extend(
+                _row_from_comment(c, fqn_map, t) for c, t in comments_rows
             )
-            rows.extend(_row_from_comment(c, fqn_map) for c in comments)
 
-            reviews = (
-                session.execute(
-                    select(DataProductReview)
-                    .where(
-                        DataProductReview.author_user_id.in_(followed_user_ids),
-                        DataProductReview.workspace_id == workspace_id,
-                    )
-                    .order_by(DataProductReview.created_at.desc())
-                    .limit(limit)
+            reviews_rows = session.execute(
+                select(DataProductReview, SocialTarget)
+                .outerjoin(
+                    SocialTarget,
+                    DataProductReview.social_target_id == SocialTarget.id,
                 )
-                .scalars()
-                .all()
+                .where(
+                    DataProductReview.author_user_id.in_(followed_user_ids),
+                    DataProductReview.workspace_id == workspace_id,
+                )
+                .order_by(DataProductReview.created_at.desc())
+                .limit(limit)
+            ).all()
+            rows.extend(
+                _row_from_review(r, fqn_map, t) for r, t in reviews_rows
             )
-            rows.extend(_row_from_review(r, fqn_map) for r in reviews)
 
         # Mentions filter — resolve to the user's id and check
         # ``mentioned_user_ids_json``.  Authored ``my`` filter
@@ -255,7 +325,7 @@ async def get_feed(
                 except (ValueError, TypeError):
                     mentioned = []
                 if caller["id"] in mentioned:
-                    mention_rows.append(_row_from_comment(c, fqn_map))
+                    mention_rows.append(_row_from_comment(c, fqn_map, None))
             rows = mention_rows
         elif filter == "my":
             mine_comments = (
@@ -282,8 +352,8 @@ async def get_feed(
                 .all()
             )
             rows = [
-                _row_from_comment(c, fqn_map) for c in mine_comments
-            ] + [_row_from_review(r, fqn_map) for r in mine_reviews]
+                _row_from_comment(c, fqn_map, None) for c in mine_comments
+            ] + [_row_from_review(r, fqn_map, None) for r in mine_reviews]
         elif filter == "followed_users":
             rows = [r for r in rows if r["kind"] in ("comment", "review")]
         elif filter == "followed_dps":
@@ -293,6 +363,13 @@ async def get_feed(
 
     if needle:
         rows = [r for r in rows if needle in (r.get("summary_md") or "").lower()]
+
+    # Phase 77.9 — kind-filter narrows the result set to a single
+    # ``entity_kind`` value.  Rows whose entity_kind doesn't match
+    # drop out before de-duplication.  An empty / unknown kind is
+    # a no-op so callers can pass ``?kind=`` to disable.
+    if kind:
+        rows = [r for r in rows if r.get("entity_kind") == kind]
 
     rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
 
@@ -313,4 +390,4 @@ async def get_feed(
         seen.add(key)
         unique.append(row)
 
-    return {"filter": filter, "rows": unique[:limit]}
+    return {"filter": filter, "kind": kind, "rows": unique[:limit]}

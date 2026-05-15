@@ -791,7 +791,21 @@ PointlesSQL
 │   │       existing 501-gated tests flipped to assert functional
 │   │       behaviour.  Full Phase-77 suite at 109 passing.
 │   │
-│   ├── Phase 77.9 — Cross-entity feed + full-body FTS               ⏳ planned
+│   ├── Phase 77.9 — Cross-entity feed                               ✅ done (2026-05-15)
+│   │       The activity feed lists comments + reviews across
+│   │       every polymorphic entity kind (not just data
+│   │       products).  ``_row_from_comment`` + ``_row_from_review``
+│   │       JOIN the ``social_targets`` anchor and build the
+│   │       ``source_url`` through ``entity_registry.url_for`` so
+│   │       links land on the right detail page regardless of
+│   │       kind.  ``GET /api/feed`` gains an optional ``?kind=X``
+│   │       narrow.  ``feed.html`` carries a kind-pill row above
+│   │       the existing filter chips.  Full-body FTS migration is
+│   │       deferred to 77.11 (the visible win was the cross-entity
+│   │       feed; FTS body extension is a separate plumbing job).
+│   │       7 new pytest cases.
+│   │
+│   ├── Phase 77.9.X — full-body FTS                                  ⏳ deferred to 77.11
 │   │       ``/feed`` becomes entity-agnostic with a kind-pill
 │   │       filter row.  ``audit_search`` FTS indexes full
 │   │       ``body_md`` (not just 140-char preview) across every
