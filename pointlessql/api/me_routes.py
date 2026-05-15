@@ -160,6 +160,29 @@ async def me_settings_page(
     )
 
 
+@router.get("/api/me")
+async def get_me(request: Request) -> dict[str, Any]:
+    """Return the caller's identity envelope.
+
+    Always responds 200.  Anonymous callers see
+    ``{"authenticated": false}`` instead of a 404 so frontends can
+    branch on a single boolean field without translating HTTP
+    status codes.
+    """
+    user = get_user(request)
+    if not user or user["id"] == 0:
+        return {"authenticated": False}
+    return {
+        "authenticated": True,
+        "user_id": user["id"],
+        "email": user["email"],
+        "display_name": user["display_name"],
+        "is_admin": user["is_admin"],
+        "is_supervisor": user["is_supervisor"],
+        "is_auditor": user["is_auditor"],
+    }
+
+
 @router.get("/api/me/settings")
 async def get_me_settings(request: Request) -> dict[str, Any]:
     """Return the caller's settings."""

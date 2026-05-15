@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time_epoch %}
 {% block title %}Connections · PointlesSQL{% endblock %}
 
 {% set breadcrumbs = [{"label": "Home", "href": "/"}, {"label": "Connections"}] %}
@@ -71,7 +72,7 @@
                             </td>
                             <td><span class="badge bg-info text-dark">{{ conn.connection_type or "—" }}</span></td>
                             <td class="text-muted small">{{ conn.owner or "—" }}</td>
-                            <td class="text-muted small">{{ conn.created_at|epoch_ms }}</td>
+                            <td class="text-muted small">{{ relative_time_epoch(conn.created_at) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

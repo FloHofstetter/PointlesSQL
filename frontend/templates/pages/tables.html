@@ -162,7 +162,7 @@
                             {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
                         <td class="text-muted small" data-label="Columns">{{ (tbl.columns or [])|length }}</td>
-                        <td class="text-muted small" data-label="Updated">{{ tbl.updated_at|epoch_ms }}</td>
+                        <td class="text-muted small" data-label="Updated">{{ relative_time_epoch(tbl.updated_at) }}</td>
                         <td class="text-muted small" data-label="Comment">{{ tbl.comment or "—" }}</td>
                     </tr>
                     {% endfor %}

@@ -65,7 +65,12 @@
       </div>
 
       <!-- Discussion thread under the issue (kind='issue'). -->
-      <div x-data='socialTabs({kind: "issue", ref: {{ issue_id|tojson }}, endorsementTypes: ["verified-by-steward", "production-ready", "under-review", "deprecated"]})'>
+      <div x-data='socialTabs({kind: "issue", ref: {{ issue_id|tojson }}, endorsementTypes: [
+            {key: "verified-by-steward", label: "Verified by steward"},
+            {key: "production-ready", label: "Production ready"},
+            {key: "under-review", label: "Under review"},
+            {key: "deprecated", label: "Deprecated"}
+          ]})'>
         <ul class="nav nav-tabs">
           <li class="nav-item">
             <a class="nav-link" :class="activeTab === 'discussion' ? 'active' : ''"

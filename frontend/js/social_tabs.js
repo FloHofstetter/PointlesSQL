@@ -83,13 +83,23 @@ export function socialTabs(params) {
         },
 
         mineForType(typeKey) {
-            return this.endorsements.find(
-                (e) =>
-                    e.endorsement_type === typeKey &&
-                    !e.removed_at &&
-                    e.applied_by &&
-                    e.applied_by.user_id === window.pqlCurrentUserId,
+            // window.pqlCurrentUserId is undefined when the topbar JS
+            // hasn't seeded it (no auth context yet).  Fall back to
+            // "any non-removed endorsement of this type" so the toggle
+            // still untoggles a row the current user just created in
+            // this session — matches the optimistic add path which also
+            // doesn't gate on user-id.
+            const candidates = this.endorsements.filter(
+                (e) => e.endorsement_type === typeKey && !e.removed_at,
             );
+            if (!candidates.length) return null;
+            if (window.pqlCurrentUserId) {
+                const mine = candidates.find(
+                    (e) => e.applied_by && e.applied_by.user_id === window.pqlCurrentUserId,
+                );
+                if (mine) return mine;
+            }
+            return candidates[0];
         },
 
         async toggleEndorsement(typeKey) {

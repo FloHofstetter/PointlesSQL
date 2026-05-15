@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros/copy_button.html" import copy_btn %}
+{% from "_macros/timestamps.html" import relative_time_epoch %}
 {% block title %}{{ name }} · Connections · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -60,10 +61,10 @@
             <dd class="col-sm-9 font-monospace small">{{ connection.id or "—" }}</dd>
 
             <dt class="col-sm-3 text-muted">Created</dt>
-            <dd class="col-sm-9">{{ connection.created_at|epoch_ms }}{% if connection.created_by %} by {{ connection.created_by }}{% endif %}</dd>
+            <dd class="col-sm-9">{{ relative_time_epoch(connection.created_at, klass="") }}{% if connection.created_by %} by {{ connection.created_by }}{% endif %}</dd>
 
             <dt class="col-sm-3 text-muted">Updated</dt>
-            <dd class="col-sm-9">{{ connection.updated_at|epoch_ms }}{% if connection.updated_by %} by {{ connection.updated_by }}{% endif %}</dd>
+            <dd class="col-sm-9">{{ relative_time_epoch(connection.updated_at, klass="") }}{% if connection.updated_by %} by {{ connection.updated_by }}{% endif %}</dd>
         </dl>
     </div>
 </div>

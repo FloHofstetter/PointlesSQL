@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros/timestamps.html" import relative_time_epoch %}
 {% block title %}{{ name }} · External Locations · PointlesSQL{% endblock %}
 
 {% block breadcrumbs %}
@@ -59,10 +60,10 @@
             <dd class="col-sm-9 font-monospace small">{{ location.id or "—" }}</dd>
 
             <dt class="col-sm-3 text-muted">Created</dt>
-            <dd class="col-sm-9">{{ location.created_at|epoch_ms }}{% if location.created_by %} by {{ location.created_by }}{% endif %}</dd>
+            <dd class="col-sm-9">{{ relative_time_epoch(location.created_at, klass="") }}{% if location.created_by %} by {{ location.created_by }}{% endif %}</dd>
 
             <dt class="col-sm-3 text-muted">Updated</dt>
-            <dd class="col-sm-9">{{ location.updated_at|epoch_ms }}{% if location.updated_by %} by {{ location.updated_by }}{% endif %}</dd>
+            <dd class="col-sm-9">{{ relative_time_epoch(location.updated_at, klass="") }}{% if location.updated_by %} by {{ location.updated_by }}{% endif %}</dd>
         </dl>
     </div>
 </div>
