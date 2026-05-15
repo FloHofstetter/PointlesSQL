@@ -50,14 +50,167 @@
                 data-bs-target="#tab-promotion" type="button" role="tab"
                 data-pql-tab-key="promotion">Promotion</button>
     </li>
+    {# Phase 77.2 — kind-agnostic social tab strip for registered
+       models.  Discussion + README panes carry inline x-data;
+       Endorsements + Followers reuse the polymorphic partials
+       backed by the socialTabs(kind='model', ref='...') factory
+       on .tab-content.  Reviews stay hidden because polymorphic
+       upsert idempotency needs a partial unique index migration
+       (deferred to 77.2.1 / 77.11). #}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-discussion-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-discussion" type="button" role="tab"
+                data-pql-tab-key="discussion">
+            <i class="bi bi-chat-left-text me-1"></i>Discussion
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-endorsements-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-endorsements" type="button" role="tab"
+                data-pql-tab-key="endorsements">
+            <i class="bi bi-hand-thumbs-up me-1"></i>Endorsements
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-followers-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-followers" type="button" role="tab"
+                data-pql-tab-key="followers">
+            <i class="bi bi-bell me-1"></i>Followers
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-readme-btn" data-bs-toggle="tab"
+                data-bs-target="#tab-readme" type="button" role="tab"
+                data-pql-tab-key="readme">
+            <i class="bi bi-file-text me-1"></i>README
+        </button>
+    </li>
 </ul>
 
-<div class="tab-content" id="modelTabsContent">
+{# socialTabs factory powers the polymorphic Endorsements + Followers
+   tabs (Discussion + README declare their own inline x-data).  The
+   four endorsement types are the DP-flavoured set since models are
+   curated, stable, versioned artefacts that benefit from the same
+   stewardship surface as DPs. #}
+<div class="tab-content" id="modelTabsContent"
+     x-data='socialTabs({
+        kind: "model",
+        ref: {{ model.full_name|tojson }},
+        endorsementTypes: [
+            {key: "verified-by-steward", label: "Verified by steward",
+             description: "Steward rubber-stamped the model + training run."},
+            {key: "production-ready", label: "Production ready",
+             description: "Promoted to champion for downstream consumption."},
+            {key: "deprecated", label: "Deprecated",
+             description: "Soft warning on inference — plan a successor."},
+            {key: "under-review", label: "Under review",
+             description: "Actively being audited; expect promotion churn."}
+        ]
+     })'>
     {# Overview #}
     {% include "pages/_partials/model/overview.html" %}
     {% include "pages/_partials/model/versions.html" %}
     {% include "pages/_partials/model/lineage.html" %}
     {% include "pages/_partials/model/promotion.html" %}
+
+    {# Discussion pane — inline kind-agnostic x-data.  Talks to the
+       polymorphic /api/social/model/{ref}/comments endpoints. #}
+    <div class="tab-pane fade" id="tab-discussion" role="tabpanel"
+         x-data='modelDiscussion({{ model.full_name|tojson }})'
+         x-init="init()">
+        <template x-if="!commentsLoaded">
+            <div class="text-muted small p-3">Loading discussion…</div>
+        </template>
+        <template x-if="commentsLoaded">
+            <div>
+                <template x-if="comments.length === 0">
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-chat-left-text me-1"></i>
+                        No comments yet — start the discussion below.
+                    </div>
+                </template>
+                <template x-for="c in comments" :key="c.id">
+                    <div class="card mb-2 pql-comment-card" :data-comment-id="c.id">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="small text-muted">
+                                    <strong x-text="(c.author && (c.author.display_name || c.author.email)) || 'unknown'"></strong>
+                                    · <span x-text="c.created_at"></span>
+                                </div>
+                                <button class="btn btn-sm btn-link text-danger p-0"
+                                        @click="deleteComment(c.id)"
+                                        title="Soft-delete this comment">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="pql-comment-body" x-html="c.body_md_resolved || c.body_md"></div>
+                        </div>
+                    </div>
+                </template>
+
+                <form class="mt-3" @submit.prevent="submitNew()">
+                    <div class="mb-2">
+                        <textarea class="form-control" rows="3"
+                                  placeholder="Add a comment… markdown welcome"
+                                  x-model="draftBody"></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-sm" type="submit"
+                            :disabled="postBusy || !draftBody.trim()">
+                        <i class="bi bi-send me-1"></i>Post
+                    </button>
+                </form>
+            </div>
+        </template>
+    </div>
+
+    {# Endorsements + Followers panes reuse the polymorphic partials.
+       They inherit socialTabs state from the tab-content x-data above. #}
+    {% include 'partials/social/_endorsements_pane.html' %}
+    {% include 'partials/social/_followers_pane.html' %}
+
+    {# README pane — inline kind-agnostic x-data.  Talks to the
+       polymorphic /api/social/model/{ref}/readme endpoints.  No
+       history / diff UX this phase (deferred to 77.11). #}
+    <div class="tab-pane fade" id="tab-readme" role="tabpanel"
+         x-data='modelReadme({{ model.full_name|tojson }})'
+         x-init="init()">
+        <template x-if="!readmeLoaded">
+            <div class="text-muted small p-3">Loading README…</div>
+        </template>
+        <template x-if="readmeLoaded && !editing">
+            <div>
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-sm btn-outline-secondary" @click="startEdit()">
+                        <i class="bi bi-pencil me-1"></i>Edit README
+                    </button>
+                </div>
+                <template x-if="body">
+                    <div class="border rounded p-3 pql-readme-body" x-html="renderedBody"></div>
+                </template>
+                <template x-if="!body">
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-file-text me-1"></i>
+                        No README yet — click Edit to write one (admin only).
+                    </div>
+                </template>
+            </div>
+        </template>
+        <template x-if="readmeLoaded && editing">
+            <div>
+                <textarea class="form-control mb-2" rows="14"
+                          x-model="draftBody"
+                          placeholder="# Heading&#10;&#10;Long-form context, training-data lineage, intended use…"></textarea>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-sm" @click="save()" :disabled="saveBusy">
+                        <i class="bi bi-check-lg me-1"></i>Save
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @click="cancelEdit()">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
 </div>
 
 <script>
@@ -142,6 +295,147 @@ window.modelPromotion = function (fullName, initialChampion) {
         },
     };
 };
+
+// Phase 77.2 — per-tab Alpine factories for the inline Discussion
+// and README panes on model.html.  Endorsements + Followers panes
+// reuse the kind-agnostic socialTabs factory + the polymorphic
+// partials; these two stay inline because the existing partials are
+// data_product.html-coupled (deferred unification to Phase 77.11).
+(function () {
+    'use strict';
+
+    function modelDiscussion(ref) {
+        const url = '/api/social/model/' + encodeURI(ref) + '/comments';
+        return {
+            ref,
+            commentsLoaded: false,
+            comments: [],
+            draftBody: '',
+            postBusy: false,
+
+            async init() {
+                await this.loadComments();
+            },
+
+            async loadComments() {
+                const res = await window.pqlApi.fetch(url, { silent: true });
+                if (!res.ok) {
+                    this.commentsLoaded = true;
+                    return;
+                }
+                this.comments = (res.data && res.data.comments) || [];
+                this.commentsLoaded = true;
+            },
+
+            async submitNew() {
+                const body = this.draftBody.trim();
+                if (!body || this.postBusy) return;
+                this.postBusy = true;
+                try {
+                    const res = await window.pqlApi.fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ body_md: body }),
+                    });
+                    if (!res.ok) {
+                        if (window.pqlToast) window.pqlToast.error('Comment failed to post.');
+                        return;
+                    }
+                    this.draftBody = '';
+                    await this.loadComments();
+                } finally {
+                    this.postBusy = false;
+                }
+            },
+
+            async deleteComment(commentId) {
+                if (!window.confirm('Soft-delete this comment?')) return;
+                const res = await window.pqlApi.fetch(url + '/' + commentId, {
+                    method: 'DELETE',
+                });
+                if (!res.ok) {
+                    if (window.pqlToast) window.pqlToast.error('Delete failed.');
+                    return;
+                }
+                await this.loadComments();
+            },
+        };
+    }
+
+    function modelReadme(ref) {
+        const url = '/api/social/model/' + encodeURI(ref) + '/readme';
+        return {
+            ref,
+            readmeLoaded: false,
+            body: '',
+            draftBody: '',
+            editing: false,
+            saveBusy: false,
+
+            get renderedBody() {
+                if (window.pqlMarkdown && window.pqlMarkdown.render) {
+                    return window.pqlMarkdown.render(this.body || '');
+                }
+                return '<pre class="small">' + this._escape(this.body || '') + '</pre>';
+            },
+
+            _escape(s) {
+                return String(s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            },
+
+            async init() {
+                const res = await window.pqlApi.fetch(url, { silent: true });
+                if (res.ok && res.data) {
+                    this.body = res.data.body_md || '';
+                }
+                this.readmeLoaded = true;
+            },
+
+            startEdit() {
+                this.draftBody = this.body;
+                this.editing = true;
+            },
+
+            cancelEdit() {
+                this.draftBody = '';
+                this.editing = false;
+            },
+
+            async save() {
+                if (this.saveBusy) return;
+                this.saveBusy = true;
+                try {
+                    const res = await window.pqlApi.fetch(url, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ body_md: this.draftBody }),
+                        silent: true,
+                    });
+                    if (!res.ok) {
+                        if (window.pqlToast) {
+                            window.pqlToast.error(
+                                res.status === 403
+                                    ? 'README edit is admin-only on models this phase.'
+                                    : 'Save failed.',
+                            );
+                        }
+                        return;
+                    }
+                    this.body = (res.data && res.data.body_md) || this.draftBody;
+                    this.editing = false;
+                } finally {
+                    this.saveBusy = false;
+                }
+            },
+        };
+    }
+
+    window.modelDiscussion = modelDiscussion;
+    window.modelReadme = modelReadme;
+})();
 
 window.modelLineageDag = function (fullName) {
     return {
