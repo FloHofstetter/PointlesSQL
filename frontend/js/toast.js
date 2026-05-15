@@ -11,6 +11,10 @@
 // the node on hidden.bs.toast so the DOM doesn't accumulate.
 const ROOT_ID = 'pql-toast-root';
 const DEFAULT_TIMEOUT = 4000;
+// Phase 81.G.D — cap concurrent visible toasts so a bulk op that
+// fires N requests doesn't flood the screen with N stacked cards.
+// Oldest toast is dismissed in-place so the new one can show.
+const MAX_VISIBLE = 3;
 
 const VARIANTS = {
     success: { cls: 'pql-toast--success', icon: 'bi-check-circle-fill' },
@@ -27,6 +31,20 @@ function show(variant, message, opts) {
     if (!host || !window.bootstrap || !window.bootstrap.Toast) return;
     const spec = VARIANTS[variant] || VARIANTS.info;
     const timeout = (opts && typeof opts.timeout === 'number') ? opts.timeout : DEFAULT_TIMEOUT;
+
+    // Evict the oldest toast(s) FIFO so MAX_VISIBLE is the upper bound
+    // after this one is appended.  We count every .toast still in the
+    // DOM (not just .show) because rapid-fire callers may stack faster
+    // than Bootstrap's animation can apply .show.  hidden.bs.toast
+    // removes the node, so live count == queued + visible.
+    const existing = host.querySelectorAll('.toast');
+    if (existing.length >= MAX_VISIBLE) {
+        const toEvict = existing.length - MAX_VISIBLE + 1;
+        for (let i = 0; i < toEvict; i++) {
+            const inst = window.bootstrap.Toast.getOrCreateInstance(existing[i]);
+            inst.hide();
+        }
+    }
 
     const node = document.createElement('div');
     node.className = 'toast pql-toast ' + spec.cls;

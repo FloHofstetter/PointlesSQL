@@ -442,6 +442,11 @@
          sidebar navigations resolve from cache.  Skips slow networks
          and Data-Saver. -->
     <script src="/static/js/prefetch.js"></script>
+    <!-- Phase 81.G.D — gmail-style row keyboard nav on opt-in list
+         pages (j/k/x/Shift+x/Esc/Enter).  Activates when <main> carries
+         data-pql-keynav="1" and contains a table tagged
+         data-pql-keynav-table="1". -->
+    <script src="/static/js/list_keyboard.js"></script>
     <script>
         // Theme color-modes click-handler.  The init script in <head>
         // already applied the right ``data-bs-theme`` before paint;

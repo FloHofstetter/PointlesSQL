@@ -6,38 +6,43 @@
         {% include "components/empty.html" with context %}
 
     Context variables (all optional except ``title``):
-      - ``icon``         Bootstrap Icons class (default ``bi-inbox``).
-      - ``title``        Headline, one short sentence.
-      - ``message``      Secondary detail line.
-      - ``action_href``  Optional CTA target.
-      - ``action_label`` Optional CTA label (required if ``action_href`` set).
-      - ``variant``      One of ``success|warning|danger|info`` — tints the
-                         icon. Omit for neutral.
-      - ``flush``        If truthy, drops the surrounding card so the block
-                         can sit inside an existing ``.pql-card`` / ``.card``.
+      - ``icon``               Bootstrap Icons class (default ``bi-inbox``).
+      - ``title``              Headline, one short sentence.
+      - ``message``            Secondary detail line.
+      - ``action_href``        Optional CTA target (renders <a href=...>).
+      - ``action_label``       Optional CTA label (required if any action_*).
+      - ``action_modal_target``Optional CSS selector for a Bootstrap modal
+                               trigger (renders an <a> with data-bs-toggle="modal"
+                               data-bs-target=...).  Mutually exclusive with
+                               ``action_href`` — modal trigger wins.
+      - ``action_click``       Optional Alpine ``@click`` expression to run on
+                               click (e.g. ``openCreate()``).  Renders the
+                               CTA as an inline <a> that doesn't navigate.
+                               Mutually exclusive with the others; @click wins.
+      - ``variant``            One of ``success|warning|danger|info`` — tints
+                               the icon. Omit for neutral.
+      - ``flush``              If truthy, drops the surrounding card so the
+                               block can sit inside an existing ``.pql-card`` /
+                               ``.card``.
 #}
 {% set _icon = icon or "bi-inbox" %}
 {% set _variant_class = " pql-empty--" ~ variant if variant else "" %}
-{% if flush %}
-<div class="pql-empty{{ _variant_class }}">
+{% set _wrapper_class = "pql-empty" if flush else "pql-card pql-empty" %}
+<div class="{{ _wrapper_class }}{{ _variant_class }}">
     <i class="bi {{ _icon }} pql-empty__icon" aria-hidden="true"></i>
     {% if title %}<p class="pql-empty__title">{{ title }}</p>{% endif %}
     {% if message %}<p class="pql-empty__message">{{ message }}</p>{% endif %}
-    {% if action_href and action_label %}
-    <a href="{{ action_href }}" class="btn btn-outline-primary btn-sm pql-empty__action">
-        {{ action_label }}
-    </a>
+    {% if action_label %}
+      {% if action_click %}
+        <a href="#" class="btn btn-outline-primary btn-sm pql-empty__action"
+           @click.prevent="{{ action_click }}">{{ action_label }}</a>
+      {% elif action_modal_target %}
+        <a href="#" class="btn btn-outline-primary btn-sm pql-empty__action"
+           data-bs-toggle="modal" data-bs-target="{{ action_modal_target }}">{{ action_label }}</a>
+      {% elif action_href %}
+        <a href="{{ action_href }}" class="btn btn-outline-primary btn-sm pql-empty__action">
+          {{ action_label }}
+        </a>
+      {% endif %}
     {% endif %}
 </div>
-{% else %}
-<div class="pql-card pql-empty{{ _variant_class }}">
-    <i class="bi {{ _icon }} pql-empty__icon" aria-hidden="true"></i>
-    {% if title %}<p class="pql-empty__title">{{ title }}</p>{% endif %}
-    {% if message %}<p class="pql-empty__message">{{ message }}</p>{% endif %}
-    {% if action_href and action_label %}
-    <a href="{{ action_href }}" class="btn btn-outline-primary btn-sm pql-empty__action">
-        {{ action_label }}
-    </a>
-    {% endif %}
-</div>
-{% endif %}

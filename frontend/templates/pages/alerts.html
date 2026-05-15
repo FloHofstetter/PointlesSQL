@@ -80,7 +80,9 @@
  <div>
  {% with icon="bi-bell-slash",
      title="No alerts yet",
-     message="Alerts run a saved SQL query on a cron schedule and fire when row-count crosses your threshold." %}
+     message="Alerts run a saved SQL query on a cron schedule and fire when row-count crosses your threshold.",
+     action_click="openCreate()",
+     action_label="Create the first alert" %}
  {% include "components/empty.html" %}
  {% endwith %}
  </div>

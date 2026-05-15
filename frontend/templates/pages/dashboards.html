@@ -83,7 +83,9 @@
         {% else %}
         {% with flush=True, icon="bi-speedometer2",
                 title="No dashboards yet",
-                message="Bind a published notebook run to a dashboard via the button above." %}
+                message="Bind a published notebook run to a dashboard.",
+                action_modal_target="#createDashboardModal" if is_admin else "",
+                action_label="Create the first dashboard" if is_admin else "" %}
             {% include "components/empty.html" %}
         {% endwith %}
         {% endif %}

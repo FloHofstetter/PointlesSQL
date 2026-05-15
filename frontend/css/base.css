@@ -248,3 +248,12 @@ a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
  text-align: center;
  vertical-align: middle;
 }
+
+/* Phase 81.G.D — keyboard-nav focus indicator on list-table rows.
+ * Set by list_keyboard.js on the row most recently reached via
+ * j/k.  Subtle left-edge accent + tinted background so the cursor
+ * position reads without yanking attention. */
+tbody tr[data-pql-keynav-focus="1"] {
+ box-shadow: inset 3px 0 0 0 var(--pql-color-accent);
+ background-color: var(--bs-secondary-bg-subtle);
+}

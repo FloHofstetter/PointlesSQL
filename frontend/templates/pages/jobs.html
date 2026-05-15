@@ -124,7 +124,9 @@
         {% else %}
         {% with flush=True, icon="bi-clock-history",
                 title="No jobs yet",
-                message="Schedule a job from the Workspace or create one via the button above." %}
+                message="Schedule a recurring papermill run or DAG.",
+                action_modal_target="#createJobModal" if is_admin else "",
+                action_label="Create the first job" if is_admin else "" %}
             {% include "components/empty.html" %}
         {% endwith %}
         {% endif %}
