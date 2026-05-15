@@ -54,8 +54,7 @@ async def post_social_comment(
 
     Re-extracts ``?as_agent=`` for the DP path so the speak-as-agent
     flow survives the indirection.  Non-DP kinds ignore the query
-    param this iteration — agent-author support for table / branch
-    lands in Phase 77.11.
+    param — agent-on-behalf-of authoring stays a DP-only affordance.
     """
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)

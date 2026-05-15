@@ -4,6 +4,65 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Phase 79 code-quality bundle closed (2026-05-15).**  A fresh
+  audit found the codebase healthier than expected (100% function
+  docstring coverage, ruff clean, no grab-bag files, 18-entry
+  file-size allowlist all justified), so the bundle focused on
+  the three concrete things that *were* worth fixing.  Eight
+  self-contained commits, zero migrations, behaviour-equivalent
+  refactor only:
+
+  1. **Pydoclint baseline closed.**  ``Attributes:`` sections
+     added to five ORM models (``DataProductComment``,
+     ``DataProductCommentReaction``, ``DataProductEndorsement``,
+     ``DataProductReview``, ``UserNotification``) +
+     ``# noqa: DOC502`` markers on three indirect-raise
+     docstrings.  Lint goes from 13 warnings to zero violations.
+  2. **``notebooks_routes.py`` split.**  The pre-existing 904-LOC
+     CI-gate breach landed as a six-file ``notebooks_routes/``
+     subpackage following the Phase-26 pattern (each new file
+     under 300 LOC).  One test monkeypatch path updated.
+  3. **PQL engine typing shims.**  A new ``pql/_types.py``
+     section adds eight ``typing.Protocol`` classes
+     (``ArrowField`` / ``ArrowSchema`` / ``ArrowArray`` /
+     ``ArrowTable`` / ``DuckdbCursor`` / ``DeltaField`` /
+     ``DeltaSchema``) describing the subset of pyarrow / duckdb
+     / deltalake the engine touches.  ``_autoload.py`` and
+     ``_merge.py`` declare these in signatures and ``cast`` at
+     the library boundaries.  Pyright budget falls 609 → 496
+     (-113 warnings).
+  4. **Shared agent-payload helper.**  Four sites built the
+     same Phase 76.5 agent-on-behalf-of dict — two as
+     identical ``_agent_payload`` helpers, two as inline
+     comprehensions.  Consolidated onto ``agent_payload()`` in
+     the new ``api/_social_serializers.py``.  The bigger
+     ``_serialise_comment`` / ``_serialise_review`` /
+     ``_serialise_endorsement`` envelopes stay separate (DP vs
+     polymorphic JSON shapes are load-bearing for back-compat);
+     the new module docstring captures the rationale.
+  5. **Phase-77 test rename sweep.**  All 27 ``test_phase77_*``
+     files migrated to topic-named homes
+     (``test_social_target.py``, ``test_polymorphic_handlers.py``,
+     ``test_polymorphic_reviews.py``, ``test_issues_routes.py``,
+     ``test_feed_cross_entity.py``, etc.).  Pure ``git mv`` —
+     module docstrings keep the Phase-77 history as preamble.
+  6. **Stale "deferred to Phase 77.11" comments cleaned up.**
+     Six comment blocks across ``_polymorphic_handlers.py`` /
+     ``comments.py`` / ``readme.py`` rewritten.
+
+  **Explicit non-goal**: no alembic squash.  The 90-migration
+  chain has cheap runtime cost and Phase 77/78 carry
+  irreversible data-movement migrations whose squash would lose
+  downgrade semantics.  Revisit after first stable prod schema
+  window.
+
+  **Final state**: 2724 pytest pass / 0 fail / 7 skip.  Pyright
+  496/623 (down from 609 — 18% headroom recovered).  Pydoclint
+  zero violations.  File-size gate clean.  Eight commits local,
+  not pushed.
+
 ### Added
 
 - **Phase 78 polish bundle closed (2026-05-16).**  Six items

@@ -50,19 +50,16 @@ async def list_social_readme_history(
 ) -> dict[str, Any]:
     """Dispatch a README history list by entity kind.
 
-    Non-DP kinds return 501 until Phase 77.11 generalises the
-    history + diff endpoints.
+    Non-DP kinds return 501.  README history + diff stays DP-only
+    by design — non-DP entities use the live README only.
     """
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
         return await list_readme_history(catalog, schema, request)
-    # bare-http-ok: history endpoint stays DP-only this phase.
+    # bare-http-ok: history endpoint is DP-only by design.
     raise HTTPException(
         status_code=501,
-        detail=(
-            f"README history for kind={kind!r} is deferred to "
-            "Phase 77.11 polish"
-        ),
+        detail=f"README history for kind={kind!r} is DP-only",
     )
 
 
@@ -76,13 +73,10 @@ async def get_social_readme_version(
         return await get_readme_version(
             catalog, schema, version_int, request
         )
-    # bare-http-ok: version-fetch endpoint stays DP-only this phase.
+    # bare-http-ok: version-fetch endpoint is DP-only by design.
     raise HTTPException(
         status_code=501,
-        detail=(
-            f"README version-fetch for kind={kind!r} is deferred to "
-            "Phase 77.11 polish"
-        ),
+        detail=f"README version-fetch for kind={kind!r} is DP-only",
     )
 
 
@@ -106,11 +100,8 @@ async def get_social_readme_diff(
     if kind == "dp":
         catalog, schema = parse_dp_ref(kind, ref)
         return await readme_diff(catalog, schema, request)
-    # bare-http-ok: diff endpoint stays DP-only this phase.
+    # bare-http-ok: diff endpoint is DP-only by design.
     raise HTTPException(
         status_code=501,
-        detail=(
-            f"README diff for kind={kind!r} is deferred to "
-            "Phase 77.11 polish"
-        ),
+        detail=f"README diff for kind={kind!r} is DP-only",
     )

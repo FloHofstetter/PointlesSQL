@@ -872,6 +872,49 @@ PointlesSQL
 │       2724 pytest pass / 0 fail; pyright budget stays at
 │       609/623 across the entire bundle.
 │
+├── Phase 79 — Code-quality + modularisation bundle      ✅ done 2026-05-15
+│       Audit-grounded refactor sweep.  The codebase came in
+│       healthier than the brief assumed (100% function docstring
+│       coverage, ruff clean, 18-entry file-size allowlist all
+│       justified, no grab-bag files); the bundle focused on the
+│       three problems that *were* real.  Eight self-contained
+│       commits, zero migrations, behaviour-equivalent only:
+│       1. Pydoclint baseline closed — five ORM ``Attributes:``
+│          sections + three indirect-raise ``# noqa: DOC502``
+│          markers.  13 warnings → 0 violations.
+│       2. ``notebooks_routes.py`` (pre-existing 904-LOC CI gate
+│          breach) split into ``api/notebooks_routes/`` subpackage
+│          per the Phase-26 pattern; six modules, each under 300
+│          LOC.
+│       3. PQL engine typing shims — new
+│          ``ArrowField`` / ``ArrowSchema`` / ``ArrowArray`` /
+│          ``ArrowTable`` / ``DuckdbCursor`` / ``DeltaField`` /
+│          ``DeltaSchema`` Protocols in ``pql/_types.py``;
+│          ``_autoload.py`` + ``_merge.py`` cast at the
+│          pyarrow / duckdb / deltalake boundaries.  Pyright
+│          budget 609 → 496 (-113).
+│       4. Shared ``agent_payload`` helper extracted from four
+│          duplicating sites (two ``_agent_payload`` helpers + two
+│          inline comprehensions).  Bigger envelopes
+│          (``_serialise_comment`` etc.) deliberately stay
+│          separate — DP vs polymorphic JSON shapes are
+│          load-bearing for back-compat.
+│       5. Phase-77 test rename sweep — all 27 ``test_phase77_*``
+│          files migrated to topic-named homes (``test_social_target``,
+│          ``test_polymorphic_handlers``, ``test_issues_routes``,
+│          etc.).  Pure ``git mv``.
+│       6. Stale "deferred to Phase 77.11" comments cleaned up
+│          across ``_polymorphic_handlers.py`` / ``comments.py`` /
+│          ``readme.py``.
+│       Explicit non-goal: no alembic squash.  The 90-migration
+│       chain is cheap at runtime and Phase 77/78 carry
+│       irreversible data-movements whose squash would lose
+│       downgrade semantics; revisit after first prod schema
+│       stability window.
+│       Final state: 2724 pytest pass / 0 fail / 7 skip;
+│       pyright 496/623; pydoclint zero violations; file-size
+│       gate clean.
+│
 ├── Phase 76 — Full Social Network for Data Products       ✅ done 2026-05-13
 │   │
 │   │   Six sub-sprints landed in one autonomous session +

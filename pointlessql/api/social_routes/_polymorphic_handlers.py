@@ -10,8 +10,10 @@ After Phase 77.0.G the social tables are anchored on
 ``social_target_id`` (nullable ``data_product_id`` back-pointer
 for DP rows only).  Phase 77.1.5 lifts the per-axis write
 paths out into this module so any registered entity kind
-(currently ``table`` + ``branch``) can use them.  The DP routes
-stay unchanged — duplication lives until Phase 77.11 unifies.
+can use them.  The DP routes stay unchanged so the pre-77
+``data_product_id``-keyed JSON shape survives for existing
+clients — the duplication is a deliberate back-compat seam
+(Phase 79.4 documented why the unification was rejected).
 
 Locked decisions reflected here:
 
@@ -371,10 +373,9 @@ def _serialise_review(
     """Render one polymorphic review row as JSON.
 
     Mirrors the DP-route serialiser shape minus the ``agent``
-    payload — agent-on-behalf-of authoring is a DP-only affordance
-    today and lifting it polymorphic-wide is a Phase 77.11 ask.
-    The ``data_product_id`` field stays in the payload for backward
-    JSON-shape compat; it is ``None`` for non-DP kinds.
+    payload — agent-on-behalf-of authoring stays a DP-only
+    affordance.  The ``data_product_id`` field stays in the payload
+    for backward JSON-shape compat; it is ``None`` for non-DP kinds.
     """
     return {
         "id": row.id,
