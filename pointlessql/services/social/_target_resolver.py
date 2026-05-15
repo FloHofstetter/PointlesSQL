@@ -195,10 +195,49 @@ def resolve_workspace_for_entity(
             if row is None:
                 return None
             return int(row[0])
-    # Other kinds register their resolver in 77.1+; until then
-    # return None so callers fall back to the request's current
-    # workspace.
+    if kind == "catalog":
+        return _workspace_for_catalog(session_factory, ref)
+    if kind == "schema":
+        parts = ref.split(".", 1)
+        if len(parts) != 2 or not all(parts):
+            return None
+        return _workspace_for_catalog(session_factory, parts[0])
+    # Other kinds register their resolver in later sub-phases;
+    # until then return None so callers fall back to the request's
+    # current workspace.
     return None
+
+
+def _workspace_for_catalog(
+    session_factory: Any, catalog_name: str
+) -> int | None:
+    """Probe ``workspace_catalog_pins`` for the workspace owning *catalog_name*.
+
+    Args:
+        session_factory: SQLAlchemy session factory.
+        catalog_name: UC catalog name (one ASCII identifier).
+
+    Returns:
+        The pinned workspace id, or ``None`` when no workspace has
+        the catalog pinned.  Phase 77.5 factored this out of the
+        ``kind='table'`` path so schemas + catalogs share the same
+        probe.
+    """
+    if not catalog_name:
+        return None
+    # Imported lazily to avoid the heavy workspace module on the
+    # social hot-path when no resolver is needed.
+    from pointlessql.models.workspace import WorkspaceCatalogPin
+
+    with session_factory() as session:
+        row = session.execute(
+            select(WorkspaceCatalogPin.workspace_id).where(
+                WorkspaceCatalogPin.catalog_name == catalog_name,
+            )
+        ).first()
+        if row is None:
+            return None
+        return int(row[0])
 
 
 __all__: list[str] = [

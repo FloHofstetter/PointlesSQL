@@ -364,6 +364,80 @@ def _render_issue(match: re.Match[str], hits: set[str]) -> str:
     return f"[#issue:{issue_id}](/issues/{issue_id})"
 
 
+# Phase 77.5 — schema citations (``#schema:cat.sch``).  Pass-through
+# resolver — UC backend existence checks are skipped because soyuz
+# may be offline during comment renders (catalog-browser pages must
+# stay responsive even when the backend is slow).
+_SCHEMA_CITE_RE = re.compile(
+    r"#schema:([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)"
+)
+
+
+def _resolve_schema(
+    session: Session, workspace_id: int, pairs: set[Any]
+) -> set[tuple[str, str]]:
+    """Pass every well-formed ``(catalog, schema)`` pair through.
+
+    Args:
+        session: Active SQLAlchemy session (unused — present so the
+            signature matches every other resolver).
+        workspace_id: Tenant scope (unused — UC schemas live under
+            catalog pins resolved separately).
+        pairs: Set of ``(catalog, schema)`` capture tuples.
+
+    Returns:
+        The same set the resolver received after dropping any
+        malformed tuples.
+    """
+    del session, workspace_id
+    hits: set[tuple[str, str]] = set()
+    for raw in pairs:
+        if not isinstance(raw, tuple):
+            continue
+        parts = cast(tuple[Any, ...], raw)
+        if len(parts) != 2:
+            continue
+        c, s = parts
+        if isinstance(c, str) and isinstance(s, str):
+            hits.add((c, s))
+    return hits
+
+
+def _render_schema(
+    match: re.Match[str], hits: set[tuple[str, str]]
+) -> str:
+    """Build the anchor for ``#schema:cat.sch`` or pass through."""
+    catalog, schema = match.group(1), match.group(2)
+    if (catalog, schema) not in hits:
+        return match.group(0)
+    return (
+        f"[#{catalog}.{schema}]"
+        f"(/catalogs/{catalog}/schemas/{schema})"
+    )
+
+
+# Phase 77.5 — catalog citations (``#catalog:name``).  Same pass-
+# through pattern as schemas; the resolver mirrors them so a single
+# render pass picks up both kinds.
+_CATALOG_CITE_RE = re.compile(r"#catalog:([A-Za-z0-9_]+)")
+
+
+def _resolve_catalog(
+    session: Session, workspace_id: int, names: set[Any]
+) -> set[str]:
+    """Pass every well-formed catalog name through."""
+    del session, workspace_id
+    return {n for n in names if isinstance(n, str)}
+
+
+def _render_catalog(match: re.Match[str], hits: set[str]) -> str:
+    """Build the anchor for ``#catalog:name`` or pass through."""
+    name = match.group(1)
+    if name not in hits:
+        return match.group(0)
+    return f"[#{name}](/catalogs/{name})"
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -417,6 +491,18 @@ _CITATION_KINDS: list[CitationKind] = [
         regex=_ISSUE_CITE_RE,
         resolve=_resolve_issue,
         render=_render_issue,
+    ),
+    CitationKind(
+        key="schema",
+        regex=_SCHEMA_CITE_RE,
+        resolve=_resolve_schema,
+        render=_render_schema,
+    ),
+    CitationKind(
+        key="catalog",
+        regex=_CATALOG_CITE_RE,
+        resolve=_resolve_catalog,
+        render=_render_catalog,
     ),
 ]
 

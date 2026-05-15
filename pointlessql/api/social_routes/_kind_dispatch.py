@@ -18,7 +18,7 @@ from pointlessql.services.social import entity_registry
 # that accepts the post-split parts and raises 400 with a clean
 # message when the shape doesn't match.
 _POLYMORPHIC_KINDS: frozenset[str] = frozenset(
-    {"table", "branch", "model", "run", "issue"}
+    {"table", "branch", "model", "run", "issue", "schema", "catalog"}
 )
 
 
@@ -141,6 +141,28 @@ def parse_ref(kind: str, ref: str) -> str:
             raise HTTPException(
                 status_code=400,
                 detail="kind='issue' ref must be a numeric issue id",
+            )
+        return ref
+    if kind == "schema":
+        # Phase 77.5 — schema refs are ``catalog.schema`` two-part
+        # identifiers (UC's address shape).  Two ASCII identifiers
+        # joined by exactly one dot.
+        parts = ref.split(".", 1)
+        if len(parts) != 2 or not all(parts):
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='schema' ref must be 'catalog.schema'",
+            )
+        return ref
+    if kind == "catalog":
+        # Phase 77.5 — catalog refs are bare UC catalog names —
+        # one ASCII identifier, no dots.
+        if not ref or "." in ref or "/" in ref:
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='catalog' ref must be a bare identifier",
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:

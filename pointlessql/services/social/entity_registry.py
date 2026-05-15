@@ -159,6 +159,31 @@ def _issue_url(entity_ref: str) -> str:
     return f"/issues/{entity_ref}"
 
 
+def _schema_url(entity_ref: str) -> str:
+    """Map ``cat.sch`` to the UC schema detail URL.
+
+    Phase 77.5 — schemas live under the UC catalog browser at
+    ``/catalogs/{cat}/schemas/{sch}``.  Falls back to the catalogs
+    index on malformed refs so audit-log rendering never crashes.
+    """
+    parts = entity_ref.split(".", 1)
+    if len(parts) != 2 or not all(parts):
+        return "/catalogs"
+    return f"/catalogs/{parts[0]}/schemas/{parts[1]}"
+
+
+def _catalog_url(entity_ref: str) -> str:
+    """Map a catalog name to its detail URL.
+
+    Phase 77.5 — catalogs live at ``/catalogs/{name}`` in the UC
+    browser.  Falls back to the catalogs index when the ref is
+    empty so audit-log rendering never crashes.
+    """
+    if not entity_ref:
+        return "/catalogs"
+    return f"/catalogs/{entity_ref}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -304,6 +329,51 @@ _REGISTRY: dict[str, EntityKindSpec] = {
             "discussion",
             "endorsements",
             "followers",
+        ),
+    ),
+    # Phase 77.5 — UC schemas get Discussion + Endorsements +
+    # Followers + README tabs.  Reviews stay off (star-ratings only
+    # make sense on curated DPs).  Issues stay off initially; the
+    # registry flips if dogfooding asks for schema-scoped issues.
+    # Stars flip ``True`` so the catalog-browser star button works
+    # server-side without the localStorage fallback.
+    "schema": EntityKindSpec(
+        key="schema",
+        label="Schema",
+        url_for=_schema_url,
+        audit_target_prefix="schema",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=True,
+        supports_issues=False,
+        supports_stars=True,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
+            "readme",
+        ),
+    ),
+    # Phase 77.5 — UC catalogs get the same four social tabs as
+    # schemas.  Treated as a curated container of schemas: stewards
+    # can endorse them, users can subscribe to their event stream,
+    # admins can pin a README.  Stars on, issues off, reviews off
+    # (same locked decisions as schemas).
+    "catalog": EntityKindSpec(
+        key="catalog",
+        label="Catalog",
+        url_for=_catalog_url,
+        audit_target_prefix="catalog",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=True,
+        supports_issues=False,
+        supports_stars=True,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
+            "readme",
         ),
     ),
 }
