@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.2 closed — registered models get social tabs (2026-05-15).**
+  Mirrors the 77.1.5 table-kind pattern for the UC ML registry.
+  Two commits: registry + dispatch + ``#model:cat.sch.name``
+  citation, then ``model.html`` 4-tab strip + inline
+  ``modelDiscussion`` / ``modelReadme`` Alpine factories.  Reused
+  the polymorphic backend untouched — the model kind joins
+  ``table`` + ``branch`` in the dispatch frozenset.  16 new tests
+  (registry shape + URL builder fallback + audit prefix +
+  citation resolve/literal + comment/endorsement/README
+  round-trips + HTML render assertions).  Reviews stay
+  ``supports_reviews=False`` — polymorphic upsert idempotency
+  needs a partial unique index on ``(workspace_id,
+  social_target_id, author_user_id)`` and the legacy DP
+  unique-on-``data_product_id`` constraint doesn't apply when
+  ``data_product_id`` is NULL (SQL NULL-distinct).  Migration
+  deferred to 77.2.1 / 77.11.
+
 - **Phase 77.0 closed — polymorphic foundation (2026-05-15).**
   Ten autonomous chunks landed: 77.0.A (``social_targets``
   anchor table + ``entity_registry`` + ``_target_resolver``),

@@ -588,13 +588,18 @@ PointlesSQL
 │   │       /api/branches/.../promote gate (412).
 │   │       77.3.B: branch_detail.html tab strip + gate-state UI.
 │   │
-│   ├── Phase 77.2 — Models                                          ⏳ planned
-│   │       Full social parity with DPs on
-│   │       ``/ml/models/{full_name}``.  6 tabs (Discussion /
-│   │       Reviews / Endorsements / Followers / README / Issues).
-│   │       ``#model:cat.sch.name`` citation.  Endorsement type
-│   │       "approved-for-production-deployment" replaces ad-hoc
-│   │       MLflow-tag pattern.
+│   ├── Phase 77.2 — Models                                          ✅ done (2026-05-15)
+│   │       Registered-model detail (``/models/{full_name}``) gains
+│   │       4 social tabs: Discussion / Endorsements / Followers /
+│   │       README.  ``#model:cat.sch.name`` citation resolves to
+│   │       the detail URL.  Polymorphic backend reused as-is —
+│   │       the model kind joins ``table`` + ``branch`` in
+│   │       ``_kind_dispatch.parse_ref``.  Reviews + Issues + full
+│   │       Stars stay queued: reviews need a partial-unique-index
+│   │       migration (legacy unique keys off ``data_product_id``,
+│   │       NULL on model rows → SQL NULL-distinct breaks upsert
+│   │       idempotency); deferred to 77.2.1 / 77.11.  Issues land
+│   │       in 77.7, polymorphic follow/star in 77.8.
 │   │
 │   ├── Phase 77.4 — Runs                                            ⏳ planned
 │   │       Agent-run pages gain Discussion + Endorsements +
