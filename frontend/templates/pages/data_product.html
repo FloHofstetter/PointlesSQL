@@ -509,9 +509,10 @@
 
         {% include "partials/social/_readme_pane.html" %}
 
-        {# Phase 77.7 — Issues pane.  data_product.html doesn't have a
-           surrounding socialTabs scope (deferred to 77.11), so wrap
-           the partial in a tiny x-data that surfaces kind+ref. #}
+        {# Issues pane.  data_product.html uses the dataProductDetail
+           factory (not socialTabs) for the rest of the page, so wrap
+           the kind-agnostic partial in a tiny inline scope that
+           exposes the polymorphic (kind, ref) pair it expects. #}
         <div x-data='{
             kind: "dp",
             ref: product.catalog_name + "." + product.schema_name

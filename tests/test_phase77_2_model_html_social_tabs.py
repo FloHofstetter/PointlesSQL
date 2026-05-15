@@ -130,6 +130,77 @@ async def test_model_html_inline_factories_present(
 
 
 @pytest.mark.asyncio
+async def test_model_html_renders_extracted_partials(
+    _stub_model_client: AsyncMock, admin_client: httpx.AsyncClient
+) -> None:
+    """Phase 78 polish — discussion / reviews / readme are per-page partials.
+
+    The three social-flavoured tabs live in
+    ``pages/_partials/model/{discussion,reviews,readme}.html`` after
+    Phase 78 polish; this test confirms the model_detail HTML still
+    renders the per-tab DOM after the extraction.
+    """
+    res = await admin_client.get("/models/main.ml_silver.churn")
+    body = res.text
+    # Discussion partial markers
+    assert 'id="tab-discussion"' in body
+    assert "Add a comment… markdown welcome" in body
+    # Reviews partial markers
+    assert 'id="tab-reviews"' in body
+    assert "Your rating" in body
+    # README partial markers
+    assert 'id="tab-readme"' in body
+    assert "Edit README" in body
+
+
+@pytest.mark.asyncio
+async def test_data_product_html_renders_shared_partials(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Phase 78 polish — data_product.html keeps using the shared partials.
+
+    Regression guard: the discussion / reviews / readme partials are
+    rendered into the DP detail page even though the surrounding
+    factory is ``dataProductDetail`` (not ``socialTabs``).
+    """
+    factory = app.state.session_factory
+    with factory() as session:
+        import pathlib
+        import tempfile
+
+        from pointlessql.data_products import load_contract
+
+        with tempfile.TemporaryDirectory() as td:
+            yaml_path = pathlib.Path(td) / "pointlessql.yaml"
+            yaml_path.write_text(
+                'data_product:\n'
+                '  name: "Polish Probe"\n'
+                '  version: "0.1.0"\n'
+                '  description: "phase78 polish probe"\n'
+                '  catalog: main\n'
+                '  schema: phase78_probe\n'
+                '  steward_email: alice@pql.test\n'
+                '  sla_minutes: 60\n'
+                '  tables:\n'
+                '    - name: pings\n'
+                '      primary_key: [id]\n'
+                '      columns:\n'
+                '        - {name: id, type: long, nullable: false}\n',
+                encoding="utf-8",
+            )
+            load_contract(yaml_path, factory=factory)
+        del session
+    res = await admin_client.get("/data-products/main/phase78_probe")
+    assert res.status_code == 200, res.text
+    body = res.text
+    # All three shared partials render distinctive strings into the
+    # final HTML; the {% include %} chain is intact.
+    assert "topLevelComments" in body
+    assert "reviewDraftStars" in body
+    assert "pql-readme-body" in body
+
+
+@pytest.mark.asyncio
 async def test_model_html_includes_polymorphic_partials(
     _stub_model_client: AsyncMock, admin_client: httpx.AsyncClient
 ) -> None:
