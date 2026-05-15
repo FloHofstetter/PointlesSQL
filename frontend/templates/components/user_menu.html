@@ -21,6 +21,13 @@
  <li><span class="dropdown-item-text text-muted small">{{ current_user.email }}</span></li>
  {% if current_user.is_admin %}<li><span class="dropdown-item-text text-muted small"><i class="bi bi-shield-check"></i> Admin</span></li>{% endif %}
  <li><hr class="dropdown-divider"></li>
+ <li><a class="dropdown-item" href="/me"><i class="bi bi-house"></i> Me overview</a></li>
+ <li><a class="dropdown-item" href="/users/{{ current_user.id }}"><i class="bi bi-person-circle"></i> Profile</a></li>
+ <li><a class="dropdown-item" href="/notifications"><i class="bi bi-bell"></i> Inbox</a></li>
+ <li><a class="dropdown-item" href="/me/subscriptions"><i class="bi bi-bookmark-star"></i> Subscriptions</a></li>
+ <li><a class="dropdown-item" href="/settings/notifications"><i class="bi bi-sliders"></i> Notification settings</a></li>
+ <li><a class="dropdown-item" href="/me/settings"><i class="bi bi-gear"></i> Account settings</a></li>
+ <li><hr class="dropdown-divider"></li>
  <li>
  <form method="post" action="/auth/logout" hx-boost="false" class="m-0">
  {{ csrf_input() }}
