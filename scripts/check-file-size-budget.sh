@@ -93,6 +93,13 @@ ALLOWLIST=(
     # service layer; splitting now would create churn that gets
     # undone weeks later.  Allowlisted at 77.1.5 close-out.
     "pointlessql/api/social_routes/_polymorphic_handlers.py"
+    # Home digest aggregator + Cmd+K search index — Phase 80.6
+    # ("index every entity kind") expanded ``api_search`` to span all
+    # 14 entity kinds, which pushed the file past 800 LOC.  The two
+    # concerns (``build_home_summary`` digest and ``api_search``
+    # Cmd+K index) are separable; tracked for a future split into
+    # ``home_routes.py`` (digest) + ``search_routes.py`` (Cmd+K).
+    "pointlessql/api/home_routes.py"
 )
 
 is_allowed() {
