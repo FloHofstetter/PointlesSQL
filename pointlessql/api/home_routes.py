@@ -969,7 +969,10 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
                             },
                         )
                 except Exception:  # noqa: BLE001 — SavedQuery may not exist
-                    pass
+                    # bare-broad-ok: SavedQuery rows are best-effort —
+                    # an upgrade-race or partial schema downgrades to
+                    # empty saved-query hits without breaking the palette.
+                    logger.debug("search: saved-query block failed", exc_info=True)
                 _ = or_  # marker the import is intentional
         except Exception:  # noqa: BLE001 — palette must never fail the page
             logger.debug("search: phase 80.6 entity search failed", exc_info=True)

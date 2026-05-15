@@ -915,6 +915,63 @@ PointlesSQL
 │       pyright 496/623; pydoclint zero violations; file-size
 │       gate clean.
 │
+├── Phase 80 — Navigation & UX overhaul                    ✅ done 2026-05-15
+│       Full IA + chrome rebuild after the Phase 79 walkthrough
+│       surfaced five URL-only orphans (`/issues`, `/topics`,
+│       `/feed`, `/users/{id}`, `/workspaces/{slug}`), a
+│       command-palette that indexed only five entity kinds,
+│       and a "my stuff" surface fragmented across four pages.
+│       Ten self-contained sub-phases in one autonomous run.
+│       No alembic migrations.  Behaviour-equivalent route
+│       surface; only additive (`/users`, `/lineage`, `/me`,
+│       `/api/health/backends`).
+│
+│       1. **IA contract** (80.0) — `docs/internal/navigation_ia.md`
+│          captures the four chrome slots, five intent-groups,
+│          every entry's template + handler, all context-panel
+│          bindings, command-palette entity coverage, locked
+│          decisions.  Audit-bot ready.
+│       2. **Primary rail rework** (80.1) — icon_rail →
+│          primary_rail; two-state width 64 px ↔ 220 px;
+│          5 grouped sections (HOME / WATCH / BUILD / DATA /
+│          COMMUNITY / WORKSPACE); 24 entries; rail badges
+│          plumbing (counts wired in 80.3).
+│       3. **Context-panel partials** (80.2) — 11 new sidebar
+│          partials wired through `context_panel.html` covering
+│          every new section.
+│       4. **Today digest** (80.3) — three new stat cards on `/`
+│          (approval queue · unread inbox · firing alerts);
+│          `services/nav_badges.py` aggregator powers both
+│          the Today cards and rail badges.
+│       5. **/users + /lineage index pages** (80.4) — closes
+│          two of the URL-only orphans with workspace-scoped
+│          member list + trace-row/trace-column hub.
+│       6. **/me consolidated hub** (80.5) — six/seven-card
+│          landing replacing the previously-fragmented self-
+│          pages; user-menu becomes the Me-hub shortcut list.
+│       7. **Command palette expansion** (80.6) — `/api/search`
+│          now covers 7 more kinds (data_product, topic, issue,
+│          user, agent, workspace, saved_query); `@user` and
+│          `#topic` operators narrow results.
+│       8. **Status footer bar** (80.7) — fourth chrome slot,
+│          28 px sticky bottom strip; workspace + role chips,
+│          backend health pills polling `/api/health/backends`
+│          every 60 s, keyboard hints.
+│       9. **Quick-create + menu** (80.8) — GitHub-style topbar
+│          dropdown with 6 baseline + 2 admin entries.
+│       10. **Close-out** (80.9) — CHANGELOG + ROADMAP, broad-
+│           except markers, full Phase-80 test pass.
+│
+│       Final state: 44 new test cases across 9 modules; full
+│       pytest suite remains green (1635+ pass / 3 skip);
+│       pyright 498 warnings (matches Phase 79 ceiling within
+│       2 from new code, well under 623 cap); pydoclint zero
+│       violations; file-size budget OK; bootstrap-order OK.
+│
+│       Locked design picks (binding): HOME-first IA;
+│       expanded rail by default; Lens + dbt stay as their own
+│       BUILD entries; footer always visible (no hide toggle).
+│
 ├── Phase 76 — Full Social Network for Data Products       ✅ done 2026-05-13
 │   │
 │   │   Six sub-sprints landed in one autonomous session +

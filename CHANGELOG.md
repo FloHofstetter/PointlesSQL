@@ -6,6 +6,73 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 80 navigation/UX overhaul closed (2026-05-15).**
+  End-to-end rebuild of the frontend information architecture:
+  every surface is now one click away from primary nav, the
+  daily supervisor workflow has a home, social/community
+  surfaces are first-class, and ambient state (workspace, role,
+  backend health) is visible at all times via a new status
+  footer.  Ten self-contained sub-phases, zero alembic
+  migrations, behaviour-equivalent route surface (only additive):
+
+  1. **IA contract** (80.0) — `docs/internal/navigation_ia.md`
+     captures the four chrome slots, five intent-groups, every
+     entry's template + handler, all context-panel bindings, the
+     command-palette entity coverage, and the locked decisions.
+     One canonical source-of-truth for future audit bots.
+  2. **Primary rail rework** (80.1) — `icon_rail.html` →
+     `primary_rail.html`, two-state width (64 px ↔ 220 px),
+     five labelled groups (HOME / WATCH / BUILD / DATA /
+     COMMUNITY / WORKSPACE), 24 entries closing the URL-only
+     orphan list (Issues / Topics / Feed / Users / Workspaces
+     all reachable from rail now).
+  3. **Context-panel partials** (80.2) — 11 new sidebar
+     partials (`home`, `feed`, `topics`, `issues`, `people`,
+     `workspace_home`, `lens`, `dbt`, `me`, `lineage`,
+     `data_products`) wired through `context_panel.html`.
+  4. **Today digest** (80.3) — three new stat cards on `/`
+     (approval queue · unread inbox · firing alerts) over the
+     existing onboarding/recent-runs grid; rail badges populated
+     by a new `services/nav_badges.py` aggregator.
+  5. **/users + /lineage index pages** (80.4) — workspace-scoped
+     People list with role filters; Lineage explorer hub with
+     trace-row + trace-column forms + localStorage recent-traces.
+  6. **/me consolidated hub** (80.5) — six-or-seven-card
+     landing replacing the previously-fragmented `/users/me`,
+     `/me/settings`, `/settings/notifications`,
+     `/me/subscriptions` self-pages.  User-menu dropdown
+     becomes the Me-hub structure.
+  7. **Command palette expansion** (80.6) — `/api/search` now
+     covers seven additional entity kinds (data_product, topic,
+     issue, user, agent, workspace, saved_query) on top of the
+     five soyuz kinds.  Slack-convention `@user` / `#topic`
+     operators narrow results.
+  8. **Ambient status footer** (80.7) — 28 px sticky bottom
+     strip with workspace + role chips, four backend health
+     pills (soyuz · MLflow · dbt · Hermes) polling
+     `/api/health/backends` every 60 s, keyboard hints.
+  9. **Topbar quick-create `+` menu** (80.8) — GitHub-style
+     dropdown with 6 baseline + 2 admin-gated entries
+     (Notebook · SQL · Dashboard · Topic · Issue · Alert /
+     Data product · Job).
+  10. **Close-out** (80.9) — CHANGELOG + ROADMAP entries,
+      broad-except marker fixes for the new code, full
+      Phase-80 test pass.
+
+  **Test additions**: 44 new cases across 9 new test modules
+  (`test_nav_rail.py`, `test_context_panels.py`,
+  `test_home_today.py`, `test_users_index.py`,
+  `test_lineage_index.py`, `test_me_hub.py`,
+  `test_command_palette_search.py`, `test_footer_bar.py`,
+  `test_quick_create.py`).  Full pytest suite remains
+  green (1635+ passed, 3 skipped — the only previously-
+  failing case turned out to be the broad-except gate
+  catching two new code paths, fixed in 80.9).
+
+  **Quality gates**: ruff clean, pydoclint zero violations,
+  pyright at 498 warnings (matches Phase 79 ceiling),
+  file-size budget OK, bootstrap-order OK.
+
 - **Phase 80 navigation IA contract (2026-05-15).**  Introduced
   [`docs/internal/navigation_ia.md`](docs/internal/navigation_ia.md)
   as the authoritative information-architecture document for the

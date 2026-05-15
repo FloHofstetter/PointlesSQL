@@ -99,8 +99,13 @@ async def me_index_page(
                 or 0
             )
     except Exception:  # noqa: BLE001 — Me-hub counts are best-effort
-        # Empty install or a model missing on an upgrade race: leave
-        # counts at zero, render the cards as 0-state.
+        # bare-broad-ok: Empty install or a model missing on an
+        # upgrade race: leave counts at zero, render the cards as
+        # 0-state.  Logged for diagnostics but never surfaced.
+        import logging as _logging
+        _logging.getLogger(__name__).debug(
+            "me hub: counts query failed", exc_info=True
+        )
         pass
 
     templates = request.app.state.templates
