@@ -46,10 +46,21 @@
     </div>
 
     <template x-if="!loaded">
-        <div class="text-muted small">Loading…</div>
+        <div class="placeholder-glow pql-feed-skeleton" aria-hidden="true">
+            <div class="placeholder col-7 mb-2"></div>
+            <div class="placeholder col-9 mb-2"></div>
+            <div class="placeholder col-5"></div>
+        </div>
     </template>
     <template x-if="loaded && rows.length === 0">
-        <div class="alert alert-secondary">Nothing here yet.</div>
+        <div>
+            {% with icon="bi-newspaper",
+                   title="No activity yet",
+                   message="The workspace feed will populate as teammates author notebooks, leave reviews, and follow data products.",
+                   action_href="/topics", action_label="Browse topics" %}
+            {% include "components/empty.html" %}
+            {% endwith %}
+        </div>
     </template>
     <ul class="list-group pql-feed-rows" x-show="loaded && rows.length > 0">
         <template x-for="r in rows" :key="r.kind + ':' + r.created_at + ':' + r.event_type">

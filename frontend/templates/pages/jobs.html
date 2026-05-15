@@ -303,7 +303,9 @@
                                 x-on:click="inspect()"
                                 x-bind:disabled="inspecting || !notebookPath">
                             <span x-show="!inspecting">Load parameters</span>
-                            <span x-show="inspecting" x-cloak>Loading…</span>
+                            <span x-show="inspecting" x-cloak>
+                                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Loading…
+                            </span>
                         </button>
                     </div>
                     <div class="form-text">

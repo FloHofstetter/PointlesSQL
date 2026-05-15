@@ -42,11 +42,38 @@
     </template>
 
     <template x-if="!loaded">
-        <div class="text-muted small p-3">Loading…</div>
+        <div class="placeholder-glow pql-topics-skeleton row g-2" aria-hidden="true">
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <div class="placeholder col-7 mb-2"></div>
+                    <div class="placeholder col-9 mb-2"></div>
+                    <div class="placeholder col-5"></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <div class="placeholder col-6 mb-2"></div>
+                    <div class="placeholder col-8 mb-2"></div>
+                    <div class="placeholder col-4"></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3">
+                    <div class="placeholder col-7 mb-2"></div>
+                    <div class="placeholder col-5 mb-2"></div>
+                    <div class="placeholder col-6"></div>
+                </div>
+            </div>
+        </div>
     </template>
     <template x-if="loaded && topics.length === 0">
-        <div class="alert alert-secondary">
-            No topics in this workspace yet.
+        <div>
+            {% with icon="bi-hash",
+                   title="No topics yet",
+                   message="Topics group data products and people around a shared subject — finance, ml-feature-store, ml-team, etc.",
+                   action_href="/topics?new=1", action_label="Create the first topic" %}
+            {% include "components/empty.html" %}
+            {% endwith %}
         </div>
     </template>
     <div class="row g-2 pql-topics-grid" x-show="loaded && topics.length > 0">
