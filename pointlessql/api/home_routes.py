@@ -564,13 +564,28 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
     rather than 502'ing the whole palette, which would make the shortcut
     disproportionately fragile for a supplementary navigation surface.
     """
-    needle = q.strip().casefold()
-    if not needle:
+    raw = q.strip()
+    if not raw:
         return []
     limit = max(1, min(int(limit), 100))
 
+    # Phase 80.6 operator parsing — Slack convention.  ``@<term>``
+    # narrows to ``user`` results; ``#<term>`` narrows to ``topic``
+    # results.  The leading sigil is stripped before scoring.
+    kind_filter: str | None = None
+    if raw.startswith("@") and len(raw) > 1:
+        kind_filter = "user"
+        raw = raw[1:]
+    elif raw.startswith("#") and len(raw) > 1:
+        kind_filter = "topic"
+        raw = raw[1:]
+    needle = raw.casefold()
+    if not needle:
+        return []
+
     user = get_user(request)
     client = get_uc_client(request)
+    workspace_id = int(getattr(request.state, "workspace_id", 0) or 0)
 
     async def _soyuz_tree() -> list[dict[str, Any]]:
         out: list[dict[str, Any]] = []
@@ -755,6 +770,212 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
         _walk(tree)
         return out
 
+    def _local_phase80(  # noqa: C901 — flat dispatch over 8 entity kinds
+    ) -> list[dict[str, Any]]:
+        """Search the Phase 80.6 entity kinds.
+
+        Covers data products, topics, issues, users, agents,
+        workspaces, and saved queries.
+
+        Best-effort: any model missing on an upgrade race or DB
+        hiccup downgrades to an empty list rather than 502-ing the
+        palette.  All queries are workspace-scoped where the model
+        carries ``workspace_id``.
+        """
+        out: list[dict[str, Any]] = []
+        factory = request.app.state.session_factory
+        try:
+            from sqlalchemy import or_
+            from sqlalchemy import select as _select
+
+            from pointlessql.models import (
+                Agent,
+                DataProduct,
+                SavedQuery,
+                Topic,
+                Workspace,
+            )
+            from pointlessql.models.auth import User
+            from pointlessql.models.social._issue import Issue
+            from pointlessql.models.workspace._core import WorkspaceMember
+
+            with factory() as session:
+                # Data products
+                dp_stmt = _select(DataProduct)
+                if workspace_id:
+                    dp_stmt = dp_stmt.where(
+                        DataProduct.workspace_id == workspace_id
+                    )
+                for row in session.scalars(dp_stmt).all():
+                    fqn = f"{row.catalog_name}.{row.schema_name}"
+                    score = score_match(needle, fqn) or score_match(
+                        needle, row.description or ""
+                    )
+                    if score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "data_product",
+                            "label": fqn,
+                            "description": (row.description or "")[:120],
+                            "url": (
+                                f"/data-products/{row.catalog_name}/{row.schema_name}"
+                            ),
+                            "updated_at": epoch_seconds(getattr(row, "updated_at", None)),
+                            "score": score,
+                        },
+                    )
+                # Topics
+                topic_stmt = _select(Topic)
+                if workspace_id:
+                    topic_stmt = topic_stmt.where(Topic.workspace_id == workspace_id)
+                for row in session.scalars(topic_stmt).all():
+                    name = getattr(row, "display_name", None) or row.slug
+                    desc = getattr(row, "description_md", "") or ""
+                    score = score_match(needle, name) or score_match(
+                        needle, row.slug
+                    ) or score_match(needle, desc)
+                    if score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "topic",
+                            "label": name,
+                            "description": desc[:120],
+                            "url": f"/topics/{row.slug}",
+                            "updated_at": epoch_seconds(
+                                getattr(row, "created_at", None)
+                            ),
+                            "score": score,
+                        },
+                    )
+                # Issues
+                issue_stmt = _select(Issue)
+                if workspace_id:
+                    issue_stmt = issue_stmt.where(Issue.workspace_id == workspace_id)
+                for row in session.scalars(issue_stmt).all():
+                    title = getattr(row, "title", "")
+                    score = score_match(needle, title)
+                    if score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "issue",
+                            "label": f"#{row.id}: {title}",
+                            "description": getattr(row, "state", "") or "",
+                            "url": f"/issues/{row.id}",
+                            "updated_at": epoch_seconds(
+                                getattr(row, "updated_at", None)
+                            ),
+                            "score": score,
+                        },
+                    )
+                # Users (workspace members)
+                user_stmt = (
+                    _select(User)
+                    .join(
+                        WorkspaceMember,
+                        WorkspaceMember.user_id == User.id,
+                    )
+                )
+                if workspace_id:
+                    user_stmt = user_stmt.where(
+                        WorkspaceMember.workspace_id == workspace_id
+                    )
+                for row in session.scalars(user_stmt).all():
+                    score = score_match(needle, row.display_name or "") or score_match(
+                        needle, row.email
+                    )
+                    if score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "user",
+                            "label": row.display_name or row.email,
+                            "description": row.email,
+                            "url": f"/users/{row.id}",
+                            "updated_at": epoch_seconds(
+                                getattr(row, "created_at", None)
+                            ),
+                            "score": score,
+                        },
+                    )
+                # Agents
+                agent_stmt = _select(Agent)
+                if workspace_id:
+                    agent_stmt = agent_stmt.where(Agent.workspace_id == workspace_id)
+                for row in session.scalars(agent_stmt).all():
+                    slug = getattr(row, "slug", "")
+                    name = getattr(row, "display_name", None) or slug
+                    score = score_match(needle, slug) or score_match(needle, name)
+                    if score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "agent",
+                            "label": name,
+                            "description": slug,
+                            "url": f"/agents/{slug}",
+                            "updated_at": epoch_seconds(
+                                getattr(row, "updated_at", None)
+                            ),
+                            "score": score,
+                        },
+                    )
+                # Workspaces the caller is a member of
+                ws_stmt = _select(Workspace).join(
+                    WorkspaceMember,
+                    WorkspaceMember.workspace_id == Workspace.id,
+                ).where(WorkspaceMember.user_id == user["id"])
+                for row in session.scalars(ws_stmt).all():
+                    name = getattr(row, "name", row.slug)
+                    score = score_match(needle, name) or score_match(needle, row.slug)
+                    if score is None:
+                        continue
+                    out.append(
+                        {
+                            "type": "workspace",
+                            "label": name,
+                            "description": f"slug: {row.slug}",
+                            "url": f"/workspaces/{row.slug}",
+                            "updated_at": epoch_seconds(
+                                getattr(row, "updated_at", None)
+                            ),
+                            "score": score,
+                        },
+                    )
+                # Saved queries (the saved_queries table powers
+                # /audit/queries + SQL editor saves)
+                try:
+                    sq_stmt = _select(SavedQuery)
+                    for row in session.scalars(sq_stmt).all():
+                        title = getattr(row, "title", "") or ""
+                        body = getattr(row, "sql_body", "") or ""
+                        score = score_match(needle, title) or score_match(
+                            needle, body[:200]
+                        )
+                        if score is None:
+                            continue
+                        out.append(
+                            {
+                                "type": "saved_query",
+                                "label": title or f"query #{row.id}",
+                                "description": (body or "")[:120],
+                                "url": f"/audit/queries/{row.id}",
+                                "updated_at": epoch_seconds(
+                                    getattr(row, "updated_at", None)
+                                ),
+                                "score": score,
+                            },
+                        )
+                except Exception:  # noqa: BLE001 — SavedQuery may not exist
+                    pass
+                _ = or_  # marker the import is intentional
+        except Exception:  # noqa: BLE001 — palette must never fail the page
+            logger.debug("search: phase 80.6 entity search failed", exc_info=True)
+            return []
+        return out
+
     tree_hits, fed_hits = await asyncio.gather(_soyuz_tree(), _soyuz_federation())
     hits: list[dict[str, Any]] = []
     hits.extend(tree_hits)
@@ -762,6 +983,10 @@ async def api_search(request: Request, q: str = "", limit: int = 50) -> list[dic
     hits.extend(_local_jobs())
     hits.extend(_local_dashboards())
     hits.extend(_local_notebooks())
+    hits.extend(_local_phase80())
+
+    if kind_filter is not None:
+        hits = [h for h in hits if h["type"] == kind_filter]
 
     hits.sort(key=lambda h: (-float(h["score"]), -float(h["updated_at"])))
     return hits[:limit]
