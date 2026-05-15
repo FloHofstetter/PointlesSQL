@@ -138,3 +138,38 @@ body {
  outline: 2px solid var(--pql-color-accent);
  outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------
+ * Phase 80.10.1 — Branded interactive feedback.
+ *
+ * Wire PointlesSQL's accent into Bootstrap 5.3's focus-ring tokens
+ * so every form control, button, and link picks up the same green
+ * ring instead of falling back to Bootstrap's default blue.  Pair
+ * with a 150 ms colour transition on plain anchors so hover reads
+ * as deliberate rather than instant.
+ * ------------------------------------------------------------- */
+:root {
+ --bs-focus-ring-color: rgba(118, 185, 0, 0.40);
+ --bs-focus-ring-width: 0.2rem;
+}
+
+[data-bs-theme="dark"] {
+ --bs-focus-ring-color: rgba(118, 185, 0, 0.55);
+}
+
+a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
+ transition: color 150ms ease;
+}
+
+.form-control:focus,
+.form-select:focus,
+.form-check-input:focus {
+ border-color: var(--pql-color-accent);
+ box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+ background-color: var(--pql-color-accent);
+ color: var(--pql-color-accent-fg);
+}
