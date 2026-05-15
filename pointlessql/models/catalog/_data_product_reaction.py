@@ -10,18 +10,28 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, PrimaryKeyConstraint, String
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    PrimaryKeyConstraint,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pointlessql.models.base import Base
 
 
 class DataProductReaction(Base):
-    """One emoji reaction by one user on one data product.
+    """One emoji reaction by one user on one entity (polymorphic since 77.8.C).
 
     Attributes:
         data_product_id: FK on ``data_products.id`` with
-            ``ondelete='CASCADE'``.
+            ``ondelete='CASCADE'``.  Nullable since 77.0.G — non-DP
+            reactions leave it empty and rely on ``social_target_id``
+            instead.
         user_id: FK on ``users.id`` with ``ondelete='CASCADE'``.
         emoji: Canonical emoji glyph (one of the GitHub-6 set).
         created_at: Wall-clock at POST time.
@@ -35,6 +45,18 @@ class DataProductReaction(Base):
             "user_id",
             "emoji",
             name="pk_dp_reactions",
+        ),
+        # Phase 77.8.C — polymorphic idempotency.  Survives alongside
+        # the legacy DP-id PK; for DP rows both constraints apply
+        # (no conflict because data_products.id <-> social_target_id
+        # is 1:1 for kind='dp'); for non-DP rows only this UNIQUE
+        # applies (data_product_id is NULL, so the legacy PK's
+        # NULL-distinct semantics don't block duplicates).
+        UniqueConstraint(
+            "social_target_id",
+            "user_id",
+            "emoji",
+            name="uq_dp_reactions_polymorphic",
         ),
         Index("ix_dp_reactions_dp", "data_product_id"),
         Index(
