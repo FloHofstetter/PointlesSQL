@@ -6,6 +6,31 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.4 closed — agent-run social tabs (2026-05-15).**
+  Fourth entity kind onto the polymorphic backbone, smallest mirror
+  of the 77.1.5 pattern: no schema work, three commits.  77.4.A
+  registered ``run`` in ``entity_registry`` (``supports_reviews=
+  False`` + ``supports_readme=False`` + ``supports_endorsements=
+  True`` + ``supports_stars=True``) with ``_run_url`` mapping a
+  36-char UUID to ``/runs/<uuid>`` + ``#run:<uuid>`` citation
+  regex (pass-through resolver) + ``run`` branch in the
+  ``parse_ref`` dispatcher (UUID-shape validation, 400 on
+  malformed).  77.4.B added a 5th top-tab "Social" to
+  ``run_view.html`` alongside the Phase-17 four-tab strip;
+  inside, three sub-tabs (Discussion / Endorsements / Followers)
+  driven by a ``socialTabs`` x-data wrapper using the DP-flavoured
+  endorsement vocabulary so humans can flag quality signals on
+  individual agent runs.  Discussion sub-tab carries an inline
+  ``runDiscussion`` Alpine factory; Endorsements + Followers
+  reuse the kind-agnostic 77.1.5 partials.  Follow returns 501
+  until 77.8 (composite-PK constraint on
+  ``data_product_follows``); the followers partial's
+  ``followLocked`` state surfaces the hint automatically.  Social
+  tab is conditionally rendered (run=None notebook-only views
+  skip it).  Reviews + README absent at API + UI layer (registry
+  gating).  18 new pytest cases — full Phase-77 suite at 91
+  passing.
+
 - **Phase 77.2.1 closed — polymorphic reviews enable (2026-05-15).**
   Alembic migration ``a8d0f2g4i6k8`` adds a kind-agnostic UNIQUE
   on ``data_product_reviews(workspace_id, social_target_id,

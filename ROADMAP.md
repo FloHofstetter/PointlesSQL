@@ -614,12 +614,21 @@ PointlesSQL
 │   │       factory.  Tables + branches stay reviews-off (still
 │   │       ``supports_reviews=False`` in the registry).
 │   │
-│   ├── Phase 77.4 — Runs                                            ⏳ planned
-│   │       Agent-run pages gain Discussion + Endorsements +
-│   │       Followers + Issues.  Reviews / README hidden (runs
-│   │       are transient outcomes).  Forensics-auditor can open
-│   │       a tracked issue against a specific run.
-│   │       ``#run:<uuid>`` citation.
+│   ├── Phase 77.4 — Runs                                            ✅ done (2026-05-15)
+│   │       Agent-run pages gain a 5th top-tab "Social" with
+│   │       three sub-tabs (Discussion / Endorsements / Followers).
+│   │       Reviews / README hidden via registry flags (runs are
+│   │       transient outcomes, not curated artefacts).  Stars
+│   │       stay off until 77.8; Issues stay off until 77.7
+│   │       decides whether the issue-against-run use-case is
+│   │       worth the surface.  ``#run:<uuid>`` citation pattern
+│   │       (36-char UUID) renders to ``/runs/<uuid>`` anchor.
+│   │       Endorsement vocabulary reuses the four DP-flavoured
+│   │       types so humans can flag quality signals on individual
+│   │       agent runs.  18 new pytest cases (registry + URL
+│   │       builder + audit prefix + citation + parse_ref +
+│   │       polymorphic comment/endorsement round-trips + HTML
+│   │       social tab + sub-tabs + factory exposure + partials).
 │   │
 │   ├── Phase 77.5 — Schemas + Catalogs (gated on 77.1 dogfooding)   ⏳ planned (gated)
 │   │       Header social card + 4 social tabs in a side-drawer.
