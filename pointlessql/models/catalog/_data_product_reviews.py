@@ -38,7 +38,13 @@ class DataProductReview(Base):
         id: Auto-incremented primary key.
         workspace_id: Tenant scope.
         data_product_id: FK on ``data_products.id`` with
-            ``ondelete='CASCADE'``.
+            ``ondelete='CASCADE'``.  Nullable since the Phase 77.0
+            polymorphism shift — the kind-agnostic join key is
+            ``social_target_id``.
+        social_target_id: Phase 77.0.B polymorphic anchor (joined
+            through ``social_targets``).  The Phase 77.2.1 UNIQUE
+            ``uq_dp_review_polymorphic_one_per_user`` keys on this
+            column rather than on ``data_product_id`` directly.
         author_user_id: FK on ``users.id``.  ``(workspace_id,
             data_product_id, author_user_id)`` is unique — one
             review per user per product.  Always a human — caller

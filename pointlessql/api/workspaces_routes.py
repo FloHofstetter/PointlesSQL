@@ -97,7 +97,7 @@ async def workspace_landing_page(
 
     Raises:
         HTTPException: 404 when the workspace slug doesn't exist.
-    """
+    """  # noqa: DOC502 — raised by _resolve_workspace helper
     require_user(request)
     user = get_user(request)
     factory = request.app.state.session_factory

@@ -38,7 +38,13 @@ class DataProductComment(Base):
             tenant as the product.
         data_product_id: FK on ``data_products.id`` with
             ``ondelete='CASCADE'`` so a yaml deletion cleans up
-            stray comments.
+            stray comments.  Nullable since Phase 77.0.G — the
+            polymorphic anchor in ``social_target_id`` is the
+            kind-agnostic primary join key now.
+        social_target_id: Phase 77.0.B polymorphic anchor.  Every
+            comment is anchored on a ``social_targets`` row whose
+            ``entity_kind`` discriminator decides whether the row
+            renders under a DP / table / model / notebook / etc.
         parent_comment_id: Optional self-FK for replies.  NULL on
             top-level comments.  App-level guard caps the chain
             depth (Phase 76.1 lifted 2 → 5 with auto-collapse on

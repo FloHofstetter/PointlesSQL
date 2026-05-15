@@ -30,6 +30,9 @@ class DataProductCommentReaction(Base):
         user_id: FK on ``users.id`` with ``ondelete='CASCADE'``.
         emoji: Canonical emoji glyph (one of the GitHub-6 set).
         created_at: Wall-clock at POST time.
+        social_target_id: Phase 77.0.B polymorphic anchor (matches
+            the parent comment's target — comment-reactions do not
+            own a separate anchor).
     """
 
     __tablename__ = "data_product_comment_reactions"

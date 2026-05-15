@@ -1968,7 +1968,7 @@ async def list_polymorphic_reviews(
 
     Raises:
         HTTPException: 501 when *kind* has reviews disabled.
-    """
+    """  # noqa: DOC502 — raised by _reviews_supported helper
     require_user(request)
     _reviews_supported(kind)
     user = get_user(request)
@@ -2190,7 +2190,7 @@ async def delete_polymorphic_review(
 
     Raises:
         HTTPException: 501 when *kind* has reviews disabled.
-    """
+    """  # noqa: DOC502 — raised by _reviews_supported helper
     require_user(request)
     _reviews_supported(kind)
     user = get_user(request)

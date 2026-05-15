@@ -56,7 +56,11 @@ class DataProductEndorsement(Base):
         id: Auto-incremented primary key.
         workspace_id: Tenant scope.
         data_product_id: FK on ``data_products.id``,
-            ``ondelete='CASCADE'``.
+            ``ondelete='CASCADE'``.  Nullable since the Phase 77.0
+            polymorphism shift — the kind-agnostic join key is
+            ``social_target_id``.
+        social_target_id: Phase 77.0.B polymorphic anchor (one row
+            per endorsed entity, joined through ``social_targets``).
         endorsement_type: One of :data:`ENDORSEMENT_TYPES`.
         applied_by_user_id: Who applied the endorsement.  Always
             a human — caller when direct, agent's principal when
