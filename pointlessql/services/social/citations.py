@@ -438,6 +438,52 @@ def _render_catalog(match: re.Match[str], hits: set[str]) -> str:
     return f"[#{name}](/catalogs/{name})"
 
 
+# Phase 77.6 — notebook citations (``#notebook:<uuid>``).  Matches
+# the canonical 36-char UUID shape used by ``notebooks.id``.
+_NOTEBOOK_CITE_RE = re.compile(
+    r"#notebook:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+)
+
+
+def _resolve_notebook(
+    session: Session, workspace_id: int, uuids: set[Any]
+) -> set[str]:
+    """Pass every well-formed notebook UUID through."""
+    del session, workspace_id
+    return {u for u in uuids if isinstance(u, str)}
+
+
+def _render_notebook(match: re.Match[str], hits: set[str]) -> str:
+    """Build the anchor for ``#notebook:<uuid>`` or pass through."""
+    nb_id = match.group(1)
+    if nb_id not in hits:
+        return match.group(0)
+    short = nb_id[:8]
+    return f"[#notebook:{short}](/notebooks/uuid/{nb_id})"
+
+
+# Phase 77.6 — saved-query citations (``#query:slug``).  The slug
+# regex mirrors ``#topic:`` — lowercase alphanumerics + hyphens.
+_QUERY_CITE_RE = re.compile(r"#query:([a-z0-9][a-z0-9-]{1,60})")
+
+
+def _resolve_query(
+    session: Session, workspace_id: int, slugs: set[Any]
+) -> set[str]:
+    """Pass every well-formed query slug through (no existence probe)."""
+    del session, workspace_id
+    return {s for s in slugs if isinstance(s, str)}
+
+
+def _render_query(match: re.Match[str], hits: set[str]) -> str:
+    """Build the anchor for ``#query:slug`` or pass through."""
+    slug = match.group(1)
+    if slug not in hits:
+        return match.group(0)
+    return f"[#{slug}](/audit/queries/{slug})"
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -503,6 +549,18 @@ _CITATION_KINDS: list[CitationKind] = [
         regex=_CATALOG_CITE_RE,
         resolve=_resolve_catalog,
         render=_render_catalog,
+    ),
+    CitationKind(
+        key="notebook",
+        regex=_NOTEBOOK_CITE_RE,
+        resolve=_resolve_notebook,
+        render=_render_notebook,
+    ),
+    CitationKind(
+        key="saved_query",
+        regex=_QUERY_CITE_RE,
+        resolve=_resolve_query,
+        render=_render_query,
     ),
 ]
 

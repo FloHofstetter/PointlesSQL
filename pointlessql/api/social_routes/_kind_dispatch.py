@@ -18,7 +18,17 @@ from pointlessql.services.social import entity_registry
 # that accepts the post-split parts and raises 400 with a clean
 # message when the shape doesn't match.
 _POLYMORPHIC_KINDS: frozenset[str] = frozenset(
-    {"table", "branch", "model", "run", "issue", "schema", "catalog"}
+    {
+        "table",
+        "branch",
+        "model",
+        "run",
+        "issue",
+        "schema",
+        "catalog",
+        "notebook",
+        "saved_query",
+    }
 )
 
 
@@ -163,6 +173,27 @@ def parse_ref(kind: str, ref: str) -> str:
             raise HTTPException(
                 status_code=400,
                 detail="kind='catalog' ref must be a bare identifier",
+            )
+        return ref
+    if kind == "notebook":
+        # Phase 77.6 — notebook refs are the 36-char UUID stored
+        # on ``notebooks.id``.
+        if len(ref) != 36 or ref.count("-") != 4:
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='notebook' ref must be a 36-char UUID",
+            )
+        return ref
+    if kind == "saved_query":
+        # Phase 77.6 — saved-query refs are the slug stored on the
+        # saved_audit_queries row.  Accept the same shape as
+        # citations (lowercase alphanumerics + hyphens).
+        if not ref or "/" in ref:
+            # bare-http-ok: ref shape is the API contract.
+            raise HTTPException(
+                status_code=400,
+                detail="kind='saved_query' ref must be a slug",
             )
         return ref
     if kind not in _POLYMORPHIC_KINDS:

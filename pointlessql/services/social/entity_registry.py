@@ -184,6 +184,31 @@ def _catalog_url(entity_ref: str) -> str:
     return f"/catalogs/{entity_ref}"
 
 
+def _notebook_url(entity_ref: str) -> str:
+    """Map a notebook UUID to its UUID-routed editor URL.
+
+    Phase 77.6 — notebooks are addressed by the 36-char UUID stored
+    on ``notebooks.id``.  The UUID-routed alias
+    ``/notebooks/uuid/{uuid}`` redirects to the path-based editor
+    URL after looking up ``file_path`` from the metadata row.
+    Falls back to the notebooks index on malformed refs.
+    """
+    if len(entity_ref) != 36 or entity_ref.count("-") != 4:
+        return "/notebooks"
+    return f"/notebooks/uuid/{entity_ref}"
+
+
+def _saved_query_url(entity_ref: str) -> str:
+    """Map a saved-query slug to its audit-tab URL.
+
+    Phase 77.6 — saved queries live at ``/audit/queries/{slug}``.
+    Falls back to the queries index on empty refs.
+    """
+    if not entity_ref:
+        return "/audit/queries"
+    return f"/audit/queries/{entity_ref}"
+
+
 _REGISTRY: dict[str, EntityKindSpec] = {
     "dp": EntityKindSpec(
         key="dp",
@@ -364,6 +389,50 @@ _REGISTRY: dict[str, EntityKindSpec] = {
         label="Catalog",
         url_for=_catalog_url,
         audit_target_prefix="catalog",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=True,
+        supports_issues=False,
+        supports_stars=True,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
+            "readme",
+        ),
+    ),
+    # Phase 77.6 — notebooks get a Discussion + Endorsements +
+    # Followers + README side-drawer surface (notebook_editor.html
+    # is full-screen by design, so we keep the navigation out of
+    # the main view).  Reviews off (notebooks aren't curated
+    # artefacts the way DPs / models are); issues off initially.
+    # Stars on.
+    "notebook": EntityKindSpec(
+        key="notebook",
+        label="Notebook",
+        url_for=_notebook_url,
+        audit_target_prefix="notebook",
+        supports_reviews=False,
+        supports_endorsements=True,
+        supports_readme=True,
+        supports_issues=False,
+        supports_stars=True,
+        tab_keys=(
+            "discussion",
+            "endorsements",
+            "followers",
+            "readme",
+        ),
+    ),
+    # Phase 77.6 — saved queries get the same four social tabs.
+    # ``saved_audit_query_detail.html`` is small enough for an
+    # inline tab strip (not a side-drawer).  Reviews off; issues
+    # off initially; stars on.
+    "saved_query": EntityKindSpec(
+        key="saved_query",
+        label="Saved query",
+        url_for=_saved_query_url,
+        audit_target_prefix="saved_query",
         supports_reviews=False,
         supports_endorsements=True,
         supports_readme=True,
