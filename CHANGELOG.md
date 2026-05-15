@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 80 navigation IA contract (2026-05-15).**  Introduced
+  [`docs/internal/navigation_ia.md`](docs/internal/navigation_ia.md)
+  as the authoritative information-architecture document for the
+  PointlesSQL frontend.  Captures the four chrome slots
+  (top-bar + primary sidebar + context sidebar + footer), the
+  five intent-groups (HOME / WATCH / BUILD / DATA / COMMUNITY /
+  WORKSPACE), every entry's template + route handler, all
+  context-panel section bindings, the command-palette entity
+  coverage table, and the Phase-80 locked decisions.  This
+  artifact lands first in the Phase 80 bundle so the remaining
+  sub-phases have one canonical source-of-truth to verify
+  against.
+
 ### Changed
 
 - **Phase 79 code-quality bundle closed (2026-05-15).**  A fresh
