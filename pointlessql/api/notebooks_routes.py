@@ -16,15 +16,18 @@ The execute / load / save endpoints belong to sibling modules:
 from __future__ import annotations
 
 import logging
+import uuid as _uuid
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import current_workspace_id, require_user
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
+from pointlessql.models.notebook import Notebook
 from pointlessql.services import output_rendering as notebook_render_service
 from pointlessql.services import scheduler as scheduler_service
 from pointlessql.services.notebook import _doc as notebook_doc_service
@@ -39,6 +42,47 @@ router = APIRouter(tags=["notebooks"])
 def _templates(request: Request) -> Jinja2Templates:
     """Return the shared Jinja2Templates instance from app state."""
     return request.app.state.templates
+
+
+def _get_or_create_notebook_uuid(
+    request: Request, file_path: str
+) -> str:
+    """Look up or create the :class:`Notebook` UUID for *file_path*.
+
+    Phase 77.6 — the social layer addresses notebooks by their
+    stable ``notebooks.id`` UUID (locked decision #8).  This helper
+    is the single chokepoint that maps a ``file_path`` to that
+    UUID, creating the row on demand the first time a path is
+    visited.
+
+    Args:
+        request: Active FastAPI request — for workspace + session
+            factory access.
+        file_path: Relative notebook path under the workspace's
+            notebooks dir.
+
+    Returns:
+        The 36-char UUID4 string from ``notebooks.id``.
+    """
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = session.execute(
+            select(Notebook).where(
+                Notebook.workspace_id == workspace_id,
+                Notebook.file_path == file_path,
+            )
+        ).scalar_one_or_none()
+        if row is not None:
+            return str(row.id)
+        nb = Notebook(
+            id=str(_uuid.uuid4()),
+            workspace_id=workspace_id,
+            file_path=file_path,
+        )
+        session.add(nb)
+        session.commit()
+        return str(nb.id)
 
 
 @router.get("/api/notebooks/inspect")
@@ -757,11 +801,71 @@ async def notebook_editor_page(request: Request, path: str) -> HTMLResponse:
         notebooks_dir, path, must_exist=True
     )
     relative = str(absolute.relative_to(notebooks_dir))
+    notebook_uuid = _get_or_create_notebook_uuid(request, relative)
     return _templates(request).TemplateResponse(
         request,
         "pages/notebook_editor.html",
         {
             "notebook_path": relative,
+            "notebook_uuid": notebook_uuid,
+            "active_page": "workspace",
+            "active_catalog": None,
+            "active_schema": None,
+            "active_table": None,
+        },
+    )
+
+
+@router.get(
+    "/notebooks/uuid/{notebook_uuid}", response_class=HTMLResponse
+)
+async def notebook_editor_by_uuid(
+    request: Request, notebook_uuid: str
+) -> HTMLResponse:
+    """Render the editor for a notebook addressed by its UUID.
+
+    Phase 77.6 — the UUID-routed alias lets the social-layer
+    citations + audit-log links survive a path rename.  The
+    backing data is identical to ``/notebooks/edit/{path}``; we
+    just look up the file_path from the ``notebooks`` row and
+    delegate to the same render path.
+
+    Args:
+        request: Incoming FastAPI request.
+        notebook_uuid: 36-char UUID stored on ``notebooks.id``.
+
+    Returns:
+        The rendered ``pages/notebook_editor.html`` template.
+
+    Raises:
+        ValidationError: When the UUID does not resolve or the
+            backing file is missing.
+    """  # noqa: DOC502
+    require_user(request)
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        nb = session.execute(
+            select(Notebook).where(
+                Notebook.id == notebook_uuid,
+                Notebook.workspace_id == workspace_id,
+            )
+        ).scalar_one_or_none()
+        if nb is None:
+            raise ValidationError(f"notebook {notebook_uuid} not found")
+        file_path = str(nb.file_path)
+    settings: Settings = request.app.state.settings
+    notebooks_dir = settings.jupyter.notebooks_dir.resolve()
+    absolute = notebook_doc_service.resolve_py_notebook_path(
+        notebooks_dir, file_path, must_exist=True
+    )
+    relative = str(absolute.relative_to(notebooks_dir))
+    return _templates(request).TemplateResponse(
+        request,
+        "pages/notebook_editor.html",
+        {
+            "notebook_path": relative,
+            "notebook_uuid": notebook_uuid,
             "active_page": "workspace",
             "active_catalog": None,
             "active_schema": None,
