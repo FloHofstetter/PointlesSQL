@@ -6,6 +6,30 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 77.10 closed — Workspace-as-Organization landing (2026-05-15).**
+  Every workspace gets a GitHub-org-style landing page at
+  ``/workspaces/{slug}``.  Alembic ``g4i6k8m0o2q4`` creates
+  ``workspace_pinned_entities`` with a composite PK on
+  ``(workspace_id, social_target_id)``, an ordering index on
+  ``(workspace_id, pin_order)``, and ``ondelete=CASCADE`` on the
+  social-target FK so pins disappear when the target entity is
+  deleted.  Registers ``kind='workspace'`` in the entity
+  registry (4 tabs: Discussion + README + members + activity;
+  stars + endorsements + issues all off — workspaces aren't
+  curated artefacts).  New ``pointlessql/api/workspaces_routes.py``
+  exposes five public routes:
+
+  - ``GET /workspaces/{slug}`` — HTML landing page (pinned
+    entities gallery + activity feed + member count).
+  - ``GET/POST/DELETE /api/workspaces/{slug}/pins`` — pin
+    CRUD.  POST requires admin; DELETE same.
+  - ``PATCH /api/workspaces/{slug}/pins/reorder`` — admin
+    drag-and-drop reordering.
+  - ``GET /api/workspaces/{slug}/activity`` — workspace-scoped
+    recent inbox events for the activity card.
+
+  9 new pytest cases.  Phase 77 test count: 223 → 232.
+
 - **Phase 77.9 closed — cross-entity feed (2026-05-15).**
   The activity feed lists comments + reviews across every
   polymorphic entity kind, not just data products.

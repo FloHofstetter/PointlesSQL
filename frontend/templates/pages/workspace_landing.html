@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ workspace.name }} · Workspace · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Workspaces"},
+    {"label": workspace.slug}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='workspaceLanding({{ workspace.slug|tojson }})' x-init="init()">
+
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-building fs-3"></i>
+    <h1 class="h3 mb-0">{{ workspace.name }}</h1>
+    <span class="badge bg-info text-dark ms-2">{{ member_count }} members</span>
+  </div>
+
+  {% if workspace.description %}
+  <p class="text-muted mb-3">{{ workspace.description }}</p>
+  {% endif %}
+
+  {# Pinned entities gallery. #}
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center">
+      <i class="bi bi-pin-angle me-2"></i>
+      <span class="fw-semibold">Pinned entities</span>
+      <span class="badge bg-secondary ms-2" x-text="pins.length"></span>
+      {% if is_admin %}
+      <button class="btn btn-sm btn-outline-primary ms-auto" @click="showAddPin = true">
+        <i class="bi bi-plus-circle me-1"></i>Pin entity
+      </button>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <template x-if="!pinsLoaded">
+        <div class="text-muted small">Loading pins…</div>
+      </template>
+      <template x-if="pinsLoaded && pins.length === 0">
+        <div class="text-muted">No pinned entities yet.</div>
+      </template>
+      <div class="row g-2" x-show="pins.length > 0">
+        <template x-for="pin in pins" :key="pin.social_target_id">
+          <div class="col-md-4">
+            <div class="card">
+              <div class="card-body py-2">
+                <span class="badge bg-secondary" x-text="pin.entity_kind"></span>
+                <a class="font-monospace ms-2" :href="pin.url" x-text="pin.entity_ref"></a>
+                {% if is_admin %}
+                <button class="btn btn-sm btn-link text-danger float-end p-0"
+                        @click="removePin(pin.social_target_id)">
+                  <i class="bi bi-x"></i>
+                </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  {# Pin-add modal (admin only). #}
+  {% if is_admin %}
+  <div class="modal fade" :class="{ 'show d-block': showAddPin }"
+       :style="showAddPin ? 'background: rgba(0,0,0,0.5)' : ''">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Pin an entity</h5>
+          <button type="button" class="btn-close" @click="showAddPin = false"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-2">
+            Paste the ``social_target_id`` of the entity to pin
+            (look it up via the entity's detail page network panel
+            or the admin console).
+          </p>
+          <input type="number" class="form-control"
+                 placeholder="social_target_id" x-model="newPinTargetId">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" @click="showAddPin = false">Cancel</button>
+          <button class="btn btn-primary" @click="addPin()" :disabled="!newPinTargetId">
+            Pin
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Activity tab. #}
+  <div class="card mb-4">
+    <div class="card-header d-flex align-items-center">
+      <i class="bi bi-clock-history me-2"></i>
+      <span class="fw-semibold">Activity</span>
+    </div>
+    <div class="card-body p-0">
+      <template x-if="!activityLoaded">
+        <div class="text-muted small p-3">Loading activity…</div>
+      </template>
+      <template x-if="activityLoaded && activity.length === 0">
+        <div class="text-muted p-3">No activity yet.</div>
+      </template>
+      <ul class="list-group list-group-flush" x-show="activity.length > 0">
+        <template x-for="a in activity" :key="a.created_at + a.event_type">
+          <li class="list-group-item d-flex align-items-center gap-2">
+            <span class="badge bg-secondary" x-text="a.entity_kind || '—'"></span>
+            <a :href="a.source_url || '#'" x-text="a.summary_md || a.event_type"></a>
+            <span class="text-muted small ms-auto" x-text="a.created_at"></span>
+          </li>
+        </template>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+function workspaceLanding(slug) {
+  return {
+    slug: slug,
+    pins: [],
+    pinsLoaded: false,
+    activity: [],
+    activityLoaded: false,
+    showAddPin: false,
+    newPinTargetId: '',
+    async init() {
+      await Promise.all([this.refreshPins(), this.refreshActivity()]);
+    },
+    async refreshPins() {
+      this.pinsLoaded = false;
+      const res = await window.pqlApi.fetch('/api/workspaces/' + slug + '/pins');
+      this.pins = (res && res.ok && res.data && res.data.pins) || [];
+      this.pinsLoaded = true;
+    },
+    async refreshActivity() {
+      this.activityLoaded = false;
+      const res = await window.pqlApi.fetch('/api/workspaces/' + slug + '/activity');
+      this.activity = (res && res.ok && res.data && res.data.activity) || [];
+      this.activityLoaded = true;
+    },
+    async addPin() {
+      const targetId = parseInt(this.newPinTargetId, 10);
+      if (!targetId) return;
+      const res = await window.pqlApi.fetch('/api/workspaces/' + slug + '/pins', {
+        method: 'POST',
+        body: JSON.stringify({social_target_id: targetId}),
+      });
+      if (res && res.ok) {
+        this.showAddPin = false;
+        this.newPinTargetId = '';
+        await this.refreshPins();
+      }
+    },
+    async removePin(targetId) {
+      await window.pqlApi.fetch('/api/workspaces/' + slug + '/pins/' + targetId, {
+        method: 'DELETE',
+      });
+      await this.refreshPins();
+    },
+  };
+}
+window.workspaceLanding = workspaceLanding;
+</script>
+{% endblock %}

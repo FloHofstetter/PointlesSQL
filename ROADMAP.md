@@ -811,7 +811,21 @@ PointlesSQL
 │   │       ``body_md`` (not just 140-char preview) across every
 │   │       entity kind.
 │   │
-│   ├── Phase 77.10 — Workspace-as-Organization landing page         ⏳ planned
+│   ├── Phase 77.10 — Workspace-as-Organization landing page         ✅ done (2026-05-15)
+│   │       GitHub-org-style landing page for every workspace at
+│   │       ``/workspaces/{slug}``.  Alembic ``g4i6k8m0o2q4``
+│   │       creates ``workspace_pinned_entities`` (composite PK
+│   │       on workspace + social_target, ordered index).
+│   │       Registers ``kind='workspace'`` (4 tabs Discussion +
+│   │       README + members + activity; stars + endorsements +
+│   │       issues all off).  New ``workspaces_routes.py``
+│   │       exposes 5 routes: HTML landing + pin CRUD + activity
+│   │       feed.  Pin writes admin-only; reads member-only.
+│   │       9 new pytest cases (schema, registry, HTML render,
+│   │       pin CRUD round-trip, 409 on duplicate, 403 on
+│   │       non-admin, activity scope, reorder).
+│   │
+
 │   │       ``/workspaces/{slug}`` is the workspace's GitHub-org-
 │   │       style landing page.  ``workspace_pinned_entities``
 │   │       table + 3 rows of pinned cards (DPs / tables /
