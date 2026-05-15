@@ -80,6 +80,26 @@
     margin: 0;
 }
 
+/* Phase 81.A — per-user customisation.  rail_customise.js sets
+   ``data-rail-hidden="1"`` on the parent <li> of any rail entry the
+   user has hidden via the customise drawer.  Only entries with a
+   ``data-section`` ever receive this attribute (the customise button
+   itself has no data-section, so it stays reachable for re-showing
+   hidden entries). */
+[data-rail-hidden="1"] {
+    display: none;
+}
+
+/* The "Customise" button is a <button> not an <a>; strip the native
+   button affordances so it sits flush with the permission-link
+   anchors above it in the footer list. */
+.pql-icon-rail__customise-btn {
+    background: transparent;
+    border: 0;
+    width: 100%;
+    text-align: left;
+}
+
 /* Group header — visible only when rail is expanded. */
 .pql-icon-rail__group {
     display: none;

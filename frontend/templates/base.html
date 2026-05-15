@@ -265,6 +265,7 @@
          aria-atomic="true"></div>
 
     {% include "components/confirm_modal.html" %}
+    {% include "components/rail_customise_offcanvas.html" %}
 
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"></script>
     <!-- Chart.js 4.x UMD.  Loaded non-module so every page gets
@@ -418,6 +419,11 @@
          Exposes window.pqlConfirm() so destructive actions can
          replace the bare window.confirm() dialog. -->
     <script src="/static/js/confirm.js"></script>
+    <!-- Phase 81.A — per-user primary-rail customisation
+         (localStorage MVP).  Reads pql:rail-hidden, toggles
+         data-rail-hidden on each <li> so the icon_rail.css rule
+         applies display:none. -->
+    <script src="/static/js/rail_customise.js"></script>
     <script>
         // Theme color-modes click-handler.  The init script in <head>
         // already applied the right ``data-bs-theme`` before paint;

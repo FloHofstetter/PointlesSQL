@@ -1,0 +1,43 @@
+{#
+  Phase 81.A — Primary-rail customisation drawer.
+
+  Rendered once at the bottom of ``base.html``.  Opens when the user
+  clicks the "Customise rail" button at the bottom of the primary
+  rail.  Content is populated client-side by ``rail_customise.js``
+  from the live rail DOM, so there is no second copy of the entry
+  list to keep in sync.
+
+  Why localStorage and not a server preference: per-device
+  ergonomic — see the JS header for the rationale.
+#}
+<div class="offcanvas offcanvas-end"
+     tabindex="-1"
+     id="pql-rail-customise-offcanvas"
+     aria-labelledby="pql-rail-customise-title">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="pql-rail-customise-title">
+            <i class="bi bi-sliders me-1" aria-hidden="true"></i>
+            Customise navigation
+        </h5>
+        <button type="button"
+                class="btn-close"
+                data-bs-dismiss="offcanvas"
+                aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <p class="text-muted small mb-3">
+            Toggle which primary-rail entries are visible.  Choices
+            are remembered on this device only — open the drawer on
+            another browser to set its preferences separately.
+        </p>
+        <div id="pql-rail-customise-list" class="d-flex flex-column small"></div>
+        <div class="mt-3 d-flex justify-content-end">
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    id="pql-rail-customise-reset">
+                <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>
+                Show all
+            </button>
+        </div>
+    </div>
+</div>

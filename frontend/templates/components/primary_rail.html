@@ -294,5 +294,21 @@
                  label_class="pql-icon-rail__label"
             ) }}
         </li>
+        {# Phase 81.A — per-user rail customisation (localStorage MVP).
+           Sibling of the Admin entry so the customise affordance lives
+           at the bottom of the rail in both collapsed and expanded
+           modes.  The button is intentionally NOT a permission-link
+           (every user can hide their own entries). #}
+        <li class="pql-icon-rail__item">
+            <button type="button"
+                    class="pql-icon-rail__link pql-icon-rail__customise-btn"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#pql-rail-customise-offcanvas"
+                    aria-label="Customise rail"
+                    title="Show or hide rail entries">
+                <i class="bi bi-sliders"></i>
+                <span class="pql-icon-rail__label">Customise</span>
+            </button>
+        </li>
     </ul>
 </nav>
