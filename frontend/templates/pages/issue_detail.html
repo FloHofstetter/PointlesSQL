@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Issue #{{ issue_id }} · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+  {"label": "Home", "href": "/"},
+  {"label": "Issues", "href": "/issues"},
+  {"label": "#" ~ issue_id|string}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data='issueDetail({{ issue_id|tojson }})' x-init="init()">
+  <div class="d-flex align-items-center gap-2 mb-3"
+       x-data='pqlStarToggle({kind: "issue", ref: {{ issue_id|tojson }}})'
+       x-init="init()">
+    <i class="bi bi-exclamation-circle fs-3"></i>
+    <h1 class="h4 mb-0">
+      <span class="text-muted">#{{ issue_id }}</span>
+      <span x-text="issue.title || {{ issue_title|tojson }}"></span>
+    </h1>
+    <span class="badge ms-2"
+          :class="issue.state === 'open' ? 'bg-success' : 'bg-secondary'"
+          x-text="issue.state || 'open'"></span>
+    <div class="ms-auto">
+      <button class="btn btn-sm"
+              :class="starred ? 'btn-warning' : 'btn-outline-warning'"
+              @click="toggle()" title="Bookmark this issue">
+        <i class="bi" :class="starred ? 'bi-star-fill' : 'bi-star'"></i>
+        <span class="ms-1" x-show="count > 0" x-text="count"></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- ───────────────────────────── LEFT: body + comments ───────────────────────────── -->
+    <div class="col-lg-9">
+      <div class="card mb-3">
+        <div class="card-body">
+          <div x-show="!editingBody">
+            <p class="mb-0" x-text="issue.body_md || '_No description._'"></p>
+            <button class="btn btn-sm btn-outline-secondary mt-2"
+                    x-show="canEdit"
+                    @click="startEditBody()">
+              <i class="bi bi-pencil me-1"></i>Edit
+            </button>
+          </div>
+          <div x-show="editingBody">
+            <textarea class="form-control mb-2" rows="6" x-model="editingBodyText"></textarea>
+            <button class="btn btn-sm btn-primary" @click="saveBody()">Save</button>
+            <button class="btn btn-sm btn-outline-secondary" @click="editingBody = false">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Discussion thread under the issue (kind='issue'). -->
+      <div x-data='socialTabs({kind: "issue", ref: {{ issue_id|tojson }}, endorsementTypes: ["verified-by-steward", "production-ready", "under-review", "deprecated"]})'>
+        <ul class="nav nav-tabs">
+          <li class="nav-item">
+            <a class="nav-link" :class="activeTab === 'discussion' ? 'active' : ''"
+               @click.prevent="activeTab = 'discussion'" href="#">Discussion</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" :class="activeTab === 'endorsements' ? 'active' : ''"
+               @click.prevent="activeTab = 'endorsements'" href="#">Endorsements</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" :class="activeTab === 'followers' ? 'active' : ''"
+               @click.prevent="activeTab = 'followers'" href="#">Followers</a>
+          </li>
+        </ul>
+        <div class="tab-content border border-top-0 p-3">
+          <div x-show="activeTab === 'discussion'">
+            {% include 'partials/social/_endorsements_pane.html' ignore missing %}
+          </div>
+          <div x-show="activeTab === 'endorsements'">
+            {% include 'partials/social/_endorsements_pane.html' ignore missing %}
+          </div>
+          <div x-show="activeTab === 'followers'">
+            {% include 'partials/social/_followers_pane.html' ignore missing %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────────── RIGHT: sidebar ───────────────────────────── -->
+    <div class="col-lg-3">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Parent</h6>
+          {% if parent_kind and parent_ref %}
+          <span class="badge bg-secondary me-1">{{ parent_kind }}</span>
+          <span class="font-monospace small">{{ parent_ref }}</span>
+          {% else %}
+          <span class="text-muted">unknown</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">State</h6>
+          <div class="d-grid gap-2">
+            <button class="btn btn-sm btn-outline-success"
+                    x-show="issue.state !== 'open' && canEdit"
+                    @click="reopen()">
+              <i class="bi bi-arrow-repeat me-1"></i>Reopen
+            </button>
+            <div x-show="issue.state === 'open' && canEdit">
+              <select class="form-select form-select-sm mb-2" x-model="closeReason">
+                <option value="">— close reason —</option>
+                <option value="fixed">fixed</option>
+                <option value="wont_fix">wont_fix</option>
+                <option value="duplicate">duplicate</option>
+                <option value="superseded">superseded</option>
+              </select>
+              <button class="btn btn-sm btn-outline-secondary w-100"
+                      @click="close(false)">
+                <i class="bi bi-check-circle me-1"></i>Close as completed
+              </button>
+              <button class="btn btn-sm btn-outline-secondary w-100 mt-1"
+                      @click="close(true)">
+                <i class="bi bi-x-circle me-1"></i>Close as not planned
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Assignee</h6>
+          <div class="font-monospace small"
+               x-text="(issue.assignee && issue.assignee.email) || '— unassigned —'"></div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Labels</h6>
+          <div>
+            <template x-for="lbl in (issue.labels || [])" :key="lbl">
+              <span class="badge bg-info me-1" x-text="lbl"></span>
+            </template>
+            <span class="text-muted small" x-show="(issue.labels || []).length === 0">— none —</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-subtitle text-muted mb-2">Opened by</h6>
+          <div class="font-monospace small"
+               x-text="(issue.opened_by && issue.opened_by.email) || '?'"></div>
+          <div class="text-muted small" x-text="formatTime(issue.opened_at)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function issueDetail(issueId) {
+  return {
+    issue: { state: 'open', labels: [] },
+    editingBody: false,
+    editingBodyText: '',
+    closeReason: '',
+    canEdit: false,
+    async init() {
+      await this.refresh();
+    },
+    async refresh() {
+      const res = await window.pqlApi.fetch('/api/issues/' + issueId);
+      if (res && res.ok && res.data) {
+        this.issue = res.data;
+        this.canEdit = !!(window.pqlCurrentUserId && (
+          window.pqlIsAdmin || window.pqlCurrentUserId === (this.issue.opened_by && this.issue.opened_by.user_id)
+        ));
+      }
+    },
+    startEditBody() {
+      this.editingBodyText = this.issue.body_md || '';
+      this.editingBody = true;
+    },
+    async saveBody() {
+      const res = await window.pqlApi.fetch('/api/issues/' + issueId, {
+        method: 'PATCH',
+        body: JSON.stringify({ body_md: this.editingBodyText }),
+      });
+      if (res && res.ok) {
+        this.editingBody = false;
+        await this.refresh();
+      }
+    },
+    async close(notPlanned) {
+      const body = { not_planned: !!notPlanned };
+      if (this.closeReason) body.closed_reason = this.closeReason;
+      await window.pqlApi.fetch('/api/issues/' + issueId + '/close', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      await this.refresh();
+    },
+    async reopen() {
+      await window.pqlApi.fetch('/api/issues/' + issueId + '/reopen', { method: 'POST' });
+      await this.refresh();
+    },
+    formatTime(iso) {
+      if (!iso) return '';
+      try { return new Date(iso).toLocaleString(); }
+      catch (e) { return iso; }
+    },
+  };
+}
+window.issueDetail = issueDetail;
+</script>
+{% endblock %}
