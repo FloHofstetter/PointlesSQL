@@ -49,7 +49,7 @@
     <div class="row g-2 pql-topics-grid" x-show="loaded && topics.length > 0">
         <template x-for="t in topics" :key="t.slug">
             <div class="col-md-4">
-                <div class="card pql-topic-card">
+                <div class="card pql-topic-card pql-hover-lift">
                     <div class="card-body">
                         <h5 class="card-title h6">
                             <a :href="'/topics/' + t.slug"

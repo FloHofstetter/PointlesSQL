@@ -76,7 +76,7 @@
  <div class="row g-3">
  <template x-for="alert in alerts" :key="alert.slug">
  <div class="col-12 col-md-6 col-xxl-4">
- <div class="card h-100 pql-alert-card"
+ <div class="card h-100 pql-alert-card pql-hover-lift"
   :class="alert.is_active ? 'pql-alert-card--active' : 'pql-alert-card--paused'">
  <div class="card-header d-flex justify-content-between align-items-center gap-2">
  <a :href="'/alerts/' + alert.slug"

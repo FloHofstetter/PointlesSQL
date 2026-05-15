@@ -5,6 +5,23 @@
  * left edge so the eye can scan a grid faster than a table.
  */
 
+/* Phase 80.10.2 — generic hover-lift utility.
+ *
+ * Applies to any clickable card / row so the affordance is uniform
+ * across topics, models, dashboards, data products, agents, users,
+ * feed items, alerts, etc.  Extracted from the original
+ * pql-review-card pattern so the same look ships everywhere without
+ * duplicating the transition declaration on each variant.
+ */
+.pql-hover-lift {
+    transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.pql-hover-lift:hover,
+.pql-hover-lift:focus-within {
+    transform: translateY(-2px);
+    box-shadow: var(--bs-box-shadow-sm);
+}
+
 /* Agent-review card — severity stripe on the left edge. */
 .pql-review-card {
     color: inherit;
