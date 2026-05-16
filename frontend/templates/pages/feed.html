@@ -439,6 +439,13 @@ window.feedPage = function () {
             { key: 'headlines', label: 'Headlines', icon: 'bi-text-left' },
         ],
 
+        // Internal SSE state (not reactive — Alpine doesn't need to
+        // observe these).
+        _sse: null,
+        _sseBackoffMs: 1000,
+        _sseReconnectTimer: null,
+        _sseFirstFailedAt: 0,
+
         async init() {
             // Restore density from localStorage.
             try {
@@ -448,6 +455,103 @@ window.feedPage = function () {
                 }
             } catch (e) { /* ignore storage errors */ }
             await this.reload();
+            this.connectSse();
+            // Tear down on page leave so the server-side queue gets
+            // released promptly (htmx:beforeRequest fires on boost
+            // navs even though the feed root unmounts).
+            document.body.addEventListener(
+                'htmx:beforeRequest',
+                () => this.disconnectSse(),
+                { once: true },
+            );
+        },
+
+        connectSse() {
+            if (this._sse) return;
+            try {
+                const es = new EventSource('/api/notifications/stream');
+                this._sse = es;
+                es.addEventListener('open', () => {
+                    this.connState = 'connected';
+                    this._sseBackoffMs = 1000;
+                    this._sseFirstFailedAt = 0;
+                });
+                es.addEventListener('notification', (ev) => this._onSseMessage(ev));
+                es.addEventListener('error', () => {
+                    if (this._sseFirstFailedAt === 0) {
+                        this._sseFirstFailedAt = Date.now();
+                    }
+                    this.connState = Date.now() - this._sseFirstFailedAt > 60_000
+                        ? 'disconnected' : 'reconnecting';
+                    this.disconnectSse();
+                    this._scheduleReconnect();
+                });
+            } catch (e) {
+                // EventSource unsupported — leave connState as 'disconnected'.
+                console.warn('SSE unsupported:', e);
+            }
+        },
+
+        disconnectSse() {
+            if (this._sse) {
+                try { this._sse.close(); } catch (e) { /* ignore */ }
+                this._sse = null;
+            }
+        },
+
+        _scheduleReconnect() {
+            if (this._sseReconnectTimer) return;
+            const wait = Math.min(this._sseBackoffMs, 30_000);
+            this._sseBackoffMs = Math.min(this._sseBackoffMs * 2, 30_000);
+            this._sseReconnectTimer = window.setTimeout(() => {
+                this._sseReconnectTimer = null;
+                this.connectSse();
+            }, wait);
+        },
+
+        _onSseMessage(ev) {
+            let payload;
+            try {
+                payload = JSON.parse(ev.data);
+            } catch (e) {
+                console.warn('SSE payload parse failed', e);
+                return;
+            }
+            // Build a feed-row-shaped object so the renderer treats
+            // the new arrival like any /api/feed row.  Server-side
+            // _row_from_notification owns the canonical shape but the
+            // SSE payload already carries most fields; we hydrate the
+            // remaining ``render_kind`` discriminator client-side.
+            const row = {
+                kind: 'notification',
+                render_kind: this._classifyEvent(payload.event_type || ''),
+                event_type: payload.event_type,
+                summary_md: payload.summary_md,
+                body_md: payload.summary_md,
+                source_url: payload.source_url,
+                data_product_id: payload.source_data_product_id,
+                entity_kind: payload.source_entity_kind,
+                entity_ref: payload.source_entity_ref,
+                actor_user_id: payload.actor_user_id,
+                actor_display_name: payload.actor_display_name || null,
+                created_at: payload.created_at || new Date().toISOString(),
+                read_at: null,
+                _fresh: true,
+            };
+            this.bufferedRows.unshift(row);
+            this.newCount += 1;
+        },
+
+        _classifyEvent(eventType) {
+            if (!eventType) return 'notification';
+            if (eventType.indexOf('mentioned') !== -1 || eventType.indexOf('.mention') !== -1) {
+                return 'mention';
+            }
+            if (eventType.startsWith('pointlessql.agent_run.')) return 'agent_run';
+            if (eventType.startsWith('pointlessql.user.badge_')) return 'badge_award';
+            if (eventType.startsWith('pointlessql.issue.')) return 'issue';
+            if (eventType.startsWith('pointlessql.branch.')) return 'branch';
+            return 'notification';
         },
 
         setDensity(key) {
@@ -510,6 +614,17 @@ window.feedPage = function () {
             this.bufferedRows = [];
             this.newCount = 0;
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            // Drop the fresh-flag after the CSS animation completes
+            // (matches the 1.4s ``pql-feed-item-fresh`` keyframe).
+            window.setTimeout(() => {
+                this.rows = this.rows.map((r) => {
+                    if (r._fresh) {
+                        const { _fresh, ...rest } = r;
+                        return rest;
+                    }
+                    return r;
+                });
+            }, 1500);
         },
 
         iconForKind(kind) { return KIND_ICONS[kind] || 'bi-circle'; },
@@ -525,6 +640,7 @@ window.feedPage = function () {
                 'pql-feed-item--badge': rk === 'badge_award',
                 'pql-feed-item--issue': rk === 'issue',
                 'pql-feed-item--branch': rk === 'branch',
+                'pql-feed-item--fresh': !!r._fresh,
             };
         },
 
