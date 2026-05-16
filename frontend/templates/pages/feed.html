@@ -200,31 +200,107 @@
                             role="separator"
                             x-text="day.label"></h6>
                         <div class="d-flex flex-column gap-2">
-                            <template x-for="r in day.rows" :key="r.kind + ':' + r.created_at + ':' + r.event_type + ':' + (r.entity_ref || '')">
+                            <template x-for="r in day.rows" :key="r.kind + ':' + r.created_at + ':' + r.event_type + ':' + (r.entity_ref || '') + ':' + (r.comment_id || '')">
                                 <article class="card pql-feed-item pql-hover-lift"
                                          role="article"
-                                         :class="{
-                                             'pql-feed-item--unread': r.kind === 'notification' && !r.read_at,
-                                             'pql-feed-item--mention': r.event_type && r.event_type.indexOf('mentioned') !== -1
-                                         }">
-                                    <a class="card-body d-flex gap-3 align-items-start text-decoration-none text-reset"
-                                       :href="r.source_url || '#'">
-                                        <span class="pql-feed-item__avatar">
+                                         :class="itemClasses(r)">
+                                    <div class="card-body d-flex gap-3 align-items-start">
+
+                                        <span class="pql-feed-item__avatar"
+                                              :title="r.actor_display_name || ''">
                                             <i class="bi"
-                                               :class="iconForKind(r.entity_kind || r.kind)"></i>
+                                               :class="avatarIcon(r)"></i>
                                         </span>
+
                                         <div class="pql-feed-item__body">
+
+                                            {# Header line: actor + verb + entity link. #}
                                             <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
-                                                <span class="badge text-bg-secondary"
-                                                      x-text="kindLabel(r.entity_kind || r.kind)"></span>
+                                                <strong class="me-1"
+                                                        x-text="actorLabel(r)"></strong>
+                                                <span class="text-muted small me-1"
+                                                      x-text="verbLabel(r)"></span>
+                                                <a class="text-decoration-none"
+                                                   :href="r.source_url || '#'"
+                                                   x-text="entityLinkLabel(r)"></a>
+                                                <span class="badge text-bg-secondary ms-1"
+                                                      x-show="r.entity_kind"
+                                                      x-text="kindLabel(r.entity_kind)"></span>
                                                 <span class="text-muted small ms-auto pql-feed-item__meta"
                                                       x-text="pqlRelativeTime(r.created_at)"
                                                       :title="pqlAbsTime(r.created_at)"></span>
                                             </div>
-                                            <div class="pql-feed-item__snippet"
-                                                 x-text="r.summary_md || r.event_type"></div>
+
+                                            {# Review — star row + body snippet. #}
+                                            <template x-if="r.render_kind === 'review'">
+                                                <div>
+                                                    <div class="mb-1"
+                                                         :aria-label="(r.stars || 0) + ' of 5 stars'">
+                                                        <template x-for="i in 5" :key="i">
+                                                            <i class="bi"
+                                                               :class="i <= (r.stars || 0) ? 'bi-star-fill text-warning' : 'bi-star text-muted'"></i>
+                                                        </template>
+                                                    </div>
+                                                    <div class="pql-feed-item__snippet"
+                                                         x-text="r.body_md || ''"></div>
+                                                </div>
+                                            </template>
+
+                                            {# Comment / mention — blockquote with body. #}
+                                            <template x-if="r.render_kind === 'comment' || r.render_kind === 'mention'">
+                                                <blockquote class="blockquote mb-1 ps-2 pql-feed-item__snippet"
+                                                            style="font-size: 0.95rem; border-left: 3px solid var(--bs-border-color);"
+                                                            x-text="r.body_md || r.summary_md || ''"></blockquote>
+                                            </template>
+
+                                            {# Agent run — status pill + summary. #}
+                                            <template x-if="r.render_kind === 'agent_run'">
+                                                <div>
+                                                    <span class="badge"
+                                                          :class="r.event_type && r.event_type.endsWith('.failed') ? 'text-bg-danger' : 'text-bg-success'"
+                                                          x-text="r.event_type && r.event_type.endsWith('.failed') ? 'Failed' : 'Completed'"></span>
+                                                    <span class="ms-2 text-muted small"
+                                                          x-text="r.summary_md || ''"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Badge award — celebration treatment. #}
+                                            <template x-if="r.render_kind === 'badge_award'">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="bi bi-award-fill text-warning fs-4"></i>
+                                                    <span x-text="r.summary_md || 'New badge earned'"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Issue lifecycle — status badge + title. #}
+                                            <template x-if="r.render_kind === 'issue'">
+                                                <div>
+                                                    <span class="badge"
+                                                          :class="issueBadgeClass(r.event_type)"
+                                                          x-text="issueBadgeLabel(r.event_type)"></span>
+                                                    <span class="ms-2"
+                                                          x-text="r.summary_md || ''"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Branch lifecycle — verb chip + summary. #}
+                                            <template x-if="r.render_kind === 'branch'">
+                                                <div>
+                                                    <span class="badge text-bg-info"
+                                                          x-text="branchVerb(r.event_type)"></span>
+                                                    <span class="ms-2"
+                                                          x-text="r.summary_md || ''"></span>
+                                                </div>
+                                            </template>
+
+                                            {# Generic notification fallback. #}
+                                            <template x-if="r.render_kind === 'notification' || !r.render_kind">
+                                                <div class="pql-feed-item__snippet"
+                                                     x-text="r.summary_md || r.event_type"></div>
+                                            </template>
+
                                         </div>
-                                    </a>
+                                    </div>
                                 </article>
                             </template>
                         </div>
@@ -438,6 +514,84 @@ window.feedPage = function () {
 
         iconForKind(kind) { return KIND_ICONS[kind] || 'bi-circle'; },
         kindLabel(kind) { return KIND_LABELS[kind] || kind; },
+
+        // Item-level helpers (Phase 81.K.2).
+        itemClasses(r) {
+            const rk = r.render_kind || r.kind;
+            return {
+                'pql-feed-item--unread': r.kind === 'notification' && !r.read_at,
+                'pql-feed-item--mention': rk === 'mention',
+                'pql-feed-item--agent-run': rk === 'agent_run',
+                'pql-feed-item--badge': rk === 'badge_award',
+                'pql-feed-item--issue': rk === 'issue',
+                'pql-feed-item--branch': rk === 'branch',
+            };
+        },
+
+        avatarIcon(r) {
+            const rk = r.render_kind || r.kind;
+            if (rk === 'agent_run') return 'bi-robot';
+            if (rk === 'badge_award') return 'bi-award-fill';
+            if (rk === 'issue') return 'bi-bug';
+            if (rk === 'branch') return 'bi-bezier2';
+            if (r.actor_user_id) return 'bi-person-circle';
+            return this.iconForKind(r.entity_kind || r.kind);
+        },
+
+        actorLabel(r) {
+            if (r.actor_display_name) return r.actor_display_name;
+            const rk = r.render_kind || r.kind;
+            if (rk === 'agent_run') return 'Agent run';
+            if (rk === 'badge_award') return 'System';
+            if (rk === 'issue') return 'Issue';
+            if (rk === 'branch') return 'Branch';
+            return 'Activity';
+        },
+
+        verbLabel(r) {
+            const rk = r.render_kind || r.kind;
+            if (rk === 'comment') return 'commented on';
+            if (rk === 'review') return 'reviewed';
+            if (rk === 'mention') return 'mentioned you in';
+            if (rk === 'agent_run') {
+                return r.event_type && r.event_type.endsWith('.failed')
+                    ? 'failed on' : 'completed on';
+            }
+            if (rk === 'badge_award') return 'earned a badge for';
+            if (rk === 'issue') return 'on';
+            if (rk === 'branch') return 'on';
+            return '';
+        },
+
+        entityLinkLabel(r) {
+            if (r.entity_ref) return r.entity_ref;
+            if (r.entity_kind) return this.kindLabel(r.entity_kind);
+            return 'open';
+        },
+
+        issueBadgeClass(eventType) {
+            if (!eventType) return 'text-bg-secondary';
+            if (eventType.endsWith('.opened')) return 'text-bg-success';
+            if (eventType.endsWith('.closed')) return 'text-bg-secondary';
+            if (eventType.endsWith('.resolved')) return 'text-bg-primary';
+            return 'text-bg-secondary';
+        },
+
+        issueBadgeLabel(eventType) {
+            if (!eventType) return 'Issue';
+            if (eventType.endsWith('.opened')) return 'Opened';
+            if (eventType.endsWith('.closed')) return 'Closed';
+            if (eventType.endsWith('.resolved')) return 'Resolved';
+            return 'Updated';
+        },
+
+        branchVerb(eventType) {
+            if (!eventType) return 'Branch';
+            if (eventType.endsWith('.created')) return 'Created';
+            if (eventType.endsWith('.promoted')) return 'Promoted';
+            if (eventType.endsWith('.discarded')) return 'Discarded';
+            return 'Updated';
+        },
 
         get groupedDays() {
             const todayStart = _todayStart();

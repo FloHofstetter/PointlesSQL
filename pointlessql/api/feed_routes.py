@@ -27,6 +27,7 @@ from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
+from pointlessql.models.auth import User
 from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
@@ -59,25 +60,77 @@ def _dp_url_from_id(fqn_map: dict[int, str], dp_id: int | None) -> str:
     return entity_registry.url_for("dp", fqn)
 
 
+def _classify_notification(event_type: str) -> str:
+    """Map a ``user_notifications.event_type`` to a feed render kind.
+
+    Phase 81.K.2 — the renderer wants a coarser bucket than the dotted
+    event-type string so per-kind Alpine branches stay readable.
+    ``mentioned`` substrings light up the mention treatment, the rest
+    map by prefix.  Unknown event types fall through to the generic
+    notification card.
+
+    Args:
+        event_type: ``pointlessql.<scope>.<verb>`` event identifier.
+
+    Returns:
+        One of ``mention``, ``agent_run``, ``badge_award``, ``issue``,
+        ``branch``, ``notification``.
+    """
+    if not event_type:
+        return "notification"
+    if "mentioned" in event_type or ".mention" in event_type:
+        return "mention"
+    if event_type.startswith("pointlessql.agent_run."):
+        return "agent_run"
+    if event_type.startswith("pointlessql.user.badge_"):
+        return "badge_award"
+    if event_type.startswith("pointlessql.issue."):
+        return "issue"
+    if event_type.startswith("pointlessql.branch."):
+        return "branch"
+    return "notification"
+
+
 def _row_from_notification(
-    row: UserNotification, fqn_map: dict[int, str]
+    row: UserNotification,
+    fqn_map: dict[int, str],
+    actor_names: dict[int, str],
 ) -> dict[str, Any]:
-    """Normalise a ``UserNotification`` to the feed row shape."""
-    # Phase 77.0.D / 77.0.I — polymorphic source_url:
-    # rows fanned out via fanout_event already carry a
-    # source_url that the dispatcher built, so prefer that.
+    """Normalise a ``UserNotification`` to the feed row shape.
+
+    Phase 81.K.2 adds the coarse ``render_kind`` discriminator + actor
+    display-name resolution so the Alpine renderer can branch on a
+    single field instead of substring-matching ``event_type``.
+
+    Args:
+        row: The notification row.
+        fqn_map: ``{dp_id: 'cat.sch'}`` cache for DP-URL fallback.
+        actor_names: ``{user_id: display_name}`` cache built once
+            per feed request.
+
+    Returns:
+        Feed-row dict ready for JSON serialisation.
+    """
     source_url = row.source_url or _dp_url_from_id(
         fqn_map, row.source_data_product_id
     )
+    render_kind = _classify_notification(row.event_type or "")
     return {
         "kind": "notification",
+        "render_kind": render_kind,
         "event_type": row.event_type,
         "summary_md": row.summary_md,
+        "body_md": row.summary_md,
         "source_url": source_url,
         "data_product_id": row.source_data_product_id,
         "entity_kind": row.source_entity_kind,
         "entity_ref": row.source_entity_ref,
         "actor_user_id": row.actor_user_id,
+        "actor_display_name": (
+            actor_names.get(int(row.actor_user_id))
+            if row.actor_user_id is not None
+            else None
+        ),
         "created_at": row.created_at.isoformat(),
         "read_at": row.read_at.isoformat() if row.read_at else None,
     }
@@ -86,19 +139,19 @@ def _row_from_notification(
 def _row_from_comment(
     comment: DataProductComment,
     fqn_map: dict[int, str],
+    actor_names: dict[int, str],
     target: SocialTarget | None = None,
 ) -> dict[str, Any]:
     """Normalise a comment to the feed row shape.
 
-    Phase 77.9 — when *target* is supplied, the row's
-    ``entity_kind``/``entity_ref`` + ``source_url`` come from the
-    polymorphic anchor row.  When *target* is ``None`` (legacy
-    fast-path) we fall back to the DP-only kind/ref reconstruction
-    used pre-77.9.
+    Phase 81.K.2 carries the full ``body_md`` (Alpine truncates +
+    "Show more"), ``actor_display_name``, ``comment_id``, and a
+    ``render_kind`` of ``comment`` for the per-kind renderer.
 
     Args:
         comment: The comment row to normalise.
         fqn_map: ``{dp_id: 'cat.sch'}`` cache for the DP fallback.
+        actor_names: ``{user_id: display_name}`` cache.
         target: Optional joined ``social_targets`` row.
 
     Returns:
@@ -118,13 +171,17 @@ def _row_from_comment(
         source_url = _dp_url_from_id(fqn_map, dp_id)
     return {
         "kind": "comment",
+        "render_kind": "comment",
         "event_type": "pointlessql.data_product.commented",
         "summary_md": comment.body_md[:160],
+        "body_md": comment.body_md,
+        "comment_id": comment.id,
         "source_url": source_url,
         "data_product_id": dp_id,
         "entity_kind": entity_kind,
         "entity_ref": entity_ref,
         "actor_user_id": comment.author_user_id,
+        "actor_display_name": actor_names.get(int(comment.author_user_id)),
         "created_at": comment.created_at.isoformat(),
         "read_at": None,
     }
@@ -133,21 +190,24 @@ def _row_from_comment(
 def _row_from_review(
     review: DataProductReview,
     fqn_map: dict[int, str],
+    actor_names: dict[int, str],
     target: SocialTarget | None = None,
 ) -> dict[str, Any]:
     """Normalise a review to the feed row shape.
 
-    Phase 77.9 — same shape as :func:`_row_from_comment`: when
-    *target* is supplied the polymorphic anchor drives the URL +
-    kind/ref; otherwise the DP-only legacy reconstruction kicks in.
+    Phase 81.K.2 carries ``stars`` as a separate integer field
+    (Alpine renders the actual stars row), full ``body_md``, and
+    ``actor_display_name`` for the per-kind renderer.
 
     Args:
         review: The review row to normalise.
         fqn_map: ``{dp_id: 'cat.sch'}`` cache for the DP fallback.
+        actor_names: ``{user_id: display_name}`` cache.
         target: Optional joined ``social_targets`` row.
 
     Returns:
-        Feed-row dict with the same shape as the comment row.
+        Feed-row dict with the same shape as the comment row, plus
+        a top-level ``stars`` integer.
     """
     dp_id = review.data_product_id
     if target is not None:
@@ -162,16 +222,54 @@ def _row_from_review(
         source_url = _dp_url_from_id(fqn_map, dp_id)
     return {
         "kind": "review",
+        "render_kind": "review",
         "event_type": "pointlessql.data_product.reviewed",
         "summary_md": f"{'★' * review.stars} — {review.body_md[:120]}",
+        "body_md": review.body_md,
+        "stars": int(review.stars),
         "source_url": source_url,
         "data_product_id": dp_id,
         "entity_kind": entity_kind,
         "entity_ref": entity_ref,
         "actor_user_id": review.author_user_id,
+        "actor_display_name": actor_names.get(int(review.author_user_id)),
         "created_at": review.created_at.isoformat(),
         "read_at": None,
     }
+
+
+def _build_actor_names(
+    session: Any, rows_iter: Any
+) -> dict[int, str]:
+    """Resolve ``{user_id: display_name}`` for actors in a row batch.
+
+    Phase 81.K.2 — the renderer needs actor display names to attribute
+    feed items.  Building the map once per request avoids one query
+    per row.  Pass any iterable of ``actor_user_id``-bearing objects
+    (UserNotification, DataProductComment, DataProductReview); the
+    function de-duplicates and returns only the ids it found.
+
+    Args:
+        session: SQLAlchemy session.
+        rows_iter: Iterable of ORM rows carrying ``actor_user_id`` or
+            ``author_user_id``.
+
+    Returns:
+        Dict mapping user-id to display-name.  Missing ids are simply
+        absent; callers ``.get`` with a fallback.
+    """
+    ids: set[int] = set()
+    for r in rows_iter:
+        for attr in ("actor_user_id", "author_user_id"):
+            v = getattr(r, attr, None)
+            if v is not None:
+                ids.add(int(v))
+    if not ids:
+        return {}
+    pairs = session.execute(
+        select(User.id, User.display_name).where(User.id.in_(ids))
+    ).all()
+    return {int(uid): str(name) for uid, name in pairs}
 
 
 def _build_fqn_map(session: Any, workspace_id: int) -> dict[int, str]:
@@ -252,7 +350,6 @@ async def get_feed(
             .scalars()
             .all()
         )
-        rows.extend(_row_from_notification(n, fqn_map) for n in inbox)
 
         # Followed-users overlay (comments + reviews).
         followed_user_ids: list[int] = [
@@ -263,6 +360,8 @@ async def get_feed(
                 )
             ).all()
         ]
+        comments_rows: list[Any] = []
+        reviews_rows: list[Any] = []
         if followed_user_ids:
             # Phase 77.9 — JOIN the polymorphic anchor so cross-kind
             # comments + reviews flow into the feed with the right
@@ -281,10 +380,6 @@ async def get_feed(
                 .order_by(DataProductComment.created_at.desc())
                 .limit(limit)
             ).all()
-            rows.extend(
-                _row_from_comment(c, fqn_map, t) for c, t in comments_rows
-            )
-
             reviews_rows = session.execute(
                 select(DataProductReview, SocialTarget)
                 .outerjoin(
@@ -298,9 +393,28 @@ async def get_feed(
                 .order_by(DataProductReview.created_at.desc())
                 .limit(limit)
             ).all()
-            rows.extend(
-                _row_from_review(r, fqn_map, t) for r, t in reviews_rows
-            )
+
+        # Phase 81.K.2 — bulk-resolve actor display names so every
+        # feed row carries an attribution line.  One SELECT for all
+        # actor + author user-ids surfaced above.
+        actor_names = _build_actor_names(
+            session,
+            list(inbox)
+            + [c for c, _ in comments_rows]
+            + [r for r, _ in reviews_rows],
+        )
+
+        rows.extend(
+            _row_from_notification(n, fqn_map, actor_names) for n in inbox
+        )
+        rows.extend(
+            _row_from_comment(c, fqn_map, actor_names, t)
+            for c, t in comments_rows
+        )
+        rows.extend(
+            _row_from_review(r, fqn_map, actor_names, t)
+            for r, t in reviews_rows
+        )
 
         # Mentions filter — resolve to the user's id and check
         # ``mentioned_user_ids_json``.  Authored ``my`` filter
@@ -318,6 +432,7 @@ async def get_feed(
                 .scalars()
                 .all()
             )
+            mention_actor_names = _build_actor_names(session, mentions)
             mention_rows: list[dict[str, Any]] = []
             for c in mentions:
                 try:
@@ -325,7 +440,9 @@ async def get_feed(
                 except (ValueError, TypeError):
                     mentioned = []
                 if caller["id"] in mentioned:
-                    mention_rows.append(_row_from_comment(c, fqn_map, None))
+                    mention_rows.append(
+                        _row_from_comment(c, fqn_map, mention_actor_names, None)
+                    )
             rows = mention_rows
         elif filter == "my":
             mine_comments = (
@@ -351,9 +468,16 @@ async def get_feed(
                 .scalars()
                 .all()
             )
+            my_actor_names = _build_actor_names(
+                session, list(mine_comments) + list(mine_reviews)
+            )
             rows = [
-                _row_from_comment(c, fqn_map, None) for c in mine_comments
-            ] + [_row_from_review(r, fqn_map, None) for r in mine_reviews]
+                _row_from_comment(c, fqn_map, my_actor_names, None)
+                for c in mine_comments
+            ] + [
+                _row_from_review(r, fqn_map, my_actor_names, None)
+                for r in mine_reviews
+            ]
         elif filter == "followed_users":
             rows = [r for r in rows if r["kind"] in ("comment", "review")]
         elif filter == "followed_dps":
@@ -364,12 +488,13 @@ async def get_feed(
     if needle:
         rows = [r for r in rows if needle in (r.get("summary_md") or "").lower()]
 
-    # Phase 77.9 — kind-filter narrows the result set to a single
-    # ``entity_kind`` value.  Rows whose entity_kind doesn't match
-    # drop out before de-duplication.  An empty / unknown kind is
-    # a no-op so callers can pass ``?kind=`` to disable.
+    # Phase 81.K.2 — kind-filter accepts a comma-separated list of
+    # entity-kind values; rows pass when any selected kind matches.
+    # A single value keeps the Phase 77.9 single-kind behaviour.
     if kind:
-        rows = [r for r in rows if r.get("entity_kind") == kind]
+        wanted_kinds = {k.strip() for k in kind.split(",") if k.strip()}
+        if wanted_kinds:
+            rows = [r for r in rows if r.get("entity_kind") in wanted_kinds]
 
     rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
 

@@ -46,10 +46,11 @@ def test_row_from_comment_uses_target_when_supplied() -> None:
         author_user_id=1,
         created_at=datetime.datetime.now(datetime.UTC),
     )
-    row = _row_from_comment(comment, {}, target)
+    row = _row_from_comment(comment, {}, {1: "Alice"}, target)
     assert row["entity_kind"] == "table"
     assert row["entity_ref"] == "m.s.t"
     assert row["source_url"] == "/catalogs/m/schemas/s/tables/t"
+    assert row["actor_display_name"] == "Alice"
 
 
 def test_row_from_comment_falls_back_to_dp_when_no_target() -> None:
@@ -62,7 +63,7 @@ def test_row_from_comment_falls_back_to_dp_when_no_target() -> None:
         author_user_id=1,
         created_at=datetime.datetime.now(datetime.UTC),
     )
-    row = _row_from_comment(comment, {1: "main.sales"}, None)
+    row = _row_from_comment(comment, {1: "main.sales"}, {}, None)
     assert row["entity_kind"] == "dp"
     assert row["entity_ref"] == "main.sales"
     assert row["source_url"] == "/data-products/main/sales"
@@ -82,9 +83,11 @@ def test_row_from_review_uses_target_when_supplied() -> None:
         author_user_id=1,
         created_at=datetime.datetime.now(datetime.UTC),
     )
-    row = _row_from_review(review, {}, target)
+    row = _row_from_review(review, {}, {1: "Bob"}, target)
     assert row["entity_kind"] == "model"
     assert row["source_url"] == "/models/m.s.n"
+    assert row["stars"] == 5
+    assert row["actor_display_name"] == "Bob"
 
 
 @pytest.mark.asyncio
@@ -121,7 +124,25 @@ async def test_feed_kind_filter_narrows_to_table(
     body = res.json()
     assert body["kind"] == "table"
     kinds = {r.get("entity_kind") for r in body["rows"]}
-    assert kinds.issubset({"table", None})
+    assert kinds.issubset({"table"})
+
+
+@pytest.mark.asyncio
+async def test_feed_kind_filter_accepts_comma_separated(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Phase 81.K.2 — ``?kind=table,model`` keeps either kind."""
+    await admin_client.post(
+        "/api/social/table/main.sales.orders/comments",
+        json={"body_md": "kind-comma-table fixture"},
+    )
+    res = await admin_client.get(
+        "/api/feed?filter=my&kind=table,model&limit=200"
+    )
+    assert res.status_code == 200
+    body = res.json()
+    kinds = {r.get("entity_kind") for r in body["rows"]}
+    assert kinds.issubset({"table", "model"})
 
 
 @pytest.mark.asyncio
@@ -140,10 +161,16 @@ async def test_feed_kind_filter_dp_keeps_legacy_view(
     assert all(k in (None, "dp") for k in kinds)
 
 
-def test_feed_html_carries_kind_pill_row() -> None:
-    """``feed.html`` renders the kind-pill row + ``setKindFilter`` JS."""
+def test_feed_html_carries_kind_filter_dropdown() -> None:
+    """``feed.html`` renders the multi-select kind dropdown (Phase 81.K.1).
+
+    Phase 81.K replaced the flat pill row with a checkbox-list
+    dropdown driven by ``kindFilter`` (array) and ``kindOptions``.
+    Every entity kind the registry exposes must still appear so
+    newly-registered kinds light up without code change.
+    """
     body = (_TEMPLATES_ROOT / "pages/feed.html").read_text()
-    assert "pql-feed-kind-pills" in body
-    assert "setKindFilter" in body
+    assert "pql-feed-kind-menu" in body
+    assert "kindOptions" in body
     assert "'dp'" in body and "'table'" in body and "'model'" in body
     assert "'notebook'" in body and "'saved_query'" in body
