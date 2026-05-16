@@ -1,0 +1,201 @@
+/* ---------------------------------------------------------------
+ * Feed page — Phase 81.K.
+ *
+ * The /feed page used to render a flat list-group of one-line
+ * activity rows.  81.K rebuilds it as a card-based, day-grouped,
+ * three-column layout (xl+) with a sticky filter bar.  Rules here
+ * cover the chrome that surrounds the feed; per-kind item rendering
+ * lives in the macros and only needs structural classes from this
+ * file.
+ *
+ * Selectors all carry the ``pql-feed-*`` namespace so they cannot
+ * leak into the rest of the app via accidental cascade.
+ * ------------------------------------------------------------- */
+
+/* Sticky filter bar — sits below the topbar.  The blur effect lets
+ * the page content show through subtly while keeping the bar
+ * legible on top of any feed item that scrolls underneath. */
+.pql-feed-filter-bar {
+    position: sticky;
+    top: var(--pql-topbar-height);
+    z-index: 5;
+    background-color: rgba(var(--bs-body-bg-rgb), 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0.6rem 1rem;
+}
+
+/* Day-separator header.  Stacks under the filter bar via a second
+ * sticky offset so the bar never gets covered.  The 56 + 60 px
+ * offset is the topbar + the filter bar's resting height; eyeballed
+ * because the filter bar reflows on resize and a custom property
+ * would over-engineer a single edge case. */
+.pql-feed-day-header {
+    position: sticky;
+    top: calc(var(--pql-topbar-height) + 3.4rem);
+    z-index: 3;
+    background-color: rgba(var(--bs-tertiary-bg-rgb), 0.95);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    margin: 0;
+    border-radius: var(--pql-radius-sm);
+}
+
+/* Feed item card.  Uses Bootstrap .card + .pql-hover-lift; this
+ * adds the unread-stripe slot and the per-kind tint variants. */
+.pql-feed-item {
+    position: relative;
+    border-left: 3px solid transparent;
+    color: inherit;
+    text-decoration: none;
+}
+.pql-feed-item:hover {
+    text-decoration: none;
+    color: inherit;
+}
+
+.pql-feed-item--unread {
+    border-left-color: var(--pql-color-accent);
+}
+.pql-feed-item--mention {
+    border-left-color: var(--bs-warning);
+    background-color: var(--bs-warning-bg-subtle);
+}
+.pql-feed-item--agent-run {
+    border-left-color: var(--bs-info);
+}
+.pql-feed-item--badge {
+    border-left-color: var(--bs-warning);
+}
+.pql-feed-item--issue {
+    border-left-color: var(--bs-primary);
+}
+.pql-feed-item--branch {
+    border-left-color: var(--bs-secondary);
+}
+
+/* Layout slots inside a feed item card body. */
+.pql-feed-item__avatar {
+    flex: 0 0 2.25rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--pql-radius-pill);
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 1.2rem;
+}
+.pql-feed-item__body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.pql-feed-item__meta {
+    font-size: var(--pql-text-xs);
+    color: var(--bs-secondary-color);
+}
+
+/* Truncated comment / review body — multi-line clamp. */
+.pql-feed-item__snippet {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--bs-body-color);
+}
+.pql-feed-item__snippet--expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+}
+
+/* "Show more" / "Show less" trigger inside truncated snippets. */
+.pql-feed-item__more {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--bs-link-color);
+    font-size: var(--pql-text-xs);
+    cursor: pointer;
+}
+.pql-feed-item__more:hover {
+    text-decoration: underline;
+}
+
+/* The "X new since you opened this page" banner — sticky pulse. */
+.pql-feed-new-banner {
+    position: sticky;
+    top: calc(var(--pql-topbar-height) + 3.4rem + 2rem);
+    z-index: 4;
+    margin-bottom: 0.75rem;
+}
+.pql-feed-new-banner button.btn-link {
+    color: inherit;
+    text-decoration: underline;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+/* Fresh-item highlight — fades to transparent over 1.4s.  Applied
+ * by feed.js when an SSE event lands; class is removed after the
+ * animation completes so subsequent re-renders don't re-trigger. */
+@keyframes pql-feed-item-fresh {
+    0%   { background-color: var(--pql-color-success-bg); }
+    100% { background-color: transparent; }
+}
+.pql-feed-item--fresh {
+    animation: pql-feed-item-fresh 1.4s ease-out 1;
+}
+
+/* Keyboard-nav focus indicator (C7 will set this from feed.js). */
+.pql-feed-item--focused {
+    box-shadow: 0 0 0 2px var(--pql-color-accent);
+}
+
+/* Density modes (C7 toggles a class on the feed root). */
+.pql-feed--compact .pql-feed-item__snippet {
+    -webkit-line-clamp: 1;
+}
+.pql-feed--compact .pql-feed-item__reactions {
+    display: none;
+}
+.pql-feed--headlines .pql-feed-item__snippet,
+.pql-feed--headlines .pql-feed-item__reactions {
+    display: none;
+}
+.pql-feed--headlines .pql-feed-item__avatar {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-basis: 1.5rem;
+    font-size: 0.9rem;
+}
+.pql-feed--headlines .card-body {
+    padding: 0.45rem 0.75rem;
+}
+
+/* Connection-state dot in the filter bar. */
+.pql-feed-conn-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    display: inline-block;
+    background-color: var(--bs-success);
+}
+.pql-feed-conn-dot--reconnecting {
+    background-color: var(--bs-warning);
+}
+.pql-feed-conn-dot--disconnected {
+    background-color: var(--bs-danger);
+}
+
+/* Reduced-motion overrides — disable lift, fresh-fade and any
+ * incidental transitions. */
+@media (prefers-reduced-motion: reduce) {
+    .pql-feed-item--fresh {
+        animation: none;
+    }
+}

@@ -8,125 +8,461 @@
 {% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
 
 {% block content %}
-<div x-data="feedPage()" x-init="init()">
+<div x-data="feedPage()" x-init="init()" :class="density === 'comfortable' ? '' : ('pql-feed--' + density)">
 
-    <div class="d-flex align-items-center gap-2 mb-3">
+    {# Hero row — title + counts + page actions. #}
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <i class="bi bi-rss fs-3"></i>
         <h1 class="h3 mb-0">Feed</h1>
-        <a class="btn btn-sm btn-outline-secondary ms-auto" href="/settings/notifications">
-            <i class="bi bi-gear me-1"></i>Notification settings
-        </a>
-    </div>
-
-    <div class="d-flex flex-wrap gap-2 mb-3 pql-feed-filters">
-        <template x-for="f in filters" :key="f.key">
-            <button class="btn btn-sm pql-feed-filter"
-                    :class="filter === f.key ? 'btn-primary' : 'btn-outline-secondary'"
-                    :data-filter="f.key"
-                    @click="setFilter(f.key)"
-                    x-text="f.label"></button>
-        </template>
-        <input class="form-control form-control-sm w-auto ms-2 pql-feed-search"
-               x-model="searchDraft"
-               @keyup.enter="reload()"
-               placeholder="Search…">
-    </div>
-
-    {# Phase 77.9 — kind-pill row narrows the polymorphic feed to a
-       single ``entity_kind``.  Pills come from the entity registry
-       so newly-registered kinds light up automatically. #}
-    <div class="d-flex flex-wrap gap-1 mb-3 pql-feed-kind-pills">
-        <template x-for="k in kindPills" :key="k.key">
-            <button class="btn btn-sm pql-feed-kind-pill"
-                    :class="kindFilter === k.key ? 'btn-primary' : 'btn-outline-secondary'"
-                    :data-kind="k.key"
-                    @click="setKindFilter(k.key)"
-                    x-text="k.label"></button>
-        </template>
-    </div>
-
-    <template x-if="!loaded">
-        <div class="placeholder-glow pql-feed-skeleton" aria-hidden="true">
-            <div class="placeholder col-7 mb-2"></div>
-            <div class="placeholder col-9 mb-2"></div>
-            <div class="placeholder col-5"></div>
+        <span class="text-muted small ms-2"
+              x-show="loaded"
+              x-text="rows.length + ' items'"></span>
+        <span class="badge bg-primary ms-2 pql-feed-new-pill"
+              x-show="newCount > 0"
+              data-pql-badge-pulse="1"
+              x-text="newCount + ' new'"></span>
+        <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    @click="markAllRead()"
+                    title="Mark every item read">
+                <i class="bi bi-check2-all me-1"></i>Mark all read
+            </button>
+            <a class="btn btn-sm btn-outline-secondary" href="/settings/notifications">
+                <i class="bi bi-gear me-1"></i>Notification settings
+            </a>
         </div>
-    </template>
-    <template x-if="loaded && rows.length === 0">
-        <div>
-            {% with icon="bi-newspaper",
-                   title="No activity yet",
-                   message="The workspace feed will populate as teammates author notebooks, leave reviews, and follow data products.",
-                   action_href="/topics", action_label="Browse topics" %}
-            {% include "components/empty.html" %}
-            {% endwith %}
+    </div>
+
+    {# Sticky filter bar — segmented pills, kind dropdown, search,
+       density toggle.  Below xl the kind dropdown collapses into a
+       compact-icon trigger; below md the density toggle hides. #}
+    <div class="pql-feed-filter-bar mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            {# For You / Mentions / My / Following — segmented pills. #}
+            <ul class="nav nav-pills nav-pills-sm pql-feed-segments" role="tablist">
+                <template x-for="f in filters" :key="f.key">
+                    <li class="nav-item" role="presentation">
+                        <button type="button"
+                                class="nav-link py-1 px-2"
+                                :class="filter === f.key ? 'active' : ''"
+                                :data-filter="f.key"
+                                @click="setFilter(f.key)">
+                            <i class="bi" :class="f.icon"></i>
+                            <span class="ms-1 d-none d-sm-inline" x-text="f.label"></span>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+
+            {# Kind multi-select dropdown.  Replaces the flat pill row;
+               each kind is a checkbox so users can intersect kinds. #}
+            <div class="dropdown">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                        data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside"
+                        aria-expanded="false">
+                    <i class="bi bi-funnel me-1"></i>Kinds
+                    <span class="badge bg-secondary ms-1"
+                          x-show="kindFilter.length > 0"
+                          x-text="kindFilter.length"></span>
+                </button>
+                <ul class="dropdown-menu p-2 pql-feed-kind-menu" style="min-width: 14rem;">
+                    <li class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted">Filter by kind</span>
+                        <button type="button"
+                                class="btn btn-link btn-sm p-0"
+                                @click="kindFilter = []; reload()"
+                                x-show="kindFilter.length > 0">Clear</button>
+                    </li>
+                    <template x-for="k in kindOptions" :key="k.key">
+                        <li>
+                            <label class="dropdown-item d-flex align-items-center gap-2 px-2">
+                                <input type="checkbox"
+                                       class="form-check-input m-0"
+                                       :value="k.key"
+                                       x-model="kindFilter"
+                                       @change="reload()">
+                                <i class="bi" :class="k.icon"></i>
+                                <span x-text="k.label"></span>
+                            </label>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+
+            {# Search — Enter triggers reload; uses listTable's 300ms
+               debounce pattern but kept inline since this is the only
+               search on the page. #}
+            <input type="search"
+                   class="form-control form-control-sm w-auto pql-feed-search"
+                   x-model="searchDraft"
+                   @input.debounce.300ms="reload()"
+                   @keyup.enter="reload()"
+                   placeholder="Search activity…"
+                   aria-label="Search activity">
+
+            {# Density toggle.  localStorage-backed; restored on init. #}
+            <div class="btn-group btn-group-sm d-none d-md-inline-flex ms-auto"
+                 role="group"
+                 aria-label="Item density">
+                <template x-for="opt in densityOptions" :key="opt.key">
+                    <button type="button"
+                            class="btn"
+                            :class="density === opt.key ? 'btn-secondary' : 'btn-outline-secondary'"
+                            @click="setDensity(opt.key)"
+                            :title="opt.label">
+                        <i class="bi" :class="opt.icon"></i>
+                    </button>
+                </template>
+            </div>
+
+            {# Trending button — visible below xl when the right
+               column is hidden.  Opens the context offcanvas. #}
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary d-xl-none"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#pql-feed-context-drawer"
+                    aria-controls="pql-feed-context-drawer"
+                    title="Trending + suggestions">
+                <i class="bi bi-graph-up-arrow"></i>
+            </button>
+
+            {# Connection state dot — feed.js (C3) toggles class. #}
+            <span class="pql-feed-conn-dot ms-2"
+                  :class="connState === 'connected' ? ''
+                          : (connState === 'reconnecting' ? 'pql-feed-conn-dot--reconnecting' : 'pql-feed-conn-dot--disconnected')"
+                  :title="connState === 'connected' ? 'Live updates connected'
+                         : (connState === 'reconnecting' ? 'Reconnecting…' : 'Live updates offline')"
+                  aria-hidden="true"></span>
         </div>
-    </template>
-    <ul class="list-group pql-feed-rows" x-show="loaded && rows.length > 0">
-        <template x-for="r in rows" :key="r.kind + ':' + r.created_at + ':' + r.event_type">
-            <li class="list-group-item d-flex gap-2 align-items-start">
-                <span class="badge bg-secondary pql-feed-kind" x-text="r.kind"></span>
-                <div class="flex-grow-1">
-                    <a class="pql-feed-row-link" :href="r.source_url || '#'" x-text="r.summary_md || r.event_type"></a>
+    </div>
+
+    {# Three-column grid — feed in col-xl-9, context in col-xl-3.
+       Context column collapses into an offcanvas below xl. #}
+    <div class="row g-3">
+        <div class="col-12 col-xl-9">
+
+            {# Live "X new" banner — drained on click.  Visible only
+               when SSE has buffered events not yet merged. #}
+            <div class="alert alert-primary alert-dismissible pql-feed-new-banner"
+                 x-show="newCount > 0"
+                 x-cloak
+                 data-pql-badge-pulse="1"
+                 role="status"
+                 aria-live="polite">
+                <button type="button" class="btn btn-link" @click="drainBuffered()">
+                    <span x-text="newCount"></span> new — click to load
+                </button>
+                <button type="button"
+                        class="btn-close"
+                        @click="newCount = 0; bufferedRows = []"
+                        aria-label="Dismiss"></button>
+            </div>
+
+            {# Loading skeleton — used only on first paint; future
+               navigations use the boost-nav loading_skeleton.js. #}
+            <template x-if="!loaded">
+                <div class="placeholder-glow pql-feed-skeleton" aria-hidden="true">
+                    <div class="placeholder col-7 mb-2" style="height: 1rem;"></div>
+                    <div class="placeholder col-9 mb-2" style="height: 1rem;"></div>
+                    <div class="placeholder col-5 mb-3" style="height: 1rem;"></div>
+                    <div class="placeholder col-8 mb-2" style="height: 1rem;"></div>
+                    <div class="placeholder col-10 mb-2" style="height: 1rem;"></div>
                 </div>
-                <span class="text-muted small pql-feed-row-time"
-                      x-text="pqlRelativeTime(r.created_at)"
-                      :title="pqlAbsTime(r.created_at)"></span>
-            </li>
-        </template>
-    </ul>
+            </template>
+
+            {# Empty state — chosen by Alpine based on active filter
+               (C8 expands the copy variants; C1 ships the All-fallback). #}
+            <template x-if="loaded && rows.length === 0">
+                <div>
+                    {% with icon="bi-newspaper",
+                           title="No activity yet",
+                           message="The workspace feed will populate as teammates author notebooks, leave reviews, and follow data products.",
+                           action_href="/topics", action_label="Browse topics" %}
+                    {% include "components/empty.html" %}
+                    {% endwith %}
+                </div>
+            </template>
+
+            {# Day-grouped feed — Alpine computed ``groupedDays``
+               returns ``[{iso, label, rows: [...]}, ...]`` sorted
+               newest-first; "Today" / "Yesterday" / weekday / "Earlier"
+               labels are localised at render time. #}
+            <div class="pql-feed-rows"
+                 role="feed"
+                 aria-busy="false"
+                 x-show="loaded && rows.length > 0">
+                <template x-for="day in groupedDays" :key="day.iso">
+                    <section class="mb-3">
+                        <h6 class="pql-feed-day-header py-2 px-2 text-uppercase small text-muted mb-2"
+                            role="separator"
+                            x-text="day.label"></h6>
+                        <div class="d-flex flex-column gap-2">
+                            <template x-for="r in day.rows" :key="r.kind + ':' + r.created_at + ':' + r.event_type + ':' + (r.entity_ref || '')">
+                                <article class="card pql-feed-item pql-hover-lift"
+                                         role="article"
+                                         :class="{
+                                             'pql-feed-item--unread': r.kind === 'notification' && !r.read_at,
+                                             'pql-feed-item--mention': r.event_type && r.event_type.indexOf('mentioned') !== -1
+                                         }">
+                                    <a class="card-body d-flex gap-3 align-items-start text-decoration-none text-reset"
+                                       :href="r.source_url || '#'">
+                                        <span class="pql-feed-item__avatar">
+                                            <i class="bi"
+                                               :class="iconForKind(r.entity_kind || r.kind)"></i>
+                                        </span>
+                                        <div class="pql-feed-item__body">
+                                            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                                                <span class="badge text-bg-secondary"
+                                                      x-text="kindLabel(r.entity_kind || r.kind)"></span>
+                                                <span class="text-muted small ms-auto pql-feed-item__meta"
+                                                      x-text="pqlRelativeTime(r.created_at)"
+                                                      :title="pqlAbsTime(r.created_at)"></span>
+                                            </div>
+                                            <div class="pql-feed-item__snippet"
+                                                 x-text="r.summary_md || r.event_type"></div>
+                                        </div>
+                                    </a>
+                                </article>
+                            </template>
+                        </div>
+                    </section>
+                </template>
+            </div>
+        </div>
+
+        {# Right context column — xl+ only.  C5 fills the three
+           sub-cards (Trending / People / Saved searches). C1 ships a
+           placeholder so the layout reads as intended. #}
+        <aside class="col-xl-3 d-none d-xl-block">
+            <div class="card mb-3">
+                <div class="card-header py-2">
+                    <h6 class="mb-0 small text-uppercase text-muted">Trending today</h6>
+                </div>
+                <div class="card-body text-muted small">
+                    Trending entities will appear here once activity ramps up.
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-header py-2">
+                    <h6 class="mb-0 small text-uppercase text-muted">People to follow</h6>
+                </div>
+                <div class="card-body text-muted small">
+                    Suggestions populate based on recent contributors.
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header py-2">
+                    <h6 class="mb-0 small text-uppercase text-muted">Saved searches</h6>
+                </div>
+                <div class="card-body text-muted small">
+                    Bookmark a filter combination to come back to it.
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+{# Mobile / lg-and-below offcanvas hosting the right column.  C5
+   moves real content in. #}
+<div class="offcanvas offcanvas-end" tabindex="-1" id="pql-feed-context-drawer" aria-labelledby="pql-feed-context-drawer-title">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="pql-feed-context-drawer-title">Suggestions</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="text-muted small">Suggestions will appear here.</div>
+    </div>
 </div>
 
 <script>
 window.feedPage = function () {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    function _todayStart() {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    function _dayLabel(rowDate, todayStart) {
+        const dayStart = new Date(rowDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((todayStart.getTime() - dayStart.getTime()) / DAY_MS);
+        if (diffDays <= 0) return 'Today';
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays > 14) return 'Earlier';
+        return dayStart.toLocaleDateString(undefined, {
+            weekday: 'short', month: 'short', day: 'numeric'
+        });
+    }
+
+    function _dayIso(rowDate, todayStart) {
+        const dayStart = new Date(rowDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const diffDays = Math.round((todayStart.getTime() - dayStart.getTime()) / DAY_MS);
+        if (diffDays > 14) return 'earlier';
+        return dayStart.toISOString().slice(0, 10);
+    }
+
+    // Icon + label maps share the entity-kind keys with the
+    // server-side registry.  Kept inline because the registry's
+    // Python config doesn't yet emit a JSON consumable.
+    const KIND_ICONS = {
+        dp: 'bi-collection', table: 'bi-table', model: 'bi-cpu',
+        branch: 'bi-bezier2', run: 'bi-robot', schema: 'bi-diagram-3',
+        catalog: 'bi-archive', notebook: 'bi-journal-code',
+        saved_query: 'bi-code-square', issue: 'bi-bug',
+        workspace: 'bi-building',
+        notification: 'bi-bell', comment: 'bi-chat-left-text',
+        review: 'bi-star',
+    };
+    const KIND_LABELS = {
+        dp: 'Data Product', table: 'Table', model: 'Model',
+        branch: 'Branch', run: 'Run', schema: 'Schema',
+        catalog: 'Catalog', notebook: 'Notebook',
+        saved_query: 'Saved query', issue: 'Issue',
+        workspace: 'Workspace',
+        notification: 'Update', comment: 'Comment', review: 'Review',
+    };
+
     return {
         loaded: false,
         filter: 'all',
-        kindFilter: 'all',
+        kindFilter: [],
         searchDraft: '',
         rows: [],
+        bufferedRows: [],
+        newCount: 0,
+        density: 'comfortable',
+        connState: 'disconnected',
+
         filters: [
-            { key: 'all', label: 'All' },
-            { key: 'mentions', label: 'Mentions' },
-            { key: 'followed_users', label: 'Followed users' },
-            { key: 'followed_dps', label: 'Followed DPs' },
-            { key: 'my', label: 'My activity' },
+            { key: 'all', label: 'For you', icon: 'bi-stars' },
+            { key: 'mentions', label: 'Mentions', icon: 'bi-at' },
+            { key: 'my', label: 'My activity', icon: 'bi-person' },
+            { key: 'followed_users', label: 'Following', icon: 'bi-people' },
         ],
-        kindPills: [
-            { key: 'all', label: 'All kinds' },
-            { key: 'dp', label: 'DPs' },
-            { key: 'table', label: 'Tables' },
-            { key: 'model', label: 'Models' },
-            { key: 'branch', label: 'Branches' },
-            { key: 'run', label: 'Runs' },
-            { key: 'schema', label: 'Schemas' },
-            { key: 'catalog', label: 'Catalogs' },
-            { key: 'notebook', label: 'Notebooks' },
-            { key: 'saved_query', label: 'Queries' },
-            { key: 'issue', label: 'Issues' },
+        kindOptions: [
+            { key: 'dp', label: 'Data Products', icon: 'bi-collection' },
+            { key: 'table', label: 'Tables', icon: 'bi-table' },
+            { key: 'model', label: 'Models', icon: 'bi-cpu' },
+            { key: 'branch', label: 'Branches', icon: 'bi-bezier2' },
+            { key: 'run', label: 'Runs', icon: 'bi-robot' },
+            { key: 'schema', label: 'Schemas', icon: 'bi-diagram-3' },
+            { key: 'catalog', label: 'Catalogs', icon: 'bi-archive' },
+            { key: 'notebook', label: 'Notebooks', icon: 'bi-journal-code' },
+            { key: 'saved_query', label: 'Queries', icon: 'bi-code-square' },
+            { key: 'issue', label: 'Issues', icon: 'bi-bug' },
         ],
-        async init() { await this.reload(); },
+        densityOptions: [
+            { key: 'comfortable', label: 'Comfortable', icon: 'bi-list-ul' },
+            { key: 'compact', label: 'Compact', icon: 'bi-list' },
+            { key: 'headlines', label: 'Headlines', icon: 'bi-text-left' },
+        ],
+
+        async init() {
+            // Restore density from localStorage.
+            try {
+                const v = window.localStorage?.getItem('pql.feed.density');
+                if (v && ['comfortable', 'compact', 'headlines'].includes(v)) {
+                    this.density = v;
+                }
+            } catch (e) { /* ignore storage errors */ }
+            await this.reload();
+        },
+
+        setDensity(key) {
+            this.density = key;
+            try {
+                window.localStorage?.setItem('pql.feed.density', key);
+            } catch (e) { /* ignore */ }
+        },
+
         async setFilter(key) {
             this.filter = key;
             await this.reload();
         },
-        async setKindFilter(key) {
-            this.kindFilter = key;
-            await this.reload();
-        },
+
         async reload() {
             this.loaded = false;
             try {
                 const params = new URLSearchParams({ filter: this.filter });
                 if (this.searchDraft.trim()) params.set('q', this.searchDraft.trim());
-                if (this.kindFilter && this.kindFilter !== 'all') {
-                    params.set('kind', this.kindFilter);
+                // Multi-kind support: server still accepts a single
+                // ``kind`` param; if multiple are selected we send a
+                // comma-joined list and let the backend ignore the
+                // suffix (C6 extends the route to honour it).
+                if (this.kindFilter.length > 0) {
+                    params.set('kind', this.kindFilter.join(','));
                 }
                 const res = await fetch('/api/feed?' + params.toString());
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 this.rows = (await res.json()).rows || [];
-            } catch (e) { console.error('feed load failed', e); }
-            finally { this.loaded = true; }
+            } catch (e) {
+                console.error('feed load failed', e);
+                window.pqlToast?.error?.('Failed to load feed: ' + (e.message || 'unknown'));
+            } finally {
+                this.loaded = true;
+            }
+        },
+
+        async markAllRead() {
+            try {
+                const res = await fetch('/api/notifications/mark-all-read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
+                // Clear local unread stripes optimistically.
+                this.rows = this.rows.map((r) => ({ ...r, read_at: r.read_at || new Date().toISOString() }));
+                window.pqlToast?.success?.('All notifications marked read.');
+            } catch (e) {
+                console.error('mark-all-read failed', e);
+                window.pqlToast?.error?.('Could not mark all read.');
+            }
+        },
+
+        drainBuffered() {
+            if (this.bufferedRows.length === 0) {
+                this.newCount = 0;
+                return;
+            }
+            this.rows = this.bufferedRows.concat(this.rows);
+            this.bufferedRows = [];
+            this.newCount = 0;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        iconForKind(kind) { return KIND_ICONS[kind] || 'bi-circle'; },
+        kindLabel(kind) { return KIND_LABELS[kind] || kind; },
+
+        get groupedDays() {
+            const todayStart = _todayStart();
+            const groups = new Map();
+            for (const r of this.rows) {
+                const rowDate = new Date(r.created_at);
+                if (Number.isNaN(rowDate.getTime())) continue;
+                const iso = _dayIso(rowDate, todayStart);
+                if (!groups.has(iso)) {
+                    groups.set(iso, {
+                        iso,
+                        label: _dayLabel(rowDate, todayStart),
+                        rows: [],
+                    });
+                }
+                groups.get(iso).rows.push(r);
+            }
+            // Sort groups: "today" first, then iso desc, then "earlier" last.
+            const ordered = Array.from(groups.values());
+            ordered.sort((a, b) => {
+                if (a.iso === 'earlier') return 1;
+                if (b.iso === 'earlier') return -1;
+                return a.iso < b.iso ? 1 : -1;
+            });
+            return ordered;
         },
     };
 };
