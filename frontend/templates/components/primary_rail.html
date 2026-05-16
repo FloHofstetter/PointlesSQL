@@ -166,8 +166,8 @@
         <li class="pql-icon-rail__item">
             <a href="/"
                data-section="federation"
-               data-exclude-active-page="models"
-               class="pql-icon-rail__link{% if active_section == 'federation' and (active_page is not defined or active_page != 'models') %} active{% endif %}"
+               data-exclude-active-page="models ingest views canvas"
+               class="pql-icon-rail__link{% if active_section == 'federation' and (active_page is not defined or active_page not in ['models', 'ingest', 'views', 'canvas']) %} active{% endif %}"
                title="Catalog (catalogs, schemas, tables, foreign connections, volumes, models)">
                 <i class="bi bi-database"></i>
                 <span class="pql-icon-rail__label">Catalog</span>
