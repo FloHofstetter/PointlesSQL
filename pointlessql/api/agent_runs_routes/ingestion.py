@@ -40,6 +40,7 @@ from pointlessql.services.agent_runs import (
     emit_agent_run_event,
     event_type_for_status,
 )
+from pointlessql.services.notifications.fanout import fanout_event
 
 router = APIRouter()
 
@@ -315,4 +316,27 @@ async def api_finish_agent_run(
     terminal_event = event_type_for_status(status_raw)
     if terminal_event is not None:
         await emit_agent_run_event(terminal_event, payload, session_factory=factory)
+        # Phase 81.K.6 — surface agent-run lifecycle in the feed.
+        # The fanout dispatcher's existing follower-resolution walks
+        # the polymorphic ``SocialFollow`` set; an empty follower
+        # list is a no-op so this wiring is safe regardless of
+        # whether anyone currently follows runs.
+        verb = "completed" if terminal_event.endswith(".completed") else "failed"
+        summary = (
+            f"Agent run #{run_id} {verb}"
+            + (f" (exit {exit_code})" if exit_code is not None else "")
+        )
+        try:
+            fanout_event(
+                factory,
+                event_type=terminal_event,
+                entity_kind="run",
+                entity_ref=str(run_id),
+                workspace_id=int(row.workspace_id),
+                actor_user_id=None,
+                source_url=f"/runs/{run_id}",
+                summary_md=summary,
+            )
+        except Exception:  # noqa: BLE001 — fanout must never break the run
+            pass
     return payload

@@ -244,6 +244,25 @@ async def open_issue(
         session_factory=factory,
         workspace_id=workspace_id,
     )
+    # Phase 81.K.6 — surface issue lifecycle in the feed.  The
+    # fanout dispatcher's follower-resolver walks the polymorphic
+    # social_follows on this issue and its parent entity; an empty
+    # follower set is a no-op so this is safe regardless of state.
+    try:
+        from pointlessql.services.notifications.fanout import fanout_event
+
+        fanout_event(
+            factory,
+            event_type="pointlessql.issue.opened",
+            entity_kind="issue",
+            entity_ref=str(result["id"]),
+            workspace_id=workspace_id,
+            actor_user_id=int(user["id"]),
+            source_url=f"/issues/{result['id']}",
+            summary_md=f"Issue \"{title.strip()[:120]}\" opened",
+        )
+    except Exception:  # noqa: BLE001 — fanout best-effort
+        pass
     return result
 
 
@@ -646,6 +665,26 @@ async def _transition_state(
         session_factory=factory,
         workspace_id=workspace_id,
     )
+    # Phase 81.K.6 — feed surfacing for state transitions.
+    try:
+        from pointlessql.services.notifications.fanout import fanout_event
+
+        verb = (
+            "closed" if new_state.startswith("closed")
+            else ("resolved" if new_state == "resolved" else "reopened")
+        )
+        fanout_event(
+            factory,
+            event_type=f"pointlessql.issue.{verb}",
+            entity_kind="issue",
+            entity_ref=str(issue_id),
+            workspace_id=workspace_id,
+            actor_user_id=int(user["id"]),
+            source_url=f"/issues/{issue_id}",
+            summary_md=f"Issue #{issue_id} {verb}",
+        )
+    except Exception:  # noqa: BLE001 — fanout best-effort
+        pass
     return result
 
 
