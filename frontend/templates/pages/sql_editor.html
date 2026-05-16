@@ -67,6 +67,14 @@
  @click="openSaveModal()">
  <i class="bi bi-bookmark-plus"></i> Save{{ info('sql.saved-queries') }}
  </button>
+ <button type="button"
+ class="btn btn-outline-secondary btn-sm"
+ @click="toggleBuilder()"
+ :class="{ 'active': builderOpen }"
+ title="Visual query builder">
+ <i class="bi bi-sliders"></i>
+ <span x-text="builderOpen ? 'Hide builder' : 'Builder'"></span>
+ </button>
  <span class="text-muted small align-self-center ms-2">
  <kbd>Cmd</kbd>+<kbd>Enter</kbd> run · <kbd>Cmd</kbd>+<kbd>S</kbd> save
  </span>
@@ -74,6 +82,168 @@
  Tables: <template x-for="t in referencedTables" :key="t"><code class="me-1" x-text="t"></code></template>
  </span>
  </div>
+ </div>
+ </div>
+ </div>
+
+ <!-- Visual query builder panel -->
+ <div class="col-12" x-show="builderOpen" x-cloak>
+ <div class="card mb-3">
+ <div class="card-header d-flex justify-content-between align-items-center">
+ <div>
+ <i class="bi bi-sliders me-2"></i><strong>Visual builder</strong>
+ <template x-if="builderUnsupported">
+ <span class="badge bg-warning text-dark ms-2">Current SQL is too rich — reset to use builder</span>
+ </template>
+ </div>
+ <button type="button" class="btn btn-link btn-sm text-decoration-none p-0"
+ @click="resetBuilder()">Reset</button>
+ </div>
+ <div class="card-body" x-show="!builderUnsupported">
+ <template x-if="builderError">
+ <div class="alert alert-danger small" x-text="builderError"></div>
+ </template>
+
+ <div class="row mb-3">
+ <div class="col-md-6">
+ <label class="form-label small">Table FQN</label>
+ <input type="text" class="form-control form-control-sm font-monospace"
+ placeholder="catalog.schema.table"
+ x-model="builderState.table_fqn"
+ @change="loadBuilderColumns()">
+ </div>
+ <div class="col-md-2">
+ <label class="form-label small">Limit</label>
+ <input type="number" class="form-control form-control-sm"
+ x-model.number="builderState.limit">
+ </div>
+ </div>
+
+ <!-- Filters -->
+ <div class="mb-3">
+ <div class="d-flex justify-content-between align-items-center mb-2">
+ <strong class="small">Filters (AND)</strong>
+ <button class="btn btn-outline-secondary btn-sm" @click="addBuilderFilter()">
+ <i class="bi bi-plus-lg me-1"></i>Add filter
+ </button>
+ </div>
+ <template x-for="(f, idx) in builderState.filters" :key="idx">
+ <div class="row mb-2 g-2 align-items-center">
+ <div class="col-md-3">
+ <select class="form-select form-select-sm" x-model="f.column">
+ <option value="">— column —</option>
+ <template x-for="c in builderColumns" :key="c.name">
+ <option :value="c.name" x-text="c.name + ' (' + c.type + ')'"></option>
+ </template>
+ </select>
+ </div>
+ <div class="col-md-2">
+ <select class="form-select form-select-sm" x-model="f.op">
+ <template x-for="op in builderOperators" :key="op">
+ <option :value="op" x-text="op"></option>
+ </template>
+ </select>
+ </div>
+ <div class="col-md-5">
+ <input type="text" class="form-control form-control-sm"
+ :placeholder="f.op === 'IN' ? 'a,b,c' : 'value'"
+ x-model="f.value"
+ :disabled="f.op === 'IS NULL' || f.op === 'IS NOT NULL'">
+ </div>
+ <div class="col-md-2">
+ <button class="btn btn-link btn-sm text-danger p-0"
+ @click="removeBuilderFilter(idx)">
+ <i class="bi bi-x-lg"></i>
+ </button>
+ </div>
+ </div>
+ </template>
+ </div>
+
+ <!-- Group by -->
+ <div class="mb-3">
+ <label class="form-label small">Group by</label>
+ <select class="form-select form-select-sm" multiple
+ x-model="builderState.group_by"
+ size="3">
+ <template x-for="c in builderColumns" :key="c.name">
+ <option :value="c.name" x-text="c.name"></option>
+ </template>
+ </select>
+ </div>
+
+ <!-- Aggregates -->
+ <div class="mb-3">
+ <div class="d-flex justify-content-between align-items-center mb-2">
+ <strong class="small">Aggregates</strong>
+ <button class="btn btn-outline-secondary btn-sm" @click="addBuilderAggregate()">
+ <i class="bi bi-plus-lg me-1"></i>Add aggregate
+ </button>
+ </div>
+ <template x-for="(a, idx) in builderState.aggregates" :key="idx">
+ <div class="row mb-2 g-2 align-items-center">
+ <div class="col-md-3">
+ <select class="form-select form-select-sm" x-model="a.fn">
+ <template x-for="fn in builderAggregates" :key="fn">
+ <option :value="fn" x-text="fn"></option>
+ </template>
+ </select>
+ </div>
+ <div class="col-md-3">
+ <select class="form-select form-select-sm" x-model="a.column">
+ <option value="*">*</option>
+ <template x-for="c in builderColumns" :key="c.name">
+ <option :value="c.name" x-text="c.name"></option>
+ </template>
+ </select>
+ </div>
+ <div class="col-md-4">
+ <input type="text" class="form-control form-control-sm"
+ placeholder="alias" x-model="a.alias">
+ </div>
+ <div class="col-md-2">
+ <button class="btn btn-link btn-sm text-danger p-0"
+ @click="removeBuilderAggregate(idx)">
+ <i class="bi bi-x-lg"></i>
+ </button>
+ </div>
+ </div>
+ </template>
+ </div>
+
+ <!-- Order by -->
+ <div class="mb-3">
+ <div class="d-flex justify-content-between align-items-center mb-2">
+ <strong class="small">Order by</strong>
+ <button class="btn btn-outline-secondary btn-sm" @click="addBuilderOrder()">
+ <i class="bi bi-plus-lg me-1"></i>Add order
+ </button>
+ </div>
+ <template x-for="(o, idx) in builderState.order_by" :key="idx">
+ <div class="row mb-2 g-2 align-items-center">
+ <div class="col-md-4">
+ <input type="text" class="form-control form-control-sm"
+ placeholder="column or alias" x-model="o.column">
+ </div>
+ <div class="col-md-3">
+ <select class="form-select form-select-sm" x-model="o.dir">
+ <option value="asc">asc</option>
+ <option value="desc">desc</option>
+ </select>
+ </div>
+ <div class="col-md-2">
+ <button class="btn btn-link btn-sm text-danger p-0"
+ @click="removeBuilderOrder(idx)">
+ <i class="bi bi-x-lg"></i>
+ </button>
+ </div>
+ </div>
+ </template>
+ </div>
+
+ <button class="btn btn-primary btn-sm" @click="applyBuilder()">
+ <i class="bi bi-arrow-up me-1"></i>Apply to SQL
+ </button>
  </div>
  </div>
  </div>

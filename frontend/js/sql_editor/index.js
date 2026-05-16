@@ -24,6 +24,7 @@
  * ``x-data="sqlEditor"`` attribute.
  */
 
+import { builderMethods } from './builder.js';
 import { chartMethods } from './chart.js';
 import { executeMethods } from './execute.js';
 import { monacoMethods } from './monaco.js';
@@ -299,5 +300,6 @@ export function sqlEditor() {
 ...executeMethods,
 ...savedMethods,
 ...chartMethods,
+...builderMethods,
  };
 }
