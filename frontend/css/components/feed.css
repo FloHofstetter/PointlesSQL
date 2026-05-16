@@ -52,7 +52,16 @@
  * read-state overrides (unread / mention) layer on top to flag
  * "look at this one" without shouting. */
 .pql-feed-item {
-    position: relative;
+    /* Bootstrap's ``.card`` sets ``position: relative`` by default,
+     * which gives each feed card its own stacking context.  When
+     * card N's dropdown menu opens, card N+1 paints on top of it
+     * (sibling DOM order wins among siblings without explicit
+     * z-index).  Forcing ``static`` here means dropdowns escape
+     * the card without needing per-card z-index gymnastics.  We
+     * don't use Bootstrap's relative-positioned card affordances
+     * (img-overlay, ribbons) on feed items, so the override is
+     * safe. */
+    position: static !important;
     border-left: 3px solid var(--bs-border-color);
     color: inherit;
     text-decoration: none;
@@ -80,6 +89,19 @@
 }
 .pql-feed-item--branch {
     border-left-color: var(--bs-secondary);
+}
+
+/* Bootstrap renders dropdown-menus inside the dropdown <div> by
+ * default, which sits inside the card's stacking context.  Cards
+ * later in the feed (position: relative) draw on top of an open
+ * menu when the next-sibling stacking context wins.  The dropdown
+ * trigger now carries ``data-bs-container="body"`` so Popper
+ * teleports the menu out of the card, and this rule lifts the
+ * z-index above the sticky filter bar (z=5) and day-header (z=3)
+ * regardless of where the menu ends up rendering. */
+.pql-feed-item__menu,
+.pql-feed-item .dropdown-menu.show {
+    z-index: 1080;
 }
 
 /* Read-state overrides — drawn on top of the per-kind stripe. */

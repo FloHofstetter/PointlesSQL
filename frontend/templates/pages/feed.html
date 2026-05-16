@@ -235,10 +235,13 @@
                                                     <button type="button"
                                                             class="btn btn-sm btn-link text-muted px-1 py-0"
                                                             data-bs-toggle="dropdown"
+                                                            data-bs-container="body"
+                                                            data-bs-display="static"
+                                                            data-bs-boundary="viewport"
                                                             aria-label="Item actions">
                                                         <i class="bi bi-three-dots-vertical"></i>
                                                     </button>
-                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                    <ul class="dropdown-menu dropdown-menu-end pql-feed-item__menu">
                                                         <li x-show="r.kind === 'notification'">
                                                             <button type="button" class="dropdown-item"
                                                                     @click="toggleRead(r)">
