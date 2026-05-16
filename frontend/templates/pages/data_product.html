@@ -81,8 +81,7 @@
 
     {# Phase 82.5 — Ingest sources feeding this DP.  Lazy-fetched
        on page boot; row hidden entirely when no source matches. #}
-    <div x-data="ingestStatusBand({{ product.catalog|tojson }},
-                                  {{ product.schema|tojson }})"
+    <div x-data='ingestStatusBand({{ product.catalog|tojson }}, {{ product.schema|tojson }})'
          x-init="load()"
          x-show="sources.length > 0"
          class="alert alert-light border d-flex flex-wrap gap-2 align-items-center small mb-3">
@@ -111,6 +110,27 @@
                 if (res.ok && res.data) {
                     this.sources = res.data.sources || [];
                 }
+            }
+        };
+    }
+
+    // Phase 84.2 — releases card factory.  Kept outside the main
+    // dataProductDetail() data so the card stays self-contained.
+    function dpReleasesCard() {
+        return {
+            releases: [],
+            loaded: false,
+            async load(catalog, schema) {
+                try {
+                    const res = await fetch('/api/data-products/' + catalog + '/' + schema + '/releases');
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.releases = (data.releases || []).slice(0, 5);
+                    }
+                } catch (e) {
+                    this.releases = [];
+                }
+                this.loaded = true;
             }
         };
     }
@@ -311,17 +331,8 @@
 
             <!-- Phase 84.2 — Release stream. -->
             <div class="card mb-3 pql-dp-releases"
-                 x-data="{ releases: [], loaded: false }"
-                 x-init="(async () => {
-                    try {
-                        const res = await fetch('/api/data-products/' + product.catalog + '/' + product.schema + '/releases');
-                        if (res.ok) {
-                            const data = await res.json();
-                            releases = (data.releases || []).slice(0, 5);
-                        }
-                    } catch (e) {}
-                    loaded = true;
-                 })()"
+                 x-data="dpReleasesCard()"
+                 x-init="load(product.catalog, product.schema)"
                  x-show="loaded && releases.length > 0">
                 <div class="card-header d-flex align-items-center gap-2">
                     <i class="bi bi-tag-fill"></i>
