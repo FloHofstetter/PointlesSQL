@@ -13,19 +13,14 @@ from typing import Any
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import require_auditor
+from pointlessql.api.dependencies import get_templates, require_auditor
 from pointlessql.exceptions import ValidationError
 from pointlessql.services import audit_fts
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["audit"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    return request.app.state.templates
 
 
 def _parse_iso8601(name: str, value: str | None) -> datetime.datetime | None:
@@ -136,7 +131,7 @@ async def html_audit_search(request: Request) -> HTMLResponse:
     """
     require_auditor(request)
     available = audit_fts.is_available(request.app.state.session_factory)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/audit_search.html",
         {

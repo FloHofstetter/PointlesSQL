@@ -19,21 +19,15 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
-from pointlessql.api.dependencies import current_workspace_id, require_auditor
+from pointlessql.api.dependencies import current_workspace_id, get_templates, require_auditor
 from pointlessql.models import CdfTailSubscription
 from pointlessql.services import audit_aggregator as agg
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["audit"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the app-wide Jinja2 templates instance."""
-    return request.app.state.templates
 
 
 def _load_system_errors(factory: Any, *, workspace_id: int) -> list[dict[str, Any]]:
@@ -113,7 +107,7 @@ async def html_audit_inbox(request: Request) -> HTMLResponse:
         "valid_bins": sorted(agg.VALID_BINS),
         "system_errors": system_errors,
     }
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/audit_inbox.html",
         context,

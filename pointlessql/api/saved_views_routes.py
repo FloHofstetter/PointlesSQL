@@ -19,12 +19,12 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse, Response
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
 from pointlessql.api.dependencies import (
     current_workspace_id,
     effective_principal,
+    get_templates,
     get_user,
     require_user,
 )
@@ -39,11 +39,6 @@ from pointlessql.services import saved_views as saved_views_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["views"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared :class:`Jinja2Templates` instance."""
-    return request.app.state.templates
 
 
 @router.get("/api/views")
@@ -422,7 +417,7 @@ async def page_views_list(request: Request) -> HTMLResponse:
         request.app.state.session_factory,
         workspace_id=workspace_id,
     )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/saved_views_list.html",
         {
@@ -443,7 +438,7 @@ async def page_view_new(request: Request) -> HTMLResponse:
         Rendered HTML.
     """
     require_user(request)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/saved_view_new.html",
         {"active_page": "views"},
@@ -475,7 +470,7 @@ async def page_view_detail(request: Request, slug: str) -> HTMLResponse:
     )
     if row is None:
         raise CatalogNotFoundError(f"Saved view {slug!r} not found.")
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/saved_view_detail.html",
         {
@@ -511,7 +506,7 @@ async def page_view_embed(request: Request, slug: str) -> HTMLResponse:
     )
     if row is None:
         raise CatalogNotFoundError(f"Saved view {slug!r} not found.")
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/saved_view_embed.html",
         {

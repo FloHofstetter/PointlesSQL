@@ -24,21 +24,15 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.api.dependencies import get_templates, get_user, require_admin
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.services import external_write_scanner
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["admin", "external-writes"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 @router.get("/admin/external-writes", response_class=HTMLResponse)
@@ -76,7 +70,7 @@ async def admin_external_writes_index(
     unacknowledged_total = await asyncio.to_thread(
         external_write_scanner.count_unacknowledged, factory
     )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_external_writes.html",
         {

@@ -15,20 +15,15 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.api.dependencies import get_templates, get_user, require_admin
 from pointlessql.exceptions import ResourceNotFoundError, ValidationError
 from pointlessql.services.audit import saved_queries as svc
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["audit"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    return request.app.state.templates
 
 
 @router.get("/api/saved-audit-queries")
@@ -341,7 +336,7 @@ async def html_audit_queries(
         offset=offset,
         limit=_AUDIT_QUERIES_PAGE_SIZE,
     )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/audit_queries.html",
         {
@@ -381,7 +376,7 @@ async def html_audit_query_detail(request: Request, slug: str) -> HTMLResponse:
     row = svc.get_by_slug(request.app.state.session_factory, slug)
     if row is None:
         raise ResourceNotFoundError(f"Saved audit query not found: {slug}")
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/saved_audit_query_detail.html",
         {

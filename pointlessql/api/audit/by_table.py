@@ -14,19 +14,14 @@ from typing import Any
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import require_auditor
+from pointlessql.api.dependencies import get_templates, require_auditor
 from pointlessql.exceptions import ValidationError
 from pointlessql.services.audit import by_table as audit_by_table
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["audit"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    return request.app.state.templates
 
 
 def _parse_iso8601(name: str, value: str | None) -> datetime.datetime | None:
@@ -130,7 +125,7 @@ async def html_audit_by_table_picker(request: Request) -> HTMLResponse:
         Rendered ``pages/audit_by_table.html`` with ``table_fqn=""``.
     """
     require_auditor(request)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/audit_by_table.html",
         {
@@ -165,7 +160,7 @@ async def html_audit_by_table(request: Request, fqn: str) -> HTMLResponse:
     """
     require_auditor(request)
     if not fqn or not fqn.strip():
-        return _templates(request).TemplateResponse(
+        return get_templates(request).TemplateResponse(
             request,
             "pages/audit_by_table.html",
             {
@@ -177,7 +172,7 @@ async def html_audit_by_table(request: Request, fqn: str) -> HTMLResponse:
                 "kinds": [],
             },
         )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/audit_by_table.html",
         {

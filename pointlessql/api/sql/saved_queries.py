@@ -28,10 +28,9 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.responses import HTMLResponse, Response
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user
+from pointlessql.api.dependencies import get_templates, get_user, is_htmx_partial
 from pointlessql.exceptions import ValidationError
 from pointlessql.services import query_history as query_history_service
 from pointlessql.services import saved_queries as saved_queries_service
@@ -50,11 +49,6 @@ def _next_offset(offset: int, page: int, total: int) -> int | None:
     if upcoming >= total:
         return None
     return upcoming
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def parse_since(raw: str | None) -> datetime | None:
@@ -338,21 +332,13 @@ async def queries_page(
         "active_table": None,
         "list_page": True,
     }
-    # Distinguish a Load-More HTMX request (just rows + OOB pager)
-    # from a hx-boost page navigation (wants the full shell back so
-    # the body's ``hx-target="#main-content"`` swap has something to
-    # match).  Boosted nav sets ``HX-Boosted: true`` in addition to
-    # ``HX-Request: true``; the Load-More button does not.
-    is_load_more = (
-        request.headers.get("HX-Request") == "true"
-        and request.headers.get("HX-Boosted") != "true"
-    )
+    is_load_more = is_htmx_partial(request)
     template = (
         "pages/_partials/queries_list_append.html"
         if is_load_more
         else "pages/queries.html"
     )
-    return _templates(request).TemplateResponse(request, template, ctx)
+    return get_templates(request).TemplateResponse(request, template, ctx)
 
 
 # -- saved queries ---------------------------------------------------------

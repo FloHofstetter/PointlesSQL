@@ -26,11 +26,10 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import require_admin
+from pointlessql.api.dependencies import get_templates, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import (
     WORKSPACE_ROLES,
@@ -42,11 +41,6 @@ from pointlessql.models import (
 from pointlessql.services.workspace import _crud as workspaces_service
 
 router = APIRouter(tags=["admin-workspaces"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def _serialize_workspace(row: Workspace) -> dict[str, Any]:
@@ -526,7 +520,7 @@ async def admin_workspaces_page(request: Request):
         for ws in active + archived:
             session.expunge(ws)
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_workspaces.html",
         {

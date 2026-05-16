@@ -30,10 +30,9 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, Response
-from fastapi.templating import Jinja2Templates
 
 import pointlessql
-from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.api.dependencies import get_templates, get_user, require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +47,6 @@ ADMIN_AUDIT_SINCE_WINDOWS: dict[str, timedelta | None] = {
 }
 
 AUDIT_EXPORT_LIMIT = 10_000
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 @router.get("/admin", response_class=HTMLResponse)
@@ -117,7 +111,7 @@ async def admin_index(request: Request) -> HTMLResponse:
         external_write_scanner.count_unacknowledged, factory
     )
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_index.html",
         {
@@ -195,7 +189,7 @@ async def admin_review_destinations_index(request: Request) -> HTMLResponse:
 
     workspace_choices = [{"id": w.id, "slug": w.slug, "name": w.name} for w in workspaces]
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_review_destinations.html",
         {
@@ -280,7 +274,7 @@ async def admin_audit_sinks_index(request: Request) -> HTMLResponse:
 
     workspace_choices = [{"id": w.id, "slug": w.slug, "name": w.name} for w in workspaces]
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_audit_sinks.html",
         {
@@ -351,7 +345,7 @@ async def admin_api_keys_index(request: Request, include_revoked: bool = False) 
     workspace_choices = [{"id": w.id, "slug": w.slug, "name": w.name} for w in workspaces]
     default_workspace_id = workspace_choices[0]["id"] if workspace_choices else 1
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_api_keys.html",
         {
@@ -441,7 +435,7 @@ async def admin_system_info_index(request: Request) -> HTMLResponse:
     oidc_settings = settings.oidc
     oidc_group_map_items = sorted(oidc_settings.parsed_group_map.items())
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_system_info.html",
         {
@@ -478,7 +472,7 @@ async def admin_ingest_sources_index(request: Request) -> HTMLResponse:
     on load to populate the table.
     """
     require_admin(request)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_sources.html",
         {
@@ -572,7 +566,7 @@ async def admin_audit_index(
     # automatically; the per-page cap keeps this cheap.
     distinct_actions = sorted({e["action"] for e in entries})
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_audit.html",
         {

@@ -23,21 +23,15 @@ from typing import Any, cast
 import httpx
 from fastapi import APIRouter, Body, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, Response
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_uc_client, get_user, require_admin
+from pointlessql.api.dependencies import get_templates, get_uc_client, get_user, require_admin
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["volumes"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def soyuz_base_url(request: Request) -> str:
@@ -488,7 +482,7 @@ async def volumes_page(request: Request) -> HTMLResponse:
                         )
                 except Exception:  # noqa: BLE001
                     logger.debug("volumes page: fetch failed", exc_info=True)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/volumes.html",
         {
@@ -538,7 +532,7 @@ async def volume_detail_page(request: Request, full_name: str) -> HTMLResponse:
             full_name,
             principal=user.get("email"),
         )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/volume_detail.html",
         {

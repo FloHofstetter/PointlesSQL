@@ -27,12 +27,12 @@ from typing import Any
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
 from pointlessql.api.dependencies import (
     current_workspace_id,
     effective_principal,
+    get_templates,
     get_uc_client,
     get_user,
 )
@@ -64,11 +64,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["lineage"])
 
 _MAX_HOPS = 20
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Pull the shared Jinja environment off the FastAPI app state."""
-    return request.app.state.templates
 
 
 def _get_session_factory() -> Any:
@@ -525,7 +520,7 @@ async def html_row_trace(
     step_dicts = _attach_cdf_events(factory, step_dicts, workspace_id=current_workspace_id(request))
     step_dicts = await _apply_pii_masking(request, step_dicts)
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/row_trace.html",
         {
@@ -683,7 +678,7 @@ async def html_column_trace(
     steps = walk_back_columns(factory, table=full_name, column=column_name, max_hops=_MAX_HOPS)
     op_meta = _load_op_metadata(_collect_column_op_ids(steps))
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/column_trace.html",
         {
@@ -780,7 +775,7 @@ async def lineage_index_page(request: Request) -> HTMLResponse:
     Returns:
         ``HTMLResponse`` with the rendered explorer page.
     """
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/lineage_index.html",
         {

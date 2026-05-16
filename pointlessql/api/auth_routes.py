@@ -8,8 +8,8 @@ from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 
+from pointlessql.api.dependencies import get_templates
 from pointlessql.api.middleware import WORKSPACE_COOKIE_NAME
 from pointlessql.config import Settings
 from pointlessql.services import auth, csrf
@@ -17,11 +17,6 @@ from pointlessql.services import oidc as oidc_service
 from pointlessql.services.workspace import _crud as workspaces_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def _factory(request: Request):
@@ -50,7 +45,7 @@ def _oidc_redirect_uri(request: Request, settings: Settings) -> str:
 async def login_page(request: Request, error: str = ""):
     """Render the login page."""
     settings = _settings(request)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/login.html",
         {
@@ -77,7 +72,7 @@ async def login_submit(
         settings.auth.jwt_expiry_hours,
     )
     if token is None:
-        return _templates(request).TemplateResponse(
+        return get_templates(request).TemplateResponse(
             request,
             "pages/login.html",
             {"error": "Invalid email or password.", "hide_sidebar": True},
@@ -109,7 +104,7 @@ async def login_submit(
 async def register_page(request: Request, error: str = ""):
     """Render the register page."""
     first_user = auth.is_first_user(_factory(request))
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/register.html",
         {"error": error, "first_user": first_user, "hide_sidebar": True},
@@ -133,7 +128,7 @@ async def register_submit(
             "first_user": auth.is_first_user(factory),
             "hide_sidebar": True,
         }
-        return _templates(request).TemplateResponse(
+        return get_templates(request).TemplateResponse(
             request,
             "pages/register.html",
             ctx,

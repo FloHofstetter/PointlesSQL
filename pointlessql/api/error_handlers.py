@@ -27,6 +27,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from pointlessql.api.dependencies import is_htmx_partial, wants_json
 from pointlessql.exceptions import PointlessSQLError
 from pointlessql.types import ErrorCode
 
@@ -104,40 +105,6 @@ def _title_for_status(status_code: int) -> str:
         return HTTPStatus(status_code).phrase
     except ValueError:
         return "Error"
-
-
-def _wants_json(request: Request) -> bool:
-    """Return True when the caller prefers a JSON problem response.
-
-    ``/api/...`` paths always return JSON.  For other paths, honour an
-    explicit ``Accept: application/json`` (or the RFC-9457 media type
-    ``application/problem+json``) that does not also include
-    ``text/html`` — browsers send ``text/html`` first, so they land on
-    the HTML shell.
-    """
-    if request.url.path.startswith("/api/"):
-        return True
-    accept = request.headers.get("accept", "")
-    if not accept:
-        return False
-    lower = accept.lower()
-    has_json = "application/json" in lower or "application/problem+json" in lower
-    return has_json and "text/html" not in lower
-
-
-def _wants_htmx_toast(request: Request) -> bool:
-    """Return True when the caller is an HTMX fragment request.
-
-    Boosted navigations (``HX-Boosted: true``) ask htmx to behave like
-    a full-page load — we keep returning the branded HTML error page
-    for those because the client expects to swap ``#main-content``.
-    Non-boosted HTMX requests (e.g. inline edits, deferred partials)
-    cannot gracefully absorb a full HTML page, so we convert the
-    error into an ``HX-Trigger`` toast event instead.
-    """
-    if request.headers.get("HX-Request") != "true":
-        return False
-    return request.headers.get("HX-Boosted") != "true"
 
 
 def _problem_body(
@@ -341,7 +308,7 @@ def _dispatch(
     """
     request_id: str | None = getattr(request.state, "request_id", None)
 
-    if _wants_json(request):
+    if wants_json(request):
         return _problem_json(
             status_code=status_code,
             error_code=error_code,
@@ -350,7 +317,7 @@ def _dispatch(
             extra=extra,
         )
 
-    if _wants_htmx_toast(request):
+    if is_htmx_partial(request):
         return _problem_toast(
             status_code=status_code,
             error_code=error_code,

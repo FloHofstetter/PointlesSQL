@@ -22,23 +22,17 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import current_workspace_id, require_admin
+from pointlessql.api.dependencies import current_workspace_id, get_templates, require_admin
 from pointlessql.exceptions import CatalogNotFoundError, ValidationError
 from pointlessql.models import CdfTailSubscription
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["admin", "cdf-tail"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 @router.get("/admin/cdf-subscriptions", response_class=HTMLResponse)
@@ -82,7 +76,7 @@ async def admin_cdf_subscriptions_index(
             )
             or 0
         )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/admin_cdf_tail.html",
         {

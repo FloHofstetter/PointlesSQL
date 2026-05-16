@@ -30,10 +30,9 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.api.dependencies import get_templates, get_user, require_admin
 from pointlessql.config import Settings
 from pointlessql.exceptions import AuthorizationError
 from pointlessql.services import notebook_render as notebook_render_service
@@ -44,11 +43,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["jobs"])
 
 JOB_REGISTRY = scheduler_service.build_default_registry()
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 # -- Serializers ---------------------------------------------------------
@@ -738,7 +732,7 @@ async def job_run_compare(
             raise CatalogNotFoundError(f"Run {to} not found for job {job_id}")
         session.expunge(left)
         session.expunge(right)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/run_compare.html",
         {
@@ -832,7 +826,7 @@ async def jobs_index(request: Request) -> HTMLResponse:
         for row in rows:
             session.expunge(row)
     jobs_data = [serialize_job(r, last_run=latest.get(r.id)) for r in rows]
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/jobs.html",
         {
@@ -911,7 +905,7 @@ async def job_detail(request: Request, job_id: int) -> HTMLResponse:
             },
         )
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/job_detail.html",
         {

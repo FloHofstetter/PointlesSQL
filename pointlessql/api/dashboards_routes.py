@@ -22,10 +22,9 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user, require_admin
+from pointlessql.api.dependencies import get_templates, get_user, require_admin
 from pointlessql.api.jobs_routes import JOB_REGISTRY, serialize_run
 from pointlessql.config import Settings
 from pointlessql.exceptions import ValidationError
@@ -37,11 +36,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["dashboards"])
 
 SLUG_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]{0,199}$")
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def serialize_dashboard(
@@ -322,7 +316,7 @@ async def dashboards_index(request: Request) -> HTMLResponse:
         if user.get("is_admin"):
             for j in session.scalars(_select(JobModel).order_by(JobModel.name)).all():
                 job_options.append({"id": j.id, "name": j.name, "kind": j.kind})
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/dashboards.html",
         {
@@ -354,7 +348,7 @@ async def dashboard_detail(request: Request, slug: str) -> HTMLResponse:
     latest_run_id: int | None = None
     if dashboard.job_id is not None:
         latest_run_id = latest_succeeded_run_id(request, dashboard.job_id)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/dashboard_detail.html",
         {

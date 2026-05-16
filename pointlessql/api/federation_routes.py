@@ -30,20 +30,14 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_uc_client, require_admin
+from pointlessql.api.dependencies import get_templates, get_uc_client, require_admin
 from pointlessql.exceptions import CatalogUnavailableError
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["federation"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 # -- JSON: Connections --
@@ -283,7 +277,7 @@ async def connections_index(request: Request) -> HTMLResponse:
         connections = await client.list_connections()
     except CatalogUnavailableError as exc:
         error = exc.detail
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/connections.html",
         {
@@ -310,7 +304,7 @@ async def connection_detail(request: Request, name: str) -> HTMLResponse:
         connection = await client.get_connection(name)
     except CatalogUnavailableError as exc:
         error = exc.detail
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/connection.html",
         {"connection": connection, "name": name, "error": error, "active_page": "connections"},
@@ -334,7 +328,7 @@ async def external_locations_index(request: Request) -> HTMLResponse:
         locations = await client.list_external_locations()
     except CatalogUnavailableError as exc:
         error = exc.detail
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/external_locations.html",
         {
@@ -362,7 +356,7 @@ async def external_location_detail(request: Request, name: str) -> HTMLResponse:
         location = await client.get_external_location(name)
     except CatalogUnavailableError as exc:
         error = exc.detail
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/external_location.html",
         {"location": location, "name": name, "error": error, "active_page": "external_locations"},
@@ -386,7 +380,7 @@ async def credentials_index(request: Request) -> HTMLResponse:
         credentials = await client.list_credentials()
     except CatalogUnavailableError as exc:
         error = exc.detail
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/credentials.html",
         {
@@ -415,7 +409,7 @@ async def credential_detail(request: Request, name: str) -> HTMLResponse:
         credential = await client.get_credential(name)
     except CatalogUnavailableError as exc:
         error = exc.detail
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/credential.html",
         {"credential": credential, "name": name, "error": error, "active_page": "credentials"},

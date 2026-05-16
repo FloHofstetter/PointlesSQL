@@ -16,19 +16,13 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import require_user
+from pointlessql.api.dependencies import get_templates, require_user
 from pointlessql.services.canvas import SUPPORTED_NODE_KINDS, compile_nodes
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["canvas"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared :class:`Jinja2Templates` instance."""
-    return request.app.state.templates
 
 
 @router.get("/canvas", response_class=HTMLResponse)
@@ -42,7 +36,7 @@ async def page_canvas(request: Request) -> HTMLResponse:
         HTML page (login-gated).
     """
     require_user(request)
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/canvas.html",
         {

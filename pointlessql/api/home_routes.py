@@ -29,9 +29,8 @@ from typing import Any, cast
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import get_uc_client, get_user
+from pointlessql.api.dependencies import get_templates, get_uc_client, get_user
 from pointlessql.config import Settings
 from pointlessql.exceptions import CatalogUnavailableError, PointlessSQLError
 from pointlessql.services.notebook import _workspace as notebook_workspace_service
@@ -40,11 +39,6 @@ from pointlessql.types import TableFqn, UserInfo
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["home"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def score_match(needle: str, haystack: str) -> float | None:
@@ -517,7 +511,7 @@ async def catalogs_index(request: Request) -> HTMLResponse:
             logger.warning("home: soyuz connections list unavailable", exc_info=True)
     from pointlessql.services import output_rendering as output_rendering_service
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/home.html",
         {

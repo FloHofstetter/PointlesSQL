@@ -30,11 +30,11 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse, Response
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit, record_query_async
 from pointlessql.api.dependencies import (
     effective_principal,
+    get_templates,
     get_uc_client,
     get_user,
 )
@@ -47,11 +47,6 @@ logger = logging.getLogger(__name__)
 _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 router = APIRouter(tags=["sql"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def short_sql_hash(sql: str) -> str:
@@ -1119,7 +1114,7 @@ async def api_sql_explain(request: Request, sql: str = "") -> dict[str, Any]:
 async def sql_editor_page(request: Request) -> HTMLResponse:
     """Render the SQL editor page."""
     settings: Settings = request.app.state.settings
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/sql_editor.html",
         {

@@ -29,21 +29,15 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
-from fastapi.templating import Jinja2Templates
 
 from pointlessql.api._audit_helpers import audit
-from pointlessql.api.dependencies import get_user
+from pointlessql.api.dependencies import get_templates, get_user
 from pointlessql.exceptions import ValidationError
 from pointlessql.services import saved_queries as saved_queries_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["alerts"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 def base_url(request: Request) -> str:
@@ -561,7 +555,7 @@ async def alerts_page(request: Request) -> HTMLResponse:
             is_admin=bool(user.get("is_admin", False)),
             limit=200,
         )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/alerts.html",
         {
@@ -612,7 +606,7 @@ async def alert_detail_page(request: Request, slug: str) -> HTMLResponse:
         alert_row["id"],
         limit=50,
     )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/alert_detail.html",
         {

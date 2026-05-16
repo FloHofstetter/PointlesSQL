@@ -22,9 +22,13 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from pointlessql.api.dependencies import current_workspace_id, get_uc_client, get_user
+from pointlessql.api.dependencies import (
+    current_workspace_id,
+    get_templates,
+    get_uc_client,
+    get_user,
+)
 from pointlessql.exceptions import CatalogUnavailableError
 from pointlessql.services import pg_sync as pg_sync_service
 from pointlessql.services.authorization import (
@@ -40,11 +44,6 @@ from pointlessql.types import TableFqn
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["catalog-html"])
-
-
-def _templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
 
 
 @router.get("/catalogs/{catalog_name}", response_class=HTMLResponse)
@@ -102,7 +101,7 @@ async def catalog_detail(request: Request, catalog_name: str) -> HTMLResponse:
         if factory is not None:
             sync_runs = pg_sync_service.list_recent_runs(factory, catalog_name)
 
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/schemas.html",
         {
@@ -165,7 +164,7 @@ async def schema_detail(request: Request, catalog_name: str, schema_name: str) -
         user.get("is_admin", False),
         MANAGE_GRANTS,
     )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/tables.html",
         {
@@ -262,7 +261,7 @@ async def table_detail(
         if cdf_subscription is not None
         else []
     )
-    return _templates(request).TemplateResponse(
+    return get_templates(request).TemplateResponse(
         request,
         "pages/table.html",
         {

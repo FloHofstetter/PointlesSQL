@@ -1,26 +1,26 @@
 """Shared helpers used across the runs_routes sub-modules.
 
-The detail / list / rollback / diff sub-modules all need a way to
-fetch the shared :class:`Jinja2Templates` instance off ``app.state``
-and to load a single :class:`AgentRun` ORM row by id.  Centralising
-those tiny helpers here keeps the import graph one-way: every
-sub-module depends on ``_shared``, and ``_shared`` depends on
-nothing else inside the package.
+The detail / list / rollback / diff sub-modules all need to load a
+single :class:`AgentRun` ORM row by id.  Centralising the loader
+here keeps the import graph one-way: every sub-module depends on
+``_shared``, and ``_shared`` depends on nothing else inside the
+package.
+
+Phase 86 retired the local ``templates()`` helper and re-exports
+:func:`pointlessql.api.dependencies.get_templates` under its old name
+so existing sub-modules keep working without churn.
 """
 
 from __future__ import annotations
 
 from fastapi import Request
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 
+from pointlessql.api.dependencies import get_templates as templates
 from pointlessql.exceptions import CatalogNotFoundError
 from pointlessql.models.agent._runs import AgentRun
 
-
-def templates(request: Request) -> Jinja2Templates:
-    """Return the shared Jinja2Templates instance from app state."""
-    return request.app.state.templates
+__all__ = ["templates", "load_run"]
 
 
 def load_run(request: Request, run_id: str) -> AgentRun:
