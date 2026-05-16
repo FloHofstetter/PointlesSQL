@@ -1098,6 +1098,93 @@ PointlesSQL
 │       ├── 85.2 — Decision gate (✅, verdict NO): writeup above.
 │       └── 85.3+ — Full canvas build-out: deferred to Some-day.
 │
+├── Phase 86 — Modularisierungs- & Dedup-Welle             ✅ done 2026-05-16
+│       One-wave structural pass on files large enough to push past
+│       LLM-comfort and on the cross-cutting helpers that were
+│       duplicated file-by-file.  Twelve commits, ~80 files touched,
+│       net ~340 lines removed (~6500 inserted vs ~6840 deleted
+│       across the wave); every commit boots clean and passes
+│       ruff / pyright / pydoclint / alembic gates.  Asset version
+│       bumped 0.1.0rc4 → 0.1.0rc5 for the base.html-touching strang.
+│
+│       ── C.1+C.2 (`d26ed10`) Helper centralisation.  Promotes four
+│          per-request helpers into ``api/dependencies.py``:
+│          ``get_templates``, ``is_htmx_request``, ``is_htmx_boosted``,
+│          ``is_htmx_partial``, ``wants_json``.  Removes 22 identical
+│          ``_templates(request)`` defs and 3 hand-rolled HTMX-header
+│          checks across the codebase.  25 files touched / 254 LOC
+│          deleted vs 191 inserted.
+│
+│       ── A1-A3 (`e7d0a78`) Frontend mega-templates → page-scoped
+│          partials.  ``data_product.html`` 1610 → 206; ``feed.html``
+│          1352 → 79; ``notebook_editor.html`` 777 → 225.  20 new
+│          partials under ``pages/_partials/{data_product,feed,
+│          notebook_editor}/``.  ``x-data`` scopes stay on the mother
+│          template; partials inherit them naturally so no Alpine
+│          semantics change.  A4 (macro consolidation) trimmed
+│          because the 3 candidate patterns are all Alpine-bound,
+│          making macros expression-string-only.
+│
+│       ── B1 (`469e3a4`) ``feed_routes.py`` 1021 → package.
+│          ``feed.py`` (482) + ``notifications.py`` (102) +
+│          ``muting.py`` (213) + ``_serializers.py`` (256).
+│          9 endpoints preserved via facade.
+│
+│       ── B2 (`fd07577`) ``home_routes.py`` 998 → package.
+│          ``summary.py`` (495) + ``search.py`` (487) + ``_helpers.py``
+│          (45).  3 endpoints + 3 public helpers preserved via facade
+│          (``build_home_summary``, ``score_match``, ``epoch_seconds``).
+│
+│       ── B3 (`00ce745`) ``jobs_routes.py`` 927 → package.
+│          ``crud.py`` (309) + ``runs.py`` (164) + ``papermill.py``
+│          (137) + ``pages.py`` (153) + ``_serializers.py`` (170) +
+│          ``_access.py`` (108).  14 endpoints + 5 public exports
+│          (``JOB_REGISTRY``, ``serialize_job``, ``serialize_run``,
+│          ``latest_run_per_job``, ``router``) preserved.
+│
+│       ── B4 partial (`68dbdf1`) ``main.py`` 1008 → 770.
+│          ``_template_filters.py`` (155 LOC; 4 filters + 4 globals +
+│          ``register_template_filters``) and ``_template_context.py``
+│          (158 LOC; ``install_template_wrapper`` that rebinds
+│          ``templates.TemplateResponse`` in place).  Lifespan
+│          extraction (~360 LOC) deferred — its 15-local try/finally
+│          needs either a dataclass or a class-based manager to land
+│          cleanly, bigger than the rest of the wave warrants.
+│
+│       ── B5 (`7f65aec`) ``alerts_routes.py`` 626 → package.
+│          ``crud.py`` (213) + ``destinations.py`` (121) +
+│          ``feed_tokens.py`` (66) + ``feeds.py`` (96) + ``pages.py``
+│          (115) + ``_helpers.py`` (87).  13 endpoints preserved.
+│
+│       ── B6 (`c637888`) ``governance_routes.py`` 521 → package.
+│          ``profile.py`` (211) + ``catalog.py`` (150) + ``tags.py``
+│          (58) + ``permissions.py`` (73) + ``lineage.py`` (32) +
+│          ``_helpers.py`` (83).  13 endpoints preserved.
+│
+│       ── D (`9696608`) Star factory out of base.html.
+│          ``window.pqlStarKey`` + ``window.pqlStarToggle`` (121 LOC)
+│          → ``frontend/js/star.js``.  ``base.html`` 848 → 726.
+│          ``pyproject.toml`` bumped 0.1.0rc4 → 0.1.0rc5 per the
+│          asset-version cache-busting contract.  Catalog-visit +
+│          table-visit IIFEs in base.html were left in place because
+│          they carry Jinja ``active_catalog`` / ``active_table``
+│          interpolation.
+│
+│       ── C.4 (`0f999c3`) Test-fixture cleanup.  Removes 13
+│          local ``anonymous_client`` fixture defs that duplicated
+│          the conftest's centralised one.  117 LOC deleted;
+│          156 tests pass across the touched files.
+│
+│       ── C.3 + C.5 trimmed.  ``_polymorphic_handlers.py`` (2231) /
+│          ``audit/_legacy.py`` (1262) / ``sql/editor.py`` (1127) /
+│          ``dbt/routes.py`` (1061) / ``sql/_dispatcher.py`` (1009) /
+│          ``config/_settings.py`` (922) each carry hidden coupling
+│          (polymorphic dispatch tables, env-prefix conventions,
+│          legacy bridges) that would each justify their own sprint;
+│          deferred per plan's trim list.  Stale-module audit
+│          (``repo_assets``, ``conventions``, ``pointlessql.git``,
+│          ``types``) confirmed all four actively imported.
+│
 ├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
 │       Three-track polish bundle.  Track K rebuilt /feed from a
 │       flat Bootstrap `list-group` into a first-class social
