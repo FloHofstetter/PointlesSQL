@@ -915,6 +915,225 @@ PointlesSQL
 │       pyright 496/623; pydoclint zero violations; file-size
 │       gate clean.
 │
+├── Phases 82–85 — Strategic axes (post-81 horizon)         ⏳ planned
+│   │
+│   │   Articulated 2026-05-16.  Three pillars frame the next horizon:
+│   │   (1) social integration with DPs = "GitHub feeling" for data
+│   │   products, (2) agentic platform access + strong external API,
+│   │   (3) easy consumption AND easy authoring of DPs for non-
+│   │   technical users.  The phases below decompose the pillars
+│   │   into shippable increments; ordering optimised for compounding
+│   │   value (ingest first → everything else has data to chew on).
+│   │
+│   │   Memory anchor:
+│   │   `~/.claude/projects/-home-flo-git-PointlesSQL/memory/project_phase82_strategic_axes.md`.
+│   │
+│   ├── Phase 82 — Ingest UI (critical path)               ⏳ planned
+│   │   │
+│   │   │   Without ingest, PointlesSQL is a viewer over data
+│   │   │   somebody else dropped in.  DuckDB already ships the
+│   │   │   readers (`read_csv`, `read_parquet`, `read_json`,
+│   │   │   `postgres_scanner`, `mysql_scanner`, `sqlite_scanner`,
+│   │   │   S3/HTTP); what's missing is the UI that walks a
+│   │   │   non-technical user through "connect Postgres → pick
+│   │   │   tables → schedule pull → land in `<catalog>.<schema>`".
+│   │   │
+│   │   ├── 82.1 — Connection-form UX (CSV / Parquet / JSON file
+│   │   │     upload + S3 URL + HTTP URL + Postgres / MySQL /
+│   │   │     SQLite connection string).  Probes via DuckDB
+│   │   │     dry-run (`SELECT * FROM <reader> LIMIT 0`) so the
+│   │   │     form shows the resolved column list before save.
+│   │   ├── 82.2 — Table-picker (for the SQL connectors) — schema
+│   │   │     browse + multi-select + per-table target
+│   │   │     `<catalog>.<schema>.<table>` mapping.
+│   │   ├── 82.3 — Scheduled pull (reuses existing scheduler from
+│   │   │     Phase 8) — full-refresh + incremental (high-water-mark
+│   │   │     column).  Emits the same `fanout_event` lifecycle
+│   │   │     events so /feed picks up pulls automatically.
+│   │   ├── 82.4 — First-party connectors covered: file upload,
+│   │   │     S3, HTTP, Postgres, MySQL, SQLite, Parquet glob.
+│   │   │     A generic Connector SDK is explicitly deferred —
+│   │   │     extract once 4-5 first-party connectors exist and
+│   │   │     the shared shape is clear (Grafana ate this dogfood
+│   │   │     for ~20 plugins before extracting their SDK).
+│   │   └── 82.5 — Health monitor: per-source last-pull timestamp,
+│   │         row-delta, error count.  Surfaces on `/admin/sources`
+│   │         and as a Health-band on every DP that consumes
+│   │         from a tracked source.
+│   │
+│   ├── Phase 83 — Saved Views + Visual Query Builder      ⏳ planned
+│   │   │
+│   │   │   Non-tech consumption layer for DPs.  Two complementary
+│   │   │   surfaces, both built on existing infra (SQL editor +
+│   │   │   Lens + DuckDB EXPLAIN).
+│   │   │
+│   │   ├── 83.1 — Saved Views: an analyst saves a filter + group-by
+│   │   │     + aggregation; a consumer opens the view read-only.
+│   │   │     Stored as parameterised SQL with a friendly title +
+│   │   │     description, scoped to a DP or table.  Killer feature
+│   │   │     for the "non-tech reads, tech writes" workflow.
+│   │   ├── 83.2 — Visual Query Builder (Grafana-style toggle on
+│   │   │     the SQL editor): filter-form + group-by picker +
+│   │   │     aggregation picker → writes live to SQL.  DuckDB
+│   │   │     EXPLAIN gives the column/type info for free.
+│   │   │     Pre-existing SQL is parsed back into form-state via
+│   │   │     sqlglot (round-trip).
+│   │   ├── 83.3 — Saved-View embed: `<iframe src="/views/{id}">`
+│   │   │     so a saved view drops into any internal wiki / Confluence
+│   │   │     / Notion page without re-implementation.
+│   │   └── 83.4 — Excel-grid mode: explicitly deferred (AG Grid
+│   │         Community + server-side row source).  Re-evaluate
+│   │         after 83.1 — most "I want Excel" requests are
+│   │         actually satisfied by Saved Views.
+│   │
+│   ├── Phase 84 — DP GitHub-feeling polish                ⏳ planned
+│   │   │
+│   │   │   Social backbone (76–78) is in place.  Phase 84 closes
+│   │   │   the gap to true "GitHub-for-data" feeling.  Also folds
+│   │   │   in the immediate DP-page polish (Consume / Health /
+│   │   │   Schema-preview) that came out of the 2026-05-16 review.
+│   │   │
+│   │   ├── 84.1 — README as canonical landing page: promote the
+│   │   │     existing DP README from the Social drawer to be the
+│   │   │     first thing on `/data-products/{ref}`.  Falls back
+│   │   │     to the auto-generated Contract-derived autodoc when
+│   │   │     no editorial README is set.  Mirrors the GitHub repo
+│   │   │     home behaviour.
+│   │   ├── 84.2 — Release stream per DP version: every version
+│   │   │     bump (1.0.0 → 1.0.1) gets a Release entry with
+│   │   │     changelog, schema-diff, signed-off-by, optional
+│   │   │     release notes.  Atom feed at `/data-products/{ref}/releases.atom`
+│   │   │     so RSS readers + CI subscribe.
+│   │   ├── 84.3 — DP "Consume" hero card on Overview: three-tab
+│   │   │     copy-paste affordance (PQL / SQL / Python).  Plus
+│   │   │     "Open in notebook" action.  Resolves the single
+│   │   │     most-asked consumer question ("how do I use this?").
+│   │   ├── 84.4 — Health hero band: aggregate the existing
+│   │   │     freshness / SLA / alert / downstream-issue badges
+│   │   │     into one prominent status block (green / yellow /
+│   │   │     red), styled like a status-page hero.  Replaces the
+│   │   │     scattered auto-badge cluster in the page header.
+│   │   ├── 84.5 — Schema-at-a-glance on Overview: first 10
+│   │   │     columns inline (name + type + nullable) with a
+│   │   │     "see all" link to the Contract tab.  Kills the
+│   │   │     two-clicks-deep schema lookup.
+│   │   ├── 84.6 — Contributor heatmap: a 12-month GitHub-style
+│   │   │     calendar of comments + reviews + writes per DP.
+│   │   │     Builds on the existing audit-aggregator query
+│   │   │     layer; no new tables.
+│   │   └── 84.7 — Fork ↔ Delta-Branch cross-link: render every
+│   │         live Delta-Branch off this DP's schema as a "fork"
+│   │         row, with promote-status badge and link.  Already
+│   │         exists structurally; just needs visual surface.
+│   │
+│   └── Phase 85 — Dataflow Canvas spike                   ⏳ planned
+│       │
+│       │   The differentiating swing — visual click-together
+│       │   transformations à la KNIME / n8n / Node-RED / LabView
+│       │   for "build a DP" without writing code.  Highest upside,
+│       │   highest scope risk; the phase is a *bounded* spike, not
+│       │   a commit to ship a full canvas editor.
+│       │
+│       ├── 85.1 — 1-week React Flow prototype with 5–6 node types
+│       │     (Read DP, Filter, Join, Aggregate, Write DP, Run
+│       │     Model).  Translates the canvas graph to a sequence
+│       │     of PQL primitives.  Single linear pipeline, no
+│       │     branches.  Pure prototype on a feature branch.
+│       ├── 85.2 — Decision gate: does the canvas feel coherent
+│       │     with PointlesSQL's mental model?  Does the graph
+│       │     ↔ PQL round-trip stay legible?  Does it scale
+│       │     visually to 20+ nodes?  If YES, commit to a full
+│       │     Phase 85.3+ build-out.  If NO, drop without
+│       │     sunk-cost-anchoring further work.
+│       └── 85.3+ — Conditional on the gate: full canvas with
+│             undo/redo, node-type registry, save/load, lineage
+│             integration, deterministic execution, branch /
+│             fork-on-canvas, multi-output nodes.  Realistic
+│             3-month scope if pursued; not committed upfront.
+│
+├── Phase 81 — Feed overhaul + help surface + entity ⋯-menu  ✅ done 2026-05-16
+│       Three-track polish bundle.  Track K rebuilt /feed from a
+│       flat Bootstrap `list-group` into a first-class social
+│       product page (GitHub-feed quality).  Track L added a
+│       global `?`-button + `/help` reference surface as a
+│       deliberate alternative to forced product tours.  Track M
+│       lifted the feed item ⋯-action pattern into a reusable
+│       macro and wired it into DP / Model / Run detail pages.
+│       Plus a small first-run-welcome fix at close-out.
+│
+│       Track K — Feed overhaul (`377c93a..2792f43`):
+│       1. **81.K.1** — Layout shell, sticky filter bar, day
+│          grouping.  Replaces flat list-group with `nav-pills`
+│          For-you / Mentions / My / Following + kind multi-
+│          select dropdown + density toggle (Comfortable /
+│          Compact / Headlines).  Day separators with sticky
+│          "Today" / "Yesterday" / "Mon May 12" / "Earlier".
+│       2. **81.K.2** — Rich per-kind item cards with bulk
+│          actor-name resolution; one Alpine renderer + shared
+│          classifier for comment / review / mention /
+│          notification / agent_run / badge / issue / branch.
+│       3. **81.K.3** — SSE live updates against
+│          `/api/notifications/stream` with an "X new" pulse
+│          banner and exponential reconnect backoff.
+│       4. **81.K.4** — Per-item ⋯-action menu: Mark read,
+│          Mute thread, Mute author, Snooze 1h/8h/1d, Copy link.
+│          New `feed_mutes` Alembic table; 5 new endpoints.
+│       5. **81.K.5** — Right context column (Trending today /
+│          People to follow / Saved searches) with two new
+│          `/api/feed/trending` + `/api/feed/people` aggregators.
+│       6. **81.K.6** — Wired previously-invisible
+│          `pointlessql.agent_run.completed/.failed` and
+│          `pointlessql.issue.*` fanout call-sites into the feed.
+│       7. **81.K.7** — Keyboard nav (j/k/o/e/m/r/?) + per-page
+│          help modal + focus-ring affordance.
+│       8. **81.K.8** — Per-filter empty-state copy + first-run
+│          welcome card.
+│       9. **81.K.9** — Activity / Discover top-level tabs
+│          (moves right column out of the feed pane → full-width
+│          activity).
+│       10. **81.K.10** — Drop redundant `<h1>Feed</h1>`,
+│           tighter breadcrumb padding.
+│       11. **81.K.11** — Breadcrumbs moved into the topbar
+│           (~50 px tighter pages).
+│       12. **81.K.12** — Layout-toggle chevrons relocated into
+│           the topbar (drops the rail header strip).
+│       13. **81.K.13** — Discover sub-tabs (Trending / People /
+│           Saved as `nav-pills` instead of three narrow
+│           third-width cards).
+│
+│       Track L — Help surface (`67cda6b`):
+│       * **81.L** — `/help` reference page (Keyboard / Hidden
+│         features / Per-page reference / Glossary / More) +
+│         topbar `?`-button next to the theme dropdown.  Deliberate
+│         non-goal: no forced product tour, no driver.js /
+│         shepherd.js dependency.  Per-page modals (e.g. Feed's
+│         `?`-modal) stay as the quick reference; `/help` is the
+│         canonical scrollable index.
+│
+│       Track M — Entity ⋯-menu sweep (`5e2a790`):
+│       * **81.M** — `_macros/entity_actions.html` macro renders
+│         a Bootstrap dropdown with Copy link, Copy citation,
+│         Mute notifications.  Wired into `data_product.html`,
+│         `model.html`, `run_view/header.html`.  Reuses the
+│         existing `.pql-copy-btn` delegated handler;
+│         `entity_actions.js` only adds the mute hop.  One-line
+│         macro call ready to drop into table.html,
+│         branch_detail.html, etc.
+│
+│       Close-out fix (`0f7d8b8`):
+│       * **81.N.0** — First-run welcome card gated on
+│         `filter === 'all'` so it stops stacking below the
+│         dedicated empty-states on Mentions / My / Following.
+│
+│       Final state: 24 commits ahead of `origin/main` at session
+│       close (push still queued — release-engineering-timing
+│       memory keeps push gated behind explicit auth).  1 Alembic
+│       migration (`feed_mutes`).  ~7 new pytest cases.  Static
+│       gates all pass (ruff / pyright baseline / pydoclint /
+│       file-size / bootstrap-order); the file-size gate picked
+│       up `feed_routes.py` (1021 LOC) into the allowlist with a
+│       split-candidate note, mirroring `home_routes.py`.
+│
 ├── Phase 80 — Navigation & UX overhaul                    ✅ done 2026-05-15
 │       Full IA + chrome rebuild after the Phase 79 walkthrough
 │       surfaced five URL-only orphans (`/issues`, `/topics`,
