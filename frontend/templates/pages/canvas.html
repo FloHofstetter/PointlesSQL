@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}Dataflow canvas (prototype) · PointlesSQL{% endblock %}
+
+{% set breadcrumbs = [
+    {"label": "Home", "href": "/"},
+    {"label": "Canvas"}
+] %}
+{% block breadcrumbs %}{% include "components/breadcrumbs.html" %}{% endblock %}
+
+{% block content %}
+<div x-data="canvasEditor()" x-init="init()">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-diagram-3 fs-3"></i>
+        <h1 class="h3 mb-0">Dataflow canvas</h1>
+        <span class="badge bg-warning text-dark ms-2">Phase 85.1 prototype</span>
+    </div>
+
+    <p class="text-muted small mb-3">
+        Click a node kind on the left to append it to the pipeline.
+        Drag rows up/down to reorder.  Click <strong>Compile</strong>
+        to render PQL.  State persists in localStorage — nothing is
+        saved server-side in this prototype.
+    </p>
+
+    <div class="row">
+        <!-- Palette -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <strong><i class="bi bi-grid"></i> Node palette</strong>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <template x-for="kind in supportedKinds" :key="kind">
+                        <li class="list-group-item d-flex align-items-center gap-2"
+                            style="cursor: pointer;"
+                            @click="addNode(kind)">
+                            <i class="bi"
+                               :class="{
+                                   'bi-box-arrow-in-right': kind === 'read_dp',
+                                   'bi-funnel': kind === 'filter',
+                                   'bi-link-45deg': kind === 'join',
+                                   'bi-stack': kind === 'group_by',
+                                   'bi-cpu': kind === 'run_model',
+                                   'bi-box-arrow-up-right': kind === 'write_dp'
+                               }"></i>
+                            <span x-text="kindLabel(kind)"></span>
+                            <small class="text-muted ms-auto">+ add</small>
+                        </li>
+                    </template>
+                </ul>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body small">
+                    <strong>Pipeline rules</strong>
+                    <ul class="mb-0 ps-3">
+                        <li>First node must be <code>read_dp</code></li>
+                        <li>Last node must be <code>write_dp</code> or <code>run_model</code></li>
+                        <li>Single linear chain (no branching)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas / list -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <strong>Pipeline</strong>
+                    <span class="badge bg-secondary" x-text="nodes.length + ' node' + (nodes.length === 1 ? '' : 's')"></span>
+                    <button class="btn btn-outline-danger btn-sm ms-auto"
+                            @click="reset()" :disabled="nodes.length === 0">
+                        <i class="bi bi-trash"></i> Reset
+                    </button>
+                </div>
+                <ul class="list-group list-group-flush pql-canvas-list">
+                    <template x-if="nodes.length === 0">
+                        <li class="list-group-item text-muted text-center py-5">
+                            <i class="bi bi-arrow-left-circle me-1"></i>
+                            Click a node on the left to start building.
+                        </li>
+                    </template>
+                    <template x-for="(node, idx) in nodes" :key="node.id">
+                        <li class="list-group-item">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge bg-primary"
+                                      x-text="(idx + 1) + '. ' + kindLabel(node.kind)"></span>
+                                <button class="btn btn-link btn-sm p-0 ms-auto"
+                                        :disabled="idx === 0"
+                                        @click="moveUp(idx)">
+                                    <i class="bi bi-arrow-up"></i>
+                                </button>
+                                <button class="btn btn-link btn-sm p-0"
+                                        :disabled="idx === nodes.length - 1"
+                                        @click="moveDown(idx)">
+                                    <i class="bi bi-arrow-down"></i>
+                                </button>
+                                <button class="btn btn-link btn-sm p-0 text-danger"
+                                        @click="removeNode(idx)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+
+                            <!-- Per-kind config form -->
+                            <template x-if="node.kind === 'read_dp'">
+                                <div>
+                                    <label class="form-label small mb-0">Table FQN</label>
+                                    <input class="form-control form-control-sm font-monospace"
+                                           x-model="node.config.table_fqn"
+                                           placeholder="catalog.schema.table">
+                                </div>
+                            </template>
+                            <template x-if="node.kind === 'filter'">
+                                <div>
+                                    <label class="form-label small mb-0">Predicate (pandas .query)</label>
+                                    <input class="form-control form-control-sm font-monospace"
+                                           x-model="node.config.predicate"
+                                           placeholder="country == 'DE' and amount > 100">
+                                </div>
+                            </template>
+                            <template x-if="node.kind === 'join'">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0">Right table FQN</label>
+                                        <input class="form-control form-control-sm font-monospace"
+                                               x-model="node.config.right_table_fqn">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-0">On</label>
+                                        <input class="form-control form-control-sm"
+                                               x-model="node.config.on">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-0">How</label>
+                                        <select class="form-select form-select-sm" x-model="node.config.how">
+                                            <option value="inner">inner</option>
+                                            <option value="left">left</option>
+                                            <option value="right">right</option>
+                                            <option value="outer">outer</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="node.kind === 'group_by'">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0">Group columns (csv)</label>
+                                        <input class="form-control form-control-sm"
+                                               :value="(node.config.columns || []).join(',')"
+                                               @change="node.config.columns = $event.target.value.split(',').map(s => s.trim()).filter(Boolean)">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0">Aggregates (col:fn,col:fn)</label>
+                                        <input class="form-control form-control-sm"
+                                               :value="Object.entries(node.config.aggregates || {}).map(([k,v]) => k + ':' + v).join(',')"
+                                               @change="updateAggregates(node, $event.target.value)">
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="node.kind === 'run_model'">
+                                <div>
+                                    <label class="form-label small mb-0">Model URI</label>
+                                    <input class="form-control form-control-sm font-monospace"
+                                           x-model="node.config.model_uri"
+                                           placeholder="models:/sales.fraud_v3/Production">
+                                </div>
+                            </template>
+                            <template x-if="node.kind === 'write_dp'">
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small mb-0">Target FQN</label>
+                                        <input class="form-control form-control-sm font-monospace"
+                                               x-model="node.config.target_fqn">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small mb-0">Mode</label>
+                                        <select class="form-select form-select-sm" x-model="node.config.mode">
+                                            <option value="overwrite">overwrite</option>
+                                            <option value="append">append</option>
+                                            <option value="merge">merge</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3" x-show="node.config.mode === 'merge'">
+                                        <label class="form-label small mb-0">On (merge key)</label>
+                                        <input class="form-control form-control-sm"
+                                               x-model="node.config.on">
+                                    </div>
+                                </div>
+                            </template>
+                        </li>
+                    </template>
+                </ul>
+                <div class="card-footer">
+                    <button class="btn btn-primary btn-sm" @click="compile()" :disabled="compiling || nodes.length === 0">
+                        <span x-show="compiling" class="spinner-border spinner-border-sm me-1"></span>
+                        <i class="bi bi-arrow-right-square me-1" x-show="!compiling"></i>
+                        Compile to PQL
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compiled code + errors -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <strong><i class="bi bi-code-slash"></i> Output</strong>
+                </div>
+                <div class="card-body">
+                    <template x-if="errors.length > 0">
+                        <div class="alert alert-danger small">
+                            <strong>Errors:</strong>
+                            <ul class="mb-0 ps-3">
+                                <template x-for="e in errors" :key="e">
+                                    <li x-text="e"></li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                    <template x-if="!compiled && errors.length === 0">
+                        <div class="text-muted small">Press Compile to render PQL.</div>
+                    </template>
+                    <template x-if="compiled && errors.length === 0">
+                        <div>
+                            <pre class="bg-light border rounded p-3 small mb-2"
+                                 style="white-space: pre-wrap;"
+                                 x-text="compiled"></pre>
+                            <button class="btn btn-outline-secondary btn-sm w-100"
+                                    @click="copyCode()">
+                                <i class="bi bi-clipboard"></i> Copy to clipboard
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const PQL_CANVAS_STORAGE_KEY = 'pqlCanvasNodes';
+const PQL_SUPPORTED_KINDS = {{ supported_node_kinds | tojson }};
+
+function canvasEditor() {
+    return {
+        supportedKinds: PQL_SUPPORTED_KINDS,
+        nodes: [],
+        compiled: '',
+        errors: [],
+        compiling: false,
+        nextId: 1,
+
+        init() {
+            try {
+                const cached = JSON.parse(localStorage.getItem(PQL_CANVAS_STORAGE_KEY) || 'null');
+                if (cached && Array.isArray(cached.nodes)) {
+                    this.nodes = cached.nodes;
+                    this.nextId = cached.nextId || (this.nodes.length + 1);
+                }
+            } catch (e) {
+                this.nodes = [];
+            }
+            this.$watch('nodes', () => this.persist(), { deep: true });
+        },
+
+        persist() {
+            localStorage.setItem(PQL_CANVAS_STORAGE_KEY, JSON.stringify({
+                nodes: this.nodes,
+                nextId: this.nextId,
+            }));
+        },
+
+        kindLabel(kind) {
+            const labels = {
+                read_dp: 'Read DP',
+                filter: 'Filter',
+                join: 'Join',
+                group_by: 'Group + aggregate',
+                run_model: 'Run model',
+                write_dp: 'Write DP',
+            };
+            return labels[kind] || kind;
+        },
+
+        defaultConfig(kind) {
+            switch (kind) {
+                case 'read_dp': return { table_fqn: '' };
+                case 'filter': return { predicate: '' };
+                case 'join': return { right_table_fqn: '', on: '', how: 'inner' };
+                case 'group_by': return { columns: [], aggregates: {} };
+                case 'run_model': return { model_uri: '' };
+                case 'write_dp': return { target_fqn: '', mode: 'overwrite', on: '' };
+                default: return {};
+            }
+        },
+
+        addNode(kind) {
+            this.nodes.push({
+                id: this.nextId++,
+                kind,
+                config: this.defaultConfig(kind),
+            });
+        },
+
+        removeNode(idx) {
+            this.nodes.splice(idx, 1);
+        },
+
+        moveUp(idx) {
+            if (idx === 0) return;
+            const tmp = this.nodes[idx - 1];
+            this.nodes[idx - 1] = this.nodes[idx];
+            this.nodes[idx] = tmp;
+        },
+
+        moveDown(idx) {
+            if (idx === this.nodes.length - 1) return;
+            const tmp = this.nodes[idx + 1];
+            this.nodes[idx + 1] = this.nodes[idx];
+            this.nodes[idx] = tmp;
+        },
+
+        updateAggregates(node, raw) {
+            const out = {};
+            (raw || '').split(',').forEach(pair => {
+                const [col, fn] = pair.split(':').map(s => (s || '').trim());
+                if (col && fn) out[col] = fn;
+            });
+            node.config.aggregates = out;
+        },
+
+        reset() {
+            if (!confirm('Reset the canvas?')) return;
+            this.nodes = [];
+            this.compiled = '';
+            this.errors = [];
+            this.persist();
+        },
+
+        async compile() {
+            this.compiling = true;
+            this.errors = [];
+            this.compiled = '';
+            const res = await window.pqlApi.fetch('/api/canvas/compile', {
+                method: 'POST',
+                body: { nodes: this.nodes },
+            });
+            this.compiling = false;
+            if (res.ok && res.data) {
+                this.compiled = res.data.code || '';
+                this.errors = res.data.errors || [];
+            } else {
+                this.errors = ['Compile request failed.'];
+            }
+        },
+
+        copyCode() {
+            if (!this.compiled) return;
+            navigator.clipboard.writeText(this.compiled);
+        },
+    };
+}
+</script>
+{% endblock %}
