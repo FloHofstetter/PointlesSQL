@@ -89,6 +89,11 @@ from pointlessql.models.catalog import (
     SyncRun,
     TableStats,
 )
+from pointlessql.models.ingest import (
+    INGEST_PULL_MODES,
+    INGEST_SOURCE_KINDS,
+    IngestSource,
+)
 from pointlessql.models.lens import (
     LENS_PROVIDERS,
     LensMessage,
@@ -183,6 +188,9 @@ __all__ = [
     "Dashboard",
     "ExpectedLineageInbound",
     "GovernanceEvent",
+    "INGEST_PULL_MODES",
+    "INGEST_SOURCE_KINDS",
+    "IngestSource",
     "Job",
     "JobLog",
     "JobRun",
