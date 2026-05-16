@@ -1,16 +1,13 @@
-"""Scheduler executor for the ``"ingest_pull"`` job kind.
+"""Scheduler executor + manual-pull entry point for ``"ingest_pull"``.
 
-Registered in :func:`pointlessql.services.scheduler.registry.build_default_registry`.
-The scheduler invokes :func:`ingest_pull_executor` once per ``JobRun``;
-the executor reads ``config["source_id"]`` and ``config["mapping_index"]``,
-calls :func:`pointlessql.services.ingest.pull.pull_mapping`, persists
-the resulting stats on the ``IngestSource`` row, and emits one
-``pointlessql.ingest.pulled`` / ``.failed`` fanout event so the social
-feed picks the pull up automatically.
+:func:`run_pull` carries the full pull lifecycle (load source → run
+DuckDB reader → call PQL → record stats → emit fanout) and is
+intentionally reusable: both the scheduler executor and the manual
+"Pull now" route call into it.
 
-The executor swallows the :class:`pointlessql.services.ingest.pull.PullError`
-into a plain :class:`Exception` re-raise so the scheduler's existing
-``JobRun.error`` capture path applies unchanged.
+The scheduler executor wrapper :func:`ingest_pull_executor` matches the
+:data:`pointlessql.services.scheduler.registry.JobExecutor` signature
+and is registered in :func:`build_default_registry`.
 """
 
 from __future__ import annotations
@@ -29,38 +26,38 @@ from pointlessql.types import UserInfo
 logger = logging.getLogger(__name__)
 
 
-async def ingest_pull_executor(
+async def run_pull(
+    *,
+    source_id: int,
+    mapping_index: int,
+    user_email: str,
     job_run_id: int,
-    user_info: UserInfo,
-    config: dict[str, Any],
-    uc_client: UnityCatalogClient,
-) -> None:
-    """Run one mapping pull for the configured ingest source.
+    session_factory: Any = None,
+) -> dict[str, Any]:
+    """Execute one mapping pull end-to-end.
 
     Args:
-        job_run_id: Current ``JobRun.id``.  Recorded on the
-            mapping's ``last_pull_stats`` so the per-source Runs tab
-            can drilldown.
-        user_info: The run-as user's :class:`UserInfo`.
-        config: Must carry ``source_id`` and ``mapping_index``.
-        uc_client: Principal-forwarded facade.  Unused directly —
-            we let PQL build its own client internally.
+        source_id: IngestSource primary key.
+        mapping_index: Position inside the source's ``table_mappings``.
+        user_email: The principal under which the PQL write runs.  An
+            empty string is accepted (PQL falls back to unprincipal'd).
+        job_run_id: Owning JobRun id (0 for manual pulls).
+        session_factory: Optional SQLAlchemy session factory.  Falls
+            back to :func:`pointlessql.db.get_session_factory` when
+            ``None``; the manual-pull route passes the request-bound
+            ``app.state.session_factory`` so tests aren't bound to
+            the module-level singleton.
+
+    Returns:
+        A serialised :class:`pointlessql.services.ingest.pull.PullResult`
+        dict on success.
 
     Raises:
-        ValidationError: When *config* is missing required keys or
-            the source / mapping cannot be loaded.
-        PullError: Any failure inside the pull bubbles up so the
-            scheduler records it on ``JobRun.error``.
+        ValidationError: When the source / mapping cannot be loaded.
+        PullError: When the pull itself fails — the manual route
+            catches and surfaces it; the scheduler wrapper lets it
+            propagate so ``JobRun.error`` captures the failure.
     """
-    del uc_client  # PQL builds its own principal-forwarded client.
-    source_id = config.get("source_id")
-    mapping_index = config.get("mapping_index")
-    if source_id is None or mapping_index is None:
-        raise ValidationError(
-            "ingest_pull job config must carry 'source_id' and 'mapping_index'."
-        )
-
-    from pointlessql.db import get_session_factory
     from pointlessql.models import IngestSource
     from pointlessql.pql.pql import PQL
     from pointlessql.services.ingest.pull import (
@@ -69,11 +66,13 @@ async def ingest_pull_executor(
         pull_mapping,
     )
 
-    factory = get_session_factory()
+    if session_factory is None:
+        from pointlessql.db import get_session_factory
 
-    # Load the source row eagerly so we have config + secrets + the
-    # current mappings snapshot.  Hold the session open only across
-    # the read — DuckDB + PQL writes happen *outside* this session.
+        factory = get_session_factory()
+    else:
+        factory = session_factory
+
     with factory() as session:
         source = session.get(IngestSource, int(source_id))
         if source is None or not source.is_active:
@@ -88,9 +87,7 @@ async def ingest_pull_executor(
                 f"IngestSource {source_id} has malformed JSON: {exc}."
             ) from exc
         mappings = load_mappings(source.table_mappings)
-        if not isinstance(mapping_index, int) or not 0 <= mapping_index < len(
-            mappings
-        ):
+        if not 0 <= mapping_index < len(mappings):
             raise ValidationError(
                 f"mapping_index {mapping_index} out of range for source {source_id}."
             )
@@ -100,9 +97,7 @@ async def ingest_pull_executor(
         workspace_id = source.workspace_id
         owner_user_id = source.owner_user_id
 
-    # Build a PQL instance under the source's owner principal so the
-    # write inherits the right audit identity.
-    pql_instance = PQL(principal=user_info.get("email"))
+    pql_instance = PQL(principal=user_email or None)
 
     try:
         result = pull_mapping(
@@ -113,8 +108,6 @@ async def ingest_pull_executor(
             pql_instance=pql_instance,
         )
     except PullError as exc:
-        # Persist the failure on the mapping for /admin/sources rollup
-        # before propagating; the scheduler still writes JobRun.error.
         _record_pull_outcome(
             factory=factory,
             source_id=int(source_id),
@@ -164,6 +157,48 @@ async def ingest_pull_executor(
             f"→ {result.target_fqn}"
         ),
     )
+    return result.to_dict()
+
+
+async def ingest_pull_executor(
+    job_run_id: int,
+    user_info: UserInfo,
+    config: dict[str, Any],
+    uc_client: UnityCatalogClient,
+) -> None:
+    """Scheduler-side wrapper around :func:`run_pull`.
+
+    Matches the
+    :data:`pointlessql.services.scheduler.registry.JobExecutor` signature.
+    Reads ``source_id`` + ``mapping_index`` from ``config`` and
+    delegates to :func:`run_pull`; the scheduler captures any raised
+    exception on ``JobRun.error``.
+
+    Args:
+        job_run_id: Current ``JobRun.id``.
+        user_info: The run-as user's :class:`UserInfo`.
+        config: Must carry ``source_id`` and ``mapping_index``.
+        uc_client: Principal-forwarded facade.  Unused — PQL builds
+            its own internally based on ``user_info.email``.
+
+    Raises:
+        ValidationError: When *config* is missing required keys.
+    """
+    del uc_client
+    source_id = config.get("source_id")
+    mapping_index = config.get("mapping_index")
+    if source_id is None or mapping_index is None:
+        raise ValidationError(
+            "ingest_pull job config must carry 'source_id' and 'mapping_index'."
+        )
+    if not isinstance(mapping_index, int):
+        raise ValidationError("mapping_index must be an integer.")
+    await run_pull(
+        source_id=int(source_id),
+        mapping_index=int(mapping_index),
+        user_email=user_info.get("email") or "",
+        job_run_id=job_run_id,
+    )
 
 
 def _record_pull_outcome(
@@ -189,7 +224,7 @@ def _record_pull_outcome(
         factory: SQLAlchemy session factory.
         source_id: IngestSource primary key.
         mapping_index: Index inside ``table_mappings``.
-        job_run_id: Owning JobRun id.
+        job_run_id: Owning JobRun id (0 marks a manual pull).
         ok: ``True`` for a successful pull, ``False`` otherwise.
         reason: Failure reason (``None`` on success).
         hint: Optional failure hint.
@@ -209,7 +244,7 @@ def _record_pull_outcome(
         if not 0 <= mapping_index < len(mappings):
             return
         now = datetime.datetime.now(datetime.UTC)
-        stats = {
+        stats: dict[str, Any] = {
             "ok": bool(ok),
             "rows_written": int(rows_written),
             "duration_ms": int(duration_ms),
@@ -246,9 +281,19 @@ def _fanout_pull(
     * The source owner (always).
     * Followers of the target DP, when one exists for ``target_fqn``.
 
-    We look the DP up by primary-table FQN (the conventional 1:1
-    mapping in PointlesSQL).  Missing-DP is fine — the event still
-    fans to the owner so the actor always sees pull outcomes.
+    We look the DP up by ``(workspace_id, catalog_name, schema_name)``
+    — DPs are keyed at the schema level.  Missing-DP is fine — the
+    event still fans to the owner so the actor always sees pull
+    outcomes.
+
+    Args:
+        factory: Session factory.
+        event_type: ``pointlessql.ingest.pulled`` or ``.failed``.
+        workspace_id: Tenant scope.
+        owner_user_id: Source creator's user id; always notified.
+        source_name: Human-readable source name for the summary.
+        target_fqn: ``catalog.schema.table`` of the Delta target.
+        summary: Pre-formatted one-line markdown summary.
     """
     from pointlessql.models import DataProduct
     from pointlessql.services.notifications.fanout import fanout_event

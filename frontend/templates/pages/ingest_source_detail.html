@@ -50,47 +50,95 @@
     <div class="tab-content">
         <div class="tab-pane fade show active" id="tab-overview">
             <template x-if="source">
-                <div class="card">
-                    <div class="card-body">
-                        <dl class="row mb-0 small">
-                            <dt class="col-sm-3">Kind</dt>
-                            <dd class="col-sm-9 font-monospace"
-                                x-text="source.kind"></dd>
-                            <dt class="col-sm-3">Config</dt>
-                            <dd class="col-sm-9">
-                                <template x-for="[k, v] in Object.entries(source.config || {})"
-                                          :key="k">
-                                    <div>
-                                        <span class="text-muted" x-text="k + ':'"></span>
-                                        <span class="font-monospace" x-text="v"></span>
-                                    </div>
-                                </template>
-                            </dd>
-                            <dt class="col-sm-3">Secrets</dt>
-                            <dd class="col-sm-9">
-                                <template x-for="k in Object.keys(source.secrets || {})"
-                                          :key="k">
-                                    <div>
-                                        <span class="text-muted" x-text="k + ':'"></span>
-                                        <span class="font-monospace">***</span>
-                                    </div>
-                                </template>
-                                <div x-show="!Object.keys(source.secrets || {}).length"
-                                     class="text-muted">none</div>
-                            </dd>
-                            <dt class="col-sm-3">Created</dt>
-                            <dd class="col-sm-9 text-muted"
-                                x-text="source.created_at"></dd>
-                            <dt class="col-sm-3">Status</dt>
-                            <dd class="col-sm-9">
-                                <span x-show="source.is_active" class="text-success">
-                                    <i class="bi bi-check-circle-fill me-1"></i>Active
-                                </span>
-                                <span x-show="!source.is_active" class="text-muted">
-                                    <i class="bi bi-pause-circle me-1"></i>Paused
-                                </span>
-                            </dd>
-                        </dl>
+                <div>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <dl class="row mb-0 small">
+                                <dt class="col-sm-3">Kind</dt>
+                                <dd class="col-sm-9 font-monospace"
+                                    x-text="source.kind"></dd>
+                                <dt class="col-sm-3">Config</dt>
+                                <dd class="col-sm-9">
+                                    <template x-for="[k, v] in Object.entries(source.config || {})"
+                                              :key="k">
+                                        <div>
+                                            <span class="text-muted" x-text="k + ':'"></span>
+                                            <span class="font-monospace" x-text="v"></span>
+                                        </div>
+                                    </template>
+                                </dd>
+                                <dt class="col-sm-3">Secrets</dt>
+                                <dd class="col-sm-9">
+                                    <template x-for="k in Object.keys(source.secrets || {})"
+                                              :key="k">
+                                        <div>
+                                            <span class="text-muted" x-text="k + ':'"></span>
+                                            <span class="font-monospace">***</span>
+                                        </div>
+                                    </template>
+                                    <div x-show="!Object.keys(source.secrets || {}).length"
+                                         class="text-muted">none</div>
+                                </dd>
+                                <dt class="col-sm-3">Created</dt>
+                                <dd class="col-sm-9 text-muted"
+                                    x-text="source.created_at"></dd>
+                                <dt class="col-sm-3">Status</dt>
+                                <dd class="col-sm-9">
+                                    <span x-show="source.is_active" class="text-success">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Active
+                                    </span>
+                                    <span x-show="!source.is_active" class="text-muted">
+                                        <i class="bi bi-pause-circle me-1"></i>Paused
+                                    </span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><strong>Schedule</strong></div>
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap gap-2 mb-2" role="group">
+                                <button type="button"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        @click="cronExpr = '@hourly'">Hourly</button>
+                                <button type="button"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        @click="cronExpr = '0 2 * * *'">Daily 02:00</button>
+                                <button type="button"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        @click="cronExpr = '0 2 * * 1'">Weekly Mon 02:00</button>
+                                <button type="button"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        @click="cronExpr = '0 2 1 * *'">Monthly 1st 02:00</button>
+                            </div>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">Cron</span>
+                                <input type="text"
+                                       class="form-control font-monospace"
+                                       x-model="cronExpr"
+                                       placeholder="0 2 * * *">
+                                <button class="btn btn-primary"
+                                        :disabled="savingSchedule"
+                                        @click="saveSchedule()">
+                                    Save schedule
+                                </button>
+                                <button class="btn btn-outline-danger"
+                                        :disabled="savingSchedule"
+                                        @click="clearSchedule()">
+                                    Clear
+                                </button>
+                            </div>
+                            <div class="form-text" x-show="source.job_id">
+                                Scheduled (Job
+                                <span class="font-monospace"
+                                      x-text="'#' + source.job_id"></span>).
+                            </div>
+                            <div class="form-text text-muted"
+                                 x-show="!source.job_id">
+                                Not scheduled — only manual "Pull now" runs.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </template>
@@ -200,11 +248,87 @@
         </div>
 
         <div class="tab-pane fade" id="tab-runs">
-            <div class="card">
-                <div class="card-body">
-                    <p class="text-muted small mb-0">
-                        Run history lands in Phase 82.3.
-                    </p>
+            <div class="card mb-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <strong>Latest pull per mapping</strong>
+                    <button class="btn btn-outline-secondary btn-sm"
+                            @click="loadRuns()"
+                            :disabled="runsLoading">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <template x-if="(runs?.latest_per_mapping || []).length === 0">
+                        <div class="p-3 text-muted small">
+                            No pulls yet — press <em>Pull now</em>.
+                        </div>
+                    </template>
+                    <template x-if="(runs?.latest_per_mapping || []).length > 0">
+                        <table class="table table-sm mb-0 pql-list-table">
+                            <thead>
+                                <tr>
+                                    <th>Source table</th>
+                                    <th>Target FQN</th>
+                                    <th>Status</th>
+                                    <th>Rows</th>
+                                    <th>Duration</th>
+                                    <th>When</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="r in (runs?.latest_per_mapping || [])"
+                                          :key="r.mapping_index">
+                                    <tr>
+                                        <td class="font-monospace small" x-text="r.source_table"></td>
+                                        <td class="font-monospace small" x-text="r.target_fqn"></td>
+                                        <td>
+                                            <span class="badge"
+                                                  :class="r.stats?.ok ? 'bg-success' : 'bg-danger'"
+                                                  x-text="r.stats?.ok ? 'ok' : 'failed'"></span>
+                                        </td>
+                                        <td x-text="r.stats?.rows_written"></td>
+                                        <td x-text="r.stats?.duration_ms + ' ms'"></td>
+                                        <td class="text-muted small" x-text="r.stats?.ts"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </template>
+                </div>
+            </div>
+
+            <div class="card" x-show="(runs?.scheduled_history || []).length > 0">
+                <div class="card-header"><strong>Scheduled run history</strong></div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0 pql-list-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Trigger</th>
+                                <th>Started</th>
+                                <th>Finished</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="jr in (runs?.scheduled_history || [])"
+                                      :key="jr.id">
+                                <tr>
+                                    <td>
+                                        <span class="badge"
+                                              :class="jr.status === 'succeeded'
+                                                      ? 'bg-success'
+                                                      : (jr.status === 'failed' ? 'bg-danger' : 'bg-secondary')"
+                                              x-text="jr.status"></span>
+                                    </td>
+                                    <td class="small text-muted" x-text="jr.trigger"></td>
+                                    <td class="small text-muted" x-text="jr.started_at"></td>
+                                    <td class="small text-muted" x-text="jr.finished_at"></td>
+                                    <td class="small text-danger" x-text="jr.error"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -327,8 +451,71 @@ function ingestSourceDetail(sourceId) {
             // Refresh the source so the Mappings tab badge updates.
             await this.load();
         },
+        // Schedule + runs state
+        cronExpr: '',
+        savingSchedule: false,
+        runs: { latest_per_mapping: [], scheduled_history: [] },
+        runsLoading: false,
+        async loadRuns() {
+            this.runsLoading = true;
+            const res = await window.pqlApi.fetch(
+                '/api/ingest/sources/' + this.sourceId + '/runs'
+            );
+            this.runsLoading = false;
+            if (res.ok && res.data) {
+                this.runs = res.data;
+            }
+        },
+        async saveSchedule() {
+            this.savingSchedule = true;
+            const res = await window.pqlApi.fetch(
+                '/api/ingest/sources/' + this.sourceId + '/schedule',
+                {
+                    method: 'PUT',
+                    body: { cron_expr: this.cronExpr || null },
+                }
+            );
+            this.savingSchedule = false;
+            if (!res.ok) {
+                window.pqlToast?.error?.(res.error || 'Save failed.');
+                return;
+            }
+            window.pqlToast?.success?.('Schedule saved.');
+            await this.load();
+        },
+        async clearSchedule() {
+            this.cronExpr = '';
+            this.savingSchedule = true;
+            const res = await window.pqlApi.fetch(
+                '/api/ingest/sources/' + this.sourceId + '/schedule',
+                { method: 'PUT', body: { cron_expr: null } }
+            );
+            this.savingSchedule = false;
+            if (!res.ok) {
+                window.pqlToast?.error?.(res.error || 'Clear failed.');
+                return;
+            }
+            window.pqlToast?.success?.('Schedule cleared.');
+            await this.load();
+        },
         async pullNow() {
-            window.pqlToast?.info?.('Pull-now wires in Phase 82.3.');
+            this.pulling = true;
+            const res = await window.pqlApi.fetch(
+                '/api/ingest/sources/' + this.sourceId + '/pulls',
+                { method: 'POST', body: {} }
+            );
+            this.pulling = false;
+            if (!res.ok) {
+                window.pqlToast?.error?.(res.error || 'Pull failed.');
+                return;
+            }
+            const ok = (res.data?.results || []).length;
+            const fail = (res.data?.failures || []).length;
+            window.pqlToast?.success?.(
+                `Pulled ${ok} mapping(s)` + (fail ? `, ${fail} failed.` : '.')
+            );
+            await this.load();
+            await this.loadRuns();
         }
     };
 }
