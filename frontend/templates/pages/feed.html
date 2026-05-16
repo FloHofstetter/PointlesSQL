@@ -229,6 +229,50 @@
                                                 <span class="text-muted small ms-auto pql-feed-item__meta"
                                                       x-text="pqlRelativeTime(r.created_at)"
                                                       :title="pqlAbsTime(r.created_at)"></span>
+
+                                                {# 3-dot action menu — read / mute / snooze / copy link. #}
+                                                <div class="dropdown">
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-link text-muted px-1 py-0"
+                                                            data-bs-toggle="dropdown"
+                                                            aria-label="Item actions">
+                                                        <i class="bi bi-three-dots-vertical"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end">
+                                                        <li x-show="r.kind === 'notification'">
+                                                            <button type="button" class="dropdown-item"
+                                                                    @click="toggleRead(r)">
+                                                                <i class="bi me-1"
+                                                                   :class="r.read_at ? 'bi-envelope' : 'bi-envelope-open'"></i>
+                                                                <span x-text="r.read_at ? 'Mark as unread' : 'Mark as read'"></span>
+                                                            </button>
+                                                        </li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="muteThread(r)">
+                                                            <i class="bi bi-bell-slash me-1"></i>Mute this thread
+                                                        </button></li>
+                                                        <li x-show="r.actor_user_id">
+                                                            <button type="button" class="dropdown-item"
+                                                                    @click="muteAuthor(r)">
+                                                                <i class="bi bi-person-x me-1"></i>
+                                                                Mute <span x-text="r.actor_display_name || 'author'"></span>
+                                                            </button>
+                                                        </li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><h6 class="dropdown-header py-1">Snooze</h6></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="snooze(r, '1h')">1 hour</button></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="snooze(r, '8h')">8 hours</button></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="snooze(r, '1d')">1 day</button></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><button type="button" class="dropdown-item"
+                                                                    @click="copyItemLink(r)">
+                                                            <i class="bi bi-link-45deg me-1"></i>Copy link
+                                                        </button></li>
+                                                    </ul>
+                                                </div>
                                             </div>
 
                                             {# Review — star row + body snippet. #}
@@ -589,6 +633,112 @@ window.feedPage = function () {
             }
         },
 
+        async toggleRead(r) {
+            if (!r.id) {
+                // Notifications carried via SSE haven't been
+                // round-tripped through /api/feed yet; the id
+                // arrives on next reload.
+                window.pqlToast?.error?.('Reload feed first to mark this read.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/notifications/' + r.id + '/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                r.read_at = data.read ? new Date().toISOString() : null;
+                window.pqlToast?.success?.(data.read ? 'Marked as read.' : 'Marked as unread.');
+            } catch (e) {
+                console.error('toggleRead failed', e);
+                window.pqlToast?.error?.('Could not toggle read state.');
+            }
+        },
+
+        async muteThread(r) {
+            if (!r.entity_kind || !r.entity_ref) {
+                window.pqlToast?.error?.('No thread to mute on this item.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/feed/mute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        entity_kind: r.entity_kind,
+                        entity_ref: r.entity_ref,
+                    }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.rows = this.rows.filter(
+                    (x) => !(x.entity_kind === r.entity_kind && x.entity_ref === r.entity_ref)
+                );
+                window.pqlToast?.success?.(`Muted ${r.entity_ref}.`);
+            } catch (e) {
+                console.error('muteThread failed', e);
+                window.pqlToast?.error?.('Could not mute thread.');
+            }
+        },
+
+        async muteAuthor(r) {
+            if (!r.actor_user_id) {
+                window.pqlToast?.error?.('This item has no author.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/feed/mute-author', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: r.actor_user_id }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.rows = this.rows.filter((x) => x.actor_user_id !== r.actor_user_id);
+                window.pqlToast?.success?.(`Muted ${r.actor_display_name || 'author'}.`);
+            } catch (e) {
+                console.error('muteAuthor failed', e);
+                window.pqlToast?.error?.('Could not mute author.');
+            }
+        },
+
+        async snooze(r, duration) {
+            if (!r.entity_kind || !r.entity_ref) {
+                window.pqlToast?.error?.('Nothing to snooze.');
+                return;
+            }
+            try {
+                const res = await fetch('/api/feed/snooze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        entity_kind: r.entity_kind,
+                        entity_ref: r.entity_ref,
+                        duration,
+                    }),
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this.rows = this.rows.filter(
+                    (x) => !(x.entity_kind === r.entity_kind && x.entity_ref === r.entity_ref)
+                );
+                const label = { '1h': '1 hour', '8h': '8 hours', '1d': '1 day' }[duration] || duration;
+                window.pqlToast?.success?.(`Snoozed for ${label}.`);
+            } catch (e) {
+                console.error('snooze failed', e);
+                window.pqlToast?.error?.('Could not snooze thread.');
+            }
+        },
+
+        async copyItemLink(r) {
+            try {
+                const url = new URL(r.source_url || '#', window.location.origin).toString();
+                await navigator.clipboard.writeText(url);
+                window.pqlToast?.success?.('Link copied to clipboard.');
+            } catch (e) {
+                console.error('copy failed', e);
+                window.pqlToast?.error?.('Could not copy link.');
+            }
+        },
+
         async markAllRead() {
             try {
                 const res = await fetch('/api/notifications/mark-all-read', {
@@ -636,6 +786,8 @@ window.feedPage = function () {
             return {
                 'pql-feed-item--unread': r.kind === 'notification' && !r.read_at,
                 'pql-feed-item--mention': rk === 'mention',
+                'pql-feed-item--comment': rk === 'comment',
+                'pql-feed-item--review': rk === 'review',
                 'pql-feed-item--agent-run': rk === 'agent_run',
                 'pql-feed-item--badge': rk === 'badge_award',
                 'pql-feed-item--issue': rk === 'issue',

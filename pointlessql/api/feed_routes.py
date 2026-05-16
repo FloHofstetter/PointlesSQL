@@ -20,11 +20,13 @@ audit-search backend.
 
 from __future__ import annotations
 
+import datetime
 import json
 from typing import Any
 
-from fastapi import APIRouter, Request
-from sqlalchemy import select
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+from sqlalchemy import or_, select, update
 
 from pointlessql.api.dependencies import current_workspace_id, get_user, require_user
 from pointlessql.models.auth import User
@@ -32,6 +34,7 @@ from pointlessql.models.catalog._data_product_comments import DataProductComment
 from pointlessql.models.catalog._data_product_reviews import DataProductReview
 from pointlessql.models.catalog._data_products import DataProduct
 from pointlessql.models.notifications import UserNotification
+from pointlessql.models.social._feed_mute import FeedMute
 from pointlessql.models.social._social_target import SocialTarget
 from pointlessql.models.social._user_follow import UserFollow
 from pointlessql.services.social import entity_registry
@@ -40,6 +43,36 @@ router = APIRouter(tags=["feed"])
 
 _DEFAULT_LIMIT = 50
 _MAX_LIMIT = 200
+
+# Phase 81.K.4 — snooze durations expressed as relative seconds.
+# Keys are the labels the UI surfaces; values are the wall-clock
+# offset added to ``now()`` when the user picks one.
+_SNOOZE_DURATIONS: dict[str, datetime.timedelta] = {
+    "1h": datetime.timedelta(hours=1),
+    "8h": datetime.timedelta(hours=8),
+    "1d": datetime.timedelta(days=1),
+}
+
+
+class _MuteBody(BaseModel):
+    """Request body for ``POST /api/feed/mute``."""
+
+    entity_kind: str
+    entity_ref: str
+
+
+class _MuteAuthorBody(BaseModel):
+    """Request body for ``POST /api/feed/mute-author``."""
+
+    user_id: int
+
+
+class _SnoozeBody(BaseModel):
+    """Request body for ``POST /api/feed/snooze``."""
+
+    entity_kind: str
+    entity_ref: str
+    duration: str
 
 
 def _dp_url_from_id(fqn_map: dict[int, str], dp_id: int | None) -> str:
@@ -116,6 +149,7 @@ def _row_from_notification(
     )
     render_kind = _classify_notification(row.event_type or "")
     return {
+        "id": row.id,
         "kind": "notification",
         "render_kind": render_kind,
         "event_type": row.event_type,
@@ -236,6 +270,37 @@ def _row_from_review(
         "created_at": review.created_at.isoformat(),
         "read_at": None,
     }
+
+
+def _active_mute_keys(
+    session: Any, user_id: int
+) -> set[tuple[str, str]]:
+    """Return ``{(entity_kind, entity_ref)}`` the caller has muted.
+
+    Phase 81.K.4 — the feed handler calls this once per request and
+    drops rows whose ``(entity_kind, entity_ref)`` is in the set
+    before serialising.  Rows with ``muted_until`` in the past are
+    ignored (the rows persist so the user's history of mute picks
+    survives, but they don't filter live data).
+
+    Args:
+        session: SQLAlchemy session.
+        user_id: The caller's user id.
+
+    Returns:
+        Set of ``(entity_kind, entity_ref)`` tuples currently muted.
+    """
+    now = datetime.datetime.now(datetime.UTC)
+    rows = session.execute(
+        select(FeedMute.entity_kind, FeedMute.entity_ref).where(
+            FeedMute.user_id == user_id,
+            or_(
+                FeedMute.muted_until.is_(None),
+                FeedMute.muted_until > now,
+            ),
+        )
+    ).all()
+    return {(str(k), str(r)) for k, r in rows}
 
 
 def _build_actor_names(
@@ -496,6 +561,20 @@ async def get_feed(
         if wanted_kinds:
             rows = [r for r in rows if r.get("entity_kind") in wanted_kinds]
 
+    # Phase 81.K.4 — drop rows muted by the caller.  Muted threads
+    # are identified by ``(entity_kind, entity_ref)``; muted authors
+    # are stored as ``(entity_kind='user', entity_ref=<user_id>)``
+    # so the same set covers both axes in one membership test.
+    with factory() as session:
+        mute_keys = _active_mute_keys(session, caller["id"])
+    if mute_keys:
+        rows = [
+            r for r in rows
+            if (str(r.get("entity_kind")), str(r.get("entity_ref")))
+            not in mute_keys
+            and ("user", str(r.get("actor_user_id"))) not in mute_keys
+        ]
+
     rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
 
     # De-duplicate by (kind, event_type, summary_md, created_at) to
@@ -516,3 +595,259 @@ async def get_feed(
         unique.append(row)
 
     return {"filter": filter, "kind": kind, "rows": unique[:limit]}
+
+
+# ---------------------------------------------------------------
+# Phase 81.K.4 — item-level action endpoints.
+#
+# All five share the same shape: take the caller from the session,
+# mutate the appropriate row, return ``{"ok": true}``.  Errors raise
+# 4xx so the Alpine layer can surface them via toast.
+# ---------------------------------------------------------------
+
+
+@router.post("/api/notifications/mark-all-read")
+async def mark_all_read(request: Request) -> dict[str, Any]:
+    """Mark every unread notification for the caller as read.
+
+    Phase 81.K.4 — the feed's top-level "Mark all read" button posts
+    here; the per-item endpoint covers the granular case.  Returns
+    the count touched so the UI can confirm.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        ``{"ok": true, "count": N}`` where N is the number of rows
+        flipped from unread to read.
+    """
+    require_user(request)
+    caller = get_user(request)
+    workspace_id = current_workspace_id(request)
+    factory = request.app.state.session_factory
+    now = datetime.datetime.now(datetime.UTC)
+    with factory() as session:
+        result = session.execute(
+            update(UserNotification)
+            .where(
+                UserNotification.recipient_user_id == caller["id"],
+                UserNotification.workspace_id == workspace_id,
+                UserNotification.read_at.is_(None),
+            )
+            .values(read_at=now)
+        )
+        session.commit()
+        # rowcount is dialect-dependent; cast to int defensively.
+        count = int(result.rowcount or 0)
+    return {"ok": True, "count": count}
+
+
+@router.post("/api/notifications/{notification_id}/read")
+async def toggle_notification_read(
+    request: Request, notification_id: int
+) -> dict[str, Any]:
+    """Toggle the ``read_at`` flag on a single notification.
+
+    Phase 81.K.4 — the item-action menu's "Mark as read / unread"
+    entry posts here.  We only allow the caller to flip rows
+    addressed to themselves.
+
+    Args:
+        request: Incoming FastAPI request.
+        notification_id: Primary key of the notification.
+
+    Returns:
+        ``{"ok": true, "read": bool}`` with the new state.
+
+    Raises:
+        HTTPException: 404 if the row doesn't belong to the caller.
+    """
+    require_user(request)
+    caller = get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        row = session.execute(
+            select(UserNotification).where(
+                UserNotification.id == notification_id,
+                UserNotification.recipient_user_id == caller["id"],
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        now = datetime.datetime.now(datetime.UTC)
+        if row.read_at is None:
+            row.read_at = now
+            new_state = True
+        else:
+            row.read_at = None
+            new_state = False
+        session.commit()
+    return {"ok": True, "read": new_state}
+
+
+def _upsert_mute(
+    session: Any,
+    user_id: int,
+    entity_kind: str,
+    entity_ref: str,
+    muted_until: datetime.datetime | None,
+) -> None:
+    """Insert or update a single mute row.
+
+    The unique index ``uq_feed_mutes_per_target`` guarantees one row
+    per ``(user_id, entity_kind, entity_ref)`` — re-muting updates
+    the ``muted_until`` instead of duplicating.
+
+    Args:
+        session: SQLAlchemy session.
+        user_id: Caller's user-id.
+        entity_kind: Discriminator.
+        entity_ref: Entity reference.
+        muted_until: Optional snooze deadline.
+    """
+    existing = session.execute(
+        select(FeedMute).where(
+            FeedMute.user_id == user_id,
+            FeedMute.entity_kind == entity_kind,
+            FeedMute.entity_ref == entity_ref,
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        session.add(
+            FeedMute(
+                user_id=user_id,
+                entity_kind=entity_kind,
+                entity_ref=entity_ref,
+                muted_until=muted_until,
+            )
+        )
+    else:
+        existing.muted_until = muted_until
+    session.commit()
+
+
+@router.post("/api/feed/mute")
+async def mute_thread(request: Request, body: _MuteBody) -> dict[str, Any]:
+    """Mute a thread (entity) for the caller's feed indefinitely.
+
+    Args:
+        request: Incoming FastAPI request.
+        body: ``{entity_kind, entity_ref}`` JSON payload.
+
+    Returns:
+        ``{"ok": true}`` on success.
+    """
+    require_user(request)
+    caller = get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        _upsert_mute(
+            session,
+            caller["id"],
+            body.entity_kind,
+            body.entity_ref,
+            muted_until=None,
+        )
+    return {"ok": True}
+
+
+@router.post("/api/feed/mute-author")
+async def mute_author(
+    request: Request, body: _MuteAuthorBody
+) -> dict[str, Any]:
+    """Mute every feed item authored by *user_id* for the caller.
+
+    Stored as a ``feed_mutes`` row with ``entity_kind='user'`` so the
+    feed handler's single mute-set membership check covers both
+    threads and authors.
+
+    Args:
+        request: Incoming FastAPI request.
+        body: ``{user_id}`` JSON payload.
+
+    Returns:
+        ``{"ok": true}`` on success.
+    """
+    require_user(request)
+    caller = get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        _upsert_mute(
+            session,
+            caller["id"],
+            "user",
+            str(body.user_id),
+            muted_until=None,
+        )
+    return {"ok": True}
+
+
+@router.post("/api/feed/snooze")
+async def snooze_thread(
+    request: Request, body: _SnoozeBody
+) -> dict[str, Any]:
+    """Snooze a thread for one of the canonical durations.
+
+    Args:
+        request: Incoming FastAPI request.
+        body: ``{entity_kind, entity_ref, duration}`` JSON payload.
+            ``duration`` must be one of ``1h`` / ``8h`` / ``1d``.
+
+    Returns:
+        ``{"ok": true, "muted_until": iso8601}`` with the deadline.
+
+    Raises:
+        HTTPException: 400 if ``duration`` is unknown.
+    """
+    require_user(request)
+    caller = get_user(request)
+    delta = _SNOOZE_DURATIONS.get(body.duration)
+    if delta is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"unknown duration {body.duration!r}; "
+                f"expected one of {sorted(_SNOOZE_DURATIONS)}"
+            ),
+        )
+    muted_until = datetime.datetime.now(datetime.UTC) + delta
+    factory = request.app.state.session_factory
+    with factory() as session:
+        _upsert_mute(
+            session,
+            caller["id"],
+            body.entity_kind,
+            body.entity_ref,
+            muted_until=muted_until,
+        )
+    return {"ok": True, "muted_until": muted_until.isoformat()}
+
+
+@router.post("/api/feed/unmute")
+async def unmute(request: Request, body: _MuteBody) -> dict[str, Any]:
+    """Remove a mute / snooze entry for the caller.
+
+    Args:
+        request: Incoming FastAPI request.
+        body: ``{entity_kind, entity_ref}`` JSON payload.
+
+    Returns:
+        ``{"ok": true, "removed": bool}`` — ``removed`` is ``False``
+        when no matching row existed (idempotent unmute).
+    """
+    require_user(request)
+    caller = get_user(request)
+    factory = request.app.state.session_factory
+    with factory() as session:
+        existing = session.execute(
+            select(FeedMute).where(
+                FeedMute.user_id == caller["id"],
+                FeedMute.entity_kind == body.entity_kind,
+                FeedMute.entity_ref == body.entity_ref,
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            return {"ok": True, "removed": False}
+        session.delete(existing)
+        session.commit()
+    return {"ok": True, "removed": True}

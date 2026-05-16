@@ -44,11 +44,16 @@
     border-radius: var(--pql-radius-sm);
 }
 
-/* Feed item card.  Uses Bootstrap .card + .pql-hover-lift; this
- * adds the unread-stripe slot and the per-kind tint variants. */
+/* Feed item card.  Uses Bootstrap .card + .pql-hover-lift; every
+ * item carries a 3 px coloured left stripe so the eye can scan the
+ * feed by kind as well as content.  The default
+ * ``--bs-border-color`` stripe covers plain notifications and any
+ * unclassified row; per-kind variants override the colour, and the
+ * read-state overrides (unread / mention) layer on top to flag
+ * "look at this one" without shouting. */
 .pql-feed-item {
     position: relative;
-    border-left: 3px solid transparent;
+    border-left: 3px solid var(--bs-border-color);
     color: inherit;
     text-decoration: none;
 }
@@ -57,12 +62,12 @@
     color: inherit;
 }
 
-.pql-feed-item--unread {
-    border-left-color: var(--pql-color-accent);
+/* Per-render-kind stripes — visible at rest, regardless of read state. */
+.pql-feed-item--comment {
+    border-left-color: var(--bs-primary);
 }
-.pql-feed-item--mention {
+.pql-feed-item--review {
     border-left-color: var(--bs-warning);
-    background-color: var(--bs-warning-bg-subtle);
 }
 .pql-feed-item--agent-run {
     border-left-color: var(--bs-info);
@@ -75,6 +80,16 @@
 }
 .pql-feed-item--branch {
     border-left-color: var(--bs-secondary);
+}
+
+/* Read-state overrides — drawn on top of the per-kind stripe. */
+.pql-feed-item--unread {
+    border-left-color: var(--pql-color-accent);
+    background-color: var(--bs-success-bg-subtle);
+}
+.pql-feed-item--mention {
+    border-left-color: var(--bs-warning);
+    background-color: var(--bs-warning-bg-subtle);
 }
 
 /* Layout slots inside a feed item card body. */
